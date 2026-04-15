@@ -39,12 +39,44 @@ If anything is ambiguous:
 When asked to implement a feature, fix, refactor, or documentation change:
 
 1. Check the current branch.
-2. If already on a matching `feature/*` branch, continue there.
-3. Otherwise create a new feature branch.
+2. If already on a `feature/*` branch, evaluate whether the new task is within the same scope.
+3. If the task is in-scope, continue on the current branch.
+4. Only create a new branch if the task is clearly unrelated.
 
 Branch naming format:
 
     feature/<short-kebab-description>
+
+------------------------------------------------------------------------
+
+### Branch Continuity Rule (CRITICAL)
+
+A new prompt does NOT imply a new branch.
+
+If currently on a `feature/*` branch, the agent MUST remain on that branch when the new request is any of the following:
+
+- continuation of the same goal
+- refinement or extension of the current implementation
+- bugfix caused by the current feature
+- tests, cleanup, or documentation for the current change
+- PR review feedback
+- small follow-up improvements that fit the same purpose
+
+The agent MUST prefer continuing the current branch unless the new task is **clearly unrelated**.
+
+"Clearly unrelated" means a change in at least one of:
+
+- purpose
+- review scope
+- merge intent
+- logical feature boundary
+
+If there is uncertainty:
+
+- STAY on the current branch
+- record the scope decision in `.agent/context.md`
+
+The agent MUST NOT create a new branch solely because a new prompt was received.
 
 ------------------------------------------------------------------------
 
@@ -181,6 +213,22 @@ A step is considered complete only when:
 
 ------------------------------------------------------------------------
 
+### Pull Request Continuity Rule (CRITICAL)
+
+If a PR already exists for the current branch:
+
+- the agent MUST continue working on the same branch
+- the agent MUST update the existing PR
+
+The agent MUST NOT:
+
+- create a new branch for in-scope follow-up work
+- create a second PR for the same logical change
+
+New PRs are allowed only when a new branch is justified by a clearly unrelated task.
+
+------------------------------------------------------------------------
+
 ### If Blocked
 
 If the agent cannot complete the current task:
@@ -289,14 +337,19 @@ Purpose:
 - active assumptions
 - current constraints
 - current branch context
+- active PR (if exists)
 
 Rules:
 
+- MUST include current branch name
+- MUST include whether a PR exists for this branch
 - update when scope changes
 - update when assumptions change
 - update when constraints change
 - keep it task-specific and minimal
 - do not copy durable project knowledge into this file
+
+------------------------------------------------------------------------
 
 ### decisions.md
 
@@ -313,9 +366,12 @@ Purpose:
 Rules:
 
 - update when a meaningful implementation or scope decision is made
+- explicitly record branch/scope decisions when ambiguity exists
 - do not use it as a full activity log
 - keep entries concise
 - move durable architectural knowledge to `docs/`
+
+------------------------------------------------------------------------
 
 ### Documentation Updates
 
@@ -386,15 +442,16 @@ On new session or after reboot:
 
 1. Read `AGENTS.md`
 2. Read `.agent/plan.md`
-3. Identify relevant files in `docs/` based on the current task
-4. Read only the relevant documentation
-5. Run:
+3. Read `.agent/context.md`
+4. Identify relevant files in `docs/` based on the current task
+5. Read only the relevant documentation
+6. Run:
 
     git log --oneline -n 5
     git diff main...HEAD
 
-6. Reconstruct context
-7. Continue from current step
+7. Reconstruct context, including current branch and PR
+8. Continue from current step
 
 If plan is missing:
 
@@ -418,7 +475,7 @@ If new work appears:
 Or:
 
 - defer it
-- or create new branch
+- or create new branch (only if clearly unrelated)
 
 ------------------------------------------------------------------------
 
