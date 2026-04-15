@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "remedy"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["pydantic>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+remedy = "apps.cli.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["packages", "apps"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
