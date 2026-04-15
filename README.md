@@ -6,14 +6,14 @@ Remedy is a modular orchestration kernel for artifact-driven workflows.
 
 Remedy coordinates tasks, tracks artifacts, and enforces acceptance criteria. External systems (LLMs, runtimes, memory backends) plug in as providers via well-defined interfaces. The core has no external dependencies.
 
-## Step 1: Foundation Skeleton
+## Step 1 + 1.5: Foundation
 
-This step establishes the project structure and core contracts. It includes:
+Step 1 established the project structure and core contracts. Step 1.5 hardened them. Together they include:
 
-- **`packages/core/models.py`** — Pydantic domain models: `Budget`, `AcceptanceCheck`, `Artifact`, `Task`, `RunState`, `Job`
-- **`packages/contracts/interfaces.py`** — Protocol interfaces: `LLMWorker`, `MemoryGateway`, `RuntimeProvider`, `Verifier`
-- **`tests/test_imports.py`** — Smoke tests verifying clean imports and basic instantiation
-- **`docs/architecture.md`** — Architecture definition and principles
+- **`packages/core/models.py`** — Pydantic domain models: `Budget`, `AcceptanceCheck`, `RunState`, `Artifact` (with task provenance), `Task` (with lifecycle state and output artifact linkage), `Job`
+- **`packages/contracts/interfaces.py`** — Protocol interfaces: `LLMWorker` (task-oriented, not prompt-centric), `MemoryGateway`, `RuntimeProvider`, `Verifier` (typed with `AcceptanceCheck`)
+- **`tests/test_imports.py`** — Smoke tests verifying clean imports, model defaults, and provenance fields
+- **`docs/architecture.md`** — Architecture definition, package role boundaries, and module-usability guarantee
 - Full directory skeleton for all planned modules and apps
 
 ## What Is NOT Implemented Yet

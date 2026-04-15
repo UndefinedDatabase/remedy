@@ -1,22 +1,13 @@
 # Plan
 
 ## Goal
-Step 1: Remedy Foundation Skeleton — create a clean, extensible foundation with core contracts and project structure.
+Step 1.5: Foundation Hardening — strengthen core contracts and models so Step 2 can be built without immediate breaking changes.
 
 ## Current Step
-Step 1 — COMPLETE. Branch pushed, PR created.
-
-## Completed
-- [x] Directory skeleton + `__init__.py` files
-- [x] `.agent/` state initialized
-- [x] `packages/core/models.py` — Pydantic domain models
-- [x] `packages/contracts/interfaces.py` — Protocol interfaces
-- [x] `tests/test_imports.py` — smoke tests
-- [x] `docs/architecture.md` — architecture definition
-- [x] `README.md` — project readme
+Step 1.5 — COMPLETE. Branch pushed, PR created.
 
 ## Next Steps
-Step 2: TBD (orchestration kernel or provider wiring)
+Step 2: Orchestration kernel (TBD)
 
 ## Risks
-- None at this stage; no external dependencies introduced.
+- contracts/interfaces.py will import from core/models.py — intentional and acceptable.
