@@ -11,11 +11,10 @@ Step 1 — in progress: committing core models, contracts, tests, docs.
 - [x] `.agent/` state initialized
 
 ## Next Steps
-1. Commit `packages/core/models.py` (Pydantic models)
-2. Commit `packages/contracts/interfaces.py` (Protocol interfaces)
-3. Commit `tests/test_imports.py`
-4. Commit `docs/architecture.md` and root `README.md`
-5. Push, create PR
+1. Commit `packages/contracts/interfaces.py` (Protocol interfaces)
+2. Commit `tests/test_imports.py`
+3. Commit `docs/architecture.md` and root `README.md`
+4. Push, create PR
 
 ## Risks
 - None at this stage; no external dependencies introduced.
