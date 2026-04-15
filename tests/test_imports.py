@@ -2,12 +2,6 @@
 Smoke tests: verify that core models and contracts import without errors.
 """
 
-import sys
-import os
-
-# Allow imports from the packages directory without installation
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 
 def test_core_models_import():
     from packages.core.models import (
