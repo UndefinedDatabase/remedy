@@ -29,13 +29,29 @@ class AcceptanceCheck(BaseModel):
     required: bool = True
 
 
+class RunState(str, Enum):
+    """Lifecycle state of a job or task."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class Artifact(BaseModel):
-    """A discrete unit of output produced during a workflow."""
+    """A discrete unit of output produced during a workflow.
+
+    Note: content is text-only (str). Binary artifact support is a known
+    limitation deferred to a later step.
+    """
 
     id: UUID = Field(default_factory=uuid4)
     name: str
     content: str
     mime_type: str = "text/plain"
+    task_id: UUID | None = None  # ID of the Task that produced this artifact
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -47,17 +63,8 @@ class Task(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict)
     acceptance_checks: list[AcceptanceCheck] = Field(default_factory=list)
     budget: Budget = Field(default_factory=Budget)
-
-
-class RunState(str, Enum):
-    """Lifecycle state of a running job."""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    PAUSED = "paused"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+    status: RunState = RunState.PENDING
+    output_artifact_ids: list[UUID] = Field(default_factory=list)
 
 
 class Job(BaseModel):
