@@ -2,35 +2,35 @@
 Core contracts (Protocol interfaces) for Remedy.
 
 These define the boundaries between the kernel and external providers.
-No implementation, no external dependencies, no assumptions about any specific system.
+No implementation, no external dependencies beyond core models.
 Any conforming class satisfies the contract via structural subtyping.
 """
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Protocol, runtime_checkable
+from typing import AsyncIterator, Protocol, runtime_checkable
+
+from packages.core.models import AcceptanceCheck, Artifact, Task
 
 
 @runtime_checkable
 class LLMWorker(Protocol):
-    """Generates text or structured output from a prompt."""
+    """Executes a Task and produces an Artifact.
 
-    async def generate(
-        self,
-        prompt: str,
-        *,
-        context: dict[str, Any] | None = None,
-    ) -> str:
-        """Return generated text for the given prompt."""
+    Work flows through structured Task objects, not raw prompt strings.
+    No provider-specific assumptions.
+    """
+
+    async def execute(self, task: Task) -> Artifact:
+        """Execute the task and return the resulting artifact."""
         ...
 
-    async def stream(
-        self,
-        prompt: str,
-        *,
-        context: dict[str, Any] | None = None,
-    ) -> AsyncIterator[str]:
-        """Stream generated text tokens for the given prompt."""
+    async def stream(self, task: Task) -> AsyncIterator[str]:
+        """Stream output tokens while executing a task.
+
+        Note: streams str tokens rather than a full Artifact — full streaming
+        artifact support is deferred to a later step.
+        """
         ...
 
 
@@ -38,11 +38,11 @@ class LLMWorker(Protocol):
 class MemoryGateway(Protocol):
     """Read and write named memory entries."""
 
-    async def read(self, key: str) -> Any:
+    async def read(self, key: str) -> object:
         """Retrieve a stored value by key. Returns None if not found."""
         ...
 
-    async def write(self, key: str, value: Any) -> None:
+    async def write(self, key: str, value: object) -> None:
         """Persist a value under the given key."""
         ...
 
@@ -72,12 +72,12 @@ class RuntimeProvider(Protocol):
 
 @runtime_checkable
 class Verifier(Protocol):
-    """Checks whether an artifact or result satisfies acceptance criteria."""
+    """Checks whether an artifact satisfies its acceptance criteria."""
 
     async def verify(
         self,
-        artifact: Any,
-        checks: list[Any],
+        artifact: Artifact,
+        checks: list[AcceptanceCheck],
     ) -> tuple[bool, list[str]]:
         """
         Run acceptance checks against an artifact.
