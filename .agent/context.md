@@ -4,7 +4,7 @@
 `feature/step2-packaging-cli`
 
 ## PR
-None yet — will be created after commits are pushed.
+https://github.com/UndefinedDatabase/remedy/pull/3
 
 ## Scope
 Step 2: Make Remedy a real installable Python project with a working CLI.
