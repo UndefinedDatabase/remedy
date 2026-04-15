@@ -11,9 +11,8 @@ Step 1 — in progress: committing core models, contracts, tests, docs.
 - [x] `.agent/` state initialized
 
 ## Next Steps
-1. Commit `tests/test_imports.py`
-2. Commit `docs/architecture.md` and root `README.md`
-3. Push, create PR
+1. Commit `docs/architecture.md` and root `README.md`
+2. Push, create PR
 
 ## Risks
 - None at this stage; no external dependencies introduced.
