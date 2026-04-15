@@ -1,13 +1,21 @@
 # Plan
 
 ## Goal
-Step 1.5: Foundation Hardening — strengthen core contracts and models so Step 2 can be built without immediate breaking changes.
+Step 2: Packaging + First Runnable System Layer — make Remedy properly packaged, import-safe, runnable via CLI, able to create and persist a Job locally.
 
 ## Current Step
-Step 1.5 — COMPLETE. Branch pushed, PR created.
+In progress: implementing packaging and CLI.
 
 ## Next Steps
-Step 2: Orchestration kernel (TBD)
+1. pyproject.toml (hatchling, pydantic dep, pytest dev dep, console script, pythonpath)
+2. .gitignore: add .data/
+3. Job model: add user_prompt field
+4. packages/orchestration/storage.py (JSON file storage)
+5. apps/cli/main.py (create-job command)
+6. tests: remove sys.path hack, add storage smoke test
+7. README.md: add install/run instructions
+8. Commit each logical unit, push, create PR
 
 ## Risks
-- contracts/interfaces.py will import from core/models.py — intentional and acceptable.
+- storage path is CWD-relative; documented assumption
+- user_prompt on Job is a minimal model change, not orchestration logic

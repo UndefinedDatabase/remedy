@@ -1,21 +1,28 @@
 # Context
 
 ## Active Branch
-`feature/foundation-hardening`
+`feature/step2-packaging-cli`
+
+## PR
+None yet — will be created after commits are pushed.
 
 ## Scope
-Step 1.5: Harden foundation contracts and models before Step 2.
+Step 2: Make Remedy a real installable Python project with a working CLI.
 
 ## Constraints
 - No orchestration logic
 - No provider implementations
 - No agent loops
-- contracts/ may import from core/ (internal dependency, no external packages)
-- Keep changes minimal and focused — no speculative abstractions
+- No database; JSON files only for storage
+- No external deps beyond pydantic (already required)
+- Storage path is CWD-relative (.data/jobs/)
 
 ## Assumptions
-- Artifact.content remains str-only; documented as a limitation for Step 2 consideration
-- LLMWorker.execute returns Artifact (artifact-driven architecture)
-- LLMWorker.stream returns AsyncIterator[str] (streaming full Artifacts is out of scope here)
-- packages/memory/ and packages/runtimes/ are provider-agnostic internal layers
-- packages/providers/* are concrete external adapters only
+- CLI runs from the project root; .data/ is created relative to CWD
+- user_prompt on Job is a pure data field, not orchestration
+- hatchling used as build backend (minimal, no extra config)
+- pytest pythonpath = ["."] replaces all sys.path hacks in tests
+
+## Branch Scope Decision
+Step 2 is a new branch because purpose, merge intent, and feature boundary
+are all distinct from Step 1.5 (contracts hardening). Recorded per AGENTS.md.
