@@ -54,9 +54,27 @@ def test_job_defaults():
     assert job.artifacts == []
 
 
+def test_task_lifecycle_defaults():
+    from packages.core.models import Task, RunState
+    task = Task(description="do something")
+    assert task.status == RunState.PENDING
+    assert task.output_artifact_ids == []
+
+
+def test_artifact_provenance():
+    from packages.core.models import Artifact
+    # Without task_id (default)
+    a = Artifact(name="out", content="hello")
+    assert a.task_id is None
+    # With task_id
+    from uuid import uuid4
+    tid = uuid4()
+    b = Artifact(name="out2", content="world", task_id=tid)
+    assert b.task_id == tid
+
+
 def test_interfaces_are_protocols():
     from packages.contracts.interfaces import LLMWorker, MemoryGateway, RuntimeProvider, Verifier
     from typing import Protocol
-    # All four are Protocols (runtime_checkable)
     for iface in (LLMWorker, MemoryGateway, RuntimeProvider, Verifier):
         assert issubclass(iface, Protocol)
