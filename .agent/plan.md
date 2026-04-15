@@ -7,9 +7,7 @@ Step 2: Packaging + First Runnable System Layer — make Remedy properly package
 In progress: implementing packaging and CLI.
 
 ## Next Steps
-1. pyproject.toml (hatchling, pydantic dep, pytest dev dep, console script, pythonpath)
-2. .gitignore: add .data/
-3. Job model: add user_prompt field
+1. Job model: add user_prompt field
 4. packages/orchestration/storage.py (JSON file storage)
 5. apps/cli/main.py (create-job command)
 6. tests: remove sys.path hack, add storage smoke test

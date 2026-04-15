@@ -72,6 +72,7 @@ class Job(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     name: str
+    user_prompt: str | None = None
     tasks: list[Task] = Field(default_factory=list)
     state: RunState = RunState.PENDING
     artifacts: list[Artifact] = Field(default_factory=list)
