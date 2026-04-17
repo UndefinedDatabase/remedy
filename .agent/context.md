@@ -4,7 +4,7 @@
 `feature/step3-orchestration-skeleton`
 
 ## PR
-To be created — branch being pushed.
+https://github.com/UndefinedDatabase/remedy/pull/4
 
 ## Scope
 Step 3: First Orchestration Skeleton — minimal deterministic job-planning flow.
