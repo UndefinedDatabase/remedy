@@ -1,19 +1,20 @@
 # Plan
 
 ## Goal
-Step 2.5: Storage and CLI Hardening — complete.
+Step 3: First Orchestration Skeleton — introduce a minimal, deterministic, local job-planning flow.
 
 ## Current Step
-Step 2.5 — COMPLETE. Pushing updates to PR #3.
-
-## Completed
-- [x] Job.created_at (timezone-aware UTC)
-- [x] JobNotFoundError in storage
-- [x] _resolve_data_dir() (REMEDY_DATA_DIR env var or repo-root default)
-- [x] list_jobs() sorted by created_at descending
-- [x] CLI: list-jobs, show-job
-- [x] Tests updated (fixture, new exception, created_at, list_jobs)
-- [x] README: storage resolution, new commands
+In progress on feature/step3-orchestration-skeleton (new branch from main after PR #3 merged).
 
 ## Next Steps
-Step 3: TBD (orchestration kernel)
+1. packages/orchestration/job_runner.py — plan_job()
+2. CLI: plan-job command
+3. tests/test_runner.py — plan_job tests
+4. README.md — Step 3 docs
+5. Push, create PR
+
+## Decisions
+- plan_job is synchronous, local, deterministic — no LLM
+- Idempotency: return unchanged if job.tasks or job.artifacts exist
+- State: RUNNING during planning, PENDING after (tasks ready to execute)
+- 3 fixed tasks + 1 planning artifact
