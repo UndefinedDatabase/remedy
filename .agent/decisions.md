@@ -21,6 +21,18 @@ Binary artifact support (str | bytes) is a non-trivial serialization question. D
 ## 2026-04-15: Task.output_artifact_ids is list[UUID]
 Task references artifact IDs, not embedded Artifact objects, to avoid circular model issues and keep the models flat.
 
+## 2026-04-15: Step 3 on new branch (feature/step3-orchestration-skeleton)
+Step 3 (orchestration logic) is clearly unrelated to Step 2/2.5 (packaging + CLI). PR #3 was merged before creating the new branch, per AGENTS.md starting-a-new-feature workflow.
+
+## 2026-04-15: plan_job mutates Job in place
+Pydantic v2 models are mutable by default. Mutation + return avoids deep-copy complexity and is consistent with how the CLI uses the result (save_job after plan_job). The function signature returns Job to make the behavior explicit.
+
+## 2026-04-15: Idempotency guard checks tasks OR artifacts
+If either is non-empty, planning is skipped entirely. This is strict but safe — prevents partial re-planning. A partially-planned job (tasks but no artifact) would be unusual and is better fixed manually.
+
+## 2026-04-15: Job state is PENDING after planning (not a new state)
+After plan_job, the job returns to PENDING. This represents "has tasks, awaiting execution". RunState values are not extended in Step 3 — the available states are sufficient for now. A PLANNED state could be added in a later step if needed.
+
 ## 2026-04-15: Step 2.5 continues on feature/step2-packaging-cli (PR #3)
 Step 2.5 (storage + CLI hardening) is an in-scope extension of Step 2 (same feature boundary). Per the Pull Request Continuity Rule, continued on the existing branch and PR rather than creating a new one.
 

@@ -4,7 +4,7 @@
 `feature/step3-orchestration-skeleton`
 
 ## PR
-None yet — will be created after commits are pushed.
+To be created — branch being pushed.
 
 ## Scope
 Step 3: First Orchestration Skeleton — minimal deterministic job-planning flow.
