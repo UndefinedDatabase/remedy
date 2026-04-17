@@ -7,11 +7,16 @@ All models are Pydantic BaseModel for validation and serialization.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(tz=timezone.utc)
 
 
 class Budget(BaseModel):
@@ -72,6 +77,8 @@ class Job(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     name: str
+    user_prompt: str | None = None
+    created_at: datetime = Field(default_factory=_utcnow)
     tasks: list[Task] = Field(default_factory=list)
     state: RunState = RunState.PENDING
     artifacts: list[Artifact] = Field(default_factory=list)

@@ -20,3 +20,24 @@ Binary artifact support (str | bytes) is a non-trivial serialization question. D
 
 ## 2026-04-15: Task.output_artifact_ids is list[UUID]
 Task references artifact IDs, not embedded Artifact objects, to avoid circular model issues and keep the models flat.
+
+## 2026-04-15: Step 2.5 continues on feature/step2-packaging-cli (PR #3)
+Step 2.5 (storage + CLI hardening) is an in-scope extension of Step 2 (same feature boundary). Per the Pull Request Continuity Rule, continued on the existing branch and PR rather than creating a new one.
+
+## 2026-04-15: Step 2 on new branch (feature/step2-packaging-cli)
+Step 2 (packaging + CLI) has a distinct purpose, merge scope, and feature boundary from Step 1.5 (contracts hardening). New branch is correct per AGENTS.md "clearly unrelated" criteria.
+
+## 2026-04-15: hatchling as build backend
+Minimal, modern, zero-config for simple package layouts. `packages = ["packages", "apps"]` exposes both top-level dirs as importable packages.
+
+## 2026-04-15: Storage is repo-root-relative (not CWD-relative)
+_resolve_data_dir() uses Path(__file__).resolve() to find the repo root, avoiding CWD fragility. REMEDY_DATA_DIR env var overrides for non-standard setups.
+
+## 2026-04-15: list_jobs silently skips corrupted files
+Corrupted JSON files are skipped without raising. Acceptable for local dev tool; can be hardened to warn/error in a later step.
+
+## 2026-04-15: Storage was CWD-relative (superseded)
+.data/jobs/ is relative to the working directory where the CLI is invoked. Simple and deterministic for single-user local use. No config system yet.
+
+## 2026-04-15: Job.user_prompt field added
+CLI requires a prompt field on Job to persist the user's input. Added as str | None = None — pure data, no orchestration logic.

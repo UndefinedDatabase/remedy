@@ -1,13 +1,19 @@
 # Plan
 
 ## Goal
-Step 1.5: Foundation Hardening — strengthen core contracts and models so Step 2 can be built without immediate breaking changes.
+Step 2.5: Storage and CLI Hardening — complete.
 
 ## Current Step
-Step 1.5 — COMPLETE. Branch pushed, PR created.
+Step 2.5 — COMPLETE. Pushing updates to PR #3.
+
+## Completed
+- [x] Job.created_at (timezone-aware UTC)
+- [x] JobNotFoundError in storage
+- [x] _resolve_data_dir() (REMEDY_DATA_DIR env var or repo-root default)
+- [x] list_jobs() sorted by created_at descending
+- [x] CLI: list-jobs, show-job
+- [x] Tests updated (fixture, new exception, created_at, list_jobs)
+- [x] README: storage resolution, new commands
 
 ## Next Steps
-Step 2: Orchestration kernel (TBD)
-
-## Risks
-- contracts/interfaces.py will import from core/models.py — intentional and acceptable.
+Step 3: TBD (orchestration kernel)
