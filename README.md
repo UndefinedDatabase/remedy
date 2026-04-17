@@ -16,13 +16,13 @@ Step 1 established the project structure and core contracts. Step 1.5 hardened t
 - **`docs/architecture.md`** — Architecture definition, package role boundaries, and module-usability guarantee
 - Full directory skeleton for all planned modules and apps
 
-## Step 2: Packaging + CLI
+## Step 2 + 2.5: Packaging + CLI + Storage Hardening
 
-Step 2 makes Remedy a real installable Python project:
+Step 2 makes Remedy a real installable Python project. Step 2.5 hardens the local persistence layer and expands the CLI.
 
 - **`pyproject.toml`** — hatchling build, `pydantic` dependency, `remedy` console script, pytest configured with `pythonpath = ["."]`
-- **`packages/orchestration/storage.py`** — `save_job` / `load_job` backed by JSON files under `.data/jobs/`
-- **`apps/cli/main.py`** — `remedy create-job "<prompt>"` command
+- **`packages/orchestration/storage.py`** — `save_job` / `load_job` / `list_jobs`; `JobNotFoundError`; storage directory resolved via `REMEDY_DATA_DIR` env var or `<repo_root>/.data/jobs`
+- **`apps/cli/main.py`** — `create-job`, `list-jobs`, `show-job` commands
 
 ### Install
 
@@ -30,12 +30,28 @@ Step 2 makes Remedy a real installable Python project:
 pip install -e ".[dev]"
 ```
 
-### Run CLI
+### CLI Usage
 
 ```bash
+# Create a job (prints UUID)
 remedy create-job "summarise the repo"
-# prints the new job UUID, e.g.:
-# 3f2a1b4c-...
+# → 3f2a1b4c-8d6e-4f9a-b1c2-...
+
+# List all jobs (newest first)
+remedy list-jobs
+# → 3f2a1b4c-...  pending       2026-04-15T19:37:36+00:00  summarise the repo
+
+# Inspect a job as JSON
+remedy show-job 3f2a1b4c-8d6e-4f9a-b1c2-...
+```
+
+### Storage Location
+
+By default, jobs are stored at `<repo_root>/.data/jobs/`.
+Override with the `REMEDY_DATA_DIR` environment variable:
+
+```bash
+REMEDY_DATA_DIR=/tmp/my-jobs remedy create-job "test"
 ```
 
 ### Run Tests
