@@ -1,5 +1,23 @@
 # Decisions
 
+## 2026-04-18: PlannerOutput lives in orchestration/, not in the provider
+Orchestration imports PlannerOutput to perform the transformation. If PlannerOutput lived in the provider, orchestration would depend on the provider — inverting the correct dependency direction. All providers depend on orchestration/planner_models.py.
+
+## 2026-04-18: plan_job_with_llm accepts a callable, not a provider object
+Provider is injected as `call_planner: Callable[[str], PlannerOutput]`. No provider protocol or ABC needed yet. This keeps orchestration completely decoupled and makes testing trivial (pass a lambda). Can be formalised into a protocol if multiple providers need a shared interface in a later step.
+
+## 2026-04-18: ollama is an optional dep, imported lazily inside OllamaPlanner.plan()
+Core remedy must remain usable without Ollama installed. The lazy import with clear ImportError message makes the missing-dep case user-friendly. Importing the provider module itself is safe; only calling .plan() requires ollama.
+
+## 2026-04-18: CLI imports plan_job_with_llm and OllamaPlanner inside the function
+Deferred imports in _cmd_plan_job_local prevent ollama-related import errors when the CLI module is loaded. Follows the same pattern as the lazy provider import.
+
+## 2026-04-18: acceptance_checks not mapped to Task.acceptance_checks yet
+PlannerOutput.acceptance_checks is job-level, not task-level. Mapping them to individual Tasks would require a decision about which task owns which check — deferred to a later step. Currently preserved in artifact content and metadata.
+
+## 2026-04-18: Step 4 on new branch (feature/step4-ollama-planner)
+Real provider integration has a different purpose, review scope, and feature boundary from Step 3/3.5 (orchestration skeleton + semantics). New branch correct per AGENTS.md.
+
 ## 2026-04-18: PlanJobResult is a dataclass, not a Pydantic model
 It is a return type, not a domain model — no serialization or validation needed. A dataclass is the minimal correct choice. If this type ever needs to be persisted or serialized, it should be promoted to a Pydantic model at that point.
 
