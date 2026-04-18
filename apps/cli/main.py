@@ -15,7 +15,7 @@ import sys
 from uuid import UUID
 
 from packages.core.models import Job, RunState
-from packages.orchestration.job_runner import plan_job
+from packages.orchestration.job_runner import PlanJobResult, plan_job
 from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
 
 
@@ -64,16 +64,15 @@ def _cmd_plan_job(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    already_planned = bool(job.tasks or job.artifacts)
-    job = plan_job(job)
-    save_job(job)
+    result: PlanJobResult = plan_job(job)
+    save_job(result.job)
 
-    if already_planned:
-        print(f"Job {job.id} already planned — no changes made.")
+    if not result.changed:
+        print(f"Job {result.job.id} already planned — no changes made.")
     else:
         print(
-            f"Job {job.id} planned: "
-            f"{len(job.tasks)} task(s), {len(job.artifacts)} artifact(s)"
+            f"Job {result.job.id} planned: "
+            f"{len(result.job.tasks)} task(s), {len(result.job.artifacts)} artifact(s)"
         )
 
 
