@@ -42,6 +42,11 @@ When you run `remedy plan-job <id>`, Remedy:
 This is deterministic scaffolding — the same 3 tasks are added for every job.
 LLM-driven planning is deferred to a later step.
 
+After planning, the job state changes from `pending` → `planned`.
+A job in the `planned` state has tasks ready but execution has not started.
+The `planning_output` artifact has `task_id = null` because it is produced
+by orchestration logic, not by a specific Task.
+
 ### Install
 
 ```bash
