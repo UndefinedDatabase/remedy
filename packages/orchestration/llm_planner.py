@@ -90,3 +90,31 @@ def plan_job_with_llm(
 
     job.state = RunState.PLANNED
     return PlanJobResult(job=job, changed=True)
+
+
+def annotate_planning_result(
+    result: PlanJobResult,
+    *,
+    provider: str,
+    role: str,
+    model: str,
+    elapsed_ms: float,
+) -> None:
+    """Enrich the planning artifact metadata with provider/role/model/timing info.
+
+    Mutates the artifact in place. No-op if result.changed is False or there
+    are no artifacts (e.g. the job was already planned).
+
+    Designed to be called after plan_job_with_llm returns, before persisting.
+    """
+    if not result.changed or not result.job.artifacts:
+        return
+    result.job.artifacts[0].metadata.update(
+        {
+            "provider": provider,
+            "role": role,
+            "model": model,
+            "task_count": len(result.job.tasks),
+            "elapsed_ms": round(elapsed_ms),
+        }
+    )
