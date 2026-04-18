@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from uuid import UUID
 
 from packages.core.models import Job, RunState
@@ -89,10 +90,11 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.llm_planner import plan_job_with_llm
+    from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
     from packages.providers.ollama_planner.provider import OllamaPlanner
 
     planner = OllamaPlanner()
+    start = time.monotonic()
     try:
         result: PlanJobResult = plan_job_with_llm(job, planner.plan)
     except ImportError as exc:
@@ -101,15 +103,23 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
     except Exception as exc:
         print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
         sys.exit(1)
+    elapsed_ms = (time.monotonic() - start) * 1000
 
+    annotate_planning_result(
+        result,
+        provider="ollama",
+        role="planner",
+        model=planner.model,
+        elapsed_ms=elapsed_ms,
+    )
     save_job(result.job)
 
     if not result.changed:
         print(f"Job {result.job.id} already planned — no changes made.")
     else:
         print(
-            f"Job {result.job.id} planned via Ollama: "
-            f"{len(result.job.tasks)} task(s), {len(result.job.artifacts)} artifact(s)"
+            f"Job {result.job.id} | role=planner model={planner.model} "
+            f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms"
         )
 
 
