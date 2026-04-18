@@ -47,14 +47,15 @@ A job in the `planned` state has tasks ready but execution has not started.
 The `planning_output` artifact has `task_id = null` because it is produced
 by orchestration logic, not by a specific Task.
 
-## Step 4: First Real Planner Worker (Ollama-backed)
+## Step 4 + 4.6: First Real Planner Worker (Ollama-backed) + Role-Specific Configuration
 
 Step 4 introduces the first concrete provider: an Ollama-backed local planner.
+Step 4.6 adds role-specific model selection, generation parameters, and richer planning metadata.
 Orchestration still owns the workflow — the provider only produces structured data.
 
 - **`packages/orchestration/planner_models.py`** — `PlannerOutput`, `ProposedTask`: structured planner output model (lives in orchestration, not in the provider)
-- **`packages/orchestration/llm_planner.py`** — `plan_job_with_llm(job, call_planner)`: orchestration function that accepts any planner callable and drives the PENDING → PLANNED transition
-- **`packages/providers/ollama_planner/provider.py`** — `OllamaPlanner`: calls local Ollama with JSON schema enforcement; lazy-imports the `ollama` package
+- **`packages/orchestration/llm_planner.py`** — `plan_job_with_llm(job, call_planner)`: orchestration function that accepts any planner callable and drives the PENDING → PLANNED transition; `annotate_planning_result()` enriches the planning artifact with provider/model/timing metadata
+- **`packages/providers/ollama_planner/provider.py`** — `OllamaPlanner`: calls local Ollama with JSON schema enforcement; lazy-imports the `ollama` package; supports role-specific model and generation parameter configuration
 - **`apps/cli/main.py`** — `remedy plan-job-local <job_id>` command
 
 ### Install with Ollama support
@@ -72,19 +73,30 @@ Make sure Ollama is running locally with your chosen model, then:
 remedy create-job "build a CLI tool that summarises files in a directory"
 
 # Plan it using the local model
-REMEDY_OLLAMA_MODEL=qwen2.5:7b remedy plan-job-local <job_id>
-# → Job <id> planned via Ollama: 4 task(s), 1 artifact(s)
+REMEDY_OLLAMA_PLANNER_MODEL=qwen2.5:7b remedy plan-job-local <job_id>
+# → Job <id> | role=planner model=qwen2.5:7b tasks=4 elapsed=3201ms
 
 # Inspect the LLM-generated plan
 remedy show-job <job_id>
 ```
 
-Configuration:
+### Planner configuration
+
+Remedy uses role-specific environment variables. The current implementation covers the **planner** role only; additional roles (executor, verifier) will have their own variables in future steps.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `REMEDY_OLLAMA_MODEL` | `qwen3-coder-next` | Ollama model to use |
+| `REMEDY_OLLAMA_PLANNER_MODEL` | — | Model for the planner role (takes priority) |
+| `REMEDY_OLLAMA_MODEL` | `qwen3-coder-next` | Fallback model (any role) |
 | `REMEDY_OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `REMEDY_OLLAMA_PLANNER_TEMPERATURE` | — | Sampling temperature for the planner (e.g. `0.2`) |
+| `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` | — | Max tokens to generate for the planner |
+
+Model selection precedence (highest to lowest):
+1. `OllamaPlanner(model=...)` constructor argument
+2. `REMEDY_OLLAMA_PLANNER_MODEL`
+3. `REMEDY_OLLAMA_MODEL`
+4. Built-in default (`qwen3-coder-next`)
 
 ### Adding a second planner (e.g. Claude)
 

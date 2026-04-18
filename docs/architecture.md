@@ -75,6 +75,24 @@ providers/claude_planner/        ←  (future) imports PlannerOutput; calls Clau
 
 Orchestration (`plan_job_with_llm`) accepts any planner callable. The provider is injected at the call site (CLI, tests) — orchestration never imports provider packages directly. This makes providers fully swappable and testable via mock callables.
 
+### Role-Specific Model Selection
+
+Remedy is moving toward role-specific model configuration. Each role (planner, executor, verifier, …) will eventually have its own model variable, allowing different models to be used for different responsibilities within the same job.
+
+The current implementation covers the **planner role** only:
+
+```
+REMEDY_OLLAMA_PLANNER_MODEL  ←  planner role (highest priority)
+REMEDY_OLLAMA_MODEL          ←  generic fallback (backward compat)
+built-in default             ←  qwen3-coder-next
+```
+
+Generation parameters follow the same role-specific pattern:
+- `REMEDY_OLLAMA_PLANNER_TEMPERATURE` — sampling temperature for the planner
+- `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` — max tokens for the planner
+
+These parameters are passed to Ollama only when set; unset means the model's defaults apply.
+
 ### Concrete Providers (Step 4+)
 
-**`packages/providers/ollama_planner/`** — First concrete provider. Calls a local Ollama model with JSON schema enforcement (`format=schema`). Configured via `REMEDY_OLLAMA_MODEL` and `REMEDY_OLLAMA_HOST`. The `ollama` Python package is an optional dependency (`pip install 'remedy[ollama]'`); it is loaded lazily and raises `ImportError` with install instructions if absent.
+**`packages/providers/ollama_planner/`** — First concrete provider. Calls a local Ollama model with JSON schema enforcement (`format=schema`). Configured via role-specific env vars (`REMEDY_OLLAMA_PLANNER_MODEL`, `REMEDY_OLLAMA_PLANNER_TEMPERATURE`, `REMEDY_OLLAMA_PLANNER_NUM_PREDICT`) with `REMEDY_OLLAMA_MODEL` as a generic fallback and `REMEDY_OLLAMA_HOST` for the server URL. The `ollama` Python package is an optional dependency (`pip install 'remedy[ollama]'`); it is loaded lazily and raises `ImportError` with install instructions if absent.

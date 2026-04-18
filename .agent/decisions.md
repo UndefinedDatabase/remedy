@@ -1,5 +1,14 @@
 # Decisions
 
+## 2026-04-18: Role-specific env vars with backward-compat fallback (Step 4.6)
+REMEDY_OLLAMA_PLANNER_MODEL takes priority over REMEDY_OLLAMA_MODEL. The generic var is kept as a fallback so existing setups are not broken. Precedence: constructor arg > REMEDY_OLLAMA_PLANNER_MODEL > REMEDY_OLLAMA_MODEL > default. Same pattern will apply to future roles (executor, verifier).
+
+## 2026-04-18: annotate_planning_result called in CLI, not inside plan_job_with_llm
+Elapsed time must be measured around the call_planner invocation, which happens inside plan_job_with_llm. Passing elapsed_ms into plan_job_with_llm would mix orchestration and timing concerns. Measuring in the CLI and annotating after the call keeps the functions focused and keeps annotate_planning_result independently testable.
+
+## 2026-04-18: temperature/num_predict passed as Ollama options only when set
+Sending these only when the user has configured them preserves Ollama model defaults otherwise. An empty options dict would be harmless but is avoided for clarity.
+
 ## 2026-04-18: PlannerOutput lives in orchestration/, not in the provider
 Orchestration imports PlannerOutput to perform the transformation. If PlannerOutput lived in the provider, orchestration would depend on the provider — inverting the correct dependency direction. All providers depend on orchestration/planner_models.py.
 
