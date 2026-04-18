@@ -1,28 +1,29 @@
 # Context
 
 ## Active Branch
-`feature/step2-packaging-cli`
+`feature/step3-orchestration-skeleton`
 
 ## PR
-https://github.com/UndefinedDatabase/remedy/pull/3
+https://github.com/UndefinedDatabase/remedy/pull/4
 
 ## Scope
-Step 2: Make Remedy a real installable Python project with a working CLI.
+Step 3: First Orchestration Skeleton — minimal deterministic job-planning flow.
 
 ## Constraints
-- No orchestration logic
-- No provider implementations
-- No agent loops
-- No database; JSON files only for storage
-- No external deps beyond pydantic (already required)
-- Storage path is CWD-relative (.data/jobs/)
+- No LLM calls
+- No async
+- No providers
+- No Docker or MemPalace
+- No retries or worker routing
+- No new external dependencies
 
 ## Assumptions
-- CLI runs from the project root; .data/ is created relative to CWD
-- user_prompt on Job is a pure data field, not orchestration
-- hatchling used as build backend (minimal, no extra config)
-- pytest pythonpath = ["."] replaces all sys.path hacks in tests
+- plan_job() mutates Job in place (Pydantic v2 models are mutable)
+- Idempotency: if job.tasks or job.artifacts exist, return unchanged
+- planning result is fully serializable via existing models
+- plan-job CLI command loads, plans, and saves in one step
 
 ## Branch Scope Decision
-Step 2 is a new branch because purpose, merge intent, and feature boundary
-are all distinct from Step 1.5 (contracts hardening). Recorded per AGENTS.md.
+Step 3 is a new branch: orchestration logic (plan_job, job_runner) has
+a different purpose, scope, and merge intent from Step 2/2.5 (packaging + CLI).
+PR #3 was merged before creating this branch.

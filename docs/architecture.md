@@ -36,7 +36,13 @@ apps            ←  wire everything together
 
 ### Artifact-Driven Workflow
 
-Work is expressed as `Job → Task → Artifact`, not as prompt strings. Artifacts are explicit, typed outputs with provenance (which task produced them). Workflows are not driven by raw prompts.
+Work is expressed as `Job → Task → Artifact`, not as prompt strings. Artifacts are explicit, typed outputs with provenance. Workflows are not driven by raw prompts.
+
+**Artifact provenance (`task_id`):**
+- `task_id = <UUID>` — artifact was produced by that specific Task execution.
+- `task_id = None` — artifact was produced by orchestration or system logic (e.g. planning output, job metadata). It is not tied to any single Task.
+
+This convention makes the source of every artifact unambiguous without requiring a separate artifact type hierarchy.
 
 ### Memory Gateway
 

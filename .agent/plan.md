@@ -1,19 +1,19 @@
 # Plan
 
 ## Goal
-Step 2.5: Storage and CLI Hardening — complete.
+Step 3 + 3.5: First Orchestration Skeleton + Planning Semantics Hardening.
 
 ## Current Step
-Step 2.5 — COMPLETE. Pushing updates to PR #3.
+Step 3.5 — COMPLETE. Pushing and updating PR #4.
 
 ## Completed
-- [x] Job.created_at (timezone-aware UTC)
-- [x] JobNotFoundError in storage
-- [x] _resolve_data_dir() (REMEDY_DATA_DIR env var or repo-root default)
-- [x] list_jobs() sorted by created_at descending
-- [x] CLI: list-jobs, show-job
-- [x] Tests updated (fixture, new exception, created_at, list_jobs)
-- [x] README: storage resolution, new commands
+- [x] RunState.PLANNED added
+- [x] Artifact.task_id=None convention documented (docstring + architecture.md)
+- [x] PlanJobResult dataclass (job, changed)
+- [x] plan_job returns PlanJobResult; state goes PENDING -> PLANNED
+- [x] CLI uses PlanJobResult.changed
+- [x] Tests updated + new tests for PLANNED, changed, task_id=None
+- [x] README + architecture.md updated
 
 ## Next Steps
-Step 3: TBD (orchestration kernel)
+Step 4: TBD (task execution or provider scaffolding)

@@ -38,6 +38,7 @@ class RunState(str, Enum):
     """Lifecycle state of a job or task."""
 
     PENDING = "pending"
+    PLANNED = "planned"
     RUNNING = "running"
     PAUSED = "paused"
     COMPLETED = "completed"
@@ -50,13 +51,18 @@ class Artifact(BaseModel):
 
     Note: content is text-only (str). Binary artifact support is a known
     limitation deferred to a later step.
+
+    task_id convention:
+      task_id = UUID  — artifact produced by that specific Task.
+      task_id = None  — artifact produced by orchestration/system logic
+                        (e.g. planning output, metadata). Not tied to a Task.
     """
 
     id: UUID = Field(default_factory=uuid4)
     name: str
     content: str
     mime_type: str = "text/plain"
-    task_id: UUID | None = None  # ID of the Task that produced this artifact
+    task_id: UUID | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

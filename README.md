@@ -22,7 +22,30 @@ Step 2 makes Remedy a real installable Python project. Step 2.5 hardens the loca
 
 - **`pyproject.toml`** — hatchling build, `pydantic` dependency, `remedy` console script, pytest configured with `pythonpath = ["."]`
 - **`packages/orchestration/storage.py`** — `save_job` / `load_job` / `list_jobs`; `JobNotFoundError`; storage directory resolved via `REMEDY_DATA_DIR` env var or `<repo_root>/.data/jobs`
-- **`apps/cli/main.py`** — `create-job`, `list-jobs`, `show-job` commands
+- **`apps/cli/main.py`** — `create-job`, `list-jobs`, `show-job`, `plan-job` commands
+
+## Step 3: First Orchestration Skeleton
+
+Step 3 introduces the first local, deterministic job-processing step.
+"Planning" here means shaping the job into structured work — no LLM is involved.
+
+- **`packages/orchestration/job_runner.py`** — `plan_job(job)`: adds 3 standard planning Tasks and 1 `planning_output` Artifact; idempotent
+
+### What "planning" means at this stage
+
+When you run `remedy plan-job <id>`, Remedy:
+1. Loads the job from disk
+2. Adds 3 fixed Tasks: `analyze_requirements`, `define_acceptance_checks`, `prepare_implementation_plan`
+3. Attaches a `planning_output` Artifact describing the generated plan
+4. Persists the updated job
+
+This is deterministic scaffolding — the same 3 tasks are added for every job.
+LLM-driven planning is deferred to a later step.
+
+After planning, the job state changes from `pending` → `planned`.
+A job in the `planned` state has tasks ready but execution has not started.
+The `planning_output` artifact has `task_id = null` because it is produced
+by orchestration logic, not by a specific Task.
 
 ### Install
 
@@ -43,6 +66,14 @@ remedy list-jobs
 
 # Inspect a job as JSON
 remedy show-job 3f2a1b4c-8d6e-4f9a-b1c2-...
+
+# Plan a job (adds tasks and artifact)
+remedy plan-job 3f2a1b4c-8d6e-4f9a-b1c2-...
+# → Job 3f2a1b4c-... planned: 3 task(s), 1 artifact(s)
+
+# Running plan-job again is safe (idempotent)
+remedy plan-job 3f2a1b4c-8d6e-4f9a-b1c2-...
+# → Job 3f2a1b4c-... already planned — no changes made.
 ```
 
 ### Storage Location
@@ -62,7 +93,8 @@ pytest
 
 ## What Is NOT Implemented Yet
 
-- Orchestration logic
+- LLM-driven planning (tasks are currently fixed templates)
+- Task execution
 - Agent loops
 - Provider implementations (Claude, Docker, MemPalace)
 - Configuration system
@@ -75,7 +107,7 @@ apps/           # Runnable applications (api, worker, cli)
 packages/
   core/         # Domain models
   contracts/    # Protocol interfaces
-  orchestration/# (future) orchestration kernel
+  orchestration/# job_runner (plan_job), storage
   memory/       # (future) memory management
   runtimes/     # (future) runtime abstractions
   verification/ # (future) artifact verification
