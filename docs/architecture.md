@@ -58,3 +58,23 @@ Every layer is replaceable:
 ### No Monolith
 
 Remedy must remain usable as a library inside a larger system. It does not own the process, the event loop, or the configuration system. It provides primitives that a host application composes.
+
+## Provider Model
+
+### Planner Providers
+
+A planner provider is any callable with signature `(prompt: str) -> PlannerOutput`.
+The `PlannerOutput` model lives in `packages/orchestration/planner_models.py` — not in the provider — because orchestration imports it and providers depend on it.
+
+```
+orchestration/planner_models.py  ←  defines PlannerOutput (no external deps)
+          ↑
+providers/ollama_planner/        ←  imports PlannerOutput; calls Ollama
+providers/claude_planner/        ←  (future) imports PlannerOutput; calls Claude API
+```
+
+Orchestration (`plan_job_with_llm`) accepts any planner callable. The provider is injected at the call site (CLI, tests) — orchestration never imports provider packages directly. This makes providers fully swappable and testable via mock callables.
+
+### Concrete Providers (Step 4+)
+
+**`packages/providers/ollama_planner/`** — First concrete provider. Calls a local Ollama model with JSON schema enforcement (`format=schema`). Configured via `REMEDY_OLLAMA_MODEL` and `REMEDY_OLLAMA_HOST`. The `ollama` Python package is an optional dependency (`pip install 'remedy[ollama]'`); it is loaded lazily and raises `ImportError` with install instructions if absent.

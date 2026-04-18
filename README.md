@@ -47,6 +47,54 @@ A job in the `planned` state has tasks ready but execution has not started.
 The `planning_output` artifact has `task_id = null` because it is produced
 by orchestration logic, not by a specific Task.
 
+## Step 4: First Real Planner Worker (Ollama-backed)
+
+Step 4 introduces the first concrete provider: an Ollama-backed local planner.
+Orchestration still owns the workflow — the provider only produces structured data.
+
+- **`packages/orchestration/planner_models.py`** — `PlannerOutput`, `ProposedTask`: structured planner output model (lives in orchestration, not in the provider)
+- **`packages/orchestration/llm_planner.py`** — `plan_job_with_llm(job, call_planner)`: orchestration function that accepts any planner callable and drives the PENDING → PLANNED transition
+- **`packages/providers/ollama_planner/provider.py`** — `OllamaPlanner`: calls local Ollama with JSON schema enforcement; lazy-imports the `ollama` package
+- **`apps/cli/main.py`** — `remedy plan-job-local <job_id>` command
+
+### Install with Ollama support
+
+```bash
+pip install -e ".[dev,ollama]"
+```
+
+### Run local LLM planning
+
+Make sure Ollama is running locally with your chosen model, then:
+
+```bash
+# Create a job
+remedy create-job "build a CLI tool that summarises files in a directory"
+
+# Plan it using the local model
+REMEDY_OLLAMA_MODEL=qwen2.5:7b remedy plan-job-local <job_id>
+# → Job <id> planned via Ollama: 4 task(s), 1 artifact(s)
+
+# Inspect the LLM-generated plan
+remedy show-job <job_id>
+```
+
+Configuration:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REMEDY_OLLAMA_MODEL` | `qwen3-coder-next` | Ollama model to use |
+| `REMEDY_OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+
+### Adding a second planner (e.g. Claude)
+
+To add Claude as a planner provider:
+1. Create `packages/providers/claude_planner/provider.py` with a `ClaudePlanner` class
+2. Implement `ClaudePlanner.plan(prompt: str) -> PlannerOutput`
+3. Wire it in the CLI as `plan-job-claude`
+
+The orchestration logic (`plan_job_with_llm`) is provider-agnostic — it accepts any callable returning `PlannerOutput`.
+
 ### Install
 
 ```bash
@@ -93,7 +141,6 @@ pytest
 
 ## What Is NOT Implemented Yet
 
-- LLM-driven planning (tasks are currently fixed templates)
 - Task execution
 - Agent loops
 - Provider implementations (Claude, Docker, MemPalace)
