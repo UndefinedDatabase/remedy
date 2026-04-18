@@ -4,7 +4,7 @@
 `feature/step4-ollama-planner`
 
 ## PR
-None yet — will be created after commits are pushed.
+https://github.com/UndefinedDatabase/remedy/pull/5
 
 ## Scope
 Step 4: First concrete provider — Ollama-backed local planner.
