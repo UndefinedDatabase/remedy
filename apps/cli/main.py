@@ -6,6 +6,7 @@ Usage:
     remedy list-jobs
     remedy show-job <job_id>
     remedy plan-job <job_id>
+    remedy plan-job-local <job_id>
 """
 
 from __future__ import annotations
@@ -76,6 +77,42 @@ def _cmd_plan_job(job_id_str: str) -> None:
         )
 
 
+def _cmd_plan_job_local(job_id_str: str) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.llm_planner import plan_job_with_llm
+    from packages.providers.ollama_planner.provider import OllamaPlanner
+
+    planner = OllamaPlanner()
+    try:
+        result: PlanJobResult = plan_job_with_llm(job, planner.plan)
+    except ImportError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as exc:
+        print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    save_job(result.job)
+
+    if not result.changed:
+        print(f"Job {result.job.id} already planned — no changes made.")
+    else:
+        print(
+            f"Job {result.job.id} planned via Ollama: "
+            f"{len(result.job.tasks)} task(s), {len(result.job.artifacts)} artifact(s)"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="remedy",
@@ -94,6 +131,11 @@ def main() -> None:
     plan = subparsers.add_parser("plan-job", help="Generate planning skeleton for a job")
     plan.add_argument("job_id", help="UUID of the job to plan")
 
+    plan_local = subparsers.add_parser(
+        "plan-job-local", help="Plan a job using local Ollama (requires ollama package)"
+    )
+    plan_local.add_argument("job_id", help="UUID of the job to plan")
+
     args = parser.parse_args()
 
     if args.command == "create-job":
@@ -104,6 +146,8 @@ def main() -> None:
         _cmd_show_job(args.job_id)
     elif args.command == "plan-job":
         _cmd_plan_job(args.job_id)
+    elif args.command == "plan-job-local":
+        _cmd_plan_job_local(args.job_id)
 
 
 if __name__ == "__main__":
