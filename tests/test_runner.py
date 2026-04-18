@@ -5,7 +5,7 @@ Tests for plan_job() orchestration runner.
 from __future__ import annotations
 
 from packages.core.models import Artifact, Job, RunState, Task
-from packages.orchestration.job_runner import plan_job
+from packages.orchestration.job_runner import PlanJobResult, plan_job
 
 
 # ---------------------------------------------------------------------------
@@ -15,48 +15,83 @@ from packages.orchestration.job_runner import plan_job
 def test_plan_job_adds_three_tasks():
     job = Job(name="test", user_prompt="build something")
     result = plan_job(job)
-    assert len(result.tasks) == 3
+    assert len(result.job.tasks) == 3
 
 
 def test_plan_job_adds_one_artifact():
     job = Job(name="test", user_prompt="build something")
     result = plan_job(job)
-    assert len(result.artifacts) == 1
+    assert len(result.job.artifacts) == 1
 
 
 def test_plan_job_artifact_name():
     job = Job(name="test")
     result = plan_job(job)
-    assert result.artifacts[0].name == "planning_output"
+    assert result.job.artifacts[0].name == "planning_output"
 
 
 def test_plan_job_artifact_contains_job_id():
     job = Job(name="test", user_prompt="do the thing")
     result = plan_job(job)
-    assert str(job.id) in result.artifacts[0].content
+    assert str(job.id) in result.job.artifacts[0].content
 
 
 def test_plan_job_tasks_are_pending():
     job = Job(name="test")
     result = plan_job(job)
-    assert all(t.status == RunState.PENDING for t in result.tasks)
+    assert all(t.status == RunState.PENDING for t in result.job.tasks)
 
 
 def test_plan_job_task_types_present():
     job = Job(name="test")
     result = plan_job(job)
-    task_types = {t.inputs.get("task_type") for t in result.tasks}
+    task_types = {t.inputs.get("task_type") for t in result.job.tasks}
     assert "analyze_requirements" in task_types
     assert "define_acceptance_checks" in task_types
     assert "prepare_implementation_plan" in task_types
 
 
-def test_plan_job_state_after_planning():
+# ---------------------------------------------------------------------------
+# plan_job: PLANNED state
+# ---------------------------------------------------------------------------
+
+def test_plan_job_state_is_planned_after_planning():
     job = Job(name="test")
     assert job.state == RunState.PENDING
     result = plan_job(job)
-    # After planning, job is PENDING (tasks ready, not yet executing)
-    assert result.state == RunState.PENDING
+    assert result.job.state == RunState.PLANNED
+
+
+def test_planned_state_value():
+    assert RunState.PLANNED == "planned"
+
+
+# ---------------------------------------------------------------------------
+# plan_job: PlanJobResult.changed
+# ---------------------------------------------------------------------------
+
+def test_plan_job_returns_changed_true_on_first_plan():
+    job = Job(name="test")
+    result = plan_job(job)
+    assert result.changed is True
+
+
+def test_plan_job_returns_changed_false_when_already_planned():
+    job = Job(name="test")
+    plan_job(job)  # first call mutates job in place
+    result2 = plan_job(job)
+    assert result2.changed is False
+
+
+# ---------------------------------------------------------------------------
+# plan_job: orchestration-owned artifact (task_id=None)
+# ---------------------------------------------------------------------------
+
+def test_plan_job_artifact_task_id_is_none():
+    """Planning artifacts are orchestration-owned: task_id must be None."""
+    job = Job(name="test")
+    result = plan_job(job)
+    assert result.job.artifacts[0].task_id is None
 
 
 # ---------------------------------------------------------------------------
@@ -94,8 +129,9 @@ def test_plan_job_returns_unchanged_if_already_has_tasks():
 
     result = plan_job(job)
 
-    assert len(result.tasks) == 1
-    assert result.tasks[0].id == existing_task.id
+    assert result.changed is False
+    assert len(result.job.tasks) == 1
+    assert result.job.tasks[0].id == existing_task.id
 
 
 def test_plan_job_returns_unchanged_if_already_has_artifacts():
@@ -105,5 +141,6 @@ def test_plan_job_returns_unchanged_if_already_has_artifacts():
 
     result = plan_job(job)
 
-    assert len(result.artifacts) == 1
-    assert result.artifacts[0].id == existing.id
+    assert result.changed is False
+    assert len(result.job.artifacts) == 1
+    assert result.job.artifacts[0].id == existing.id
