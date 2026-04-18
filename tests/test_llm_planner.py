@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from packages.core.models import Artifact, Job, RunState, Task
 from packages.orchestration.job_runner import PlanJobResult
-from packages.orchestration.llm_planner import plan_job_with_llm
+from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
 
@@ -206,3 +206,60 @@ def test_planner_output_optional_fields_default_empty():
     output = PlannerOutput(summary="ok", proposed_tasks=[])
     assert output.acceptance_checks == []
     assert output.notes == []
+
+
+# ---------------------------------------------------------------------------
+# annotate_planning_result
+# ---------------------------------------------------------------------------
+
+def _make_planned_result() -> PlanJobResult:
+    job = Job(name="test", user_prompt="do something")
+    return plan_job_with_llm(job, _stub_planner(_make_output()))
+
+
+def test_annotate_adds_provider():
+    result = _make_planned_result()
+    annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=123)
+    assert result.job.artifacts[0].metadata["provider"] == "ollama"
+
+
+def test_annotate_adds_role():
+    result = _make_planned_result()
+    annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=0)
+    assert result.job.artifacts[0].metadata["role"] == "planner"
+
+
+def test_annotate_adds_model():
+    result = _make_planned_result()
+    annotate_planning_result(result, provider="ollama", role="planner", model="qwen2.5:7b", elapsed_ms=0)
+    assert result.job.artifacts[0].metadata["model"] == "qwen2.5:7b"
+
+
+def test_annotate_adds_task_count():
+    result = _make_planned_result()
+    annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=0)
+    assert result.job.artifacts[0].metadata["task_count"] == 3
+
+
+def test_annotate_adds_elapsed_ms():
+    result = _make_planned_result()
+    annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=456.7)
+    assert result.job.artifacts[0].metadata["elapsed_ms"] == 457  # rounded
+
+
+def test_annotate_elapsed_ms_is_non_negative():
+    result = _make_planned_result()
+    annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=0.0)
+    assert result.job.artifacts[0].metadata["elapsed_ms"] >= 0
+
+
+def test_annotate_no_op_when_not_changed():
+    """annotate_planning_result is safe to call even on a no-op result."""
+    job = Job(name="test")
+    job.tasks = [Task(description="pre-existing")]  # triggers no-op in plan_job_with_llm
+    result = plan_job_with_llm(job, _stub_planner(_make_output()))
+    assert result.changed is False
+
+    # Should not raise; no artifacts to annotate
+    annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=99)
+    assert result.job.artifacts == []  # unchanged
