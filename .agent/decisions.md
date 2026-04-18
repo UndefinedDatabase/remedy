@@ -1,5 +1,14 @@
 # Decisions
 
+## 2026-04-18: PlanJobResult is a dataclass, not a Pydantic model
+It is a return type, not a domain model — no serialization or validation needed. A dataclass is the minimal correct choice. If this type ever needs to be persisted or serialized, it should be promoted to a Pydantic model at that point.
+
+## 2026-04-18: PLANNED state added to RunState
+Distinct from PENDING: PENDING = no planning yet; PLANNED = tasks generated, awaiting execution. Step 3 previously reused PENDING after planning, which was semantically ambiguous. The new state makes the lifecycle unambiguous without adding new orchestration logic.
+
+## 2026-04-18: Step 3.5 continues on feature/step3-orchestration-skeleton (PR #4)
+Step 3.5 (planning semantics hardening) is in-scope for PR #4: same feature boundary (orchestration skeleton), same review scope, same merge intent. Per Pull Request Continuity Rule, no new branch was created.
+
 ## 2026-04-15: Use `typing.Protocol` for interfaces
 Protocol-based interfaces (structural subtyping) require no inheritance, keeping core completely decoupled from providers. Any class matching the signature satisfies the contract.
 

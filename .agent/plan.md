@@ -1,24 +1,19 @@
 # Plan
 
 ## Goal
-Step 3.5: Planning Semantics Hardening — clarify planned/unplanned job states,
-orchestration-owned artifacts, and explicit plan_job result shape.
+Step 3 + 3.5: First Orchestration Skeleton + Planning Semantics Hardening.
 
 ## Current Step
-In progress on feature/step3-orchestration-skeleton (PR #4 open).
-Step 3.5 is in-scope: same feature boundary as Step 3.
+Step 3.5 — COMPLETE. Pushing and updating PR #4.
+
+## Completed
+- [x] RunState.PLANNED added
+- [x] Artifact.task_id=None convention documented (docstring + architecture.md)
+- [x] PlanJobResult dataclass (job, changed)
+- [x] plan_job returns PlanJobResult; state goes PENDING -> PLANNED
+- [x] CLI uses PlanJobResult.changed
+- [x] Tests updated + new tests for PLANNED, changed, task_id=None
+- [x] README + architecture.md updated
 
 ## Next Steps
-1. packages/core/models.py — add PLANNED to RunState
-2. packages/core/models.py — clarify Artifact.task_id=None convention in docstring
-3. packages/orchestration/job_runner.py — PlanJobResult dataclass + PLANNED state
-4. apps/cli/main.py — use PlanJobResult.changed
-5. tests/test_runner.py — update for new API, add PLANNED + changed tests
-6. docs/architecture.md — document orchestration-owned artifact convention
-7. README.md — update planned state description
-8. Push, update PR
-
-## Decisions
-- PlanJobResult is a dataclass (not Pydantic) — it's a return type, not a domain model
-- PLANNED state: planning complete, tasks ready to execute (distinct from PENDING)
-- task_id=None convention documented in Artifact docstring + architecture.md
+Step 4: TBD (task execution or provider scaffolding)
