@@ -7,6 +7,7 @@ Usage:
     remedy show-job <job_id>
     remedy plan-job <job_id>
     remedy plan-job-local <job_id>
+    remedy run-next-task-local <job_id>
 """
 
 from __future__ import annotations
@@ -123,6 +124,57 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         )
 
 
+def _cmd_run_next_task_local(job_id_str: str) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.task_runner import RunTaskResult, annotate_task_result, run_next_task
+    from packages.providers.ollama_builder.provider import OllamaBuilder
+
+    builder = OllamaBuilder()
+    start = time.monotonic()
+    try:
+        result: RunTaskResult = run_next_task(job, builder.build)
+    except ImportError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as exc:
+        print(f"Error: builder execution failed: {exc}", file=sys.stderr)
+        sys.exit(1)
+    elapsed_ms = (time.monotonic() - start) * 1000
+
+    if not result.changed:
+        print(f"Job {job.id} — no pending tasks.")
+        return
+
+    annotate_task_result(
+        result,
+        provider="ollama",
+        role="builder",
+        model=builder.model,
+        elapsed_ms=elapsed_ms,
+    )
+    save_job(result.job)
+
+    task = next(t for t in result.job.tasks if t.id == result.task_id)
+    task_type = task.inputs.get("task_type", "unknown")
+    pending_remaining = sum(1 for t in result.job.tasks if t.status.value == "pending")
+
+    print(
+        f"Job {result.job.id} | task={result.task_id} type={task_type} "
+        f"role=builder model={builder.model} elapsed={round(elapsed_ms)}ms "
+        f"remaining={pending_remaining}"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="remedy",
@@ -146,6 +198,12 @@ def main() -> None:
     )
     plan_local.add_argument("job_id", help="UUID of the job to plan")
 
+    run_task = subparsers.add_parser(
+        "run-next-task-local",
+        help="Execute the next pending task using local Ollama (requires ollama package)",
+    )
+    run_task.add_argument("job_id", help="UUID of the job to advance")
+
     args = parser.parse_args()
 
     if args.command == "create-job":
@@ -158,6 +216,8 @@ def main() -> None:
         _cmd_plan_job(args.job_id)
     elif args.command == "plan-job-local":
         _cmd_plan_job_local(args.job_id)
+    elif args.command == "run-next-task-local":
+        _cmd_run_next_task_local(args.job_id)
 
 
 if __name__ == "__main__":

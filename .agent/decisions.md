@@ -1,5 +1,19 @@
 # Decisions
 
+## 2026-04-19: Step 5 on new branch (feature/step5-task-execution)
+Task execution has different purpose, review scope, and feature boundary from
+Step 4 (planning/provider config). New branch created from main per AGENTS.md.
+PR #5 merged before rebasing this branch.
+
+## 2026-04-19: annotate_task_result finds artifact by task_id, not by index
+Blindly using job.artifacts[-1] or job.artifacts[0] would break if a planning
+artifact precedes the task artifact or artifacts accumulate across calls.
+Finding by task_id == result.task_id is unambiguous and safe regardless of order.
+
+## 2026-04-19: RunTaskResult.task_id is UUID | None (not opaque object)
+Typed as UUID | None in the dataclass. task_id=None signals no-op (no task ran).
+Caller can always check result.changed first before using task_id.
+
 ## 2026-04-18: Role-specific env vars with backward-compat fallback (Step 4.6)
 REMEDY_OLLAMA_PLANNER_MODEL takes priority over REMEDY_OLLAMA_MODEL. The generic var is kept as a fallback so existing setups are not broken. Precedence: constructor arg > REMEDY_OLLAMA_PLANNER_MODEL > REMEDY_OLLAMA_MODEL > default. Same pattern will apply to future roles (executor, verifier).
 

@@ -75,24 +75,60 @@ providers/claude_planner/        ←  (future) imports PlannerOutput; calls Clau
 
 Orchestration (`plan_job_with_llm`) accepts any planner callable. The provider is injected at the call site (CLI, tests) — orchestration never imports provider packages directly. This makes providers fully swappable and testable via mock callables.
 
+### Builder Providers
+
+A builder provider is any callable with signature `(prompt: str) -> BuilderOutput`.
+The `BuilderOutput` model lives in `packages/orchestration/builder_models.py` — same pattern as `PlannerOutput` — so orchestration can import it and providers depend on it.
+
+```
+orchestration/builder_models.py  ←  defines BuilderOutput (no external deps)
+          ↑
+providers/ollama_builder/        ←  imports BuilderOutput; calls Ollama
+providers/docker_builder/        ←  (future) imports BuilderOutput; runs in Docker
+```
+
+Orchestration (`run_next_task`) accepts any builder callable. The provider is injected at the call site (CLI, tests) — orchestration never imports provider packages directly.
+
 ### Role-Specific Model Selection
 
-Remedy is moving toward role-specific model configuration. Each role (planner, executor, verifier, …) will eventually have its own model variable, allowing different models to be used for different responsibilities within the same job.
+Remedy uses role-specific model configuration. Each role has its own env var, allowing different models for different responsibilities within the same job.
 
-The current implementation covers the **planner role** only:
+Current roles:
 
 ```
 REMEDY_OLLAMA_PLANNER_MODEL  ←  planner role (highest priority)
-REMEDY_OLLAMA_MODEL          ←  generic fallback (backward compat)
+REMEDY_OLLAMA_BUILDER_MODEL  ←  builder role (highest priority)
+REMEDY_OLLAMA_MODEL          ←  generic fallback (any role, backward compat)
 built-in default             ←  qwen3-coder-next
 ```
 
-Generation parameters follow the same role-specific pattern:
-- `REMEDY_OLLAMA_PLANNER_TEMPERATURE` — sampling temperature for the planner
-- `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` — max tokens for the planner
+Generation parameters follow the same pattern per role:
+- `REMEDY_OLLAMA_PLANNER_TEMPERATURE` / `REMEDY_OLLAMA_BUILDER_TEMPERATURE`
+- `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` / `REMEDY_OLLAMA_BUILDER_NUM_PREDICT`
 
-These parameters are passed to Ollama only when set; unset means the model's defaults apply.
+These are passed to Ollama only when set; unset means the model's defaults apply.
+Env var parsing errors name the offending variable in the error message.
 
-### Concrete Providers (Step 4+)
+### Execution State Semantics
 
-**`packages/providers/ollama_planner/`** — First concrete provider. Calls a local Ollama model with JSON schema enforcement (`format=schema`). Configured via role-specific env vars (`REMEDY_OLLAMA_PLANNER_MODEL`, `REMEDY_OLLAMA_PLANNER_TEMPERATURE`, `REMEDY_OLLAMA_PLANNER_NUM_PREDICT`) with `REMEDY_OLLAMA_MODEL` as a generic fallback and `REMEDY_OLLAMA_HOST` for the server URL. The `ollama` Python package is an optional dependency (`pip install 'remedy[ollama]'`); it is loaded lazily and raises `ImportError` with install instructions if absent.
+`run_next_task` drives job state as follows:
+
+| Event | Job state | Task state |
+|-------|-----------|------------|
+| Pending task found, execution begins | `RUNNING` | `RUNNING` |
+| Task execution succeeds | `RUNNING` (if more pending) | `COMPLETED` |
+| Last task completes | `COMPLETED` | `COMPLETED` |
+| No pending task found | unchanged | unchanged |
+
+A partially-executed job (some tasks `COMPLETED`, some `PENDING`) remains `RUNNING`.
+`run_next_task` advances one task per call; the CLI loop is the caller's responsibility.
+
+### Step 5 Pre-execution Limitation
+
+The builder callable currently returns structured output (`BuilderOutput`) describing *proposed* changes — it does not modify project files or execute commands. Actual code modification requires a runtime provider (Docker, local shell) and is deferred to a later step.
+
+### Concrete Providers
+
+**`packages/providers/ollama_planner/`** — Planner provider. Calls local Ollama with JSON schema enforcement. Configured via `REMEDY_OLLAMA_PLANNER_MODEL`, `REMEDY_OLLAMA_PLANNER_TEMPERATURE`, `REMEDY_OLLAMA_PLANNER_NUM_PREDICT`. The `ollama` package is an optional dependency; loaded lazily.
+
+**`packages/providers/ollama_builder/`** — Builder provider. Same Ollama pattern for the builder role. Configured via `REMEDY_OLLAMA_BUILDER_MODEL`, `REMEDY_OLLAMA_BUILDER_TEMPERATURE`, `REMEDY_OLLAMA_BUILDER_NUM_PREDICT`. Env var parsing errors name the offending variable.
