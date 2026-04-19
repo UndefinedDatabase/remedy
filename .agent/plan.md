@@ -1,19 +1,21 @@
 # Plan
 
 ## Goal
-Step 3 + 3.5: First Orchestration Skeleton + Planning Semantics Hardening.
+Step 4 + 4.6: First Real Planner Worker + Role-Specific Configuration.
 
-## Current Step
-Step 3.5 — COMPLETE. Pushing and updating PR #4.
+## Status
+COMPLETE. All commits pushed on feature/step4-ollama-planner. PR #5 open.
 
-## Completed
-- [x] RunState.PLANNED added
-- [x] Artifact.task_id=None convention documented (docstring + architecture.md)
-- [x] PlanJobResult dataclass (job, changed)
-- [x] plan_job returns PlanJobResult; state goes PENDING -> PLANNED
-- [x] CLI uses PlanJobResult.changed
-- [x] Tests updated + new tests for PLANNED, changed, task_id=None
-- [x] README + architecture.md updated
+## What Was Done
+1. provider.py: role-specific env vars (REMEDY_OLLAMA_PLANNER_MODEL, temperature, num_predict)
+2. llm_planner.py: annotate_planning_result() utility
+3. CLI: timing, metadata enrichment, richer output (role=planner model=X tasks=N elapsed=Xms)
+4. tests: env var precedence (test_ollama_provider.py), metadata annotation (test_llm_planner.py)
+5. docs: README + architecture.md updated with role-specific config, precedence table
+6. .agent state: plan, context, decisions updated
 
-## Next Steps
-Step 4: TBD (task execution or provider scaffolding)
+## Decisions
+- REMEDY_OLLAMA_PLANNER_MODEL takes priority; falls back to REMEDY_OLLAMA_MODEL, then default
+- annotate_planning_result in llm_planner.py — testable, provider-agnostic utility
+- Timing measured in CLI (total planning time), passed to annotate_planning_result
+- temperature/num_predict: read from env, passed as Ollama options only if set

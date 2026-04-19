@@ -58,3 +58,41 @@ Every layer is replaceable:
 ### No Monolith
 
 Remedy must remain usable as a library inside a larger system. It does not own the process, the event loop, or the configuration system. It provides primitives that a host application composes.
+
+## Provider Model
+
+### Planner Providers
+
+A planner provider is any callable with signature `(prompt: str) -> PlannerOutput`.
+The `PlannerOutput` model lives in `packages/orchestration/planner_models.py` — not in the provider — because orchestration imports it and providers depend on it.
+
+```
+orchestration/planner_models.py  ←  defines PlannerOutput (no external deps)
+          ↑
+providers/ollama_planner/        ←  imports PlannerOutput; calls Ollama
+providers/claude_planner/        ←  (future) imports PlannerOutput; calls Claude API
+```
+
+Orchestration (`plan_job_with_llm`) accepts any planner callable. The provider is injected at the call site (CLI, tests) — orchestration never imports provider packages directly. This makes providers fully swappable and testable via mock callables.
+
+### Role-Specific Model Selection
+
+Remedy is moving toward role-specific model configuration. Each role (planner, executor, verifier, …) will eventually have its own model variable, allowing different models to be used for different responsibilities within the same job.
+
+The current implementation covers the **planner role** only:
+
+```
+REMEDY_OLLAMA_PLANNER_MODEL  ←  planner role (highest priority)
+REMEDY_OLLAMA_MODEL          ←  generic fallback (backward compat)
+built-in default             ←  qwen3-coder-next
+```
+
+Generation parameters follow the same role-specific pattern:
+- `REMEDY_OLLAMA_PLANNER_TEMPERATURE` — sampling temperature for the planner
+- `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` — max tokens for the planner
+
+These parameters are passed to Ollama only when set; unset means the model's defaults apply.
+
+### Concrete Providers (Step 4+)
+
+**`packages/providers/ollama_planner/`** — First concrete provider. Calls a local Ollama model with JSON schema enforcement (`format=schema`). Configured via role-specific env vars (`REMEDY_OLLAMA_PLANNER_MODEL`, `REMEDY_OLLAMA_PLANNER_TEMPERATURE`, `REMEDY_OLLAMA_PLANNER_NUM_PREDICT`) with `REMEDY_OLLAMA_MODEL` as a generic fallback and `REMEDY_OLLAMA_HOST` for the server URL. The `ollama` Python package is an optional dependency (`pip install 'remedy[ollama]'`); it is loaded lazily and raises `ImportError` with install instructions if absent.
