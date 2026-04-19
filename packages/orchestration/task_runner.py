@@ -127,3 +127,37 @@ def run_next_task(
         job.state = RunState.COMPLETED
 
     return RunTaskResult(job=job, task_id=task.id, changed=True)
+
+
+def annotate_task_result(
+    result: RunTaskResult,
+    *,
+    provider: str,
+    role: str,
+    model: str,
+    elapsed_ms: float,
+) -> None:
+    """Enrich the task execution artifact metadata with provider/role/model/timing info.
+
+    Locates the artifact by matching task_id == result.task_id rather than
+    assuming a fixed index position. No-op if result.changed is False or the
+    artifact cannot be found (e.g. no-op run with no task executed).
+
+    Designed to be called after run_next_task returns, before persisting.
+    """
+    if not result.changed or result.task_id is None:
+        return
+    artifact = next(
+        (a for a in result.job.artifacts if a.task_id == result.task_id),
+        None,
+    )
+    if artifact is None:
+        return
+    artifact.metadata.update(
+        {
+            "provider": provider,
+            "role": role,
+            "model": model,
+            "elapsed_ms": round(elapsed_ms),
+        }
+    )
