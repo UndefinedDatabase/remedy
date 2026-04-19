@@ -3,25 +3,25 @@
 ## Goal
 Step 5: First Local Task Execution Skeleton.
 
-## Current Step
-Commit 1/7 — builder_models.py
+## Status
+COMPLETE. All commits on feature/step5-task-execution. PR to be created.
 
-## Commits Planned
-1. [ ] packages/orchestration/builder_models.py
-2. [ ] packages/providers/ollama_builder/ (OllamaBuilder provider)
-3. [ ] packages/orchestration/task_runner.py (run_next_task)
-4. [ ] Hardening: planner env var validation + annotate_planning_result fix
-5. [ ] CLI: run-next-task-local command
-6. [ ] Tests: test_task_runner.py + test_ollama_builder.py + hardening tests
-7. [ ] Docs + .agent state
+## What Was Done
+1. packages/orchestration/builder_models.py (BuilderOutput)
+2. packages/providers/ollama_builder/ (OllamaBuilder, role-specific env vars)
+3. packages/orchestration/task_runner.py (run_next_task, annotate_task_result)
+4. apps/cli/main.py (run-next-task-local command)
+5. tests/test_task_runner.py + tests/test_ollama_builder.py (33 + 22 tests)
+6. README.md + docs/architecture.md updated
+7. .agent state updated
 
-## State Semantics (documented)
-- PLANNED -> RUNNING: when first pending task starts executing
-- RUNNING -> COMPLETED: when all tasks are COMPLETED
-- Partially-executed job (some COMPLETED, some PENDING): stays RUNNING
+## State Semantics
+- PLANNED -> RUNNING: first pending task starts
+- RUNNING -> COMPLETED: all tasks done
+- Partially executed: stays RUNNING
 
-## Constraints
-- No Docker, no filesystem editing, no command execution
-- No retries, no Claude, no MemPalace
-- Provider must not mutate Job directly
-- Builder role separate from planner role
+## Hardening notes
+- OllamaBuilder uses _parse_float_env/_parse_int_env (named var in error messages)
+- annotate_task_result finds artifact by task_id match (not by index)
+- Hardening of Step 4 files (OllamaPlanner, annotate_planning_result) deferred
+  to feature/step4-ollama-planner (PR #5)

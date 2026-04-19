@@ -151,11 +151,63 @@ REMEDY_DATA_DIR=/tmp/my-jobs remedy create-job "test"
 pytest
 ```
 
+## Step 5: First Local Task Execution Skeleton
+
+Step 5 introduces single-task execution via a local Ollama-backed builder worker.
+
+- **`packages/orchestration/builder_models.py`** — `BuilderOutput`: structured builder output model (summary, proposed_changes, notes, risks)
+- **`packages/orchestration/task_runner.py`** — `run_next_task(job, call_builder)`: selects the first pending task, executes it, creates a task-owned Artifact, and advances job state; `annotate_task_result()` enriches the artifact metadata
+- **`packages/providers/ollama_builder/provider.py`** — `OllamaBuilder`: calls local Ollama with JSON schema enforcement for the builder role; role-specific env vars
+- **`apps/cli/main.py`** — `remedy run-next-task-local <job_id>` command
+
+### Run local task execution
+
+```bash
+# Create a job and plan it first
+remedy create-job "build a CLI tool that summarises files in a directory"
+remedy plan-job <job_id>
+
+# Execute the next pending task
+remedy run-next-task-local <job_id>
+# → Job <id> | task=<task-id> type=analyze_requirements role=builder model=qwen3-coder-next elapsed=1820ms remaining=2
+
+# Call again to advance through remaining tasks
+remedy run-next-task-local <job_id>
+remedy run-next-task-local <job_id>
+
+# When all tasks are done:
+# → Job <id> — no pending tasks.
+```
+
+### Builder configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REMEDY_OLLAMA_BUILDER_MODEL` | — | Model for the builder role (takes priority) |
+| `REMEDY_OLLAMA_MODEL` | `qwen3-coder-next` | Fallback model (any role) |
+| `REMEDY_OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `REMEDY_OLLAMA_BUILDER_TEMPERATURE` | — | Sampling temperature for the builder |
+| `REMEDY_OLLAMA_BUILDER_NUM_PREDICT` | — | Max tokens to generate for the builder |
+
+### Execution state semantics
+
+| Transition | When |
+|------------|------|
+| `planned` → `running` | First pending task starts executing |
+| `running` → `completed` | All tasks have been executed |
+| Stays `running` | Some tasks completed, others still pending |
+
+**Important**: `run-next-task-local` advances one task per call. Run it repeatedly to fully execute a planned job.
+
+### Limitations in Step 5 (pre-Docker)
+
+This step does **not** modify project files, run commands, or apply patches. The builder returns structured output (`BuilderOutput`) describing *proposed* changes. Actual code modification is deferred to a later step involving Docker or a local runtime provider.
+
 ## What Is NOT Implemented Yet
 
-- Task execution
-- Agent loops
-- Provider implementations (Claude, Docker, MemPalace)
+- Actual code/file modification (Docker execution deferred to Step 6+)
+- Agent loops (auto-advance through all tasks)
+- Provider implementations (Claude, MemPalace)
 - Configuration system
 - API and worker apps
 
@@ -166,12 +218,12 @@ apps/           # Runnable applications (api, worker, cli)
 packages/
   core/         # Domain models
   contracts/    # Protocol interfaces
-  orchestration/# job_runner (plan_job), storage
+  orchestration/# job_runner, task_runner, storage, builder_models, planner_models
   memory/       # (future) memory management
   runtimes/     # (future) runtime abstractions
   verification/ # (future) artifact verification
   artifacts/    # (future) artifact management
-  providers/    # External system adapters (claude_agent, docker_runtime, mempalace)
+  providers/    # External system adapters; ollama_builder, ollama_planner (in PR)
 prompts/        # Prompt templates
 tests/          # Test suite
 docs/           # Architecture and long-term documentation
