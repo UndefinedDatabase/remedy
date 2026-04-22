@@ -107,3 +107,22 @@ def test_constructor_temperature_overrides_env(monkeypatch):
     from packages.providers.ollama_planner.provider import OllamaPlanner
     planner = OllamaPlanner(temperature=0.1)
     assert planner.temperature == pytest.approx(0.1)
+
+
+# ---------------------------------------------------------------------------
+# CLI parity: bad numeric env vars raise ValueError from construction
+# ---------------------------------------------------------------------------
+
+def test_bad_temperature_env_var_raises_value_error_on_construction(monkeypatch):
+    """OllamaPlanner() raises ValueError from __init__ — confirms CLI must wrap it."""
+    monkeypatch.setenv("REMEDY_OLLAMA_PLANNER_TEMPERATURE", "definitely-not-a-float")
+    from packages.providers.ollama_planner.provider import OllamaPlanner
+    with pytest.raises(ValueError, match="REMEDY_OLLAMA_PLANNER_TEMPERATURE"):
+        OllamaPlanner()
+
+
+def test_bad_num_predict_env_var_raises_value_error_on_construction(monkeypatch):
+    monkeypatch.setenv("REMEDY_OLLAMA_PLANNER_NUM_PREDICT", "definitely-not-an-int")
+    from packages.providers.ollama_planner.provider import OllamaPlanner
+    with pytest.raises(ValueError, match="REMEDY_OLLAMA_PLANNER_NUM_PREDICT"):
+        OllamaPlanner()

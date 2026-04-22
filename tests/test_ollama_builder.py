@@ -171,3 +171,13 @@ def test_bad_temperature_env_var_raises_value_error_on_construction(monkeypatch)
     from packages.providers.ollama_builder.provider import OllamaBuilder
     with pytest.raises(ValueError, match="REMEDY_OLLAMA_BUILDER_TEMPERATURE"):
         OllamaBuilder()  # ValueError must come from construction, not from .build()
+
+
+# ---------------------------------------------------------------------------
+# Builder system prompt: non-empty proposed_changes requirement
+# ---------------------------------------------------------------------------
+
+def test_builder_system_prompt_states_non_empty_requirement():
+    """System prompt must mention the non-empty proposed_changes requirement."""
+    from packages.providers.ollama_builder.provider import _SYSTEM_PROMPT
+    assert "at least one" in _SYSTEM_PROMPT.lower()

@@ -38,7 +38,8 @@ You are a software builder assistant. Given a task execution context, produce a 
 
 Rules:
 - summary: short paragraph describing what was done or planned for this task
-- proposed_changes: list of concrete changes or actions (e.g. "Write function foo in bar.py", "Add test for edge case X")
+- proposed_changes: non-empty list of concrete changes or actions; at least one item is required \
+(e.g. "Write function foo in bar.py", "Add test for edge case X")
 - notes: optional list of assumptions or observations
 - risks: optional list of potential issues or blockers
 
