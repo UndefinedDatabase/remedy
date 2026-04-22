@@ -82,10 +82,18 @@ def test_plan_job_with_llm_artifact_task_id_is_none():
     assert result.job.artifacts[0].task_id is None
 
 
-def test_plan_job_with_llm_artifact_metadata_planner():
+def test_plan_job_with_llm_artifact_no_legacy_planner_key():
+    """The removed 'planner':'llm' key must not appear in planning artifact metadata."""
     job = Job(name="test")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
-    assert result.job.artifacts[0].metadata.get("planner") == "llm"
+    assert "planner" not in result.job.artifacts[0].metadata
+
+
+def test_plan_job_with_llm_artifact_metadata_has_summary():
+    """Planning artifact metadata always contains the summary key."""
+    job = Job(name="test")
+    result = plan_job_with_llm(job, _stub_planner(_make_output()))
+    assert result.job.artifacts[0].metadata.get("summary") == "Implement a CLI tool."
 
 
 # ---------------------------------------------------------------------------
@@ -263,3 +271,84 @@ def test_annotate_no_op_when_not_changed():
     # Should not raise; no artifacts to annotate
     annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=99)
     assert result.job.artifacts == []  # unchanged
+
+
+def test_annotate_finds_artifact_by_name_not_index():
+    """annotate_planning_result targets the named artifact even if it is not at index 0."""
+    job = Job(name="test")
+    result = plan_job_with_llm(job, _stub_planner(_make_output()))
+
+    # Insert a non-planning artifact before the planning one
+    result.job.artifacts.insert(
+        0,
+        Artifact(name="other_artifact", content="x", task_id=None, metadata={}),
+    )
+    assert result.job.artifacts[0].name == "other_artifact"
+
+    annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=0)
+
+    # The non-planning artifact must NOT have been annotated
+    assert "provider" not in result.job.artifacts[0].metadata
+    # The planning artifact must have been annotated
+    planning_artifact = next(a for a in result.job.artifacts if a.name == "planning_output")
+    assert planning_artifact.metadata["provider"] == "ollama"
+
+
+# ---------------------------------------------------------------------------
+# task_type deduplication
+# ---------------------------------------------------------------------------
+
+def test_duplicate_task_types_get_suffix():
+    """Duplicate task_type values from the planner receive _2, _3, ... suffixes."""
+    output = PlannerOutput(
+        summary="Plan",
+        proposed_tasks=[
+            ProposedTask(task_type="write_tests", description="First test task."),
+            ProposedTask(task_type="write_tests", description="Second test task."),
+            ProposedTask(task_type="write_tests", description="Third test task."),
+        ],
+    )
+    job = Job(name="test")
+    result = plan_job_with_llm(job, _stub_planner(output))
+    task_types = [t.inputs["task_type"] for t in result.job.tasks]
+    assert task_types == ["write_tests", "write_tests_2", "write_tests_3"]
+
+
+def test_unique_task_types_unchanged():
+    """Non-duplicate task_type values are passed through unmodified."""
+    output = _make_output()  # analyse_requirements, implement_feature, write_tests
+    job = Job(name="test")
+    result = plan_job_with_llm(job, _stub_planner(output))
+    task_types = [t.inputs["task_type"] for t in result.job.tasks]
+    assert task_types == ["analyse_requirements", "implement_feature", "write_tests"]
+
+
+def test_mixed_unique_and_duplicate_task_types():
+    """Dedup only affects duplicates; unique types remain unchanged."""
+    output = PlannerOutput(
+        summary="Plan",
+        proposed_tasks=[
+            ProposedTask(task_type="analyse", description="Analyse."),
+            ProposedTask(task_type="implement", description="Implement."),
+            ProposedTask(task_type="analyse", description="Analyse again."),
+        ],
+    )
+    job = Job(name="test")
+    result = plan_job_with_llm(job, _stub_planner(output))
+    task_types = [t.inputs["task_type"] for t in result.job.tasks]
+    assert task_types == ["analyse", "implement", "analyse_2"]
+
+
+def test_dedup_preserves_task_descriptions():
+    """Deduplication only changes task_type; descriptions are untouched."""
+    output = PlannerOutput(
+        summary="Plan",
+        proposed_tasks=[
+            ProposedTask(task_type="write_tests", description="Unit tests."),
+            ProposedTask(task_type="write_tests", description="Integration tests."),
+        ],
+    )
+    job = Job(name="test")
+    result = plan_job_with_llm(job, _stub_planner(output))
+    descriptions = [t.description for t in result.job.tasks]
+    assert descriptions == ["Unit tests.", "Integration tests."]
