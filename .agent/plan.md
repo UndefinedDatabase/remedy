@@ -1,21 +1,20 @@
 # Plan
 
 ## Goal
-Step 5.6: CLI Hotfix and Final Pre-Step-6 Hardening.
+Step 5.7: Planner CLI Parity Hotfix.
 
 ## Status
-COMPLETE. All 3 commits on feature/step5-task-execution (PR #6).
+IN PROGRESS — Commit 1/2
 
-## What Was Done
-1. Fix CLI: OllamaBuilder() moved inside try/except — bad env vars now show "Error: configuration"
-2. annotate_planning_result: raise RuntimeError on changed=True but no artifact
-3. BuilderOutput: proposed_changes requires min_length=1; 4 new tests added
+## Commits Planned
+1. [ ] Fix planner CLI: move OllamaPlanner() inside try/except; add ValueError + parity error labels
+2. [ ] Builder system prompt: require ≥1 proposed_changes explicitly; tests
 
 ## Key Decisions
-- OllamaBuilder() construction raises ValueError on bad env vars from __init__,
-  not from .build() — constructor must be inside try block to be caught
-- annotate_planning_result now symmetric with annotate_task_result
-- proposed_changes min_length=1: an empty list is not a valid execution result
+- Same pattern as Step 5.6 fix for builder: construction must be inside try block
+- Planner path adds ValueError case (matches builder path) plus parity import label
+- Builder prompt: add "at least one item required" note to proposed_changes rule
+- Step 5.7 continues on feature/step5-task-execution (PR #6) — same feature boundary
 
 ## Branch
 feature/step5-task-execution (PR #6) — in-scope per PR Continuity Rule

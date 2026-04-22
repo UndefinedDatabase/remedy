@@ -91,18 +91,26 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
+    from pydantic import ValidationError
+
     from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
     from packages.providers.ollama_planner.provider import OllamaPlanner
 
-    planner = OllamaPlanner()
     start = time.monotonic()
     try:
+        planner = OllamaPlanner()
         result: PlanJobResult = plan_job_with_llm(job, planner.plan)
     except ImportError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        print(f"Error: missing dependency — {exc}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as exc:
+        print(f"Error: configuration — {exc}", file=sys.stderr)
+        sys.exit(1)
+    except ValidationError as exc:
+        print(f"Error: planner returned invalid output — {exc}", file=sys.stderr)
         sys.exit(1)
     except Exception as exc:
-        print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
+        print(f"Error: Ollama planning failed — {exc}", file=sys.stderr)
         sys.exit(1)
     elapsed_ms = (time.monotonic() - start) * 1000
 
