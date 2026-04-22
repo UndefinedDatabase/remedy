@@ -136,6 +136,8 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
+    from pydantic import ValidationError
+
     from packages.orchestration.task_runner import RunTaskResult, annotate_task_result, run_next_task
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
@@ -144,10 +146,16 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     try:
         result: RunTaskResult = run_next_task(job, builder.build)
     except ImportError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        print(f"Error: missing dependency — {exc}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as exc:
+        print(f"Error: configuration — {exc}", file=sys.stderr)
+        sys.exit(1)
+    except ValidationError as exc:
+        print(f"Error: builder returned invalid output — {exc}", file=sys.stderr)
         sys.exit(1)
     except Exception as exc:
-        print(f"Error: builder execution failed: {exc}", file=sys.stderr)
+        print(f"Error: builder execution failed — {exc}", file=sys.stderr)
         sys.exit(1)
     elapsed_ms = (time.monotonic() - start) * 1000
 
