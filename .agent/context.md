@@ -7,7 +7,7 @@
 https://github.com/UndefinedDatabase/remedy/pull/6
 
 ## Scope
-Step 5 + 5.5: First local task execution skeleton + execution hardening.
+Step 5 + 5.5 + 5.6: First local task execution skeleton + execution hardening + CLI hotfix.
 Builder role, single-task execution, failure rollback, richer context,
 artifact provenance, job state advancement.
 

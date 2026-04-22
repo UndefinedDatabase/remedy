@@ -1,5 +1,19 @@
 # Decisions
 
+## 2026-04-22: Step 5.6 continues on feature/step5-task-execution (PR #6)
+CLI hotfix and final hardening is in-scope for PR #6 (same feature boundary:
+task execution and its supporting contracts). Per Pull Request Continuity Rule.
+
+## 2026-04-22: OllamaBuilder() construction must be inside the CLI try/except
+_parse_float_env/_parse_int_env raise ValueError in __init__, not in .build().
+Construction was outside the try block so bad env vars printed uncaught exceptions
+instead of "Error: configuration — ...". Moved inside try block to fix.
+
+## 2026-04-22: BuilderOutput.proposed_changes requires min_length=1
+An empty list is not a valid builder result — it indicates the provider returned
+useless output. Better to fail fast at validation than silently persist an artifact
+with no proposed changes. Single item is the minimal acceptable response.
+
 ## 2026-04-22: Step 5.5 continues on feature/step5-task-execution (PR #6)
 Execution hardening (failure rollback, richer context, metadata cleanup) is in-scope
 for the same feature boundary as Step 5 (task execution). Per Pull Request
