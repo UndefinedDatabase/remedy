@@ -1,28 +1,21 @@
 # Plan
 
 ## Goal
-Step 5.5: Execution Hardening and Richer Task Context.
+Step 5.6: CLI Hotfix and Final Pre-Step-6 Hardening.
 
 ## Status
-COMPLETE. All 7 commits on feature/step5-task-execution (PR #6).
+IN PROGRESS — Commit 1/3
 
-## What Was Done
-1. builder_models.py: add TaskExecutionContext
-2. task_runner.py: failure rollback, context building, metadata cleanup, annotate safety
-3. llm_planner.py: metadata cleanup, annotate by name, task_type dedup
-4. OllamaPlanner: env var validation hardening; OllamaBuilder: context interface
-5. CLI: differentiated error handling (ImportError/ValueError/ValidationError/Exception)
-6. Tests: 17 new tests; existing stubs updated to use TaskExecutionContext
-7. Docs: README + architecture.md updated
+## Commits Planned
+1. [ ] Fix CLI: move OllamaBuilder() inside try/except in run-next-task-local
+2. [ ] Fix annotate_planning_result: raise RuntimeError if changed=True but no artifact
+3. [ ] Fix BuilderOutput: require proposed_changes to have at least 1 item; tests
 
 ## Key Decisions
-- Failure rollback: task -> PENDING, job.state restored (not FAILED — keeps job re-executable)
-- annotate_task_result raises RuntimeError if changed=True but no artifact (not silent)
-- annotate_planning_result finds artifact by name+task_id instead of index 0
-- Metadata: removed "builder":"llm" and "planner":"llm" legacy keys
-- TaskExecutionContext built by run_next_task; provider never receives mutable Job
-- task_type dedup: _2/_3 suffix on collision (simple, localized)
-- OllamaBuilder.build() accepts TaskExecutionContext; _build_user_message composes prompt
+- OllamaBuilder() construction raises ValueError on bad env vars; must be inside try block
+- annotate_planning_result no-op on changed=False is correct; raise on changed=True missing artifact
+- proposed_changes min_length=1: empty list is not a valid builder response
+- Step 5.6 continues on feature/step5-task-execution (PR #6) — same feature boundary
 
 ## Branch
-feature/step5-task-execution (PR #6) — in-scope extension per PR Continuity Rule
+feature/step5-task-execution (PR #6) — in-scope per PR Continuity Rule

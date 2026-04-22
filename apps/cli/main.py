@@ -141,9 +141,9 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     from packages.orchestration.task_runner import RunTaskResult, annotate_task_result, run_next_task
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
-    builder = OllamaBuilder()
     start = time.monotonic()
     try:
+        builder = OllamaBuilder()
         result: RunTaskResult = run_next_task(job, builder.build)
     except ImportError as exc:
         print(f"Error: missing dependency — {exc}", file=sys.stderr)
