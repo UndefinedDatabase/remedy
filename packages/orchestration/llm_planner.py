@@ -14,7 +14,30 @@ from typing import Callable
 
 from packages.core.models import Artifact, Job, RunState, Task
 from packages.orchestration.job_runner import PlanJobResult
-from packages.orchestration.planner_models import PlannerOutput
+from packages.orchestration.planner_models import PlannerOutput, ProposedTask
+
+
+def _deduplicate_task_types(proposed_tasks: list[ProposedTask]) -> list[Task]:
+    """Convert ProposedTask list to Task list with unique task_type values.
+
+    If two proposed tasks share the same task_type, the second and subsequent
+    occurrences are suffixed with _2, _3, etc. This prevents downstream
+    consumers from confusing semantically different tasks that a planner
+    accidentally gave the same type label.
+
+    Example: [write_tests, write_tests] -> [write_tests, write_tests_2]
+    """
+    seen: dict[str, int] = {}
+    tasks: list[Task] = []
+    for t in proposed_tasks:
+        tt = t.task_type
+        if tt in seen:
+            seen[tt] += 1
+            tt = f"{t.task_type}_{seen[tt]}"
+        else:
+            seen[tt] = 1
+        tasks.append(Task(description=t.description, inputs={"task_type": tt}))
+    return tasks
 
 
 def plan_job_with_llm(
@@ -30,6 +53,7 @@ def plan_job_with_llm(
       - idempotency (no-op if job already has tasks or artifacts)
       - state transitions: PENDING -> RUNNING -> PLANNED
       - transforming PlannerOutput into Job.tasks and a planning Artifact
+      - deduplicating task_type values to avoid ambiguous downstream execution
       - NOT mutating the job through the provider
 
     Caller must persist result.job after this call returns.
@@ -44,13 +68,7 @@ def plan_job_with_llm(
     prompt = job.user_prompt or job.name
     output: PlannerOutput = call_planner(prompt)
 
-    job.tasks = [
-        Task(
-            description=t.description,
-            inputs={"task_type": t.task_type},
-        )
-        for t in output.proposed_tasks
-    ]
+    job.tasks = _deduplicate_task_types(output.proposed_tasks)
 
     content_lines = [
         "LLM Planning Output",
@@ -61,8 +79,8 @@ def plan_job_with_llm(
         "",
         "Tasks:",
     ]
-    for t in output.proposed_tasks:
-        content_lines.append(f"  - {t.task_type}: {t.description}")
+    for task in job.tasks:
+        content_lines.append(f"  - {task.inputs['task_type']}: {task.description}")
     if output.acceptance_checks:
         content_lines.append("")
         content_lines.append("Acceptance Checks:")
@@ -74,17 +92,16 @@ def plan_job_with_llm(
         for n in output.notes:
             content_lines.append(f"  - {n}")
 
-    # task_id=None: orchestration-owned artifact (see Artifact docstring)
+    # task_id=None: orchestration-owned artifact (see Artifact docstring).
+    # Metadata uses consistent keys; provider/role/model/elapsed_ms/task_count
+    # are added later by annotate_planning_result() after timing is known.
     job.artifacts = [
         Artifact(
             name="planning_output",
             content="\n".join(content_lines),
             mime_type="text/plain",
             task_id=None,
-            metadata={
-                "planner": "llm",
-                "summary": output.summary,
-            },
+            metadata={"summary": output.summary},
         )
     ]
 
@@ -102,14 +119,26 @@ def annotate_planning_result(
 ) -> None:
     """Enrich the planning artifact metadata with provider/role/model/timing info.
 
-    Mutates the artifact in place. No-op if result.changed is False or there
-    are no artifacts (e.g. the job was already planned).
+    Locates the artifact by name ("planning_output") and task_id (None) rather
+    than blindly using index 0 — safe if artifacts are reordered or accumulated.
+
+    No-op if result.changed is False or no planning artifact is found.
 
     Designed to be called after plan_job_with_llm returns, before persisting.
     """
-    if not result.changed or not result.job.artifacts:
+    if not result.changed:
         return
-    result.job.artifacts[0].metadata.update(
+    artifact = next(
+        (
+            a
+            for a in result.job.artifacts
+            if a.name == "planning_output" and a.task_id is None
+        ),
+        None,
+    )
+    if artifact is None:
+        return
+    artifact.metadata.update(
         {
             "provider": provider,
             "role": role,
