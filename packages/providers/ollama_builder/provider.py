@@ -1,20 +1,19 @@
 """
-Ollama-backed planner provider.
+Ollama-backed builder provider.
 
 Calls a local Ollama instance with structured output (JSON schema enforcement)
-to produce a validated PlannerOutput.
+to produce a validated BuilderOutput.
 
 Configuration (environment variables):
-  REMEDY_OLLAMA_PLANNER_MODEL        — model for the planner role (preferred)
-  REMEDY_OLLAMA_MODEL                — fallback if REMEDY_OLLAMA_PLANNER_MODEL is unset
-                                       (kept for backward compatibility)
+  REMEDY_OLLAMA_BUILDER_MODEL        — model for the builder role (preferred)
+  REMEDY_OLLAMA_MODEL                — fallback if REMEDY_OLLAMA_BUILDER_MODEL is unset
   REMEDY_OLLAMA_HOST                 — Ollama server URL (default: http://localhost:11434)
-  REMEDY_OLLAMA_PLANNER_TEMPERATURE  — sampling temperature (optional float, e.g. 0.2)
-  REMEDY_OLLAMA_PLANNER_NUM_PREDICT  — max tokens to generate (optional int)
+  REMEDY_OLLAMA_BUILDER_TEMPERATURE  — sampling temperature (optional float, e.g. 0.3)
+  REMEDY_OLLAMA_BUILDER_NUM_PREDICT  — max tokens to generate (optional int)
 
 Precedence for model selection:
   1. Constructor argument `model`
-  2. REMEDY_OLLAMA_PLANNER_MODEL
+  2. REMEDY_OLLAMA_BUILDER_MODEL
   3. REMEDY_OLLAMA_MODEL
   4. Built-in default (qwen3-coder-next)
 
@@ -29,21 +28,19 @@ from __future__ import annotations
 
 import os
 
-from packages.orchestration.planner_models import PlannerOutput
+from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 
 _DEFAULT_MODEL = "qwen3-coder-next"
 _DEFAULT_HOST = "http://localhost:11434"
 
 _SYSTEM_PROMPT = """\
-You are a project planning assistant. Given a job description, produce a structured plan.
+You are a software builder assistant. Given a task execution context, produce a structured result.
 
 Rules:
-- proposed_tasks: list of tasks needed to complete the job. Each task needs:
-    task_type: concise snake_case identifier (e.g. write_tests, implement_feature)
-    description: one clear sentence describing what the task does
-- summary: short paragraph summarising the overall plan
-- acceptance_checks: optional list of criteria that must pass for the job to be complete
-- notes: optional list of assumptions or caveats
+- summary: short paragraph describing what was done or planned for this task
+- proposed_changes: list of concrete changes or actions (e.g. "Write function foo in bar.py", "Add test for edge case X")
+- notes: optional list of assumptions or observations
+- risks: optional list of potential issues or blockers
 
 Respond only with valid JSON matching the requested schema. No markdown, no extra text.\
 """
@@ -52,13 +49,13 @@ Respond only with valid JSON matching the requested schema. No markdown, no extr
 def _resolve_model(override: str | None) -> str:
     """Resolve model with role-specific precedence.
 
-    Order: constructor arg > REMEDY_OLLAMA_PLANNER_MODEL > REMEDY_OLLAMA_MODEL > default.
+    Order: constructor arg > REMEDY_OLLAMA_BUILDER_MODEL > REMEDY_OLLAMA_MODEL > default.
     """
     if override:
         return override
-    planner_model = os.environ.get("REMEDY_OLLAMA_PLANNER_MODEL")
-    if planner_model:
-        return planner_model
+    builder_model = os.environ.get("REMEDY_OLLAMA_BUILDER_MODEL")
+    if builder_model:
+        return builder_model
     generic_model = os.environ.get("REMEDY_OLLAMA_MODEL")
     if generic_model:
         return generic_model
@@ -91,14 +88,38 @@ def _parse_int_env(var: str) -> int | None:
         )
 
 
-class OllamaPlanner:
-    """Planner provider backed by a local Ollama model.
+def _build_user_message(context: TaskExecutionContext) -> str:
+    """Compose the user message from the execution context."""
+    parts: list[str] = []
 
-    Role: planner. Configure via REMEDY_OLLAMA_PLANNER_MODEL and related env vars.
+    if context.job_prompt:
+        parts.append(f"Job description: {context.job_prompt}")
+        parts.append("")
+
+    if context.planning_summary:
+        parts.append(f"Planning context: {context.planning_summary}")
+        parts.append("")
+
+    parts.append(f"Task type: {context.task_type}")
+    parts.append(f"Task: {context.task_description}")
+
+    if context.prior_task_summaries:
+        parts.append("")
+        parts.append("Prior completed tasks (for context):")
+        for summary in context.prior_task_summaries:
+            parts.append(f"  - {summary}")
+
+    return "\n".join(parts)
+
+
+class OllamaBuilder:
+    """Builder provider backed by a local Ollama model.
+
+    Role: builder. Configure via REMEDY_OLLAMA_BUILDER_MODEL and related env vars.
 
     Usage:
-        planner = OllamaPlanner()
-        output: PlannerOutput = planner.plan("build a CLI tool that summarises files")
+        builder = OllamaBuilder()
+        output: BuilderOutput = builder.build(context)
     """
 
     def __init__(
@@ -113,15 +134,15 @@ class OllamaPlanner:
 
         self.temperature: float | None = (
             temperature if temperature is not None
-            else _parse_float_env("REMEDY_OLLAMA_PLANNER_TEMPERATURE")
+            else _parse_float_env("REMEDY_OLLAMA_BUILDER_TEMPERATURE")
         )
         self.num_predict: int | None = (
             num_predict if num_predict is not None
-            else _parse_int_env("REMEDY_OLLAMA_PLANNER_NUM_PREDICT")
+            else _parse_int_env("REMEDY_OLLAMA_BUILDER_NUM_PREDICT")
         )
 
-    def plan(self, prompt: str) -> PlannerOutput:
-        """Call Ollama and return a validated PlannerOutput.
+    def build(self, context: TaskExecutionContext) -> BuilderOutput:
+        """Call Ollama with the execution context and return a validated BuilderOutput.
 
         Raises:
             ImportError: if the 'ollama' package is not installed.
@@ -134,12 +155,12 @@ class OllamaPlanner:
             import ollama
         except ImportError as exc:
             raise ImportError(
-                "The 'ollama' package is required for plan-job-local. "
+                "The 'ollama' package is required for run-next-task-local. "
                 "Install with: pip install ollama  or  pip install 'remedy[ollama]'"
             ) from exc
 
         client = ollama.Client(host=self.host)
-        schema = PlannerOutput.model_json_schema()
+        schema = BuilderOutput.model_json_schema()
 
         options: dict = {}
         if self.temperature is not None:
@@ -151,10 +172,10 @@ class OllamaPlanner:
             model=self.model,
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": f"Plan this job:\n\n{prompt}"},
+                {"role": "user", "content": _build_user_message(context)},
             ],
             format=schema,
             **({"options": options} if options else {}),
         )
 
-        return PlannerOutput.model_validate_json(response.message.content)
+        return BuilderOutput.model_validate_json(response.message.content)

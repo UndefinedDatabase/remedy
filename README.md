@@ -151,11 +151,101 @@ REMEDY_DATA_DIR=/tmp/my-jobs remedy create-job "test"
 pytest
 ```
 
+## Step 5 + 5.5: First Local Task Execution Skeleton + Execution Hardening
+
+Step 5 introduces single-task execution via a local Ollama-backed builder worker.
+Step 5.5 hardens execution semantics: safer failure handling, richer task context,
+cleaner metadata, and planner task_type normalization.
+
+- **`packages/orchestration/builder_models.py`** — `TaskExecutionContext` (richer input context for builders) and `BuilderOutput` (structured result)
+- **`packages/orchestration/task_runner.py`** — `run_next_task(job, call_builder)`: builds context, executes, creates a task-owned Artifact, advances state; rolls back on failure; `annotate_task_result()` enriches artifact metadata
+- **`packages/providers/ollama_builder/provider.py`** — `OllamaBuilder`: receives `TaskExecutionContext`, builds a rich Ollama prompt; role-specific env vars
+- **`apps/cli/main.py`** — `remedy run-next-task-local <job_id>` command
+
+### Run local task execution
+
+```bash
+# Create a job and plan it first
+remedy create-job "build a CLI tool that summarises files in a directory"
+remedy plan-job <job_id>
+
+# Execute the next pending task
+remedy run-next-task-local <job_id>
+# → Job <id> | task=<task-id> type=analyze_requirements role=builder model=qwen3-coder-next elapsed=1820ms remaining=2
+
+# Call again to advance through remaining tasks
+remedy run-next-task-local <job_id>
+remedy run-next-task-local <job_id>
+
+# When all tasks are done:
+# → Job <id> — no pending tasks.
+```
+
+### Builder configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REMEDY_OLLAMA_BUILDER_MODEL` | — | Model for the builder role (takes priority) |
+| `REMEDY_OLLAMA_MODEL` | `qwen3-coder-next` | Fallback model (any role) |
+| `REMEDY_OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `REMEDY_OLLAMA_BUILDER_TEMPERATURE` | — | Sampling temperature for the builder |
+| `REMEDY_OLLAMA_BUILDER_NUM_PREDICT` | — | Max tokens to generate for the builder |
+
+Numeric env vars (`TEMPERATURE`, `NUM_PREDICT`) emit a clear error message naming
+the offending variable if the value is not parseable (e.g. `REMEDY_OLLAMA_BUILDER_TEMPERATURE=foo`).
+
+### Execution state semantics
+
+| Transition | When |
+|------------|------|
+| `planned` → `running` | First pending task starts executing |
+| `running` → `completed` | All tasks have been executed |
+| Stays `running` | Some tasks completed, others still pending |
+| Unchanged | Builder failure: task rolls back to `pending`, job state restored |
+
+**Important**: `run-next-task-local` advances one task per call. Run it repeatedly to
+fully execute a planned job.
+
+**Failure behavior**: if the builder fails (network error, validation error, etc.), the
+task is rolled back to `pending` and the job state is restored to its value before the
+call. The job can be re-attempted cleanly. Errors are reported in the CLI with a concise
+message distinguishing missing-dependency, configuration, invalid-output, and general
+execution failures.
+
+### What the builder receives (TaskExecutionContext)
+
+The builder provider receives a structured `TaskExecutionContext` containing:
+- The job ID and user prompt
+- The task ID, type, and description
+- The planning summary (from the `planning_output` artifact, if present)
+- Summaries from previously completed tasks (in order)
+
+This gives the builder full context without exposing the mutable `Job` object.
+
+### Artifact metadata conventions (Step 5.5)
+
+After annotation, every task execution artifact contains:
+
+| Key | Source |
+|-----|--------|
+| `task_type` | Set by `run_next_task` |
+| `summary` | Set by `run_next_task` (from BuilderOutput) |
+| `provider` | Added by `annotate_task_result` |
+| `role` | Added by `annotate_task_result` |
+| `model` | Added by `annotate_task_result` |
+| `elapsed_ms` | Added by `annotate_task_result` |
+
+The legacy `"builder": "llm"` and `"planner": "llm"` keys have been removed.
+
+### Limitations in Step 5 (pre-Docker)
+
+This step does **not** modify project files, run commands, or apply patches. The builder returns structured output (`BuilderOutput`) describing *proposed* changes. Actual code modification is deferred to a later step involving Docker or a local runtime provider.
+
 ## What Is NOT Implemented Yet
 
-- Task execution
-- Agent loops
-- Provider implementations (Claude, Docker, MemPalace)
+- Actual code/file modification (Docker execution deferred to Step 6+)
+- Agent loops (auto-advance through all tasks)
+- Provider implementations (Claude, MemPalace)
 - Configuration system
 - API and worker apps
 
@@ -166,12 +256,12 @@ apps/           # Runnable applications (api, worker, cli)
 packages/
   core/         # Domain models
   contracts/    # Protocol interfaces
-  orchestration/# job_runner (plan_job), storage
+  orchestration/# job_runner, task_runner, storage, builder_models, planner_models
   memory/       # (future) memory management
   runtimes/     # (future) runtime abstractions
   verification/ # (future) artifact verification
   artifacts/    # (future) artifact management
-  providers/    # External system adapters (claude_agent, docker_runtime, mempalace)
+  providers/    # External system adapters; ollama_builder, ollama_planner (in PR)
 prompts/        # Prompt templates
 tests/          # Test suite
 docs/           # Architecture and long-term documentation

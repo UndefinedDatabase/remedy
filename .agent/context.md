@@ -1,33 +1,33 @@
 # Context
 
 ## Active Branch
-`feature/step4-ollama-planner`
+`feature/step5-task-execution`
 
 ## PR
-https://github.com/UndefinedDatabase/remedy/pull/5
+https://github.com/UndefinedDatabase/remedy/pull/6
 
 ## Scope
-Step 4 + 4.6: First concrete provider — Ollama-backed local planner with role-specific configuration.
+Step 5 + 5.5: First local task execution skeleton + execution hardening.
+Builder role, single-task execution, failure rollback, richer context,
+artifact provenance, job state advancement.
 
 ## Constraints
-- No Claude integration yet
-- No Docker, no MemPalace
-- No async orchestration frameworks
-- No retries
-- No broad multi-provider routing
-- Ollama is optional dep — not required for core to work
-- plan_job_with_llm must not import provider code directly
+- No Docker, no filesystem editing, no command execution, no retries
+- No Claude, no MemPalace, no broad multi-provider routing
+- Provider must not mutate Job directly
+- Builder role distinct from planner role
+- ollama is optional dep — not required for core to work
+- run_next_task must not import provider code directly
 
 ## Assumptions
-- OllamaPlanner.plan() lazily imports ollama; ImportError surfaced at call time
-- Planner models (PlannerOutput) live in orchestration/, not in the provider
-- CLI plan-job-local catches ImportError and Ollama errors gracefully
-- REMEDY_OLLAMA_PLANNER_MODEL takes priority; falls back to REMEDY_OLLAMA_MODEL, then default
-- Deterministic plan-job path unchanged and coexists with the new LLM path
-- annotate_planning_result() called in CLI after plan_job_with_llm; timing measured at CLI layer
+- OllamaBuilder.build() lazily imports ollama; ImportError surfaced at call time
+- TaskExecutionContext + BuilderOutput live in orchestration/ (same pattern as PlannerOutput)
+- annotate_task_result finds artifact by task_id, not by index; raises if changed but missing
+- annotate_planning_result finds artifact by name+task_id, not by index
+- Step 4 (llm_planner, ollama_planner, plan-job-local) on main via merged PR #5
+- Step 5.5 continues on same branch (PR #6) per Pull Request Continuity Rule
 
 ## Branch Scope Decision
-Step 4 (real provider integration) is clearly unrelated to Step 3/3.5
-(orchestration skeleton + semantics). New branch correct per AGENTS.md.
-PR #4 was merged before creating this branch.
-Step 4.6 continues on same branch (feature/step4-ollama-planner) per Pull Request Continuity Rule.
+Step 5 (execution) is clearly unrelated to Step 4 (planning/provider config).
+New branch created from main (after PR #5 merged) per AGENTS.md.
+Step 5.5 (execution hardening) is in-scope for PR #6 — same feature boundary.

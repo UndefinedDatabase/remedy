@@ -75,24 +75,109 @@ providers/claude_planner/        ←  (future) imports PlannerOutput; calls Clau
 
 Orchestration (`plan_job_with_llm`) accepts any planner callable. The provider is injected at the call site (CLI, tests) — orchestration never imports provider packages directly. This makes providers fully swappable and testable via mock callables.
 
+### Builder Providers
+
+A builder provider is any callable with signature `(context: TaskExecutionContext) -> BuilderOutput`.
+Both `TaskExecutionContext` and `BuilderOutput` live in `packages/orchestration/builder_models.py`
+so providers depend on orchestration, not the reverse.
+
+```
+orchestration/builder_models.py  ←  defines TaskExecutionContext + BuilderOutput (no external deps)
+          ↑
+providers/ollama_builder/        ←  imports both; calls Ollama
+providers/docker_builder/        ←  (future) imports both; runs in Docker
+```
+
+Orchestration (`run_next_task`) builds a `TaskExecutionContext` from the current job and
+task state, then passes it to the injected callable. The provider receives all context it
+needs and must not mutate the Job.
+
+### Task Execution Context
+
+`TaskExecutionContext` is the structured input every builder provider receives:
+
+| Field | Description |
+|-------|-------------|
+| `job_id` | UUID of the job |
+| `job_prompt` | User prompt from the job (may be None) |
+| `task_id` | UUID of the task to execute |
+| `task_type` | snake_case type identifier |
+| `task_description` | Human-readable task description |
+| `planning_summary` | Summary from the `planning_output` artifact, if present |
+| `prior_task_summaries` | Summaries from already-completed task artifacts, in order |
+
+This gives the provider the full execution context without exposing the mutable `Job` object.
+
 ### Role-Specific Model Selection
 
-Remedy is moving toward role-specific model configuration. Each role (planner, executor, verifier, …) will eventually have its own model variable, allowing different models to be used for different responsibilities within the same job.
+Remedy uses role-specific model configuration. Each role has its own env var, allowing different models for different responsibilities within the same job.
 
-The current implementation covers the **planner role** only:
+Current roles:
 
 ```
 REMEDY_OLLAMA_PLANNER_MODEL  ←  planner role (highest priority)
-REMEDY_OLLAMA_MODEL          ←  generic fallback (backward compat)
+REMEDY_OLLAMA_BUILDER_MODEL  ←  builder role (highest priority)
+REMEDY_OLLAMA_MODEL          ←  generic fallback (any role, backward compat)
 built-in default             ←  qwen3-coder-next
 ```
 
-Generation parameters follow the same role-specific pattern:
-- `REMEDY_OLLAMA_PLANNER_TEMPERATURE` — sampling temperature for the planner
-- `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` — max tokens for the planner
+Generation parameters follow the same pattern per role:
+- `REMEDY_OLLAMA_PLANNER_TEMPERATURE` / `REMEDY_OLLAMA_BUILDER_TEMPERATURE`
+- `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` / `REMEDY_OLLAMA_BUILDER_NUM_PREDICT`
 
-These parameters are passed to Ollama only when set; unset means the model's defaults apply.
+These are passed to Ollama only when set; unset means the model's defaults apply.
+Env var parsing errors name the offending variable in the error message.
 
-### Concrete Providers (Step 4+)
+### Execution State Semantics
 
-**`packages/providers/ollama_planner/`** — First concrete provider. Calls a local Ollama model with JSON schema enforcement (`format=schema`). Configured via role-specific env vars (`REMEDY_OLLAMA_PLANNER_MODEL`, `REMEDY_OLLAMA_PLANNER_TEMPERATURE`, `REMEDY_OLLAMA_PLANNER_NUM_PREDICT`) with `REMEDY_OLLAMA_MODEL` as a generic fallback and `REMEDY_OLLAMA_HOST` for the server URL. The `ollama` Python package is an optional dependency (`pip install 'remedy[ollama]'`); it is loaded lazily and raises `ImportError` with install instructions if absent.
+`run_next_task` drives job state as follows:
+
+| Event | Job state | Task state |
+|-------|-----------|------------|
+| Pending task found, execution begins | `RUNNING` | `RUNNING` |
+| Task execution succeeds | `RUNNING` (if more pending) | `COMPLETED` |
+| Last task completes | `COMPLETED` | `COMPLETED` |
+| No pending task found | unchanged | unchanged |
+| Builder fails | restored to pre-call value | `PENDING` (rolled back) |
+
+A partially-executed job (some tasks `COMPLETED`, some `PENDING`) remains `RUNNING`.
+`run_next_task` advances one task per call; the CLI loop is the caller's responsibility.
+
+**Failure rollback**: if the builder callable raises, the task is rolled back to `PENDING`
+and `job.state` is restored to its value before the call. The exception propagates to
+the caller with no retry. This ensures the job can be re-attempted cleanly.
+
+### Artifact Metadata Conventions
+
+Task execution artifacts carry consistent metadata keys:
+
+| Key | Added by |
+|-----|----------|
+| `task_type` | `run_next_task` |
+| `summary` | `run_next_task` (from `BuilderOutput.summary`) |
+| `provider` | `annotate_task_result` |
+| `role` | `annotate_task_result` |
+| `model` | `annotate_task_result` |
+| `elapsed_ms` | `annotate_task_result` |
+
+Planning artifacts carry: `summary`, `provider`, `role`, `model`, `task_count`, `elapsed_ms`.
+Legacy ambiguous keys (`"builder": "llm"`, `"planner": "llm"`) are not used.
+
+### Task Type Normalization
+
+If a planner returns duplicate `task_type` values (e.g. two tasks both typed
+`"write_tests"`), `plan_job_with_llm` deduplicates them by appending `_2`, `_3`, etc.
+to subsequent occurrences. This prevents downstream execution from confusing two
+semantically different tasks with the same identifier.
+
+### Step 5 Pre-execution Limitation
+
+The builder callable returns structured output (`BuilderOutput`) describing *proposed*
+changes — it does not modify project files or execute commands. Actual code modification
+requires a runtime provider (Docker, local shell) and is deferred to Step 6+.
+
+### Concrete Providers
+
+**`packages/providers/ollama_planner/`** — Planner provider. Calls local Ollama with JSON schema enforcement. Configured via `REMEDY_OLLAMA_PLANNER_MODEL`, `REMEDY_OLLAMA_PLANNER_TEMPERATURE`, `REMEDY_OLLAMA_PLANNER_NUM_PREDICT`. The `ollama` package is an optional dependency; loaded lazily.
+
+**`packages/providers/ollama_builder/`** — Builder provider. Same Ollama pattern for the builder role. Configured via `REMEDY_OLLAMA_BUILDER_MODEL`, `REMEDY_OLLAMA_BUILDER_TEMPERATURE`, `REMEDY_OLLAMA_BUILDER_NUM_PREDICT`. Env var parsing errors name the offending variable.
