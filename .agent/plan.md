@@ -4,18 +4,18 @@
 Step 5.6: CLI Hotfix and Final Pre-Step-6 Hardening.
 
 ## Status
-IN PROGRESS — Commit 1/3
+COMPLETE. All 3 commits on feature/step5-task-execution (PR #6).
 
-## Commits Planned
-1. [ ] Fix CLI: move OllamaBuilder() inside try/except in run-next-task-local
-2. [ ] Fix annotate_planning_result: raise RuntimeError if changed=True but no artifact
-3. [ ] Fix BuilderOutput: require proposed_changes to have at least 1 item; tests
+## What Was Done
+1. Fix CLI: OllamaBuilder() moved inside try/except — bad env vars now show "Error: configuration"
+2. annotate_planning_result: raise RuntimeError on changed=True but no artifact
+3. BuilderOutput: proposed_changes requires min_length=1; 4 new tests added
 
 ## Key Decisions
-- OllamaBuilder() construction raises ValueError on bad env vars; must be inside try block
-- annotate_planning_result no-op on changed=False is correct; raise on changed=True missing artifact
-- proposed_changes min_length=1: empty list is not a valid builder response
-- Step 5.6 continues on feature/step5-task-execution (PR #6) — same feature boundary
+- OllamaBuilder() construction raises ValueError on bad env vars from __init__,
+  not from .build() — constructor must be inside try block to be caught
+- annotate_planning_result now symmetric with annotate_task_result
+- proposed_changes min_length=1: an empty list is not a valid execution result
 
 ## Branch
 feature/step5-task-execution (PR #6) — in-scope per PR Continuity Rule

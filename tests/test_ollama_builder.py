@@ -133,3 +133,41 @@ def test_invalid_num_predict_raises_with_var_name(monkeypatch):
     from packages.providers.ollama_builder.provider import OllamaBuilder
     with pytest.raises(ValueError, match="REMEDY_OLLAMA_BUILDER_NUM_PREDICT"):
         OllamaBuilder()
+
+
+# ---------------------------------------------------------------------------
+# BuilderOutput schema: proposed_changes min_length=1
+# ---------------------------------------------------------------------------
+
+def test_builder_output_rejects_empty_proposed_changes():
+    """BuilderOutput must require at least 1 proposed change."""
+    from pydantic import ValidationError
+    from packages.orchestration.builder_models import BuilderOutput
+    with pytest.raises(ValidationError):
+        BuilderOutput(summary="ok", proposed_changes=[])
+
+
+def test_builder_output_accepts_single_proposed_change():
+    from packages.orchestration.builder_models import BuilderOutput
+    output = BuilderOutput(summary="ok", proposed_changes=["add function foo"])
+    assert len(output.proposed_changes) == 1
+
+
+def test_builder_output_rejects_missing_proposed_changes():
+    """proposed_changes is required and cannot be omitted."""
+    from pydantic import ValidationError
+    from packages.orchestration.builder_models import BuilderOutput
+    with pytest.raises(ValidationError):
+        BuilderOutput(summary="ok")  # type: ignore[call-arg]
+
+
+# ---------------------------------------------------------------------------
+# CLI path: bad env var is caught as configuration error
+# ---------------------------------------------------------------------------
+
+def test_bad_temperature_env_var_raises_value_error_on_construction(monkeypatch):
+    """OllamaBuilder() raises ValueError from __init__ — confirms CLI must wrap it."""
+    monkeypatch.setenv("REMEDY_OLLAMA_BUILDER_TEMPERATURE", "definitely-not-a-float")
+    from packages.providers.ollama_builder.provider import OllamaBuilder
+    with pytest.raises(ValueError, match="REMEDY_OLLAMA_BUILDER_TEMPERATURE"):
+        OllamaBuilder()  # ValueError must come from construction, not from .build()

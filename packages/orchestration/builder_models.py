@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TaskExecutionContext(BaseModel):
@@ -47,6 +47,6 @@ class BuilderOutput(BaseModel):
     """
 
     summary: str
-    proposed_changes: list[str]
+    proposed_changes: list[str] = Field(min_length=1)
     notes: list[str] = []
     risks: list[str] = []
