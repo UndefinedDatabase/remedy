@@ -151,13 +151,15 @@ REMEDY_DATA_DIR=/tmp/my-jobs remedy create-job "test"
 pytest
 ```
 
-## Step 5: First Local Task Execution Skeleton
+## Step 5 + 5.5: First Local Task Execution Skeleton + Execution Hardening
 
 Step 5 introduces single-task execution via a local Ollama-backed builder worker.
+Step 5.5 hardens execution semantics: safer failure handling, richer task context,
+cleaner metadata, and planner task_type normalization.
 
-- **`packages/orchestration/builder_models.py`** — `BuilderOutput`: structured builder output model (summary, proposed_changes, notes, risks)
-- **`packages/orchestration/task_runner.py`** — `run_next_task(job, call_builder)`: selects the first pending task, executes it, creates a task-owned Artifact, and advances job state; `annotate_task_result()` enriches the artifact metadata
-- **`packages/providers/ollama_builder/provider.py`** — `OllamaBuilder`: calls local Ollama with JSON schema enforcement for the builder role; role-specific env vars
+- **`packages/orchestration/builder_models.py`** — `TaskExecutionContext` (richer input context for builders) and `BuilderOutput` (structured result)
+- **`packages/orchestration/task_runner.py`** — `run_next_task(job, call_builder)`: builds context, executes, creates a task-owned Artifact, advances state; rolls back on failure; `annotate_task_result()` enriches artifact metadata
+- **`packages/providers/ollama_builder/provider.py`** — `OllamaBuilder`: receives `TaskExecutionContext`, builds a rich Ollama prompt; role-specific env vars
 - **`apps/cli/main.py`** — `remedy run-next-task-local <job_id>` command
 
 ### Run local task execution
@@ -189,6 +191,9 @@ remedy run-next-task-local <job_id>
 | `REMEDY_OLLAMA_BUILDER_TEMPERATURE` | — | Sampling temperature for the builder |
 | `REMEDY_OLLAMA_BUILDER_NUM_PREDICT` | — | Max tokens to generate for the builder |
 
+Numeric env vars (`TEMPERATURE`, `NUM_PREDICT`) emit a clear error message naming
+the offending variable if the value is not parseable (e.g. `REMEDY_OLLAMA_BUILDER_TEMPERATURE=foo`).
+
 ### Execution state semantics
 
 | Transition | When |
@@ -196,8 +201,41 @@ remedy run-next-task-local <job_id>
 | `planned` → `running` | First pending task starts executing |
 | `running` → `completed` | All tasks have been executed |
 | Stays `running` | Some tasks completed, others still pending |
+| Unchanged | Builder failure: task rolls back to `pending`, job state restored |
 
-**Important**: `run-next-task-local` advances one task per call. Run it repeatedly to fully execute a planned job.
+**Important**: `run-next-task-local` advances one task per call. Run it repeatedly to
+fully execute a planned job.
+
+**Failure behavior**: if the builder fails (network error, validation error, etc.), the
+task is rolled back to `pending` and the job state is restored to its value before the
+call. The job can be re-attempted cleanly. Errors are reported in the CLI with a concise
+message distinguishing missing-dependency, configuration, invalid-output, and general
+execution failures.
+
+### What the builder receives (TaskExecutionContext)
+
+The builder provider receives a structured `TaskExecutionContext` containing:
+- The job ID and user prompt
+- The task ID, type, and description
+- The planning summary (from the `planning_output` artifact, if present)
+- Summaries from previously completed tasks (in order)
+
+This gives the builder full context without exposing the mutable `Job` object.
+
+### Artifact metadata conventions (Step 5.5)
+
+After annotation, every task execution artifact contains:
+
+| Key | Source |
+|-----|--------|
+| `task_type` | Set by `run_next_task` |
+| `summary` | Set by `run_next_task` (from BuilderOutput) |
+| `provider` | Added by `annotate_task_result` |
+| `role` | Added by `annotate_task_result` |
+| `model` | Added by `annotate_task_result` |
+| `elapsed_ms` | Added by `annotate_task_result` |
+
+The legacy `"builder": "llm"` and `"planner": "llm"` keys have been removed.
 
 ### Limitations in Step 5 (pre-Docker)
 

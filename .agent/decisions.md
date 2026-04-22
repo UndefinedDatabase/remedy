@@ -1,5 +1,37 @@
 # Decisions
 
+## 2026-04-22: Step 5.5 continues on feature/step5-task-execution (PR #6)
+Execution hardening (failure rollback, richer context, metadata cleanup) is in-scope
+for the same feature boundary as Step 5 (task execution). Per Pull Request
+Continuity Rule, no new branch was created.
+
+## 2026-04-22: Builder failure rolls task back to PENDING, not FAILED
+FAILED state exists in RunState but using it requires deciding how to surface and
+re-run failed tasks — deferred to a later step. Rolling back to PENDING is the
+conservative safe choice: the job can be re-attempted cleanly without state repair.
+original_job_state is captured before mutation so both task and job are fully restored.
+
+## 2026-04-22: annotate_task_result raises RuntimeError on changed-without-artifact
+Previously silently returned. A changed=True result with no matching artifact means
+run_next_task has a bug. Silent no-op would hide it; raising makes the bug visible
+immediately. The condition cannot occur in normal operation.
+
+## 2026-04-22: annotate_planning_result finds artifact by name+task_id, not index 0
+Index 0 was fragile — artifacts can accumulate from multiple calls or be reordered.
+Finding by name="planning_output" and task_id=None is unambiguous. Kept as no-op if
+not found (valid: job might have no planning artifact when annotation is called on a
+partially-migrated job).
+
+## 2026-04-22: TaskExecutionContext passed to builder (not a raw string)
+Provides job context, planning summary, and prior task summaries to the builder.
+Separating input context from Job prevents provider from mutating state. Small and
+serializable (Pydantic model). Lives in orchestration/ so providers depend on it.
+
+## 2026-04-22: task_type deduplication via _2/_3 suffix
+Duplicate task_type values from LLM planners confuse downstream task selection.
+Simple suffix append is localized to plan_job_with_llm, requires no schema change,
+and is deterministic. Does not redesign the planner schema.
+
 ## 2026-04-19: Step 5 on new branch (feature/step5-task-execution)
 Task execution has different purpose, review scope, and feature boundary from
 Step 4 (planning/provider config). New branch created from main per AGENTS.md.
