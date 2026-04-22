@@ -10,12 +10,17 @@ State semantics:
     RUNNING  -> COMPLETED  when the last task completes (all tasks COMPLETED)
 
   Task transitions:
-    PENDING  -> RUNNING    during execution
+    PENDING  -> RUNNING    at the start of execution
     RUNNING  -> COMPLETED  on successful execution
+    RUNNING  -> PENDING    on builder failure (rolled back to avoid stranded state)
+
+  Failure behavior:
+    If the builder callable raises, the task is rolled back to PENDING and
+    job.state is restored to its value before this call. The exception
+    propagates to the caller with no retry. This keeps the job in a
+    consistent, re-executable state.
 
   A partially-executed job (some tasks COMPLETED, some PENDING) remains RUNNING.
-  No state change to PLANNED or FAILED is made here — errors propagate to caller.
-
   Caller is responsible for persisting the returned job.
 
 Pre-execution note (Step 5):
@@ -31,7 +36,7 @@ from typing import Callable
 from uuid import UUID
 
 from packages.core.models import Artifact, Job, RunState, Task
-from packages.orchestration.builder_models import BuilderOutput
+from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 
 
 @dataclass
@@ -56,15 +61,57 @@ def _find_next_pending(job: Job) -> Task | None:
     return None
 
 
+def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
+    """Build a TaskExecutionContext from the current job and task state.
+
+    Extracts planning_summary from the orchestration-owned planning artifact
+    (task_id=None, name="planning_output") and collects summaries from all
+    previously completed task artifacts, in task order.
+    """
+    task_type = task.inputs.get("task_type", "unknown")
+
+    # Find planning summary from the orchestration-owned planning artifact.
+    planning_summary: str | None = None
+    for artifact in job.artifacts:
+        if artifact.task_id is None and artifact.name == "planning_output":
+            planning_summary = artifact.metadata.get("summary")
+            break
+
+    # Collect summaries from already-completed tasks, preserving task order.
+    prior_summaries: list[str] = []
+    for t in job.tasks:
+        if t.status == RunState.COMPLETED:
+            for artifact in job.artifacts:
+                if artifact.task_id == t.id:
+                    s = artifact.metadata.get("summary")
+                    if s:
+                        prior_summaries.append(s)
+                    break
+
+    return TaskExecutionContext(
+        job_id=job.id,
+        job_prompt=job.user_prompt,
+        task_id=task.id,
+        task_type=task_type,
+        task_description=task.description,
+        planning_summary=planning_summary,
+        prior_task_summaries=prior_summaries,
+    )
+
+
 def run_next_task(
     job: Job,
-    call_builder: Callable[[str], BuilderOutput],
+    call_builder: Callable[[TaskExecutionContext], BuilderOutput],
 ) -> RunTaskResult:
     """Execute the next pending task using the injected builder callable.
 
-    Selects the first PENDING task (by order in job.tasks), calls call_builder
-    with the task description, creates one task-owned Artifact, marks the task
-    COMPLETED, and appends its id to task.output_artifact_ids.
+    Selects the first PENDING task (by order in job.tasks), builds a
+    TaskExecutionContext from the current job state, calls call_builder,
+    creates one task-owned Artifact, marks the task COMPLETED, and appends
+    its id to task.output_artifact_ids.
+
+    On provider failure: task is rolled back to PENDING and job.state is
+    restored to its pre-call value. The exception propagates to the caller.
 
     Returns RunTaskResult(job, task_id=None, changed=False) if no PENDING task
     exists (job is already complete, or has no tasks).
@@ -75,12 +122,21 @@ def run_next_task(
     if task is None:
         return RunTaskResult(job=job, task_id=None, changed=False)
 
+    original_job_state = job.state
     job.state = RunState.RUNNING
     task.status = RunState.RUNNING
 
-    output: BuilderOutput = call_builder(task.description)
+    context = _build_execution_context(job, task)
 
-    task_type = task.inputs.get("task_type", "unknown")
+    try:
+        output: BuilderOutput = call_builder(context)
+    except Exception:
+        # Roll back to avoid stranding the task/job in RUNNING on failure.
+        task.status = RunState.PENDING
+        job.state = original_job_state
+        raise
+
+    task_type = context.task_type
 
     content_lines = [
         "Builder Execution Output",
@@ -105,14 +161,15 @@ def run_next_task(
         for risk in output.risks:
             content_lines.append(f"  - {risk}")
 
-    # task_id=task.id: this artifact is task-owned (see Artifact docstring)
+    # task_id=task.id: this artifact is task-owned (see Artifact docstring).
+    # Metadata uses consistent keys; provider/role/model/elapsed_ms are added
+    # later by annotate_task_result() after timing is known.
     artifact = Artifact(
         name=f"task_output_{task_type}",
         content="\n".join(content_lines),
         mime_type="text/plain",
         task_id=task.id,
         metadata={
-            "builder": "llm",
             "task_type": task_type,
             "summary": output.summary,
         },
@@ -140,8 +197,13 @@ def annotate_task_result(
     """Enrich the task execution artifact metadata with provider/role/model/timing info.
 
     Locates the artifact by matching task_id == result.task_id rather than
-    assuming a fixed index position. No-op if result.changed is False or the
-    artifact cannot be found (e.g. no-op run with no task executed).
+    assuming a fixed index position — safe even when planning artifacts precede
+    task artifacts in job.artifacts.
+
+    No-op if result.changed is False (no task was executed).
+
+    Raises RuntimeError if result.changed is True but no matching artifact is
+    found — this indicates a bug in run_next_task and must not be silently ignored.
 
     Designed to be called after run_next_task returns, before persisting.
     """
@@ -152,7 +214,10 @@ def annotate_task_result(
         None,
     )
     if artifact is None:
-        return
+        raise RuntimeError(
+            f"annotate_task_result: result.changed=True but no artifact found for "
+            f"task_id={result.task_id}. This indicates a bug in run_next_task."
+        )
     artifact.metadata.update(
         {
             "provider": provider,
