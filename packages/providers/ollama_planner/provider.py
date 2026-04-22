@@ -65,6 +65,32 @@ def _resolve_model(override: str | None) -> str:
     return _DEFAULT_MODEL
 
 
+def _parse_float_env(var: str) -> float | None:
+    """Parse a float environment variable, raising ValueError with the var name on failure."""
+    val = os.environ.get(var)
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except ValueError:
+        raise ValueError(
+            f"Environment variable {var} must be a float (got {val!r})"
+        )
+
+
+def _parse_int_env(var: str) -> int | None:
+    """Parse an integer environment variable, raising ValueError with the var name on failure."""
+    val = os.environ.get(var)
+    if val is None:
+        return None
+    try:
+        return int(val)
+    except ValueError:
+        raise ValueError(
+            f"Environment variable {var} must be an integer (got {val!r})"
+        )
+
+
 class OllamaPlanner:
     """Planner provider backed by a local Ollama model.
 
@@ -85,15 +111,13 @@ class OllamaPlanner:
         self.model = _resolve_model(model)
         self.host = host or os.environ.get("REMEDY_OLLAMA_HOST", _DEFAULT_HOST)
 
-        # Optional generation parameters; read from env if not passed directly.
-        _temp_env = os.environ.get("REMEDY_OLLAMA_PLANNER_TEMPERATURE")
-        self.temperature: float | None = temperature if temperature is not None else (
-            float(_temp_env) if _temp_env else None
+        self.temperature: float | None = (
+            temperature if temperature is not None
+            else _parse_float_env("REMEDY_OLLAMA_PLANNER_TEMPERATURE")
         )
-
-        _np_env = os.environ.get("REMEDY_OLLAMA_PLANNER_NUM_PREDICT")
-        self.num_predict: int | None = num_predict if num_predict is not None else (
-            int(_np_env) if _np_env else None
+        self.num_predict: int | None = (
+            num_predict if num_predict is not None
+            else _parse_int_env("REMEDY_OLLAMA_PLANNER_NUM_PREDICT")
         )
 
     def plan(self, prompt: str) -> PlannerOutput:
@@ -101,6 +125,7 @@ class OllamaPlanner:
 
         Raises:
             ImportError: if the 'ollama' package is not installed.
+            ValueError: if a numeric env var has an invalid value.
             ollama.RequestError: if the Ollama server is unreachable.
             ollama.ResponseError: if the model returns an error.
             pydantic.ValidationError: if the response fails schema validation.

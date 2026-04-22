@@ -28,13 +28,13 @@ from __future__ import annotations
 
 import os
 
-from packages.orchestration.builder_models import BuilderOutput
+from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 
 _DEFAULT_MODEL = "qwen3-coder-next"
 _DEFAULT_HOST = "http://localhost:11434"
 
 _SYSTEM_PROMPT = """\
-You are a software builder assistant. Given a task description, produce a structured execution result.
+You are a software builder assistant. Given a task execution context, produce a structured result.
 
 Rules:
 - summary: short paragraph describing what was done or planned for this task
@@ -88,6 +88,30 @@ def _parse_int_env(var: str) -> int | None:
         )
 
 
+def _build_user_message(context: TaskExecutionContext) -> str:
+    """Compose the user message from the execution context."""
+    parts: list[str] = []
+
+    if context.job_prompt:
+        parts.append(f"Job description: {context.job_prompt}")
+        parts.append("")
+
+    if context.planning_summary:
+        parts.append(f"Planning context: {context.planning_summary}")
+        parts.append("")
+
+    parts.append(f"Task type: {context.task_type}")
+    parts.append(f"Task: {context.task_description}")
+
+    if context.prior_task_summaries:
+        parts.append("")
+        parts.append("Prior completed tasks (for context):")
+        for summary in context.prior_task_summaries:
+            parts.append(f"  - {summary}")
+
+    return "\n".join(parts)
+
+
 class OllamaBuilder:
     """Builder provider backed by a local Ollama model.
 
@@ -95,7 +119,7 @@ class OllamaBuilder:
 
     Usage:
         builder = OllamaBuilder()
-        output: BuilderOutput = builder.build("Analyze the job requirements")
+        output: BuilderOutput = builder.build(context)
     """
 
     def __init__(
@@ -117,11 +141,12 @@ class OllamaBuilder:
             else _parse_int_env("REMEDY_OLLAMA_BUILDER_NUM_PREDICT")
         )
 
-    def build(self, prompt: str) -> BuilderOutput:
-        """Call Ollama and return a validated BuilderOutput.
+    def build(self, context: TaskExecutionContext) -> BuilderOutput:
+        """Call Ollama with the execution context and return a validated BuilderOutput.
 
         Raises:
             ImportError: if the 'ollama' package is not installed.
+            ValueError: if a numeric env var has an invalid value.
             ollama.RequestError: if the Ollama server is unreachable.
             ollama.ResponseError: if the model returns an error.
             pydantic.ValidationError: if the response fails schema validation.
@@ -147,7 +172,7 @@ class OllamaBuilder:
             model=self.model,
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": f"Execute this task:\n\n{prompt}"},
+                {"role": "user", "content": _build_user_message(context)},
             ],
             format=schema,
             **({"options": options} if options else {}),
