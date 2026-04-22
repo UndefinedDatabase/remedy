@@ -122,7 +122,11 @@ def annotate_planning_result(
     Locates the artifact by name ("planning_output") and task_id (None) rather
     than blindly using index 0 — safe if artifacts are reordered or accumulated.
 
-    No-op if result.changed is False or no planning artifact is found.
+    No-op if result.changed is False (job was already planned; nothing to annotate).
+
+    Raises RuntimeError if result.changed is True but no planning artifact is found —
+    this indicates a bug in plan_job_with_llm and must not be silently ignored.
+    Mirrors the strict behavior of annotate_task_result.
 
     Designed to be called after plan_job_with_llm returns, before persisting.
     """
@@ -137,7 +141,10 @@ def annotate_planning_result(
         None,
     )
     if artifact is None:
-        return
+        raise RuntimeError(
+            "annotate_planning_result: result.changed=True but no planning_output "
+            "artifact found. This indicates a bug in plan_job_with_llm."
+        )
     artifact.metadata.update(
         {
             "provider": provider,

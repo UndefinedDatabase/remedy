@@ -268,9 +268,20 @@ def test_annotate_no_op_when_not_changed():
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result.changed is False
 
-    # Should not raise; no artifacts to annotate
+    # Should not raise; changed=False means we skip annotation entirely
     annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=99)
     assert result.job.artifacts == []  # unchanged
+
+
+def test_annotate_raises_if_changed_but_no_planning_artifact():
+    """If changed=True but no planning artifact exists, annotate must raise RuntimeError."""
+    result = _make_planned_result()
+    assert result.changed is True
+    # Forcibly remove the planning artifact to simulate the impossible state
+    result.job.artifacts.clear()
+
+    with pytest.raises(RuntimeError, match="no planning_output artifact found"):
+        annotate_planning_result(result, provider="ollama", role="planner", model="m1", elapsed_ms=0)
 
 
 def test_annotate_finds_artifact_by_name_not_index():
