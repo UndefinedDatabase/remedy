@@ -1,14 +1,40 @@
 """
-Builder output models.
+Builder models: execution context and output.
 
-These represent structured execution results returned by any builder provider.
-They live in orchestration/ (not in providers/) because orchestration code
+These models live in orchestration/ (not in providers/) because orchestration
 imports and transforms them — providers depend on these, not the other way around.
 """
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from pydantic import BaseModel
+
+
+class TaskExecutionContext(BaseModel):
+    """Context provided to a builder provider for a single task execution.
+
+    Contains all information the builder needs to produce meaningful output.
+    Built by run_next_task() from the current job and task state — the provider
+    receives this object and must not mutate the Job directly.
+
+    job_id:               UUID of the job containing the task.
+    job_prompt:           User prompt from the job (may be None).
+    task_id:              UUID of the task to execute.
+    task_type:            snake_case type identifier for the task.
+    task_description:     Human-readable description of what the task should accomplish.
+    planning_summary:     Summary from the planning artifact, if available.
+    prior_task_summaries: Summaries from already-completed task artifacts, in order.
+    """
+
+    job_id: UUID
+    job_prompt: str | None
+    task_id: UUID
+    task_type: str
+    task_description: str
+    planning_summary: str | None = None
+    prior_task_summaries: list[str] = []
 
 
 class BuilderOutput(BaseModel):
