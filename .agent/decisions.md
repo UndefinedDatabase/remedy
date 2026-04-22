@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-04-22: Step 5.7 continues on feature/step5-task-execution (PR #6)
+Planner CLI parity fix is in-scope for PR #6 (same feature boundary).
+
+## 2026-04-22: Prompt text is guidance only; schema is the enforcement layer
+Builder system prompt states the non-empty requirement to nudge the model,
+but Pydantic min_length=1 on proposed_changes is the actual enforcement.
+Prompt and schema are kept in sync for clarity, not as a single point of truth.
+
 ## 2026-04-22: Step 5.6 continues on feature/step5-task-execution (PR #6)
 CLI hotfix and final hardening is in-scope for PR #6 (same feature boundary:
 task execution and its supporting contracts). Per Pull Request Continuity Rule.
