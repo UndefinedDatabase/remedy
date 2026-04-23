@@ -83,7 +83,7 @@ class LocalWorkspaceRuntime:
 
     def __init__(self, job_id: UUID) -> None:
         self._job_id = job_id
-        root = _resolve_workspace_root() / str(job_id)
+        root = (_resolve_workspace_root() / str(job_id)).resolve()
         root.mkdir(parents=True, exist_ok=True)
         self._workspace = Workspace(job_id=job_id, root=root)
 
@@ -99,9 +99,20 @@ class LocalWorkspaceRuntime:
 
         Creates parent directories as needed.  Overwrites existing files.
 
+        Raises RuntimeError if the resolved target path falls outside the workspace
+        root — this prevents path traversal regardless of how the caller constructs
+        relative_path. The check is inside the runtime so it cannot be bypassed by
+        callers that skip the sanitization helpers in task_runner.py.
+
         Returns a MaterializedFile describing what was written.
         """
-        target = self._workspace.root / relative_path
+        target = (self._workspace.root / relative_path).resolve()
+        if not target.is_relative_to(self._workspace.root):
+            raise RuntimeError(
+                f"LocalWorkspaceRuntime.write: resolved path {target!r} is outside "
+                f"the workspace root {self._workspace.root!r}. "
+                "Path traversal is not allowed."
+            )
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         mf = MaterializedFile(

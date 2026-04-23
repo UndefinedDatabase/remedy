@@ -529,3 +529,83 @@ def test_materialize_sanitizes_spaces_in_task_type(tmp_path, monkeypatch):
     assert mf is not None
     assert " " not in mf.path.name
     assert mf.path.exists()
+
+
+# ---------------------------------------------------------------------------
+# Step 6.7: runtime-owned workspace boundary enforcement
+# ---------------------------------------------------------------------------
+
+
+def test_runtime_write_rejects_traversal_path(tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    runtime = LocalWorkspaceRuntime(job_id=uuid4())
+    with pytest.raises(RuntimeError, match="outside the workspace root"):
+        runtime.write("../escape.txt", "data")
+
+
+def test_runtime_write_rejects_double_traversal(tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    runtime = LocalWorkspaceRuntime(job_id=uuid4())
+    with pytest.raises(RuntimeError, match="outside the workspace root"):
+        runtime.write("subdir/../../escape.txt", "data")
+
+
+def test_runtime_write_rejects_absolute_path(tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    runtime = LocalWorkspaceRuntime(job_id=uuid4())
+    with pytest.raises(RuntimeError, match="outside the workspace root"):
+        runtime.write("/etc/hosts", "data")
+
+
+def test_runtime_write_safe_nested_path_allowed(tmp_path, monkeypatch):
+    """A normal nested relative path must still work after the boundary check."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    runtime = LocalWorkspaceRuntime(job_id=uuid4())
+    mf = runtime.write("task_output/000_write_code_abc.txt", "ok")
+    assert mf.path.exists()
+    assert mf.path.is_relative_to(runtime.workspace.root)
+
+
+# ---------------------------------------------------------------------------
+# Step 6.7: missing task_id raises RuntimeError (no silent fallback)
+# ---------------------------------------------------------------------------
+
+
+def test_materialize_raises_when_task_id_not_in_job_tasks(tmp_path, monkeypatch):
+    """If result.task_id is not in job.tasks, materialize must raise — not silently use index 0."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    from uuid import uuid4 as _uuid4
+
+    from packages.core.models import Artifact, RunState
+    from packages.orchestration.task_runner import RunTaskResult
+
+    job = _make_planned_job()
+    orphan_task_id = _uuid4()
+    # Inject an artifact that references a task_id not in job.tasks
+    job.artifacts.append(
+        Artifact(
+            name="task_output_fake",
+            content="Builder Execution Output\n\nProposed Changes:\n  - x\n",
+            mime_type="text/plain",
+            task_id=orphan_task_id,
+            metadata={"task_type": "fake", "summary": "s"},
+        )
+    )
+    result = RunTaskResult(job=job, task_id=orphan_task_id, changed=True)
+    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    with pytest.raises(RuntimeError, match="not found in job.tasks"):
+        materialize_task_output(result, runtime)
+
+
+# ---------------------------------------------------------------------------
+# Step 6.7: BuilderOutput rejects empty proposed_changes
+# ---------------------------------------------------------------------------
+
+
+def test_builder_output_rejects_empty_proposed_changes():
+    from pydantic import ValidationError
+
+    from packages.orchestration.builder_models import BuilderOutput
+
+    with pytest.raises(ValidationError):
+        BuilderOutput(summary="ok", proposed_changes=[])

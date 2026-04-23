@@ -1,23 +1,22 @@
 # Plan
 
 ## Goal
-Step 6.5: Workspace Materialization Hardening.
+Step 6.7: Runtime Boundary and Final Workspace Hardening.
 
 ## Status
 COMPLETE. All changes on feature/step6-workspace-runtime (PR #7).
 
 ## What Was Done
-1. task_runner.py: _extract_proposed_changes() — section-aware extraction (Proposed Changes only)
-2. task_runner.py: _sanitize_path_component() — neutralizes traversal, replaces unsafe chars, truncates
-3. task_runner.py: materialize_task_output() — collision-safe naming, sanitized paths, uses helpers
-4. Tests: 25 new tests in test_workspace.py; 1 updated (filename pattern)
-5. Docs: README + architecture.md updated (naming rules, ordering, content extraction)
+1. workspace.py: write() resolves target path and enforces is_relative_to(root); root stored resolved
+2. task_runner.py: task index lookup uses next(..., None) + explicit RuntimeError — no silent fallback
+3. builder_models.py: proposed_changes = Field(min_length=1) — empty list rejected at model boundary
+4. Tests: 6 new focused tests covering boundary escape, missing task_id, empty proposed_changes
 
 ## Key Decisions
-- _extract_proposed_changes: state machine over known section headers — simple, no parser framework
-- Filename: {index:03d}_{safe_type}_{short_id}.txt — deterministic, collision-safe, readable
-- _sanitize_path_component: re.sub non-[a-zA-Z0-9_-] → _, truncate 48, strip _, fallback "unknown"
-- Ordering documented: annotate → materialize → save_job (materialize before persist)
+- Boundary check lives in runtime.write() — cannot be bypassed by callers skipping sanitization
+- RuntimeError on missing task_id matches existing annotate_task_result pattern
+- Field(min_length=1) symmetric with PlannerOutput.proposed_tasks (added Step 6)
+- No doc churn: architecture.md boundary concept already documented
 
 ## Branch
 feature/step6-workspace-runtime (PR #7) — in-scope per PR Continuity Rule

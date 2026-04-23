@@ -337,10 +337,19 @@ def materialize_task_output(
     short_id = result.task_id.hex[:8]
 
     # 0-based index in job.tasks — used for deterministic, collision-safe naming.
+    # Raises rather than falling back silently: a missing task_id here is an
+    # invariant violation (result.changed=True means a task was executed and
+    # must be present in job.tasks).
     task_index = next(
         (i for i, t in enumerate(result.job.tasks) if t.id == result.task_id),
-        0,
+        None,
     )
+    if task_index is None:
+        raise RuntimeError(
+            f"materialize_task_output: task_id={result.task_id} not found in "
+            f"job.tasks. This indicates a bug — result.task_id must always "
+            "correspond to a task in result.job."
+        )
 
     changes = _extract_proposed_changes(artifact.content)
 

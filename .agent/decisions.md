@@ -1,5 +1,29 @@
 # Decisions
 
+## 2026-04-23: Step 6.7 continues on feature/step6-workspace-runtime (PR #7)
+Runtime boundary hardening and final schema fixes are in-scope for PR #7 — same feature
+boundary (workspace runtime, materialization). Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-23: Workspace boundary check lives in runtime.write(), not only in callers
+_sanitize_path_component in task_runner.py removes traversal before forming relative_path,
+but callers could bypass it or a future caller could skip it entirely. Enforcing the check
+inside write() makes the runtime a safe boundary regardless of call site. Uses resolve() +
+is_relative_to() — two standard library calls, no sandbox framework.
+
+## 2026-04-23: Root stored as resolved Path in LocalWorkspaceRuntime.__init__
+Calling resolve() on the root at construction time ensures the is_relative_to() comparison
+is always against a canonical absolute path. Consistent regardless of env var or symlinks.
+
+## 2026-04-23: Missing task_id in materialize raises RuntimeError (not silent 0)
+The old fallback of next(..., 0) would silently mislabel an orphan task as index 0,
+producing a wrong filename. Like annotate_task_result, this is an invariant violation
+that must not be silently swallowed — raise RuntimeError with a diagnostic message.
+
+## 2026-04-23: BuilderOutput.proposed_changes min_length=1
+Symmetric with PlannerOutput.proposed_tasks (min_length=1). An empty proposed_changes
+produces an artifact with no content — useless and likely a provider bug. Rejected at
+the model boundary before reaching orchestration.
+
 ## 2026-04-23: Step 6.5 continues on feature/step6-workspace-runtime (PR #7)
 Workspace materialization hardening is in-scope for PR #7 — same feature boundary
 (workspace runtime, file materialization). Per Pull Request Continuity Rule, no new branch.
