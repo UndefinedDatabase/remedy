@@ -159,7 +159,7 @@ Task execution artifacts carry consistent metadata keys:
 | `role` | `annotate_task_result` |
 | `model` | `annotate_task_result` |
 | `elapsed_ms` | `annotate_task_result` |
-| `workspace_file` | `materialize_task_output` (absolute path of the materialized file) |
+| `workspace_file` | `materialize_task_output` (absolute path of the materialized file; deterministic, collision-safe name) |
 
 Planning artifacts carry: `summary`, `provider`, `role`, `model`, `task_count`, `elapsed_ms`.
 Legacy ambiguous keys (`"builder": "llm"`, `"planner": "llm"`) are not used.
@@ -187,7 +187,34 @@ orchestration/task_runner.py  ←  materialize_task_output(result, runtime)
 apps/cli/main.py  ←  creates runtime, calls materialize_task_output
 ```
 
-`materialize_task_output(result, runtime)` writes the builder's proposed changes to `task_output/<task_type>.txt` inside the workspace and records the absolute file path in the artifact's `workspace_file` metadata key. It is a no-op when `result.changed` is False.
+`materialize_task_output(result, runtime)` writes the builder's proposed changes to a task-specific file inside the workspace and records the absolute path in the artifact's `workspace_file` metadata key. It is a no-op when `result.changed` is False.
+
+### Workspace File Naming (Step 6.5)
+
+Materialized files are placed at `task_output/<index>_<safe_type>_<short_id>.txt` inside the job's workspace directory:
+
+- `<index>` — 0-based position of the task in `job.tasks`, zero-padded to 3 digits. Makes filenames ordered and collision-safe across tasks.
+- `<safe_type>` — `task_type` sanitized via `_sanitize_path_component`: non-`[a-zA-Z0-9_-]` characters replaced with `_`, truncated to 48 characters, leading/trailing underscores stripped. Falls back to `"unknown"` if empty after sanitization.
+- `<short_id>` — first 8 hex characters of the task UUID. Guarantees uniqueness even if two tasks share the same type and index (e.g. after a refactor).
+
+Properties:
+- **Collision-safe**: index + UUID fragment make every file unique even with duplicate `task_type` values.
+- **Deterministic**: same task always produces the same filename.
+- **Path-safe**: sanitization prevents traversal sequences, spaces, and other unsafe characters from flowing into file paths.
+
+### Materialization Content (Step 6.5)
+
+Only the **Proposed Changes** section of the builder artifact content is written to the workspace file. Notes and Risks sections are excluded. `_extract_proposed_changes` uses a simple section-aware state machine keyed on the known section headers (`"Proposed Changes:"`, `"Notes:"`, `"Risks:"`).
+
+### Materialization Ordering
+
+The conservative ordering used by the CLI:
+
+1. `annotate_task_result` — enriches artifact metadata in memory only
+2. `materialize_task_output` — writes workspace file; adds `workspace_file` path to artifact metadata in memory
+3. `save_job` — persists the job JSON (which now includes the `workspace_file` path)
+
+This ensures the workspace file exists before the job JSON records its path. If materialization fails, `save_job` must not be called — the caller (CLI) is responsible for this sequencing. If `save_job` fails after a successful materialization, re-running will overwrite the workspace file at the same deterministic path and then persist successfully.
 
 ### Planner Output Validation
 

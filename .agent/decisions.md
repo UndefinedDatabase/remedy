@@ -1,5 +1,28 @@
 # Decisions
 
+## 2026-04-23: Step 6.5 continues on feature/step6-workspace-runtime (PR #7)
+Workspace materialization hardening is in-scope for PR #7 — same feature boundary
+(workspace runtime, file materialization). Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-23: _extract_proposed_changes uses section-header state machine, not prefix-only
+Original approach grabbed all "  - " lines from artifact.content, mixing Notes and Risks
+into the Proposed Changes output. A simple state machine keyed on known section headers
+("Proposed Changes:", "Notes:", "Risks:") is correct and adds zero dependencies.
+
+## 2026-04-23: Filename = index + safe_type + short_id (not task_type alone)
+task_type alone is not collision-safe (two tasks can share a type) and is not path-safe
+(user-supplied, arbitrary string). Index ensures ordering; short_id (task UUID[:8]) ensures
+uniqueness. Format: {index:03d}_{safe_type}_{short_id}.txt. Readable and deterministic.
+
+## 2026-04-23: _sanitize_path_component is local to task_runner.py
+Only used by materialize_task_output. Keeping it local avoids premature abstraction.
+If workspace.py ever needs its own path policy, it can define one separately.
+
+## 2026-04-23: Materialization ordering documented, not enforced by transactions
+materialize → save_job is the conservative ordering. Documenting it in the docstring
+and architecture.md makes the contract explicit for future callers. No transaction
+mechanism is added — overkill for a local dev tool at this stage.
+
 ## 2026-04-23: Step 6 on new branch (feature/step6-workspace-runtime)
 Workspace runtime and file materialization have a different purpose (filesystem output)
 and review scope from Step 5/5.5 (execution hardening, context, metadata). New branch

@@ -24,15 +24,24 @@ State semantics:
   A partially-executed job (some tasks COMPLETED, some PENDING) remains RUNNING.
   Caller is responsible for persisting the returned job.
 
-Materialization (Step 6):
+Materialization (Step 6 + 6.5):
   materialize_task_output() writes the builder's proposed_changes and summary
   to a structured text file inside the workspace.  The workspace is managed
   by an injected runtime; this module never creates or accesses directories
   directly.
+
+  Hardening (Step 6.5):
+  - Section-aware extraction: only "Proposed Changes:" lines are written;
+    Notes and Risks are excluded even though they share the "  - " prefix.
+  - Collision-safe filenames: <index>_<safe_type>_<short_id>.txt ensures
+    every task produces a unique, deterministic filename.
+  - Path sanitization: task_type is sanitized before use in file paths to
+    prevent traversal and reject unsafe characters.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Callable
 from uuid import UUID
@@ -231,6 +240,54 @@ def annotate_task_result(
     )
 
 
+# Known section headers in the builder artifact content format.
+# Used by _extract_proposed_changes to detect section boundaries.
+_ARTIFACT_SECTION_HEADERS = frozenset({"Proposed Changes:", "Notes:", "Risks:"})
+
+# Characters allowed in a workspace path component.
+_SAFE_PATH_RE = re.compile(r"[^a-zA-Z0-9_-]")
+_MAX_PATH_COMPONENT_LENGTH = 48
+
+
+def _extract_proposed_changes(content: str) -> list[str]:
+    """Extract only the Proposed Changes lines from a builder artifact content string.
+
+    Parses the content section-by-section using the known section headers
+    ("Proposed Changes:", "Notes:", "Risks:"). Only lines under the
+    "Proposed Changes:" header are returned — Notes and Risks lines are
+    excluded even though they share the same "  - " prefix format.
+
+    Returns lines with their original "  - " prefix intact.
+    """
+    changes: list[str] = []
+    in_section = False
+    for line in content.splitlines():
+        if line == "Proposed Changes:":
+            in_section = True
+        elif line in _ARTIFACT_SECTION_HEADERS:
+            in_section = False
+        elif in_section and line.startswith("  - "):
+            changes.append(line)
+    return changes
+
+
+def _sanitize_path_component(value: str) -> str:
+    """Sanitize a string for safe use as a single workspace path component.
+
+    Replaces any character that is not alphanumeric, underscore, or hyphen
+    with an underscore. Truncates to _MAX_PATH_COMPONENT_LENGTH characters.
+    Strips leading/trailing underscores. Returns "unknown" if the result is
+    empty after sanitization.
+
+    This neutralizes path traversal sequences ("../", "/") because "." and "/"
+    are both replaced. It does not implement a general path policy — callers
+    must still pass the result as a single component, not a path.
+    """
+    sanitized = _SAFE_PATH_RE.sub("_", value)
+    sanitized = sanitized[:_MAX_PATH_COMPONENT_LENGTH].strip("_")
+    return sanitized or "unknown"
+
+
 def materialize_task_output(
     result: RunTaskResult,
     runtime: LocalWorkspaceRuntime,
@@ -238,17 +295,28 @@ def materialize_task_output(
     """Write the builder's proposed changes for the executed task to the workspace.
 
     Writes a structured text file at:
-        <workspace_root>/<job_id>/task_output/<task_type>.txt
+        <workspace_root>/<job_id>/task_output/<index>_<safe_type>_<short_id>.txt
 
-    The file contains the task summary and all proposed_changes lines.
+    where:
+        <index>      0-based position of the task in job.tasks, zero-padded to 3 digits
+        <safe_type>  task_type with unsafe characters replaced by underscores (max 48 chars)
+        <short_id>   first 8 hex characters of the task UUID
+
+    This naming is:
+        - collision-safe: index + task UUID fragment make every file unique
+        - deterministic: same task always produces the same filename
+        - path-safe: sanitized type prevents traversal; no raw user data in paths
+
+    Only lines from the "Proposed Changes:" section of the artifact content are
+    written — Notes and Risks lines are not included.
+
+    Materialization ordering:
+        annotate_task_result (in-memory) → materialize_task_output (disk write)
+        → save_job (persist job JSON). This order ensures the workspace file
+        exists before the job JSON records its path. If materialization fails,
+        save_job must not be called — the caller is responsible for this.
 
     No-op (returns None) if result.changed is False.
-
-    The file content mirrors the artifact stored in the job so that downstream
-    tools can read it from the filesystem without loading the full job JSON.
-
-    Returns the MaterializedFile describing what was written, or None if
-    result.changed is False.
     """
     if not result.changed or result.task_id is None:
         return None
@@ -265,20 +333,27 @@ def materialize_task_output(
 
     task_type = artifact.metadata.get("task_type", "unknown")
     summary = artifact.metadata.get("summary", "")
+    safe_type = _sanitize_path_component(task_type)
+    short_id = result.task_id.hex[:8]
+
+    # 0-based index in job.tasks — used for deterministic, collision-safe naming.
+    task_index = next(
+        (i for i, t in enumerate(result.job.tasks) if t.id == result.task_id),
+        0,
+    )
+
+    changes = _extract_proposed_changes(artifact.content)
 
     lines: list[str] = [
         f"Task Type: {task_type}",
         f"Summary:   {summary}",
         "",
         "Proposed Changes:",
+        *changes,
     ]
-    # Re-derive proposed_changes from the artifact content (lines starting with "  - ")
-    for line in artifact.content.splitlines():
-        if line.startswith("  - "):
-            lines.append(line)
 
     file_content = "\n".join(lines) + "\n"
-    relative_path = f"task_output/{task_type}.txt"
+    relative_path = f"task_output/{task_index:03d}_{safe_type}_{short_id}.txt"
     mf = runtime.write(relative_path, file_content)
 
     # Record the workspace file path in the artifact metadata.

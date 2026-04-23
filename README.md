@@ -241,26 +241,48 @@ The legacy `"builder": "llm"` and `"planner": "llm"` keys have been removed.
 
 This step does **not** modify project files, run commands, or apply patches. The builder returns structured output (`BuilderOutput`) describing *proposed* changes. Actual code modification is deferred to a later step involving Docker or a local runtime provider.
 
-## Step 6: First Runtime-Backed Workspace Execution
+## Step 6 + 6.5: Runtime-Backed Workspace Execution + Materialization Hardening
 
-Step 6 introduces a local workspace runtime that materializes builder output as real files on disk. Each job now gets its own workspace directory under `.data/workspaces/<job_id>/`.
+Step 6 introduces a local workspace runtime that materializes builder output as real files on disk. Each job now gets its own workspace directory under `.data/workspaces/<job_id>/`. Step 6.5 hardens the materialization layer for correctness and safety.
 
 - **`packages/orchestration/workspace.py`** — `Workspace`, `MaterializedFile`, `LocalWorkspaceRuntime`: local filesystem-backed runtime; `write(relative_path, content)` creates dirs and writes UTF-8 files; storage location follows the same `REMEDY_DATA_DIR` resolution as `storage.py`
-- **`packages/orchestration/task_runner.py`** — `materialize_task_output(result, runtime)`: writes the builder's proposed changes to `task_output/<task_type>.txt` inside the workspace and records the file path in the artifact metadata
+- **`packages/orchestration/task_runner.py`** — `materialize_task_output(result, runtime)`: writes the builder's proposed changes into a workspace file and records the file path in the artifact metadata; `_extract_proposed_changes` and `_sanitize_path_component` are helper functions that power the hardened implementation
 - **`packages/orchestration/planner_models.py`** — `PlannerOutput.proposed_tasks` now requires at least 1 task (`min_length=1`); empty task lists are rejected at validation time
 - **`apps/cli/main.py`** — `run-next-task-local` now creates a workspace, materializes the task output, and prints the file path
 
 ### What materialization means
 
-After each task executes, the builder's `proposed_changes` and `summary` are written to a text file in the workspace. This is the first time builder output becomes a physical file on disk — not just a JSON artifact in the job file.
-
-The workspace file path is also recorded in the artifact's metadata (`workspace_file` key) so it can be found without re-deriving the path.
+After each task executes, the builder's `proposed_changes` and `summary` are written to a text file in the workspace. The workspace file path is recorded in the artifact's `workspace_file` metadata key.
 
 ```bash
 # Execute a task and materialize its output
 remedy run-next-task-local <job_id>
-# → Job <id> | task=<task-id> type=write_code role=builder model=... elapsed=1820ms remaining=2 file=/path/to/.data/workspaces/<job_id>/task_output/write_code.txt
+# → Job <id> | task=<task-id> type=write_code role=builder model=... elapsed=1820ms remaining=2 file=/path/to/.data/workspaces/<job_id>/task_output/000_write_code_1a2b3c4d.txt
 ```
+
+### Workspace file naming (Step 6.5)
+
+Each materialized file is named `<index>_<safe_type>_<short_id>.txt` inside `task_output/`:
+
+| Component | Description |
+|-----------|-------------|
+| `<index>` | 0-based position of the task in job.tasks, zero-padded to 3 digits |
+| `<safe_type>` | task_type with unsafe characters replaced by `_` (max 48 chars) |
+| `<short_id>` | first 8 hex characters of the task UUID |
+
+This naming is **collision-safe** (two tasks with the same `task_type` always produce different filenames), **deterministic** (same task always produces the same filename), and **path-safe** (no traversal sequences, no raw user data in paths).
+
+Only the **Proposed Changes** section of the builder output is written to the file — Notes and Risks are excluded.
+
+### Materialization ordering
+
+The CLI follows this sequence after `run_next_task`:
+
+1. `annotate_task_result` — enriches artifact metadata in memory
+2. `materialize_task_output` — writes workspace file; adds `workspace_file` path to artifact metadata
+3. `save_job` — persists the job JSON (which now includes the `workspace_file` path)
+
+This ordering ensures the workspace file exists before the job JSON records its path. If materialization fails, `save_job` is not called.
 
 ### Workspace storage
 
