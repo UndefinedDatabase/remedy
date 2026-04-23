@@ -159,6 +159,7 @@ Task execution artifacts carry consistent metadata keys:
 | `role` | `annotate_task_result` |
 | `model` | `annotate_task_result` |
 | `elapsed_ms` | `annotate_task_result` |
+| `workspace_file` | `materialize_task_output` (absolute path of the materialized file) |
 
 Planning artifacts carry: `summary`, `provider`, `role`, `model`, `task_count`, `elapsed_ms`.
 Legacy ambiguous keys (`"builder": "llm"`, `"planner": "llm"`) are not used.
@@ -170,11 +171,27 @@ If a planner returns duplicate `task_type` values (e.g. two tasks both typed
 to subsequent occurrences. This prevents downstream execution from confusing two
 semantically different tasks with the same identifier.
 
-### Step 5 Pre-execution Limitation
+### Workspace Runtime
 
-The builder callable returns structured output (`BuilderOutput`) describing *proposed*
-changes — it does not modify project files or execute commands. Actual code modification
-requires a runtime provider (Docker, local shell) and is deferred to Step 6+.
+`packages/orchestration/workspace.py` provides the `LocalWorkspaceRuntime`, which is the first concrete runtime implementation.
+
+Each job gets a dedicated directory: `<workspace_root>/<job_id>/`. The workspace root defaults to `<repo_root>/.data/workspaces/` and follows the same `REMEDY_DATA_DIR` resolution logic as `storage.py`.
+
+The runtime is **injected** into orchestration functions — it is never imported directly by providers. This allows future runtime implementations (Docker sandbox, remote) to be swapped in without changing orchestration logic.
+
+```
+orchestration/workspace.py  ←  Workspace, MaterializedFile, LocalWorkspaceRuntime
+         ↑
+orchestration/task_runner.py  ←  materialize_task_output(result, runtime)
+         ↑
+apps/cli/main.py  ←  creates runtime, calls materialize_task_output
+```
+
+`materialize_task_output(result, runtime)` writes the builder's proposed changes to `task_output/<task_type>.txt` inside the workspace and records the absolute file path in the artifact's `workspace_file` metadata key. It is a no-op when `result.changed` is False.
+
+### Planner Output Validation
+
+`PlannerOutput.proposed_tasks` requires at least one entry (`Field(min_length=1)`). A plan with zero tasks is invalid and rejected at the model boundary before reaching orchestration.
 
 ### Concrete Providers
 

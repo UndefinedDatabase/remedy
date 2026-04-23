@@ -241,11 +241,43 @@ The legacy `"builder": "llm"` and `"planner": "llm"` keys have been removed.
 
 This step does **not** modify project files, run commands, or apply patches. The builder returns structured output (`BuilderOutput`) describing *proposed* changes. Actual code modification is deferred to a later step involving Docker or a local runtime provider.
 
+## Step 6: First Runtime-Backed Workspace Execution
+
+Step 6 introduces a local workspace runtime that materializes builder output as real files on disk. Each job now gets its own workspace directory under `.data/workspaces/<job_id>/`.
+
+- **`packages/orchestration/workspace.py`** — `Workspace`, `MaterializedFile`, `LocalWorkspaceRuntime`: local filesystem-backed runtime; `write(relative_path, content)` creates dirs and writes UTF-8 files; storage location follows the same `REMEDY_DATA_DIR` resolution as `storage.py`
+- **`packages/orchestration/task_runner.py`** — `materialize_task_output(result, runtime)`: writes the builder's proposed changes to `task_output/<task_type>.txt` inside the workspace and records the file path in the artifact metadata
+- **`packages/orchestration/planner_models.py`** — `PlannerOutput.proposed_tasks` now requires at least 1 task (`min_length=1`); empty task lists are rejected at validation time
+- **`apps/cli/main.py`** — `run-next-task-local` now creates a workspace, materializes the task output, and prints the file path
+
+### What materialization means
+
+After each task executes, the builder's `proposed_changes` and `summary` are written to a text file in the workspace. This is the first time builder output becomes a physical file on disk — not just a JSON artifact in the job file.
+
+The workspace file path is also recorded in the artifact's metadata (`workspace_file` key) so it can be found without re-deriving the path.
+
+```bash
+# Execute a task and materialize its output
+remedy run-next-task-local <job_id>
+# → Job <id> | task=<task-id> type=write_code role=builder model=... elapsed=1820ms remaining=2 file=/path/to/.data/workspaces/<job_id>/task_output/write_code.txt
+```
+
+### Workspace storage
+
+By default, workspaces are stored at `<repo_root>/.data/workspaces/<job_id>/`.
+The same `REMEDY_DATA_DIR` env var controls the base location:
+
+```bash
+REMEDY_DATA_DIR=/tmp/remedy remedy run-next-task-local <job_id>
+# → workspace at /tmp/remedy/workspaces/<job_id>/
+```
+
 ## What Is NOT Implemented Yet
 
-- Actual code/file modification (Docker execution deferred to Step 6+)
+- Code/file modification via patches or diffs (builder output is structured prose, not patches)
 - Agent loops (auto-advance through all tasks)
 - Provider implementations (Claude, MemPalace)
+- Docker or sandboxed runtime execution
 - Configuration system
 - API and worker apps
 
@@ -256,7 +288,7 @@ apps/           # Runnable applications (api, worker, cli)
 packages/
   core/         # Domain models
   contracts/    # Protocol interfaces
-  orchestration/# job_runner, task_runner, storage, builder_models, planner_models
+  orchestration/# job_runner, task_runner, storage, builder_models, planner_models, workspace
   memory/       # (future) memory management
   runtimes/     # (future) runtime abstractions
   verification/ # (future) artifact verification

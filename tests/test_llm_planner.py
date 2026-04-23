@@ -201,8 +201,9 @@ def test_plan_job_with_llm_propagates_provider_exceptions():
 # ---------------------------------------------------------------------------
 
 def test_planner_output_requires_summary():
+    task = ProposedTask(task_type="do_something", description="Do it.")
     with pytest.raises(ValidationError):
-        PlannerOutput(proposed_tasks=[])  # type: ignore[call-arg]
+        PlannerOutput(proposed_tasks=[task])  # type: ignore[call-arg]
 
 
 def test_planner_output_requires_proposed_tasks():
@@ -211,9 +212,15 @@ def test_planner_output_requires_proposed_tasks():
 
 
 def test_planner_output_optional_fields_default_empty():
-    output = PlannerOutput(summary="ok", proposed_tasks=[])
+    task = ProposedTask(task_type="do_something", description="Do it.")
+    output = PlannerOutput(summary="ok", proposed_tasks=[task])
     assert output.acceptance_checks == []
     assert output.notes == []
+
+
+def test_planner_output_rejects_empty_proposed_tasks():
+    with pytest.raises(ValidationError):
+        PlannerOutput(summary="ok", proposed_tasks=[])
 
 
 # ---------------------------------------------------------------------------

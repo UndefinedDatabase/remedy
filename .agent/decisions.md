@@ -1,5 +1,29 @@
 # Decisions
 
+## 2026-04-23: Step 6 on new branch (feature/step6-workspace-runtime)
+Workspace runtime and file materialization have a different purpose (filesystem output)
+and review scope from Step 5/5.5 (execution hardening, context, metadata). New branch
+created from main after PR #6 merged.
+
+## 2026-04-23: materialize_task_output re-derives proposed_changes from artifact content
+The builder's proposed_changes are already serialized into artifact.content (lines starting
+with "  - "). Re-parsing artifact.content avoids storing proposed_changes redundantly in
+metadata or changing RunTaskResult/BuilderOutput signatures. Simple and zero-schema-change.
+
+## 2026-04-23: workspace_file metadata key records absolute path
+Stored as str (not Path) since Pydantic artifact metadata is dict[str, Any] and str
+is unambiguous across platforms. Callers can convert to Path as needed.
+
+## 2026-04-23: LocalWorkspaceRuntime is injected, not instantiated in orchestration
+runtime.write() is the only filesystem operation in task_runner.py. Injecting the runtime
+keeps orchestration testable and swappable — a future Docker or sandboxed runtime can
+drop in with no orchestration changes.
+
+## 2026-04-23: PlannerOutput.proposed_tasks min_length=1
+An empty proposed_tasks list produces an unrunnable job with zero tasks. Rejected at the
+model boundary before reaching orchestration. Symmetric with BuilderOutput.proposed_changes
+min_length=1 (added in Step 5.7).
+
 ## 2026-04-22: Step 5.5 continues on feature/step5-task-execution (PR #6)
 Execution hardening (failure rollback, richer context, metadata cleanup) is in-scope
 for the same feature boundary as Step 5 (task execution). Per Pull Request

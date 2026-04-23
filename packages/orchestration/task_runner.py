@@ -2,7 +2,8 @@
 Single-task execution orchestration.
 
 Provides run_next_task() which executes exactly one pending task per call
-using an injected builder callable.
+using an injected builder callable, and materialize_task_output() which
+writes the builder's proposed changes into a workspace file.
 
 State semantics:
   Job transitions:
@@ -23,10 +24,11 @@ State semantics:
   A partially-executed job (some tasks COMPLETED, some PENDING) remains RUNNING.
   Caller is responsible for persisting the returned job.
 
-Pre-execution note (Step 5):
-  This step does NOT perform filesystem edits, command execution, or patch
-  application. The builder callable returns structured output describing
-  proposed changes; actual code modification is deferred to a later step.
+Materialization (Step 6):
+  materialize_task_output() writes the builder's proposed_changes and summary
+  to a structured text file inside the workspace.  The workspace is managed
+  by an injected runtime; this module never creates or accesses directories
+  directly.
 """
 
 from __future__ import annotations
@@ -37,6 +39,7 @@ from uuid import UUID
 
 from packages.core.models import Artifact, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
 
 
 @dataclass
@@ -226,3 +229,59 @@ def annotate_task_result(
             "elapsed_ms": round(elapsed_ms),
         }
     )
+
+
+def materialize_task_output(
+    result: RunTaskResult,
+    runtime: LocalWorkspaceRuntime,
+) -> MaterializedFile | None:
+    """Write the builder's proposed changes for the executed task to the workspace.
+
+    Writes a structured text file at:
+        <workspace_root>/<job_id>/task_output/<task_type>.txt
+
+    The file contains the task summary and all proposed_changes lines.
+
+    No-op (returns None) if result.changed is False.
+
+    The file content mirrors the artifact stored in the job so that downstream
+    tools can read it from the filesystem without loading the full job JSON.
+
+    Returns the MaterializedFile describing what was written, or None if
+    result.changed is False.
+    """
+    if not result.changed or result.task_id is None:
+        return None
+
+    artifact = next(
+        (a for a in result.job.artifacts if a.task_id == result.task_id),
+        None,
+    )
+    if artifact is None:
+        raise RuntimeError(
+            f"materialize_task_output: result.changed=True but no artifact found for "
+            f"task_id={result.task_id}. This indicates a bug in run_next_task."
+        )
+
+    task_type = artifact.metadata.get("task_type", "unknown")
+    summary = artifact.metadata.get("summary", "")
+
+    lines: list[str] = [
+        f"Task Type: {task_type}",
+        f"Summary:   {summary}",
+        "",
+        "Proposed Changes:",
+    ]
+    # Re-derive proposed_changes from the artifact content (lines starting with "  - ")
+    for line in artifact.content.splitlines():
+        if line.startswith("  - "):
+            lines.append(line)
+
+    file_content = "\n".join(lines) + "\n"
+    relative_path = f"task_output/{task_type}.txt"
+    mf = runtime.write(relative_path, file_content)
+
+    # Record the workspace file path in the artifact metadata.
+    artifact.metadata["workspace_file"] = str(mf.path)
+
+    return mf
