@@ -1,5 +1,34 @@
 # Decisions
 
+## 2026-04-24: Step 7 continues on feature/step6-workspace-runtime (PR #7)
+Step 7 (verifier gate) is in-scope for the same PR. The workspace runtime branch
+encompasses: workspace creation, materialization hardening, runtime boundary safety, and
+now the verifier gate. All are part of the same "safe task execution" feature progression.
+Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-24: verify_task_output is pure; finalize_task handles mutation
+Separating the pure check from the state mutation makes verify_task_output testable
+in isolation and composable — callers can inspect the VerificationResult before deciding
+whether to finalize. This mirrors the annotate_* pattern established in Step 5.5.
+
+## 2026-04-24: No FAILED task state in Step 7
+Verification failure rolls the task back to PENDING rather than introducing a FAILED state.
+Reasons: keeps the state machine simple; PENDING tasks are retryable without extra tooling;
+FAILED would require additional handling in the CLI and sequencing logic. FAILED can be
+introduced in a later step if retry exhaustion or terminal failure semantics are needed.
+
+## 2026-04-24: TaskContract Pydantic model — all flags True by default
+Step 7 always runs all checks. The model exists to name the concept and reserve space for
+per-task contract customization (e.g. skip workspace checks for tasks that don't materialize).
+Using a Pydantic model rather than a bool parameter keeps the interface stable as new checks
+are added.
+
+## 2026-04-24: test_context_includes_prior_task_summaries rewritten to set state directly
+With the verifier gate, tasks stay RUNNING after run_next_task — they no longer appear as
+"prior completed tasks". The test was rewritten to manually set tasks 0 and 1 to COMPLETED
+with artifacts, isolating _build_execution_context from the full execution+verification flow.
+This is cleaner and more focused on what the test actually verifies.
+
 ## 2026-04-23: Step 6.7 continues on feature/step6-workspace-runtime (PR #7)
 Runtime boundary hardening and final schema fixes are in-scope for PR #7 — same feature
 boundary (workspace runtime, materialization). Per Pull Request Continuity Rule, no new branch.

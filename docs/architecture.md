@@ -128,24 +128,27 @@ Generation parameters follow the same pattern per role:
 These are passed to Ollama only when set; unset means the model's defaults apply.
 Env var parsing errors name the offending variable in the error message.
 
-### Execution State Semantics
+### Execution State Semantics (Step 7 — verifier gate)
 
-`run_next_task` drives job state as follows:
+`run_next_task` sets the task to `RUNNING` and produces an artifact, but does **not**
+mark the task `COMPLETED`. Task completion requires the full verification sequence:
 
 | Event | Job state | Task state |
 |-------|-----------|------------|
 | Pending task found, execution begins | `RUNNING` | `RUNNING` |
-| Task execution succeeds | `RUNNING` (if more pending) | `COMPLETED` |
-| Last task completes | `COMPLETED` | `COMPLETED` |
+| Builder succeeds (artifact created) | `RUNNING` | `RUNNING` (stays) |
+| `verify_task_output` passes, `finalize_task` called | `RUNNING` (if pending remain) | `COMPLETED` |
+| `finalize_task` on last task | `COMPLETED` | `COMPLETED` |
 | No pending task found | unchanged | unchanged |
 | Builder fails | restored to pre-call value | `PENDING` (rolled back) |
+| Verification fails, `finalize_task` called | `RUNNING` | `PENDING` (rolled back) |
 
 A partially-executed job (some tasks `COMPLETED`, some `PENDING`) remains `RUNNING`.
-`run_next_task` advances one task per call; the CLI loop is the caller's responsibility.
+Verification failure records diagnostic metadata in the artifact and rolls the task
+back to `PENDING` — retryable by re-running the command.
 
-**Failure rollback**: if the builder callable raises, the task is rolled back to `PENDING`
-and `job.state` is restored to its value before the call. The exception propagates to
-the caller with no retry. This ensures the job can be re-attempted cleanly.
+**Failure rollback**: builder exceptions roll back task to `PENDING` and restore `job.state`.
+Verification failures do the same via `finalize_task` — no exception raised, no stranded state.
 
 ### Artifact Metadata Conventions
 
@@ -160,6 +163,8 @@ Task execution artifacts carry consistent metadata keys:
 | `model` | `annotate_task_result` |
 | `elapsed_ms` | `annotate_task_result` |
 | `workspace_file` | `materialize_task_output` (absolute path of the materialized file; deterministic, collision-safe name) |
+| `verification_passed` | `finalize_task` — present only on verification failure; value `False` |
+| `verification_failures` | `finalize_task` — list of `"check: message"` strings on failure |
 
 Planning artifacts carry: `summary`, `provider`, `role`, `model`, `task_count`, `elapsed_ms`.
 Legacy ambiguous keys (`"builder": "llm"`, `"planner": "llm"`) are not used.
@@ -206,15 +211,48 @@ Properties:
 
 Only the **Proposed Changes** section of the builder artifact content is written to the workspace file. Notes and Risks sections are excluded. `_extract_proposed_changes` uses a simple section-aware state machine keyed on the known section headers (`"Proposed Changes:"`, `"Notes:"`, `"Risks:"`).
 
-### Materialization Ordering
+### Materialization and Verification Ordering (Step 7)
 
 The conservative ordering used by the CLI:
 
 1. `annotate_task_result` — enriches artifact metadata in memory only
 2. `materialize_task_output` — writes workspace file; adds `workspace_file` path to artifact metadata in memory
-3. `save_job` — persists the job JSON (which now includes the `workspace_file` path)
+3. `verify_task_output` — pure check; reads artifact and workspace file; returns `VerificationResult` without mutating state
+4. `finalize_task` — applies the result: `COMPLETED` on pass, `PENDING` + metadata on failure
+5. `save_job` — persists the authoritative post-verification job state
 
-This ensures the workspace file exists before the job JSON records its path. If materialization fails, `save_job` must not be called — the caller (CLI) is responsible for this sequencing. If `save_job` fails after a successful materialization, re-running will overwrite the workspace file at the same deterministic path and then persist successfully.
+`verify_task_output` is pure — it does not mutate the job. `finalize_task` is the only
+function that transitions a task from `RUNNING` to `COMPLETED` or `PENDING`. Saving
+after finalization ensures the persisted state is always authoritative.
+
+### Task Contract v1 and Verifier Gate
+
+`packages/orchestration/verifier.py` defines the first explicit task contract.
+
+**`TaskContract`** — a minimal Pydantic model capturing which checks are required:
+- `require_artifact`: task must produce an artifact with a matching task_id
+- `require_workspace_file`: artifact must record a valid, non-empty workspace file
+- `require_proposed_changes`: workspace file must contain at least one `  - ` line
+
+All fields default to `True`. Step 7 always runs all checks. The model reserves space
+for per-task contract customization in a future step.
+
+**`verify_task_output(job, task_id)`** — 7 deterministic checks, all local-only:
+
+| Check | What it verifies |
+|-------|-----------------|
+| `has_output_artifact` | `task.output_artifact_ids` is non-empty |
+| `artifact_exists` | the first artifact ID resolves in `job.artifacts` |
+| `artifact_task_id_matches` | `artifact.task_id == task.id` |
+| `workspace_file_in_metadata` | `"workspace_file"` key present in artifact metadata |
+| `workspace_file_exists` | the recorded path exists on disk |
+| `workspace_file_not_empty` | file size > 0 bytes |
+| `has_proposed_change` | at least one line starting with `"  - "` in the file |
+
+Early return: if a check fails in a way that makes the next check meaningless (e.g.
+artifact is None), the function returns immediately with the accumulated failures rather
+than raising. All checks that ran are always included in the `VerificationResult.checks`
+list.
 
 ### Planner Output Validation
 

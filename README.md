@@ -199,18 +199,19 @@ the offending variable if the value is not parseable (e.g. `REMEDY_OLLAMA_BUILDE
 | Transition | When |
 |------------|------|
 | `planned` → `running` | First pending task starts executing |
-| `running` → `completed` | All tasks have been executed |
-| Stays `running` | Some tasks completed, others still pending |
+| Task `running` → `completed` | Builder succeeds AND verifier passes |
+| `running` → `completed` (job) | All tasks are `completed` |
+| Stays `running` | Some tasks completed, others pending |
 | Unchanged | Builder failure: task rolls back to `pending`, job state restored |
+| Task `running` → `pending` | Verification failed: rolled back, retryable |
 
 **Important**: `run-next-task-local` advances one task per call. Run it repeatedly to
 fully execute a planned job.
 
 **Failure behavior**: if the builder fails (network error, validation error, etc.), the
-task is rolled back to `pending` and the job state is restored to its value before the
-call. The job can be re-attempted cleanly. Errors are reported in the CLI with a concise
-message distinguishing missing-dependency, configuration, invalid-output, and general
-execution failures.
+task is rolled back to `pending` and the job state is restored. If verification fails,
+the task is also rolled back to `pending` and failure details are recorded in the
+artifact metadata. Errors are reported in the CLI with a concise message.
 
 ### What the builder receives (TaskExecutionContext)
 
@@ -274,15 +275,18 @@ This naming is **collision-safe** (two tasks with the same `task_type` always pr
 
 Only the **Proposed Changes** section of the builder output is written to the file — Notes and Risks are excluded.
 
-### Materialization ordering
+### Materialization and verification ordering
 
-The CLI follows this sequence after `run_next_task`:
+The CLI follows this sequence after `run_next_task` (Step 7 — verifier gate):
 
 1. `annotate_task_result` — enriches artifact metadata in memory
 2. `materialize_task_output` — writes workspace file; adds `workspace_file` path to artifact metadata
-3. `save_job` — persists the job JSON (which now includes the `workspace_file` path)
+3. `verify_task_output` — runs Task Contract v1 checks (deterministic, local-only)
+4. `finalize_task` — marks task `COMPLETED` on pass; rolls back to `PENDING` on failure
+5. `save_job` — persists the authoritative post-verification job state
 
-This ordering ensures the workspace file exists before the job JSON records its path. If materialization fails, `save_job` is not called.
+A task is only marked `COMPLETED` after verification passes. On verification failure the
+task is retryable — run the command again to re-attempt it.
 
 ### Workspace storage
 
@@ -294,12 +298,56 @@ REMEDY_DATA_DIR=/tmp/remedy remedy run-next-task-local <job_id>
 # → workspace at /tmp/remedy/workspaces/<job_id>/
 ```
 
+## Step 7: Task Contract v1 and Verifier Gate
+
+Step 7 introduces a mandatory verification step between builder execution and task completion. A builder producing output is no longer sufficient — verification must pass for a task to reach `completed`.
+
+- **`packages/orchestration/verifier.py`** — `TaskContract` (minimal model describing required outputs), `VerificationCheckResult`, `VerificationResult`, `verify_task_output(job, task_id)`: 7 deterministic, local-only checks
+- **`packages/orchestration/task_runner.py`** — `finalize_task(result, vr)`: applies a `VerificationResult` to task/job state; `run_next_task` no longer marks tasks `COMPLETED`
+- **`apps/cli/main.py`** — `run-next-task-local` now runs verify + finalize and reports `verified=pass` or `verified=FAIL`
+
+### Task Contract v1 checks
+
+All checks are deterministic and local-only — no LLM, no shell, no network:
+
+| # | Check | Failure |
+|---|-------|---------|
+| 1 | Task has at least one `output_artifact_id` | Builder produced no artifact |
+| 2 | Referenced artifact exists in `job.artifacts` | Artifact ID is dangling |
+| 3 | `artifact.task_id` matches `task.id` | Artifact is from the wrong task |
+| 4 | Artifact metadata contains `workspace_file` key | Materialization was skipped |
+| 5 | Workspace file exists on disk | File was not written or was deleted |
+| 6 | Workspace file is not empty | File is 0 bytes |
+| 7 | File contains at least one proposed change line | No `  - ` lines in the file |
+
+### Verification failure behavior
+
+If any check fails:
+- Task is rolled back to `pending` (safe to retry)
+- Failure details are recorded in `artifact.metadata["verification_failures"]`
+- The CLI prints a per-failure message to stderr
+- The job state is `running` and retryable — no new task is needed
+
+### run-next-task-local output (Step 7)
+
+```bash
+remedy run-next-task-local <job_id>
+# verified pass:
+# → Job <id> | task=<task-id> type=write_code role=builder model=... elapsed=1820ms remaining=2 file=/path/to/file verified=pass
+
+# verified fail:
+# → Job <id> | task=<task-id> type=write_code role=builder model=... elapsed=1820ms remaining=1 verified=FAIL(1 check(s))
+#   verification failure: workspace_file_not_empty: workspace file is empty: /path/to/file
+```
+
 ## What Is NOT Implemented Yet
 
 - Code/file modification via patches or diffs (builder output is structured prose, not patches)
 - Agent loops (auto-advance through all tasks)
 - Provider implementations (Claude, MemPalace)
 - Docker or sandboxed runtime execution
+- LLM-backed verification or review
+- Target repository integration
 - Configuration system
 - API and worker apps
 
