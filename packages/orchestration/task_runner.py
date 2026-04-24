@@ -258,8 +258,12 @@ def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
 
     If not vr.passed:
       task -> PENDING (rolled back from RUNNING, safe to retry)
+      task.output_artifact_ids is cleared — the failed artifact ID is removed
+        so a subsequent run_next_task + verify cycle uses a fresh artifact, not
+        the stale failed one. The failed artifact is kept in job.artifacts for
+        diagnostics; it is simply no longer referenced by the task.
       failure details recorded in artifact.metadata under 'verification_passed'
-      and 'verification_failures'
+        and 'verification_failures'
 
     No-op if result.changed is False.
 
@@ -287,6 +291,10 @@ def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
             result.job.state = RunState.COMPLETED
     else:
         task.status = RunState.PENDING
+        # Clear the stale artifact reference so retry verification uses the new
+        # artifact produced by the next run_next_task call, not this failed one.
+        # The failed artifact stays in job.artifacts for diagnostics.
+        task.output_artifact_ids.clear()
         # Record failure details in artifact metadata for diagnostics.
         artifact = next(
             (a for a in result.job.artifacts if a.task_id == result.task_id),
@@ -380,35 +388,46 @@ def materialize_task_output(
     if not result.changed or result.task_id is None:
         return None
 
+    # Locate the task by ID — needed for both index (filename) and artifact lookup.
+    # Raises rather than falling back silently: a missing task_id here is an
+    # invariant violation (result.changed=True means a task was executed and
+    # must be present in job.tasks).
+    task_index, task_obj = next(
+        ((i, t) for i, t in enumerate(result.job.tasks) if t.id == result.task_id),
+        (None, None),
+    )
+    if task_obj is None:
+        raise RuntimeError(
+            f"materialize_task_output: task_id={result.task_id} not found in "
+            f"job.tasks. This indicates a bug — result.task_id must always "
+            "correspond to a task in result.job."
+        )
+
+    # Look up the artifact via task.output_artifact_ids[0] rather than scanning
+    # job.artifacts by task_id. This ensures that after a verification failure +
+    # retry, the NEW artifact (not a stale failed one) is materialized — stale
+    # artifacts remain in job.artifacts for diagnostics but are no longer
+    # referenced by the task after finalize_task clears output_artifact_ids.
+    if not task_obj.output_artifact_ids:
+        raise RuntimeError(
+            f"materialize_task_output: task_id={result.task_id} has no "
+            "output_artifact_ids. This indicates a bug in run_next_task."
+        )
+    artifact_id = task_obj.output_artifact_ids[0]
     artifact = next(
-        (a for a in result.job.artifacts if a.task_id == result.task_id),
+        (a for a in result.job.artifacts if a.id == artifact_id),
         None,
     )
     if artifact is None:
         raise RuntimeError(
-            f"materialize_task_output: result.changed=True but no artifact found for "
-            f"task_id={result.task_id}. This indicates a bug in run_next_task."
+            f"materialize_task_output: artifact {artifact_id} not found in "
+            f"job.artifacts. This indicates a bug in run_next_task."
         )
 
     task_type = artifact.metadata.get("task_type", "unknown")
     summary = artifact.metadata.get("summary", "")
     safe_type = _sanitize_path_component(task_type)
     short_id = result.task_id.hex[:8]
-
-    # 0-based index in job.tasks — used for deterministic, collision-safe naming.
-    # Raises rather than falling back silently: a missing task_id here is an
-    # invariant violation (result.changed=True means a task was executed and
-    # must be present in job.tasks).
-    task_index = next(
-        (i for i, t in enumerate(result.job.tasks) if t.id == result.task_id),
-        None,
-    )
-    if task_index is None:
-        raise RuntimeError(
-            f"materialize_task_output: task_id={result.task_id} not found in "
-            f"job.tasks. This indicates a bug — result.task_id must always "
-            "correspond to a task in result.job."
-        )
 
     changes = _extract_proposed_changes(artifact.content)
 

@@ -207,6 +207,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     if not vr.passed:
         for failure in vr.failures:
             print(f"  verification failure: {failure.check}: {failure.message}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main() -> None:

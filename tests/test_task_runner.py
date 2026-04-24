@@ -473,6 +473,29 @@ def test_finalize_task_rolls_back_to_pending_on_failure():
     assert job.tasks[0].status == RunState.PENDING
 
 
+def test_finalize_task_clears_output_artifact_ids_on_failure():
+    """Retry safety: failed artifact ID must not remain in task.output_artifact_ids."""
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    assert len(job.tasks[0].output_artifact_ids) == 1
+
+    finalize_task(result, _failing_vr(result.task_id, "workspace file missing"))
+
+    assert job.tasks[0].output_artifact_ids == []
+
+
+def test_finalize_task_failed_artifact_remains_in_job_artifacts():
+    """Failed artifact is kept in job.artifacts for diagnostics — only the task ref is cleared."""
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    failed_artifact_id = job.tasks[0].output_artifact_ids[0]
+
+    finalize_task(result, _failing_vr(result.task_id, "workspace file missing"))
+
+    # Artifact stays in job.artifacts even though task no longer references it
+    assert any(a.id == failed_artifact_id for a in job.artifacts)
+
+
 def test_finalize_task_records_failure_in_artifact_metadata():
     job = _make_job(1)
     result = run_next_task(job, _stub_builder)
@@ -483,6 +506,33 @@ def test_finalize_task_records_failure_in_artifact_metadata():
     assert any(
         "workspace_file missing" in f for f in artifact.metadata["verification_failures"]
     )
+
+
+def test_retry_after_failure_uses_new_artifact_not_stale():
+    """After a failed verification, the next run_next_task creates a fresh artifact.
+
+    The verifier must check that new artifact, not the stale failed one.
+    """
+    job = _make_job(1)
+
+    # First attempt: fails verification
+    result1 = run_next_task(job, _stub_builder)
+    stale_artifact_id = job.tasks[0].output_artifact_ids[0]
+    finalize_task(result1, _failing_vr(result1.task_id, "workspace file missing"))
+
+    # Task is PENDING again; output_artifact_ids is empty
+    assert job.tasks[0].status == RunState.PENDING
+    assert job.tasks[0].output_artifact_ids == []
+
+    # Second attempt: builder runs again
+    result2 = run_next_task(job, _stub_builder)
+    new_artifact_id = job.tasks[0].output_artifact_ids[0]
+
+    # The new artifact is different from the stale one
+    assert new_artifact_id != stale_artifact_id
+    # The task now references only the new artifact
+    assert len(job.tasks[0].output_artifact_ids) == 1
+    assert job.tasks[0].output_artifact_ids[0] == new_artifact_id
 
 
 def test_finalize_task_no_op_when_not_changed():

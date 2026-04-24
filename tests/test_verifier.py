@@ -338,3 +338,55 @@ def test_failed_verification_records_failures_in_artifact_metadata(tmp_path, mon
     assert artifact.metadata["verification_passed"] is False
     assert isinstance(artifact.metadata["verification_failures"], list)
     assert len(artifact.metadata["verification_failures"]) > 0
+
+
+def test_failed_verification_clears_output_artifact_ids(tmp_path, monkeypatch):
+    """Retry safety: finalize_task clears output_artifact_ids on failure."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    job = _make_planned_job()
+    result = run_next_task(job, _stub_builder)
+    assert len(job.tasks[0].output_artifact_ids) == 1
+
+    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
+
+    vr = verify_task_output(result.job, result.task_id)
+    finalize_task(result, vr)
+
+    assert job.tasks[0].output_artifact_ids == []
+
+
+def test_retry_verify_uses_new_artifact_not_stale(tmp_path, monkeypatch):
+    """Full retry cycle: second build produces a new artifact; verify sees only it."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    job = _make_planned_job()
+
+    # First attempt: verification fails (point workspace_file at non-existent path)
+    result1 = run_next_task(job, _stub_builder)
+    stale_artifact_id = job.tasks[0].output_artifact_ids[0]
+    artifact1 = next(a for a in job.artifacts if a.task_id == result1.task_id)
+    artifact1.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
+    vr1 = verify_task_output(result1.job, result1.task_id)
+    assert vr1.passed is False
+    finalize_task(result1, vr1)
+    assert job.tasks[0].status == RunState.PENDING
+    assert job.tasks[0].output_artifact_ids == []
+
+    # Second attempt: builder runs again; materialize produces a real file
+    result2 = run_next_task(job, _stub_builder)
+    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    annotate_task_result(
+        result2, provider="stub", role="builder", model="m", elapsed_ms=1.0
+    )
+    materialize_task_output(result2, runtime)
+
+    # The task now references only the new artifact
+    assert len(job.tasks[0].output_artifact_ids) == 1
+    new_artifact_id = job.tasks[0].output_artifact_ids[0]
+    assert new_artifact_id != stale_artifact_id
+
+    # Verification on retry passes (real file was materialized)
+    vr2 = verify_task_output(result2.job, result2.task_id)
+    assert vr2.passed is True
+    finalize_task(result2, vr2)
+    assert job.tasks[0].status == RunState.COMPLETED

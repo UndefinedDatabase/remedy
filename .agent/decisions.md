@@ -1,5 +1,30 @@
 # Decisions
 
+## 2026-04-24: Step 7.5 continues on feature/step6-workspace-runtime (PR #7)
+Retry semantics hotfix is clearly in-scope for the same PR — it is a correctness fix
+for the verifier gate introduced in Step 7. Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-24: materialize_task_output uses task.output_artifact_ids[0] not task_id scan
+The previous implementation found the artifact by scanning job.artifacts for the first
+entry with matching task_id. After a failed verification + retry, the stale failed
+artifact sits earlier in job.artifacts and would be found first, causing materialization
+to write to the wrong artifact object. The fix: locate artifact via
+task.output_artifact_ids[0] (always the current attempt's artifact after finalize_task
+has cleared the list on failure). This also removes the separate task_index lookup —
+both task_obj and task_index come from one pass over job.tasks.
+
+## 2026-04-24: finalize_task clears task.output_artifact_ids on verification failure
+Failed artifact IDs must not persist in task.output_artifact_ids after rollback. If they
+did, the next run_next_task would append the new artifact ID but the verifier would still
+check index [0] (the stale one). Clearing on failure means [0] always refers to the
+most recent attempt. The failed artifact stays in job.artifacts for diagnostics; it is
+simply no longer reachable from the task.
+
+## 2026-04-24: CLI exits with code 1 on verification failure
+Matches the existing CLI discipline: non-zero exit for any failure that should stop
+automation pipelines. save_job is called before sys.exit(1) so the rolled-back state
+is persisted (task=PENDING, failure metadata in artifact) before the process terminates.
+
 ## 2026-04-24: Step 7 continues on feature/step6-workspace-runtime (PR #7)
 Step 7 (verifier gate) is in-scope for the same PR. The workspace runtime branch
 encompasses: workspace creation, materialization hardening, runtime boundary safety, and
