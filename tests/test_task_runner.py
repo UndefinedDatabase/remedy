@@ -12,7 +12,13 @@ import pytest
 
 from packages.core.models import Artifact, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
-from packages.orchestration.task_runner import RunTaskResult, annotate_task_result, run_next_task
+from packages.orchestration.task_runner import (
+    RunTaskResult,
+    annotate_task_result,
+    finalize_task,
+    run_next_task,
+)
+from packages.orchestration.verifier import VerificationCheckResult, VerificationResult
 
 
 # ---------------------------------------------------------------------------
@@ -126,23 +132,37 @@ def test_context_includes_planning_summary():
 
 
 def test_context_includes_prior_task_summaries():
-    """prior_task_summaries collected from already-completed tasks in order."""
+    """prior_task_summaries collected from already-completed tasks in order.
+
+    Tasks must reach COMPLETED (via finalize_task) before they appear as prior
+    summaries — this matches the Step 7 verifier-gate semantics. The test
+    manually sets up completed state to isolate _build_execution_context.
+    """
     received: list[TaskExecutionContext] = []
-    call_count = 0
 
     def capturing_builder(ctx: TaskExecutionContext) -> BuilderOutput:
         received.append(ctx)
-        nonlocal call_count
-        call_count += 1
-        return BuilderOutput(summary=f"done task {call_count}", proposed_changes=["x"])
+        return BuilderOutput(summary="done task", proposed_changes=["x"])
 
     job = _make_job(3)
-    # Execute task 0 and task 1; capture context on task 2
-    run_next_task(job, capturing_builder)  # task 0
-    run_next_task(job, capturing_builder)  # task 1
+
+    # Manually mark tasks 0 and 1 as COMPLETED with artifacts — simulates what
+    # finalize_task() would do after a successful build+verify cycle.
+    for i in range(2):
+        t = job.tasks[i]
+        t.status = RunState.COMPLETED
+        art = Artifact(
+            name=f"task_output_type_{i}",
+            content="...",
+            task_id=t.id,
+            metadata={"task_type": f"type_{i}", "summary": f"done task {i + 1}"},
+        )
+        job.artifacts.append(art)
+        t.output_artifact_ids.append(art.id)
+
     run_next_task(job, capturing_builder)  # task 2 — receives summaries from 0 and 1
 
-    ctx_task2 = received[2]
+    ctx_task2 = received[0]
     assert len(ctx_task2.prior_task_summaries) == 2
     assert "done task 1" in ctx_task2.prior_task_summaries
     assert "done task 2" in ctx_task2.prior_task_summaries
@@ -212,13 +232,17 @@ def test_artifact_metadata_has_task_type_and_summary():
 
 
 # ---------------------------------------------------------------------------
-# State transitions
+# State transitions (Step 7: task stays RUNNING until finalize_task)
 # ---------------------------------------------------------------------------
 
-def test_task_marked_completed():
+def test_task_running_after_run_next_task():
+    """Task is RUNNING (not COMPLETED) immediately after run_next_task.
+
+    COMPLETED only arrives after finalize_task() with a passing VerificationResult.
+    """
     job = _make_job(3)
     run_next_task(job, _stub_builder)
-    assert job.tasks[0].status == RunState.COMPLETED
+    assert job.tasks[0].status == RunState.RUNNING
     assert job.tasks[1].status == RunState.PENDING
     assert job.tasks[2].status == RunState.PENDING
 
@@ -229,13 +253,15 @@ def test_job_running_while_tasks_remain():
     assert job.state == RunState.RUNNING
 
 
-def test_job_completed_when_all_tasks_done():
+def test_job_not_completed_until_finalize_task_called():
+    """Even if only one task exists, job is not COMPLETED until finalize_task passes."""
     job = _make_job(1)
     run_next_task(job, _stub_builder)
-    assert job.state == RunState.COMPLETED
+    assert job.state == RunState.RUNNING
 
 
 def test_sequential_execution_advances_through_tasks():
+    """run_next_task always picks the next PENDING task regardless of RUNNING tasks."""
     job = _make_job(3)
     r1 = run_next_task(job, _stub_builder)
     assert r1.task_id == job.tasks[0].id
@@ -243,7 +269,9 @@ def test_sequential_execution_advances_through_tasks():
     assert r2.task_id == job.tasks[1].id
     r3 = run_next_task(job, _stub_builder)
     assert r3.task_id == job.tasks[2].id
-    assert job.state == RunState.COMPLETED
+    # All three tasks are RUNNING (not COMPLETED); job is RUNNING.
+    # finalize_task() must be called on each to advance to COMPLETED.
+    assert job.state == RunState.RUNNING
 
 
 # ---------------------------------------------------------------------------
@@ -380,3 +408,101 @@ def test_annotate_task_result_finds_by_task_id_not_index():
     # The task artifact must have been annotated
     task_artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
     assert task_artifact.metadata["provider"] == "ollama"
+
+
+# ---------------------------------------------------------------------------
+# finalize_task — Step 7 state finalization
+# ---------------------------------------------------------------------------
+
+def _passing_vr(task_id: UUID) -> VerificationResult:
+    """Minimal passing VerificationResult for a given task_id."""
+    return VerificationResult(
+        task_id=task_id,
+        passed=True,
+        checks=[VerificationCheckResult(check="stub", passed=True, message="OK")],
+    )
+
+
+def _failing_vr(task_id: UUID, reason: str = "stub check") -> VerificationResult:
+    """Minimal failing VerificationResult for a given task_id."""
+    return VerificationResult(
+        task_id=task_id,
+        passed=False,
+        checks=[VerificationCheckResult(check="stub", passed=False, message=reason)],
+    )
+
+
+def test_finalize_task_marks_completed_when_verified():
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    assert job.tasks[0].status == RunState.RUNNING
+
+    finalize_task(result, _passing_vr(result.task_id))
+
+    assert job.tasks[0].status == RunState.COMPLETED
+
+
+def test_finalize_task_advances_job_to_completed():
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    assert job.state == RunState.RUNNING
+
+    finalize_task(result, _passing_vr(result.task_id))
+
+    assert job.state == RunState.COMPLETED
+
+
+def test_finalize_task_does_not_complete_job_while_tasks_remain():
+    """Job stays RUNNING if other tasks are still PENDING after finalization."""
+    job = _make_job(3)
+    result = run_next_task(job, _stub_builder)
+    finalize_task(result, _passing_vr(result.task_id))
+
+    assert job.tasks[0].status == RunState.COMPLETED
+    assert job.tasks[1].status == RunState.PENDING
+    assert job.state == RunState.RUNNING
+
+
+def test_finalize_task_rolls_back_to_pending_on_failure():
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    assert job.tasks[0].status == RunState.RUNNING
+
+    finalize_task(result, _failing_vr(result.task_id, "workspace_file missing"))
+
+    assert job.tasks[0].status == RunState.PENDING
+
+
+def test_finalize_task_records_failure_in_artifact_metadata():
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    finalize_task(result, _failing_vr(result.task_id, "workspace_file missing"))
+
+    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    assert artifact.metadata["verification_passed"] is False
+    assert any(
+        "workspace_file missing" in f for f in artifact.metadata["verification_failures"]
+    )
+
+
+def test_finalize_task_no_op_when_not_changed():
+    job = _make_job(0)
+    result = run_next_task(job, _stub_builder)
+    assert result.changed is False
+    # Must not raise
+    finalize_task(result, _passing_vr(result.task_id or job.id))
+
+
+def test_finalize_task_raises_if_task_not_in_job():
+    """finalize_task raises RuntimeError if result.task_id not found in job.tasks."""
+    from uuid import uuid4 as _uuid4
+
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    orphan_id = _uuid4()
+    vr = _passing_vr(orphan_id)
+
+    # Patch result.task_id to an orphan UUID to trigger the bug guard
+    object.__setattr__(result, "task_id", orphan_id)
+    with pytest.raises(RuntimeError, match="not found in job.tasks"):
+        finalize_task(result, vr)

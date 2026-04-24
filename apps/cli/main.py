@@ -141,9 +141,11 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     from packages.orchestration.task_runner import (
         RunTaskResult,
         annotate_task_result,
+        finalize_task,
         materialize_task_output,
         run_next_task,
     )
+    from packages.orchestration.verifier import verify_task_output
     from packages.orchestration.workspace import LocalWorkspaceRuntime
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
@@ -169,6 +171,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         print(f"Job {job.id} — no pending tasks.")
         return
 
+    # Annotate timing metadata onto the builder artifact.
     annotate_task_result(
         result,
         provider="ollama",
@@ -177,9 +180,17 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         elapsed_ms=elapsed_ms,
     )
 
+    # Materialize builder output to workspace file.
     runtime = LocalWorkspaceRuntime(job_id=job.id)
     mf = materialize_task_output(result, runtime)
 
+    # Verify: run Task Contract v1 checks (deterministic, local-only).
+    vr = verify_task_output(result.job, result.task_id)
+
+    # Finalize: mark COMPLETED on pass, PENDING on failure.
+    finalize_task(result, vr)
+
+    # Persist after verification so the saved state is authoritative.
     save_job(result.job)
 
     task = next(t for t in result.job.tasks if t.id == result.task_id)
@@ -187,11 +198,15 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     pending_remaining = sum(1 for t in result.job.tasks if t.status.value == "pending")
 
     file_info = f" file={mf.path}" if mf is not None else ""
+    verified_info = "verified=pass" if vr.passed else f"verified=FAIL({len(vr.failures)} check(s))"
     print(
         f"Job {result.job.id} | task={result.task_id} type={task_type} "
         f"role=builder model={builder.model} elapsed={round(elapsed_ms)}ms "
-        f"remaining={pending_remaining}{file_info}"
+        f"remaining={pending_remaining}{file_info} {verified_info}"
     )
+    if not vr.passed:
+        for failure in vr.failures:
+            print(f"  verification failure: {failure.check}: {failure.message}", file=sys.stderr)
 
 
 def main() -> None:

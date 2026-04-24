@@ -5,21 +5,28 @@ Provides run_next_task() which executes exactly one pending task per call
 using an injected builder callable, and materialize_task_output() which
 writes the builder's proposed changes into a workspace file.
 
-State semantics:
+State semantics (Step 7 — verifier gate):
   Job transitions:
     PLANNED  -> RUNNING    when a pending task is found and execution begins
-    RUNNING  -> COMPLETED  when the last task completes (all tasks COMPLETED)
+    RUNNING  -> COMPLETED  when the last task is finalized (all tasks COMPLETED)
 
   Task transitions:
     PENDING  -> RUNNING    at the start of execution
-    RUNNING  -> COMPLETED  on successful execution
-    RUNNING  -> PENDING    on builder failure (rolled back to avoid stranded state)
+    RUNNING  -> RUNNING    after builder succeeds (task stays RUNNING until verified)
+    RUNNING  -> COMPLETED  after finalize_task() is called with a passing VerificationResult
+    RUNNING  -> PENDING    on builder failure OR on verification failure
+
+  Verifier gate:
+    run_next_task() does NOT mark the task COMPLETED. After builder output is
+    produced and materialized, the caller must:
+      1. call verify_task_output() from verifier.py (pure check)
+      2. call finalize_task() to apply the result (state mutation)
+    Only finalize_task() with a passing VerificationResult marks the task COMPLETED.
 
   Failure behavior:
-    If the builder callable raises, the task is rolled back to PENDING and
-    job.state is restored to its value before this call. The exception
-    propagates to the caller with no retry. This keeps the job in a
-    consistent, re-executable state.
+    Builder failure: task rolls back to PENDING, job.state restored. Exception propagates.
+    Verification failure: finalize_task() rolls task back to PENDING, records failure
+      details in artifact metadata. No exception — the job remains RUNNING and retryable.
 
   A partially-executed job (some tasks COMPLETED, some PENDING) remains RUNNING.
   Caller is responsible for persisting the returned job.
@@ -48,6 +55,7 @@ from uuid import UUID
 
 from packages.core.models import Artifact, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.verifier import VerificationResult
 from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
 
 
@@ -119,8 +127,12 @@ def run_next_task(
 
     Selects the first PENDING task (by order in job.tasks), builds a
     TaskExecutionContext from the current job state, calls call_builder,
-    creates one task-owned Artifact, marks the task COMPLETED, and appends
-    its id to task.output_artifact_ids.
+    creates one task-owned Artifact, and appends its id to
+    task.output_artifact_ids.
+
+    The task remains RUNNING after this call — it is NOT marked COMPLETED here.
+    The caller must run verify_task_output() then finalize_task() to complete
+    the task after materialization and verification.
 
     On provider failure: task is rolled back to PENDING and job.state is
     restored to its pre-call value. The exception propagates to the caller.
@@ -187,13 +199,10 @@ def run_next_task(
         },
     )
 
-    task.status = RunState.COMPLETED
+    # Task intentionally stays RUNNING here — finalize_task() will mark it
+    # COMPLETED only after verify_task_output() passes (Step 7 verifier gate).
     task.output_artifact_ids.append(artifact.id)
     job.artifacts.append(artifact)
-
-    # Advance job state: COMPLETED only when every task is done.
-    if all(t.status == RunState.COMPLETED for t in job.tasks):
-        job.state = RunState.COMPLETED
 
     return RunTaskResult(job=job, task_id=task.id, changed=True)
 
@@ -238,6 +247,56 @@ def annotate_task_result(
             "elapsed_ms": round(elapsed_ms),
         }
     )
+
+
+def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
+    """Apply a verification result to finalize task and job state.
+
+    If vr.passed:
+      task -> COMPLETED
+      job  -> COMPLETED if every task is now COMPLETED
+
+    If not vr.passed:
+      task -> PENDING (rolled back from RUNNING, safe to retry)
+      failure details recorded in artifact.metadata under 'verification_passed'
+      and 'verification_failures'
+
+    No-op if result.changed is False.
+
+    Raises RuntimeError if result.task_id is not found in job.tasks — this
+    indicates a bug in run_next_task and must not be silently ignored.
+
+    Designed to be called after verify_task_output() returns, before persisting.
+    """
+    if not result.changed or result.task_id is None:
+        return
+
+    task = next(
+        (t for t in result.job.tasks if t.id == result.task_id),
+        None,
+    )
+    if task is None:
+        raise RuntimeError(
+            f"finalize_task: task_id={result.task_id} not found in job.tasks. "
+            "This indicates a bug in run_next_task."
+        )
+
+    if vr.passed:
+        task.status = RunState.COMPLETED
+        if all(t.status == RunState.COMPLETED for t in result.job.tasks):
+            result.job.state = RunState.COMPLETED
+    else:
+        task.status = RunState.PENDING
+        # Record failure details in artifact metadata for diagnostics.
+        artifact = next(
+            (a for a in result.job.artifacts if a.task_id == result.task_id),
+            None,
+        )
+        if artifact is not None:
+            artifact.metadata["verification_passed"] = False
+            artifact.metadata["verification_failures"] = [
+                f"{c.check}: {c.message}" for c in vr.failures
+            ]
 
 
 # Known section headers in the builder artifact content format.
