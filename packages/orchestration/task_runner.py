@@ -291,20 +291,25 @@ def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
             result.job.state = RunState.COMPLETED
     else:
         task.status = RunState.PENDING
-        # Clear the stale artifact reference so retry verification uses the new
-        # artifact produced by the next run_next_task call, not this failed one.
+        # Capture the current attempt's artifact ID before clearing the list.
+        # After clear(), a task_id scan would find the first artifact ever
+        # produced for this task (a stale one), not the current failed attempt.
+        current_artifact_id = task.output_artifact_ids[0] if task.output_artifact_ids else None
+        # Clear the stale artifact reference so the next run_next_task + verify
+        # cycle uses a fresh artifact, not this failed one.
         # The failed artifact stays in job.artifacts for diagnostics.
         task.output_artifact_ids.clear()
-        # Record failure details in artifact metadata for diagnostics.
-        artifact = next(
-            (a for a in result.job.artifacts if a.task_id == result.task_id),
-            None,
-        )
-        if artifact is not None:
-            artifact.metadata["verification_passed"] = False
-            artifact.metadata["verification_failures"] = [
-                f"{c.check}: {c.message}" for c in vr.failures
-            ]
+        # Record failure details on the current attempt's artifact by ID.
+        if current_artifact_id is not None:
+            artifact = next(
+                (a for a in result.job.artifacts if a.id == current_artifact_id),
+                None,
+            )
+            if artifact is not None:
+                artifact.metadata["verification_passed"] = False
+                artifact.metadata["verification_failures"] = [
+                    f"{c.check}: {c.message}" for c in vr.failures
+                ]
 
 
 # Known section headers in the builder artifact content format.

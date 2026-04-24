@@ -1,5 +1,18 @@
 # Decisions
 
+## 2026-04-24: finalize_task captures artifact ID before clearing output_artifact_ids
+The failure branch in finalize_task previously scanned job.artifacts by task_id after
+clearing output_artifact_ids. Because multiple failed artifacts can accumulate in
+job.artifacts with the same task_id, the scan would find the first (stale) artifact
+instead of the current attempt's artifact. Fix: capture output_artifact_ids[0] before
+clear(), then look up by artifact ID (not task_id). This ensures failure metadata
+(verification_passed, verification_failures) is always annotated on the current attempt's
+artifact, not a stale earlier one.
+
+## 2026-04-24: Step 7.6 continues on feature/step6-workspace-runtime (PR #7)
+Diagnostic artifact fix is a correctness fix for the verifier gate introduced in Step 7.
+Per Pull Request Continuity Rule, no new branch.
+
 ## 2026-04-24: Step 7.5 continues on feature/step6-workspace-runtime (PR #7)
 Retry semantics hotfix is clearly in-scope for the same PR — it is a correctness fix
 for the verifier gate introduced in Step 7. Per Pull Request Continuity Rule, no new branch.

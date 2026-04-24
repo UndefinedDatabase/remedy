@@ -535,6 +535,69 @@ def test_retry_after_failure_uses_new_artifact_not_stale():
     assert job.tasks[0].output_artifact_ids[0] == new_artifact_id
 
 
+def test_consecutive_failures_annotate_each_artifact_separately():
+    """Second failure metadata is written to the second artifact, not the first.
+
+    This is the Step 7.6 regression: before the fix, finalize_task scanned by task_id
+    after clearing output_artifact_ids and found the first (stale) artifact instead of
+    the current attempt's artifact.
+    """
+    job = _make_job(1)
+
+    # First attempt fails
+    result1 = run_next_task(job, _stub_builder)
+    artifact1_id = job.tasks[0].output_artifact_ids[0]
+    finalize_task(result1, _failing_vr(result1.task_id, "first failure reason"))
+
+    # Second attempt fails
+    result2 = run_next_task(job, _stub_builder)
+    artifact2_id = job.tasks[0].output_artifact_ids[0]
+    assert artifact2_id != artifact1_id
+    finalize_task(result2, _failing_vr(result2.task_id, "second failure reason"))
+
+    # artifact1: has metadata from FIRST failure
+    artifact1 = next(a for a in job.artifacts if a.id == artifact1_id)
+    assert artifact1.metadata["verification_passed"] is False
+    assert any("first failure reason" in f for f in artifact1.metadata["verification_failures"])
+    # artifact1 must NOT have been overwritten with second failure data
+    assert not any("second failure reason" in f for f in artifact1.metadata["verification_failures"])
+
+    # artifact2: has metadata from SECOND failure
+    artifact2 = next(a for a in job.artifacts if a.id == artifact2_id)
+    assert artifact2.metadata["verification_passed"] is False
+    assert any("second failure reason" in f for f in artifact2.metadata["verification_failures"])
+
+
+def test_consecutive_failures_each_clear_output_artifact_ids():
+    """output_artifact_ids is cleared after every failure, not just the first."""
+    job = _make_job(1)
+
+    result1 = run_next_task(job, _stub_builder)
+    finalize_task(result1, _failing_vr(result1.task_id, "fail 1"))
+    assert job.tasks[0].output_artifact_ids == []
+
+    result2 = run_next_task(job, _stub_builder)
+    finalize_task(result2, _failing_vr(result2.task_id, "fail 2"))
+    assert job.tasks[0].output_artifact_ids == []
+
+
+def test_consecutive_failures_both_artifacts_preserved_in_job():
+    """Both failed artifacts remain in job.artifacts for diagnostics."""
+    job = _make_job(1)
+
+    result1 = run_next_task(job, _stub_builder)
+    artifact1_id = job.tasks[0].output_artifact_ids[0]
+    finalize_task(result1, _failing_vr(result1.task_id, "fail 1"))
+
+    result2 = run_next_task(job, _stub_builder)
+    artifact2_id = job.tasks[0].output_artifact_ids[0]
+    finalize_task(result2, _failing_vr(result2.task_id, "fail 2"))
+
+    artifact_ids_in_job = {a.id for a in job.artifacts}
+    assert artifact1_id in artifact_ids_in_job
+    assert artifact2_id in artifact_ids_in_job
+
+
 def test_finalize_task_no_op_when_not_changed():
     job = _make_job(0)
     result = run_next_task(job, _stub_builder)
