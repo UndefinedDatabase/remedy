@@ -1,26 +1,28 @@
 # Context
 
 ## Active Branch
-`feature/step6-workspace-runtime`
+`feature/step8-repo-attachment`
 
 ## PR
-PR #7 — open at https://github.com/UndefinedDatabase/remedy/pull/7
+None yet — will create after Step 8 is complete.
 
 ## Scope
-Step 6 + 6.5 + 6.7 + Step 7: workspace runtime, materialization hardening, runtime boundary
-enforcement, and Task Contract v1 verifier gate.
+Step 8: Controlled repo attachment and safe generated-file application.
+Branched from feature/step6-workspace-runtime (PR chain — Step 8 depends on
+workspace/verifier code that is not yet merged to main).
 
 ## Constraints
-- No Docker, no command execution, no patch parsing
-- Runtime injected into orchestration; never imported by providers
-- Workspace dir: .data/workspaces/<job_id>/task_output/<index>_<safe_type>_<short_id>.txt
-- materialize_task_output and finalize_task raise RuntimeError on impossible states
-- Task stays RUNNING after run_next_task; COMPLETED only after verify_task_output passes
-- verify_task_output is pure (no mutation); finalize_task applies the result
-- No FAILED state: verification failure rolls task to PENDING (retryable)
+- No Docker, no shell, no Git, no patch application
+- No arbitrary LLM paths into repo writes — static keyword mapping only
+- No overwriting existing repo files
+- Repo writes boundary-safe: resolved path must remain inside repo_root (RuntimeError otherwise)
+- Repo application only on vr.passed AND job.metadata["target_repo"] set AND keyword matched
+- workspace_file and repo_applied_files are separate metadata keys
+- Failed artifacts retained in job.artifacts (detached from task.output_artifact_ids after failure)
+- finalize_task raises RuntimeError if output_artifact_ids empty or artifact not found on failure
 
 ## Assumptions
 - LocalWorkspaceRuntime is the only runtime; Docker runtime is future
 - Workspace root follows same REMEDY_DATA_DIR resolution as storage.py
-- workspace_file metadata key records the absolute path of the materialized file
-- verification_failures metadata key is set by finalize_task on failure only
+- target_repo is stored as str (absolute path) in job.metadata["target_repo"]
+- Repo markdown content is derived from artifact metadata + content (not workspace file)

@@ -7,6 +7,7 @@ Usage:
     remedy show-job <job_id>
     remedy plan-job <job_id>
     remedy plan-job-local <job_id>
+    remedy attach-repo <job_id> <repo_path>
     remedy run-next-task-local <job_id>
 """
 
@@ -124,6 +125,34 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         )
 
 
+def _cmd_attach_repo(job_id_str: str, repo_path_str: str) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    repo_path = Path(repo_path_str)
+    if not repo_path.exists():
+        print(f"Error: repo_path does not exist: {repo_path_str!r}", file=sys.stderr)
+        sys.exit(1)
+    if not repo_path.is_dir():
+        print(f"Error: repo_path is not a directory: {repo_path_str!r}", file=sys.stderr)
+        sys.exit(1)
+
+    resolved = repo_path.resolve()
+    job.metadata["target_repo"] = str(resolved)
+    save_job(job)
+    print(f"Job {job.id} | repo={resolved}")
+
+
 def _cmd_run_next_task_local(job_id_str: str) -> None:
     try:
         job_id = UUID(job_id_str)
@@ -138,6 +167,9 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
 
     from pydantic import ValidationError
 
+    from pathlib import Path
+
+    from packages.orchestration.repo_applicator import apply_task_output_to_repo
     from packages.orchestration.task_runner import (
         RunTaskResult,
         annotate_task_result,
@@ -190,7 +222,21 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     # Finalize: mark COMPLETED on pass, PENDING on failure.
     finalize_task(result, vr)
 
-    # Persist after verification so the saved state is authoritative.
+    # Apply to attached repo (only on pass, only if repo is attached and eligible).
+    repo_applied: list[str] = []
+    if vr.passed and job.metadata.get("target_repo"):
+        repo_root = Path(job.metadata["target_repo"])
+        task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
+        if task_obj.output_artifact_ids:
+            artifact_id = task_obj.output_artifact_ids[0]
+            artifact = next((a for a in result.job.artifacts if a.id == artifact_id), None)
+            if artifact is not None:
+                repo_applied = apply_task_output_to_repo(artifact, repo_root)
+                if repo_applied:
+                    artifact.metadata["repo_applied_files"] = repo_applied
+
+    # Persist after verification (and optional repo application) so the saved
+    # state is authoritative.
     save_job(result.job)
 
     task = next(t for t in result.job.tasks if t.id == result.task_id)
@@ -198,11 +244,12 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     pending_remaining = sum(1 for t in result.job.tasks if t.status.value == "pending")
 
     file_info = f" file={mf.path}" if mf is not None else ""
+    repo_info = f" repo={repo_applied[0]}" if repo_applied else ""
     verified_info = "verified=pass" if vr.passed else f"verified=FAIL({len(vr.failures)} check(s))"
     print(
         f"Job {result.job.id} | task={result.task_id} type={task_type} "
         f"role=builder model={builder.model} elapsed={round(elapsed_ms)}ms "
-        f"remaining={pending_remaining}{file_info} {verified_info}"
+        f"remaining={pending_remaining}{file_info}{repo_info} {verified_info}"
     )
     if not vr.passed:
         for failure in vr.failures:
@@ -233,6 +280,13 @@ def main() -> None:
     )
     plan_local.add_argument("job_id", help="UUID of the job to plan")
 
+    attach = subparsers.add_parser(
+        "attach-repo",
+        help="Attach a target repository directory to a job for safe file application",
+    )
+    attach.add_argument("job_id", help="UUID of the job")
+    attach.add_argument("repo_path", help="Path to the target repository directory")
+
     run_task = subparsers.add_parser(
         "run-next-task-local",
         help="Execute the next pending task using local Ollama (requires ollama package)",
@@ -251,6 +305,8 @@ def main() -> None:
         _cmd_plan_job(args.job_id)
     elif args.command == "plan-job-local":
         _cmd_plan_job_local(args.job_id)
+    elif args.command == "attach-repo":
+        _cmd_attach_repo(args.job_id, args.repo_path)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
 

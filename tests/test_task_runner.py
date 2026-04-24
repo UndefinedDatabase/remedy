@@ -619,3 +619,31 @@ def test_finalize_task_raises_if_task_not_in_job():
     object.__setattr__(result, "task_id", orphan_id)
     with pytest.raises(RuntimeError, match="not found in job.tasks"):
         finalize_task(result, vr)
+
+
+# ---------------------------------------------------------------------------
+# Carry-in: RuntimeError guards for missing artifact state on failure
+# ---------------------------------------------------------------------------
+
+
+def test_finalize_task_raises_if_no_output_artifact_ids_on_failure():
+    """Verification failure with empty output_artifact_ids is a bug — must raise."""
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    # Manually clear output_artifact_ids to simulate the invariant violation
+    job.tasks[0].output_artifact_ids.clear()
+    with pytest.raises(RuntimeError, match="has no output_artifact_ids"):
+        finalize_task(result, _failing_vr(result.task_id, "some failure"))
+
+
+def test_finalize_task_raises_if_artifact_not_found_in_job_artifacts():
+    """Verification failure where artifact ID not in job.artifacts — must raise."""
+    from uuid import uuid4 as _uuid4
+
+    job = _make_job(1)
+    result = run_next_task(job, _stub_builder)
+    # Replace artifact ID in task with a dangling UUID so the lookup fails
+    phantom_id = _uuid4()
+    job.tasks[0].output_artifact_ids[0] = phantom_id
+    with pytest.raises(RuntimeError, match="not found in job.artifacts"):
+        finalize_task(result, _failing_vr(result.task_id, "some failure"))

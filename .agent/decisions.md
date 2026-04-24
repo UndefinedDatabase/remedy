@@ -1,5 +1,44 @@
 # Decisions
 
+## 2026-04-24: Step 8 branches from feature/step6-workspace-runtime (not main)
+Step 8 depends on workspace runtime, verifier gate, and diagnostic semantics introduced
+in Steps 6–7.6 which are not yet merged to main (PR #7 open). Branching from main would
+miss those changes entirely. Branched from feature/step6-workspace-runtime to form a PR
+chain. This is documented as a necessary exception to the "branch from main" default.
+
+## 2026-04-24: repo_applicator uses keyword matching on task_type (not exact match)
+task_type values come from LLM output and are not guaranteed to match exact strings. A
+keyword substring match (case-insensitive) against a static table is inspectable, fast,
+and does not require config. Each entry maps a keyword to a path template. First match
+wins; order is from most-specific to least-specific keyword.
+
+## 2026-04-24: No overwriting existing repo files in Step 8
+The conservative rule: if the target path exists, skip silently and return []. This
+prevents Remedy from accidentally clobbering user-edited docs on retry. A future
+permission-gated step can relax this for explicitly approved paths.
+
+## 2026-04-24: Repo application is workspace-only fallback (not a failure condition)
+If no repo is attached, or the task type is ineligible, or the target file already
+exists, run-next-task-local continues without error. Repo application is opportunistic —
+task completion is defined by workspace verification only, not by repo writes.
+
+## 2026-04-24: _sanitize_path_component duplicated in repo_applicator.py
+The same sanitization regex appears in both task_runner.py and repo_applicator.py. The
+function is tiny (3 lines) and importing a private helper across modules is worse style
+than a local copy. If this pattern grows, extract it to a shared utility in a later step.
+
+## 2026-04-24: repo_applicator content is section-aware (excludes Notes and Risks)
+Uses the same section-header state machine as _extract_proposed_changes in task_runner.py.
+Notes and Risks appear in artifact.content with the same "  - " prefix as proposed
+changes; section-aware extraction is the only correct approach.
+
+## 2026-04-24: finalize_task carry-in: raise RuntimeError on invariant violations
+Two invariant violations in the failure branch that were previously silent are now
+explicit RuntimeErrors: (1) empty output_artifact_ids before clear, (2) artifact ID
+captured but not found in job.artifacts. Both represent bugs in run_next_task. Silent
+skip would hide the bug; raising makes it visible immediately. The conditions cannot
+occur in normal operation.
+
 ## 2026-04-24: finalize_task captures artifact ID before clearing output_artifact_ids
 The failure branch in finalize_task previously scanned job.artifacts by task_id after
 clearing output_artifact_ids. Because multiple failed artifacts can accumulate in

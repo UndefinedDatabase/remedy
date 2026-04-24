@@ -261,14 +261,19 @@ def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
       task.output_artifact_ids is cleared — the failed artifact ID is removed
         so a subsequent run_next_task + verify cycle uses a fresh artifact, not
         the stale failed one. The failed artifact is kept in job.artifacts for
-        diagnostics; it is simply no longer referenced by the task.
+        diagnostics; it is simply no longer referenced by the task after the
+        clear (detached but preserved).
       failure details recorded in artifact.metadata under 'verification_passed'
         and 'verification_failures'
 
     No-op if result.changed is False.
 
-    Raises RuntimeError if result.task_id is not found in job.tasks — this
-    indicates a bug in run_next_task and must not be silently ignored.
+    Raises RuntimeError if:
+      - result.task_id is not found in job.tasks (bug in run_next_task)
+      - task.output_artifact_ids is empty on verification failure (invariant
+        violation — run_next_task must always append an artifact ID)
+      - the captured artifact ID is not found in job.artifacts (invariant
+        violation — run_next_task must always append the artifact object)
 
     Designed to be called after verify_task_output() returns, before persisting.
     """
@@ -294,22 +299,39 @@ def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
         # Capture the current attempt's artifact ID before clearing the list.
         # After clear(), a task_id scan would find the first artifact ever
         # produced for this task (a stale one), not the current failed attempt.
-        current_artifact_id = task.output_artifact_ids[0] if task.output_artifact_ids else None
+        #
+        # An empty output_artifact_ids list here is an invariant violation:
+        # run_next_task always appends an artifact ID before returning, so a
+        # RUNNING task must have at least one. Raise rather than silently skip
+        # diagnostics, which would hide the bug.
+        if not task.output_artifact_ids:
+            raise RuntimeError(
+                f"finalize_task: task_id={result.task_id} has no output_artifact_ids "
+                "but verification failed. This indicates a bug — run_next_task must "
+                "always append an artifact ID before returning."
+            )
+        current_artifact_id = task.output_artifact_ids[0]
         # Clear the stale artifact reference so the next run_next_task + verify
         # cycle uses a fresh artifact, not this failed one.
-        # The failed artifact stays in job.artifacts for diagnostics.
+        # The failed artifact stays in job.artifacts for diagnostics; it is
+        # simply no longer referenced by the task after this clear.
         task.output_artifact_ids.clear()
-        # Record failure details on the current attempt's artifact by ID.
-        if current_artifact_id is not None:
-            artifact = next(
-                (a for a in result.job.artifacts if a.id == current_artifact_id),
-                None,
+        # Locate the current attempt's artifact by ID (not by task_id scan —
+        # multiple failed artifacts share the same task_id).
+        artifact = next(
+            (a for a in result.job.artifacts if a.id == current_artifact_id),
+            None,
+        )
+        if artifact is None:
+            raise RuntimeError(
+                f"finalize_task: artifact {current_artifact_id} not found in "
+                f"job.artifacts for task_id={result.task_id}. This indicates a "
+                "bug — run_next_task must append the artifact to job.artifacts."
             )
-            if artifact is not None:
-                artifact.metadata["verification_passed"] = False
-                artifact.metadata["verification_failures"] = [
-                    f"{c.check}: {c.message}" for c in vr.failures
-                ]
+        artifact.metadata["verification_passed"] = False
+        artifact.metadata["verification_failures"] = [
+            f"{c.check}: {c.message}" for c in vr.failures
+        ]
 
 
 # Known section headers in the builder artifact content format.
