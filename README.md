@@ -199,18 +199,19 @@ the offending variable if the value is not parseable (e.g. `REMEDY_OLLAMA_BUILDE
 | Transition | When |
 |------------|------|
 | `planned` → `running` | First pending task starts executing |
-| `running` → `completed` | All tasks have been executed |
-| Stays `running` | Some tasks completed, others still pending |
+| Task `running` → `completed` | Builder succeeds AND verifier passes |
+| `running` → `completed` (job) | All tasks are `completed` |
+| Stays `running` | Some tasks completed, others pending |
 | Unchanged | Builder failure: task rolls back to `pending`, job state restored |
+| Task `running` → `pending` | Verification failed: rolled back, retryable |
 
 **Important**: `run-next-task-local` advances one task per call. Run it repeatedly to
 fully execute a planned job.
 
 **Failure behavior**: if the builder fails (network error, validation error, etc.), the
-task is rolled back to `pending` and the job state is restored to its value before the
-call. The job can be re-attempted cleanly. Errors are reported in the CLI with a concise
-message distinguishing missing-dependency, configuration, invalid-output, and general
-execution failures.
+task is rolled back to `pending` and the job state is restored. If verification fails,
+the task is also rolled back to `pending` and failure details are recorded in the
+artifact metadata. Errors are reported in the CLI with a concise message.
 
 ### What the builder receives (TaskExecutionContext)
 
@@ -241,11 +242,112 @@ The legacy `"builder": "llm"` and `"planner": "llm"` keys have been removed.
 
 This step does **not** modify project files, run commands, or apply patches. The builder returns structured output (`BuilderOutput`) describing *proposed* changes. Actual code modification is deferred to a later step involving Docker or a local runtime provider.
 
+## Step 6 + 6.5: Runtime-Backed Workspace Execution + Materialization Hardening
+
+Step 6 introduces a local workspace runtime that materializes builder output as real files on disk. Each job now gets its own workspace directory under `.data/workspaces/<job_id>/`. Step 6.5 hardens the materialization layer for correctness and safety.
+
+- **`packages/orchestration/workspace.py`** — `Workspace`, `MaterializedFile`, `LocalWorkspaceRuntime`: local filesystem-backed runtime; `write(relative_path, content)` creates dirs and writes UTF-8 files; storage location follows the same `REMEDY_DATA_DIR` resolution as `storage.py`
+- **`packages/orchestration/task_runner.py`** — `materialize_task_output(result, runtime)`: writes the builder's proposed changes into a workspace file and records the file path in the artifact metadata; `_extract_proposed_changes` and `_sanitize_path_component` are helper functions that power the hardened implementation
+- **`packages/orchestration/planner_models.py`** — `PlannerOutput.proposed_tasks` now requires at least 1 task (`min_length=1`); empty task lists are rejected at validation time
+- **`apps/cli/main.py`** — `run-next-task-local` now creates a workspace, materializes the task output, and prints the file path
+
+### What materialization means
+
+After each task executes, the builder's `proposed_changes` and `summary` are written to a text file in the workspace. The workspace file path is recorded in the artifact's `workspace_file` metadata key.
+
+```bash
+# Execute a task and materialize its output
+remedy run-next-task-local <job_id>
+# → Job <id> | task=<task-id> type=write_code role=builder model=... elapsed=1820ms remaining=2 file=/path/to/.data/workspaces/<job_id>/task_output/000_write_code_1a2b3c4d.txt
+```
+
+### Workspace file naming (Step 6.5)
+
+Each materialized file is named `<index>_<safe_type>_<short_id>.txt` inside `task_output/`:
+
+| Component | Description |
+|-----------|-------------|
+| `<index>` | 0-based position of the task in job.tasks, zero-padded to 3 digits |
+| `<safe_type>` | task_type with unsafe characters replaced by `_` (max 48 chars) |
+| `<short_id>` | first 8 hex characters of the task UUID |
+
+This naming is **collision-safe** (two tasks with the same `task_type` always produce different filenames), **deterministic** (same task always produces the same filename), and **path-safe** (no traversal sequences, no raw user data in paths).
+
+Only the **Proposed Changes** section of the builder output is written to the file — Notes and Risks are excluded.
+
+### Materialization and verification ordering
+
+The CLI follows this sequence after `run_next_task` (Step 7 — verifier gate):
+
+1. `annotate_task_result` — enriches artifact metadata in memory
+2. `materialize_task_output` — writes workspace file; adds `workspace_file` path to artifact metadata
+3. `verify_task_output` — runs Task Contract v1 checks (deterministic, local-only)
+4. `finalize_task` — marks task `COMPLETED` on pass; rolls back to `PENDING` on failure
+5. `save_job` — persists the authoritative post-verification job state
+
+A task is only marked `COMPLETED` after verification passes. On verification failure the
+task is retryable — run the command again to re-attempt it.
+
+### Workspace storage
+
+By default, workspaces are stored at `<repo_root>/.data/workspaces/<job_id>/`.
+The same `REMEDY_DATA_DIR` env var controls the base location:
+
+```bash
+REMEDY_DATA_DIR=/tmp/remedy remedy run-next-task-local <job_id>
+# → workspace at /tmp/remedy/workspaces/<job_id>/
+```
+
+## Step 7: Task Contract v1 and Verifier Gate
+
+Step 7 introduces a mandatory verification step between builder execution and task completion. A builder producing output is no longer sufficient — verification must pass for a task to reach `completed`.
+
+- **`packages/orchestration/verifier.py`** — `TaskContract` (minimal model describing required outputs), `VerificationCheckResult`, `VerificationResult`, `verify_task_output(job, task_id)`: 7 deterministic, local-only checks
+- **`packages/orchestration/task_runner.py`** — `finalize_task(result, vr)`: applies a `VerificationResult` to task/job state; `run_next_task` no longer marks tasks `COMPLETED`
+- **`apps/cli/main.py`** — `run-next-task-local` now runs verify + finalize and reports `verified=pass` or `verified=FAIL`
+
+### Task Contract v1 checks
+
+All checks are deterministic and local-only — no LLM, no shell, no network:
+
+| # | Check | Failure |
+|---|-------|---------|
+| 1 | Task has at least one `output_artifact_id` | Builder produced no artifact |
+| 2 | Referenced artifact exists in `job.artifacts` | Artifact ID is dangling |
+| 3 | `artifact.task_id` matches `task.id` | Artifact is from the wrong task |
+| 4 | Artifact metadata contains `workspace_file` key | Materialization was skipped |
+| 5 | Workspace file exists on disk | File was not written or was deleted |
+| 6 | Workspace file is not empty | File is 0 bytes |
+| 7 | File contains at least one proposed change line | No `  - ` lines in the file |
+
+### Verification failure behavior
+
+If any check fails:
+- Task is rolled back to `pending` (safe to retry)
+- Failure details are recorded in `artifact.metadata["verification_failures"]`
+- The CLI prints a per-failure message to stderr
+- The job state is `running` and retryable — no new task is needed
+
+### run-next-task-local output (Step 7)
+
+```bash
+remedy run-next-task-local <job_id>
+# verified pass:
+# → Job <id> | task=<task-id> type=write_code role=builder model=... elapsed=1820ms remaining=2 file=/path/to/file verified=pass
+
+# verified fail:
+# → Job <id> | task=<task-id> type=write_code role=builder model=... elapsed=1820ms remaining=1 verified=FAIL(1 check(s))
+#   verification failure: workspace_file_not_empty: workspace file is empty: /path/to/file
+```
+
 ## What Is NOT Implemented Yet
 
-- Actual code/file modification (Docker execution deferred to Step 6+)
+- Code/file modification via patches or diffs (builder output is structured prose, not patches)
 - Agent loops (auto-advance through all tasks)
 - Provider implementations (Claude, MemPalace)
+- Docker or sandboxed runtime execution
+- LLM-backed verification or review
+- Target repository integration
 - Configuration system
 - API and worker apps
 
@@ -256,7 +358,7 @@ apps/           # Runnable applications (api, worker, cli)
 packages/
   core/         # Domain models
   contracts/    # Protocol interfaces
-  orchestration/# job_runner, task_runner, storage, builder_models, planner_models
+  orchestration/# job_runner, task_runner, storage, builder_models, planner_models, workspace
   memory/       # (future) memory management
   runtimes/     # (future) runtime abstractions
   verification/ # (future) artifact verification

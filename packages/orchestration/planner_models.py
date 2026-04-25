@@ -8,7 +8,7 @@ imports and transforms them — providers depend on these, not the other way aro
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ProposedTask(BaseModel):
@@ -28,6 +28,6 @@ class PlannerOutput(BaseModel):
     """
 
     summary: str
-    proposed_tasks: list[ProposedTask]
+    proposed_tasks: list[ProposedTask] = Field(min_length=1)
     acceptance_checks: list[str] = []
     notes: list[str] = []

@@ -128,24 +128,27 @@ Generation parameters follow the same pattern per role:
 These are passed to Ollama only when set; unset means the model's defaults apply.
 Env var parsing errors name the offending variable in the error message.
 
-### Execution State Semantics
+### Execution State Semantics (Step 7 — verifier gate)
 
-`run_next_task` drives job state as follows:
+`run_next_task` sets the task to `RUNNING` and produces an artifact, but does **not**
+mark the task `COMPLETED`. Task completion requires the full verification sequence:
 
 | Event | Job state | Task state |
 |-------|-----------|------------|
 | Pending task found, execution begins | `RUNNING` | `RUNNING` |
-| Task execution succeeds | `RUNNING` (if more pending) | `COMPLETED` |
-| Last task completes | `COMPLETED` | `COMPLETED` |
+| Builder succeeds (artifact created) | `RUNNING` | `RUNNING` (stays) |
+| `verify_task_output` passes, `finalize_task` called | `RUNNING` (if pending remain) | `COMPLETED` |
+| `finalize_task` on last task | `COMPLETED` | `COMPLETED` |
 | No pending task found | unchanged | unchanged |
 | Builder fails | restored to pre-call value | `PENDING` (rolled back) |
+| Verification fails, `finalize_task` called | `RUNNING` | `PENDING` (rolled back) |
 
 A partially-executed job (some tasks `COMPLETED`, some `PENDING`) remains `RUNNING`.
-`run_next_task` advances one task per call; the CLI loop is the caller's responsibility.
+Verification failure records diagnostic metadata in the artifact and rolls the task
+back to `PENDING` — retryable by re-running the command.
 
-**Failure rollback**: if the builder callable raises, the task is rolled back to `PENDING`
-and `job.state` is restored to its value before the call. The exception propagates to
-the caller with no retry. This ensures the job can be re-attempted cleanly.
+**Failure rollback**: builder exceptions roll back task to `PENDING` and restore `job.state`.
+Verification failures do the same via `finalize_task` — no exception raised, no stranded state.
 
 ### Artifact Metadata Conventions
 
@@ -159,6 +162,9 @@ Task execution artifacts carry consistent metadata keys:
 | `role` | `annotate_task_result` |
 | `model` | `annotate_task_result` |
 | `elapsed_ms` | `annotate_task_result` |
+| `workspace_file` | `materialize_task_output` (absolute path of the materialized file; deterministic, collision-safe name) |
+| `verification_passed` | `finalize_task` — present only on verification failure; value `False` |
+| `verification_failures` | `finalize_task` — list of `"check: message"` strings on failure |
 
 Planning artifacts carry: `summary`, `provider`, `role`, `model`, `task_count`, `elapsed_ms`.
 Legacy ambiguous keys (`"builder": "llm"`, `"planner": "llm"`) are not used.
@@ -170,11 +176,87 @@ If a planner returns duplicate `task_type` values (e.g. two tasks both typed
 to subsequent occurrences. This prevents downstream execution from confusing two
 semantically different tasks with the same identifier.
 
-### Step 5 Pre-execution Limitation
+### Workspace Runtime
 
-The builder callable returns structured output (`BuilderOutput`) describing *proposed*
-changes — it does not modify project files or execute commands. Actual code modification
-requires a runtime provider (Docker, local shell) and is deferred to Step 6+.
+`packages/orchestration/workspace.py` provides the `LocalWorkspaceRuntime`, which is the first concrete runtime implementation.
+
+Each job gets a dedicated directory: `<workspace_root>/<job_id>/`. The workspace root defaults to `<repo_root>/.data/workspaces/` and follows the same `REMEDY_DATA_DIR` resolution logic as `storage.py`.
+
+The runtime is **injected** into orchestration functions — it is never imported directly by providers. This allows future runtime implementations (Docker sandbox, remote) to be swapped in without changing orchestration logic.
+
+```
+orchestration/workspace.py  ←  Workspace, MaterializedFile, LocalWorkspaceRuntime
+         ↑
+orchestration/task_runner.py  ←  materialize_task_output(result, runtime)
+         ↑
+apps/cli/main.py  ←  creates runtime, calls materialize_task_output
+```
+
+`materialize_task_output(result, runtime)` writes the builder's proposed changes to a task-specific file inside the workspace and records the absolute path in the artifact's `workspace_file` metadata key. It is a no-op when `result.changed` is False.
+
+### Workspace File Naming (Step 6.5)
+
+Materialized files are placed at `task_output/<index>_<safe_type>_<short_id>.txt` inside the job's workspace directory:
+
+- `<index>` — 0-based position of the task in `job.tasks`, zero-padded to 3 digits. Makes filenames ordered and collision-safe across tasks.
+- `<safe_type>` — `task_type` sanitized via `_sanitize_path_component`: non-`[a-zA-Z0-9_-]` characters replaced with `_`, truncated to 48 characters, leading/trailing underscores stripped. Falls back to `"unknown"` if empty after sanitization.
+- `<short_id>` — first 8 hex characters of the task UUID. Guarantees uniqueness even if two tasks share the same type and index (e.g. after a refactor).
+
+Properties:
+- **Collision-safe**: index + UUID fragment make every file unique even with duplicate `task_type` values.
+- **Deterministic**: same task always produces the same filename.
+- **Path-safe**: sanitization prevents traversal sequences, spaces, and other unsafe characters from flowing into file paths.
+
+### Materialization Content (Step 6.5)
+
+Only the **Proposed Changes** section of the builder artifact content is written to the workspace file. Notes and Risks sections are excluded. `_extract_proposed_changes` uses a simple section-aware state machine keyed on the known section headers (`"Proposed Changes:"`, `"Notes:"`, `"Risks:"`).
+
+### Materialization and Verification Ordering (Step 7)
+
+The conservative ordering used by the CLI:
+
+1. `annotate_task_result` — enriches artifact metadata in memory only
+2. `materialize_task_output` — writes workspace file; adds `workspace_file` path to artifact metadata in memory
+3. `verify_task_output` — pure check; reads artifact and workspace file; returns `VerificationResult` without mutating state
+4. `finalize_task` — applies the result: `COMPLETED` on pass, `PENDING` + metadata on failure
+5. `save_job` — persists the authoritative post-verification job state
+
+`verify_task_output` is pure — it does not mutate the job. `finalize_task` is the only
+function that transitions a task from `RUNNING` to `COMPLETED` or `PENDING`. Saving
+after finalization ensures the persisted state is always authoritative.
+
+### Task Contract v1 and Verifier Gate
+
+`packages/orchestration/verifier.py` defines the first explicit task contract.
+
+**`TaskContract`** — a minimal Pydantic model capturing which checks are required:
+- `require_artifact`: task must produce an artifact with a matching task_id
+- `require_workspace_file`: artifact must record a valid, non-empty workspace file
+- `require_proposed_changes`: workspace file must contain at least one `  - ` line
+
+All fields default to `True`. Step 7 always runs all checks. The model reserves space
+for per-task contract customization in a future step.
+
+**`verify_task_output(job, task_id)`** — 7 deterministic checks, all local-only:
+
+| Check | What it verifies |
+|-------|-----------------|
+| `has_output_artifact` | `task.output_artifact_ids` is non-empty |
+| `artifact_exists` | the first artifact ID resolves in `job.artifacts` |
+| `artifact_task_id_matches` | `artifact.task_id == task.id` |
+| `workspace_file_in_metadata` | `"workspace_file"` key present in artifact metadata |
+| `workspace_file_exists` | the recorded path exists on disk |
+| `workspace_file_not_empty` | file size > 0 bytes |
+| `has_proposed_change` | at least one line starting with `"  - "` in the file |
+
+Early return: if a check fails in a way that makes the next check meaningless (e.g.
+artifact is None), the function returns immediately with the accumulated failures rather
+than raising. All checks that ran are always included in the `VerificationResult.checks`
+list.
+
+### Planner Output Validation
+
+`PlannerOutput.proposed_tasks` requires at least one entry (`Field(min_length=1)`). A plan with zero tasks is invalid and rejected at the model boundary before reaching orchestration.
 
 ### Concrete Providers
 

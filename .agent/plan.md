@@ -1,28 +1,21 @@
 # Plan
 
 ## Goal
-Step 5.5: Execution Hardening and Richer Task Context.
+Step 7.6: Verification Diagnostic Artifact Fix.
 
 ## Status
-COMPLETE. All 7 commits on feature/step5-task-execution (PR #6).
+COMPLETE
 
-## What Was Done
-1. builder_models.py: add TaskExecutionContext
-2. task_runner.py: failure rollback, context building, metadata cleanup, annotate safety
-3. llm_planner.py: metadata cleanup, annotate by name, task_type dedup
-4. OllamaPlanner: env var validation hardening; OllamaBuilder: context interface
-5. CLI: differentiated error handling (ImportError/ValueError/ValidationError/Exception)
-6. Tests: 17 new tests; existing stubs updated to use TaskExecutionContext
-7. Docs: README + architecture.md updated
+## Steps
+1. [x] finalize_task: capture current artifact ID before clearing output_artifact_ids;
+       annotate by ID not task_id scan
+2. [x] Tests: two consecutive failures; second failure metadata on second artifact
+3. [x] decisions.md + commit + push
 
 ## Key Decisions
-- Failure rollback: task -> PENDING, job.state restored (not FAILED — keeps job re-executable)
-- annotate_task_result raises RuntimeError if changed=True but no artifact (not silent)
-- annotate_planning_result finds artifact by name+task_id instead of index 0
-- Metadata: removed "builder":"llm" and "planner":"llm" legacy keys
-- TaskExecutionContext built by run_next_task; provider never receives mutable Job
-- task_type dedup: _2/_3 suffix on collision (simple, localized)
-- OllamaBuilder.build() accepts TaskExecutionContext; _build_user_message composes prompt
+- capture output_artifact_ids[0] before clear(); use that ID for annotation lookup
+- single-line ordering fix; no structural change
+- failed artifacts accumulate in job.artifacts; each is annotated with its own failure metadata
 
 ## Branch
-feature/step5-task-execution (PR #6) — in-scope extension per PR Continuity Rule
+feature/step6-workspace-runtime (PR #7) — in-scope per PR Continuity Rule

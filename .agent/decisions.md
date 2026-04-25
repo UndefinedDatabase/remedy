@@ -1,5 +1,143 @@
 # Decisions
 
+## 2026-04-24: finalize_task captures artifact ID before clearing output_artifact_ids
+The failure branch in finalize_task previously scanned job.artifacts by task_id after
+clearing output_artifact_ids. Because multiple failed artifacts can accumulate in
+job.artifacts with the same task_id, the scan would find the first (stale) artifact
+instead of the current attempt's artifact. Fix: capture output_artifact_ids[0] before
+clear(), then look up by artifact ID (not task_id). This ensures failure metadata
+(verification_passed, verification_failures) is always annotated on the current attempt's
+artifact, not a stale earlier one.
+
+## 2026-04-24: Step 7.6 continues on feature/step6-workspace-runtime (PR #7)
+Diagnostic artifact fix is a correctness fix for the verifier gate introduced in Step 7.
+Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-24: Step 7.5 continues on feature/step6-workspace-runtime (PR #7)
+Retry semantics hotfix is clearly in-scope for the same PR — it is a correctness fix
+for the verifier gate introduced in Step 7. Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-24: materialize_task_output uses task.output_artifact_ids[0] not task_id scan
+The previous implementation found the artifact by scanning job.artifacts for the first
+entry with matching task_id. After a failed verification + retry, the stale failed
+artifact sits earlier in job.artifacts and would be found first, causing materialization
+to write to the wrong artifact object. The fix: locate artifact via
+task.output_artifact_ids[0] (always the current attempt's artifact after finalize_task
+has cleared the list on failure). This also removes the separate task_index lookup —
+both task_obj and task_index come from one pass over job.tasks.
+
+## 2026-04-24: finalize_task clears task.output_artifact_ids on verification failure
+Failed artifact IDs must not persist in task.output_artifact_ids after rollback. If they
+did, the next run_next_task would append the new artifact ID but the verifier would still
+check index [0] (the stale one). Clearing on failure means [0] always refers to the
+most recent attempt. The failed artifact stays in job.artifacts for diagnostics; it is
+simply no longer reachable from the task.
+
+## 2026-04-24: CLI exits with code 1 on verification failure
+Matches the existing CLI discipline: non-zero exit for any failure that should stop
+automation pipelines. save_job is called before sys.exit(1) so the rolled-back state
+is persisted (task=PENDING, failure metadata in artifact) before the process terminates.
+
+## 2026-04-24: Step 7 continues on feature/step6-workspace-runtime (PR #7)
+Step 7 (verifier gate) is in-scope for the same PR. The workspace runtime branch
+encompasses: workspace creation, materialization hardening, runtime boundary safety, and
+now the verifier gate. All are part of the same "safe task execution" feature progression.
+Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-24: verify_task_output is pure; finalize_task handles mutation
+Separating the pure check from the state mutation makes verify_task_output testable
+in isolation and composable — callers can inspect the VerificationResult before deciding
+whether to finalize. This mirrors the annotate_* pattern established in Step 5.5.
+
+## 2026-04-24: No FAILED task state in Step 7
+Verification failure rolls the task back to PENDING rather than introducing a FAILED state.
+Reasons: keeps the state machine simple; PENDING tasks are retryable without extra tooling;
+FAILED would require additional handling in the CLI and sequencing logic. FAILED can be
+introduced in a later step if retry exhaustion or terminal failure semantics are needed.
+
+## 2026-04-24: TaskContract Pydantic model — all flags True by default
+Step 7 always runs all checks. The model exists to name the concept and reserve space for
+per-task contract customization (e.g. skip workspace checks for tasks that don't materialize).
+Using a Pydantic model rather than a bool parameter keeps the interface stable as new checks
+are added.
+
+## 2026-04-24: test_context_includes_prior_task_summaries rewritten to set state directly
+With the verifier gate, tasks stay RUNNING after run_next_task — they no longer appear as
+"prior completed tasks". The test was rewritten to manually set tasks 0 and 1 to COMPLETED
+with artifacts, isolating _build_execution_context from the full execution+verification flow.
+This is cleaner and more focused on what the test actually verifies.
+
+## 2026-04-23: Step 6.7 continues on feature/step6-workspace-runtime (PR #7)
+Runtime boundary hardening and final schema fixes are in-scope for PR #7 — same feature
+boundary (workspace runtime, materialization). Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-23: Workspace boundary check lives in runtime.write(), not only in callers
+_sanitize_path_component in task_runner.py removes traversal before forming relative_path,
+but callers could bypass it or a future caller could skip it entirely. Enforcing the check
+inside write() makes the runtime a safe boundary regardless of call site. Uses resolve() +
+is_relative_to() — two standard library calls, no sandbox framework.
+
+## 2026-04-23: Root stored as resolved Path in LocalWorkspaceRuntime.__init__
+Calling resolve() on the root at construction time ensures the is_relative_to() comparison
+is always against a canonical absolute path. Consistent regardless of env var or symlinks.
+
+## 2026-04-23: Missing task_id in materialize raises RuntimeError (not silent 0)
+The old fallback of next(..., 0) would silently mislabel an orphan task as index 0,
+producing a wrong filename. Like annotate_task_result, this is an invariant violation
+that must not be silently swallowed — raise RuntimeError with a diagnostic message.
+
+## 2026-04-23: BuilderOutput.proposed_changes min_length=1
+Symmetric with PlannerOutput.proposed_tasks (min_length=1). An empty proposed_changes
+produces an artifact with no content — useless and likely a provider bug. Rejected at
+the model boundary before reaching orchestration.
+
+## 2026-04-23: Step 6.5 continues on feature/step6-workspace-runtime (PR #7)
+Workspace materialization hardening is in-scope for PR #7 — same feature boundary
+(workspace runtime, file materialization). Per Pull Request Continuity Rule, no new branch.
+
+## 2026-04-23: _extract_proposed_changes uses section-header state machine, not prefix-only
+Original approach grabbed all "  - " lines from artifact.content, mixing Notes and Risks
+into the Proposed Changes output. A simple state machine keyed on known section headers
+("Proposed Changes:", "Notes:", "Risks:") is correct and adds zero dependencies.
+
+## 2026-04-23: Filename = index + safe_type + short_id (not task_type alone)
+task_type alone is not collision-safe (two tasks can share a type) and is not path-safe
+(user-supplied, arbitrary string). Index ensures ordering; short_id (task UUID[:8]) ensures
+uniqueness. Format: {index:03d}_{safe_type}_{short_id}.txt. Readable and deterministic.
+
+## 2026-04-23: _sanitize_path_component is local to task_runner.py
+Only used by materialize_task_output. Keeping it local avoids premature abstraction.
+If workspace.py ever needs its own path policy, it can define one separately.
+
+## 2026-04-23: Materialization ordering documented, not enforced by transactions
+materialize → save_job is the conservative ordering. Documenting it in the docstring
+and architecture.md makes the contract explicit for future callers. No transaction
+mechanism is added — overkill for a local dev tool at this stage.
+
+## 2026-04-23: Step 6 on new branch (feature/step6-workspace-runtime)
+Workspace runtime and file materialization have a different purpose (filesystem output)
+and review scope from Step 5/5.5 (execution hardening, context, metadata). New branch
+created from main after PR #6 merged.
+
+## 2026-04-23: materialize_task_output re-derives proposed_changes from artifact content
+The builder's proposed_changes are already serialized into artifact.content (lines starting
+with "  - "). Re-parsing artifact.content avoids storing proposed_changes redundantly in
+metadata or changing RunTaskResult/BuilderOutput signatures. Simple and zero-schema-change.
+
+## 2026-04-23: workspace_file metadata key records absolute path
+Stored as str (not Path) since Pydantic artifact metadata is dict[str, Any] and str
+is unambiguous across platforms. Callers can convert to Path as needed.
+
+## 2026-04-23: LocalWorkspaceRuntime is injected, not instantiated in orchestration
+runtime.write() is the only filesystem operation in task_runner.py. Injecting the runtime
+keeps orchestration testable and swappable — a future Docker or sandboxed runtime can
+drop in with no orchestration changes.
+
+## 2026-04-23: PlannerOutput.proposed_tasks min_length=1
+An empty proposed_tasks list produces an unrunnable job with zero tasks. Rejected at the
+model boundary before reaching orchestration. Symmetric with BuilderOutput.proposed_changes
+min_length=1 (added in Step 5.7).
+
 ## 2026-04-22: Step 5.5 continues on feature/step5-task-execution (PR #6)
 Execution hardening (failure rollback, richer context, metadata cleanup) is in-scope
 for the same feature boundary as Step 5 (task execution). Per Pull Request

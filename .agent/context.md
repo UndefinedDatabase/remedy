@@ -1,33 +1,26 @@
 # Context
 
 ## Active Branch
-`feature/step5-task-execution`
+`feature/step6-workspace-runtime`
 
 ## PR
-https://github.com/UndefinedDatabase/remedy/pull/6
+PR #7 — open at https://github.com/UndefinedDatabase/remedy/pull/7
 
 ## Scope
-Step 5 + 5.5: First local task execution skeleton + execution hardening.
-Builder role, single-task execution, failure rollback, richer context,
-artifact provenance, job state advancement.
+Step 6 + 6.5 + 6.7 + Step 7: workspace runtime, materialization hardening, runtime boundary
+enforcement, and Task Contract v1 verifier gate.
 
 ## Constraints
-- No Docker, no filesystem editing, no command execution, no retries
-- No Claude, no MemPalace, no broad multi-provider routing
-- Provider must not mutate Job directly
-- Builder role distinct from planner role
-- ollama is optional dep — not required for core to work
-- run_next_task must not import provider code directly
+- No Docker, no command execution, no patch parsing
+- Runtime injected into orchestration; never imported by providers
+- Workspace dir: .data/workspaces/<job_id>/task_output/<index>_<safe_type>_<short_id>.txt
+- materialize_task_output and finalize_task raise RuntimeError on impossible states
+- Task stays RUNNING after run_next_task; COMPLETED only after verify_task_output passes
+- verify_task_output is pure (no mutation); finalize_task applies the result
+- No FAILED state: verification failure rolls task to PENDING (retryable)
 
 ## Assumptions
-- OllamaBuilder.build() lazily imports ollama; ImportError surfaced at call time
-- TaskExecutionContext + BuilderOutput live in orchestration/ (same pattern as PlannerOutput)
-- annotate_task_result finds artifact by task_id, not by index; raises if changed but missing
-- annotate_planning_result finds artifact by name+task_id, not by index
-- Step 4 (llm_planner, ollama_planner, plan-job-local) on main via merged PR #5
-- Step 5.5 continues on same branch (PR #6) per Pull Request Continuity Rule
-
-## Branch Scope Decision
-Step 5 (execution) is clearly unrelated to Step 4 (planning/provider config).
-New branch created from main (after PR #5 merged) per AGENTS.md.
-Step 5.5 (execution hardening) is in-scope for PR #6 — same feature boundary.
+- LocalWorkspaceRuntime is the only runtime; Docker runtime is future
+- Workspace root follows same REMEDY_DATA_DIR resolution as storage.py
+- workspace_file metadata key records the absolute path of the materialized file
+- verification_failures metadata key is set by finalize_task on failure only
