@@ -1,5 +1,27 @@
 # Decisions
 
+## 2026-04-25: Step 8.6 continues on feature/step8-repo-attachment (PR Continuity Rule)
+Routing and boundary hotfix is an in-scope correctness fix for the repo applicator
+introduced in Step 8. Same branch, same PR.
+
+## 2026-04-25: _REPO_PATH_RULES: docs/remedy/ keywords moved before plain docs/ keywords
+Substring match on "doc" would match compound types like "spec_document" before "spec"
+got a chance to match. Fix: evaluate all docs/remedy/ entries first. readme stays first
+as a special case. Within each group, "documentation" appears before "doc" since "doc"
+is a substring of "documentation". Order is now explicit and documented with comments.
+
+## 2026-04-25: _write_to_repo resolves repo_root internally before boundary comparison
+target = (repo_root / path).resolve() produces a real absolute path. Comparing it to
+an unresolved repo_root (e.g. a symlink) with is_relative_to() would always return False
+even for legitimately in-bounds paths. Resolving repo_root inside _write_to_repo makes
+the boundary check self-contained — callers no longer need to pre-resolve.
+
+## 2026-04-25: Stale-path guard added to apply_task_output_to_repo (return [])
+Moved from CLI-only to the function itself. Benefit: the guard is now testable directly
+without invoking the full CLI+Ollama stack. The CLI's explicit re-validation + warning
+is retained as defense in depth (user-visible stderr signal); the function-level guard
+prevents silent filesystem writes if the CLI guard is somehow bypassed.
+
 ## 2026-04-25: Step 8.5 continues on feature/step8-repo-attachment (PR Continuity Rule)
 Rule hardening is an in-scope refinement of the repo applicator introduced in Step 8.
 Same branch, same PR. No new branch created.

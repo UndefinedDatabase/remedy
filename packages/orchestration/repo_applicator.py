@@ -72,18 +72,24 @@ def _sanitize_path_component(value: str) -> str:
 # ---------------------------------------------------------------------------
 
 _REPO_PATH_RULES: list[tuple[str, str]] = [
+    # Exact-prefix match for README — checked first to avoid spurious doc/ routing.
     ("readme",          "README.md"),
+    # docs/remedy/ routes — evaluated before plain docs/ so that compound task
+    # types like "spec_document" or "planning_document" match the specific
+    # docs/remedy/ rule rather than the broader "doc" catch-all.
+    ("plan",            "docs/remedy/{safe_type}.md"),
+    ("spec",            "docs/remedy/{safe_type}.md"),
+    ("requirement",     "docs/remedy/{safe_type}.md"),
+    ("acceptance",      "docs/remedy/{safe_type}.md"),
+    ("analysis",        "docs/remedy/{safe_type}.md"),
+    # Plain docs/ routes — "documentation" before "doc" because "doc" is a
+    # substring of "documentation" and would match it prematurely.
     ("changelog",       "docs/{safe_type}.md"),
     ("architecture",    "docs/{safe_type}.md"),
     ("design",          "docs/{safe_type}.md"),
     ("guide",           "docs/{safe_type}.md"),
     ("documentation",   "docs/{safe_type}.md"),
     ("doc",             "docs/{safe_type}.md"),
-    ("plan",            "docs/remedy/{safe_type}.md"),
-    ("spec",            "docs/remedy/{safe_type}.md"),
-    ("requirement",     "docs/remedy/{safe_type}.md"),
-    ("acceptance",      "docs/remedy/{safe_type}.md"),
-    ("analysis",        "docs/remedy/{safe_type}.md"),
 ]
 
 
@@ -118,13 +124,17 @@ def _write_to_repo(repo_root: Path, relative_path: str, content: str) -> Path | 
     (path traversal attempt).  This check runs inside the function so it
     cannot be bypassed by callers that skip sanitization.
 
+    repo_root is resolved internally so the boundary check is correct even
+    when the caller passes an unresolved or symlinked path.
+
     Creates parent directories as needed.
     """
+    resolved_root = repo_root.resolve()
     target = (repo_root / relative_path).resolve()
-    if not target.is_relative_to(repo_root):
+    if not target.is_relative_to(resolved_root):
         raise RuntimeError(
             f"_write_to_repo: resolved path {target!r} is outside "
-            f"repo root {repo_root!r}. Path traversal is not allowed."
+            f"repo root {resolved_root!r}. Path traversal is not allowed."
         )
     if target.exists():
         return None
@@ -193,6 +203,7 @@ def apply_task_output_to_repo(
       3. Returns a list containing the absolute path string of the written file.
 
     Returns an empty list if:
+      - repo_root does not exist or is not a directory (stale/invalid path)
       - task_type is not eligible (no keyword match)
       - target file already exists (no overwrite)
 
@@ -202,6 +213,9 @@ def apply_task_output_to_repo(
     responsible for recording the returned paths in artifact metadata as
     'repo_applied_files' before persisting.
     """
+    if not repo_root.exists() or not repo_root.is_dir():
+        return []
+
     task_type = artifact.metadata.get("task_type", "unknown")
     summary = artifact.metadata.get("summary", "")
 

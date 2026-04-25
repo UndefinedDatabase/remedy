@@ -139,6 +139,33 @@ class TestResolveRepoPath:
         # Spaces replaced with underscores in safe_type
         assert " " not in path
 
+    def test_spec_document_routes_to_docs_remedy_not_docs(self):
+        """'spec_document' contains both 'spec' and 'doc'.
+        'spec' must match first so it routes to docs/remedy/, not plain docs/."""
+        path = _resolve_repo_path("spec_document")
+        assert path is not None
+        assert path.startswith("docs/remedy/"), (
+            f"expected docs/remedy/ but got {path!r} — rule ordering bug"
+        )
+
+    def test_planning_document_routes_to_docs_remedy_not_docs(self):
+        """'planning_document' contains both 'plan' and 'doc'.
+        'plan' must match first so it routes to docs/remedy/, not plain docs/."""
+        path = _resolve_repo_path("planning_document")
+        assert path is not None
+        assert path.startswith("docs/remedy/"), (
+            f"expected docs/remedy/ but got {path!r} — rule ordering bug"
+        )
+
+    def test_requirement_document_routes_to_docs_remedy_not_docs(self):
+        """'requirement_document' contains both 'requirement' and 'doc'.
+        'requirement' must match first so it routes to docs/remedy/, not plain docs/."""
+        path = _resolve_repo_path("requirement_document")
+        assert path is not None
+        assert path.startswith("docs/remedy/"), (
+            f"expected docs/remedy/ but got {path!r} — rule ordering bug"
+        )
+
     def test_define_api_endpoint_is_not_eligible(self):
         """'define' keyword was removed — code-style task types must not match."""
         assert _resolve_repo_path("define_api_endpoint") is None
@@ -206,6 +233,21 @@ class TestWriteToRepo:
         result = _write_to_repo(repo_root, "a/b/c/deep.md", "content")
         assert result is not None
         assert result.read_text() == "content"
+
+    def test_boundary_safe_with_symlinked_repo_root(self, tmp_path):
+        """Boundary check is correct even when repo_root is a symlink.
+
+        Without internal resolve() of repo_root, target.is_relative_to(symlink)
+        would fail because the resolved target path uses the real directory name,
+        not the symlink name — causing a false boundary-violation error.
+        """
+        real_dir = tmp_path / "real_repo"
+        real_dir.mkdir()
+        symlink = tmp_path / "link_repo"
+        symlink.symlink_to(real_dir)
+        result = _write_to_repo(symlink, "docs/test.md", "content")
+        assert result is not None
+        assert result.exists()
 
 
 # ---------------------------------------------------------------------------
@@ -356,43 +398,44 @@ class TestApplyTaskOutputToRepo:
 
 
 class TestStaleRepoPath:
-    """Verify the re-validation check used in run-next-task-local before repo application.
+    """Behavioral tests for stale/invalid repo_root handling in apply_task_output_to_repo.
 
-    The CLI checks repo_root.exists() and repo_root.is_dir() before calling
-    apply_task_output_to_repo. These tests verify the condition logic that drives
-    the stale-path skip (warn + no-op without crashing or failing task completion).
+    apply_task_output_to_repo returns [] without error when repo_root does not
+    exist or is not a directory.  The CLI also emits a warning when its own
+    re-validation detects a stale path; that behavior is complementary.
     """
 
-    def test_nonexistent_repo_root_fails_existence_check(self, tmp_path):
-        """A repo that was deleted after attach is detected as stale."""
+    def test_nonexistent_repo_root_returns_empty_for_eligible_type(self, tmp_path):
+        """An eligible task type returns [] when the repo root has been deleted."""
         stale = tmp_path / "deleted_repo"
         # Never created — simulates a repo deleted after attach-repo
-        assert not stale.exists()
-        assert not stale.is_dir()
+        artifact = _make_artifact("analyze_requirements")
+        applied = apply_task_output_to_repo(artifact, stale)
+        assert applied == []
 
-    def test_file_where_directory_expected_fails_isdir_check(self, tmp_path):
-        """A file at the repo path (not a directory) is caught by the check."""
+    def test_nonexistent_repo_root_creates_no_files(self, tmp_path):
+        """No directories or files are created when repo_root does not exist."""
+        stale = tmp_path / "deleted_repo"
+        artifact = _make_artifact("write_spec")
+        apply_task_output_to_repo(artifact, stale)
+        assert not stale.exists()
+
+    def test_file_at_repo_root_returns_empty_for_eligible_type(self, tmp_path):
+        """A file where a directory is expected causes a safe no-op return."""
         file_path = tmp_path / "not_a_dir"
         file_path.write_text("I am a file")
-        assert file_path.exists()
-        assert not file_path.is_dir()
+        artifact = _make_artifact("analyze_requirements")
+        applied = apply_task_output_to_repo(artifact, file_path)
+        assert applied == []
 
-    def test_valid_repo_root_passes_check(self, tmp_path):
-        """A live, accessible directory passes the re-validation check."""
+    def test_valid_repo_root_still_applies_eligible_type(self, tmp_path):
+        """A live directory allows eligible task types to apply as expected."""
         repo_dir = tmp_path / "repo"
         repo_dir.mkdir()
-        assert repo_dir.exists()
-        assert repo_dir.is_dir()
-
-    def test_stale_path_does_not_affect_apply_if_guarded(self, tmp_path):
-        """apply_task_output_to_repo is never called for an ineligible type;
-        the stale-path guard only matters for eligible types that would write."""
-        repo_root = tmp_path / "valid_repo"
-        repo_root.mkdir()
-        # Ineligible type — no write attempted regardless of repo validity
-        artifact = _make_artifact("write_implementation")
-        applied = apply_task_output_to_repo(artifact, repo_root)
-        assert applied == []
+        artifact = _make_artifact("analyze_requirements")
+        applied = apply_task_output_to_repo(artifact, repo_dir)
+        assert len(applied) == 1
+        assert Path(applied[0]).exists()
 
 
 class TestAttachRepoValidation:
