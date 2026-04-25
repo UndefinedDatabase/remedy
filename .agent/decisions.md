@@ -1,5 +1,38 @@
 # Decisions
 
+## 2026-04-25: Step 9 on new branch feature/step9-permission-model
+Permission model is clearly unrelated to repo attachment/applicator (different purpose,
+review scope, merge intent). All Step 8.x work is merged to main. New branch correct.
+
+## 2026-04-25: Capability as str, Enum — Capability("foo") raises ValueError
+Using str, Enum makes capability values self-documenting strings and makes invalid
+values fail at construction time. The CLI catches the ValueError and prints a clear
+error with the valid capability list.
+
+## 2026-04-25: workspace_write is allowed by default
+workspace_write is always needed for local task execution; requiring explicit opt-in
+would break the existing flow and add friction with no security benefit in the current
+local-only model. All other capabilities default to deny.
+
+## 2026-04-25: check_and_apply_to_repo lives in repo_applicator.py, not permissions.py
+It combines permission checking with repo application logic and must import from both
+modules. Placing it in repo_applicator (which already imports Artifact and Path) is
+cleaner than importing repo_applicator logic into permissions.py or creating a third
+module for a single function. No circular import: permissions.py imports Job via
+TYPE_CHECKING only; repo_applicator.py imports permissions at function call time.
+
+## 2026-04-25: check_and_apply_to_repo mutates artifact.metadata on denial
+Recording repo_application_skipped_reason directly on the artifact is consistent with
+how verification_failures and verification_passed are recorded (finalize_task). The
+artifact is the authoritative record of what happened during task execution. The caller
+(CLI) persists the job after this call, which saves the annotation.
+
+## 2026-04-25: repo_overwrite and shell_exec are defined but unused in Step 9
+They exist to make the capability namespace stable and to allow CLI experimentation.
+Granting them has no effect because no code path checks them yet. This is intentional
+and documented. Preventing them from being set would require extra validation that
+serves no safety purpose in the current implementation.
+
 ## 2026-04-25: Step 8.6 continues on feature/step8-repo-attachment (PR Continuity Rule)
 Routing and boundary hotfix is an in-scope correctness fix for the repo applicator
 introduced in Step 8. Same branch, same PR.

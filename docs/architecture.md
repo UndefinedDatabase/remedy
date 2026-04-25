@@ -290,8 +290,12 @@ Current mapping:
 | task_type keyword | repo-relative path |
 |-------------------|--------------------|
 | `readme` | `README.md` |
-| `architecture`, `design`, `documentation`, `doc` | `docs/<safe_type>.md` |
-| `plan`, `spec`, `requirement`, `acceptance`, `analysis`, `implementation`, `prepare`, `define`, `summarize`, `summary` | `docs/remedy/<safe_type>.md` |
+| `changelog`, `architecture`, `design`, `guide`, `documentation`, `doc` | `docs/<safe_type>.md` |
+| `plan`, `spec`, `requirement`, `acceptance`, `analysis` | `docs/remedy/<safe_type>.md` |
+
+Rules are ordered: `docs/remedy/` keywords appear before `doc`/`documentation` so that
+compound task types like `spec_document` or `planning_document` match the specific
+`docs/remedy/` rule rather than the broader `doc` catch-all.
 
 `<safe_type>` is the task_type sanitized via the same `_sanitize_path_component` logic as
 the workspace (non-`[a-zA-Z0-9_-]` replaced with `_`, truncated to 48 chars).
@@ -299,6 +303,7 @@ the workspace (non-`[a-zA-Z0-9_-]` replaced with `_`, truncated to 48 chars).
 Repo application runs only when:
 - `vr.passed` (verification passed) — no repo writes on failed verification
 - `job.metadata["target_repo"]` is set — no repo writes without attachment
+- `repo_generated_write` permission is granted (see Step 9 below)
 - The task type matches a keyword — no repo writes for ineligible types
 - The target file does not already exist — no overwriting
 
@@ -310,11 +315,47 @@ without any error or warning.
 | Key | Added by |
 |-----|----------|
 | `repo_applied_files` | CLI (`run-next-task-local`), only when at least one repo file was written; list of absolute path strings |
+| `repo_application_skipped_reason` | `check_and_apply_to_repo` — present only when repo write was skipped due to `"permission_denied"` |
 
 **Failed-artifact retention**: on verification failure, `finalize_task` clears
 `task.output_artifact_ids` (so the next retry uses a fresh artifact) but retains the
 failed artifact in `job.artifacts` for diagnostics. The artifact is detached from the
 task but preserved in the job — accessible by iterating `job.artifacts`.
+
+### Permission Model v1 (Step 9)
+
+`packages/orchestration/permissions.py` defines the first explicit permission boundary.
+
+**`Capability`** — a `str` enum listing all execution capabilities that Remedy may exercise:
+
+| Capability | Default | Meaning |
+|-----------|---------|---------|
+| `workspace_write` | allow | Write files into the Remedy-owned workspace |
+| `repo_generated_write` | deny | Write generated markdown into the user's target repo |
+| `repo_overwrite` | deny | Overwrite existing files in the target repo (reserved) |
+| `shell_exec` | deny | Execute shell commands (reserved) |
+
+**`is_allowed(job, capability)`** — pure check; reads from `job.metadata["permissions"]`
+falling back to conservative defaults. Only the string `"allow"` grants permission.
+
+**`set_permission(job, capability, *, allow)`** — mutates `job.metadata["permissions"]`.
+Callers must persist the job afterwards.
+
+**`check_and_apply_to_repo(job, artifact, repo_root)`** in `repo_applicator.py` — the
+permission-gated entry point for repo application:
+1. Checks `repo_generated_write` via `is_allowed`.
+2. If denied: records `repo_application_skipped_reason="permission_denied"` on artifact; returns `[]`.
+3. If allowed: delegates to `apply_task_output_to_repo` (all existing rules apply).
+
+Permissions are stored in `job.metadata["permissions"]` as `{"capability": "allow"|"deny"}`.
+Missing keys fall back to `_DEFAULTS`. Explicit `"deny"` overrides a default allow.
+
+**Design principles:**
+- Default safe: no capability is allowed unless explicitly granted (except `workspace_write`).
+- No interactive prompts: permissions are set once via CLI and persisted.
+- `repo_overwrite` and `shell_exec` exist as reserved future capabilities; they have no
+  operational effect in this step even if explicitly granted.
+- Task completion is always determined by the verifier — never by repo application.
 
 ### Planner Output Validation
 
