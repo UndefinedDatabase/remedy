@@ -32,8 +32,12 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from packages.core.models import Artifact
+
+if TYPE_CHECKING:
+    from packages.core.models import Job
 
 # ---------------------------------------------------------------------------
 # Path sanitization
@@ -230,3 +234,34 @@ def apply_task_output_to_repo(
         return []
 
     return [str(target)]
+
+
+# ---------------------------------------------------------------------------
+# Permission-gated application
+# ---------------------------------------------------------------------------
+
+
+def check_and_apply_to_repo(
+    job: "Job",
+    artifact: Artifact,
+    repo_root: Path,
+) -> list[str]:
+    """Apply task output to the target repo after checking repo_generated_write permission.
+
+    If repo_generated_write is not allowed:
+      - records repo_application_skipped_reason="permission_denied" in artifact.metadata
+      - returns []
+
+    If allowed, delegates to apply_task_output_to_repo (which handles stale paths,
+    keyword eligibility, no-overwrite, and boundary safety).
+
+    Mutates artifact.metadata on permission denial.  The caller is responsible for
+    persisting the updated artifact (via save_job).
+    """
+    from packages.orchestration.permissions import Capability, is_allowed
+
+    if not is_allowed(job, Capability.repo_generated_write):
+        artifact.metadata["repo_application_skipped_reason"] = "permission_denied"
+        return []
+
+    return apply_task_output_to_repo(artifact, repo_root)

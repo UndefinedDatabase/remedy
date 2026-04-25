@@ -13,11 +13,13 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact
+from packages.core.models import Artifact, Job, RunState
+from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.repo_applicator import (
     _resolve_repo_path,
     _write_to_repo,
     apply_task_output_to_repo,
+    check_and_apply_to_repo,
 )
 
 
@@ -436,6 +438,101 @@ class TestStaleRepoPath:
         applied = apply_task_output_to_repo(artifact, repo_dir)
         assert len(applied) == 1
         assert Path(applied[0]).exists()
+
+
+# ---------------------------------------------------------------------------
+# check_and_apply_to_repo (permission-gated application)
+# ---------------------------------------------------------------------------
+
+
+def _make_job_with_permission(allow: bool) -> Job:
+    job = Job(name="test", state=RunState.PENDING)
+    set_permission(job, Capability.repo_generated_write, allow=allow)
+    return job
+
+
+def _make_job_default_permissions() -> Job:
+    return Job(name="test", state=RunState.PENDING)
+
+
+class TestCheckAndApplyToRepo:
+    """Tests for the permission-gated check_and_apply_to_repo function."""
+
+    def test_permission_denied_by_default_returns_empty(self, tmp_path):
+        """repo_generated_write is denied by default — returns []."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        job = _make_job_default_permissions()
+        artifact = _make_artifact("analyze_requirements")
+        applied = check_and_apply_to_repo(job, artifact, repo_root)
+        assert applied == []
+
+    def test_permission_denied_annotates_skip_reason_in_metadata(self, tmp_path):
+        """Denied permission records repo_application_skipped_reason on the artifact."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        job = _make_job_default_permissions()
+        artifact = _make_artifact("analyze_requirements")
+        check_and_apply_to_repo(job, artifact, repo_root)
+        assert artifact.metadata.get("repo_application_skipped_reason") == "permission_denied"
+
+    def test_permission_denied_does_not_write_any_file(self, tmp_path):
+        """No file is created when permission is denied."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        job = _make_job_default_permissions()
+        artifact = _make_artifact("analyze_requirements")
+        check_and_apply_to_repo(job, artifact, repo_root)
+        assert list(repo_root.rglob("*.md")) == []
+
+    def test_explicit_deny_returns_empty_and_annotates(self, tmp_path):
+        """Explicit deny has the same effect as the default deny."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        job = _make_job_with_permission(allow=False)
+        artifact = _make_artifact("analyze_requirements")
+        applied = check_and_apply_to_repo(job, artifact, repo_root)
+        assert applied == []
+        assert artifact.metadata.get("repo_application_skipped_reason") == "permission_denied"
+
+    def test_permission_allowed_applies_eligible_type(self, tmp_path):
+        """Explicit allow permits the repo write for an eligible task type."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        job = _make_job_with_permission(allow=True)
+        artifact = _make_artifact("analyze_requirements")
+        applied = check_and_apply_to_repo(job, artifact, repo_root)
+        assert len(applied) == 1
+        assert Path(applied[0]).exists()
+
+    def test_permission_allowed_no_skip_reason_set(self, tmp_path):
+        """When permission is granted, repo_application_skipped_reason is not set."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        job = _make_job_with_permission(allow=True)
+        artifact = _make_artifact("analyze_requirements")
+        check_and_apply_to_repo(job, artifact, repo_root)
+        assert "repo_application_skipped_reason" not in artifact.metadata
+
+    def test_permission_allowed_ineligible_type_returns_empty(self, tmp_path):
+        """Permission is granted but task type is not in the keyword table — no write."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        job = _make_job_with_permission(allow=True)
+        artifact = _make_artifact("write_code")
+        applied = check_and_apply_to_repo(job, artifact, repo_root)
+        assert applied == []
+        # Ineligible type — no skip reason (it's not a permission issue)
+        assert "repo_application_skipped_reason" not in artifact.metadata
+
+    def test_permission_allowed_stale_repo_root_returns_empty(self, tmp_path):
+        """Permission granted but stale repo root — apply returns [] safely."""
+        stale = tmp_path / "deleted_repo"
+        # Never created
+        job = _make_job_with_permission(allow=True)
+        artifact = _make_artifact("analyze_requirements")
+        applied = check_and_apply_to_repo(job, artifact, stale)
+        assert applied == []
 
 
 class TestAttachRepoValidation:
