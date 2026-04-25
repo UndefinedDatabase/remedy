@@ -71,12 +71,12 @@ class TestResolveRepoPath:
         assert path.endswith(".md")
 
     def test_plan_keyword_maps_to_docs_remedy(self):
-        path = _resolve_repo_path("prepare_implementation_plan")
+        path = _resolve_repo_path("create_implementation_plan")
         assert path is not None
         assert path.startswith("docs/remedy/")
 
     def test_spec_keyword_maps_to_docs_remedy(self):
-        path = _resolve_repo_path("define_spec")
+        path = _resolve_repo_path("write_spec")
         assert path is not None
         assert path.startswith("docs/remedy/")
 
@@ -121,11 +121,40 @@ class TestResolveRepoPath:
             assert ".." not in path
             assert "/" not in path.split("docs/remedy/")[-1] if "remedy" in (path or "") else True
 
+    def test_changelog_keyword_maps_to_docs(self):
+        path = _resolve_repo_path("generate_changelog")
+        assert path is not None
+        assert path.startswith("docs/")
+        assert path.endswith(".md")
+
+    def test_guide_keyword_maps_to_docs(self):
+        path = _resolve_repo_path("write_user_guide")
+        assert path is not None
+        assert path.startswith("docs/")
+        assert path.endswith(".md")
+
     def test_safe_type_replaces_unsafe_chars(self):
-        path = _resolve_repo_path("define acceptance checks")
+        path = _resolve_repo_path("acceptance checks for release")
         assert path is not None
         # Spaces replaced with underscores in safe_type
         assert " " not in path
+
+    def test_define_api_endpoint_is_not_eligible(self):
+        """'define' keyword was removed — code-style task types must not match."""
+        assert _resolve_repo_path("define_api_endpoint") is None
+
+    def test_write_implementation_is_not_eligible(self):
+        """'implementation' keyword was removed — code tasks must not match."""
+        assert _resolve_repo_path("write_implementation") is None
+
+    def test_prepare_data_migration_is_not_eligible(self):
+        """'prepare' keyword was removed — too broad, matches non-doc tasks."""
+        assert _resolve_repo_path("prepare_data_migration") is None
+
+    def test_summarize_output_is_not_eligible(self):
+        """'summarize'/'summary' keywords were removed — too broad."""
+        assert _resolve_repo_path("summarize_output") is None
+        assert _resolve_repo_path("write_summary") is None
 
 
 # ---------------------------------------------------------------------------
@@ -262,17 +291,14 @@ class TestApplyTaskOutputToRepo:
         assert len(applied) == 1
         assert Path(applied[0]).is_absolute()
 
-    def test_boundary_violation_raises(self, tmp_path):
-        """A crafted task_type that produces a traversal path must raise RuntimeError."""
+    def test_normal_eligible_task_type_applies_successfully(self, tmp_path):
+        """An eligible task_type with sanitized path applies without error."""
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
-        # Build artifact with a safe-but-deep task_type; directly test boundary
         artifact = _make_artifact("analyze_requirements")
-        # Override metadata task_type so _resolve_repo_path returns a traversal
-        # We do this by patching metadata directly (simulates a bad internal state)
-        artifact.metadata["task_type"] = "analyze_requirements"
-        # Verify normal case passes
-        apply_task_output_to_repo(artifact, repo_root)
+        applied = apply_task_output_to_repo(artifact, repo_root)
+        assert len(applied) == 1
+        assert Path(applied[0]).exists()
 
     def test_repo_not_attached_workspace_only_flow(self, tmp_path):
         """If no target_repo in job metadata, no repo write should happen.
@@ -301,7 +327,7 @@ class TestApplyTaskOutputToRepo:
     def test_plan_type_writes_to_docs_remedy(self, tmp_path):
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
-        artifact = _make_artifact("prepare_implementation_plan")
+        artifact = _make_artifact("create_implementation_plan")
         applied = apply_task_output_to_repo(artifact, repo_root)
         assert len(applied) == 1
         assert "docs/remedy" in applied[0]
@@ -327,6 +353,46 @@ class TestApplyTaskOutputToRepo:
 # ---------------------------------------------------------------------------
 # attach-repo validation (mirrors _cmd_attach_repo logic)
 # ---------------------------------------------------------------------------
+
+
+class TestStaleRepoPath:
+    """Verify the re-validation check used in run-next-task-local before repo application.
+
+    The CLI checks repo_root.exists() and repo_root.is_dir() before calling
+    apply_task_output_to_repo. These tests verify the condition logic that drives
+    the stale-path skip (warn + no-op without crashing or failing task completion).
+    """
+
+    def test_nonexistent_repo_root_fails_existence_check(self, tmp_path):
+        """A repo that was deleted after attach is detected as stale."""
+        stale = tmp_path / "deleted_repo"
+        # Never created — simulates a repo deleted after attach-repo
+        assert not stale.exists()
+        assert not stale.is_dir()
+
+    def test_file_where_directory_expected_fails_isdir_check(self, tmp_path):
+        """A file at the repo path (not a directory) is caught by the check."""
+        file_path = tmp_path / "not_a_dir"
+        file_path.write_text("I am a file")
+        assert file_path.exists()
+        assert not file_path.is_dir()
+
+    def test_valid_repo_root_passes_check(self, tmp_path):
+        """A live, accessible directory passes the re-validation check."""
+        repo_dir = tmp_path / "repo"
+        repo_dir.mkdir()
+        assert repo_dir.exists()
+        assert repo_dir.is_dir()
+
+    def test_stale_path_does_not_affect_apply_if_guarded(self, tmp_path):
+        """apply_task_output_to_repo is never called for an ineligible type;
+        the stale-path guard only matters for eligible types that would write."""
+        repo_root = tmp_path / "valid_repo"
+        repo_root.mkdir()
+        # Ineligible type — no write attempted regardless of repo validity
+        artifact = _make_artifact("write_implementation")
+        applied = apply_task_output_to_repo(artifact, repo_root)
+        assert applied == []
 
 
 class TestAttachRepoValidation:

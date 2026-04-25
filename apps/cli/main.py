@@ -226,14 +226,21 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     repo_applied: list[str] = []
     if vr.passed and job.metadata.get("target_repo"):
         repo_root = Path(job.metadata["target_repo"])
-        task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
-        if task_obj.output_artifact_ids:
-            artifact_id = task_obj.output_artifact_ids[0]
-            artifact = next((a for a in result.job.artifacts if a.id == artifact_id), None)
-            if artifact is not None:
-                repo_applied = apply_task_output_to_repo(artifact, repo_root)
-                if repo_applied:
-                    artifact.metadata["repo_applied_files"] = repo_applied
+        if not repo_root.exists() or not repo_root.is_dir():
+            print(
+                f"  warning: attached repo {str(repo_root)!r} no longer exists or is not a "
+                "directory; skipping repo application",
+                file=sys.stderr,
+            )
+        else:
+            task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
+            if task_obj.output_artifact_ids:
+                artifact_id = task_obj.output_artifact_ids[0]
+                artifact = next((a for a in result.job.artifacts if a.id == artifact_id), None)
+                if artifact is not None:
+                    repo_applied = apply_task_output_to_repo(artifact, repo_root)
+                    if repo_applied:
+                        artifact.metadata["repo_applied_files"] = repo_applied
 
     # Persist after verification (and optional repo application) so the saved
     # state is authoritative.

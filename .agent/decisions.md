@@ -1,5 +1,26 @@
 # Decisions
 
+## 2026-04-25: Step 8.5 continues on feature/step8-repo-attachment (PR Continuity Rule)
+Rule hardening is an in-scope refinement of the repo applicator introduced in Step 8.
+Same branch, same PR. No new branch created.
+
+## 2026-04-25: Removed 5 broad keywords from _REPO_PATH_RULES
+Removed: implementation, prepare, define, summarize, summary.
+These all match task types that produce code or non-doc output (e.g. write_implementation,
+define_api_endpoint, prepare_data_migration). The false-positive risk outweighs any benefit.
+Added changelog and guide as clearly documentation-oriented replacements.
+
+## 2026-04-25: Stale repo path check lives in the CLI, not in repo_applicator.py
+The re-validation (exists + is_dir) before calling apply_task_output_to_repo is in the CLI.
+Reason: repo_applicator.py has no concept of "attached repo" — it just writes to a path.
+The CLI is the caller responsible for policy decisions (warn vs fail vs skip). Putting it
+there keeps apply_task_output_to_repo a pure boundary-safe writer with no policy.
+
+## 2026-04-25: Stale repo path → warn + skip, never fail task completion
+Task completion is defined by workspace verification, not repo application (established
+in Step 8). A stale repo path is a user-environment issue, not a task failure. The CLI
+prints a warning to stderr and skips the repo write; the task is still marked COMPLETED.
+
 ## 2026-04-24: Step 8 branches from feature/step6-workspace-runtime (not main)
 Step 8 depends on workspace runtime, verifier gate, and diagnostic semantics introduced
 in Steps 6–7.6 which are not yet merged to main (PR #7 open). Branching from main would

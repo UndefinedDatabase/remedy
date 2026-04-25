@@ -61,17 +61,22 @@ def _sanitize_path_component(value: str) -> str:
 # specific keywords appear first.
 #
 # Allowed targets:
-#   README.md           — readme-type output
-#   docs/<type>.md      — documentation, architecture, design output
-#   docs/remedy/<type>.md — planning, spec, requirement, analysis output
+#   README.md             — readme-type output
+#   docs/<type>.md        — documentation, architecture, design, changelog, guide output
+#   docs/remedy/<type>.md — planning, spec, requirement, acceptance, analysis output
 #
 # Source code paths, test paths, and arbitrary paths are intentionally absent.
+#
+# Intentionally excluded keywords (too broad — would match code/implementation tasks):
+#   implementation, prepare, define, summarize, summary
 # ---------------------------------------------------------------------------
 
 _REPO_PATH_RULES: list[tuple[str, str]] = [
     ("readme",          "README.md"),
+    ("changelog",       "docs/{safe_type}.md"),
     ("architecture",    "docs/{safe_type}.md"),
     ("design",          "docs/{safe_type}.md"),
+    ("guide",           "docs/{safe_type}.md"),
     ("documentation",   "docs/{safe_type}.md"),
     ("doc",             "docs/{safe_type}.md"),
     ("plan",            "docs/remedy/{safe_type}.md"),
@@ -79,11 +84,6 @@ _REPO_PATH_RULES: list[tuple[str, str]] = [
     ("requirement",     "docs/remedy/{safe_type}.md"),
     ("acceptance",      "docs/remedy/{safe_type}.md"),
     ("analysis",        "docs/remedy/{safe_type}.md"),
-    ("implementation",  "docs/remedy/{safe_type}.md"),
-    ("prepare",         "docs/remedy/{safe_type}.md"),
-    ("define",          "docs/remedy/{safe_type}.md"),
-    ("summarize",       "docs/remedy/{safe_type}.md"),
-    ("summary",         "docs/remedy/{safe_type}.md"),
 ]
 
 
