@@ -165,6 +165,7 @@ Task execution artifacts carry consistent metadata keys:
 | `workspace_file` | `materialize_task_output` (absolute path of the materialized file; deterministic, collision-safe name) |
 | `verification_passed` | `finalize_task` — present only on verification failure; value `False` |
 | `verification_failures` | `finalize_task` — list of `"check: message"` strings on failure |
+| `repo_applied_files` | CLI — list of absolute path strings; present only when ≥1 file was written to the attached repo |
 
 Planning artifacts carry: `summary`, `provider`, `role`, `model`, `task_count`, `elapsed_ms`.
 Legacy ambiguous keys (`"builder": "llm"`, `"planner": "llm"`) are not used.
@@ -253,6 +254,67 @@ Early return: if a check fails in a way that makes the next check meaningless (e
 artifact is None), the function returns immediately with the accumulated failures rather
 than raising. All checks that ran are always included in the `VerificationResult.checks`
 list.
+
+### Target Repository Attachment (Step 8)
+
+Remedy separates its **workspace** (Remedy-owned execution boundary) from the **target
+repository** (user-owned project tree):
+
+```
+workspace  →  .data/workspaces/<job_id>/   (Remedy writes; always)
+target repo →  user-supplied directory       (Remedy writes selectively; only when attached)
+```
+
+**Attaching a repo** stores the resolved absolute path in `job.metadata["target_repo"]`:
+
+```bash
+remedy attach-repo <job_id> /path/to/my-repo
+```
+
+No files are written during attachment — only the path is recorded. The path is validated
+at attach time (must exist and be a directory) and resolved to an absolute path.
+
+**Safe repo application** (`packages/orchestration/repo_applicator.py`) bridges the
+workspace and the target repo for eligible task output. Rules:
+
+1. **Keyword mapping only** — `task_type` is matched against a static `_REPO_PATH_RULES`
+   table (no LLM paths accepted). Ineligible task types produce no repo write.
+2. **No overwriting** — if the target file already exists, the write is skipped silently.
+3. **No source code** — only markdown files under `docs/` or `README.md` are ever written.
+4. **No Git, no shell, no patch application** — writes use `Path.write_text()` only.
+5. **Boundary-safe** — `_write_to_repo` resolves the target path and verifies it remains
+   inside `repo_root` before writing. Boundary violations raise `RuntimeError`.
+
+Current mapping:
+
+| task_type keyword | repo-relative path |
+|-------------------|--------------------|
+| `readme` | `README.md` |
+| `architecture`, `design`, `documentation`, `doc` | `docs/<safe_type>.md` |
+| `plan`, `spec`, `requirement`, `acceptance`, `analysis`, `implementation`, `prepare`, `define`, `summarize`, `summary` | `docs/remedy/<safe_type>.md` |
+
+`<safe_type>` is the task_type sanitized via the same `_sanitize_path_component` logic as
+the workspace (non-`[a-zA-Z0-9_-]` replaced with `_`, truncated to 48 chars).
+
+Repo application runs only when:
+- `vr.passed` (verification passed) — no repo writes on failed verification
+- `job.metadata["target_repo"]` is set — no repo writes without attachment
+- The task type matches a keyword — no repo writes for ineligible types
+- The target file does not already exist — no overwriting
+
+If no repo is attached or the task type is ineligible, the flow continues workspace-only
+without any error or warning.
+
+**Artifact metadata keys added by Step 8:**
+
+| Key | Added by |
+|-----|----------|
+| `repo_applied_files` | CLI (`run-next-task-local`), only when at least one repo file was written; list of absolute path strings |
+
+**Failed-artifact retention**: on verification failure, `finalize_task` clears
+`task.output_artifact_ids` (so the next retry uses a fresh artifact) but retains the
+failed artifact in `job.artifacts` for diagnostics. The artifact is detached from the
+task but preserved in the job — accessible by iterating `job.artifacts`.
 
 ### Planner Output Validation
 

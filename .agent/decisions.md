@@ -1,5 +1,87 @@
 # Decisions
 
+## 2026-04-25: Step 8.6 continues on feature/step8-repo-attachment (PR Continuity Rule)
+Routing and boundary hotfix is an in-scope correctness fix for the repo applicator
+introduced in Step 8. Same branch, same PR.
+
+## 2026-04-25: _REPO_PATH_RULES: docs/remedy/ keywords moved before plain docs/ keywords
+Substring match on "doc" would match compound types like "spec_document" before "spec"
+got a chance to match. Fix: evaluate all docs/remedy/ entries first. readme stays first
+as a special case. Within each group, "documentation" appears before "doc" since "doc"
+is a substring of "documentation". Order is now explicit and documented with comments.
+
+## 2026-04-25: _write_to_repo resolves repo_root internally before boundary comparison
+target = (repo_root / path).resolve() produces a real absolute path. Comparing it to
+an unresolved repo_root (e.g. a symlink) with is_relative_to() would always return False
+even for legitimately in-bounds paths. Resolving repo_root inside _write_to_repo makes
+the boundary check self-contained — callers no longer need to pre-resolve.
+
+## 2026-04-25: Stale-path guard added to apply_task_output_to_repo (return [])
+Moved from CLI-only to the function itself. Benefit: the guard is now testable directly
+without invoking the full CLI+Ollama stack. The CLI's explicit re-validation + warning
+is retained as defense in depth (user-visible stderr signal); the function-level guard
+prevents silent filesystem writes if the CLI guard is somehow bypassed.
+
+## 2026-04-25: Step 8.5 continues on feature/step8-repo-attachment (PR Continuity Rule)
+Rule hardening is an in-scope refinement of the repo applicator introduced in Step 8.
+Same branch, same PR. No new branch created.
+
+## 2026-04-25: Removed 5 broad keywords from _REPO_PATH_RULES
+Removed: implementation, prepare, define, summarize, summary.
+These all match task types that produce code or non-doc output (e.g. write_implementation,
+define_api_endpoint, prepare_data_migration). The false-positive risk outweighs any benefit.
+Added changelog and guide as clearly documentation-oriented replacements.
+
+## 2026-04-25: Stale repo path check lives in the CLI, not in repo_applicator.py
+The re-validation (exists + is_dir) before calling apply_task_output_to_repo is in the CLI.
+Reason: repo_applicator.py has no concept of "attached repo" — it just writes to a path.
+The CLI is the caller responsible for policy decisions (warn vs fail vs skip). Putting it
+there keeps apply_task_output_to_repo a pure boundary-safe writer with no policy.
+
+## 2026-04-25: Stale repo path → warn + skip, never fail task completion
+Task completion is defined by workspace verification, not repo application (established
+in Step 8). A stale repo path is a user-environment issue, not a task failure. The CLI
+prints a warning to stderr and skips the repo write; the task is still marked COMPLETED.
+
+## 2026-04-24: Step 8 branches from feature/step6-workspace-runtime (not main)
+Step 8 depends on workspace runtime, verifier gate, and diagnostic semantics introduced
+in Steps 6–7.6 which are not yet merged to main (PR #7 open). Branching from main would
+miss those changes entirely. Branched from feature/step6-workspace-runtime to form a PR
+chain. This is documented as a necessary exception to the "branch from main" default.
+
+## 2026-04-24: repo_applicator uses keyword matching on task_type (not exact match)
+task_type values come from LLM output and are not guaranteed to match exact strings. A
+keyword substring match (case-insensitive) against a static table is inspectable, fast,
+and does not require config. Each entry maps a keyword to a path template. First match
+wins; order is from most-specific to least-specific keyword.
+
+## 2026-04-24: No overwriting existing repo files in Step 8
+The conservative rule: if the target path exists, skip silently and return []. This
+prevents Remedy from accidentally clobbering user-edited docs on retry. A future
+permission-gated step can relax this for explicitly approved paths.
+
+## 2026-04-24: Repo application is workspace-only fallback (not a failure condition)
+If no repo is attached, or the task type is ineligible, or the target file already
+exists, run-next-task-local continues without error. Repo application is opportunistic —
+task completion is defined by workspace verification only, not by repo writes.
+
+## 2026-04-24: _sanitize_path_component duplicated in repo_applicator.py
+The same sanitization regex appears in both task_runner.py and repo_applicator.py. The
+function is tiny (3 lines) and importing a private helper across modules is worse style
+than a local copy. If this pattern grows, extract it to a shared utility in a later step.
+
+## 2026-04-24: repo_applicator content is section-aware (excludes Notes and Risks)
+Uses the same section-header state machine as _extract_proposed_changes in task_runner.py.
+Notes and Risks appear in artifact.content with the same "  - " prefix as proposed
+changes; section-aware extraction is the only correct approach.
+
+## 2026-04-24: finalize_task carry-in: raise RuntimeError on invariant violations
+Two invariant violations in the failure branch that were previously silent are now
+explicit RuntimeErrors: (1) empty output_artifact_ids before clear, (2) artifact ID
+captured but not found in job.artifacts. Both represent bugs in run_next_task. Silent
+skip would hide the bug; raising makes it visible immediately. The conditions cannot
+occur in normal operation.
+
 ## 2026-04-24: finalize_task captures artifact ID before clearing output_artifact_ids
 The failure branch in finalize_task previously scanned job.artifacts by task_id after
 clearing output_artifact_ids. Because multiple failed artifacts can accumulate in

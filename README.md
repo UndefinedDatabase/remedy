@@ -340,6 +340,72 @@ remedy run-next-task-local <job_id>
 #   verification failure: workspace_file_not_empty: workspace file is empty: /path/to/file
 ```
 
+## Step 8: Controlled Repo Attachment and Safe Generated File Application
+
+Step 8 introduces the first controlled bridge from Remedy's workspace into a target
+repository — conservative, keyword-mapped, no-overwrite, no source edits.
+
+### Workspace vs target repository
+
+| | Workspace | Target repository |
+|-|-----------|-------------------|
+| Owner | Remedy | User |
+| Location | `.data/workspaces/<job_id>/` | User-supplied path |
+| Always written | Yes (every task) | Only when attached + eligible |
+| Format | `.txt` files | Markdown files |
+| Overwrite | Yes (task output replaces previous) | No (skip if file exists) |
+
+### Attaching a repo
+
+```bash
+remedy attach-repo <job_id> /path/to/my-repo
+# → Job <id> | repo=/absolute/path/to/my-repo
+```
+
+The path is validated (must exist, must be a directory) and resolved to an absolute path.
+It is stored in `job.metadata["target_repo"]` and persisted.
+
+### Safe repo-application rules
+
+After a task passes verification, Remedy checks whether its `task_type` matches any
+keyword in a conservative static mapping:
+
+| task_type keyword | Written to |
+|-------------------|-----------|
+| `readme` | `README.md` |
+| `architecture`, `design`, `documentation`, `doc` | `docs/<safe_type>.md` |
+| `plan`, `spec`, `requirement`, `acceptance`, `analysis`, `implementation`, `prepare`, `define`, `summarize`, `summary` | `docs/remedy/<safe_type>.md` |
+
+Rules:
+- **No arbitrary LLM paths** — only the keyword table above is consulted.
+- **No source code** — only `docs/` and `README.md` targets are defined.
+- **No overwriting** — if the target file already exists, the write is skipped.
+- **No shell, no Git** — pure `Path.write_text()` only.
+- **Boundary-safe** — the resolved target must remain inside the attached repo root.
+- **Workspace-only if no repo** — when no repo is attached, the flow continues unchanged.
+
+### run-next-task-local output (Step 8)
+
+```bash
+# Task with attached repo and eligible task type:
+remedy run-next-task-local <job_id>
+# → Job <id> | task=<task-id> type=analyze_requirements role=builder model=... elapsed=...ms remaining=2 file=/path/to/workspace/file.txt repo=/path/to/repo/docs/remedy/analyze_requirements.md verified=pass
+
+# Task with no attached repo (workspace-only):
+# → Job <id> | task=<task-id> type=write_code ... verified=pass
+```
+
+The `repo=...` field appears only when a file was written to the target repo.
+
+### What is NOT done in this step
+
+- No source patching or diffs
+- No Git operations (no commit, no branch, no status)
+- No shell command execution
+- No Docker
+- No full permission framework
+- No Claude or MemPalace integration
+
 ## What Is NOT Implemented Yet
 
 - Code/file modification via patches or diffs (builder output is structured prose, not patches)
@@ -347,7 +413,7 @@ remedy run-next-task-local <job_id>
 - Provider implementations (Claude, MemPalace)
 - Docker or sandboxed runtime execution
 - LLM-backed verification or review
-- Target repository integration
+- Permission-gated repo edits (Step 8 uses a static keyword mapping; a full permission framework is deferred)
 - Configuration system
 - API and worker apps
 
