@@ -1,5 +1,78 @@
 # Decisions
 
+## 2026-04-27: Step 9.6 continues on feature/step9-permission-model (PR Continuity Rule)
+Enforcement ordering fix is a correctness fix for the workspace_write gate introduced
+in Step 9.5. Same purpose (permission model), same PR (#9). No new branch.
+
+## 2026-04-27: workspace_write check moved before builder instantiation (not after)
+Step 9.5 placed the check after run_next_task returned, wasting an LLM call when denied.
+The fix: check immediately before `start = time.monotonic()` (after imports, before
+OllamaBuilder() is instantiated). Denial exits non-zero with no state mutation.
+The late materialization conditional is removed — check has already passed by that point.
+
+## 2026-04-27: show-permissions labels ALL capabilities ([active] and [reserved])
+Asymmetric labeling (reserved gets a label, active gets nothing) was confusing — users
+couldn't easily distinguish active from unlabeled. Adding [active] to all rows makes
+the status column consistent and self-explanatory.
+
+## 2026-04-27: Step 9.5 continues on feature/step9-permission-model (PR Continuity Rule)
+Permission model honesty / CLI UX hotfix is a direct in-scope refinement of Step 9.
+Same purpose (permission model), same review scope, same PR (#9). No new branch.
+
+## 2026-04-27: workspace_write is enforced in the CLI, not in task_runner.py
+The gate is a single conditional in _cmd_run_next_task_local before materialize_task_output.
+Enforcing inside task_runner.py would require adding a Job parameter to materialize_task_output
+(signature change, more invasive). CLI-level gate is sufficient: if denied, mf=None,
+verifier fails on workspace_file_in_metadata, task rolls back to PENDING. This is honest.
+
+## 2026-04-27: Reserved capabilities print a CLI notice; they are not blocked from being set
+Preventing set-permission for reserved capabilities would require extra validation that serves
+no safety purpose (setting them is harmless since no code path checks them). Persisting the
+setting with a notice is user-friendly and preserves future compatibility when the capability
+becomes active — the user's grant will take effect automatically.
+
+## 2026-04-27: show-permissions is a dedicated CLI command (not buried in show-job JSON)
+show-job dumps raw job JSON — useful for debugging but verbose and requires jq/parsing to
+extract permissions. A dedicated show-permissions command is one line per capability and
+labeled clearly. Minimal code, maximum clarity.
+
+## 2026-04-27: effective_permissions() is a pure helper in permissions.py
+No storage access, no CLI dependency. Takes job (already loaded by caller), returns list of
+dicts. Testable in isolation. The CLI formats and prints; permissions.py owns the logic.
+
+## 2026-04-25: Step 9 on new branch feature/step9-permission-model
+Permission model is clearly unrelated to repo attachment/applicator (different purpose,
+review scope, merge intent). All Step 8.x work is merged to main. New branch correct.
+
+## 2026-04-25: Capability as str, Enum — Capability("foo") raises ValueError
+Using str, Enum makes capability values self-documenting strings and makes invalid
+values fail at construction time. The CLI catches the ValueError and prints a clear
+error with the valid capability list.
+
+## 2026-04-25: workspace_write is allowed by default
+workspace_write is always needed for local task execution; requiring explicit opt-in
+would break the existing flow and add friction with no security benefit in the current
+local-only model. All other capabilities default to deny.
+
+## 2026-04-25: check_and_apply_to_repo lives in repo_applicator.py, not permissions.py
+It combines permission checking with repo application logic and must import from both
+modules. Placing it in repo_applicator (which already imports Artifact and Path) is
+cleaner than importing repo_applicator logic into permissions.py or creating a third
+module for a single function. No circular import: permissions.py imports Job via
+TYPE_CHECKING only; repo_applicator.py imports permissions at function call time.
+
+## 2026-04-25: check_and_apply_to_repo mutates artifact.metadata on denial
+Recording repo_application_skipped_reason directly on the artifact is consistent with
+how verification_failures and verification_passed are recorded (finalize_task). The
+artifact is the authoritative record of what happened during task execution. The caller
+(CLI) persists the job after this call, which saves the annotation.
+
+## 2026-04-25: repo_overwrite and shell_exec are defined but unused in Step 9
+They exist to make the capability namespace stable and to allow CLI experimentation.
+Granting them has no effect because no code path checks them yet. This is intentional
+and documented. Preventing them from being set would require extra validation that
+serves no safety purpose in the current implementation.
+
 ## 2026-04-25: Step 8.6 continues on feature/step8-repo-attachment (PR Continuity Rule)
 Routing and boundary hotfix is an in-scope correctness fix for the repo applicator
 introduced in Step 8. Same branch, same PR.

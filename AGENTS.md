@@ -34,14 +34,49 @@ If anything is ambiguous:
 
 ------------------------------------------------------------------------
 
+### Open PR Gate
+
+Before creating a new feature branch or starting a new unrelated task, the agent MUST check for open pull requests.
+
+Run:
+
+    gh pr list --state open --json number,headRefName,baseRefName,isDraft
+
+Rules:
+
+- If there are no open PRs, continue normally.
+- If there is exactly one open PR from a `feature/*` branch into `main` and it is not a draft, merge it before continuing.
+- If there are multiple open PRs, stop and report them. Do not merge automatically.
+- If the PR is a draft, stop and report it. Do not merge.
+- If the PR does not target `main`, stop and report it.
+- If the PR does not originate from `feature/*`, stop and report it.
+
+Merge command:
+
+    gh pr merge <number> --merge --delete-branch
+
+After merging:
+
+    git checkout main
+    git pull --ff-only
+
+The agent MUST NOT create a new branch while a mergeable, non-draft `feature/*` PR into `main` is open.
+
+If the PR cannot be merged (conflicts, failing checks, missing approvals, or policy restrictions):
+
+1. stop
+2. report the blocker
+3. do not proceed with new work
+
+------------------------------------------------------------------------
+
 ### Branching
 
 When asked to implement a feature, fix, refactor, or documentation change:
 
 1. Check the current branch.
-2. If already on a `feature/*` branch, evaluate whether the new task is within the same scope.
-3. If the task is in-scope, continue on the current branch.
-4. Only create a new branch if the task is clearly unrelated.
+2. If already on a matching `feature/*` branch, continue there.
+3. Otherwise create a new feature branch.
 
 Branch naming format:
 
@@ -49,38 +84,9 @@ Branch naming format:
 
 ------------------------------------------------------------------------
 
-### Branch Continuity Rule (CRITICAL)
-
-A new prompt does NOT imply a new branch.
-
-If currently on a `feature/*` branch, the agent MUST remain on that branch when the new request is any of the following:
-
-- continuation of the same goal
-- refinement or extension of the current implementation
-- bugfix caused by the current feature
-- tests, cleanup, or documentation for the current change
-- PR review feedback
-- small follow-up improvements that fit the same purpose
-
-The agent MUST prefer continuing the current branch unless the new task is **clearly unrelated**.
-
-"Clearly unrelated" means a change in at least one of:
-
-- purpose
-- review scope
-- merge intent
-- logical feature boundary
-
-If there is uncertainty:
-
-- STAY on the current branch
-- record the scope decision in `.agent/context.md`
-
-The agent MUST NOT create a new branch solely because a new prompt was received.
-
-------------------------------------------------------------------------
-
 ### Creating a Feature Branch
+
+Before running these commands, the Open PR Gate MUST pass.
 
     git status
     git checkout main
@@ -96,9 +102,10 @@ If a new unrelated task is requested:
 1. Finish the current logical unit of work.
 2. Commit remaining changes.
 3. Push the branch.
-4. Switch to `main`.
-5. Pull latest changes.
-6. Create a new feature branch.
+4. Run the Open PR Gate.
+5. Switch to `main`.
+6. Pull latest changes.
+7. Create a new feature branch.
 
 Never implement multiple unrelated tasks in the same branch.
 
@@ -213,22 +220,6 @@ A step is considered complete only when:
 
 ------------------------------------------------------------------------
 
-### Pull Request Continuity Rule (CRITICAL)
-
-If a PR already exists for the current branch:
-
-- the agent MUST continue working on the same branch
-- the agent MUST update the existing PR
-
-The agent MUST NOT:
-
-- create a new branch for in-scope follow-up work
-- create a second PR for the same logical change
-
-New PRs are allowed only when a new branch is justified by a clearly unrelated task.
-
-------------------------------------------------------------------------
-
 ### If Blocked
 
 If the agent cannot complete the current task:
@@ -337,19 +328,14 @@ Purpose:
 - active assumptions
 - current constraints
 - current branch context
-- active PR (if exists)
 
 Rules:
 
-- MUST include current branch name
-- MUST include whether a PR exists for this branch
 - update when scope changes
 - update when assumptions change
 - update when constraints change
 - keep it task-specific and minimal
 - do not copy durable project knowledge into this file
-
-------------------------------------------------------------------------
 
 ### decisions.md
 
@@ -366,12 +352,9 @@ Purpose:
 Rules:
 
 - update when a meaningful implementation or scope decision is made
-- explicitly record branch/scope decisions when ambiguity exists
 - do not use it as a full activity log
 - keep entries concise
 - move durable architectural knowledge to `docs/`
-
-------------------------------------------------------------------------
 
 ### Documentation Updates
 
@@ -442,16 +425,15 @@ On new session or after reboot:
 
 1. Read `AGENTS.md`
 2. Read `.agent/plan.md`
-3. Read `.agent/context.md`
-4. Identify relevant files in `docs/` based on the current task
-5. Read only the relevant documentation
-6. Run:
+3. Identify relevant files in `docs/` based on the current task
+4. Read only the relevant documentation
+5. Run:
 
     git log --oneline -n 5
     git diff main...HEAD
 
-7. Reconstruct context, including current branch and PR
-8. Continue from current step
+6. Reconstruct context
+7. Continue from current step
 
 If plan is missing:
 
@@ -475,7 +457,7 @@ If new work appears:
 Or:
 
 - defer it
-- or create new branch (only if clearly unrelated)
+- or create new branch
 
 ------------------------------------------------------------------------
 

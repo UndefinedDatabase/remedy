@@ -373,8 +373,8 @@ keyword in a conservative static mapping:
 | task_type keyword | Written to |
 |-------------------|-----------|
 | `readme` | `README.md` |
-| `architecture`, `design`, `documentation`, `doc` | `docs/<safe_type>.md` |
-| `plan`, `spec`, `requirement`, `acceptance`, `analysis`, `implementation`, `prepare`, `define`, `summarize`, `summary` | `docs/remedy/<safe_type>.md` |
+| `changelog`, `architecture`, `design`, `guide`, `documentation`, `doc` | `docs/<safe_type>.md` |
+| `plan`, `spec`, `requirement`, `acceptance`, `analysis` | `docs/remedy/<safe_type>.md` |
 
 Rules:
 - **No arbitrary LLM paths** — only the keyword table above is consulted.
@@ -382,6 +382,7 @@ Rules:
 - **No overwriting** — if the target file already exists, the write is skipped.
 - **No shell, no Git** — pure `Path.write_text()` only.
 - **Boundary-safe** — the resolved target must remain inside the attached repo root.
+- **Permission-gated** — `repo_generated_write` permission must be granted (see Step 9).
 - **Workspace-only if no repo** — when no repo is attached, the flow continues unchanged.
 
 ### run-next-task-local output (Step 8)
@@ -406,6 +407,92 @@ The `repo=...` field appears only when a file was written to the target repo.
 - No full permission framework
 - No Claude or MemPalace integration
 
+## Step 9: Permission Model v1
+
+Step 9 introduces an explicit permission model. No dangerous capability is enabled
+implicitly. Each capability has a conservative default and can be overridden per-job
+via the CLI.
+
+### Capabilities
+
+| Capability | Default | Status | Description |
+|-----------|---------|--------|-------------|
+| `workspace_write` | **allow** | **active** | Write files into the Remedy-owned workspace (always needed for execution) |
+| `repo_generated_write` | **deny** | **active** | Write generated documentation into the attached target repo (opt-in) |
+| `repo_overwrite` | **deny** | reserved | Overwrite existing repo files — not yet enforced; setting has no effect |
+| `shell_exec` | **deny** | reserved | Execute shell commands — not yet enforced; setting has no effect |
+
+**Active** capabilities are enforced at runtime. **Reserved** capabilities can be configured and are persisted, but no code path checks them yet.
+
+### Configuring permissions
+
+```bash
+# Allow repo generated-file writes for a specific job
+remedy set-permission <job_id> allow repo_generated_write
+# → Job <id> | permission repo_generated_write=allow
+
+# Revoke it
+remedy set-permission <job_id> deny repo_generated_write
+
+# Setting a reserved capability prints a notice
+remedy set-permission <job_id> allow repo_overwrite
+# → Job <id> | permission repo_overwrite=allow
+# → note: repo_overwrite is reserved and has no effect in this version ...
+```
+
+Permissions are stored in `job.metadata["permissions"]` and persisted with the job.
+
+### Inspecting permissions
+
+```bash
+remedy show-permissions <job_id>
+# → Job <id> | permissions:
+# →   workspace_write          allow   [active]
+# →   repo_generated_write     deny    [active]
+# →   repo_overwrite           deny    [reserved]
+# →   shell_exec               deny    [reserved]
+```
+
+Every capability is labeled `[active]` (enforced at runtime) or `[reserved]` (configurable but not yet enforced).
+
+### How repo application is gated
+
+Before writing any generated file into the target repo, `run-next-task-local` checks
+`repo_generated_write`. If the check fails:
+- The write is skipped.
+- `repo_application_skipped_reason: "permission_denied"` is recorded in the artifact metadata.
+- Task completion is **not** affected — it is still determined by the verifier.
+
+```bash
+# Without permission (default): repo write is skipped silently
+remedy run-next-task-local <job_id>
+# → Job <id> | task=<task-id> type=analyze_requirements ... verified=pass
+# (no repo= field — application was skipped)
+
+# After granting permission: repo write proceeds
+remedy set-permission <job_id> allow repo_generated_write
+remedy run-next-task-local <job_id>
+# → Job <id> | ... repo=/path/to/repo/docs/remedy/analyze_requirements.md verified=pass
+```
+
+### workspace_write enforcement
+
+`workspace_write` is allowed by default. If explicitly denied, `run-next-task-local`
+exits immediately with a clear error **before** calling the builder — no LLM call is
+made, no task state is mutated, no artifacts are created:
+
+```bash
+remedy set-permission <job_id> deny workspace_write
+remedy run-next-task-local <job_id>
+# → Error: permission denied — workspace_write is not granted for job <id>  (stderr)
+# exit code 1
+```
+
+### What is NOT done in Step 9 / 9.5
+
+- No interactive permission prompts
+- `repo_overwrite` and `shell_exec` are configurable but reserved — no enforcement yet
+
 ## What Is NOT Implemented Yet
 
 - Code/file modification via patches or diffs (builder output is structured prose, not patches)
@@ -413,7 +500,7 @@ The `repo=...` field appears only when a file was written to the target repo.
 - Provider implementations (Claude, MemPalace)
 - Docker or sandboxed runtime execution
 - LLM-backed verification or review
-- Permission-gated repo edits (Step 8 uses a static keyword mapping; a full permission framework is deferred)
+- Permission-gated overwrites and shell execution (`repo_overwrite`, `shell_exec` are reserved but unused)
 - Configuration system
 - API and worker apps
 

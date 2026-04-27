@@ -290,8 +290,12 @@ Current mapping:
 | task_type keyword | repo-relative path |
 |-------------------|--------------------|
 | `readme` | `README.md` |
-| `architecture`, `design`, `documentation`, `doc` | `docs/<safe_type>.md` |
-| `plan`, `spec`, `requirement`, `acceptance`, `analysis`, `implementation`, `prepare`, `define`, `summarize`, `summary` | `docs/remedy/<safe_type>.md` |
+| `changelog`, `architecture`, `design`, `guide`, `documentation`, `doc` | `docs/<safe_type>.md` |
+| `plan`, `spec`, `requirement`, `acceptance`, `analysis` | `docs/remedy/<safe_type>.md` |
+
+Rules are ordered: `docs/remedy/` keywords appear before `doc`/`documentation` so that
+compound task types like `spec_document` or `planning_document` match the specific
+`docs/remedy/` rule rather than the broader `doc` catch-all.
 
 `<safe_type>` is the task_type sanitized via the same `_sanitize_path_component` logic as
 the workspace (non-`[a-zA-Z0-9_-]` replaced with `_`, truncated to 48 chars).
@@ -299,6 +303,7 @@ the workspace (non-`[a-zA-Z0-9_-]` replaced with `_`, truncated to 48 chars).
 Repo application runs only when:
 - `vr.passed` (verification passed) — no repo writes on failed verification
 - `job.metadata["target_repo"]` is set — no repo writes without attachment
+- `repo_generated_write` permission is granted (see Step 9 below)
 - The task type matches a keyword — no repo writes for ineligible types
 - The target file does not already exist — no overwriting
 
@@ -310,11 +315,68 @@ without any error or warning.
 | Key | Added by |
 |-----|----------|
 | `repo_applied_files` | CLI (`run-next-task-local`), only when at least one repo file was written; list of absolute path strings |
+| `repo_application_skipped_reason` | `check_and_apply_to_repo` — present only when repo write was skipped due to `"permission_denied"` |
 
 **Failed-artifact retention**: on verification failure, `finalize_task` clears
 `task.output_artifact_ids` (so the next retry uses a fresh artifact) but retains the
 failed artifact in `job.artifacts` for diagnostics. The artifact is detached from the
 task but preserved in the job — accessible by iterating `job.artifacts`.
+
+### Permission Model v1 (Steps 9 and 9.5)
+
+`packages/orchestration/permissions.py` defines the first explicit permission boundary.
+
+**`Capability`** — a `str` enum listing all execution capabilities that Remedy may exercise:
+
+| Capability | Default | Status | Meaning |
+|-----------|---------|--------|---------|
+| `workspace_write` | allow | **active** | Write files into the Remedy-owned workspace |
+| `repo_generated_write` | deny | **active** | Write generated markdown into the user's target repo |
+| `repo_overwrite` | deny | reserved | Overwrite existing files in the target repo |
+| `shell_exec` | deny | reserved | Execute shell commands |
+
+**Active** capabilities are enforced at runtime. **Reserved** capabilities are configurable
+and persisted, but no code path consults them during execution. Setting a reserved capability
+has no operational effect in this version; the CLI prints a notice when this happens.
+
+**`is_allowed(job, capability)`** — pure check; reads from `job.metadata["permissions"]`
+falling back to conservative defaults. Only the string `"allow"` grants permission.
+
+**`is_reserved(capability)`** — returns `True` for capabilities that are defined but not yet
+enforced at runtime (`repo_overwrite`, `shell_exec`).
+
+**`effective_permissions(job)`** — returns a list of `{capability, effective, status}` dicts
+for all capabilities; used by `show-permissions`.
+
+**`set_permission(job, capability, *, allow)`** — mutates `job.metadata["permissions"]`.
+Callers must persist the job afterwards.
+
+**`check_and_apply_to_repo(job, artifact, repo_root)`** in `repo_applicator.py` — the
+permission-gated entry point for repo application:
+1. Checks `repo_generated_write` via `is_allowed`.
+2. If denied: records `repo_application_skipped_reason="permission_denied"` on artifact; returns `[]`.
+3. If allowed: delegates to `apply_task_output_to_repo` (all existing rules apply).
+
+**`workspace_write` enforcement (Step 9.6):** `run-next-task-local` checks
+`workspace_write` **before** instantiating the builder or calling `run_next_task`. If
+denied, the CLI prints a clear error to stderr and exits non-zero immediately — no LLM
+call is made, no task state is mutated, no artifacts are created. Materialization is
+unconditional after the guard passes (the check cannot be reached again).
+
+Permissions are stored in `job.metadata["permissions"]` as `{"capability": "allow"|"deny"}`.
+Missing keys fall back to `_DEFAULTS`. Explicit `"deny"` overrides a default allow.
+
+**`show-permissions` CLI command (Steps 9.5/9.6):** `remedy show-permissions <job_id>`
+displays all capabilities, their effective allow/deny state, and a status label. Every
+capability is labeled `[active]` (enforced at runtime) or `[reserved]` (configurable but
+not yet enforced). The symmetric labeling makes capability status unambiguous at a glance.
+
+**Design principles:**
+- Default safe: no capability is allowed unless explicitly granted (except `workspace_write`).
+- No interactive prompts: permissions are set once via CLI and persisted.
+- Honest: reserved capabilities are labeled as such in the CLI and source code; no silent
+  no-ops without user-visible notice.
+- Task completion is always determined by the verifier — never by repo application.
 
 ### Planner Output Validation
 
