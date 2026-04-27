@@ -415,12 +415,14 @@ via the CLI.
 
 ### Capabilities
 
-| Capability | Default | Description |
-|-----------|---------|-------------|
-| `workspace_write` | **allow** | Write files into the Remedy-owned workspace (always needed for execution) |
-| `repo_generated_write` | **deny** | Write generated documentation into the attached target repo (opt-in) |
-| `repo_overwrite` | **deny** | Overwrite existing repo files — reserved for a future step |
-| `shell_exec` | **deny** | Execute shell commands — reserved for a future step |
+| Capability | Default | Status | Description |
+|-----------|---------|--------|-------------|
+| `workspace_write` | **allow** | **active** | Write files into the Remedy-owned workspace (always needed for execution) |
+| `repo_generated_write` | **deny** | **active** | Write generated documentation into the attached target repo (opt-in) |
+| `repo_overwrite` | **deny** | reserved | Overwrite existing repo files — not yet enforced; setting has no effect |
+| `shell_exec` | **deny** | reserved | Execute shell commands — not yet enforced; setting has no effect |
+
+**Active** capabilities are enforced at runtime. **Reserved** capabilities can be configured and are persisted, but no code path checks them yet.
 
 ### Configuring permissions
 
@@ -431,11 +433,29 @@ remedy set-permission <job_id> allow repo_generated_write
 
 # Revoke it
 remedy set-permission <job_id> deny repo_generated_write
+
+# Setting a reserved capability prints a notice
+remedy set-permission <job_id> allow repo_overwrite
+# → Job <id> | permission repo_overwrite=allow
+# → note: repo_overwrite is reserved and has no effect in this version ...
 ```
 
 Permissions are stored in `job.metadata["permissions"]` and persisted with the job.
 
-### How repo application is now gated
+### Inspecting permissions
+
+```bash
+remedy show-permissions <job_id>
+# → Job <id> | permissions:
+# →   workspace_write          allow
+# →   repo_generated_write     deny
+# →   repo_overwrite           deny  [reserved]
+# →   shell_exec               deny  [reserved]
+```
+
+Shows the effective allow/deny for each capability and labels reserved ones clearly.
+
+### How repo application is gated
 
 Before writing any generated file into the target repo, `run-next-task-local` checks
 `repo_generated_write`. If the check fails:
@@ -455,11 +475,17 @@ remedy run-next-task-local <job_id>
 # → Job <id> | ... repo=/path/to/repo/docs/remedy/analyze_requirements.md verified=pass
 ```
 
-### What is NOT done in Step 9
+### workspace_write enforcement
+
+`workspace_write` is allowed by default. If explicitly denied, `run-next-task-local` skips
+workspace materialization entirely — the verifier will then fail (no `workspace_file` in
+metadata), and the task rolls back to `pending`. This is honest enforcement: denying
+workspace writes means tasks cannot complete.
+
+### What is NOT done in Step 9 / 9.5
 
 - No interactive permission prompts
-- `repo_overwrite` and `shell_exec` are defined but have no effect — they are reserved
-  for future steps where overwriting or shell execution is introduced
+- `repo_overwrite` and `shell_exec` are configurable but reserved — no enforcement yet
 
 ## What Is NOT Implemented Yet
 

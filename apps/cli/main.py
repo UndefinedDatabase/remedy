@@ -9,6 +9,7 @@ Usage:
     remedy plan-job-local <job_id>
     remedy attach-repo <job_id> <repo_path>
     remedy set-permission <job_id> <allow|deny> <capability>
+    remedy show-permissions <job_id>
     remedy run-next-task-local <job_id>
 """
 
@@ -170,7 +171,7 @@ def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> No
         print(f"Error: action must be 'allow' or 'deny', got {action!r}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.permissions import Capability, set_permission
+    from packages.orchestration.permissions import Capability, is_reserved, set_permission
 
     try:
         cap = Capability(capability_str)
@@ -185,6 +186,32 @@ def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> No
     set_permission(job, cap, allow=(action == "allow"))
     save_job(job)
     print(f"Job {job.id} | permission {cap.value}={action}")
+    if is_reserved(cap):
+        print(
+            f"note: {cap.value} is reserved and has no effect in this version "
+            "(setting is persisted but not enforced at runtime)"
+        )
+
+
+def _cmd_show_permissions(job_id_str: str) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.permissions import effective_permissions
+
+    rows = effective_permissions(job)
+    print(f"Job {job.id} | permissions:")
+    for row in rows:
+        status_note = f"  [{row['status']}]" if row["status"] != "active" else ""
+        print(f"  {row['capability']:<24} {row['effective']}{status_note}")
 
 
 def _cmd_run_next_task_local(job_id_str: str) -> None:
@@ -203,6 +230,8 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
 
     from pathlib import Path
 
+    from packages.orchestration.permissions import Capability
+    from packages.orchestration.permissions import is_allowed as _perm_allowed
     from packages.orchestration.repo_applicator import check_and_apply_to_repo
     from packages.orchestration.task_runner import (
         RunTaskResult,
@@ -246,9 +275,16 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         elapsed_ms=elapsed_ms,
     )
 
-    # Materialize builder output to workspace file.
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
-    mf = materialize_task_output(result, runtime)
+    # Materialize builder output to workspace file (gated on workspace_write permission).
+    mf = None
+    if _perm_allowed(job, Capability.workspace_write):
+        runtime = LocalWorkspaceRuntime(job_id=job.id)
+        mf = materialize_task_output(result, runtime)
+    else:
+        print(
+            "  warning: workspace_write denied; workspace materialization skipped",
+            file=sys.stderr,
+        )
 
     # Verify: run Task Contract v1 checks (deterministic, local-only).
     vr = verify_task_output(result.job, result.task_id)
@@ -339,6 +375,12 @@ def main() -> None:
         help="Capability name (workspace_write, repo_generated_write, repo_overwrite, shell_exec)",
     )
 
+    show_perms = subparsers.add_parser(
+        "show-permissions",
+        help="Show effective permission state for all capabilities on a job",
+    )
+    show_perms.add_argument("job_id", help="UUID of the job")
+
     run_task = subparsers.add_parser(
         "run-next-task-local",
         help="Execute the next pending task using local Ollama (requires ollama package)",
@@ -361,6 +403,8 @@ def main() -> None:
         _cmd_attach_repo(args.job_id, args.repo_path)
     elif args.command == "set-permission":
         _cmd_set_permission(args.job_id, args.action, args.capability)
+    elif args.command == "show-permissions":
+        _cmd_show_permissions(args.job_id)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
 

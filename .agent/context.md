@@ -4,11 +4,11 @@
 `feature/step9-permission-model`
 
 ## PR
-None yet — will create after Step 9 is complete.
+#9 — open, updating in place (PR Continuity Rule).
 
 ## Scope
-Step 9: Permission Model v1 for Controlled Execution.
-New branch from main (all prior steps merged). Clearly distinct purpose from Step 8.
+Step 9.5: Permission Model Honesty and CLI UX Hotfix.
+In-scope extension of Step 9 (same branch, same PR).
 
 ## Constraints
 - No Docker, no shell, no Git, no patch application
@@ -16,14 +16,11 @@ New branch from main (all prior steps merged). Clearly distinct purpose from Ste
 - No arbitrary LLM paths into repo writes — static keyword mapping only
 - No overwriting existing repo files (repo_overwrite reserved but unused)
 - shell_exec reserved but unused
-- Permissions stored in job.metadata["permissions"] as {"cap": "allow"|"deny"}
-- workspace_write allowed by default; all others denied by default
-- repo_generated_write must be explicitly allowed for repo application to proceed
-- check_and_apply_to_repo annotates artifact with repo_application_skipped_reason on denial
-- Task completion is always determined by the verifier, never by repo application
+- workspace_write: now enforced in CLI before materialize_task_output
+- repo_overwrite and shell_exec: configurable but reserved — print notice on set-permission
+- Task completion still determined by verifier; denying workspace_write causes verifier failure
 
 ## Assumptions
 - LocalWorkspaceRuntime is the only runtime; Docker runtime is future
-- Workspace root follows same REMEDY_DATA_DIR resolution as storage.py
-- target_repo is stored as str (absolute path) in job.metadata["target_repo"]
-- Repo markdown content is derived from artifact metadata + content (not workspace file)
+- workspace_write gate lives in the CLI (_cmd_run_next_task_local), not in task_runner.py
+- effective_permissions() is a pure helper in permissions.py (no storage access)

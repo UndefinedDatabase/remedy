@@ -1,5 +1,30 @@
 # Decisions
 
+## 2026-04-27: Step 9.5 continues on feature/step9-permission-model (PR Continuity Rule)
+Permission model honesty / CLI UX hotfix is a direct in-scope refinement of Step 9.
+Same purpose (permission model), same review scope, same PR (#9). No new branch.
+
+## 2026-04-27: workspace_write is enforced in the CLI, not in task_runner.py
+The gate is a single conditional in _cmd_run_next_task_local before materialize_task_output.
+Enforcing inside task_runner.py would require adding a Job parameter to materialize_task_output
+(signature change, more invasive). CLI-level gate is sufficient: if denied, mf=None,
+verifier fails on workspace_file_in_metadata, task rolls back to PENDING. This is honest.
+
+## 2026-04-27: Reserved capabilities print a CLI notice; they are not blocked from being set
+Preventing set-permission for reserved capabilities would require extra validation that serves
+no safety purpose (setting them is harmless since no code path checks them). Persisting the
+setting with a notice is user-friendly and preserves future compatibility when the capability
+becomes active — the user's grant will take effect automatically.
+
+## 2026-04-27: show-permissions is a dedicated CLI command (not buried in show-job JSON)
+show-job dumps raw job JSON — useful for debugging but verbose and requires jq/parsing to
+extract permissions. A dedicated show-permissions command is one line per capability and
+labeled clearly. Minimal code, maximum clarity.
+
+## 2026-04-27: effective_permissions() is a pure helper in permissions.py
+No storage access, no CLI dependency. Takes job (already loaded by caller), returns list of
+dicts. Testable in isolation. The CLI formats and prints; permissions.py owns the logic.
+
 ## 2026-04-25: Step 9 on new branch feature/step9-permission-model
 Permission model is clearly unrelated to repo attachment/applicator (different purpose,
 review scope, merge intent). All Step 8.x work is merged to main. New branch correct.

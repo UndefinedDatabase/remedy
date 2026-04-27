@@ -322,21 +322,31 @@ without any error or warning.
 failed artifact in `job.artifacts` for diagnostics. The artifact is detached from the
 task but preserved in the job — accessible by iterating `job.artifacts`.
 
-### Permission Model v1 (Step 9)
+### Permission Model v1 (Steps 9 and 9.5)
 
 `packages/orchestration/permissions.py` defines the first explicit permission boundary.
 
 **`Capability`** — a `str` enum listing all execution capabilities that Remedy may exercise:
 
-| Capability | Default | Meaning |
-|-----------|---------|---------|
-| `workspace_write` | allow | Write files into the Remedy-owned workspace |
-| `repo_generated_write` | deny | Write generated markdown into the user's target repo |
-| `repo_overwrite` | deny | Overwrite existing files in the target repo (reserved) |
-| `shell_exec` | deny | Execute shell commands (reserved) |
+| Capability | Default | Status | Meaning |
+|-----------|---------|--------|---------|
+| `workspace_write` | allow | **active** | Write files into the Remedy-owned workspace |
+| `repo_generated_write` | deny | **active** | Write generated markdown into the user's target repo |
+| `repo_overwrite` | deny | reserved | Overwrite existing files in the target repo |
+| `shell_exec` | deny | reserved | Execute shell commands |
+
+**Active** capabilities are enforced at runtime. **Reserved** capabilities are configurable
+and persisted, but no code path consults them during execution. Setting a reserved capability
+has no operational effect in this version; the CLI prints a notice when this happens.
 
 **`is_allowed(job, capability)`** — pure check; reads from `job.metadata["permissions"]`
 falling back to conservative defaults. Only the string `"allow"` grants permission.
+
+**`is_reserved(capability)`** — returns `True` for capabilities that are defined but not yet
+enforced at runtime (`repo_overwrite`, `shell_exec`).
+
+**`effective_permissions(job)`** — returns a list of `{capability, effective, status}` dicts
+for all capabilities; used by `show-permissions`.
 
 **`set_permission(job, capability, *, allow)`** — mutates `job.metadata["permissions"]`.
 Callers must persist the job afterwards.
@@ -347,14 +357,24 @@ permission-gated entry point for repo application:
 2. If denied: records `repo_application_skipped_reason="permission_denied"` on artifact; returns `[]`.
 3. If allowed: delegates to `apply_task_output_to_repo` (all existing rules apply).
 
+**`workspace_write` enforcement (Step 9.5):** `run-next-task-local` checks
+`workspace_write` before calling `materialize_task_output`. If denied, materialization
+is skipped entirely. The verifier then fails on `workspace_file_in_metadata`, rolling
+the task back to `PENDING`. This is honest enforcement — tasks cannot complete without
+workspace writes.
+
 Permissions are stored in `job.metadata["permissions"]` as `{"capability": "allow"|"deny"}`.
 Missing keys fall back to `_DEFAULTS`. Explicit `"deny"` overrides a default allow.
+
+**`show-permissions` CLI command (Step 9.5):** `remedy show-permissions <job_id>` displays
+all capabilities, their effective allow/deny state, and whether each is active or reserved.
+Reserved capabilities are labeled `[reserved]` in the output.
 
 **Design principles:**
 - Default safe: no capability is allowed unless explicitly granted (except `workspace_write`).
 - No interactive prompts: permissions are set once via CLI and persisted.
-- `repo_overwrite` and `shell_exec` exist as reserved future capabilities; they have no
-  operational effect in this step even if explicitly granted.
+- Honest: reserved capabilities are labeled as such in the CLI and source code; no silent
+  no-ops without user-visible notice.
 - Task completion is always determined by the verifier — never by repo application.
 
 ### Planner Output Validation

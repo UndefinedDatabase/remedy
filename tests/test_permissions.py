@@ -9,7 +9,13 @@ from __future__ import annotations
 import pytest
 
 from packages.core.models import Job, RunState
-from packages.orchestration.permissions import Capability, is_allowed, set_permission
+from packages.orchestration.permissions import (
+    Capability,
+    effective_permissions,
+    is_allowed,
+    is_reserved,
+    set_permission,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +139,75 @@ class TestIsAllowed:
         """Only the string 'allow' grants permission — anything else is treated as deny."""
         job = _make_job(permissions={"repo_generated_write": "yes"})
         assert is_allowed(job, Capability.repo_generated_write) is False
+
+
+# ---------------------------------------------------------------------------
+# is_reserved
+# ---------------------------------------------------------------------------
+
+
+class TestIsReserved:
+    def test_repo_overwrite_is_reserved(self):
+        assert is_reserved(Capability.repo_overwrite) is True
+
+    def test_shell_exec_is_reserved(self):
+        assert is_reserved(Capability.shell_exec) is True
+
+    def test_workspace_write_is_not_reserved(self):
+        assert is_reserved(Capability.workspace_write) is False
+
+    def test_repo_generated_write_is_not_reserved(self):
+        assert is_reserved(Capability.repo_generated_write) is False
+
+
+# ---------------------------------------------------------------------------
+# effective_permissions
+# ---------------------------------------------------------------------------
+
+
+class TestEffectivePermissions:
+    def test_returns_all_four_capabilities(self):
+        job = _make_job()
+        rows = effective_permissions(job)
+        names = {r["capability"] for r in rows}
+        assert names == {
+            "workspace_write",
+            "repo_generated_write",
+            "repo_overwrite",
+            "shell_exec",
+        }
+
+    def test_default_effective_state(self):
+        job = _make_job()
+        by_cap = {r["capability"]: r for r in effective_permissions(job)}
+        assert by_cap["workspace_write"]["effective"] == "allow"
+        assert by_cap["repo_generated_write"]["effective"] == "deny"
+        assert by_cap["repo_overwrite"]["effective"] == "deny"
+        assert by_cap["shell_exec"]["effective"] == "deny"
+
+    def test_reserved_capabilities_have_reserved_status(self):
+        job = _make_job()
+        by_cap = {r["capability"]: r for r in effective_permissions(job)}
+        assert by_cap["repo_overwrite"]["status"] == "reserved"
+        assert by_cap["shell_exec"]["status"] == "reserved"
+
+    def test_active_capabilities_have_active_status(self):
+        job = _make_job()
+        by_cap = {r["capability"]: r for r in effective_permissions(job)}
+        assert by_cap["workspace_write"]["status"] == "active"
+        assert by_cap["repo_generated_write"]["status"] == "active"
+
+    def test_explicit_allow_reflected_in_effective(self):
+        job = _make_job()
+        set_permission(job, Capability.repo_generated_write, allow=True)
+        by_cap = {r["capability"]: r for r in effective_permissions(job)}
+        assert by_cap["repo_generated_write"]["effective"] == "allow"
+
+    def test_explicit_deny_reflected_in_effective(self):
+        job = _make_job()
+        set_permission(job, Capability.workspace_write, allow=False)
+        by_cap = {r["capability"]: r for r in effective_permissions(job)}
+        assert by_cap["workspace_write"]["effective"] == "deny"
 
 
 # ---------------------------------------------------------------------------

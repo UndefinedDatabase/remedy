@@ -9,24 +9,37 @@ a mapping of capability name → "allow" | "deny".
 Defined capabilities:
   workspace_write      — write files into the Remedy-owned workspace directory.
                          Allowed by default for local task execution.
+                         ACTIVE: enforced in the CLI before workspace materialization.
   repo_generated_write — write generated documentation/markdown into a user-
                          attached target repository. Denied by default (opt-in).
+                         ACTIVE: enforced by check_and_apply_to_repo().
   repo_overwrite       — overwrite existing files in the attached repo. Denied
-                         by default. Reserved for a future step; currently has
-                         no effect even if granted.
+                         by default. RESERVED: configurable but not yet enforced
+                         at runtime. Setting it has no effect in this version.
   shell_exec           — execute arbitrary shell commands. Denied by default.
-                         Reserved for a future step; currently unused.
+                         RESERVED: configurable but not yet enforced at runtime.
+                         Setting it has no effect in this version.
 
 Usage:
-  from packages.orchestration.permissions import Capability, is_allowed, set_permission
+  from packages.orchestration.permissions import (
+      Capability, is_allowed, is_reserved, set_permission, effective_permissions
+  )
 
   # Check
   if is_allowed(job, Capability.repo_generated_write):
       ...
 
+  # Inspect reserved status
+  if is_reserved(Capability.repo_overwrite):
+      ...
+
   # Configure
   set_permission(job, Capability.repo_generated_write, allow=True)
   save_job(job)
+
+  # Display all effective permissions
+  for row in effective_permissions(job):
+      print(row["capability"], row["effective"], row["status"])
 """
 
 from __future__ import annotations
@@ -55,6 +68,10 @@ _DEFAULTS: dict[str, bool] = {
     "shell_exec": False,
 }
 
+# Capabilities that are configurable today but not yet enforced at runtime.
+# Setting them is persisted and visible, but no code path checks them yet.
+_RESERVED: frozenset[str] = frozenset({"repo_overwrite", "shell_exec"})
+
 
 def is_allowed(job: "Job", capability: Capability) -> bool:
     """Return True if the capability is allowed for this job.
@@ -82,3 +99,33 @@ def set_permission(job: "Job", capability: Capability, *, allow: bool) -> None:
     if "permissions" not in job.metadata:
         job.metadata["permissions"] = {}
     job.metadata["permissions"][capability.value] = "allow" if allow else "deny"
+
+
+def is_reserved(capability: Capability) -> bool:
+    """Return True if the capability is defined but not yet enforced at runtime.
+
+    Reserved capabilities can be configured (set_permission persists the setting),
+    but no code path checks them during execution.  The setting has no effect in
+    the current version.
+    """
+    return capability.value in _RESERVED
+
+
+def effective_permissions(job: "Job") -> list[dict]:
+    """Return the effective permission state for all capabilities.
+
+    Each entry in the returned list is a dict with:
+      capability: str   — capability name
+      effective:  str   — "allow" or "deny" (incorporating defaults and overrides)
+      status:     str   — "active" (enforced at runtime) or "reserved" (not yet enforced)
+
+    Suitable for display in CLI commands such as show-permissions.
+    """
+    return [
+        {
+            "capability": cap.value,
+            "effective": "allow" if is_allowed(job, cap) else "deny",
+            "status": "reserved" if is_reserved(cap) else "active",
+        }
+        for cap in Capability
+    ]
