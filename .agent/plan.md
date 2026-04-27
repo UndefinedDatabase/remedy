@@ -1,21 +1,27 @@
 # Plan
 
 ## Goal
-Step 9.6: Permission Enforcement Ordering Hotfix.
+Step 10: Patch Intent v1 — structured existing-file change proposals, no apply yet.
 
 ## Status
 READY TO COMMIT
 
 ## Steps
-1. [x] Update .agent/plan.md, context.md, decisions.md
-2. [x] CLI: workspace_write guard before builder; remove late gate; [active] in show-permissions
-3. [x] permissions.py: expand _RESERVED comment
-4. [x] Tests: TestWorkspaceWriteDenialPreBuilder (4 tests); [active] show-permissions tests (4 new)
-5. [x] Update README.md and docs/architecture.md
-6. [ ] Self-review, commit, push
+1. [x] Open PR Gate: PR #9 merged, on main, new branch feature/step10-patch-intent
+2. [x] Update .agent/plan.md, context.md, decisions.md
+3. [x] Create packages/orchestration/patch_intent.py:
+       PatchIntent + PatchIntentSet models, derive_patch_intents,
+       verify_patch_intent_set, materialize_patch_intents
+4. [x] Update apps/cli/main.py:
+       - fix no-pending-tasks (early PENDING check before workspace_write guard)
+       - remove dead mf-is-None branch
+       - integrate patch intent derivation, verification, materialization, output
+5. [x] Create tests/test_patch_intent.py (35 tests) + no-pending-tasks tests in test_cli_main.py (3)
+6. [x] Update README.md and docs/architecture.md
+7. [ ] Self-review, commit, push, create PR
 
 ## Branch
-feature/step9-permission-model
+feature/step10-patch-intent
 
 ## PR
-#9 (existing — update, do not create new)
+None yet — create when ready

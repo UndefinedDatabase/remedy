@@ -1,24 +1,27 @@
 # Context
 
 ## Active Branch
-`feature/step9-permission-model`
+`feature/step10-patch-intent`
 
 ## PR
-#9 — open, updating in place (PR Continuity Rule).
+None yet.
 
 ## Scope
-Step 9.6: Permission Enforcement Ordering Hotfix.
-In-scope correctness fix for Step 9's permission model (same branch, same PR).
+Step 10: Patch Intent v1. Structured existing-file change proposals, never applied.
+Clearly unrelated to Step 9 permission model — new branch is correct.
 
 ## Constraints
-- No Docker, no shell, no Git, no patch application
-- No interactive permission prompts
-- workspace_write check moved to before builder call — eliminates wasted LLM calls
-- Late materialization gate removed (check already passed by this point)
-- show-permissions labels ALL capabilities ([active] or [reserved])
-- No changes to reserved capabilities (repo_overwrite, shell_exec still reserved)
+- NO patch application, NO repo writes beyond existing doc generation
+- NO shell, NO Git, NO Docker, NO source editing
+- repo_overwrite stays reserved
+- Patch intents are workspace-only artifacts (JSON files in .data/workspaces/)
+- target_path must be relative, no traversal, .md only (doc-like paths)
+- Derivation is conservative: task_type keyword match only
+- PatchIntentSet can be empty (no intents = valid, no file written)
 
 ## Assumptions
-- workspace_write check lives in the CLI, not in task_runner.py or run_next_task
-- The early check calls sys.exit(1) — no task state mutation, no builder call
-- materialize_task_output remains unconditional after the early check passes
+- patch_intent.py lives in packages/orchestration/ (same layer as repo_applicator)
+- Derivation uses same keyword table as repo_applicator (doc targets only)
+- Patch intent materialization reuses existing LocalWorkspaceRuntime
+- Verification is a pure function returning a list of error strings
+- Patch intents derived only when vr.passed (completed tasks only)

@@ -234,3 +234,54 @@ class TestWorkspaceWriteDenialPreBuilder:
             _cmd_run_next_task_local(str(job.id))
         reloaded = load_job(job.id)
         assert len(reloaded.artifacts) == 0
+
+
+# ---------------------------------------------------------------------------
+# no-pending-tasks behavior with workspace_write denied (Step 10 fix)
+# ---------------------------------------------------------------------------
+
+
+class TestNoPendingTasksWithPermissionDenied:
+    """No-pending-tasks must exit 0 cleanly regardless of workspace_write status."""
+
+    def test_no_tasks_workspace_write_denied_exits_zero(self, tmp_path, monkeypatch, capsys):
+        """A job with no tasks and workspace_write=deny should exit 0, not 1."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="test", state=RunState.PENDING)
+        set_permission(job, Capability.workspace_write, allow=False)
+        save_job(job)
+
+        from apps.cli.main import _cmd_run_next_task_local
+
+        # Should return normally (no SystemExit) even with workspace_write denied
+        _cmd_run_next_task_local(str(job.id))
+        out = capsys.readouterr().out
+        assert "no pending tasks" in out
+
+    def test_no_tasks_workspace_write_denied_prints_no_pending(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="test", state=RunState.PENDING)
+        set_permission(job, Capability.workspace_write, allow=False)
+        save_job(job)
+
+        from apps.cli.main import _cmd_run_next_task_local
+
+        _cmd_run_next_task_local(str(job.id))
+        out = capsys.readouterr().out
+        assert str(job.id) in out
+
+    def test_no_tasks_workspace_write_allowed_exits_normally(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """Baseline: no tasks, workspace_write allowed → same clean exit."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="test", state=RunState.PENDING)
+        save_job(job)
+
+        from apps.cli.main import _cmd_run_next_task_local
+
+        _cmd_run_next_task_local(str(job.id))
+        out = capsys.readouterr().out
+        assert "no pending tasks" in out

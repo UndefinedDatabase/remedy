@@ -1,5 +1,42 @@
 # Decisions
 
+## 2026-04-27: Step 10 on new branch feature/step10-patch-intent
+Patch Intent v1 has a clearly different purpose (structured change proposals), review scope,
+and feature boundary from the permission model (Steps 9–9.6). New branch from main is correct.
+
+## 2026-04-27: Patch intent derivation uses task_type keyword match only (not free-form LLM text)
+Raw LLM strings can contain arbitrary path references. Keying derivation on task_type —
+using the same conservative keyword table as repo_applicator — ensures the target_path is
+always predictable and never injected from model output. This is intentionally limiting;
+future steps can expand derivation safely with more explicit input handling.
+
+## 2026-04-27: PatchIntentSet can be empty; no file written when intents is empty
+Most task types do not match documentation keywords (e.g. "write_tests", "implement_feature").
+An empty PatchIntentSet is valid and expected. No workspace file is written in that case.
+patch_intent_count and patch_intent_file are not set in artifact metadata if no intents.
+
+## 2026-04-27: verify_patch_intent_set is a pure function returning list[str] (not VerificationResult)
+Keeping it separate from the existing VerificationResult/TaskContract hierarchy avoids
+coupling patch intent verification to the Task Contract v1 system. A simple list of error
+strings is sufficient and testable in isolation. Integration into VerificationResult is
+deferred to a later step if needed.
+
+## 2026-04-27: Patch intents derived only when vr.passed
+Deriving intents from a failed task execution risks capturing incomplete/wrong output.
+Tying derivation to verification-passed ensures intents represent only confirmed builder output.
+
+## 2026-04-27: no-pending-tasks early check added before workspace_write guard
+workspace_write denial should only block actual work. If there are no pending tasks, the
+job is complete (or was never planned) and should exit(0) cleanly regardless of permissions.
+Fix: check any(t.status==PENDING) before the workspace_write guard.
+
+## 2026-04-27: mf dead branch removed (file_info always set after Step 9.6)
+After Step 9.6, mf is always a MaterializedFile when we reach the output line:
+- result.changed=True (returned early if False)
+- workspace_write confirmed (exited early if denied)
+- materialize_task_output returns None only when result.changed=False
+The `if mf is not None else ""` guard is genuinely dead code; simplifying it.
+
 ## 2026-04-27: Step 9.6 continues on feature/step9-permission-model (PR Continuity Rule)
 Enforcement ordering fix is a correctness fix for the workspace_write gate introduced
 in Step 9.5. Same purpose (permission model), same PR (#9). No new branch.
