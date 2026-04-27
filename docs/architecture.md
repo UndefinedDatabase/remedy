@@ -357,18 +357,19 @@ permission-gated entry point for repo application:
 2. If denied: records `repo_application_skipped_reason="permission_denied"` on artifact; returns `[]`.
 3. If allowed: delegates to `apply_task_output_to_repo` (all existing rules apply).
 
-**`workspace_write` enforcement (Step 9.5):** `run-next-task-local` checks
-`workspace_write` before calling `materialize_task_output`. If denied, materialization
-is skipped entirely. The verifier then fails on `workspace_file_in_metadata`, rolling
-the task back to `PENDING`. This is honest enforcement — tasks cannot complete without
-workspace writes.
+**`workspace_write` enforcement (Step 9.6):** `run-next-task-local` checks
+`workspace_write` **before** instantiating the builder or calling `run_next_task`. If
+denied, the CLI prints a clear error to stderr and exits non-zero immediately — no LLM
+call is made, no task state is mutated, no artifacts are created. Materialization is
+unconditional after the guard passes (the check cannot be reached again).
 
 Permissions are stored in `job.metadata["permissions"]` as `{"capability": "allow"|"deny"}`.
 Missing keys fall back to `_DEFAULTS`. Explicit `"deny"` overrides a default allow.
 
-**`show-permissions` CLI command (Step 9.5):** `remedy show-permissions <job_id>` displays
-all capabilities, their effective allow/deny state, and whether each is active or reserved.
-Reserved capabilities are labeled `[reserved]` in the output.
+**`show-permissions` CLI command (Steps 9.5/9.6):** `remedy show-permissions <job_id>`
+displays all capabilities, their effective allow/deny state, and a status label. Every
+capability is labeled `[active]` (enforced at runtime) or `[reserved]` (configurable but
+not yet enforced). The symmetric labeling makes capability status unambiguous at a glance.
 
 **Design principles:**
 - Default safe: no capability is allowed unless explicitly granted (except `workspace_write`).

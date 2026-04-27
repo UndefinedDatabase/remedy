@@ -1,5 +1,20 @@
 # Decisions
 
+## 2026-04-27: Step 9.6 continues on feature/step9-permission-model (PR Continuity Rule)
+Enforcement ordering fix is a correctness fix for the workspace_write gate introduced
+in Step 9.5. Same purpose (permission model), same PR (#9). No new branch.
+
+## 2026-04-27: workspace_write check moved before builder instantiation (not after)
+Step 9.5 placed the check after run_next_task returned, wasting an LLM call when denied.
+The fix: check immediately before `start = time.monotonic()` (after imports, before
+OllamaBuilder() is instantiated). Denial exits non-zero with no state mutation.
+The late materialization conditional is removed — check has already passed by that point.
+
+## 2026-04-27: show-permissions labels ALL capabilities ([active] and [reserved])
+Asymmetric labeling (reserved gets a label, active gets nothing) was confusing — users
+couldn't easily distinguish active from unlabeled. Adding [active] to all rows makes
+the status column consistent and self-explanatory.
+
 ## 2026-04-27: Step 9.5 continues on feature/step9-permission-model (PR Continuity Rule)
 Permission model honesty / CLI UX hotfix is a direct in-scope refinement of Step 9.
 Same purpose (permission model), same review scope, same PR (#9). No new branch.

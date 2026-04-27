@@ -447,13 +447,13 @@ Permissions are stored in `job.metadata["permissions"]` and persisted with the j
 ```bash
 remedy show-permissions <job_id>
 # → Job <id> | permissions:
-# →   workspace_write          allow
-# →   repo_generated_write     deny
-# →   repo_overwrite           deny  [reserved]
-# →   shell_exec               deny  [reserved]
+# →   workspace_write          allow   [active]
+# →   repo_generated_write     deny    [active]
+# →   repo_overwrite           deny    [reserved]
+# →   shell_exec               deny    [reserved]
 ```
 
-Shows the effective allow/deny for each capability and labels reserved ones clearly.
+Every capability is labeled `[active]` (enforced at runtime) or `[reserved]` (configurable but not yet enforced).
 
 ### How repo application is gated
 
@@ -477,10 +477,16 @@ remedy run-next-task-local <job_id>
 
 ### workspace_write enforcement
 
-`workspace_write` is allowed by default. If explicitly denied, `run-next-task-local` skips
-workspace materialization entirely — the verifier will then fail (no `workspace_file` in
-metadata), and the task rolls back to `pending`. This is honest enforcement: denying
-workspace writes means tasks cannot complete.
+`workspace_write` is allowed by default. If explicitly denied, `run-next-task-local`
+exits immediately with a clear error **before** calling the builder — no LLM call is
+made, no task state is mutated, no artifacts are created:
+
+```bash
+remedy set-permission <job_id> deny workspace_write
+remedy run-next-task-local <job_id>
+# → Error: permission denied — workspace_write is not granted for job <id>  (stderr)
+# exit code 1
+```
 
 ### What is NOT done in Step 9 / 9.5
 

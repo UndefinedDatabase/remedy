@@ -210,8 +210,7 @@ def _cmd_show_permissions(job_id_str: str) -> None:
     rows = effective_permissions(job)
     print(f"Job {job.id} | permissions:")
     for row in rows:
-        status_note = f"  [{row['status']}]" if row["status"] != "active" else ""
-        print(f"  {row['capability']:<24} {row['effective']}{status_note}")
+        print(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]")
 
 
 def _cmd_run_next_task_local(job_id_str: str) -> None:
@@ -244,6 +243,15 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     from packages.orchestration.workspace import LocalWorkspaceRuntime
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
+    # Guard: deny workspace_write before the builder is called.
+    # This prevents wasting an LLM call when the permission is not granted.
+    if not _perm_allowed(job, Capability.workspace_write):
+        print(
+            f"Error: permission denied — workspace_write is not granted for job {job.id}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     start = time.monotonic()
     try:
         builder = OllamaBuilder()
@@ -275,16 +283,10 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         elapsed_ms=elapsed_ms,
     )
 
-    # Materialize builder output to workspace file (gated on workspace_write permission).
-    mf = None
-    if _perm_allowed(job, Capability.workspace_write):
-        runtime = LocalWorkspaceRuntime(job_id=job.id)
-        mf = materialize_task_output(result, runtime)
-    else:
-        print(
-            "  warning: workspace_write denied; workspace materialization skipped",
-            file=sys.stderr,
-        )
+    # Materialize builder output to workspace file.
+    # workspace_write was confirmed above — no conditional needed here.
+    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    mf = materialize_task_output(result, runtime)
 
     # Verify: run Task Contract v1 checks (deterministic, local-only).
     vr = verify_task_output(result.job, result.task_id)

@@ -7,20 +7,18 @@
 #9 — open, updating in place (PR Continuity Rule).
 
 ## Scope
-Step 9.5: Permission Model Honesty and CLI UX Hotfix.
-In-scope extension of Step 9 (same branch, same PR).
+Step 9.6: Permission Enforcement Ordering Hotfix.
+In-scope correctness fix for Step 9's permission model (same branch, same PR).
 
 ## Constraints
 - No Docker, no shell, no Git, no patch application
 - No interactive permission prompts
-- No arbitrary LLM paths into repo writes — static keyword mapping only
-- No overwriting existing repo files (repo_overwrite reserved but unused)
-- shell_exec reserved but unused
-- workspace_write: now enforced in CLI before materialize_task_output
-- repo_overwrite and shell_exec: configurable but reserved — print notice on set-permission
-- Task completion still determined by verifier; denying workspace_write causes verifier failure
+- workspace_write check moved to before builder call — eliminates wasted LLM calls
+- Late materialization gate removed (check already passed by this point)
+- show-permissions labels ALL capabilities ([active] or [reserved])
+- No changes to reserved capabilities (repo_overwrite, shell_exec still reserved)
 
 ## Assumptions
-- LocalWorkspaceRuntime is the only runtime; Docker runtime is future
-- workspace_write gate lives in the CLI (_cmd_run_next_task_local), not in task_runner.py
-- effective_permissions() is a pure helper in permissions.py (no storage access)
+- workspace_write check lives in the CLI, not in task_runner.py or run_next_task
+- The early check calls sys.exit(1) — no task state mutation, no builder call
+- materialize_task_output remains unconditional after the early check passes

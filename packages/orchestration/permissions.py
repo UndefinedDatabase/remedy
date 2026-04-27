@@ -69,7 +69,14 @@ _DEFAULTS: dict[str, bool] = {
 }
 
 # Capabilities that are configurable today but not yet enforced at runtime.
-# Setting them is persisted and visible, but no code path checks them yet.
+# Setting a reserved capability is persisted and visible in show-permissions,
+# but no execution callsite consults it — granting it has no operational effect.
+#
+# Rules for this set:
+#   - Add a capability here when it is defined but has no enforcement callsite yet.
+#   - Remove a capability here only when an enforcement callsite is added.
+#   - Never treat a reserved capability as granted just because it is set in metadata;
+#     always verify is_reserved() is False before relying on is_allowed() at a new site.
 _RESERVED: frozenset[str] = frozenset({"repo_overwrite", "shell_exec"})
 
 

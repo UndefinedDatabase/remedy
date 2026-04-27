@@ -1,19 +1,18 @@
 # Plan
 
 ## Goal
-Step 9.5: Permission Model Honesty and CLI UX Hotfix.
+Step 9.6: Permission Enforcement Ordering Hotfix.
 
 ## Status
 READY TO COMMIT
 
 ## Steps
-1. [x] Update .agent/plan.md and context.md
-2. [x] permissions.py: add _RESERVED, is_reserved(), effective_permissions()
-3. [x] CLI: reserved notice in set-permission; workspace_write gate; show-permissions command
-4. [x] Tests: TestIsReserved + TestEffectivePermissions; new tests/test_cli_main.py (301 tests pass)
+1. [x] Update .agent/plan.md, context.md, decisions.md
+2. [x] CLI: workspace_write guard before builder; remove late gate; [active] in show-permissions
+3. [x] permissions.py: expand _RESERVED comment
+4. [x] Tests: TestWorkspaceWriteDenialPreBuilder (4 tests); [active] show-permissions tests (4 new)
 5. [x] Update README.md and docs/architecture.md
-6. [x] Update .agent/decisions.md
-7. [ ] Self-review, commit, push, update PR
+6. [ ] Self-review, commit, push
 
 ## Branch
 feature/step9-permission-model
