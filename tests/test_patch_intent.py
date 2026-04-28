@@ -415,6 +415,24 @@ class TestKeywordSync:
             f"only in _REPO_PATH_RULES: {repo_keywords - intent_keywords}"
         )
 
+    def test_intent_rules_and_repo_rules_keyword_order_matches(self):
+        """Ensures keyword evaluation order is identical between tables.
+
+        Both tables are first-match-wins, so order is part of the contract.
+        A keyword promoted or demoted in one table but not the other changes
+        routing semantics silently — this test catches that.
+        """
+        from packages.orchestration.patch_intent import _INTENT_RULES
+        from packages.orchestration.repo_applicator import _REPO_PATH_RULES
+
+        intent_order = [k for k, _ in _INTENT_RULES]
+        repo_order = [k for k, _ in _REPO_PATH_RULES]
+        assert intent_order == repo_order, (
+            f"keyword order diverged — "
+            f"_INTENT_RULES order: {intent_order}, "
+            f"_REPO_PATH_RULES order: {repo_order}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Step 10.5: verification errors surfaced in metadata; no file written

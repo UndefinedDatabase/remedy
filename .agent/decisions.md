@@ -1,5 +1,23 @@
 # Decisions
 
+## 2026-04-28: Step 10.6 continues on feature/step10-patch-intent (PR #10)
+Rule ordering and CLI coverage hotfix is an in-scope refinement of Step 10.5.
+Same purpose (patch intent reliability), same PR. No new branch.
+
+## 2026-04-28: Keyword ordering is part of the rule-table contract
+Both _INTENT_RULES and _REPO_PATH_RULES are first-match-wins. A keyword promoted
+or demoted in one table but not the other silently changes routing semantics.
+The ordering test (test_intent_rules_and_repo_rules_keyword_order_matches) uses a
+direct list comparison — simple, deterministic, failure message is clear.
+
+## 2026-04-28: CLI-level patch intent test uses module-attribute patching
+_cmd_run_next_task_local uses late `from X import Y` imports for all heavy
+dependencies. Patching the module attributes (e.g. packages.orchestration.
+patch_intent.verify_patch_intent_set) intercepts the lookup at import time inside
+the function — no need to patch at the apps.cli.main namespace. Only
+verify_patch_intent_set is mocked to inject errors; derive_patch_intents runs
+normally so the full patch-intent derivation path is exercised.
+
 ## 2026-04-28: Step 10.5 continues on feature/step10-patch-intent (PR #10)
 Reliability hotfix is an in-scope refinement of Patch Intent v1 (Step 10). Same
 purpose (patch intent observability and guard hardening), same PR. No new branch.

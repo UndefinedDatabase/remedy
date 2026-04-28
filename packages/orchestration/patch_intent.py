@@ -141,8 +141,8 @@ def derive_patch_intents(artifact: "Artifact", task_type: str) -> PatchIntentSet
         A PatchIntentSet — possibly with zero intents.
 
     Raises:
-        ValueError: if artifact.task_id or artifact.id is None (invariant violation
-                    — this function must only be called with task-owned artifacts).
+        RuntimeError: if artifact.task_id or artifact.id is None (invariant violation
+                      — this function must only be called with task-owned artifacts).
     """
     if artifact.task_id is None:
         raise RuntimeError(
