@@ -145,9 +145,14 @@ def derive_patch_intents(artifact: "Artifact", task_type: str) -> PatchIntentSet
                     — this function must only be called with task-owned artifacts).
     """
     if artifact.task_id is None:
-        raise ValueError(
+        raise RuntimeError(
             "derive_patch_intents: artifact.task_id is None. "
             "Patch intents must be derived from task-owned artifacts only."
+        )
+    if artifact.id is None:
+        raise RuntimeError(
+            "derive_patch_intents: artifact.id is None. "
+            "Artifact must have a valid id before patch intents are derived."
         )
 
     target = _derive_target_path(task_type)
@@ -197,6 +202,9 @@ def verify_patch_intent_set(pis: PatchIntentSet) -> list[str]:
         tag = f"intent[{i}]"
         if not p:
             errors.append(f"{tag}.target_path is empty")
+            continue
+        if "\x00" in p:
+            errors.append(f"{tag}.target_path contains a null byte, which is not allowed")
             continue
         if p.startswith("/"):
             errors.append(f"{tag}.target_path {p!r}: absolute paths are not allowed")

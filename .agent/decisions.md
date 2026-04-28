@@ -1,5 +1,37 @@
 # Decisions
 
+## 2026-04-28: Step 10.5 continues on feature/step10-patch-intent (PR #10)
+Reliability hotfix is an in-scope refinement of Patch Intent v1 (Step 10). Same
+purpose (patch intent observability and guard hardening), same PR. No new branch.
+
+## 2026-04-28: derive_patch_intents raises RuntimeError (not ValueError) for invariant violations
+task_id=None and artifact.id=None are programming errors (invariant violations), not
+user-input errors. RuntimeError is the correct signal for internal invariant failures.
+ValueError is reserved for user-facing or schema-level validation. Both guards added.
+
+## 2026-04-28: Patch intent verification errors are non-fatal (warn + record)
+Turning verify_patch_intent_set failures into hard task failures would require a new
+exit code or a new failure mode in the existing task contract system. Since patch
+intents are proposals only (never applied), a non-fatal warning + metadata record is
+the correct conservative position. This preserves the existing task completion model.
+
+## 2026-04-28: patch_intent_errors recorded in artifact.metadata (not logged only)
+Recording errors in metadata makes them auditable in job JSON (show-job), consistent
+with how verification_failures is recorded on task artifacts. CLI stderr warning is an
+operator signal; metadata is the durable record.
+
+## 2026-04-28: Keyword sync enforced by test, not by shared module
+The keyword sets in _INTENT_RULES and _REPO_PATH_RULES are identical today. A shared
+module is not needed yet — the two tables serve different purposes (workspace patch
+proposals vs. repo file writes) and may diverge intentionally in a future step.
+A focused sync test (TestKeywordSync) is the smallest reliable change and will catch
+any accidental divergence at test time.
+
+## 2026-04-28: Null-byte check uses `continue` after recording error
+After detecting a null byte, further checks on the same path (absolute check, traversal
+check, .md check) are unreliable because the path itself is malformed. Short-circuiting
+with `continue` is consistent with the empty-path guard above it.
+
 ## 2026-04-27: Step 10 on new branch feature/step10-patch-intent
 Patch Intent v1 has a clearly different purpose (structured change proposals), review scope,
 and feature boundary from the permission model (Steps 9–9.6). New branch from main is correct.

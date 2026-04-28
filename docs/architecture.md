@@ -400,6 +400,7 @@ are never used to construct `target_path`.
 
 **`verify_patch_intent_set(pis)`** — pure structural verifier; returns `list[str]` of errors:
 - `target_path` is non-empty and relative (no leading `/`)
+- `target_path` contains no null bytes
 - `target_path` has no `..` traversal components
 - `target_path` ends in `.md` (documentation-like paths only in v1)
 - `intent` is non-empty
@@ -410,12 +411,23 @@ An empty `intents` list is always valid.
 `patch_intents/{index:03d}_{safe_type}_{short_id}.json`
 Returns `None` when `intents` is empty (no file written).
 
-**Artifact metadata keys added (Step 10):**
+**Artifact metadata keys (Step 10 / 10.5):**
 
-| Key | Added by |
-|-----|----------|
-| `patch_intent_file` | CLI — absolute path of the JSON workspace file |
-| `patch_intent_count` | CLI — number of intents materialized |
+| Key | Set when | Added by |
+|-----|----------|----------|
+| `patch_intent_file` | verification passed, intents materialized | CLI |
+| `patch_intent_count` | verification passed, intents materialized | CLI |
+| `patch_intent_errors` | verification failed (non-fatal) | CLI |
+
+Patch intent verification errors are **not fatal** in v1.  When `verify_patch_intent_set`
+returns errors, the CLI prints a warning to stderr and records the errors in
+`artifact.metadata["patch_intent_errors"]`.  No intent file is written.  Task completion
+is still governed by the existing task verifier — patch intent errors do not roll back the
+task.
+
+**`derive_patch_intents` invariant guards:**
+- `artifact.task_id is None` → `RuntimeError` (planning artifacts must not be used)
+- `artifact.id is None` → `RuntimeError` (artifact must have a valid id)
 
 **Design constraints:**
 - Patch intents are created only when `vr.passed` (confirmed builder output only).

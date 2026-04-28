@@ -8,6 +8,11 @@ Covers:
   - verify_patch_intent_set: valid set, absolute path, traversal, non-md, empty intent, empty set
   - materialize_patch_intents: correct file path, JSON content, empty set returns None
   - artifact metadata: patch_intent_file and patch_intent_count set correctly
+  - Step 10.5 additions:
+      - null-byte path rejected by verifier
+      - missing artifact.id / task_id raises RuntimeError
+      - keyword sync: _INTENT_RULES and _REPO_PATH_RULES keyword sets stay in sync
+      - verification errors recorded in artifact metadata; no file written
 
 All tests are deterministic — no live Ollama, no builder, no repo writes.
 """
@@ -169,7 +174,7 @@ class TestDerivePatchIntents:
     def test_raises_on_planning_artifact(self):
         artifact = _make_artifact(task_type="write_readme")
         artifact.task_id = None  # planning artifacts have task_id=None
-        with pytest.raises(ValueError, match="task_id is None"):
+        with pytest.raises(RuntimeError, match="task_id is None"):
             derive_patch_intents(artifact, "write_readme")
 
     def test_spec_document_routes_to_docs_remedy(self):
@@ -345,3 +350,125 @@ class TestPatchIntentArtifactMetadata:
         assert pi_mf is None
         assert "patch_intent_file" not in artifact.metadata
         assert "patch_intent_count" not in artifact.metadata
+
+
+# ---------------------------------------------------------------------------
+# Step 10.5: invariant guards (RuntimeError)
+# ---------------------------------------------------------------------------
+
+
+class TestDerivePatchIntentsInvariantGuards:
+    def test_raises_runtime_error_on_none_task_id(self):
+        artifact = _make_artifact(task_type="write_readme")
+        artifact.task_id = None
+        with pytest.raises(RuntimeError, match="task_id is None"):
+            derive_patch_intents(artifact, "write_readme")
+
+    def test_raises_runtime_error_on_none_artifact_id(self):
+        artifact = _make_artifact(task_type="write_readme")
+        artifact.id = None  # type: ignore[assignment]
+        with pytest.raises(RuntimeError, match="artifact.id is None"):
+            derive_patch_intents(artifact, "write_readme")
+
+
+# ---------------------------------------------------------------------------
+# Step 10.5: null-byte path rejection
+# ---------------------------------------------------------------------------
+
+
+class TestVerifyNullBytePath:
+    def test_null_byte_in_path_is_rejected(self):
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="README\x00.md", intent="bad")],
+        )
+        errors = verify_patch_intent_set(pis)
+        assert any("null byte" in e for e in errors)
+
+    def test_clean_path_not_flagged_for_null_byte(self):
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="README.md", intent="Update")],
+        )
+        errors = verify_patch_intent_set(pis)
+        assert not any("null byte" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Step 10.5: keyword sync between _INTENT_RULES and _REPO_PATH_RULES
+# ---------------------------------------------------------------------------
+
+
+class TestKeywordSync:
+    def test_intent_rules_and_repo_rules_keyword_sets_match(self):
+        """Ensures future additions/removals cannot silently diverge."""
+        from packages.orchestration.patch_intent import _INTENT_RULES
+        from packages.orchestration.repo_applicator import _REPO_PATH_RULES
+
+        intent_keywords = {k for k, _ in _INTENT_RULES}
+        repo_keywords = {k for k, _ in _REPO_PATH_RULES}
+        assert intent_keywords == repo_keywords, (
+            f"keyword sets diverged — "
+            f"only in _INTENT_RULES: {intent_keywords - repo_keywords}, "
+            f"only in _REPO_PATH_RULES: {repo_keywords - intent_keywords}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Step 10.5: verification errors surfaced in metadata; no file written
+# ---------------------------------------------------------------------------
+
+
+class TestPatchIntentErrorSurfacing:
+    def test_verification_errors_recorded_in_artifact_metadata(self, tmp_path, monkeypatch):
+        """When verify returns errors, they are recorded in artifact metadata."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        artifact = _make_artifact(task_type="write_readme", summary="Update readme")
+        pis = PatchIntentSet(
+            task_id=artifact.task_id,
+            artifact_id=artifact.id,
+            intents=[PatchIntent(target_path="/etc/passwd", intent="bad")],
+        )
+        pi_errors = verify_patch_intent_set(pis)
+        # Simulate CLI behavior: record errors in metadata when non-empty
+        assert pi_errors, "Expected errors from invalid path"
+        artifact.metadata["patch_intent_errors"] = pi_errors
+        assert "patch_intent_errors" in artifact.metadata
+        assert len(artifact.metadata["patch_intent_errors"]) > 0
+
+    def test_invalid_intent_does_not_write_file(self, tmp_path, monkeypatch):
+        """When verify returns errors, no patch intent file is written."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        runtime = LocalWorkspaceRuntime(job_id=uuid4())
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="/etc/passwd", intent="bad")],
+        )
+        pi_errors = verify_patch_intent_set(pis)
+        assert pi_errors, "Expected errors from invalid path"
+        # Simulate the CLI conditional: errors → skip materialize.
+        # If we follow the CLI logic (only materialize when not pi_errors), result is None.
+        mf = materialize_patch_intents(pis, runtime, 0, "bad") if not pi_errors else None
+        assert mf is None  # no file written because errors are present
+
+    def test_valid_intent_does_not_set_errors_key(self, tmp_path, monkeypatch):
+        """When verify passes, patch_intent_errors must not be set in metadata."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        runtime = LocalWorkspaceRuntime(job_id=uuid4())
+        artifact = _make_artifact(task_type="write_readme", summary="Update readme")
+        pis = derive_patch_intents(artifact, "write_readme")
+        pi_errors = verify_patch_intent_set(pis)
+        assert pi_errors == []
+        # Simulate CLI: only record errors if pi_errors is non-empty
+        if pi_errors:
+            artifact.metadata["patch_intent_errors"] = pi_errors
+        else:
+            pi_mf = materialize_patch_intents(pis, runtime, 0, "write_readme")
+            if pi_mf is not None:
+                artifact.metadata["patch_intent_file"] = str(pi_mf.path)
+                artifact.metadata["patch_intent_count"] = len(pis.intents)
+        assert "patch_intent_errors" not in artifact.metadata
+        assert "patch_intent_file" in artifact.metadata

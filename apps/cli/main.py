@@ -340,7 +340,14 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                 )
                 pis = derive_patch_intents(pi_artifact, pi_task_type)
                 pi_errors = verify_patch_intent_set(pis)
-                if not pi_errors and pis.intents:
+                if pi_errors:
+                    print(
+                        f"  warning: patch intent verification failed "
+                        f"({len(pi_errors)} error(s)) — not materialized",
+                        file=sys.stderr,
+                    )
+                    pi_artifact.metadata["patch_intent_errors"] = pi_errors
+                elif pis.intents:
                     pi_mf = materialize_patch_intents(pis, runtime, pi_task_index, pi_task_type)
                     if pi_mf is not None:
                         pi_artifact.metadata["patch_intent_file"] = str(pi_mf.path)

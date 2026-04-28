@@ -25,3 +25,5 @@ Clearly unrelated to Step 9 permission model — new branch is correct.
 - Patch intent materialization reuses existing LocalWorkspaceRuntime
 - Verification is a pure function returning a list of error strings
 - Patch intents derived only when vr.passed (completed tasks only)
+- Verification errors are non-fatal: recorded in metadata, warned to stderr, no file written
+- Keyword sync between _INTENT_RULES and _REPO_PATH_RULES is enforced by TestKeywordSync test
