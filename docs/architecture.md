@@ -429,13 +429,51 @@ task.
 - `artifact.task_id is None` → `RuntimeError` (planning artifacts must not be used)
 - `artifact.id is None` → `RuntimeError` (artifact must have a valid id)
 
+### Dry-Run Preview and Explanation Layer (Step 11)
+
+`generate_dry_run_preview(pis, artifact_content, task_type, repo_root=None)` adds the
+first read-only interaction with the target repository.  **No files are written.**
+
+For each intent in the `PatchIntentSet`:
+- If `repo_root` is provided and the target file **exists**: `action = "modify"`, first
+  few lines of the existing file are shown as context.
+- If `repo_root` is provided and the target file **does not exist**: `action = "create"`.
+- If `repo_root` is `None`: `action = "preview-only"` (no filesystem access at all).
+
+Proposed-change lines are extracted from the builder artifact's `Proposed Changes:`
+section and shown in the preview block.  Raw LLM strings are never used directly —
+they are extracted, section-bounded, and shown as labeled additions, not as patches.
+
+`format_dry_run_explanations(results)` renders results as a human-readable CLI block:
+
+```
+Planned change:
+  file   : README.md
+  action : modify
+  reason : task type 'write_readme'
+  summary: adds installation and usage sections
+```
+
+**Artifact metadata keys added in Step 11:**
+
+| Key | Set when | Added by |
+|-----|----------|----------|
+| `patch_intent_explanations` | intents present, no errors | CLI |
+| `patch_intent_diff_preview` | intents present, no errors | CLI |
+
+`patch_intent_diff_preview` is capped at 2 000 characters before storage.
+
 **Design constraints:**
 - Patch intents are created only when `vr.passed` (confirmed builder output only).
-- No repo files are modified — not even read.
-- `repo_overwrite` remains reserved; patch intent creation does not activate it.
+- `generate_dry_run_preview` uses `read_text` (read-only); no open-for-write calls.
+- `repo_overwrite` remains reserved; dry-run does not activate it.
 - Intents are written to the Remedy workspace, not to the target repo.
-- The full patch-apply lifecycle (read target file, apply diff, verify result) is
-  deferred to a future permission-gated step.
+- The full patch-apply lifecycle (apply diff, verify result) is deferred to a
+  future permission-gated step.
+
+**Prior Step 10 design constraints (still in effect):**
+- No repo files are modified by any function in `patch_intent.py`.
+- target_path is always relative, traversal-free, and ends in `.md` (v1).
 
 ### Planner Output Validation
 

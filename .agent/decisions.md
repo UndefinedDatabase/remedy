@@ -1,5 +1,28 @@
 # Decisions
 
+## 2026-04-28: Step 11 uses a structured preview block, not unified_diff
+A real unified_diff was considered but rejected: artifact proposed changes are
+bullet-point descriptions of changes, not actual file content. Diffing them against
+the current file would produce a misleading all-removal + all-addition diff.
+The structured block (header + existing context + labeled additions) is honest
+about what it is — a proposal preview, not a diff from current to new state.
+
+## 2026-04-28: PatchDryRunResult is a dataclass, not a Pydantic model
+It is a transient, in-memory object used only for CLI output and compact metadata
+storage. Pydantic overhead and serialization coupling are not needed. The CLI
+converts it to a plain dict before storing in artifact.metadata.
+
+## 2026-04-28: dry_run_block computed inside if vr.passed block, printed after save_job
+Storing the formatted string (not a function reference) avoids a second late import
+after save_job. The explanation is printed immediately after the main summary line
+so the user sees it in context with the job/task summary.
+
+## 2026-04-28: artifact_content extraction mirrors task_runner logic but stays local
+_extract_proposed_lines in patch_intent.py duplicates the section-boundary logic
+from task_runner._extract_proposed_changes. This is intentional — importing private
+helpers across modules creates invisible coupling. Both copies are small and the
+comment in patch_intent.py documents the parallel.
+
 ## 2026-04-28: Step 10.9 continues on feature/step10-patch-intent (PR #10)
 Minor hygiene pass before Step 11 (patch apply). Same branch and PR. No new tests,
 no behavior changes — comments and one additional assertion only.
