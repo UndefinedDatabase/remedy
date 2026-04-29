@@ -1,21 +1,24 @@
 # Plan
 
 ## Goal
-Step 10.9: Test Robustness + Minor Hygiene Improvements.
+Step 11: Patch Apply (Dry-Run) + Human-Readable Explanation Layer (v1)
 
 ## Status
 COMPLETE — committed, pushing
 
 ## Steps
-1. [x] Reconstruct context from repo (session resume)
-2. [x] Strengthen KEEP IN SYNC comments (add exact test file path)
-3. [x] Add output_artifact_ids == [] assertion to verifier-failure test
-4. [x] Rename section label "Step 10.5: keyword sync" → "Step 10: rule sync contract"
-5. [x] Add private-import safety comment in all three TestKeywordSync test methods
-6. [x] Update .agent/decisions.md — 63 tests pass — commit, push
+1. [x] Merge PR #10; checkout main; create feature/step11-patch-dry-run
+2. [x] patch_intent.py: PatchDryRunResult, _extract_proposed_lines, _build_preview_block,
+       generate_dry_run_preview, format_dry_run_explanations
+3. [x] main.py: import new functions, generate preview in elif pis.intents block,
+       store patch_intent_explanations + patch_intent_diff_preview, print dry_run_block
+4. [x] tests: TestExtractProposedLines (5), TestGenerateDryRunPreview (9),
+       TestFormatDryRunExplanations (3) — 371 total pass
+5. [x] docs/architecture.md: Step 11 section added
+6. [x] Commit, push, open PR
 
 ## Branch
-feature/step10-patch-intent
+feature/step11-patch-dry-run
 
 ## PR
-#10 (open) — update after push
+Opening after commit

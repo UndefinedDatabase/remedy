@@ -1,29 +1,27 @@
 # Context
 
 ## Active Branch
-`feature/step10-patch-intent`
+`feature/step11-patch-dry-run`
 
 ## PR
 None yet.
 
 ## Scope
-Step 10: Patch Intent v1. Structured existing-file change proposals, never applied.
-Clearly unrelated to Step 9 permission model — new branch is correct.
+Step 11: Dry-run preview + human-readable explanation layer.
+Read-only interaction with target repo. No file writes.
 
 ## Constraints
-- NO patch application, NO repo writes beyond existing doc generation
-- NO shell, NO Git, NO Docker, NO source editing
+- NO patch application, NO repo writes of any kind
 - repo_overwrite stays reserved
-- Patch intents are workspace-only artifacts (JSON files in .data/workspaces/)
-- target_path must be relative, no traversal, .md only (doc-like paths)
-- Derivation is conservative: task_type keyword match only
-- PatchIntentSet can be empty (no intents = valid, no file written)
+- Only read existing target files (read_text, no write)
+- Dry-run results stored in artifact metadata only (not persisted as separate files)
+- Explanations derived from task_type and artifact.content; raw LLM strings are
+  not used as-is — summaries are extracted and truncated
+- target_path is already verified safe by verify_patch_intent_set before this runs
 
-## Assumptions
-- patch_intent.py lives in packages/orchestration/ (same layer as repo_applicator)
-- Derivation uses same keyword table as repo_applicator (doc targets only)
-- Patch intent materialization reuses existing LocalWorkspaceRuntime
-- Verification is a pure function returning a list of error strings
-- Patch intents derived only when vr.passed (completed tasks only)
-- Verification errors are non-fatal: recorded in metadata, warned to stderr, no file written
-- Keyword sync between _INTENT_RULES and _REPO_PATH_RULES is enforced by TestKeywordSync test
+## Key Design Decisions
+- PatchDryRunResult is a dataclass (transient, not persisted via Pydantic)
+- generate_dry_run_preview is a pure read-only function
+- format_dry_run_explanations produces the CLI text block
+- dry_run_block is a string computed inside the if vr.passed: block,
+  printed after save_job to keep the output ordering clean

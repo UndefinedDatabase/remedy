@@ -321,9 +321,12 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
 
     # Derive and materialize patch intents (only on verification pass).
     patch_intent_count = 0
+    dry_run_block = ""  # formatted explanation text for CLI output after main line
     if vr.passed:
         from packages.orchestration.patch_intent import (
             derive_patch_intents,
+            format_dry_run_explanations,
+            generate_dry_run_preview,
             materialize_patch_intents,
             verify_patch_intent_set,
         )
@@ -354,6 +357,37 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                         pi_artifact.metadata["patch_intent_count"] = len(pis.intents)
                         patch_intent_count = len(pis.intents)
 
+                    # Dry-run preview: read target file (read-only), produce explanation.
+                    # Uses the attached repo if one is configured; otherwise preview-only.
+                    pi_repo_root = (
+                        Path(job.metadata["target_repo"])
+                        if job.metadata.get("target_repo")
+                        else None
+                    )
+                    dry_run_results = generate_dry_run_preview(
+                        pis,
+                        pi_artifact.content or "",
+                        pi_task_type,
+                        pi_repo_root,
+                    )
+                    if dry_run_results:
+                        pi_artifact.metadata["patch_intent_explanations"] = [
+                            {
+                                "file": r.target_path,
+                                "action": r.action,
+                                "reason": r.reason,
+                                "summary": r.summary,
+                            }
+                            for r in dry_run_results
+                        ]
+                        combined_preview = "\n\n".join(
+                            r.diff_preview for r in dry_run_results
+                        )
+                        pi_artifact.metadata["patch_intent_diff_preview"] = (
+                            combined_preview[:2000]
+                        )
+                        dry_run_block = format_dry_run_explanations(dry_run_results)
+
     # Persist after verification, repo application, and patch intent materialization
     # so the saved state is authoritative.
     save_job(result.job)
@@ -372,6 +406,8 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         f"role=builder model={builder.model} elapsed={round(elapsed_ms)}ms "
         f"remaining={pending_remaining}{file_info}{repo_info}{pi_info} {verified_info}"
     )
+    if dry_run_block:
+        print(dry_run_block)
     if not vr.passed:
         for failure in vr.failures:
             print(f"  verification failure: {failure.check}: {failure.message}", file=sys.stderr)
