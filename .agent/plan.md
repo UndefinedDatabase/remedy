@@ -1,21 +1,21 @@
 # Plan
 
 ## Goal
-Step 9.6: Permission Enforcement Ordering Hotfix.
+Step 10.9: Test Robustness + Minor Hygiene Improvements.
 
 ## Status
-READY TO COMMIT
+COMPLETE — committed, pushing
 
 ## Steps
-1. [x] Update .agent/plan.md, context.md, decisions.md
-2. [x] CLI: workspace_write guard before builder; remove late gate; [active] in show-permissions
-3. [x] permissions.py: expand _RESERVED comment
-4. [x] Tests: TestWorkspaceWriteDenialPreBuilder (4 tests); [active] show-permissions tests (4 new)
-5. [x] Update README.md and docs/architecture.md
-6. [ ] Self-review, commit, push
+1. [x] Reconstruct context from repo (session resume)
+2. [x] Strengthen KEEP IN SYNC comments (add exact test file path)
+3. [x] Add output_artifact_ids == [] assertion to verifier-failure test
+4. [x] Rename section label "Step 10.5: keyword sync" → "Step 10: rule sync contract"
+5. [x] Add private-import safety comment in all three TestKeywordSync test methods
+6. [x] Update .agent/decisions.md — 63 tests pass — commit, push
 
 ## Branch
-feature/step9-permission-model
+feature/step10-patch-intent
 
 ## PR
-#9 (existing — update, do not create new)
+#10 (open) — update after push

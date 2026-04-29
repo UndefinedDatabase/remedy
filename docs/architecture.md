@@ -378,6 +378,65 @@ not yet enforced). The symmetric labeling makes capability status unambiguous at
   no-ops without user-visible notice.
 - Task completion is always determined by the verifier — never by repo application.
 
+### Patch Intent v1 (Step 10)
+
+`packages/orchestration/patch_intent.py` introduces the first structured concept for
+changes to existing files — as proposals only.  No repo files are read or modified.
+
+**`PatchIntent`** — a Pydantic model representing one proposed change:
+- `target_path`: repo-relative path of the file that would be changed (relative, `.md` only in v1)
+- `intent`: human-readable description of the proposed change
+- `rationale`, `expected_effect`: optional context fields
+- `safety_notes`: list of notes about what was checked and deferred
+
+**`PatchIntentSet`** — container for all intents from one task artifact:
+- `task_id`, `artifact_id`: provenance fields (UUID)
+- `intents`: list of `PatchIntent` (may be empty — always valid)
+
+**`derive_patch_intents(artifact, task_type)`** — conservative derivation using the same
+keyword table as `repo_applicator._REPO_PATH_RULES`. Only task types that map to a
+documentation path produce an intent; all others produce an empty set. Raw LLM strings
+are never used to construct `target_path`.
+
+**`verify_patch_intent_set(pis)`** — pure structural verifier; returns `list[str]` of errors:
+- `target_path` is non-empty and relative (no leading `/`)
+- `target_path` contains no null bytes
+- `target_path` has no `..` traversal components
+- `target_path` ends in `.md` (documentation-like paths only in v1)
+- `intent` is non-empty
+An empty `intents` list is always valid.
+
+**`materialize_patch_intents(pis, runtime, task_index, task_type)`** — writes the
+`PatchIntentSet` as a JSON file into the Remedy-owned workspace at:
+`patch_intents/{index:03d}_{safe_type}_{short_id}.json`
+Returns `None` when `intents` is empty (no file written).
+
+**Artifact metadata keys (Step 10 / 10.5):**
+
+| Key | Set when | Added by |
+|-----|----------|----------|
+| `patch_intent_file` | verification passed, intents materialized | CLI |
+| `patch_intent_count` | verification passed, intents materialized | CLI |
+| `patch_intent_errors` | verification failed (non-fatal) | CLI |
+
+Patch intent verification errors are **not fatal** in v1.  When `verify_patch_intent_set`
+returns errors, the CLI prints a warning to stderr and records the errors in
+`artifact.metadata["patch_intent_errors"]`.  No intent file is written.  Task completion
+is still governed by the existing task verifier — patch intent errors do not roll back the
+task.
+
+**`derive_patch_intents` invariant guards:**
+- `artifact.task_id is None` → `RuntimeError` (planning artifacts must not be used)
+- `artifact.id is None` → `RuntimeError` (artifact must have a valid id)
+
+**Design constraints:**
+- Patch intents are created only when `vr.passed` (confirmed builder output only).
+- No repo files are modified — not even read.
+- `repo_overwrite` remains reserved; patch intent creation does not activate it.
+- Intents are written to the Remedy workspace, not to the target repo.
+- The full patch-apply lifecycle (read target file, apply diff, verify result) is
+  deferred to a future permission-gated step.
+
 ### Planner Output Validation
 
 `PlannerOutput.proposed_tasks` requires at least one entry (`Field(min_length=1)`). A plan with zero tasks is invalid and rejected at the model boundary before reaching orchestration.

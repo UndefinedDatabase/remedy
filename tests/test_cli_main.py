@@ -8,6 +8,7 @@ Tests cover:
   - show-permissions: all capabilities labeled [active] or [reserved]
   - show-permissions: effective allow/deny is reflected correctly
   - workspace_write denial: exits non-zero before builder call, no state mutation
+  - patch intent errors: recorded in metadata, warning emitted, no file written
 
 All tests are deterministic — no live Ollama, no builder, no verifier.
 A temporary REMEDY_DATA_DIR is injected via monkeypatch so tests do not
@@ -234,3 +235,280 @@ class TestWorkspaceWriteDenialPreBuilder:
             _cmd_run_next_task_local(str(job.id))
         reloaded = load_job(job.id)
         assert len(reloaded.artifacts) == 0
+
+
+# ---------------------------------------------------------------------------
+# no-pending-tasks behavior with workspace_write denied (Step 10 fix)
+# ---------------------------------------------------------------------------
+
+
+class TestNoPendingTasksWithPermissionDenied:
+    """No-pending-tasks must exit 0 cleanly regardless of workspace_write status."""
+
+    def test_no_tasks_workspace_write_denied_exits_zero(self, tmp_path, monkeypatch, capsys):
+        """A job with no tasks and workspace_write=deny should exit 0, not 1."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="test", state=RunState.PENDING)
+        set_permission(job, Capability.workspace_write, allow=False)
+        save_job(job)
+
+        from apps.cli.main import _cmd_run_next_task_local
+
+        # Should return normally (no SystemExit) even with workspace_write denied
+        _cmd_run_next_task_local(str(job.id))
+        out = capsys.readouterr().out
+        assert "no pending tasks" in out
+
+    def test_no_tasks_workspace_write_denied_prints_no_pending(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="test", state=RunState.PENDING)
+        set_permission(job, Capability.workspace_write, allow=False)
+        save_job(job)
+
+        from apps.cli.main import _cmd_run_next_task_local
+
+        _cmd_run_next_task_local(str(job.id))
+        out = capsys.readouterr().out
+        assert str(job.id) in out
+
+    def test_no_tasks_workspace_write_allowed_exits_normally(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """Baseline: no tasks, workspace_write allowed → same clean exit."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="test", state=RunState.PENDING)
+        save_job(job)
+
+        from apps.cli.main import _cmd_run_next_task_local
+
+        _cmd_run_next_task_local(str(job.id))
+        out = capsys.readouterr().out
+        assert "no pending tasks" in out
+
+
+# ---------------------------------------------------------------------------
+# CLI-level patch intent error coverage (Step 10.6)
+# ---------------------------------------------------------------------------
+
+
+class TestPatchIntentErrorsCLI:
+    """_cmd_run_next_task_local correctly handles verify_patch_intent_set returning errors.
+
+    Uses mocks/stubs for Ollama and the orchestration layer so no live services
+    are required.  Verifies:
+      - patch_intent_errors is persisted in the saved artifact metadata
+      - patch_intent_file is NOT present in the saved artifact metadata
+      - task completion is governed by the task verifier (vr.passed=True)
+      - a warning is emitted to stderr
+    """
+
+    def test_patch_intent_errors_recorded_in_saved_metadata(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        from packages.core.models import Artifact
+        from packages.orchestration.task_runner import RunTaskResult
+        from packages.orchestration.verifier import VerificationResult
+        from packages.orchestration.workspace import MaterializedFile
+
+        # Build a job with one pending task and a pre-built artifact.
+        job = Job(name="test-pi-cli", state=RunState.PENDING)
+        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        artifact = Artifact(
+            name="task_output_write_readme",
+            content="Proposed Changes:\n  - Update readme",
+            mime_type="text/plain",
+            task_id=task.id,
+            metadata={"task_type": "write_readme", "summary": "Update readme"},
+        )
+        task.output_artifact_ids.append(artifact.id)
+        job.tasks.append(task)
+        job.artifacts.append(artifact)
+        save_job(job)  # saved with task in PENDING status
+
+        # Simulate run_next_task having run the task (task now RUNNING).
+        task.status = RunState.RUNNING
+        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
+        vr = VerificationResult(task_id=task.id, passed=True)
+        fake_mf = MaterializedFile(
+            path=Path(tmp_path) / "fake_workspace.txt",
+            content="x",
+            size=1,
+        )
+
+        def fake_finalize(r, v):
+            for t in r.job.tasks:
+                if t.id == r.task_id:
+                    t.status = RunState.COMPLETED
+
+        with (
+            patch(
+                "packages.providers.ollama_builder.provider.OllamaBuilder"
+            ) as MockBuilder,
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                return_value=run_result,
+            ),
+            patch("packages.orchestration.task_runner.annotate_task_result"),
+            patch(
+                "packages.orchestration.task_runner.materialize_task_output",
+                return_value=fake_mf,
+            ),
+            patch(
+                "packages.orchestration.verifier.verify_task_output",
+                return_value=vr,
+            ),
+            patch(
+                "packages.orchestration.task_runner.finalize_task",
+                side_effect=fake_finalize,
+            ),
+            patch(
+                "packages.orchestration.patch_intent.verify_patch_intent_set",
+                return_value=["intent[0].target_path: absolute paths are not allowed"],
+            ),
+        ):
+            instance = MagicMock()
+            instance.model = "test-model"
+            instance.build = MagicMock()
+            MockBuilder.return_value = instance
+
+            from apps.cli.main import _cmd_run_next_task_local
+
+            _cmd_run_next_task_local(str(job.id))
+
+        # Verify saved metadata.
+        reloaded = load_job(job.id)
+        saved_artifact = next(
+            (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
+        )
+        assert saved_artifact is not None, "Artifact not found in saved job"
+        assert "patch_intent_errors" in saved_artifact.metadata
+        assert len(saved_artifact.metadata["patch_intent_errors"]) > 0
+        assert "patch_intent_file" not in saved_artifact.metadata
+
+        # Verify stderr warning.
+        err = capsys.readouterr().err
+        assert "warning" in err.lower()
+        assert "patch intent" in err.lower()
+
+    def test_patch_intent_skipped_on_verifier_failure(self, tmp_path, monkeypatch):
+        """When task verification fails, the entire patch intent block is skipped.
+
+        The `if vr.passed:` guard in the CLI must prevent any patch intent
+        function from being called and must leave the artifact metadata free of
+        all patch intent keys.
+
+        Uses the real finalize_task so task lifecycle is also verified:
+        on failure the task must roll back to PENDING (safe to retry).
+        """
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        from packages.core.models import Artifact
+        from packages.orchestration.task_runner import RunTaskResult
+        from packages.orchestration.verifier import VerificationCheckResult, VerificationResult
+        from packages.orchestration.workspace import MaterializedFile
+
+        job = Job(name="test-pi-verifier-fail", state=RunState.PENDING)
+        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        artifact = Artifact(
+            name="task_output_write_readme",
+            content="Proposed Changes:\n  - Update readme",
+            mime_type="text/plain",
+            task_id=task.id,
+            metadata={"task_type": "write_readme", "summary": "Update readme"},
+        )
+        task.output_artifact_ids.append(artifact.id)
+        job.tasks.append(task)
+        job.artifacts.append(artifact)
+        save_job(job)  # saved with task in PENDING status
+
+        task.status = RunState.RUNNING
+        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
+
+        # Verifier fails — patch intent block must not be entered at all.
+        vr = VerificationResult(
+            task_id=task.id,
+            passed=False,
+            checks=[
+                VerificationCheckResult(
+                    check="has_artifact", passed=False, message="no artifact"
+                )
+            ],
+        )
+        fake_mf = MaterializedFile(
+            path=Path(tmp_path) / "fake_workspace.txt",
+            content="x",
+            size=1,
+        )
+
+        mock_derive = MagicMock(name="derive_patch_intents")
+        mock_verify_pi = MagicMock(name="verify_patch_intent_set")
+
+        with (
+            patch(
+                "packages.providers.ollama_builder.provider.OllamaBuilder"
+            ) as MockBuilder,
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                return_value=run_result,
+            ),
+            patch("packages.orchestration.task_runner.annotate_task_result"),
+            patch(
+                "packages.orchestration.task_runner.materialize_task_output",
+                return_value=fake_mf,
+            ),
+            patch(
+                "packages.orchestration.verifier.verify_task_output",
+                return_value=vr,
+            ),
+            # finalize_task is NOT mocked — the real implementation runs so that
+            # the task lifecycle (RUNNING → PENDING on failure) is also verified.
+            patch("packages.orchestration.patch_intent.derive_patch_intents", mock_derive),
+            patch(
+                "packages.orchestration.patch_intent.verify_patch_intent_set", mock_verify_pi
+            ),
+        ):
+            instance = MagicMock()
+            instance.model = "test-model"
+            instance.build = MagicMock()
+            MockBuilder.return_value = instance
+
+            from apps.cli.main import _cmd_run_next_task_local
+
+            # CLI exits non-zero on verifier failure — expected behavior.
+            with pytest.raises(SystemExit) as exc_info:
+                _cmd_run_next_task_local(str(job.id))
+            assert exc_info.value.code == 1
+
+        # Patch intent functions must never have been invoked.
+        mock_derive.assert_not_called()
+        mock_verify_pi.assert_not_called()
+
+        # Reload and inspect the persisted state.
+        reloaded = load_job(job.id)
+
+        # Task lifecycle: real finalize_task must have rolled back to PENDING and
+        # cleared output_artifact_ids (safe-to-retry state for the next cycle).
+        reloaded_task = next(t for t in reloaded.tasks if t.id == task.id)
+        assert reloaded_task.status == RunState.PENDING
+        assert reloaded_task.output_artifact_ids == []
+
+        # No patch intent keys in the persisted artifact metadata.
+        # The artifact is kept in job.artifacts for diagnostics even after
+        # finalize_task clears task.output_artifact_ids, so search by task_id.
+        saved_artifact = next(
+            (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
+        )
+        assert saved_artifact is not None, "Artifact not found in saved job"
+        assert "patch_intent_file" not in saved_artifact.metadata
+        assert "patch_intent_count" not in saved_artifact.metadata
+        assert "patch_intent_errors" not in saved_artifact.metadata

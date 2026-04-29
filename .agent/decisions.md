@@ -1,5 +1,136 @@
 # Decisions
 
+## 2026-04-28: Step 10.9 continues on feature/step10-patch-intent (PR #10)
+Minor hygiene pass before Step 11 (patch apply). Same branch and PR. No new tests,
+no behavior changes — comments and one additional assertion only.
+
+## 2026-04-28: KEEP IN SYNC comments include the exact test file path
+"enforced by TestKeywordSync in tests/test_patch_intent.py" removes all ambiguity
+for a developer editing either rule table without first checking the test suite.
+
+## 2026-04-28: private-import comment added to all three TestKeywordSync test methods
+Each test method imports _INTENT_RULES and _REPO_PATH_RULES directly. The comment
+explains that this is intentional (testing the contract) rather than accidental.
+
+## 2026-04-28: Step 10.8 continues on feature/step10-patch-intent (PR #10)
+Post-failure state accuracy and sync hardening are final refinements of the
+Patch Intent v1 reliability work. Same branch and PR.
+
+## 2026-04-28: verifier-failure test uses real finalize_task
+The prior version mocked finalize_task as a no-op, leaving the task lifecycle
+untested. Using the real finalize_task confirms both behaviors together: patch
+intent is skipped (vr.passed=False) AND the task correctly rolls back to PENDING.
+All finalize_task invariants are satisfied by the test setup (task.output_artifact_ids
+is populated, artifact is in job.artifacts, task.status is RUNNING).
+
+## 2026-04-28: KEEP IN SYNC comments are placed at the definition site
+Both rule tables now carry a KEEP IN SYNC comment pointing to the other table.
+This makes the contract visible to anyone editing either file, regardless of
+whether they remember to check the test suite first.
+
+## 2026-04-28: Step 10.7 continues on feature/step10-patch-intent (PR #10)
+Template mapping sync and verifier-failure skip coverage are final reliability
+checks for Patch Intent v1. Same branch and PR as Steps 10–10.6.
+
+## 2026-04-28: keyword→template mapping must be identical between both tables
+Two tables can have identical keyword sets and identical ordering but still route
+a given task type to different paths if a template string differs. The mapping
+test (test_intent_rules_and_repo_rules_full_mapping_matches) catches this by
+comparing {keyword: template} dicts directly.
+
+## 2026-04-28: verifier-failure skip is tested via assert_not_called
+The `if vr.passed:` guard prevents any patch intent code from running on verifier
+failure. The test patches derive_patch_intents and verify_patch_intent_set as
+named mocks and calls assert_not_called() on both after the CLI function returns.
+This is an explicit behavioral contract, not just an absence of metadata keys.
+
+## 2026-04-28: Step 10.6 continues on feature/step10-patch-intent (PR #10)
+Rule ordering and CLI coverage hotfix is an in-scope refinement of Step 10.5.
+Same purpose (patch intent reliability), same PR. No new branch.
+
+## 2026-04-28: Keyword ordering is part of the rule-table contract
+Both _INTENT_RULES and _REPO_PATH_RULES are first-match-wins. A keyword promoted
+or demoted in one table but not the other silently changes routing semantics.
+The ordering test (test_intent_rules_and_repo_rules_keyword_order_matches) uses a
+direct list comparison — simple, deterministic, failure message is clear.
+
+## 2026-04-28: CLI-level patch intent test uses module-attribute patching
+_cmd_run_next_task_local uses late `from X import Y` imports for all heavy
+dependencies. Patching the module attributes (e.g. packages.orchestration.
+patch_intent.verify_patch_intent_set) intercepts the lookup at import time inside
+the function — no need to patch at the apps.cli.main namespace. Only
+verify_patch_intent_set is mocked to inject errors; derive_patch_intents runs
+normally so the full patch-intent derivation path is exercised.
+
+## 2026-04-28: Step 10.5 continues on feature/step10-patch-intent (PR #10)
+Reliability hotfix is an in-scope refinement of Patch Intent v1 (Step 10). Same
+purpose (patch intent observability and guard hardening), same PR. No new branch.
+
+## 2026-04-28: derive_patch_intents raises RuntimeError (not ValueError) for invariant violations
+task_id=None and artifact.id=None are programming errors (invariant violations), not
+user-input errors. RuntimeError is the correct signal for internal invariant failures.
+ValueError is reserved for user-facing or schema-level validation. Both guards added.
+
+## 2026-04-28: Patch intent verification errors are non-fatal (warn + record)
+Turning verify_patch_intent_set failures into hard task failures would require a new
+exit code or a new failure mode in the existing task contract system. Since patch
+intents are proposals only (never applied), a non-fatal warning + metadata record is
+the correct conservative position. This preserves the existing task completion model.
+
+## 2026-04-28: patch_intent_errors recorded in artifact.metadata (not logged only)
+Recording errors in metadata makes them auditable in job JSON (show-job), consistent
+with how verification_failures is recorded on task artifacts. CLI stderr warning is an
+operator signal; metadata is the durable record.
+
+## 2026-04-28: Keyword sync enforced by test, not by shared module
+The keyword sets in _INTENT_RULES and _REPO_PATH_RULES are identical today. A shared
+module is not needed yet — the two tables serve different purposes (workspace patch
+proposals vs. repo file writes) and may diverge intentionally in a future step.
+A focused sync test (TestKeywordSync) is the smallest reliable change and will catch
+any accidental divergence at test time.
+
+## 2026-04-28: Null-byte check uses `continue` after recording error
+After detecting a null byte, further checks on the same path (absolute check, traversal
+check, .md check) are unreliable because the path itself is malformed. Short-circuiting
+with `continue` is consistent with the empty-path guard above it.
+
+## 2026-04-27: Step 10 on new branch feature/step10-patch-intent
+Patch Intent v1 has a clearly different purpose (structured change proposals), review scope,
+and feature boundary from the permission model (Steps 9–9.6). New branch from main is correct.
+
+## 2026-04-27: Patch intent derivation uses task_type keyword match only (not free-form LLM text)
+Raw LLM strings can contain arbitrary path references. Keying derivation on task_type —
+using the same conservative keyword table as repo_applicator — ensures the target_path is
+always predictable and never injected from model output. This is intentionally limiting;
+future steps can expand derivation safely with more explicit input handling.
+
+## 2026-04-27: PatchIntentSet can be empty; no file written when intents is empty
+Most task types do not match documentation keywords (e.g. "write_tests", "implement_feature").
+An empty PatchIntentSet is valid and expected. No workspace file is written in that case.
+patch_intent_count and patch_intent_file are not set in artifact metadata if no intents.
+
+## 2026-04-27: verify_patch_intent_set is a pure function returning list[str] (not VerificationResult)
+Keeping it separate from the existing VerificationResult/TaskContract hierarchy avoids
+coupling patch intent verification to the Task Contract v1 system. A simple list of error
+strings is sufficient and testable in isolation. Integration into VerificationResult is
+deferred to a later step if needed.
+
+## 2026-04-27: Patch intents derived only when vr.passed
+Deriving intents from a failed task execution risks capturing incomplete/wrong output.
+Tying derivation to verification-passed ensures intents represent only confirmed builder output.
+
+## 2026-04-27: no-pending-tasks early check added before workspace_write guard
+workspace_write denial should only block actual work. If there are no pending tasks, the
+job is complete (or was never planned) and should exit(0) cleanly regardless of permissions.
+Fix: check any(t.status==PENDING) before the workspace_write guard.
+
+## 2026-04-27: mf dead branch removed (file_info always set after Step 9.6)
+After Step 9.6, mf is always a MaterializedFile when we reach the output line:
+- result.changed=True (returned early if False)
+- workspace_write confirmed (exited early if denied)
+- materialize_task_output returns None only when result.changed=False
+The `if mf is not None else ""` guard is genuinely dead code; simplifying it.
+
 ## 2026-04-27: Step 9.6 continues on feature/step9-permission-model (PR Continuity Rule)
 Enforcement ordering fix is a correctness fix for the workspace_write gate introduced
 in Step 9.5. Same purpose (permission model), same PR (#9). No new branch.

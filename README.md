@@ -493,14 +493,80 @@ remedy run-next-task-local <job_id>
 - No interactive permission prompts
 - `repo_overwrite` and `shell_exec` are configurable but reserved — no enforcement yet
 
+## Step 10: Patch Intent v1 (Structured Existing-File Change Proposals)
+
+Step 10 introduces the first structured concept for changes to *existing* files — as
+proposals only.  Nothing is applied to the repository in this step.
+
+### What a Patch Intent is
+
+A **Patch Intent** is a structured record describing:
+- which file in the target repository *would* be changed (`target_path`)
+- what the change *intends* to do (`intent`)
+- optional rationale and expected effect
+- safety notes (what was checked, what was deferred)
+
+Patch intents are **proposals for human review** — they are written to the Remedy-owned
+workspace as JSON files and recorded in artifact metadata.  No existing files are read,
+no existing files are written, no patches are applied.
+
+### How patch intents are derived
+
+After a task passes verification, `derive_patch_intents()` maps the `task_type` through
+the same conservative keyword table used by the repo applicator:
+
+| task_type keyword | Intent target path |
+|-------------------|--------------------|
+| `readme` | `README.md` |
+| `plan`, `spec`, `requirement`, `acceptance`, `analysis` | `docs/remedy/<type>.md` |
+| `changelog`, `architecture`, `design`, `guide`, `documentation`, `doc` | `docs/<type>.md` |
+
+If `task_type` matches no keyword, no intent is created (empty set is valid and expected).
+
+Raw LLM output is never used to construct target paths — only the keyword table is consulted.
+
+### Workspace storage
+
+Patch intent files are written to the Remedy-owned workspace, never to the target repo:
+
+```
+.data/workspaces/<job_id>/patch_intents/
+  000_write_readme_1a2b3c4d.json
+  001_create_plan_5e6f7a8b.json
+```
+
+### Artifact metadata added by Step 10
+
+| Key | Added by |
+|-----|----------|
+| `patch_intent_file` | CLI — absolute path of the materialized patch intent JSON file |
+| `patch_intent_count` | CLI — number of intents in the set |
+
+### run-next-task-local output (Step 10)
+
+```bash
+remedy run-next-task-local <job_id>
+# With a doc-eligible task type:
+# → Job <id> | task=<id> type=create_plan ... file=/path/to/workspace/file.txt patch_intents=1 verified=pass
+```
+
+The `patch_intents=N` field appears only when at least one intent was derived and materialized.
+
+### What is NOT done in Step 10
+
+- No repo files are read or modified
+- No patches are applied
+- `repo_overwrite` remains reserved and has no operational effect
+- Patch intent paths are not validated against the actual target repo filesystem
+
 ## What Is NOT Implemented Yet
 
-- Code/file modification via patches or diffs (builder output is structured prose, not patches)
+- Patch application (applying patch intents to existing files in the target repo)
 - Agent loops (auto-advance through all tasks)
 - Provider implementations (Claude, MemPalace)
 - Docker or sandboxed runtime execution
 - LLM-backed verification or review
-- Permission-gated overwrites and shell execution (`repo_overwrite`, `shell_exec` are reserved but unused)
+- Permission-gated overwrites and shell execution (`repo_overwrite`, `shell_exec` reserved)
 - Configuration system
 - API and worker apps
 

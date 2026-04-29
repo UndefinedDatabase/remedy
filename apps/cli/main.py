@@ -243,6 +243,11 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     from packages.orchestration.workspace import LocalWorkspaceRuntime
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
+    # Fast path: no pending tasks — exit cleanly regardless of permissions.
+    if not any(t.status == RunState.PENDING for t in job.tasks):
+        print(f"Job {job.id} — no pending tasks.")
+        return
+
     # Guard: deny workspace_write before the builder is called.
     # This prevents wasting an LLM call when the permission is not granted.
     if not _perm_allowed(job, Capability.workspace_write):
@@ -314,21 +319,58 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                     if repo_applied:
                         artifact.metadata["repo_applied_files"] = repo_applied
 
-    # Persist after verification (and optional repo application) so the saved
-    # state is authoritative.
+    # Derive and materialize patch intents (only on verification pass).
+    patch_intent_count = 0
+    if vr.passed:
+        from packages.orchestration.patch_intent import (
+            derive_patch_intents,
+            materialize_patch_intents,
+            verify_patch_intent_set,
+        )
+        pi_task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
+        if pi_task_obj.output_artifact_ids:
+            pi_artifact_id = pi_task_obj.output_artifact_ids[0]
+            pi_artifact = next(
+                (a for a in result.job.artifacts if a.id == pi_artifact_id), None
+            )
+            if pi_artifact is not None:
+                pi_task_type = pi_artifact.metadata.get("task_type", "unknown")
+                pi_task_index = next(
+                    i for i, t in enumerate(result.job.tasks) if t.id == result.task_id
+                )
+                pis = derive_patch_intents(pi_artifact, pi_task_type)
+                pi_errors = verify_patch_intent_set(pis)
+                if pi_errors:
+                    print(
+                        f"  warning: patch intent verification failed "
+                        f"({len(pi_errors)} error(s)) — not materialized",
+                        file=sys.stderr,
+                    )
+                    pi_artifact.metadata["patch_intent_errors"] = pi_errors
+                elif pis.intents:
+                    pi_mf = materialize_patch_intents(pis, runtime, pi_task_index, pi_task_type)
+                    if pi_mf is not None:
+                        pi_artifact.metadata["patch_intent_file"] = str(pi_mf.path)
+                        pi_artifact.metadata["patch_intent_count"] = len(pis.intents)
+                        patch_intent_count = len(pis.intents)
+
+    # Persist after verification, repo application, and patch intent materialization
+    # so the saved state is authoritative.
     save_job(result.job)
 
     task = next(t for t in result.job.tasks if t.id == result.task_id)
     task_type = task.inputs.get("task_type", "unknown")
     pending_remaining = sum(1 for t in result.job.tasks if t.status.value == "pending")
 
-    file_info = f" file={mf.path}" if mf is not None else ""
+    # mf is always set here: result.changed=True and workspace_write was confirmed above.
+    file_info = f" file={mf.path}"
     repo_info = f" repo={repo_applied[0]}" if repo_applied else ""
+    pi_info = f" patch_intents={patch_intent_count}" if patch_intent_count > 0 else ""
     verified_info = "verified=pass" if vr.passed else f"verified=FAIL({len(vr.failures)} check(s))"
     print(
         f"Job {result.job.id} | task={result.task_id} type={task_type} "
         f"role=builder model={builder.model} elapsed={round(elapsed_ms)}ms "
-        f"remaining={pending_remaining}{file_info}{repo_info} {verified_info}"
+        f"remaining={pending_remaining}{file_info}{repo_info}{pi_info} {verified_info}"
     )
     if not vr.passed:
         for failure in vr.failures:

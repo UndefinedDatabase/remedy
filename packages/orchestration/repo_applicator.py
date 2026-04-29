@@ -75,6 +75,7 @@ def _sanitize_path_component(value: str) -> str:
 #   implementation, prepare, define, summarize, summary
 # ---------------------------------------------------------------------------
 
+# KEEP IN SYNC with _INTENT_RULES in patch_intent.py — enforced by TestKeywordSync in tests/test_patch_intent.py.
 _REPO_PATH_RULES: list[tuple[str, str]] = [
     # Exact-prefix match for README — checked first to avoid spurious doc/ routing.
     ("readme",          "README.md"),
