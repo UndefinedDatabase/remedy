@@ -433,6 +433,26 @@ class TestKeywordSync:
             f"_REPO_PATH_RULES order: {repo_order}"
         )
 
+    def test_intent_rules_and_repo_rules_full_mapping_matches(self):
+        """Ensures keyword→template mappings are byte-for-byte identical.
+
+        Matching keywords and matching order alone is insufficient: a template
+        could be changed in one table (e.g. 'docs/{safe_type}.md' →
+        'docs/remedy/{safe_type}.md') without touching the other, causing the
+        two systems to silently route the same task type to different paths.
+        This test catches such template drift.
+        """
+        from packages.orchestration.patch_intent import _INTENT_RULES
+        from packages.orchestration.repo_applicator import _REPO_PATH_RULES
+
+        intent_map = {k: t for k, t in _INTENT_RULES}
+        repo_map = {k: t for k, t in _REPO_PATH_RULES}
+        assert intent_map == repo_map, (
+            f"keyword→template mappings diverged — "
+            f"_INTENT_RULES: {intent_map}, "
+            f"_REPO_PATH_RULES: {repo_map}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Step 10.5: verification errors surfaced in metadata; no file written

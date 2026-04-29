@@ -1,18 +1,17 @@
 # Plan
 
 ## Goal
-Step 10.6: Patch Intent Rule Ordering and CLI Coverage Hotfix.
+Step 10.7: Patch Intent Sync Contract Completion.
 
 ## Status
 COMPLETE — committed, pushing
 
 ## Steps
 1. [x] Reconstruct context from repo (session resume)
-2. [x] Fix derive_patch_intents docstring: ValueError → RuntimeError
-3. [x] Add rule-ordering test to TestKeywordSync (ordered-list comparison)
-4. [x] Add CLI-level patch intent error test (TestPatchIntentErrorsCLI, mocked internals)
-5. [x] Update .agent/decisions.md
-6. [x] 61 tests pass — commit, push
+2. [x] Add keyword→template mapping sync test (test_intent_rules_and_repo_rules_full_mapping_matches)
+3. [x] Add CLI-level verifier-failure skip test (test_patch_intent_skipped_on_verifier_failure)
+4. [x] Update .agent/decisions.md
+5. [x] 63 tests pass — commit, push
 
 ## Branch
 feature/step10-patch-intent

@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-04-28: Step 10.7 continues on feature/step10-patch-intent (PR #10)
+Template mapping sync and verifier-failure skip coverage are final reliability
+checks for Patch Intent v1. Same branch and PR as Steps 10–10.6.
+
+## 2026-04-28: keyword→template mapping must be identical between both tables
+Two tables can have identical keyword sets and identical ordering but still route
+a given task type to different paths if a template string differs. The mapping
+test (test_intent_rules_and_repo_rules_full_mapping_matches) catches this by
+comparing {keyword: template} dicts directly.
+
+## 2026-04-28: verifier-failure skip is tested via assert_not_called
+The `if vr.passed:` guard prevents any patch intent code from running on verifier
+failure. The test patches derive_patch_intents and verify_patch_intent_set as
+named mocks and calls assert_not_called() on both after the CLI function returns.
+This is an explicit behavioral contract, not just an absence of metadata keys.
+
 ## 2026-04-28: Step 10.6 continues on feature/step10-patch-intent (PR #10)
 Rule ordering and CLI coverage hotfix is an in-scope refinement of Step 10.5.
 Same purpose (patch intent reliability), same PR. No new branch.

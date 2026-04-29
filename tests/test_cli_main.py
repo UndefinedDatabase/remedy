@@ -396,3 +396,105 @@ class TestPatchIntentErrorsCLI:
         err = capsys.readouterr().err
         assert "warning" in err.lower()
         assert "patch intent" in err.lower()
+
+    def test_patch_intent_skipped_on_verifier_failure(self, tmp_path, monkeypatch):
+        """When task verification fails, the entire patch intent block is skipped.
+
+        The `if vr.passed:` guard in the CLI must prevent any patch intent
+        function from being called and must leave the artifact metadata free of
+        all patch intent keys.
+        """
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        from packages.core.models import Artifact
+        from packages.orchestration.task_runner import RunTaskResult
+        from packages.orchestration.verifier import VerificationCheckResult, VerificationResult
+        from packages.orchestration.workspace import MaterializedFile
+
+        job = Job(name="test-pi-verifier-fail", state=RunState.PENDING)
+        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        artifact = Artifact(
+            name="task_output_write_readme",
+            content="Proposed Changes:\n  - Update readme",
+            mime_type="text/plain",
+            task_id=task.id,
+            metadata={"task_type": "write_readme", "summary": "Update readme"},
+        )
+        task.output_artifact_ids.append(artifact.id)
+        job.tasks.append(task)
+        job.artifacts.append(artifact)
+        save_job(job)  # saved with task in PENDING status
+
+        task.status = RunState.RUNNING
+        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
+
+        # Verifier fails — patch intent block must not be entered at all.
+        vr = VerificationResult(
+            task_id=task.id,
+            passed=False,
+            checks=[
+                VerificationCheckResult(
+                    check="has_artifact", passed=False, message="no artifact"
+                )
+            ],
+        )
+        fake_mf = MaterializedFile(
+            path=Path(tmp_path) / "fake_workspace.txt",
+            content="x",
+            size=1,
+        )
+
+        mock_derive = MagicMock(name="derive_patch_intents")
+        mock_verify_pi = MagicMock(name="verify_patch_intent_set")
+
+        with (
+            patch(
+                "packages.providers.ollama_builder.provider.OllamaBuilder"
+            ) as MockBuilder,
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                return_value=run_result,
+            ),
+            patch("packages.orchestration.task_runner.annotate_task_result"),
+            patch(
+                "packages.orchestration.task_runner.materialize_task_output",
+                return_value=fake_mf,
+            ),
+            patch(
+                "packages.orchestration.verifier.verify_task_output",
+                return_value=vr,
+            ),
+            patch("packages.orchestration.task_runner.finalize_task"),
+            patch("packages.orchestration.patch_intent.derive_patch_intents", mock_derive),
+            patch(
+                "packages.orchestration.patch_intent.verify_patch_intent_set", mock_verify_pi
+            ),
+        ):
+            instance = MagicMock()
+            instance.model = "test-model"
+            instance.build = MagicMock()
+            MockBuilder.return_value = instance
+
+            from apps.cli.main import _cmd_run_next_task_local
+
+            # CLI exits non-zero on verifier failure — expected behavior.
+            with pytest.raises(SystemExit) as exc_info:
+                _cmd_run_next_task_local(str(job.id))
+            assert exc_info.value.code == 1
+
+        # Patch intent functions must never have been invoked.
+        mock_derive.assert_not_called()
+        mock_verify_pi.assert_not_called()
+
+        # No patch intent keys in the persisted artifact metadata.
+        reloaded = load_job(job.id)
+        saved_artifact = next(
+            (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
+        )
+        assert saved_artifact is not None, "Artifact not found in saved job"
+        assert "patch_intent_file" not in saved_artifact.metadata
+        assert "patch_intent_count" not in saved_artifact.metadata
+        assert "patch_intent_errors" not in saved_artifact.metadata
