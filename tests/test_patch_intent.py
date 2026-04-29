@@ -402,6 +402,20 @@ class TestVerifyNullBytePath:
 
 
 class TestKeywordSync:
+    """Three-layer contract between _INTENT_RULES and _REPO_PATH_RULES.
+
+    Both tables must be kept byte-for-byte identical because they implement the
+    same routing policy in two different subsystems (repo application and patch
+    intent derivation).  The three tests enforce this at increasing precision:
+
+    1. set equality   — a keyword added to one table but not the other is caught.
+    2. order equality — both tables are first-match-wins; a keyword promoted or
+                        demoted in one table changes routing semantics silently.
+    3. mapping equality — template strings must match; changing a target path in
+                          one table without updating the other silently diverges
+                          the paths both systems would write.
+    """
+
     def test_intent_rules_and_repo_rules_keyword_sets_match(self):
         """Ensures future additions/removals cannot silently diverge."""
         from packages.orchestration.patch_intent import _INTENT_RULES

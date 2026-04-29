@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-04-28: Step 10.8 continues on feature/step10-patch-intent (PR #10)
+Post-failure state accuracy and sync hardening are final refinements of the
+Patch Intent v1 reliability work. Same branch and PR.
+
+## 2026-04-28: verifier-failure test uses real finalize_task
+The prior version mocked finalize_task as a no-op, leaving the task lifecycle
+untested. Using the real finalize_task confirms both behaviors together: patch
+intent is skipped (vr.passed=False) AND the task correctly rolls back to PENDING.
+All finalize_task invariants are satisfied by the test setup (task.output_artifact_ids
+is populated, artifact is in job.artifacts, task.status is RUNNING).
+
+## 2026-04-28: KEEP IN SYNC comments are placed at the definition site
+Both rule tables now carry a KEEP IN SYNC comment pointing to the other table.
+This makes the contract visible to anyone editing either file, regardless of
+whether they remember to check the test suite first.
+
 ## 2026-04-28: Step 10.7 continues on feature/step10-patch-intent (PR #10)
 Template mapping sync and verifier-failure skip coverage are final reliability
 checks for Patch Intent v1. Same branch and PR as Steps 10–10.6.

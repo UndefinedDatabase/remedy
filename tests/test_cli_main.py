@@ -403,6 +403,9 @@ class TestPatchIntentErrorsCLI:
         The `if vr.passed:` guard in the CLI must prevent any patch intent
         function from being called and must leave the artifact metadata free of
         all patch intent keys.
+
+        Uses the real finalize_task so task lifecycle is also verified:
+        on failure the task must roll back to PENDING (safe to retry).
         """
         from pathlib import Path
         from unittest.mock import MagicMock, patch
@@ -467,7 +470,8 @@ class TestPatchIntentErrorsCLI:
                 "packages.orchestration.verifier.verify_task_output",
                 return_value=vr,
             ),
-            patch("packages.orchestration.task_runner.finalize_task"),
+            # finalize_task is NOT mocked — the real implementation runs so that
+            # the task lifecycle (RUNNING → PENDING on failure) is also verified.
             patch("packages.orchestration.patch_intent.derive_patch_intents", mock_derive),
             patch(
                 "packages.orchestration.patch_intent.verify_patch_intent_set", mock_verify_pi
@@ -489,8 +493,16 @@ class TestPatchIntentErrorsCLI:
         mock_derive.assert_not_called()
         mock_verify_pi.assert_not_called()
 
-        # No patch intent keys in the persisted artifact metadata.
+        # Reload and inspect the persisted state.
         reloaded = load_job(job.id)
+
+        # Task lifecycle: real finalize_task must have rolled back to PENDING.
+        reloaded_task = next(t for t in reloaded.tasks if t.id == task.id)
+        assert reloaded_task.status == RunState.PENDING
+
+        # No patch intent keys in the persisted artifact metadata.
+        # The artifact is kept in job.artifacts for diagnostics even after
+        # finalize_task clears task.output_artifact_ids, so search by task_id.
         saved_artifact = next(
             (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
         )
