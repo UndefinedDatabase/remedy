@@ -397,7 +397,7 @@ class TestVerifyNullBytePath:
 
 
 # ---------------------------------------------------------------------------
-# Step 10.5: keyword sync between _INTENT_RULES and _REPO_PATH_RULES
+# Step 10: rule sync contract between _INTENT_RULES and _REPO_PATH_RULES
 # ---------------------------------------------------------------------------
 
 
@@ -418,6 +418,8 @@ class TestKeywordSync:
 
     def test_intent_rules_and_repo_rules_keyword_sets_match(self):
         """Ensures future additions/removals cannot silently diverge."""
+        # These are private module attributes; tests rely on them intentionally
+        # to enforce the sync contract between the two rule tables.
         from packages.orchestration.patch_intent import _INTENT_RULES
         from packages.orchestration.repo_applicator import _REPO_PATH_RULES
 
@@ -436,6 +438,8 @@ class TestKeywordSync:
         A keyword promoted or demoted in one table but not the other changes
         routing semantics silently — this test catches that.
         """
+        # These are private module attributes; tests rely on them intentionally
+        # to enforce the sync contract between the two rule tables.
         from packages.orchestration.patch_intent import _INTENT_RULES
         from packages.orchestration.repo_applicator import _REPO_PATH_RULES
 
@@ -456,6 +460,8 @@ class TestKeywordSync:
         two systems to silently route the same task type to different paths.
         This test catches such template drift.
         """
+        # These are private module attributes; tests rely on them intentionally
+        # to enforce the sync contract between the two rule tables.
         from packages.orchestration.patch_intent import _INTENT_RULES
         from packages.orchestration.repo_applicator import _REPO_PATH_RULES
 

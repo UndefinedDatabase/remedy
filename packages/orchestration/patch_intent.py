@@ -78,7 +78,7 @@ class PatchIntentSet(BaseModel):
 # Only documentation-like targets are eligible; source code is never targeted.
 # {safe_type} is substituted with the sanitized task_type at derivation time.
 #
-# KEEP IN SYNC with _REPO_PATH_RULES in repo_applicator.py — enforced by TestKeywordSync.
+# KEEP IN SYNC with _REPO_PATH_RULES in repo_applicator.py — enforced by TestKeywordSync in tests/test_patch_intent.py.
 _INTENT_RULES: list[tuple[str, str]] = [
     ("readme",         "README.md"),
     # docs/remedy/ — evaluated before the plain "doc" catch-all

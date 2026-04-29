@@ -1,5 +1,17 @@
 # Decisions
 
+## 2026-04-28: Step 10.9 continues on feature/step10-patch-intent (PR #10)
+Minor hygiene pass before Step 11 (patch apply). Same branch and PR. No new tests,
+no behavior changes — comments and one additional assertion only.
+
+## 2026-04-28: KEEP IN SYNC comments include the exact test file path
+"enforced by TestKeywordSync in tests/test_patch_intent.py" removes all ambiguity
+for a developer editing either rule table without first checking the test suite.
+
+## 2026-04-28: private-import comment added to all three TestKeywordSync test methods
+Each test method imports _INTENT_RULES and _REPO_PATH_RULES directly. The comment
+explains that this is intentional (testing the contract) rather than accidental.
+
 ## 2026-04-28: Step 10.8 continues on feature/step10-patch-intent (PR #10)
 Post-failure state accuracy and sync hardening are final refinements of the
 Patch Intent v1 reliability work. Same branch and PR.

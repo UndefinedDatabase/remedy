@@ -496,9 +496,11 @@ class TestPatchIntentErrorsCLI:
         # Reload and inspect the persisted state.
         reloaded = load_job(job.id)
 
-        # Task lifecycle: real finalize_task must have rolled back to PENDING.
+        # Task lifecycle: real finalize_task must have rolled back to PENDING and
+        # cleared output_artifact_ids (safe-to-retry state for the next cycle).
         reloaded_task = next(t for t in reloaded.tasks if t.id == task.id)
         assert reloaded_task.status == RunState.PENDING
+        assert reloaded_task.output_artifact_ids == []
 
         # No patch intent keys in the persisted artifact metadata.
         # The artifact is kept in job.artifacts for diagnostics even after

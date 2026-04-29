@@ -1,18 +1,18 @@
 # Plan
 
 ## Goal
-Step 10.8: Post-Failure State Accuracy + Minor Sync Hardening.
+Step 10.9: Test Robustness + Minor Hygiene Improvements.
 
 ## Status
 COMPLETE — committed, pushing
 
 ## Steps
 1. [x] Reconstruct context from repo (session resume)
-2. [x] Update verifier-failure CLI test: use real finalize_task, assert task PENDING
-3. [x] Add "KEEP IN SYNC" comments to _INTENT_RULES and _REPO_PATH_RULES
-4. [x] Add clarification docstring to TestKeywordSync
-5. [x] Update .agent/decisions.md
-6. [x] 63 tests pass — commit, push
+2. [x] Strengthen KEEP IN SYNC comments (add exact test file path)
+3. [x] Add output_artifact_ids == [] assertion to verifier-failure test
+4. [x] Rename section label "Step 10.5: keyword sync" → "Step 10: rule sync contract"
+5. [x] Add private-import safety comment in all three TestKeywordSync test methods
+6. [x] Update .agent/decisions.md — 63 tests pass — commit, push
 
 ## Branch
 feature/step10-patch-intent
