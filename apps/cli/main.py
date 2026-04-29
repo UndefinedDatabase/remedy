@@ -375,10 +375,14 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                             {
                                 "file": r.target_path,
                                 "action": r.action,
+                                "risk": r.risk_level,
                                 "reason": r.reason,
                                 "summary": r.summary,
                             }
                             for r in dry_run_results
+                        ]
+                        pi_artifact.metadata["patch_intent_risks"] = [
+                            r.risk_level for r in dry_run_results
                         ]
                         combined_preview = "\n\n".join(
                             r.diff_preview for r in dry_run_results

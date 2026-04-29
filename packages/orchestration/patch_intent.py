@@ -281,6 +281,29 @@ _MAX_PROPOSED_LINES = 10
 _MAX_PREVIEW_CHARS = 2000
 
 
+def classify_risk(action: str) -> str:
+    """Classify the risk level of a proposed change based on its action.
+
+    Risk levels:
+      "low"     — new file (create): no existing content is at risk.
+      "medium"  — modify existing file: existing content could change.
+      "high"    — overwrite existing file (reserved; placeholder for a future
+                  action type that would unconditionally replace file content).
+      "unknown" — action is "preview-only" (no repository attached; risk
+                  cannot be determined without knowing whether the file exists)
+                  or the action string is not recognised.
+
+    This function is non-blocking and has no side effects.
+    """
+    if action == "create":
+        return "low"
+    if action == "modify":
+        return "medium"
+    if action == "overwrite":  # reserved — not yet produced by any code path
+        return "high"
+    return "unknown"
+
+
 @dataclass
 class PatchDryRunResult:
     """Dry-run preview for a single PatchIntent.
@@ -290,6 +313,7 @@ class PatchDryRunResult:
 
     target_path:  the repo-relative path that would be targeted.
     action:       "create" | "modify" | "preview-only" (no repo attached).
+    risk_level:   "low" | "medium" | "high" | "unknown" — from classify_risk().
     reason:       short human-readable reason (e.g. "task type 'write_readme'").
     summary:      truncated intent text from the PatchIntent.
     diff_preview: human-readable preview block — NOT a real patch; read-only.
@@ -297,6 +321,7 @@ class PatchDryRunResult:
 
     target_path: str
     action: str
+    risk_level: str
     reason: str
     summary: str
     diff_preview: str
@@ -418,6 +443,7 @@ def generate_dry_run_preview(
             PatchDryRunResult(
                 target_path=intent.target_path,
                 action=action,
+                risk_level=classify_risk(action),
                 reason=reason,
                 summary=summary,
                 diff_preview=diff_preview,
@@ -442,6 +468,7 @@ def format_dry_run_explanations(results: list[PatchDryRunResult]) -> str:
         parts.append("Planned change:")
         parts.append(f"  file   : {r.target_path}")
         parts.append(f"  action : {r.action}")
+        parts.append(f"  risk   : {r.risk_level}")
         parts.append(f"  reason : {r.reason}")
         parts.append(f"  summary: {r.summary}")
     return "\n".join(parts)

@@ -18,6 +18,9 @@ Covers:
       - generate_dry_run_preview: no repo → preview-only; existing file → modify;
         missing file → create; empty intents → empty list
       - format_dry_run_explanations: correct labeled block format
+  - Step 12 additions (risk classification, non-blocking):
+      - classify_risk: correct mapping for all known actions
+      - risk_level present on PatchDryRunResult; risk line in CLI output
 
 All tests are deterministic — no live Ollama, no builder, no repo writes.
 """
@@ -37,6 +40,7 @@ from packages.orchestration.patch_intent import (
     PatchIntent,
     PatchIntentSet,
     _extract_proposed_lines,
+    classify_risk,
     derive_patch_intents,
     format_dry_run_explanations,
     generate_dry_run_preview,
@@ -604,6 +608,7 @@ class TestGenerateDryRunPreview:
         assert len(results) == 1
         r = results[0]
         assert r.action == "preview-only"
+        assert r.risk_level == "unknown"
         assert r.target_path == "README.md"
         assert "no repository attached" in r.diff_preview
         assert "README.md" in r.diff_preview
@@ -616,6 +621,7 @@ class TestGenerateDryRunPreview:
         assert len(results) == 1
         r = results[0]
         assert r.action == "modify"
+        assert r.risk_level == "medium"
         assert "README.md" in r.diff_preview
         assert "existing file" in r.diff_preview
         assert "proposed additions" in r.diff_preview
@@ -626,6 +632,7 @@ class TestGenerateDryRunPreview:
         assert len(results) == 1
         r = results[0]
         assert r.action == "create"
+        assert r.risk_level == "low"
         assert "new file" in r.diff_preview
 
     def test_proposed_lines_appear_in_preview(self, tmp_path):
@@ -667,6 +674,7 @@ class TestFormatDryRunExplanations:
         defaults = dict(
             target_path="README.md",
             action="modify",
+            risk_level="medium",
             reason="task type 'write_readme'",
             summary="adds installation and usage sections",
             diff_preview="",
@@ -683,13 +691,64 @@ class TestFormatDryRunExplanations:
         assert "Planned change:" in text
         assert "README.md" in text
         assert "modify" in text
+        assert "medium" in text  # risk line
         assert "write_readme" in text
         assert "adds installation" in text
 
     def test_multiple_results_all_appear(self):
         r1 = self._make_result(target_path="README.md")
-        r2 = self._make_result(target_path="docs/guide.md", action="create")
+        r2 = self._make_result(target_path="docs/guide.md", action="create", risk_level="low")
         text = format_dry_run_explanations([r1, r2])
         assert "README.md" in text
         assert "docs/guide.md" in text
         assert "create" in text
+
+
+class TestClassifyRisk:
+    """classify_risk maps action strings to the correct risk level."""
+
+    def test_create_is_low(self):
+        assert classify_risk("create") == "low"
+
+    def test_modify_is_medium(self):
+        assert classify_risk("modify") == "medium"
+
+    def test_overwrite_is_high(self):
+        # reserved — not yet produced by any code path, but must classify correctly
+        assert classify_risk("overwrite") == "high"
+
+    def test_preview_only_is_unknown(self):
+        assert classify_risk("preview-only") == "unknown"
+
+    def test_unrecognised_action_is_unknown(self):
+        assert classify_risk("delete") == "unknown"
+        assert classify_risk("") == "unknown"
+
+    def test_risk_level_on_dry_run_result_preview_only(self):
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="README.md", intent="some intent")],
+        )
+        results = generate_dry_run_preview(pis, "", "write_readme", repo_root=None)
+        assert results[0].risk_level == "unknown"
+
+    def test_risk_level_on_dry_run_result_create(self, tmp_path):
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="README.md", intent="some intent")],
+        )
+        # README.md does not exist in tmp_path → action == "create"
+        results = generate_dry_run_preview(pis, "", "write_readme", repo_root=tmp_path)
+        assert results[0].risk_level == "low"
+
+    def test_risk_level_on_dry_run_result_modify(self, tmp_path):
+        (tmp_path / "README.md").write_text("# existing\n")
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="README.md", intent="some intent")],
+        )
+        results = generate_dry_run_preview(pis, "", "write_readme", repo_root=tmp_path)
+        assert results[0].risk_level == "medium"

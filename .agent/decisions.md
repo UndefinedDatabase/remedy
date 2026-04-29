@@ -582,3 +582,21 @@ Corrupted JSON files are skipped without raising. Acceptable for local dev tool;
 
 ## 2026-04-15: Job.user_prompt field added
 CLI requires a prompt field on Job to persist the user's input. Added as str | None = None — pure data, no orchestration logic.
+
+## 2026-04-29: classify_risk is non-blocking and has no side effects
+Risk classification is a one-shot mapping (action → risk level string). It is
+intentionally non-blocking: a future step can use risk_level to prompt for
+user confirmation, but Step 12 only stores and surfaces it. The "overwrite"
+case is reserved and not yet produced by any code path — it is classified now
+so the function is complete and future code paths don't need to change classify_risk.
+
+## 2026-04-29: risk_level stored in both patch_intent_explanations and patch_intent_risks
+patch_intent_explanations is a per-intent dict (file, action, risk, reason, summary);
+patch_intent_risks is a flat list of risk strings, one per intent.
+The flat list makes it easy for operators to scan risk levels without parsing dicts
+(e.g. "are there any high-risk changes?"). Both keys are in artifact.metadata.
+
+## 2026-04-29: "preview-only" and unknown actions map to "unknown" risk
+When no repository is attached, the file may or may not exist — risk cannot be
+determined. Mapping to "unknown" rather than inventing a level (e.g. "low") is
+honest: the caller must attach a repo and re-run to get a meaningful risk signal.
