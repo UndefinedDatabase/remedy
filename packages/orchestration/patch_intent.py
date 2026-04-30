@@ -19,6 +19,12 @@ Key constraints:
   - Derivation is conservative: task_type keyword match only; no raw LLM paths accepted.
   - An empty PatchIntentSet is valid and expected for most task types.
   - Dry-run reads repo files with read_text only; no open() for writing, no os calls.
+  - Risk levels are explicit constants (RISK_LOW/MEDIUM/HIGH/UNKNOWN) collected in
+    RISK_LEVELS.  PatchDryRunResult.risk_level is validated against RISK_LEVELS in
+    __post_init__ — an invalid value raises ValueError immediately at construction
+    time rather than propagating silently.
+  - RISK_UNKNOWN is intentionally conservative.  Future approval/autonomy modes must
+    not treat it as equivalent to RISK_LOW — see classify_risk docstring.
 """
 
 from __future__ import annotations
@@ -34,6 +40,25 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from packages.core.models import Artifact
     from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
+
+
+# ---------------------------------------------------------------------------
+# Risk level constants (Step 12.5)
+# ---------------------------------------------------------------------------
+
+RISK_LOW: str = "low"
+RISK_MEDIUM: str = "medium"
+RISK_HIGH: str = "high"
+RISK_UNKNOWN: str = "unknown"
+
+# All valid risk level values.  PatchDryRunResult.risk_level is validated against
+# this frozenset in __post_init__ — construction fails fast on invalid values.
+#
+# Step 13 note: RISK_UNKNOWN must be treated conservatively by any future
+# approval/autonomy mode.  It means risk cannot be determined without repository
+# context (preview-only action) or the action string is not recognised.
+# Do NOT equate RISK_UNKNOWN with RISK_LOW.
+RISK_LEVELS: frozenset[str] = frozenset({RISK_LOW, RISK_MEDIUM, RISK_HIGH, RISK_UNKNOWN})
 
 
 # ---------------------------------------------------------------------------
@@ -294,14 +319,17 @@ def classify_risk(action: str) -> str:
                   or the action string is not recognised.
 
     This function is non-blocking and has no side effects.
+    Callers MUST NOT equate RISK_UNKNOWN with RISK_LOW — see module docstring.
     """
     if action == "create":
-        return "low"
+        return RISK_LOW
     if action == "modify":
-        return "medium"
+        return RISK_MEDIUM
     if action == "overwrite":  # reserved — not yet produced by any code path
-        return "high"
-    return "unknown"
+        return RISK_HIGH
+    # "preview-only" (no repo attached) and any unrecognised action both return
+    # RISK_UNKNOWN.  Risk cannot be determined without repository context.
+    return RISK_UNKNOWN
 
 
 @dataclass
@@ -325,6 +353,13 @@ class PatchDryRunResult:
     reason: str
     summary: str
     diff_preview: str
+
+    def __post_init__(self) -> None:
+        if self.risk_level not in RISK_LEVELS:
+            raise ValueError(
+                f"PatchDryRunResult.risk_level {self.risk_level!r} is not a valid risk "
+                f"level.  Valid values: {sorted(RISK_LEVELS)}"
+            )
 
 
 def _extract_proposed_lines(artifact_content: str) -> list[str]:
@@ -463,12 +498,15 @@ def format_dry_run_explanations(results: list[PatchDryRunResult]) -> str:
     if not results:
         return ""
 
-    parts: list[str] = []
+    blocks: list[str] = []
     for r in results:
-        parts.append("Planned change:")
-        parts.append(f"  file   : {r.target_path}")
-        parts.append(f"  action : {r.action}")
-        parts.append(f"  risk   : {r.risk_level}")
-        parts.append(f"  reason : {r.reason}")
-        parts.append(f"  summary: {r.summary}")
-    return "\n".join(parts)
+        lines = [
+            "Planned change:",
+            f"  file   : {r.target_path}",
+            f"  action : {r.action}",
+            f"  risk   : {r.risk_level}",
+            f"  reason : {r.reason}",
+            f"  summary: {r.summary}",
+        ]
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)

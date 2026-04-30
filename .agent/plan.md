@@ -1,22 +1,22 @@
 # Plan
 
 ## Goal
-Step 12: Decision Layer (Risk Classification, non-blocking)
+Step 12.5: Risk Contract Hardening
 
 ## Status
-COMPLETE — committed, pushing
+IN PROGRESS
 
 ## Steps
-1. [x] Merge PR #11, checkout main, create feature/step12-risk-classification
-2. [x] patch_intent.py: classify_risk(), risk_level field on PatchDryRunResult,
-       update generate_dry_run_preview and format_dry_run_explanations
-3. [x] main.py: add risk to patch_intent_explanations dicts, add patch_intent_risks key
-4. [x] tests: TestClassifyRisk (8 tests), update _make_result helper, risk assertions
-       in TestGenerateDryRunPreview and TestFormatDryRunExplanations — 379 total pass
-5. [x] .agent/decisions.md: 3 new decisions added
+1. [x] Confirm branch: feature/step12-risk-classification (same branch, Step 12.5 is in-scope hardening)
+2. [ ] patch_intent.py: add RISK_* constants + RISK_LEVELS frozenset; __post_init__ validation on PatchDryRunResult; blank line between multi-result blocks; document unknown conservatism
+3. [ ] tests/test_patch_intent.py: use constants in TestClassifyRisk; cover __post_init__ invalid risk; update multi-result format test; add unknown docstring/comment coverage
+4. [ ] tests/test_cli_main.py: add CLI test proving patch_intent_risks stored + all values in RISK_LEVELS + risk line in output
+5. [ ] docs/architecture.md: update risk section — explicit constants, unknown is conservative
+6. [ ] .agent/decisions.md: record key decisions
+7. [ ] Self-review, run tests (target 385+), commit, push
 
 ## Branch
 feature/step12-risk-classification
 
 ## PR
-None yet
+#12 (open, same branch — Step 12.5 is a hardening continuation)

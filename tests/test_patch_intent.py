@@ -21,6 +21,11 @@ Covers:
   - Step 12 additions (risk classification, non-blocking):
       - classify_risk: correct mapping for all known actions
       - risk_level present on PatchDryRunResult; risk line in CLI output
+  - Step 12.5 additions (risk contract hardening):
+      - RISK_* constants used in classify_risk and PatchDryRunResult validation
+      - PatchDryRunResult.__post_init__ raises ValueError on invalid risk_level
+      - format_dry_run_explanations separates multiple blocks with a blank line
+      - classify_risk returns are all members of RISK_LEVELS
 
 All tests are deterministic — no live Ollama, no builder, no repo writes.
 """
@@ -36,6 +41,11 @@ import pytest
 
 from packages.core.models import Artifact
 from packages.orchestration.patch_intent import (
+    RISK_HIGH,
+    RISK_LEVELS,
+    RISK_LOW,
+    RISK_MEDIUM,
+    RISK_UNKNOWN,
     PatchDryRunResult,
     PatchIntent,
     PatchIntentSet,
@@ -697,32 +707,39 @@ class TestFormatDryRunExplanations:
 
     def test_multiple_results_all_appear(self):
         r1 = self._make_result(target_path="README.md")
-        r2 = self._make_result(target_path="docs/guide.md", action="create", risk_level="low")
+        r2 = self._make_result(target_path="docs/guide.md", action="create", risk_level=RISK_LOW)
         text = format_dry_run_explanations([r1, r2])
         assert "README.md" in text
         assert "docs/guide.md" in text
         assert "create" in text
+        # blocks must be separated by a blank line for readability
+        assert "\n\n" in text
 
 
 class TestClassifyRisk:
     """classify_risk maps action strings to the correct risk level."""
 
     def test_create_is_low(self):
-        assert classify_risk("create") == "low"
+        assert classify_risk("create") == RISK_LOW
 
     def test_modify_is_medium(self):
-        assert classify_risk("modify") == "medium"
+        assert classify_risk("modify") == RISK_MEDIUM
 
     def test_overwrite_is_high(self):
         # reserved — not yet produced by any code path, but must classify correctly
-        assert classify_risk("overwrite") == "high"
+        assert classify_risk("overwrite") == RISK_HIGH
 
     def test_preview_only_is_unknown(self):
-        assert classify_risk("preview-only") == "unknown"
+        assert classify_risk("preview-only") == RISK_UNKNOWN
 
     def test_unrecognised_action_is_unknown(self):
-        assert classify_risk("delete") == "unknown"
-        assert classify_risk("") == "unknown"
+        assert classify_risk("delete") == RISK_UNKNOWN
+        assert classify_risk("") == RISK_UNKNOWN
+
+    def test_all_return_values_are_in_risk_levels(self):
+        """Every return value of classify_risk must be a member of RISK_LEVELS."""
+        for action in ("create", "modify", "overwrite", "preview-only", "delete", ""):
+            assert classify_risk(action) in RISK_LEVELS
 
     def test_risk_level_on_dry_run_result_preview_only(self):
         pis = PatchIntentSet(
@@ -752,3 +769,35 @@ class TestClassifyRisk:
         )
         results = generate_dry_run_preview(pis, "", "write_readme", repo_root=tmp_path)
         assert results[0].risk_level == "medium"
+
+
+# ---------------------------------------------------------------------------
+# PatchDryRunResult validation (Step 12.5)
+# ---------------------------------------------------------------------------
+
+
+class TestPatchDryRunResultValidation:
+    """PatchDryRunResult.__post_init__ rejects invalid risk_level values."""
+
+    def _make(self, risk_level: str) -> PatchDryRunResult:
+        return PatchDryRunResult(
+            target_path="README.md",
+            action="modify",
+            risk_level=risk_level,
+            reason="test",
+            summary="test summary",
+            diff_preview="",
+        )
+
+    def test_invalid_risk_level_raises_value_error(self):
+        with pytest.raises(ValueError, match="risk_level"):
+            self._make("extreme")
+
+    def test_empty_string_risk_level_raises_value_error(self):
+        with pytest.raises(ValueError, match="risk_level"):
+            self._make("")
+
+    def test_all_valid_risk_levels_accepted(self):
+        for level in RISK_LEVELS:
+            r = self._make(level)
+            assert r.risk_level == level

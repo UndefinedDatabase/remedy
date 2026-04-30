@@ -4,14 +4,18 @@
 `feature/step12-risk-classification`
 
 ## PR
-None yet.
+#12 (open — Step 12.5 is in-scope hardening continuation of Step 12)
 
 ## Scope
-Step 12: non-blocking risk classification.  Only classifies and surfaces risk.
-No execution changes, no prompts, no overwrite logic.
+Step 12.5: Risk contract hardening.  No behaviour changes beyond:
+- RISK_* constants (single source of truth for valid levels)
+- PatchDryRunResult.__post_init__ fails fast on invalid risk_level
+- format_dry_run_explanations blank line between multiple blocks
+- CLI test proving patch_intent_risks stored + all values valid
+Non-blocking; no execution gates, no prompts, no overwrite logic.
 
 ## Key files changed
-- packages/orchestration/patch_intent.py: classify_risk(), risk_level field
-- apps/cli/main.py: patch_intent_risks metadata key, risk in explanations
-- tests/test_patch_intent.py: TestClassifyRisk (8 tests), risk assertions
-- .agent/decisions.md: 3 new decisions
+- packages/orchestration/patch_intent.py: RISK_* constants, RISK_LEVELS, __post_init__, format blank-line
+- tests/test_patch_intent.py: constants in TestClassifyRisk, TestPatchDryRunResultValidation (3 tests), multi-result blank-line assertion
+- tests/test_cli_main.py: TestPatchIntentRisksCLI (1 test)
+- docs/architecture.md: updated risk section with constants, RISK_UNKNOWN note, metadata table

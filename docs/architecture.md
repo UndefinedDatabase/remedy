@@ -429,7 +429,7 @@ task.
 - `artifact.task_id is None` → `RuntimeError` (planning artifacts must not be used)
 - `artifact.id is None` → `RuntimeError` (artifact must have a valid id)
 
-### Dry-Run Preview and Explanation Layer (Step 11)
+### Dry-Run Preview, Explanation, and Risk Layer (Steps 11–12.5)
 
 `generate_dry_run_preview(pis, artifact_content, task_type, repo_root=None)` adds the
 first read-only interaction with the target repository.  **No files are written.**
@@ -444,30 +444,54 @@ Proposed-change lines are extracted from the builder artifact's `Proposed Change
 section and shown in the preview block.  Raw LLM strings are never used directly —
 they are extracted, section-bounded, and shown as labeled additions, not as patches.
 
-`format_dry_run_explanations(results)` renders results as a human-readable CLI block:
+`format_dry_run_explanations(results)` renders results as a human-readable CLI block.
+Multiple intents are separated by a blank line:
 
 ```
 Planned change:
   file   : README.md
   action : modify
+  risk   : medium
   reason : task type 'write_readme'
   summary: adds installation and usage sections
 ```
 
-**Artifact metadata keys added in Step 11:**
+**Risk classification** (`classify_risk(action) -> str`, Step 12):
+
+| Action | Risk level | Meaning |
+|--------|------------|---------|
+| `create` | `low` | New file — no existing content at risk |
+| `modify` | `medium` | Existing file would change |
+| `overwrite` | `high` | Reserved — unconditional replacement (future) |
+| `preview-only` / unrecognised | `unknown` | Cannot determine without repo context |
+
+Risk levels are defined as explicit constants in `patch_intent.py`:
+`RISK_LOW`, `RISK_MEDIUM`, `RISK_HIGH`, `RISK_UNKNOWN`, and `RISK_LEVELS` (frozenset).
+`PatchDryRunResult.risk_level` is validated against `RISK_LEVELS` in `__post_init__` —
+construction raises `ValueError` immediately for any invalid value.
+
+**`RISK_UNKNOWN` is conservative:** future approval/autonomy modes must not treat it
+as equivalent to `RISK_LOW`.  Attaching a repository and re-running will replace it
+with a concrete level.
+
+**Artifact metadata keys added in Steps 11–12:**
 
 | Key | Set when | Added by |
 |-----|----------|----------|
 | `patch_intent_explanations` | intents present, no errors | CLI |
 | `patch_intent_diff_preview` | intents present, no errors | CLI |
+| `patch_intent_risks` | intents present, no errors | CLI |
 
 `patch_intent_diff_preview` is capped at 2 000 characters before storage.
+`patch_intent_risks` is a flat `list[str]` — one risk level per intent — for fast
+scanning without parsing the full `patch_intent_explanations` dict list.
 
-**Design constraints:**
+**Design constraints (Steps 11–12.5, all still in effect):**
 - Patch intents are created only when `vr.passed` (confirmed builder output only).
 - `generate_dry_run_preview` uses `read_text` (read-only); no open-for-write calls.
 - `repo_overwrite` remains reserved; dry-run does not activate it.
 - Intents are written to the Remedy workspace, not to the target repo.
+- Risk classification is non-blocking — it does not gate or delay execution.
 - The full patch-apply lifecycle (apply diff, verify result) is deferred to a
   future permission-gated step.
 

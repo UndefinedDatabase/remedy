@@ -600,3 +600,29 @@ The flat list makes it easy for operators to scan risk levels without parsing di
 When no repository is attached, the file may or may not exist — risk cannot be
 determined. Mapping to "unknown" rather than inventing a level (e.g. "low") is
 honest: the caller must attach a repo and re-run to get a meaningful risk signal.
+
+## 2026-04-30: RISK_* constants defined in patch_intent.py (single source of truth)
+Freeform strings scattered across classify_risk, tests, and CLI are error-prone.
+Named constants (RISK_LOW/MEDIUM/HIGH/UNKNOWN) and a frozenset (RISK_LEVELS) give
+one canonical definition. PatchDryRunResult.__post_init__ validates against RISK_LEVELS,
+making invalid risk levels a loud construction-time failure rather than a silent
+propagation. Tests import the constants so they stay in sync automatically.
+
+## 2026-04-30: PatchDryRunResult.__post_init__ raises ValueError (not a Literal type)
+Literal[...] would require changing the field annotation and adding a Pydantic validator
+or a TypeVar constraint — heavier than needed for a dataclass. __post_init__ raises
+ValueError with a clear message. Callers producing PatchDryRunResult (only
+generate_dry_run_preview) already pass a value from classify_risk, which always returns
+a member of RISK_LEVELS. The guard catches bugs in future callers, not the current path.
+
+## 2026-04-30: format_dry_run_explanations uses "\n\n".join(blocks) for multi-result spacing
+Original "\n".join(parts) across all results produced one dense block with no visual
+separation between intents. Building a list of per-result blocks and joining with "\n\n"
+is the minimal correct change: one blank line between blocks, no trailing newline, no
+leading newline. Tested by assert "\n\n" in text in test_multiple_results_all_appear.
+
+## 2026-04-30: RISK_UNKNOWN is conservative by design — documented in code and docs
+Both the module docstring and the classify_risk docstring now explicitly state that
+RISK_UNKNOWN must NOT be equated with RISK_LOW by future approval/autonomy modes.
+This pre-empts a common mistake: treating an absence of evidence (no repo attached)
+as evidence of absence (no risk). The architecture.md section echoes the same note.
