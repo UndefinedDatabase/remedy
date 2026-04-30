@@ -30,6 +30,10 @@ Covers:
       - generate_dry_run_preview raises RuntimeError for paths outside repo_root
       - valid paths inside repo_root still work correctly
       - truncate_preview: long/short/exact-length behaviour
+  - Step 12.7 additions (boundary test precision):
+      - symlink escape test: proves resolve() catches what literal string checks miss
+      - traversal test comment clarified (verify bypassed intentionally)
+      - TestPatchIntentRisksCLI split into three focused single-assertion tests
 
 All tests are deterministic — no live Ollama, no builder, no repo writes.
 """
@@ -840,14 +844,45 @@ class TestGenerateDryRunPreviewBoundary:
         assert results[0].action == "modify"
 
     def test_traversal_path_raises_runtime_error(self, tmp_path):
-        """A path that resolves outside repo_root must raise RuntimeError."""
-        # Construct a PatchIntentSet directly to bypass verify_patch_intent_set.
-        # This tests that generate_dry_run_preview guards its own boundary.
+        """A path that resolves outside repo_root must raise RuntimeError.
+
+        PatchIntentSet is constructed directly, bypassing verify_patch_intent_set.
+        verify_patch_intent_set would normally reject "../outside.md" because it
+        detects a literal ".." component, but this test intentionally skips that
+        upstream check to prove that generate_dry_run_preview has its own
+        independent boundary guard via resolve() + is_relative_to().
+        """
         pis = PatchIntentSet(
             task_id=uuid4(),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="../outside.md", intent="escape")],
         )
+        with pytest.raises(RuntimeError, match="outside repo_root"):
+            generate_dry_run_preview(pis, "", "write_readme", tmp_path)
+
+    def test_symlink_escape_raises_runtime_error(self, tmp_path):
+        """A symlink inside repo_root that resolves outside must be rejected.
+
+        This test uniquely requires the resolve() + is_relative_to() guard.
+        verify_patch_intent_set cannot catch symlinks — it only inspects the
+        literal path string ("README.md" looks valid despite pointing outside).
+        resolve() follows the symlink, so is_relative_to() detects the escape.
+        """
+        # Create a file outside repo_root at a sibling directory.
+        outside_dir = tmp_path.parent / "outside_dir_12_7"
+        outside_dir.mkdir(exist_ok=True)
+        outside_file = outside_dir / "secret.md"
+        outside_file.write_text("secret content")
+
+        # Symlink inside repo_root pointing to the outside file.
+        symlink_inside = tmp_path / "README.md"
+        try:
+            symlink_inside.symlink_to(outside_file)
+        except (OSError, NotImplementedError):
+            pytest.skip("Symlinks not available on this platform")
+
+        # "README.md" passes verify_patch_intent_set but resolve() exposes the escape.
+        pis = self._make_pis("README.md")
         with pytest.raises(RuntimeError, match="outside repo_root"):
             generate_dry_run_preview(pis, "", "write_readme", tmp_path)
 

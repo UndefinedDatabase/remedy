@@ -520,21 +520,26 @@ class TestPatchIntentErrorsCLI:
 
 
 class TestPatchIntentRisksCLI:
-    """patch_intent_risks is stored in metadata; all values are in RISK_LEVELS.
+    """Three focused tests for the patch_intent_risks CLI contract.
 
-    Runs the full patch-intent happy path (vr.passed=True, no verify errors) with
-    no live Ollama.  All patch-intent functions (derive, verify, generate_dry_run,
-    format) execute naturally so the risk contract is exercised end-to-end.
+    Each test exercises exactly one contract:
+      1. patch_intent_risks key exists in saved artifact metadata
+      2. all stored risk values are members of RISK_LEVELS
+      3. CLI stdout contains the exact risk value (RISK_UNKNOWN, no repo attached)
+
+    All patch-intent functions (derive, verify, generate_dry_run, format) run
+    naturally — no mocks — so the risk contract is exercised end-to-end.
     """
 
-    def test_patch_intent_risks_stored_values_in_risk_levels_and_risk_line_in_output(
-        self, tmp_path, monkeypatch, capsys
-    ):
+    def _run_risk_scenario(self, tmp_path, monkeypatch, capsys):
+        """Run the CLI risk happy path; return (saved_artifact, stdout_text).
+
+        Sets up a job with one write_readme task, mocks the Ollama/runner/verifier
+        layer, lets all patch-intent logic run naturally, and returns the reloaded
+        artifact and captured stdout for the caller to assert against.
+        """
         from pathlib import Path
         from unittest.mock import MagicMock, patch
-
-        # Private imports — testing the public contract at the module-attribute level.
-        from packages.orchestration.patch_intent import RISK_LEVELS, RISK_UNKNOWN
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
@@ -543,7 +548,6 @@ class TestPatchIntentRisksCLI:
         from packages.orchestration.verifier import VerificationResult
         from packages.orchestration.workspace import MaterializedFile
 
-        # Job with one pending task; artifact already contains proposed changes.
         job = Job(name="test-risk-cli", state=RunState.PENDING)
         task = Task(description="write readme", inputs={"task_type": "write_readme"})
         artifact = Artifact(
@@ -605,21 +609,45 @@ class TestPatchIntentRisksCLI:
 
             _cmd_run_next_task_local(str(job.id))
 
-        # 1. patch_intent_risks must be stored in artifact metadata.
         reloaded = load_job(job.id)
         saved_artifact = next(
             (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
         )
+        out = capsys.readouterr().out
+        return saved_artifact, out
+
+    def test_patch_intent_risks_key_stored_in_metadata(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """patch_intent_risks key must be present in the saved artifact metadata."""
+        saved_artifact, _ = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
         assert saved_artifact is not None, "Artifact not found in saved job"
         assert "patch_intent_risks" in saved_artifact.metadata
 
-        # 2. All stored risk values must be members of RISK_LEVELS.
+    def test_all_stored_risk_values_are_in_risk_levels(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """All values in patch_intent_risks must be members of RISK_LEVELS."""
+        # Private import — testing the public contract at the module-attribute level.
+        from packages.orchestration.patch_intent import RISK_LEVELS
+
+        saved_artifact, _ = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
+        assert saved_artifact is not None, "Artifact not found in saved job"
         stored_risks = saved_artifact.metadata["patch_intent_risks"]
         assert isinstance(stored_risks, list)
         assert len(stored_risks) > 0
         assert all(r in RISK_LEVELS for r in stored_risks)
 
-        # 3. CLI output must contain the exact risk line.
-        # No target_repo attached → action == "preview-only" → RISK_UNKNOWN.
-        out = capsys.readouterr().out
+    def test_cli_output_contains_exact_risk_value(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """CLI stdout must contain the exact RISK_UNKNOWN risk line.
+
+        No target_repo is attached, so action == "preview-only" and
+        classify_risk("preview-only") returns RISK_UNKNOWN.
+        """
+        # Private import — testing the public contract at the module-attribute level.
+        from packages.orchestration.patch_intent import RISK_UNKNOWN
+
+        _, out = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
         assert f"risk   : {RISK_UNKNOWN}" in out
