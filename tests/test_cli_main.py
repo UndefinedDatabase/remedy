@@ -635,7 +635,7 @@ class TestPatchIntentRisksCLI:
         assert saved_artifact is not None, "Artifact not found in saved job"
         stored_risks = saved_artifact.metadata["patch_intent_risks"]
         assert isinstance(stored_risks, list)
-        assert len(stored_risks) > 0
+        assert len(stored_risks) == 1  # one intent → one risk level
         assert all(r in RISK_LEVELS for r in stored_risks)
 
     def test_cli_output_contains_exact_risk_value(

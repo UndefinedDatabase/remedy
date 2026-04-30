@@ -62,6 +62,8 @@ RISK_UNKNOWN: str = "unknown"
 # approval/autonomy mode.  It means risk cannot be determined without repository
 # context (preview-only action) or the action string is not recognised.
 # Do NOT equate RISK_UNKNOWN with RISK_LOW.
+# Consumers reading patch_intent_risks from artifact.metadata must validate against
+# RISK_LEVELS before making approval/autonomy decisions.  See docs/architecture.md.
 RISK_LEVELS: frozenset[str] = frozenset({RISK_LOW, RISK_MEDIUM, RISK_HIGH, RISK_UNKNOWN})
 
 

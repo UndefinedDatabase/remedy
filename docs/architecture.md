@@ -490,7 +490,8 @@ scanning without parsing the full `patch_intent_explanations` dict list.
 
 **Consumer contract:** any future code that reads `patch_intent_risks` from
 `artifact.metadata` to make approval or autonomy decisions **must** validate every
-value against `RISK_LEVELS` before acting.  Stored strings are already validated at
+value against `RISK_LEVELS` before acting (`from packages.orchestration.patch_intent
+import RISK_LEVELS`).  Stored strings are already validated at
 write time by `PatchDryRunResult.__post_init__`, but defensive re-validation at the
 consumption site guards against metadata written by older code, hand-edited records,
 or future refactors that add new risk levels before consumers are updated.  Treat any
