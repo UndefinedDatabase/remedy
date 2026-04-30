@@ -4,19 +4,19 @@
 Step 12.5: Risk Contract Hardening
 
 ## Status
-IN PROGRESS
+COMPLETE — committed, pushed, PR #12 updated
 
 ## Steps
 1. [x] Confirm branch: feature/step12-risk-classification (same branch, Step 12.5 is in-scope hardening)
-2. [ ] patch_intent.py: add RISK_* constants + RISK_LEVELS frozenset; __post_init__ validation on PatchDryRunResult; blank line between multi-result blocks; document unknown conservatism
-3. [ ] tests/test_patch_intent.py: use constants in TestClassifyRisk; cover __post_init__ invalid risk; update multi-result format test; add unknown docstring/comment coverage
-4. [ ] tests/test_cli_main.py: add CLI test proving patch_intent_risks stored + all values in RISK_LEVELS + risk line in output
-5. [ ] docs/architecture.md: update risk section — explicit constants, unknown is conservative
-6. [ ] .agent/decisions.md: record key decisions
-7. [ ] Self-review, run tests (target 385+), commit, push
+2. [x] patch_intent.py: RISK_* constants + RISK_LEVELS; __post_init__ validation; blank-line format; RISK_UNKNOWN conservatism doc
+3. [x] tests/test_patch_intent.py: constants in TestClassifyRisk; TestPatchDryRunResultValidation (3 tests); multi-result blank-line assertion
+4. [x] tests/test_cli_main.py: TestPatchIntentRisksCLI — risks stored, all in RISK_LEVELS, risk line in output
+5. [x] docs/architecture.md: updated risk section with constants, RISK_UNKNOWN note, metadata table
+6. [x] .agent/decisions.md: 4 new decisions added
+7. [x] 384 tests pass; committed dd23a79; pushed; PR #12 updated
 
 ## Branch
 feature/step12-risk-classification
 
 ## PR
-#12 (open, same branch — Step 12.5 is a hardening continuation)
+#12 (open)
