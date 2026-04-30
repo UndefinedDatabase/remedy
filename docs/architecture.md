@@ -482,12 +482,23 @@ with a concrete level.
 | `patch_intent_diff_preview` | intents present, no errors | CLI |
 | `patch_intent_risks` | intents present, no errors | CLI |
 
-`patch_intent_diff_preview` is capped at 2 000 characters before storage.
+`patch_intent_diff_preview` is capped at `_MAX_PREVIEW_CHARS` (2 000) characters before
+storage via `truncate_preview(text)` in `patch_intent.py`.  Callers use the helper
+rather than an inline slice so the constant stays in one place.
 `patch_intent_risks` is a flat `list[str]` — one risk level per intent — for fast
 scanning without parsing the full `patch_intent_explanations` dict list.
 
-**Design constraints (Steps 11–12.5, all still in effect):**
+**`diff_preview` CLI omission (intentional):** `format_dry_run_explanations` prints the
+concise explanation block only (file / action / risk / reason / summary).  The full
+`diff_preview` is stored in `patch_intent_diff_preview` metadata but not printed to the
+terminal.  Reason: avoid noisy multi-line output for each intent; a future guarded mode
+can surface it intentionally when prompting for approval.
+
+**Design constraints (Steps 11–12.6, all still in effect):**
 - Patch intents are created only when `vr.passed` (confirmed builder output only).
+- `generate_dry_run_preview` resolves `repo_root` and each `target_file`; raises
+  `RuntimeError` if the target is outside `repo_root` (defence in depth beyond
+  `verify_patch_intent_set`'s static path checks).
 - `generate_dry_run_preview` uses `read_text` (read-only); no open-for-write calls.
 - `repo_overwrite` remains reserved; dry-run does not activate it.
 - Intents are written to the Remedy workspace, not to the target repo.

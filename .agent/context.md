@@ -4,18 +4,19 @@
 `feature/step12-risk-classification`
 
 ## PR
-#12 (open — Step 12.5 is in-scope hardening continuation of Step 12)
+#12 (open — Steps 12–12.6 are in-scope hardening continuations)
 
 ## Scope
-Step 12.5: Risk contract hardening.  No behaviour changes beyond:
-- RISK_* constants (single source of truth for valid levels)
-- PatchDryRunResult.__post_init__ fails fast on invalid risk_level
-- format_dry_run_explanations blank line between multiple blocks
-- CLI test proving patch_intent_risks stored + all values valid
+Step 12.6: dry-run boundary + risk coverage hardening. No behaviour changes beyond:
+- generate_dry_run_preview rejects paths outside repo_root (RuntimeError)
+- truncate_preview() helper in patch_intent.py; CLI uses it instead of inline [:2000]
+- CLI risk test tightened: assert exact RISK_UNKNOWN value in stdout
+- diff_preview CLI omission documented
 Non-blocking; no execution gates, no prompts, no overwrite logic.
 
 ## Key files changed
-- packages/orchestration/patch_intent.py: RISK_* constants, RISK_LEVELS, __post_init__, format blank-line
-- tests/test_patch_intent.py: constants in TestClassifyRisk, TestPatchDryRunResultValidation (3 tests), multi-result blank-line assertion
-- tests/test_cli_main.py: TestPatchIntentRisksCLI (1 test)
-- docs/architecture.md: updated risk section with constants, RISK_UNKNOWN note, metadata table
+- packages/orchestration/patch_intent.py: boundary check in generate_dry_run_preview, truncate_preview helper, module docstring
+- apps/cli/main.py: import + use truncate_preview; comment on diff_preview omission
+- tests/test_patch_intent.py: TestGenerateDryRunPreviewBoundary (4 tests), TestTruncatePreview (5 tests), updated imports
+- tests/test_cli_main.py: exact RISK_UNKNOWN assertion in TestPatchIntentRisksCLI
+- docs/architecture.md: diff_preview omission note, boundary check constraint, truncate_preview note

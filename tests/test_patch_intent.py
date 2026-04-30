@@ -26,6 +26,10 @@ Covers:
       - PatchDryRunResult.__post_init__ raises ValueError on invalid risk_level
       - format_dry_run_explanations separates multiple blocks with a blank line
       - classify_risk returns are all members of RISK_LEVELS
+  - Step 12.6 additions (dry-run boundary + coverage hardening):
+      - generate_dry_run_preview raises RuntimeError for paths outside repo_root
+      - valid paths inside repo_root still work correctly
+      - truncate_preview: long/short/exact-length behaviour
 
 All tests are deterministic — no live Ollama, no builder, no repo writes.
 """
@@ -49,12 +53,14 @@ from packages.orchestration.patch_intent import (
     PatchDryRunResult,
     PatchIntent,
     PatchIntentSet,
-    _extract_proposed_lines,
+    _extract_proposed_lines,  # private import — testing section-parse contract
+    _MAX_PREVIEW_CHARS,       # private import — testing truncate_preview contract
     classify_risk,
     derive_patch_intents,
     format_dry_run_explanations,
     generate_dry_run_preview,
     materialize_patch_intents,
+    truncate_preview,
     verify_patch_intent_set,
 )
 from packages.orchestration.workspace import LocalWorkspaceRuntime
@@ -801,3 +807,81 @@ class TestPatchDryRunResultValidation:
         for level in RISK_LEVELS:
             r = self._make(level)
             assert r.risk_level == level
+
+
+# ---------------------------------------------------------------------------
+# Dry-run repo boundary check (Step 12.6)
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateDryRunPreviewBoundary:
+    """generate_dry_run_preview raises RuntimeError if target resolves outside repo_root."""
+
+    def _make_pis(self, target_path: str) -> PatchIntentSet:
+        return PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path=target_path, intent="some intent")],
+        )
+
+    def test_valid_path_inside_repo_does_not_raise(self, tmp_path):
+        """A legitimate relative path inside repo_root must not raise."""
+        pis = self._make_pis("README.md")
+        # File does not exist → action == "create" — no RuntimeError
+        results = generate_dry_run_preview(pis, "", "write_readme", tmp_path)
+        assert len(results) == 1
+        assert results[0].action == "create"
+
+    def test_valid_path_existing_file_does_not_raise(self, tmp_path):
+        """A path resolving to an existing file inside repo_root must not raise."""
+        (tmp_path / "README.md").write_text("# existing\n")
+        pis = self._make_pis("README.md")
+        results = generate_dry_run_preview(pis, "", "write_readme", tmp_path)
+        assert results[0].action == "modify"
+
+    def test_traversal_path_raises_runtime_error(self, tmp_path):
+        """A path that resolves outside repo_root must raise RuntimeError."""
+        # Construct a PatchIntentSet directly to bypass verify_patch_intent_set.
+        # This tests that generate_dry_run_preview guards its own boundary.
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="../outside.md", intent="escape")],
+        )
+        with pytest.raises(RuntimeError, match="outside repo_root"):
+            generate_dry_run_preview(pis, "", "write_readme", tmp_path)
+
+    def test_no_repo_root_skips_boundary_check(self):
+        """When repo_root is None the boundary check is not applied."""
+        pis = self._make_pis("README.md")
+        results = generate_dry_run_preview(pis, "", "write_readme", repo_root=None)
+        assert results[0].action == "preview-only"
+
+
+# ---------------------------------------------------------------------------
+# truncate_preview helper (Step 12.6)
+# ---------------------------------------------------------------------------
+
+
+class TestTruncatePreview:
+    """truncate_preview caps text at _MAX_PREVIEW_CHARS characters."""
+
+    def test_short_text_returned_unchanged(self):
+        text = "hello world"
+        assert truncate_preview(text) == text
+
+    def test_empty_string_returned_unchanged(self):
+        assert truncate_preview("") == ""
+
+    def test_exact_length_returned_unchanged(self):
+        text = "x" * _MAX_PREVIEW_CHARS
+        assert truncate_preview(text) == text
+
+    def test_long_text_truncated_to_max(self):
+        text = "y" * (_MAX_PREVIEW_CHARS + 500)
+        result = truncate_preview(text)
+        assert len(result) == _MAX_PREVIEW_CHARS
+
+    def test_result_never_exceeds_max_preview_chars(self):
+        for length in (0, 1, _MAX_PREVIEW_CHARS - 1, _MAX_PREVIEW_CHARS, _MAX_PREVIEW_CHARS + 1):
+            assert len(truncate_preview("z" * length)) <= _MAX_PREVIEW_CHARS

@@ -533,8 +533,8 @@ class TestPatchIntentRisksCLI:
         from pathlib import Path
         from unittest.mock import MagicMock, patch
 
-        # Private import — testing the public contract at the module-attribute level.
-        from packages.orchestration.patch_intent import RISK_LEVELS
+        # Private imports — testing the public contract at the module-attribute level.
+        from packages.orchestration.patch_intent import RISK_LEVELS, RISK_UNKNOWN
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
@@ -619,6 +619,7 @@ class TestPatchIntentRisksCLI:
         assert len(stored_risks) > 0
         assert all(r in RISK_LEVELS for r in stored_risks)
 
-        # 3. CLI output must contain the risk line from format_dry_run_explanations.
+        # 3. CLI output must contain the exact risk line.
+        # No target_repo attached → action == "preview-only" → RISK_UNKNOWN.
         out = capsys.readouterr().out
-        assert "risk   :" in out
+        assert f"risk   : {RISK_UNKNOWN}" in out

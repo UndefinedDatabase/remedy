@@ -626,3 +626,23 @@ Both the module docstring and the classify_risk docstring now explicitly state t
 RISK_UNKNOWN must NOT be equated with RISK_LOW by future approval/autonomy modes.
 This pre-empts a common mistake: treating an absence of evidence (no repo attached)
 as evidence of absence (no risk). The architecture.md section echoes the same note.
+
+## 2026-04-30: generate_dry_run_preview owns its own boundary check (Step 12.6)
+verify_patch_intent_set already rejects ".." components in target_path. The boundary
+check in generate_dry_run_preview (resolve both sides + is_relative_to) is defence in
+depth: it catches symlink escapes and any edge-case path that static split-based checks
+miss. The rule is "check at the use site" — the function that reads from the filesystem
+is responsible for confirming it stays inside its root, regardless of upstream validation.
+
+## 2026-04-30: truncate_preview extracted to patch_intent.py (Step 12.6)
+The inline combined_preview[:2000] in the CLI required the caller to know the internal
+constant _MAX_PREVIEW_CHARS. truncate_preview(text) moves the cap to the module that
+owns the constant. CLI callers import the function, not the constant — implementation
+detail stays local to patch_intent.py. No behaviour change; same 2 000-character cap.
+
+## 2026-04-30: diff_preview omitted from CLI terminal output (documented Step 12.6)
+format_dry_run_explanations renders the concise block (file/action/risk/reason/summary)
+only. The full diff_preview per intent can be several lines; printing it for every intent
+in a multi-intent job would produce cluttered terminal output with low signal-to-noise.
+The full preview is stored in patch_intent_diff_preview metadata for tooling/guarded mode
+to surface intentionally. This is not a bug — it is a deliberate noise-control decision.

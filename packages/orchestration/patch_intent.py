@@ -19,6 +19,10 @@ Key constraints:
   - Derivation is conservative: task_type keyword match only; no raw LLM paths accepted.
   - An empty PatchIntentSet is valid and expected for most task types.
   - Dry-run reads repo files with read_text only; no open() for writing, no os calls.
+  - generate_dry_run_preview resolves both repo_root and the target path and asserts
+    the target is inside repo_root before any read; raises RuntimeError if not.
+  - truncate_preview(text) caps text at _MAX_PREVIEW_CHARS; CLI calls this before
+    storing the combined preview in artifact metadata.
   - Risk levels are explicit constants (RISK_LOW/MEDIUM/HIGH/UNKNOWN) collected in
     RISK_LEVELS.  PatchDryRunResult.risk_level is validated against RISK_LEVELS in
     __post_init__ — an invalid value raises ValueError immediately at construction
@@ -306,6 +310,15 @@ _MAX_PROPOSED_LINES = 10
 _MAX_PREVIEW_CHARS = 2000
 
 
+def truncate_preview(text: str) -> str:
+    """Truncate a combined diff-preview string to at most _MAX_PREVIEW_CHARS characters.
+
+    Callers (e.g. the CLI) use this before storing the combined preview in artifact
+    metadata.  Centralising the cap here keeps callers free of the internal constant.
+    """
+    return text[:_MAX_PREVIEW_CHARS]
+
+
 def classify_risk(action: str) -> str:
     """Classify the risk level of a proposed change based on its action.
 
@@ -461,7 +474,17 @@ def generate_dry_run_preview(
             action = "preview-only"
             existing_lines: list[str] | None = None
         else:
-            target_file = repo_root / intent.target_path
+            # Boundary check — defence in depth even though verify_patch_intent_set
+            # already rejects traversal in path components.  Resolving both sides
+            # catches symlink escapes and any edge-case path that slips through.
+            resolved_root = repo_root.resolve()
+            target_file = (repo_root / intent.target_path).resolve()
+            if not target_file.is_relative_to(resolved_root):
+                raise RuntimeError(
+                    f"generate_dry_run_preview: target path {intent.target_path!r} "
+                    f"resolves to {str(target_file)!r} which is outside repo_root "
+                    f"{str(resolved_root)!r}.  Path traversal is not allowed."
+                )
             if target_file.exists():
                 action = "modify"
                 existing_lines = target_file.read_text(
