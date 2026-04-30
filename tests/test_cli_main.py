@@ -628,7 +628,7 @@ class TestPatchIntentRisksCLI:
         self, tmp_path, monkeypatch, capsys
     ):
         """All values in patch_intent_risks must be members of RISK_LEVELS."""
-        # Private import — testing the public contract at the module-attribute level.
+        # Public risk contract constant — RISK_LEVELS is part of patch_intent's public API.
         from packages.orchestration.patch_intent import RISK_LEVELS
 
         saved_artifact, _ = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
@@ -646,7 +646,7 @@ class TestPatchIntentRisksCLI:
         No target_repo is attached, so action == "preview-only" and
         classify_risk("preview-only") returns RISK_UNKNOWN.
         """
-        # Private import — testing the public contract at the module-attribute level.
+        # Public risk contract constant — RISK_UNKNOWN is part of patch_intent's public API.
         from packages.orchestration.patch_intent import RISK_UNKNOWN
 
         _, out = self._run_risk_scenario(tmp_path, monkeypatch, capsys)

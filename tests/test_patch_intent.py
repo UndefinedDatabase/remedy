@@ -860,7 +860,7 @@ class TestGenerateDryRunPreviewBoundary:
         with pytest.raises(RuntimeError, match="outside repo_root"):
             generate_dry_run_preview(pis, "", "write_readme", tmp_path)
 
-    def test_symlink_escape_raises_runtime_error(self, tmp_path):
+    def test_symlink_escape_raises_runtime_error(self, tmp_path, tmp_path_factory):
         """A symlink inside repo_root that resolves outside must be rejected.
 
         This test uniquely requires the resolve() + is_relative_to() guard.
@@ -868,9 +868,9 @@ class TestGenerateDryRunPreviewBoundary:
         literal path string ("README.md" looks valid despite pointing outside).
         resolve() follows the symlink, so is_relative_to() detects the escape.
         """
-        # Create a file outside repo_root at a sibling directory.
-        outside_dir = tmp_path.parent / "outside_dir_12_7"
-        outside_dir.mkdir(exist_ok=True)
+        # Create a file in a fully isolated temp directory — not a sibling of
+        # tmp_path — so there is no risk of one test's leftovers affecting another.
+        outside_dir = tmp_path_factory.mktemp("outside")
         outside_file = outside_dir / "secret.md"
         outside_file.write_text("secret content")
 

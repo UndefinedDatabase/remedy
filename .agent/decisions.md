@@ -646,3 +646,18 @@ only. The full diff_preview per intent can be several lines; printing it for eve
 in a multi-intent job would produce cluttered terminal output with low signal-to-noise.
 The full preview is stored in patch_intent_diff_preview metadata for tooling/guarded mode
 to surface intentionally. This is not a bug — it is a deliberate noise-control decision.
+
+## 2026-04-30: patch_intent_risks consumers must validate against RISK_LEVELS (Step 12.8)
+Documented in architecture.md. Rationale: PatchDryRunResult.__post_init__ validates at
+write time, but Step 13+ will read the stored list and act on it. Defensive re-validation
+at the consumption site protects against: (a) metadata written by older code before the
+RISK_LEVELS constant existed, (b) hand-edited or test-fabricated records, (c) new risk
+levels added in future patches before all consumers are updated. Unknown values must fall
+back to RISK_UNKNOWN (conservative), never to RISK_LOW.
+
+## 2026-04-30: Skipped optional triple-run elimination in TestPatchIntentRisksCLI (Step 12.8)
+The three focused tests each call _run_risk_scenario, running the full CLI mock 3×. Making
+them share a single run would require a class-scoped pytest fixture, but class-scoped
+fixtures cannot depend on function-scoped fixtures (tmp_path, monkeypatch, capsys). Adding
+a conftest.py or session fixture would sacrifice clarity. Three fast runs (<0.4s total) are
+preferable. Documented here so the duplication is intentional, not an oversight.

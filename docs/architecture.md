@@ -488,6 +488,14 @@ rather than an inline slice so the constant stays in one place.
 `patch_intent_risks` is a flat `list[str]` — one risk level per intent — for fast
 scanning without parsing the full `patch_intent_explanations` dict list.
 
+**Consumer contract:** any future code that reads `patch_intent_risks` from
+`artifact.metadata` to make approval or autonomy decisions **must** validate every
+value against `RISK_LEVELS` before acting.  Stored strings are already validated at
+write time by `PatchDryRunResult.__post_init__`, but defensive re-validation at the
+consumption site guards against metadata written by older code, hand-edited records,
+or future refactors that add new risk levels before consumers are updated.  Treat any
+value outside `RISK_LEVELS` as `RISK_UNKNOWN` (conservative fallback).
+
 **`diff_preview` CLI omission (intentional):** `format_dry_run_explanations` prints the
 concise explanation block only (file / action / risk / reason / summary).  The full
 `diff_preview` is stored in `patch_intent_diff_preview` metadata but not printed to the
