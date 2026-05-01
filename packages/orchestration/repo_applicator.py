@@ -6,8 +6,9 @@ writes eligible task output as a markdown file into a user-attached target
 repository.
 
 Design constraints:
-  - No arbitrary LLM paths: task_type is matched against a static keyword
-    mapping (_REPO_PATH_RULES). If no keyword matches, no file is written.
+  - No arbitrary LLM paths: task_type is matched against the task registry
+    (packages/orchestration/task_registry.py).  If the registry returns
+    repo_route=None, no file is written.
   - No source code edits: only new markdown files under docs/ or README.md.
   - No overwriting: if the target path already exists, the write is skipped
     silently and an empty list is returned.
@@ -30,87 +31,24 @@ Relationship to workspace:
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from packages.core.models import Artifact
+from packages.orchestration.task_registry import get_task_type_spec
 
 if TYPE_CHECKING:
     from packages.core.models import Job
 
-# ---------------------------------------------------------------------------
-# Path sanitization
-# Mirrors _sanitize_path_component in task_runner.py; kept local to avoid
-# importing a private helper across modules.
-# ---------------------------------------------------------------------------
-
-_SAFE_PATH_RE = re.compile(r"[^a-zA-Z0-9_-]")
-_MAX_PATH_COMPONENT_LENGTH = 48
-
-
-def _sanitize_path_component(value: str) -> str:
-    """Replace unsafe characters and truncate for safe use in a path component."""
-    sanitized = _SAFE_PATH_RE.sub("_", value)
-    sanitized = sanitized[:_MAX_PATH_COMPONENT_LENGTH].strip("_")
-    return sanitized or "unknown"
-
-
-# ---------------------------------------------------------------------------
-# Repo path mapping
-#
-# Conservative, inspectable mapping from task_type keyword → repo-relative
-# path template.  Each entry: (keyword, path_template).  The first matching
-# keyword wins (case-insensitive substring match).  Order matters — more
-# specific keywords appear first.
-#
-# Allowed targets:
-#   README.md             — readme-type output
-#   docs/<type>.md        — documentation, architecture, design, changelog, guide output
-#   docs/remedy/<type>.md — planning, spec, requirement, acceptance, analysis output
-#
-# Source code paths, test paths, and arbitrary paths are intentionally absent.
-#
-# Intentionally excluded keywords (too broad — would match code/implementation tasks):
-#   implementation, prepare, define, summarize, summary
-# ---------------------------------------------------------------------------
-
-# KEEP IN SYNC with _INTENT_RULES in patch_intent.py — enforced by TestKeywordSync in tests/test_patch_intent.py.
-_REPO_PATH_RULES: list[tuple[str, str]] = [
-    # Exact-prefix match for README — checked first to avoid spurious doc/ routing.
-    ("readme",          "README.md"),
-    # docs/remedy/ routes — evaluated before plain docs/ so that compound task
-    # types like "spec_document" or "planning_document" match the specific
-    # docs/remedy/ rule rather than the broader "doc" catch-all.
-    ("plan",            "docs/remedy/{safe_type}.md"),
-    ("spec",            "docs/remedy/{safe_type}.md"),
-    ("requirement",     "docs/remedy/{safe_type}.md"),
-    ("acceptance",      "docs/remedy/{safe_type}.md"),
-    ("analysis",        "docs/remedy/{safe_type}.md"),
-    # Plain docs/ routes — "documentation" before "doc" because "doc" is a
-    # substring of "documentation" and would match it prematurely.
-    ("changelog",       "docs/{safe_type}.md"),
-    ("architecture",    "docs/{safe_type}.md"),
-    ("design",          "docs/{safe_type}.md"),
-    ("guide",           "docs/{safe_type}.md"),
-    ("documentation",   "docs/{safe_type}.md"),
-    ("doc",             "docs/{safe_type}.md"),
-]
-
 
 def _resolve_repo_path(task_type: str) -> str | None:
-    """Return the repo-relative path template for a task_type, or None.
+    """Return the fully-resolved repo-relative path for task_type, or None.
 
-    Matches task_type (case-insensitive) against each keyword in
-    _REPO_PATH_RULES.  Returns the path for the first matching keyword,
-    with {safe_type} substituted.  Returns None if no keyword matches.
+    Delegates to get_task_type_spec() — the task registry is the single source
+    of routing truth.  Returns None if the spec has no repo_route (unknown or
+    non-doc task types).
     """
-    lower = task_type.lower()
-    safe_type = _sanitize_path_component(task_type)
-    for keyword, template in _REPO_PATH_RULES:
-        if keyword in lower:
-            return template.format(safe_type=safe_type)
-    return None
+    return get_task_type_spec(task_type).repo_route
 
 
 # ---------------------------------------------------------------------------
@@ -199,8 +137,8 @@ def apply_task_output_to_repo(
 ) -> list[str]:
     """Apply eligible task output to the attached target repository.
 
-    Checks whether the artifact's task_type matches any keyword in
-    _REPO_PATH_RULES.  If it does:
+    Checks whether the artifact's task_type maps to a repo_route via the
+    task registry.  If it does:
       1. Generates a markdown file from the artifact's summary and proposed
          changes.
       2. Writes it to the determined repo-relative path (only if it does not

@@ -1,22 +1,31 @@
 # Context
 
 ## Active Branch
-`feature/step12-risk-classification`
+`feature/step13-task-registry`
 
 ## PR
-#12 (open — Steps 12–12.6 are in-scope hardening continuations)
+(none yet)
 
 ## Scope
-Step 12.6: dry-run boundary + risk coverage hardening. No behaviour changes beyond:
-- generate_dry_run_preview rejects paths outside repo_root (RuntimeError)
-- truncate_preview() helper in patch_intent.py; CLI uses it instead of inline [:2000]
-- CLI risk test tightened: assert exact RISK_UNKNOWN value in stdout
-- diff_preview CLI omission documented
-Non-blocking; no execution gates, no prompts, no overwrite logic.
+Step 13: Task Type Registry v1.
+- New: packages/orchestration/task_registry.py (TaskTypeSpec, get_task_type_spec, is_known_task_type, iter_task_type_specs)
+- Refactored: repo_applicator._resolve_repo_path → delegates to registry
+- Refactored: patch_intent._derive_target_path → delegates to registry
+- Removed: _REPO_PATH_RULES (repo_applicator), _INTENT_RULES (patch_intent)
+- Removed: _sanitize_path_component from repo_applicator (no longer needed)
+- Updated: TestKeywordSync → registry-backed routing parity tests
+- New: tests/test_task_registry.py (59 tests)
+- Updated: docs/architecture.md (new Task Type Registry section)
+No behavior changes; 456 tests pass.
 
-## Key files changed
-- packages/orchestration/patch_intent.py: boundary check in generate_dry_run_preview, truncate_preview helper, module docstring
-- apps/cli/main.py: import + use truncate_preview; comment on diff_preview omission
-- tests/test_patch_intent.py: TestGenerateDryRunPreviewBoundary (4 tests), TestTruncatePreview (5 tests), updated imports
-- tests/test_cli_main.py: exact RISK_UNKNOWN assertion in TestPatchIntentRisksCLI
-- docs/architecture.md: diff_preview omission note, boundary check constraint, truncate_preview note
+## Key decisions
+- task_type is NOT an enum; LLM-generated types remain valid
+- Unknown fallback: repo_route=None, capabilities={"unknown_task_type"} — conservative
+- repo_route in returned TaskTypeSpec is always fully resolved (no {safe_type})
+- keyword-backed matching internally (v1) — same semantics as removed tables
+
+## Step-14 invariant note
+In v1, is_known_task_type(task_type) is equivalent to
+get_task_type_spec(task_type).repo_route is not None.
+If a future step introduces known non-repo task types, this invariant and
+test_is_known_matches_get_spec_has_repo_route must be revisited.

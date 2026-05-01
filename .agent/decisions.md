@@ -661,3 +661,26 @@ them share a single run would require a class-scoped pytest fixture, but class-s
 fixtures cannot depend on function-scoped fixtures (tmp_path, monkeypatch, capsys). Adding
 a conftest.py or session fixture would sacrifice clarity. Three fast runs (<0.4s total) are
 preferable. Documented here so the duplication is intentional, not an oversight.
+
+## 2026-05-01: Task Type Registry v1 — keyword-backed internal, registry-first public API (Step 13)
+The registry uses an ordered keyword list internally (v1) — identical semantics to
+the former _INTENT_RULES / _REPO_PATH_RULES tables. This preserves routing correctness
+while eliminating the duplication. The public API (get_task_type_spec) returns a fully
+resolved TaskTypeSpec with repo_route substituted; callers never see {safe_type}.
+
+## 2026-05-01: task_type remains open — unknown fallback is conservative (Step 13)
+task_type is not an enum. LLM-generated task types that don't match any keyword return
+a fallback spec with repo_route=None and capabilities={"unknown_task_type"}. This is
+the safe default: no repo writes, no elevated autonomy. Future step must not promote
+unknown_task_type to a permissive path without explicit registry entry.
+
+## 2026-05-01: _INTENT_RULES and _REPO_PATH_RULES removed — single source (Step 13)
+Both duplicated keyword tables are gone. TestKeywordSync now tests routing parity at
+the function level: both _derive_target_path and _resolve_repo_path call
+get_task_type_spec and must return the same result. This is a structural guarantee,
+not a copy-sync check. The KEEP IN SYNC comments are no longer needed.
+
+## 2026-05-01: repo_applicator._sanitize_path_component removed (Step 13)
+_resolve_repo_path now returns a fully-resolved path from get_task_type_spec; no local
+sanitization needed in repo_applicator. patch_intent keeps its own local copy for
+materialize_patch_intents workspace filenames (different use site, not routing).

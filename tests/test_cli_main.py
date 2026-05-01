@@ -520,12 +520,13 @@ class TestPatchIntentErrorsCLI:
 
 
 class TestPatchIntentRisksCLI:
-    """Three focused tests for the patch_intent_risks CLI contract.
+    """Four focused tests for the patch_intent_risks CLI contract.
 
     Each test exercises exactly one contract:
       1. patch_intent_risks key exists in saved artifact metadata
-      2. all stored risk values are members of RISK_LEVELS
-      3. CLI stdout contains the exact risk value (RISK_UNKNOWN, no repo attached)
+      2. stored risk list length equals the intent count (one intent → one risk)
+      3. all stored risk values are members of RISK_LEVELS
+      4. CLI stdout contains the exact risk value (RISK_UNKNOWN, no repo attached)
 
     All patch-intent functions (derive, verify, generate_dry_run, format) run
     naturally — no mocks — so the risk contract is exercised end-to-end.
@@ -624,6 +625,16 @@ class TestPatchIntentRisksCLI:
         assert saved_artifact is not None, "Artifact not found in saved job"
         assert "patch_intent_risks" in saved_artifact.metadata
 
+    def test_stored_risk_count_matches_intent_count(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """patch_intent_risks length must equal the number of intents (one here)."""
+        saved_artifact, _ = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
+        assert saved_artifact is not None, "Artifact not found in saved job"
+        stored_risks = saved_artifact.metadata["patch_intent_risks"]
+        assert isinstance(stored_risks, list)
+        assert len(stored_risks) == 1  # one intent → one risk level
+
     def test_all_stored_risk_values_are_in_risk_levels(
         self, tmp_path, monkeypatch, capsys
     ):
@@ -635,7 +646,6 @@ class TestPatchIntentRisksCLI:
         assert saved_artifact is not None, "Artifact not found in saved job"
         stored_risks = saved_artifact.metadata["patch_intent_risks"]
         assert isinstance(stored_risks, list)
-        assert len(stored_risks) == 1  # one intent → one risk level
         assert all(r in RISK_LEVELS for r in stored_risks)
 
     def test_cli_output_contains_exact_risk_value(

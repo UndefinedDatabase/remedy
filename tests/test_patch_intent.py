@@ -11,7 +11,8 @@ Covers:
   - Step 10.5 additions:
       - null-byte path rejected by verifier
       - missing artifact.id / task_id raises RuntimeError
-      - keyword sync: _INTENT_RULES and _REPO_PATH_RULES keyword sets stay in sync
+      - routing parity: _derive_target_path and _resolve_repo_path both delegate to
+        task_registry.get_task_type_spec — routing is guaranteed identical by construction
       - verification errors recorded in artifact metadata; no file written
   - Step 11 additions (dry-run preview and explanation layer):
       - _extract_proposed_lines: known sections parsed correctly
@@ -430,81 +431,56 @@ class TestVerifyNullBytePath:
 
 
 # ---------------------------------------------------------------------------
-# Step 10: rule sync contract between _INTENT_RULES and _REPO_PATH_RULES
+# Step 10 → Step 13: routing parity contract (now registry-backed)
 # ---------------------------------------------------------------------------
 
 
 class TestKeywordSync:
-    """Three-layer contract between _INTENT_RULES and _REPO_PATH_RULES.
+    """Routing parity contract between patch_intent and repo_applicator.
 
-    Both tables must be kept byte-for-byte identical because they implement the
-    same routing policy in two different subsystems (repo application and patch
-    intent derivation).  The three tests enforce this at increasing precision:
+    Step 10 enforced this via identical _INTENT_RULES / _REPO_PATH_RULES tables.
+    Step 13 replaces both tables with a single task_registry; sync is now
+    guaranteed by construction — both modules delegate to get_task_type_spec().
 
-    1. set equality   — a keyword added to one table but not the other is caught.
-    2. order equality — both tables are first-match-wins; a keyword promoted or
-                        demoted in one table changes routing semantics silently.
-    3. mapping equality — template strings must match; changing a target path in
-                          one table without updating the other silently diverges
-                          the paths both systems would write.
+    These tests prove parity at the function level: for every known keyword
+    in the registry, _derive_target_path and _resolve_repo_path return the
+    same path.  This catches any future divergence if one module stops
+    delegating to the registry correctly.
     """
 
-    def test_intent_rules_and_repo_rules_keyword_sets_match(self):
-        """Ensures future additions/removals cannot silently diverge."""
-        # These are private module attributes; tests rely on them intentionally
-        # to enforce the sync contract between the two rule tables.
-        from packages.orchestration.patch_intent import _INTENT_RULES
-        from packages.orchestration.repo_applicator import _REPO_PATH_RULES
+    def test_routing_parity_for_all_known_keywords(self):
+        """_derive_target_path and _resolve_repo_path return identical results."""
+        from packages.orchestration.patch_intent import _derive_target_path
+        from packages.orchestration.repo_applicator import _resolve_repo_path
+        from packages.orchestration.task_registry import _ROUTE_RULES  # internal — testing routing source
 
-        intent_keywords = {k for k, _ in _INTENT_RULES}
-        repo_keywords = {k for k, _ in _REPO_PATH_RULES}
-        assert intent_keywords == repo_keywords, (
-            f"keyword sets diverged — "
-            f"only in _INTENT_RULES: {intent_keywords - repo_keywords}, "
-            f"only in _REPO_PATH_RULES: {repo_keywords - intent_keywords}"
-        )
+        for keyword, _, _ in _ROUTE_RULES:
+            assert _derive_target_path(keyword) == _resolve_repo_path(keyword), (
+                f"routing diverged for keyword {keyword!r}: "
+                f"patch_intent={_derive_target_path(keyword)!r}, "
+                f"repo_applicator={_resolve_repo_path(keyword)!r}"
+            )
 
-    def test_intent_rules_and_repo_rules_keyword_order_matches(self):
-        """Ensures keyword evaluation order is identical between tables.
+    def test_routing_parity_for_unknown_task_type(self):
+        """Both functions return None for an unknown task type."""
+        from packages.orchestration.patch_intent import _derive_target_path
+        from packages.orchestration.repo_applicator import _resolve_repo_path
 
-        Both tables are first-match-wins, so order is part of the contract.
-        A keyword promoted or demoted in one table but not the other changes
-        routing semantics silently — this test catches that.
-        """
-        # These are private module attributes; tests rely on them intentionally
-        # to enforce the sync contract between the two rule tables.
-        from packages.orchestration.patch_intent import _INTENT_RULES
-        from packages.orchestration.repo_applicator import _REPO_PATH_RULES
+        assert _derive_target_path("write_code") is None
+        assert _resolve_repo_path("write_code") is None
 
-        intent_order = [k for k, _ in _INTENT_RULES]
-        repo_order = [k for k, _ in _REPO_PATH_RULES]
-        assert intent_order == repo_order, (
-            f"keyword order diverged — "
-            f"_INTENT_RULES order: {intent_order}, "
-            f"_REPO_PATH_RULES order: {repo_order}"
-        )
+    def test_routing_parity_for_compound_task_types(self):
+        """Compound task_types that embed a keyword route consistently."""
+        from packages.orchestration.patch_intent import _derive_target_path
+        from packages.orchestration.repo_applicator import _resolve_repo_path
 
-    def test_intent_rules_and_repo_rules_full_mapping_matches(self):
-        """Ensures keyword→template mappings are byte-for-byte identical.
-
-        Matching keywords and matching order alone is insufficient: a template
-        could be changed in one table (e.g. 'docs/{safe_type}.md' →
-        'docs/remedy/{safe_type}.md') without touching the other, causing the
-        two systems to silently route the same task type to different paths.
-        This test catches such template drift.
-        """
-        # These are private module attributes; tests rely on them intentionally
-        # to enforce the sync contract between the two rule tables.
-        from packages.orchestration.patch_intent import _INTENT_RULES
-        from packages.orchestration.repo_applicator import _REPO_PATH_RULES
-
-        intent_map = {k: t for k, t in _INTENT_RULES}
-        repo_map = {k: t for k, t in _REPO_PATH_RULES}
-        assert intent_map == repo_map, (
-            f"keyword→template mappings diverged — "
-            f"_INTENT_RULES: {intent_map}, "
-            f"_REPO_PATH_RULES: {repo_map}"
-        )
+        for task_type in ("write_readme", "create_spec", "spec_document", "planning_document"):
+            pi_path = _derive_target_path(task_type)
+            ra_path = _resolve_repo_path(task_type)
+            assert pi_path == ra_path, (
+                f"routing diverged for {task_type!r}: "
+                f"patch_intent={pi_path!r}, repo_applicator={ra_path!r}"
+            )
 
 
 # ---------------------------------------------------------------------------

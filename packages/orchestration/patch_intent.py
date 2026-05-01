@@ -16,7 +16,8 @@ Key constraints:
   - No repo files are modified by any function in this module.
   - repo_overwrite remains reserved and unused.
   - target_path is always relative, has no traversal, and must end in .md (v1).
-  - Derivation is conservative: task_type keyword match only; no raw LLM paths accepted.
+  - Derivation delegates to task_registry.get_task_type_spec() — no independent
+    routing table; task_registry is the single source of truth (Step 13).
   - An empty PatchIntentSet is valid and expected for most task types.
   - Dry-run reads repo files with read_text only; no open() for writing, no os calls.
   - generate_dry_run_preview resolves both repo_root and the target path and asserts
@@ -40,6 +41,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from packages.orchestration.task_registry import get_task_type_spec
 
 if TYPE_CHECKING:
     from packages.core.models import Artifact
@@ -106,31 +109,8 @@ class PatchIntentSet(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Path-safe keyword table for derivation
+# Path-safe helpers (used by materialize_patch_intents for workspace filenames)
 # ---------------------------------------------------------------------------
-
-# Conservative mapping from task_type keyword to a repo-relative target path.
-# Mirrors _REPO_PATH_RULES in repo_applicator.py — same ordering, same semantics.
-# Only documentation-like targets are eligible; source code is never targeted.
-# {safe_type} is substituted with the sanitized task_type at derivation time.
-#
-# KEEP IN SYNC with _REPO_PATH_RULES in repo_applicator.py — enforced by TestKeywordSync in tests/test_patch_intent.py.
-_INTENT_RULES: list[tuple[str, str]] = [
-    ("readme",         "README.md"),
-    # docs/remedy/ — evaluated before the plain "doc" catch-all
-    ("plan",           "docs/remedy/{safe_type}.md"),
-    ("spec",           "docs/remedy/{safe_type}.md"),
-    ("requirement",    "docs/remedy/{safe_type}.md"),
-    ("acceptance",     "docs/remedy/{safe_type}.md"),
-    ("analysis",       "docs/remedy/{safe_type}.md"),
-    # docs/ — "documentation" before "doc" (substring ordering)
-    ("changelog",      "docs/{safe_type}.md"),
-    ("architecture",   "docs/{safe_type}.md"),
-    ("design",         "docs/{safe_type}.md"),
-    ("guide",          "docs/{safe_type}.md"),
-    ("documentation",  "docs/{safe_type}.md"),
-    ("doc",            "docs/{safe_type}.md"),
-]
 
 _SAFE_PATH_RE = re.compile(r"[^a-zA-Z0-9_-]")
 _MAX_PATH_COMPONENT_LENGTH = 48
@@ -139,8 +119,9 @@ _MAX_PATH_COMPONENT_LENGTH = 48
 def _sanitize_path_component(value: str) -> str:
     """Sanitize a string for safe use as a single path component.
 
-    Same logic as task_runner._sanitize_path_component — kept local to avoid
-    importing a private helper across modules.
+    Same logic as task_registry._sanitize_path_component (canonical) — kept
+    local here for workspace filename generation in materialize_patch_intents
+    to avoid importing a private helper across modules.
     """
     sanitized = _SAFE_PATH_RE.sub("_", value)
     sanitized = sanitized[:_MAX_PATH_COMPONENT_LENGTH].strip("_")
@@ -148,13 +129,12 @@ def _sanitize_path_component(value: str) -> str:
 
 
 def _derive_target_path(task_type: str) -> str | None:
-    """Return a safe repo-relative path for the task_type, or None if no match."""
-    lower = task_type.lower()
-    safe_type = _sanitize_path_component(task_type)
-    for keyword, template in _INTENT_RULES:
-        if keyword in lower:
-            return template.format(safe_type=safe_type)
-    return None
+    """Return the fully-resolved repo-relative path for task_type, or None.
+
+    Delegates to get_task_type_spec() — the task registry is the single source
+    of routing truth.  Returns None for unknown or non-doc task types.
+    """
+    return get_task_type_spec(task_type).repo_route
 
 
 # ---------------------------------------------------------------------------
@@ -165,9 +145,10 @@ def _derive_target_path(task_type: str) -> str | None:
 def derive_patch_intents(artifact: "Artifact", task_type: str) -> PatchIntentSet:
     """Derive a PatchIntentSet from a builder artifact and its task type.
 
-    Uses the conservative keyword table (_INTENT_RULES) to map task_type to a
-    documentation-like target path.  If the task type does not match any keyword,
-    the returned PatchIntentSet has an empty intents list (which is valid).
+    Target routing is resolved through get_task_type_spec() via
+    _derive_target_path() — the task registry is the single source of truth.
+    If the task type is unknown or has no repo_route, the returned
+    PatchIntentSet has an empty intents list (which is valid).
 
     No raw LLM strings are used to construct target paths.
 
@@ -297,7 +278,8 @@ def materialize_patch_intents(
 
 
 # Known section headers in the builder artifact content format.
-# Kept local to avoid importing private helpers from task_runner.
+# Kept local because patch_intent only needs the shared text format contract,
+# not task_runner internals.
 _ARTIFACT_SECTION_HEADERS: frozenset[str] = frozenset(
     {"Summary:", "Proposed Changes:", "Notes:", "Risks:"}
 )
