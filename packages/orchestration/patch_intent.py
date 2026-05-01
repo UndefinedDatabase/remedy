@@ -278,7 +278,8 @@ def materialize_patch_intents(
 
 
 # Known section headers in the builder artifact content format.
-# Kept local to avoid importing private helpers from task_runner.
+# Kept local because patch_intent only needs the shared text format contract,
+# not task_runner internals.
 _ARTIFACT_SECTION_HEADERS: frozenset[str] = frozenset(
     {"Summary:", "Proposed Changes:", "Notes:", "Risks:"}
 )
