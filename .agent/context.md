@@ -23,3 +23,9 @@ No behavior changes; 455 tests pass.
 - Unknown fallback: repo_route=None, capabilities={"unknown_task_type"} — conservative
 - repo_route in returned TaskTypeSpec is always fully resolved (no {safe_type})
 - keyword-backed matching internally (v1) — same semantics as removed tables
+
+## Step-14 invariant note
+In v1, is_known_task_type(task_type) is equivalent to
+get_task_type_spec(task_type).repo_route is not None.
+If a future step introduces known non-repo task types, this invariant and
+test_is_known_matches_get_spec_has_repo_route must be revisited.

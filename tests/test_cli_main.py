@@ -645,6 +645,7 @@ class TestPatchIntentRisksCLI:
         saved_artifact, _ = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
         assert saved_artifact is not None, "Artifact not found in saved job"
         stored_risks = saved_artifact.metadata["patch_intent_risks"]
+        assert isinstance(stored_risks, list)
         assert all(r in RISK_LEVELS for r in stored_risks)
 
     def test_cli_output_contains_exact_risk_value(
