@@ -284,7 +284,9 @@ class TestIsKnownTaskType:
         for task_type in ("write_readme", "create_spec", "write_code", "implement_feature"):
             known = is_known_task_type(task_type)
             spec = get_task_type_spec(task_type)
-            # known ↔ has repo_route
+            # v1 invariant: known ↔ has repo_route.
+            # If a known non-repo task type is added, this test and
+            # is_known_task_type semantics must be revisited.
             assert known == (spec.repo_route is not None), (
                 f"is_known_task_type({task_type!r})={known} but "
                 f"get_task_type_spec().repo_route={spec.repo_route!r}"

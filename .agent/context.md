@@ -16,7 +16,7 @@ Step 13: Task Type Registry v1.
 - Updated: TestKeywordSync → registry-backed routing parity tests
 - New: tests/test_task_registry.py (59 tests)
 - Updated: docs/architecture.md (new Task Type Registry section)
-No behavior changes; 455 tests pass.
+No behavior changes; 456 tests pass.
 
 ## Key decisions
 - task_type is NOT an enum; LLM-generated types remain valid
