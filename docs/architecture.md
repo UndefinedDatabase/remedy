@@ -277,8 +277,8 @@ at attach time (must exist and be a directory) and resolved to an absolute path.
 **Safe repo application** (`packages/orchestration/repo_applicator.py`) bridges the
 workspace and the target repo for eligible task output. Rules:
 
-1. **Keyword mapping only** — `task_type` is matched against a static `_REPO_PATH_RULES`
-   table (no LLM paths accepted). Ineligible task types produce no repo write.
+1. **Registry routing only** — `task_type` is matched via `task_registry.get_task_type_spec()`
+   (no LLM paths accepted). Ineligible task types produce no repo write.
 2. **No overwriting** — if the target file already exists, the write is skipped silently.
 3. **No source code** — only markdown files under `docs/` or `README.md` are ever written.
 4. **No Git, no shell, no patch application** — writes use `Path.write_text()` only.
@@ -378,6 +378,54 @@ not yet enforced). The symmetric labeling makes capability status unambiguous at
   no-ops without user-visible notice.
 - Task completion is always determined by the verifier — never by repo application.
 
+### Task Type Registry v1 (Step 13)
+
+`packages/orchestration/task_registry.py` is the central, extensible semantic catalogue
+of known task types.
+
+**Design:**
+- `task_type` is **not** a closed enum — LLM-generated task types remain valid.
+- Known task types get structured `TaskTypeSpec` metadata (routing, verifier profile,
+  agent role hint, capabilities).
+- Unknown task types fall back to a **conservative** spec: `repo_route=None`,
+  `verifier_profile="generic"`, `capabilities=frozenset({"unknown_task_type"})`.
+  Future autonomy modes MUST NOT treat an unknown type as low-risk.
+
+**`TaskTypeSpec` fields:**
+
+| Field | Description |
+|-------|-------------|
+| `name` | The queried `task_type` string |
+| `description` | Human-readable purpose summary |
+| `allowed_outputs` | Artifact kinds the task may produce |
+| `repo_route` | Fully-resolved repo-relative path, or `None`; no `{safe_type}` in the returned value |
+| `verifier_profile` | Verifier profile name (`"generic"` in v1) |
+| `suggested_agent_role` | Builder role hint (`"generic_builder"` in v1) |
+| `capabilities` | Frozenset of tokens; `{"unknown_task_type"}` signals unknown |
+
+**Public API:**
+
+```python
+get_task_type_spec(task_type)  # → TaskTypeSpec — single source of routing truth
+is_known_task_type(task_type)  # → bool
+iter_task_type_specs()         # → tuple[TaskTypeSpec, ...]
+```
+
+**Single source of truth:** both `repo_applicator._resolve_repo_path` and
+`patch_intent._derive_target_path` now delegate to `get_task_type_spec()`.
+The formerly duplicated `_REPO_PATH_RULES` / `_INTENT_RULES` tables are removed.
+Routing parity is guaranteed by construction and enforced by `TestKeywordSync`.
+
+**Keyword ordering (v1):** first keyword that is a case-insensitive substring wins.
+`"plan"` precedes `"doc"`; `"documentation"` precedes `"doc"` (substring ordering).
+Source code task types (`write_code`, `write_tests`, etc.) return `repo_route=None`.
+
+**Prepared for future steps:**
+- Step 14+: verifier profiles → route-specific verification rules
+- Step 14+: suggested_agent_role → role-specific builder prompts
+- Step 15+: autonomy-mode gating — unknown type → conservative/deny path
+- Future: context selection, MemPalace integration, subagent roles
+
 ### Patch Intent v1 (Step 10)
 
 `packages/orchestration/patch_intent.py` introduces the first structured concept for
@@ -393,10 +441,10 @@ changes to existing files — as proposals only.  No repo files are read or modi
 - `task_id`, `artifact_id`: provenance fields (UUID)
 - `intents`: list of `PatchIntent` (may be empty — always valid)
 
-**`derive_patch_intents(artifact, task_type)`** — conservative derivation using the same
-keyword table as `repo_applicator._REPO_PATH_RULES`. Only task types that map to a
-documentation path produce an intent; all others produce an empty set. Raw LLM strings
-are never used to construct `target_path`.
+**`derive_patch_intents(artifact, task_type)`** — conservative derivation via
+`task_registry.get_task_type_spec()`. Only task types that map to a documentation path
+(`repo_route != None`) produce an intent; all others produce an empty set. Raw LLM
+strings are never used to construct `target_path`.
 
 **`verify_patch_intent_set(pis)`** — pure structural verifier; returns `list[str]` of errors:
 - `target_path` is non-empty and relative (no leading `/`)
