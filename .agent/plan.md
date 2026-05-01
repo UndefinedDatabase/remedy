@@ -1,23 +1,20 @@
 # Plan
 
 ## Goal
-Step 13.4: Final Context Count Fix
+Step 14: Artifact Kinds v1
 
 ## Status
-COMPLETE — committed, pushed
+COMPLETE — 503 tests pass
 
 ## Steps
-1. [x] .agent/context.md: fix "455 tests" → "456 tests"
-2. [x] test_task_registry.py: expand "# known ↔ has repo_route" comment to
-       full v1 invariant + revisit note
-3. [x] 456 tests pass; committed; pushed
+1. [x] Add ArtifactKind enum (7 values) to packages/core/models.py
+2. [x] Add kind: ArtifactKind = ArtifactKind.UNKNOWN field to Artifact
+3. [x] Set kind=PLANNING at planning artifact creation sites (job_runner, llm_planner)
+4. [x] Set kind=BUILDER_PROPOSAL at builder artifact creation site (task_runner)
+5. [x] Create packages/orchestration/artifact_index.py (4 helpers)
+6. [x] Add tests/test_artifact_kinds.py (47 tests)
+7. [x] Update docs/architecture.md (ArtifactKind section)
+8. [ ] Update .agent files and commit
 
 ## Branch
-feature/step13-task-registry
-
-## PR
-#13 (open)
-
-## Step-14 invariant
-is_known_task_type ≡ repo_route is not None (v1).
-Must revisit if non-repo known types are added.
+feature/step14-artifact-kinds

@@ -378,6 +378,39 @@ not yet enforced). The symmetric labeling makes capability status unambiguous at
   no-ops without user-visible notice.
 - Task completion is always determined by the verifier — never by repo application.
 
+### Artifact Kinds v1 (Step 14)
+
+`packages/core/models.py` exposes `ArtifactKind`, a `str` enum that annotates
+the semantic role of each `Artifact`.
+
+**Values:**
+
+| Value | Meaning |
+|-------|---------|
+| `unknown` | Default / not yet classified (backward-compat default for old JSON) |
+| `planning` | Produced by a planning step (deterministic or LLM planner; `task_id=None`) |
+| `builder_proposal` | Produced by a builder/task execution step (`task_id` set) |
+| `workspace_materialization` | Represents a file written to the local workspace |
+| `verification` | Produced by a verification step |
+| `patch_intent` | Produced by patch-intent derivation (`patch_intent.py`) |
+| `repo_application` | Produced by repo application (`repo_applicator.py`) |
+
+**`Artifact.kind` field:**
+- Default: `ArtifactKind.UNKNOWN` — backward-compatible; old JSON without `kind` deserializes to `UNKNOWN`.
+- Set explicitly at all creation sites in `job_runner.py`, `llm_planner.py`, and `task_runner.py`.
+
+**Artifact index helpers** (`packages/orchestration/artifact_index.py`):
+
+```python
+artifacts_by_kind(artifacts, kind)              # → list[Artifact]
+first_artifact_by_kind(artifacts, kind)         # → Artifact | None
+task_artifacts_by_kind(artifacts, task_id, kind) # → list[Artifact]
+planning_artifact(artifacts)                    # → Artifact | None
+```
+
+`planning_artifact` prefers explicit `kind=PLANNING` but falls back to the legacy
+convention (`name="planning_output"` and `task_id=None`) for pre-Step-14 artifacts.
+
 ### Task Type Registry v1 (Step 13)
 
 `packages/orchestration/task_registry.py` is the central, extensible semantic catalogue

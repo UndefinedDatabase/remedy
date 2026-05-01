@@ -1,31 +1,24 @@
 # Context
 
 ## Active Branch
-`feature/step13-task-registry`
+`feature/step14-artifact-kinds`
 
 ## PR
 (none yet)
 
 ## Scope
-Step 13: Task Type Registry v1.
-- New: packages/orchestration/task_registry.py (TaskTypeSpec, get_task_type_spec, is_known_task_type, iter_task_type_specs)
-- Refactored: repo_applicator._resolve_repo_path → delegates to registry
-- Refactored: patch_intent._derive_target_path → delegates to registry
-- Removed: _REPO_PATH_RULES (repo_applicator), _INTENT_RULES (patch_intent)
-- Removed: _sanitize_path_component from repo_applicator (no longer needed)
-- Updated: TestKeywordSync → registry-backed routing parity tests
-- New: tests/test_task_registry.py (59 tests)
-- Updated: docs/architecture.md (new Task Type Registry section)
-No behavior changes; 456 tests pass.
+Step 14: Artifact Kinds v1.
+- New: ArtifactKind str Enum in packages/core/models.py (7 values: UNKNOWN, PLANNING, BUILDER_PROPOSAL, WORKSPACE_MATERIALIZATION, VERIFICATION, PATCH_INTENT, REPO_APPLICATION)
+- Updated: Artifact model gains kind: ArtifactKind = ArtifactKind.UNKNOWN (backward-compat default)
+- Updated: job_runner.py → sets kind=PLANNING on planning artifact
+- Updated: llm_planner.py → sets kind=PLANNING on planning artifact
+- Updated: task_runner.py → sets kind=BUILDER_PROPOSAL on task artifact
+- New: packages/orchestration/artifact_index.py (artifacts_by_kind, first_artifact_by_kind, task_artifacts_by_kind, planning_artifact)
+- New: tests/test_artifact_kinds.py (47 tests)
+- Updated: docs/architecture.md (new Artifact Kinds v1 section)
+503 tests pass.
 
 ## Key decisions
-- task_type is NOT an enum; LLM-generated types remain valid
-- Unknown fallback: repo_route=None, capabilities={"unknown_task_type"} — conservative
-- repo_route in returned TaskTypeSpec is always fully resolved (no {safe_type})
-- keyword-backed matching internally (v1) — same semantics as removed tables
-
-## Step-14 invariant note
-In v1, is_known_task_type(task_type) is equivalent to
-get_task_type_spec(task_type).repo_route is not None.
-If a future step introduces known non-repo task types, this invariant and
-test_is_known_matches_get_spec_has_repo_route must be revisited.
+- kind defaults to UNKNOWN for backward-compat with pre-Step-14 JSON
+- planning_artifact() prefers explicit kind=PLANNING, falls back to legacy name+task_id convention
+- is_known_task_type v1 invariant: is_known_task_type ≡ repo_route is not None (still holds)

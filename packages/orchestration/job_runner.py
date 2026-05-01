@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from packages.core.models import Artifact, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 
 # Fixed planning task templates — order is intentional.
 _PLANNING_TASK_SPECS: list[tuple[str, str]] = [
@@ -83,6 +83,7 @@ def plan_job(job: Job) -> PlanJobResult:
             ),
             mime_type="text/plain",
             task_id=None,
+            kind=ArtifactKind.PLANNING,
             metadata={"planner": "local_deterministic", "step": "3"},
         )
     ]

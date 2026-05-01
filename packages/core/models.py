@@ -46,6 +46,41 @@ class RunState(str, Enum):
     CANCELLED = "cancelled"
 
 
+class ArtifactKind(str, Enum):
+    """Semantic category of an Artifact.
+
+    Provides a stable, machine-readable signal about what role an artifact
+    plays in the workflow — complementing the free-form name and metadata
+    fields.
+
+    UNKNOWN:
+        Default / not-yet-classified.  Old artifacts loaded from JSON without
+        a 'kind' field will deserialize to UNKNOWN (Pydantic default).
+    PLANNING:
+        Artifact produced by a planning step (deterministic or LLM planner).
+        task_id is typically None (orchestration-owned).
+    BUILDER_PROPOSAL:
+        Artifact produced by a builder/task execution step.
+        task_id points to the owning Task.
+    WORKSPACE_MATERIALIZATION:
+        Artifact representing a file written to the local workspace.
+    VERIFICATION:
+        Artifact produced by a verification step.
+    PATCH_INTENT:
+        Artifact produced by patch-intent derivation (patch_intent.py).
+    REPO_APPLICATION:
+        Artifact produced by repo-application (repo_applicator.py).
+    """
+
+    UNKNOWN = "unknown"
+    PLANNING = "planning"
+    BUILDER_PROPOSAL = "builder_proposal"
+    WORKSPACE_MATERIALIZATION = "workspace_materialization"
+    VERIFICATION = "verification"
+    PATCH_INTENT = "patch_intent"
+    REPO_APPLICATION = "repo_application"
+
+
 class Artifact(BaseModel):
     """A discrete unit of output produced during a workflow.
 
@@ -56,6 +91,11 @@ class Artifact(BaseModel):
       task_id = UUID  — artifact produced by that specific Task.
       task_id = None  — artifact produced by orchestration/system logic
                         (e.g. planning output, metadata). Not tied to a Task.
+
+    kind:
+      Semantic category — set at creation sites for all new artifacts.
+      Defaults to ArtifactKind.UNKNOWN for backward-compatibility with
+      persisted JSON that predates Step 14.
     """
 
     id: UUID = Field(default_factory=uuid4)
@@ -63,6 +103,7 @@ class Artifact(BaseModel):
     content: str
     mime_type: str = "text/plain"
     task_id: UUID | None = None
+    kind: ArtifactKind = ArtifactKind.UNKNOWN
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

@@ -684,3 +684,18 @@ not a copy-sync check. The KEEP IN SYNC comments are no longer needed.
 _resolve_repo_path now returns a fully-resolved path from get_task_type_spec; no local
 sanitization needed in repo_applicator. patch_intent keeps its own local copy for
 materialize_patch_intents workspace filenames (different use site, not routing).
+
+## 2026-05-01: ArtifactKind defaults to UNKNOWN — explicit at creation sites (Step 14)
+The default kind=UNKNOWN is a backward-compatibility affordance, not the preferred state.
+Every creation site (job_runner, llm_planner, task_runner) sets kind explicitly. Unknown
+stays as the default only so old persisted JSON without 'kind' deserializes safely.
+
+## 2026-05-01: planning_artifact prefers explicit kind over legacy name convention (Step 14)
+The helper checks kind=PLANNING first (explicit path, Step 14+), then falls back to
+name="planning_output" and task_id=None (legacy convention, pre-Step-14). The explicit
+path is preferred because: (a) it is the intended stable signal, (b) it does not depend
+on a name string that could change. The fallback is deliberate and documented.
+
+## 2026-05-01: artifact_index helpers accept Sequence[Artifact], not Job (Step 14)
+Accepting a sequence rather than a Job makes the helpers composable: callers can pass
+job.artifacts, a filtered slice, or any other artifact list. No coupling to Job required.

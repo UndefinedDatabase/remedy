@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from typing import Callable
 from uuid import UUID
 
-from packages.core.models import Artifact, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.verifier import VerificationResult
 from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
@@ -193,6 +193,7 @@ def run_next_task(
         content="\n".join(content_lines),
         mime_type="text/plain",
         task_id=task.id,
+        kind=ArtifactKind.BUILDER_PROPOSAL,
         metadata={
             "task_type": task_type,
             "summary": output.summary,

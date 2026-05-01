@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from packages.core.models import Artifact, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
@@ -101,6 +101,7 @@ def plan_job_with_llm(
             content="\n".join(content_lines),
             mime_type="text/plain",
             task_id=None,
+            kind=ArtifactKind.PLANNING,
             metadata={"summary": output.summary},
         )
     ]
