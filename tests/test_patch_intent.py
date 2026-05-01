@@ -18,6 +18,22 @@ Covers:
       - generate_dry_run_preview: no repo → preview-only; existing file → modify;
         missing file → create; empty intents → empty list
       - format_dry_run_explanations: correct labeled block format
+  - Step 12 additions (risk classification, non-blocking):
+      - classify_risk: correct mapping for all known actions
+      - risk_level present on PatchDryRunResult; risk line in CLI output
+  - Step 12.5 additions (risk contract hardening):
+      - RISK_* constants used in classify_risk and PatchDryRunResult validation
+      - PatchDryRunResult.__post_init__ raises ValueError on invalid risk_level
+      - format_dry_run_explanations separates multiple blocks with a blank line
+      - classify_risk returns are all members of RISK_LEVELS
+  - Step 12.6 additions (dry-run boundary + coverage hardening):
+      - generate_dry_run_preview raises RuntimeError for paths outside repo_root
+      - valid paths inside repo_root still work correctly
+      - truncate_preview: long/short/exact-length behaviour
+  - Step 12.7 additions (boundary test precision):
+      - symlink escape test: proves resolve() catches what literal string checks miss
+      - traversal test comment clarified (verify bypassed intentionally)
+      - TestPatchIntentRisksCLI split into three focused single-assertion tests
 
 All tests are deterministic — no live Ollama, no builder, no repo writes.
 """
@@ -33,14 +49,22 @@ import pytest
 
 from packages.core.models import Artifact
 from packages.orchestration.patch_intent import (
+    RISK_HIGH,
+    RISK_LEVELS,
+    RISK_LOW,
+    RISK_MEDIUM,
+    RISK_UNKNOWN,
     PatchDryRunResult,
     PatchIntent,
     PatchIntentSet,
-    _extract_proposed_lines,
+    _extract_proposed_lines,  # private import — testing section-parse contract
+    _MAX_PREVIEW_CHARS,       # private import — testing truncate_preview contract
+    classify_risk,
     derive_patch_intents,
     format_dry_run_explanations,
     generate_dry_run_preview,
     materialize_patch_intents,
+    truncate_preview,
     verify_patch_intent_set,
 )
 from packages.orchestration.workspace import LocalWorkspaceRuntime
@@ -604,6 +628,7 @@ class TestGenerateDryRunPreview:
         assert len(results) == 1
         r = results[0]
         assert r.action == "preview-only"
+        assert r.risk_level == "unknown"
         assert r.target_path == "README.md"
         assert "no repository attached" in r.diff_preview
         assert "README.md" in r.diff_preview
@@ -616,6 +641,7 @@ class TestGenerateDryRunPreview:
         assert len(results) == 1
         r = results[0]
         assert r.action == "modify"
+        assert r.risk_level == "medium"
         assert "README.md" in r.diff_preview
         assert "existing file" in r.diff_preview
         assert "proposed additions" in r.diff_preview
@@ -626,6 +652,7 @@ class TestGenerateDryRunPreview:
         assert len(results) == 1
         r = results[0]
         assert r.action == "create"
+        assert r.risk_level == "low"
         assert "new file" in r.diff_preview
 
     def test_proposed_lines_appear_in_preview(self, tmp_path):
@@ -667,6 +694,7 @@ class TestFormatDryRunExplanations:
         defaults = dict(
             target_path="README.md",
             action="modify",
+            risk_level="medium",
             reason="task type 'write_readme'",
             summary="adds installation and usage sections",
             diff_preview="",
@@ -683,13 +711,212 @@ class TestFormatDryRunExplanations:
         assert "Planned change:" in text
         assert "README.md" in text
         assert "modify" in text
+        assert "medium" in text  # risk line
         assert "write_readme" in text
         assert "adds installation" in text
 
     def test_multiple_results_all_appear(self):
         r1 = self._make_result(target_path="README.md")
-        r2 = self._make_result(target_path="docs/guide.md", action="create")
+        r2 = self._make_result(target_path="docs/guide.md", action="create", risk_level=RISK_LOW)
         text = format_dry_run_explanations([r1, r2])
         assert "README.md" in text
         assert "docs/guide.md" in text
         assert "create" in text
+        # blocks must be separated by a blank line for readability
+        assert "\n\n" in text
+
+
+class TestClassifyRisk:
+    """classify_risk maps action strings to the correct risk level."""
+
+    def test_create_is_low(self):
+        assert classify_risk("create") == RISK_LOW
+
+    def test_modify_is_medium(self):
+        assert classify_risk("modify") == RISK_MEDIUM
+
+    def test_overwrite_is_high(self):
+        # reserved — not yet produced by any code path, but must classify correctly
+        assert classify_risk("overwrite") == RISK_HIGH
+
+    def test_preview_only_is_unknown(self):
+        assert classify_risk("preview-only") == RISK_UNKNOWN
+
+    def test_unrecognised_action_is_unknown(self):
+        assert classify_risk("delete") == RISK_UNKNOWN
+        assert classify_risk("") == RISK_UNKNOWN
+
+    def test_all_return_values_are_in_risk_levels(self):
+        """Every return value of classify_risk must be a member of RISK_LEVELS."""
+        for action in ("create", "modify", "overwrite", "preview-only", "delete", ""):
+            assert classify_risk(action) in RISK_LEVELS
+
+    def test_risk_level_on_dry_run_result_preview_only(self):
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="README.md", intent="some intent")],
+        )
+        results = generate_dry_run_preview(pis, "", "write_readme", repo_root=None)
+        assert results[0].risk_level == "unknown"
+
+    def test_risk_level_on_dry_run_result_create(self, tmp_path):
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="README.md", intent="some intent")],
+        )
+        # README.md does not exist in tmp_path → action == "create"
+        results = generate_dry_run_preview(pis, "", "write_readme", repo_root=tmp_path)
+        assert results[0].risk_level == "low"
+
+    def test_risk_level_on_dry_run_result_modify(self, tmp_path):
+        (tmp_path / "README.md").write_text("# existing\n")
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="README.md", intent="some intent")],
+        )
+        results = generate_dry_run_preview(pis, "", "write_readme", repo_root=tmp_path)
+        assert results[0].risk_level == "medium"
+
+
+# ---------------------------------------------------------------------------
+# PatchDryRunResult validation (Step 12.5)
+# ---------------------------------------------------------------------------
+
+
+class TestPatchDryRunResultValidation:
+    """PatchDryRunResult.__post_init__ rejects invalid risk_level values."""
+
+    def _make(self, risk_level: str) -> PatchDryRunResult:
+        return PatchDryRunResult(
+            target_path="README.md",
+            action="modify",
+            risk_level=risk_level,
+            reason="test",
+            summary="test summary",
+            diff_preview="",
+        )
+
+    def test_invalid_risk_level_raises_value_error(self):
+        with pytest.raises(ValueError, match="risk_level"):
+            self._make("extreme")
+
+    def test_empty_string_risk_level_raises_value_error(self):
+        with pytest.raises(ValueError, match="risk_level"):
+            self._make("")
+
+    def test_all_valid_risk_levels_accepted(self):
+        for level in RISK_LEVELS:
+            r = self._make(level)
+            assert r.risk_level == level
+
+
+# ---------------------------------------------------------------------------
+# Dry-run repo boundary check (Step 12.6)
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateDryRunPreviewBoundary:
+    """generate_dry_run_preview raises RuntimeError if target resolves outside repo_root."""
+
+    def _make_pis(self, target_path: str) -> PatchIntentSet:
+        return PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path=target_path, intent="some intent")],
+        )
+
+    def test_valid_path_inside_repo_does_not_raise(self, tmp_path):
+        """A legitimate relative path inside repo_root must not raise."""
+        pis = self._make_pis("README.md")
+        # File does not exist → action == "create" — no RuntimeError
+        results = generate_dry_run_preview(pis, "", "write_readme", tmp_path)
+        assert len(results) == 1
+        assert results[0].action == "create"
+
+    def test_valid_path_existing_file_does_not_raise(self, tmp_path):
+        """A path resolving to an existing file inside repo_root must not raise."""
+        (tmp_path / "README.md").write_text("# existing\n")
+        pis = self._make_pis("README.md")
+        results = generate_dry_run_preview(pis, "", "write_readme", tmp_path)
+        assert results[0].action == "modify"
+
+    def test_traversal_path_raises_runtime_error(self, tmp_path):
+        """A path that resolves outside repo_root must raise RuntimeError.
+
+        PatchIntentSet is constructed directly, bypassing verify_patch_intent_set.
+        verify_patch_intent_set would normally reject "../outside.md" because it
+        detects a literal ".." component, but this test intentionally skips that
+        upstream check to prove that generate_dry_run_preview has its own
+        independent boundary guard via resolve() + is_relative_to().
+        """
+        pis = PatchIntentSet(
+            task_id=uuid4(),
+            artifact_id=uuid4(),
+            intents=[PatchIntent(target_path="../outside.md", intent="escape")],
+        )
+        with pytest.raises(RuntimeError, match="outside repo_root"):
+            generate_dry_run_preview(pis, "", "write_readme", tmp_path)
+
+    def test_symlink_escape_raises_runtime_error(self, tmp_path, tmp_path_factory):
+        """A symlink inside repo_root that resolves outside must be rejected.
+
+        This test uniquely requires the resolve() + is_relative_to() guard.
+        verify_patch_intent_set cannot catch symlinks — it only inspects the
+        literal path string ("README.md" looks valid despite pointing outside).
+        resolve() follows the symlink, so is_relative_to() detects the escape.
+        """
+        # Create a file in a fully isolated temp directory — not a sibling of
+        # tmp_path — so there is no risk of one test's leftovers affecting another.
+        outside_dir = tmp_path_factory.mktemp("outside")
+        outside_file = outside_dir / "secret.md"
+        outside_file.write_text("secret content")
+
+        # Symlink inside repo_root pointing to the outside file.
+        symlink_inside = tmp_path / "README.md"
+        try:
+            symlink_inside.symlink_to(outside_file)
+        except (OSError, NotImplementedError):
+            pytest.skip("Symlinks not available on this platform")
+
+        # "README.md" passes verify_patch_intent_set but resolve() exposes the escape.
+        pis = self._make_pis("README.md")
+        with pytest.raises(RuntimeError, match="outside repo_root"):
+            generate_dry_run_preview(pis, "", "write_readme", tmp_path)
+
+    def test_no_repo_root_skips_boundary_check(self):
+        """When repo_root is None the boundary check is not applied."""
+        pis = self._make_pis("README.md")
+        results = generate_dry_run_preview(pis, "", "write_readme", repo_root=None)
+        assert results[0].action == "preview-only"
+
+
+# ---------------------------------------------------------------------------
+# truncate_preview helper (Step 12.6)
+# ---------------------------------------------------------------------------
+
+
+class TestTruncatePreview:
+    """truncate_preview caps text at _MAX_PREVIEW_CHARS characters."""
+
+    def test_short_text_returned_unchanged(self):
+        text = "hello world"
+        assert truncate_preview(text) == text
+
+    def test_empty_string_returned_unchanged(self):
+        assert truncate_preview("") == ""
+
+    def test_exact_length_returned_unchanged(self):
+        text = "x" * _MAX_PREVIEW_CHARS
+        assert truncate_preview(text) == text
+
+    def test_long_text_truncated_to_max(self):
+        text = "y" * (_MAX_PREVIEW_CHARS + 500)
+        result = truncate_preview(text)
+        assert len(result) == _MAX_PREVIEW_CHARS
+
+    def test_result_never_exceeds_max_preview_chars(self):
+        for length in (0, 1, _MAX_PREVIEW_CHARS - 1, _MAX_PREVIEW_CHARS, _MAX_PREVIEW_CHARS + 1):
+            assert len(truncate_preview("z" * length)) <= _MAX_PREVIEW_CHARS

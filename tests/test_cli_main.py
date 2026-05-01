@@ -512,3 +512,142 @@ class TestPatchIntentErrorsCLI:
         assert "patch_intent_file" not in saved_artifact.metadata
         assert "patch_intent_count" not in saved_artifact.metadata
         assert "patch_intent_errors" not in saved_artifact.metadata
+
+
+# ---------------------------------------------------------------------------
+# CLI-level risk coverage (Step 12.5)
+# ---------------------------------------------------------------------------
+
+
+class TestPatchIntentRisksCLI:
+    """Three focused tests for the patch_intent_risks CLI contract.
+
+    Each test exercises exactly one contract:
+      1. patch_intent_risks key exists in saved artifact metadata
+      2. all stored risk values are members of RISK_LEVELS
+      3. CLI stdout contains the exact risk value (RISK_UNKNOWN, no repo attached)
+
+    All patch-intent functions (derive, verify, generate_dry_run, format) run
+    naturally — no mocks — so the risk contract is exercised end-to-end.
+    """
+
+    def _run_risk_scenario(self, tmp_path, monkeypatch, capsys):
+        """Run the CLI risk happy path; return (saved_artifact, stdout_text).
+
+        Sets up a job with one write_readme task, mocks the Ollama/runner/verifier
+        layer, lets all patch-intent logic run naturally, and returns the reloaded
+        artifact and captured stdout for the caller to assert against.
+        """
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        from packages.core.models import Artifact
+        from packages.orchestration.task_runner import RunTaskResult
+        from packages.orchestration.verifier import VerificationResult
+        from packages.orchestration.workspace import MaterializedFile
+
+        job = Job(name="test-risk-cli", state=RunState.PENDING)
+        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        artifact = Artifact(
+            name="task_output_write_readme",
+            content="Proposed Changes:\n  - Update readme\n  - Add installation",
+            mime_type="text/plain",
+            task_id=task.id,
+            metadata={"task_type": "write_readme", "summary": "Update readme"},
+        )
+        task.output_artifact_ids.append(artifact.id)
+        job.tasks.append(task)
+        job.artifacts.append(artifact)
+        save_job(job)
+
+        task.status = RunState.RUNNING
+        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
+        vr = VerificationResult(task_id=task.id, passed=True)
+        fake_mf = MaterializedFile(
+            path=Path(tmp_path) / "fake_workspace.txt",
+            content="x",
+            size=1,
+        )
+
+        def fake_finalize(r, v):
+            for t in r.job.tasks:
+                if t.id == r.task_id:
+                    t.status = RunState.COMPLETED
+
+        with (
+            patch(
+                "packages.providers.ollama_builder.provider.OllamaBuilder"
+            ) as MockBuilder,
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                return_value=run_result,
+            ),
+            patch("packages.orchestration.task_runner.annotate_task_result"),
+            patch(
+                "packages.orchestration.task_runner.materialize_task_output",
+                return_value=fake_mf,
+            ),
+            patch(
+                "packages.orchestration.verifier.verify_task_output",
+                return_value=vr,
+            ),
+            patch(
+                "packages.orchestration.task_runner.finalize_task",
+                side_effect=fake_finalize,
+            ),
+            # derive_patch_intents, verify_patch_intent_set, generate_dry_run_preview,
+            # and format_dry_run_explanations all run naturally — no mocks.
+        ):
+            instance = MagicMock()
+            instance.model = "test-model"
+            instance.build = MagicMock()
+            MockBuilder.return_value = instance
+
+            from apps.cli.main import _cmd_run_next_task_local
+
+            _cmd_run_next_task_local(str(job.id))
+
+        reloaded = load_job(job.id)
+        saved_artifact = next(
+            (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
+        )
+        out = capsys.readouterr().out
+        return saved_artifact, out
+
+    def test_patch_intent_risks_key_stored_in_metadata(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """patch_intent_risks key must be present in the saved artifact metadata."""
+        saved_artifact, _ = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
+        assert saved_artifact is not None, "Artifact not found in saved job"
+        assert "patch_intent_risks" in saved_artifact.metadata
+
+    def test_all_stored_risk_values_are_in_risk_levels(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """All values in patch_intent_risks must be members of RISK_LEVELS."""
+        # Public risk contract constant — RISK_LEVELS is part of patch_intent's public API.
+        from packages.orchestration.patch_intent import RISK_LEVELS
+
+        saved_artifact, _ = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
+        assert saved_artifact is not None, "Artifact not found in saved job"
+        stored_risks = saved_artifact.metadata["patch_intent_risks"]
+        assert isinstance(stored_risks, list)
+        assert len(stored_risks) == 1  # one intent → one risk level
+        assert all(r in RISK_LEVELS for r in stored_risks)
+
+    def test_cli_output_contains_exact_risk_value(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """CLI stdout must contain the exact RISK_UNKNOWN risk line.
+
+        No target_repo is attached, so action == "preview-only" and
+        classify_risk("preview-only") returns RISK_UNKNOWN.
+        """
+        # Public risk contract constant — RISK_UNKNOWN is part of patch_intent's public API.
+        from packages.orchestration.patch_intent import RISK_UNKNOWN
+
+        _, out = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
+        assert f"risk   : {RISK_UNKNOWN}" in out

@@ -328,6 +328,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
             format_dry_run_explanations,
             generate_dry_run_preview,
             materialize_patch_intents,
+            truncate_preview,
             verify_patch_intent_set,
         )
         pi_task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
@@ -375,16 +376,22 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                             {
                                 "file": r.target_path,
                                 "action": r.action,
+                                "risk": r.risk_level,
                                 "reason": r.reason,
                                 "summary": r.summary,
                             }
                             for r in dry_run_results
                         ]
+                        pi_artifact.metadata["patch_intent_risks"] = [
+                            r.risk_level for r in dry_run_results
+                        ]
                         combined_preview = "\n\n".join(
                             r.diff_preview for r in dry_run_results
                         )
+                        # diff_preview is stored in metadata but not printed to the
+                        # terminal — avoids noisy output; guarded mode can surface it.
                         pi_artifact.metadata["patch_intent_diff_preview"] = (
-                            combined_preview[:2000]
+                            truncate_preview(combined_preview)
                         )
                         dry_run_block = format_dry_run_explanations(dry_run_results)
 

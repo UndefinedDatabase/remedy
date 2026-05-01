@@ -19,6 +19,16 @@ Key constraints:
   - Derivation is conservative: task_type keyword match only; no raw LLM paths accepted.
   - An empty PatchIntentSet is valid and expected for most task types.
   - Dry-run reads repo files with read_text only; no open() for writing, no os calls.
+  - generate_dry_run_preview resolves both repo_root and the target path and asserts
+    the target is inside repo_root before any read; raises RuntimeError if not.
+  - truncate_preview(text) caps text at _MAX_PREVIEW_CHARS; CLI calls this before
+    storing the combined preview in artifact metadata.
+  - Risk levels are explicit constants (RISK_LOW/MEDIUM/HIGH/UNKNOWN) collected in
+    RISK_LEVELS.  PatchDryRunResult.risk_level is validated against RISK_LEVELS in
+    __post_init__ — an invalid value raises ValueError immediately at construction
+    time rather than propagating silently.
+  - RISK_UNKNOWN is intentionally conservative.  Future approval/autonomy modes must
+    not treat it as equivalent to RISK_LOW — see classify_risk docstring.
 """
 
 from __future__ import annotations
@@ -34,6 +44,27 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from packages.core.models import Artifact
     from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
+
+
+# ---------------------------------------------------------------------------
+# Risk level constants (Step 12.5)
+# ---------------------------------------------------------------------------
+
+RISK_LOW: str = "low"
+RISK_MEDIUM: str = "medium"
+RISK_HIGH: str = "high"
+RISK_UNKNOWN: str = "unknown"
+
+# All valid risk level values.  PatchDryRunResult.risk_level is validated against
+# this frozenset in __post_init__ — construction fails fast on invalid values.
+#
+# Step 13 note: RISK_UNKNOWN must be treated conservatively by any future
+# approval/autonomy mode.  It means risk cannot be determined without repository
+# context (preview-only action) or the action string is not recognised.
+# Do NOT equate RISK_UNKNOWN with RISK_LOW.
+# Consumers reading patch_intent_risks from artifact.metadata must validate against
+# RISK_LEVELS before making approval/autonomy decisions.  See docs/architecture.md.
+RISK_LEVELS: frozenset[str] = frozenset({RISK_LOW, RISK_MEDIUM, RISK_HIGH, RISK_UNKNOWN})
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +312,41 @@ _MAX_PROPOSED_LINES = 10
 _MAX_PREVIEW_CHARS = 2000
 
 
+def truncate_preview(text: str) -> str:
+    """Truncate a combined diff-preview string to at most _MAX_PREVIEW_CHARS characters.
+
+    Callers (e.g. the CLI) use this before storing the combined preview in artifact
+    metadata.  Centralising the cap here keeps callers free of the internal constant.
+    """
+    return text[:_MAX_PREVIEW_CHARS]
+
+
+def classify_risk(action: str) -> str:
+    """Classify the risk level of a proposed change based on its action.
+
+    Risk levels:
+      "low"     — new file (create): no existing content is at risk.
+      "medium"  — modify existing file: existing content could change.
+      "high"    — overwrite existing file (reserved; placeholder for a future
+                  action type that would unconditionally replace file content).
+      "unknown" — action is "preview-only" (no repository attached; risk
+                  cannot be determined without knowing whether the file exists)
+                  or the action string is not recognised.
+
+    This function is non-blocking and has no side effects.
+    Callers MUST NOT equate RISK_UNKNOWN with RISK_LOW — see module docstring.
+    """
+    if action == "create":
+        return RISK_LOW
+    if action == "modify":
+        return RISK_MEDIUM
+    if action == "overwrite":  # reserved — not yet produced by any code path
+        return RISK_HIGH
+    # "preview-only" (no repo attached) and any unrecognised action both return
+    # RISK_UNKNOWN.  Risk cannot be determined without repository context.
+    return RISK_UNKNOWN
+
+
 @dataclass
 class PatchDryRunResult:
     """Dry-run preview for a single PatchIntent.
@@ -290,6 +356,7 @@ class PatchDryRunResult:
 
     target_path:  the repo-relative path that would be targeted.
     action:       "create" | "modify" | "preview-only" (no repo attached).
+    risk_level:   "low" | "medium" | "high" | "unknown" — from classify_risk().
     reason:       short human-readable reason (e.g. "task type 'write_readme'").
     summary:      truncated intent text from the PatchIntent.
     diff_preview: human-readable preview block — NOT a real patch; read-only.
@@ -297,9 +364,17 @@ class PatchDryRunResult:
 
     target_path: str
     action: str
+    risk_level: str
     reason: str
     summary: str
     diff_preview: str
+
+    def __post_init__(self) -> None:
+        if self.risk_level not in RISK_LEVELS:
+            raise ValueError(
+                f"PatchDryRunResult.risk_level {self.risk_level!r} is not a valid risk "
+                f"level.  Valid values: {sorted(RISK_LEVELS)}"
+            )
 
 
 def _extract_proposed_lines(artifact_content: str) -> list[str]:
@@ -401,7 +476,17 @@ def generate_dry_run_preview(
             action = "preview-only"
             existing_lines: list[str] | None = None
         else:
-            target_file = repo_root / intent.target_path
+            # Boundary check — defence in depth even though verify_patch_intent_set
+            # already rejects traversal in path components.  Resolving both sides
+            # catches symlink escapes and any edge-case path that slips through.
+            resolved_root = repo_root.resolve()
+            target_file = (repo_root / intent.target_path).resolve()
+            if not target_file.is_relative_to(resolved_root):
+                raise RuntimeError(
+                    f"generate_dry_run_preview: target path {intent.target_path!r} "
+                    f"resolves to {str(target_file)!r} which is outside repo_root "
+                    f"{str(resolved_root)!r}.  Path traversal is not allowed."
+                )
             if target_file.exists():
                 action = "modify"
                 existing_lines = target_file.read_text(
@@ -418,6 +503,7 @@ def generate_dry_run_preview(
             PatchDryRunResult(
                 target_path=intent.target_path,
                 action=action,
+                risk_level=classify_risk(action),
                 reason=reason,
                 summary=summary,
                 diff_preview=diff_preview,
@@ -437,11 +523,15 @@ def format_dry_run_explanations(results: list[PatchDryRunResult]) -> str:
     if not results:
         return ""
 
-    parts: list[str] = []
+    blocks: list[str] = []
     for r in results:
-        parts.append("Planned change:")
-        parts.append(f"  file   : {r.target_path}")
-        parts.append(f"  action : {r.action}")
-        parts.append(f"  reason : {r.reason}")
-        parts.append(f"  summary: {r.summary}")
-    return "\n".join(parts)
+        lines = [
+            "Planned change:",
+            f"  file   : {r.target_path}",
+            f"  action : {r.action}",
+            f"  risk   : {r.risk_level}",
+            f"  reason : {r.reason}",
+            f"  summary: {r.summary}",
+        ]
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)

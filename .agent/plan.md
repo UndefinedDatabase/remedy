@@ -1,24 +1,19 @@
 # Plan
 
 ## Goal
-Step 11: Patch Apply (Dry-Run) + Human-Readable Explanation Layer (v1)
+Step 12.9: Risk Contract Discoverability Polish
 
 ## Status
-COMPLETE — committed, pushing
+COMPLETE — committed dac7f98, pushed, PR #12 updated
 
 ## Steps
-1. [x] Merge PR #10; checkout main; create feature/step11-patch-dry-run
-2. [x] patch_intent.py: PatchDryRunResult, _extract_proposed_lines, _build_preview_block,
-       generate_dry_run_preview, format_dry_run_explanations
-3. [x] main.py: import new functions, generate preview in elif pis.intents block,
-       store patch_intent_explanations + patch_intent_diff_preview, print dry_run_block
-4. [x] tests: TestExtractProposedLines (5), TestGenerateDryRunPreview (9),
-       TestFormatDryRunExplanations (3) — 371 total pass
-5. [x] docs/architecture.md: Step 11 section added
-6. [x] Commit, push, open PR
+1. [x] patch_intent.py: consumer-contract comment above RISK_LEVELS
+2. [x] test_cli_main.py: assert len == 1 (was > 0)
+3. [x] docs/architecture.md: explicit import path in consumer contract paragraph
+4. [x] 396 tests pass; committed; pushed
 
 ## Branch
-feature/step11-patch-dry-run
+feature/step12-risk-classification
 
 ## PR
-Opening after commit
+#12 (open — Steps 12–12.9 complete)

@@ -582,3 +582,82 @@ Corrupted JSON files are skipped without raising. Acceptable for local dev tool;
 
 ## 2026-04-15: Job.user_prompt field added
 CLI requires a prompt field on Job to persist the user's input. Added as str | None = None — pure data, no orchestration logic.
+
+## 2026-04-29: classify_risk is non-blocking and has no side effects
+Risk classification is a one-shot mapping (action → risk level string). It is
+intentionally non-blocking: a future step can use risk_level to prompt for
+user confirmation, but Step 12 only stores and surfaces it. The "overwrite"
+case is reserved and not yet produced by any code path — it is classified now
+so the function is complete and future code paths don't need to change classify_risk.
+
+## 2026-04-29: risk_level stored in both patch_intent_explanations and patch_intent_risks
+patch_intent_explanations is a per-intent dict (file, action, risk, reason, summary);
+patch_intent_risks is a flat list of risk strings, one per intent.
+The flat list makes it easy for operators to scan risk levels without parsing dicts
+(e.g. "are there any high-risk changes?"). Both keys are in artifact.metadata.
+
+## 2026-04-29: "preview-only" and unknown actions map to "unknown" risk
+When no repository is attached, the file may or may not exist — risk cannot be
+determined. Mapping to "unknown" rather than inventing a level (e.g. "low") is
+honest: the caller must attach a repo and re-run to get a meaningful risk signal.
+
+## 2026-04-30: RISK_* constants defined in patch_intent.py (single source of truth)
+Freeform strings scattered across classify_risk, tests, and CLI are error-prone.
+Named constants (RISK_LOW/MEDIUM/HIGH/UNKNOWN) and a frozenset (RISK_LEVELS) give
+one canonical definition. PatchDryRunResult.__post_init__ validates against RISK_LEVELS,
+making invalid risk levels a loud construction-time failure rather than a silent
+propagation. Tests import the constants so they stay in sync automatically.
+
+## 2026-04-30: PatchDryRunResult.__post_init__ raises ValueError (not a Literal type)
+Literal[...] would require changing the field annotation and adding a Pydantic validator
+or a TypeVar constraint — heavier than needed for a dataclass. __post_init__ raises
+ValueError with a clear message. Callers producing PatchDryRunResult (only
+generate_dry_run_preview) already pass a value from classify_risk, which always returns
+a member of RISK_LEVELS. The guard catches bugs in future callers, not the current path.
+
+## 2026-04-30: format_dry_run_explanations uses "\n\n".join(blocks) for multi-result spacing
+Original "\n".join(parts) across all results produced one dense block with no visual
+separation between intents. Building a list of per-result blocks and joining with "\n\n"
+is the minimal correct change: one blank line between blocks, no trailing newline, no
+leading newline. Tested by assert "\n\n" in text in test_multiple_results_all_appear.
+
+## 2026-04-30: RISK_UNKNOWN is conservative by design — documented in code and docs
+Both the module docstring and the classify_risk docstring now explicitly state that
+RISK_UNKNOWN must NOT be equated with RISK_LOW by future approval/autonomy modes.
+This pre-empts a common mistake: treating an absence of evidence (no repo attached)
+as evidence of absence (no risk). The architecture.md section echoes the same note.
+
+## 2026-04-30: generate_dry_run_preview owns its own boundary check (Step 12.6)
+verify_patch_intent_set already rejects ".." components in target_path. The boundary
+check in generate_dry_run_preview (resolve both sides + is_relative_to) is defence in
+depth: it catches symlink escapes and any edge-case path that static split-based checks
+miss. The rule is "check at the use site" — the function that reads from the filesystem
+is responsible for confirming it stays inside its root, regardless of upstream validation.
+
+## 2026-04-30: truncate_preview extracted to patch_intent.py (Step 12.6)
+The inline combined_preview[:2000] in the CLI required the caller to know the internal
+constant _MAX_PREVIEW_CHARS. truncate_preview(text) moves the cap to the module that
+owns the constant. CLI callers import the function, not the constant — implementation
+detail stays local to patch_intent.py. No behaviour change; same 2 000-character cap.
+
+## 2026-04-30: diff_preview omitted from CLI terminal output (documented Step 12.6)
+format_dry_run_explanations renders the concise block (file/action/risk/reason/summary)
+only. The full diff_preview per intent can be several lines; printing it for every intent
+in a multi-intent job would produce cluttered terminal output with low signal-to-noise.
+The full preview is stored in patch_intent_diff_preview metadata for tooling/guarded mode
+to surface intentionally. This is not a bug — it is a deliberate noise-control decision.
+
+## 2026-04-30: patch_intent_risks consumers must validate against RISK_LEVELS (Step 12.8)
+Documented in architecture.md. Rationale: PatchDryRunResult.__post_init__ validates at
+write time, but Step 13+ will read the stored list and act on it. Defensive re-validation
+at the consumption site protects against: (a) metadata written by older code before the
+RISK_LEVELS constant existed, (b) hand-edited or test-fabricated records, (c) new risk
+levels added in future patches before all consumers are updated. Unknown values must fall
+back to RISK_UNKNOWN (conservative), never to RISK_LOW.
+
+## 2026-04-30: Skipped optional triple-run elimination in TestPatchIntentRisksCLI (Step 12.8)
+The three focused tests each call _run_risk_scenario, running the full CLI mock 3×. Making
+them share a single run would require a class-scoped pytest fixture, but class-scoped
+fixtures cannot depend on function-scoped fixtures (tmp_path, monkeypatch, capsys). Adding
+a conftest.py or session fixture would sacrifice clarity. Three fast runs (<0.4s total) are
+preferable. Documented here so the duplication is intentional, not an oversight.
