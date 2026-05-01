@@ -223,10 +223,16 @@ def get_task_type_spec(task_type: str) -> TaskTypeSpec:
 
 
 def is_known_task_type(task_type: str) -> bool:
-    """Return True if task_type matches any known keyword in the registry.
+    """Return True if task_type is known to the registry.
 
-    Equivalent to get_task_type_spec(task_type).capabilities != {"unknown_task_type"},
-    but cheaper when only the boolean is needed.
+    In v1 this is equivalent to get_task_type_spec(task_type).repo_route is not None
+    because every registered task type has a repo_route.  The implementation uses
+    the keyword match directly rather than constructing a full spec.
+
+    Future note: if non-repo known types are added (e.g. code-generation tasks with
+    a verifier profile but no repo_route), the definition will need a stronger
+    registry marker than repo_route presence.  At that point callers that rely on
+    the repo_route equivalence should be audited.
     """
     lower = task_type.lower()
     return any(keyword in lower for keyword, _, _ in _ROUTE_RULES)

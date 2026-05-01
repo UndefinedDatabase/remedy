@@ -119,8 +119,9 @@ _MAX_PATH_COMPONENT_LENGTH = 48
 def _sanitize_path_component(value: str) -> str:
     """Sanitize a string for safe use as a single path component.
 
-    Same logic as task_runner._sanitize_path_component — kept local to avoid
-    importing a private helper across modules.
+    Same logic as task_registry._sanitize_path_component (canonical) — kept
+    local here for workspace filename generation in materialize_patch_intents
+    to avoid importing a private helper across modules.
     """
     sanitized = _SAFE_PATH_RE.sub("_", value)
     sanitized = sanitized[:_MAX_PATH_COMPONENT_LENGTH].strip("_")
@@ -144,9 +145,10 @@ def _derive_target_path(task_type: str) -> str | None:
 def derive_patch_intents(artifact: "Artifact", task_type: str) -> PatchIntentSet:
     """Derive a PatchIntentSet from a builder artifact and its task type.
 
-    Uses the conservative keyword table (_INTENT_RULES) to map task_type to a
-    documentation-like target path.  If the task type does not match any keyword,
-    the returned PatchIntentSet has an empty intents list (which is valid).
+    Target routing is resolved through get_task_type_spec() via
+    _derive_target_path() — the task registry is the single source of truth.
+    If the task type is unknown or has no repo_route, the returned
+    PatchIntentSet has an empty intents list (which is valid).
 
     No raw LLM strings are used to construct target paths.
 
