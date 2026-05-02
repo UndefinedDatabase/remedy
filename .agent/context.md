@@ -12,12 +12,12 @@ Step 14 + 14.1 + 14.2: Artifact Kinds v1 + Polish + Complete Locator Migration.
 - Updated: Artifact model gains kind: ArtifactKind = ArtifactKind.UNKNOWN (backward-compat default)
 - Updated: job_runner.py → sets kind=PLANNING on planning artifact
 - Updated: llm_planner.py → sets kind=PLANNING on planning artifact; annotate_planning_result uses planning_artifact()
-- Updated: task_runner.py → sets kind=BUILDER_PROPOSAL on task artifact; _build_execution_context uses planning_artifact()
+- Updated: task_runner.py → sets kind=BUILDER_PROPOSAL on task artifact; _build_execution_context uses planning_artifact() (public name, no alias)
 - New: packages/orchestration/artifact_index.py (artifacts_by_kind, first_artifact_by_kind, task_artifacts_by_kind, planning_artifact)
 - New: tests/test_artifact_kinds.py (53 tests)
 - New: 2 additional tests in test_task_runner.py for explicit-kind and legacy context lookup
 - Updated: docs/architecture.md (Artifact Kinds v1 section + active vs reserved note)
-510 tests pass.
+509 tests pass.
 
 ## Key decisions
 - kind defaults to UNKNOWN for backward-compat with pre-Step-14 JSON

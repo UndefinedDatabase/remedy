@@ -110,27 +110,6 @@ def test_context_fields_populated_correctly():
     assert ctx.task_description == "Task 0"
 
 
-def test_context_includes_planning_summary():
-    """planning_summary is extracted from the orchestration-owned planning artifact."""
-    received: list[TaskExecutionContext] = []
-
-    def capturing_builder(ctx: TaskExecutionContext) -> BuilderOutput:
-        received.append(ctx)
-        return BuilderOutput(summary="ok", proposed_changes=["x"])
-
-    job = _make_job(1)
-    planning_artifact = Artifact(
-        name="planning_output",
-        content="plan text",
-        task_id=None,
-        metadata={"summary": "Overall plan summary"},
-    )
-    job.artifacts.append(planning_artifact)
-
-    run_next_task(job, capturing_builder)
-    assert received[0].planning_summary == "Overall plan summary"
-
-
 def test_context_includes_prior_task_summaries():
     """prior_task_summaries collected from already-completed tasks in order.
 

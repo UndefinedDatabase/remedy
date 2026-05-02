@@ -54,7 +54,7 @@ from typing import Callable
 from uuid import UUID
 
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-from packages.orchestration.artifact_index import planning_artifact as _planning_artifact
+from packages.orchestration.artifact_index import planning_artifact
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.verifier import VerificationResult
 from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
@@ -94,7 +94,7 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
     task_type = task.inputs.get("task_type", "unknown")
 
     # Find planning summary via the shared planning_artifact() helper.
-    _pa = _planning_artifact(job.artifacts)
+    _pa = planning_artifact(job.artifacts)
     planning_summary: str | None = _pa.metadata.get("summary") if _pa else None
 
     # Collect summaries from already-completed tasks, preserving task order.
