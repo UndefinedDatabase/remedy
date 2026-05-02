@@ -53,6 +53,12 @@ class ArtifactKind(str, Enum):
     plays in the workflow — complementing the free-form name and metadata
     fields.
 
+    v1 active (set at creation sites in job_runner, llm_planner, task_runner):
+      PLANNING, BUILDER_PROPOSAL
+
+    v1 reserved (defined for future steps; not yet emitted as standalone artifacts):
+      WORKSPACE_MATERIALIZATION, VERIFICATION, PATCH_INTENT, REPO_APPLICATION
+
     UNKNOWN:
         Default / not-yet-classified.  Old artifacts loaded from JSON without
         a 'kind' field will deserialize to UNKNOWN (Pydantic default).

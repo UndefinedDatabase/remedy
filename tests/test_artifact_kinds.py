@@ -31,7 +31,7 @@ from packages.orchestration.artifact_index import (
     task_artifacts_by_kind,
 )
 from packages.orchestration.job_runner import plan_job
-from packages.orchestration.llm_planner import plan_job_with_llm
+from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
 
@@ -251,8 +251,7 @@ class TestArtifactsByKind:
         assert artifacts_by_kind([], ArtifactKind.PLANNING) == []
 
     def test_preserves_original_order(self):
-        ids = [uuid4(), uuid4(), uuid4()]
-        arts = [_make_artifact(ArtifactKind.BUILDER_PROPOSAL) for _ in ids]
+        arts = [_make_artifact(ArtifactKind.BUILDER_PROPOSAL) for _ in range(3)]
         result = artifacts_by_kind(arts, ArtifactKind.BUILDER_PROPOSAL)
         assert result == arts
 
@@ -410,3 +409,70 @@ class TestPlanningArtifact:
         found = planning_artifact(result.job.artifacts)
         assert found is not None
         assert found.kind == ArtifactKind.PLANNING
+
+
+# ---------------------------------------------------------------------------
+# annotate_planning_result
+# ---------------------------------------------------------------------------
+
+
+def _fake_planner(prompt: str) -> PlannerOutput:
+    return PlannerOutput(
+        summary="s",
+        proposed_tasks=[ProposedTask(task_type="write_readme", description="d")],
+    )
+
+
+_ANNOTATE_KWARGS = dict(
+    provider="test-provider",
+    role="planner",
+    model="test-model",
+    elapsed_ms=123.4,
+)
+
+
+class TestAnnotatePlanningResult:
+    def test_annotates_explicit_planning_kind(self):
+        """annotate_planning_result enriches the PLANNING artifact via planning_artifact()."""
+        job = Job(name="j", user_prompt="p")
+        result = plan_job_with_llm(job, _fake_planner)
+        annotate_planning_result(result, **_ANNOTATE_KWARGS)
+        artifact = planning_artifact(result.job.artifacts)
+        assert artifact is not None
+        assert artifact.metadata["provider"] == "test-provider"
+        assert artifact.metadata["model"] == "test-model"
+        assert artifact.metadata["role"] == "planner"
+        assert artifact.metadata["task_count"] == 1
+        assert artifact.metadata["elapsed_ms"] == 123
+
+    def test_annotates_legacy_artifact(self):
+        """annotate_planning_result falls back to legacy name+task_id convention."""
+        job = Job(name="j", user_prompt="p")
+        result = plan_job_with_llm(job, _fake_planner)
+        # Downgrade the artifact to simulate a pre-Step-14 (legacy) artifact.
+        result.job.artifacts[0].kind = ArtifactKind.UNKNOWN
+        annotate_planning_result(result, **_ANNOTATE_KWARGS)
+        # The legacy fallback (name="planning_output", task_id=None) must still be found.
+        artifact = planning_artifact(result.job.artifacts)
+        assert artifact is not None
+        assert artifact.metadata["provider"] == "test-provider"
+
+    def test_noop_when_changed_false(self):
+        """No metadata is written when result.changed is False."""
+        job = Job(name="j", user_prompt="p")
+        plan_job_with_llm(job, _fake_planner)
+        # Planning already done; second call returns changed=False.
+        result2 = plan_job_with_llm(job, _fake_planner)
+        assert result2.changed is False
+        annotate_planning_result(result2, **_ANNOTATE_KWARGS)
+        # Artifacts belong to the already-planned job — none should get the annotation.
+        for a in result2.job.artifacts:
+            assert "provider" not in a.metadata
+
+    def test_noop_when_no_planning_artifact(self):
+        """annotate_planning_result is safe when no planning artifact exists."""
+        job = Job(name="j", user_prompt="p")
+        result = plan_job_with_llm(job, _fake_planner)
+        result.job.artifacts.clear()
+        # Must not raise.
+        annotate_planning_result(result, **_ANNOTATE_KWARGS)

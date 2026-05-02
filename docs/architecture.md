@@ -398,6 +398,7 @@ the semantic role of each `Artifact`.
 **`Artifact.kind` field:**
 - Default: `ArtifactKind.UNKNOWN` — backward-compatible; old JSON without `kind` deserializes to `UNKNOWN`.
 - Set explicitly at all creation sites in `job_runner.py`, `llm_planner.py`, and `task_runner.py`.
+- **v1 active:** `PLANNING` and `BUILDER_PROPOSAL` are the only kinds currently emitted; `WORKSPACE_MATERIALIZATION`, `VERIFICATION`, `PATCH_INTENT`, and `REPO_APPLICATION` are reserved for future steps.
 
 **Artifact index helpers** (`packages/orchestration/artifact_index.py`):
 

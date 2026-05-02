@@ -1,20 +1,18 @@
 # Plan
 
 ## Goal
-Step 14: Artifact Kinds v1
+Step 14.1: Artifact Kind Polish
 
 ## Status
-COMPLETE — 503 tests pass
+COMPLETE — 507 tests pass
 
 ## Steps
-1. [x] Add ArtifactKind enum (7 values) to packages/core/models.py
-2. [x] Add kind: ArtifactKind = ArtifactKind.UNKNOWN field to Artifact
-3. [x] Set kind=PLANNING at planning artifact creation sites (job_runner, llm_planner)
-4. [x] Set kind=BUILDER_PROPOSAL at builder artifact creation site (task_runner)
-5. [x] Create packages/orchestration/artifact_index.py (4 helpers)
-6. [x] Add tests/test_artifact_kinds.py (47 tests)
-7. [x] Update docs/architecture.md (ArtifactKind section)
-8. [ ] Update .agent files and commit
+1. [x] Migrate annotate_planning_result to use planning_artifact() (llm_planner.py)
+2. [x] Clarify ArtifactKind docstring with active vs reserved note (models.py)
+3. [x] Remove dead ids variable in test_preserves_original_order
+4. [x] Add 4 annotate_planning_result tests (explicit kind, legacy, no-op, no artifact)
+5. [x] Update docs/architecture.md with active vs reserved note
+6. [x] Update .agent files and commit
 
 ## Branch
 feature/step14-artifact-kinds

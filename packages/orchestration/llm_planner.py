@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Callable
 
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.orchestration.artifact_index import planning_artifact
 from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
@@ -120,8 +121,9 @@ def annotate_planning_result(
 ) -> None:
     """Enrich the planning artifact metadata with provider/role/model/timing info.
 
-    Locates the artifact by name ("planning_output") and task_id (None) rather
-    than blindly using index 0 — safe if artifacts are reordered or accumulated.
+    Locates the planning artifact via planning_artifact() — prefers explicit
+    kind=PLANNING, falls back to legacy name+task_id convention for pre-Step-14
+    artifacts.
 
     No-op if result.changed is False or no planning artifact is found.
 
@@ -129,14 +131,7 @@ def annotate_planning_result(
     """
     if not result.changed:
         return
-    artifact = next(
-        (
-            a
-            for a in result.job.artifacts
-            if a.name == "planning_output" and a.task_id is None
-        ),
-        None,
-    )
+    artifact = planning_artifact(result.job.artifacts)
     if artifact is None:
         return
     artifact.metadata.update(
