@@ -1,18 +1,19 @@
 # Plan
 
 ## Goal
-Step 14.1: Artifact Kind Polish
+Step 14.2: Complete Planning Artifact Locator Migration
 
 ## Status
-COMPLETE — 507 tests pass
+COMPLETE — 510 tests pass
 
 ## Steps
-1. [x] Migrate annotate_planning_result to use planning_artifact() (llm_planner.py)
-2. [x] Clarify ArtifactKind docstring with active vs reserved note (models.py)
-3. [x] Remove dead ids variable in test_preserves_original_order
-4. [x] Add 4 annotate_planning_result tests (explicit kind, legacy, no-op, no artifact)
-5. [x] Update docs/architecture.md with active vs reserved note
-6. [x] Update .agent files and commit
+1. [x] Tighten planning_artifact legacy fallback (require kind==UNKNOWN)
+2. [x] Migrate _build_execution_context to use planning_artifact() (task_runner.py)
+3. [x] Fix test_annotates_legacy_artifact: find artifact by kind not position
+4. [x] Add test_legacy_fallback_rejects_wrong_kind (test_artifact_kinds.py)
+5. [x] Add test_context_planning_summary_from_explicit_kind (test_task_runner.py)
+6. [x] Add test_context_planning_summary_from_legacy_artifact (test_task_runner.py)
+7. [x] Update .agent files and commit
 
 ## Branch
 feature/step14-artifact-kinds

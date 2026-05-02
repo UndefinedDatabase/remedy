@@ -378,6 +378,27 @@ class TestPlanningArtifact:
         ]
         assert planning_artifact(arts) is None
 
+    def test_legacy_fallback_rejects_wrong_kind(self):
+        """Legacy fallback must not match name='planning_output', task_id=None with a
+        non-UNKNOWN, non-PLANNING kind.  Only UNKNOWN triggers the fallback path."""
+        for bad_kind in (
+            ArtifactKind.BUILDER_PROPOSAL,
+            ArtifactKind.VERIFICATION,
+            ArtifactKind.PATCH_INTENT,
+            ArtifactKind.REPO_APPLICATION,
+            ArtifactKind.WORKSPACE_MATERIALIZATION,
+        ):
+            a = Artifact(
+                name="planning_output",
+                content="x",
+                task_id=None,
+                kind=bad_kind,
+            )
+            assert planning_artifact([a]) is None, (
+                f"planning_artifact should return None for kind={bad_kind!r} "
+                "but legacy fallback incorrectly matched it"
+            )
+
     def test_returns_none_for_empty_sequence(self):
         assert planning_artifact([]) is None
 
@@ -449,13 +470,17 @@ class TestAnnotatePlanningResult:
         """annotate_planning_result falls back to legacy name+task_id convention."""
         job = Job(name="j", user_prompt="p")
         result = plan_job_with_llm(job, _fake_planner)
-        # Downgrade the artifact to simulate a pre-Step-14 (legacy) artifact.
-        result.job.artifacts[0].kind = ArtifactKind.UNKNOWN
+        # Locate the planning artifact by kind (not by position) and downgrade it
+        # to simulate a pre-Step-14 (legacy) artifact.
+        pa = first_artifact_by_kind(result.job.artifacts, ArtifactKind.PLANNING)
+        assert pa is not None, "test setup: planner must produce a PLANNING artifact"
+        pa.kind = ArtifactKind.UNKNOWN
         annotate_planning_result(result, **_ANNOTATE_KWARGS)
-        # The legacy fallback (name="planning_output", task_id=None) must still be found.
-        artifact = planning_artifact(result.job.artifacts)
-        assert artifact is not None
-        assert artifact.metadata["provider"] == "test-provider"
+        # The legacy fallback (name="planning_output", task_id=None, kind=UNKNOWN)
+        # must still be found by planning_artifact().
+        found = planning_artifact(result.job.artifacts)
+        assert found is not None
+        assert found.metadata["provider"] == "test-provider"
 
     def test_noop_when_changed_false(self):
         """No metadata is written when result.changed is False."""

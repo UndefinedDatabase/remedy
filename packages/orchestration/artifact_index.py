@@ -55,8 +55,12 @@ def planning_artifact(artifacts: Sequence[Artifact]) -> Artifact | None:
     """Return the planning artifact, or None if not found.
 
     Prefers explicit kind=PLANNING.  Falls back to the legacy convention
-    (name="planning_output" and task_id=None) for artifacts produced before
-    Step 14 that carry kind=UNKNOWN.
+    (name="planning_output", task_id=None, kind=UNKNOWN) for artifacts
+    produced before Step 14.
+
+    The legacy fallback requires kind=UNKNOWN so that a future artifact
+    named "planning_output" with an explicit non-PLANNING kind is not
+    accidentally treated as the planning artifact.
 
     The explicit-kind path is preferred so that if a future step introduces
     a new planning artifact with a different name, it will still be found
@@ -66,8 +70,12 @@ def planning_artifact(artifacts: Sequence[Artifact]) -> Artifact | None:
     for a in artifacts:
         if a.kind == ArtifactKind.PLANNING:
             return a
-    # Legacy fallback for pre-Step-14 artifacts (kind=UNKNOWN).
+    # Legacy fallback for pre-Step-14 artifacts (kind=UNKNOWN only).
     for a in artifacts:
-        if a.name == "planning_output" and a.task_id is None:
+        if (
+            a.name == "planning_output"
+            and a.task_id is None
+            and a.kind == ArtifactKind.UNKNOWN
+        ):
             return a
     return None

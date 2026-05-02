@@ -54,6 +54,7 @@ from typing import Callable
 from uuid import UUID
 
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.orchestration.artifact_index import planning_artifact as _planning_artifact
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.verifier import VerificationResult
 from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
@@ -84,18 +85,17 @@ def _find_next_pending(job: Job) -> Task | None:
 def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
     """Build a TaskExecutionContext from the current job and task state.
 
-    Extracts planning_summary from the orchestration-owned planning artifact
-    (task_id=None, name="planning_output") and collects summaries from all
-    previously completed task artifacts, in task order.
+    Extracts planning_summary from the planning artifact located via
+    planning_artifact() — prefers explicit kind=PLANNING, falls back to the
+    legacy convention (name="planning_output", task_id=None, kind=UNKNOWN)
+    for pre-Step-14 jobs. Collects summaries from all previously completed
+    task artifacts, in task order.
     """
     task_type = task.inputs.get("task_type", "unknown")
 
-    # Find planning summary from the orchestration-owned planning artifact.
-    planning_summary: str | None = None
-    for artifact in job.artifacts:
-        if artifact.task_id is None and artifact.name == "planning_output":
-            planning_summary = artifact.metadata.get("summary")
-            break
+    # Find planning summary via the shared planning_artifact() helper.
+    _pa = _planning_artifact(job.artifacts)
+    planning_summary: str | None = _pa.metadata.get("summary") if _pa else None
 
     # Collect summaries from already-completed tasks, preserving task order.
     prior_summaries: list[str] = []
