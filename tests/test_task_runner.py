@@ -148,7 +148,7 @@ def test_context_includes_prior_task_summaries():
 
 
 def test_context_no_planning_summary_when_absent():
-    """planning_summary is None when no planning_output artifact exists."""
+    """planning_summary is None when no PLANNING-kind or legacy-convention artifact exists."""
     received: list[TaskExecutionContext] = []
 
     def capturing_builder(ctx: TaskExecutionContext) -> BuilderOutput:

@@ -7,7 +7,7 @@
 (none yet)
 
 ## Scope
-Step 14 + 14.1 + 14.2: Artifact Kinds v1 + Polish + Complete Locator Migration.
+Step 14 + 14.1–14.3 + Step 15: Artifact Kinds v1 + Polish + Verifier Profiles v1.
 - New: ArtifactKind str Enum in packages/core/models.py (7 values: UNKNOWN, PLANNING, BUILDER_PROPOSAL, WORKSPACE_MATERIALIZATION, VERIFICATION, PATCH_INTENT, REPO_APPLICATION)
 - Updated: Artifact model gains kind: ArtifactKind = ArtifactKind.UNKNOWN (backward-compat default)
 - Updated: job_runner.py → sets kind=PLANNING on planning artifact
@@ -17,7 +17,16 @@ Step 14 + 14.1 + 14.2: Artifact Kinds v1 + Polish + Complete Locator Migration.
 - New: tests/test_artifact_kinds.py (53 tests)
 - New: 2 additional tests in test_task_runner.py for explicit-kind and legacy context lookup
 - Updated: docs/architecture.md (Artifact Kinds v1 section + active vs reserved note)
-509 tests pass.
+568 tests pass.
+
+## Step 15 additions
+- New: packages/orchestration/verifier_profiles.py (VerifierProfile dataclass, 4 profiles: generic/repo_doc/analysis_doc/implementation_plan)
+- Updated: task_registry.py → _ROUTE_RULES is now a 4-tuple (keyword, description, route, profile)
+- Updated: verifier.py → profile-driven checks after workspace checks: required_section, min_proposed_changes, forbidden_phrase
+- New: tests/test_verifier_profiles.py (unit tests)
+- Updated: test_task_registry.py (profile mapping tests)
+- Updated: test_verifier.py (profile integration tests)
+- Updated: docs/architecture.md (Verifier Profiles v1 section)
 
 ## Key decisions
 - kind defaults to UNKNOWN for backward-compat with pre-Step-14 JSON
@@ -26,3 +35,4 @@ Step 14 + 14.1 + 14.2: Artifact Kinds v1 + Polish + Complete Locator Migration.
 - All three planning artifact lookup sites use planning_artifact(): annotate_planning_result, _build_execution_context
 - v1 active kinds: PLANNING, BUILDER_PROPOSAL; reserved for future: WORKSPACE_MATERIALIZATION, VERIFICATION, PATCH_INTENT, REPO_APPLICATION
 - is_known_task_type v1 invariant: is_known_task_type ≡ repo_route is not None (still holds)
+- Verifier profile fallback: unknown name or None → generic (permissive, no forbidden phrases, min 1 change)

@@ -378,6 +378,42 @@ not yet enforced). The symmetric labeling makes capability status unambiguous at
   no-ops without user-visible notice.
 - Task completion is always determined by the verifier — never by repo application.
 
+### Verifier Profiles v1 (Step 15)
+
+`packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.
+
+**Routing chain:**
+```
+task.inputs["task_type"]
+  → get_task_type_spec(task_type)  [task_registry.py]
+  → TaskTypeSpec.verifier_profile  (e.g. "repo_doc")
+  → get_verifier_profile(name)     [verifier_profiles.py]
+  → VerifierProfile                (checks applied to artifact.content)
+```
+
+**v1 profiles:**
+
+| Profile | min_changes | forbidden_phrases | required_sections |
+|---------|-------------|-------------------|-------------------|
+| `generic` | 1 | _(none)_ | Summary:, Proposed Changes: |
+| `repo_doc` | 1 | TODO, TBD | Summary:, Proposed Changes: |
+| `analysis_doc` | 2 | maybe, probably, some files, TODO | Summary:, Proposed Changes: |
+| `implementation_plan` | 2 | some files, maybe, probably | Summary:, Proposed Changes:, Risks: |
+
+**Task type → profile mapping (Step 15):**
+- `readme` → `repo_doc`
+- `plan` → `implementation_plan`
+- `spec`, `requirement`, `acceptance`, `analysis` → `analysis_doc`
+- `changelog`, `architecture`, `design`, `guide`, `documentation`, `doc` → `repo_doc`
+- Unknown task types → `generic` (conservative fallback)
+
+**Profile-driven checks** (run in `verify_task_output` after workspace checks pass):
+- `required_section:<section>` — section header must appear in `artifact.content`
+- `min_proposed_changes` — count of `  - ` lines in Proposed Changes section must meet threshold
+- `forbidden_phrase:<phrase>` — phrase must be absent from `artifact.content` (case-insensitive)
+
+These checks are the **first real Task Contract layer**: they enforce output quality at the content level, not just at the file-existence level. This is the foundation for better autonomy modes, run-log quality gates, and future per-task SLAs.
+
 ### Artifact Kinds v1 (Step 14)
 
 `packages/core/models.py` exposes `ArtifactKind`, a `str` enum that annotates

@@ -158,9 +158,26 @@ class TestGetTaskTypeSpecKnown:
         spec = get_task_type_spec("write_readme")
         assert "unknown_task_type" not in spec.capabilities
 
-    def test_verifier_profile_is_generic_in_v1(self):
+    def test_verifier_profile_for_readme_is_repo_doc(self):
+        """Step 15: readme maps to repo_doc profile."""
         spec = get_task_type_spec("write_readme")
-        assert spec.verifier_profile == "generic"
+        assert spec.verifier_profile == "repo_doc"
+
+    def test_verifier_profile_for_plan_is_implementation_plan(self):
+        spec = get_task_type_spec("create_plan")
+        assert spec.verifier_profile == "implementation_plan"
+
+    def test_verifier_profile_for_spec_is_analysis_doc(self):
+        spec = get_task_type_spec("write_spec")
+        assert spec.verifier_profile == "analysis_doc"
+
+    def test_verifier_profile_for_analysis_is_analysis_doc(self):
+        spec = get_task_type_spec("write_analysis")
+        assert spec.verifier_profile == "analysis_doc"
+
+    def test_verifier_profile_for_architecture_is_repo_doc(self):
+        spec = get_task_type_spec("write_architecture")
+        assert spec.verifier_profile == "repo_doc"
 
     def test_suggested_agent_role_is_generic_builder_in_v1(self):
         spec = get_task_type_spec("write_readme")
@@ -312,7 +329,7 @@ class TestIterTaskTypeSpecs:
             assert isinstance(spec, TaskTypeSpec)
 
     def test_names_match_route_rule_keywords(self):
-        keywords = [kw for kw, _, _ in _ROUTE_RULES]
+        keywords = [kw for kw, _, _, _ in _ROUTE_RULES]
         spec_names = [spec.name for spec in iter_task_type_specs()]
         assert spec_names == keywords
 

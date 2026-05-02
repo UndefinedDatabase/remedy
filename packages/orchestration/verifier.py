@@ -1,10 +1,10 @@
 """
-Task Contract v1 and deterministic workspace verifier.
+Task Contract v1 + Verifier Profiles v1 — deterministic workspace verifier.
 
 A task execution is considered complete only after the verifier passes.
-The verifier runs deterministic, local-only checks — no LLM calls, no shell execution.
+All checks are deterministic and local-only — no LLM calls, no shell execution.
 
-Task Contract v1 checks (all required by default):
+Task Contract v1 checks (structural, always run when enabled):
   1. task has at least one output_artifact_id
   2. referenced artifact exists in job.artifacts
   3. artifact.task_id matches task.id
@@ -12,6 +12,13 @@ Task Contract v1 checks (all required by default):
   5. workspace file exists on disk
   6. workspace file is not empty
   7. workspace file contains at least one proposed change line (starts with "  - ")
+
+Verifier Profile checks (semantic, run after workspace checks pass):
+  Resolved via task_type → TaskTypeSpec.verifier_profile → VerifierProfile.
+  Check names:
+    required_section:<section>  — section header present in artifact.content
+    min_proposed_changes        — proposed change count >= profile threshold
+    forbidden_phrase:<phrase>   — phrase absent from artifact.content (case-insensitive)
 
 The verifier is pure — it does not mutate job state.
 Callers must call finalize_task() in task_runner to apply the result.
@@ -26,6 +33,33 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from packages.core.models import Job
+from packages.orchestration.task_registry import get_task_type_spec
+from packages.orchestration.verifier_profiles import get_verifier_profile
+
+
+# ---------------------------------------------------------------------------
+# Internal helper: count proposed-change lines in artifact content
+# ---------------------------------------------------------------------------
+
+_BUILDER_SECTION_ENDINGS = frozenset({"Notes:", "Risks:"})
+
+
+def _count_proposed_changes_in_content(content: str) -> int:
+    """Count '  - ' lines in the Proposed Changes section of artifact.content.
+
+    Uses the same section-boundary logic as task_runner._extract_proposed_changes.
+    Notes and Risks lines are excluded even though they share the same prefix.
+    """
+    count = 0
+    in_changes = False
+    for line in content.splitlines():
+        if line == "Proposed Changes:":
+            in_changes = True
+        elif in_changes and line in _BUILDER_SECTION_ENDINGS:
+            in_changes = False
+        elif in_changes and line.startswith("  - "):
+            count += 1
+    return count
 
 
 class TaskContract(BaseModel):
@@ -225,6 +259,65 @@ def verify_task_output(
                             "OK"
                             if has_change
                             else "workspace file contains no proposed change lines"
+                        ),
+                    )
+                )
+
+            # Profile-driven checks — run after workspace file is confirmed present
+            # and non-empty; use artifact.content (not the workspace file).
+            task_type = task.inputs.get("task_type", "unknown")
+            spec = get_task_type_spec(task_type)
+            profile = get_verifier_profile(spec.verifier_profile)
+
+            # Check: required sections present in artifact content
+            for section in profile.required_sections:
+                has_section = section in artifact.content
+                checks.append(
+                    VerificationCheckResult(
+                        check=f"required_section:{section}",
+                        passed=has_section,
+                        message=(
+                            "OK"
+                            if has_section
+                            else (
+                                f"artifact content missing required section '{section}'"
+                            )
+                        ),
+                    )
+                )
+
+            # Check: minimum proposed changes in artifact content
+            proposed_count = _count_proposed_changes_in_content(artifact.content)
+            has_min = proposed_count >= profile.min_proposed_changes
+            checks.append(
+                VerificationCheckResult(
+                    check="min_proposed_changes",
+                    passed=has_min,
+                    message=(
+                        "OK"
+                        if has_min
+                        else (
+                            f"expected >= {profile.min_proposed_changes} proposed "
+                            f"changes in artifact content, got {proposed_count}"
+                        )
+                    ),
+                )
+            )
+
+            # Check: forbidden phrases absent from artifact content (case-insensitive)
+            content_lower = artifact.content.lower()
+            for phrase in profile.forbidden_phrases:
+                absent = phrase.lower() not in content_lower
+                checks.append(
+                    VerificationCheckResult(
+                        check=f"forbidden_phrase:{phrase}",
+                        passed=absent,
+                        message=(
+                            "OK"
+                            if absent
+                            else (
+                                f"artifact content contains forbidden phrase '{phrase}'"
+                            )
                         ),
                     )
                 )

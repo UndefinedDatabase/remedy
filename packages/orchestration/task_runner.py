@@ -94,8 +94,8 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
     task_type = task.inputs.get("task_type", "unknown")
 
     # Find planning summary via the shared planning_artifact() helper.
-    _pa = planning_artifact(job.artifacts)
-    planning_summary: str | None = _pa.metadata.get("summary") if _pa else None
+    pa = planning_artifact(job.artifacts)
+    planning_summary: str | None = pa.metadata.get("summary") if pa else None
 
     # Collect summaries from already-completed tasks, preserving task order.
     prior_summaries: list[str] = []
