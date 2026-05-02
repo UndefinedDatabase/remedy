@@ -30,6 +30,15 @@ class VerifierProfile:
 
     All checks are deterministic and local-only — no shell commands, no LLM calls.
 
+    VerifierProfile owns content-level semantic checks only:
+      - required_sections: structure of artifact.content
+      - min_proposed_changes: output quantity threshold
+      - forbidden_phrases: vagueness / incompleteness signals
+
+    Workspace-file requirements (file exists, non-empty, etc.) are owned by
+    TaskContract in verifier.py — they are structural/materialization concerns,
+    not content-quality concerns.
+
     name:
         Stable identifier used by TaskTypeSpec.verifier_profile.
     required_sections:
@@ -42,20 +51,12 @@ class VerifierProfile:
     forbidden_phrases:
         Phrases that must NOT appear in artifact.content (case-insensitive).
         Intended to catch vague or incomplete builder output.
-    require_workspace_file:
-        Whether a workspace file must be present in artifact metadata.
-        True for all v1 profiles; reserved for future non-materializing tasks.
-    require_nonempty_workspace_file:
-        Whether the workspace file must be non-empty.
-        True for all v1 profiles.
     """
 
     name: str
     required_sections: tuple[str, ...]
     min_proposed_changes: int = 1
     forbidden_phrases: tuple[str, ...] = ()
-    require_workspace_file: bool = True
-    require_nonempty_workspace_file: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +86,9 @@ _PROFILES: dict[str, VerifierProfile] = {
         name="implementation_plan",
         required_sections=("Summary:", "Proposed Changes:", "Risks:"),
         min_proposed_changes=2,
+        # TODO is intentionally NOT forbidden for implementation plans.
+        # Plans may legitimately reference follow-up TODO items or open questions.
+        # Vagueness is guarded by "some files", "maybe", and "probably" instead.
         forbidden_phrases=("some files", "maybe", "probably"),
     ),
 }

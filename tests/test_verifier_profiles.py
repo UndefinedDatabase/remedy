@@ -39,8 +39,12 @@ class TestVerifierProfileStruct:
         assert hasattr(profile, "required_sections")
         assert hasattr(profile, "min_proposed_changes")
         assert hasattr(profile, "forbidden_phrases")
-        assert hasattr(profile, "require_workspace_file")
-        assert hasattr(profile, "require_nonempty_workspace_file")
+
+    def test_does_not_have_workspace_fields(self):
+        """Workspace requirements belong to TaskContract, not VerifierProfile."""
+        profile = get_verifier_profile("generic")
+        assert not hasattr(profile, "require_workspace_file")
+        assert not hasattr(profile, "require_nonempty_workspace_file")
 
     def test_required_sections_is_tuple(self):
         for profile in iter_verifier_profiles():
@@ -55,13 +59,11 @@ class TestVerifierProfileStruct:
             assert isinstance(profile.min_proposed_changes, int)
             assert profile.min_proposed_changes >= 1
 
-    def test_all_v1_profiles_require_workspace_file(self):
+    def test_no_profile_has_workspace_fields(self):
+        """Workspace requirements are owned by TaskContract, not any profile."""
         for profile in iter_verifier_profiles():
-            assert profile.require_workspace_file is True
-
-    def test_all_v1_profiles_require_nonempty_workspace_file(self):
-        for profile in iter_verifier_profiles():
-            assert profile.require_nonempty_workspace_file is True
+            assert not hasattr(profile, "require_workspace_file")
+            assert not hasattr(profile, "require_nonempty_workspace_file")
 
 
 # ---------------------------------------------------------------------------
@@ -237,3 +239,12 @@ class TestImplementationPlanProfile:
 
     def test_forbids_probably(self):
         assert "probably" in self.profile.forbidden_phrases
+
+    def test_does_not_forbid_TODO(self):
+        """implementation_plan intentionally does not forbid TODO.
+
+        Plans may legitimately reference follow-up TODO items or open questions.
+        Vagueness is guarded by 'some files', 'maybe', and 'probably' instead.
+        """
+        assert "TODO" not in self.profile.forbidden_phrases
+        assert "todo" not in [p.lower() for p in self.profile.forbidden_phrases]

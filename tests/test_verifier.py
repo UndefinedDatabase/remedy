@@ -488,6 +488,42 @@ class TestGenericProfileVerification:
         assert "required_section:Proposed Changes:" in check_names
         assert "min_proposed_changes" in check_names
 
+    def test_profile_checks_run_without_workspace_file(self):
+        """Profile checks are independent of TaskContract.require_workspace_file.
+
+        Passing TaskContract(require_workspace_file=False) skips workspace checks
+        but must NOT skip profile content checks.
+        """
+        from packages.orchestration.verifier import TaskContract
+
+        job = _make_planned_job("write_readme")  # repo_doc profile → forbids TODO/TBD
+        task = job.tasks[0]
+        # Artifact content with a TODO — should fail repo_doc forbidden_phrase:TODO
+        content = _make_artifact_content(
+            task.id, "write_readme", summary="TODO: fill in later"
+        )
+        # No workspace_file in metadata; contract skips workspace checks entirely.
+        artifact = Artifact(
+            name="task_output_write_readme",
+            content=content,
+            mime_type="text/plain",
+            task_id=task.id,
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            metadata={"task_type": "write_readme", "summary": "done"},
+        )
+        job.artifacts.append(artifact)
+        task.output_artifact_ids.append(artifact.id)
+
+        vr = verify_task_output(
+            job, task.id, contract=TaskContract(require_workspace_file=False)
+        )
+        # Profile check should still fire and fail on TODO
+        check_names = [c.check for c in vr.checks]
+        assert "forbidden_phrase:TODO" in check_names
+        assert any(c.check == "forbidden_phrase:TODO" and not c.passed for c in vr.checks)
+        # No workspace checks present (they were skipped by contract)
+        assert "workspace_file_in_metadata" not in check_names
+
 
 # ---------------------------------------------------------------------------
 # repo_doc profile — forbidden phrases (TODO, TBD)
@@ -651,3 +687,24 @@ class TestImplementationPlanProfileVerification:
         vr = verify_task_output(job, task.id)
         check_names = [c.check for c in vr.checks]
         assert "required_section:Risks:" in check_names
+
+    def test_implementation_plan_does_not_forbid_TODO(self, tmp_path):
+        """implementation_plan allows TODO — plans may reference follow-up work."""
+        job = _make_planned_job("create_plan")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "create_plan",
+            summary="TODO: decide on API surface",
+            changes=["Step A", "Step B"],
+            risks=["API may break consumers"],
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "create_plan", ws)
+        vr = verify_task_output(job, task.id)
+        # No forbidden_phrase:TODO check should appear (or if it does, it must pass)
+        todo_checks = [c for c in vr.checks if c.check == "forbidden_phrase:TODO"]
+        assert all(c.passed for c in todo_checks), (
+            "implementation_plan should not forbid TODO but check failed"
+        )
+        # Verify TODO did not cause overall failure
+        assert vr.passed is True

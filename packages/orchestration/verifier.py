@@ -13,12 +13,20 @@ Task Contract v1 checks (structural, always run when enabled):
   6. workspace file is not empty
   7. workspace file contains at least one proposed change line (starts with "  - ")
 
-Verifier Profile checks (semantic, run after workspace checks pass):
+Verifier Profile checks (semantic, run after artifact is confirmed valid):
   Resolved via task_type → TaskTypeSpec.verifier_profile → VerifierProfile.
+  Run independent of TaskContract workspace-file requirements — they read
+  artifact.content, not the workspace file.
   Check names:
     required_section:<section>  — section header present in artifact.content
     min_proposed_changes        — proposed change count >= profile threshold
     forbidden_phrase:<phrase>   — phrase absent from artifact.content (case-insensitive)
+
+Responsibility split:
+  TaskContract  — structural/materialization requirements: artifact present,
+                  workspace file exists and non-empty, proposed change lines
+  VerifierProfile — content-quality requirements: section structure, output
+                    quantity, vagueness/incompleteness signals
 
 The verifier is pure — it does not mutate job state.
 Callers must call finalize_task() in task_runner to apply the result.
@@ -194,6 +202,63 @@ def verify_task_output(
         if not task_id_matches:
             return VerificationResult(task_id=task_id, passed=False, checks=checks)
 
+        # Profile-driven checks — run as soon as the artifact is confirmed valid.
+        # These read artifact.content and are independent of workspace-file
+        # requirements.  They run regardless of TaskContract.require_workspace_file
+        # so that content quality is always enforced when a task produces output.
+        task_type = task.inputs.get("task_type", "unknown")
+        spec = get_task_type_spec(task_type)
+        profile = get_verifier_profile(spec.verifier_profile)
+
+        # Check: required sections present in artifact content
+        for section in profile.required_sections:
+            has_section = section in artifact.content
+            checks.append(
+                VerificationCheckResult(
+                    check=f"required_section:{section}",
+                    passed=has_section,
+                    message=(
+                        "OK"
+                        if has_section
+                        else f"artifact content missing required section '{section}'"
+                    ),
+                )
+            )
+
+        # Check: minimum proposed changes in artifact content
+        proposed_count = _count_proposed_changes_in_content(artifact.content)
+        has_min = proposed_count >= profile.min_proposed_changes
+        checks.append(
+            VerificationCheckResult(
+                check="min_proposed_changes",
+                passed=has_min,
+                message=(
+                    "OK"
+                    if has_min
+                    else (
+                        f"expected >= {profile.min_proposed_changes} proposed "
+                        f"changes in artifact content, got {proposed_count}"
+                    )
+                ),
+            )
+        )
+
+        # Check: forbidden phrases absent from artifact content (case-insensitive)
+        content_lower = artifact.content.lower()
+        for phrase in profile.forbidden_phrases:
+            absent = phrase.lower() not in content_lower
+            checks.append(
+                VerificationCheckResult(
+                    check=f"forbidden_phrase:{phrase}",
+                    passed=absent,
+                    message=(
+                        "OK"
+                        if absent
+                        else f"artifact content contains forbidden phrase '{phrase}'"
+                    ),
+                )
+            )
+
         if contract.require_workspace_file:
             # Check 4: workspace_file key present in metadata
             has_ws_key = "workspace_file" in artifact.metadata
@@ -259,65 +324,6 @@ def verify_task_output(
                             "OK"
                             if has_change
                             else "workspace file contains no proposed change lines"
-                        ),
-                    )
-                )
-
-            # Profile-driven checks — run after workspace file is confirmed present
-            # and non-empty; use artifact.content (not the workspace file).
-            task_type = task.inputs.get("task_type", "unknown")
-            spec = get_task_type_spec(task_type)
-            profile = get_verifier_profile(spec.verifier_profile)
-
-            # Check: required sections present in artifact content
-            for section in profile.required_sections:
-                has_section = section in artifact.content
-                checks.append(
-                    VerificationCheckResult(
-                        check=f"required_section:{section}",
-                        passed=has_section,
-                        message=(
-                            "OK"
-                            if has_section
-                            else (
-                                f"artifact content missing required section '{section}'"
-                            )
-                        ),
-                    )
-                )
-
-            # Check: minimum proposed changes in artifact content
-            proposed_count = _count_proposed_changes_in_content(artifact.content)
-            has_min = proposed_count >= profile.min_proposed_changes
-            checks.append(
-                VerificationCheckResult(
-                    check="min_proposed_changes",
-                    passed=has_min,
-                    message=(
-                        "OK"
-                        if has_min
-                        else (
-                            f"expected >= {profile.min_proposed_changes} proposed "
-                            f"changes in artifact content, got {proposed_count}"
-                        )
-                    ),
-                )
-            )
-
-            # Check: forbidden phrases absent from artifact content (case-insensitive)
-            content_lower = artifact.content.lower()
-            for phrase in profile.forbidden_phrases:
-                absent = phrase.lower() not in content_lower
-                checks.append(
-                    VerificationCheckResult(
-                        check=f"forbidden_phrase:{phrase}",
-                        passed=absent,
-                        message=(
-                            "OK"
-                            if absent
-                            else (
-                                f"artifact content contains forbidden phrase '{phrase}'"
-                            )
                         ),
                     )
                 )
