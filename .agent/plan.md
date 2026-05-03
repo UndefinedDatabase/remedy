@@ -1,19 +1,19 @@
 # Plan
 
 ## Goal
-Step 15.1: Verifier Profile Contract Cleanup
+Step 15.2: Verifier Documentation Accuracy Cleanup
 
 ## Status
 COMPLETE — 571 tests pass
 
 ## Steps
-1. [x] Remove dead workspace fields from VerifierProfile (require_workspace_file, require_nonempty_workspace_file)
-2. [x] Move profile checks before require_workspace_file guard in verifier.py
-3. [x] Add comment to implementation_plan profile: TODO intentionally not forbidden
-4. [x] Update test_verifier_profiles.py: remove dead-field tests, add workspace-field tests, add TODO test
-5. [x] Add test_profile_checks_run_without_workspace_file to test_verifier.py
-6. [x] Add test_implementation_plan_does_not_forbid_TODO to test_verifier.py
-7. [x] Update docs/architecture.md and .agent files, commit + push + PR
+1. [x] docs/architecture.md: fix stale "after workspace checks pass" sentence
+2. [x] docs/architecture.md: split verify_task_output check table into artifact/profile/workspace groups
+3. [x] docs/architecture.md: add responsibility split block (TaskContract vs VerifierProfile)
+4. [x] verifier.py module docstring: restructure numbered list to reflect actual flow
+5. [x] verifier.py module docstring: document require_artifact=False skips profile checks
+6. [x] verifier.py verify_task_output docstring: add require_artifact=False note
+7. [x] Update .agent files and commit
 
 ## Branch
 feature/step14-artifact-kinds

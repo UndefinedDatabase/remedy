@@ -4,29 +4,37 @@ Task Contract v1 + Verifier Profiles v1 — deterministic workspace verifier.
 A task execution is considered complete only after the verifier passes.
 All checks are deterministic and local-only — no LLM calls, no shell execution.
 
-Task Contract v1 checks (structural, always run when enabled):
-  1. task has at least one output_artifact_id
-  2. referenced artifact exists in job.artifacts
-  3. artifact.task_id matches task.id
-  4. artifact metadata contains 'workspace_file' key
-  5. workspace file exists on disk
-  6. workspace file is not empty
-  7. workspace file contains at least one proposed change line (starts with "  - ")
+Execution flow:
 
-Verifier Profile checks (semantic, run after artifact is confirmed valid):
-  Resolved via task_type → TaskTypeSpec.verifier_profile → VerifierProfile.
-  Run independent of TaskContract workspace-file requirements — they read
-  artifact.content, not the workspace file.
-  Check names:
-    required_section:<section>  — section header present in artifact.content
-    min_proposed_changes        — proposed change count >= profile threshold
-    forbidden_phrase:<phrase>   — phrase absent from artifact.content (case-insensitive)
+  1. Resolve task by task_id in job.tasks.
+
+  When TaskContract.require_artifact is True (default):
+
+  2. Confirm artifact present: task has at least one output_artifact_id,
+     referenced artifact exists in job.artifacts.
+  3. Confirm provenance: artifact.task_id matches task.id.
+
+  Once the artifact is confirmed valid, run profile checks
+  (TaskContract.require_artifact must be True; skipped if require_artifact=False
+  because profile checks operate on artifact.content):
+
+  4. required_section:<section>  — section header present in artifact.content
+  5. min_proposed_changes        — count of proposed-change lines meets threshold
+  6. forbidden_phrase:<phrase>   — phrase absent from artifact.content (case-insensitive)
+
+  When TaskContract.require_workspace_file is True (default):
+
+  7. workspace_file_in_metadata  — artifact metadata contains 'workspace_file' key
+  8. workspace_file_exists       — the recorded path exists on disk
+  9. workspace_file_not_empty    — file size > 0 bytes
+  10. has_proposed_change        — file contains at least one "  - " line
 
 Responsibility split:
-  TaskContract  — structural/materialization requirements: artifact present,
-                  workspace file exists and non-empty, proposed change lines
+  TaskContract   — structural/materialization requirements: artifact present,
+                   workspace file exists and non-empty, proposed change lines.
   VerifierProfile — content-quality requirements: section structure, output
-                    quantity, vagueness/incompleteness signals
+                    quantity, vagueness/incompleteness signals. Resolved via:
+                    task_type → TaskTypeSpec.verifier_profile → VerifierProfile.
 
 The verifier is pure — it does not mutate job state.
 Callers must call finalize_task() in task_runner to apply the result.
@@ -126,8 +134,8 @@ def verify_task_output(
     """Run Task Contract v1 checks against the output of an executed task.
 
     Checks are deterministic and local-only: no LLM calls, no shell execution.
-    The 'contract' parameter reserves space for future customization; Step 7
-    always runs all checks (all require_* flags default to True).
+    The 'contract' parameter controls which check groups are active (all
+    require_* flags default to True).
 
     Does not mutate job state. Caller must call finalize_task() in task_runner
     to apply the verification result to task and job state.
@@ -135,6 +143,11 @@ def verify_task_output(
     Returns a VerificationResult describing which checks passed or failed.
     Early return after any check that would cause a subsequent check to error
     (e.g. if artifact is None, workspace file checks are skipped).
+
+    Note: profile checks (required sections, min proposed changes, forbidden
+    phrases) are gated on TaskContract.require_artifact. If require_artifact is
+    False, no artifact is resolved and profile checks are skipped because they
+    operate on artifact.content.
     """
     if contract is None:
         contract = TaskContract()
