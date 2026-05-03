@@ -1,0 +1,358 @@
+"""
+Timeline v1 — human-readable cockpit layer over run-log events.
+
+Public API::
+
+    load_run_events(data_dir, job_id)  → list[dict]
+    summarize_timeline(job, events)    → str
+
+Read-only: never mutates job state or run logs.
+No external dependencies — plain text output only.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+from uuid import UUID
+
+from packages.core.models import Job, RunState
+
+# ---------------------------------------------------------------------------
+# Symbols
+# ---------------------------------------------------------------------------
+
+_OK = "✓"
+_FAIL = "✕"
+_WARN = "!"
+_INFO = "○"
+_NEXT = "→"
+_LINE = "─"
+
+
+# ---------------------------------------------------------------------------
+# Load
+# ---------------------------------------------------------------------------
+
+
+def load_run_events(data_dir: Path, job_id: UUID | str) -> list[dict[str, Any]]:
+    """Load all run log events for a job, sorted by timestamp.
+
+    Reads every ``*.jsonl`` file under ``<data_dir>/runs/<job_id>/``.
+    Returns ``[]`` if the directory does not exist.
+    Skips empty lines and silently ignores malformed JSON lines.
+    """
+    runs_dir = data_dir / "runs" / str(job_id)
+    if not runs_dir.exists():
+        return []
+    events: list[dict[str, Any]] = []
+    for jsonl_file in sorted(runs_dir.glob("*.jsonl")):
+        for raw in jsonl_file.read_text(encoding="utf-8").splitlines():
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                events.append(json.loads(raw))
+            except json.JSONDecodeError:
+                pass
+    events.sort(key=lambda e: e.get("timestamp", ""))
+    return events
+
+
+# ---------------------------------------------------------------------------
+# Summarise
+# ---------------------------------------------------------------------------
+
+
+def summarize_timeline(job: Job, events: list[dict[str, Any]]) -> str:
+    """Return a human-readable multiline string summarising the job timeline."""
+    parts: list[str] = []
+
+    # ── Header ──────────────────────────────────────────────────────────
+    parts.append("Remedy Timeline")
+    short_id = str(job.id)[:8]
+    name = job.name if len(job.name) <= 60 else job.name[:60] + "…"
+    parts.append(f"Job: {short_id} — {name}")
+    parts.append(f"State: {job.state.value}")
+
+    completed = sum(1 for t in job.tasks if t.status == RunState.COMPLETED)
+    pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
+    running = sum(1 for t in job.tasks if t.status == RunState.RUNNING)
+    parts.append(f"Tasks: {completed} completed, {pending} pending, {running} running")
+
+    # ── Events ──────────────────────────────────────────────────────────
+    parts.append(_section("Events"))
+    if not events:
+        parts.append(f"  {_INFO} No run log events found.")
+    else:
+        parts.extend(_render_events(events))
+
+    # ── Status ──────────────────────────────────────────────────────────
+    parts.append(_section("Current status"))
+    parts.append(_derive_status(job))
+
+    # ── Next action ─────────────────────────────────────────────────────
+    parts.append(_section("Next suggested action"))
+    parts.append(_derive_next_action(job, events))
+
+    return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Internal: section separator
+# ---------------------------------------------------------------------------
+
+
+def _section(title: str) -> str:
+    fill = _LINE * max(1, 64 - len(title))
+    return f"\n{_LINE * 2} {title} {fill}"
+
+
+# ---------------------------------------------------------------------------
+# Internal: event rendering
+# ---------------------------------------------------------------------------
+
+
+def _render_events(events: list[dict[str, Any]]) -> list[str]:
+    """Process events in order; accumulate task blocks for compact rendering."""
+    lines: list[str] = []
+    in_task: list[dict[str, Any]] | None = None
+
+    for ev in events:
+        name = ev.get("event", "")
+
+        if name == "task_run_started":
+            in_task = [ev]
+            continue
+
+        if in_task is not None:
+            in_task.append(ev)
+            if name in ("task_run_completed", "task_run_failed", "task_run_noop"):
+                lines.extend(_render_task_block(in_task))
+                in_task = None
+            continue
+
+        # Non-task (or pre-task noop) event
+        rendered = _render_single_event(ev)
+        if rendered is not None:
+            lines.append(rendered)
+
+    # Unclosed task block — process was interrupted
+    if in_task:
+        lines.extend(_render_task_block(in_task))
+
+    return lines
+
+
+def _render_single_event(ev: dict[str, Any]) -> str | None:
+    """Render one standalone (non-task-block) event to a single line.
+
+    Returns ``None`` for events that should be silently skipped.
+    Unknown events are rendered as an info line rather than crashing.
+    """
+    name = ev.get("event", "")
+    meta = ev.get("metadata", {})
+    outcome = ev.get("outcome")
+    model = ev.get("model", "")
+
+    if name == "job_created":
+        return f"  {_OK} Job created"
+
+    if name == "planning_started":
+        return None  # planning_completed/failed is the useful signal
+
+    if name == "planning_completed":
+        if outcome == "noop":
+            return f"  {_INFO} Planning: already planned (no change)"
+        task_count = meta.get("task_count", "?")
+        elapsed = _fmt_elapsed(meta)
+        model_str = f"  model={model}" if model else ""
+        return f"  {_OK} Planning completed  tasks={task_count}{model_str}{elapsed}"
+
+    if name == "planning_failed":
+        error_cat = meta.get("error_category", "")
+        msg = ev.get("message", "")
+        detail = error_cat or msg or "unknown error"
+        return f"  {_FAIL} Planning failed: {detail}"
+
+    if name == "task_run_noop":
+        # Pre-start noop (no pending tasks) — occurs outside a task block.
+        if outcome == "no_pending_tasks":
+            return f"  {_INFO} No pending tasks"
+        if outcome == "no_change":
+            return f"  {_INFO} Builder returned no change"
+        return f"  {_INFO} No-op ({outcome})"
+
+    # All other events outside a task block: render as informational.
+    return f"  {_INFO} {name}"
+
+
+def _render_task_block(task_events: list[dict[str, Any]]) -> list[str]:
+    """Render a compact block for one task run (from started to terminal)."""
+    lines: list[str] = []
+
+    started = task_events[0]
+    task_type = started.get("metadata", {}).get("task_type", "unknown")
+
+    def _find(ev_name: str) -> dict[str, Any] | None:
+        return next((e for e in task_events if e.get("event") == ev_name), None)
+
+    terminal = next(
+        (e for e in reversed(task_events)
+         if e.get("event") in ("task_run_completed", "task_run_failed", "task_run_noop")),
+        None,
+    )
+
+    builder_ev = _find("builder_started")
+    completed_ev = _find("builder_completed")
+    workspace_ev = _find("workspace_materialized")
+    vpass_ev = _find("verification_passed")
+    vfail_ev = _find("verification_failed")
+    repo_done_ev = _find("repo_application_completed")
+    repo_skip_ev = _find("repo_application_skipped")
+    patch_ev = _find("patch_intent_created")
+
+    model = builder_ev.get("model", "") if builder_ev else ""
+    elapsed = _fmt_elapsed(completed_ev.get("metadata", {})) if completed_ev else ""
+
+    # ── Primary outcome line ─────────────────────────────────────────────
+    if terminal is None:
+        lines.append(f"  {_WARN} {task_type}  interrupted (no terminal event recorded)")
+        return lines
+
+    ev_name = terminal.get("event", "")
+    outcome = terminal.get("outcome", "")
+    term_meta = terminal.get("metadata", {})
+
+    if ev_name == "task_run_completed":
+        model_str = f"  model={model}" if model else ""
+        verified = f"  verified=pass" if vpass_ev else ""
+        lines.append(f"  {_OK} {task_type}{model_str}{elapsed}{verified}")
+    elif ev_name == "task_run_failed":
+        if outcome == "permission_denied":
+            cap = term_meta.get("capability", "")
+            lines.append(f"  {_FAIL} {task_type}  blocked: permission denied ({cap})")
+        elif outcome == "fail":
+            if vfail_ev:
+                fc = vfail_ev.get("metadata", {}).get("failure_count", "?")
+                lines.append(f"  {_FAIL} {task_type}  verification failed ({fc} check(s))")
+            else:
+                lines.append(f"  {_FAIL} {task_type}  failed")
+        else:
+            lines.append(f"  {_FAIL} {task_type}  failed: {outcome}")
+    elif ev_name == "task_run_noop":
+        if outcome == "no_change":
+            lines.append(f"  {_INFO} {task_type}  builder returned no change")
+        else:
+            lines.append(f"  {_INFO} {task_type}  noop ({outcome})")
+
+    # ── Sub-detail lines ─────────────────────────────────────────────────
+    if workspace_ev:
+        ws = workspace_ev.get("metadata", {}).get("workspace_file", "")
+        if ws:
+            lines.append(f"      workspace: {ws}")
+
+    if repo_done_ev:
+        files = repo_done_ev.get("metadata", {}).get("files", [])
+        if files:
+            lines.append(f"      repo:      {files[0]}")
+            for extra in files[1:]:
+                lines.append(f"                 {extra}")
+
+    if repo_skip_ev:
+        reason = repo_skip_ev.get("metadata", {}).get("reason", "")
+        lines.append(f"      {_WARN} repo write skipped: {reason}")
+
+    if patch_ev:
+        pm = patch_ev.get("metadata", {})
+        count = pm.get("intent_count", 0)
+        risks = pm.get("risk_levels", [])
+        risk_str = ", ".join(sorted(set(str(r) for r in risks))) if risks else ""
+        risk_part = f"  risk={risk_str}" if risk_str else ""
+        lines.append(f"      intents:   {count}{risk_part}")
+
+    if vfail_ev:
+        failed_checks = vfail_ev.get("metadata", {}).get("failed_checks", [])
+        for check in failed_checks[:3]:
+            lines.append(f"      {_FAIL} check: {check}")
+        if len(failed_checks) > 3:
+            lines.append(f"      … {len(failed_checks) - 3} more check(s)")
+
+    return lines
+
+
+def _fmt_elapsed(meta: dict[str, Any]) -> str:
+    ms = meta.get("elapsed_ms")
+    if ms is None:
+        return ""
+    if ms >= 1000:
+        return f"  {ms / 1000:.1f}s"
+    return f"  {ms}ms"
+
+
+# ---------------------------------------------------------------------------
+# Internal: status + next action
+# ---------------------------------------------------------------------------
+
+
+def _derive_status(job: Job) -> str:
+    total = len(job.tasks)
+    completed = sum(1 for t in job.tasks if t.status == RunState.COMPLETED)
+    pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
+    running = sum(1 for t in job.tasks if t.status == RunState.RUNNING)
+
+    if total == 0:
+        return "  Unplanned: no tasks in job."
+    if running:
+        return f"  Running: {running} task(s) in progress."
+    if pending:
+        return f"  Pending: {pending} of {total} task(s) awaiting execution."
+    if completed == total:
+        return f"  Complete: all {total} task(s) completed."
+    return f"  {job.state.value.capitalize()}."
+
+
+def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
+    pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
+    job_id_str = str(job.id)
+
+    # Most recent terminal event
+    terminal_events = [
+        e for e in events
+        if e.get("event") in ("task_run_completed", "task_run_failed", "task_run_noop")
+    ]
+    last_terminal = terminal_events[-1] if terminal_events else None
+
+    # Permission denied: suggest granting before running again
+    if (
+        last_terminal
+        and last_terminal.get("event") == "task_run_failed"
+        and last_terminal.get("outcome") == "permission_denied"
+    ):
+        cap = last_terminal.get("metadata", {}).get("capability", "workspace_write")
+        return (
+            f"  {_NEXT} Grant permission if appropriate:\n"
+            f"      remedy set-permission {job_id_str} allow {cap}"
+        )
+
+    # Patch intent risk: flag review if any medium/high/unknown risk present
+    patch_events = [e for e in events if e.get("event") == "patch_intent_created"]
+    if patch_events:
+        risks = set(patch_events[-1].get("metadata", {}).get("risk_levels", []))
+        if risks & {"medium", "high", "unknown"}:
+            return (
+                f"  {_NEXT} Review patch intent risk levels before applying future changes."
+            )
+
+    # Pending tasks
+    if pending:
+        return (
+            f"  {_NEXT} Run the next pending task:\n"
+            f"      remedy run-next-task-local {job_id_str}"
+        )
+
+    return (
+        f"  {_NEXT} No pending tasks. Inspect generated repo/workspace files\n"
+        f"      or create a new job: remedy create-job \"<prompt>\""
+    )

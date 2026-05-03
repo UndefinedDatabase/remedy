@@ -1,28 +1,30 @@
 # Context
 
 ## Active Branch
-`feature/step16-run-logs`
+`feature/step17-timeline`
 
 ## PR
 (none yet)
 
 ## Scope
-Step 16: Run Logs v1 — append-only JSONL event trail.
+Step 17: Timeline v1 — read-only CLI cockpit over run-log events.
 
 New files:
-- packages/orchestration/run_log.py: RunEvent dataclass, RunLogWriter, new_run_id, read_run_events
-- tests/test_run_log.py: 40 unit tests for run_log primitives
-- tests/test_run_log_cli.py: 24 CLI integration tests for run log events
+- packages/orchestration/timeline.py: load_run_events, summarize_timeline
+- tests/test_timeline.py: 45 tests
 
 Modified:
-- apps/cli/main.py: wired RunLogWriter into _cmd_create_job, _cmd_plan_job_local, _cmd_run_next_task_local
-- docs/architecture.md: Run Logs v1 section added
+- apps/cli/main.py: _cmd_timeline + "timeline" subparser + dispatch
+- docs/architecture.md: Timeline v1 section
 
 ## Key facts
-- Log path: <REMEDY_DATA_DIR>/runs/<job_id>/<run_id>.jsonl
-- run_id is a UUID4 hex string; one per CLI invocation
-- Each event is a JSON object on one line (append-only)
-- Redaction: no full content/prompts logged
-- log= output added to plan-job-local and run-next-task-local
-- create-job logs job_created (no log= printed for that command)
-- 635 tests pass
+- `remedy timeline <job_id>` reads all *.jsonl under <data_dir>/runs/<job_id>/
+- events sorted by timestamp across multiple JSONL files
+- plain text output: header, Events, Current status, Next suggested action
+- task events grouped into compact blocks (started → terminal)
+- unknown events rendered as "○ <name>" — never crash
+- interrupted task (no terminal event) rendered as "! <type> interrupted"
+- next action is deterministic: permission_denied → set-permission,
+  patch risk → review, pending → run-next-task-local, else → inspect/create-job
+- read-only: no state mutation, no external deps
+- 680 tests pass

@@ -492,6 +492,45 @@ the log for a specific invocation.
 - Foundation for future features: cockpit/timeline UX, session resume after
   terminal loss, autonomy/approval modes, MemPalace memory integration.
 
+### Timeline v1 (Step 17)
+
+`packages/orchestration/timeline.py` provides the first user-facing cockpit layer
+over run-log events: `remedy timeline <job_id>`.
+
+**Public API:**
+
+```python
+load_run_events(data_dir: Path, job_id: UUID | str) -> list[dict]
+    # Reads all *.jsonl under <data_dir>/runs/<job_id>/; sorted by timestamp.
+    # Returns [] if directory is missing. Ignores empty/malformed lines.
+
+summarize_timeline(job: Job, events: list[dict]) -> str
+    # Returns a human-readable multiline terminal string.
+```
+
+**Output sections:** header (job id, state, task counts) → Events → Current status →
+Next suggested action.
+
+**Event rendering:** each event type is rendered with a symbol prefix (`✓` success,
+`✕` failure, `!` warning, `○` noop/info). Task events are grouped into compact
+blocks (task_run_started → terminal) showing type, outcome, verification, workspace
+path, repo path, patch intent count and risk levels. Unknown events render as
+`○ <event-name>` rather than crashing.
+
+**Next suggested action (deterministic, no LLM):**
+1. Last terminal is `task_run_failed/permission_denied` → suggest `set-permission`.
+2. `patch_intent_created` with medium/high/unknown risk → suggest review.
+3. Pending tasks remain → suggest `run-next-task-local`.
+4. No pending tasks → suggest inspect or `create-job`.
+
+**Design principles:**
+- Read-only: never mutates job state or run logs.
+- No external dependencies: plain text, no rich/textual/click.
+- Degrades gracefully: missing logs, unknown events, and interrupted task blocks
+  all render without raising exceptions.
+- Foundation for a future TUI/web cockpit — the same run-log contract is consumed
+  by any future UI layer.
+
 ### Verifier Profiles v1 (Step 15)
 
 `packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.
