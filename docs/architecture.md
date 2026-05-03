@@ -393,6 +393,105 @@ not yet enforced). The symmetric labeling makes capability status unambiguous at
   no-ops without user-visible notice.
 - Task completion is always determined by the verifier — never by repo application.
 
+### Run Logs v1 (Step 16)
+
+`packages/orchestration/run_log.py` introduces an append-only JSONL event trail
+for every meaningful Remedy operation.
+
+**File location:**
+
+```
+<REMEDY_DATA_DIR>/runs/<job_id>/<run_id>.jsonl
+```
+
+One file per CLI invocation (`run_id` is a UUID4 hex string generated at startup).
+The directory follows the same `REMEDY_DATA_DIR` resolution order as `storage.py`
+and `workspace.py`: env var first, then `<repo_root>/.data/runs/`.
+
+**Format:** one compact JSON object per line (no trailing comma, no wrapping array).
+Files are append-only — no event is ever modified or deleted.
+
+**Event model (`RunEvent`):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | str | Event name (e.g. `"builder_started"`) |
+| `job_id` | str | UUID of the job |
+| `run_id` | str | UUID4 hex shared by all events in one CLI invocation |
+| `timestamp` | str | UTC ISO 8601 timestamp |
+| `task_id` | str \| None | UUID of the task, if applicable |
+| `artifact_id` | str \| None | UUID of the relevant artifact, if applicable |
+| `provider` | str \| None | e.g. `"ollama"` |
+| `role` | str \| None | e.g. `"planner"`, `"builder"` |
+| `model` | str \| None | model identifier |
+| `outcome` | str \| None | e.g. `"pass"`, `"fail"`, `"noop"`, `"changed"` |
+| `message` | str \| None | short human-readable context, if useful |
+| `metadata` | dict | extra structured data (task_type, counts, risk levels, etc.) |
+
+None-valued top-level fields are omitted from the serialized line. `metadata` is always included (may be `{}`).
+
+**Events logged per CLI command:**
+
+`plan-job-local`:
+- `planning_started` — before the LLM call; includes provider/role/model
+- `planning_completed` — after success; outcome = `"changed"` or `"noop"`; metadata includes task_count, artifact_id, elapsed_ms
+- `planning_failed` — on exception; includes outcome=`"error"` and message
+
+`run-next-task-local`:
+- `task_run_noop` — when no pending tasks; outcome = `"no_pending_tasks"`
+- `task_run_started` — before builder call; metadata includes task_type
+- `builder_started` — after builder instantiation, before LLM call; includes provider/role/model
+- `builder_completed` — after builder returns; includes artifact_id, elapsed_ms
+- `workspace_materialized` — after workspace file written; metadata includes workspace_file path
+- `verification_passed` — after verifier passes; metadata includes verifier_profile
+- `verification_failed` — after verifier fails; metadata includes failure_count, failed_checks list
+- `repo_application_completed` — when repo write succeeds; metadata includes file_count, files
+- `repo_application_skipped` — when repo write skipped (e.g. permission denied); metadata includes reason
+- `patch_intent_created` — after patch intents materialized; metadata includes intent_count, risk_levels
+- `patch_intent_skipped` — when no intents derived for this task type
+- `patch_intent_failed` — when patch intent verification errors occur; metadata includes error_count
+- `task_run_completed` — final event on success; outcome = `"pass"`
+- `task_run_failed` — final event on failure; outcome = `"fail"`
+
+`create-job`:
+- `job_created` — after job is saved; outcome = `"created"`
+
+**Redaction policy (v1):**
+
+Logged: IDs, event names, provider/model/role, task_type, artifact kind, file paths
+already visible in CLI output, counts, booleans, outcomes, elapsed_ms, risk levels,
+verifier profile name, verification failure check names and messages.
+
+**Not logged:** full artifact content, full prompts, full workspace file contents,
+full diff previews. These are stored in job artifacts and workspace files; the run
+log contains only the structural and observability-relevant fields.
+
+**Public API:**
+
+```python
+RunLogWriter(job_id, run_id=None, *, runs_root=None)
+  .path    → Path   # absolute JSONL path
+  .run_id  → str
+  .log(event, *, task_id=None, ..., **metadata)   # convenience method
+  .append(RunEvent)                               # lower-level
+
+read_run_events(path)  → list[dict]  # for tests and diagnostics
+new_run_id()           → str
+```
+
+**CLI output:** `log=<path>` is appended to the output line of `plan-job-local` and
+`run-next-task-local` (all outcomes including noop) so the operator can always locate
+the log for a specific invocation.
+
+**Design principles:**
+- Append-only: events are never mutated; each invocation adds a new file under the
+  same `<job_id>/` directory, preserving full history across retries.
+- Local-only: no external telemetry, no network calls, no database.
+- Non-blocking: log writes use standard `open("a")` and are not transactional.
+  In v1, if a log write raises unexpectedly the exception surfaces normally.
+- Foundation for future features: cockpit/timeline UX, session resume after
+  terminal loss, autonomy/approval modes, MemPalace memory integration.
+
 ### Verifier Profiles v1 (Step 15)
 
 `packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.

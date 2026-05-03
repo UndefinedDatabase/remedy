@@ -1,19 +1,20 @@
 # Plan
 
 ## Goal
-Step 15.2: Verifier Documentation Accuracy Cleanup
+Step 16: Run Logs v1 — append-only JSONL event trail for every Remedy operation.
 
 ## Status
-COMPLETE — 571 tests pass
+COMPLETE — 635 tests pass
 
 ## Steps
-1. [x] docs/architecture.md: fix stale "after workspace checks pass" sentence
-2. [x] docs/architecture.md: split verify_task_output check table into artifact/profile/workspace groups
-3. [x] docs/architecture.md: add responsibility split block (TaskContract vs VerifierProfile)
-4. [x] verifier.py module docstring: restructure numbered list to reflect actual flow
-5. [x] verifier.py module docstring: document require_artifact=False skips profile checks
-6. [x] verifier.py verify_task_output docstring: add require_artifact=False note
-7. [x] Update .agent files and commit
+1. [x] Create packages/orchestration/run_log.py (RunEvent, RunLogWriter, new_run_id, read_run_events)
+2. [x] Wire into _cmd_create_job: job_created event
+3. [x] Wire into _cmd_plan_job_local: planning_started, planning_completed/failed + log= output
+4. [x] Wire into _cmd_run_next_task_local: full event sequence + log= output
+5. [x] Create tests/test_run_log.py (unit tests for RunLogWriter, RunEvent, helpers)
+6. [x] Create tests/test_run_log_cli.py (CLI integration tests for all event types)
+7. [x] Update docs/architecture.md (Run Logs v1 section)
+8. [x] Update .agent files and commit
 
 ## Branch
-feature/step14-artifact-kinds
+feature/step16-run-logs

@@ -26,6 +26,8 @@ from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job
 
 
 def _cmd_create_job(prompt: str) -> None:
+    from packages.orchestration.run_log import RunLogWriter
+
     job = Job(
         name=prompt[:50],
         user_prompt=prompt,
@@ -33,6 +35,8 @@ def _cmd_create_job(prompt: str) -> None:
     )
     save_job(job)
     print(job.id)
+    log = RunLogWriter(job_id=job.id)
+    log.log("job_created", outcome="created")
 
 
 def _cmd_list_jobs() -> None:
@@ -95,16 +99,30 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         sys.exit(1)
 
     from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
+    from packages.orchestration.run_log import RunLogWriter
     from packages.providers.ollama_planner.provider import OllamaPlanner
 
+    log = RunLogWriter(job_id=job.id)
+
     planner = OllamaPlanner()
+    log.log(
+        "planning_started",
+        provider="ollama",
+        role="planner",
+        model=planner.model,
+    )
+
     start = time.monotonic()
     try:
         result: PlanJobResult = plan_job_with_llm(job, planner.plan)
     except ImportError as exc:
+        log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                outcome="error", message=str(exc))
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
     except Exception as exc:
+        log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                outcome="error", message=str(exc))
         print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
         sys.exit(1)
     elapsed_ms = (time.monotonic() - start) * 1000
@@ -119,11 +137,32 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
     save_job(result.job)
 
     if not result.changed:
-        print(f"Job {result.job.id} already planned — no changes made.")
+        log.log(
+            "planning_completed",
+            provider="ollama",
+            role="planner",
+            model=planner.model,
+            outcome="noop",
+        )
+        print(f"Job {result.job.id} already planned — no changes made.  log={log.path}")
     else:
+        from packages.orchestration.artifact_index import planning_artifact
+
+        pa = planning_artifact(result.job.artifacts)
+        artifact_id_str = str(pa.id) if pa is not None else None
+        log.log(
+            "planning_completed",
+            provider="ollama",
+            role="planner",
+            model=planner.model,
+            artifact_id=artifact_id_str,
+            outcome="changed",
+            elapsed_ms=round(elapsed_ms),
+            task_count=len(result.job.tasks),
+        )
         print(
             f"Job {result.job.id} | role=planner model={planner.model} "
-            f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms"
+            f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms  log={log.path}"
         )
 
 
@@ -225,13 +264,14 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from pydantic import ValidationError
-
     from pathlib import Path
+
+    from pydantic import ValidationError
 
     from packages.orchestration.permissions import Capability
     from packages.orchestration.permissions import is_allowed as _perm_allowed
     from packages.orchestration.repo_applicator import check_and_apply_to_repo
+    from packages.orchestration.run_log import RunLogWriter
     from packages.orchestration.task_runner import (
         RunTaskResult,
         annotate_task_result,
@@ -243,10 +283,22 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     from packages.orchestration.workspace import LocalWorkspaceRuntime
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
+    log = RunLogWriter(job_id=job.id)
+
     # Fast path: no pending tasks — exit cleanly regardless of permissions.
     if not any(t.status == RunState.PENDING for t in job.tasks):
-        print(f"Job {job.id} — no pending tasks.")
+        log.log("task_run_noop", outcome="no_pending_tasks")
+        print(f"Job {job.id} — no pending tasks.  log={log.path}")
         return
+
+    # Log task_run_started with the first pending task's context.
+    pending_task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
+    pending_task_type = pending_task.inputs.get("task_type", "unknown") if pending_task else None
+    log.log(
+        "task_run_started",
+        task_id=str(pending_task.id) if pending_task else None,
+        task_type=pending_task_type,
+    )
 
     # Guard: deny workspace_write before the builder is called.
     # This prevents wasting an LLM call when the permission is not granted.
@@ -260,6 +312,14 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     start = time.monotonic()
     try:
         builder = OllamaBuilder()
+        log.log(
+            "builder_started",
+            task_id=str(pending_task.id) if pending_task else None,
+            provider="ollama",
+            role="builder",
+            model=builder.model,
+            task_type=pending_task_type,
+        )
         result: RunTaskResult = run_next_task(job, builder.build)
     except ImportError as exc:
         print(f"Error: missing dependency — {exc}", file=sys.stderr)
@@ -276,8 +336,25 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     elapsed_ms = (time.monotonic() - start) * 1000
 
     if not result.changed:
-        print(f"Job {job.id} — no pending tasks.")
+        print(f"Job {job.id} — no pending tasks.  log={log.path}")
         return
+
+    # Resolve the task artifact for logging context.
+    _task_obj_for_log = next(
+        (t for t in result.job.tasks if t.id == result.task_id), None
+    )
+    _artifact_id_for_log = (
+        str(_task_obj_for_log.output_artifact_ids[0])
+        if _task_obj_for_log and _task_obj_for_log.output_artifact_ids
+        else None
+    )
+    log.log(
+        "builder_completed",
+        task_id=str(result.task_id),
+        artifact_id=_artifact_id_for_log,
+        outcome="changed",
+        elapsed_ms=round(elapsed_ms),
+    )
 
     # Annotate timing metadata onto the builder artifact.
     annotate_task_result(
@@ -292,9 +369,39 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     # workspace_write was confirmed above — no conditional needed here.
     runtime = LocalWorkspaceRuntime(job_id=job.id)
     mf = materialize_task_output(result, runtime)
+    log.log(
+        "workspace_materialized",
+        task_id=str(result.task_id),
+        workspace_file=str(mf.path),
+    )
 
     # Verify: run Task Contract v1 checks (deterministic, local-only).
     vr = verify_task_output(result.job, result.task_id)
+
+    # Log verification outcome.
+    _task_type_for_log = (
+        next(t for t in result.job.tasks if t.id == result.task_id)
+        .inputs.get("task_type", "unknown")
+    )
+    if vr.passed:
+        from packages.orchestration.task_registry import get_task_type_spec as _get_spec
+
+        _spec = _get_spec(_task_type_for_log)
+        log.log(
+            "verification_passed",
+            task_id=str(result.task_id),
+            outcome="pass",
+            verifier_profile=_spec.verifier_profile,
+        )
+    else:
+        _failed_checks = [c.check for c in vr.failures]
+        log.log(
+            "verification_failed",
+            task_id=str(result.task_id),
+            outcome="fail",
+            failure_count=len(vr.failures),
+            failed_checks=_failed_checks,
+        )
 
     # Finalize: mark COMPLETED on pass, PENDING on failure.
     finalize_task(result, vr)
@@ -318,6 +425,24 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                     repo_applied = check_and_apply_to_repo(job, artifact, repo_root)
                     if repo_applied:
                         artifact.metadata["repo_applied_files"] = repo_applied
+                        log.log(
+                            "repo_application_completed",
+                            task_id=str(result.task_id),
+                            outcome="applied",
+                            file_count=len(repo_applied),
+                            files=repo_applied,
+                        )
+                    else:
+                        _skip_reason = artifact.metadata.get(
+                            "repo_application_skipped_reason"
+                        )
+                        if _skip_reason:
+                            log.log(
+                                "repo_application_skipped",
+                                task_id=str(result.task_id),
+                                outcome="skipped",
+                                reason=_skip_reason,
+                            )
 
     # Derive and materialize patch intents (only on verification pass).
     patch_intent_count = 0
@@ -351,6 +476,12 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                         file=sys.stderr,
                     )
                     pi_artifact.metadata["patch_intent_errors"] = pi_errors
+                    log.log(
+                        "patch_intent_failed",
+                        task_id=str(result.task_id),
+                        outcome="failed",
+                        error_count=len(pi_errors),
+                    )
                 elif pis.intents:
                     pi_mf = materialize_patch_intents(pis, runtime, pi_task_index, pi_task_type)
                     if pi_mf is not None:
@@ -395,6 +526,21 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                         )
                         dry_run_block = format_dry_run_explanations(dry_run_results)
 
+                    risk_levels = pi_artifact.metadata.get("patch_intent_risks", [])
+                    log.log(
+                        "patch_intent_created",
+                        task_id=str(result.task_id),
+                        outcome="created",
+                        intent_count=len(pis.intents),
+                        risk_levels=risk_levels,
+                    )
+                else:
+                    log.log(
+                        "patch_intent_skipped",
+                        task_id=str(result.task_id),
+                        outcome="no_intents",
+                    )
+
     # Persist after verification, repo application, and patch intent materialization
     # so the saved state is authoritative.
     save_job(result.job)
@@ -402,6 +548,12 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     task = next(t for t in result.job.tasks if t.id == result.task_id)
     task_type = task.inputs.get("task_type", "unknown")
     pending_remaining = sum(1 for t in result.job.tasks if t.status.value == "pending")
+
+    # Final run log event before printing summary.
+    if vr.passed:
+        log.log("task_run_completed", task_id=str(result.task_id), outcome="pass")
+    else:
+        log.log("task_run_failed", task_id=str(result.task_id), outcome="fail")
 
     # mf is always set here: result.changed=True and workspace_write was confirmed above.
     file_info = f" file={mf.path}"
@@ -412,6 +564,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         f"Job {result.job.id} | task={result.task_id} type={task_type} "
         f"role=builder model={builder.model} elapsed={round(elapsed_ms)}ms "
         f"remaining={pending_remaining}{file_info}{repo_info}{pi_info} {verified_info}"
+        f"  log={log.path}"
     )
     if dry_run_block:
         print(dry_run_block)

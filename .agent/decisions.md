@@ -1,5 +1,29 @@
 # Decisions
 
+## 2026-05-03: Run Logs v1 — one JSONL file per CLI invocation (Step 16)
+Each CLI invocation creates a RunLogWriter with a fresh run_id (UUID4 hex). All events
+from that invocation share the same run_id, forming a chronological session trail.
+Multiple invocations for the same job produce separate files under <job_id>/: history
+accumulates across retries without overwriting earlier sessions. Enables resume,
+diagnostics, and future cockpit/timeline UX without a database.
+
+## 2026-05-03: Redaction policy: no full content or prompts in run logs (Step 16)
+Run logs store only IDs, counts, outcomes, metadata labels (task_type, model, risk levels,
+verifier profile, check names). Full artifact content, prompts, workspace file contents,
+and diff previews are excluded. The authoritative full content lives in job artifacts and
+workspace files; the run log is the lightweight observability layer only.
+
+## 2026-05-03: log= appended to CLI output for plan-job-local and run-next-task-local (Step 16)
+The log path is appended to the existing summary output line (two spaces before "log=")
+for both commands, including the noop case. create-job does not print log= because its
+stdout is machine-parsed (bare job UUID); adding log= would break scripts that capture it.
+
+## 2026-05-03: RunLogWriter creates the job directory eagerly, file is created on first write (Step 16)
+mkdir in __init__; file created on first append(). If a command exits before writing any
+events (e.g. workspace_write denial happens before any log.log() calls), no JSONL file is
+produced but the directory exists. This is intentional — the directory is cheap and the
+denial case is covered by the permission error output, not the run log.
+
 ## 2026-05-02: Verifier Profiles v1 checks run inside workspace block, after check 6 (Step 15)
 Profile-driven checks (required_sections, min_proposed_changes, forbidden_phrases) are
 placed inside the `if contract.require_workspace_file:` block in verify_task_output,
