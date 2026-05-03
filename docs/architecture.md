@@ -238,13 +238,28 @@ after finalization ensures the persisted state is always authoritative.
 All fields default to `True`. Step 7 always runs all checks. The model reserves space
 for per-task contract customization in a future step.
 
-**`verify_task_output(job, task_id)`** — 7 deterministic checks, all local-only:
+**`verify_task_output(job, task_id)`** — deterministic checks, all local-only:
+
+Artifact structural checks (when `require_artifact=True`):
 
 | Check | What it verifies |
 |-------|-----------------|
 | `has_output_artifact` | `task.output_artifact_ids` is non-empty |
 | `artifact_exists` | the first artifact ID resolves in `job.artifacts` |
 | `artifact_task_id_matches` | `artifact.task_id == task.id` |
+
+Profile checks (run after artifact confirmed valid; see Verifier Profiles section):
+
+| Check | What it verifies |
+|-------|-----------------|
+| `required_section:<section>` | section header present in `artifact.content` |
+| `min_proposed_changes` | proposed-change line count meets profile threshold |
+| `forbidden_phrase:<phrase>` | phrase absent from `artifact.content` (case-insensitive) |
+
+Workspace-file structural checks (when `require_workspace_file=True`):
+
+| Check | What it verifies |
+|-------|-----------------|
 | `workspace_file_in_metadata` | `"workspace_file"` key present in artifact metadata |
 | `workspace_file_exists` | the recorded path exists on disk |
 | `workspace_file_not_empty` | file size > 0 bytes |
@@ -377,6 +392,82 @@ not yet enforced). The symmetric labeling makes capability status unambiguous at
 - Honest: reserved capabilities are labeled as such in the CLI and source code; no silent
   no-ops without user-visible notice.
 - Task completion is always determined by the verifier — never by repo application.
+
+### Verifier Profiles v1 (Step 15)
+
+`packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.
+
+**Routing chain:**
+```
+task.inputs["task_type"]
+  → get_task_type_spec(task_type)  [task_registry.py]
+  → TaskTypeSpec.verifier_profile  (e.g. "repo_doc")
+  → get_verifier_profile(name)     [verifier_profiles.py]
+  → VerifierProfile                (checks applied to artifact.content)
+```
+
+**v1 profiles:**
+
+| Profile | min_changes | forbidden_phrases | required_sections |
+|---------|-------------|-------------------|-------------------|
+| `generic` | 1 | _(none)_ | Summary:, Proposed Changes: |
+| `repo_doc` | 1 | TODO, TBD | Summary:, Proposed Changes: |
+| `analysis_doc` | 2 | maybe, probably, some files, TODO | Summary:, Proposed Changes: |
+| `implementation_plan` | 2 | some files, maybe, probably | Summary:, Proposed Changes:, Risks: |
+
+**Task type → profile mapping (Step 15):**
+- `readme` → `repo_doc`
+- `plan` → `implementation_plan`
+- `spec`, `requirement`, `acceptance`, `analysis` → `analysis_doc`
+- `changelog`, `architecture`, `design`, `guide`, `documentation`, `doc` → `repo_doc`
+- Unknown task types → `generic` (conservative fallback)
+
+**Responsibility split:**
+- `TaskContract` controls structural/materialization requirements:
+  - artifact present (`has_output_artifact`, `artifact_exists`, `artifact_task_id_matches`)
+  - workspace file present, exists, and non-empty (`workspace_file_in_metadata`, `workspace_file_exists`, `workspace_file_not_empty`, `has_proposed_change`)
+- `VerifierProfile` controls artifact-content profile checks:
+  - `required_section:<section>` — section header must appear in `artifact.content`
+  - `min_proposed_changes` — count of `  - ` lines in Proposed Changes section must meet threshold
+  - `forbidden_phrase:<phrase>` — phrase must be absent from `artifact.content` (case-insensitive)
+
+**Profile-driven checks** run after the task artifact is confirmed valid. They are independent of workspace-file requirements; workspace-file checks are controlled by `TaskContract`. Profile checks are skipped only when `TaskContract(require_artifact=False)` is used, because they operate on `artifact.content`.
+
+These checks are the **first real Task Contract layer**: they enforce output quality at the content level, not just at the file-existence level. This is the foundation for better autonomy modes, run-log quality gates, and future per-task SLAs.
+
+### Artifact Kinds v1 (Step 14)
+
+`packages/core/models.py` exposes `ArtifactKind`, a `str` enum that annotates
+the semantic role of each `Artifact`.
+
+**Values:**
+
+| Value | Meaning |
+|-------|---------|
+| `unknown` | Default / not yet classified (backward-compat default for old JSON) |
+| `planning` | Produced by a planning step (deterministic or LLM planner; `task_id=None`) |
+| `builder_proposal` | Produced by a builder/task execution step (`task_id` set) |
+| `workspace_materialization` | Represents a file written to the local workspace |
+| `verification` | Produced by a verification step |
+| `patch_intent` | Produced by patch-intent derivation (`patch_intent.py`) |
+| `repo_application` | Produced by repo application (`repo_applicator.py`) |
+
+**`Artifact.kind` field:**
+- Default: `ArtifactKind.UNKNOWN` — backward-compatible; old JSON without `kind` deserializes to `UNKNOWN`.
+- Set explicitly at all creation sites in `job_runner.py`, `llm_planner.py`, and `task_runner.py`.
+- **v1 active:** `PLANNING` and `BUILDER_PROPOSAL` are the only kinds currently emitted; `WORKSPACE_MATERIALIZATION`, `VERIFICATION`, `PATCH_INTENT`, and `REPO_APPLICATION` are reserved for future steps.
+
+**Artifact index helpers** (`packages/orchestration/artifact_index.py`):
+
+```python
+artifacts_by_kind(artifacts, kind)              # → list[Artifact]
+first_artifact_by_kind(artifacts, kind)         # → Artifact | None
+task_artifacts_by_kind(artifacts, task_id, kind) # → list[Artifact]
+planning_artifact(artifacts)                    # → Artifact | None
+```
+
+`planning_artifact` prefers explicit `kind=PLANNING` but falls back to the legacy
+convention (`name="planning_output"` and `task_id=None`) for pre-Step-14 artifacts.
 
 ### Task Type Registry v1 (Step 13)
 

@@ -10,7 +10,7 @@ from uuid import UUID
 
 import pytest
 
-from packages.core.models import Artifact, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.task_runner import (
     RunTaskResult,
@@ -110,27 +110,6 @@ def test_context_fields_populated_correctly():
     assert ctx.task_description == "Task 0"
 
 
-def test_context_includes_planning_summary():
-    """planning_summary is extracted from the orchestration-owned planning artifact."""
-    received: list[TaskExecutionContext] = []
-
-    def capturing_builder(ctx: TaskExecutionContext) -> BuilderOutput:
-        received.append(ctx)
-        return BuilderOutput(summary="ok", proposed_changes=["x"])
-
-    job = _make_job(1)
-    planning_artifact = Artifact(
-        name="planning_output",
-        content="plan text",
-        task_id=None,
-        metadata={"summary": "Overall plan summary"},
-    )
-    job.artifacts.append(planning_artifact)
-
-    run_next_task(job, capturing_builder)
-    assert received[0].planning_summary == "Overall plan summary"
-
-
 def test_context_includes_prior_task_summaries():
     """prior_task_summaries collected from already-completed tasks in order.
 
@@ -169,7 +148,7 @@ def test_context_includes_prior_task_summaries():
 
 
 def test_context_no_planning_summary_when_absent():
-    """planning_summary is None when no planning_output artifact exists."""
+    """planning_summary is None when no PLANNING-kind or legacy-convention artifact exists."""
     received: list[TaskExecutionContext] = []
 
     def capturing_builder(ctx: TaskExecutionContext) -> BuilderOutput:
@@ -179,6 +158,53 @@ def test_context_no_planning_summary_when_absent():
     job = _make_job(1)
     run_next_task(job, capturing_builder)
     assert received[0].planning_summary is None
+
+
+def test_context_planning_summary_from_explicit_kind():
+    """planning_summary is found via kind=PLANNING even if the artifact name differs."""
+    received: list[TaskExecutionContext] = []
+
+    def capturing_builder(ctx: TaskExecutionContext) -> BuilderOutput:
+        received.append(ctx)
+        return BuilderOutput(summary="ok", proposed_changes=["x"])
+
+    job = _make_job(1)
+    job.artifacts.append(
+        Artifact(
+            name="custom_planning_name",  # not "planning_output"
+            content="plan text",
+            task_id=None,
+            kind=ArtifactKind.PLANNING,
+            metadata={"summary": "Explicit kind summary"},
+        )
+    )
+
+    run_next_task(job, capturing_builder)
+    assert received[0].planning_summary == "Explicit kind summary"
+
+
+def test_context_planning_summary_from_legacy_artifact():
+    """planning_summary is found via legacy name+task_id+kind=UNKNOWN convention."""
+    received: list[TaskExecutionContext] = []
+
+    def capturing_builder(ctx: TaskExecutionContext) -> BuilderOutput:
+        received.append(ctx)
+        return BuilderOutput(summary="ok", proposed_changes=["x"])
+
+    job = _make_job(1)
+    # Legacy artifact: name="planning_output", task_id=None, kind=UNKNOWN (default).
+    job.artifacts.append(
+        Artifact(
+            name="planning_output",
+            content="plan text",
+            task_id=None,
+            # kind defaults to ArtifactKind.UNKNOWN — simulates pre-Step-14 data
+            metadata={"summary": "Legacy summary"},
+        )
+    )
+
+    run_next_task(job, capturing_builder)
+    assert received[0].planning_summary == "Legacy summary"
 
 
 # ---------------------------------------------------------------------------

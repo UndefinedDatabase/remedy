@@ -104,69 +104,81 @@ class TaskTypeSpec:
 #   3. "documentation" before "doc" — "doc" is a substring of "documentation".
 # ---------------------------------------------------------------------------
 
-_ROUTE_RULES: list[tuple[str, str, str | None]] = [
-    # (keyword, description, repo_route_template)
+_ROUTE_RULES: list[tuple[str, str, str | None, str]] = [
+    # (keyword, description, repo_route_template, verifier_profile)
     (
         "readme",
         "Writes or updates README.md.",
         "README.md",
+        "repo_doc",
     ),
     # docs/remedy/ route — planning, spec, requirement, acceptance, analysis
     (
         "plan",
         "Writes a planning document into docs/remedy/.",
         "docs/remedy/{safe_type}.md",
+        "implementation_plan",
     ),
     (
         "spec",
         "Writes a specification document into docs/remedy/.",
         "docs/remedy/{safe_type}.md",
+        "analysis_doc",
     ),
     (
         "requirement",
         "Writes a requirements document into docs/remedy/.",
         "docs/remedy/{safe_type}.md",
+        "analysis_doc",
     ),
     (
         "acceptance",
         "Writes acceptance criteria into docs/remedy/.",
         "docs/remedy/{safe_type}.md",
+        "analysis_doc",
     ),
     (
         "analysis",
         "Writes an analysis document into docs/remedy/.",
         "docs/remedy/{safe_type}.md",
+        "analysis_doc",
     ),
     # docs/ route — changelog, architecture, design, guide, documentation, doc
     (
         "changelog",
         "Writes a changelog file into docs/.",
         "docs/{safe_type}.md",
+        "repo_doc",
     ),
     (
         "architecture",
         "Writes an architecture document into docs/.",
         "docs/{safe_type}.md",
+        "repo_doc",
     ),
     (
         "design",
         "Writes a design document into docs/.",
         "docs/{safe_type}.md",
+        "repo_doc",
     ),
     (
         "guide",
         "Writes a guide or how-to document into docs/.",
         "docs/{safe_type}.md",
+        "repo_doc",
     ),
     (
         "documentation",
         "Writes general documentation into docs/.",
         "docs/{safe_type}.md",
+        "repo_doc",
     ),
     (
         "doc",
         "Writes a documentation file into docs/.",
         "docs/{safe_type}.md",
+        "repo_doc",
     ),
 ]
 
@@ -195,7 +207,7 @@ def get_task_type_spec(task_type: str) -> TaskTypeSpec:
     """
     lower = task_type.lower()
     safe_type = _sanitize_path_component(task_type)
-    for keyword, description, route_template in _ROUTE_RULES:
+    for keyword, description, route_template, verifier_profile in _ROUTE_RULES:
         if keyword in lower:
             return TaskTypeSpec(
                 name=task_type,
@@ -206,7 +218,7 @@ def get_task_type_spec(task_type: str) -> TaskTypeSpec:
                     if route_template is not None
                     else None
                 ),
-                verifier_profile="generic",
+                verifier_profile=verifier_profile,
                 suggested_agent_role="generic_builder",
                 capabilities=frozenset(),
             )
@@ -235,7 +247,7 @@ def is_known_task_type(task_type: str) -> bool:
     the repo_route equivalence should be audited.
     """
     lower = task_type.lower()
-    return any(keyword in lower for keyword, _, _ in _ROUTE_RULES)
+    return any(keyword in lower for keyword, _, _, _ in _ROUTE_RULES)
 
 
 def iter_task_type_specs() -> tuple[TaskTypeSpec, ...]:
@@ -246,7 +258,7 @@ def iter_task_type_specs() -> tuple[TaskTypeSpec, ...]:
     Useful for introspection, documentation generation, and tests.
     """
     specs: list[TaskTypeSpec] = []
-    for keyword, description, route_template in _ROUTE_RULES:
+    for keyword, description, route_template, verifier_profile in _ROUTE_RULES:
         safe_type = _sanitize_path_component(keyword)
         specs.append(
             TaskTypeSpec(
@@ -258,7 +270,7 @@ def iter_task_type_specs() -> tuple[TaskTypeSpec, ...]:
                     if route_template is not None
                     else None
                 ),
-                verifier_profile="generic",
+                verifier_profile=verifier_profile,
                 suggested_agent_role="generic_builder",
                 capabilities=frozenset(),
             )

@@ -1,5 +1,27 @@
 # Decisions
 
+## 2026-05-02: Verifier Profiles v1 checks run inside workspace block, after check 6 (Step 15)
+Profile-driven checks (required_sections, min_proposed_changes, forbidden_phrases) are
+placed inside the `if contract.require_workspace_file:` block in verify_task_output,
+after workspace file is confirmed present and non-empty (but not gated on require_proposed_changes).
+This means they are skipped if workspace file is missing or empty — both of which are
+hard infrastructure failures where semantic content checks are irrelevant. Profile checks
+read artifact.content, not the workspace file. All four check types run unconditionally
+once the workspace gate passes; no early returns within profile checks.
+
+## 2026-05-02: Profile verifier_profile field added to _ROUTE_RULES 4-tuple (Step 15)
+_ROUTE_RULES changed from list[tuple[str, str, str | None]] to list[tuple[str, str, str | None, str]].
+The fourth element is the verifier_profile name. get_task_type_spec and iter_task_type_specs
+now read it from the rule. is_known_task_type uses `kw, _, _, _` unpacking.
+All three callers (task_registry, test_task_registry, test_patch_intent) updated.
+Single source of truth: routing and profile are co-located in the same rule entry.
+
+## 2026-05-02: generic profile fallback is permissive by design (Step 15)
+Unknown task types (and None profile names) fall back to the generic profile, which has
+no forbidden_phrases and min_proposed_changes=1. This ensures no new verification failures
+are introduced for task types that were passing before Step 15. The profile escalation is
+intentional and conservative: unknown → generic, not unknown → strictest.
+
 ## 2026-04-28: Step 11 uses a structured preview block, not unified_diff
 A real unified_diff was considered but rejected: artifact proposed changes are
 bullet-point descriptions of changes, not actual file content. Diffing them against
@@ -684,3 +706,18 @@ not a copy-sync check. The KEEP IN SYNC comments are no longer needed.
 _resolve_repo_path now returns a fully-resolved path from get_task_type_spec; no local
 sanitization needed in repo_applicator. patch_intent keeps its own local copy for
 materialize_patch_intents workspace filenames (different use site, not routing).
+
+## 2026-05-01: ArtifactKind defaults to UNKNOWN — explicit at creation sites (Step 14)
+The default kind=UNKNOWN is a backward-compatibility affordance, not the preferred state.
+Every creation site (job_runner, llm_planner, task_runner) sets kind explicitly. Unknown
+stays as the default only so old persisted JSON without 'kind' deserializes safely.
+
+## 2026-05-01: planning_artifact prefers explicit kind over legacy name convention (Step 14)
+The helper checks kind=PLANNING first (explicit path, Step 14+), then falls back to
+name="planning_output" and task_id=None (legacy convention, pre-Step-14). The explicit
+path is preferred because: (a) it is the intended stable signal, (b) it does not depend
+on a name string that could change. The fallback is deliberate and documented.
+
+## 2026-05-01: artifact_index helpers accept Sequence[Artifact], not Job (Step 14)
+Accepting a sequence rather than a Job makes the helpers composable: callers can pass
+job.artifacts, a filtered slice, or any other artifact list. No coupling to Job required.

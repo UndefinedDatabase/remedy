@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.task_runner import (
     annotate_task_result,
@@ -390,3 +390,321 @@ def test_retry_verify_uses_new_artifact_not_stale(tmp_path, monkeypatch):
     assert vr2.passed is True
     finalize_task(result2, vr2)
     assert job.tasks[0].status == RunState.COMPLETED
+
+
+# ---------------------------------------------------------------------------
+# Verifier Profiles v1
+#
+# Profile checks run inside verify_task_output after workspace file checks pass.
+# They read artifact.content, not the workspace file.
+# ---------------------------------------------------------------------------
+
+_BUILDER_CONTENT_TEMPLATE = """\
+Builder Execution Output
+Task:  {task_id}
+Type:  {task_type}
+Desc:  test description
+
+Summary: {summary}
+
+Proposed Changes:
+{changes}{risks_block}"""
+
+
+def _make_artifact_content(
+    task_id,
+    task_type: str = "write_code",
+    summary: str = "Done.",
+    changes: list[str] | None = None,
+    risks: list[str] | None = None,
+) -> str:
+    if changes is None:
+        changes = ["Add function foo()", "Add unit test"]
+    changes_text = "\n".join(f"  - {c}" for c in changes)
+    risks_block = ""
+    if risks:
+        risks_text = "\n".join(f"  - {r}" for r in risks)
+        risks_block = f"\n\nRisks:\n{risks_text}"
+    return _BUILDER_CONTENT_TEMPLATE.format(
+        task_id=task_id,
+        task_type=task_type,
+        summary=summary,
+        changes=changes_text,
+        risks_block=risks_block,
+    )
+
+
+def _setup_artifact_with_content(
+    job: Job,
+    content: str,
+    task_type: str,
+    ws_file_path,
+) -> Artifact:
+    """Create an artifact with given content and a valid workspace file."""
+    task = job.tasks[0]
+    ws_file_path.write_text("Task Type: test\nSummary: done\n\nProposed Changes:\n  - x\n")
+    artifact = Artifact(
+        name=f"task_output_{task_type}",
+        content=content,
+        mime_type="text/plain",
+        task_id=task.id,
+        kind=ArtifactKind.BUILDER_PROPOSAL,
+        metadata={
+            "task_type": task_type,
+            "summary": "done",
+            "workspace_file": str(ws_file_path),
+        },
+    )
+    job.artifacts.append(artifact)
+    task.output_artifact_ids.append(artifact.id)
+    return artifact
+
+
+# ---------------------------------------------------------------------------
+# generic profile — baseline
+# ---------------------------------------------------------------------------
+
+
+class TestGenericProfileVerification:
+    def test_generic_happy_path_passes(self, tmp_path):
+        """Unknown task_type uses generic profile; standard content passes."""
+        job = _make_planned_job("write_code")
+        task = job.tasks[0]
+        content = _make_artifact_content(task.id, "write_code")
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_code", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is True
+
+    def test_generic_profile_check_names_present(self, tmp_path):
+        job = _make_planned_job("write_code")
+        task = job.tasks[0]
+        content = _make_artifact_content(task.id, "write_code")
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_code", ws)
+        vr = verify_task_output(job, task.id)
+        check_names = [c.check for c in vr.checks]
+        assert "required_section:Summary:" in check_names
+        assert "required_section:Proposed Changes:" in check_names
+        assert "min_proposed_changes" in check_names
+
+    def test_profile_checks_run_without_workspace_file(self):
+        """Profile checks are independent of TaskContract.require_workspace_file.
+
+        Passing TaskContract(require_workspace_file=False) skips workspace checks
+        but must NOT skip profile content checks.
+        """
+        from packages.orchestration.verifier import TaskContract
+
+        job = _make_planned_job("write_readme")  # repo_doc profile → forbids TODO/TBD
+        task = job.tasks[0]
+        # Artifact content with a TODO — should fail repo_doc forbidden_phrase:TODO
+        content = _make_artifact_content(
+            task.id, "write_readme", summary="TODO: fill in later"
+        )
+        # No workspace_file in metadata; contract skips workspace checks entirely.
+        artifact = Artifact(
+            name="task_output_write_readme",
+            content=content,
+            mime_type="text/plain",
+            task_id=task.id,
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            metadata={"task_type": "write_readme", "summary": "done"},
+        )
+        job.artifacts.append(artifact)
+        task.output_artifact_ids.append(artifact.id)
+
+        vr = verify_task_output(
+            job, task.id, contract=TaskContract(require_workspace_file=False)
+        )
+        # Profile check should still fire and fail on TODO
+        check_names = [c.check for c in vr.checks]
+        assert "forbidden_phrase:TODO" in check_names
+        assert any(c.check == "forbidden_phrase:TODO" and not c.passed for c in vr.checks)
+        # No workspace checks present (they were skipped by contract)
+        assert "workspace_file_in_metadata" not in check_names
+
+
+# ---------------------------------------------------------------------------
+# repo_doc profile — forbidden phrases (TODO, TBD)
+# ---------------------------------------------------------------------------
+
+
+class TestRepoDocProfileVerification:
+    def test_repo_doc_passes_with_clean_content(self, tmp_path):
+        """write_readme → repo_doc; content without TODO/TBD passes."""
+        job = _make_planned_job("write_readme")
+        task = job.tasks[0]
+        content = _make_artifact_content(task.id, "write_readme")
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_readme", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is True
+
+    def test_repo_doc_fails_on_TODO_in_content(self, tmp_path):
+        """repo_doc profile rejects 'TODO' anywhere in artifact content."""
+        job = _make_planned_job("write_readme")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "write_readme", summary="TODO: finish this"
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_readme", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is False
+        assert any(c.check == "forbidden_phrase:TODO" and not c.passed for c in vr.checks)
+
+    def test_repo_doc_fails_on_TBD_in_content(self, tmp_path):
+        job = _make_planned_job("write_readme")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "write_readme", changes=["Update section TBD later"]
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_readme", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is False
+        assert any(c.check == "forbidden_phrase:TBD" and not c.passed for c in vr.checks)
+
+    def test_forbidden_phrase_check_is_case_insensitive(self, tmp_path):
+        """'todo' (lowercase) must also be caught by repo_doc forbidden_phrase:TODO."""
+        job = _make_planned_job("write_readme")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "write_readme", summary="todo: figure out later"
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_readme", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is False
+        assert any(c.check == "forbidden_phrase:TODO" and not c.passed for c in vr.checks)
+
+
+# ---------------------------------------------------------------------------
+# analysis_doc profile — min 2 proposed changes, forbidden phrases
+# ---------------------------------------------------------------------------
+
+
+class TestAnalysisDocProfileVerification:
+    def test_analysis_doc_passes_with_two_changes(self, tmp_path):
+        job = _make_planned_job("write_spec")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "write_spec",
+            changes=["Add section A", "Add section B"],
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_spec", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is True
+
+    def test_analysis_doc_fails_with_one_change(self, tmp_path):
+        """analysis_doc requires >= 2 proposed changes; 1 is not enough."""
+        job = _make_planned_job("write_spec")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "write_spec", changes=["Only one change"]
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_spec", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is False
+        assert any(c.check == "min_proposed_changes" and not c.passed for c in vr.checks)
+
+    def test_analysis_doc_fails_on_maybe(self, tmp_path):
+        job = _make_planned_job("write_analysis")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "write_analysis",
+            summary="maybe this is correct",
+            changes=["Change A", "Change B"],
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "write_analysis", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is False
+        assert any(c.check == "forbidden_phrase:maybe" and not c.passed for c in vr.checks)
+
+
+# ---------------------------------------------------------------------------
+# implementation_plan profile — requires Risks: section, min 2 changes
+# ---------------------------------------------------------------------------
+
+
+class TestImplementationPlanProfileVerification:
+    def test_implementation_plan_passes_with_risks(self, tmp_path):
+        job = _make_planned_job("create_plan")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "create_plan",
+            changes=["Step A", "Step B"],
+            risks=["Breaking change to API"],
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "create_plan", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is True
+
+    def test_implementation_plan_fails_without_risks_section(self, tmp_path):
+        """implementation_plan requires 'Risks:' in artifact content."""
+        job = _make_planned_job("create_plan")
+        task = job.tasks[0]
+        # No risks= argument → no Risks: section
+        content = _make_artifact_content(
+            task.id, "create_plan", changes=["Step A", "Step B"]
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "create_plan", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is False
+        assert any(
+            c.check == "required_section:Risks:" and not c.passed for c in vr.checks
+        )
+
+    def test_implementation_plan_fails_with_one_change(self, tmp_path):
+        job = _make_planned_job("create_plan")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "create_plan",
+            changes=["Only one step"],
+            risks=["Some risk"],
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "create_plan", ws)
+        vr = verify_task_output(job, task.id)
+        assert vr.passed is False
+        assert any(c.check == "min_proposed_changes" and not c.passed for c in vr.checks)
+
+    def test_failure_result_has_clear_check_name(self, tmp_path):
+        """Check names include the section string for easy diagnosis."""
+        job = _make_planned_job("create_plan")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "create_plan", changes=["Step A", "Step B"]
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "create_plan", ws)
+        vr = verify_task_output(job, task.id)
+        check_names = [c.check for c in vr.checks]
+        assert "required_section:Risks:" in check_names
+
+    def test_implementation_plan_does_not_forbid_TODO(self, tmp_path):
+        """implementation_plan allows TODO — plans may reference follow-up work."""
+        job = _make_planned_job("create_plan")
+        task = job.tasks[0]
+        content = _make_artifact_content(
+            task.id, "create_plan",
+            summary="TODO: decide on API surface",
+            changes=["Step A", "Step B"],
+            risks=["API may break consumers"],
+        )
+        ws = tmp_path / "out.txt"
+        _setup_artifact_with_content(job, content, "create_plan", ws)
+        vr = verify_task_output(job, task.id)
+        # No forbidden_phrase:TODO check should appear (or if it does, it must pass)
+        todo_checks = [c for c in vr.checks if c.check == "forbidden_phrase:TODO"]
+        assert all(c.passed for c in todo_checks), (
+            "implementation_plan should not forbid TODO but check failed"
+        )
+        # Verify TODO did not cause overall failure
+        assert vr.passed is True

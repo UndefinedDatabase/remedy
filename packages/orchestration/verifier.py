@@ -1,17 +1,40 @@
 """
-Task Contract v1 and deterministic workspace verifier.
+Task Contract v1 + Verifier Profiles v1 — deterministic workspace verifier.
 
 A task execution is considered complete only after the verifier passes.
-The verifier runs deterministic, local-only checks — no LLM calls, no shell execution.
+All checks are deterministic and local-only — no LLM calls, no shell execution.
 
-Task Contract v1 checks (all required by default):
-  1. task has at least one output_artifact_id
-  2. referenced artifact exists in job.artifacts
-  3. artifact.task_id matches task.id
-  4. artifact metadata contains 'workspace_file' key
-  5. workspace file exists on disk
-  6. workspace file is not empty
-  7. workspace file contains at least one proposed change line (starts with "  - ")
+Execution flow:
+
+  1. Resolve task by task_id in job.tasks.
+
+  When TaskContract.require_artifact is True (default):
+
+  2. Confirm artifact present: task has at least one output_artifact_id,
+     referenced artifact exists in job.artifacts.
+  3. Confirm provenance: artifact.task_id matches task.id.
+
+  Once the artifact is confirmed valid, run profile checks
+  (TaskContract.require_artifact must be True; skipped if require_artifact=False
+  because profile checks operate on artifact.content):
+
+  4. required_section:<section>  — section header present in artifact.content
+  5. min_proposed_changes        — count of proposed-change lines meets threshold
+  6. forbidden_phrase:<phrase>   — phrase absent from artifact.content (case-insensitive)
+
+  When TaskContract.require_workspace_file is True (default):
+
+  7. workspace_file_in_metadata  — artifact metadata contains 'workspace_file' key
+  8. workspace_file_exists       — the recorded path exists on disk
+  9. workspace_file_not_empty    — file size > 0 bytes
+  10. has_proposed_change        — file contains at least one "  - " line
+
+Responsibility split:
+  TaskContract   — structural/materialization requirements: artifact present,
+                   workspace file exists and non-empty, proposed change lines.
+  VerifierProfile — content-quality requirements: section structure, output
+                    quantity, vagueness/incompleteness signals. Resolved via:
+                    task_type → TaskTypeSpec.verifier_profile → VerifierProfile.
 
 The verifier is pure — it does not mutate job state.
 Callers must call finalize_task() in task_runner to apply the result.
@@ -26,6 +49,33 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from packages.core.models import Job
+from packages.orchestration.task_registry import get_task_type_spec
+from packages.orchestration.verifier_profiles import get_verifier_profile
+
+
+# ---------------------------------------------------------------------------
+# Internal helper: count proposed-change lines in artifact content
+# ---------------------------------------------------------------------------
+
+_BUILDER_SECTION_ENDINGS = frozenset({"Notes:", "Risks:"})
+
+
+def _count_proposed_changes_in_content(content: str) -> int:
+    """Count '  - ' lines in the Proposed Changes section of artifact.content.
+
+    Uses the same section-boundary logic as task_runner._extract_proposed_changes.
+    Notes and Risks lines are excluded even though they share the same prefix.
+    """
+    count = 0
+    in_changes = False
+    for line in content.splitlines():
+        if line == "Proposed Changes:":
+            in_changes = True
+        elif in_changes and line in _BUILDER_SECTION_ENDINGS:
+            in_changes = False
+        elif in_changes and line.startswith("  - "):
+            count += 1
+    return count
 
 
 class TaskContract(BaseModel):
@@ -84,8 +134,8 @@ def verify_task_output(
     """Run Task Contract v1 checks against the output of an executed task.
 
     Checks are deterministic and local-only: no LLM calls, no shell execution.
-    The 'contract' parameter reserves space for future customization; Step 7
-    always runs all checks (all require_* flags default to True).
+    The 'contract' parameter controls which check groups are active (all
+    require_* flags default to True).
 
     Does not mutate job state. Caller must call finalize_task() in task_runner
     to apply the verification result to task and job state.
@@ -93,6 +143,11 @@ def verify_task_output(
     Returns a VerificationResult describing which checks passed or failed.
     Early return after any check that would cause a subsequent check to error
     (e.g. if artifact is None, workspace file checks are skipped).
+
+    Note: profile checks (required sections, min proposed changes, forbidden
+    phrases) are gated on TaskContract.require_artifact. If require_artifact is
+    False, no artifact is resolved and profile checks are skipped because they
+    operate on artifact.content.
     """
     if contract is None:
         contract = TaskContract()
@@ -159,6 +214,63 @@ def verify_task_output(
         )
         if not task_id_matches:
             return VerificationResult(task_id=task_id, passed=False, checks=checks)
+
+        # Profile-driven checks — run as soon as the artifact is confirmed valid.
+        # These read artifact.content and are independent of workspace-file
+        # requirements.  They run regardless of TaskContract.require_workspace_file
+        # so that content quality is always enforced when a task produces output.
+        task_type = task.inputs.get("task_type", "unknown")
+        spec = get_task_type_spec(task_type)
+        profile = get_verifier_profile(spec.verifier_profile)
+
+        # Check: required sections present in artifact content
+        for section in profile.required_sections:
+            has_section = section in artifact.content
+            checks.append(
+                VerificationCheckResult(
+                    check=f"required_section:{section}",
+                    passed=has_section,
+                    message=(
+                        "OK"
+                        if has_section
+                        else f"artifact content missing required section '{section}'"
+                    ),
+                )
+            )
+
+        # Check: minimum proposed changes in artifact content
+        proposed_count = _count_proposed_changes_in_content(artifact.content)
+        has_min = proposed_count >= profile.min_proposed_changes
+        checks.append(
+            VerificationCheckResult(
+                check="min_proposed_changes",
+                passed=has_min,
+                message=(
+                    "OK"
+                    if has_min
+                    else (
+                        f"expected >= {profile.min_proposed_changes} proposed "
+                        f"changes in artifact content, got {proposed_count}"
+                    )
+                ),
+            )
+        )
+
+        # Check: forbidden phrases absent from artifact content (case-insensitive)
+        content_lower = artifact.content.lower()
+        for phrase in profile.forbidden_phrases:
+            absent = phrase.lower() not in content_lower
+            checks.append(
+                VerificationCheckResult(
+                    check=f"forbidden_phrase:{phrase}",
+                    passed=absent,
+                    message=(
+                        "OK"
+                        if absent
+                        else f"artifact content contains forbidden phrase '{phrase}'"
+                    ),
+                )
+            )
 
         if contract.require_workspace_file:
             # Check 4: workspace_file key present in metadata

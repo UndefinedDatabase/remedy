@@ -454,7 +454,7 @@ class TestKeywordSync:
         from packages.orchestration.repo_applicator import _resolve_repo_path
         from packages.orchestration.task_registry import _ROUTE_RULES  # internal — testing routing source
 
-        for keyword, _, _ in _ROUTE_RULES:
+        for keyword, _, _, _ in _ROUTE_RULES:
             assert _derive_target_path(keyword) == _resolve_repo_path(keyword), (
                 f"routing diverged for keyword {keyword!r}: "
                 f"patch_intent={_derive_target_path(keyword)!r}, "
