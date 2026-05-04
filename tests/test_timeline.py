@@ -355,6 +355,19 @@ class TestRenderPlanningEvents:
         assert "password=abc" not in out
         assert "Planning failed" in out
 
+    def test_planning_failed_error_category_wins_over_message(self):
+        """When both error_category and a sensitive message are present, error_category wins."""
+        job = _make_job()
+        events = [{"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+                   "timestamp": _ts(0), "outcome": "error",
+                   "message": "secret-token SHOULD_NOT_RENDER",
+                   "metadata": {"error_category": "RuntimeError"}}]
+        out = summarize_timeline(job, events)
+        assert "Planning failed" in out
+        assert "RuntimeError" in out
+        assert "secret-token" not in out
+        assert "SHOULD_NOT_RENDER" not in out
+
 
 class TestRenderTaskRunNoop:
     def test_no_pending_tasks_renders(self):

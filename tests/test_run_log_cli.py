@@ -864,7 +864,7 @@ class TestRunNextTaskImportErrorTerminal:
         assert log_path is not None
         assert secret_msg not in log_path.read_text(encoding="utf-8")
 
-    def test_structural_invariant_started_before_failed(self, tmp_path, monkeypatch):
+    def test_structural_invariant_import_error_started_before_failed(self, tmp_path, monkeypatch):
         """task_run_started count == 1, terminal count == 1, and ordering is correct."""
         job, _ = _make_task_job(tmp_path, monkeypatch)
         builder_cls = MagicMock(side_effect=ImportError("no module"))
@@ -943,7 +943,32 @@ class TestRunNextTaskValidationErrorTerminal:
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "invalid_builder_output"
 
-    def test_structural_invariant_started_before_failed(self, tmp_path, monkeypatch):
+    def test_validation_error_raw_text_absent_from_log(self, tmp_path, monkeypatch):
+        """ValidationError path must not write raw exception text to the JSONL log."""
+        # Use a real ValidationError so the except ValidationError branch is exercised.
+        real_exc = _make_validation_error()
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch("packages.orchestration.task_runner.run_next_task", side_effect=real_exc),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        log_path = _find_run_log(tmp_path, job.id)
+        assert log_path is not None
+        raw = log_path.read_text(encoding="utf-8")
+        # The log must record error_category, not the full pydantic error text
+        assert "ValidationError" in raw  # error_category value is safe
+        assert "proposed_changes" not in raw  # field names from pydantic error body are not safe
+
+    def test_structural_invariant_validation_error_started_before_failed(self, tmp_path, monkeypatch):
         real_exc = _make_validation_error()
         job, _ = _make_task_job(tmp_path, monkeypatch)
         builder_instance = MagicMock()
@@ -1010,7 +1035,7 @@ class TestRunNextTaskValueErrorTerminal:
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "configuration_error"
 
-    def test_structural_invariant_started_before_failed(self, tmp_path, monkeypatch):
+    def test_structural_invariant_value_error_started_before_failed(self, tmp_path, monkeypatch):
         job, _ = _make_task_job(tmp_path, monkeypatch)
         builder_instance = MagicMock()
         builder_instance.model = "test-model"
@@ -1122,7 +1147,7 @@ class TestRunNextTaskGenericExceptionTerminal:
         assert log_path is not None
         assert secret_msg not in log_path.read_text(encoding="utf-8")
 
-    def test_structural_invariant_started_before_failed(self, tmp_path, monkeypatch):
+    def test_structural_invariant_generic_exception_started_before_failed(self, tmp_path, monkeypatch):
         job, _ = _make_task_job(tmp_path, monkeypatch)
         builder_instance = MagicMock()
         builder_instance.model = "test-model"
