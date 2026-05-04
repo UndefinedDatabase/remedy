@@ -535,6 +535,17 @@ summarize_timeline(job: Job, events: list[dict]) -> str
 **Output sections:** header (job id, state, task counts) → Events → Current status →
 Next suggested action.
 
+**planning_failed rendering rule:** `summarize_timeline` uses `metadata.error_category` as the
+diagnostic detail. If `error_category` is absent (e.g. events from older log files), it renders
+`"unknown error"`. It never renders `event.message` — that field may contain raw exception strings
+from older log formats and must be treated as opaque.
+
+**task_run_noop outcomes:**
+- `no_pending_tasks` — emitted *before* `task_run_started`; builder was not called
+- `no_change` with `reason="builder_returned_no_change"` — emitted *after* `task_run_started`;
+  builder ran and returned changed=False. Timeline renders these two outcomes with distinct text
+  so a cockpit can distinguish "nothing queued" from "ran but produced nothing".
+
 **Event rendering:** each event type is rendered with a symbol prefix (`✓` success,
 `✕` failure, `!` warning, `○` noop/info). Task events are grouped into compact
 blocks (task_run_started → terminal) showing type, outcome, verification, workspace

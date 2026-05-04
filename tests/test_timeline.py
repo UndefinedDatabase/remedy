@@ -330,6 +330,31 @@ class TestRenderPlanningEvents:
         assert "Planning failed" in out
         assert "RuntimeError" in out
 
+    def test_planning_failed_without_error_category_renders_unknown_error(self):
+        """When error_category is absent, timeline must show 'unknown error', not raw message."""
+        job = _make_job()
+        events = [{"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+                   "timestamp": _ts(0), "outcome": "error",
+                   "message": "secret-token SHOULD_NOT_RENDER",
+                   "metadata": {}}]
+        out = summarize_timeline(job, events)
+        assert "Planning failed" in out
+        assert "unknown error" in out
+        assert "secret-token" not in out
+        assert "SHOULD_NOT_RENDER" not in out
+
+    def test_planning_failed_message_field_never_rendered_as_detail(self):
+        """message field is silenced even when it looks like a connection error with secrets."""
+        job = _make_job()
+        events = [{"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+                   "timestamp": _ts(0), "outcome": "error",
+                   "message": "connection refused password=abc",
+                   "metadata": {}}]
+        out = summarize_timeline(job, events)
+        assert "connection refused" not in out
+        assert "password=abc" not in out
+        assert "Planning failed" in out
+
 
 class TestRenderTaskRunNoop:
     def test_no_pending_tasks_renders(self):

@@ -864,6 +864,26 @@ class TestRunNextTaskImportErrorTerminal:
         assert log_path is not None
         assert secret_msg not in log_path.read_text(encoding="utf-8")
 
+    def test_structural_invariant_started_before_failed(self, tmp_path, monkeypatch):
+        """task_run_started count == 1, terminal count == 1, and ordering is correct."""
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_cls = MagicMock(side_effect=ImportError("no module"))
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        names = _event_names(events)
+        terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
+        assert names.count("task_run_started") == 1
+        assert sum(names.count(t) for t in terminal) == 1
+        assert names.index("task_run_started") < names.index("task_run_failed")
+
 
 def _make_validation_error():
     """Create a real pydantic.ValidationError for use in tests."""
@@ -923,6 +943,28 @@ class TestRunNextTaskValidationErrorTerminal:
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "invalid_builder_output"
 
+    def test_structural_invariant_started_before_failed(self, tmp_path, monkeypatch):
+        real_exc = _make_validation_error()
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch("packages.orchestration.task_runner.run_next_task", side_effect=real_exc),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        names = _event_names(_run_events_for_job(tmp_path, job.id))
+        terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
+        assert names.count("task_run_started") == 1
+        assert sum(names.count(t) for t in terminal) == 1
+        assert names.index("task_run_started") < names.index("task_run_failed")
+
 
 class TestRunNextTaskValueErrorTerminal:
     def test_value_error_logs_task_run_failed(self, tmp_path, monkeypatch):
@@ -967,6 +1009,28 @@ class TestRunNextTaskValueErrorTerminal:
         events = _run_events_for_job(tmp_path, job.id)
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "configuration_error"
+
+    def test_structural_invariant_started_before_failed(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch("packages.orchestration.task_runner.run_next_task",
+                  side_effect=ValueError("bad config")),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        names = _event_names(_run_events_for_job(tmp_path, job.id))
+        terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
+        assert names.count("task_run_started") == 1
+        assert sum(names.count(t) for t in terminal) == 1
+        assert names.index("task_run_started") < names.index("task_run_failed")
 
 
 class TestRunNextTaskGenericExceptionTerminal:
@@ -1057,6 +1121,28 @@ class TestRunNextTaskGenericExceptionTerminal:
         log_path = _find_run_log(tmp_path, job.id)
         assert log_path is not None
         assert secret_msg not in log_path.read_text(encoding="utf-8")
+
+    def test_structural_invariant_started_before_failed(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch("packages.orchestration.task_runner.run_next_task",
+                  side_effect=RuntimeError("boom")),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        names = _event_names(_run_events_for_job(tmp_path, job.id))
+        terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
+        assert names.count("task_run_started") == 1
+        assert sum(names.count(t) for t in terminal) == 1
+        assert names.index("task_run_started") < names.index("task_run_failed")
 
 
 # ---------------------------------------------------------------------------
