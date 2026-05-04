@@ -1,5 +1,44 @@
 # Decisions
 
+## 2026-05-03: ValidationError must be caught before ValueError in exception handlers (Step 17.1)
+In Pydantic v2, `pydantic.ValidationError` inherits from `ValueError`. If `except ValueError`
+appears first, it silently swallows `ValidationError` and the `except ValidationError` block is
+dead code. Fix: reorder so `except ValidationError` precedes `except ValueError`, with inline
+comment. This was the original Step 16.1 fix — re-applied after merge loss.
+
+## 2026-05-03: planning_failed uses fixed message + error_category, never str(exc) (Step 17.1)
+Raw exception messages may contain server URLs, tokens, connection strings, or other sensitive
+text. Logging `message=str(exc)` violates the run-log redaction policy. Fix: always log
+`message="planning failed"` (stable, safe) and `metadata.error_category=type(exc).__name__`.
+The Timeline renderer reads only `error_category`; never renders `message` as diagnostic text.
+
+## 2026-05-03: _fail() closure in _cmd_run_next_task_local (Step 17.1)
+A local `_fail(outcome, **meta)` helper closes over `log`, `pending_task`, and `pending_task_type`
+to emit `task_run_failed` from any of the 5 early-exit paths without repeating the full log.log()
+call. Preserves the terminal-event invariant without code duplication.
+
+## 2026-05-03: Timeline uses sequential event processing with task-block accumulation (Step 17)
+Events are processed in timestamp order. When task_run_started is seen, a "task block"
+is opened and subsequent events are accumulated until a terminal event (task_run_completed,
+task_run_failed, task_run_noop). The block is then rendered as a compact multi-line summary.
+Events outside a task block are rendered individually. This matches the natural event structure
+without requiring a pre-grouping pass and handles multiple retries of the same task_id naturally.
+
+## 2026-05-03: load_run_events takes data_dir (parent of runs/) not runs_root (Step 17)
+`data_dir` maps to REMEDY_DATA_DIR — the same value used by storage.py and workspace.py.
+`load_run_events` appends `runs/<job_id>/` internally. The CLI resolves data_dir from the
+REMEDY_DATA_DIR env var or the repo-local default, matching run_log.py's resolution order.
+
+## 2026-05-03: summarize_timeline is pure — events pre-loaded by caller (Step 17)
+Separating load from render makes summarize_timeline trivially testable (pass crafted dicts).
+The CLI loads events and passes them in. This also allows future callers (web server, TUI) to
+load events differently without changing the renderer.
+
+## 2026-05-03: Unknown events render as "○ <name>" rather than being silenced or crashing (Step 17)
+Silencing unknown events would hide bugs and make logs harder to diagnose. Crashing would
+break the timeline on log format evolution. Rendering with the INFO symbol is honest: the
+event is present and acknowledged; its semantics are just not yet implemented in the renderer.
+
 ## 2026-05-03: Run Logs v1 — one JSONL file per CLI invocation (Step 16)
 Each CLI invocation creates a RunLogWriter with a fresh run_id (UUID4 hex). All events
 from that invocation share the same run_id, forming a chronological session trail.

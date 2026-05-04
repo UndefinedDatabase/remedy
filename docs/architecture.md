@@ -435,11 +435,14 @@ None-valued top-level fields are omitted from the serialized line. `metadata` is
 `plan-job-local`:
 - `planning_started` — before the LLM call; includes provider/role/model
 - `planning_completed` — after success; outcome = `"changed"` or `"noop"`; metadata includes task_count, artifact_id, elapsed_ms
-- `planning_failed` — on exception; includes outcome=`"error"` and message
+- `planning_failed` — on exception; outcome = `"error"`; `message` = `"planning failed"` (fixed,
+  redaction-safe); `metadata.error_category` = exception type name; raw exception strings are
+  never logged
 
 `run-next-task-local`:
-- `task_run_noop` — when no pending tasks; outcome = `"no_pending_tasks"`
-- `task_run_started` — before builder call; metadata includes task_type
+- `task_run_noop` — before any builder call, when no pending tasks exist;
+  outcome = `"no_pending_tasks"` *(pre-execution noop; no `task_run_started` is emitted)*
+- `task_run_started` — logged before builder call; metadata includes task_type
 - `builder_started` — after builder instantiation, before LLM call; includes provider/role/model
 - `builder_completed` — after builder returns; includes artifact_id, elapsed_ms
 - `workspace_materialized` — after workspace file written; metadata includes workspace_file path
@@ -450,8 +453,27 @@ None-valued top-level fields are omitted from the serialized line. `metadata` is
 - `patch_intent_created` — after patch intents materialized; metadata includes intent_count, risk_levels
 - `patch_intent_skipped` — when no intents derived for this task type
 - `patch_intent_failed` — when patch intent verification errors occur; metadata includes error_count
-- `task_run_completed` — final event on success; outcome = `"pass"`
-- `task_run_failed` — final event on failure; outcome = `"fail"`
+- `task_run_completed` — terminal event on success; outcome = `"pass"`
+- `task_run_failed` — terminal event on failure; outcome values:
+  - `"fail"` — verification failure
+  - `"permission_denied"` — workspace_write not granted; metadata includes `capability`
+  - `"missing_dependency"` / `"invalid_builder_output"` / `"configuration_error"` / `"builder_error"` — builder exceptions
+  - metadata includes `error_category` (exception type name); raw exception strings are never logged
+- `task_run_noop` — terminal event when builder returns no change; outcome = `"no_change"`;
+  metadata includes `reason = "builder_returned_no_change"`
+
+**Terminal-event invariant (v1):**
+
+Every `task_run_started` must be followed by exactly one terminal task event in the same log:
+
+- `task_run_completed` — successful path
+- `task_run_failed` — any failure or permission denial
+- `task_run_noop` (outcome=`"no_change"`) — builder returned no change
+
+A cockpit reading run logs MUST treat a log file that contains `task_run_started` but no terminal
+event as an interrupted or crashed run (e.g. power loss, SIGKILL). The pre-execution noop
+(`task_run_noop/no_pending_tasks`) is emitted *before* `task_run_started` and is not a terminal
+event; it stands alone.
 
 `create-job`:
 - `job_created` — after job is saved; outcome = `"created"`
@@ -463,8 +485,10 @@ already visible in CLI output, counts, booleans, outcomes, elapsed_ms, risk leve
 verifier profile name, verification failure check names and messages.
 
 **Not logged:** full artifact content, full prompts, full workspace file contents,
-full diff previews. These are stored in job artifacts and workspace files; the run
-log contains only the structural and observability-relevant fields.
+full diff previews, raw exception messages or tracebacks. These are stored in job
+artifacts and workspace files; the run log contains only the structural and
+observability-relevant fields. Failure events record `error_category` (exception
+type name) — never `str(exc)`. The Timeline renderer follows the same rule.
 
 **Public API:**
 
@@ -491,6 +515,56 @@ the log for a specific invocation.
   In v1, if a log write raises unexpectedly the exception surfaces normally.
 - Foundation for future features: cockpit/timeline UX, session resume after
   terminal loss, autonomy/approval modes, MemPalace memory integration.
+
+### Timeline v1 (Step 17)
+
+`packages/orchestration/timeline.py` provides the first user-facing cockpit layer
+over run-log events: `remedy timeline <job_id>`.
+
+**Public API:**
+
+```python
+load_run_events(data_dir: Path, job_id: UUID | str) -> list[dict]
+    # Reads all *.jsonl under <data_dir>/runs/<job_id>/; sorted by timestamp.
+    # Returns [] if directory is missing. Ignores empty/malformed lines.
+
+summarize_timeline(job: Job, events: list[dict]) -> str
+    # Returns a human-readable multiline terminal string.
+```
+
+**Output sections:** header (job id, state, task counts) → Events → Current status →
+Next suggested action.
+
+**planning_failed rendering rule:** `summarize_timeline` uses `metadata.error_category` as the
+diagnostic detail. If `error_category` is absent (e.g. events from older log files), it renders
+`"unknown error"`. It never renders `event.message` — that field may contain raw exception strings
+from older log formats and must be treated as opaque.
+
+**task_run_noop outcomes:**
+- `no_pending_tasks` — emitted *before* `task_run_started`; builder was not called
+- `no_change` with `reason="builder_returned_no_change"` — emitted *after* `task_run_started`;
+  builder ran and returned changed=False. Timeline renders these two outcomes with distinct text
+  so a cockpit can distinguish "nothing queued" from "ran but produced nothing".
+
+**Event rendering:** each event type is rendered with a symbol prefix (`✓` success,
+`✕` failure, `!` warning, `○` noop/info). Task events are grouped into compact
+blocks (task_run_started → terminal) showing type, outcome, verification, workspace
+path, repo path, patch intent count and risk levels. Unknown events render as
+`○ <event-name>` rather than crashing.
+
+**Next suggested action (deterministic, no LLM):**
+1. Last terminal is `task_run_failed/permission_denied` → suggest `set-permission`.
+2. `patch_intent_created` with medium/high/unknown risk → suggest review.
+3. Pending tasks remain → suggest `run-next-task-local`.
+4. No pending tasks → suggest inspect or `create-job`.
+
+**Design principles:**
+- Read-only: never mutates job state or run logs.
+- No external dependencies: plain text, no rich/textual/click.
+- Degrades gracefully: missing logs, unknown events, and interrupted task blocks
+  all render without raising exceptions.
+- Foundation for a future TUI/web cockpit — the same run-log contract is consumed
+  by any future UI layer.
 
 ### Verifier Profiles v1 (Step 15)
 

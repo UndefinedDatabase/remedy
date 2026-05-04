@@ -1,20 +1,19 @@
 # Plan
 
 ## Goal
-Step 16: Run Logs v1 — append-only JSONL event trail for every Remedy operation.
+Step 17.2: Lock down timeline redaction and invariant tests (hardening-only).
+
+## Prior step
+Step 17.1 restored terminal-event invariant and planning_failed redaction.
 
 ## Status
-COMPLETE — 635 tests pass
+COMPLETE — 715 tests pass. PR #16 ready for merge.
 
 ## Steps
-1. [x] Create packages/orchestration/run_log.py (RunEvent, RunLogWriter, new_run_id, read_run_events)
-2. [x] Wire into _cmd_create_job: job_created event
-3. [x] Wire into _cmd_plan_job_local: planning_started, planning_completed/failed + log= output
-4. [x] Wire into _cmd_run_next_task_local: full event sequence + log= output
-5. [x] Create tests/test_run_log.py (unit tests for RunLogWriter, RunEvent, helpers)
-6. [x] Create tests/test_run_log_cli.py (CLI integration tests for all event types)
-7. [x] Update docs/architecture.md (Run Logs v1 section)
-8. [x] Update .agent files and commit
+1. [x] Add planning_failed fallback tests to test_timeline.py (no error_category → "unknown error"; message field never rendered)
+2. [x] Add structural invariant assertions to ImportError, ValidationError, ValueError, generic Exception test classes
+3. [x] Update docs/architecture.md: explicit timeline rendering rules for planning_failed and task_run_noop
+4. [x] Update .agent files and commit
 
 ## Branch
-feature/step16-run-logs
+feature/step17-timeline
