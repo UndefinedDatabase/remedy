@@ -740,3 +740,461 @@ class TestRunNextTaskPatchIntentCreated:
         assert created is not None, f"Expected patch_intent_created, got: {_event_names(events)}"
         assert created["metadata"]["intent_count"] == 1
         assert "risk_levels" in created["metadata"]
+
+
+# ---------------------------------------------------------------------------
+# Terminal-event invariant — workspace_write denial
+# ---------------------------------------------------------------------------
+
+
+class TestRunNextTaskWorkspaceWriteDenialTerminal:
+    """workspace_write denial must emit task_run_started then task_run_failed."""
+
+    def _run_denied(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        from packages.orchestration.permissions import Capability, set_permission
+
+        job = Job(name="test", state=RunState.RUNNING)
+        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job.tasks.append(task)
+        set_permission(job, Capability.workspace_write, allow=False)
+        save_job(job)
+
+        from apps.cli.main import _cmd_run_next_task_local
+
+        with pytest.raises(SystemExit):
+            _cmd_run_next_task_local(str(job.id))
+
+        return _run_events_for_job(tmp_path, job.id)
+
+    def test_task_run_started_is_logged(self, tmp_path, monkeypatch):
+        events = self._run_denied(tmp_path, monkeypatch)
+        assert "task_run_started" in _event_names(events)
+
+    def test_task_run_failed_is_logged(self, tmp_path, monkeypatch):
+        events = self._run_denied(tmp_path, monkeypatch)
+        assert "task_run_failed" in _event_names(events)
+
+    def test_task_run_failed_outcome_is_permission_denied(self, tmp_path, monkeypatch):
+        events = self._run_denied(tmp_path, monkeypatch)
+        ev = next(e for e in events if e["event"] == "task_run_failed")
+        assert ev["outcome"] == "permission_denied"
+
+    def test_task_run_failed_metadata_has_capability(self, tmp_path, monkeypatch):
+        events = self._run_denied(tmp_path, monkeypatch)
+        ev = next(e for e in events if e["event"] == "task_run_failed")
+        assert ev["metadata"].get("capability") == "workspace_write"
+
+    def test_task_run_started_precedes_task_run_failed(self, tmp_path, monkeypatch):
+        events = self._run_denied(tmp_path, monkeypatch)
+        names = _event_names(events)
+        assert names.index("task_run_started") < names.index("task_run_failed")
+
+    def test_no_orphaned_started_without_terminal(self, tmp_path, monkeypatch):
+        """task_run_started must be closed by exactly one terminal event."""
+        events = self._run_denied(tmp_path, monkeypatch)
+        names = _event_names(events)
+        terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
+        started_count = names.count("task_run_started")
+        terminal_count = sum(names.count(t) for t in terminal)
+        assert started_count == terminal_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Terminal-event invariant — builder exception paths
+# ---------------------------------------------------------------------------
+
+
+def _make_task_job(tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    job = Job(name="test", state=RunState.RUNNING)
+    task = Task(description="write readme", inputs={"task_type": "write_readme"})
+    job.tasks.append(task)
+    save_job(job)
+    return job, task
+
+
+class TestRunNextTaskImportErrorTerminal:
+    def test_import_error_logs_task_run_failed(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_cls = MagicMock(side_effect=ImportError("no module"))
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        assert "task_run_failed" in _event_names(events)
+
+    def test_import_error_outcome_is_missing_dependency(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_cls = MagicMock(side_effect=ImportError("no module"))
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        ev = next(e for e in events if e["event"] == "task_run_failed")
+        assert ev["outcome"] == "missing_dependency"
+
+    def test_import_error_raw_text_absent_from_log(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        secret_msg = "secret-import-path abc123"
+        builder_cls = MagicMock(side_effect=ImportError(secret_msg))
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        log_path = _find_run_log(tmp_path, job.id)
+        assert log_path is not None
+        assert secret_msg not in log_path.read_text(encoding="utf-8")
+
+
+def _make_validation_error():
+    """Create a real pydantic.ValidationError for use in tests."""
+    from pydantic import ValidationError
+
+    from packages.orchestration.builder_models import BuilderOutput
+
+    with pytest.raises(ValidationError) as exc_info:
+        # summary is required; proposed_changes min_length=1 is also violated
+        BuilderOutput(summary="x", proposed_changes=[])
+    return exc_info.value
+
+
+class TestRunNextTaskValidationErrorTerminal:
+    def test_validation_error_logs_task_run_failed(self, tmp_path, monkeypatch):
+        real_exc = _make_validation_error()
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                side_effect=real_exc,
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        assert "task_run_failed" in _event_names(events)
+
+    def test_validation_error_outcome_is_invalid_builder_output(self, tmp_path, monkeypatch):
+        real_exc = _make_validation_error()
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                side_effect=real_exc,
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        ev = next(e for e in events if e["event"] == "task_run_failed")
+        assert ev["outcome"] == "invalid_builder_output"
+
+
+class TestRunNextTaskValueErrorTerminal:
+    def test_value_error_logs_task_run_failed(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                side_effect=ValueError("bad config"),
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        assert "task_run_failed" in _event_names(events)
+
+    def test_value_error_outcome_is_configuration_error(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                side_effect=ValueError("bad config"),
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        ev = next(e for e in events if e["event"] == "task_run_failed")
+        assert ev["outcome"] == "configuration_error"
+
+
+class TestRunNextTaskGenericExceptionTerminal:
+    def test_generic_exception_logs_task_run_failed(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                side_effect=RuntimeError("something exploded"),
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        assert "task_run_failed" in _event_names(events)
+
+    def test_generic_exception_outcome_is_builder_error(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                side_effect=RuntimeError("something exploded"),
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        ev = next(e for e in events if e["event"] == "task_run_failed")
+        assert ev["outcome"] == "builder_error"
+
+    def test_generic_exception_error_category_in_metadata(self, tmp_path, monkeypatch):
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                side_effect=RuntimeError("something exploded"),
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        events = _run_events_for_job(tmp_path, job.id)
+        ev = next(e for e in events if e["event"] == "task_run_failed")
+        assert ev["metadata"].get("error_category") == "RuntimeError"
+
+    def test_raw_exception_text_absent_from_log(self, tmp_path, monkeypatch):
+        secret_msg = "secret-token xyzzy99"
+        job, _ = _make_task_job(tmp_path, monkeypatch)
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                side_effect=RuntimeError(secret_msg),
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            with pytest.raises(SystemExit):
+                _cmd_run_next_task_local(str(job.id))
+
+        log_path = _find_run_log(tmp_path, job.id)
+        assert log_path is not None
+        assert secret_msg not in log_path.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Terminal-event invariant — result.changed=False (builder no-change)
+# ---------------------------------------------------------------------------
+
+
+class TestRunNextTaskBuilderNoChange:
+    def _run_no_change(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        job = Job(name="test", state=RunState.RUNNING)
+        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job.tasks.append(task)
+        save_job(job)
+
+        from packages.orchestration.task_runner import RunTaskResult
+
+        run_result = RunTaskResult(job=job, task_id=task.id, changed=False)
+
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                return_value=run_result,
+            ),
+        ):
+            from apps.cli.main import _cmd_run_next_task_local
+
+            _cmd_run_next_task_local(str(job.id))
+
+        return _run_events_for_job(tmp_path, job.id)
+
+    def test_logs_task_run_noop(self, tmp_path, monkeypatch):
+        events = self._run_no_change(tmp_path, monkeypatch)
+        assert "task_run_noop" in _event_names(events)
+
+    def test_task_run_noop_outcome_is_no_change(self, tmp_path, monkeypatch):
+        events = self._run_no_change(tmp_path, monkeypatch)
+        ev = next(e for e in events if e["event"] == "task_run_noop")
+        assert ev["outcome"] == "no_change"
+
+    def test_task_run_noop_reason_is_builder_returned_no_change(self, tmp_path, monkeypatch):
+        events = self._run_no_change(tmp_path, monkeypatch)
+        ev = next(e for e in events if e["event"] == "task_run_noop")
+        assert ev["metadata"].get("reason") == "builder_returned_no_change"
+
+    def test_no_orphaned_started_without_terminal(self, tmp_path, monkeypatch):
+        events = self._run_no_change(tmp_path, monkeypatch)
+        names = _event_names(events)
+        terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
+        started_count = names.count("task_run_started")
+        terminal_count = sum(names.count(t) for t in terminal)
+        assert started_count == terminal_count == 1
+
+    def test_cli_output_says_builder_returned_no_change(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        self._run_no_change(tmp_path, monkeypatch)
+        out = capsys.readouterr().out
+        assert "builder returned no change" in out
+
+    def test_cli_output_does_not_say_no_pending_tasks(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        self._run_no_change(tmp_path, monkeypatch)
+        out = capsys.readouterr().out
+        assert "no pending tasks" not in out.lower()
+
+
+# ---------------------------------------------------------------------------
+# planning_failed — redaction
+# ---------------------------------------------------------------------------
+
+
+class TestPlanJobLocalPlanningFailed:
+    def _run_planning_failed(self, tmp_path, monkeypatch, exc_to_raise=None):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        if exc_to_raise is None:
+            exc_to_raise = RuntimeError("secret-token abc123")
+
+        job = Job(name="test", state=RunState.PENDING)
+        save_job(job)
+
+        planner_instance = MagicMock()
+        planner_instance.model = "test-model"
+        planner_cls = MagicMock(return_value=planner_instance)
+
+        with (
+            patch(
+                "packages.providers.ollama_planner.provider.OllamaPlanner", planner_cls
+            ),
+            patch(
+                "packages.orchestration.llm_planner.plan_job_with_llm",
+                side_effect=exc_to_raise,
+            ),
+        ):
+            from apps.cli.main import _cmd_plan_job_local
+
+            with pytest.raises(SystemExit):
+                _cmd_plan_job_local(str(job.id))
+
+        return _run_events_for_job(tmp_path, job.id)
+
+    def test_planning_failed_event_written(self, tmp_path, monkeypatch):
+        events = self._run_planning_failed(tmp_path, monkeypatch)
+        assert "planning_failed" in _event_names(events)
+
+    def test_planning_failed_outcome_is_error(self, tmp_path, monkeypatch):
+        events = self._run_planning_failed(tmp_path, monkeypatch)
+        ev = next(e for e in events if e["event"] == "planning_failed")
+        assert ev["outcome"] == "error"
+
+    def test_planning_failed_message_is_fixed_safe_text(self, tmp_path, monkeypatch):
+        events = self._run_planning_failed(tmp_path, monkeypatch)
+        ev = next(e for e in events if e["event"] == "planning_failed")
+        assert ev.get("message") == "planning failed"
+
+    def test_planning_failed_metadata_has_error_category(self, tmp_path, monkeypatch):
+        events = self._run_planning_failed(tmp_path, monkeypatch)
+        ev = next(e for e in events if e["event"] == "planning_failed")
+        assert ev["metadata"].get("error_category") == "RuntimeError"
+
+    def test_raw_exception_text_absent_from_log(self, tmp_path, monkeypatch):
+        secret_msg = "secret-token abc123"
+        events = self._run_planning_failed(
+            tmp_path, monkeypatch, exc_to_raise=RuntimeError(secret_msg)
+        )
+        log_path = _find_run_log(tmp_path, next(e["job_id"] for e in events))
+        raw = log_path.read_text(encoding="utf-8")
+        assert secret_msg not in raw
+
+    def test_planning_started_precedes_planning_failed(self, tmp_path, monkeypatch):
+        events = self._run_planning_failed(tmp_path, monkeypatch)
+        names = _event_names(events)
+        assert names.index("planning_started") < names.index("planning_failed")

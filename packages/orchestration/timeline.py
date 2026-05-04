@@ -171,9 +171,9 @@ def _render_single_event(ev: dict[str, Any]) -> str | None:
         return f"  {_OK} Planning completed  tasks={task_count}{model_str}{elapsed}"
 
     if name == "planning_failed":
-        error_cat = meta.get("error_category", "")
-        msg = ev.get("message", "")
-        detail = error_cat or msg or "unknown error"
+        # Prefer error_category (structured, redaction-safe).
+        # Never use ev["message"] — it may contain raw exception text from older logs.
+        detail = meta.get("error_category", "") or "unknown error"
         return f"  {_FAIL} Planning failed: {detail}"
 
     if name == "task_run_noop":

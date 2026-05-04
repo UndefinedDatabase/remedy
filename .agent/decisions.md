@@ -1,5 +1,22 @@
 # Decisions
 
+## 2026-05-03: ValidationError must be caught before ValueError in exception handlers (Step 17.1)
+In Pydantic v2, `pydantic.ValidationError` inherits from `ValueError`. If `except ValueError`
+appears first, it silently swallows `ValidationError` and the `except ValidationError` block is
+dead code. Fix: reorder so `except ValidationError` precedes `except ValueError`, with inline
+comment. This was the original Step 16.1 fix — re-applied after merge loss.
+
+## 2026-05-03: planning_failed uses fixed message + error_category, never str(exc) (Step 17.1)
+Raw exception messages may contain server URLs, tokens, connection strings, or other sensitive
+text. Logging `message=str(exc)` violates the run-log redaction policy. Fix: always log
+`message="planning failed"` (stable, safe) and `metadata.error_category=type(exc).__name__`.
+The Timeline renderer reads only `error_category`; never renders `message` as diagnostic text.
+
+## 2026-05-03: _fail() closure in _cmd_run_next_task_local (Step 17.1)
+A local `_fail(outcome, **meta)` helper closes over `log`, `pending_task`, and `pending_task_type`
+to emit `task_run_failed` from any of the 5 early-exit paths without repeating the full log.log()
+call. Preserves the terminal-event invariant without code duplication.
+
 ## 2026-05-03: Timeline uses sequential event processing with task-block accumulation (Step 17)
 Events are processed in timestamp order. When task_run_started is seen, a "task block"
 is opened and subsequent events are accumulated until a terminal event (task_run_completed,

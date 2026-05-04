@@ -117,12 +117,14 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         result: PlanJobResult = plan_job_with_llm(job, planner.plan)
     except ImportError as exc:
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
-                outcome="error", message=str(exc))
+                outcome="error", message="planning failed",
+                error_category=type(exc).__name__)
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
     except Exception as exc:
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
-                outcome="error", message=str(exc))
+                outcome="error", message="planning failed",
+                error_category=type(exc).__name__)
         print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
         sys.exit(1)
     elapsed_ms = (time.monotonic() - start) * 1000
@@ -333,9 +335,20 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         task_type=pending_task_type,
     )
 
+    def _fail(outcome: str, **meta: object) -> None:
+        """Emit task_run_failed, preserving the terminal-event invariant."""
+        log.log(
+            "task_run_failed",
+            task_id=str(pending_task.id) if pending_task else None,
+            outcome=outcome,
+            task_type=pending_task_type,
+            **meta,
+        )
+
     # Guard: deny workspace_write before the builder is called.
     # This prevents wasting an LLM call when the permission is not granted.
     if not _perm_allowed(job, Capability.workspace_write):
+        _fail("permission_denied", capability="workspace_write")
         print(
             f"Error: permission denied — workspace_write is not granted for job {job.id}",
             file=sys.stderr,
@@ -355,21 +368,33 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         )
         result: RunTaskResult = run_next_task(job, builder.build)
     except ImportError as exc:
+        _fail("missing_dependency", error_category="ImportError")
         print(f"Error: missing dependency — {exc}", file=sys.stderr)
         sys.exit(1)
-    except ValueError as exc:
-        print(f"Error: configuration — {exc}", file=sys.stderr)
-        sys.exit(1)
     except ValidationError as exc:
+        # Must precede ValueError: pydantic.ValidationError inherits from ValueError.
+        _fail("invalid_builder_output", error_category="ValidationError")
         print(f"Error: builder returned invalid output — {exc}", file=sys.stderr)
         sys.exit(1)
+    except ValueError as exc:
+        _fail("configuration_error", error_category="ValueError")
+        print(f"Error: configuration — {exc}", file=sys.stderr)
+        sys.exit(1)
     except Exception as exc:
+        _fail("builder_error", error_category=type(exc).__name__)
         print(f"Error: builder execution failed — {exc}", file=sys.stderr)
         sys.exit(1)
     elapsed_ms = (time.monotonic() - start) * 1000
 
     if not result.changed:
-        print(f"Job {job.id} — no pending tasks.  log={log.path}")
+        log.log(
+            "task_run_noop",
+            task_id=str(pending_task.id) if pending_task else None,
+            outcome="no_change",
+            task_type=pending_task_type,
+            reason="builder_returned_no_change",
+        )
+        print(f"Job {job.id} — builder returned no change.  log={log.path}")
         return
 
     # Resolve the task artifact for logging context.
