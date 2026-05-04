@@ -566,6 +566,55 @@ path, repo path, patch intent count and risk levels. Unknown events render as
 - Foundation for a future TUI/web cockpit — the same run-log contract is consumed
   by any future UI layer.
 
+### Cockpit v1 (Step 18)
+
+`packages/orchestration/cockpit.py` provides a decision-oriented overview of a job:
+`remedy cockpit <job_id>`.
+
+**Timeline vs Cockpit:**
+- Timeline answers: *"what happened?"* — chronological audit trail of events.
+- Cockpit answers: *"where are we, what matters, what needs the user, what can continue
+  automatically, and what should I do next?"* — decision surface, not event history.
+
+**Public API:**
+
+```python
+summarize_cockpit(job: Job, events: list[dict], *, data_dir: Path | None = None) -> str
+    # Returns a decision-oriented cockpit string.
+    # data_dir is REMEDY_DATA_DIR; when provided, the run-log dir path appears
+    # in the Important artifacts section.
+```
+
+**Output sections:**
+1. **Header** — job id (8 chars), name, state, task progress.
+2. **Situation** — last run outcome, patch intent risk, permission status
+   (workspace_write and repo_generated_write), pending task count.
+3. **Needs your attention** — actionable items requiring human review:
+   interrupted runs, workspace_write denied with pending tasks, patch risk
+   (medium/high/unknown), verification failures, repo_generated_write *explicitly*
+   denied when patch/repo output exists.
+4. **Can continue automatically** — yes/no with a one-line reason.
+5. **Important artifacts** — workspace file path, repo file path, patch intent
+   count + risk, run log directory (when data_dir provided).
+6. **Next best action** — single deterministic suggested CLI command.
+
+**Permission attention rule:** The repo_generated_write attention item only fires when
+the permission has been *explicitly* denied (`set_permission(job, ..., allow=False)`).
+It does not fire when the permission is at its default (False/opt-in), since the
+absence of an explicit grant is the expected initial state.
+
+**Next best action priority (deterministic, no LLM):**
+1. Workspace_write denied + pending tasks → `set-permission … allow workspace_write`.
+2. Interrupted run + pending tasks → `timeline <job_id>` then `run-next-task-local`.
+3. Patch risk (medium/high/unknown) + pending tasks → review, then `run-next-task-local`.
+4. Pending tasks, no blockers → `run-next-task-local`.
+5. No pending tasks → inspect files or `create-job`.
+
+**Design principles:**
+- Read-only: never mutates job state or run logs.
+- No external dependencies: plain text only.
+- Shares `load_run_events` from `timeline.py` — one reader, two views.
+
 ### Verifier Profiles v1 (Step 15)
 
 `packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.

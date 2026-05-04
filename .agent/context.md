@@ -1,30 +1,29 @@
 # Context
 
 ## Active Branch
-`feature/step17-timeline`
+feature/step18-cockpit-v1
 
 ## PR
 (none yet)
 
 ## Scope
-Step 17: Timeline v1 — read-only CLI cockpit over run-log events.
+Step 18: Cockpit v1 — decision-oriented overlay on run-log events.
+`remedy cockpit <job_id>` answers: "where are we, what matters, what needs the user, what can continue automatically?"
 
 New files:
-- packages/orchestration/timeline.py: load_run_events, summarize_timeline
-- tests/test_timeline.py: 45 tests
+- packages/orchestration/cockpit.py: summarize_cockpit + helpers
+- tests/test_cockpit.py: ~50 tests
 
 Modified:
-- apps/cli/main.py: _cmd_timeline + "timeline" subparser + dispatch
-- docs/architecture.md: Timeline v1 section
+- apps/cli/main.py: _cmd_cockpit + "cockpit" subparser + dispatch
+- docs/architecture.md: Cockpit v1 section (after Timeline v1 section)
 
 ## Key facts
-- `remedy timeline <job_id>` reads all *.jsonl under <data_dir>/runs/<job_id>/
-- events sorted by timestamp across multiple JSONL files
-- plain text output: header, Events, Current status, Next suggested action
-- task events grouped into compact blocks (started → terminal)
-- unknown events rendered as "○ <name>" — never crash
-- interrupted task (no terminal event) rendered as "! <type> interrupted"
-- next action is deterministic: permission_denied → set-permission,
-  patch risk → review, pending → run-next-task-local, else → inspect/create-job
+- Timeline = chronological audit trail; Cockpit = decision surface
+- summarize_cockpit(job, events, *, data_dir=None) -> str
+- Sections: header, Situation, Needs your attention, Can continue automatically,
+  Important artifacts, Next best action
+- repo_generated_write attention item only fires when EXPLICITLY denied, not at default
+- Shares load_run_events from timeline.py — one reader, two views
 - read-only: no state mutation, no external deps
-- 680 tests pass
+- 766 tests pass
