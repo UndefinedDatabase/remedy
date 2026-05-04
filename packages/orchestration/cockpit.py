@@ -281,7 +281,9 @@ def _can_auto_continue(job: Job, signals: dict[str, Any]) -> tuple[bool, str]:
     if not is_allowed(job, Capability.workspace_write):
         return False, "workspace_write permission not granted"
     if signals["has_interrupted"]:
-        return True, "pending tasks exist — inspect timeline first, then run"
+        # Conservative: interrupted runs must never be treated as auto-continue=True
+        # by a future autonomy controller, even though pending tasks exist.
+        return False, "interrupted run detected — inspect timeline before continuing"
     return True, "pending tasks and workspace_write allowed"
 
 

@@ -603,6 +603,12 @@ the permission has been *explicitly* denied (`set_permission(job, ..., allow=Fal
 It does not fire when the permission is at its default (False/opt-in), since the
 absence of an explicit grant is the expected initial state.
 
+**Interrupted run auto-continue safety:** When an interrupted run is detected (a
+`task_run_started` with no terminal event), `Can continue automatically` returns **no**,
+even when pending tasks exist. This is intentionally conservative: a future autonomy
+controller must not treat interrupted=True as auto-continue=True. The `Next best action`
+section still guides the human operator to inspect the timeline and then resume manually.
+
 **Next best action priority (deterministic, no LLM):**
 1. Workspace_write denied + pending tasks → `set-permission … allow workspace_write`.
 2. Interrupted run + pending tasks → `timeline <job_id>` then `run-next-task-local`.

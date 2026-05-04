@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-05-04: interrupted run → can_auto_continue=False (Step 18.1)
+An interrupted run (task_run_started with no terminal event) causes _can_auto_continue to
+return (False, "interrupted run detected — inspect timeline before continuing"). Previously
+it returned True. The boolean must be conservative: a future autonomy controller must never
+treat interrupted=True as a green light to continue. The Next best action section still guides
+the human to inspect the timeline and then resume manually — human guidance is preserved,
+machine-readable signal is conservative.
+
 ## 2026-05-04: repo_generated_write attention item fires only on explicit denial (Step 18)
 repo_generated_write defaults to False (opt-in). The cockpit attention item
 ("Repo writes are denied — allow with: remedy set-permission …") should NOT fire

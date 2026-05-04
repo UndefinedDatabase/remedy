@@ -334,8 +334,8 @@ class TestCanAutoContinue:
         section = out.split("Can continue automatically")[1].split("\n── ")[0]
         assert "yes" in section
 
-    def test_interrupted_run_still_yes_when_pending(self):
-        """Interrupted run + pending tasks: can continue (but inspect first)."""
+    def test_interrupted_run_no_when_pending(self):
+        """Interrupted run + pending tasks: cannot auto-continue (conservative for autonomy)."""
         job = _make_job()
         job.tasks.append(_make_pending_task())
         task_id = str(uuid4())
@@ -346,7 +346,21 @@ class TestCanAutoContinue:
         ]
         out = summarize_cockpit(job, events)
         section = out.split("Can continue automatically")[1].split("\n── ")[0]
-        assert "yes" in section
+        assert "no" in section
+
+    def test_interrupted_run_reason_mentions_inspect(self):
+        """Reason for no-auto-continue on interrupted run should guide the user."""
+        job = _make_job()
+        job.tasks.append(_make_pending_task())
+        task_id = str(uuid4())
+        events = [
+            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+             "timestamp": _ts(0), "task_id": task_id,
+             "metadata": {"task_type": "write_readme"}},
+        ]
+        out = summarize_cockpit(job, events)
+        section = out.split("Can continue automatically")[1].split("\n── ")[0]
+        assert "interrupted" in section or "inspect" in section
 
 
 # ---------------------------------------------------------------------------
@@ -445,10 +459,41 @@ class TestImportantArtifacts:
         assert str(job.id) in out
         assert "run log" in out.lower() or "runs" in out
 
+    def test_run_log_dir_absent_when_data_dir_none(self):
+        """data_dir=None: workspace/repo/patch artifacts shown but run log dir is not."""
+        job = _make_job(state=RunState.COMPLETED)
+        job.tasks.append(_completed_task())
+        task_id = str(uuid4())
+        events = _task_run_succeeded(str(job.id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+             "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
+             "metadata": {"intent_count": 2, "risk_levels": ["low"]}},
+        ]
+        out = summarize_cockpit(job, events, data_dir=None)
+        assert "workspace:" in out
+        assert "patch intents:" in out or "patch intent" in out.lower()
+        assert "run log" not in out.lower()
+
     def test_no_artifacts_section_when_no_artifacts(self):
         job = _make_job()
         out = summarize_cockpit(job, [])
         assert "Important artifacts" not in out
+
+    def test_default_repo_permission_no_attention_item(self):
+        """repo_generated_write not explicitly denied → no repo-denial attention item."""
+        job = _make_job(state=RunState.COMPLETED)
+        job.tasks.append(_completed_task())
+        task_id = str(uuid4())
+        # patch with low risk so no patch-risk attention item either
+        events = _task_run_succeeded(str(job.id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+             "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
+             "metadata": {"intent_count": 1, "risk_levels": ["low"]}},
+        ]
+        # No set_permission call — repo_generated_write stays at its default (False/opt-in)
+        out = summarize_cockpit(job, events)
+        assert "Repo writes are denied" not in out
+        assert "repo_generated_write" not in out
 
 
 # ---------------------------------------------------------------------------
