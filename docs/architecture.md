@@ -722,6 +722,9 @@ summarize_trust_report(job: Job, events: list[dict], *, data_dir: Path | None = 
 1. **User request** — `job.user_prompt` (truncated at 400 chars) or fallback to job name.
 2. **Plan** — task count by status, task types and descriptions.
 3. **Execution summary** — run invocations, completed, failed/blocked, no-op, interrupted.
+   `planning_failed` events are shown as `✕ Planning failed: <error_category>` (or
+   `unknown error` when no `error_category` is set).  Raw `message` from `planning_failed`
+   events is never rendered — same redaction rule as Timeline v1.
 4. **Artifacts** — one line per artifact (name + short ID + kind); raw content never shown.
 5. **Verification** — per-task pass/fail from `verification_passed`/`verification_failed`
    events; failed check names shown; raw exception text never shown.
@@ -729,15 +732,19 @@ summarize_trust_report(job: Job, events: list[dict], *, data_dir: Path | None = 
    blocked run events (permission-denied `task_run_failed`) shown as a list.
 7. **Patch intents and decisions** — all intents with state, risk, action, target path;
    approval counts; explicit note: approval is metadata-only, apply not implemented in v1.
+   Free-text approval `reason` supplied by the user is stored in artifact metadata only and
+   is never rendered in the Trust Report.
 8. **Redaction / trust boundary** — explicit statement that raw prompts, artifact content,
    and diff text are not included; run logs contain structured labels/counts/outcomes only.
-9. **Next safe action** — mirrors Cockpit priority: grant permission → inspect timeline →
-   review intents → run task → create job.
+9. **Next safe action** — priority order: plan job (if no tasks) → grant permission →
+   inspect timeline → review intents → run task → create job.
+   When `job.tasks` is empty, the action is always `plan-job-local` — never "Inspect
+   generated files", which would be misleading before any planning has occurred.
 
 **Redaction policy:** The Trust Report inherits the run-log redaction contract — no raw
-exception text, no raw artifact content, no full diff previews.  The report renders only
-IDs, counts, labels, risk levels, approval states, and target paths already stored in
-structured metadata.
+exception text, no raw artifact content, no full diff previews, no free-text approval
+reasons.  The report renders only IDs, counts, labels, risk levels, approval states, and
+target paths already stored in structured metadata.
 
 **CLI command:** `remedy trust-report <job_id>` — loads job, loads run events via
 `timeline.load_run_events`, prints the report to stdout, exits 0.  If no run logs exist,

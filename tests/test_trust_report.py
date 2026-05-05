@@ -264,6 +264,47 @@ class TestExecutionSummarySection:
         out = summarize_trust_report(job, events)
         assert "Interrupted" in out or "interrupted" in out
 
+    def test_planning_failed_with_error_category_shown(self):
+        """planning_failed event with error_category → safe category label shown."""
+        job = _make_job()
+        events = [
+            {"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+             "timestamp": _ts(0), "outcome": "error",
+             "message": "SECRET_EXCEPTION_TEXT",
+             "metadata": {"error_category": "RuntimeError"}},
+        ]
+        out = summarize_trust_report(job, events)
+        assert "Planning failed" in out
+        assert "RuntimeError" in out
+
+    def test_planning_failed_raw_message_never_rendered(self):
+        """planning_failed event without error_category → 'unknown error', message suppressed."""
+        job = _make_job()
+        events = [
+            {"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+             "timestamp": _ts(0), "outcome": "error",
+             "message": "SECRET_MUST_NOT_APPEAR connection refused password=abc",
+             "metadata": {}},
+        ]
+        out = summarize_trust_report(job, events)
+        assert "Planning failed" in out
+        assert "unknown error" in out
+        assert "SECRET_MUST_NOT_APPEAR" not in out
+        assert "connection refused" not in out
+
+    def test_planning_failed_no_longer_shows_vague_no_started_message(self):
+        """planning_failed-only run log should not fall through to the vague fallback."""
+        job = _make_job()
+        events = [
+            {"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+             "timestamp": _ts(0), "outcome": "error",
+             "message": "irrelevant",
+             "metadata": {"error_category": "ImportError"}},
+        ]
+        out = summarize_trust_report(job, events)
+        assert "no task_run_started" not in out.lower()
+        assert "Planning failed" in out
+
 
 # ---------------------------------------------------------------------------
 # Section 4: Artifacts
@@ -474,6 +515,18 @@ class TestPatchIntentsSection:
         assert "1 pending" in out
         assert "1 approved" in out
 
+    def test_approval_reason_never_rendered(self):
+        """Free-text approval reason is stored in metadata but must not appear in report."""
+        job = _make_job()
+        intent_id = _add_patch_artifact(job, risk=RISK_LOW)
+        set_approval_state(
+            job, intent_id, APPROVAL_APPROVED,
+            reason="SECRET_APPROVAL_REASON_DO_NOT_RENDER"
+        )
+        out = summarize_trust_report(job, [])
+        assert "approved" in out          # state still visible
+        assert "SECRET_APPROVAL_REASON_DO_NOT_RENDER" not in out
+
 
 # ---------------------------------------------------------------------------
 # Section 8: Redaction / trust boundary
@@ -531,6 +584,25 @@ class TestRedactionSection:
 
 
 class TestNextSafeAction:
+    def test_no_tasks_suggests_plan(self):
+        """Empty task list → suggest plan-job-local before anything else."""
+        job = _make_job()
+        out = summarize_trust_report(job, [])
+        assert "plan-job-local" in out
+
+    def test_no_tasks_pending_state_suggests_plan(self):
+        """Pending state with no tasks → plan-job-local."""
+        job = _make_job(state=RunState.PENDING)
+        out = summarize_trust_report(job, [])
+        assert "plan-job-local" in out
+
+    def test_no_tasks_does_not_say_inspect_generated_files(self):
+        """Before planning, 'Inspect generated files' would be misleading."""
+        job = _make_job()
+        out = summarize_trust_report(job, [])
+        section9 = out.split("9. Next safe action")[1]
+        assert "Inspect generated files" not in section9
+
     def test_pending_suggests_run(self):
         job = _make_job()
         job.tasks.append(_make_pending_task())

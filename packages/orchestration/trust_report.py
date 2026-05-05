@@ -111,6 +111,7 @@ def summarize_trust_report(
     n_noop        = signals["run_noop"]
     n_interrupted = 1 if signals["has_interrupted"] else 0
 
+    planning_failures = signals["planning_failures"]
     if not events:
         parts.append("  No run logs available.")
     else:
@@ -125,7 +126,9 @@ def summarize_trust_report(
             itype = signals.get("interrupted_task_type")
             itype_str = f" (task_type={itype})" if itype else ""
             parts.append(f"  {_WARN} Interrupted:      {n_interrupted}{itype_str}")
-        if not n_started and not n_noop and not n_failed_r:
+        for error_cat in planning_failures:
+            parts.append(f"  {_FAIL} Planning failed:  {error_cat}")
+        if not n_started and not n_noop and not n_failed_r and not planning_failures:
             parts.append("  Run logs present but no task_run_started events recorded.")
 
     # ── 4. Artifacts ─────────────────────────────────────────────────────────
@@ -296,6 +299,7 @@ def _extract_signals(events: list[dict[str, Any]]) -> dict[str, Any]:
         "interrupted_task_type": None,
         "verification_events": [],   # list of verification_passed/failed events
         "denied_events":       [],   # task_run_failed with outcome=permission_denied
+        "planning_failures":   [],   # (error_category,) tuples from planning_failed events
         "last_patch":          None,
         "last_terminal":       None,
     }
@@ -326,6 +330,11 @@ def _extract_signals(events: list[dict[str, Any]]) -> dict[str, Any]:
             elif name == "task_run_noop":
                 signals["run_noop"] += 1
 
+        elif name == "planning_failed":
+            # Safe: use only error_category from metadata; never ev["message"].
+            error_cat = ev.get("metadata", {}).get("error_category", "") or ""
+            signals["planning_failures"].append(error_cat or "unknown error")
+
         elif name in ("verification_passed", "verification_failed"):
             signals["verification_events"].append(ev)
 
@@ -345,6 +354,12 @@ def _extract_signals(events: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
+    if not job.tasks:
+        return (
+            f"  {_NEXT} Plan this job:\n"
+            f"      remedy plan-job-local {job.id}"
+        )
+
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
     ws_allowed = is_allowed(job, Capability.workspace_write)
 
