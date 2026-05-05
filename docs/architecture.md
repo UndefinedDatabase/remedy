@@ -621,6 +621,70 @@ section still guides the human operator to inspect the timeline and then resume 
 - No external dependencies: plain text only.
 - Shares `load_run_events` from `timeline.py` — one reader, two views.
 
+### Approval Queue v1 (Step 19)
+
+`packages/orchestration/approval_queue.py` provides metadata-only approval decisions for
+patch intents.  Four new CLI commands: `list-patch-intents`, `show-patch-intent`,
+`approve-patch-intent`, `reject-patch-intent`.
+
+**Scope:** Approval is a recorded decision only.  It does not apply patches, modify
+repository files, or trigger any automated action.  The apply step is not implemented
+in this version.  A future Visual Patch Lab / apply step will consume approvals.
+
+**Approval states:**
+- `pending` — no decision recorded (implicit default for every new intent)
+- `approved` — user reviewed and approved
+- `rejected` — user reviewed and rejected
+
+**Latest decision wins:** calling `approve-patch-intent` after `reject-patch-intent`
+(or vice versa) overwrites the stored state.  No intent is irrecoverably decided while
+no apply step exists.
+
+**Intent IDs (v1):**
+Format `"<artifact_short_id>-<idx>"` — the first 8 hex characters of the owning
+artifact's UUID followed by the 0-based index into its `patch_intent_explanations` list.
+Example: `a1b2c3d4-0`.  IDs are deterministic and stable across sessions.
+
+**Storage:** Approval data is stored durably in `artifact.metadata["patch_intent_approvals"]`
+as a dict mapping `intent_id → approval dict`.  The approval dict contains:
+`intent_id`, `target_path`, `action`, `risk`, `state`, `decided_at`, `decided_by`,
+`reason` (optional free-text from the user, stored in metadata only — not in run logs).
+
+**Run log events:** `patch_intent_approved` / `patch_intent_rejected`
+Metadata: `intent_id`, `target_path`, `risk`, `reason_present` (bool).  The raw reason
+string is **never** written to run logs (redaction policy).
+
+**Invalid stored risk values:** Any `risk` value not in `RISK_LEVELS` is coerced to
+`RISK_UNKNOWN` by `list_patch_intents` and `set_approval_state`.  Unknown values must not
+be treated as equivalent to `RISK_LOW` (see patch_intent.py module docstring).
+
+**Cockpit integration (Step 19):**
+- Pending approval + medium/high/unknown risk → `Needs your attention` item with pending
+  count and `remedy list-patch-intents` command.
+- Rejected intents → separate attention item with count.
+- Pending approvals + risk → `Next best action` directs to `list-patch-intents`, then
+  `approve-patch-intent`, then `run-next-task-local`.
+- All intents approved + no pending tasks → next action notes approval is complete and
+  states that the apply step is not implemented in v1 (does not imply files changed).
+
+**Public API::
+
+```python
+list_patch_intents(job: Job) -> list[dict]
+    # All intents across all artifacts, with current approval state.
+    # Invalid stored risk coerced to RISK_UNKNOWN.
+
+get_patch_intent(job: Job, intent_id: str) -> dict | None
+    # Single intent by intent_id; None if not found.
+
+set_approval_state(job, intent_id, state, *, reason=None, decided_by="user") -> dict
+    # Record an approval decision.  Caller must save_job() afterwards.
+    # Raises ValueError for invalid state or unknown intent_id.
+
+make_intent_id(artifact_id: UUID, idx: int) -> str
+    # Build the stable "<short_id>-<idx>" intent ID.
+```
+
 ### Verifier Profiles v1 (Step 15)
 
 `packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.

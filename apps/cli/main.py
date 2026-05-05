@@ -283,6 +283,135 @@ def _cmd_cockpit(job_id_str: str) -> None:
     print(summarize_cockpit(job, events, data_dir=data_dir))
 
 
+def _cmd_list_patch_intents(job_id_str: str) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.approval_queue import format_intent_list, list_patch_intents
+
+    intents = list_patch_intents(job)
+    print(format_intent_list(intents))
+
+
+def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.approval_queue import (
+        _find_artifact_for_intent,
+        format_intent_detail,
+        get_patch_intent,
+    )
+
+    item = get_patch_intent(job, intent_id)
+    if item is None:
+        print(f"Error: patch intent {intent_id!r} not found in job {job_id}.", file=sys.stderr)
+        print("Use 'remedy list-patch-intents <job_id>' to see available intent IDs.", file=sys.stderr)
+        sys.exit(1)
+
+    # Pull truncated diff preview from artifact metadata (safe — never full content).
+    diff_preview: str | None = None
+    found = _find_artifact_for_intent(job, intent_id)
+    if found is not None:
+        artifact, _ = found
+        diff_preview = artifact.metadata.get("patch_intent_diff_preview")
+
+    print(format_intent_detail(item, diff_preview))
+
+
+def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.approval_queue import set_approval_state
+    from packages.orchestration.run_log import RunLogWriter
+
+    try:
+        entry = set_approval_state(job, intent_id, "approved", reason=reason)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    save_job(job)
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "patch_intent_approved",
+        outcome="approved",
+        intent_id=entry["intent_id"],
+        target_path=entry["target_path"],
+        risk=entry["risk"],
+        reason_present=reason is not None,
+    )
+
+    print(f"Approved: {entry['intent_id']} ({entry['target_path']})")
+    if reason:
+        print(f"  note: {reason}")
+    print("Note: approval is metadata only — no files have been modified.")
+
+
+def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.approval_queue import set_approval_state
+    from packages.orchestration.run_log import RunLogWriter
+
+    try:
+        entry = set_approval_state(job, intent_id, "rejected", reason=reason)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    save_job(job)
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "patch_intent_rejected",
+        outcome="rejected",
+        intent_id=entry["intent_id"],
+        target_path=entry["target_path"],
+        risk=entry["risk"],
+        reason_present=reason is not None,
+    )
+
+    print(f"Rejected: {entry['intent_id']} ({entry['target_path']})")
+    if reason:
+        print(f"  note: {reason}")
+
+
 def _cmd_timeline(job_id_str: str) -> None:
     import os
 
@@ -726,6 +855,35 @@ def main() -> None:
     )
     cockpit.add_argument("job_id", help="UUID of the job to show")
 
+    list_pi = subparsers.add_parser(
+        "list-patch-intents",
+        help="List all patch intents for a job with their approval state",
+    )
+    list_pi.add_argument("job_id", help="UUID of the job")
+
+    show_pi = subparsers.add_parser(
+        "show-patch-intent",
+        help="Show details for a specific patch intent",
+    )
+    show_pi.add_argument("job_id", help="UUID of the job")
+    show_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
+
+    approve_pi = subparsers.add_parser(
+        "approve-patch-intent",
+        help="Record an approval decision for a patch intent (metadata only, no files changed)",
+    )
+    approve_pi.add_argument("job_id", help="UUID of the job")
+    approve_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
+    approve_pi.add_argument("--reason", default=None, help="Optional note about this decision")
+
+    reject_pi = subparsers.add_parser(
+        "reject-patch-intent",
+        help="Record a rejection decision for a patch intent (metadata only, no files changed)",
+    )
+    reject_pi.add_argument("job_id", help="UUID of the job")
+    reject_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
+    reject_pi.add_argument("--reason", default=None, help="Optional note about this decision")
+
     args = parser.parse_args()
 
     if args.command == "create-job":
@@ -750,6 +908,14 @@ def main() -> None:
         _cmd_timeline(args.job_id)
     elif args.command == "cockpit":
         _cmd_cockpit(args.job_id)
+    elif args.command == "list-patch-intents":
+        _cmd_list_patch_intents(args.job_id)
+    elif args.command == "show-patch-intent":
+        _cmd_show_patch_intent(args.job_id, args.intent_id)
+    elif args.command == "approve-patch-intent":
+        _cmd_approve_patch_intent(args.job_id, args.intent_id, args.reason)
+    elif args.command == "reject-patch-intent":
+        _cmd_reject_patch_intent(args.job_id, args.intent_id, args.reason)
 
 
 if __name__ == "__main__":
