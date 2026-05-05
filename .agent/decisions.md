@@ -1,5 +1,14 @@
 # Decisions
 
+## 2026-05-05: Trust Report v1 is read-only and text-first (Step 20)
+Trust Report assembles evidence across Job JSON, Artifact metadata, JSONL run logs,
+Permissions, and Approval Queue into one auditable plain-text document. It is intentionally
+read-only with no apply/autonomy behavior. The design prepares for future Replay, Live
+Cockpit, MemPalace, and MCP Quarantine reports by establishing a clean summary contract
+(what was requested / planned / run / created / verified / decided / NOT done) without
+coupling to any execution-side behavior. Redaction policy is inherited from run-log
+contract: no raw exception text, no raw artifact content, no full diff text.
+
 ## 2026-05-05: v1 intent IDs are index-based; patch_intent_explanations must be stable (Step 19.1)
 Intent IDs encode the 0-based index into artifact.metadata["patch_intent_explanations"].
 This is simple and stable for v1 (intents are generated once per task run, never reordered).

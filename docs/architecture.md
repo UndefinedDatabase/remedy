@@ -693,6 +693,70 @@ make_intent_id(artifact_id: UUID, idx: int) -> str
     # Build the stable "<short_id>-<idx>" intent ID.
 ```
 
+### Trust Report v1 (Step 20)
+
+`packages/orchestration/trust_report.py` provides a read-only, auditable, plain-text
+summary of a Remedy job.
+
+**Relationship to Timeline and Cockpit:**
+
+| View         | Question answered                                             |
+|--------------|---------------------------------------------------------------|
+| Timeline     | What happened, in chronological order?                        |
+| Cockpit      | Where are we right now, what matters, what should I do next? |
+| Trust Report | What was requested, planned, run, created, verified, decided, and explicitly NOT done? |
+
+The Trust Report is the audit-ready view.  It assembles evidence across all layers of the
+system — Job model, Artifact metadata, run-log JSONL, Permissions, and Approval Queue —
+into a single, deterministic, human-readable document.
+
+**Scope:** Read-only.  No `save_job`, no artifact mutation, no filesystem writes, no repo
+writes, no shell execution, no LLM calls.  No new dependencies.  One public function:
+
+```python
+summarize_trust_report(job: Job, events: list[dict], *, data_dir: Path | None = None) -> str
+```
+
+**Report sections (numbered, deterministic order):**
+
+1. **User request** — `job.user_prompt` (truncated at 400 chars) or fallback to job name.
+2. **Plan** — task count by status, task types and descriptions.
+3. **Execution summary** — run invocations, completed, failed/blocked, no-op, interrupted.
+   `planning_failed` events are shown as `✕ Planning failed: <error_category>` (or
+   `unknown error` when no `error_category` is set).  Raw `message` from `planning_failed`
+   events is never rendered — same redaction rule as Timeline v1.
+4. **Artifacts** — one line per artifact (name + short ID + kind); raw content never shown.
+5. **Verification** — per-task pass/fail from `verification_passed`/`verification_failed`
+   events; failed check names shown; raw exception text never shown.
+6. **Permissions and safety** — all four capabilities with effective state and reserved note;
+   blocked run events (permission-denied `task_run_failed`) shown as a list.
+7. **Patch intents and decisions** — all intents with state, risk, action, target path;
+   approval counts; explicit note: approval is metadata-only, apply not implemented in v1.
+   Free-text approval `reason` supplied by the user is stored in artifact metadata only and
+   is never rendered in the Trust Report.
+8. **Redaction / trust boundary** — explicit statement that raw prompts, artifact content,
+   and diff text are not included; run logs contain structured labels/counts/outcomes only.
+9. **Next safe action** — priority order: plan job (if no tasks) → grant permission →
+   inspect timeline → review intents → run task → create job.
+   When `job.tasks` is empty, the action is always `plan-job-local` — never "Inspect
+   generated files", which would be misleading before any planning has occurred.
+
+**Approval/rejection CLI output redaction:** `approve-patch-intent` and
+`reject-patch-intent` do not echo the free-text `--reason` argument in their output.
+Instead they print `reason: recorded` (when a reason was supplied) or `reason: none`.
+The raw reason is stored in `artifact.metadata["patch_intent_approvals"]` for the caller's
+reference, but is never surfaced in CLI summaries, run logs (`reason_present` bool only),
+or the Trust Report.
+
+**Redaction policy:** The Trust Report inherits the run-log redaction contract — no raw
+exception text, no raw artifact content, no full diff previews, no free-text approval
+reasons.  The report renders only IDs, counts, labels, risk levels, approval states, and
+target paths already stored in structured metadata.
+
+**CLI command:** `remedy trust-report <job_id>` — loads job, loads run events via
+`timeline.load_run_events`, prints the report to stdout, exits 0.  If no run logs exist,
+the report still renders (execution section says "No run logs available") and exits 0.
+
 ### Verifier Profiles v1 (Step 15)
 
 `packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.

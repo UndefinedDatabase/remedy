@@ -1,25 +1,24 @@
 # Plan
 
 ## Goal
-Step 19: Approval Queue v1 — metadata-only approval decisions for patch intents.
+Step 20: Trust Report v1 — read-only auditable job summary.
 
 ## Prior step
-Step 18 (+ 18.1) delivered Cockpit v1 and conservative auto-continue safety fix.
+Step 19 (+ 19.1) delivered Approval Queue v1 (list/show/approve/reject patch intents).
 
 ## Status
-COMPLETE — 826 tests pass. Ready to commit and open PR.
+COMPLETE — 889 tests pass. Ready to commit and open PR.
 
 ## Steps
-1. [x] Create packages/orchestration/approval_queue.py
-2. [x] Add 4 CLI commands to apps/cli/main.py (list/show/approve/reject-patch-intent)
-3. [x] Update cockpit.py — approval-aware attention + next action
-4. [x] Create tests/test_patch_intent_approval.py (57 tests)
-5. [x] Run full suite (826 pass)
-6. [x] Update docs/architecture.md — Approval Queue v1 section
-7. [x] Update .agent files
-8. [ ] Commit all Step 19 changes
-9. [ ] Push to feature/step19-approval-queue-v1
-10. [ ] Create PR for Step 19
+1. [x] Create packages/orchestration/trust_report.py
+2. [x] Add trust-report CLI command to apps/cli/main.py
+3. [x] Create tests/test_trust_report.py (60 tests)
+4. [x] Run full suite (889 pass)
+5. [x] Update docs/architecture.md — Trust Report v1 section
+6. [x] Update .agent files
+7. [ ] Commit all Step 20 changes
+8. [ ] Push to feature/step20-trust-report-v1
+9. [ ] Create PR for Step 20
 
 ## Branch
-feature/step19-approval-queue-v1
+feature/step20-trust-report-v1
