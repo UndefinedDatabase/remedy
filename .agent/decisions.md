@@ -1,5 +1,31 @@
 # Decisions
 
+## 2026-05-04: interrupted run → can_auto_continue=False (Step 18.1)
+An interrupted run (task_run_started with no terminal event) causes _can_auto_continue to
+return (False, "interrupted run detected — inspect timeline before continuing"). Previously
+it returned True. The boolean must be conservative: a future autonomy controller must never
+treat interrupted=True as a green light to continue. The Next best action section still guides
+the human to inspect the timeline and then resume manually — human guidance is preserved,
+machine-readable signal is conservative.
+
+## 2026-05-04: repo_generated_write attention item fires only on explicit denial (Step 18)
+repo_generated_write defaults to False (opt-in). The cockpit attention item
+("Repo writes are denied — allow with: remedy set-permission …") should NOT fire
+just because the permission hasn't been granted — that is the expected initial state for
+most jobs. It fires only when the user has explicitly called set_permission(..., allow=False).
+Detection: check job.metadata.get("permissions", {}).get("repo_generated_write") == "deny".
+
+## 2026-05-04: Cockpit reuses load_run_events from timeline.py (Step 18)
+Both views read the same JSONL files. Sharing load_run_events avoids duplicating the
+file-reading logic. The CLI calls load_run_events once and passes events to
+summarize_cockpit. This is the same "load once, render separately" pattern as timeline.
+
+## 2026-05-04: Cockpit signal extraction: one pass for interrupts, second pass for last events (Step 18)
+_extract_signals does two forward passes over the event list. The first detects interrupted
+runs (task_run_started without a terminal event). The second collects the last occurrence
+of each relevant event type. Two passes are clearer than interleaving the two accumulation
+patterns. Events are short — no performance concern.
+
 ## 2026-05-03: ValidationError must be caught before ValueError in exception handlers (Step 17.1)
 In Pydantic v2, `pydantic.ValidationError` inherits from `ValueError`. If `except ValueError`
 appears first, it silently swallows `ValidationError` and the `except ValidationError` block is

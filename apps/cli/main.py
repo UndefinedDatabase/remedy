@@ -254,6 +254,35 @@ def _cmd_show_permissions(job_id_str: str) -> None:
         print(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]")
 
 
+def _cmd_cockpit(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.cockpit import summarize_cockpit
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    if env:
+        data_dir = Path(env)
+    else:
+        data_dir = Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+    print(summarize_cockpit(job, events, data_dir=data_dir))
+
+
 def _cmd_timeline(job_id_str: str) -> None:
     import os
 
@@ -691,6 +720,12 @@ def main() -> None:
     )
     timeline.add_argument("job_id", help="UUID of the job to show")
 
+    cockpit = subparsers.add_parser(
+        "cockpit",
+        help="Print a decision-oriented status overview for a job",
+    )
+    cockpit.add_argument("job_id", help="UUID of the job to show")
+
     args = parser.parse_args()
 
     if args.command == "create-job":
@@ -713,6 +748,8 @@ def main() -> None:
         _cmd_run_next_task_local(args.job_id)
     elif args.command == "timeline":
         _cmd_timeline(args.job_id)
+    elif args.command == "cockpit":
+        _cmd_cockpit(args.job_id)
 
 
 if __name__ == "__main__":
