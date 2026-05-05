@@ -741,6 +741,13 @@ summarize_trust_report(job: Job, events: list[dict], *, data_dir: Path | None = 
    When `job.tasks` is empty, the action is always `plan-job-local` — never "Inspect
    generated files", which would be misleading before any planning has occurred.
 
+**Approval/rejection CLI output redaction:** `approve-patch-intent` and
+`reject-patch-intent` do not echo the free-text `--reason` argument in their output.
+Instead they print `reason: recorded` (when a reason was supplied) or `reason: none`.
+The raw reason is stored in `artifact.metadata["patch_intent_approvals"]` for the caller's
+reference, but is never surfaced in CLI summaries, run logs (`reason_present` bool only),
+or the Trust Report.
+
 **Redaction policy:** The Trust Report inherits the run-log redaction contract — no raw
 exception text, no raw artifact content, no full diff previews, no free-text approval
 reasons.  The report renders only IDs, counts, labels, risk levels, approval states, and

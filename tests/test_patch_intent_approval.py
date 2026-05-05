@@ -505,6 +505,28 @@ class TestCmdApprovePatchIntent:
         item = get_patch_intent(reloaded, intent_id)
         assert item["approval_reason"] == "LGTM"
 
+    def test_approve_with_reason_does_not_echo_raw_text(self, tmp_path, monkeypatch, capsys):
+        """Raw approval reason must not appear in CLI output."""
+        job, intent_id = self._setup(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_approve_patch_intent
+        _cmd_approve_patch_intent(str(job.id), intent_id, "SECRET_APPROVAL_REASON_DO_NOT_RENDER")
+        out = capsys.readouterr().out
+        assert "SECRET_APPROVAL_REASON_DO_NOT_RENDER" not in out
+
+    def test_approve_with_reason_prints_recorded(self, tmp_path, monkeypatch, capsys):
+        job, intent_id = self._setup(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_approve_patch_intent
+        _cmd_approve_patch_intent(str(job.id), intent_id, "any reason text")
+        out = capsys.readouterr().out
+        assert "reason: recorded" in out
+
+    def test_approve_without_reason_prints_none(self, tmp_path, monkeypatch, capsys):
+        job, intent_id = self._setup(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_approve_patch_intent
+        _cmd_approve_patch_intent(str(job.id), intent_id, None)
+        out = capsys.readouterr().out
+        assert "reason: none" in out
+
     def test_approve_invalid_intent_id_exits_1(self, tmp_path, monkeypatch):
         job, _ = self._setup(tmp_path, monkeypatch)
         from apps.cli.main import _cmd_approve_patch_intent
@@ -589,6 +611,28 @@ class TestCmdRejectPatchIntent:
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
         out = capsys.readouterr().out
         assert "no files" in out.lower() or "metadata only" in out.lower()
+
+    def test_reject_with_reason_does_not_echo_raw_text(self, tmp_path, monkeypatch, capsys):
+        """Raw rejection reason must not appear in CLI output."""
+        job, intent_id = self._setup(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_reject_patch_intent
+        _cmd_reject_patch_intent(str(job.id), intent_id, "SECRET_APPROVAL_REASON_DO_NOT_RENDER")
+        out = capsys.readouterr().out
+        assert "SECRET_APPROVAL_REASON_DO_NOT_RENDER" not in out
+
+    def test_reject_with_reason_prints_recorded(self, tmp_path, monkeypatch, capsys):
+        job, intent_id = self._setup(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_reject_patch_intent
+        _cmd_reject_patch_intent(str(job.id), intent_id, "needs more work")
+        out = capsys.readouterr().out
+        assert "reason: recorded" in out
+
+    def test_reject_without_reason_prints_none(self, tmp_path, monkeypatch, capsys):
+        job, intent_id = self._setup(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_reject_patch_intent
+        _cmd_reject_patch_intent(str(job.id), intent_id, None)
+        out = capsys.readouterr().out
+        assert "reason: none" in out
 
     def test_reject_invalid_intent_id_exits_1(self, tmp_path, monkeypatch):
         job, _ = self._setup(tmp_path, monkeypatch)
