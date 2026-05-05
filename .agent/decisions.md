@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-05-05: v1 intent IDs are index-based; patch_intent_explanations must be stable (Step 19.1)
+Intent IDs encode the 0-based index into artifact.metadata["patch_intent_explanations"].
+This is simple and stable for v1 (intents are generated once per task run, never reordered).
+Builders must treat patch_intent_explanations as append-only after creation — reordering
+would misalign existing approval decisions with the wrong intents. This is documented as
+an explicit invariant in architecture.md. Future multi-intent or regenerated-intent workflows
+must move to content-hash-based stable IDs (e.g. SHA256 of target_path + action + intent).
+
 ## 2026-05-05: Approval states: latest decision wins (Step 19)
 Approving a rejected intent (or vice versa) overwrites the stored state. No "un-decide"
 operation exists. This is safe for v1 because no apply step exists — no state is

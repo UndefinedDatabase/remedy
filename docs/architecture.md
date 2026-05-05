@@ -645,6 +645,14 @@ Format `"<artifact_short_id>-<idx>"` — the first 8 hex characters of the ownin
 artifact's UUID followed by the 0-based index into its `patch_intent_explanations` list.
 Example: `a1b2c3d4-0`.  IDs are deterministic and stable across sessions.
 
+**Intent ID ordering invariant (v1):** IDs are index-based, so the ordering of
+`patch_intent_explanations` in artifact metadata must not change after approval decisions
+are recorded.  Reordering the list would misalign existing approvals with the wrong intents.
+Builders and future code must treat `patch_intent_explanations` as append-only once written.
+Future versions with multi-intent or regenerated-intent workflows should replace this with
+content-hash-based stable IDs (e.g. SHA256 of `target_path + action + intent`) to survive
+reordering and regeneration.
+
 **Storage:** Approval data is stored durably in `artifact.metadata["patch_intent_approvals"]`
 as a dict mapping `intent_id → approval dict`.  The approval dict contains:
 `intent_id`, `target_path`, `action`, `risk`, `state`, `decided_at`, `decided_by`,

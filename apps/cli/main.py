@@ -410,6 +410,7 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
     print(f"Rejected: {entry['intent_id']} ({entry['target_path']})")
     if reason:
         print(f"  note: {reason}")
+    print("Note: rejection is metadata only — no files have been modified.")
 
 
 def _cmd_timeline(job_id_str: str) -> None:

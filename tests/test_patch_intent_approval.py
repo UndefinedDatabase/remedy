@@ -583,6 +583,13 @@ class TestCmdRejectPatchIntent:
         item = get_patch_intent(reloaded, intent_id)
         assert item["state"] == APPROVAL_APPROVED
 
+    def test_reject_prints_metadata_only_note(self, tmp_path, monkeypatch, capsys):
+        job, intent_id = self._setup(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_reject_patch_intent
+        _cmd_reject_patch_intent(str(job.id), intent_id, None)
+        out = capsys.readouterr().out
+        assert "no files" in out.lower() or "metadata only" in out.lower()
+
     def test_reject_invalid_intent_id_exits_1(self, tmp_path, monkeypatch):
         job, _ = self._setup(tmp_path, monkeypatch)
         from apps.cli.main import _cmd_reject_patch_intent

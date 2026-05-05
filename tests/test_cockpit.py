@@ -239,6 +239,28 @@ class TestNeedsAttention:
         out = summarize_cockpit(job, events)
         assert "Review patch intent" in out or "risk" in out.lower()
 
+    def test_high_patch_risk_raises_attention(self):
+        job = _make_job()
+        task_id = str(uuid4())
+        events = _task_run_succeeded(str(job.id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+             "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
+             "metadata": {"intent_count": 1, "risk_levels": ["high"]}},
+        ]
+        out = summarize_cockpit(job, events)
+        assert "Review patch intent" in out or "risk" in out.lower()
+
+    def test_unknown_patch_risk_raises_attention(self):
+        job = _make_job()
+        task_id = str(uuid4())
+        events = _task_run_succeeded(str(job.id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+             "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
+             "metadata": {"intent_count": 1, "risk_levels": ["unknown"]}},
+        ]
+        out = summarize_cockpit(job, events)
+        assert "Review patch intent" in out or "risk" in out.lower()
+
     def test_low_patch_risk_no_attention(self):
         job = _make_job(state=RunState.COMPLETED)
         job.tasks.append(_completed_task())
