@@ -1,7 +1,7 @@
 # Plan
 
 ## Goal
-Step 20: Trust Report v1 — read-only auditable job summary.
+Step 21: Project Constitution v1 — read-only, deterministic policy extraction.
 
 ## Prior step
 Step 19 (+ 19.1) delivered Approval Queue v1 (list/show/approve/reject patch intents).

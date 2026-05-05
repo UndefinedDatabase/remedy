@@ -271,6 +271,7 @@ def _cmd_cockpit(job_id_str: str) -> None:
     from pathlib import Path
 
     from packages.orchestration.cockpit import summarize_cockpit
+    from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.timeline import load_run_events
 
     env = os.environ.get("REMEDY_DATA_DIR")
@@ -279,8 +280,11 @@ def _cmd_cockpit(job_id_str: str) -> None:
     else:
         data_dir = Path(__file__).resolve().parent.parent.parent / ".data"
 
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = load_project_constitution(Path(target_repo_str) if target_repo_str else None)
+
     events = load_run_events(data_dir, job_id)
-    print(summarize_cockpit(job, events, data_dir=data_dir))
+    print(summarize_cockpit(job, events, data_dir=data_dir, constitution=constitution))
 
 
 def _cmd_list_patch_intents(job_id_str: str) -> None:
@@ -409,6 +413,44 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
     print(f"Rejected: {entry['intent_id']} ({entry['target_path']})")
     print(f"  reason: {'recorded' if reason else 'none'}")
     print("Note: rejection is metadata only — no files have been modified.")
+
+
+def _cmd_constitution(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.project_constitution import (
+        load_project_constitution,
+        render_constitution,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+
+    target_repo_str = job.metadata.get("target_repo")
+    repo_root = Path(target_repo_str) if target_repo_str else None
+
+    constitution = load_project_constitution(repo_root)
+    print(render_constitution(constitution, repo_root))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "project_constitution_loaded",
+        outcome="loaded",
+        source_count=len(constitution.source_files),
+        warning_count=len(constitution.warnings),
+        has_test_commands=bool(constitution.test_commands),
+    )
 
 
 def _cmd_trust_report(job_id_str: str) -> None:
@@ -868,6 +910,12 @@ def main() -> None:
     )
     run_task.add_argument("job_id", help="UUID of the job to advance")
 
+    constitution_p = subparsers.add_parser(
+        "constitution",
+        help="Print the Project Constitution extracted from the attached repo",
+    )
+    constitution_p.add_argument("job_id", help="UUID of the job to show")
+
     trust_report = subparsers.add_parser(
         "trust-report",
         help="Print a full read-only audit/trust report for a job",
@@ -935,6 +983,8 @@ def main() -> None:
         _cmd_show_permissions(args.job_id)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
+    elif args.command == "constitution":
+        _cmd_constitution(args.job_id)
     elif args.command == "trust-report":
         _cmd_trust_report(args.job_id)
     elif args.command == "timeline":

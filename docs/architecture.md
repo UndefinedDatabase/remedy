@@ -757,6 +757,58 @@ target paths already stored in structured metadata.
 `timeline.load_run_events`, prints the report to stdout, exits 0.  If no run logs exist,
 the report still renders (execution section says "No run logs available") and exits 0.
 
+### Project Constitution v1 (Step 21)
+
+`packages/orchestration/project_constitution.py` provides a read-only, deterministic
+extraction of project policy signals from known files in an attached target repository.
+
+**Purpose:** Give Remedy a structured, machine-readable description of a project's expected
+commands, risky paths, coding conventions, and approval hints.  This is the foundation for
+future Context Inspector, Verifier Marketplace, MCP Quarantine, Autonomy Modes, and
+Memory/MemPalace integration.  It is **not an enforcement layer** in v1 — nothing in the
+task execution pipeline consults the constitution today.
+
+**Model:** `ProjectConstitution` (Pydantic BaseModel) with fields:
+`source_files`, `test_commands`, `build_commands`, `lint_commands`,
+`forbidden_commands`, `risky_paths`, `protected_paths`, `doc_paths`,
+`repo_conventions`, `approval_rules`, `definition_of_done`, `warnings`.
+
+**Public API:**
+```python
+load_project_constitution(repo_root: Path | None) -> ProjectConstitution
+render_constitution(constitution, repo_root) -> str
+```
+
+**Extraction sources (fixed set — no recursive scan):**
+`AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`,
+`pyproject.toml`, `package.json`, `Makefile`, `justfile`, `tox.ini`, `pytest.ini`,
+`.github/workflows/*.yml` (up to 10 files).
+
+**Extraction is purely lexical:** string/regex matching only.  No `eval`, no `import`,
+no subprocess.  Uncertain findings are phrased as "detected" / "possible" / "suggested".
+
+**Safety constraints:**
+- Read-only.  No subprocess, no shell, no writes.
+- Path boundary enforced: `Path.resolve().relative_to(repo_root.resolve())` — symlink-safe.
+- Secret files never read: files whose name starts with `.env`, `secret`, `credential`,
+  `token`, `.netrc`, or ends with `.key`, `.pem`, `.p12`, `.pfx`, `.crt`.
+- Max 200 lines read per file; max 10 workflow files scanned.
+
+**CLI command:** `remedy constitution <job_id>` — loads job, reads `target_repo`,
+calls `load_project_constitution`, prints `render_constitution` output, emits
+`project_constitution_loaded` run log event with `source_count`, `warning_count`,
+`has_test_commands` (structured counts only — no raw file content).
+Exits 0 even when no repo is attached (prints warning).
+
+**Cockpit integration:** `summarize_cockpit` accepts an optional `constitution` parameter.
+When provided, a concise `constitution: N source file(s)` line appears in the
+Important artifacts section.  No line appears when `constitution=None`.
+
+**Trust Report integration:** Section 6 (Permissions and safety) includes a one-line
+Project Constitution summary: source count when available, "no attached repo" otherwise,
+or a hint to run `remedy constitution <job_id>` when a repo is attached but constitution
+was not loaded.
+
 ### Verifier Profiles v1 (Step 15)
 
 `packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.
