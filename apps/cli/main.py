@@ -413,6 +413,32 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
     print("Note: rejection is metadata only — no files have been modified.")
 
 
+def _cmd_trust_report(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.timeline import load_run_events
+    from packages.orchestration.trust_report import summarize_trust_report
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+    print(summarize_trust_report(job, events, data_dir=data_dir))
+
+
 def _cmd_timeline(job_id_str: str) -> None:
     import os
 
@@ -844,6 +870,12 @@ def main() -> None:
     )
     run_task.add_argument("job_id", help="UUID of the job to advance")
 
+    trust_report = subparsers.add_parser(
+        "trust-report",
+        help="Print a full read-only audit/trust report for a job",
+    )
+    trust_report.add_argument("job_id", help="UUID of the job to show")
+
     timeline = subparsers.add_parser(
         "timeline",
         help="Print a human-readable timeline of all run-log events for a job",
@@ -905,6 +937,8 @@ def main() -> None:
         _cmd_show_permissions(args.job_id)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
+    elif args.command == "trust-report":
+        _cmd_trust_report(args.job_id)
     elif args.command == "timeline":
         _cmd_timeline(args.job_id)
     elif args.command == "cockpit":
