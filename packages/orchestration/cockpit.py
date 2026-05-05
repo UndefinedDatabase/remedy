@@ -19,6 +19,12 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.models import Job, RunState
+from packages.orchestration.approval_queue import (
+    APPROVAL_APPROVED,
+    APPROVAL_PENDING,
+    APPROVAL_REJECTED,
+    list_patch_intents,
+)
 from packages.orchestration.permissions import Capability, is_allowed
 
 # ---------------------------------------------------------------------------
@@ -213,6 +219,25 @@ def _render_situation(job: Job, signals: dict[str, Any]) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Approval helpers
+# ---------------------------------------------------------------------------
+
+
+def _approval_counts(job: Job) -> dict[str, int]:
+    """Count approval states across all patch intents in the job.
+
+    Returns a dict with keys APPROVAL_PENDING, APPROVAL_APPROVED, APPROVAL_REJECTED.
+    Reads directly from job.artifacts metadata — no event scanning.
+    """
+    counts = {APPROVAL_PENDING: 0, APPROVAL_APPROVED: 0, APPROVAL_REJECTED: 0}
+    for item in list_patch_intents(job):
+        state = item["state"]
+        if state in counts:
+            counts[state] += 1
+    return counts
+
+
+# ---------------------------------------------------------------------------
 # Attention items
 # ---------------------------------------------------------------------------
 
@@ -235,12 +260,25 @@ def _derive_attention(job: Job, signals: dict[str, Any]) -> list[str]:
             "grant with: remedy set-permission <job_id> allow workspace_write"
         )
 
-    # Patch intent risk
+    # Patch intent risk and approval state
     lp = signals["last_patch"]
     if lp:
+        ac = _approval_counts(job)
         risks = lp.get("metadata", {}).get("risk_levels", [])
         if any(r in {"medium", "high", "unknown"} for r in risks):
-            items.append("Review patch intent risk levels before applying future changes.")
+            if ac[APPROVAL_PENDING] > 0:
+                items.append(
+                    f"Review patch intent risk — {ac[APPROVAL_PENDING]} pending "
+                    "decision(s): remedy list-patch-intents <job_id>"
+                )
+            else:
+                items.append("Review patch intent risk levels before applying future changes.")
+        # Show rejected count as a separate item regardless of risk level.
+        if ac[APPROVAL_REJECTED] > 0:
+            items.append(
+                f"{ac[APPROVAL_REJECTED]} patch intent(s) rejected — review or re-evaluate: "
+                "remedy list-patch-intents <job_id>"
+            )
 
     # Verification failure on the most recent failed task run
     lv = signals["last_vfail"]
@@ -350,11 +388,19 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
             f"      remedy run-next-task-local {job_id_str}"
         )
 
-    # Patch risk with pending tasks: note risk then continue
+    # Patch risk with pending tasks: direct to approval queue if any decisions pending
     lp = signals["last_patch"]
     if lp and pending:
         risks = lp.get("metadata", {}).get("risk_levels", [])
         if any(r in {"medium", "high", "unknown"} for r in risks):
+            ac = _approval_counts(job)
+            if ac[APPROVAL_PENDING] > 0:
+                return (
+                    f"  {_NEXT} Approve or reject pending patch intents, then run next task:\n"
+                    f"      remedy list-patch-intents {job_id_str}\n"
+                    f"      remedy approve-patch-intent {job_id_str} <intent_id>\n"
+                    f"      remedy run-next-task-local {job_id_str}"
+                )
             return (
                 f"  {_NEXT} Review patch intent risk levels, then run next task:\n"
                 f"      remedy run-next-task-local {job_id_str}"
@@ -365,6 +411,15 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
         return (
             f"  {_NEXT} Run the next pending task:\n"
             f"      remedy run-next-task-local {job_id_str}"
+        )
+
+    # All patch intents approved and no pending tasks
+    ac = _approval_counts(job)
+    total_intents = sum(ac.values())
+    if total_intents > 0 and ac[APPROVAL_APPROVED] == total_intents:
+        return (
+            f"  {_NEXT} All patch intents approved — apply step is not implemented in v1.\n"
+            f"      Use: remedy show-patch-intent {job_id_str} <intent_id> to review."
         )
 
     # Nothing left to run

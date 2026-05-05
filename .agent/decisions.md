@@ -1,5 +1,29 @@
 # Decisions
 
+## 2026-05-05: v1 intent IDs are index-based; patch_intent_explanations must be stable (Step 19.1)
+Intent IDs encode the 0-based index into artifact.metadata["patch_intent_explanations"].
+This is simple and stable for v1 (intents are generated once per task run, never reordered).
+Builders must treat patch_intent_explanations as append-only after creation — reordering
+would misalign existing approval decisions with the wrong intents. This is documented as
+an explicit invariant in architecture.md. Future multi-intent or regenerated-intent workflows
+must move to content-hash-based stable IDs (e.g. SHA256 of target_path + action + intent).
+
+## 2026-05-05: Approval states: latest decision wins (Step 19)
+Approving a rejected intent (or vice versa) overwrites the stored state. No "un-decide"
+operation exists. This is safe for v1 because no apply step exists — no state is
+irrecoverable. The policy is documented in the CLI help text and module docstring.
+
+## 2026-05-05: Approval raw reason text NOT logged to run log (Step 19)
+The user-supplied --reason text is stored in artifact.metadata["patch_intent_approvals"]
+but never written to run log events. Run logs record reason_present=True|False only.
+This matches the general redaction policy: user-supplied strings may contain sensitive text.
+
+## 2026-05-05: Intent ID format "<artifact_short_id>-<idx>" (Step 19)
+Intent IDs use the first 8 hex chars of the artifact UUID + 0-based index into the
+patch_intent_explanations list. rfind("-") is used to parse — robust against the 8-char
+hex portion potentially containing no dashes (since it's hex, it won't, but defensive code).
+Index-based v1 chosen over hash-based: simpler, stable, human-readable in the CLI.
+
 ## 2026-05-04: interrupted run → can_auto_continue=False (Step 18.1)
 An interrupted run (task_run_started with no terminal event) causes _can_auto_continue to
 return (False, "interrupted run detected — inspect timeline before continuing"). Previously

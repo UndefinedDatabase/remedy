@@ -1,25 +1,25 @@
 # Plan
 
 ## Goal
-Step 18: Cockpit v1 — decision-oriented job status view.
+Step 19: Approval Queue v1 — metadata-only approval decisions for patch intents.
 
 ## Prior step
-Step 17 (+ 17.1/17.2/17.3) delivered Timeline v1 and terminal-event invariant hardening.
+Step 18 (+ 18.1) delivered Cockpit v1 and conservative auto-continue safety fix.
 
 ## Status
-COMPLETE — 766 tests pass. Ready to commit and open PR.
+COMPLETE — 826 tests pass. Ready to commit and open PR.
 
 ## Steps
-1. [x] Create packages/orchestration/cockpit.py with summarize_cockpit
-2. [x] Add _cmd_cockpit to apps/cli/main.py + "cockpit" subparser
-3. [x] Create tests/test_cockpit.py (~50 tests)
-4. [x] Run tests and fix failures (1 failure: repo_generated_write default vs explicit deny)
-5. [x] Run full suite (766 pass)
-6. [x] Update docs/architecture.md — Cockpit v1 section
+1. [x] Create packages/orchestration/approval_queue.py
+2. [x] Add 4 CLI commands to apps/cli/main.py (list/show/approve/reject-patch-intent)
+3. [x] Update cockpit.py — approval-aware attention + next action
+4. [x] Create tests/test_patch_intent_approval.py (57 tests)
+5. [x] Run full suite (826 pass)
+6. [x] Update docs/architecture.md — Approval Queue v1 section
 7. [x] Update .agent files
-8. [ ] Commit all Step 18 changes
-9. [ ] Push to feature/step18-cockpit-v1
-10. [ ] Create PR for Step 18
+8. [ ] Commit all Step 19 changes
+9. [ ] Push to feature/step19-approval-queue-v1
+10. [ ] Create PR for Step 19
 
 ## Branch
-feature/step18-cockpit-v1
+feature/step19-approval-queue-v1
