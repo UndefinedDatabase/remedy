@@ -1487,3 +1487,53 @@ No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the
 **Step 24.3** is the final pre-frontend smoke hardening pass (redaction target alignment, raw-stdout sentinel checks, docstring polish).  After Step 24.3 the JSON contract is fully locked.
 
 **Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain --json` (graph data) and `remedy brain-node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
+
+## Brain Viewer v0 (Step 25)
+
+`packages/orchestration/brain_viewer.py` generates a self-contained, read-only HTML viewer for a job's Project Brain Graph.  It is strictly read-only: it performs no repo mutation, no patch apply, no permission mutation, no shell/subprocess/Git/Docker/network/MCP/Claude execution, no memory writes, and has no external dependencies (Python stdlib only).
+
+### CLI
+
+```
+remedy brain-view <job_id>
+```
+
+Writes files under `REMEDY_DATA_DIR/viewers/<job_id>/`:
+- `index.html` — self-contained dark-themed viewer with embedded JSON data
+- `viewer_data.json` — machine-readable copy of the embedded data
+
+Prints `Brain Viewer v0: <path>` to stdout on success.
+
+### Run-log event
+
+`brain_viewer_prepared` — emitted once per invocation with metadata:
+
+```json
+{
+  "node_count": <int>,
+  "edge_count": <int>,
+  "detail_count": <int>,
+  "mode": "static"
+}
+```
+
+### Architecture
+
+`BrainViewerData` (frozen dataclass) — `{job_id, generated_at, graph, node_details, positions}` — bundles all render data.  Built by `build_brain_viewer_data(job, graph, events)`, which calls `export_project_brain_json` for the graph and `build_brain_node_detail` / `export_brain_node_detail_json` per node.
+
+**Redaction:** same policy as `brain_detail.py` — no artifact content, diff previews, approval reasons, event messages, or raw command output in any generated file.
+
+**Layout:** layered radial — job at centre (layer 0, r=0), constitution/tasks at layer 1 (r=150), artifacts/run_event/agent_loop at layer 2 (r=290), patch_intent/approval/verification/permission_blocker at layer 3 (r=420), memory_placeholder/mcp_placeholder at layer 4 (r=530).  Positions are pre-computed in Python and embedded in the HTML; JavaScript scales to the viewport.
+
+**Rendering:** vanilla JS SVG with `esc()` for attribute safety, `data-nid` attribute for node click, `window.pick(nodeId)` for detail panel.  No external frameworks, no external network requests.
+
+**Node colours:** `memory_placeholder`=#7c4fb0 (violet), `mcp_placeholder`=#e06c1a (orange), blocked=#cf4444, running=#4488ff (pulsing), completed/passed/loaded=#d0d7de, patch_intent pending=#d9a520, approved=#3fb950, default=#6e7681.
+
+### v0 scope constraints
+
+v0 is the read-only foundation.  Future steps will add:
+1. **React Flow** — interactive 2D graph replacing the SVG layer.
+2. **Three.js / Animus** — 3D visualisation.
+3. **MemPalace** — live semantic memory nodes replacing `memory_placeholder`.
+4. **MCP Quarantine** — live MCP tool nodes replacing `mcp_placeholder`.
+5. **AG-UI / A2UI** — real-time streaming updates.

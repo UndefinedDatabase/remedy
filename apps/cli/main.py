@@ -618,6 +618,62 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
     )
 
 
+def _cmd_brain_view(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.brain_viewer import (
+        build_brain_viewer_data,
+        write_brain_viewer_files,
+    )
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = (
+        load_project_constitution(Path(target_repo_str))
+        if target_repo_str
+        else None
+    )
+
+    graph = build_project_brain(job, events, constitution=constitution)
+    viewer_data = build_brain_viewer_data(job, graph, events)
+
+    out_dir = data_dir / "viewers" / str(job_id)
+    index_path = write_brain_viewer_files(viewer_data, out_dir)
+
+    print(f"Brain Viewer v0: {index_path}")
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "brain_viewer_prepared",
+        outcome="prepared",
+        node_count=len(graph.nodes),
+        edge_count=len(graph.edges),
+        detail_count=len(viewer_data.node_details),
+        mode="static",
+    )
+
+
 def _cmd_trust_report(job_id_str: str) -> None:
     import os
 
@@ -1096,6 +1152,12 @@ def main() -> None:
         help="Output detail as JSON instead of text",
     )
 
+    brain_view_p = subparsers.add_parser(
+        "brain-view",
+        help="Generate a read-only local Brain Viewer (static HTML) for a job",
+    )
+    brain_view_p.add_argument("job_id", help="UUID of the job")
+
     brain_p = subparsers.add_parser(
         "brain",
         help="Print the Project Brain Graph (node/edge graph) for a job",
@@ -1191,6 +1253,8 @@ def main() -> None:
         _cmd_brain_node(args.job_id, args.node_id, json_output=args.json)
     elif args.command == "brain":
         _cmd_brain(args.job_id, json_output=args.json)
+    elif args.command == "brain-view":
+        _cmd_brain_view(args.job_id)
     elif args.command == "agent-loop":
         _cmd_agent_loop(args.job_id)
     elif args.command == "constitution":

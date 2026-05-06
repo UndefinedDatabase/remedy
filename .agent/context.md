@@ -14,22 +14,43 @@ Step 24: Brain Node Detail v1.
 Step 24.1: Brain CLI JSON + Detail Smoke Hardening.
 Step 24.2: Brain Smoke Test Polish.
 Step 24.3: Brain Smoke Final Polish.
+Step 25: Brain Viewer v0.
 
 New files:
 - packages/orchestration/project_constitution.py
 - packages/orchestration/agent_loop.py
 - packages/orchestration/project_brain.py
 - packages/orchestration/brain_detail.py
+- packages/orchestration/brain_viewer.py
 - tests/test_project_constitution.py (81 tests)
 - tests/test_agent_loop.py (68 tests)
 - tests/test_project_brain.py (80 tests)
 - tests/test_brain_detail.py (52 tests)
-- tests/test_brain_smoke.py (34 tests)
+- tests/test_brain_smoke.py (39 tests)
+- tests/test_brain_viewer.py (30 tests)
 
 Modified:
-- apps/cli/main.py: constitution, agent-loop, brain (--json), brain-node (--json) commands
+- apps/cli/main.py: constitution, agent-loop, brain (--json), brain-node (--json), brain-view commands
 - packages/orchestration/cockpit.py, trust_report.py, timeline.py
 - docs/architecture.md
+
+## Key facts (Brain Viewer v0 — Step 25)
+- CLI: remedy brain-view <job_id>
+- Writes to REMEDY_DATA_DIR/viewers/<job_id>/index.html + viewer_data.json
+- Stdout: "Brain Viewer v0: <path>"
+- Run-log event: brain_viewer_prepared schema: {node_count, edge_count, detail_count, mode}
+- mode is always "static" in v0
+- BrainViewerData frozen dataclass: {job_id, generated_at, graph, node_details, positions}
+- export_brain_viewer_json schema: {version:1, job_id, generated_at, graph, node_details, positions}
+- Layered radial layout: job=layer0 (centre), constitution/task=layer1 (r=150),
+  artifact/run_event/agent_loop=layer2 (r=290), patch_intent/approval/verification/blocker=layer3 (r=420),
+  memory_placeholder/mcp_placeholder=layer4 (r=530)
+- Read-only — no repo mutation, no external deps (stdlib only)
+- Redaction: same policy as brain_detail — no content/diff/reason/message/command in any file
+- Safe JSON embedding: </script> → <\/script>; placeholder substitution (not f-strings)
+- node colours: memory=#7c4fb0, mcp=#e06c1a, blocked=#cf4444, running=#4488ff (pulsing),
+  completed=#d0d7de, patch_intent pending=#d9a520, approved=#3fb950, default=#6e7681
+- 1252 tests pass (30 in test_brain_viewer.py)
 
 ## Key facts (Brain CLI JSON Contract — Steps 24.1 / 24.2)
 - brain --json: canonical machine contract for future 2D/3D graph (version, job_id, nodes, edges)
@@ -43,7 +64,6 @@ Modified:
 - Future frontend priority: 2D graph → 3D/Animus → MemPalace → MCP
 - Step 24.3 is the final pre-frontend smoke hardening pass; JSON contract fully locked
 - Step 25 = read-only local Brain Viewer v0; consumes only brain --json / brain-node --json
-- 1222 tests pass (39 in test_brain_smoke.py)
 
 ## Key facts (Brain Node Detail — Step 24)
 - BrainNodeDetail frozen=True: 13 fields including why_it_exists, connected_to, evidence,
