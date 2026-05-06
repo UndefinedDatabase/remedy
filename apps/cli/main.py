@@ -555,6 +555,69 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
     )
 
 
+def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False) -> None:
+    import json as _json
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.brain_detail import (
+        build_brain_node_detail,
+        export_brain_node_detail_json,
+        summarize_brain_node_detail,
+    )
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = (
+        load_project_constitution(Path(target_repo_str))
+        if target_repo_str
+        else None
+    )
+
+    graph = build_project_brain(job, events, constitution=constitution)
+
+    try:
+        detail = build_brain_node_detail(job, graph, node_id, events)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(_json.dumps(export_brain_node_detail_json(detail), sort_keys=True))
+    else:
+        print(summarize_brain_node_detail(detail))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "brain_node_inspected",
+        outcome="inspected",
+        node_id=detail.node_id,
+        node_type=detail.node_type,
+        connected_count=len(detail.connected_to),
+        evidence_count=len(detail.evidence),
+    )
+
+
 def _cmd_trust_report(job_id_str: str) -> None:
     import os
 
@@ -1020,6 +1083,19 @@ def main() -> None:
     )
     run_task.add_argument("job_id", help="UUID of the job to advance")
 
+    brain_node_p = subparsers.add_parser(
+        "brain-node",
+        help="Print detail for a single Project Brain node",
+    )
+    brain_node_p.add_argument("job_id", help="UUID of the job")
+    brain_node_p.add_argument("node_id", help="Node ID from the brain graph")
+    brain_node_p.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output detail as JSON instead of text",
+    )
+
     brain_p = subparsers.add_parser(
         "brain",
         help="Print the Project Brain Graph (node/edge graph) for a job",
@@ -1111,6 +1187,8 @@ def main() -> None:
         _cmd_show_permissions(args.job_id)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
+    elif args.command == "brain-node":
+        _cmd_brain_node(args.job_id, args.node_id, json_output=args.json)
     elif args.command == "brain":
         _cmd_brain(args.job_id, json_output=args.json)
     elif args.command == "agent-loop":

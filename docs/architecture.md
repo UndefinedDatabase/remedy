@@ -1343,3 +1343,98 @@ Step 24+ will add:
 - MCP Quarantine tool-layer nodes (replacing `mcp_placeholder`)
 
 No frontend, AG-UI, Three.js, or MCP integration is present in Steps 23/23.1.
+
+---
+
+## Brain Node Detail v1 (Step 24)
+
+`packages/orchestration/brain_detail.py` — read-only explanation and detail layer for individual Project Brain nodes.  This is the CLI foundation for the future "click a brain sphere and inspect it" UX in a visual cockpit.
+
+**Scope constraints (enforced):**  Read-only only.  No repo mutation, no `save_job`, no patch apply, no permission mutation, no shell/subprocess/Git/Docker/network/MCP/Claude execution, no memory writes, no frontend implementation, no raw artifact content rendering.
+
+### View relationships
+
+| View | Purpose |
+|------|---------|
+| Project Brain (`remedy brain`) | Full graph map — all nodes and edges for a job |
+| **Brain Node Detail (`remedy brain-node`)** | **Drill into one node — explanation, connections, evidence, actions** |
+| Cockpit | Current decision/status overview |
+| Timeline | Chronological run-log history |
+| Trust Report | Full audit/provenance report |
+
+Brain Node Detail is the future detail panel contract for React Flow / Three.js / AG-UI / A2UI: selecting a visual node will call this layer for its detail content.
+
+### Public API
+
+```python
+build_brain_node_detail(job, graph, node_id, events) -> BrainNodeDetail
+summarize_brain_node_detail(detail) -> str
+export_brain_node_detail_json(detail) -> dict
+```
+
+Raises `ValueError` (safe message) if `node_id` is not found in the graph.  All three functions are read-only, deterministic, and emit no side effects.
+
+### Data model
+
+`BrainNodeDetail(frozen=True)` — fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `job_id` | `str` | Parent job UUID |
+| `node_id` | `str` | Graph node ID |
+| `node_type` | `str` | Node type string |
+| `title` | `str` | Human-readable title |
+| `status` | `str` | Node status |
+| `risk` | `str \| None` | Risk level (patch intents only) |
+| `explanation` | `str` | Plain-text explanation of what this node is |
+| `why_it_exists` | `tuple[str, ...]` | Reasons this node type appears in the graph |
+| `connected_to` | `tuple[dict[str, str], ...]` | Incoming + outgoing edges with neighbour info |
+| `evidence` | `tuple[str, ...]` | Short factual strings from safe metadata |
+| `affected_files` | `tuple[str, ...]` | File paths (target_path or repo_applied_files only) |
+| `next_actions` | `tuple[str, ...]` | Suggested CLI commands |
+| `redaction_notes` | `tuple[str, ...]` | What is NOT rendered and why |
+
+Each `connected_to` entry: `{"direction": "incoming"|"outgoing", "edge_type", "node_id", "node_type", "node_label"}`.
+
+### Node-type behaviour
+
+| Node type | Key detail surfaced |
+|-----------|-------------------|
+| `job` | State, task/artifact counts, prompt (truncated to 120 chars) |
+| `task` | Task type, status, linked repo_applied_files |
+| `artifact` | Kind, owner (task or job), repo_applied_files — no content |
+| `patch_intent` | Target path, action, risk, state — no diff preview |
+| `approval_decision` | State, decided_at, decided_by — no approval_reason |
+| `verification` | Pass/fail status and task ref |
+| `permission_blocker` | Blocked capability + `set-permission` hint |
+| `run_event` | Event type and outcome — no message or command output |
+| `agent_loop` | Stage, decision, cycle |
+| `constitution` | Source count, has_test_commands |
+| `memory_placeholder` | Informational — Step 24+ only |
+| `mcp_placeholder` | Informational — Step 24+ only |
+
+### Redaction policy
+
+The following are **never** surfaced in any field, summary string, JSON export, or run-log event:
+- `artifact.content`
+- Diff preview (`patch_intent_diff_preview`)
+- Approval reason text (`approval_reason`)
+- Event message (`event.message`)
+- Raw command output (`metadata.command_output`, `metadata.output`)
+- Raw LLM prompts (user prompt is truncated to 120 chars for the job node)
+
+### CLI
+
+```
+remedy brain-node <job_id> <node_id>           # text detail (default)
+remedy brain-node <job_id> <node_id> --json    # JSON export
+```
+
+Loads the job, run events, and Project Constitution; builds the graph; calls `build_brain_node_detail`; prints text or `--json`; emits a `brain_node_inspected` run-log event.
+
+`brain_node_inspected` metadata schema (exact keyset):
+```json
+{ "node_id": "...", "node_type": "...", "connected_count": N, "evidence_count": N }
+```
+
+The `--json` output is the intended data contract for a future frontend detail panel.  No frontend integration exists in Step 24.

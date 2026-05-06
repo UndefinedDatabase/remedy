@@ -7,45 +7,46 @@ feature/step21-project-constitution-v1
 (open — see GitHub)
 
 ## Scope
-Step 21 + 21.1 + 21.2: Project Constitution v1 (extraction, integration, hygiene).
-Step 22: External Agent Loop Contract v1 (orchestration contract).
-Step 22.1: Agent Loop stale blocker fix + redaction hardening.
-Step 23: Project Brain Graph v1 (read-only graph model/export).
-Step 23.1: Project Brain polish (visual legend, constitution dedupe, safe cycle, --json).
+Step 21 + 21.1 + 21.2: Project Constitution v1.
+Step 22 + 22.1: External Agent Loop Contract v1.
+Step 23 + 23.1: Project Brain Graph v1 + polish.
+Step 24: Brain Node Detail v1.
 
 New files:
 - packages/orchestration/project_constitution.py
 - packages/orchestration/agent_loop.py
 - packages/orchestration/project_brain.py
+- packages/orchestration/brain_detail.py
 - tests/test_project_constitution.py (81 tests)
 - tests/test_agent_loop.py (68 tests)
 - tests/test_project_brain.py (80 tests)
+- tests/test_brain_detail.py (52 tests)
 
 Modified:
-- apps/cli/main.py: constitution, agent-loop, brain (+ --json) commands
+- apps/cli/main.py: constitution, agent-loop, brain (--json), brain-node (--json) commands
 - packages/orchestration/cockpit.py, trust_report.py, timeline.py
 - docs/architecture.md
 
+## Key facts (Brain Node Detail — Step 24)
+- BrainNodeDetail frozen=True: 13 fields including why_it_exists, connected_to, evidence,
+  affected_files, next_actions, redaction_notes
+- Raises ValueError (safe, truncated message) if node_id not found
+- connected_to: {direction, edge_type, node_id, node_type, node_label} per edge
+- Redaction: no content, diff preview, approval_reason, event.message, command output
+- User prompt truncated to 120 chars for job node
+- brain_node_inspected schema: {node_id, node_type, connected_count, evidence_count}
+- 1183 tests pass
+
 ## Key facts (Project Brain — Steps 23/23.1)
-- Read-only graph: BrainNode, BrainEdge, ProjectBrainGraph (all frozen=True dataclasses)
-- Node types (12): job, task, artifact, patch_intent, approval_decision, verification,
-  permission_blocker, run_event, agent_loop, constitution, memory_placeholder, mcp_placeholder
-- Edge types (11): has_task, created_artifact, emitted_event, produced_patch_intent,
-  decided_by, verified_by, blocked_by, inspected_by, governed_by,
-  future_memory_layer, future_mcp_layer
-- memory_placeholder + mcp_placeholder ALWAYS present (status=informational)
-- Nodes sorted by (_NODE_TYPE_ORDER, id); edges by (source, target, type)
-- project_constitution_loaded → constitution node ONLY, NOT also a run_event node
-- _safe_int: "2"→2, "not-a-number"→0, None→0, missing→0 (no exception escapes)
-- Visual legend in summary: pending=grey, running=pulsing, completed=white,
+- Read-only graph: BrainNode, BrainEdge, ProjectBrainGraph frozen dataclasses
+- 12 node types, 11 edge types
+- Visual legend: pending=grey, running=pulsing, completed=white,
   blocked=red, needs approval=amber, memory layer=violet, mcp quarantine=orange
-- remedy brain <job_id> --json → export_project_brain_json with sort_keys=True
-- project_brain_inspected metadata schema: {node_count, edge_count, task_count, patch_intent_count}
-- Redaction applies to both text and --json output
-- 1131 tests pass
+- project_constitution_loaded → constitution node ONLY (not also run_event)
+- _safe_int for agent_loop cycle parsing
+- project_brain_inspected schema: {node_count, edge_count, task_count, patch_intent_count}
 
 ## Key facts (Agent Loop — Step 22.1)
 - derive_agent_loop_state reflects CURRENT state, not worst historical event
-- Stale perm_denied events (task later completed or no longer pending) do NOT block
 - blocked_reason format: "permission_denied:workspace_write"
-- agent_loop_inspected metadata schema: {stage, decision, cycle, max_cycles, pending_finding_count}
+- agent_loop_inspected schema: {stage, decision, cycle, max_cycles, pending_finding_count}
