@@ -831,6 +831,73 @@ Important artifacts section.  No line appears when `constitution=None`.
 
 The constitution is never persisted to job metadata — it is loaded fresh and read-only each time.
 
+### Agent Loop Contract v1 (Step 22)
+
+`packages/orchestration/agent_loop.py` defines the orchestration contract and data models
+for coordinating external agent workflows.
+
+**Purpose:** This is a contract and inspection layer — not execution.  External tools
+(Claude Code, Copilot CLI, local models) are **not called** in v1.  The module provides
+immutable models, deterministic state derivation, and a CLI inspection command with an
+audit trail.
+
+**Models (all immutable):**
+
+| Model | Type | Key fields |
+|-------|------|-----------|
+| `AgentRole` | `str, Enum` | planner, builder, reviewer, fixer, verifier, reporter |
+| `AgentLoopStage` | `str, Enum` | planned, build, review, fix, verify, completed, blocked, failed |
+| `AgentLoopDecision` | `str, Enum` | continue, needs\_review, needs\_fix, needs\_approval, blocked, complete |
+| `AgentAdapterSpec` | `frozen dataclass` | name, role, provider, command\_hint, capabilities (frozenset), dry\_run\_only=True, notes (tuple) |
+| `AgentLoopState` | `frozen dataclass` | job\_id, current\_stage, cycle, max\_cycles, decision, builder, reviewer, pending\_findings, completed\_cycles, blocked\_reason |
+
+All `AgentAdapterSpec` instances default to `dry_run_only=True` — no execution in v1.
+
+**Public API:**
+```python
+default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
+summarize_agent_loop_state(job, state) -> str
+derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
+```
+
+**State derivation (deterministic, priority order):**
+
+| Priority | Condition | Decision | Stage |
+|----------|-----------|----------|-------|
+| 1 | `task_run_failed` with `outcome=permission_denied` | `blocked` | `blocked` |
+| 2 | Pending medium/high/unknown-risk patch intent | `needs_approval` | `review` |
+| 3 | All tasks done + all non-low intents approved | `complete` | `completed` |
+| 4 | Pending tasks | `continue` | `build` |
+| 5 | No tasks | `continue` | `planned` |
+
+Low-risk pending intents do not trigger `needs_approval` in v1.  Unknown risk is
+treated conservatively (same as high risk — requires approval).
+
+**CLI command:** `remedy agent-loop <job_id>` — loads job and run events, derives state,
+prints `summarize_agent_loop_state` output, writes `agent_loop_inspected` run log event
+with structured fields: `stage`, `decision`, `cycle`, `max_cycles`, `pending_finding_count`.
+No raw artifact content, prompts, approval reasons, diff previews, or exception messages
+in the run log.
+
+**Run-log event names:**
+
+| Event | Status | Description |
+|-------|--------|-------------|
+| `agent_loop_inspected` | active — emitted by `remedy agent-loop` | Loop state snapshot |
+| `external_agent_proposed` | reserved | External agent submitted a proposal |
+| `external_review_recorded` | reserved | Reviewer agent returned findings |
+| `fix_cycle_requested` | reserved | Fixer agent was requested |
+| `agent_loop_completed` | reserved | Loop reached a terminal state |
+
+**Future adapter examples:** `claude_code_builder`, `copilot_cli_reviewer`,
+`local_model_reviewer`.  All adapters must be `dry_run_only=True` in v1.
+
+**Authority:** Remedy remains the sole authority — permissions, verifier profiles,
+project constitution, run logs, cockpit, and trust report govern all decisions.
+Agent loop decisions are recommendations only; human approval gates are enforced by
+the existing approval queue.  Agent loop must integrate with the future autonomy ladder
+and respect MCP quarantine boundaries when adopted.
+
 ### Verifier Profiles v1 (Step 15)
 
 `packages/orchestration/verifier_profiles.py` introduces profile-based semantic verification. Profiles are deterministic and local-only — no shell execution, no LLM calls.

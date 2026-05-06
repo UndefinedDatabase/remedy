@@ -1,22 +1,29 @@
 # Plan
 
 ## Goal
-Step 21.2: Project Constitution final safety/test hygiene.
+Step 22: External Agent Loop Contract v1.
 
 ## Prior step
-Step 21.1 polished trust-report and timeline integration for the constitution.
+Step 21 + 21.1 + 21.2 delivered Project Constitution v1 with trust-report/timeline
+integration and safety hygiene.
 
 ## Status
-COMPLETE — 983 tests pass.
+COMPLETE — 1039 tests pass.
 
 ## Steps
-1. [x] Fix fragile run-log redaction test (f loop variable → combined_raw_content)
-2. [x] Add symlink escape test (_is_safe_path blocks symlinks pointing outside repo_root)
-3. [x] Remove duplicate _FORBIDDEN_PATTERNS.search() call in _extract_text_rules
-4. [x] Docs: advisory note on tox.ini/pytest.ini commands as hints not exact invocations
+1. [x] Create packages/orchestration/agent_loop.py
+   - AgentRole, AgentLoopStage, AgentLoopDecision enums
+   - AgentAdapterSpec, AgentLoopState frozen dataclasses
+   - default_agent_loop_state, derive_agent_loop_state, summarize_agent_loop_state
+2. [x] Add remedy agent-loop CLI command (apps/cli/main.py)
+   - Loads job + events, derives state, prints summary
+   - Writes agent_loop_inspected run log event (structured fields only)
+3. [x] Create tests/test_agent_loop.py (56 tests)
+   - Models, derivation logic, summary output, CLI, redaction
+4. [x] Update docs/architecture.md — Agent Loop Contract v1 section
 5. [x] Update .agent files
-6. [x] Run full suite (983 pass)
-7. [ ] Commit Step 21.2 changes
+6. [x] Run full suite (1039 pass)
+7. [ ] Commit Step 22 changes
 8. [ ] Push to feature/step21-project-constitution-v1
 
 ## Branch

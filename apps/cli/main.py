@@ -453,6 +453,49 @@ def _cmd_constitution(job_id_str: str) -> None:
     )
 
 
+def _cmd_agent_loop(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.agent_loop import (
+        derive_agent_loop_state,
+        summarize_agent_loop_state,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+    state = derive_agent_loop_state(job, events)
+
+    print(summarize_agent_loop_state(job, state))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "agent_loop_inspected",
+        outcome="inspected",
+        stage=state.current_stage.value,
+        decision=state.decision.value,
+        cycle=state.cycle,
+        max_cycles=state.max_cycles,
+        pending_finding_count=len(state.pending_findings),
+    )
+
+
 def _cmd_trust_report(job_id_str: str) -> None:
     import os
 
@@ -918,6 +961,12 @@ def main() -> None:
     )
     run_task.add_argument("job_id", help="UUID of the job to advance")
 
+    agent_loop_p = subparsers.add_parser(
+        "agent-loop",
+        help="Inspect the external agent loop state for a job",
+    )
+    agent_loop_p.add_argument("job_id", help="UUID of the job to inspect")
+
     constitution_p = subparsers.add_parser(
         "constitution",
         help="Print the Project Constitution extracted from the attached repo",
@@ -991,6 +1040,8 @@ def main() -> None:
         _cmd_show_permissions(args.job_id)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
+    elif args.command == "agent-loop":
+        _cmd_agent_loop(args.job_id)
     elif args.command == "constitution":
         _cmd_constitution(args.job_id)
     elif args.command == "trust-report":

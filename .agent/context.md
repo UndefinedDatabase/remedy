@@ -7,27 +7,35 @@ feature/step21-project-constitution-v1
 (open — see GitHub)
 
 ## Scope
-Step 21 + 21.1 + 21.2: Project Constitution v1 — read-only policy extraction, trust-report
-and timeline integration, and final safety/test hygiene.
+Step 21 + 21.1 + 21.2 + Step 22: Project Constitution v1 (extraction, trust-report /
+timeline integration, safety hygiene) and Agent Loop Contract v1 (orchestration contract
+for external agent workflows).
 
 New files:
-- packages/orchestration/project_constitution.py: ProjectConstitution, load_project_constitution(), render_constitution()
-- tests/test_project_constitution.py: 81 tests
+- packages/orchestration/project_constitution.py
+- packages/orchestration/agent_loop.py
+- tests/test_project_constitution.py (81 tests)
+- tests/test_agent_loop.py (56 tests)
 
 Modified:
-- apps/cli/main.py: constitution command + trust-report loads constitution at render time
+- apps/cli/main.py: constitution, agent-loop commands + trust-report loads constitution at render time
 - packages/orchestration/cockpit.py: optional constitution parameter
-- packages/orchestration/trust_report.py: optional constitution parameter; Section 6 renders 5 distinct states
-- packages/orchestration/timeline.py: project_constitution_loaded rendered as first-class event
-- docs/architecture.md: Project Constitution v1 section + Step 21.1/21.2 updates
+- packages/orchestration/trust_report.py: optional constitution parameter; 5 rendering states
+- packages/orchestration/timeline.py: project_constitution_loaded as first-class event
+- docs/architecture.md: Project Constitution + Agent Loop sections
 
-## Key facts
-- Constitution is never persisted to job metadata — loaded fresh and read-only at render time
-- project_constitution_loaded run log event: source_count, warning_count, has_test_commands only (no raw content)
+## Key facts (Agent Loop)
+- Contract layer only — no external processes called in v1
+- AgentAdapterSpec and AgentLoopState are frozen dataclasses
+- derive_agent_loop_state: permission_denied → blocked (priority 1); pending non-low intents → needs_approval; all done + approved → complete; pending tasks → continue/build; no tasks → continue/planned
+- Low-risk pending intents do NOT force needs_approval in v1
+- agent_loop_inspected run log event: stage, decision, cycle, max_cycles, pending_finding_count only
+- CLI: remedy agent-loop <job_id>
+
+## Key facts (Constitution)
+- Never persisted to job metadata — loaded fresh at render time
+- project_constitution_loaded run log event: structured counts only
 - Trust Report Section 6: 5 cases — available/no-sources/unavailable/not-loaded/no-repo
-- _cmd_trust_report passes constitution=None when no target_repo (not load_project_constitution(None))
-- Timeline: project_constitution_loaded → "✓ Project Constitution loaded  sources=N  tests=yes/no"
-- _FORBIDDEN_PATTERNS.search called once per line (no duplicate)
-- Symlink escape test: _is_safe_path(link_pointing_outside, repo_root) is False
-- tox.ini/pytest.ini advisory note: commands are hints, not exact invocations
-- 983 tests pass
+- Timeline: project_constitution_loaded → first-class event
+
+- 1039 tests pass
