@@ -223,6 +223,12 @@ def _constitution_loaded_event(job_id: str) -> dict:
 
 
 def _call_brain_json(job_id_str: str, monkeypatch, capsys) -> dict:
+    """Run `remedy brain <job_id> --json` and return parsed JSON.
+
+    Consumes both stdout and stderr via capsys.readouterr(). Tests that need
+    to inspect stderr directly must call main() and capsys.readouterr() themselves
+    rather than using this helper.
+    """
     import sys
     from apps.cli.main import main
     monkeypatch.setattr(sys, "argv", ["remedy", "brain", job_id_str, "--json"])
@@ -231,6 +237,12 @@ def _call_brain_json(job_id_str: str, monkeypatch, capsys) -> dict:
 
 
 def _call_brain_node_json(job_id_str: str, node_id: str, monkeypatch, capsys) -> dict:
+    """Run `remedy brain-node <job_id> <node_id> --json` and return parsed JSON.
+
+    Consumes both stdout and stderr via capsys.readouterr(). Tests that need
+    to inspect stderr directly must call main() and capsys.readouterr() themselves
+    rather than using this helper.
+    """
     import sys
     from apps.cli.main import main
     monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", job_id_str, node_id, "--json"])
@@ -239,9 +251,10 @@ def _call_brain_node_json(job_id_str: str, node_id: str, monkeypatch, capsys) ->
 
 
 def _assert_detail_keys(data: dict) -> None:
-    assert set(data.keys()) == _DETAIL_KEYS, (
-        f"key mismatch: {set(data.keys()) ^ _DETAIL_KEYS}"
-    )
+    actual = set(data.keys())
+    extra = actual - _DETAIL_KEYS
+    missing = _DETAIL_KEYS - actual
+    assert actual == _DETAIL_KEYS, f"extra={extra!r}  missing={missing!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -661,8 +674,13 @@ class TestBrainRedactionHardening:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._poisoned_setup(tmp_path)
         brain = _call_brain_json(str(job.id), monkeypatch, capsys)
-        job_node = next(n for n in brain["nodes"] if n["type"] == "job")
-        detail = _call_brain_node_json(str(job.id), job_node["id"], monkeypatch, capsys)
+        # Target a node adjacent to poisoned data (patch_intent preferred, artifact fallback).
+        # The job node is intentionally avoided here: it holds no direct content fields.
+        target_node = (
+            next((n for n in brain["nodes"] if n["type"] == "patch_intent"), None)
+            or next(n for n in brain["nodes"] if n["type"] == "artifact")
+        )
+        detail = _call_brain_node_json(str(job.id), target_node["id"], monkeypatch, capsys)
         self._no_sentinels(json.dumps(detail))
 
     def test_brain_run_log_no_sentinels(self, tmp_path, monkeypatch, capsys):
@@ -690,3 +708,72 @@ class TestBrainRedactionHardening:
         events = _read_run_log(tmp_path, job.id)
         ev = next(e for e in events if e.get("event") == "brain_node_inspected")
         self._no_sentinels(json.dumps(ev))
+
+
+# ---------------------------------------------------------------------------
+# TestBrainNodeUnknownNode
+# ---------------------------------------------------------------------------
+
+
+class TestBrainNodeUnknownNode:
+    """brain-node with an unknown node_id must exit 1 with a safe, truncated error."""
+
+    def test_unknown_node_exits_1(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist", "--json"])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+
+    def test_unknown_node_stdout_empty(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist", "--json"])
+        with pytest.raises(SystemExit):
+            main()
+        assert capsys.readouterr().out == ""
+
+    def test_unknown_node_stderr_safe_message(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist", "--json"])
+        with pytest.raises(SystemExit):
+            main()
+        err = capsys.readouterr().err
+        assert "node not found" in err.lower()
+
+    def test_unknown_node_stderr_no_traceback(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist", "--json"])
+        with pytest.raises(SystemExit):
+            main()
+        assert "Traceback" not in capsys.readouterr().err
+
+    def test_long_node_id_safely_truncated_in_stderr(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        long_id = "x" * 200
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), long_id, "--json"])
+        with pytest.raises(SystemExit):
+            main()
+        err = capsys.readouterr().err
+        # The full 200-char id must not appear verbatim; the truncated version is present
+        assert long_id not in err
+        assert len(err) > 0

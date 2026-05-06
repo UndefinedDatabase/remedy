@@ -1481,3 +1481,5 @@ Both schemas hold regardless of whether `--json` is used.
 4. **MCP Quarantine** — `mcp_placeholder` nodes become live MCP tool nodes when the MCP integration layer is implemented (Step 24+).
 
 No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the stable integration surface that must not change without a version bump.
+
+**Step 24.2** locks the smoke-level JSON contract before any frontend work begins.  After Step 24.2, future frontend code must treat `--json` stdout as the only machine-readable input and must never parse the human-readable text output (the non-`--json` mode).  Any regression in JSON stdout purity, stderr cleanliness, or run-log schema is a contract break.

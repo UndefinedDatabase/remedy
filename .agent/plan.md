@@ -1,30 +1,33 @@
 # Plan
 
 ## Goal
-Step 24.1: Brain CLI JSON + Detail Smoke Hardening.
+Step 24.2: Brain Smoke Test Polish — harden smoke tests and docs before visual Brain Viewer work.
 
 ## Prior step
-Step 24: Brain Node Detail v1 (1183 tests).
+Step 24.1: Brain CLI JSON + Detail Smoke Hardening (1217 tests).
 
 ## Status
-COMPLETE — 1217 tests pass.
+COMPLETE — 1222 tests pass.
 
 ## Steps
-1. [x] Create tests/test_brain_smoke.py (34 tests)
-   - TestBrainLifecycle (8): before planning, after planning, after run, after approval
-   - TestBrainNodeJsonAllTypes (12): one brain-node --json test per node type
-   - TestBrainJsonRegression (6): no human header in --json, empty stderr, no traceback
-   - TestBrainRunLogSchema (4): exact keys for project_brain_inspected and brain_node_inspected
-   - TestBrainRedactionHardening (4): all 5 sentinels absent from brain/brain-node JSON and run logs
-2. [x] Update docs/architecture.md — Brain CLI JSON Contract v1 (Step 24.1) section
-   - brain --json canonical machine contract for future 2D/3D graph
-   - brain-node --json canonical machine contract for future click-detail panels
-   - Future frontend priority: 2D graph → 3D/Animus → MemPalace → MCP
-   - JSON stdout must be pure JSON; human text only in non-json mode
-3. [x] Update .agent files
-4. [x] Run full suite (1217 pass)
-5. [ ] Commit Step 24.1 changes
-6. [ ] Push to feature/step21-project-constitution-v1
+1. [x] Strengthen brain-node CLI JSON redaction smoke
+   - test_brain_node_json_no_sentinels now targets patch_intent node (fallback: artifact)
+   - Job node intentionally avoided; patch_intent is directly adjacent to poisoned data
+2. [x] Improve _assert_detail_keys diagnostics
+   - Replaced symmetric-difference error with extra={...} / missing={...}
+3. [x] Add TestBrainNodeUnknownNode (5 tests)
+   - unknown node exits 1
+   - stdout empty on failure
+   - stderr contains "node not found" safe message
+   - stderr does not contain traceback
+   - long node_id (200 chars) safely truncated in stderr (not echoed verbatim)
+4. [x] Add explicit helper comments to _call_brain_json / _call_brain_node_json
+   - Documents that capsys.readouterr() is consumed; tests needing stderr must call main() directly
+5. [x] Update docs/architecture.md — Step 24.2 locks smoke-level JSON contract
+   - Frontend must treat --json stdout as only machine input, never parse human text output
+6. [x] Run full suite (1222 pass)
+7. [ ] Commit Step 24.2 changes
+8. [ ] Push to feature/step21-project-constitution-v1
 
 ## Branch
 feature/step21-project-constitution-v1
