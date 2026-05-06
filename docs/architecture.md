@@ -1483,3 +1483,7 @@ Both schemas hold regardless of whether `--json` is used.
 No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the stable integration surface that must not change without a version bump.
 
 **Step 24.2** locks the smoke-level JSON contract before any frontend work begins.  After Step 24.2, future frontend code must treat `--json` stdout as the only machine-readable input and must never parse the human-readable text output (the non-`--json` mode).  Any regression in JSON stdout purity, stderr cleanliness, or run-log schema is a contract break.
+
+**Step 24.3** is the final pre-frontend smoke hardening pass (redaction target alignment, raw-stdout sentinel checks, docstring polish).  After Step 24.3 the JSON contract is fully locked.
+
+**Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain --json` (graph data) and `remedy brain-node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.

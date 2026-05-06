@@ -13,6 +13,7 @@ Step 23 + 23.1: Project Brain Graph v1 + polish.
 Step 24: Brain Node Detail v1.
 Step 24.1: Brain CLI JSON + Detail Smoke Hardening.
 Step 24.2: Brain Smoke Test Polish.
+Step 24.3: Brain Smoke Final Polish.
 
 New files:
 - packages/orchestration/project_constitution.py
@@ -40,7 +41,8 @@ Modified:
 - brain_node_inspected schema: {node_id, node_type, connected_count, evidence_count}
 - Future frontend must treat --json stdout as only machine input; must not parse human text output
 - Future frontend priority: 2D graph → 3D/Animus → MemPalace → MCP
-- Step 24.2 locked the smoke-level JSON contract; frontend work starts after this step
+- Step 24.3 is the final pre-frontend smoke hardening pass; JSON contract fully locked
+- Step 25 = read-only local Brain Viewer v0; consumes only brain --json / brain-node --json
 - 1222 tests pass (39 in test_brain_smoke.py)
 
 ## Key facts (Brain Node Detail — Step 24)

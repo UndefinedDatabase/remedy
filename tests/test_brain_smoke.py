@@ -1,5 +1,10 @@
 """
-Brain CLI JSON + Detail Smoke Hardening tests (Step 24.1).
+Brain CLI JSON + Detail Smoke Hardening tests (Steps 24.1 / 24.2 / 24.3).
+
+These are the final pre-frontend smoke tests that lock the machine-readable JSON
+contract for `remedy brain --json` and `remedy brain-node --json`.  Future
+frontend code must consume only these --json outputs and must never parse the
+human-readable text mode.
 
 Coverage:
   Lifecycle (before planning / after planning / after run / after approval):
@@ -26,8 +31,13 @@ Coverage:
     - APPROVAL_REASON_MUST_NOT_RENDER
     - EVENT_MESSAGE_MUST_NOT_RENDER
     - RAW_COMMAND_OUTPUT_MUST_NOT_RENDER
-    absent from: brain --json stdout, brain-node --json stdout,
-                 project_brain_inspected run log, brain_node_inspected run log
+    absent from raw brain --json stdout, raw brain-node --json stdout,
+    project_brain_inspected run log, brain_node_inspected run log;
+    brain-node redaction check targets patch_intent (fallback: artifact) —
+    nodes directly adjacent to poisoned content, not the job root node
+  Unknown-node error path (TestBrainNodeUnknownNode):
+    - exits 1, stdout empty, safe "node not found" in stderr, no traceback,
+      overlong node_id safely truncated (not echoed verbatim)
 """
 
 from __future__ import annotations
@@ -675,13 +685,20 @@ class TestBrainRedactionHardening:
         job = self._poisoned_setup(tmp_path)
         brain = _call_brain_json(str(job.id), monkeypatch, capsys)
         # Target a node adjacent to poisoned data (patch_intent preferred, artifact fallback).
-        # The job node is intentionally avoided here: it holds no direct content fields.
+        # The job node is intentionally avoided: it holds no direct content fields.
         target_node = (
             next((n for n in brain["nodes"] if n["type"] == "patch_intent"), None)
             or next(n for n in brain["nodes"] if n["type"] == "artifact")
         )
-        detail = _call_brain_node_json(str(job.id), target_node["id"], monkeypatch, capsys)
-        self._no_sentinels(json.dumps(detail))
+        # Check raw stdout bytes before any json.loads / json.dumps roundtrip — a roundtrip
+        # could mask a leak by re-encoding sentinel bytes differently.
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), target_node["id"], "--json"])
+        main()
+        raw = capsys.readouterr().out
+        self._no_sentinels(raw)
+        json.loads(raw)  # must still be valid JSON after the sentinel check
 
     def test_brain_run_log_no_sentinels(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -699,10 +716,15 @@ class TestBrainRedactionHardening:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._poisoned_setup(tmp_path)
         brain = _call_brain_json(str(job.id), monkeypatch, capsys)
-        job_node = next(n for n in brain["nodes"] if n["type"] == "job")
+        # Mirror test_brain_node_json_no_sentinels: patch_intent → artifact → job fallback
+        target_node = (
+            next((n for n in brain["nodes"] if n["type"] == "patch_intent"), None)
+            or next((n for n in brain["nodes"] if n["type"] == "artifact"), None)
+            or next(n for n in brain["nodes"] if n["type"] == "job")
+        )
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), job_node["id"]])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), target_node["id"]])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)

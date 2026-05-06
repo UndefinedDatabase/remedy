@@ -1,33 +1,33 @@
 # Plan
 
 ## Goal
-Step 24.2: Brain Smoke Test Polish — harden smoke tests and docs before visual Brain Viewer work.
+Step 24.3: Brain Smoke Final Polish — final pre-frontend smoke hardening before Brain Viewer v0.
 
 ## Prior step
-Step 24.1: Brain CLI JSON + Detail Smoke Hardening (1217 tests).
+Step 24.2: Brain Smoke Test Polish (1222 tests).
 
 ## Status
 COMPLETE — 1222 tests pass.
 
 ## Steps
-1. [x] Strengthen brain-node CLI JSON redaction smoke
-   - test_brain_node_json_no_sentinels now targets patch_intent node (fallback: artifact)
-   - Job node intentionally avoided; patch_intent is directly adjacent to poisoned data
-2. [x] Improve _assert_detail_keys diagnostics
-   - Replaced symmetric-difference error with extra={...} / missing={...}
-3. [x] Add TestBrainNodeUnknownNode (5 tests)
-   - unknown node exits 1
-   - stdout empty on failure
-   - stderr contains "node not found" safe message
-   - stderr does not contain traceback
-   - long node_id (200 chars) safely truncated in stderr (not echoed verbatim)
-4. [x] Add explicit helper comments to _call_brain_json / _call_brain_node_json
-   - Documents that capsys.readouterr() is consumed; tests needing stderr must call main() directly
-5. [x] Update docs/architecture.md — Step 24.2 locks smoke-level JSON contract
-   - Frontend must treat --json stdout as only machine input, never parse human text output
-6. [x] Run full suite (1222 pass)
-7. [ ] Commit Step 24.2 changes
-8. [ ] Push to feature/step21-project-constitution-v1
+1. [x] Update tests/test_brain_smoke.py module docstring
+   - Mentions Steps 24.1 / 24.2 / 24.3
+   - Documents TestBrainNodeUnknownNode
+   - Notes brain-node redaction targets patch_intent/artifact, not job
+   - States --json stdout is the frontend contract
+2. [x] Align run-log redaction target in test_brain_node_run_log_no_sentinels
+   - Now uses patch_intent → artifact → job fallback (mirrors test_brain_node_json_no_sentinels)
+3. [x] Strengthen raw stdout redaction in test_brain_node_json_no_sentinels
+   - Captures raw stdout before json.loads/dumps roundtrip
+   - Asserts all 5 sentinels absent from raw bytes
+   - Then json.loads(raw) confirms it still parses
+4. [x] Update docs/architecture.md
+   - Step 24.3: final pre-frontend smoke hardening
+   - Step 25: read-only local Brain Viewer v0
+   - Future UI must consume only --json outputs, not human text mode
+5. [x] Run full suite (1222 pass)
+6. [ ] Commit Step 24.3 changes
+7. [ ] Push to feature/step21-project-constitution-v1
 
 ## Branch
 feature/step21-project-constitution-v1
