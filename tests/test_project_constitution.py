@@ -579,11 +579,23 @@ class TestTrustReportConstitutionIntegration:
         assert "no attached repo" in out
 
     def test_no_sources_found_message(self):
+        """Empty repo (no known files found, no warnings) → 'no sources found'."""
         job = _make_job()
-        constitution = ProjectConstitution(source_files=[], warnings=["no sources found"])
+        constitution = ProjectConstitution(source_files=[])  # no warnings = clean empty repo
         out = summarize_trust_report(job, [], constitution=constitution)
         assert "Project Constitution" in out
         assert "no sources found" in out
+
+    def test_stale_repo_shows_unavailable(self):
+        """Constitution with warnings but no sources → stale/non-dir repo message."""
+        job = _make_job()
+        constitution = ProjectConstitution(
+            source_files=[],
+            warnings=["attached repo does not exist: /gone"],
+        )
+        out = summarize_trust_report(job, [], constitution=constitution)
+        assert "Project Constitution" in out
+        assert "unavailable" in out or "missing" in out
 
     def test_attached_repo_not_loaded_shows_command_hint(self):
         """When repo is attached but constitution not loaded, hint shown."""
@@ -591,3 +603,222 @@ class TestTrustReportConstitutionIntegration:
         job.metadata["target_repo"] = "/some/repo"
         out = summarize_trust_report(job, [], constitution=None)
         assert "constitution" in out.lower()
+
+
+# ---------------------------------------------------------------------------
+# Trust Report CLI integration (Step 21.1 — constitution loaded at render time)
+# ---------------------------------------------------------------------------
+
+
+class TestTrustReportCLIConstitution:
+    def _setup_repo(self, tmp_path, monkeypatch) -> tuple[Job, Path]:
+        """Create a job with an attached repo containing pyproject.toml."""
+        repo_dir = tmp_path / "repo"
+        repo_dir.mkdir()
+        (repo_dir / "pyproject.toml").write_text("[tool.pytest]\n")
+        (repo_dir / "AGENTS.md").write_text(
+            "Always run tests before merging.\n"
+            "Never commit to main directly.\n"
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        job.metadata["target_repo"] = str(repo_dir)
+        save_job(job)
+        return job, repo_dir
+
+    def test_attached_repo_shows_available_from_n_sources(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        job, _ = self._setup_repo(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_trust_report
+        _cmd_trust_report(str(job.id))
+        out = capsys.readouterr().out
+        assert "Project Constitution" in out
+        assert "available from" in out
+        assert "source file(s)" in out
+
+    def test_attached_repo_does_not_say_not_loaded(self, tmp_path, monkeypatch, capsys):
+        """The old 'not loaded' hint must not appear when repo is attached."""
+        job, _ = self._setup_repo(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_trust_report
+        _cmd_trust_report(str(job.id))
+        out = capsys.readouterr().out
+        assert "not loaded" not in out
+
+    def test_no_repo_shows_no_attached_repo(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        from apps.cli.main import _cmd_trust_report
+        _cmd_trust_report(str(job.id))
+        out = capsys.readouterr().out
+        assert "no attached repo" in out.lower()
+
+    def test_empty_repo_shows_no_sources_found(self, tmp_path, monkeypatch, capsys):
+        repo_dir = tmp_path / "repo"
+        repo_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        job.metadata["target_repo"] = str(repo_dir)
+        save_job(job)
+        from apps.cli.main import _cmd_trust_report
+        _cmd_trust_report(str(job.id))
+        out = capsys.readouterr().out
+        assert "Project Constitution" in out
+        assert "no sources found" in out
+
+    def test_stale_repo_shows_unavailable(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        job.metadata["target_repo"] = str(tmp_path / "does_not_exist")
+        save_job(job)
+        from apps.cli.main import _cmd_trust_report
+        _cmd_trust_report(str(job.id))
+        out = capsys.readouterr().out
+        assert "Project Constitution" in out
+        assert "unavailable" in out or "missing" in out
+
+    def test_no_raw_conventions_in_trust_report_output(self, tmp_path, monkeypatch, capsys):
+        """Trust report must not dump raw AGENTS.md lines from the constitution."""
+        job, _ = self._setup_repo(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_trust_report
+        _cmd_trust_report(str(job.id))
+        out = capsys.readouterr().out
+        # The trust report shows constitution summary only, not full convention list
+        assert "Never commit to main directly" not in out
+        assert "Always run tests before merging" not in out
+
+
+# ---------------------------------------------------------------------------
+# Timeline rendering (Step 21.1)
+# ---------------------------------------------------------------------------
+
+
+class TestTimelineConstitutionEvent:
+    def test_constitution_event_renders_as_loaded(self):
+        from packages.orchestration.timeline import summarize_timeline
+
+        job = _make_job(state=RunState.PENDING)
+        events = [
+            {
+                "event": "project_constitution_loaded",
+                "job_id": str(job.id),
+                "run_id": "r",
+                "timestamp": "2026-05-05T10:00:00+00:00",
+                "outcome": "loaded",
+                "metadata": {
+                    "source_count": 4,
+                    "warning_count": 0,
+                    "has_test_commands": True,
+                },
+            }
+        ]
+        out = summarize_timeline(job, events)
+        assert "Project Constitution loaded" in out
+
+    def test_constitution_event_shows_source_count(self):
+        from packages.orchestration.timeline import summarize_timeline
+
+        job = _make_job()
+        events = [
+            {
+                "event": "project_constitution_loaded",
+                "job_id": str(job.id),
+                "run_id": "r",
+                "timestamp": "2026-05-05T10:00:00+00:00",
+                "metadata": {"source_count": 3, "warning_count": 0, "has_test_commands": True},
+            }
+        ]
+        out = summarize_timeline(job, events)
+        assert "sources=3" in out
+
+    def test_constitution_event_shows_tests_yes(self):
+        from packages.orchestration.timeline import summarize_timeline
+
+        job = _make_job()
+        events = [
+            {
+                "event": "project_constitution_loaded",
+                "job_id": str(job.id),
+                "run_id": "r",
+                "timestamp": "2026-05-05T10:00:00+00:00",
+                "metadata": {"source_count": 1, "warning_count": 0, "has_test_commands": True},
+            }
+        ]
+        out = summarize_timeline(job, events)
+        assert "tests=yes" in out
+
+    def test_constitution_event_shows_tests_no(self):
+        from packages.orchestration.timeline import summarize_timeline
+
+        job = _make_job()
+        events = [
+            {
+                "event": "project_constitution_loaded",
+                "job_id": str(job.id),
+                "run_id": "r",
+                "timestamp": "2026-05-05T10:00:00+00:00",
+                "metadata": {"source_count": 0, "warning_count": 1, "has_test_commands": False},
+            }
+        ]
+        out = summarize_timeline(job, events)
+        assert "tests=no" in out
+        assert "warnings=1" in out
+
+    def test_constitution_event_shows_no_warnings_when_zero(self):
+        from packages.orchestration.timeline import summarize_timeline
+
+        job = _make_job()
+        events = [
+            {
+                "event": "project_constitution_loaded",
+                "job_id": str(job.id),
+                "run_id": "r",
+                "timestamp": "2026-05-05T10:00:00+00:00",
+                "metadata": {"source_count": 2, "warning_count": 0, "has_test_commands": True},
+            }
+        ]
+        out = summarize_timeline(job, events)
+        assert "warnings=" not in out  # no warnings field when count is 0
+
+    def test_constitution_event_no_raw_content(self):
+        """Timeline rendering must not show raw source file contents."""
+        from packages.orchestration.timeline import summarize_timeline
+
+        job = _make_job()
+        events = [
+            {
+                "event": "project_constitution_loaded",
+                "job_id": str(job.id),
+                "run_id": "r",
+                "timestamp": "2026-05-05T10:00:00+00:00",
+                "metadata": {
+                    "source_count": 1,
+                    "warning_count": 0,
+                    "has_test_commands": True,
+                    # Even if raw content were accidentally stored, it must not render
+                    "raw_content": "MUST_NOT_APPEAR_IN_TIMELINE",
+                },
+            }
+        ]
+        out = summarize_timeline(job, events)
+        assert "MUST_NOT_APPEAR_IN_TIMELINE" not in out
+
+    def test_generic_event_no_longer_shows_for_constitution(self):
+        """The old '○ project_constitution_loaded' generic fallback is replaced."""
+        from packages.orchestration.timeline import summarize_timeline
+
+        job = _make_job()
+        events = [
+            {
+                "event": "project_constitution_loaded",
+                "job_id": str(job.id),
+                "run_id": "r",
+                "timestamp": "2026-05-05T10:00:00+00:00",
+                "metadata": {"source_count": 2, "warning_count": 0, "has_test_commands": True},
+            }
+        ]
+        out = summarize_timeline(job, events)
+        # Must NOT be the raw event name; must be the human-readable label
+        assert "○ project_constitution_loaded" not in out
+        assert "Project Constitution loaded" in out

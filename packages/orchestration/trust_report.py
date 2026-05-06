@@ -214,19 +214,28 @@ def summarize_trust_report(
             outcome = dev.get("outcome", "")
             parts.append(f"      task_run_failed(outcome={outcome}{cap_str})")
 
-    # Constitution summary (counts only — no raw content)
+    # Constitution summary (counts only — no raw content, no raw conventions)
     if constitution is not None:
-        n = len(constitution.source_files)
-        if n:
+        # Stale/non-dir repo produces a warning and zero sources
+        if constitution.warnings and not constitution.source_files:
+            parts.append(
+                f"  {_INFO} Project Constitution: unavailable"
+                f" (attached repo missing or not a directory)"
+            )
+        elif constitution.source_files:
+            n = len(constitution.source_files)
             parts.append(
                 f"  {_INFO} Project Constitution: available from {n} source file(s)"
             )
         else:
-            parts.append(f"  {_INFO} Project Constitution: no sources found in attached repo")
+            parts.append(f"  {_INFO} Project Constitution: no sources found")
     else:
         target_repo = job.metadata.get("target_repo")
         if target_repo:
-            parts.append(f"  {_INFO} Project Constitution: not loaded (run: remedy constitution {job.id})")
+            parts.append(
+                f"  {_INFO} Project Constitution: not loaded"
+                f" (run: remedy constitution {job.id})"
+            )
         else:
             parts.append(f"  {_INFO} Project Constitution: no attached repo")
 

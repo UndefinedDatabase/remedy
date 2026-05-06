@@ -1,29 +1,30 @@
 # Context
 
 ## Active Branch
-feature/step20-trust-report-v1
+feature/step21-project-constitution-v1
 
 ## PR
 (open — see GitHub)
 
 ## Scope
-Step 20: Trust Report v1 — read-only auditable job summary.
-Adds `remedy trust-report <job_id>`. No apply, no mutation, no new deps.
+Step 21 + 21.1: Project Constitution v1 — read-only policy extraction from known files in
+an attached target repo, with trust-report and timeline integration polish.
 
 New files:
-- packages/orchestration/trust_report.py: summarize_trust_report()
-- tests/test_trust_report.py: 60 tests
+- packages/orchestration/project_constitution.py: ProjectConstitution, load_project_constitution(), render_constitution()
+- tests/test_project_constitution.py: 97 tests
 
 Modified:
-- apps/cli/main.py: trust-report command + subparser + dispatch
-- docs/architecture.md: Trust Report v1 section
+- apps/cli/main.py: constitution command + trust-report loads constitution at render time
+- packages/orchestration/cockpit.py: optional constitution parameter
+- packages/orchestration/trust_report.py: optional constitution parameter; Section 6 renders 5 distinct states
+- packages/orchestration/timeline.py: project_constitution_loaded rendered as first-class event
+- docs/architecture.md: Project Constitution v1 section + Step 21.1 updates
 
 ## Key facts
-- Trust Report = auditable summary (Timeline = chronological, Cockpit = decision-oriented)
-- 9 numbered sections: User request, Plan, Execution summary, Artifacts, Verification,
-  Permissions/safety, Patch intents/decisions, Redaction/trust boundary, Next safe action
-- Redaction: no raw exception text, no raw artifact content, no full diff previews
-- CLI: exits 0 even when no run logs (section says "No run logs available")
-- data_dir=None: run log dir path omitted; all other sections still render
-  All approved + no pending tasks → next action notes apply not implemented.
-- 826 tests pass
+- Constitution is never persisted to job metadata — loaded fresh and read-only at render time
+- project_constitution_loaded run log event: source_count, warning_count, has_test_commands only (no raw content)
+- Trust Report Section 6: 5 cases — available/no-sources/unavailable/not-loaded/no-repo
+- _cmd_trust_report passes constitution=None when no target_repo (not load_project_constitution(None))
+- Timeline: project_constitution_loaded → "✓ Project Constitution loaded  sources=N  tests=yes/no"
+- 982 tests pass

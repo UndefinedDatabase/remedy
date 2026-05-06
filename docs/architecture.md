@@ -552,6 +552,10 @@ blocks (task_run_started → terminal) showing type, outcome, verification, work
 path, repo path, patch intent count and risk levels. Unknown events render as
 `○ <event-name>` rather than crashing.
 
+`project_constitution_loaded` is a first-class event: rendered as
+`✓ Project Constitution loaded  sources=N  tests=yes/no  warnings=N` (the
+`warnings=N` field is omitted when `warning_count` is zero).
+
 **Next suggested action (deterministic, no LLM):**
 1. Last terminal is `task_run_failed/permission_denied` → suggest `set-permission`.
 2. `patch_intent_created` with medium/high/unknown risk → suggest review.
@@ -714,7 +718,13 @@ into a single, deterministic, human-readable document.
 writes, no shell execution, no LLM calls.  No new dependencies.  One public function:
 
 ```python
-summarize_trust_report(job: Job, events: list[dict], *, data_dir: Path | None = None) -> str
+summarize_trust_report(
+    job: Job,
+    events: list[dict],
+    *,
+    data_dir: Path | None = None,
+    constitution: ProjectConstitution | None = None,
+) -> str
 ```
 
 **Report sections (numbered, deterministic order):**
@@ -804,10 +814,19 @@ Exits 0 even when no repo is attached (prints warning).
 When provided, a concise `constitution: N source file(s)` line appears in the
 Important artifacts section.  No line appears when `constitution=None`.
 
-**Trust Report integration:** Section 6 (Permissions and safety) includes a one-line
-Project Constitution summary: source count when available, "no attached repo" otherwise,
-or a hint to run `remedy constitution <job_id>` when a repo is attached but constitution
-was not loaded.
+**Trust Report integration:** `_cmd_trust_report` loads the constitution at render time
+(same pattern as cockpit) and passes it to `summarize_trust_report`.  Section 6
+(Permissions and safety) renders a one-line Project Constitution status:
+
+| Condition | Displayed text |
+|-----------|---------------|
+| `constitution` provided, sources found | `Project Constitution: available from N source file(s)` |
+| `constitution` provided, no sources, no warnings | `Project Constitution: no sources found` |
+| `constitution` provided, warnings, no sources | `Project Constitution: unavailable (attached repo missing or not a directory)` |
+| `constitution=None`, `target_repo` set in metadata | `Project Constitution: not loaded (run: remedy constitution <job_id>)` |
+| `constitution=None`, no `target_repo` | `Project Constitution: no attached repo` |
+
+The constitution is never persisted to job metadata — it is loaded fresh and read-only each time.
 
 ### Verifier Profiles v1 (Step 15)
 

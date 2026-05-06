@@ -469,14 +469,22 @@ def _cmd_trust_report(job_id_str: str) -> None:
 
     from pathlib import Path
 
+    from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.timeline import load_run_events
     from packages.orchestration.trust_report import summarize_trust_report
 
     env = os.environ.get("REMEDY_DATA_DIR")
     data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
 
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = (
+        load_project_constitution(Path(target_repo_str))
+        if target_repo_str
+        else None
+    )
+
     events = load_run_events(data_dir, job_id)
-    print(summarize_trust_report(job, events, data_dir=data_dir))
+    print(summarize_trust_report(job, events, data_dir=data_dir, constitution=constitution))
 
 
 def _cmd_timeline(job_id_str: str) -> None:
