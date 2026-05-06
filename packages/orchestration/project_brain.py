@@ -120,7 +120,10 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_MCP:          11,
 }
 
-# Run-log events promoted to run_event nodes (not already covered by other types)
+# Run-log events promoted to run_event nodes (not already covered by other types).
+# project_constitution_loaded is intentionally excluded: it is represented by the
+# dedicated constitution node (section 6 of build_project_brain) and must NOT also
+# create a redundant run_event node.
 _KEY_EVENTS: frozenset[str] = frozenset({
     "job_created",
     "builder_started",
@@ -128,7 +131,6 @@ _KEY_EVENTS: frozenset[str] = frozenset({
     "task_run_noop",
     "repo_application_completed",
     "patch_intent_failed",
-    "project_constitution_loaded",
 })
 
 
@@ -343,7 +345,7 @@ def build_project_brain(
             agent_loop_idx += 1
             stage = str(meta.get("stage", ev.get("stage", "unknown")))
             decision = str(meta.get("decision", ev.get("decision", "unknown")))
-            cycle = int(meta.get("cycle", ev.get("cycle", 0)))
+            cycle = _safe_int(meta.get("cycle", ev.get("cycle")))
             nodes.append(BrainNode(
                 id=al_id,
                 type=NT_AGENT_LOOP,
@@ -497,6 +499,16 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         tgt = edge.target[:20]
         parts.append(f"  {src:<20}  --{edge.type}-->  {tgt}")
 
+    # ── Visual status legend (Step 24+ mapping — no frontend exists yet) ──
+    parts.append(_section("Visual status legend (Step 24+)"))
+    parts.append("  pending nodes: grey")
+    parts.append("  running nodes: pulsing")
+    parts.append("  completed nodes: white")
+    parts.append("  blocked nodes: red")
+    parts.append("  needs approval: amber")
+    parts.append("  memory layer: violet")
+    parts.append("  mcp quarantine: orange")
+
     # ── Future layers note ─────────────────────────────────────────────────
     parts.append(_section("Future layers"))
     parts.append(f"  {_INFO} memory_placeholder — Step 24+ MemPalace / semantic memory")
@@ -551,6 +563,16 @@ def export_project_brain_json(graph: ProjectBrainGraph) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _safe_int(val: object, default: int = 0) -> int:
+    """Parse val as int; return default on None, missing, or non-numeric input."""
+    if val is None:
+        return default
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
 
 
 def _section(title: str) -> str:

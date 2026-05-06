@@ -14,14 +14,17 @@ Coverage:
   - run_event nodes for key events (job_created, builder_started, etc.)
   - constitution node from constitution object
   - constitution node from project_constitution_loaded event (no object)
+  - project_constitution_loaded event does NOT also create a run_event node
   - memory_placeholder and mcp_placeholder always present, status=informational
   - deterministic node sort: type-priority then id
   - deterministic edge sort: source, target, type
   - summarize output: header, short id, node/edge counts, sections
+  - summarize visual status legend: grey/pulsing/white/red/amber/violet/orange
   - summarize includes all node types present
   - export_project_brain_json: version=1, job_id, nodes list, edges list
   - export schema keys: id, type, label, status, risk, ref_id, metadata per node
   - export schema keys: source, target, type, metadata per edge
+  - safe cycle parsing: "2"->2, "not-a-number"->0, None->0, malformed event no crash
   - redaction: ARTIFACT_CONTENT_MUST_NOT_RENDER
   - redaction: DIFF_PREVIEW_MUST_NOT_RENDER
   - redaction: APPROVAL_REASON_MUST_NOT_RENDER
@@ -30,7 +33,10 @@ Coverage:
   - CLI: invalid UUID exits 1
   - CLI: unknown job exits 1
   - CLI: valid job prints brain report
+  - CLI: --json returns parseable JSON with version=1, job_id, nodes, edges
+  - CLI: --json does not leak redaction sentinels
   - CLI: logs project_brain_inspected with exactly the required metadata keys
+  - CLI: --json still logs project_brain_inspected with exact metadata keys
   - CLI: run log event contains no raw artifact content
   - CLI: exactly one run log file created
 """
@@ -463,6 +469,25 @@ class TestBuildProjectBrain:
         assert len(con_nodes) == 1
         assert con_nodes[0].status == "from_event"
 
+    def test_constitution_event_does_not_create_run_event_node(self):
+        job = _make_job()
+        events = [
+            {
+                "event": "project_constitution_loaded",
+                "job_id": str(job.id),
+                "run_id": "r0",
+                "timestamp": "2026-05-06T10:00:00+00:00",
+                "outcome": "loaded",
+                "metadata": {},
+            }
+        ]
+        graph = build_project_brain(job, events)
+        re_nodes = [n for n in graph.nodes if n.type == NT_RUN_EVENT]
+        assert len(re_nodes) == 0, (
+            "project_constitution_loaded must not create a run_event node — "
+            "it is already represented by the dedicated constitution node"
+        )
+
     def test_no_constitution_node_when_absent(self):
         job = _make_job()
         graph = build_project_brain(job, [])
@@ -878,3 +903,238 @@ class TestCLIBrain:
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
+
+    def test_json_flag_returns_parseable_json(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        from apps.cli.main import main
+        import sys
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        main()
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["version"] == 1
+        assert data["job_id"] == str(job.id)
+        assert isinstance(data["nodes"], list)
+        assert isinstance(data["edges"], list)
+
+    def test_json_flag_output_has_correct_top_level_keys(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        from apps.cli.main import main
+        import sys
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        main()
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert set(data.keys()) == {"version", "job_id", "nodes", "edges"}
+
+    def test_json_flag_does_not_leak_sentinels(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        task = _pending_task()
+        job.tasks.append(task)
+        artifact = Artifact(
+            name="proposal",
+            content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=task.id,
+            metadata={
+                "patch_intent_explanations": [
+                    {
+                        "file": "docs/x.md",
+                        "action": "modify",
+                        "risk": RISK_MEDIUM,
+                        "reason": "task",
+                        "summary": "update x",
+                        "diff_preview": DIFF_PREVIEW_MUST_NOT_RENDER,
+                    }
+                ]
+            },
+        )
+        job.artifacts.append(artifact)
+        intent_id = make_intent_id(artifact.id, 0)
+        set_approval_state(job, intent_id, APPROVAL_APPROVED, reason=APPROVAL_REASON_MUST_NOT_RENDER)
+        save_job(job)
+        from apps.cli.main import main
+        import sys
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        main()
+        out = capsys.readouterr().out
+        for sentinel in [
+            ARTIFACT_CONTENT_MUST_NOT_RENDER,
+            DIFF_PREVIEW_MUST_NOT_RENDER,
+            APPROVAL_REASON_MUST_NOT_RENDER,
+        ]:
+            assert sentinel not in out, f"sentinel leaked in --json output: {sentinel}"
+
+    def test_json_flag_still_logs_exact_metadata_keys(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        from apps.cli.main import main
+        import sys
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        main()
+        runs_dir = tmp_path / "runs" / str(job.id)
+        events = [
+            json.loads(line)
+            for line in next(runs_dir.glob("*.jsonl")).read_text().splitlines()
+            if line.strip()
+        ]
+        inspected = next(e for e in events if e.get("event") == "project_brain_inspected")
+        meta = inspected.get("metadata", {})
+        assert set(meta.keys()) == {
+            "node_count", "edge_count", "task_count", "patch_intent_count"
+        }
+
+
+# ---------------------------------------------------------------------------
+# TestVisualLegend
+# ---------------------------------------------------------------------------
+
+
+class TestVisualLegend:
+    def test_legend_section_present(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        out = summarize_project_brain(graph)
+        assert "Visual status legend" in out
+
+    def test_legend_pending_grey(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        out = summarize_project_brain(graph)
+        assert "pending nodes: grey" in out
+
+    def test_legend_running_pulsing(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        out = summarize_project_brain(graph)
+        assert "running nodes: pulsing" in out
+
+    def test_legend_completed_white(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        out = summarize_project_brain(graph)
+        assert "completed nodes: white" in out
+
+    def test_legend_blocked_red(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        out = summarize_project_brain(graph)
+        assert "blocked nodes: red" in out
+
+    def test_legend_needs_approval_amber(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        out = summarize_project_brain(graph)
+        assert "needs approval: amber" in out
+
+    def test_legend_memory_layer_violet(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        out = summarize_project_brain(graph)
+        assert "memory layer: violet" in out
+
+    def test_legend_mcp_quarantine_orange(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        out = summarize_project_brain(graph)
+        assert "mcp quarantine: orange" in out
+
+
+# ---------------------------------------------------------------------------
+# TestSafeCycleParsing
+# ---------------------------------------------------------------------------
+
+
+class TestSafeCycleParsing:
+    def _al_event_with_cycle(self, job_id: str, cycle_val: object) -> dict:
+        ev: dict = {
+            "event": "agent_loop_inspected",
+            "job_id": job_id,
+            "run_id": "r1",
+            "timestamp": "2026-05-06T10:02:00+00:00",
+            "outcome": "inspected",
+            "metadata": {
+                "stage": "build",
+                "decision": "continue",
+                "max_cycles": 3,
+                "pending_finding_count": 0,
+            },
+        }
+        if cycle_val is not None:
+            ev["metadata"]["cycle"] = cycle_val
+        return ev
+
+    def test_cycle_int_string_parsed(self):
+        job = _make_job()
+        events = [self._al_event_with_cycle(str(job.id), "2")]
+        graph = build_project_brain(job, events)
+        al = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
+        assert al.metadata["cycle"] == 2
+
+    def test_cycle_int_value_parsed(self):
+        job = _make_job()
+        events = [self._al_event_with_cycle(str(job.id), 3)]
+        graph = build_project_brain(job, events)
+        al = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
+        assert al.metadata["cycle"] == 3
+
+    def test_cycle_non_numeric_string_defaults_zero(self):
+        job = _make_job()
+        events = [self._al_event_with_cycle(str(job.id), "not-a-number")]
+        graph = build_project_brain(job, events)
+        al = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
+        assert al.metadata["cycle"] == 0
+
+    def test_cycle_none_defaults_zero(self):
+        job = _make_job()
+        ev = self._al_event_with_cycle(str(job.id), None)
+        # Explicitly set cycle to None in metadata
+        ev["metadata"]["cycle"] = None
+        graph = build_project_brain(job, [ev])
+        al = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
+        assert al.metadata["cycle"] == 0
+
+    def test_cycle_missing_defaults_zero(self):
+        job = _make_job()
+        ev: dict = {
+            "event": "agent_loop_inspected",
+            "job_id": str(job.id),
+            "run_id": "r1",
+            "timestamp": "2026-05-06T10:02:00+00:00",
+            "outcome": "inspected",
+            "metadata": {"stage": "build", "decision": "continue"},
+            # no cycle key at all
+        }
+        graph = build_project_brain(job, [ev])
+        al = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
+        assert al.metadata["cycle"] == 0
+
+    def test_malformed_event_no_crash_summarize(self):
+        job = _make_job()
+        malformed = {
+            "event": "agent_loop_inspected",
+            "job_id": str(job.id),
+            "metadata": {"cycle": "bad", "stage": None, "decision": None},
+        }
+        graph = build_project_brain(job, [malformed])
+        # Must not raise
+        out = summarize_project_brain(graph)
+        assert "Remedy Project Brain" in out
+
+    def test_malformed_event_no_crash_export(self):
+        job = _make_job()
+        malformed = {
+            "event": "agent_loop_inspected",
+            "job_id": str(job.id),
+            "metadata": {"cycle": [], "stage": 42, "decision": {}},
+        }
+        graph = build_project_brain(job, [malformed])
+        # Must not raise
+        exported = export_project_brain_json(graph)
+        assert exported["version"] == 1

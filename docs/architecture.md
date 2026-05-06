@@ -1218,9 +1218,11 @@ can surface it intentionally when prompting for approval.
 
 ---
 
-## Project Brain Graph v1 (Step 23)
+## Project Brain Graph v1 (Steps 23 / 23.1)
 
-`packages/orchestration/project_brain.py` — read-only graph representation of a Remedy job.  It is a pure data contract layer and the foundation for a future visual cockpit.  No frontend, no rendering, no external processes are called in Step 23.
+`packages/orchestration/project_brain.py` — read-only graph representation of a Remedy job.  It is a pure data contract layer and the foundation for a future visual cockpit.
+
+**Scope constraints (enforced):**  No frontend, no rendering, no external processes, no repo mutation, no job/artifact writes, no patch apply, no memory writes, no shell/Git/Docker/network calls.  This module is observation-only.
 
 ### Purpose
 
@@ -1267,7 +1269,7 @@ All three functions are read-only, deterministic, and emit no side effects.
 | `permission_blocker` | `task_run_failed outcome=permission_denied` | Permission failure event |
 | `run_event` | key lifecycle events | Notable run-log milestone |
 | `agent_loop` | `agent_loop_inspected` events | Agent loop snapshot |
-| `constitution` | constitution object or event | Attached Project Constitution |
+| `constitution` | constitution object or `project_constitution_loaded` event | Attached Project Constitution |
 | `memory_placeholder` | always | Reserved for Step 24+ MemPalace |
 | `mcp_placeholder` | always | Reserved for Step 24+ MCP Quarantine |
 
@@ -1287,34 +1289,57 @@ All three functions are read-only, deterministic, and emit no side effects.
 | `future_memory_layer` | job → memory_placeholder | Future MemPalace |
 | `future_mcp_layer` | job → mcp_placeholder | Future MCP Quarantine |
 
+### Constitution node deduplication (Step 23.1)
+
+`project_constitution_loaded` is represented **only** as a `constitution` node — it is **not** also promoted to a `run_event` node.  This prevents duplication: the dedicated constitution node (built from the event metadata or the live object) is the canonical representation.  `project_constitution_loaded` is therefore excluded from `_KEY_EVENTS`.
+
+### Visual status legend (Step 24+ mapping)
+
+The text summary includes a stable legend section for future visual mapping:
+
+```
+pending nodes: grey
+running nodes: pulsing
+completed nodes: white
+blocked nodes: red
+needs approval: amber
+memory layer: violet
+mcp quarantine: orange
+```
+
+No frontend or rendering exists in Steps 23/23.1.  This legend is a data contract for Step 24+.
+
 ### Sorting
 
 Nodes are sorted by `(_NODE_TYPE_ORDER, id)` — type-priority order (job, task, artifact, …, memory_placeholder, mcp_placeholder) then lexicographic node ID.  Edges are sorted by `(source, target, type)`.  Both sorts are deterministic.
 
 ### Redaction policy
 
-Same policy as the run log and other orchestration views — no artifact content, no diff previews, no approval reasons, no event messages, and no raw command output appear in any node label, metadata value, summary string, or JSON export.  Only counts, IDs, risk labels, and status values are surfaced.
+Read-only, no side effects, no repo/job/artifact writes, no memory writes, no patch apply.  No artifact content, no diff previews, no approval reasons, no event messages, and no raw command output appear in any node label, metadata value, summary string, or JSON export.  Only counts, IDs, risk labels, and status values are surfaced.  This policy applies to both text output and `--json` output.
 
 ### CLI
 
 ```
-remedy brain <job_id>
+remedy brain <job_id>           # text summary (default)
+remedy brain <job_id> --json    # JSON export (future frontend data source)
 ```
 
-Loads the job, run events, and Project Constitution (from `target_repo` if attached; silently `None` if absent), builds the graph, prints `summarize_project_brain`, and emits a `project_brain_inspected` run-log event.
+Loads the job, run events, and Project Constitution (from `target_repo` if attached; silently `None` if absent), builds the graph, and emits a `project_brain_inspected` run-log event.  With `--json`, prints `export_project_brain_json` serialised with `sort_keys=True`; text output and run-log event are otherwise identical.
 
 `project_brain_inspected` metadata schema (exact keyset):
 ```json
 { "node_count": N, "edge_count": N, "task_count": N, "patch_intent_count": N }
 ```
 
+The `--json` output is the intended data source for a future frontend (React Flow / Three.js / AG-UI); no frontend integration exists in Steps 23/23.1.
+
 ### Future steps (Step 24+)
 
 Step 24+ will add:
 - React Flow visual mapping (node type → component, edge type → connector style)
-- Three.js 3-D cockpit rendering
+- Three.js 3-D cockpit rendering using the visual status legend above
 - AG-UI / A2UI streaming integration
 - MemPalace semantic memory nodes (replacing `memory_placeholder`)
 - MCP Quarantine tool-layer nodes (replacing `mcp_placeholder`)
 
-No frontend, AG-UI, Three.js, or MCP integration is present in Step 23.
+No frontend, AG-UI, Three.js, or MCP integration is present in Steps 23/23.1.

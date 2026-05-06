@@ -496,7 +496,8 @@ def _cmd_agent_loop(job_id_str: str) -> None:
     )
 
 
-def _cmd_brain(job_id_str: str) -> None:
+def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
     import os
 
     try:
@@ -514,6 +515,7 @@ def _cmd_brain(job_id_str: str) -> None:
 
     from packages.orchestration.project_brain import (
         build_project_brain,
+        export_project_brain_json,
         summarize_project_brain,
     )
     from packages.orchestration.project_constitution import load_project_constitution
@@ -533,7 +535,11 @@ def _cmd_brain(job_id_str: str) -> None:
     )
 
     graph = build_project_brain(job, events, constitution=constitution)
-    print(summarize_project_brain(graph))
+
+    if json_output:
+        print(_json.dumps(export_project_brain_json(graph), sort_keys=True))
+    else:
+        print(summarize_project_brain(graph))
 
     task_count = sum(1 for n in graph.nodes if n.type == "task")
     patch_intent_count = sum(1 for n in graph.nodes if n.type == "patch_intent")
@@ -1019,6 +1025,12 @@ def main() -> None:
         help="Print the Project Brain Graph (node/edge graph) for a job",
     )
     brain_p.add_argument("job_id", help="UUID of the job to inspect")
+    brain_p.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output graph as JSON instead of text summary (future frontend data source)",
+    )
 
     agent_loop_p = subparsers.add_parser(
         "agent-loop",
@@ -1100,7 +1112,7 @@ def main() -> None:
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
     elif args.command == "brain":
-        _cmd_brain(args.job_id)
+        _cmd_brain(args.job_id, json_output=args.json)
     elif args.command == "agent-loop":
         _cmd_agent_loop(args.job_id)
     elif args.command == "constitution":
