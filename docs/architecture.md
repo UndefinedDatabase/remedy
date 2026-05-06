@@ -1215,3 +1215,106 @@ can surface it intentionally when prompting for approval.
 **`packages/providers/ollama_planner/`** — Planner provider. Calls local Ollama with JSON schema enforcement. Configured via `REMEDY_OLLAMA_PLANNER_MODEL`, `REMEDY_OLLAMA_PLANNER_TEMPERATURE`, `REMEDY_OLLAMA_PLANNER_NUM_PREDICT`. The `ollama` package is an optional dependency; loaded lazily.
 
 **`packages/providers/ollama_builder/`** — Builder provider. Same Ollama pattern for the builder role. Configured via `REMEDY_OLLAMA_BUILDER_MODEL`, `REMEDY_OLLAMA_BUILDER_TEMPERATURE`, `REMEDY_OLLAMA_BUILDER_NUM_PREDICT`. Env var parsing errors name the offending variable.
+
+---
+
+## Project Brain Graph v1 (Step 23)
+
+`packages/orchestration/project_brain.py` — read-only graph representation of a Remedy job.  It is a pure data contract layer and the foundation for a future visual cockpit.  No frontend, no rendering, no external processes are called in Step 23.
+
+### Purpose
+
+The Project Brain Graph provides a single, normalised view of every meaningful entity in a job — tasks, artifacts, patch intents, approval decisions, verification events, permission blockers, agent-loop snapshots, and the Project Constitution — as a labelled directed graph.  This graph is the data contract that Step 24+ will map to React Flow / Three.js / AG-UI / A2UI / MemPalace / MCP Quarantine visual components.
+
+### Relationship to other views
+
+| View | Purpose |
+|------|---------|
+| Timeline | Chronological run-log event list |
+| Cockpit | Decision-oriented status overview |
+| Trust Report | Audit / provenance report |
+| Agent Loop | Orchestration state machine snapshot |
+| **Project Brain** | Graph-structured full-picture of all entities |
+
+### Public API
+
+```python
+build_project_brain(job, events, *, constitution=None) -> ProjectBrainGraph
+summarize_project_brain(graph) -> str
+export_project_brain_json(graph) -> dict  # {"version": 1, "job_id", "nodes", "edges"}
+```
+
+All three functions are read-only, deterministic, and emit no side effects.
+
+### Data models
+
+`BrainNode(frozen=True)` — fields: `id`, `type`, `label`, `status`, `risk`, `ref_id`, `metadata: dict[str, str|int|bool]`
+
+`BrainEdge(frozen=True)` — fields: `source`, `target`, `type`, `metadata: dict[str, str|int|bool]`
+
+`ProjectBrainGraph(frozen=True)` — fields: `job_id: UUID`, `nodes: tuple[BrainNode, ...]`, `edges: tuple[BrainEdge, ...]`
+
+### Node types
+
+| Type | Source | Description |
+|------|--------|-------------|
+| `job` | `job` model | Top-level job |
+| `task` | `job.tasks` | Individual task |
+| `artifact` | `job.artifacts` | Output artifact |
+| `patch_intent` | `list_patch_intents` | Proposed file patch |
+| `approval_decision` | decided intents | Recorded approval or rejection |
+| `verification` | `task_run_completed` events | Task verification passed |
+| `permission_blocker` | `task_run_failed outcome=permission_denied` | Permission failure event |
+| `run_event` | key lifecycle events | Notable run-log milestone |
+| `agent_loop` | `agent_loop_inspected` events | Agent loop snapshot |
+| `constitution` | constitution object or event | Attached Project Constitution |
+| `memory_placeholder` | always | Reserved for Step 24+ MemPalace |
+| `mcp_placeholder` | always | Reserved for Step 24+ MCP Quarantine |
+
+### Edge types
+
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `has_task` | job → task | Task membership |
+| `created_artifact` | task (or job) → artifact | Artifact ownership |
+| `emitted_event` | job → run_event | Event emission |
+| `produced_patch_intent` | artifact → patch_intent | Patch derivation |
+| `decided_by` | patch_intent → approval_decision | Decision linkage |
+| `verified_by` | task → verification | Verification linkage |
+| `blocked_by` | task → permission_blocker | Blocker linkage |
+| `inspected_by` | agent_loop → job | Agent loop inspection |
+| `governed_by` | job → constitution | Constitution governance |
+| `future_memory_layer` | job → memory_placeholder | Future MemPalace |
+| `future_mcp_layer` | job → mcp_placeholder | Future MCP Quarantine |
+
+### Sorting
+
+Nodes are sorted by `(_NODE_TYPE_ORDER, id)` — type-priority order (job, task, artifact, …, memory_placeholder, mcp_placeholder) then lexicographic node ID.  Edges are sorted by `(source, target, type)`.  Both sorts are deterministic.
+
+### Redaction policy
+
+Same policy as the run log and other orchestration views — no artifact content, no diff previews, no approval reasons, no event messages, and no raw command output appear in any node label, metadata value, summary string, or JSON export.  Only counts, IDs, risk labels, and status values are surfaced.
+
+### CLI
+
+```
+remedy brain <job_id>
+```
+
+Loads the job, run events, and Project Constitution (from `target_repo` if attached; silently `None` if absent), builds the graph, prints `summarize_project_brain`, and emits a `project_brain_inspected` run-log event.
+
+`project_brain_inspected` metadata schema (exact keyset):
+```json
+{ "node_count": N, "edge_count": N, "task_count": N, "patch_intent_count": N }
+```
+
+### Future steps (Step 24+)
+
+Step 24+ will add:
+- React Flow visual mapping (node type → component, edge type → connector style)
+- Three.js 3-D cockpit rendering
+- AG-UI / A2UI streaming integration
+- MemPalace semantic memory nodes (replacing `memory_placeholder`)
+- MCP Quarantine tool-layer nodes (replacing `mcp_placeholder`)
+
+No frontend, AG-UI, Three.js, or MCP integration is present in Step 23.

@@ -496,6 +496,59 @@ def _cmd_agent_loop(job_id_str: str) -> None:
     )
 
 
+def _cmd_brain(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.project_brain import (
+        build_project_brain,
+        summarize_project_brain,
+    )
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = (
+        load_project_constitution(Path(target_repo_str))
+        if target_repo_str
+        else None
+    )
+
+    graph = build_project_brain(job, events, constitution=constitution)
+    print(summarize_project_brain(graph))
+
+    task_count = sum(1 for n in graph.nodes if n.type == "task")
+    patch_intent_count = sum(1 for n in graph.nodes if n.type == "patch_intent")
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "project_brain_inspected",
+        outcome="inspected",
+        node_count=len(graph.nodes),
+        edge_count=len(graph.edges),
+        task_count=task_count,
+        patch_intent_count=patch_intent_count,
+    )
+
+
 def _cmd_trust_report(job_id_str: str) -> None:
     import os
 
@@ -961,6 +1014,12 @@ def main() -> None:
     )
     run_task.add_argument("job_id", help="UUID of the job to advance")
 
+    brain_p = subparsers.add_parser(
+        "brain",
+        help="Print the Project Brain Graph (node/edge graph) for a job",
+    )
+    brain_p.add_argument("job_id", help="UUID of the job to inspect")
+
     agent_loop_p = subparsers.add_parser(
         "agent-loop",
         help="Inspect the external agent loop state for a job",
@@ -1040,6 +1099,8 @@ def main() -> None:
         _cmd_show_permissions(args.job_id)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
+    elif args.command == "brain":
+        _cmd_brain(args.job_id)
     elif args.command == "agent-loop":
         _cmd_agent_loop(args.job_id)
     elif args.command == "constitution":

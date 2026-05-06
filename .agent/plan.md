@@ -1,30 +1,38 @@
 # Plan
 
 ## Goal
-Step 22.1: Agent Loop stale blocker fix + run-log/redaction hardening.
+Step 23: Project Brain Graph v1 — read-only graph model and export for future visual cockpit.
 
 ## Prior step
-Step 22 introduced the Agent Loop Contract (models, derive, summarize, CLI).
+Step 22.1: Agent Loop stale blocker fix + redaction hardening.
 
 ## Status
-COMPLETE — 1051 tests pass.
+COMPLETE — 1111 tests pass.
 
 ## Steps
-1. [x] Fix stale blocker: derive_agent_loop_state reflects current state, not history
-   - _find_current_blocker: check 1 = explicit deny override; check 2 = unresolved event
-   - Historical perm_denied ignored when task completed or no pending tasks remain
-2. [x] Specific blocked_reason: "permission_denied:workspace_write" format
-3. [x] Next action uses concrete capability name in set-permission hint
-4. [x] blockers display: "permission_denied (workspace_write)"
-5. [x] Fix: default-deny capabilities (repo_generated_write) do NOT trigger check 1
-6. [x] agent_loop_inspected metadata schema hardening (exact keyset test)
-7. [x] Redaction hardening (5 sentinel tests)
-8. [x] Update test file: stale comment, updated/new tests
-9. [x] Update docs/architecture.md — stale-event policy, blocked_reason format, schema
-10. [x] Update .agent files
-11. [x] Run full suite (1051 pass)
-12. [ ] Commit Step 22.1 changes
-13. [ ] Push to feature/step21-project-constitution-v1
+1. [x] Create packages/orchestration/project_brain.py
+   - BrainNode, BrainEdge, ProjectBrainGraph frozen dataclasses
+   - Node types: job, task, artifact, patch_intent, approval_decision, verification,
+     permission_blocker, run_event, agent_loop, constitution, memory_placeholder, mcp_placeholder
+   - Edge types: has_task, created_artifact, emitted_event, produced_patch_intent,
+     decided_by, verified_by, blocked_by, inspected_by, governed_by,
+     future_memory_layer, future_mcp_layer
+   - build_project_brain, summarize_project_brain, export_project_brain_json
+   - Redaction policy enforced
+   - memory_placeholder + mcp_placeholder always present
+   - Nodes sorted by type-priority then id; edges by source/target/type
+2. [x] Add `remedy brain <job_id>` CLI command to apps/cli/main.py
+   - Emits project_brain_inspected with exact schema:
+     {node_count, edge_count, task_count, patch_intent_count}
+3. [x] Create tests/test_project_brain.py (60 tests)
+   - TestBrainNodeEdge, TestBuildProjectBrain, TestSummarizeProjectBrain,
+     TestExportProjectBrainJson, TestRedactionHardening, TestCLIBrain
+   - 5 redaction sentinels
+4. [x] Update docs/architecture.md — Project Brain Graph v1 section
+5. [x] Update .agent files
+6. [x] Run full suite (1111 pass)
+7. [ ] Commit Step 23 changes
+8. [ ] Push to feature/step21-project-constitution-v1
 
 ## Branch
 feature/step21-project-constitution-v1
