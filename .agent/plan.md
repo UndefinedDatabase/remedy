@@ -1,30 +1,30 @@
 # Plan
 
 ## Goal
-Step 22: External Agent Loop Contract v1.
+Step 22.1: Agent Loop stale blocker fix + run-log/redaction hardening.
 
 ## Prior step
-Step 21 + 21.1 + 21.2 delivered Project Constitution v1 with trust-report/timeline
-integration and safety hygiene.
+Step 22 introduced the Agent Loop Contract (models, derive, summarize, CLI).
 
 ## Status
-COMPLETE — 1039 tests pass.
+COMPLETE — 1051 tests pass.
 
 ## Steps
-1. [x] Create packages/orchestration/agent_loop.py
-   - AgentRole, AgentLoopStage, AgentLoopDecision enums
-   - AgentAdapterSpec, AgentLoopState frozen dataclasses
-   - default_agent_loop_state, derive_agent_loop_state, summarize_agent_loop_state
-2. [x] Add remedy agent-loop CLI command (apps/cli/main.py)
-   - Loads job + events, derives state, prints summary
-   - Writes agent_loop_inspected run log event (structured fields only)
-3. [x] Create tests/test_agent_loop.py (56 tests)
-   - Models, derivation logic, summary output, CLI, redaction
-4. [x] Update docs/architecture.md — Agent Loop Contract v1 section
-5. [x] Update .agent files
-6. [x] Run full suite (1039 pass)
-7. [ ] Commit Step 22 changes
-8. [ ] Push to feature/step21-project-constitution-v1
+1. [x] Fix stale blocker: derive_agent_loop_state reflects current state, not history
+   - _find_current_blocker: check 1 = explicit deny override; check 2 = unresolved event
+   - Historical perm_denied ignored when task completed or no pending tasks remain
+2. [x] Specific blocked_reason: "permission_denied:workspace_write" format
+3. [x] Next action uses concrete capability name in set-permission hint
+4. [x] blockers display: "permission_denied (workspace_write)"
+5. [x] Fix: default-deny capabilities (repo_generated_write) do NOT trigger check 1
+6. [x] agent_loop_inspected metadata schema hardening (exact keyset test)
+7. [x] Redaction hardening (5 sentinel tests)
+8. [x] Update test file: stale comment, updated/new tests
+9. [x] Update docs/architecture.md — stale-event policy, blocked_reason format, schema
+10. [x] Update .agent files
+11. [x] Run full suite (1051 pass)
+12. [ ] Commit Step 22.1 changes
+13. [ ] Push to feature/step21-project-constitution-v1
 
 ## Branch
 feature/step21-project-constitution-v1

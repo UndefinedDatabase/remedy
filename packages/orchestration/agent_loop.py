@@ -20,6 +20,19 @@ reserved for future adapter steps):
   fix_cycle_requested        — future: fixer agent was requested
   agent_loop_completed       — future: loop reached a terminal state
 
+Stale-event policy:
+  A historical ``task_run_failed outcome=permission_denied`` event does NOT
+  permanently block the loop.  It is ignored when:
+    - the same task_id has a later ``task_run_completed`` event, OR
+    - the corresponding task is no longer PENDING in job.tasks, OR
+    - there are no pending tasks at all.
+
+  A CURRENT block is signalled by:
+    - A non-reserved capability that is explicitly denied for the job AND
+      pending tasks exist (checked via ``is_allowed``), OR
+    - An unresolved ``permission_denied`` event whose task is still PENDING
+      with no later successful terminal event.
+
 Public API::
 
     default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
@@ -41,6 +54,7 @@ from packages.orchestration.approval_queue import (
     list_patch_intents,
 )
 from packages.orchestration.patch_intent import RISK_LOW
+from packages.orchestration.permissions import Capability, is_allowed, is_reserved
 
 
 # ---------------------------------------------------------------------------
@@ -156,32 +170,33 @@ def derive_agent_loop_state(
     Deterministic — no LLM calls, no external processes, no repo access.
 
     Priority order (highest first):
-      1. ``task_run_failed`` with ``outcome=permission_denied`` → blocked
-      2. Pending medium/high/unknown-risk patch intents  → needs_approval
-      3. All tasks done + all non-low intents approved   → complete
-      4. Pending tasks                                   → continue / build
-      5. No tasks yet                                    → continue / planned
-    """
-    # 1. Blocking event — most urgent; checked before any other signal.
-    for ev in reversed(events):
-        if ev.get("event") == "task_run_failed":
-            # outcome may live at top level or in metadata (both sites exist)
-            outcome = ev.get("outcome") or ev.get("metadata", {}).get("outcome", "")
-            if outcome == "permission_denied":
-                return AgentLoopState(
-                    job_id=job.id,
-                    current_stage=AgentLoopStage.BLOCKED,
-                    cycle=0,
-                    max_cycles=max_cycles,
-                    decision=AgentLoopDecision.BLOCKED,
-                    builder=None,
-                    reviewer=None,
-                    pending_findings=(),
-                    completed_cycles=0,
-                    blocked_reason="permission_denied",
-                )
+      1. Current permission denial or unresolved perm_denied event → blocked
+      2. Pending medium/high/unknown-risk patch intents              → needs_approval
+      3. All tasks done + all non-low intents approved               → complete
+      4. Pending tasks                                               → continue / build
+      5. No tasks yet                                                → continue / planned
 
-    # 2. Patch intent analysis.
+    Historical permission_denied events that have been superseded by a later
+    successful task_run_completed (or whose task is no longer PENDING) are
+    treated as stale and do not block the loop.
+    """
+    # ── 1. Blocking check ─────────────────────────────────────────────────
+    blocked_reason = _find_current_blocker(job, events)
+    if blocked_reason:
+        return AgentLoopState(
+            job_id=job.id,
+            current_stage=AgentLoopStage.BLOCKED,
+            cycle=0,
+            max_cycles=max_cycles,
+            decision=AgentLoopDecision.BLOCKED,
+            builder=None,
+            reviewer=None,
+            pending_findings=(),
+            completed_cycles=0,
+            blocked_reason=blocked_reason,
+        )
+
+    # ── 2. Patch intent analysis ──────────────────────────────────────────
     intents = list_patch_intents(job)
     pending_non_low = [
         i for i in intents
@@ -208,7 +223,7 @@ def derive_agent_loop_state(
             blocked_reason=None,
         )
 
-    # 3. Completion check — requires at least one task and none pending.
+    # ── 3. Completion check — requires at least one task and none pending ──
     all_tasks_done = bool(job.tasks) and not any(
         t.status == RunState.PENDING for t in job.tasks
     )
@@ -226,7 +241,7 @@ def derive_agent_loop_state(
             blocked_reason=None,
         )
 
-    # 4/5. Pending tasks → build; no tasks → planned.
+    # ── 4/5. Pending tasks → build; no tasks → planned ────────────────────
     has_pending = any(t.status == RunState.PENDING for t in job.tasks)
     stage = AgentLoopStage.BUILD if has_pending else AgentLoopStage.PLANNED
     return AgentLoopState(
@@ -248,7 +263,7 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
 
     Read-only: never mutates job, state, or any filesystem resource.
     Redaction: no raw artifact content, approval reasons, event messages,
-    prompts, or diff previews are included in the output.
+    prompts, diff previews, or command output are included in the output.
     """
     intents = list_patch_intents(job)
     pending_tasks = [t for t in job.tasks if t.status == RunState.PENDING]
@@ -298,8 +313,9 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
     else:
         parts.append("  patch decisions: none")
 
+    # Blocker display — parse "permission_denied:capability" format.
     if state.blocked_reason:
-        parts.append(f"  blockers: {state.blocked_reason}")
+        parts.append(f"  blockers: {_format_blocker(state.blocked_reason)}")
     else:
         parts.append("  blockers: none")
 
@@ -315,8 +331,94 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _find_current_blocker(
+    job: Job,
+    events: list[dict[str, Any]],
+) -> str | None:
+    """Return a ``blocked_reason`` string if there is a current blocking condition.
+
+    Returns ``None`` when no active blocker exists.  Format of the returned
+    string when a blocker is found:
+
+      ``"permission_denied:<capability>"``  — capability name known
+      ``"permission_denied"``               — capability unknown (legacy event)
+
+    A historical permission_denied event is considered stale (not blocking) when:
+      - There are no pending tasks (all work is done or no work has started).
+      - The same task_id has a later ``task_run_completed`` event.
+      - The corresponding task is no longer PENDING in job.tasks.
+    """
+    has_pending = any(t.status == RunState.PENDING for t in job.tasks)
+
+    # Check 1: explicit capability denial in job metadata (no events required).
+    # Only capabilities that were explicitly set to "deny" constitute a current
+    # block — default-deny states (repo_generated_write etc.) do not block, as
+    # those capabilities are simply not granted yet and do not halt pending work.
+    if has_pending:
+        overrides: dict[str, str] = job.metadata.get("permissions", {})
+        for cap in Capability:
+            if is_reserved(cap):
+                continue
+            if overrides.get(cap.value) == "deny":
+                return f"permission_denied:{cap.value}"
+
+    # Check 2: unresolved permission_denied events.
+    # Historical events whose tasks have since succeeded are treated as stale.
+    if not has_pending:
+        # No pending tasks → no event-based block possible.
+        return None
+
+    # Build latest terminal event per task_id (chronological order → last wins).
+    terminal_per_task: dict[str, dict] = {}
+    for ev in events:
+        task_id = ev.get("task_id")
+        if task_id and ev.get("event") in (
+            "task_run_completed", "task_run_failed", "task_run_noop"
+        ):
+            terminal_per_task[task_id] = ev
+
+    for ev in events:
+        if ev.get("event") != "task_run_failed":
+            continue
+        outcome = ev.get("outcome") or ev.get("metadata", {}).get("outcome", "")
+        if outcome != "permission_denied":
+            continue
+
+        task_id = ev.get("task_id")
+        if task_id:
+            # Stale if a later successful completion exists for this task.
+            latest = terminal_per_task.get(task_id)
+            if latest and latest.get("event") == "task_run_completed":
+                continue
+            # Stale if the task is no longer PENDING in the job model.
+            task_still_pending = any(
+                str(t.id) == task_id and t.status == RunState.PENDING
+                for t in job.tasks
+            )
+            if not task_still_pending:
+                continue
+        # No task_id → cannot prove stale → conservative (treat as active).
+
+        capability = ev.get("metadata", {}).get("capability")
+        return f"permission_denied:{capability}" if capability else "permission_denied"
+
+    return None
+
+
+def _format_blocker(blocked_reason: str) -> str:
+    """Format blocked_reason for display.
+
+    ``"permission_denied:workspace_write"`` → ``"permission_denied (workspace_write)"``
+    ``"permission_denied"``                 → ``"permission_denied"``
+    """
+    if ":" in blocked_reason:
+        prefix, cap = blocked_reason.split(":", 1)
+        return f"{prefix} ({cap})"
+    return blocked_reason
 
 
 def _section(title: str) -> str:
@@ -329,9 +431,13 @@ def _next_action(job: Job, state: AgentLoopState) -> str:
     d = state.decision
 
     if d == AgentLoopDecision.BLOCKED:
+        # Extract concrete capability from "permission_denied:<cap>" format.
+        cap_arg = "<capability>"
+        if state.blocked_reason and ":" in state.blocked_reason:
+            cap_arg = state.blocked_reason.split(":", 1)[1]
         return (
             f"  {_NEXT} Grant the missing permission:\n"
-            f"      remedy set-permission {full_id} allow <capability>"
+            f"      remedy set-permission {full_id} allow {cap_arg}"
         )
     if d == AgentLoopDecision.NEEDS_APPROVAL:
         return (

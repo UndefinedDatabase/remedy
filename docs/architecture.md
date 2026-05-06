@@ -864,7 +864,7 @@ derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
 
 | Priority | Condition | Decision | Stage |
 |----------|-----------|----------|-------|
-| 1 | `task_run_failed` with `outcome=permission_denied` | `blocked` | `blocked` |
+| 1 | Current blocker (see below) | `blocked` | `blocked` |
 | 2 | Pending medium/high/unknown-risk patch intent | `needs_approval` | `review` |
 | 3 | All tasks done + all non-low intents approved | `complete` | `completed` |
 | 4 | Pending tasks | `continue` | `build` |
@@ -873,11 +873,55 @@ derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
 Low-risk pending intents do not trigger `needs_approval` in v1.  Unknown risk is
 treated conservatively (same as high risk — requires approval).
 
+**Blocking logic (Step 22.1 — stale-event fix):**
+
+Agent Loop derives the *current* orchestration state, not the worst historical event.
+A blocker is active when EITHER:
+
+1. A non-reserved capability is **explicitly** set to `"deny"` in `job.metadata["permissions"]`
+   AND pending tasks exist.  Default-deny states (e.g. `repo_generated_write` before it
+   has been granted) do not constitute a current block.
+2. A `task_run_failed outcome=permission_denied` event exists for a task that is still
+   `PENDING` in `job.tasks` AND no later `task_run_completed` event exists for the same
+   `task_id`.  Events without a `task_id` are treated conservatively (cannot be proven stale).
+
+Historical `permission_denied` events are **ignored** (treated as stale) when:
+- There are no pending tasks (all work is done or no work has started yet).
+- The same `task_id` has a later `task_run_completed` event.
+- The corresponding task is no longer `PENDING` in `job.tasks`.
+
+**`blocked_reason` format:**
+
+```
+"permission_denied:<capability>"   — e.g. "permission_denied:workspace_write"
+"permission_denied"                — capability unknown (legacy event without metadata)
+```
+
+Summary output renders `"permission_denied:workspace_write"` as
+`blockers: permission_denied (workspace_write)`.  The next-action hint renders the
+concrete `remedy set-permission <job_id> allow workspace_write` command.
+
+**`agent_loop_inspected` run-log schema (intentionally minimal and fixed):**
+
+```json
+{
+  "event": "agent_loop_inspected",
+  "outcome": "inspected",
+  "metadata": {
+    "stage":                "<AgentLoopStage value>",
+    "decision":             "<AgentLoopDecision value>",
+    "cycle":                0,
+    "max_cycles":           3,
+    "pending_finding_count": 0
+  }
+}
+```
+
+No raw artifact content, prompts, approval reasons, diff previews, command output,
+or exception messages appear in the run log.
+
 **CLI command:** `remedy agent-loop <job_id>` — loads job and run events, derives state,
-prints `summarize_agent_loop_state` output, writes `agent_loop_inspected` run log event
-with structured fields: `stage`, `decision`, `cycle`, `max_cycles`, `pending_finding_count`.
-No raw artifact content, prompts, approval reasons, diff previews, or exception messages
-in the run log.
+prints `summarize_agent_loop_state` output, writes `agent_loop_inspected` run log event.
 
 **Run-log event names:**
 

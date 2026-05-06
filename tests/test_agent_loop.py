@@ -4,14 +4,13 @@ Tests for packages/orchestration/agent_loop.py and the `remedy agent-loop` CLI c
 Coverage:
   - default state fields
   - pending tasks → continue/build
-  - permission_denied event → blocked
+  - permission_denied event (still active) → blocked
   - blocked takes priority over pending tasks
   - completed tasks + pending medium/high/unknown intent → needs_approval
   - completed tasks + approved intent → complete
   - unknown/high risks treated conservatively (needs_approval)
   - low-risk pending intent does not force approval
-  - no tasks → continue/planned
-  - no tasks + completed → complete
+  - no tasks → continue/planned (NOT complete)
   - custom max_cycles
   - job_id preserved in state
   - frozen models reject mutation
@@ -19,12 +18,19 @@ Coverage:
   - summarize output: header, short id, job name, stage, decision, cycle
   - summarize sections: Agents, Loop state, Next action
   - next action for each decision type
-  - redaction: no artifact content, approval reasons, raw event.message
-  - patch intent count shown in output
+  - blockers display: "permission_denied (workspace_write)"
+  - next action uses concrete capability: "remedy set-permission … allow workspace_write"
+  - stale blocker fix: historical perm_denied + task_run_completed → not blocked
+  - historical perm_denied + later pass + pending medium intent → needs_approval
+  - historical perm_denied + later pass + approved intent → complete
+  - current workspace_write explicitly denied + pending task → blocked (no event needed)
+  - no tasks + old perm_denied event → planned/continue, not blocked
+  - no pending tasks + old perm_denied event → complete or non-blocked
+  - redaction: sentinels never appear in summary or run log
   - CLI: invalid UUID exits 1
   - CLI: unknown job exits 1
   - CLI: valid job prints report
-  - CLI: logs agent_loop_inspected with counts/labels only
+  - CLI: logs agent_loop_inspected with exactly the required metadata keys
   - CLI: run log event contains no raw artifact content
   - CLI: exactly one run log file created
 """
@@ -59,6 +65,7 @@ from packages.orchestration.patch_intent import (
     RISK_MEDIUM,
     RISK_UNKNOWN,
 )
+from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.storage import save_job
 
 
@@ -109,14 +116,29 @@ def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, intent_count: int 
     return make_intent_id(artifact.id, 0)
 
 
-def _perm_denied_event(job_id: str) -> dict:
-    return {
+def _perm_denied_event(job_id: str, *, task_id: str | None = None) -> dict:
+    ev: dict = {
         "event": "task_run_failed",
         "job_id": job_id,
         "run_id": "r1",
         "timestamp": "2026-05-06T10:00:00+00:00",
         "outcome": "permission_denied",
         "metadata": {"capability": "workspace_write"},
+    }
+    if task_id is not None:
+        ev["task_id"] = task_id
+    return ev
+
+
+def _task_completed_event(job_id: str, task_id: str) -> dict:
+    return {
+        "event": "task_run_completed",
+        "job_id": job_id,
+        "run_id": "r2",
+        "timestamp": "2026-05-06T10:01:00+00:00",
+        "task_id": task_id,
+        "outcome": "pass",
+        "metadata": {},
     }
 
 
@@ -202,22 +224,105 @@ class TestDeriveLoopState:
         assert state.decision == AgentLoopDecision.CONTINUE
         assert state.current_stage == AgentLoopStage.BUILD
 
-    def test_permission_denied_event_gives_blocked(self):
+    def test_active_perm_denied_event_with_pending_task_gives_blocked(self):
+        """Unresolved permission_denied + pending task → blocked."""
         job = _make_job()
-        events = [_perm_denied_event(str(job.id))]
+        task = _pending_task()
+        job.tasks.append(task)
+        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
         state = derive_agent_loop_state(job, events)
         assert state.decision == AgentLoopDecision.BLOCKED
         assert state.current_stage == AgentLoopStage.BLOCKED
-        assert state.blocked_reason == "permission_denied"
+        assert state.blocked_reason is not None
+        assert "permission_denied" in state.blocked_reason
 
-    def test_permission_denied_takes_priority_over_pending_tasks(self):
+    def test_blocked_reason_includes_capability(self):
+        """blocked_reason encodes the denied capability."""
+        job = _make_job()
+        task = _pending_task()
+        job.tasks.append(task)
+        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        state = derive_agent_loop_state(job, events)
+        assert state.blocked_reason == "permission_denied:workspace_write"
+
+    def test_perm_denied_no_task_id_conservative_with_pending_tasks(self):
+        """No task_id → cannot prove stale → still blocked when pending tasks exist."""
         job = _make_job()
         job.tasks.append(_pending_task())
-        events = [_perm_denied_event(str(job.id))]
+        events = [_perm_denied_event(str(job.id))]  # no task_id
         state = derive_agent_loop_state(job, events)
         assert state.decision == AgentLoopDecision.BLOCKED
 
-    def test_permission_denied_in_metadata_also_blocked(self):
+    def test_blocked_takes_priority_over_pending_tasks(self):
+        job = _make_job()
+        task = _pending_task()
+        job.tasks.append(task)
+        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        state = derive_agent_loop_state(job, events)
+        assert state.decision == AgentLoopDecision.BLOCKED
+
+    # ── Stale-blocker fix ──────────────────────────────────────────────────
+
+    def test_historical_perm_denied_then_completed_is_not_blocked(self):
+        """task_run_completed supersedes historical permission_denied — not blocked."""
+        task = _completed_task()
+        job = _make_job()
+        job.tasks.append(task)
+        events = [
+            _perm_denied_event(str(job.id), task_id=str(task.id)),
+            _task_completed_event(str(job.id), str(task.id)),
+        ]
+        state = derive_agent_loop_state(job, events)
+        assert state.decision != AgentLoopDecision.BLOCKED
+
+    def test_historical_perm_denied_then_completed_then_pending_medium_intent(self):
+        """Stale perm_denied + task success + pending medium intent → needs_approval."""
+        task = _completed_task()
+        job = _make_job()
+        job.tasks.append(task)
+        _add_patch_artifact(job, risk=RISK_MEDIUM)
+        events = [
+            _perm_denied_event(str(job.id), task_id=str(task.id)),
+            _task_completed_event(str(job.id), str(task.id)),
+        ]
+        state = derive_agent_loop_state(job, events)
+        assert state.decision == AgentLoopDecision.NEEDS_APPROVAL
+        assert state.current_stage == AgentLoopStage.REVIEW
+
+    def test_historical_perm_denied_then_completed_then_approved_intent(self):
+        """Stale perm_denied + task success + approved intent → complete."""
+        task = _completed_task()
+        job = _make_job()
+        job.tasks.append(task)
+        intent_id = _add_patch_artifact(job, risk=RISK_MEDIUM)
+        set_approval_state(job, intent_id, APPROVAL_APPROVED)
+        events = [
+            _perm_denied_event(str(job.id), task_id=str(task.id)),
+            _task_completed_event(str(job.id), str(task.id)),
+        ]
+        state = derive_agent_loop_state(job, events)
+        assert state.decision == AgentLoopDecision.COMPLETE
+
+    def test_no_tasks_plus_old_perm_denied_gives_planned_not_blocked(self):
+        """Old perm_denied event with no pending tasks → planned/continue, not blocked."""
+        job = _make_job()
+        events = [_perm_denied_event(str(job.id))]
+        state = derive_agent_loop_state(job, events)
+        assert state.decision == AgentLoopDecision.CONTINUE
+        assert state.current_stage == AgentLoopStage.PLANNED
+        assert state.blocked_reason is None
+
+    def test_no_pending_tasks_plus_old_perm_denied_not_blocked(self):
+        """Completed task + old perm_denied for it → complete or non-blocked."""
+        task = _completed_task()
+        job = _make_job()
+        job.tasks.append(task)
+        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        state = derive_agent_loop_state(job, events)
+        assert state.decision != AgentLoopDecision.BLOCKED
+
+    def test_perm_denied_in_metadata_no_tasks_gives_continue(self):
+        """Perm denied in metadata only + no tasks → continue/planned, not blocked."""
         job = _make_job()
         ev = {
             "event": "task_run_failed",
@@ -227,7 +332,29 @@ class TestDeriveLoopState:
             "metadata": {"outcome": "permission_denied"},
         }
         state = derive_agent_loop_state(job, [ev])
+        assert state.decision == AgentLoopDecision.CONTINUE
+        assert state.blocked_reason is None
+
+    # ── Current permission model block ─────────────────────────────────────
+
+    def test_current_workspace_write_denied_and_pending_task_gives_blocked(self):
+        """Explicit capability denial in job permissions + pending task → blocked."""
+        job = _make_job()
+        job.tasks.append(_pending_task())
+        set_permission(job, Capability.workspace_write, allow=False)
+        state = derive_agent_loop_state(job, [])  # no events needed
         assert state.decision == AgentLoopDecision.BLOCKED
+        assert state.blocked_reason == "permission_denied:workspace_write"
+
+    def test_current_deny_no_pending_tasks_does_not_block(self):
+        """Explicit capability denial but no pending tasks → not blocked."""
+        job = _make_job()
+        job.tasks.append(_completed_task())
+        set_permission(job, Capability.workspace_write, allow=False)
+        state = derive_agent_loop_state(job, [])
+        assert state.decision != AgentLoopDecision.BLOCKED
+
+    # ── Patch intent tests ─────────────────────────────────────────────────
 
     def test_pending_medium_intent_gives_needs_approval(self):
         job = _make_job()
@@ -286,6 +413,8 @@ class TestDeriveLoopState:
         _add_patch_artifact(job, risk=RISK_HIGH)
         state = derive_agent_loop_state(job, [])
         assert state.decision == AgentLoopDecision.NEEDS_APPROVAL
+
+    # ── General ────────────────────────────────────────────────────────────
 
     def test_job_id_preserved(self):
         job = _make_job()
@@ -397,12 +526,34 @@ class TestSummarizeLoopState:
         out = summarize_agent_loop_state(job, state)
         assert "plan-job-local" in out
 
-    def test_next_action_blocked_suggests_set_permission(self):
+    def test_next_action_blocked_suggests_set_permission_with_capability(self):
+        """Next action for BLOCKED must include the concrete capability name."""
         job = _make_job()
-        events = [_perm_denied_event(str(job.id))]
+        task = _pending_task()
+        job.tasks.append(task)
+        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
         state = derive_agent_loop_state(job, events)
         out = summarize_agent_loop_state(job, state)
         assert "set-permission" in out
+        assert "workspace_write" in out
+
+    def test_next_action_blocked_no_capability_fallback(self):
+        """BLOCKED with no known capability falls back to <capability>."""
+        job = _make_job()
+        job.tasks.append(_pending_task())
+        # Event with no task_id and no capability in metadata
+        ev = {
+            "event": "task_run_failed",
+            "job_id": str(job.id),
+            "run_id": "r1",
+            "timestamp": "2026-05-06T10:00:00+00:00",
+            "outcome": "permission_denied",
+            "metadata": {},
+        }
+        state = derive_agent_loop_state(job, [ev])
+        out = summarize_agent_loop_state(job, state)
+        assert "set-permission" in out
+        assert "<capability>" in out
 
     def test_next_action_needs_approval_suggests_list_intents(self):
         job = _make_job()
@@ -419,12 +570,15 @@ class TestSummarizeLoopState:
         out = summarize_agent_loop_state(job, state)
         assert "trust-report" in out
 
-    def test_blockers_shown_when_blocked(self):
+    def test_blockers_display_includes_capability_parens(self):
+        """Blocker with capability → 'permission_denied (workspace_write)'."""
         job = _make_job()
-        events = [_perm_denied_event(str(job.id))]
+        task = _pending_task()
+        job.tasks.append(task)
+        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
         state = derive_agent_loop_state(job, events)
         out = summarize_agent_loop_state(job, state)
-        assert "permission_denied" in out
+        assert "permission_denied (workspace_write)" in out
 
     def test_blockers_none_when_clean(self):
         job = _make_job()
@@ -495,6 +649,85 @@ class TestSummarizeLoopState:
 
 
 # ---------------------------------------------------------------------------
+# Redaction hardening
+# ---------------------------------------------------------------------------
+
+
+class TestRedactionHardening:
+    """Verify that sentinel strings never appear in any output or run log."""
+
+    SENTINELS = {
+        "DIFF_PREVIEW_MUST_NOT_RENDER",
+        "RAW_COMMAND_OUTPUT_MUST_NOT_RENDER",
+        "APPROVAL_REASON_MUST_NOT_RENDER",
+        "EVENT_MESSAGE_MUST_NOT_RENDER",
+        "ARTIFACT_CONTENT_MUST_NOT_RENDER",
+    }
+
+    def _make_job_with_sentinels(self) -> Job:
+        job = _make_job()
+        job.tasks.append(_completed_task())
+        artifact = Artifact(
+            name="proposal",
+            content="ARTIFACT_CONTENT_MUST_NOT_RENDER",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={
+                "patch_intent_explanations": [
+                    {
+                        "file": "docs/x.md",
+                        "action": "modify",
+                        "risk": RISK_MEDIUM,
+                        "reason": "test",
+                        "summary": "s",
+                    }
+                ],
+                "patch_intent_risks": [RISK_MEDIUM],
+                "patch_intent_diff_preview": "DIFF_PREVIEW_MUST_NOT_RENDER",
+            },
+        )
+        job.artifacts.append(artifact)
+        intent_id = make_intent_id(artifact.id, 0)
+        set_approval_state(
+            job, intent_id, APPROVAL_APPROVED,
+            reason="APPROVAL_REASON_MUST_NOT_RENDER",
+        )
+        return job
+
+    def _sentinel_events(self, job_id: str) -> list[dict]:
+        return [
+            {
+                "event": "task_run_completed",
+                "job_id": job_id,
+                "run_id": "r1",
+                "timestamp": "2026-05-06T10:00:00+00:00",
+                "message": "EVENT_MESSAGE_MUST_NOT_RENDER",
+                "metadata": {"command_output": "RAW_COMMAND_OUTPUT_MUST_NOT_RENDER"},
+            }
+        ]
+
+    def test_no_sentinels_in_summary_output(self):
+        job = self._make_job_with_sentinels()
+        events = self._sentinel_events(str(job.id))
+        state = derive_agent_loop_state(job, events)
+        out = summarize_agent_loop_state(job, state)
+        for sentinel in self.SENTINELS:
+            assert sentinel not in out, f"sentinel {sentinel!r} leaked into summary"
+
+    def test_no_sentinels_in_run_log_event(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = self._make_job_with_sentinels()
+        save_job(job)
+        from apps.cli.main import _cmd_agent_loop
+        _cmd_agent_loop(str(job.id))
+        capsys.readouterr()
+        runs_dir = tmp_path / "runs" / str(job.id)
+        combined = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
+        for sentinel in self.SENTINELS:
+            assert sentinel not in combined, f"sentinel {sentinel!r} leaked into run log"
+
+
+# ---------------------------------------------------------------------------
 # CLI tests
 # ---------------------------------------------------------------------------
 
@@ -540,7 +773,8 @@ class TestCLIAgentLoop:
         ev = next((e for e in events if e.get("event") == "agent_loop_inspected"), None)
         assert ev is not None
 
-    def test_run_log_metadata_has_required_fields(self, tmp_path, monkeypatch, capsys):
+    def test_run_log_metadata_has_exactly_required_fields(self, tmp_path, monkeypatch, capsys):
+        """agent_loop_inspected metadata must contain exactly the fixed schema."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
@@ -555,11 +789,9 @@ class TestCLIAgentLoop:
                     events.append(json.loads(line))
         ev = next(e for e in events if e.get("event") == "agent_loop_inspected")
         meta = ev.get("metadata", {})
-        assert "stage" in meta
-        assert "decision" in meta
-        assert "cycle" in meta
-        assert "max_cycles" in meta
-        assert "pending_finding_count" in meta
+        assert set(meta.keys()) == {
+            "stage", "decision", "cycle", "max_cycles", "pending_finding_count"
+        }
 
     def test_run_log_event_no_raw_artifact_content(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
