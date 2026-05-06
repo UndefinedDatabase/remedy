@@ -1438,3 +1438,46 @@ Loads the job, run events, and Project Constitution; builds the graph; calls `bu
 ```
 
 The `--json` output is the intended data contract for a future frontend detail panel.  No frontend integration exists in Step 24.
+
+---
+
+## Brain CLI JSON Contract v1 (Step 24.1)
+
+Step 24.1 hardens the machine-readable contract for the two brain CLI commands and establishes the canonical path for the future visual frontend.
+
+### Canonical machine contracts
+
+| Command | `--json` contract | Future consumer |
+|---|---|---|
+| `remedy brain <job_id> --json` | `export_project_brain_json` schema (version, job_id, nodes, edges) | 2D / 3D graph visualisation |
+| `remedy brain-node <job_id> <node_id> --json` | `export_brain_node_detail_json` schema (13 keys) | Click-detail panel for a selected node |
+
+**Invariants enforced and smoke-tested:**
+
+- `--json` stdout is **pure JSON** — no human-readable header, no legend text, no trailing summary.
+- `stderr` is empty on success for both commands.
+- No `Traceback` appears in stdout on success.
+- All 5 redaction sentinels are absent from `--json` stdout and from the corresponding run-log events (`project_brain_inspected`, `brain_node_inspected`).
+
+### Run-log event schemas (exact key sets)
+
+`project_brain_inspected` metadata (set by `remedy brain`):
+```json
+{ "node_count": N, "edge_count": N, "task_count": N, "patch_intent_count": N }
+```
+
+`brain_node_inspected` metadata (set by `remedy brain-node`):
+```json
+{ "node_id": "...", "node_type": "...", "connected_count": N, "evidence_count": N }
+```
+
+Both schemas hold regardless of whether `--json` is used.
+
+### Future frontend priority (Step 24+)
+
+1. **2D graph** via `remedy brain --json` + `remedy brain-node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
+2. **3D / Animus** — Three.js / WebGL rendering of the same graph JSON contract.
+3. **MemPalace** — `memory_placeholder` nodes become live semantic memory nodes when the MemPalace layer is implemented (Step 24+).
+4. **MCP Quarantine** — `mcp_placeholder` nodes become live MCP tool nodes when the MCP integration layer is implemented (Step 24+).
+
+No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the stable integration surface that must not change without a version bump.

@@ -11,6 +11,7 @@ Step 21 + 21.1 + 21.2: Project Constitution v1.
 Step 22 + 22.1: External Agent Loop Contract v1.
 Step 23 + 23.1: Project Brain Graph v1 + polish.
 Step 24: Brain Node Detail v1.
+Step 24.1: Brain CLI JSON + Detail Smoke Hardening.
 
 New files:
 - packages/orchestration/project_constitution.py
@@ -21,11 +22,23 @@ New files:
 - tests/test_agent_loop.py (68 tests)
 - tests/test_project_brain.py (80 tests)
 - tests/test_brain_detail.py (52 tests)
+- tests/test_brain_smoke.py (34 tests)
 
 Modified:
 - apps/cli/main.py: constitution, agent-loop, brain (--json), brain-node (--json) commands
 - packages/orchestration/cockpit.py, trust_report.py, timeline.py
 - docs/architecture.md
+
+## Key facts (Brain CLI JSON Contract — Step 24.1)
+- brain --json: canonical machine contract for future 2D/3D graph (version, job_id, nodes, edges)
+- brain-node --json: canonical machine contract for future click-detail panels (13 keys)
+- JSON stdout must be pure JSON; no "Remedy Project Brain" / "Remedy Brain Node Detail" headers
+- stderr empty on success for both commands
+- All 5 redaction sentinels absent from JSON stdout and run-log events
+- project_brain_inspected schema: {node_count, edge_count, task_count, patch_intent_count}
+- brain_node_inspected schema: {node_id, node_type, connected_count, evidence_count}
+- Future frontend priority: 2D graph → 3D/Animus → MemPalace → MCP
+- 1217 tests pass
 
 ## Key facts (Brain Node Detail — Step 24)
 - BrainNodeDetail frozen=True: 13 fields including why_it_exists, connected_to, evidence,
@@ -35,7 +48,6 @@ Modified:
 - Redaction: no content, diff preview, approval_reason, event.message, command output
 - User prompt truncated to 120 chars for job node
 - brain_node_inspected schema: {node_id, node_type, connected_count, evidence_count}
-- 1183 tests pass
 
 ## Key facts (Project Brain — Steps 23/23.1)
 - Read-only graph: BrainNode, BrainEdge, ProjectBrainGraph frozen dataclasses

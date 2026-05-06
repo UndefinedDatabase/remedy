@@ -1,41 +1,30 @@
 # Plan
 
 ## Goal
-Step 24: Brain Node Detail v1 — read-only explanation/detail layer for individual Project Brain nodes.
+Step 24.1: Brain CLI JSON + Detail Smoke Hardening.
 
 ## Prior step
-Step 23.1: Project Brain polish (visual legend, constitution dedupe, safe cycle, --json).
+Step 24: Brain Node Detail v1 (1183 tests).
 
 ## Status
-COMPLETE — 1183 tests pass.
+COMPLETE — 1217 tests pass.
 
 ## Steps
-1. [x] Create packages/orchestration/brain_detail.py
-   - BrainNodeDetail frozen=True dataclass (13 fields)
-   - build_brain_node_detail(job, graph, node_id, events) -> BrainNodeDetail
-     - Raises ValueError (safe message) if node_id not found
-     - Handles all 12 node types: job, task, artifact, patch_intent,
-       approval_decision, verification, permission_blocker, run_event,
-       agent_loop, constitution, memory_placeholder, mcp_placeholder
-     - Connections: incoming + outgoing edges with neighbour info
-     - Affected files: repo_applied_files for artifact/task; target_path for patch_intent
-     - Full redaction: no content, diff preview, approval_reason, event.message, command output
-   - summarize_brain_node_detail(detail) -> str
-   - export_brain_node_detail_json(detail) -> dict
-2. [x] Add remedy brain-node <job_id> <node_id> [--json] CLI command
-   - brain_node_inspected run-log event with exact schema:
-     {node_id, node_type, connected_count, evidence_count}
-   - unknown node exits 1 with safe message
-3. [x] Create tests/test_brain_detail.py (52 tests)
-   - All 12 node types tested
-   - Connection directions tested
-   - 5 redaction sentinels
-   - CLI happy path, --json, error exits, run-log schema
-4. [x] Update docs/architecture.md — Brain Node Detail v1 section
-5. [x] Update .agent files
-6. [x] Run full suite (1183 pass)
-7. [ ] Commit Step 24 changes
-8. [ ] Push to feature/step21-project-constitution-v1
+1. [x] Create tests/test_brain_smoke.py (34 tests)
+   - TestBrainLifecycle (8): before planning, after planning, after run, after approval
+   - TestBrainNodeJsonAllTypes (12): one brain-node --json test per node type
+   - TestBrainJsonRegression (6): no human header in --json, empty stderr, no traceback
+   - TestBrainRunLogSchema (4): exact keys for project_brain_inspected and brain_node_inspected
+   - TestBrainRedactionHardening (4): all 5 sentinels absent from brain/brain-node JSON and run logs
+2. [x] Update docs/architecture.md — Brain CLI JSON Contract v1 (Step 24.1) section
+   - brain --json canonical machine contract for future 2D/3D graph
+   - brain-node --json canonical machine contract for future click-detail panels
+   - Future frontend priority: 2D graph → 3D/Animus → MemPalace → MCP
+   - JSON stdout must be pure JSON; human text only in non-json mode
+3. [x] Update .agent files
+4. [x] Run full suite (1217 pass)
+5. [ ] Commit Step 24.1 changes
+6. [ ] Push to feature/step21-project-constitution-v1
 
 ## Branch
 feature/step21-project-constitution-v1
