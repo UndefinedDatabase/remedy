@@ -500,11 +500,10 @@ def _extract_text_rules(content: str, filename: str) -> tuple[list[str], list[st
         # Cap line length for safety
         display = line[:120]
 
-        if _FORBIDDEN_PATTERNS.search(line):
-            m = _FORBIDDEN_PATTERNS.search(line)
-            if m:
-                cmd = m.group(2)[:60]
-                forbidden.append(f"{filename}: {cmd}")
+        m = _FORBIDDEN_PATTERNS.search(line)
+        if m:
+            cmd = m.group(2)[:60]
+            forbidden.append(f"{filename}: {cmd}")
 
         if _APPROVAL_KEYWORDS.search(line):
             approvals.append(f"{filename}: {display}")

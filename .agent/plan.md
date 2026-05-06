@@ -1,25 +1,23 @@
 # Plan
 
 ## Goal
-Step 21.1: Project Constitution trust/timeline polish.
+Step 21.2: Project Constitution final safety/test hygiene.
 
 ## Prior step
-Step 21 delivered Project Constitution v1 (extraction, CLI, cockpit integration).
+Step 21.1 polished trust-report and timeline integration for the constitution.
 
 ## Status
-COMPLETE — 982 tests pass.
+COMPLETE — 983 tests pass.
 
 ## Steps
-1. [x] trust_report.py: add constitution parameter with 5 rendering cases
-2. [x] timeline.py: first-class project_constitution_loaded event rendering
-3. [x] main.py: _cmd_trust_report loads constitution at render time; passes None when no repo
-4. [x] tests/test_project_constitution.py: 13 new tests (trust-report CLI + timeline event)
-5. [x] Fix: pass constitution=None (not load(None)) when target_repo absent
-6. [x] Run full suite (982 pass)
-7. [x] Update docs/architecture.md
-8. [x] Update .agent files
-9. [ ] Commit Step 21.1 changes
-10. [ ] Push to feature/step21-project-constitution-v1
+1. [x] Fix fragile run-log redaction test (f loop variable → combined_raw_content)
+2. [x] Add symlink escape test (_is_safe_path blocks symlinks pointing outside repo_root)
+3. [x] Remove duplicate _FORBIDDEN_PATTERNS.search() call in _extract_text_rules
+4. [x] Docs: advisory note on tox.ini/pytest.ini commands as hints not exact invocations
+5. [x] Update .agent files
+6. [x] Run full suite (983 pass)
+7. [ ] Commit Step 21.2 changes
+8. [ ] Push to feature/step21-project-constitution-v1
 
 ## Branch
 feature/step21-project-constitution-v1

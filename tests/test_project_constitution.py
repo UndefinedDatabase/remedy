@@ -405,6 +405,19 @@ class TestSafety:
             for item in field_val:
                 assert len(item) < 500, f"field item too long (raw content?): {item[:100]}"
 
+    def test_symlink_escape_blocked(self, tmp_path):
+        """_is_safe_path must return False for a symlink that points outside repo_root."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        outside_file = tmp_path / "secret.txt"
+        outside_file.write_text("top secret")
+        link = repo_root / "escape_link"
+        try:
+            link.symlink_to(outside_file)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlink creation not available on this platform")
+        assert _is_safe_path(link, repo_root) is False
+
 
 # ---------------------------------------------------------------------------
 # render_constitution
@@ -522,9 +535,9 @@ class TestCmdConstitution:
         assert "source_count" in meta
         assert "warning_count" in meta
         assert "has_test_commands" in meta
-        # No raw text in log
-        raw_content = f.read_text()  # just checks file exists
-        assert "[tool.pytest]" not in raw_content  # raw file content absent
+        # No raw text in any run log file
+        combined_raw_content = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
+        assert "[tool.pytest]" not in combined_raw_content
 
 
 # ---------------------------------------------------------------------------

@@ -796,6 +796,9 @@ render_constitution(constitution, repo_root) -> str
 
 **Extraction is purely lexical:** string/regex matching only.  No `eval`, no `import`,
 no subprocess.  Uncertain findings are phrased as "detected" / "possible" / "suggested".
+`tox.ini` and `pytest.ini` currently produce the advisory command `"pytest"`; future
+autonomy modes must treat Constitution commands as hints, not guaranteed exact project
+invocations.
 
 **Safety constraints:**
 - Read-only.  No subprocess, no shell, no writes.
