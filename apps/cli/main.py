@@ -654,10 +654,18 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
     if target_repo_str:
         try:
             repo_path = Path(target_repo_str)
-            if repo_path.exists() and repo_path.is_dir():
+            if not repo_path.exists() or not repo_path.is_dir():
+                print(
+                    "Warning: project constitution unavailable for context coverage.",
+                    file=sys.stderr,
+                )
+            else:
                 constitution = load_project_constitution(repo_path)
         except Exception:
-            pass
+            print(
+                "Warning: project constitution unavailable for context coverage.",
+                file=sys.stderr,
+            )
 
     snapshot = derive_context_coverage(job, events, constitution=constitution)
 

@@ -27,6 +27,22 @@ from typing import Any
 
 from packages.core.models import ArtifactKind, Job
 
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _safe_int(value: object, default: int = 0) -> int:
+    """Return int(value) or default on any parse error."""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 # ---------------------------------------------------------------------------
 # Signal definitions  (weights must sum to 100)
 # ---------------------------------------------------------------------------
@@ -193,7 +209,7 @@ def derive_context_coverage(
 
         if key == "patch_intents":
             has_pi = any(
-                int(a.metadata.get("patch_intent_count", 0) or 0) > 0
+                _safe_int(a.metadata.get("patch_intent_count")) > 0
                 for a in job.artifacts
             )
             if not has_pi:
@@ -320,6 +336,10 @@ def summarize_context_coverage(snapshot: ContextCoverageSnapshot) -> str:
     )
     parts.append(
         "  It is not model confidence and not a guarantee of correctness."
+    )
+    parts.append(
+        "  In v0, the maximum score is 85% — Project Memory (+10) and"
+        " MCP/tool context (+5) are not yet implemented."
     )
     parts.append("")
 

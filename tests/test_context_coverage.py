@@ -881,3 +881,308 @@ class TestBrainViewerContextCoverage:
             text = (index_path.parent / fname).read_text()
             for s in _ALL_SENTINELS:
                 assert s not in text, f"sentinel {s!r} in {fname}"
+
+
+# ---------------------------------------------------------------------------
+# TestSafeInt — Step 26.1 A
+# ---------------------------------------------------------------------------
+
+
+class TestSafeInt:
+    """Verify that malformed patch_intent_count metadata never crashes."""
+
+    def test_string_count_1_counts_as_present(self):
+        job = _make_job()
+        a = Artifact(
+            name="bp",
+            content="x",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={"patch_intent_count": "1"},
+        )
+        job.artifacts.append(a)
+        snap = derive_context_coverage(job, [])
+        sig = next(s for s in snap.signals if s.key == "patch_intents")
+        assert sig.present
+
+    def test_string_not_an_int_doesnt_crash(self):
+        job = _make_job()
+        a = Artifact(
+            name="bp",
+            content="x",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={"patch_intent_count": "not-an-int"},
+        )
+        job.artifacts.append(a)
+        snap = derive_context_coverage(job, [])
+        sig = next(s for s in snap.signals if s.key == "patch_intents")
+        assert not sig.present
+
+    def test_list_count_doesnt_crash(self):
+        job = _make_job()
+        a = Artifact(
+            name="bp",
+            content="x",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={"patch_intent_count": []},
+        )
+        job.artifacts.append(a)
+        snap = derive_context_coverage(job, [])
+        sig = next(s for s in snap.signals if s.key == "patch_intents")
+        assert not sig.present
+
+    def test_none_count_doesnt_crash(self):
+        job = _make_job()
+        a = Artifact(
+            name="bp",
+            content="x",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={"patch_intent_count": None},
+        )
+        job.artifacts.append(a)
+        snap = derive_context_coverage(job, [])
+        sig = next(s for s in snap.signals if s.key == "patch_intents")
+        assert not sig.present
+
+    def test_build_project_brain_with_malformed_count_doesnt_crash(self):
+        job = _make_job()
+        a = Artifact(
+            name="bp",
+            content="x",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={"patch_intent_count": "bad"},
+        )
+        job.artifacts.append(a)
+        graph = build_project_brain(job, [])
+        assert any(n.type == NT_CONTEXT_COVERAGE for n in graph.nodes)
+
+    def test_brain_json_with_malformed_count_is_valid_json(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        import sys
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        a = Artifact(
+            name="bp",
+            content="x",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={"patch_intent_count": "not-a-number"},
+        )
+        job.artifacts.append(a)
+        save_job(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        main()
+        raw = capsys.readouterr().out
+        parsed = json.loads(raw)
+        assert "nodes" in parsed
+
+
+# ---------------------------------------------------------------------------
+# TestV0Ceiling — Step 26.1 B
+# ---------------------------------------------------------------------------
+
+
+class TestV0Ceiling:
+    """The maximum v0 score is 85 (project_memory +10 + mcp +5 always absent)."""
+
+    def _fully_populated_job(self):
+        job = _make_job()
+        job.metadata["target_repo"] = "/repo"
+        job.tasks.append(Task(description="do x", inputs={"task_type": "write_readme"}))
+        _add_builder_artifact(job)
+        _add_patch_intent_artifact(job)
+        return job
+
+    def _fully_populated_events(self, job):
+        return [
+            _verification_passed_event(str(job.id), str(uuid4())),
+            _approval_event(str(job.id)),
+            {"event": "job_created", "job_id": str(job.id),
+             "run_id": "r0", "timestamp": "2026-05-07T09:59:00+00:00",
+             "outcome": "created", "metadata": {}},
+        ]
+
+    def test_fully_populated_v0_score_is_85(self):
+        job = self._fully_populated_job()
+        snap = derive_context_coverage(
+            job,
+            self._fully_populated_events(job),
+            constitution=_mock_constitution(),
+        )
+        assert snap.score == 85
+
+    def test_summary_mentions_85_ceiling(self):
+        job = self._fully_populated_job()
+        snap = derive_context_coverage(
+            job,
+            self._fully_populated_events(job),
+            constitution=_mock_constitution(),
+        )
+        text = summarize_context_coverage(snap)
+        assert "85%" in text
+
+    def test_summary_mentions_v0_ceiling_explanation(self):
+        snap = derive_context_coverage(_make_job(), [])
+        text = summarize_context_coverage(snap)
+        assert "v0" in text
+        assert "maximum" in text.lower() or "85%" in text
+
+    def test_json_score_is_integer(self):
+        job = self._fully_populated_job()
+        snap = derive_context_coverage(
+            job,
+            self._fully_populated_events(job),
+            constitution=_mock_constitution(),
+        )
+        exported = export_context_coverage_json(snap)
+        assert isinstance(exported["score"], int)
+
+    def test_context_coverage_node_status_strong_at_85(self):
+        job = self._fully_populated_job()
+        graph = build_project_brain(
+            job,
+            self._fully_populated_events(job),
+            constitution=_mock_constitution(),
+        )
+        cc = next(n for n in graph.nodes if n.type == NT_CONTEXT_COVERAGE)
+        assert cc.status == "strong"
+        assert cc.metadata["score"] == 85
+
+
+# ---------------------------------------------------------------------------
+# TestContextCmdStaleRepo — Step 26.1 C
+# ---------------------------------------------------------------------------
+
+
+class TestContextCmdStaleRepo:
+    """_cmd_context mirrors _cmd_brain_view: warns on stale/invalid repo."""
+
+    def _run_context(self, job_id_str: str, monkeypatch, capsys, tmp_path):
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.setattr(sys, "argv", ["remedy", "context", job_id_str])
+        main()
+        return capsys.readouterr()
+
+    def test_stale_repo_path_warns_stderr(self, tmp_path, monkeypatch, capsys):
+        job = _make_job()
+        job.metadata["target_repo"] = str(tmp_path / "nonexistent_repo")
+        save_job(job)
+        result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
+        assert "Warning: project constitution unavailable for context coverage." in result.err
+
+    def test_stale_repo_exits_0(self, tmp_path, monkeypatch, capsys):
+        job = _make_job()
+        job.metadata["target_repo"] = str(tmp_path / "nonexistent_repo")
+        save_job(job)
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job.id)])
+        main()  # must not raise SystemExit
+
+    def test_file_not_dir_warns_stderr(self, tmp_path, monkeypatch, capsys):
+        fake_file = tmp_path / "not_a_dir.txt"
+        fake_file.write_text("x")
+        job = _make_job()
+        job.metadata["target_repo"] = str(fake_file)
+        save_job(job)
+        result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
+        assert "Warning: project constitution unavailable for context coverage." in result.err
+
+    def test_runtime_error_doesnt_leak_secret(self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration import project_constitution as _pc_mod
+        job = _make_job()
+        job.metadata["target_repo"] = str(tmp_path)
+        save_job(job)
+
+        real_dir = tmp_path / "repo"
+        real_dir.mkdir()
+        job2 = _make_job()
+        job2.metadata["target_repo"] = str(real_dir)
+        save_job(job2)
+
+        def _boom(path):
+            raise RuntimeError("SECRET_INTERNAL_PATH_DATA")
+
+        monkeypatch.setattr(_pc_mod, "load_project_constitution", _boom)
+
+        import sys
+        from apps.cli.main import main
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job2.id)])
+        main()
+        result = capsys.readouterr()
+        assert "SECRET_INTERNAL_PATH_DATA" not in result.err
+        assert "SECRET_INTERNAL_PATH_DATA" not in result.out
+
+    def test_no_target_repo_no_warning(self, tmp_path, monkeypatch, capsys):
+        job = _make_job()
+        save_job(job)
+        result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
+        assert "Warning" not in result.err
+
+    def test_valid_repo_no_warning(self, tmp_path, monkeypatch, capsys):
+        real_dir = tmp_path / "repo"
+        real_dir.mkdir()
+        job = _make_job()
+        job.metadata["target_repo"] = str(real_dir)
+        save_job(job)
+        result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
+        assert "Warning" not in result.err
+
+
+# ---------------------------------------------------------------------------
+# TestContextCoverageDetailConfidenceKeys — Step 26.1 D
+# ---------------------------------------------------------------------------
+
+
+class TestContextCoverageDetailConfidenceKeys:
+    """Brain-node detail for context_coverage must not claim to be a confidence score."""
+
+    def _get_detail(self, tmp_path, monkeypatch, capsys) -> dict:
+        import sys
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        main()
+        brain = json.loads(capsys.readouterr().out)
+        cc_node = next(n for n in brain["nodes"] if n["type"] == "context_coverage")
+
+        monkeypatch.setattr(
+            sys, "argv",
+            ["remedy", "brain-node", str(job.id), cc_node["id"], "--json"],
+        )
+        main()
+        return json.loads(capsys.readouterr().out)
+
+    def test_no_confidence_key(self, tmp_path, monkeypatch, capsys):
+        detail = self._get_detail(tmp_path, monkeypatch, capsys)
+        assert "confidence" not in detail
+
+    def test_no_model_confidence_key(self, tmp_path, monkeypatch, capsys):
+        detail = self._get_detail(tmp_path, monkeypatch, capsys)
+        assert "model_confidence" not in detail
+
+    def test_no_confidence_score_key(self, tmp_path, monkeypatch, capsys):
+        detail = self._get_detail(tmp_path, monkeypatch, capsys)
+        assert "confidence_score" not in detail
+
+    def test_explanation_does_not_claim_correctness_guarantee(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        detail = self._get_detail(tmp_path, monkeypatch, capsys)
+        explanation = detail.get("explanation", "").lower()
+        assert "guarantee" not in explanation or "not" in explanation

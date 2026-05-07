@@ -1719,3 +1719,19 @@ Context Coverage v0 is job-scoped.  Future steps will add:
 - **Repo Context Coverage** — aggregates multiple jobs targeting the same repo, adds repo index coverage and constitution richness.
 - **Project Context Coverage** — aggregates across repos, adds project memory, cross-repo task history, and enabled skill coverage.
 - **Global Context Coverage** — adds Global Brain signals: MCP Skill Card availability, provider scorecards, global policy coverage.
+
+## Context Coverage v0 robustness and UX polish (Step 26.1)
+
+Incremental hardening of Context Coverage v0.
+
+### Safe integer parsing (`_safe_int`)
+
+`context_coverage.py` now uses a `_safe_int(value, default=0)` helper for all artifact-metadata integer fields (starting with `patch_intent_count`).  Any value that cannot be parsed by `int()` — strings like `"not-an-int"`, empty lists, `None` — returns `default` instead of raising `ValueError` or `TypeError`.
+
+### v0 maximum score = 85
+
+Because `project_memory` (weight 10) and `mcp_tool_context` (weight 5) are always absent in v0, the maximum achievable score is **85**.  This is "complete for v0" — the score is never normalized to 100.  The summary Meaning section now explicitly states: *"In v0, the maximum score is 85% — Project Memory (+10) and MCP/tool context (+5) are not yet implemented."*
+
+### Stale repo warning in `remedy context`
+
+`_cmd_context` now mirrors `_cmd_brain_view`: if `target_repo` is set but the path does not exist or is not a directory, it prints a fixed safe warning to stderr and continues without a constitution.  Any unexpected exception from `load_project_constitution` is caught and the same warning is emitted.  The raw exception text is never surfaced.
