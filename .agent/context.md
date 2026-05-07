@@ -17,8 +17,11 @@ Step 24.3: Brain Smoke Final Polish.
 Step 25: Brain Viewer v0.
 Step 25.1: Brain Viewer v0 robustness polish + future architecture hooks.
 Step 26: Context Coverage v0.
+Step 26.1: Context Coverage robustness and UX polish.
+Step 26.2: Smoke viewer LAN URL and Context Coverage test polish.
 
 New files:
+- scripts/remedy_smoke.sh (LAN Brain Viewer smoke helper)
 - packages/orchestration/project_constitution.py
 - packages/orchestration/agent_loop.py
 - packages/orchestration/project_brain.py
@@ -31,7 +34,7 @@ New files:
 - tests/test_brain_detail.py (52 tests)
 - tests/test_brain_smoke.py (39 tests)
 - tests/test_brain_viewer.py (46 tests)
-- tests/test_context_coverage.py (67 tests)
+- tests/test_context_coverage.py (88 tests)
 
 Modified:
 - apps/cli/main.py: constitution, agent-loop, brain (--json), brain-node (--json), brain-view, context commands
@@ -59,7 +62,14 @@ Modified:
   - metadata: {score, present_signal_count, missing_signal_count, scope}
   - edge: job --has_context_snapshot--> context_coverage
 - Brain Viewer: context_coverage in layer 1, ctx-badge in header showing "Context: <score>%"
-- 1335 tests pass (67 in test_context_coverage.py)
+- 1356 tests pass (88 in test_context_coverage.py)
+
+## Key facts (Context Coverage robustness — Step 26.1)
+- _safe_int(value, default=0): crash-safe int parsing; replaces int(...) for artifact metadata
+- patch_intents: uses _safe_int(a.metadata.get("patch_intent_count")) — "not-an-int"/[]/None safe
+- v0 maximum score = 85 (project_memory +10 + mcp +5 always absent); stated in Meaning section
+- _cmd_context: stale/missing repo now prints "Warning: project constitution unavailable for context coverage." to stderr; mirrors _cmd_brain_view; no exception text leaks
+- brain-node detail for context_coverage: no "confidence", "model_confidence", "confidence_score" top-level keys
 
 ## Key facts (Brain Viewer v0 — Step 25 / 25.1)
 - CLI: remedy brain-view <job_id>

@@ -1180,9 +1180,9 @@ class TestContextCoverageDetailConfidenceKeys:
         detail = self._get_detail(tmp_path, monkeypatch, capsys)
         assert "confidence_score" not in detail
 
-    def test_explanation_does_not_claim_correctness_guarantee(
+    def test_explanation_negates_correctness_guarantee(
         self, tmp_path, monkeypatch, capsys
     ):
         detail = self._get_detail(tmp_path, monkeypatch, capsys)
         explanation = detail.get("explanation", "").lower()
-        assert "guarantee" not in explanation or "not" in explanation
+        assert "not a guarantee" in explanation
