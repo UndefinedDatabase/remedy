@@ -1793,3 +1793,106 @@ Because `project_memory` (weight 10) and `mcp_tool_context` (weight 5) are alway
 ### Stale repo warning in `remedy context`
 
 `_cmd_context` now mirrors `_cmd_brain_view`: if `target_repo` is set but the path does not exist or is not a directory, it prints a fixed safe warning to stderr and continues without a constitution.  Any unexpected exception from `load_project_constitution` is caught and the same warning is emitted.  The raw exception text is never surfaced.
+
+## Project Registry v0 (Step 28)
+
+`packages/orchestration/project_registry.py` — minimal project metadata store.
+
+### Purpose
+
+Projects are named scopes that group one or more repos and jobs.  They are the foundation for the future brain hierarchy:
+
+```
+Global Brain → Project Brain → Repo Brain → Job Brain
+```
+
+The registry stores and retrieves `RemyProject` records from disk.  No repo scanning, no artifact content, no approval reasons, no diff previews, no event messages.
+
+### Data model
+
+`RemyProject(BaseModel)` — Pydantic model with fields:
+
+| Field | Type | Default |
+|---|---|---|
+| `id` | `UUID` | `uuid4()` |
+| `name` | `str` | required |
+| `description` | `str \| None` | `None` |
+| `created_at` | `datetime` | UTC now |
+| `repo_paths` | `list[str]` | `[]` |
+| `job_ids` | `list[str]` | `[]` |
+| `metadata` | `dict[str, Any]` | `{}` |
+
+### Storage
+
+Files are written to `<REMEDY_DATA_DIR>/projects/<project_id>.json` (env var) or `<repo_root>/.data/projects/<project_id>.json` (fallback).
+
+### Public API
+
+```python
+save_project(project) -> None
+load_project(project_id: UUID) -> RemyProject      # raises ProjectNotFoundError
+list_projects() -> list[RemyProject]               # sorted newest-first; corrupt files skipped
+attach_repo(project, repo_path) -> bool            # True if added (idempotent)
+attach_job(project, job_id_str) -> bool            # True if added (idempotent)
+summarize_project(project, jobs) -> str
+export_project_json(project, jobs) -> dict
+```
+
+### CLI commands
+
+```
+remedy create-project <name> [--description <desc>]   — create and print project ID
+remedy list-projects                                  — list all projects (newest first)
+remedy attach-project-repo <project_id> <repo_path>  — attach a repo to a project
+remedy attach-project-job <project_id> <job_id>      — link a job to a project
+remedy show-project <project_id> [--json]            — show project summary
+remedy create-job "<prompt>" [--project <project_id>] — create job and optionally link
+```
+
+When `--project` is passed to `create-job`, the new job's `metadata["project_id"]` is set and the job is added to the project's `job_ids` list.
+
+### Brain connection marker (`project_placeholder` node)
+
+When a job has `metadata["project_id"]` set, `build_project_brain` adds:
+
+- **Node**: `id="project:<project_id>"`, `type="project_placeholder"`, `status="linked"`, `label="Project <short_id>"`
+- **Edge**: `job --belongs_to_project--> project:<project_id>`
+
+This node is absent when the job has no linked project.  It is a lightweight marker only — no project aggregation occurs in v0.
+
+### Brain Viewer layer
+
+`project_placeholder` nodes appear in layer 1 (same as `constitution`, `task`, `context_coverage`).
+
+### JSON export schema
+
+```json
+{
+  "version": 1,
+  "project": {"id", "name", "description", "created_at"},
+  "repo_paths": ["<resolved_path>", ...],
+  "jobs": [{"id", "state", "task_count", "artifact_count"}, ...],
+  "counts": {"repo_count", "job_count", "task_count", "artifact_count"},
+  "future_layers": {
+    "repo_brain": "not_implemented",
+    "project_brain": "not_implemented",
+    "global_brain": "not_implemented",
+    "mempalace": "not_implemented",
+    "mcp_skill_registry": "not_implemented"
+  }
+}
+```
+
+### Future layers (not implemented in v0)
+
+| Layer | Description |
+|---|---|
+| Repo Brain | Aggregated brain across all jobs targeting the same repo |
+| Project Brain | Aggregated brain across all repos in a project |
+| Global Brain | Cross-project, cross-provider aggregate with skill registry |
+| MemPalace | Semantic memory layer for jobs and projects |
+| MCP Skill Registry | Registry of verified MCP skills available to agents |
+
+### Redaction
+
+No artifact content, approval reasons, diff previews, event messages, or command output appear in any project summary or JSON export.  Only counts, IDs, names, and status values are surfaced.

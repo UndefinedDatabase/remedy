@@ -58,6 +58,7 @@ from packages.orchestration.approval_queue import (
 )
 from packages.orchestration.patch_intent import RISK_HIGH, RISK_LOW, RISK_MEDIUM
 from packages.orchestration.project_brain import (
+    ET_BELONGS_TO_PROJECT,
     ET_BLOCKED,
     ET_CREATED,
     ET_DECIDED,
@@ -78,6 +79,7 @@ from packages.orchestration.project_brain import (
     NT_MCP,
     NT_MEMORY,
     NT_PATCH_INTENT,
+    NT_PROJECT_PLACEHOLDER,
     NT_RUN_EVENT,
     NT_TASK,
     NT_VERIFICATION,
@@ -1138,3 +1140,115 @@ class TestSafeCycleParsing:
         # Must not raise
         exported = export_project_brain_json(graph)
         assert exported["version"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Project placeholder node (Step 28)
+# ---------------------------------------------------------------------------
+
+
+class TestProjectPlaceholderNode:
+    def test_absent_without_project_id(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        types = {n.type for n in graph.nodes}
+        assert NT_PROJECT_PLACEHOLDER not in types
+
+    def test_present_when_project_id_set(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        types = {n.type for n in graph.nodes}
+        assert NT_PROJECT_PLACEHOLDER in types
+
+    def test_node_id_format(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        pp = next(n for n in graph.nodes if n.type == NT_PROJECT_PLACEHOLDER)
+        assert pp.id == f"project:{pid}"
+
+    def test_node_status_linked(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        pp = next(n for n in graph.nodes if n.type == NT_PROJECT_PLACEHOLDER)
+        assert pp.status == "linked"
+
+    def test_node_metadata_contains_project_id(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        pp = next(n for n in graph.nodes if n.type == NT_PROJECT_PLACEHOLDER)
+        assert pp.metadata["project_id"] == pid
+
+    def test_node_label_contains_short_id(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        pp = next(n for n in graph.nodes if n.type == NT_PROJECT_PLACEHOLDER)
+        assert pid[:8] in pp.label
+
+    def test_belongs_to_project_edge_present(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        proj_node_id = f"project:{pid}"
+        edge = next(
+            (e for e in graph.edges if e.type == ET_BELONGS_TO_PROJECT),
+            None,
+        )
+        assert edge is not None
+        assert edge.source == str(job.id)
+        assert edge.target == proj_node_id
+
+    def test_no_edge_without_project_id(self):
+        job = _make_job()
+        graph = build_project_brain(job, [])
+        edge = next(
+            (e for e in graph.edges if e.type == ET_BELONGS_TO_PROJECT),
+            None,
+        )
+        assert edge is None
+
+    def test_node_sort_order(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        types_ordered = [n.type for n in graph.nodes]
+        job_idx = types_ordered.index(NT_JOB)
+        pp_idx = types_ordered.index(NT_PROJECT_PLACEHOLDER)
+        assert pp_idx > job_idx
+
+    def test_summarize_includes_project_placeholder(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        text = summarize_project_brain(graph)
+        assert "project_placeholder" in text
+
+    def test_export_includes_project_placeholder_node(self):
+        from uuid import uuid4
+        job = _make_job()
+        pid = str(uuid4())
+        job.metadata["project_id"] = pid
+        graph = build_project_brain(job, [])
+        d = export_project_brain_json(graph)
+        types = {n["type"] for n in d["nodes"]}
+        assert "project_placeholder" in types

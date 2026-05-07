@@ -12,19 +12,20 @@ IMPORTANT — Scope limitations (v1):
   Step 24+ will map these nodes to visual components.
 
 Node types:
-  job                — top-level job
-  task               — individual task within the job
-  artifact           — output artifact produced by a task or orchestration
-  patch_intent       — a proposed file patch derived from an artifact
-  approval_decision  — a recorded approval or rejection for a patch intent
-  verification       — a task_run_completed event (verification passed)
-  permission_blocker — a task_run_failed outcome=permission_denied event
-  run_event          — a notable lifecycle event in the run log
-  agent_loop         — an agent_loop_inspected event snapshot
-  constitution       — the attached Project Constitution
-  memory_placeholder — reserved node for future MemPalace memory layer
-  mcp_placeholder    — reserved node for future MCP Quarantine layer
-  context_coverage   — deterministic context-health snapshot for the job
+  job                 — top-level job
+  task                — individual task within the job
+  artifact            — output artifact produced by a task or orchestration
+  patch_intent        — a proposed file patch derived from an artifact
+  approval_decision   — a recorded approval or rejection for a patch intent
+  verification        — a task_run_completed event (verification passed)
+  permission_blocker  — a task_run_failed outcome=permission_denied event
+  run_event           — a notable lifecycle event in the run log
+  agent_loop          — an agent_loop_inspected event snapshot
+  constitution        — the attached Project Constitution
+  memory_placeholder  — reserved node for future MemPalace memory layer
+  mcp_placeholder     — reserved node for future MCP Quarantine layer
+  context_coverage    — deterministic context-health snapshot for the job
+  project_placeholder — lightweight marker linking job to a RemyProject
 
 Edge types:
   has_task              — job → task
@@ -39,6 +40,7 @@ Edge types:
   future_memory_layer   — job → memory_placeholder
   future_mcp_layer      — job → mcp_placeholder
   has_context_snapshot  — job → context_coverage
+  belongs_to_project    — job → project_placeholder
 
 Redaction policy:
   Artifact content, diff previews, approval reasons, event messages, and
@@ -96,6 +98,7 @@ NT_CONSTITUTION      = "constitution"
 NT_MEMORY            = "memory_placeholder"
 NT_MCP               = "mcp_placeholder"
 NT_CONTEXT_COVERAGE  = "context_coverage"
+NT_PROJECT_PLACEHOLDER = "project_placeholder"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -109,6 +112,7 @@ ET_GOVERNED             = "governed_by"
 ET_FUTURE_MEMORY        = "future_memory_layer"
 ET_FUTURE_MCP           = "future_mcp_layer"
 ET_HAS_CONTEXT_SNAPSHOT = "has_context_snapshot"
+ET_BELONGS_TO_PROJECT   = "belongs_to_project"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -121,9 +125,10 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_RUN_EVENT:        7,
     NT_AGENT_LOOP:       8,
     NT_CONSTITUTION:     9,
-    NT_CONTEXT_COVERAGE: 10,
-    NT_MEMORY:           11,
-    NT_MCP:              12,
+    NT_CONTEXT_COVERAGE:    10,
+    NT_MEMORY:              11,
+    NT_MCP:                 12,
+    NT_PROJECT_PLACEHOLDER: 13,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -469,7 +474,24 @@ def build_project_brain(
         type=ET_HAS_CONTEXT_SNAPSHOT,
     ))
 
-    # ── 9. Sort ──────────────────────────────────────────────────────────────
+    # ── 9. Project placeholder node (present only when job is linked) ────────
+    project_id_str = job.metadata.get("project_id") if job.metadata else None
+    if project_id_str:
+        proj_node_id = f"project:{project_id_str}"
+        nodes.append(BrainNode(
+            id=proj_node_id,
+            type=NT_PROJECT_PLACEHOLDER,
+            label=f"Project {str(project_id_str)[:8]}",
+            status="linked",
+            metadata={"project_id": str(project_id_str)},
+        ))
+        edges.append(BrainEdge(
+            source=job_node_id,
+            target=proj_node_id,
+            type=ET_BELONGS_TO_PROJECT,
+        ))
+
+    # ── 10. Sort ─────────────────────────────────────────────────────────────
     sorted_nodes = tuple(
         sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
     )
@@ -508,6 +530,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_JOB, NT_TASK, NT_ARTIFACT, NT_PATCH_INTENT, NT_APPROVAL,
         NT_VERIFICATION, NT_BLOCKER, NT_RUN_EVENT, NT_AGENT_LOOP,
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
+        NT_PROJECT_PLACEHOLDER,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)
@@ -543,9 +566,10 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
 
     # ── Future layers note ─────────────────────────────────────────────────
     parts.append(_section("Future layers"))
-    parts.append(f"  {_INFO} context_coverage   — deterministic context-health signal (Step 26)")
-    parts.append(f"  {_INFO} memory_placeholder — Step 24+ MemPalace / semantic memory")
-    parts.append(f"  {_INFO} mcp_placeholder    — Step 24+ MCP Quarantine / tool layer")
+    parts.append(f"  {_INFO} context_coverage      — deterministic context-health signal (Step 26)")
+    parts.append(f"  {_INFO} memory_placeholder    — Step 24+ MemPalace / semantic memory")
+    parts.append(f"  {_INFO} mcp_placeholder       — Step 24+ MCP Quarantine / tool layer")
+    parts.append(f"  {_INFO} project_placeholder   — Project Registry v0 link (Step 28)")
     parts.append(f"  {_INFO} React Flow / Three.js / AG-UI / A2UI mapping — Step 24+")
 
     return "\n".join(parts)
@@ -624,7 +648,8 @@ def _node_symbol(node_type: str) -> str:
         NT_BLOCKER:      _FAIL,
         NT_RUN_EVENT:    _INFO,
         NT_AGENT_LOOP:   _INFO,
-        NT_CONSTITUTION: _OK,
-        NT_MEMORY:       _INFO,
-        NT_MCP:          _INFO,
+        NT_CONSTITUTION:        _OK,
+        NT_MEMORY:              _INFO,
+        NT_MCP:                 _INFO,
+        NT_PROJECT_PLACEHOLDER: _INFO,
     }.get(node_type, _INFO)

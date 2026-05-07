@@ -25,18 +25,36 @@ from packages.orchestration.job_runner import PlanJobResult, plan_job
 from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
 
 
-def _cmd_create_job(prompt: str) -> None:
+def _cmd_create_job(prompt: str, *, project_id: str | None = None) -> None:
     from packages.orchestration.run_log import RunLogWriter
 
+    metadata: dict = {}
+    if project_id:
+        metadata["project_id"] = project_id
     job = Job(
         name=prompt[:50],
         user_prompt=prompt,
         state=RunState.PENDING,
+        metadata=metadata,
     )
     save_job(job)
     print(job.id)
     log = RunLogWriter(job_id=job.id)
     log.log("job_created", outcome="created")
+    if project_id:
+        from packages.orchestration.project_registry import (
+            ProjectNotFoundError,
+            attach_job,
+            load_project,
+            save_project,
+        )
+        from uuid import UUID
+        try:
+            project = load_project(UUID(project_id))
+            attach_job(project, str(job.id))
+            save_project(project)
+        except (ProjectNotFoundError, ValueError):
+            pass  # --project refers to a non-existent project; job still created
 
 
 def _cmd_list_jobs() -> None:
@@ -1165,6 +1183,118 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(1)
 
 
+def _cmd_create_project(name: str, description: str | None) -> None:
+    from packages.orchestration.project_registry import RemyProject, save_project
+
+    project = RemyProject(name=name, description=description)
+    save_project(project)
+    print(project.id)
+
+
+def _cmd_list_projects() -> None:
+    from packages.orchestration.project_registry import list_projects
+
+    projects = list_projects()
+    if not projects:
+        print("No projects found.")
+        return
+    for p in projects:
+        desc = f"  {p.description}" if p.description else ""
+        print(f"{p.id}  {p.name}{desc}")
+
+
+def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        attach_repo,
+        load_project,
+        save_project,
+    )
+    from uuid import UUID
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    added = attach_repo(project, repo_path_str)
+    save_project(project)
+    if added:
+        print(f"Attached repo to project {str(pid)[:8]}")
+    else:
+        print(f"Repo already attached to project {str(pid)[:8]} (no-op)")
+
+
+def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        attach_job,
+        load_project,
+        save_project,
+    )
+    from uuid import UUID
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(UUID(job_id_str))
+    except (ValueError, JobNotFoundError):
+        print(f"ERROR: job not found: {job_id_str}", file=sys.stderr)
+        sys.exit(1)
+    added = attach_job(project, job_id_str)
+    save_project(project)
+    if job.metadata.get("project_id") != project_id_str:
+        job.metadata["project_id"] = project_id_str
+        save_job(job)
+    if added:
+        print(f"Attached job {job_id_str[:8]} to project {str(pid)[:8]}")
+    else:
+        print(f"Job already attached to project {str(pid)[:8]} (no-op)")
+
+
+def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        export_project_json,
+        load_project,
+        summarize_project,
+    )
+    from packages.orchestration.storage import list_jobs
+    from uuid import UUID
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    all_jobs = list_jobs()
+    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+    if json_output:
+        print(_json.dumps(export_project_json(project, linked_jobs), indent=2))
+    else:
+        print(summarize_project(project, linked_jobs))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="remedy",
@@ -1174,6 +1304,7 @@ def main() -> None:
 
     create = subparsers.add_parser("create-job", help="Create and persist a new job")
     create.add_argument("prompt", help="User prompt describing the job")
+    create.add_argument("--project", default=None, help="Project UUID to attach the job to")
 
     subparsers.add_parser("list-jobs", help="List all persisted jobs (newest first)")
 
@@ -1320,10 +1451,34 @@ def main() -> None:
     reject_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
     reject_pi.add_argument("--reason", default=None, help="Optional note about this decision")
 
+    create_project = subparsers.add_parser("create-project", help="Create a new project")
+    create_project.add_argument("name", help="Project name")
+    create_project.add_argument("--description", default=None, help="Optional project description")
+
+    subparsers.add_parser("list-projects", help="List all projects (newest first)")
+
+    attach_proj_repo = subparsers.add_parser(
+        "attach-project-repo", help="Attach a repo path to a project"
+    )
+    attach_proj_repo.add_argument("project_id", help="UUID of the project")
+    attach_proj_repo.add_argument("repo_path", help="Path to the repository")
+
+    attach_proj_job = subparsers.add_parser(
+        "attach-project-job", help="Link a job to a project"
+    )
+    attach_proj_job.add_argument("project_id", help="UUID of the project")
+    attach_proj_job.add_argument("job_id", help="UUID of the job")
+
+    show_project = subparsers.add_parser("show-project", help="Show project summary")
+    show_project.add_argument("project_id", help="UUID of the project")
+    show_project.add_argument(
+        "--json", action="store_true", dest="json", help="Output as JSON"
+    )
+
     args = parser.parse_args()
 
     if args.command == "create-job":
-        _cmd_create_job(args.prompt)
+        _cmd_create_job(args.prompt, project_id=getattr(args, "project", None))
     elif args.command == "list-jobs":
         _cmd_list_jobs()
     elif args.command == "show-job":
@@ -1366,6 +1521,16 @@ def main() -> None:
         _cmd_approve_patch_intent(args.job_id, args.intent_id, args.reason)
     elif args.command == "reject-patch-intent":
         _cmd_reject_patch_intent(args.job_id, args.intent_id, args.reason)
+    elif args.command == "create-project":
+        _cmd_create_project(args.name, args.description)
+    elif args.command == "list-projects":
+        _cmd_list_projects()
+    elif args.command == "attach-project-repo":
+        _cmd_attach_project_repo(args.project_id, args.repo_path)
+    elif args.command == "attach-project-job":
+        _cmd_attach_project_job(args.project_id, args.job_id)
+    elif args.command == "show-project":
+        _cmd_show_project(args.project_id, json_output=args.json)
 
 
 if __name__ == "__main__":

@@ -62,6 +62,7 @@ _LAYER_MAP: dict[str, int] = {
     "permission_blocker": 3,
     "memory_placeholder": 4,
     "mcp_placeholder": 4,
+    "project_placeholder": 1,
 }
 _LAYER_RADIUS = [0.0, 150.0, 290.0, 420.0, 530.0]
 _CX = 500.0
