@@ -163,9 +163,9 @@ def apply_patch_intent(
     if not resolved_target.is_relative_to(resolved_root):
         return _blocked("unsafe_path", target_path, action)
 
-    # ── 7. Action + risk + file type ─────────────────────────────────────
-    if not target_path.lower().endswith(".md"):
-        return _blocked("unsupported_file_type", target_path, action)
+    # ── 7. Action + risk ─────────────────────────────────────────────────
+    # Note: .md enforcement is authoritative in _validate_target_path above;
+    # no second check here.
     if action not in ("create", "modify"):
         return _blocked(f"unsupported_action:{action}", target_path, action)
     if risk in _BLOCKED_RISKS:
