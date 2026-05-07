@@ -82,6 +82,14 @@ class TestSmokeScriptText:
             "VIEW_PATH extraction must use awk-based or '|| true' safe fallback"
         )
 
+    def test_view_path_uses_awk_sub(self):
+        text = _script_text()
+        # Must use sub() to strip the prefix, not -F': ' field splitting
+        assert "sub(/^Brain Viewer v0: /, \"\")" in text or \
+               "sub(/^Brain Viewer v0: /," in text, (
+            "VIEW_PATH extraction must use awk sub() to avoid colon-truncation on unusual paths"
+        )
+
     def test_view_path_not_grep_sed_pipeline(self):
         text = _script_text()
         # The old fragile pattern was: grep ... | sed ...
@@ -119,6 +127,33 @@ class TestSmokeScriptText:
 
     def test_project_placeholder_asserted(self):
         assert "project_placeholder" in _script_text()
+
+    def test_apply_before_approval_step_present(self):
+        text = _script_text()
+        assert "apply before approval" in text and "blocked" in text, (
+            "smoke must test apply-before-approval (expect blocked)"
+        )
+
+    def test_apply_after_approval_step_present(self):
+        text = _script_text()
+        assert "apply-patch-intent" in text and "Apply approved patch intent" in text, (
+            "smoke must test apply-patch-intent after approval"
+        )
+
+    def test_apply_noop_step_present(self):
+        text = _script_text()
+        assert "Repeat apply" in text and "no-op" in text, (
+            "smoke must test repeat apply as no-op"
+        )
+
+    def test_target_repo_cleanup_before_mkdir(self):
+        text = _script_text()
+        # rm -rf must appear before mkdir -p for TARGET_REPO
+        rm_pos = text.find('rm -rf "${TARGET_REPO}"')
+        mk_pos = text.find('mkdir -p "${TARGET_REPO}"')
+        assert rm_pos != -1, "smoke must rm -rf TARGET_REPO before mkdir"
+        assert mk_pos != -1, "smoke must mkdir -p TARGET_REPO"
+        assert rm_pos < mk_pos, "rm -rf must come before mkdir -p"
 
 
 # ---------------------------------------------------------------------------

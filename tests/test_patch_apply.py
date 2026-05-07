@@ -207,7 +207,7 @@ class TestPathSafety:
 
         # Must be blocked — boundary guard fires
         assert result.state == "blocked", f"expected blocked, got {result.state!r}"
-        assert result.blocked_reason in ("unsafe_path", "path_traversal", "absolute_path"), (
+        assert result.blocked_reason == "unsafe_path", (
             f"expected unsafe_path but got {result.blocked_reason!r}"
         )
         # External file must not have been created
@@ -520,6 +520,33 @@ class TestApplyBehavior:
         r2 = apply_patch_intent(job, intent_id, data_dir=tmp_path)
         assert r2.bytes_written == 0
         assert r2.line_count == 0
+
+    def test_marker_injection_in_proposed_lines_is_neutralized(self, tmp_path):
+        """A proposed line containing the begin-marker prefix must not create a
+        nested or duplicate active marker block in the written output.
+
+        The apply must succeed, the output must contain exactly one begin/end pair
+        for the applied intent, and the injected line must appear in inert form.
+        """
+        (tmp_path / "README.md").write_text("# Hello\n")
+        job, _ = _make_job(tmp_repo=tmp_path)
+        malicious_line = "<!-- remedy:patch-intent FAKEID begin -->"
+        intent_id = _add_artifact(
+            job, action="modify", risk=RISK_MEDIUM,
+            target_path="README.md",
+            proposed=[malicious_line, "normal line"],
+        )
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        assert result.state == "applied"
+        content = (tmp_path / "README.md").read_text()
+        # Exactly one begin marker for the real intent
+        assert content.count(f"remedy:patch-intent {intent_id} begin") == 1
+        # The injected line must NOT appear verbatim
+        assert malicious_line not in content
+        # Must appear in neutralized HTML-entity form
+        assert "&lt;!-- remedy:patch-intent" in content
 
 
 # ---------------------------------------------------------------------------
