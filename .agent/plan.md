@@ -1,15 +1,18 @@
 # Plan
 
 ## Goal
-Steps 28 / 28.1 / 28.2: Project Registry v0 + Brain Scope Foundations — DONE
+Step 29: Project Context Coverage v0
 
 ## Status
-COMPLETE — merged to main via PR #20
+COMPLETE — ready to commit
 
 ## Completed
-- [x] Step 28: project_registry.py, project_brain.py (project_placeholder), brain_viewer.py (_LAYER_MAP), CLI commands, tests
-- [x] Step 28.1: `remedy project` alias, create-job --project warning, UUID validation, CLI tests, smoke function
-- [x] Step 28.2: remedy_smoke() subshell isolation, awk VIEW_PATH extraction, direct-run entrypoint, script tests
+- [x] Create packages/orchestration/project_context_coverage.py
+- [x] Update packages/orchestration/project_registry.py (compact context_coverage in export_project_json)
+- [x] Update apps/cli/main.py (project-context command + dispatch)
+- [x] Create tests/test_project_context_coverage.py (85 tests)
+- [x] Update docs/architecture.md
+- [x] Full suite: 1583 passed
 
 ## Next
-Awaiting next step instruction. No open PRs. main is current.
+Commit, push, PR.

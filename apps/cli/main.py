@@ -1300,6 +1300,57 @@ def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None
         print(summarize_project(project, linked_jobs))
 
 
+def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+    from uuid import UUID
+
+    from packages.orchestration.project_context_coverage import (
+        derive_project_context_coverage,
+        export_project_context_coverage_json,
+        summarize_project_context_coverage,
+    )
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        load_project,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.storage import list_jobs
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"Error: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+
+    all_jobs = list_jobs()
+    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+
+    snapshot = derive_project_context_coverage(project, linked_jobs)
+
+    if json_output:
+        print(_json.dumps(export_project_context_coverage_json(snapshot), sort_keys=True))
+    else:
+        print(summarize_project_context_coverage(snapshot))
+
+    if linked_jobs:
+        log = RunLogWriter(job_id=linked_jobs[0].id)
+        log.log(
+            "project_context_coverage_inspected",
+            outcome="inspected",
+            score=snapshot.score,
+            present_signal_count=snapshot.present_signal_count,
+            missing_signal_count=snapshot.missing_signal_count,
+            scope=snapshot.scope,
+            repo_count=snapshot.repo_count,
+            job_count=snapshot.job_count,
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="remedy",
@@ -1486,6 +1537,14 @@ def main() -> None:
         "--json", action="store_true", dest="json", help="Output as JSON"
     )
 
+    project_ctx_p = subparsers.add_parser(
+        "project-context", help="Show project-level context coverage"
+    )
+    project_ctx_p.add_argument("project_id", help="UUID of the project")
+    project_ctx_p.add_argument(
+        "--json", action="store_true", dest="json", help="Output as JSON"
+    )
+
     args = parser.parse_args()
 
     if args.command == "create-job":
@@ -1542,6 +1601,8 @@ def main() -> None:
         _cmd_attach_project_job(args.project_id, args.job_id)
     elif args.command in ("show-project", "project"):
         _cmd_show_project(args.project_id, json_output=args.json)
+    elif args.command == "project-context":
+        _cmd_project_context(args.project_id, json_output=args.json)
 
 
 if __name__ == "__main__":
