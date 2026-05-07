@@ -1554,6 +1554,29 @@ No raw exception messages are included.  The viewer is always generated.
 
 **Node colours:** `memory_placeholder`=#7c4fb0 (violet), `mcp_placeholder`=#e06c1a (orange), blocked=#cf4444, running=#4488ff (pulsing), completed/passed/loaded=#d0d7de, patch_intent pending=#d9a520, approved=#3fb950, default=#6e7681.
 
+### Loading diagnostics and failure handling (Step 26.5)
+
+**The Brain Viewer must never show an infinite spinner.**  The page body carries `data-render-status="loading"` until JavaScript resolves it to one of three terminal states:
+
+| Status | Condition |
+|---|---|
+| `ready` | Graph parsed; at least one node rendered |
+| `empty` | Graph parsed; zero nodes |
+| `error` | JS initialisation or render threw an exception |
+
+All JavaScript initialisation runs inside a `try/catch`.  A global `_vErr(category, msg)` function and a `window.onerror` handler both catch failures outside the IIFE.  On error, `_vErr` shows `#err-panel` (an overlaid warning box) and sets `data-render-status="error"`.  Only the JS error message is displayed, capped to 120 characters — no raw stack trace, no node content, no embedded JSON values.
+
+A `#diag` bar below the legend shows live diagnostics populated by JavaScript after render:
+
+- **nodes** — `G.nodes.length`
+- **edges** — `G.edges.length`
+- **details** — `Object.keys(DET).length`
+- **fallbacks** — `VD.detail_fallback_count`
+- **selected** — current selected node id (`none` until a node is clicked)
+- **status** — current `data-render-status` value
+
+These fields let a developer confirm graph data loaded correctly without opening browser dev-tools.  They are read-only and contain no raw content.
+
 ### v0 scope constraints
 
 v0 is the read-only foundation.  Future steps will add:

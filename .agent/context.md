@@ -19,6 +19,7 @@ Step 25.1: Brain Viewer v0 robustness polish + future architecture hooks.
 Step 26: Context Coverage v0.
 Step 26.1: Context Coverage robustness and UX polish.
 Step 26.2: Smoke viewer LAN URL and Context Coverage test polish.
+Step 26.5: Brain Viewer loading diagnostics and no-infinite-spinner hardening.
 
 New files:
 - scripts/remedy_smoke.sh (LAN Brain Viewer smoke helper)
@@ -33,7 +34,7 @@ New files:
 - tests/test_project_brain.py (80 tests)
 - tests/test_brain_detail.py (52 tests)
 - tests/test_brain_smoke.py (39 tests)
-- tests/test_brain_viewer.py (46 tests)
+- tests/test_brain_viewer.py (67 tests)
 - tests/test_context_coverage.py (88 tests)
 
 Modified:

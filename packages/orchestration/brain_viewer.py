@@ -266,9 +266,15 @@ body{background:#0d1117;color:#c9d1d9;font-family:ui-monospace,SFMono-Regular,mo
 .badge{background:#1f2937;color:#7aa7e8;padding:2px 8px;border-radius:4px;
        font-size:11px;border:1px solid #2d3748}
 .badge-warn{background:#2d1a08;color:#ffaa44;border-color:#4a2d10}
+#render-badge[data-status="ready"]{background:#0a2a0a;color:#3fb950;border-color:#1a4a1a}
+#render-badge[data-status="error"]{background:#2d1a08;color:#ffaa44;border-color:#4a2d10}
+#render-badge[data-status="empty"]{background:#1a1a2d;color:#7aa7e8;border-color:#2d3a5a}
 #main{display:flex;flex:1;overflow:hidden;min-height:0}
 #gwrap{flex:1;position:relative;overflow:hidden}
 svg#g{width:100%;height:100%;display:block}
+#err-panel{display:none;position:absolute;top:10px;left:10px;right:10px;
+  background:#1a0e08;color:#ffb347;border:1px solid #4a2d10;
+  border-radius:6px;padding:10px 14px;font-size:12px;z-index:10}
 #dp{width:330px;background:#161b22;border-left:1px solid #21262d;
     padding:12px;overflow-y:auto;font-size:12px;flex-shrink:0}
 #dh{color:#484f58;padding:24px 0;text-align:center;font-size:13px}
@@ -283,6 +289,11 @@ svg#g{width:100%;height:100%;display:block}
      align-items:center;flex-shrink:0}
 .li{display:flex;align-items:center;gap:4px}
 .ld{width:11px;height:11px;border-radius:50%;border:1px solid #30363d}
+#diag{background:#0d1117;padding:3px 16px;border-top:1px solid #21262d;
+  font-size:10px;color:#484f58;display:flex;gap:14px;flex-wrap:wrap;
+  align-items:center;flex-shrink:0}
+#diag b{color:#30363d}
+#diag span{color:#8b949e}
 #ftr{background:#161b22;padding:3px 16px;font-size:10px;color:#30363d;
      border-top:1px solid #21262d;flex-shrink:0}
 .el{stroke:#2d3748;stroke-width:1.5}
@@ -294,16 +305,20 @@ svg#g{width:100%;height:100%;display:block}
 .nd.run circle{animation:pulse 1.5s ease-in-out infinite}
 </style>
 </head>
-<body>
+<body data-render-status="loading">
 <div id="hdr">
   <h1>Remedy Brain Viewer</h1>
   <span class="badge badge-warn">read-only &middot; v0</span>
   <span class="badge">job __JOB_SHORT_ID__</span>
   <span class="badge">__GENERATED_AT__</span>
   <span class="badge" id="ctx-badge">Context: —%</span>
+  <span class="badge" id="render-badge" data-status="loading">● loading</span>
 </div>
 <div id="main">
-  <div id="gwrap"><svg id="g"></svg></div>
+  <div id="gwrap">
+    <svg id="g"></svg>
+    <div id="err-panel" style="display:none"><strong>Viewer error</strong> — <span id="err-msg"></span></div>
+  </div>
   <div id="dp">
     <p id="dh">&larr; Click a node to inspect it</p>
     <div id="db" style="display:none"></div>
@@ -319,14 +334,45 @@ svg#g{width:100%;height:100%;display:block}
   <div class="li"><div class="ld" style="background:#7c4fb0"></div>memory layer (future)</div>
   <div class="li"><div class="ld" style="background:#e06c1a"></div>mcp quarantine (future)</div>
 </div>
+<div id="diag">
+  <b>diag:</b>
+  <span>nodes <span id="diag-nodes">?</span></span>
+  <span>edges <span id="diag-edges">?</span></span>
+  <span>details <span id="diag-details">?</span></span>
+  <span>fallbacks <span id="diag-fallbacks">?</span></span>
+  <span>selected <span id="diag-sel">none</span></span>
+  <span>status <span id="diag-status">loading</span></span>
+</div>
 <div id="ftr">Brain Viewer v0 &middot; read-only &middot; consumes remedy brain --json and remedy brain-node --json &middot; foundation for React&nbsp;Flow / Three.js / AG-UI / A2UI</div>
 <script>
+function _vErr(cat,msg){
+  var safe=String(msg||'').replace(/[\\r\\n\\t]/g,' ').slice(0,120);
+  document.body.setAttribute('data-render-status','error');
+  var b=document.getElementById('render-badge');
+  if(b){b.textContent='\\u25cf error';b.setAttribute('data-status','error');}
+  var ds=document.getElementById('diag-status');
+  if(ds)ds.textContent='error';
+  var ep=document.getElementById('err-panel');
+  if(ep){
+    var em=document.getElementById('err-msg');
+    if(em)em.textContent=String(cat)+': '+safe;
+    ep.style.display='block';
+  }
+}
+window.onerror=function(msg){_vErr('uncaught',msg);return true;};
 (function(){
 'use strict';
+function setRenderStatus(s){
+  document.body.setAttribute('data-render-status',s);
+  var b=document.getElementById('render-badge');
+  if(b){b.textContent='\\u25cf '+s;b.setAttribute('data-status',s);}
+  var ds=document.getElementById('diag-status');
+  if(ds)ds.textContent=s;
+}
+try{
 var VD=__VIEWER_DATA_JSON__;
 var G=VD.graph,DET=VD.node_details,POS=VD.positions;
 var selId=null;
-
 function col(n){
   var t=n.type,s=n.status||'';
   if(t==='memory_placeholder')return'#7c4fb0';
@@ -380,7 +426,7 @@ function render(){
     var x=p[0],y=p[1],r=rad(n),c=col(n);
     var cls='nd'+(n.status==='running'?' run':'')+(n.id===selId?' sel':'');
     var stk=n.id===selId?'#c9d1d9':'#30363d';
-    var lbl=n.label.length>15?n.label.slice(0,14)+'…':n.label;
+    var lbl=n.label.length>15?n.label.slice(0,14)+'\\u2026':n.label;
     h+='<g class="'+cls+'" data-nid="'+esc(n.id)+'" onclick="pick(this.dataset.nid)">';
     h+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+r+'" fill="'+c+'" stroke="'+stk+'" stroke-width="2"/>';
     h+='<text x="'+x.toFixed(1)+'" y="'+(y+r+9).toFixed(1)+'">'+esc(lbl)+'</text>';
@@ -391,10 +437,12 @@ function render(){
 }
 window.pick=function(nodeId){
   selId=nodeId;render();
-  var d=DET[nodeId];
+  var diagSel=document.getElementById('diag-sel');
+  if(diagSel)diagSel.textContent=nodeId||'none';
   document.getElementById('dh').style.display='none';
   var body=document.getElementById('db');
   body.style.display='block';
+  var d=DET[nodeId];
   if(!d){body.innerHTML='<p style="color:#484f58">No detail available.</p>';return;}
   var h='<div class="dt">'+esc(d.title)+'</div>';
   h+='<div class="dr"><span class="dl">type </span><span class="dv">'+esc(d.node_type)+'</span></div>';
@@ -403,11 +451,11 @@ window.pick=function(nodeId){
   h+='<div class="ds">Explanation</div><div class="di">'+esc(d.explanation)+'</div>';
   if(d.why_it_exists&&d.why_it_exists.length){
     h+='<div class="ds">Why it exists</div>';
-    d.why_it_exists.forEach(function(w){h+='<div class="di">○ '+esc(w)+'</div>';});
+    d.why_it_exists.forEach(function(w){h+='<div class="di">\\u25cb '+esc(w)+'</div>';});
   }
   if(d.evidence&&d.evidence.length){
     h+='<div class="ds">Evidence</div>';
-    d.evidence.forEach(function(e){h+='<div class="di">✓ '+esc(e)+'</div>';});
+    d.evidence.forEach(function(e){h+='<div class="di">\\u2713 '+esc(e)+'</div>';});
   }
   if(d.affected_files&&d.affected_files.length){
     h+='<div class="ds">Affected files</div>';
@@ -415,22 +463,30 @@ window.pick=function(nodeId){
   }
   if(d.next_actions&&d.next_actions.length){
     h+='<div class="ds">Next actions</div>';
-    d.next_actions.forEach(function(a){h+='<div class="di">→ '+esc(a)+'</div>';});
+    d.next_actions.forEach(function(a){h+='<div class="di">\\u2192 '+esc(a)+'</div>';});
   }
   if(d.connected_to&&d.connected_to.length){
     h+='<div class="ds">Connections ('+d.connected_to.length+')</div>';
     d.connected_to.slice(0,8).forEach(function(c){
-      h+='<div class="di">['+esc(c.direction)+'] --'+esc(c.edge_type)+'--> '+esc(c.node_type)+' · '+esc(c.node_label.slice(0,28))+'</div>';
+      h+='<div class="di">['+esc(c.direction)+'] --'+esc(c.edge_type)+'--> '+esc(c.node_type)+' \\u00b7 '+esc(c.node_label.slice(0,28))+'</div>';
     });
   }
   if(d.redaction_notes&&d.redaction_notes.length){
     h+='<div class="ds drd">Redaction</div>';
-    d.redaction_notes.forEach(function(r){h+='<div class="di drd">○ '+esc(r)+'</div>';});
+    d.redaction_notes.forEach(function(r){h+='<div class="di drd">\\u25cb '+esc(r)+'</div>';});
   }
   body.innerHTML=h;
 };
 window.addEventListener('resize',render);
 render();
+var dn=document.getElementById('diag-nodes');
+var de=document.getElementById('diag-edges');
+var dd=document.getElementById('diag-details');
+var df=document.getElementById('diag-fallbacks');
+if(dn)dn.textContent=G.nodes.length;
+if(de)de.textContent=G.edges.length;
+if(dd)dd.textContent=Object.keys(DET).length;
+if(df)df.textContent=VD.detail_fallback_count||0;
 (function(){
   var cc=G.nodes.find(function(n){return n.type==='context_coverage';});
   if(cc&&cc.metadata!=null){
@@ -438,6 +494,10 @@ render();
     if(el)el.textContent='Context: '+cc.metadata.score+'%';
   }
 })();
+setRenderStatus(G.nodes.length===0?'empty':'ready');
+}catch(e){
+  _vErr('render',e&&e.message?e.message:'unknown error');
+}
 })();
 </script>
 </body>

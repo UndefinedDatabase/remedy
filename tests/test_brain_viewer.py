@@ -718,3 +718,167 @@ class TestBrainViewCli:
         capsys.readouterr()
         after = set(cwd.glob("*.html")) | set(cwd.glob("*.json"))
         assert after == before, "brain-view must not write files to cwd"
+
+
+# ---------------------------------------------------------------------------
+# TestBrainViewerDiagnostics — Step 26.5
+# ---------------------------------------------------------------------------
+
+
+class TestBrainViewerDiagnostics:
+    """Brain Viewer must fail visibly — no infinite spinner allowed."""
+
+    def _html(self, tmp_path: Path) -> str:
+        job = _make_job()
+        graph = build_project_brain(job, [], constitution=None)
+        data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        index_path = write_brain_viewer_files(data, out_dir)
+        return index_path.read_text()
+
+    # -- Status element tests --
+
+    def test_body_has_render_status_loading_initial(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'data-render-status="loading"' in html
+
+    def test_has_render_badge_element(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="render-badge"' in html
+
+    def test_render_badge_initial_status_loading(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'data-status="loading"' in html
+
+    # -- Error panel tests --
+
+    def test_has_error_panel_element(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="err-panel"' in html
+
+    def test_error_panel_hidden_by_default(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="err-panel"' in html
+        # error panel must start hidden
+        idx = html.index('id="err-panel"')
+        nearby = html[max(0, idx - 100):idx + 100]
+        assert 'display:none' in nearby or 'display: none' in nearby
+
+    def test_has_err_msg_element(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="err-msg"' in html
+
+    # -- Diagnostics panel tests --
+
+    def test_has_diag_nodes(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="diag-nodes"' in html
+
+    def test_has_diag_edges(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="diag-edges"' in html
+
+    def test_has_diag_details(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="diag-details"' in html
+
+    def test_has_diag_fallbacks(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="diag-fallbacks"' in html
+
+    def test_has_diag_sel(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="diag-sel"' in html
+
+    def test_has_diag_status(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="diag-status"' in html
+
+    # -- JS error handling tests --
+
+    def test_has_js_try_catch(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'try{' in html or 'try {' in html
+
+    def test_has_js_catch_clause(self, tmp_path):
+        html = self._html(tmp_path)
+        assert '}catch(' in html or '} catch(' in html
+
+    def test_has_js_error_function(self, tmp_path):
+        html = self._html(tmp_path)
+        assert '_vErr' in html
+
+    def test_has_window_onerror(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'window.onerror' in html
+
+    def test_has_set_render_status_function(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'setRenderStatus' in html
+
+    # -- Regression: viewer_data.json still valid --
+
+    def test_viewer_data_json_remains_valid(self, tmp_path):
+        job = _make_job()
+        graph = build_project_brain(job, [], constitution=None)
+        data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        write_brain_viewer_files(data, out_dir)
+        raw = (out_dir / "viewer_data.json").read_text()
+        parsed = json.loads(raw)
+        assert parsed["version"] == 1
+        assert "graph" in parsed
+        assert "node_details" in parsed
+
+    # -- Regression: redaction sentinels absent --
+
+    def test_redaction_sentinels_absent_from_index_html(self, tmp_path):
+        job = _poisoned_job()
+        events = _poisoned_events(str(job.id))
+        graph = build_project_brain(job, events, constitution=None)
+        data = build_brain_viewer_data(job, graph, events)
+        out_dir = tmp_path / "viewers" / str(job.id)
+        write_brain_viewer_files(data, out_dir)
+        html = (out_dir / "index.html").read_text()
+        for s in _ALL_SENTINELS:
+            assert s not in html, f"sentinel {s!r} found in index.html"
+
+    # -- Regression: brain_viewer_prepared schema unchanged --
+
+    def test_brain_viewer_prepared_schema_unchanged(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        import sys
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        main()
+        capsys.readouterr()
+        events = _read_run_log(tmp_path, job.id)
+        prepared = next(e for e in events if e.get("event") == "brain_viewer_prepared")
+        assert set(prepared["metadata"].keys()) == _BRAIN_VIEWER_PREPARED_METADATA_KEYS
+
+    # -- Regression: detail_fallback_count propagates --
+
+    def test_detail_fallback_count_in_viewer_data_json(self, tmp_path, monkeypatch):
+        import packages.orchestration.brain_viewer as _bv
+        original = _bv.build_brain_node_detail
+        calls = [0]
+
+        def _explode(job, graph, node_id, events):
+            calls[0] += 1
+            if calls[0] == 1:
+                raise RuntimeError("forced diagnostic test failure")
+            return original(job, graph, node_id, events)
+
+        monkeypatch.setattr(_bv, "build_brain_node_detail", _explode)
+        job = _make_job()
+        graph = build_project_brain(job, [], constitution=None)
+        data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        write_brain_viewer_files(data, out_dir)
+        parsed = json.loads((out_dir / "viewer_data.json").read_text())
+        assert parsed["detail_fallback_count"] == 1
