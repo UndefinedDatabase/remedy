@@ -1506,15 +1506,26 @@ Writes files under `REMEDY_DATA_DIR/viewers/<job_id>/`:
 
 Prints `Brain Viewer v0: <path>` to stdout on success.
 
-**Serving over SSH / LAN.**  `index.html` is a local static file; opening it via a `file://` URL works in a local browser but not over SSH.  To access the viewer from a Mac on the same LAN, use the smoke helper:
+**Smoke test helper.**  `scripts/remedy_smoke.sh` is an end-to-end smoke function that creates a project, a job, runs planning, and asserts the brain viewer files are produced correctly.  It does not start any server.
+
+```bash
+# Source and call:
+source scripts/remedy_smoke.sh
+remedy_smoke
+
+# Or run directly:
+./scripts/remedy_smoke.sh
+```
+
+The smoke function runs its body in a subshell so sourcing it does not change the caller's shell options (`nounset`, `pipefail`).
+
+On success the summary prints `VIEW_PATH` — the path to the generated `index.html` — which can be opened directly in a local browser:
 
 ```
-scripts/remedy_smoke.sh <job_id>
+open "file://<VIEW_PATH>"
 ```
 
-The helper starts `python3 -m http.server` bound to `0.0.0.0` in the viewer directory, auto-detects the workstation LAN IP, and prints an `open "http://<ip>:<port>/index.html"` command ready to paste into a Mac terminal.
-
-Port and host can be overridden with `REMEDY_VIEWER_PORT` (default 8765) and `REMEDY_VIEWER_HOST`.  A PID file at `/tmp/remedy-brain-viewer-<port>.pid` lets the helper kill a stale server on re-run.  LAN serving is a developer convenience; it is not a network feature of Remedy itself.
+No http.server, no LAN URLs, no PID files.
 
 The frontend must consume only `viewer_data.json` and the embedded JSON already in `index.html`.  No other data sources are accepted.
 

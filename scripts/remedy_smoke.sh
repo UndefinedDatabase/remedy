@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # remedy_smoke.sh — Project Registry + Brain Viewer smoke test.
 #
-# Usage:
+# Usage (source):
 #   source scripts/remedy_smoke.sh
 #   remedy_smoke
+#
+# Usage (direct):
+#   ./scripts/remedy_smoke.sh
 #
 # Requirements: remedy CLI on PATH, python3.
 # Optional: Ollama running locally (for run-next-task-local).
@@ -12,6 +15,7 @@
 #   REMEDY_SMOKE_REPO  — temp repo path (default: /tmp/remedy-target-repo)
 
 remedy_smoke() {
+  (
     set -euo pipefail
 
     local TARGET_REPO="${REMEDY_SMOKE_REPO:-/tmp/remedy-target-repo}"
@@ -167,7 +171,8 @@ print('    Brain types: '+', '.join(sorted(types)))
         echo "ERROR: brain-view failed" >&2
         return 1
     }
-    VIEW_PATH="$(echo "${BRAIN_VIEW_OUTPUT}" | grep '^Brain Viewer v0:' | sed 's/^Brain Viewer v0: //')"
+    VIEW_PATH="$(printf '%s\n' "${BRAIN_VIEW_OUTPUT}" \
+        | awk -F': ' '/^Brain Viewer v0:/ {print $2; exit}' || true)"
     if [[ -z "${VIEW_PATH}" ]]; then
         echo "ERROR: brain-view did not print a 'Brain Viewer v0:' line" >&2
         printf "Output was:\n%s\n" "${BRAIN_VIEW_OUTPUT}" >&2
@@ -220,4 +225,9 @@ print('    index.html markers: OK')
     echo "VIEW_PATH  = ${VIEW_PATH}"
     echo "remedy_smoke: PASSED"
     echo "========================================"
+  )
 }
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  remedy_smoke "$@"
+fi
