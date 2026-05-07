@@ -661,3 +661,137 @@ class TestPatchIntentRisksCLI:
 
         _, out = self._run_risk_scenario(tmp_path, monkeypatch, capsys)
         assert f"risk   : {RISK_UNKNOWN}" in out
+
+
+# ---------------------------------------------------------------------------
+# Project Registry CLI (Step 28 / 28.1)
+# ---------------------------------------------------------------------------
+
+
+class TestProjectCommandsCLI:
+    """CLI-level tests for project management commands."""
+
+    def _env(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+    def test_create_project_prints_uuid(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_project
+        import uuid
+        _cmd_create_project("MyApp", None)
+        out = capsys.readouterr().out.strip()
+        uuid.UUID(out)  # must be parseable
+
+    def test_project_alias_json_version_1(self, tmp_path, monkeypatch, capsys):
+        import json
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_project, _cmd_show_project
+        _cmd_create_project("AliasTest", None)
+        project_id = capsys.readouterr().out.strip()
+        _cmd_show_project(project_id, json_output=True)
+        out = capsys.readouterr().out
+        d = json.loads(out)
+        assert d["version"] == 1
+
+    def test_show_project_json_version_1(self, tmp_path, monkeypatch, capsys):
+        import json
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_project, _cmd_show_project
+        _cmd_create_project("ShowTest", None)
+        project_id = capsys.readouterr().out.strip()
+        _cmd_show_project(project_id, json_output=True)
+        out = capsys.readouterr().out
+        d = json.loads(out)
+        assert d["version"] == 1
+
+    def test_show_project_missing_exits_1(self, tmp_path, monkeypatch):
+        import pytest
+        from uuid import uuid4
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_show_project
+        with pytest.raises(SystemExit) as exc:
+            _cmd_show_project(str(uuid4()), json_output=False)
+        assert exc.value.code == 1
+
+    def test_show_project_missing_stderr_safe(self, tmp_path, monkeypatch, capsys):
+        import pytest
+        from uuid import uuid4
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_show_project
+        with pytest.raises(SystemExit):
+            _cmd_show_project(str(uuid4()), json_output=False)
+        err = capsys.readouterr().err
+        assert "traceback" not in err.lower()
+        assert "project not found" in err.lower() or "error" in err.lower()
+
+    def test_attach_project_repo_idempotent_message(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_attach_project_repo, _cmd_create_project
+        _cmd_create_project("RepoTest", None)
+        project_id = capsys.readouterr().out.strip()
+        repo = str(tmp_path / "myrepo")
+        import os; os.makedirs(repo)
+        _cmd_attach_project_repo(project_id, repo)
+        capsys.readouterr()
+        _cmd_attach_project_repo(project_id, repo)
+        out = capsys.readouterr().out
+        assert "no-op" in out
+
+    def test_attach_project_job_sets_metadata(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_attach_project_job, _cmd_create_job, _cmd_create_project
+        from packages.orchestration.storage import load_job
+        from uuid import UUID
+        _cmd_create_project("JobLink", None)
+        project_id = capsys.readouterr().out.strip()
+        _cmd_create_job("test prompt")
+        job_id = capsys.readouterr().out.strip()
+        _cmd_attach_project_job(project_id, job_id)
+        capsys.readouterr()
+        job = load_job(UUID(job_id))
+        assert job.metadata.get("project_id") == project_id
+
+    def test_create_job_with_valid_project_links(self, tmp_path, monkeypatch, capsys):
+        import json
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_job, _cmd_create_project, _cmd_show_project
+        _cmd_create_project("Linked", None)
+        project_id = capsys.readouterr().out.strip()
+        _cmd_create_job("linked prompt", project_id=project_id)
+        job_id = capsys.readouterr().out.strip()
+        _cmd_show_project(project_id, json_output=True)
+        out = capsys.readouterr().out
+        d = json.loads(out)
+        assert any(j["id"] == job_id for j in d["jobs"])
+
+    def test_create_job_with_missing_project_warns(self, tmp_path, monkeypatch, capsys):
+        from uuid import uuid4
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_job
+        _cmd_create_job("warn prompt", project_id=str(uuid4()))
+        out = capsys.readouterr()
+        assert "warning" in out.err.lower()
+        assert "traceback" not in out.err.lower()
+
+    def test_create_job_missing_project_does_not_set_metadata(self, tmp_path, monkeypatch, capsys):
+        from uuid import UUID, uuid4
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_job
+        from packages.orchestration.storage import load_job
+        _cmd_create_job("no-link prompt", project_id=str(uuid4()))
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert "project_id" not in job.metadata
+
+    def test_malformed_project_id_no_placeholder_in_brain(self, tmp_path, monkeypatch, capsys):
+        import json
+        self._env(tmp_path, monkeypatch)
+        from packages.core.models import Job, RunState
+        from packages.orchestration.project_brain import build_project_brain, export_project_brain_json
+        from packages.orchestration.storage import save_job
+        job = Job(name="bad-project", state=RunState.PENDING, metadata={"project_id": "not-a-uuid"})
+        save_job(job)
+        graph = build_project_brain(job, [])
+        d = export_project_brain_json(graph)
+        types = {n["type"] for n in d["nodes"]}
+        assert "project_placeholder" not in types

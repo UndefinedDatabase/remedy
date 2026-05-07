@@ -16,7 +16,7 @@ Public API::
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from packages.core.models import Job, RunState
 from packages.orchestration.approval_queue import (
@@ -26,6 +26,9 @@ from packages.orchestration.approval_queue import (
     list_patch_intents,
 )
 from packages.orchestration.permissions import Capability, is_allowed
+
+if TYPE_CHECKING:
+    from packages.orchestration.project_constitution import ProjectConstitution
 
 # ---------------------------------------------------------------------------
 # Symbols (consistent with timeline.py)
@@ -49,11 +52,14 @@ def summarize_cockpit(
     events: list[dict[str, Any]],
     *,
     data_dir: Path | None = None,
+    constitution: "ProjectConstitution | None" = None,
 ) -> str:
     """Return a decision-oriented cockpit string for a job.
 
     ``data_dir`` is the REMEDY_DATA_DIR root (parent of ``runs/``); when
     provided, the run-log directory path is shown in the artifacts section.
+    ``constitution`` is an optional pre-loaded ProjectConstitution; when
+    provided, a concise summary line is added to the Important artifacts section.
     """
     signals = _extract_signals(events)
     parts: list[str] = []
@@ -93,6 +99,9 @@ def summarize_cockpit(
 
     # ── Important artifacts ──────────────────────────────────────────────
     artifacts = _collect_artifacts(job, signals, data_dir)
+    if constitution is not None:
+        n = len(constitution.source_files)
+        artifacts.append(("constitution:", f"{n} source file(s)"))
     if artifacts:
         parts.append(_section("Important artifacts"))
         for label, value in artifacts:

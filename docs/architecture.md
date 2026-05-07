@@ -552,6 +552,10 @@ blocks (task_run_started → terminal) showing type, outcome, verification, work
 path, repo path, patch intent count and risk levels. Unknown events render as
 `○ <event-name>` rather than crashing.
 
+`project_constitution_loaded` is a first-class event: rendered as
+`✓ Project Constitution loaded  sources=N  tests=yes/no  warnings=N` (the
+`warnings=N` field is omitted when `warning_count` is zero).
+
 **Next suggested action (deterministic, no LLM):**
 1. Last terminal is `task_run_failed/permission_denied` → suggest `set-permission`.
 2. `patch_intent_created` with medium/high/unknown risk → suggest review.
@@ -714,7 +718,13 @@ into a single, deterministic, human-readable document.
 writes, no shell execution, no LLM calls.  No new dependencies.  One public function:
 
 ```python
-summarize_trust_report(job: Job, events: list[dict], *, data_dir: Path | None = None) -> str
+summarize_trust_report(
+    job: Job,
+    events: list[dict],
+    *,
+    data_dir: Path | None = None,
+    constitution: ProjectConstitution | None = None,
+) -> str
 ```
 
 **Report sections (numbered, deterministic order):**
@@ -756,6 +766,181 @@ target paths already stored in structured metadata.
 **CLI command:** `remedy trust-report <job_id>` — loads job, loads run events via
 `timeline.load_run_events`, prints the report to stdout, exits 0.  If no run logs exist,
 the report still renders (execution section says "No run logs available") and exits 0.
+
+### Project Constitution v1 (Step 21)
+
+`packages/orchestration/project_constitution.py` provides a read-only, deterministic
+extraction of project policy signals from known files in an attached target repository.
+
+**Purpose:** Give Remedy a structured, machine-readable description of a project's expected
+commands, risky paths, coding conventions, and approval hints.  This is the foundation for
+future Context Inspector, Verifier Marketplace, MCP Quarantine, Autonomy Modes, and
+Memory/MemPalace integration.  It is **not an enforcement layer** in v1 — nothing in the
+task execution pipeline consults the constitution today.
+
+**Model:** `ProjectConstitution` (Pydantic BaseModel) with fields:
+`source_files`, `test_commands`, `build_commands`, `lint_commands`,
+`forbidden_commands`, `risky_paths`, `protected_paths`, `doc_paths`,
+`repo_conventions`, `approval_rules`, `definition_of_done`, `warnings`.
+
+**Public API:**
+```python
+load_project_constitution(repo_root: Path | None) -> ProjectConstitution
+render_constitution(constitution, repo_root) -> str
+```
+
+**Extraction sources (fixed set — no recursive scan):**
+`AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`,
+`pyproject.toml`, `package.json`, `Makefile`, `justfile`, `tox.ini`, `pytest.ini`,
+`.github/workflows/*.yml` (up to 10 files).
+
+**Extraction is purely lexical:** string/regex matching only.  No `eval`, no `import`,
+no subprocess.  Uncertain findings are phrased as "detected" / "possible" / "suggested".
+`tox.ini` and `pytest.ini` currently produce the advisory command `"pytest"`; future
+autonomy modes must treat Constitution commands as hints, not guaranteed exact project
+invocations.
+
+**Safety constraints:**
+- Read-only.  No subprocess, no shell, no writes.
+- Path boundary enforced: `Path.resolve().relative_to(repo_root.resolve())` — symlink-safe.
+- Secret files never read: files whose name starts with `.env`, `secret`, `credential`,
+  `token`, `.netrc`, or ends with `.key`, `.pem`, `.p12`, `.pfx`, `.crt`.
+- Max 200 lines read per file; max 10 workflow files scanned.
+
+**CLI command:** `remedy constitution <job_id>` — loads job, reads `target_repo`,
+calls `load_project_constitution`, prints `render_constitution` output, emits
+`project_constitution_loaded` run log event with `source_count`, `warning_count`,
+`has_test_commands` (structured counts only — no raw file content).
+Exits 0 even when no repo is attached (prints warning).
+
+**Cockpit integration:** `summarize_cockpit` accepts an optional `constitution` parameter.
+When provided, a concise `constitution: N source file(s)` line appears in the
+Important artifacts section.  No line appears when `constitution=None`.
+
+**Trust Report integration:** `_cmd_trust_report` loads the constitution at render time
+(same pattern as cockpit) and passes it to `summarize_trust_report`.  Section 6
+(Permissions and safety) renders a one-line Project Constitution status:
+
+| Condition | Displayed text |
+|-----------|---------------|
+| `constitution` provided, sources found | `Project Constitution: available from N source file(s)` |
+| `constitution` provided, no sources, no warnings | `Project Constitution: no sources found` |
+| `constitution` provided, warnings, no sources | `Project Constitution: unavailable (attached repo missing or not a directory)` |
+| `constitution=None`, `target_repo` set in metadata | `Project Constitution: not loaded (run: remedy constitution <job_id>)` |
+| `constitution=None`, no `target_repo` | `Project Constitution: no attached repo` |
+
+The constitution is never persisted to job metadata — it is loaded fresh and read-only each time.
+
+### Agent Loop Contract v1 (Step 22)
+
+`packages/orchestration/agent_loop.py` defines the orchestration contract and data models
+for coordinating external agent workflows.
+
+**Purpose:** This is a contract and inspection layer — not execution.  External tools
+(Claude Code, Copilot CLI, local models) are **not called** in v1.  The module provides
+immutable models, deterministic state derivation, and a CLI inspection command with an
+audit trail.
+
+**Models (all immutable):**
+
+| Model | Type | Key fields |
+|-------|------|-----------|
+| `AgentRole` | `str, Enum` | planner, builder, reviewer, fixer, verifier, reporter |
+| `AgentLoopStage` | `str, Enum` | planned, build, review, fix, verify, completed, blocked, failed |
+| `AgentLoopDecision` | `str, Enum` | continue, needs\_review, needs\_fix, needs\_approval, blocked, complete |
+| `AgentAdapterSpec` | `frozen dataclass` | name, role, provider, command\_hint, capabilities (frozenset), dry\_run\_only=True, notes (tuple) |
+| `AgentLoopState` | `frozen dataclass` | job\_id, current\_stage, cycle, max\_cycles, decision, builder, reviewer, pending\_findings, completed\_cycles, blocked\_reason |
+
+All `AgentAdapterSpec` instances default to `dry_run_only=True` — no execution in v1.
+
+**Public API:**
+```python
+default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
+summarize_agent_loop_state(job, state) -> str
+derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
+```
+
+**State derivation (deterministic, priority order):**
+
+| Priority | Condition | Decision | Stage |
+|----------|-----------|----------|-------|
+| 1 | Current blocker (see below) | `blocked` | `blocked` |
+| 2 | Pending medium/high/unknown-risk patch intent | `needs_approval` | `review` |
+| 3 | All tasks done + all non-low intents approved | `complete` | `completed` |
+| 4 | Pending tasks | `continue` | `build` |
+| 5 | No tasks | `continue` | `planned` |
+
+Low-risk pending intents do not trigger `needs_approval` in v1.  Unknown risk is
+treated conservatively (same as high risk — requires approval).
+
+**Blocking logic (Step 22.1 — stale-event fix):**
+
+Agent Loop derives the *current* orchestration state, not the worst historical event.
+A blocker is active when EITHER:
+
+1. A non-reserved capability is **explicitly** set to `"deny"` in `job.metadata["permissions"]`
+   AND pending tasks exist.  Default-deny states (e.g. `repo_generated_write` before it
+   has been granted) do not constitute a current block.
+2. A `task_run_failed outcome=permission_denied` event exists for a task that is still
+   `PENDING` in `job.tasks` AND no later `task_run_completed` event exists for the same
+   `task_id`.  Events without a `task_id` are treated conservatively (cannot be proven stale).
+
+Historical `permission_denied` events are **ignored** (treated as stale) when:
+- There are no pending tasks (all work is done or no work has started yet).
+- The same `task_id` has a later `task_run_completed` event.
+- The corresponding task is no longer `PENDING` in `job.tasks`.
+
+**`blocked_reason` format:**
+
+```
+"permission_denied:<capability>"   — e.g. "permission_denied:workspace_write"
+"permission_denied"                — capability unknown (legacy event without metadata)
+```
+
+Summary output renders `"permission_denied:workspace_write"` as
+`blockers: permission_denied (workspace_write)`.  The next-action hint renders the
+concrete `remedy set-permission <job_id> allow workspace_write` command.
+
+**`agent_loop_inspected` run-log schema (intentionally minimal and fixed):**
+
+```json
+{
+  "event": "agent_loop_inspected",
+  "outcome": "inspected",
+  "metadata": {
+    "stage":                "<AgentLoopStage value>",
+    "decision":             "<AgentLoopDecision value>",
+    "cycle":                0,
+    "max_cycles":           3,
+    "pending_finding_count": 0
+  }
+}
+```
+
+No raw artifact content, prompts, approval reasons, diff previews, command output,
+or exception messages appear in the run log.
+
+**CLI command:** `remedy agent-loop <job_id>` — loads job and run events, derives state,
+prints `summarize_agent_loop_state` output, writes `agent_loop_inspected` run log event.
+
+**Run-log event names:**
+
+| Event | Status | Description |
+|-------|--------|-------------|
+| `agent_loop_inspected` | active — emitted by `remedy agent-loop` | Loop state snapshot |
+| `external_agent_proposed` | reserved | External agent submitted a proposal |
+| `external_review_recorded` | reserved | Reviewer agent returned findings |
+| `fix_cycle_requested` | reserved | Fixer agent was requested |
+| `agent_loop_completed` | reserved | Loop reached a terminal state |
+
+**Future adapter examples:** `claude_code_builder`, `copilot_cli_reviewer`,
+`local_model_reviewer`.  All adapters must be `dry_run_only=True` in v1.
+
+**Authority:** Remedy remains the sole authority — permissions, verifier profiles,
+project constitution, run logs, cockpit, and trust report govern all decisions.
+Agent loop decisions are recommendations only; human approval gates are enforced by
+the existing approval queue.  Agent loop must integrate with the future autonomy ladder
+and respect MCP quarantine boundaries when adopted.
 
 ### Verifier Profiles v1 (Step 15)
 
@@ -1030,3 +1215,706 @@ can surface it intentionally when prompting for approval.
 **`packages/providers/ollama_planner/`** — Planner provider. Calls local Ollama with JSON schema enforcement. Configured via `REMEDY_OLLAMA_PLANNER_MODEL`, `REMEDY_OLLAMA_PLANNER_TEMPERATURE`, `REMEDY_OLLAMA_PLANNER_NUM_PREDICT`. The `ollama` package is an optional dependency; loaded lazily.
 
 **`packages/providers/ollama_builder/`** — Builder provider. Same Ollama pattern for the builder role. Configured via `REMEDY_OLLAMA_BUILDER_MODEL`, `REMEDY_OLLAMA_BUILDER_TEMPERATURE`, `REMEDY_OLLAMA_BUILDER_NUM_PREDICT`. Env var parsing errors name the offending variable.
+
+---
+
+## Project Brain Graph v1 (Steps 23 / 23.1)
+
+`packages/orchestration/project_brain.py` — read-only graph representation of a Remedy job.  It is a pure data contract layer and the foundation for a future visual cockpit.
+
+**Scope constraints (enforced):**  No frontend, no rendering, no external processes, no repo mutation, no job/artifact writes, no patch apply, no memory writes, no shell/Git/Docker/network calls.  This module is observation-only.
+
+### Purpose
+
+The Project Brain Graph provides a single, normalised view of every meaningful entity in a job — tasks, artifacts, patch intents, approval decisions, verification events, permission blockers, agent-loop snapshots, and the Project Constitution — as a labelled directed graph.  This graph is the data contract that Step 24+ will map to React Flow / Three.js / AG-UI / A2UI / MemPalace / MCP Quarantine visual components.
+
+### Relationship to other views
+
+| View | Purpose |
+|------|---------|
+| Timeline | Chronological run-log event list |
+| Cockpit | Decision-oriented status overview |
+| Trust Report | Audit / provenance report |
+| Agent Loop | Orchestration state machine snapshot |
+| **Project Brain** | Graph-structured full-picture of all entities |
+
+### Public API
+
+```python
+build_project_brain(job, events, *, constitution=None) -> ProjectBrainGraph
+summarize_project_brain(graph) -> str
+export_project_brain_json(graph) -> dict  # {"version": 1, "job_id", "nodes", "edges"}
+```
+
+All three functions are read-only, deterministic, and emit no side effects.
+
+### Data models
+
+`BrainNode(frozen=True)` — fields: `id`, `type`, `label`, `status`, `risk`, `ref_id`, `metadata: dict[str, str|int|bool]`
+
+`BrainEdge(frozen=True)` — fields: `source`, `target`, `type`, `metadata: dict[str, str|int|bool]`
+
+`ProjectBrainGraph(frozen=True)` — fields: `job_id: UUID`, `nodes: tuple[BrainNode, ...]`, `edges: tuple[BrainEdge, ...]`
+
+### Node types
+
+| Type | Source | Description |
+|------|--------|-------------|
+| `job` | `job` model | Top-level job |
+| `task` | `job.tasks` | Individual task |
+| `artifact` | `job.artifacts` | Output artifact |
+| `patch_intent` | `list_patch_intents` | Proposed file patch |
+| `approval_decision` | decided intents | Recorded approval or rejection |
+| `verification` | `task_run_completed` events | Task verification passed |
+| `permission_blocker` | `task_run_failed outcome=permission_denied` | Permission failure event |
+| `run_event` | key lifecycle events | Notable run-log milestone |
+| `agent_loop` | `agent_loop_inspected` events | Agent loop snapshot |
+| `constitution` | constitution object or `project_constitution_loaded` event | Attached Project Constitution |
+| `memory_placeholder` | always | Reserved for Step 24+ MemPalace |
+| `mcp_placeholder` | always | Reserved for Step 24+ MCP Quarantine |
+
+### Edge types
+
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `has_task` | job → task | Task membership |
+| `created_artifact` | task (or job) → artifact | Artifact ownership |
+| `emitted_event` | job → run_event | Event emission |
+| `produced_patch_intent` | artifact → patch_intent | Patch derivation |
+| `decided_by` | patch_intent → approval_decision | Decision linkage |
+| `verified_by` | task → verification | Verification linkage |
+| `blocked_by` | task → permission_blocker | Blocker linkage |
+| `inspected_by` | agent_loop → job | Agent loop inspection |
+| `governed_by` | job → constitution | Constitution governance |
+| `future_memory_layer` | job → memory_placeholder | Future MemPalace |
+| `future_mcp_layer` | job → mcp_placeholder | Future MCP Quarantine |
+
+### Constitution node deduplication (Step 23.1)
+
+`project_constitution_loaded` is represented **only** as a `constitution` node — it is **not** also promoted to a `run_event` node.  This prevents duplication: the dedicated constitution node (built from the event metadata or the live object) is the canonical representation.  `project_constitution_loaded` is therefore excluded from `_KEY_EVENTS`.
+
+### Visual status legend (Step 24+ mapping)
+
+The text summary includes a stable legend section for future visual mapping:
+
+```
+pending nodes: grey
+running nodes: pulsing
+completed nodes: white
+blocked nodes: red
+needs approval: amber
+memory layer: violet
+mcp quarantine: orange
+```
+
+No frontend or rendering exists in Steps 23/23.1.  This legend is a data contract for Step 24+.
+
+### Sorting
+
+Nodes are sorted by `(_NODE_TYPE_ORDER, id)` — type-priority order (job, task, artifact, …, memory_placeholder, mcp_placeholder) then lexicographic node ID.  Edges are sorted by `(source, target, type)`.  Both sorts are deterministic.
+
+### Redaction policy
+
+Read-only, no side effects, no repo/job/artifact writes, no memory writes, no patch apply.  No artifact content, no diff previews, no approval reasons, no event messages, and no raw command output appear in any node label, metadata value, summary string, or JSON export.  Only counts, IDs, risk labels, and status values are surfaced.  This policy applies to both text output and `--json` output.
+
+### CLI
+
+```
+remedy brain <job_id>           # text summary (default)
+remedy brain <job_id> --json    # JSON export (future frontend data source)
+```
+
+Loads the job, run events, and Project Constitution (from `target_repo` if attached; silently `None` if absent), builds the graph, and emits a `project_brain_inspected` run-log event.  With `--json`, prints `export_project_brain_json` serialised with `sort_keys=True`; text output and run-log event are otherwise identical.
+
+`project_brain_inspected` metadata schema (exact keyset):
+```json
+{ "node_count": N, "edge_count": N, "task_count": N, "patch_intent_count": N }
+```
+
+The `--json` output is the intended data source for a future frontend (React Flow / Three.js / AG-UI); no frontend integration exists in Steps 23/23.1.
+
+### Future steps (Step 24+)
+
+Step 24+ will add:
+- React Flow visual mapping (node type → component, edge type → connector style)
+- Three.js 3-D cockpit rendering using the visual status legend above
+- AG-UI / A2UI streaming integration
+- MemPalace semantic memory nodes (replacing `memory_placeholder`)
+- MCP Quarantine tool-layer nodes (replacing `mcp_placeholder`)
+
+No frontend, AG-UI, Three.js, or MCP integration is present in Steps 23/23.1.
+
+---
+
+## Brain Node Detail v1 (Step 24)
+
+`packages/orchestration/brain_detail.py` — read-only explanation and detail layer for individual Project Brain nodes.  This is the CLI foundation for the future "click a brain sphere and inspect it" UX in a visual cockpit.
+
+**Scope constraints (enforced):**  Read-only only.  No repo mutation, no `save_job`, no patch apply, no permission mutation, no shell/subprocess/Git/Docker/network/MCP/Claude execution, no memory writes, no frontend implementation, no raw artifact content rendering.
+
+### View relationships
+
+| View | Purpose |
+|------|---------|
+| Project Brain (`remedy brain`) | Full graph map — all nodes and edges for a job |
+| **Brain Node Detail (`remedy brain-node`)** | **Drill into one node — explanation, connections, evidence, actions** |
+| Cockpit | Current decision/status overview |
+| Timeline | Chronological run-log history |
+| Trust Report | Full audit/provenance report |
+
+Brain Node Detail is the future detail panel contract for React Flow / Three.js / AG-UI / A2UI: selecting a visual node will call this layer for its detail content.
+
+### Public API
+
+```python
+build_brain_node_detail(job, graph, node_id, events) -> BrainNodeDetail
+summarize_brain_node_detail(detail) -> str
+export_brain_node_detail_json(detail) -> dict
+```
+
+Raises `ValueError` (safe message) if `node_id` is not found in the graph.  All three functions are read-only, deterministic, and emit no side effects.
+
+### Data model
+
+`BrainNodeDetail(frozen=True)` — fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `job_id` | `str` | Parent job UUID |
+| `node_id` | `str` | Graph node ID |
+| `node_type` | `str` | Node type string |
+| `title` | `str` | Human-readable title |
+| `status` | `str` | Node status |
+| `risk` | `str \| None` | Risk level (patch intents only) |
+| `explanation` | `str` | Plain-text explanation of what this node is |
+| `why_it_exists` | `tuple[str, ...]` | Reasons this node type appears in the graph |
+| `connected_to` | `tuple[dict[str, str], ...]` | Incoming + outgoing edges with neighbour info |
+| `evidence` | `tuple[str, ...]` | Short factual strings from safe metadata |
+| `affected_files` | `tuple[str, ...]` | File paths (target_path or repo_applied_files only) |
+| `next_actions` | `tuple[str, ...]` | Suggested CLI commands |
+| `redaction_notes` | `tuple[str, ...]` | What is NOT rendered and why |
+
+Each `connected_to` entry: `{"direction": "incoming"|"outgoing", "edge_type", "node_id", "node_type", "node_label"}`.
+
+### Node-type behaviour
+
+| Node type | Key detail surfaced |
+|-----------|-------------------|
+| `job` | State, task/artifact counts, prompt (truncated to 120 chars) |
+| `task` | Task type, status, linked repo_applied_files |
+| `artifact` | Kind, owner (task or job), repo_applied_files — no content |
+| `patch_intent` | Target path, action, risk, state — no diff preview |
+| `approval_decision` | State, decided_at, decided_by — no approval_reason |
+| `verification` | Pass/fail status and task ref |
+| `permission_blocker` | Blocked capability + `set-permission` hint |
+| `run_event` | Event type and outcome — no message or command output |
+| `agent_loop` | Stage, decision, cycle |
+| `constitution` | Source count, has_test_commands |
+| `memory_placeholder` | Informational — Step 24+ only |
+| `mcp_placeholder` | Informational — Step 24+ only |
+
+### Redaction policy
+
+The following are **never** surfaced in any field, summary string, JSON export, or run-log event:
+- `artifact.content`
+- Diff preview (`patch_intent_diff_preview`)
+- Approval reason text (`approval_reason`)
+- Event message (`event.message`)
+- Raw command output (`metadata.command_output`, `metadata.output`)
+- Raw LLM prompts (user prompt is truncated to 120 chars for the job node)
+
+### CLI
+
+```
+remedy brain-node <job_id> <node_id>           # text detail (default)
+remedy brain-node <job_id> <node_id> --json    # JSON export
+```
+
+Loads the job, run events, and Project Constitution; builds the graph; calls `build_brain_node_detail`; prints text or `--json`; emits a `brain_node_inspected` run-log event.
+
+`brain_node_inspected` metadata schema (exact keyset):
+```json
+{ "node_id": "...", "node_type": "...", "connected_count": N, "evidence_count": N }
+```
+
+The `--json` output is the intended data contract for a future frontend detail panel.  No frontend integration exists in Step 24.
+
+---
+
+## Brain CLI JSON Contract v1 (Step 24.1)
+
+Step 24.1 hardens the machine-readable contract for the two brain CLI commands and establishes the canonical path for the future visual frontend.
+
+### Canonical machine contracts
+
+| Command | `--json` contract | Future consumer |
+|---|---|---|
+| `remedy brain <job_id> --json` | `export_project_brain_json` schema (version, job_id, nodes, edges) | 2D / 3D graph visualisation |
+| `remedy brain-node <job_id> <node_id> --json` | `export_brain_node_detail_json` schema (13 keys) | Click-detail panel for a selected node |
+
+**Invariants enforced and smoke-tested:**
+
+- `--json` stdout is **pure JSON** — no human-readable header, no legend text, no trailing summary.
+- `stderr` is empty on success for both commands.
+- No `Traceback` appears in stdout on success.
+- All 5 redaction sentinels are absent from `--json` stdout and from the corresponding run-log events (`project_brain_inspected`, `brain_node_inspected`).
+
+### Run-log event schemas (exact key sets)
+
+`project_brain_inspected` metadata (set by `remedy brain`):
+```json
+{ "node_count": N, "edge_count": N, "task_count": N, "patch_intent_count": N }
+```
+
+`brain_node_inspected` metadata (set by `remedy brain-node`):
+```json
+{ "node_id": "...", "node_type": "...", "connected_count": N, "evidence_count": N }
+```
+
+Both schemas hold regardless of whether `--json` is used.
+
+### Future frontend priority (Step 24+)
+
+1. **2D graph** via `remedy brain --json` + `remedy brain-node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
+2. **3D / Animus** — Three.js / WebGL rendering of the same graph JSON contract.
+3. **MemPalace** — `memory_placeholder` nodes become live semantic memory nodes when the MemPalace layer is implemented (Step 24+).
+4. **MCP Quarantine** — `mcp_placeholder` nodes become live MCP tool nodes when the MCP integration layer is implemented (Step 24+).
+
+No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the stable integration surface that must not change without a version bump.
+
+**Step 24.2** locks the smoke-level JSON contract before any frontend work begins.  After Step 24.2, future frontend code must treat `--json` stdout as the only machine-readable input and must never parse the human-readable text output (the non-`--json` mode).  Any regression in JSON stdout purity, stderr cleanliness, or run-log schema is a contract break.
+
+**Step 24.3** is the final pre-frontend smoke hardening pass (redaction target alignment, raw-stdout sentinel checks, docstring polish).  After Step 24.3 the JSON contract is fully locked.
+
+**Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain --json` (graph data) and `remedy brain-node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
+
+## Brain Viewer v0 (Steps 25 / 25.1)
+
+`packages/orchestration/brain_viewer.py` generates a self-contained, read-only HTML viewer for a job's Project Brain Graph.  It is strictly read-only: it performs no repo mutation, no patch apply, no permission mutation, no shell/subprocess/Git/Docker/network/MCP/Claude execution, no memory writes, and has no external dependencies (Python stdlib only).
+
+**Current scope:** Brain Viewer v0 is job-scoped.  It visualises a single job's graph.  It is not a Project Brain, a Repo Brain, or a Global Brain.  See *Future Brain Hierarchy* below.
+
+### CLI
+
+```
+remedy brain-view <job_id>
+```
+
+Writes files under `REMEDY_DATA_DIR/viewers/<job_id>/`:
+- `index.html` — self-contained dark-themed viewer with embedded JSON data
+- `viewer_data.json` — machine-readable copy of the embedded data
+
+Prints `Brain Viewer v0: <path>` to stdout on success.
+
+**Smoke test helper.**  `scripts/remedy_smoke.sh` is an end-to-end smoke function that creates a project, a job, runs planning, and asserts the brain viewer files are produced correctly.  It does not start any server.
+
+```bash
+# Source and call:
+source scripts/remedy_smoke.sh
+remedy_smoke
+
+# Or run directly:
+./scripts/remedy_smoke.sh
+```
+
+The smoke function runs its body in a subshell so sourcing it does not change the caller's shell options (`nounset`, `pipefail`).
+
+On success the summary prints `VIEW_PATH` — the path to the generated `index.html` — which can be opened directly in a local browser:
+
+```
+open "file://<VIEW_PATH>"
+```
+
+No http.server, no LAN URLs, no PID files.
+
+The frontend must consume only `viewer_data.json` and the embedded JSON already in `index.html`.  No other data sources are accepted.
+
+**Constitution loading is advisory.**  If the attached repo path is absent, stale, or inaccessible, the viewer continues with `constitution=None` and prints a safe warning to stderr:
+
+```
+Warning: project constitution unavailable for viewer.
+```
+
+No raw exception messages are included.  The viewer is always generated.
+
+### Run-log event
+
+`brain_viewer_prepared` — emitted once per invocation with metadata:
+
+```json
+{
+  "node_count": <int>,
+  "edge_count": <int>,
+  "detail_count": <int>,
+  "detail_fallback_count": <int>,
+  "mode": "static"
+}
+```
+
+`detail_fallback_count` is an observable health signal: it counts the number of nodes for which full detail generation failed and a safe fallback was used instead.  It is 0 on a clean job.  Callers may use it to detect unexpected edge cases without ever logging raw exception messages.
+
+### Architecture
+
+`BrainViewerData` (frozen dataclass) — `{job_id, generated_at, graph, node_details, positions, detail_fallback_count}` — bundles all render data.  Built by `build_brain_viewer_data(job, graph, events)`, which calls `export_project_brain_json` for the graph and `build_brain_node_detail` / `export_brain_node_detail_json` per node.  Any per-node detail failure increments `detail_fallback_count` and uses a safe minimal fallback; it never propagates exceptions or exposes raw error text.
+
+**Redaction:** same policy as `brain_detail.py` — no artifact content, diff previews, approval reasons, event messages, or raw command output in any generated file, including content injected via run-log events.
+
+**Layout:** layered radial — job at centre (layer 0, r=0), constitution/tasks at layer 1 (r=150), artifacts/run_event/agent_loop at layer 2 (r=290), patch_intent/approval/verification/permission_blocker at layer 3 (r=420), memory_placeholder/mcp_placeholder at layer 4 (r=530).  Positions are pre-computed in Python and embedded in the HTML; JavaScript scales to the viewport.
+
+**Rendering:** vanilla JS SVG with `esc()` for attribute safety, `data-nid` attribute for node click, `window.pick(nodeId)` for detail panel.  No external frameworks, no external network requests.
+
+**Node colours:** `memory_placeholder`=#7c4fb0 (violet), `mcp_placeholder`=#e06c1a (orange), blocked=#cf4444, running=#4488ff (pulsing), completed/passed/loaded=#d0d7de, patch_intent pending=#d9a520, approved=#3fb950, default=#6e7681.
+
+### Loading diagnostics and failure handling (Step 26.5)
+
+**The Brain Viewer must never show an infinite spinner.**  The page body carries a `data-render-status` attribute that transitions through the following states:
+
+| Status | Condition |
+|---|---|
+| `static-fallback` | Initial state; server-rendered fallback is visible; JS not yet run |
+| `ready` | JS parsed graph; at least one node rendered; fallback hidden |
+| `empty` | JS parsed graph; zero nodes; fallback hidden |
+| `error` | JS initialisation or render threw an exception; fallback stays visible |
+
+All JavaScript initialisation runs inside a `try/catch`.  A global `_vErr(category, msg)` function and a `window.onerror` handler both catch failures outside the IIFE.  On error, `_vErr` shows `#err-panel` (an overlaid warning box) and sets `data-render-status="error"`.  Only the JS error message is displayed, capped to 120 characters — no raw stack trace, no node content, no embedded JSON values.
+
+A `#diag` bar below the legend shows live diagnostics populated by JavaScript after render:
+
+- **nodes** — `G.nodes.length`
+- **edges** — `G.edges.length`
+- **details** — `Object.keys(DET).length`
+- **fallbacks** — `VD.detail_fallback_count`
+- **selected** — current selected node id (`none` until a node is clicked)
+- **status** — current `data-render-status` value
+
+These fields let a developer confirm graph data loaded correctly without opening browser dev-tools.  They are read-only and contain no raw content.
+
+### Data island and static fallback (Step 27)
+
+**Problem with Step 26.5:** embedding viewer data as `var VD=<json>;` in the execution script means a JS parse error in the data would prevent `_vErr` itself from being defined, leaving the spinner frozen.
+
+**Fix:** use a non-executable JSON data island.
+
+```html
+<script id="viewer-data" type="application/json">{ ... }</script>
+```
+
+`type="application/json"` prevents browser execution.  The execution script reads it at runtime:
+
+```javascript
+var _src = document.getElementById('viewer-data');
+if (!_src) throw new Error('viewer-data island missing');
+var VD = JSON.parse(_src.textContent);
+```
+
+Any parse failure is caught by the surrounding `try/catch`, which calls `_vErr` — guaranteed because `_vErr` is defined outside the IIFE before the data is read.
+
+**Server-rendered static fallback:** Python generates a `<div id="static-fallback">` containing a node/edge/detail/fallback count summary and a table of up to 50 nodes (type, label, status, risk).  This is visible immediately without JavaScript.  `setRenderStatus('ready')` and `setRenderStatus('empty')` hide it with `style.display='none'`.  On error, it stays visible alongside `#err-panel`, so the page always shows something useful.  The body starts at `data-render-status="static-fallback"` (not `"loading"`).
+
+### v0 scope constraints
+
+v0 is the read-only foundation.  Future steps will add:
+1. **React Flow** — interactive 2D graph replacing the SVG layer.
+2. **Three.js / Animus** — 3D visualisation.
+3. **MemPalace** — live semantic memory nodes replacing `memory_placeholder`.
+4. **MCP Quarantine** — live MCP tool nodes replacing `mcp_placeholder`.
+5. **AG-UI / A2UI** — real-time streaming updates.
+
+---
+
+## Future Brain Hierarchy
+
+*This section documents the intended architecture.  None of these layers are implemented yet.*
+
+### Layer 1 — Job Brain
+
+A single concrete job/prompt/run.  Current Brain Viewer v0 is job-scoped.  Every node in the current viewer belongs to a single job.
+
+### Layer 2 — Repo Brain
+
+A single attached repository: backend, frontend, pipeline, infra, docs, etc.  A Repo Brain aggregates:
+- Multiple jobs targeting the same repo.
+- Repo constitution (CLAUDE.md, test commands, lint rules, structure).
+- Repo-level task/artifact/patch/verification history.
+- Repo-scoped policy decisions.
+
+### Layer 3 — Project Brain
+
+A product or project spanning multiple repos and many jobs.  A Project Brain aggregates:
+- Multiple repos (each with its own Repo Brain).
+- Multiple jobs across repos.
+- All repo constitutions.
+- All task, artifact, patch intent, verification, and approval nodes.
+- Project-level memory.
+- Context coverage signals.
+- Enabled skills and capabilities.
+- Project-scoped policy decisions.
+
+Future `remedy brain --json` may accept a `--scope project` flag that produces a multi-repo aggregate graph.  Current Brain Viewer v0 must not pretend to be a Project Brain.
+
+### Layer 4 — Remedy Global Brain
+
+Global reusable knowledge and capabilities.  Includes:
+- **Quarantined MCPs** — MCPs under evaluation, not yet approved.
+- **Approved MCP Skill Cards** — MCPs that passed quarantine and are globally registered as reusable skills.
+- **Provider / model scorecards** — observed performance, latency, and cost data per provider/model combination.
+- **Global capability policies** — default permission posture across all projects.
+- **Verifier / provider / router knowledge** — reusable acceptance-criteria profiles and routing hints.
+
+**MCP Skill Card lifecycle:**  MCPs that pass quarantine become globally registered Skill Cards.  However, a globally approved Skill Card does not automatically grant permission to any project or repo.  Projects must opt in via an explicit policy grant scoped to the project, repo, or capability.  A Skill Card is an offer; a policy grant is acceptance.
+
+### Future Context Collector
+
+The Context Collector should report *Context Coverage*, not an absolute "knowledge percentage".  Coverage is calculated from observable signals, not estimated from unknowns.  Signals include:
+
+| Signal | Description |
+|---|---|
+| Repo constitution availability | Is a CLAUDE.md / constitution present and parseable? |
+| Repo index coverage | What fraction of repo files have been indexed? |
+| Relevant file coverage | Are the files relevant to the current task indexed? |
+| Prior job/artifact availability | Are prior runs for this repo/task type accessible? |
+| Project memory availability | Is project-level memory online? |
+| Enabled MCP/tool context | Which MCP Skill Cards are active in this project? |
+| Verifier/criteria availability | Are acceptance criteria defined for this task type? |
+| Unresolved unknowns | Are there open blockers or ambiguities in the current job? |
+
+Context Coverage is a health signal, not a score.  Low coverage means the agent lacks context — not that it is unintelligent.
+
+### Future "Continue from Node"
+
+Future node detail JSON may expose `continuable: bool` and `allowed_actions: list[str]` fields, enabling a "continue from node" workflow that creates a new job linked by:
+
+```json
+{
+  "project_id": "<uuid>",
+  "repo_id": "<uuid>",
+  "parent_job_id": "<uuid>",
+  "origin_node_id": "<node_id>",
+  "origin_node_type": "<type>"
+}
+```
+
+Not every node will be continuable.  These fields are **not implemented** in v0 and must not be added to current node detail JSON yet.
+
+
+---
+
+## Context Coverage v0 (Step 26)
+
+`packages/orchestration/context_coverage.py` provides a deterministic, redaction-safe context-health indicator for a job.
+
+**This is not a model confidence score and not a truth score.**  It is a context-health signal based on available, observable structured signals — job model fields, run-log events, and project constitution presence.
+
+### CLI
+
+```
+remedy context <job_id> [--json]
+```
+
+Text output shows a coverage bar, present signals, missing signals, a meaning section, and next-action hints.  JSON output is pure parseable JSON.
+
+### Run-log event
+
+`context_coverage_inspected` — emitted once per invocation with metadata:
+
+```json
+{
+  "score": <int>,
+  "present_signal_count": <int>,
+  "missing_signal_count": <int>,
+  "scope": "job"
+}
+```
+
+No labels, no prompt text, no paths, no raw details.
+
+### Signals and weights (total = 100)
+
+| Signal | Weight | v0 behaviour |
+|---|---|---|
+| `attached_repo` | 15 | present if `job.metadata["target_repo"]` is set |
+| `project_constitution` | 15 | present if constitution is loaded with non-empty source files |
+| `planned_tasks` | 10 | present if `job.tasks` is non-empty |
+| `builder_artifacts` | 10 | present if any `BUILDER_PROPOSAL` artifact exists |
+| `patch_intents` | 10 | present if patch_intent metadata or `patch_intent_created` event |
+| `verification_results` | 10 | present if `verification_passed` or `verification_failed` event |
+| `run_logs` | 10 | present if events list is non-empty |
+| `approval_decisions` | 5 | present if `patch_intent_approved` or `patch_intent_rejected` event |
+| `project_memory` | 10 | **always absent in v0** — MemPalace not connected |
+| `mcp_tool_context` | 5 | **always absent in v0** — MCP Quarantine not connected |
+
+`score = round(present_weight / 100 * 100)`, clamped 0..100.
+
+### JSON export schema
+
+```json
+{
+  "version": 1,
+  "job_id": "<uuid>",
+  "scope": "job",
+  "score": <int>,
+  "present_weight": <int>,
+  "total_weight": 100,
+  "signals": [{"key", "label", "present", "weight", "detail"}, ...],
+  "missing_keys": ["<key>", ...]
+}
+```
+
+### Brain integration
+
+A `context_coverage` node (13th node type) is added to the Project Brain Graph on every `build_project_brain` call.  It is always present.
+
+- `id`: `"context_coverage"` (fixed)
+- `label`: `"Context Coverage (<score>%)"`
+- `status`: `"low"` (score < 50), `"partial"` (50–79), `"strong"` (≥ 80)
+- `metadata`: `{score, present_signal_count, missing_signal_count, scope}`
+- Edge: `job --has_context_snapshot--> context_coverage`
+
+The `brain-node context_coverage --json` detail explains what context coverage means, what is present/missing, and that it is not model confidence.
+
+### Brain Viewer integration
+
+- The context_coverage node appears in the graph in layer 1 (same as constitution/task).
+- A `ctx-badge` in the viewer header shows `Context: <score>%`, populated by JavaScript from the embedded graph data.
+- No external data is fetched.
+
+### Redaction
+
+No artifact content, diff previews, approval reasons, event messages, or raw command output appear in any signal detail, summary, or JSON export.  Signal details describe only structural facts (e.g. "3 artifact(s)"), never raw content.
+
+### Scope in v0
+
+Context Coverage v0 is job-scoped.  Future steps will add:
+- **Repo Context Coverage** — aggregates multiple jobs targeting the same repo, adds repo index coverage and constitution richness.
+- **Project Context Coverage** — aggregates across repos, adds project memory, cross-repo task history, and enabled skill coverage.
+- **Global Context Coverage** — adds Global Brain signals: MCP Skill Card availability, provider scorecards, global policy coverage.
+
+## Context Coverage v0 robustness and UX polish (Step 26.1)
+
+Incremental hardening of Context Coverage v0.
+
+### Safe integer parsing (`_safe_int`)
+
+`context_coverage.py` now uses a `_safe_int(value, default=0)` helper for all artifact-metadata integer fields (starting with `patch_intent_count`).  Any value that cannot be parsed by `int()` — strings like `"not-an-int"`, empty lists, `None` — returns `default` instead of raising `ValueError` or `TypeError`.
+
+### v0 maximum score = 85
+
+Because `project_memory` (weight 10) and `mcp_tool_context` (weight 5) are always absent in v0, the maximum achievable score is **85**.  This is "complete for v0" — the score is never normalized to 100.  The summary Meaning section now explicitly states: *"In v0, the maximum score is 85% — Project Memory (+10) and MCP/tool context (+5) are not yet implemented."*
+
+### Stale repo warning in `remedy context`
+
+`_cmd_context` now mirrors `_cmd_brain_view`: if `target_repo` is set but the path does not exist or is not a directory, it prints a fixed safe warning to stderr and continues without a constitution.  Any unexpected exception from `load_project_constitution` is caught and the same warning is emitted.  The raw exception text is never surfaced.
+
+## Project Registry v0 (Step 28)
+
+`packages/orchestration/project_registry.py` — minimal project metadata store.
+
+### Purpose
+
+Projects are named scopes that group one or more repos and jobs.  They are the foundation for the future brain hierarchy:
+
+```
+Global Brain → Project Brain → Repo Brain → Job Brain
+```
+
+The registry stores and retrieves `RemyProject` records from disk.  No repo scanning, no artifact content, no approval reasons, no diff previews, no event messages.
+
+### Data model
+
+`RemyProject(BaseModel)` — Pydantic model with fields:
+
+| Field | Type | Default |
+|---|---|---|
+| `id` | `UUID` | `uuid4()` |
+| `name` | `str` | required |
+| `description` | `str \| None` | `None` |
+| `created_at` | `datetime` | UTC now |
+| `repo_paths` | `list[str]` | `[]` |
+| `job_ids` | `list[str]` | `[]` |
+| `metadata` | `dict[str, Any]` | `{}` |
+
+### Storage
+
+Files are written to `<REMEDY_DATA_DIR>/projects/<project_id>.json` (env var) or `<repo_root>/.data/projects/<project_id>.json` (fallback).
+
+### Public API
+
+```python
+save_project(project) -> None
+load_project(project_id: UUID) -> RemyProject      # raises ProjectNotFoundError
+list_projects() -> list[RemyProject]               # sorted newest-first; corrupt files skipped
+attach_repo(project, repo_path) -> bool            # True if added (idempotent)
+attach_job(project, job_id_str) -> bool            # True if added (idempotent)
+summarize_project(project, jobs) -> str
+export_project_json(project, jobs) -> dict
+```
+
+### CLI commands
+
+```
+remedy create-project <name> [--description <desc>]   — create and print project ID
+remedy list-projects                                  — list all projects (newest first)
+remedy attach-project-repo <project_id> <repo_path>  — attach a repo to a project
+remedy attach-project-job <project_id> <job_id>      — link a job to a project
+remedy project <project_id> [--json]                 — show project summary (user-facing alias)
+remedy show-project <project_id> [--json]            — show project summary (backward-compat)
+remedy create-job "<prompt>" [--project <project_id>] — create job and optionally link
+```
+
+`remedy project` is the primary user-facing alias.  `remedy show-project` remains for backward compatibility; both call the same implementation.
+
+When `--project` is passed to `create-job`:
+- The project is **validated and loaded first**.
+- If the project is valid: `metadata["project_id"]` is set, the job is created, and both are persisted.
+- If the project UUID is invalid or not found: the job is still created **without** `metadata["project_id"]`, and a warning is printed to stderr: `Warning: project unavailable; job created without project link.`
+- Raw exception text is never surfaced.
+
+### Brain connection marker (`project_placeholder` node)
+
+When a job has `metadata["project_id"]` set to a **valid UUID string**, `build_project_brain` adds:
+
+- **Node**: `id="project:<project_id>"`, `type="project_placeholder"`, `status="linked"`, `label="Project <short_id>"`
+- **Edge**: `job --belongs_to_project--> project:<project_id>`
+
+This node is absent when:
+- The job has no `project_id` in metadata.
+- The `project_id` value is present but not a valid UUID string (malformed values are silently ignored).
+
+It is a lightweight marker only — no project aggregation occurs in v0.
+
+### Brain Viewer layer
+
+`project_placeholder` nodes appear in layer 1 (same as `constitution`, `task`, `context_coverage`).
+
+### JSON export schema
+
+```json
+{
+  "version": 1,
+  "project": {"id", "name", "description", "created_at"},
+  "repo_paths": ["<resolved_path>", ...],
+  "jobs": [{"id", "state", "task_count", "artifact_count"}, ...],
+  "counts": {"repo_count", "job_count", "task_count", "artifact_count"},
+  "future_layers": {
+    "repo_brain": "not_implemented",
+    "project_brain": "not_implemented",
+    "global_brain": "not_implemented",
+    "mempalace": "not_implemented",
+    "mcp_skill_registry": "not_implemented"
+  }
+}
+```
+
+### Future layers (not implemented in v0)
+
+| Layer | Description |
+|---|---|
+| Repo Brain | Aggregated brain across all jobs targeting the same repo |
+| Project Brain | Aggregated brain across all repos in a project |
+| Global Brain | Cross-project, cross-provider aggregate with skill registry |
+| MemPalace | Semantic memory layer for jobs and projects |
+| MCP Skill Registry | Registry of verified MCP skills available to agents |
+
+### Redaction
+
+No artifact content, approval reasons, diff previews, event messages, or command output appear in any project summary or JSON export.  Only counts, IDs, names, and status values are surfaced.

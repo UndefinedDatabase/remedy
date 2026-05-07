@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-05-05: Project Constitution v1 is read-only extraction, not enforcement (Step 21)
+Constitution extracts policy signals from known project files using purely lexical matching.
+No subprocess, no eval, no recursive scan, no secrets. It is not consulted by task execution
+in v1 — it is a structured metadata layer for future Context Inspector, Verifier Marketplace,
+MCP Quarantine, Autonomy Modes, and Memory/MemPalace. The optional constitution parameter
+was added to summarize_cockpit and summarize_trust_report rather than loading inside those
+functions, to keep them pure and testable without a live repo.
+
 ## 2026-05-05: Trust Report v1 is read-only and text-first (Step 20)
 Trust Report assembles evidence across Job JSON, Artifact metadata, JSONL run logs,
 Permissions, and Approval Queue into one auditable plain-text document. It is intentionally

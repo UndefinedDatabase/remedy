@@ -18,9 +18,12 @@ Public API::
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from packages.core.models import ArtifactKind, Job, RunState
+
+if TYPE_CHECKING:
+    from packages.orchestration.project_constitution import ProjectConstitution
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_PENDING,
@@ -51,6 +54,7 @@ def summarize_trust_report(
     events: list[dict[str, Any]],
     *,
     data_dir: Path | None = None,
+    constitution: "ProjectConstitution | None" = None,
 ) -> str:
     """Return a full trust/audit report string for a job.
 
@@ -209,6 +213,31 @@ def summarize_trust_report(
             cap_str = f", capability={cap}" if cap else ""
             outcome = dev.get("outcome", "")
             parts.append(f"      task_run_failed(outcome={outcome}{cap_str})")
+
+    # Constitution summary (counts only — no raw content, no raw conventions)
+    if constitution is not None:
+        # Stale/non-dir repo produces a warning and zero sources
+        if constitution.warnings and not constitution.source_files:
+            parts.append(
+                f"  {_INFO} Project Constitution: unavailable"
+                f" (attached repo missing or not a directory)"
+            )
+        elif constitution.source_files:
+            n = len(constitution.source_files)
+            parts.append(
+                f"  {_INFO} Project Constitution: available from {n} source file(s)"
+            )
+        else:
+            parts.append(f"  {_INFO} Project Constitution: no sources found")
+    else:
+        target_repo = job.metadata.get("target_repo")
+        if target_repo:
+            parts.append(
+                f"  {_INFO} Project Constitution: not loaded"
+                f" (run: remedy constitution {job.id})"
+            )
+        else:
+            parts.append(f"  {_INFO} Project Constitution: no attached repo")
 
     # ── 7. Patch intents and decisions ────────────────────────────────────────
     parts.append(_section("7. Patch intents and decisions"))

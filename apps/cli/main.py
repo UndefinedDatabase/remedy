@@ -25,18 +25,41 @@ from packages.orchestration.job_runner import PlanJobResult, plan_job
 from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
 
 
-def _cmd_create_job(prompt: str) -> None:
+def _cmd_create_job(prompt: str, *, project_id: str | None = None) -> None:
     from packages.orchestration.run_log import RunLogWriter
+
+    project = None
+    if project_id:
+        from packages.orchestration.project_registry import (
+            ProjectNotFoundError,
+            load_project,
+        )
+        from uuid import UUID
+        try:
+            project = load_project(UUID(project_id))
+        except (ProjectNotFoundError, ValueError):
+            print("Warning: project unavailable; job created without project link.", file=sys.stderr)
+            project_id = None
+
+    metadata: dict = {}
+    if project_id:
+        metadata["project_id"] = project_id
 
     job = Job(
         name=prompt[:50],
         user_prompt=prompt,
         state=RunState.PENDING,
+        metadata=metadata,
     )
     save_job(job)
     print(job.id)
     log = RunLogWriter(job_id=job.id)
     log.log("job_created", outcome="created")
+
+    if project is not None:
+        from packages.orchestration.project_registry import attach_job, save_project
+        attach_job(project, str(job.id))
+        save_project(project)
 
 
 def _cmd_list_jobs() -> None:
@@ -271,6 +294,7 @@ def _cmd_cockpit(job_id_str: str) -> None:
     from pathlib import Path
 
     from packages.orchestration.cockpit import summarize_cockpit
+    from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.timeline import load_run_events
 
     env = os.environ.get("REMEDY_DATA_DIR")
@@ -279,8 +303,11 @@ def _cmd_cockpit(job_id_str: str) -> None:
     else:
         data_dir = Path(__file__).resolve().parent.parent.parent / ".data"
 
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = load_project_constitution(Path(target_repo_str) if target_repo_str else None)
+
     events = load_run_events(data_dir, job_id)
-    print(summarize_cockpit(job, events, data_dir=data_dir))
+    print(summarize_cockpit(job, events, data_dir=data_dir, constitution=constitution))
 
 
 def _cmd_list_patch_intents(job_id_str: str) -> None:
@@ -411,6 +438,344 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
     print("Note: rejection is metadata only — no files have been modified.")
 
 
+def _cmd_constitution(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.project_constitution import (
+        load_project_constitution,
+        render_constitution,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+
+    target_repo_str = job.metadata.get("target_repo")
+    repo_root = Path(target_repo_str) if target_repo_str else None
+
+    constitution = load_project_constitution(repo_root)
+    print(render_constitution(constitution, repo_root))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "project_constitution_loaded",
+        outcome="loaded",
+        source_count=len(constitution.source_files),
+        warning_count=len(constitution.warnings),
+        has_test_commands=bool(constitution.test_commands),
+    )
+
+
+def _cmd_agent_loop(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.agent_loop import (
+        derive_agent_loop_state,
+        summarize_agent_loop_state,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+    state = derive_agent_loop_state(job, events)
+
+    print(summarize_agent_loop_state(job, state))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "agent_loop_inspected",
+        outcome="inspected",
+        stage=state.current_stage.value,
+        decision=state.decision.value,
+        cycle=state.cycle,
+        max_cycles=state.max_cycles,
+        pending_finding_count=len(state.pending_findings),
+    )
+
+
+def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.project_brain import (
+        build_project_brain,
+        export_project_brain_json,
+        summarize_project_brain,
+    )
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = (
+        load_project_constitution(Path(target_repo_str))
+        if target_repo_str
+        else None
+    )
+
+    graph = build_project_brain(job, events, constitution=constitution)
+
+    if json_output:
+        print(_json.dumps(export_project_brain_json(graph), sort_keys=True))
+    else:
+        print(summarize_project_brain(graph))
+
+    task_count = sum(1 for n in graph.nodes if n.type == "task")
+    patch_intent_count = sum(1 for n in graph.nodes if n.type == "patch_intent")
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "project_brain_inspected",
+        outcome="inspected",
+        node_count=len(graph.nodes),
+        edge_count=len(graph.edges),
+        task_count=task_count,
+        patch_intent_count=patch_intent_count,
+    )
+
+
+def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False) -> None:
+    import json as _json
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.brain_detail import (
+        build_brain_node_detail,
+        export_brain_node_detail_json,
+        summarize_brain_node_detail,
+    )
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = (
+        load_project_constitution(Path(target_repo_str))
+        if target_repo_str
+        else None
+    )
+
+    graph = build_project_brain(job, events, constitution=constitution)
+
+    try:
+        detail = build_brain_node_detail(job, graph, node_id, events)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(_json.dumps(export_brain_node_detail_json(detail), sort_keys=True))
+    else:
+        print(summarize_brain_node_detail(detail))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "brain_node_inspected",
+        outcome="inspected",
+        node_id=detail.node_id,
+        node_type=detail.node_type,
+        connected_count=len(detail.connected_to),
+        evidence_count=len(detail.evidence),
+    )
+
+
+def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.context_coverage import (
+        derive_context_coverage,
+        export_context_coverage_json,
+        summarize_context_coverage,
+    )
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = None
+    if target_repo_str:
+        try:
+            repo_path = Path(target_repo_str)
+            if not repo_path.exists() or not repo_path.is_dir():
+                print(
+                    "Warning: project constitution unavailable for context coverage.",
+                    file=sys.stderr,
+                )
+            else:
+                constitution = load_project_constitution(repo_path)
+        except Exception:
+            print(
+                "Warning: project constitution unavailable for context coverage.",
+                file=sys.stderr,
+            )
+
+    snapshot = derive_context_coverage(job, events, constitution=constitution)
+
+    if json_output:
+        print(_json.dumps(export_context_coverage_json(snapshot), sort_keys=True))
+    else:
+        print(summarize_context_coverage(snapshot))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "context_coverage_inspected",
+        outcome="inspected",
+        score=snapshot.score,
+        present_signal_count=sum(1 for s in snapshot.signals if s.present),
+        missing_signal_count=len(snapshot.missing_keys),
+        scope=snapshot.scope,
+    )
+
+
+def _cmd_brain_view(job_id_str: str) -> None:
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.brain_viewer import (
+        build_brain_viewer_data,
+        write_brain_viewer_files,
+    )
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = None
+    if target_repo_str:
+        try:
+            repo_path = Path(target_repo_str)
+            if not repo_path.exists() or not repo_path.is_dir():
+                print(
+                    "Warning: project constitution unavailable for viewer.",
+                    file=sys.stderr,
+                )
+            else:
+                constitution = load_project_constitution(repo_path)
+        except Exception:
+            print(
+                "Warning: project constitution unavailable for viewer.",
+                file=sys.stderr,
+            )
+
+    graph = build_project_brain(job, events, constitution=constitution)
+    viewer_data = build_brain_viewer_data(job, graph, events)
+
+    out_dir = data_dir / "viewers" / str(job_id)
+    index_path = write_brain_viewer_files(viewer_data, out_dir)
+
+    print(f"Brain Viewer v0: {index_path}")
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "brain_viewer_prepared",
+        outcome="prepared",
+        node_count=len(graph.nodes),
+        edge_count=len(graph.edges),
+        detail_count=len(viewer_data.node_details),
+        detail_fallback_count=viewer_data.detail_fallback_count,
+        mode="static",
+    )
+
+
 def _cmd_trust_report(job_id_str: str) -> None:
     import os
 
@@ -427,14 +792,22 @@ def _cmd_trust_report(job_id_str: str) -> None:
 
     from pathlib import Path
 
+    from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.timeline import load_run_events
     from packages.orchestration.trust_report import summarize_trust_report
 
     env = os.environ.get("REMEDY_DATA_DIR")
     data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
 
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = (
+        load_project_constitution(Path(target_repo_str))
+        if target_repo_str
+        else None
+    )
+
     events = load_run_events(data_dir, job_id)
-    print(summarize_trust_report(job, events, data_dir=data_dir))
+    print(summarize_trust_report(job, events, data_dir=data_dir, constitution=constitution))
 
 
 def _cmd_timeline(job_id_str: str) -> None:
@@ -815,6 +1188,118 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(1)
 
 
+def _cmd_create_project(name: str, description: str | None) -> None:
+    from packages.orchestration.project_registry import RemyProject, save_project
+
+    project = RemyProject(name=name, description=description)
+    save_project(project)
+    print(project.id)
+
+
+def _cmd_list_projects() -> None:
+    from packages.orchestration.project_registry import list_projects
+
+    projects = list_projects()
+    if not projects:
+        print("No projects found.")
+        return
+    for p in projects:
+        desc = f"  {p.description}" if p.description else ""
+        print(f"{p.id}  {p.name}{desc}")
+
+
+def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        attach_repo,
+        load_project,
+        save_project,
+    )
+    from uuid import UUID
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    added = attach_repo(project, repo_path_str)
+    save_project(project)
+    if added:
+        print(f"Attached repo to project {str(pid)[:8]}")
+    else:
+        print(f"Repo already attached to project {str(pid)[:8]} (no-op)")
+
+
+def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        attach_job,
+        load_project,
+        save_project,
+    )
+    from uuid import UUID
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(UUID(job_id_str))
+    except (ValueError, JobNotFoundError):
+        print(f"ERROR: job not found: {job_id_str}", file=sys.stderr)
+        sys.exit(1)
+    added = attach_job(project, job_id_str)
+    save_project(project)
+    if job.metadata.get("project_id") != project_id_str:
+        job.metadata["project_id"] = project_id_str
+        save_job(job)
+    if added:
+        print(f"Attached job {job_id_str[:8]} to project {str(pid)[:8]}")
+    else:
+        print(f"Job already attached to project {str(pid)[:8]} (no-op)")
+
+
+def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        export_project_json,
+        load_project,
+        summarize_project,
+    )
+    from packages.orchestration.storage import list_jobs
+    from uuid import UUID
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+    all_jobs = list_jobs()
+    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+    if json_output:
+        print(_json.dumps(export_project_json(project, linked_jobs), indent=2))
+    else:
+        print(summarize_project(project, linked_jobs))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="remedy",
@@ -824,6 +1309,7 @@ def main() -> None:
 
     create = subparsers.add_parser("create-job", help="Create and persist a new job")
     create.add_argument("prompt", help="User prompt describing the job")
+    create.add_argument("--project", default=None, help="Project UUID to attach the job to")
 
     subparsers.add_parser("list-jobs", help="List all persisted jobs (newest first)")
 
@@ -867,6 +1353,61 @@ def main() -> None:
         help="Execute the next pending task using local Ollama (requires ollama package)",
     )
     run_task.add_argument("job_id", help="UUID of the job to advance")
+
+    brain_node_p = subparsers.add_parser(
+        "brain-node",
+        help="Print detail for a single Project Brain node",
+    )
+    brain_node_p.add_argument("job_id", help="UUID of the job")
+    brain_node_p.add_argument("node_id", help="Node ID from the brain graph")
+    brain_node_p.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output detail as JSON instead of text",
+    )
+
+    context_p = subparsers.add_parser(
+        "context",
+        help="Show Context Coverage signal for a job (what context Remedy currently has)",
+    )
+    context_p.add_argument("job_id", help="UUID of the job")
+    context_p.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output coverage snapshot as JSON",
+    )
+
+    brain_view_p = subparsers.add_parser(
+        "brain-view",
+        help="Generate a read-only local Brain Viewer (static HTML) for a job",
+    )
+    brain_view_p.add_argument("job_id", help="UUID of the job")
+
+    brain_p = subparsers.add_parser(
+        "brain",
+        help="Print the Project Brain Graph (node/edge graph) for a job",
+    )
+    brain_p.add_argument("job_id", help="UUID of the job to inspect")
+    brain_p.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output graph as JSON instead of text summary (future frontend data source)",
+    )
+
+    agent_loop_p = subparsers.add_parser(
+        "agent-loop",
+        help="Inspect the external agent loop state for a job",
+    )
+    agent_loop_p.add_argument("job_id", help="UUID of the job to inspect")
+
+    constitution_p = subparsers.add_parser(
+        "constitution",
+        help="Print the Project Constitution extracted from the attached repo",
+    )
+    constitution_p.add_argument("job_id", help="UUID of the job to show")
 
     trust_report = subparsers.add_parser(
         "trust-report",
@@ -915,10 +1456,40 @@ def main() -> None:
     reject_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
     reject_pi.add_argument("--reason", default=None, help="Optional note about this decision")
 
+    create_project = subparsers.add_parser("create-project", help="Create a new project")
+    create_project.add_argument("name", help="Project name")
+    create_project.add_argument("--description", default=None, help="Optional project description")
+
+    subparsers.add_parser("list-projects", help="List all projects (newest first)")
+
+    attach_proj_repo = subparsers.add_parser(
+        "attach-project-repo", help="Attach a repo path to a project"
+    )
+    attach_proj_repo.add_argument("project_id", help="UUID of the project")
+    attach_proj_repo.add_argument("repo_path", help="Path to the repository")
+
+    attach_proj_job = subparsers.add_parser(
+        "attach-project-job", help="Link a job to a project"
+    )
+    attach_proj_job.add_argument("project_id", help="UUID of the project")
+    attach_proj_job.add_argument("job_id", help="UUID of the job")
+
+    show_project = subparsers.add_parser("show-project", help="Show project summary")
+    show_project.add_argument("project_id", help="UUID of the project")
+    show_project.add_argument(
+        "--json", action="store_true", dest="json", help="Output as JSON"
+    )
+
+    project_alias = subparsers.add_parser("project", help="Show project summary (alias for show-project)")
+    project_alias.add_argument("project_id", help="UUID of the project")
+    project_alias.add_argument(
+        "--json", action="store_true", dest="json", help="Output as JSON"
+    )
+
     args = parser.parse_args()
 
     if args.command == "create-job":
-        _cmd_create_job(args.prompt)
+        _cmd_create_job(args.prompt, project_id=getattr(args, "project", None))
     elif args.command == "list-jobs":
         _cmd_list_jobs()
     elif args.command == "show-job":
@@ -935,6 +1506,18 @@ def main() -> None:
         _cmd_show_permissions(args.job_id)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
+    elif args.command == "brain-node":
+        _cmd_brain_node(args.job_id, args.node_id, json_output=args.json)
+    elif args.command == "brain":
+        _cmd_brain(args.job_id, json_output=args.json)
+    elif args.command == "context":
+        _cmd_context(args.job_id, json_output=args.json)
+    elif args.command == "brain-view":
+        _cmd_brain_view(args.job_id)
+    elif args.command == "agent-loop":
+        _cmd_agent_loop(args.job_id)
+    elif args.command == "constitution":
+        _cmd_constitution(args.job_id)
     elif args.command == "trust-report":
         _cmd_trust_report(args.job_id)
     elif args.command == "timeline":
@@ -949,6 +1532,16 @@ def main() -> None:
         _cmd_approve_patch_intent(args.job_id, args.intent_id, args.reason)
     elif args.command == "reject-patch-intent":
         _cmd_reject_patch_intent(args.job_id, args.intent_id, args.reason)
+    elif args.command == "create-project":
+        _cmd_create_project(args.name, args.description)
+    elif args.command == "list-projects":
+        _cmd_list_projects()
+    elif args.command == "attach-project-repo":
+        _cmd_attach_project_repo(args.project_id, args.repo_path)
+    elif args.command == "attach-project-job":
+        _cmd_attach_project_job(args.project_id, args.job_id)
+    elif args.command in ("show-project", "project"):
+        _cmd_show_project(args.project_id, json_output=args.json)
 
 
 if __name__ == "__main__":

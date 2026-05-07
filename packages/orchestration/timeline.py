@@ -184,6 +184,17 @@ def _render_single_event(ev: dict[str, Any]) -> str | None:
             return f"  {_INFO} Builder returned no change"
         return f"  {_INFO} No-op ({outcome})"
 
+    if name == "project_constitution_loaded":
+        src   = meta.get("source_count", "?")
+        warn  = meta.get("warning_count", 0)
+        tests = meta.get("has_test_commands", False)
+        tests_str = "yes" if tests else "no"
+        warn_str  = f"  warnings={warn}" if warn else ""
+        return (
+            f"  {_OK} Project Constitution loaded"
+            f"  sources={src}  tests={tests_str}{warn_str}"
+        )
+
     # All other events outside a task block: render as informational.
     return f"  {_INFO} {name}"
 
