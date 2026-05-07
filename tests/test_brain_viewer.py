@@ -30,6 +30,7 @@ from packages.orchestration.brain_detail import build_brain_node_detail
 from packages.orchestration.brain_viewer import (
     BrainViewerData,
     _compute_positions,
+    _render_static_fallback,
     build_brain_viewer_data,
     export_brain_viewer_json,
     write_brain_viewer_files,
@@ -861,6 +862,32 @@ class TestBrainViewerDiagnostics:
         prepared = next(e for e in events if e.get("event") == "brain_viewer_prepared")
         assert set(prepared["metadata"].keys()) == _BRAIN_VIEWER_PREPARED_METADATA_KEYS
 
+    # -- Timeout guard --
+
+    def test_has_timeout_guard(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "setTimeout" in html
+
+    def test_timeout_guard_threshold_2000ms(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "2000" in html
+
+    def test_timeout_guard_message(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "render did not complete" in html
+
+    # -- window.onerror --
+
+    def test_window_onerror_has_console_error(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "console.error" in html
+
+    def test_window_onerror_does_not_return_true(self, tmp_path):
+        html = self._html(tmp_path)
+        idx = html.index("window.onerror=function(msg)")
+        snippet = html[idx : idx + 120]
+        assert "return true" not in snippet
+
     # -- Regression: detail_fallback_count propagates --
 
     def test_detail_fallback_count_in_viewer_data_json(self, tmp_path, monkeypatch):
@@ -1029,3 +1056,111 @@ class TestBrainViewerDataIsland:
         write_brain_viewer_files(data, out_dir)
         parsed = json.loads((out_dir / "viewer_data.json").read_text())
         assert set(parsed.keys()) == _VIEWER_JSON_KEYS
+
+
+# ---------------------------------------------------------------------------
+# TestBrainViewerFallbackTruncation — Step 27.1
+# ---------------------------------------------------------------------------
+
+
+class TestBrainViewerFallbackTruncation:
+    """Static fallback shows a notice when the node list is truncated at 50."""
+
+    def _fallback(self, node_count: int) -> str:
+        nodes = [
+            {"id": f"n{i}", "type": "task", "label": f"task {i}", "status": "pending", "risk": None}
+            for i in range(node_count)
+        ]
+        viewer_dict = {
+            "graph": {"nodes": nodes, "edges": []},
+            "node_details": {},
+            "detail_fallback_count": 0,
+        }
+        return _render_static_fallback(viewer_dict)
+
+    def test_no_truncation_notice_zero_nodes(self):
+        html = self._fallback(0)
+        assert "showing 50 of" not in html
+        assert "sf-trunc" not in html
+
+    def test_no_truncation_notice_few_nodes(self):
+        html = self._fallback(5)
+        assert "showing 50 of" not in html
+        assert "sf-trunc" not in html
+
+    def test_no_truncation_notice_exactly_50(self):
+        html = self._fallback(50)
+        assert "showing 50 of" not in html
+        assert "sf-trunc" not in html
+
+    def test_truncation_notice_at_51(self):
+        html = self._fallback(51)
+        assert "sf-trunc" in html
+        assert "showing 50 of 51 nodes" in html
+
+    def test_truncation_notice_at_large_count(self):
+        html = self._fallback(200)
+        assert "sf-trunc" in html
+        assert "showing 50 of 200 nodes" in html
+
+    def test_truncation_table_still_has_50_rows(self):
+        html = self._fallback(100)
+        # 50 data rows + 1 header row = 51 <tr> elements
+        import re
+        rows = re.findall(r"<tr>", html)
+        assert len(rows) == 51  # header + 50 data rows
+
+    def test_truncation_notice_no_raw_html_injection(self):
+        # The count is an integer — verify escape path is used
+        html = self._fallback(55)
+        assert "<script" not in html
+        assert "sf-trunc" in html
+
+    def test_full_write_path_no_truncation_normal_job(self, tmp_path):
+        """A normal minimal job has far fewer than 50 nodes — no truncation notice."""
+        job = _make_job()
+        graph = build_project_brain(job, [], constitution=None)
+        data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        index_path = write_brain_viewer_files(data, out_dir)
+        html = index_path.read_text()
+        assert "showing 50 of" not in html
+
+
+# ---------------------------------------------------------------------------
+# TestBrainViewerPlaceholderOrder — Step 27.1
+# ---------------------------------------------------------------------------
+
+
+class TestBrainViewerPlaceholderOrder:
+    """__VIEWER_DATA_JSON__ must be replaced before __STATIC_FALLBACK__ to prevent
+    a node label of '__VIEWER_DATA_JSON__' from being expanded to the full JSON blob
+    inside the static fallback table."""
+
+    def test_viewer_data_json_label_stays_literal_in_fallback(self, tmp_path):
+        """A node label that is literally '__VIEWER_DATA_JSON__' must appear as
+        text in the fallback table cell, not as the injected JSON blob."""
+        job = _make_job(name="__VIEWER_DATA_JSON__")
+        graph = build_project_brain(job, [], constitution=None)
+        data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        index_path = write_brain_viewer_files(data, out_dir)
+        html = index_path.read_text()
+        # The label must appear as a literal <td> value, not trigger JSON injection
+        assert "<td>__VIEWER_DATA_JSON__</td>" in html
+        # Confirm the full JSON blob was NOT injected into a table cell
+        # (the JSON blob would contain '"version"' — proof of injection)
+        fallback_start = html.index('id="static-fallback"')
+        fallback_end = html.index('id="main"', fallback_start)
+        fallback_section = html[fallback_start:fallback_end]
+        assert '"version"' not in fallback_section
+
+    def test_static_fallback_placeholder_absent_from_output(self, tmp_path):
+        job = _make_job()
+        graph = build_project_brain(job, [], constitution=None)
+        data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        index_path = write_brain_viewer_files(data, out_dir)
+        html = index_path.read_text()
+        assert "__STATIC_FALLBACK__" not in html
+        assert "__VIEWER_DATA_JSON__" not in html

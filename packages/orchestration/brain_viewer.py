@@ -277,6 +277,8 @@ def _render_static_fallback(viewer_dict: dict) -> str:
                 f'</tr>'
             )
         parts.append('</table>')
+        if len(nodes) > 50:
+            parts.append(f'<p class="sf-trunc">showing 50 of {_e(len(nodes))} nodes</p>')
     return ''.join(parts)
 
 
@@ -289,8 +291,8 @@ def _render_html(
     """Return self-contained HTML with JSON data island and server-rendered fallback."""
     return (
         _HTML
+        .replace("__VIEWER_DATA_JSON__", viewer_json_str)  # must precede __STATIC_FALLBACK__
         .replace("__STATIC_FALLBACK__", static_fallback_html)
-        .replace("__VIEWER_DATA_JSON__", viewer_json_str)
         .replace("__JOB_SHORT_ID__", job_short_id)
         .replace("__GENERATED_AT__", generated_at)
     )
@@ -330,6 +332,7 @@ body{background:#0d1117;color:#c9d1d9;font-family:ui-monospace,SFMono-Regular,mo
 .sf-tbl th,.sf-tbl td{padding:2px 8px;text-align:left;border:1px solid #21262d}
 .sf-tbl th{color:#484f58;font-weight:normal}
 .sf-tbl td{color:#8b949e}
+.sf-trunc{margin-top:4px;color:#484f58;font-size:10px;font-style:italic}
 #main{display:flex;flex:1;overflow:hidden;min-height:0}
 #gwrap{flex:1;position:relative;overflow:hidden}
 svg#g{width:100%;height:100%;display:block}
@@ -424,7 +427,7 @@ function _vErr(cat,msg){
     ep.style.display='block';
   }
 }
-window.onerror=function(msg){_vErr('uncaught',msg);return true;};
+window.onerror=function(msg){console.error(msg);_vErr('uncaught',msg);return false;};
 (function(){
 'use strict';
 function setRenderStatus(s){
@@ -570,6 +573,10 @@ setRenderStatus(G.nodes.length===0?'empty':'ready');
   _vErr('render',e&&e.message?e.message:'unknown error');
 }
 })();
+setTimeout(function(){
+  var s=document.body.getAttribute('data-render-status');
+  if(s==='static-fallback'||s==='loading'){_vErr('timeout','render did not complete');}
+},2000);
 </script>
 </body>
 </html>"""
