@@ -28,9 +28,23 @@ from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job
 def _cmd_create_job(prompt: str, *, project_id: str | None = None) -> None:
     from packages.orchestration.run_log import RunLogWriter
 
+    project = None
+    if project_id:
+        from packages.orchestration.project_registry import (
+            ProjectNotFoundError,
+            load_project,
+        )
+        from uuid import UUID
+        try:
+            project = load_project(UUID(project_id))
+        except (ProjectNotFoundError, ValueError):
+            print("Warning: project unavailable; job created without project link.", file=sys.stderr)
+            project_id = None
+
     metadata: dict = {}
     if project_id:
         metadata["project_id"] = project_id
+
     job = Job(
         name=prompt[:50],
         user_prompt=prompt,
@@ -41,20 +55,11 @@ def _cmd_create_job(prompt: str, *, project_id: str | None = None) -> None:
     print(job.id)
     log = RunLogWriter(job_id=job.id)
     log.log("job_created", outcome="created")
-    if project_id:
-        from packages.orchestration.project_registry import (
-            ProjectNotFoundError,
-            attach_job,
-            load_project,
-            save_project,
-        )
-        from uuid import UUID
-        try:
-            project = load_project(UUID(project_id))
-            attach_job(project, str(job.id))
-            save_project(project)
-        except (ProjectNotFoundError, ValueError):
-            pass  # --project refers to a non-existent project; job still created
+
+    if project is not None:
+        from packages.orchestration.project_registry import attach_job, save_project
+        attach_job(project, str(job.id))
+        save_project(project)
 
 
 def _cmd_list_jobs() -> None:
@@ -1475,6 +1480,12 @@ def main() -> None:
         "--json", action="store_true", dest="json", help="Output as JSON"
     )
 
+    project_alias = subparsers.add_parser("project", help="Show project summary (alias for show-project)")
+    project_alias.add_argument("project_id", help="UUID of the project")
+    project_alias.add_argument(
+        "--json", action="store_true", dest="json", help="Output as JSON"
+    )
+
     args = parser.parse_args()
 
     if args.command == "create-job":
@@ -1529,7 +1540,7 @@ def main() -> None:
         _cmd_attach_project_repo(args.project_id, args.repo_path)
     elif args.command == "attach-project-job":
         _cmd_attach_project_job(args.project_id, args.job_id)
-    elif args.command == "show-project":
+    elif args.command in ("show-project", "project"):
         _cmd_show_project(args.project_id, json_output=args.json)
 
 

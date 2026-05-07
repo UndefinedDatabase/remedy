@@ -1845,20 +1845,31 @@ remedy create-project <name> [--description <desc>]   — create and print proje
 remedy list-projects                                  — list all projects (newest first)
 remedy attach-project-repo <project_id> <repo_path>  — attach a repo to a project
 remedy attach-project-job <project_id> <job_id>      — link a job to a project
-remedy show-project <project_id> [--json]            — show project summary
+remedy project <project_id> [--json]                 — show project summary (user-facing alias)
+remedy show-project <project_id> [--json]            — show project summary (backward-compat)
 remedy create-job "<prompt>" [--project <project_id>] — create job and optionally link
 ```
 
-When `--project` is passed to `create-job`, the new job's `metadata["project_id"]` is set and the job is added to the project's `job_ids` list.
+`remedy project` is the primary user-facing alias.  `remedy show-project` remains for backward compatibility; both call the same implementation.
+
+When `--project` is passed to `create-job`:
+- The project is **validated and loaded first**.
+- If the project is valid: `metadata["project_id"]` is set, the job is created, and both are persisted.
+- If the project UUID is invalid or not found: the job is still created **without** `metadata["project_id"]`, and a warning is printed to stderr: `Warning: project unavailable; job created without project link.`
+- Raw exception text is never surfaced.
 
 ### Brain connection marker (`project_placeholder` node)
 
-When a job has `metadata["project_id"]` set, `build_project_brain` adds:
+When a job has `metadata["project_id"]` set to a **valid UUID string**, `build_project_brain` adds:
 
 - **Node**: `id="project:<project_id>"`, `type="project_placeholder"`, `status="linked"`, `label="Project <short_id>"`
 - **Edge**: `job --belongs_to_project--> project:<project_id>`
 
-This node is absent when the job has no linked project.  It is a lightweight marker only — no project aggregation occurs in v0.
+This node is absent when:
+- The job has no `project_id` in metadata.
+- The `project_id` value is present but not a valid UUID string (malformed values are silently ignored).
+
+It is a lightweight marker only — no project aggregation occurs in v0.
 
 ### Brain Viewer layer
 

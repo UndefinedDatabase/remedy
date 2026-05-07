@@ -475,7 +475,14 @@ def build_project_brain(
     ))
 
     # ── 9. Project placeholder node (present only when job is linked) ────────
-    project_id_str = job.metadata.get("project_id") if job.metadata else None
+    _raw_pid = job.metadata.get("project_id") if job.metadata else None
+    project_id_str: str | None = None
+    if _raw_pid:
+        try:
+            UUID(str(_raw_pid))
+            project_id_str = str(_raw_pid)
+        except (ValueError, AttributeError):
+            pass  # malformed project_id — silently omit placeholder
     if project_id_str:
         proj_node_id = f"project:{project_id_str}"
         nodes.append(BrainNode(
