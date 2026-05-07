@@ -51,6 +51,7 @@ _LAYER_MAP: dict[str, int] = {
     "job": 0,
     "constitution": 1,
     "task": 1,
+    "context_coverage": 1,
     "artifact": 2,
     "run_event": 2,
     "agent_loop": 2,
@@ -299,6 +300,7 @@ svg#g{width:100%;height:100%;display:block}
   <span class="badge badge-warn">read-only &middot; v0</span>
   <span class="badge">job __JOB_SHORT_ID__</span>
   <span class="badge">__GENERATED_AT__</span>
+  <span class="badge" id="ctx-badge">Context: —%</span>
 </div>
 <div id="main">
   <div id="gwrap"><svg id="g"></svg></div>
@@ -429,6 +431,13 @@ window.pick=function(nodeId){
 };
 window.addEventListener('resize',render);
 render();
+(function(){
+  var cc=G.nodes.find(function(n){return n.type==='context_coverage';});
+  if(cc&&cc.metadata!=null){
+    var el=document.getElementById('ctx-badge');
+    if(el)el.textContent='Context: '+cc.metadata.score+'%';
+  }
+})();
 })();
 </script>
 </body>

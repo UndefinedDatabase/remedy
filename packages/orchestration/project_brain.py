@@ -24,6 +24,7 @@ Node types:
   constitution       — the attached Project Constitution
   memory_placeholder — reserved node for future MemPalace memory layer
   mcp_placeholder    — reserved node for future MCP Quarantine layer
+  context_coverage   — deterministic context-health snapshot for the job
 
 Edge types:
   has_task              — job → task
@@ -37,6 +38,7 @@ Edge types:
   governed_by           — job → constitution
   future_memory_layer   — job → memory_placeholder
   future_mcp_layer      — job → mcp_placeholder
+  has_context_snapshot  — job → context_coverage
 
 Redaction policy:
   Artifact content, diff previews, approval reasons, event messages, and
@@ -62,6 +64,7 @@ from packages.orchestration.approval_queue import (
     APPROVAL_PENDING,
     list_patch_intents,
 )
+from packages.orchestration.context_coverage import derive_context_coverage
 
 
 # ---------------------------------------------------------------------------
@@ -89,35 +92,38 @@ NT_VERIFICATION = "verification"
 NT_BLOCKER      = "permission_blocker"
 NT_RUN_EVENT    = "run_event"
 NT_AGENT_LOOP   = "agent_loop"
-NT_CONSTITUTION = "constitution"
-NT_MEMORY       = "memory_placeholder"
-NT_MCP          = "mcp_placeholder"
+NT_CONSTITUTION      = "constitution"
+NT_MEMORY            = "memory_placeholder"
+NT_MCP               = "mcp_placeholder"
+NT_CONTEXT_COVERAGE  = "context_coverage"
 
-ET_HAS_TASK      = "has_task"
-ET_CREATED       = "created_artifact"
-ET_EMITTED       = "emitted_event"
-ET_PRODUCED_PI   = "produced_patch_intent"
-ET_DECIDED       = "decided_by"
-ET_VERIFIED      = "verified_by"
-ET_BLOCKED       = "blocked_by"
-ET_INSPECTED     = "inspected_by"
-ET_GOVERNED      = "governed_by"
-ET_FUTURE_MEMORY = "future_memory_layer"
-ET_FUTURE_MCP    = "future_mcp_layer"
+ET_HAS_TASK             = "has_task"
+ET_CREATED              = "created_artifact"
+ET_EMITTED              = "emitted_event"
+ET_PRODUCED_PI          = "produced_patch_intent"
+ET_DECIDED              = "decided_by"
+ET_VERIFIED             = "verified_by"
+ET_BLOCKED              = "blocked_by"
+ET_INSPECTED            = "inspected_by"
+ET_GOVERNED             = "governed_by"
+ET_FUTURE_MEMORY        = "future_memory_layer"
+ET_FUTURE_MCP           = "future_mcp_layer"
+ET_HAS_CONTEXT_SNAPSHOT = "has_context_snapshot"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
-    NT_JOB:          0,
-    NT_TASK:         1,
-    NT_ARTIFACT:     2,
-    NT_PATCH_INTENT: 3,
-    NT_APPROVAL:     4,
-    NT_VERIFICATION: 5,
-    NT_BLOCKER:      6,
-    NT_RUN_EVENT:    7,
-    NT_AGENT_LOOP:   8,
-    NT_CONSTITUTION: 9,
-    NT_MEMORY:       10,
-    NT_MCP:          11,
+    NT_JOB:              0,
+    NT_TASK:             1,
+    NT_ARTIFACT:         2,
+    NT_PATCH_INTENT:     3,
+    NT_APPROVAL:         4,
+    NT_VERIFICATION:     5,
+    NT_BLOCKER:          6,
+    NT_RUN_EVENT:        7,
+    NT_AGENT_LOOP:       8,
+    NT_CONSTITUTION:     9,
+    NT_CONTEXT_COVERAGE: 10,
+    NT_MEMORY:           11,
+    NT_MCP:              12,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -437,7 +443,33 @@ def build_project_brain(
         type=ET_FUTURE_MCP,
     ))
 
-    # ── 8. Sort ──────────────────────────────────────────────────────────────
+    # ── 8. Context Coverage snapshot node (always present) ──────────────────
+    cov = derive_context_coverage(job, events, constitution=constitution)
+    cov_score = cov.score
+    cov_status = (
+        "low" if cov_score < 50
+        else "partial" if cov_score < 80
+        else "strong"
+    )
+    nodes.append(BrainNode(
+        id="context_coverage",
+        type=NT_CONTEXT_COVERAGE,
+        label=f"Context Coverage ({cov_score}%)",
+        status=cov_status,
+        metadata={
+            "score": cov_score,
+            "present_signal_count": sum(1 for s in cov.signals if s.present),
+            "missing_signal_count": len(cov.missing_keys),
+            "scope": "job",
+        },
+    ))
+    edges.append(BrainEdge(
+        source=job_node_id,
+        target="context_coverage",
+        type=ET_HAS_CONTEXT_SNAPSHOT,
+    ))
+
+    # ── 9. Sort ──────────────────────────────────────────────────────────────
     sorted_nodes = tuple(
         sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
     )
@@ -475,7 +507,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
     _all_types = [
         NT_JOB, NT_TASK, NT_ARTIFACT, NT_PATCH_INTENT, NT_APPROVAL,
         NT_VERIFICATION, NT_BLOCKER, NT_RUN_EVENT, NT_AGENT_LOOP,
-        NT_CONSTITUTION, NT_MEMORY, NT_MCP,
+        NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)
@@ -511,6 +543,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
 
     # ── Future layers note ─────────────────────────────────────────────────
     parts.append(_section("Future layers"))
+    parts.append(f"  {_INFO} context_coverage   — deterministic context-health signal (Step 26)")
     parts.append(f"  {_INFO} memory_placeholder — Step 24+ MemPalace / semantic memory")
     parts.append(f"  {_INFO} mcp_placeholder    — Step 24+ MCP Quarantine / tool layer")
     parts.append(f"  {_INFO} React Flow / Three.js / AG-UI / A2UI mapping — Step 24+")

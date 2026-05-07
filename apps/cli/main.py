@@ -618,6 +618,65 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
     )
 
 
+def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+    import os
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+
+    from packages.orchestration.context_coverage import (
+        derive_context_coverage,
+        export_context_coverage_json,
+        summarize_context_coverage,
+    )
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    env = os.environ.get("REMEDY_DATA_DIR")
+    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = None
+    if target_repo_str:
+        try:
+            repo_path = Path(target_repo_str)
+            if repo_path.exists() and repo_path.is_dir():
+                constitution = load_project_constitution(repo_path)
+        except Exception:
+            pass
+
+    snapshot = derive_context_coverage(job, events, constitution=constitution)
+
+    if json_output:
+        print(_json.dumps(export_context_coverage_json(snapshot), sort_keys=True))
+    else:
+        print(summarize_context_coverage(snapshot))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "context_coverage_inspected",
+        outcome="inspected",
+        score=snapshot.score,
+        present_signal_count=sum(1 for s in snapshot.signals if s.present),
+        missing_signal_count=len(snapshot.missing_keys),
+        scope=snapshot.scope,
+    )
+
+
 def _cmd_brain_view(job_id_str: str) -> None:
     import os
 
@@ -1164,6 +1223,18 @@ def main() -> None:
         help="Output detail as JSON instead of text",
     )
 
+    context_p = subparsers.add_parser(
+        "context",
+        help="Show Context Coverage signal for a job (what context Remedy currently has)",
+    )
+    context_p.add_argument("job_id", help="UUID of the job")
+    context_p.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output coverage snapshot as JSON",
+    )
+
     brain_view_p = subparsers.add_parser(
         "brain-view",
         help="Generate a read-only local Brain Viewer (static HTML) for a job",
@@ -1265,6 +1336,8 @@ def main() -> None:
         _cmd_brain_node(args.job_id, args.node_id, json_output=args.json)
     elif args.command == "brain":
         _cmd_brain(args.job_id, json_output=args.json)
+    elif args.command == "context":
+        _cmd_context(args.job_id, json_output=args.json)
     elif args.command == "brain-view":
         _cmd_brain_view(args.job_id)
     elif args.command == "agent-loop":

@@ -1626,3 +1626,96 @@ Future node detail JSON may expose `continuable: bool` and `allowed_actions: lis
 ```
 
 Not every node will be continuable.  These fields are **not implemented** in v0 and must not be added to current node detail JSON yet.
+
+
+---
+
+## Context Coverage v0 (Step 26)
+
+`packages/orchestration/context_coverage.py` provides a deterministic, redaction-safe context-health indicator for a job.
+
+**This is not a model confidence score and not a truth score.**  It is a context-health signal based on available, observable structured signals — job model fields, run-log events, and project constitution presence.
+
+### CLI
+
+```
+remedy context <job_id> [--json]
+```
+
+Text output shows a coverage bar, present signals, missing signals, a meaning section, and next-action hints.  JSON output is pure parseable JSON.
+
+### Run-log event
+
+`context_coverage_inspected` — emitted once per invocation with metadata:
+
+```json
+{
+  "score": <int>,
+  "present_signal_count": <int>,
+  "missing_signal_count": <int>,
+  "scope": "job"
+}
+```
+
+No labels, no prompt text, no paths, no raw details.
+
+### Signals and weights (total = 100)
+
+| Signal | Weight | v0 behaviour |
+|---|---|---|
+| `attached_repo` | 15 | present if `job.metadata["target_repo"]` is set |
+| `project_constitution` | 15 | present if constitution is loaded with non-empty source files |
+| `planned_tasks` | 10 | present if `job.tasks` is non-empty |
+| `builder_artifacts` | 10 | present if any `BUILDER_PROPOSAL` artifact exists |
+| `patch_intents` | 10 | present if patch_intent metadata or `patch_intent_created` event |
+| `verification_results` | 10 | present if `verification_passed` or `verification_failed` event |
+| `run_logs` | 10 | present if events list is non-empty |
+| `approval_decisions` | 5 | present if `patch_intent_approved` or `patch_intent_rejected` event |
+| `project_memory` | 10 | **always absent in v0** — MemPalace not connected |
+| `mcp_tool_context` | 5 | **always absent in v0** — MCP Quarantine not connected |
+
+`score = round(present_weight / 100 * 100)`, clamped 0..100.
+
+### JSON export schema
+
+```json
+{
+  "version": 1,
+  "job_id": "<uuid>",
+  "scope": "job",
+  "score": <int>,
+  "present_weight": <int>,
+  "total_weight": 100,
+  "signals": [{"key", "label", "present", "weight", "detail"}, ...],
+  "missing_keys": ["<key>", ...]
+}
+```
+
+### Brain integration
+
+A `context_coverage` node (13th node type) is added to the Project Brain Graph on every `build_project_brain` call.  It is always present.
+
+- `id`: `"context_coverage"` (fixed)
+- `label`: `"Context Coverage (<score>%)"`
+- `status`: `"low"` (score < 50), `"partial"` (50–79), `"strong"` (≥ 80)
+- `metadata`: `{score, present_signal_count, missing_signal_count, scope}`
+- Edge: `job --has_context_snapshot--> context_coverage`
+
+The `brain-node context_coverage --json` detail explains what context coverage means, what is present/missing, and that it is not model confidence.
+
+### Brain Viewer integration
+
+- The context_coverage node appears in the graph in layer 1 (same as constitution/task).
+- A `ctx-badge` in the viewer header shows `Context: <score>%`, populated by JavaScript from the embedded graph data.
+- No external data is fetched.
+
+### Redaction
+
+No artifact content, diff previews, approval reasons, event messages, or raw command output appear in any signal detail, summary, or JSON export.  Signal details describe only structural facts (e.g. "3 artifact(s)"), never raw content.
+
+### Scope in v0
+
+Context Coverage v0 is job-scoped.  Future steps will add:
+- **Repo Context Coverage** — aggregates multiple jobs targeting the same repo, adds repo index coverage and constitution richness.
+- **Project Context Coverage** — aggregates across repos, adds project memory, cross-repo task history, and enabled skill coverage.
+- **Global Context Coverage** — adds Global Brain signals: MCP Skill Card availability, provider scorecards, global policy coverage.

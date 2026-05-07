@@ -47,6 +47,7 @@ from packages.orchestration.project_brain import (
     NT_ARTIFACT,
     NT_BLOCKER,
     NT_CONSTITUTION,
+    NT_CONTEXT_COVERAGE,
     NT_JOB,
     NT_MCP,
     NT_MEMORY,
@@ -181,6 +182,9 @@ def build_brain_node_detail(
 
     if node.type == NT_MCP:
         return _detail_mcp_placeholder(node, job_id_str, connected)
+
+    if node.type == NT_CONTEXT_COVERAGE:
+        return _detail_context_coverage(node, job_id_str, connected)
 
     # Fallback for unknown future node types
     return BrainNodeDetail(
@@ -834,6 +838,56 @@ def _detail_mcp_placeholder(
         affected_files=(),
         next_actions=("Not yet available — Step 24+ only.",),
         redaction_notes=(),
+    )
+
+
+def _detail_context_coverage(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    score = node.metadata.get("score", 0)
+    present = node.metadata.get("present_signal_count", 0)
+    missing = node.metadata.get("missing_signal_count", 0)
+    status = node.status or "unknown"
+
+    explanation = (
+        f"Context Coverage ({score}%) is a deterministic health signal "
+        f"showing how much structured context Remedy currently has for this job. "
+        f"It is not model confidence and not a guarantee of correctness. "
+        f"{present} signal(s) present, {missing} missing."
+    )
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_CONTEXT_COVERAGE,
+        title=node.label[:80],
+        status=status,
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Shows what structured context is available for this job.",
+            "A low score means Remedy has limited context — not that it will fail.",
+            "Project Memory (MemPalace) and MCP context are future signal sources.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"score: {score}%",
+            f"present signals: {present}",
+            f"missing signals: {missing}",
+            f"scope: {node.metadata.get('scope', 'job')}",
+        ),
+        affected_files=(),
+        next_actions=(
+            f"remedy context {job_id_str[:8]}",
+            f"remedy brain {job_id_str[:8]}",
+            f"remedy trust-report {job_id_str[:8]}",
+        ),
+        redaction_notes=(
+            "Does not include raw prompt, file content, artifact content, "
+            "event messages, approval reasons, or diff text.",
+        ),
     )
 
 
