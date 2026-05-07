@@ -738,17 +738,17 @@ class TestBrainViewerDiagnostics:
 
     # -- Status element tests --
 
-    def test_body_has_render_status_loading_initial(self, tmp_path):
+    def test_body_has_render_status_static_fallback_initial(self, tmp_path):
         html = self._html(tmp_path)
-        assert 'data-render-status="loading"' in html
+        assert 'data-render-status="static-fallback"' in html
 
     def test_has_render_badge_element(self, tmp_path):
         html = self._html(tmp_path)
         assert 'id="render-badge"' in html
 
-    def test_render_badge_initial_status_loading(self, tmp_path):
+    def test_render_badge_initial_status_static_fallback(self, tmp_path):
         html = self._html(tmp_path)
-        assert 'data-status="loading"' in html
+        assert 'data-status="static-fallback"' in html
 
     # -- Error panel tests --
 
@@ -882,3 +882,150 @@ class TestBrainViewerDiagnostics:
         write_brain_viewer_files(data, out_dir)
         parsed = json.loads((out_dir / "viewer_data.json").read_text())
         assert parsed["detail_fallback_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# TestBrainViewerDataIsland — Step 27
+# ---------------------------------------------------------------------------
+
+
+class TestBrainViewerDataIsland:
+    """Data island architecture: viewer data as non-executable JSON, with server-rendered fallback."""
+
+    def _html(self, tmp_path: Path) -> str:
+        job = _make_job()
+        graph = build_project_brain(job, [], constitution=None)
+        data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        index_path = write_brain_viewer_files(data, out_dir)
+        return index_path.read_text()
+
+    def _island_data(self, html: str) -> dict:
+        import re
+        m = re.search(
+            r'<script[^>]*id="viewer-data"[^>]*>(.*?)</script>',
+            html,
+            re.DOTALL,
+        )
+        assert m is not None, "viewer-data island not found in HTML"
+        return json.loads(m.group(1))
+
+    # -- No executable data literal --
+
+    def test_no_var_vd_literal_assignment(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "var VD=__VIEWER_DATA_JSON__" not in html
+
+    def test_no_unresolved_viewer_data_placeholder(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "__VIEWER_DATA_JSON__" not in html
+
+    # -- Data island element present --
+
+    def test_data_island_type_application_json(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'type="application/json"' in html
+
+    def test_data_island_id_viewer_data(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="viewer-data"' in html
+
+    def test_data_island_parses_as_json(self, tmp_path):
+        html = self._html(tmp_path)
+        data = self._island_data(html)
+        assert isinstance(data, dict)
+
+    def test_data_island_version_1(self, tmp_path):
+        html = self._html(tmp_path)
+        data = self._island_data(html)
+        assert data["version"] == 1
+
+    def test_data_island_has_graph(self, tmp_path):
+        html = self._html(tmp_path)
+        data = self._island_data(html)
+        assert "graph" in data
+
+    def test_data_island_node_count_matches_viewer_data_json(self, tmp_path):
+        job = _make_job()
+        graph = build_project_brain(job, [], constitution=None)
+        viewer_data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        index_path = write_brain_viewer_files(viewer_data, out_dir)
+        html = index_path.read_text()
+        island = self._island_data(html)
+        json_file = json.loads((out_dir / "viewer_data.json").read_text())
+        assert len(island["graph"]["nodes"]) == len(json_file["graph"]["nodes"])
+
+    # -- Static fallback section --
+
+    def test_static_fallback_section_exists(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'id="static-fallback"' in html
+
+    def test_static_fallback_has_sf_sum(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'class="sf-sum"' in html
+
+    def test_static_fallback_has_sf_tbl(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'class="sf-tbl"' in html
+
+    def test_static_fallback_job_node_type_appears(self, tmp_path):
+        html = self._html(tmp_path)
+        assert ">job<" in html
+
+    def test_static_fallback_node_count_present(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "nodes <b>" in html
+
+    def test_static_fallback_edge_count_present(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "edges <b>" in html
+
+    def test_static_fallback_detail_count_present(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "details <b>" in html
+
+    def test_static_fallback_fallback_count_present(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "fallbacks <b>" in html
+
+    def test_no_unresolved_static_fallback_placeholder(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "__STATIC_FALLBACK__" not in html
+
+    # -- Initial status --
+
+    def test_initial_status_static_fallback(self, tmp_path):
+        html = self._html(tmp_path)
+        assert 'data-render-status="static-fallback"' in html
+
+    # -- JS reads data island --
+
+    def test_js_reads_data_island(self, tmp_path):
+        html = self._html(tmp_path)
+        assert "getElementById('viewer-data')" in html
+
+    # -- Regression: sentinels absent --
+
+    def test_sentinels_absent_from_index_html(self, tmp_path):
+        job = _poisoned_job()
+        events = _poisoned_events(str(job.id))
+        graph = build_project_brain(job, events, constitution=None)
+        data = build_brain_viewer_data(job, graph, events)
+        out_dir = tmp_path / "viewers" / str(job.id)
+        write_brain_viewer_files(data, out_dir)
+        html = (out_dir / "index.html").read_text()
+        for s in _ALL_SENTINELS:
+            assert s not in html, f"sentinel {s!r} found in index.html"
+
+    # -- Regression: viewer_data.json schema unchanged --
+
+    def test_viewer_data_json_schema_unchanged(self, tmp_path):
+        job = _make_job()
+        graph = build_project_brain(job, [], constitution=None)
+        data = build_brain_viewer_data(job, graph, [])
+        out_dir = tmp_path / "viewers" / str(job.id)
+        write_brain_viewer_files(data, out_dir)
+        parsed = json.loads((out_dir / "viewer_data.json").read_text())
+        assert set(parsed.keys()) == _VIEWER_JSON_KEYS

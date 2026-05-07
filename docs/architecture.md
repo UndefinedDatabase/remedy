@@ -1556,13 +1556,14 @@ No raw exception messages are included.  The viewer is always generated.
 
 ### Loading diagnostics and failure handling (Step 26.5)
 
-**The Brain Viewer must never show an infinite spinner.**  The page body carries `data-render-status="loading"` until JavaScript resolves it to one of three terminal states:
+**The Brain Viewer must never show an infinite spinner.**  The page body carries a `data-render-status` attribute that transitions through the following states:
 
 | Status | Condition |
 |---|---|
-| `ready` | Graph parsed; at least one node rendered |
-| `empty` | Graph parsed; zero nodes |
-| `error` | JS initialisation or render threw an exception |
+| `static-fallback` | Initial state; server-rendered fallback is visible; JS not yet run |
+| `ready` | JS parsed graph; at least one node rendered; fallback hidden |
+| `empty` | JS parsed graph; zero nodes; fallback hidden |
+| `error` | JS initialisation or render threw an exception; fallback stays visible |
 
 All JavaScript initialisation runs inside a `try/catch`.  A global `_vErr(category, msg)` function and a `window.onerror` handler both catch failures outside the IIFE.  On error, `_vErr` shows `#err-panel` (an overlaid warning box) and sets `data-render-status="error"`.  Only the JS error message is displayed, capped to 120 characters — no raw stack trace, no node content, no embedded JSON values.
 
@@ -1576,6 +1577,28 @@ A `#diag` bar below the legend shows live diagnostics populated by JavaScript af
 - **status** — current `data-render-status` value
 
 These fields let a developer confirm graph data loaded correctly without opening browser dev-tools.  They are read-only and contain no raw content.
+
+### Data island and static fallback (Step 27)
+
+**Problem with Step 26.5:** embedding viewer data as `var VD=<json>;` in the execution script means a JS parse error in the data would prevent `_vErr` itself from being defined, leaving the spinner frozen.
+
+**Fix:** use a non-executable JSON data island.
+
+```html
+<script id="viewer-data" type="application/json">{ ... }</script>
+```
+
+`type="application/json"` prevents browser execution.  The execution script reads it at runtime:
+
+```javascript
+var _src = document.getElementById('viewer-data');
+if (!_src) throw new Error('viewer-data island missing');
+var VD = JSON.parse(_src.textContent);
+```
+
+Any parse failure is caught by the surrounding `try/catch`, which calls `_vErr` — guaranteed because `_vErr` is defined outside the IIFE before the data is read.
+
+**Server-rendered static fallback:** Python generates a `<div id="static-fallback">` containing a node/edge/detail/fallback count summary and a table of up to 50 nodes (type, label, status, risk).  This is visible immediately without JavaScript.  `setRenderStatus('ready')` and `setRenderStatus('empty')` hide it with `style.display='none'`.  On error, it stays visible alongside `#err-panel`, so the page always shows something useful.  The body starts at `data-render-status="static-fallback"` (not `"loading"`).
 
 ### v0 scope constraints
 

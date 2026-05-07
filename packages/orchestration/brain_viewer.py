@@ -29,6 +29,7 @@ import json
 import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from html import escape as _html_esc
 from pathlib import Path
 from typing import Any
 
@@ -181,12 +182,12 @@ def write_brain_viewer_files(data: BrainViewerData, out_dir: Path) -> Path:
         encoding="utf-8",
     )
 
-    # Embed JSON in the HTML script block; escape </script> to prevent tag break.
+    # Escape </script> to prevent tag break in both data island and execution script.
     safe_json = json.dumps(viewer_dict, sort_keys=True).replace(
         "</script>", r"<\/script>"
     )
-
-    html = _render_html(safe_json, data.job_id[:8], data.generated_at)
+    static_fallback_html = _render_static_fallback(viewer_dict)
+    html = _render_html(safe_json, data.job_id[:8], data.generated_at, static_fallback_html)
     index_path = out_dir / "index.html"
     index_path.write_text(html, encoding="utf-8")
 
@@ -233,20 +234,71 @@ def _compute_positions(nodes: list[dict[str, Any]]) -> dict[str, list[float]]:
     return positions
 
 
-def _render_html(viewer_json_str: str, job_short_id: str, generated_at: str) -> str:
-    """Return self-contained HTML with viewer data embedded as a JS constant."""
-    return _HTML.replace(
-        "__VIEWER_DATA_JSON__", viewer_json_str
-    ).replace(
-        "__JOB_SHORT_ID__", job_short_id
-    ).replace(
-        "__GENERATED_AT__", generated_at
+def _render_static_fallback(viewer_dict: dict) -> str:
+    """Generate server-rendered HTML fallback — visible without JavaScript."""
+    graph = viewer_dict.get("graph", {})
+    nodes = graph.get("nodes", [])
+    edges = graph.get("edges", [])
+    details = viewer_dict.get("node_details", {})
+    fallback_count = viewer_dict.get("detail_fallback_count", 0)
+
+    ctx_score = None
+    for n in nodes:
+        if n.get("type") == "context_coverage":
+            meta = n.get("metadata") or {}
+            if "score" in meta:
+                ctx_score = meta["score"]
+            break
+
+    def _e(s: object) -> str:
+        return _html_esc(str(s), quote=True)
+
+    parts: list[str] = []
+    parts.append('<div class="sf-sum">')
+    parts.append(f'<span>nodes <b>{_e(len(nodes))}</b></span> ')
+    parts.append(f'<span>edges <b>{_e(len(edges))}</b></span> ')
+    parts.append(f'<span>details <b>{_e(len(details))}</b></span> ')
+    parts.append(f'<span>fallbacks <b>{_e(fallback_count)}</b></span>')
+    if ctx_score is not None:
+        parts.append(f' <span>context <b>{_e(ctx_score)}%</b></span>')
+    parts.append('</div>')
+    if nodes:
+        parts.append(
+            '<table class="sf-tbl">'
+            '<tr><th>type</th><th>label</th><th>status</th><th>risk</th></tr>'
+        )
+        for n in nodes[:50]:
+            parts.append(
+                f'<tr>'
+                f'<td>{_e(n.get("type", ""))}</td>'
+                f'<td>{_e(n.get("label", ""))}</td>'
+                f'<td>{_e(n.get("status") or "")}</td>'
+                f'<td>{_e(n.get("risk") or "")}</td>'
+                f'</tr>'
+            )
+        parts.append('</table>')
+    return ''.join(parts)
+
+
+def _render_html(
+    viewer_json_str: str,
+    job_short_id: str,
+    generated_at: str,
+    static_fallback_html: str,
+) -> str:
+    """Return self-contained HTML with JSON data island and server-rendered fallback."""
+    return (
+        _HTML
+        .replace("__STATIC_FALLBACK__", static_fallback_html)
+        .replace("__VIEWER_DATA_JSON__", viewer_json_str)
+        .replace("__JOB_SHORT_ID__", job_short_id)
+        .replace("__GENERATED_AT__", generated_at)
     )
 
 
 # ---------------------------------------------------------------------------
-# HTML template  (placeholders: __VIEWER_DATA_JSON__, __JOB_SHORT_ID__,
-#                              __GENERATED_AT__)
+# HTML template  (placeholders: __VIEWER_DATA_JSON__, __STATIC_FALLBACK__,
+#                              __JOB_SHORT_ID__, __GENERATED_AT__)
 # ---------------------------------------------------------------------------
 
 _HTML = """\
@@ -269,6 +321,15 @@ body{background:#0d1117;color:#c9d1d9;font-family:ui-monospace,SFMono-Regular,mo
 #render-badge[data-status="ready"]{background:#0a2a0a;color:#3fb950;border-color:#1a4a1a}
 #render-badge[data-status="error"]{background:#2d1a08;color:#ffaa44;border-color:#4a2d10}
 #render-badge[data-status="empty"]{background:#1a1a2d;color:#7aa7e8;border-color:#2d3a5a}
+#render-badge[data-status="static-fallback"]{background:#1a1a2d;color:#8b949e;border-color:#2d3748}
+#static-fallback{padding:12px 16px;background:#0d1117;border-bottom:1px solid #21262d;
+  font-size:12px;overflow-y:auto;max-height:200px;flex-shrink:0}
+.sf-sum{display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.sf-sum span{color:#8b949e}.sf-sum b{color:#c9d1d9}
+.sf-tbl{border-collapse:collapse;font-size:11px}
+.sf-tbl th,.sf-tbl td{padding:2px 8px;text-align:left;border:1px solid #21262d}
+.sf-tbl th{color:#484f58;font-weight:normal}
+.sf-tbl td{color:#8b949e}
 #main{display:flex;flex:1;overflow:hidden;min-height:0}
 #gwrap{flex:1;position:relative;overflow:hidden}
 svg#g{width:100%;height:100%;display:block}
@@ -305,14 +366,17 @@ svg#g{width:100%;height:100%;display:block}
 .nd.run circle{animation:pulse 1.5s ease-in-out infinite}
 </style>
 </head>
-<body data-render-status="loading">
+<body data-render-status="static-fallback">
 <div id="hdr">
   <h1>Remedy Brain Viewer</h1>
   <span class="badge badge-warn">read-only &middot; v0</span>
   <span class="badge">job __JOB_SHORT_ID__</span>
   <span class="badge">__GENERATED_AT__</span>
   <span class="badge" id="ctx-badge">Context: —%</span>
-  <span class="badge" id="render-badge" data-status="loading">● loading</span>
+  <span class="badge" id="render-badge" data-status="static-fallback">● static</span>
+</div>
+<div id="static-fallback">
+__STATIC_FALLBACK__
 </div>
 <div id="main">
   <div id="gwrap">
@@ -341,9 +405,10 @@ svg#g{width:100%;height:100%;display:block}
   <span>details <span id="diag-details">?</span></span>
   <span>fallbacks <span id="diag-fallbacks">?</span></span>
   <span>selected <span id="diag-sel">none</span></span>
-  <span>status <span id="diag-status">loading</span></span>
+  <span>status <span id="diag-status">static-fallback</span></span>
 </div>
 <div id="ftr">Brain Viewer v0 &middot; read-only &middot; consumes remedy brain --json and remedy brain-node --json &middot; foundation for React&nbsp;Flow / Three.js / AG-UI / A2UI</div>
+<script id="viewer-data" type="application/json">__VIEWER_DATA_JSON__</script>
 <script>
 function _vErr(cat,msg){
   var safe=String(msg||'').replace(/[\\r\\n\\t]/g,' ').slice(0,120);
@@ -368,9 +433,15 @@ function setRenderStatus(s){
   if(b){b.textContent='\\u25cf '+s;b.setAttribute('data-status',s);}
   var ds=document.getElementById('diag-status');
   if(ds)ds.textContent=s;
+  if(s==='ready'||s==='empty'){
+    var sf=document.getElementById('static-fallback');
+    if(sf)sf.style.display='none';
+  }
 }
 try{
-var VD=__VIEWER_DATA_JSON__;
+var _src=document.getElementById('viewer-data');
+if(!_src)throw new Error('viewer-data island missing');
+var VD=JSON.parse(_src.textContent);
 var G=VD.graph,DET=VD.node_details,POS=VD.positions;
 var selId=null;
 function col(n){
