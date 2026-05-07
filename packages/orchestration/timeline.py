@@ -195,6 +195,16 @@ def _render_single_event(ev: dict[str, Any]) -> str | None:
             f"  sources={src}  tests={tests_str}{warn_str}"
         )
 
+    if name == "patch_intent_applied":
+        intent_id   = meta.get("intent_id", "")[:14]
+        target_path = meta.get("target_path", "")
+        ev_outcome  = meta.get("outcome") or outcome or ""
+        sym = _OK if ev_outcome == "applied" else _INFO
+        return (
+            f"  {sym} patch intent applied  {intent_id}  {target_path}"
+            f"  outcome={ev_outcome}"
+        )
+
     # All other events outside a task block: render as informational.
     return f"  {_INFO} {name}"
 

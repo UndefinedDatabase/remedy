@@ -63,6 +63,7 @@ _LAYER_MAP: dict[str, int] = {
     "memory_placeholder": 4,
     "mcp_placeholder": 4,
     "project_placeholder": 1,
+    "patch_apply": 4,
 }
 _LAYER_RADIUS = [0.0, 150.0, 290.0, 420.0, 530.0]
 _CX = 500.0

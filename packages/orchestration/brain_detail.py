@@ -51,6 +51,7 @@ from packages.orchestration.project_brain import (
     NT_JOB,
     NT_MCP,
     NT_MEMORY,
+    NT_PATCH_APPLY,
     NT_PATCH_INTENT,
     NT_RUN_EVENT,
     NT_TASK,
@@ -185,6 +186,9 @@ def build_brain_node_detail(
 
     if node.type == NT_CONTEXT_COVERAGE:
         return _detail_context_coverage(node, job_id_str, connected)
+
+    if node.type == NT_PATCH_APPLY:
+        return _detail_patch_apply(node, job_id_str, connected)
 
     # Fallback for unknown future node types
     return BrainNodeDetail(
@@ -887,6 +891,57 @@ def _detail_context_coverage(
         redaction_notes=(
             "Does not include raw prompt, file content, artifact content, "
             "event messages, approval reasons, or diff text.",
+        ),
+    )
+
+
+def _detail_patch_apply(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    status       = node.status or "unknown"
+    target_path  = str(node.metadata.get("target_path", ""))
+    action       = str(node.metadata.get("action", ""))
+    bytes_written = int(node.metadata.get("bytes_written", 0))
+    line_count   = int(node.metadata.get("line_count", 0))
+    intent_id    = node.ref_id or node.id[6:]  # strip "apply:" prefix
+
+    explanation = (
+        f"Patch intent '{intent_id}' was applied to '{target_path}' "
+        f"(action: {action}, outcome: {status}). "
+        f"{bytes_written} byte(s) written, {line_count} line(s). "
+        f"No patch content or diff text is rendered."
+    )
+
+    evidence = [
+        f"intent_id: {intent_id}",
+        f"target_path: {target_path}",
+        f"action: {action}",
+        f"outcome: {status}",
+        f"bytes_written: {bytes_written}",
+        f"line_count: {line_count}",
+    ]
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_PATCH_APPLY,
+        title=f"patch apply: {action} {target_path}",
+        status=status,
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Records the successful application of an approved patch intent.",
+            "Created when remedy apply-patch-intent was run.",
+        ),
+        connected_to=tuple(connected),
+        evidence=tuple(evidence),
+        affected_files=(target_path,) if target_path else (),
+        next_actions=(),
+        redaction_notes=(
+            "Patch content is not rendered.",
+            "Diff text is not rendered.",
         ),
     )
 

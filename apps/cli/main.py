@@ -438,6 +438,47 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
     print("Note: rejection is metadata only — no files have been modified.")
 
 
+def _cmd_apply_patch_intent(
+    job_id_str: str,
+    intent_id: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    import json as _json
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.patch_apply import apply_patch_intent, format_apply_result
+
+    result = apply_patch_intent(job, intent_id)
+
+    if result.state == "blocked":
+        print(f"Error: {result.blocked_reason}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(_json.dumps({
+            "state":         result.state,
+            "intent_id":     result.intent_id,
+            "target_path":   result.target_path,
+            "action":        result.action,
+            "outcome":       result.outcome,
+            "bytes_written": result.bytes_written,
+            "line_count":    result.line_count,
+        }, sort_keys=True))
+    else:
+        print(format_apply_result(result))
+
+
 def _cmd_constitution(job_id_str: str) -> None:
     import os
 
@@ -1499,6 +1540,16 @@ def main() -> None:
     approve_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
     approve_pi.add_argument("--reason", default=None, help="Optional note about this decision")
 
+    apply_pi = subparsers.add_parser(
+        "apply-patch-intent",
+        help="Apply an approved patch intent to the attached repository (v0: Markdown only)",
+    )
+    apply_pi.add_argument("job_id", help="UUID of the job")
+    apply_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
+    apply_pi.add_argument(
+        "--json", action="store_true", dest="json", help="Output result as JSON"
+    )
+
     reject_pi = subparsers.add_parser(
         "reject-patch-intent",
         help="Record a rejection decision for a patch intent (metadata only, no files changed)",
@@ -1591,6 +1642,8 @@ def main() -> None:
         _cmd_approve_patch_intent(args.job_id, args.intent_id, args.reason)
     elif args.command == "reject-patch-intent":
         _cmd_reject_patch_intent(args.job_id, args.intent_id, args.reason)
+    elif args.command == "apply-patch-intent":
+        _cmd_apply_patch_intent(args.job_id, args.intent_id, json_output=args.json)
     elif args.command == "create-project":
         _cmd_create_project(args.name, args.description)
     elif args.command == "list-projects":
