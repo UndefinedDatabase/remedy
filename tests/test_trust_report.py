@@ -480,19 +480,19 @@ class TestPatchIntentsSection:
         out = summarize_trust_report(job, [])
         assert "rejected" in out
 
-    def test_apply_not_implemented_shown_when_approved_and_no_pending(self):
+    def test_apply_command_shown_when_approved_and_no_pending(self):
         job = _make_job(state=RunState.COMPLETED)
         intent_id = _add_patch_artifact(job, risk=RISK_LOW)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
         out = summarize_trust_report(job, [])
-        assert "not implemented" in out or "v1" in out
+        assert "apply-patch-intent" in out or "approved" in out
 
-    def test_apply_not_implemented_always_noted(self):
-        """Even with pending intents, the v1 caveat is present."""
+    def test_approve_command_shown_when_pending(self):
+        """Pending intents show approval instructions."""
         job = _make_job()
         _add_patch_artifact(job, risk=RISK_MEDIUM)
         out = summarize_trust_report(job, [])
-        assert "not implemented" in out or "metadata-only" in out
+        assert "approve-patch-intent" in out or "approved" in out or "pending" in out
 
     def test_target_path_shown(self):
         job = _make_job()
@@ -627,13 +627,13 @@ class TestNextSafeAction:
         out = summarize_trust_report(job, events)
         assert "timeline" in out
 
-    def test_all_approved_no_pending_mentions_apply_not_implemented(self):
+    def test_all_approved_no_pending_mentions_apply_command(self):
         job = _make_job(state=RunState.COMPLETED)
         job.tasks.append(_completed_task())
         intent_id = _add_patch_artifact(job, risk=RISK_LOW)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
         out = summarize_trust_report(job, [])
-        assert "not implemented" in out
+        assert "apply-patch-intent" in out
 
     def test_high_risk_pending_suggests_list_patch_intents(self):
         job = _make_job()

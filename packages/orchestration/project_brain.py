@@ -26,6 +26,7 @@ Node types:
   mcp_placeholder     — reserved node for future MCP Quarantine layer
   context_coverage    — deterministic context-health snapshot for the job
   project_placeholder — lightweight marker linking job to a RemyProject
+  patch_apply         — an approved patch intent application record
 
 Edge types:
   has_task              — job → task
@@ -33,6 +34,7 @@ Edge types:
   emitted_event         — job → run_event
   produced_patch_intent — artifact → patch_intent
   decided_by            — patch_intent → approval_decision
+  applied_by            — patch_intent → patch_apply
   verified_by           — task → verification
   blocked_by            — task → permission_blocker
   inspected_by          — agent_loop → job
@@ -99,12 +101,14 @@ NT_MEMORY            = "memory_placeholder"
 NT_MCP               = "mcp_placeholder"
 NT_CONTEXT_COVERAGE  = "context_coverage"
 NT_PROJECT_PLACEHOLDER = "project_placeholder"
+NT_PATCH_APPLY         = "patch_apply"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
 ET_EMITTED              = "emitted_event"
 ET_PRODUCED_PI          = "produced_patch_intent"
 ET_DECIDED              = "decided_by"
+ET_APPLIED_BY           = "applied_by"
 ET_VERIFIED             = "verified_by"
 ET_BLOCKED              = "blocked_by"
 ET_INSPECTED            = "inspected_by"
@@ -129,6 +133,7 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_MEMORY:              11,
     NT_MCP:                 12,
     NT_PROJECT_PLACEHOLDER: 13,
+    NT_PATCH_APPLY:         14,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -300,6 +305,35 @@ def build_project_brain(
                 source=pi_node_id,
                 target=adec_node_id,
                 type=ET_DECIDED,
+            ))
+
+    # ── 4.5. Patch apply record nodes ────────────────────────────────────────
+    for artifact in job.artifacts:
+        apply_records: dict = artifact.metadata.get("patch_intent_apply_records", {})
+        for apply_intent_id, record in apply_records.items():
+            apply_node_id = f"apply:{apply_intent_id}"
+            apply_state   = record.get("state", "unknown")
+            apply_action  = record.get("action", "")
+            apply_path    = record.get("target_path", "")
+            nodes.append(BrainNode(
+                id=apply_node_id,
+                type=NT_PATCH_APPLY,
+                label=f"applied {apply_intent_id}",
+                status=apply_state,
+                ref_id=apply_intent_id,
+                metadata={
+                    "target_path":   apply_path,
+                    "action":        apply_action,
+                    "bytes_written": int(record.get("bytes_written", 0)),
+                    "line_count":    int(record.get("line_count", 0)),
+                },
+            ))
+            # Edge: patch_intent --applied_by--> patch_apply
+            pi_node_id = f"pi:{apply_intent_id}"
+            edges.append(BrainEdge(
+                source=pi_node_id,
+                target=apply_node_id,
+                type=ET_APPLIED_BY,
             ))
 
     # ── 5. Event-derived nodes ───────────────────────────────────────────────
@@ -537,7 +571,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_JOB, NT_TASK, NT_ARTIFACT, NT_PATCH_INTENT, NT_APPROVAL,
         NT_VERIFICATION, NT_BLOCKER, NT_RUN_EVENT, NT_AGENT_LOOP,
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
-        NT_PROJECT_PLACEHOLDER,
+        NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)
@@ -577,6 +611,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
     parts.append(f"  {_INFO} memory_placeholder    — Step 24+ MemPalace / semantic memory")
     parts.append(f"  {_INFO} mcp_placeholder       — Step 24+ MCP Quarantine / tool layer")
     parts.append(f"  {_INFO} project_placeholder   — Project Registry v0 link (Step 28)")
+    parts.append(f"  {_INFO} patch_apply           — approved patch application record (Step 30)")
     parts.append(f"  {_INFO} React Flow / Three.js / AG-UI / A2UI mapping — Step 24+")
 
     return "\n".join(parts)
@@ -659,4 +694,5 @@ def _node_symbol(node_type: str) -> str:
         NT_MEMORY:              _INFO,
         NT_MCP:                 _INFO,
         NT_PROJECT_PLACEHOLDER: _INFO,
+        NT_PATCH_APPLY:         _OK,
     }.get(node_type, _INFO)

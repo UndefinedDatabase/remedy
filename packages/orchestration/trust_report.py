@@ -270,21 +270,37 @@ def summarize_trust_report(
                 f"  {indicator} {iid:<14} {state:<8}  risk={risk:<8}  {action:<14}  {path}"
                 f"{decided_str}"
             )
+            # Show apply status if present (no content / diff text)
+            apply_record = _get_apply_record(job, iid)
+            if apply_record:
+                apply_state   = apply_record.get("state", "")
+                apply_outcome = apply_record.get("reason", "")
+                parts.append(
+                    f"      applied: yes  outcome={apply_state}  target={path}"
+                )
         parts.append("")
-        if n_approved and not n_pending_i:
+        n_applied = sum(
+            1 for i in intents
+            if _get_apply_record(job, i["intent_id"]) is not None
+            and _get_apply_record(job, i["intent_id"]).get("state") == "applied"
+        )
+        if n_approved and not n_pending_i and n_applied == n_approved:
+            parts.append(f"  {_OK} All approved intents applied ({n_applied}).")
+        elif n_approved and not n_pending_i:
+            unapplied = n_approved - n_applied
             parts.append(
-                f"  {_INFO} All intents approved. "
-                f"Note: patch application is not implemented in v1."
+                f"  {_INFO} {unapplied} approved intent(s) not yet applied. "
+                f"Apply with: remedy apply-patch-intent <job_id> <intent_id>"
             )
         elif n_approved:
             parts.append(
-                f"  {_INFO} Note: approved intents are metadata-only; "
-                f"patch application is not implemented in v1."
+                f"  {_INFO} Note: pending intents must be decided before apply. "
+                f"Apply with: remedy apply-patch-intent <job_id> <intent_id>"
             )
         else:
             parts.append(
-                "  Note: approval is metadata-only; "
-                "patch application is not implemented in v1."
+                "  Note: intents must be approved before apply. "
+                "Use: remedy approve-patch-intent <job_id> <intent_id>"
             )
 
     # ── 8. Redaction / trust boundary ─────────────────────────────────────────
@@ -423,10 +439,8 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
 
     if n_approved and not pending and not n_pending_intents:
         return (
-            f"  {_NEXT} All patch intents approved.\n"
-            f"      Patch application is not implemented in v1.\n"
-            f"      Inspect generated workspace files or create a new job:\n"
-            f"          remedy create-job \"<next prompt>\""
+            f"  {_NEXT} All patch intents approved. Apply with:\n"
+            f"      remedy apply-patch-intent {job.id} <intent_id>"
         )
 
     if pending:
@@ -439,6 +453,20 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
         f"  {_NEXT} No pending tasks. Inspect generated files\n"
         f"      or create a new job: remedy create-job \"<prompt>\""
     )
+
+
+# ---------------------------------------------------------------------------
+# Apply record lookup (for trust report section 7)
+# ---------------------------------------------------------------------------
+
+
+def _get_apply_record(job: Job, intent_id: str) -> dict | None:
+    """Return the apply record for intent_id from artifact metadata, or None."""
+    for artifact in job.artifacts:
+        records = artifact.metadata.get("patch_intent_apply_records", {})
+        if intent_id in records:
+            return records[intent_id]
+    return None
 
 
 # ---------------------------------------------------------------------------
