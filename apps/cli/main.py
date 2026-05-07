@@ -649,11 +649,22 @@ def _cmd_brain_view(job_id_str: str) -> None:
     events = load_run_events(data_dir, job_id)
 
     target_repo_str = job.metadata.get("target_repo")
-    constitution = (
-        load_project_constitution(Path(target_repo_str))
-        if target_repo_str
-        else None
-    )
+    constitution = None
+    if target_repo_str:
+        try:
+            repo_path = Path(target_repo_str)
+            if not repo_path.exists() or not repo_path.is_dir():
+                print(
+                    "Warning: project constitution unavailable for viewer.",
+                    file=sys.stderr,
+                )
+            else:
+                constitution = load_project_constitution(repo_path)
+        except Exception:
+            print(
+                "Warning: project constitution unavailable for viewer.",
+                file=sys.stderr,
+            )
 
     graph = build_project_brain(job, events, constitution=constitution)
     viewer_data = build_brain_viewer_data(job, graph, events)
@@ -670,6 +681,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
         node_count=len(graph.nodes),
         edge_count=len(graph.edges),
         detail_count=len(viewer_data.node_details),
+        detail_fallback_count=viewer_data.detail_fallback_count,
         mode="static",
     )
 

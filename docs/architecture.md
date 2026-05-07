@@ -1488,9 +1488,11 @@ No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the
 
 **Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain --json` (graph data) and `remedy brain-node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
 
-## Brain Viewer v0 (Step 25)
+## Brain Viewer v0 (Steps 25 / 25.1)
 
 `packages/orchestration/brain_viewer.py` generates a self-contained, read-only HTML viewer for a job's Project Brain Graph.  It is strictly read-only: it performs no repo mutation, no patch apply, no permission mutation, no shell/subprocess/Git/Docker/network/MCP/Claude execution, no memory writes, and has no external dependencies (Python stdlib only).
+
+**Current scope:** Brain Viewer v0 is job-scoped.  It visualises a single job's graph.  It is not a Project Brain, a Repo Brain, or a Global Brain.  See *Future Brain Hierarchy* below.
 
 ### CLI
 
@@ -1504,6 +1506,14 @@ Writes files under `REMEDY_DATA_DIR/viewers/<job_id>/`:
 
 Prints `Brain Viewer v0: <path>` to stdout on success.
 
+**Constitution loading is advisory.**  If the attached repo path is absent, stale, or inaccessible, the viewer continues with `constitution=None` and prints a safe warning to stderr:
+
+```
+Warning: project constitution unavailable for viewer.
+```
+
+No raw exception messages are included.  The viewer is always generated.
+
 ### Run-log event
 
 `brain_viewer_prepared` — emitted once per invocation with metadata:
@@ -1513,15 +1523,18 @@ Prints `Brain Viewer v0: <path>` to stdout on success.
   "node_count": <int>,
   "edge_count": <int>,
   "detail_count": <int>,
+  "detail_fallback_count": <int>,
   "mode": "static"
 }
 ```
 
+`detail_fallback_count` is an observable health signal: it counts the number of nodes for which full detail generation failed and a safe fallback was used instead.  It is 0 on a clean job.  Callers may use it to detect unexpected edge cases without ever logging raw exception messages.
+
 ### Architecture
 
-`BrainViewerData` (frozen dataclass) — `{job_id, generated_at, graph, node_details, positions}` — bundles all render data.  Built by `build_brain_viewer_data(job, graph, events)`, which calls `export_project_brain_json` for the graph and `build_brain_node_detail` / `export_brain_node_detail_json` per node.
+`BrainViewerData` (frozen dataclass) — `{job_id, generated_at, graph, node_details, positions, detail_fallback_count}` — bundles all render data.  Built by `build_brain_viewer_data(job, graph, events)`, which calls `export_project_brain_json` for the graph and `build_brain_node_detail` / `export_brain_node_detail_json` per node.  Any per-node detail failure increments `detail_fallback_count` and uses a safe minimal fallback; it never propagates exceptions or exposes raw error text.
 
-**Redaction:** same policy as `brain_detail.py` — no artifact content, diff previews, approval reasons, event messages, or raw command output in any generated file.
+**Redaction:** same policy as `brain_detail.py` — no artifact content, diff previews, approval reasons, event messages, or raw command output in any generated file, including content injected via run-log events.
 
 **Layout:** layered radial — job at centre (layer 0, r=0), constitution/tasks at layer 1 (r=150), artifacts/run_event/agent_loop at layer 2 (r=290), patch_intent/approval/verification/permission_blocker at layer 3 (r=420), memory_placeholder/mcp_placeholder at layer 4 (r=530).  Positions are pre-computed in Python and embedded in the HTML; JavaScript scales to the viewport.
 
@@ -1537,3 +1550,79 @@ v0 is the read-only foundation.  Future steps will add:
 3. **MemPalace** — live semantic memory nodes replacing `memory_placeholder`.
 4. **MCP Quarantine** — live MCP tool nodes replacing `mcp_placeholder`.
 5. **AG-UI / A2UI** — real-time streaming updates.
+
+---
+
+## Future Brain Hierarchy
+
+*This section documents the intended architecture.  None of these layers are implemented yet.*
+
+### Layer 1 — Job Brain
+
+A single concrete job/prompt/run.  Current Brain Viewer v0 is job-scoped.  Every node in the current viewer belongs to a single job.
+
+### Layer 2 — Repo Brain
+
+A single attached repository: backend, frontend, pipeline, infra, docs, etc.  A Repo Brain aggregates:
+- Multiple jobs targeting the same repo.
+- Repo constitution (CLAUDE.md, test commands, lint rules, structure).
+- Repo-level task/artifact/patch/verification history.
+- Repo-scoped policy decisions.
+
+### Layer 3 — Project Brain
+
+A product or project spanning multiple repos and many jobs.  A Project Brain aggregates:
+- Multiple repos (each with its own Repo Brain).
+- Multiple jobs across repos.
+- All repo constitutions.
+- All task, artifact, patch intent, verification, and approval nodes.
+- Project-level memory.
+- Context coverage signals.
+- Enabled skills and capabilities.
+- Project-scoped policy decisions.
+
+Future `remedy brain --json` may accept a `--scope project` flag that produces a multi-repo aggregate graph.  Current Brain Viewer v0 must not pretend to be a Project Brain.
+
+### Layer 4 — Remedy Global Brain
+
+Global reusable knowledge and capabilities.  Includes:
+- **Quarantined MCPs** — MCPs under evaluation, not yet approved.
+- **Approved MCP Skill Cards** — MCPs that passed quarantine and are globally registered as reusable skills.
+- **Provider / model scorecards** — observed performance, latency, and cost data per provider/model combination.
+- **Global capability policies** — default permission posture across all projects.
+- **Verifier / provider / router knowledge** — reusable acceptance-criteria profiles and routing hints.
+
+**MCP Skill Card lifecycle:**  MCPs that pass quarantine become globally registered Skill Cards.  However, a globally approved Skill Card does not automatically grant permission to any project or repo.  Projects must opt in via an explicit policy grant scoped to the project, repo, or capability.  A Skill Card is an offer; a policy grant is acceptance.
+
+### Future Context Collector
+
+The Context Collector should report *Context Coverage*, not an absolute "knowledge percentage".  Coverage is calculated from observable signals, not estimated from unknowns.  Signals include:
+
+| Signal | Description |
+|---|---|
+| Repo constitution availability | Is a CLAUDE.md / constitution present and parseable? |
+| Repo index coverage | What fraction of repo files have been indexed? |
+| Relevant file coverage | Are the files relevant to the current task indexed? |
+| Prior job/artifact availability | Are prior runs for this repo/task type accessible? |
+| Project memory availability | Is project-level memory online? |
+| Enabled MCP/tool context | Which MCP Skill Cards are active in this project? |
+| Verifier/criteria availability | Are acceptance criteria defined for this task type? |
+| Unresolved unknowns | Are there open blockers or ambiguities in the current job? |
+
+Context Coverage is a health signal, not a score.  Low coverage means the agent lacks context — not that it is unintelligent.
+
+### Future "Continue from Node"
+
+Future node detail JSON may expose `continuable: bool` and `allowed_actions: list[str]` fields, enabling a "continue from node" workflow that creates a new job linked by:
+
+```json
+{
+  "project_id": "<uuid>",
+  "repo_id": "<uuid>",
+  "parent_job_id": "<uuid>",
+  "origin_node_id": "<node_id>",
+  "origin_node_type": "<type>"
+}
+```
+
+Not every node will be continuable.  These fields are **not implemented** in v0 and must not be added to current node detail JSON yet.

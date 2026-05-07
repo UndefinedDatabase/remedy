@@ -80,6 +80,7 @@ class BrainViewerData:
     graph: dict[str, Any]
     node_details: dict[str, dict[str, Any]]
     positions: dict[str, list[float]]
+    detail_fallback_count: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -101,11 +102,13 @@ def build_brain_viewer_data(
     graph_dict = export_project_brain_json(graph)
 
     node_details: dict[str, dict[str, Any]] = {}
+    detail_fallback_count = 0
     for node in graph.nodes:
         try:
             detail = build_brain_node_detail(job, graph, node.id, events)
             node_details[node.id] = export_brain_node_detail_json(detail)
         except Exception:
+            detail_fallback_count += 1
             node_details[node.id] = {
                 "job_id": str(job.id),
                 "node_id": node.id,
@@ -130,6 +133,7 @@ def build_brain_viewer_data(
         graph=graph_dict,
         node_details=node_details,
         positions=positions,
+        detail_fallback_count=detail_fallback_count,
     )
 
 
@@ -142,9 +146,10 @@ def export_brain_viewer_json(data: BrainViewerData) -> dict[str, Any]:
             "version": 1,
             "job_id": "<uuid>",
             "generated_at": "<iso>",
-            "graph": { ... },        // export_project_brain_json output
-            "node_details": { ... }, // node_id -> export_brain_node_detail_json output
-            "positions": { ... },    // node_id -> [x, y]
+            "graph": { ... },                // export_project_brain_json output
+            "node_details": { ... },         // node_id -> export_brain_node_detail_json output
+            "positions": { ... },            // node_id -> [x, y]
+            "detail_fallback_count": <int>,  // nodes that used fallback detail
         }
 
     Redaction: same policy as build_brain_viewer_data.
@@ -156,6 +161,7 @@ def export_brain_viewer_json(data: BrainViewerData) -> dict[str, Any]:
         "graph": data.graph,
         "node_details": data.node_details,
         "positions": data.positions,
+        "detail_fallback_count": data.detail_fallback_count,
     }
 
 
