@@ -201,6 +201,8 @@ def export_project_json(
             "repo_paths": [...],
             "jobs": [{id, state, task_count, artifact_count}, ...],
             "counts": {repo_count, job_count, task_count, artifact_count},
+            "context_coverage": {score, scope, present_signal_count,
+                                 missing_signal_count, v0_max_score},
             "future_layers": {
                 "repo_brain": "not_implemented",
                 "project_brain": "not_implemented",
@@ -210,9 +212,16 @@ def export_project_json(
             }
         }
 
+    context_coverage is a compact summary only — full signal detail is
+    available via `remedy project-context <project_id> --json`.
+
     Redaction: no artifact content, no approval reasons, no diff previews,
     no event messages, no command output, no raw exception text.
     """
+    from packages.orchestration.project_context_coverage import (
+        derive_project_context_coverage,
+    )
+
     job_map = {str(j.id): j for j in jobs}
     jobs_out: list[dict[str, Any]] = []
     total_tasks = 0
@@ -238,6 +247,9 @@ def export_project_json(
                 "artifact_count": 0,
             })
 
+    loaded_jobs = [j for j in jobs if j is not None]
+    ctx_snap = derive_project_context_coverage(project, loaded_jobs)
+
     return {
         "version": 1,
         "project": {
@@ -253,6 +265,13 @@ def export_project_json(
             "job_count": len(project.job_ids),
             "task_count": total_tasks,
             "artifact_count": total_artifacts,
+        },
+        "context_coverage": {
+            "score": ctx_snap.score,
+            "scope": ctx_snap.scope,
+            "present_signal_count": ctx_snap.present_signal_count,
+            "missing_signal_count": ctx_snap.missing_signal_count,
+            "v0_max_score": 85,
         },
         "future_layers": {
             "repo_brain": "not_implemented",

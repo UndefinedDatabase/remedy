@@ -1918,3 +1918,121 @@ It is a lightweight marker only — no project aggregation occurs in v0.
 ### Redaction
 
 No artifact content, approval reasons, diff previews, event messages, or command output appear in any project summary or JSON export.  Only counts, IDs, names, and status values are surfaced.
+
+## Project Context Coverage v0 (Step 29)
+
+`packages/orchestration/project_context_coverage.py` — project-scoped, deterministic context-health indicator.
+
+### Purpose
+
+Project Context Coverage is the first user-visible signal that Remedy is building project-level understanding across multiple repos and jobs.  A project may span a frontend repo, backend repo, pipeline repo, docs repo, and infrastructure repo — each with its own jobs.  Project Context Coverage aggregates structured context signals across all of them.
+
+This is **not** model confidence, **not** a truth score, and **not** a Project Brain UI.  It is a deterministic read-only indicator of how much structured context is available at the project level.
+
+### Scope
+
+Project-scoped in v0.  Aggregates linked jobs and repo paths only.  No repo scanning, no event log reading, no artifact content.
+
+### Signals (weights sum to 100)
+
+| Signal | Weight | v0 behaviour |
+|---|---|---|
+| `project_metadata` | 10 | present when project object exists with a name |
+| `linked_repos` | 15 | present if `project.repo_paths` is non-empty |
+| `linked_jobs` | 15 | present if any linked Job objects are loaded |
+| `planned_tasks` | 10 | present if any linked job has tasks |
+| `builder_artifacts` | 10 | present if any linked job has a `BUILDER_PROPOSAL` artifact |
+| `patch_intents` | 10 | present if any linked job has derived patch intents |
+| `verification_results` | 10 | present if any `VERIFICATION` artifact or completed task across linked jobs |
+| `approval_decisions` | 5 | present if any linked job has approved or rejected patch intents |
+| `project_memory` | 10 | **always absent in v0** — MemPalace not connected |
+| `mcp_tool_context` | 5 | **always absent in v0** — MCP Skill Registry not connected |
+
+`score = round(present_weight / 100 * 100)`, clamped 0..100.  **v0 maximum = 85.**
+
+### Public API
+
+```python
+derive_project_context_coverage(project, jobs) -> ProjectContextCoverageSnapshot
+summarize_project_context_coverage(snapshot) -> str
+export_project_context_coverage_json(snapshot) -> dict[str, Any]
+```
+
+`ProjectContextCoverageSnapshot(frozen=True)` — fields: `project_id`, `project_name`, `scope`, `score`, `present_signal_count`, `missing_signal_count`, `repo_count`, `job_count`, `signals: tuple[ProjectContextSignal, ...]`, `missing_keys: tuple[str, ...]`
+
+`ProjectContextSignal(frozen=True)` — fields: `key`, `label`, `present`, `weight`, `detail`
+
+### CLI
+
+```
+remedy project-context <project_id>
+remedy project-context <project_id> --json
+```
+
+Loads the project and all linked jobs, derives the snapshot, and prints the summary or JSON.  Emits a `project_context_coverage_inspected` run-log event to the first linked job's run log (skipped if no jobs are linked).
+
+### Run-log event
+
+`project_context_coverage_inspected` — emitted once per invocation with metadata:
+
+```json
+{
+  "score": int,
+  "present_signal_count": int,
+  "missing_signal_count": int,
+  "scope": "project",
+  "repo_count": int,
+  "job_count": int
+}
+```
+
+No raw prompts, artifact content, approval reasons, event messages, diff previews, or exception text.
+
+### JSON export schema
+
+```json
+{
+  "version": 1,
+  "project_id": "<uuid>",
+  "project_name": "<name>",
+  "scope": "project",
+  "score": 0..85,
+  "present_signal_count": int,
+  "missing_signal_count": int,
+  "repo_count": int,
+  "job_count": int,
+  "v0_max_score": 85,
+  "signals": [{"key", "label", "weight", "present", "detail"}, ...],
+  "missing_keys": ["<key>", ...]
+}
+```
+
+### Project JSON integration
+
+`export_project_json(project, jobs)` (via `remedy project --json`) includes a compact context summary:
+
+```json
+"context_coverage": {
+  "score": int,
+  "scope": "project",
+  "present_signal_count": int,
+  "missing_signal_count": int,
+  "v0_max_score": 85
+}
+```
+
+Full signal details are available only via `remedy project-context <project_id> --json`.
+
+### Not implemented in v0
+
+| Layer | Status |
+|---|---|
+| Project Brain graph viewer | not implemented |
+| Repo Brain | not implemented |
+| Global Brain | not implemented |
+| MemPalace (`project_memory` signal) | not implemented |
+| MCP Skill Registry (`mcp_tool_context` signal) | not implemented |
+
+### Redaction
+
+No artifact content, approval reasons, diff previews, event messages, or raw exception text appear in any signal detail, summary, or JSON export.  Details describe only structural facts (e.g. `"3 repo(s)"`), never raw content.
