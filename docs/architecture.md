@@ -2043,6 +2043,25 @@ No artifact content, approval reasons, diff previews, event messages, or raw exc
 
 Patch Apply v0 is the first real execution slice after approval.  An approved PatchIntent can be applied to the attached repo under strict v0 constraints.  This is the first step that makes Remedy **execution-first**: the Brain/Viewer/Trust surfaces now show real work happening.
 
+### Proof-chain model (Step 30.1)
+
+Remedy's core differentiator is not autonomy alone — it is **auditability**.  Every real action must become a proof object traceable through the full intent chain:
+
+```
+Patch Intent → Approval Decision → Patch Apply → affected file
+```
+
+This is surfaced in run logs, Trust Report, Timeline, Brain, and Viewer with **structural evidence only** — never raw patch content or diff text.
+
+Enforcement:
+- No shell execution
+- No Git operations
+- No arbitrary diff application
+- No `repo_overwrite`
+- Markdown-only (`.md`)
+- `modify` is append-only (markers, never replace/remove)
+- Run-log schema is exact: `{intent_id, target_path, action, outcome, bytes_written, line_count}` — no extra keys
+
 ```
 Prompt → Task → Artifact → Patch Intent → Approval → Apply → Verification
 ```

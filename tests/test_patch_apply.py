@@ -143,14 +143,88 @@ class TestPathSafety:
         assert "file_type" in result.blocked_reason or "unsupported" in result.blocked_reason
 
     def test_resolved_target_must_stay_in_repo_root(self, tmp_path):
-        # Construct a path that resolves outside via symlink-like manipulation
+        # Traversal via ".." components — blocked by _validate_target_path
         job, repo = _make_job(tmp_repo=tmp_path)
-        # We can test by making action=create with a deeply nested traversal
         intent_id = _add_artifact(job, target_path="a/../../outside.md", action="create")
         _approve(job, intent_id)
         _grant_repo_write(job)
         result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
         assert result.state == "blocked"
+
+    def test_symlink_escape_blocked(self, tmp_path):
+        """A symlink inside repo_root pointing outside must be blocked.
+
+        This exercises the resolved_target.is_relative_to(resolved_root) guard
+        (section 6 of apply_patch_intent), not the '..' component guard in
+        _validate_target_path.  The path 'escape/file.md' contains no '..', so
+        _validate_target_path passes — but resolution of the symlink moves
+        outside the repo, which the boundary guard catches.
+        """
+        import os
+        # Create repo and an external directory that a symlink will point at
+        repo_dir = tmp_path / "repo"
+        repo_dir.mkdir()
+        external_dir = tmp_path / "external"
+        external_dir.mkdir()
+
+        # Create the symlink inside the repo pointing outside it
+        symlink = repo_dir / "escape"
+        try:
+            symlink.symlink_to(external_dir)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlink creation not available on this platform")
+
+        job = __import__("packages.core.models", fromlist=["Job"]).Job(name="symlink test")
+        job.metadata["target_repo"] = str(repo_dir)
+
+        # Build an intent pointing at escape/file.md — passes path component checks
+        # but resolves to external_dir/file.md (outside repo_dir)
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.approval_queue import make_intent_id, set_approval_state, APPROVAL_APPROVED
+        from packages.orchestration.permissions import Capability, set_permission
+        from uuid import uuid4
+        artifact = Artifact(
+            name="symlink test artifact",
+            content="Summary:\n  test\nProposed Changes:\n  - bullet\n",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={
+                "patch_intent_explanations": [{
+                    "file": "escape/file.md",
+                    "action": "create",
+                    "risk": "low",
+                    "reason": "test",
+                    "summary": "test",
+                }]
+            },
+        )
+        job.artifacts.append(artifact)
+        intent_id = make_intent_id(artifact.id, 0)
+        set_approval_state(job, intent_id, APPROVAL_APPROVED)
+        set_permission(job, Capability.repo_generated_write, allow=True)
+
+        result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
+
+        # Must be blocked — boundary guard fires
+        assert result.state == "blocked", f"expected blocked, got {result.state!r}"
+        assert result.blocked_reason in ("unsafe_path", "path_traversal", "absolute_path"), (
+            f"expected unsafe_path but got {result.blocked_reason!r}"
+        )
+        # External file must not have been created
+        assert not (external_dir / "file.md").exists()
+        # Run log event must still be emitted (structurally)
+        runs_dir = tmp_path / "runs" / str(job.id)
+        events = []
+        if runs_dir.exists():
+            for jsonl in sorted(runs_dir.glob("*.jsonl")):
+                for line in jsonl.read_text().splitlines():
+                    if line.strip():
+                        import json as _json
+                        ev = _json.loads(line)
+                        if ev.get("event") == "patch_intent_applied":
+                            events.append(ev)
+        assert events, "expected patch_intent_applied run-log event even on blocked result"
+        assert events[0]["metadata"]["outcome"] == "blocked"
 
     def test_valid_relative_md_path_accepted(self, tmp_path):
         job, repo = _make_job(tmp_repo=tmp_path)
@@ -569,8 +643,17 @@ class TestRunLog:
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         ev = self._find_apply_event(tmp_path, str(job.id))
         meta = ev["metadata"]
-        for key in ("intent_id", "target_path", "action", "outcome", "bytes_written", "line_count"):
-            assert key in meta, f"missing metadata key: {key}"
+        expected = {
+            "intent_id",
+            "target_path",
+            "action",
+            "outcome",
+            "bytes_written",
+            "line_count",
+        }
+        assert set(meta.keys()) == expected, (
+            f"metadata keys mismatch — got {set(meta.keys())}, expected {expected}"
+        )
 
     def test_run_log_outcome_applied(self, tmp_path):
         job, _ = _make_job(tmp_repo=tmp_path)
@@ -927,22 +1010,31 @@ class TestBrainIntegration:
         assert "patch apply" in out.lower() or "apply" in out.lower()
 
     def test_brain_node_detail_no_patch_content(self, tmp_path):
+        """Brain node detail for patch_apply must not render any of:
+        artifact content, diff_preview, approval_reason, command_output,
+        or raw exception text.
+        """
         from packages.orchestration.brain_detail import (
             build_brain_node_detail,
+            export_brain_node_detail_json,
             summarize_brain_node_detail,
         )
         from packages.orchestration.project_brain import NT_PATCH_APPLY
         job, _ = _make_job(tmp_repo=tmp_path)
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW,
                                    proposed=["BRAIN_SECRET_789"])
-        _approve(job, intent_id)
+        set_approval_state(job, intent_id, APPROVAL_APPROVED, reason="BRAIN_APPROVAL_REASON")
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         graph = self._build_brain(job)
         apply_node = next(n for n in graph.nodes if n.type == NT_PATCH_APPLY)
         detail = build_brain_node_detail(job, graph, apply_node.id, [])
-        out = summarize_brain_node_detail(detail)
-        assert "BRAIN_SECRET_789" not in out
+        text_out = summarize_brain_node_detail(detail)
+        json_out = json.dumps(export_brain_node_detail_json(detail))
+        for sentinel in ("BRAIN_SECRET_789", "BRAIN_APPROVAL_REASON",
+                         "diff_preview", "command_output", "Traceback"):
+            assert sentinel not in text_out, f"sentinel {sentinel!r} found in text output"
+            assert sentinel not in json_out, f"sentinel {sentinel!r} found in JSON output"
 
     def test_brain_viewer_data_includes_patch_apply_node(self, tmp_path):
         from packages.orchestration.brain_viewer import build_brain_viewer_data
