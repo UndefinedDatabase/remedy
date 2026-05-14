@@ -143,18 +143,21 @@ import json, sys
 data = json.load(sys.stdin)
 for n in data.get('nodes', []):
     if n.get('type') == 'patch_apply':
-        print(n.get('properties', {}).get('target_path', ''))
+        print(n.get('metadata', {}).get('target_path', ''))
         break
 " 2>/dev/null || true)"
-        if [[ -n "${APPLIED_TARGET}" ]]; then
-            python3 -c "
+        if [[ -z "${APPLIED_TARGET}" ]]; then
+            echo "ERROR: patch_apply node target_path missing from brain after apply lifecycle" >&2
+            return 1
+        fi
+        python3 -c "
 import sys
 from pathlib import Path
 target_file = Path(sys.argv[1]) / sys.argv[2]
 intent_id   = sys.argv[3]
 if not target_file.exists():
-    print('    Applied file not found (may be create action on new path) — skipping')
-    sys.exit(0)
+    print('ERROR: applied file ' + str(target_file) + ' does not exist after apply', file=sys.stderr)
+    sys.exit(1)
 content = target_file.read_text()
 bad = [
     ('<!-- remedy:patch-intent', 'Remedy control marker prefix'),
@@ -175,9 +178,6 @@ if '## Proposed Update' not in content:
     sys.exit(1)
 print('    Applied file: OK (no control markers, has Proposed Update section)')
 " "${TARGET_REPO}" "${APPLIED_TARGET}" "${FIRST_INTENT_ID}"
-        else
-            echo "    patch_apply target_path not found in brain — skip file content check"
-        fi
 
         # 7f. verify exact run-log schema for patch_intent_applied events
         echo "--- 7f. Verify run-log schema (patch_intent_applied)"

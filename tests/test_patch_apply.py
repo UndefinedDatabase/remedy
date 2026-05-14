@@ -581,6 +581,7 @@ class TestApplyBehavior:
         result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
         assert result.state == "applied"
         content = (tmp_path / "README.md").read_text()
+        assert "<!-- remedy:patch-intent" not in content
         assert malicious_line not in content
         assert "&lt;!-- remedy:patch-intent" in content
         # Repeat apply is noop via metadata
@@ -605,6 +606,7 @@ class TestApplyBehavior:
         assert result.state == "applied"
         assert (tmp_path / "NEW.md").exists()
         content = (tmp_path / "NEW.md").read_text()
+        assert "<!-- remedy:patch-intent" not in content
         assert malicious_line not in content
         assert "&lt;!-- remedy:patch-intent" in content
         # Repeat apply is noop via metadata
