@@ -2066,6 +2066,27 @@ Enforcement:
 Prompt → Task → Artifact → Patch Intent → Approval → Apply → Verification
 ```
 
+### End-to-end apply proof smoke (Step 30.3)
+
+Step 30.3 locks the full apply proof lifecycle in the smoke script:
+
+```
+apply before approval  →  blocked (non-zero exit)
+approve intent
+apply approved intent  →  applied (file written)
+repeat apply           →  noop (exit 0)
+brain assertion        →  patch_apply node present
+run-log schema check   →  exact keys {intent_id, target_path, action, outcome, bytes_written, line_count}
+                          outcomes include: blocked, applied, noop
+```
+
+Additional proof hardening:
+- Marker injection defense covers both `create` and `modify` actions:
+  proposed lines containing `<!-- remedy:patch-intent` are escaped to
+  `&lt;!-- remedy:patch-intent` before writing (see `_escape_marker_line`).
+- `RUNS_ROOT` is resolved the same way `run_log.py` does (env var →
+  `<repo_root>/.data/runs`) so the smoke can inspect raw JSONL events.
+
 ### v0 Constraints
 
 | Constraint | Status |
