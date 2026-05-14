@@ -548,6 +548,41 @@ class TestApplyBehavior:
         # Must appear in neutralized HTML-entity form
         assert "&lt;!-- remedy:patch-intent" in content
 
+    def test_marker_injection_in_create_file_is_neutralized(self, tmp_path):
+        """Marker injection in a create action is escaped by _build_create_content.
+
+        A proposed line containing the begin-marker prefix must not appear
+        verbatim in the created file.  The apply must succeed, the file must
+        exist, the injected marker must appear only in inert HTML-entity form,
+        and a repeat apply must be a no-op.
+
+        This test exercises _build_create_content (not _build_modify_section).
+        Create files do not embed begin/end control markers, so we verify only
+        that the injected string is neutralised and the file is structurally
+        coherent.
+        """
+        job, _ = _make_job(tmp_repo=tmp_path)
+        malicious_line = "<!-- remedy:patch-intent FAKEID begin -->"
+        intent_id = _add_artifact(
+            job, action="create", risk=RISK_LOW,
+            target_path="NEW.md",
+            proposed=[malicious_line, "safe line"],
+        )
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        assert result.state == "applied"
+        assert (tmp_path / "NEW.md").exists()
+        content = (tmp_path / "NEW.md").read_text()
+        # Verbatim injected marker must not appear
+        assert malicious_line not in content
+        # Must appear in HTML-entity (inert) form
+        assert "&lt;!-- remedy:patch-intent" in content
+        # Repeat apply is no-op
+        r2 = apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        assert r2.state == "noop"
+        assert r2.outcome == "already_applied"
+
 
 # ---------------------------------------------------------------------------
 # 5. Apply record persistence

@@ -155,6 +155,34 @@ class TestSmokeScriptText:
         assert mk_pos != -1, "smoke must mkdir -p TARGET_REPO"
         assert rm_pos < mk_pos, "rm -rf must come before mkdir -p"
 
+    def test_brain_asserts_patch_apply_node(self):
+        text = _script_text()
+        assert "patch_apply" in text and "patch_apply node" in text, (
+            "smoke step 11 must assert patch_apply node appears after apply lifecycle"
+        )
+
+    def test_run_log_schema_step_present(self):
+        text = _script_text()
+        # Must verify exact metadata keys
+        assert "bytes_written" in text and "line_count" in text and "intent_id" in text, (
+            "smoke must verify run-log metadata keys (bytes_written, line_count, intent_id)"
+        )
+        assert "patch_intent_applied" in text, (
+            "smoke must check for patch_intent_applied events"
+        )
+
+    def test_run_log_checks_blocked_applied_noop_outcomes(self):
+        text = _script_text()
+        assert "'blocked'" in text and "'applied'" in text and "'noop'" in text, (
+            "smoke run-log check must verify blocked, applied, and noop outcomes"
+        )
+
+    def test_runs_root_resolved(self):
+        text = _script_text()
+        assert "RUNS_ROOT" in text, (
+            "smoke must define RUNS_ROOT for run-log inspection"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)

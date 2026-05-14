@@ -21,6 +21,23 @@ remedy_smoke() {
     local TARGET_REPO="${REMEDY_SMOKE_REPO:-/tmp/remedy-target-repo}"
     local PROMPT="Smoke test job — verify project registry and brain viewer pipeline"
 
+    # Resolve run-log root (same logic as run_log.py)
+    local RUNS_ROOT
+    if [[ -n "${REMEDY_DATA_DIR:-}" ]]; then
+        RUNS_ROOT="${REMEDY_DATA_DIR}/runs"
+    else
+        RUNS_ROOT="$(python3 -c "
+import sys, os
+sys.path.insert(0, os.getcwd())
+try:
+    from packages.orchestration.run_log import _resolve_runs_root
+    print(_resolve_runs_root())
+except ImportError:
+    from pathlib import Path
+    print(Path('.data') / 'runs')
+" 2>/dev/null || echo ".data/runs")"
+    fi
+
     # -------------------------------------------------------------------------
     # 1. Create target repo
     # -------------------------------------------------------------------------
@@ -118,6 +135,49 @@ for n in data.get('nodes', []):
         echo "--- 7d. Repeat apply (no-op)"
         remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
         echo "    Repeat apply: no-op (OK)"
+
+        # 7e. verify exact run-log schema for patch_intent_applied events
+        echo "--- 7e. Verify run-log schema (patch_intent_applied)"
+        python3 -c "
+import json, sys
+from pathlib import Path
+job_id   = sys.argv[1]
+runs_dir = Path(sys.argv[2]) / job_id
+events   = []
+if runs_dir.exists():
+    for f in sorted(runs_dir.glob('*.jsonl')):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                ev = json.loads(line)
+                if ev.get('event') == 'patch_intent_applied':
+                    events.append(ev)
+if not events:
+    print('ERROR: no patch_intent_applied events found in ' + str(runs_dir), file=sys.stderr)
+    sys.exit(1)
+required_meta = frozenset({'intent_id','target_path','action','outcome','bytes_written','line_count'})
+bad_keys      = frozenset({'approval_reason','diff_preview','command_output','content','traceback'})
+bad_strs      = ['Traceback', 'Exception:']
+outcomes      = {e['metadata'].get('outcome') for e in events}
+for ev in events:
+    meta = ev.get('metadata', {})
+    got  = frozenset(meta.keys())
+    if got != required_meta:
+        print('ERROR: metadata keys mismatch: got=' + str(sorted(got)) + ' want=' + str(sorted(required_meta)), file=sys.stderr)
+        sys.exit(1)
+    if got & bad_keys:
+        print('ERROR: forbidden metadata keys: ' + str(sorted(got & bad_keys)), file=sys.stderr)
+        sys.exit(1)
+    ev_str = json.dumps(ev)
+    for s in bad_strs:
+        if s in ev_str:
+            print('ERROR: forbidden substring ' + repr(s) + ' in event', file=sys.stderr)
+            sys.exit(1)
+for need in ('blocked', 'applied', 'noop'):
+    if need not in outcomes:
+        print('ERROR: expected outcome=' + need + ' not found in events; got=' + str(sorted(outcomes)), file=sys.stderr)
+        sys.exit(1)
+print('    run-log schema: OK  events=' + str(len(events)) + '  outcomes=' + str(sorted(outcomes)))
+" "${JOB_ID}" "${RUNS_ROOT}"
     else
         echo "    No patch intents found — skipping apply lifecycle"
     fi
@@ -172,6 +232,7 @@ print(data['score'])
 import json,sys
 data=json.load(sys.stdin)
 types={n['type'] for n in data.get('nodes', [])}
+first_intent_id=sys.argv[1]
 core=['job','task','context_coverage']
 missing_core=[t for t in core if t not in types]
 if missing_core:
@@ -180,8 +241,11 @@ if missing_core:
 if 'project_placeholder' not in types:
     print('ERROR: project_placeholder node missing from brain', file=sys.stderr)
     sys.exit(1)
+if first_intent_id and 'patch_apply' not in types:
+    print('ERROR: patch_apply node missing after apply lifecycle completed', file=sys.stderr)
+    sys.exit(1)
 print('    Brain types: '+', '.join(sorted(types)))
-"
+" "${FIRST_INTENT_ID}"
 
     # -------------------------------------------------------------------------
     # 12. Generate Brain Viewer
