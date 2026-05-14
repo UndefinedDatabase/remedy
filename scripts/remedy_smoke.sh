@@ -25,6 +25,7 @@ remedy_smoke() {
     # 1. Create target repo
     # -------------------------------------------------------------------------
     echo "--- 1. Create target repo: ${TARGET_REPO}"
+    rm -rf "${TARGET_REPO}"
     mkdir -p "${TARGET_REPO}"
     cat >"${TARGET_REPO}/AGENTS.md" <<'AGENTS_EOF'
 # Test Target Repo
@@ -82,9 +83,9 @@ PYPROJECT_EOF
     fi
 
     # -------------------------------------------------------------------------
-    # 7. Approve first patch intent if present
+    # 7. Patch apply lifecycle: before approval → approve → apply → noop
     # -------------------------------------------------------------------------
-    echo "--- 7. Approve first patch intent (if any)"
+    echo "--- 7. Patch apply lifecycle (if intent present)"
     FIRST_INTENT_ID="$(remedy brain "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
@@ -95,11 +96,30 @@ for n in data.get('nodes', []):
         break
 " 2>/dev/null || true)"
     if [[ -n "${FIRST_INTENT_ID}" ]]; then
-        remedy approve-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" --reason "smoke approval" \
-            2>&1 || true
+        # 7a. apply before approval must be blocked (non-zero exit)
+        echo "--- 7a. Apply before approval (expect blocked)"
+        if remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" 2>/dev/null; then
+            echo "ERROR: apply-patch-intent should fail before approval" >&2
+            return 1
+        fi
+        echo "    apply before approval: blocked (OK)"
+
+        # 7b. approve
+        echo "--- 7b. Approve patch intent"
+        remedy approve-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" --reason "smoke approval"
         echo "    Approved: ${FIRST_INTENT_ID}"
+
+        # 7c. apply approved intent (must succeed)
+        echo "--- 7c. Apply approved patch intent"
+        remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
+        echo "    Applied: ${FIRST_INTENT_ID} (OK)"
+
+        # 7d. repeat apply (must be no-op, exit 0)
+        echo "--- 7d. Repeat apply (no-op)"
+        remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
+        echo "    Repeat apply: no-op (OK)"
     else
-        echo "    No patch intents found — skipping"
+        echo "    No patch intents found — skipping apply lifecycle"
     fi
 
     # -------------------------------------------------------------------------
@@ -172,7 +192,7 @@ print('    Brain types: '+', '.join(sorted(types)))
         return 1
     }
     VIEW_PATH="$(printf '%s\n' "${BRAIN_VIEW_OUTPUT}" \
-        | awk -F': ' '/^Brain Viewer v0:/ {print $2; exit}' || true)"
+        | awk '/^Brain Viewer v0:/ {sub(/^Brain Viewer v0: /, ""); print; exit}' || true)"
     if [[ -z "${VIEW_PATH}" ]]; then
         echo "ERROR: brain-view did not print a 'Brain Viewer v0:' line" >&2
         printf "Output was:\n%s\n" "${BRAIN_VIEW_OUTPUT}" >&2

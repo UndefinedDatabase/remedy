@@ -62,6 +62,11 @@ _END_MARKER_TPL   = "<!-- remedy:patch-intent {intent_id} end -->"
 
 _BLOCKED_RISKS: frozenset[str] = frozenset({RISK_HIGH, RISK_UNKNOWN})
 
+# Marker injection defense: proposed lines that contain this prefix are escaped
+# to an inert HTML-entity form so they cannot create nested/duplicate marker blocks.
+_MARKER_ESCAPE_FROM = "<!-- remedy:patch-intent"
+_MARKER_ESCAPE_TO   = "&lt;!-- remedy:patch-intent"
+
 # Section headers in the builder artifact content format (kept local).
 _ARTIFACT_SECTION_HEADERS: frozenset[str] = frozenset(
     {"Summary:", "Proposed Changes:", "Notes:", "Risks:"}
@@ -304,6 +309,11 @@ def format_apply_result(result: PatchApplyResult) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _escape_marker_line(line: str) -> str:
+    """Neutralize any Remedy control marker prefix embedded in a proposed line."""
+    return line.replace(_MARKER_ESCAPE_FROM, _MARKER_ESCAPE_TO)
+
+
 def _validate_target_path(target_path: str) -> str | None:
     """Return an error reason string if target_path fails safety checks, else None."""
     if not target_path:
@@ -346,9 +356,10 @@ def _build_create_content(
 ) -> str:
     """Build markdown content for a new (create) file."""
     stem = Path(target_path).stem.replace("_", " ").replace("-", " ").title()
+    safe_lines = [_escape_marker_line(ln) for ln in proposed_lines]
     bullet_block = (
-        "\n".join(f"- {ln}" for ln in proposed_lines)
-        if proposed_lines
+        "\n".join(f"- {ln}" for ln in safe_lines)
+        if safe_lines
         else "(no proposed changes found in artifact)"
     )
     return (
@@ -366,9 +377,10 @@ def _build_modify_section(intent_id: str, proposed_lines: list[str]) -> str:
     """Build the marked section appended to an existing (modify) file."""
     begin = _BEGIN_MARKER_TPL.format(intent_id=intent_id)
     end   = _END_MARKER_TPL.format(intent_id=intent_id)
+    safe_lines = [_escape_marker_line(ln) for ln in proposed_lines]
     bullet_block = (
-        "\n".join(f"- {ln}" for ln in proposed_lines)
-        if proposed_lines
+        "\n".join(f"- {ln}" for ln in safe_lines)
+        if safe_lines
         else "(no proposed changes found in artifact)"
     )
     return f"{begin}\n## Remedy Proposed Update\n\n{bullet_block}\n{end}"
