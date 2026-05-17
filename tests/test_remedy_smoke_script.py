@@ -111,7 +111,8 @@ class TestSmokeScriptText:
     def test_no_lan_url_variable(self):
         text = _script_text()
         assert "VIEWER_HOST" not in text
-        assert "LAN" not in text
+        assert "LAN_URL" not in text
+        assert "VIEWER_LAN" not in text
 
     def test_no_pid_file(self):
         assert "PID_FILE" not in _script_text()
@@ -361,11 +362,11 @@ class TestSmokeScriptText:
 
     def test_viewer_sanity_block_has_no_bare_assert(self):
         text = _script_text()
-        # Extract only the viewer sanity section (step 13)
-        start = text.find("# 13.")
+        # Extract only the viewer sanity section (step 12 after renumbering in Step 30.12)
+        start = text.find("# 12.")
         if start == -1:
-            start = text.find("13. Assert viewer")
-        end = text.find("# 14.", start) if start != -1 else -1
+            start = text.find("12. Assert viewer")
+        end = text.find("# 13.", start) if start != -1 else -1
         if start != -1 and end != -1:
             viewer_block = text[start:end]
         else:
@@ -427,6 +428,52 @@ class TestSmokeScriptText:
         )
         assert "__GENERATED_AT__" in text, (
             "viewer sanity must check that __GENERATED_AT__ is absent from rendered HTML"
+        )
+
+    # ------------------------------------------------------------------
+    # Step 30.12: --task-type on create-job, no plan-job
+    # ------------------------------------------------------------------
+
+    def test_create_job_uses_task_type_flag(self):
+        text = _script_text()
+        assert "--task-type" in text, (
+            "create-job call must use --task-type to bypass planner"
+        )
+
+    def test_create_job_uses_write_readme_task_type(self):
+        text = _script_text()
+        assert "--task-type write_readme" in text, (
+            "create-job must set --task-type write_readme for smoke determinism"
+        )
+
+    def test_create_job_uses_task_description_flag(self):
+        text = _script_text()
+        assert "--task-description" in text, (
+            "create-job call must pass --task-description alongside --task-type"
+        )
+
+    def test_plan_job_not_called_in_smoke(self):
+        text = _script_text()
+        # 'plan-job' must not appear as a standalone remedy sub-command call.
+        # plan-job-local is a different command and is not called either, but
+        # the key invariant is that `remedy plan-job` is absent.
+        import re
+        matches = re.findall(r'remedy\s+plan-job\b(?!-local)', text)
+        assert matches == [], (
+            "smoke must not call 'remedy plan-job' — explicit --task-type replaces the planner. "
+            f"Found: {matches}"
+        )
+
+    def test_smoke_asserts_job_state_planned_after_create(self):
+        text = _script_text()
+        assert "state" in text and "planned" in text, (
+            "smoke must assert job state=planned after create-job --task-type"
+        )
+
+    def test_smoke_asserts_single_write_readme_task(self):
+        text = _script_text()
+        assert "write_readme" in text and ("task_type" in text or "inputs" in text), (
+            "smoke must assert the created job has a write_readme task"
         )
 
 

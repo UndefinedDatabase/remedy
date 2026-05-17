@@ -69,15 +69,41 @@ README_EOF
     echo "    PROJECT_ID=${PROJECT_ID}"
 
     # -------------------------------------------------------------------------
-    # 3. Create job (linked to project)
+    # 3. Create job (linked to project, explicit task_type — no plan-job needed)
     # -------------------------------------------------------------------------
     echo "--- 3. Create job"
-    JOB_ID="$(remedy create-job "${PROMPT}" --project "${PROJECT_ID}")"
+    JOB_ID="$(remedy create-job "${PROMPT}" \
+        --project "${PROJECT_ID}" \
+        --task-type write_readme \
+        --task-description "Write/update README.md for smoke target.")"
     if [[ -z "${JOB_ID}" ]]; then
         echo "ERROR: create-job did not print a job ID" >&2
         return 1
     fi
     echo "    JOB_ID=${JOB_ID}"
+
+    # Assert: job starts in PLANNED state with exactly one write_readme task.
+    python3 -c "
+import json, sys, subprocess
+result = subprocess.run(['remedy', 'show-job', sys.argv[1]], capture_output=True, text=True)
+if result.returncode != 0:
+    print('ERROR: show-job failed: ' + result.stderr, file=sys.stderr)
+    sys.exit(1)
+job = json.loads(result.stdout)
+state = job.get('state', '')
+tasks = job.get('tasks', [])
+if state != 'planned':
+    print('ERROR: job state must be planned after create-job --task-type, got: ' + repr(state), file=sys.stderr)
+    sys.exit(1)
+if len(tasks) != 1:
+    print('ERROR: expected exactly 1 task, got ' + str(len(tasks)), file=sys.stderr)
+    sys.exit(1)
+tt = tasks[0].get('inputs', {}).get('task_type', '')
+if tt != 'write_readme':
+    print('ERROR: task task_type must be write_readme, got: ' + repr(tt), file=sys.stderr)
+    sys.exit(1)
+print('    job state=planned, 1 task, task_type=write_readme: OK')
+" "${JOB_ID}"
 
     # -------------------------------------------------------------------------
     # 4. Attach repo + set permission; link repo to project
@@ -88,15 +114,9 @@ README_EOF
     remedy attach-project-repo "${PROJECT_ID}" "${TARGET_REPO}"
 
     # -------------------------------------------------------------------------
-    # 5. Plan
+    # 5. Run next task (requires Ollama — skip gracefully if unavailable)
     # -------------------------------------------------------------------------
-    echo "--- 5. plan-job"
-    remedy plan-job "${JOB_ID}"
-
-    # -------------------------------------------------------------------------
-    # 6. Run next task (requires Ollama — skip gracefully if unavailable)
-    # -------------------------------------------------------------------------
-    echo "--- 6. run-next-task-local"
+    echo "--- 5. run-next-task-local"
     if remedy run-next-task-local "${JOB_ID}"; then
         echo "    Task run: OK"
     else
@@ -104,9 +124,9 @@ README_EOF
     fi
 
     # -------------------------------------------------------------------------
-    # 7. Patch apply lifecycle: before approval → approve → apply → noop
+    # 6. Patch apply lifecycle: before approval → approve → apply → noop
     # -------------------------------------------------------------------------
-    echo "--- 7. Patch apply lifecycle (if intent present)"
+    echo "--- 6. Patch apply lifecycle (if intent present)"
     FIRST_INTENT_ID="$(remedy brain "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
@@ -117,31 +137,31 @@ for n in data.get('nodes', []):
         break
 " 2>/dev/null || true)"
     if [[ -n "${FIRST_INTENT_ID}" ]]; then
-        # 7a. apply before approval must be blocked (non-zero exit)
-        echo "--- 7a. Apply before approval (expect blocked)"
+        # 6a. apply before approval must be blocked (non-zero exit)
+        echo "--- 6a. Apply before approval (expect blocked)"
         if remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" 2>/dev/null; then
             echo "ERROR: apply-patch-intent should fail before approval" >&2
             return 1
         fi
         echo "    apply before approval: blocked (OK)"
 
-        # 7b. approve
-        echo "--- 7b. Approve patch intent"
+        # 6b. approve
+        echo "--- 6b. Approve patch intent"
         remedy approve-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" --reason "smoke approval"
         echo "    Approved: ${FIRST_INTENT_ID}"
 
-        # 7c. apply approved intent (must succeed)
-        echo "--- 7c. Apply approved patch intent"
+        # 6c. apply approved intent (must succeed)
+        echo "--- 6c. Apply approved patch intent"
         remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
         echo "    Applied: ${FIRST_INTENT_ID} (OK)"
 
-        # 7d. repeat apply (must be no-op, exit 0)
-        echo "--- 7d. Repeat apply (no-op)"
+        # 6d. repeat apply (must be no-op, exit 0)
+        echo "--- 6d. Repeat apply (no-op)"
         remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
         echo "    Repeat apply: no-op (OK)"
 
-        # 7e. verify applied file has no Remedy control markers
-        echo "--- 7e. Verify applied file has no Remedy control markers"
+        # 6e. verify applied file has no Remedy control markers
+        echo "--- 6e. Verify applied file has no Remedy control markers"
         APPLIED_TARGET="$(remedy brain "${JOB_ID}" --json | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
@@ -186,8 +206,8 @@ if not content.endswith('\n'):
 print('    Applied file: OK (no raw HTML comments, has Proposed Update section, ends with newline)')
 " "${TARGET_REPO}" "${APPLIED_TARGET}" "${FIRST_INTENT_ID}"
 
-        # 7f. verify exact run-log schema for patch_intent_applied events
-        echo "--- 7f. Verify run-log schema (patch_intent_applied)"
+        # 6f. verify exact run-log schema for patch_intent_applied events
+        echo "--- 6f. Verify run-log schema (patch_intent_applied)"
         python3 -c "
 import json, sys
 from pathlib import Path
@@ -228,8 +248,8 @@ for need in ('blocked', 'applied', 'noop'):
         sys.exit(1)
 print('    run-log schema: OK  events=' + str(len(events)) + '  outcomes=' + str(sorted(outcomes)))
 " "${JOB_ID}" "${RUNS_ROOT}"
-        # 7g. whole-TARGET_REPO markerless scan
-        echo "--- 7g. Whole-repo markerless scan"
+        # 6g. whole-TARGET_REPO markerless scan
+        echo "--- 6g. Whole-repo markerless scan"
         python3 -c "
 from pathlib import Path
 import sys
@@ -260,9 +280,9 @@ print('    target repo markerless: OK')
     fi
 
     # -------------------------------------------------------------------------
-    # 8. Assert: remedy project --json (alias)
+    # 7. Assert: remedy project --json (alias)
     # -------------------------------------------------------------------------
-    echo "--- 8. Assert: remedy project --json"
+    echo "--- 7. Assert: remedy project --json"
     PROJECT_JSON="$(remedy project "${PROJECT_ID}" --json)"
     python3 -c "
 import json,sys
@@ -275,9 +295,9 @@ print(f'    remedy project --json: OK (version={data[\"version\"]}, jobs={len(jo
 " "${PROJECT_JSON}" "${PROJECT_ID}" "${JOB_ID}"
 
     # -------------------------------------------------------------------------
-    # 9. Assert: remedy show-project --json (backward compat)
+    # 8. Assert: remedy show-project --json (backward compat)
     # -------------------------------------------------------------------------
-    echo "--- 9. Assert: remedy show-project --json"
+    echo "--- 8. Assert: remedy show-project --json"
     SHOW_JSON="$(remedy show-project "${PROJECT_ID}" --json)"
     python3 -c "
 import json,sys
@@ -287,9 +307,9 @@ print('    remedy show-project --json: OK')
 " "${SHOW_JSON}"
 
     # -------------------------------------------------------------------------
-    # 10. Assert: context score 0..85
+    # 9. Assert: context score 0..85
     # -------------------------------------------------------------------------
-    echo "--- 10. Assert context score"
+    echo "--- 9. Assert context score"
     CTX_SCORE="$(remedy context "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
@@ -302,9 +322,9 @@ print(data['score'])
     echo "    Context score: ${CTX_SCORE} (OK)"
 
     # -------------------------------------------------------------------------
-    # 11. Assert: brain JSON has required node types + project_placeholder
+    # 10. Assert: brain JSON has required node types + project_placeholder
     # -------------------------------------------------------------------------
-    echo "--- 11. Assert brain node types (including project_placeholder)"
+    echo "--- 10. Assert brain node types (including project_placeholder)"
     remedy brain "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
@@ -325,9 +345,9 @@ print('    Brain types: '+', '.join(sorted(types)))
 " "${FIRST_INTENT_ID}"
 
     # -------------------------------------------------------------------------
-    # 12. Generate Brain Viewer
+    # 11. Generate Brain Viewer
     # -------------------------------------------------------------------------
-    echo "--- 12. remedy brain-view"
+    echo "--- 11. remedy brain-view"
     BRAIN_VIEW_OUTPUT="$(remedy brain-view "${JOB_ID}")" || {
         echo "ERROR: brain-view failed" >&2
         return 1
@@ -342,9 +362,9 @@ print('    Brain types: '+', '.join(sorted(types)))
     VIEW_DIR="$(dirname "${VIEW_PATH}")"
 
     # -------------------------------------------------------------------------
-    # 13. Assert viewer files (self-diagnosing — no bare assert)
+    # 12. Assert viewer files (self-diagnosing — no bare assert)
     # -------------------------------------------------------------------------
-    echo "--- 13. Assert viewer files"
+    echo "--- 12. Assert viewer files"
     python3 -c "
 import json, sys
 from pathlib import Path
@@ -412,7 +432,7 @@ print('    index.html: OK')
 " "${VIEW_DIR}"
 
     # -------------------------------------------------------------------------
-    # 14. Summary
+    # 13. Summary
     # -------------------------------------------------------------------------
     echo ""
     echo "========================================"

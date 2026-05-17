@@ -1506,7 +1506,7 @@ Writes files under `REMEDY_DATA_DIR/viewers/<job_id>/`:
 
 Prints `Brain Viewer v0: <path>` to stdout on success.
 
-**Smoke test helper.**  `scripts/remedy_smoke.sh` is an end-to-end smoke function that creates a project, a job, runs planning, and asserts the brain viewer files are produced correctly.  It does not start any server.
+**Smoke test helper.**  `scripts/remedy_smoke.sh` is an end-to-end smoke function that creates a project, a job (with `--task-type write_readme` — no planner call), runs the task, and asserts the brain viewer files are produced correctly.  It does not start any server.
 
 ```bash
 # Source and call:
@@ -1858,7 +1858,11 @@ remedy attach-project-repo <project_id> <repo_path>  — attach a repo to a proj
 remedy attach-project-job <project_id> <job_id>      — link a job to a project
 remedy project <project_id> [--json]                 — show project summary (user-facing alias)
 remedy show-project <project_id> [--json]            — show project summary (backward-compat)
-remedy create-job "<prompt>" [--project <project_id>] — create job and optionally link
+remedy create-job "<prompt>" [--project <project_id>]
+    [--task-type <type>] [--task-description "<desc>"]
+                                                       — create job and optionally link;
+                                                         --task-type creates one Task immediately
+                                                         and sets state=PLANNED (bypasses plan-job)
 ```
 
 `remedy project` is the primary user-facing alias.  `remedy show-project` remains for backward compatibility; both call the same implementation.
@@ -2133,8 +2137,11 @@ The smoke checks both the applied file and the whole TARGET_REPO for forbidden s
 - Binary/unreadable files are skipped via `UnicodeDecodeError`/`OSError` catch.
 - Smoke seeds `README.md` in TARGET_REPO before running so that `modify`-action
   apply always finds the target file (v0 modify requires the target to exist).
-- Smoke default prompt forces `task_type write_readme` (English) for determinism.
-- Viewer sanity (step 13) is fully self-diagnosing: every check prints an
+- Smoke creates the job with `--task-type write_readme` (Step 30.12), which sets
+  `job.state = PLANNED` and creates exactly one `Task` with `inputs={"task_type":
+  "write_readme"}` without calling `plan-job`. The smoke immediately asserts this
+  before attaching the repo or running any task.
+- Viewer sanity (step 12) is fully self-diagnosing: every check prints an
   actionable `ERROR: viewer sanity failed: <reason>` message; no bare `assert`.
   Checks: `version`, `graph`, `node_details`, `positions`, `detail_fallback_count`,
   `graph.nodes` non-empty, `node_details` count == `nodes` count, all HTML

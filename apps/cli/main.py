@@ -16,17 +16,49 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
 from uuid import UUID
 
-from packages.core.models import Job, RunState
+from packages.core.models import Job, RunState, Task
 from packages.orchestration.job_runner import PlanJobResult, plan_job
 from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
 
+# Allowed characters for an explicit task_type token.
+_SAFE_TASK_TYPE_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 
-def _cmd_create_job(prompt: str, *, project_id: str | None = None) -> None:
+
+def _cmd_create_job(
+    prompt: str,
+    *,
+    project_id: str | None = None,
+    task_type: str | None = None,
+    task_description: str | None = None,
+) -> None:
     from packages.orchestration.run_log import RunLogWriter
+
+    # --task-description without --task-type is ambiguous; reject it.
+    if task_description is not None and task_type is None:
+        print(
+            "Error: --task-description requires --task-type",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Validate task_type token format.
+    if task_type is not None:
+        task_type = task_type.strip()
+        if not task_type:
+            print("Error: --task-type must not be empty", file=sys.stderr)
+            sys.exit(1)
+        if not _SAFE_TASK_TYPE_RE.match(task_type):
+            print(
+                "Error: --task-type contains invalid characters; "
+                "allowed: letters, digits, underscores, hyphens",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     project = None
     if project_id:
@@ -45,10 +77,18 @@ def _cmd_create_job(prompt: str, *, project_id: str | None = None) -> None:
     if project_id:
         metadata["project_id"] = project_id
 
+    tasks: list[Task] = []
+    state = RunState.PENDING
+    if task_type is not None:
+        description = (task_description or "").strip() or f"Execute {task_type} task."
+        tasks = [Task(description=description, inputs={"task_type": task_type})]
+        state = RunState.PLANNED
+
     job = Job(
         name=prompt[:50],
         user_prompt=prompt,
-        state=RunState.PENDING,
+        state=state,
+        tasks=tasks,
         metadata=metadata,
     )
     save_job(job)
@@ -1402,6 +1442,19 @@ def main() -> None:
     create = subparsers.add_parser("create-job", help="Create and persist a new job")
     create.add_argument("prompt", help="User prompt describing the job")
     create.add_argument("--project", default=None, help="Project UUID to attach the job to")
+    create.add_argument(
+        "--task-type",
+        default=None,
+        dest="task_type",
+        help="Create exactly one explicit task with this task_type (letters/digits/underscore/hyphen). "
+             "Sets job state to PLANNED immediately without calling plan-job.",
+    )
+    create.add_argument(
+        "--task-description",
+        default=None,
+        dest="task_description",
+        help="Description for the explicit task (requires --task-type).",
+    )
 
     subparsers.add_parser("list-jobs", help="List all persisted jobs (newest first)")
 
@@ -1599,7 +1652,12 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "create-job":
-        _cmd_create_job(args.prompt, project_id=getattr(args, "project", None))
+        _cmd_create_job(
+            args.prompt,
+            project_id=getattr(args, "project", None),
+            task_type=getattr(args, "task_type", None),
+            task_description=getattr(args, "task_description", None),
+        )
     elif args.command == "list-jobs":
         _cmd_list_jobs()
     elif args.command == "show-job":
