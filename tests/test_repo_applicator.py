@@ -16,6 +16,7 @@ import pytest
 from packages.core.models import Artifact, Job, RunState
 from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.repo_applicator import (
+    _build_repo_file_content,
     _resolve_repo_path,
     _write_to_repo,
     apply_task_output_to_repo,
@@ -435,6 +436,62 @@ class TestApplyTaskOutputToRepo:
         assert "## Proposed Changes" in content
         assert "- Add function foo()" in content
         assert "- Update README with usage" in content
+
+    def test_generated_repo_file_has_no_raw_html_comment(self, tmp_path):
+        """Generated repo files must not contain raw HTML comment starts."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        artifact = _make_artifact("analyze_requirements", summary="Summary.")
+        # Inject an HTML comment into the artifact content's proposed changes
+        artifact.content = (
+            "Summary:\n"
+            "  Requirements analysis.\n"
+            "Proposed Changes:\n"
+            "  - <!-- a hidden comment --> Add feature\n"
+            "  - Normal line\n"
+        )
+        applied = apply_task_output_to_repo(artifact, repo_root)
+        assert len(applied) == 1
+        content = Path(applied[0]).read_text()
+        assert "<!--" not in content
+        assert "&lt;!-- a hidden comment -->" in content
+        assert "Add feature" in content
+
+    def test_generated_repo_file_neutralizes_html_comment_in_summary(self, tmp_path):
+        """HTML comment starts in the summary line must be neutralized."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        artifact = _make_artifact(
+            "analyze_requirements",
+            summary="<!-- injected --> Real summary.",
+        )
+        applied = apply_task_output_to_repo(artifact, repo_root)
+        assert len(applied) == 1
+        content = Path(applied[0]).read_text()
+        assert "<!--" not in content
+        assert "&lt;!-- injected -->" in content
+        assert "Real summary." in content
+
+    def test_generated_title_html_comment_is_neutralized(self):
+        """HTML comment starts in the title (derived from task_type) must be neutralized."""
+        content = _build_repo_file_content(
+            task_type="write<!--spec",
+            summary="Normal summary.",
+            artifact_content="",
+        )
+        assert "<!--" not in content
+        assert "&lt;!--" in content
+
+    def test_generated_repo_file_ends_with_exactly_one_newline(self, tmp_path):
+        """Generated repo file content must end with exactly one newline."""
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        artifact = _make_artifact("analyze_requirements", summary="Summary.")
+        applied = apply_task_output_to_repo(artifact, repo_root)
+        assert len(applied) == 1
+        content = Path(applied[0]).read_text()
+        assert content.endswith("\n"), "generated repo file must end with a newline"
+        assert not content.endswith("\n\n"), "generated repo file must not end with double newline"
 
 
 # ---------------------------------------------------------------------------

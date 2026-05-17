@@ -35,6 +35,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from packages.core.models import Artifact
+from packages.orchestration.markdown_output_safety import (
+    neutralize_markdown_html_comment_start as _neutralize,
+)
 from packages.orchestration.task_registry import get_task_type_spec
 
 if TYPE_CHECKING:
@@ -102,11 +105,12 @@ def _build_repo_file_content(task_type: str, summary: str, artifact_content: str
     (section-aware: Notes and Risks are excluded even though they share the
     "  - " prefix). Converts "  - item" workspace format to "- item" bullets.
     """
-    title = task_type.replace("_", " ").title()
+    title = _neutralize(task_type.replace("_", " ").title())
+    safe_summary = _neutralize(summary)
     lines: list[str] = [
         f"# {title}",
         "",
-        f"**Summary:** {summary}",
+        f"**Summary:** {safe_summary}",
         "",
         "## Proposed Changes",
         "",
@@ -118,8 +122,8 @@ def _build_repo_file_content(task_type: str, summary: str, artifact_content: str
         elif line in _ARTIFACT_SECTION_HEADERS:
             in_proposed = False
         elif in_proposed and line.startswith("  - "):
-            # Strip leading spaces to convert "  - item" → "- item"
-            lines.append(line.lstrip())
+            # Strip "  - " prefix, neutralize HTML comment starts, emit as bullet.
+            lines.append("- " + _neutralize(line[4:]))
     lines.append("")
     return "\n".join(lines)
 
