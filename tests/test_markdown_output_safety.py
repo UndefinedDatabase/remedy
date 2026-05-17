@@ -52,15 +52,6 @@ class TestNeutralizeMarkdownHtmlCommentStart:
     def test_empty_string(self):
         assert neutralize_markdown_html_comment_start("") == ""
 
-    def test_coerces_non_string_input(self):
-        # The function accepts object and coerces to str
-        result = neutralize_markdown_html_comment_start(42)
-        assert result == "42"
-
-    def test_coerces_none_to_string(self):
-        result = neutralize_markdown_html_comment_start(None)
-        assert result == "None"
-
     def test_raw_html_comment_absent_from_result(self):
         inputs = [
             "<!-- a -->",
@@ -71,6 +62,5 @@ class TestNeutralizeMarkdownHtmlCommentStart:
         for inp in inputs:
             assert "<!--" not in neutralize_markdown_html_comment_start(inp)
 
-    def test_result_is_always_str(self):
+    def test_result_is_str_for_str_input(self):
         assert isinstance(neutralize_markdown_html_comment_start("text"), str)
-        assert isinstance(neutralize_markdown_html_comment_start(0), str)

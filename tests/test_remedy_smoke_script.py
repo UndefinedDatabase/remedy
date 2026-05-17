@@ -320,6 +320,22 @@ class TestSmokeScriptText:
             "smoke script must document that the whole-repo scan is a developer invariant"
         )
 
+    def test_smoke_seeds_readme_before_run(self):
+        text = _script_text()
+        assert "README.md" in text, (
+            "smoke must write README.md into TARGET_REPO before running "
+            "so modify-action apply always finds the target file"
+        )
+        assert "Initial README content" in text, (
+            "smoke must seed README.md with initial content"
+        )
+
+    def test_smoke_default_prompt_forces_write_readme_task(self):
+        text = _script_text()
+        assert "write_readme" in text, (
+            "smoke default prompt must contain 'write_readme' to make the task type deterministic"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)

@@ -161,8 +161,8 @@ def apply_task_output_to_repo(
     if not repo_root.exists() or not repo_root.is_dir():
         return []
 
-    task_type = artifact.metadata.get("task_type", "unknown")
-    summary = artifact.metadata.get("summary", "")
+    task_type = str(artifact.metadata.get("task_type") or "unknown")
+    summary   = str(artifact.metadata.get("summary")   or "")
 
     relative_path = _resolve_repo_path(task_type)
     if relative_path is None:

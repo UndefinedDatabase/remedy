@@ -734,12 +734,12 @@ class TestApplyBehavior:
         assert comment_line not in content
         assert "&lt;!-- generic comment -->" in content
 
-    def test_create_title_stem_has_no_raw_html_comment(self, tmp_path):
-        """The create-file title derived from target_path must contain no raw '<!--'.
+    def test_create_title_derived_from_path_never_contains_raw_html_comment(self, tmp_path):
+        """The create-file title derived from target_path never contains raw '<!--'.
 
-        A path stem containing '<!--' has its hyphens replaced with spaces by the
-        title builder before _neutralize is applied, so '<!--' becomes '<! ' (two
-        spaces).  _neutralize then catches any surviving '<!--' as a belt-and-suspenders
+        A path stem like 'test<!--doc' has its hyphens replaced with spaces by the
+        title builder (so '<!--' becomes '<! '), which already prevents raw HTML
+        comment starts in the title.  _neutralize is applied as a belt-and-suspenders
         output-boundary guard.  Either way the written file must be free of raw '<!--'.
         """
         job, _ = _make_job(tmp_repo=tmp_path)
@@ -755,15 +755,14 @@ class TestApplyBehavior:
         content = (tmp_path / "test<!--doc.md").read_text()
         assert "<!--" not in content
 
-    def test_build_create_content_title_neutralized_via_helper(self):
-        """_build_create_content applies _neutralize to the stem before writing.
+    def test_build_create_content_title_never_contains_raw_html_comment(self):
+        """_build_create_content output never contains raw '<!--' in the title.
 
-        Test via _build_create_content directly.  The '-' → ' ' replacement in the
-        builder already breaks '<!--' in most path stems, but the neutralizer provides
-        output-boundary safety for any path segment containing '<!' without following hyphens.
-        Verify the invariant: raw '<!--' must never appear in the returned content.
+        The '-' → ' ' replacement in the builder already breaks '<!--' in path-derived
+        stems before _neutralize runs.  The invariant that matters: raw '<!--' must
+        never appear in the returned content regardless of how it was prevented.
         """
-        # "docs/readme<!--comment.md" — the stem is "readme<!--comment"
+        # "docs/readme<!--comment.md" — stem is "readme<!--comment"
         # After replace("-", " "): "readme<!  comment" — no "<!--" survives
         content = _build_create_content("docs/readme<!--comment.md", ["line"])
         assert "<!--" not in content

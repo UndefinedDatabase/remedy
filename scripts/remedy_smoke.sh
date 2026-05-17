@@ -24,7 +24,7 @@ remedy_smoke() {
     set -euo pipefail
 
     local TARGET_REPO="${REMEDY_SMOKE_REPO:-/tmp/remedy-target-repo}"
-    local PROMPT="Smoke test job — verify project registry and brain viewer pipeline"
+    local PROMPT="${1:-Erstelle genau eine Aufgabe mit task_type write_readme: Schreibe ein README fuer ein kleines internes CLI Tool. Keine weiteren Tasks.}"
 
     # Resolve run-log root: $REMEDY_DATA_DIR/runs or .data/runs (public filesystem convention)
     local RUNS_ROOT
@@ -48,6 +48,14 @@ AGENTS_EOF
 name = "smoke-target"
 version = "0.1.0"
 PYPROJECT_EOF
+    # Seed README.md so modify-action apply always finds the target file.
+    # v0 patch apply only supports modify on existing files; create on new files.
+    # The write_readme task produces a modify intent targeting README.md.
+    cat >"${TARGET_REPO}/README.md" <<'README_EOF'
+# Tiny Internal Tool
+
+Initial README content.
+README_EOF
 
     # -------------------------------------------------------------------------
     # 2. Create project

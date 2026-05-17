@@ -1,17 +1,21 @@
 # Plan
 
 ## Goal
-Steps 30.6–30.9: Markerless Smoke Hardening + Shared Markdown Output Safety
+Step 30.10: Smoke Determinism + Markdown Safety Type Tightening
 
 ## Status
-COMPLETE — committing and pushing
+COMPLETE — committing
 
 ## Completed
-- [x] Step 30.6: RUNS_ROOT public convention; whole-repo markerless scan (step 7g); 5 smoke text tests
-- [x] Step 30.7: Remove bare 'remedy:patch-intent' false-positive needle; generalize to '<!--'; docs update
-- [x] Step 30.8: Generalize neutralizer to all '<!--'; newline contract; 13 new tests; smoke broadened
-- [x] Step 30.9: Shared markdown_output_safety.py; remove duplication from patch_apply/repo_applicator; neutralize titles; 19 new tests; TARGET_REPO freshness comment
-- [x] Full suite: 1720 passed (1701 → 1720)
+- [x] markdown_output_safety.py: tighten signature to str, remove object coercion
+- [x] repo_applicator.py: str() normalisation at metadata boundary
+- [x] patch_apply.py: add belt-and-suspenders comment on stem neutralization
+- [x] scripts/remedy_smoke.sh: seed README.md; deterministic write_readme prompt
+- [x] tests/test_markdown_output_safety.py: remove coercion tests, fix str-only assertion
+- [x] tests/test_patch_apply.py: rename misleading stem tests to state actual invariant
+- [x] tests/test_remedy_smoke_script.py: add README seed + prompt assertions
+- [x] docs/architecture.md: str signature, caller normalisation, smoke seeding note
+- [x] Suite: 1720 passed (same count — removals balanced additions)
 
 ## Next
-Push. PR #26 already open — no new PR needed.
+Push. PR #26 already open.

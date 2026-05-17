@@ -22,17 +22,18 @@ HTML_COMMENT_START      = "<!--"
 HTML_COMMENT_START_SAFE = "&lt;!--"
 
 
-def neutralize_markdown_html_comment_start(text: object) -> str:
+def neutralize_markdown_html_comment_start(text: str) -> str:
     """Replace every raw HTML comment start in generated Markdown text with a safe form.
 
     Converts ``<!--`` → ``&lt;!--`` in *text*.  The result is valid Markdown
     that renders visibly and is unambiguously not an active HTML comment.
 
-    *text* is coerced to ``str`` before processing so callers can safely pass
-    title strings derived from path stems, task types, or summaries without a
-    separate str() call.
+    *text* must be a ``str``.  Callers are responsible for normalising optional
+    metadata fields (e.g. ``str(value or "")``) before passing them here.
+    This keeps the helper pure and prevents silent coercion of ``None`` or other
+    objects to their string representations.
 
     Does NOT double-encode: ``&lt;!--`` in the input is left unchanged because
     it does not contain the literal substring ``<!--``.
     """
-    return str(text).replace(HTML_COMMENT_START, HTML_COMMENT_START_SAFE)
+    return text.replace(HTML_COMMENT_START, HTML_COMMENT_START_SAFE)

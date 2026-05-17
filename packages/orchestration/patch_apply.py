@@ -339,6 +339,9 @@ def _build_create_content(
     No Remedy control markers, intent IDs, or provenance metadata are written
     into the file.  Provenance is recorded externally in apply records and run logs.
     """
+    # Belt-and-suspenders: hyphen replacement already prevents "<!--" in normal
+    # path-derived stems (the "--" in "<!--" becomes spaces first).  _neutralize
+    # is applied as output-boundary defense for any residual edge cases.
     stem = _neutralize(Path(target_path).stem.replace("_", " ").replace("-", " ").title())
     safe_lines = [_neutralize(ln) for ln in proposed_lines]
     bullet_block = (
