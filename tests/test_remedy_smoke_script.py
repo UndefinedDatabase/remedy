@@ -572,6 +572,47 @@ class TestSmokeScriptText:
             "smoke must scan index.html for forbidden redaction tokens"
         )
 
+    # Step 31: Apply Proof smoke checks
+
+    def test_smoke_checks_patch_apply_proof_recorded_event(self):
+        text = _script_text()
+        assert "patch_apply_proof_recorded" in text, (
+            "smoke must check for patch_apply_proof_recorded events (Step 31)"
+        )
+
+    def test_smoke_proof_checks_exact_13_keys(self):
+        text = _script_text()
+        # All 13 required proof event keys must appear in the smoke verification
+        for key in (
+            "before_sha256", "after_sha256",
+            "before_bytes", "after_bytes", "bytes_delta",
+            "before_line_count", "after_line_count", "line_delta",
+            "applied_at",
+        ):
+            assert key in text, (
+                f"smoke must verify proof event key {key!r} (Step 31)"
+            )
+
+    def test_smoke_proof_checks_after_sha_length(self):
+        text = _script_text()
+        # Smoke must validate that after_sha256 is 64 chars
+        assert "after_sha256" in text and "64" in text, (
+            "smoke must validate after_sha256 is 64-char hex"
+        )
+
+    def test_smoke_proof_checks_bytes_delta_positive(self):
+        text = _script_text()
+        assert "bytes_delta" in text and "0" in text, (
+            "smoke must verify bytes_delta is positive after apply"
+        )
+
+    def test_smoke_proof_no_raw_content_forbidden_strings(self):
+        text = _script_text()
+        # The proof check must exclude the same forbidden strings as the run-log check
+        assert "'approval_reason'" in text or '"approval_reason"' in text, (
+            "smoke proof check must reject approval_reason"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)

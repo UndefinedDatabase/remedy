@@ -326,6 +326,7 @@ def build_project_brain(
                     "action":        apply_action,
                     "bytes_written": int(record.get("bytes_written", 0)),
                     "line_count":    int(record.get("line_count", 0)),
+                    **_extract_proof_fields(record.get("proof", {})),
                 },
             ))
             # Edge: patch_intent --applied_by--> patch_apply
@@ -662,6 +663,26 @@ def export_project_brain_json(graph: ProjectBrainGraph) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _extract_proof_fields(proof: dict) -> dict:
+    """Extract structural proof fields from an apply record's proof dict.
+
+    Returns only safe scalar values; no raw file content.
+    Returns an empty dict when proof is absent or empty.
+    """
+    if not proof:
+        return {}
+    return {
+        "before_sha256":     str(proof.get("before_sha256", "")),
+        "after_sha256":      str(proof.get("after_sha256", "")),
+        "before_bytes":      int(proof.get("before_bytes", 0)),
+        "after_bytes":       int(proof.get("after_bytes", 0)),
+        "bytes_delta":       int(proof.get("bytes_delta", 0)),
+        "before_line_count": int(proof.get("before_line_count", 0)),
+        "after_line_count":  int(proof.get("after_line_count", 0)),
+        "line_delta":        int(proof.get("line_delta", 0)),
+    }
 
 
 def _safe_int(val: object, default: int = 0) -> int:

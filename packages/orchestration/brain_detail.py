@@ -914,6 +914,11 @@ def _detail_patch_apply(
         f"No patch content or diff text is rendered."
     )
 
+    before_sha = str(node.metadata.get("before_sha256", ""))
+    after_sha  = str(node.metadata.get("after_sha256", ""))
+    bytes_delta = int(node.metadata.get("bytes_delta", 0))
+    line_delta  = int(node.metadata.get("line_delta", 0))
+
     evidence = [
         f"intent_id: {intent_id}",
         f"target_path: {target_path}",
@@ -922,6 +927,11 @@ def _detail_patch_apply(
         f"bytes_written: {bytes_written}",
         f"line_count: {line_count}",
     ]
+    if after_sha:
+        evidence.append(f"before_sha256: {before_sha[:16] + '…' if before_sha else '(none)'}")
+        evidence.append(f"after_sha256: {after_sha[:16]}…")
+        evidence.append(f"bytes_delta: {bytes_delta:+d}")
+        evidence.append(f"line_delta: {line_delta:+d}")
 
     return BrainNodeDetail(
         job_id=job_id_str,

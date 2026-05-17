@@ -2293,3 +2293,67 @@ The following are never surfaced in any apply record, run-log event, Brain node,
 - Approval reason text
 - Exception messages
 - Command output
+
+## Apply Snapshot + Diff Proof v0 (Step 31)
+
+### Purpose
+
+When `apply_patch_intent` successfully applies a patch intent, it records a **structural proof snapshot**: SHA-256 hashes of the file before and after the write, plus byte and line deltas. This proof is stored in job/artifact metadata and emitted as a new run-log event.
+
+Rollback is not implemented in v0. The proof snapshot is evidence-only.
+
+### Proof schema (stored under `apply_record["proof"]`)
+
+```python
+{
+    "before_sha256":     str,   # "" for create (file did not exist)
+    "after_sha256":      str,   # 64-char lowercase hex SHA-256
+    "before_bytes":      int,   # 0 for create
+    "after_bytes":       int,
+    "bytes_delta":       int,   # after_bytes - before_bytes
+    "before_line_count": int,   # 0 for create
+    "after_line_count":  int,
+    "line_delta":        int,   # after_line_count - before_line_count
+}
+```
+
+The proof is a nested dict inside the existing apply record. It does **not** replace any existing apply record field.
+
+### `patch_apply_proof_recorded` run-log event
+
+A new separate event is emitted after every successful apply (not on noop, not on blocked). The `patch_intent_applied` event schema is **unchanged**.
+
+Metadata exact keys (13):
+
+```python
+{
+    "intent_id":          str,
+    "target_path":        str,
+    "action":             str,   # "create" | "modify"
+    "outcome":            str,   # "applied"
+    "before_sha256":      str,
+    "after_sha256":       str,
+    "before_bytes":       int,
+    "after_bytes":        int,
+    "bytes_delta":        int,
+    "before_line_count":  int,
+    "after_line_count":   int,
+    "line_delta":         int,
+    "applied_at":         str,   # ISO timestamp
+}
+```
+
+### Surfaces
+
+- **Brain node**: `patch_apply` node metadata extended with `before_sha256`, `after_sha256`, `bytes_delta`, `line_delta`. Brain Node Detail evidence shows truncated hashes (first 16 chars) and signed deltas.
+- **Trust Report**: Section 7 shows a `proof:` line for each applied intent with truncated hashes and `Δbytes`/`Δlines`.
+- **Timeline**: `patch_apply_proof_recorded` event rendered as `✓ patch apply proof  <intent_id>  after_sha=<first16>…  Δbytes=+N  Δlines=+N`.
+
+### Redaction policy
+
+The proof snapshot contains only structural hashes and counts. The following are **never** stored in the proof or emitted in the proof event:
+- Raw file content (before or after)
+- Full diff text
+- Approval reason text
+- Exception messages
+- Command output

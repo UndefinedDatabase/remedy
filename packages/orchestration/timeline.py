@@ -205,6 +205,18 @@ def _render_single_event(ev: dict[str, Any]) -> str | None:
             f"  outcome={ev_outcome}"
         )
 
+    if name == "patch_apply_proof_recorded":
+        intent_id   = meta.get("intent_id", "")[:14]
+        after_sha   = str(meta.get("after_sha256", ""))
+        bdelta      = meta.get("bytes_delta", 0)
+        ldelta      = meta.get("line_delta", 0)
+        sha_str     = (after_sha[:16] + "…") if after_sha else "?"
+        return (
+            f"  {_OK} patch apply proof  {intent_id}"
+            f"  after_sha={sha_str}"
+            f"  Δbytes={bdelta:+d}  Δlines={ldelta:+d}"
+        )
+
     # All other events outside a task block: render as informational.
     return f"  {_INFO} {name}"
 

@@ -277,6 +277,53 @@ if bad:
     sys.exit(1)
 print('    target repo markerless: OK')
 " "${TARGET_REPO}" "${FIRST_INTENT_ID}"
+
+        # 6h. Verify patch_apply_proof_recorded event exists and has correct schema (Step 31)
+        echo "--- 6h. Verify proof event (patch_apply_proof_recorded)"
+        python3 -c "
+import json, sys
+from pathlib import Path
+job_id   = sys.argv[1]
+runs_dir = Path(sys.argv[2]) / job_id
+events   = []
+if runs_dir.exists():
+    for f in sorted(runs_dir.glob('*.jsonl')):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                ev = json.loads(line)
+                if ev.get('event') == 'patch_apply_proof_recorded':
+                    events.append(ev)
+if not events:
+    print('ERROR: no patch_apply_proof_recorded events found in ' + str(runs_dir), file=sys.stderr)
+    sys.exit(1)
+required_meta = frozenset({
+    'intent_id','target_path','action','outcome',
+    'before_sha256','after_sha256',
+    'before_bytes','after_bytes','bytes_delta',
+    'before_line_count','after_line_count','line_delta',
+    'applied_at',
+})
+bad_strs = ['Traceback', 'Exception:', 'approval_reason', 'diff_preview', 'command_output']
+for ev in events:
+    meta = ev.get('metadata', {})
+    got  = frozenset(meta.keys())
+    if got != required_meta:
+        print('ERROR: proof metadata keys mismatch: got=' + str(sorted(got)) + ' want=' + str(sorted(required_meta)), file=sys.stderr)
+        sys.exit(1)
+    after_sha = meta.get('after_sha256', '')
+    if len(after_sha) != 64:
+        print('ERROR: after_sha256 must be 64-char hex, got ' + repr(after_sha), file=sys.stderr)
+        sys.exit(1)
+    if meta.get('bytes_delta', 0) <= 0:
+        print('ERROR: bytes_delta must be positive after apply, got ' + str(meta.get('bytes_delta')), file=sys.stderr)
+        sys.exit(1)
+    ev_str = json.dumps(ev)
+    for s in bad_strs:
+        if s in ev_str:
+            print('ERROR: forbidden substring ' + repr(s) + ' in proof event', file=sys.stderr)
+            sys.exit(1)
+print('    proof event: OK  events=' + str(len(events)) + '  after_sha=' + events[0]['metadata']['after_sha256'][:16] + '...')
+" "${JOB_ID}" "${RUNS_ROOT}"
     else
         echo "    No patch intents found — skipping apply lifecycle"
     fi

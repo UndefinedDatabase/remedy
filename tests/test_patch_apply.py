@@ -829,11 +829,17 @@ class TestApplyRecord:
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         record = self._get_record(job, intent_id)
-        # record should only have the schema-defined keys
+        # record should only have schema-defined keys (proof is a nested dict, not raw content)
         allowed_keys = {"state", "applied_at", "target_path", "action",
-                        "bytes_written", "line_count", "reason"}
+                        "bytes_written", "line_count", "reason", "proof"}
         unexpected = set(record.keys()) - allowed_keys
         assert not unexpected, f"unexpected keys in record: {unexpected}"
+        # proof must not contain raw file content, only structural hashes and counts
+        proof = record.get("proof", {})
+        if proof:
+            raw_content_keys = {"content", "diff_preview", "approval_reason", "command_output"}
+            assert not (set(proof.keys()) & raw_content_keys), \
+                f"proof contains raw content keys: {set(proof.keys()) & raw_content_keys}"
 
     def test_apply_state_visible_after_reload(self, tmp_path):
         from packages.orchestration.storage import save_job, load_job
@@ -1366,3 +1372,381 @@ class TestPatchApplyResultShape:
         result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
         out = format_apply_result(result)
         assert "Traceback" not in out
+
+
+# ---------------------------------------------------------------------------
+# 11. Apply Snapshot + Diff Proof (Step 31)
+# ---------------------------------------------------------------------------
+
+
+class TestApplyProof:
+    """Tests for the proof snapshot stored in patch_intent_apply_records."""
+
+    def _get_proof(self, job, intent_id: str) -> dict:
+        for art in job.artifacts:
+            record = art.metadata.get("patch_intent_apply_records", {}).get(intent_id, {})
+            if record and "proof" in record:
+                return record["proof"]
+        return {}
+
+    def test_proof_stored_in_apply_record_create(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        assert proof, "proof dict must be present in apply record after create"
+
+    def test_proof_stored_in_apply_record_modify(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        (tmp_path / "README.md").write_text("# Existing\n", encoding="utf-8")
+        intent_id = _add_artifact(job, action="modify", risk=RISK_LOW, target_path="README.md")
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        assert proof, "proof dict must be present in apply record after modify"
+
+    def test_proof_create_before_sha_is_empty_string(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        assert proof["before_sha256"] == "", (
+            "before_sha256 must be empty string for create (file did not exist)"
+        )
+
+    def test_proof_after_sha_is_64_char_hex_create(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        sha = proof["after_sha256"]
+        assert len(sha) == 64, f"after_sha256 must be 64-char hex, got {sha!r}"
+        assert all(c in "0123456789abcdef" for c in sha), "after_sha256 must be lowercase hex"
+
+    def test_proof_after_sha_is_64_char_hex_modify(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        (tmp_path / "README.md").write_text("# Existing\n", encoding="utf-8")
+        intent_id = _add_artifact(job, action="modify", risk=RISK_LOW, target_path="README.md")
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        sha = proof["after_sha256"]
+        assert len(sha) == 64, f"after_sha256 must be 64-char hex, got {sha!r}"
+
+    def test_proof_before_bytes_zero_for_create(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        assert proof["before_bytes"] == 0
+
+    def test_proof_after_bytes_positive(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        assert proof["after_bytes"] > 0
+
+    def test_proof_bytes_delta_positive_for_modify(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        (tmp_path / "README.md").write_text("# Existing\n", encoding="utf-8")
+        intent_id = _add_artifact(job, action="modify", risk=RISK_LOW, target_path="README.md")
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        assert proof["bytes_delta"] > 0, "bytes_delta must be positive after modify"
+
+    def test_proof_before_sha_differs_from_after_sha_for_modify(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        (tmp_path / "README.md").write_text("# Existing\n", encoding="utf-8")
+        intent_id = _add_artifact(job, action="modify", risk=RISK_LOW, target_path="README.md")
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        assert proof["before_sha256"] != proof["after_sha256"], (
+            "before and after SHA-256 must differ after modify"
+        )
+
+    def test_proof_all_expected_keys_present(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        expected_keys = {
+            "before_sha256", "after_sha256",
+            "before_bytes", "after_bytes", "bytes_delta",
+            "before_line_count", "after_line_count", "line_delta",
+        }
+        assert expected_keys <= set(proof.keys()), (
+            f"proof missing keys: {expected_keys - set(proof.keys())}"
+        )
+
+    def test_proof_not_stored_for_blocked_apply(self, tmp_path):
+        job, _ = _make_job(with_repo=False)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        proof = self._get_proof(job, intent_id)
+        assert proof == {}, "proof must not be stored for a blocked apply"
+
+
+class TestRunLogProof:
+    """Tests for the patch_apply_proof_recorded run-log event (Step 31)."""
+
+    def _find_events_by_name(self, tmp_path: Path, job_id: str, ev_name: str) -> list[dict]:
+        runs_dir = tmp_path / "runs" / job_id
+        found = []
+        if not runs_dir.exists():
+            return found
+        for jsonl in sorted(runs_dir.glob("*.jsonl")):
+            for line in jsonl.read_text().splitlines():
+                if line.strip():
+                    ev = json.loads(line)
+                    if ev.get("event") == ev_name:
+                        found.append(ev)
+        return found
+
+    def test_proof_event_emitted_after_create(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        assert len(events) == 1, "exactly one proof event must be emitted after create"
+
+    def test_proof_event_emitted_after_modify(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        (tmp_path / "README.md").write_text("# Existing\n", encoding="utf-8")
+        intent_id = _add_artifact(job, action="modify", risk=RISK_LOW, target_path="README.md")
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        assert len(events) == 1
+
+    def test_proof_event_exact_metadata_keys(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        meta = events[0]["metadata"]
+        expected = {
+            "intent_id", "target_path", "action", "outcome",
+            "before_sha256", "after_sha256",
+            "before_bytes", "after_bytes", "bytes_delta",
+            "before_line_count", "after_line_count", "line_delta",
+            "applied_at",
+        }
+        assert set(meta.keys()) == expected, (
+            f"proof event metadata keys mismatch — got {set(meta.keys())}, expected {expected}"
+        )
+
+    def test_proof_event_not_emitted_on_blocked(self, tmp_path):
+        job, _ = _make_job(with_repo=False)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        assert len(events) == 0, "proof event must not be emitted for blocked apply"
+
+    def test_proof_event_not_emitted_on_noop(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)  # noop
+        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        assert len(events) == 1, "proof event must not be emitted on noop (second apply)"
+
+    def test_proof_event_after_sha_is_valid_hex(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        sha = events[0]["metadata"]["after_sha256"]
+        assert len(sha) == 64
+        assert all(c in "0123456789abcdef" for c in sha)
+
+    def test_proof_event_no_raw_content(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW,
+                                   proposed=["PROOF_SECRET_XYZ"])
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        ev_str = json.dumps(events[0])
+        assert "PROOF_SECRET_XYZ" not in ev_str
+
+
+class TestBrainProof:
+    """Tests for proof fields in the patch_apply Brain node (Step 31)."""
+
+    def _build_brain(self, job):
+        from packages.orchestration.project_brain import build_project_brain
+        return build_project_brain(job, [])
+
+    def test_patch_apply_node_has_after_sha256(self, tmp_path):
+        from packages.orchestration.project_brain import NT_PATCH_APPLY
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        graph = self._build_brain(job)
+        apply_node = next(n for n in graph.nodes if n.type == NT_PATCH_APPLY)
+        assert "after_sha256" in apply_node.metadata
+        assert len(apply_node.metadata["after_sha256"]) == 64
+
+    def test_patch_apply_node_has_before_sha256(self, tmp_path):
+        from packages.orchestration.project_brain import NT_PATCH_APPLY
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        graph = self._build_brain(job)
+        apply_node = next(n for n in graph.nodes if n.type == NT_PATCH_APPLY)
+        assert "before_sha256" in apply_node.metadata
+        # For create, before_sha256 should be empty string
+        assert apply_node.metadata["before_sha256"] == ""
+
+    def test_patch_apply_node_bytes_delta_positive_for_create(self, tmp_path):
+        from packages.orchestration.project_brain import NT_PATCH_APPLY
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        graph = self._build_brain(job)
+        apply_node = next(n for n in graph.nodes if n.type == NT_PATCH_APPLY)
+        assert apply_node.metadata.get("bytes_delta", 0) > 0
+
+    def test_brain_detail_shows_proof_hashes(self, tmp_path):
+        from packages.orchestration.brain_detail import (
+            build_brain_node_detail,
+            summarize_brain_node_detail,
+        )
+        from packages.orchestration.project_brain import NT_PATCH_APPLY
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        graph = self._build_brain(job)
+        apply_node = next(n for n in graph.nodes if n.type == NT_PATCH_APPLY)
+        detail = build_brain_node_detail(job, graph, apply_node.id, [])
+        out = summarize_brain_node_detail(detail)
+        assert "after_sha256" in out
+
+    def test_brain_detail_proof_no_raw_file_content(self, tmp_path):
+        from packages.orchestration.brain_detail import (
+            build_brain_node_detail,
+            export_brain_node_detail_json,
+            summarize_brain_node_detail,
+        )
+        from packages.orchestration.project_brain import NT_PATCH_APPLY
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW,
+                                   proposed=["BRAIN_PROOF_SECRET_ABC"])
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        graph = self._build_brain(job)
+        apply_node = next(n for n in graph.nodes if n.type == NT_PATCH_APPLY)
+        detail = build_brain_node_detail(job, graph, apply_node.id, [])
+        text_out = summarize_brain_node_detail(detail)
+        json_out = json.dumps(export_brain_node_detail_json(detail))
+        assert "BRAIN_PROOF_SECRET_ABC" not in text_out
+        assert "BRAIN_PROOF_SECRET_ABC" not in json_out
+
+
+class TestTrustReportProof:
+    """Tests for proof display in the Trust Report (Step 31)."""
+
+    def test_trust_report_shows_proof_hashes_after_apply(self, tmp_path):
+        from packages.orchestration.trust_report import summarize_trust_report
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        out = summarize_trust_report(job, [])
+        assert "proof:" in out, "trust report must include proof line after apply"
+        assert "after=" in out or "after_sha" in out or "after=" in out
+
+    def test_trust_report_proof_no_raw_content(self, tmp_path):
+        from packages.orchestration.trust_report import summarize_trust_report
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW,
+                                   proposed=["TRUST_PROOF_SECRET_DEF"])
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        out = summarize_trust_report(job, [])
+        assert "TRUST_PROOF_SECRET_DEF" not in out
+
+
+class TestTimelineProof:
+    """Tests for proof event rendering in the Timeline (Step 31)."""
+
+    def _load_events(self, tmp_path: Path, job_id: str) -> list[dict]:
+        from packages.orchestration.timeline import load_run_events
+        return load_run_events(tmp_path, UUID(job_id))
+
+    def test_proof_event_appears_in_timeline(self, tmp_path):
+        from packages.orchestration.timeline import summarize_timeline
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._load_events(tmp_path, str(job.id))
+        out = summarize_timeline(job, events)
+        assert "patch apply proof" in out
+
+    def test_proof_timeline_shows_sha(self, tmp_path):
+        from packages.orchestration.timeline import summarize_timeline
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._load_events(tmp_path, str(job.id))
+        out = summarize_timeline(job, events)
+        assert "after_sha=" in out
+
+    def test_proof_timeline_shows_deltas(self, tmp_path):
+        from packages.orchestration.timeline import summarize_timeline
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        events = self._load_events(tmp_path, str(job.id))
+        out = summarize_timeline(job, events)
+        assert "Δbytes=" in out or "bytes=" in out

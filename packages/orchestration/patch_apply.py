@@ -43,6 +43,7 @@ Public API::
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -210,6 +211,7 @@ def apply_patch_intent(
     if action == "create":
         if resolved_target.exists():
             return _blocked("target_exists", target_path, action)
+        before_sha256, before_bytes, before_line_count = ("", 0, 0)
         content = _build_create_content(target_path, proposed_lines)
         resolved_target.parent.mkdir(parents=True, exist_ok=True)
         resolved_target.write_text(content, encoding="utf-8")
@@ -220,6 +222,7 @@ def apply_patch_intent(
         if not resolved_target.exists():
             return _blocked("target_missing", target_path, action)
         # Idempotency is metadata-only (step 9b above); no file-content check here.
+        before_sha256, before_bytes, before_line_count = _file_snapshot(resolved_target)
         section = _build_modify_section(proposed_lines)
         append_text = "\n\n" + section  # section already ends with exactly one newline
         with resolved_target.open("a", encoding="utf-8") as fh:
@@ -227,17 +230,30 @@ def apply_patch_intent(
         bytes_written = len(append_text.encode("utf-8"))
         line_count = append_text.count("\n")
 
+    after_sha256, after_bytes, after_line_count = _file_snapshot(resolved_target)
+
     # ── 10. Apply record ──────────────────────────────────────────────────
+    applied_at = datetime.now(timezone.utc).isoformat()
     if "patch_intent_apply_records" not in artifact.metadata:
         artifact.metadata["patch_intent_apply_records"] = {}
     artifact.metadata["patch_intent_apply_records"][intent_id] = {
         "state": "applied",
-        "applied_at": datetime.now(timezone.utc).isoformat(),
+        "applied_at": applied_at,
         "target_path": target_path,
         "action": action,
         "bytes_written": bytes_written,
         "line_count": line_count,
         "reason": "applied",
+        "proof": {
+            "before_sha256":      before_sha256,
+            "after_sha256":       after_sha256,
+            "before_bytes":       before_bytes,
+            "after_bytes":        after_bytes,
+            "bytes_delta":        after_bytes - before_bytes,
+            "before_line_count":  before_line_count,
+            "after_line_count":   after_line_count,
+            "line_delta":         after_line_count - before_line_count,
+        },
     }
 
     # ── 11. Save job ──────────────────────────────────────────────────────
@@ -254,8 +270,18 @@ def apply_patch_intent(
         blocked_reason=None,
     )
 
-    # ── 12. Run-log event ─────────────────────────────────────────────────
+    # ── 12. Run-log events ────────────────────────────────────────────────
     _emit_run_log(job, result, data_dir)
+    _emit_proof_run_log(job, result, data_dir, applied_at, {
+        "before_sha256":     before_sha256,
+        "after_sha256":      after_sha256,
+        "before_bytes":      before_bytes,
+        "after_bytes":       after_bytes,
+        "bytes_delta":       after_bytes - before_bytes,
+        "before_line_count": before_line_count,
+        "after_line_count":  after_line_count,
+        "line_delta":        after_line_count - before_line_count,
+    })
 
     return result
 
@@ -293,6 +319,15 @@ def format_apply_result(result: PatchApplyResult) -> str:
 # ---------------------------------------------------------------------------
 
 
+
+
+def _file_snapshot(path: Path) -> tuple[str, int, int]:
+    """Return (sha256hex, byte_count, line_count) for a file, or ("", 0, 0) if absent."""
+    if not path.exists():
+        return ("", 0, 0)
+    data = path.read_bytes()
+    sha = hashlib.sha256(data).hexdigest()
+    return (sha, len(data), data.count(b"\n"))
 
 
 def _validate_target_path(target_path: str) -> str | None:
@@ -402,6 +437,50 @@ def _emit_run_log(
                 "outcome":       result.state,
                 "bytes_written": result.bytes_written,
                 "line_count":    result.line_count,
+            },
+        )
+    )
+
+
+def _emit_proof_run_log(
+    job: "Job",
+    result: PatchApplyResult,
+    data_dir: Path | None,
+    applied_at: str,
+    proof: dict,
+) -> None:
+    """Emit a patch_apply_proof_recorded run-log event (only on successful apply).
+
+    Metadata exact keys (13): intent_id, target_path, action, outcome,
+    before_sha256, after_sha256, before_bytes, after_bytes, bytes_delta,
+    before_line_count, after_line_count, line_delta, applied_at.
+    No raw file content, diff text, approval reasons, or exception text.
+    """
+    from packages.orchestration.run_log import RunEvent, RunLogWriter
+
+    runs_root = (data_dir / "runs") if data_dir is not None else None
+    log = RunLogWriter(job_id=job.id, runs_root=runs_root)
+    log.append(
+        RunEvent(
+            event="patch_apply_proof_recorded",
+            job_id=str(job.id),
+            run_id=log.run_id,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            outcome=result.state,
+            metadata={
+                "intent_id":          result.intent_id,
+                "target_path":        result.target_path,
+                "action":             result.action,
+                "outcome":            result.state,
+                "before_sha256":      proof["before_sha256"],
+                "after_sha256":       proof["after_sha256"],
+                "before_bytes":       proof["before_bytes"],
+                "after_bytes":        proof["after_bytes"],
+                "bytes_delta":        proof["bytes_delta"],
+                "before_line_count":  proof["before_line_count"],
+                "after_line_count":   proof["after_line_count"],
+                "line_delta":         proof["line_delta"],
+                "applied_at":         applied_at,
             },
         )
     )
