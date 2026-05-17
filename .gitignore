@@ -209,3 +209,5 @@ packages.zip
 
 # Remedy local data
 .data/
+
+.brain/
