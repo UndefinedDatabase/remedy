@@ -2140,12 +2140,22 @@ The smoke checks both the applied file and the whole TARGET_REPO for forbidden s
 - Smoke creates the job with `--task-type write_readme` (Step 30.12), which sets
   `job.state = PLANNED` and creates exactly one `Task` with `inputs={"task_type":
   "write_readme"}` without calling `plan-job`. The smoke immediately asserts this
-  before attaching the repo or running any task.
+  before attaching the repo or running any task. The assertion reads job JSON via
+  a Bash temp file (`mktemp`) rather than a nested `subprocess.run(['remedy', ...])`.
 - Viewer sanity (step 12) is fully self-diagnosing: every check prints an
   actionable `ERROR: viewer sanity failed: <reason>` message; no bare `assert`.
   Checks: `version`, `graph`, `node_details`, `positions`, `detail_fallback_count`,
   `graph.nodes` non-empty, `node_details` count == `nodes` count, all HTML
   placeholder strings (`__VIEWER_DATA_JSON__` etc.) resolved in `index.html`.
+- **Viewer redaction sentinel scan** (Step 30.13): After placeholder checks, step 12
+  scans both `viewer_data.json` and `index.html` for precise dangerous tokens:
+  `approval_reason`, `diff_preview`, `command_output`, `raw_command_output`,
+  `DIFF_PREVIEW`, `RAW_COMMAND_OUTPUT`, `APPROVAL_REASON`, `MUST_NOT_RENDER`,
+  `Traceback`, `Exception:`. Plain phrases like `artifact content` are **not** in
+  the forbidden list — safe explanatory viewer copy such as "Does not include raw
+  prompt, file content, artifact content, event messages." is intentional UI text,
+  not a leak. The whole-repo markerless scan (step 6g) remains stricter because it
+  checks generated target-repo files, not viewer explanatory text.
 - This is a developer smoke invariant, not runtime Remedy behavior.
 
 ### v0 Constraints

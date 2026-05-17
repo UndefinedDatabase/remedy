@@ -83,13 +83,14 @@ README_EOF
     echo "    JOB_ID=${JOB_ID}"
 
     # Assert: job starts in PLANNED state with exactly one write_readme task.
+    # Pipe show-job output to a temp file so Python can parse it without
+    # calling remedy again via a nested subprocess from within the script.
+    _TMP_JOB="$(mktemp)"
+    remedy show-job "${JOB_ID}" > "${_TMP_JOB}"
     python3 -c "
-import json, sys, subprocess
-result = subprocess.run(['remedy', 'show-job', sys.argv[1]], capture_output=True, text=True)
-if result.returncode != 0:
-    print('ERROR: show-job failed: ' + result.stderr, file=sys.stderr)
-    sys.exit(1)
-job = json.loads(result.stdout)
+import json, sys
+from pathlib import Path
+job = json.loads(Path(sys.argv[1]).read_text())
 state = job.get('state', '')
 tasks = job.get('tasks', [])
 if state != 'planned':
@@ -103,7 +104,8 @@ if tt != 'write_readme':
     print('ERROR: task task_type must be write_readme, got: ' + repr(tt), file=sys.stderr)
     sys.exit(1)
 print('    job state=planned, 1 task, task_type=write_readme: OK')
-" "${JOB_ID}"
+" "${_TMP_JOB}"
+    rm -f "${_TMP_JOB}"
 
     # -------------------------------------------------------------------------
     # 4. Attach repo + set permission; link repo to project
@@ -422,6 +424,30 @@ for needle, desc in required:
 for ph in ('__VIEWER_DATA_JSON__', '__STATIC_FALLBACK__', '__JOB_SHORT_ID__', '__GENERATED_AT__'):
     if ph in html:
         failed.append('index.html contains unresolved placeholder: ' + repr(ph))
+
+# Redaction sentinel scan: precise dangerous tokens must not appear in rendered output.
+# These are metadata keys, uppercase sentinel markers, and exception strings that
+# must never leak into viewer files.  Plain phrases such as the words artifact content
+# or file content are NOT forbidden here: safe explanatory negations in viewer UI copy
+# (e.g. "Does not include raw prompt, file content, ...") are intentional text.
+forbidden_tokens = [
+    'approval_reason',
+    'diff_preview',
+    'command_output',
+    'raw_command_output',
+    'DIFF_PREVIEW',
+    'RAW_COMMAND_OUTPUT',
+    'APPROVAL_REASON',
+    'MUST_NOT_RENDER',
+    'Traceback',
+    'Exception:',
+]
+vd_text = vd_path.read_text()
+for tok in forbidden_tokens:
+    if tok in vd_text:
+        failed.append('viewer_data.json contains forbidden redaction token: ' + repr(tok))
+    if tok in html:
+        failed.append('index.html contains forbidden redaction token: ' + repr(tok))
 
 if failed:
     for msg in failed:

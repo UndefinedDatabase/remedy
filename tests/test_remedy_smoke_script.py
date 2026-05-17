@@ -476,6 +476,102 @@ class TestSmokeScriptText:
             "smoke must assert the created job has a write_readme task"
         )
 
+    # ------------------------------------------------------------------
+    # Step 30.13: explicit-task sanity without nested subprocess.run
+    # ------------------------------------------------------------------
+
+    def test_explicit_task_sanity_uses_temp_file_not_nested_subprocess(self):
+        text = _script_text()
+        # The nested subprocess.run(['remedy', ...]) call is replaced by a Bash
+        # temp-file approach. Neither the list form nor the string form should appear.
+        import re
+        nested_calls = re.findall(
+            r"subprocess\.run\s*\(\s*\[[\'\"]remedy", text
+        )
+        assert nested_calls == [], (
+            "smoke must not call subprocess.run(['remedy', ...]) from inside Python — "
+            f"use a Bash temp file instead. Found: {nested_calls}"
+        )
+
+    def test_explicit_task_sanity_uses_mktemp(self):
+        text = _script_text()
+        assert "mktemp" in text, (
+            "smoke explicit-task sanity must use mktemp to create a temp file "
+            "for remedy show-job output"
+        )
+
+    # ------------------------------------------------------------------
+    # Step 30.13: viewer redaction sentinel precision
+    # ------------------------------------------------------------------
+
+    def test_smoke_does_not_forbid_plain_artifact_content_phrase(self):
+        text = _script_text()
+        # "artifact content" must NOT appear as a quoted forbidden token, because
+        # safe explanatory viewer copy (e.g. "Does not include ... artifact content")
+        # would be a false positive.
+        assert '"artifact content"' not in text, (
+            "smoke must not use '\"artifact content\"' as a forbidden token — "
+            "it matches safe explanatory negation text and is a false positive"
+        )
+        assert "'artifact content'" not in text, (
+            "smoke must not use \"'artifact content'\" as a forbidden token"
+        )
+
+    def test_smoke_still_forbids_approval_reason_diff_preview_command_output(self):
+        text = _script_text()
+        assert "approval_reason" in text, (
+            "smoke must still forbid 'approval_reason' as a dangerous metadata key"
+        )
+        assert "diff_preview" in text, (
+            "smoke must still forbid 'diff_preview' as a dangerous metadata key"
+        )
+        assert "command_output" in text, (
+            "smoke must still forbid 'command_output' as a dangerous output key"
+        )
+
+    def test_smoke_still_checks_sentinel_tokens(self):
+        text = _script_text()
+        assert "MUST_NOT_RENDER" in text, (
+            "smoke must check for 'MUST_NOT_RENDER' sentinel in viewer output"
+        )
+        assert "Traceback" in text, (
+            "smoke must still check for 'Traceback' in viewer output"
+        )
+        assert "forbidden redaction token" in text, (
+            "smoke redaction checks must print 'forbidden redaction token' on failure"
+        )
+
+    def test_safe_explanatory_string_does_not_match_forbidden_viewer_tokens(self):
+        """The viewer's safe explanatory redaction text must not trip the forbidden-token list."""
+        # This is the kind of string brain_viewer.py may legitimately produce.
+        safe_string = (
+            "Does not include raw prompt, file content, artifact content, event messages."
+        )
+        # These are the precise forbidden tokens the smoke checks for.
+        forbidden_tokens = [
+            "approval_reason", "diff_preview", "command_output",
+            "raw_command_output", "DIFF_PREVIEW", "RAW_COMMAND_OUTPUT",
+            "APPROVAL_REASON", "MUST_NOT_RENDER", "Traceback", "Exception:",
+        ]
+        for tok in forbidden_tokens:
+            assert tok not in safe_string, (
+                f"safe explanatory string unexpectedly contains sentinel {tok!r}; "
+                "check the forbidden-token list for false positives"
+            )
+
+    def test_viewer_redaction_scan_covers_viewer_data_json(self):
+        text = _script_text()
+        # The redaction scan must explicitly check viewer_data.json, not only index.html.
+        assert "viewer_data.json" in text and "forbidden_tokens" in text, (
+            "smoke must scan viewer_data.json for forbidden redaction tokens"
+        )
+
+    def test_viewer_redaction_scan_covers_index_html(self):
+        text = _script_text()
+        assert "index.html" in text and "forbidden_tokens" in text, (
+            "smoke must scan index.html for forbidden redaction tokens"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)

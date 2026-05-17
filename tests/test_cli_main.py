@@ -908,3 +908,25 @@ class TestCreateJobTaskType:
             _cmd_create_job("prompt", task_description="some desc")
         assert exc_info.value.code == 1
         assert "--task-type" in capsys.readouterr().err
+
+    def test_combined_project_and_task_type(self, tmp_path, monkeypatch, capsys):
+        """--project + --task-type: metadata linked, 1 task, state PLANNED, project shows job."""
+        import json
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job, _cmd_create_project, _cmd_show_project
+        from packages.core.models import RunState
+        from packages.orchestration.storage import load_job
+        _cmd_create_project("CombinedTest", None)
+        project_id = capsys.readouterr().out.strip()
+        _cmd_create_job("combined prompt", project_id=project_id, task_type="write_readme")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert job.metadata.get("project_id") == project_id
+        assert len(job.tasks) == 1
+        assert job.tasks[0].inputs["task_type"] == "write_readme"
+        assert job.state == RunState.PLANNED
+        _cmd_show_project(project_id, json_output=True)
+        out = capsys.readouterr().out
+        d = json.loads(out)
+        assert any(j["id"] == job_id for j in d["jobs"])
