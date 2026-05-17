@@ -1,21 +1,19 @@
 # Plan
 
 ## Goal
-Step 30.10: Smoke Determinism + Markdown Safety Type Tightening
+Step 30.11: Smoke Viewer Diagnostics + Prompt/Fixture Polish
 
 ## Status
 COMPLETE — committing
 
 ## Completed
-- [x] markdown_output_safety.py: tighten signature to str, remove object coercion
-- [x] repo_applicator.py: str() normalisation at metadata boundary
-- [x] patch_apply.py: add belt-and-suspenders comment on stem neutralization
-- [x] scripts/remedy_smoke.sh: seed README.md; deterministic write_readme prompt
-- [x] tests/test_markdown_output_safety.py: remove coercion tests, fix str-only assertion
-- [x] tests/test_patch_apply.py: rename misleading stem tests to state actual invariant
-- [x] tests/test_remedy_smoke_script.py: add README seed + prompt assertions
-- [x] docs/architecture.md: str signature, caller normalisation, smoke seeding note
-- [x] Suite: 1720 passed (same count — removals balanced additions)
+- [x] smoke: replace bare assert viewer block with self-diagnosing checks (viewer sanity failed: <reason>)
+- [x] smoke: check node_details, positions, detail_fallback_count, nodes non-empty, node_details count
+- [x] smoke: check all 4 unresolved HTML placeholders absent from index.html
+- [x] smoke: default prompt changed to English write_readme
+- [x] smoke: README.md seed order confirmed before plan-job
+- [x] tests: 11 new smoke text assertions; 1720 → 1731
+- [x] docs: viewer sanity diagnostic contract documented
 
 ## Next
 Push. PR #26 already open.

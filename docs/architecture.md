@@ -2133,7 +2133,12 @@ The smoke checks both the applied file and the whole TARGET_REPO for forbidden s
 - Binary/unreadable files are skipped via `UnicodeDecodeError`/`OSError` catch.
 - Smoke seeds `README.md` in TARGET_REPO before running so that `modify`-action
   apply always finds the target file (v0 modify requires the target to exist).
-- Smoke default prompt forces `task_type write_readme` for determinism.
+- Smoke default prompt forces `task_type write_readme` (English) for determinism.
+- Viewer sanity (step 13) is fully self-diagnosing: every check prints an
+  actionable `ERROR: viewer sanity failed: <reason>` message; no bare `assert`.
+  Checks: `version`, `graph`, `node_details`, `positions`, `detail_fallback_count`,
+  `graph.nodes` non-empty, `node_details` count == `nodes` count, all HTML
+  placeholder strings (`__VIEWER_DATA_JSON__` etc.) resolved in `index.html`.
 - This is a developer smoke invariant, not runtime Remedy behavior.
 
 ### v0 Constraints

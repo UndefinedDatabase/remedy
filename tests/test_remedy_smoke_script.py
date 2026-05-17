@@ -330,10 +330,103 @@ class TestSmokeScriptText:
             "smoke must seed README.md with initial content"
         )
 
+    def test_smoke_readme_seed_before_plan_job(self):
+        text = _script_text()
+        readme_pos = text.find("README.md")
+        plan_pos   = text.find("plan-job")
+        assert readme_pos != -1, "smoke must contain README.md seed"
+        assert plan_pos   != -1, "smoke must contain plan-job step"
+        assert readme_pos < plan_pos, (
+            "smoke must seed README.md before plan-job so the file exists when apply runs"
+        )
+
     def test_smoke_default_prompt_forces_write_readme_task(self):
         text = _script_text()
         assert "write_readme" in text, (
             "smoke default prompt must contain 'write_readme' to make the task type deterministic"
+        )
+
+    def test_smoke_default_prompt_is_english(self):
+        text = _script_text()
+        # The default prompt must be English (not German)
+        assert "Create exactly one task" in text or "exactly one task" in text, (
+            "smoke default prompt must be English and contain 'exactly one task'"
+        )
+
+    def test_smoke_default_prompt_forces_exactly_one_task(self):
+        text = _script_text()
+        assert "exactly one task" in text or "one task" in text, (
+            "smoke default prompt must force exactly one task for determinism"
+        )
+
+    def test_viewer_sanity_block_has_no_bare_assert(self):
+        text = _script_text()
+        # Extract only the viewer sanity section (step 13)
+        start = text.find("# 13.")
+        if start == -1:
+            start = text.find("13. Assert viewer")
+        end = text.find("# 14.", start) if start != -1 else -1
+        if start != -1 and end != -1:
+            viewer_block = text[start:end]
+        else:
+            viewer_block = text
+        assert "assert " not in viewer_block, (
+            "viewer sanity block must not use bare 'assert' — use explicit error messages"
+        )
+
+    def test_viewer_sanity_block_prints_actionable_errors(self):
+        text = _script_text()
+        assert "viewer sanity failed" in text, (
+            "viewer sanity block must print 'viewer sanity failed' on failure, not bare AssertionError"
+        )
+
+    def test_viewer_sanity_checks_viewer_data_keys(self):
+        text = _script_text()
+        assert "node_details" in text, "viewer sanity must check for 'node_details' key"
+        assert "positions" in text,    "viewer sanity must check for 'positions' key"
+        assert "detail_fallback_count" in text, (
+            "viewer sanity must check for 'detail_fallback_count' key"
+        )
+
+    def test_viewer_sanity_checks_graph_nodes_non_empty(self):
+        text = _script_text()
+        assert "graph.nodes is empty" in text or "nodes is empty" in text, (
+            "viewer sanity must check that graph.nodes is non-empty"
+        )
+
+    def test_viewer_sanity_checks_id_viewer_data(self):
+        text = _script_text()
+        assert 'id="viewer-data"' in text or "id='viewer-data'" in text or \
+               'id=\\"viewer-data\\"' in text, (
+            "viewer sanity must check for id=\"viewer-data\" in index.html"
+        )
+
+    def test_viewer_sanity_checks_application_json(self):
+        text = _script_text()
+        assert 'type="application/json"' in text or \
+               'type=\\"application/json\\"' in text, (
+            "viewer sanity must check for type=\"application/json\" in index.html"
+        )
+
+    def test_viewer_sanity_checks_static_fallback(self):
+        text = _script_text()
+        assert "static-fallback" in text, (
+            "viewer sanity must check for 'static-fallback' in index.html"
+        )
+
+    def test_viewer_sanity_checks_unresolved_placeholders(self):
+        text = _script_text()
+        assert "__VIEWER_DATA_JSON__" in text, (
+            "viewer sanity must check that __VIEWER_DATA_JSON__ is absent from rendered HTML"
+        )
+        assert "__STATIC_FALLBACK__" in text, (
+            "viewer sanity must check that __STATIC_FALLBACK__ is absent from rendered HTML"
+        )
+        assert "__JOB_SHORT_ID__" in text, (
+            "viewer sanity must check that __JOB_SHORT_ID__ is absent from rendered HTML"
+        )
+        assert "__GENERATED_AT__" in text, (
+            "viewer sanity must check that __GENERATED_AT__ is absent from rendered HTML"
         )
 
 

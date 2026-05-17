@@ -24,7 +24,7 @@ remedy_smoke() {
     set -euo pipefail
 
     local TARGET_REPO="${REMEDY_SMOKE_REPO:-/tmp/remedy-target-repo}"
-    local PROMPT="${1:-Erstelle genau eine Aufgabe mit task_type write_readme: Schreibe ein README fuer ein kleines internes CLI Tool. Keine weiteren Tasks.}"
+    local PROMPT="${1:-Create exactly one task with task_type write_readme: Write a README for a small internal CLI tool. No further tasks.}"
 
     # Resolve run-log root: $REMEDY_DATA_DIR/runs or .data/runs (public filesystem convention)
     local RUNS_ROOT
@@ -342,39 +342,74 @@ print('    Brain types: '+', '.join(sorted(types)))
     VIEW_DIR="$(dirname "${VIEW_PATH}")"
 
     # -------------------------------------------------------------------------
-    # 13. Assert viewer files
+    # 13. Assert viewer files (self-diagnosing — no bare assert)
     # -------------------------------------------------------------------------
     echo "--- 13. Assert viewer files"
     python3 -c "
-import json,sys
-with open(sys.argv[1]) as f:
-    data=json.load(f)
-assert data['version']==1, 'viewer_data.json version must be 1'
-assert 'graph' in data, 'viewer_data.json must have graph key'
-n=len(data['graph'].get('nodes',[]))
-print(f'    viewer_data.json: OK (version={data[\"version\"]}, nodes={n})')
-" "${VIEW_DIR}/viewer_data.json"
+import json, sys
+from pathlib import Path
 
-    python3 -c "
-import sys
-with open(sys.argv[1]) as f:
-    html=f.read()
-checks=[
+view_dir  = Path(sys.argv[1])
+vd_path   = view_dir / 'viewer_data.json'
+html_path = view_dir / 'index.html'
+failed    = []
+
+# --- viewer_data.json ---
+if not vd_path.exists():
+    print('ERROR: viewer sanity failed: ' + str(vd_path) + ' does not exist', file=sys.stderr)
+    sys.exit(1)
+try:
+    data = json.loads(vd_path.read_text())
+except Exception as exc:
+    print('ERROR: viewer sanity failed: ' + str(vd_path) + ' is not valid JSON: ' + str(exc), file=sys.stderr)
+    sys.exit(1)
+
+if data.get('version') != 1:
+    failed.append('viewer_data.json version=' + repr(data.get('version')) + ' (want 1)')
+for key in ('graph', 'node_details', 'positions', 'detail_fallback_count'):
+    if key not in data:
+        failed.append('viewer_data.json missing key: ' + repr(key))
+nodes = data.get('graph', {}).get('nodes', [])
+if not nodes:
+    failed.append('viewer_data.json graph.nodes is empty')
+nd = data.get('node_details', {})
+if len(nd) != len(nodes):
+    failed.append('node_details count=' + str(len(nd)) + ' != nodes count=' + str(len(nodes)))
+
+if failed:
+    for msg in failed:
+        print('ERROR: viewer sanity failed: ' + msg, file=sys.stderr)
+    print('  file: ' + str(vd_path), file=sys.stderr)
+    sys.exit(1)
+print('    viewer_data.json: OK (version=' + str(data['version']) + ', nodes=' + str(len(nodes)) + ', details=' + str(len(nd)) + ', fallbacks=' + str(data.get('detail_fallback_count', 0)) + ')')
+
+# --- index.html ---
+if not html_path.exists():
+    print('ERROR: viewer sanity failed: ' + str(html_path) + ' does not exist', file=sys.stderr)
+    sys.exit(1)
+html = html_path.read_text()
+
+required = [
     ('Remedy Brain Viewer',      'title/header'),
     ('id=\"viewer-data\"',       'data island id'),
     ('type=\"application/json\"','data island type'),
     ('static-fallback',          'initial render status'),
 ]
-failed=[]
-for needle,desc in checks:
+for needle, desc in required:
     if needle not in html:
-        failed.append(f'MISSING {desc!r}: {needle!r}')
+        failed.append('index.html missing ' + desc + ': ' + repr(needle))
+
+for ph in ('__VIEWER_DATA_JSON__', '__STATIC_FALLBACK__', '__JOB_SHORT_ID__', '__GENERATED_AT__'):
+    if ph in html:
+        failed.append('index.html contains unresolved placeholder: ' + repr(ph))
+
 if failed:
     for msg in failed:
-        print('ERROR: '+msg, file=sys.stderr)
+        print('ERROR: viewer sanity failed: ' + msg, file=sys.stderr)
+    print('  file: ' + str(html_path), file=sys.stderr)
     sys.exit(1)
-print('    index.html markers: OK')
-" "${VIEW_DIR}/index.html"
+print('    index.html: OK')
+" "${VIEW_DIR}"
 
     # -------------------------------------------------------------------------
     # 14. Summary
