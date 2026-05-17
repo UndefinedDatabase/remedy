@@ -1,19 +1,19 @@
 # Plan
 
 ## Goal
-Step 30.3: Apply Proof E2E Closure
+Step 30.11: Smoke Viewer Diagnostics + Prompt/Fixture Polish
 
 ## Status
-COMPLETE — ready to commit
+COMPLETE — committing
 
 ## Completed
-- [x] test_patch_apply.py: test_marker_injection_in_create_file_is_neutralized — exercises _build_create_content
-- [x] scripts/remedy_smoke.sh: RUNS_ROOT resolution (REMEDY_DATA_DIR or packages import fallback)
-- [x] scripts/remedy_smoke.sh: step 7e — exact patch_intent_applied run-log schema check (blocked/applied/noop outcomes + exact metadata keys)
-- [x] scripts/remedy_smoke.sh: step 11 — assert patch_apply brain node present when FIRST_INTENT_ID set
-- [x] tests/test_remedy_smoke_script.py: 5 new text assertions (brain patch_apply, run-log schema, outcomes, RUNS_ROOT)
-- [x] docs/architecture.md: Step 30.3 E2E apply proof smoke note + marker injection defense note
-- [x] Full suite: 1669 passed (1664 → 1669)
+- [x] smoke: replace bare assert viewer block with self-diagnosing checks (viewer sanity failed: <reason>)
+- [x] smoke: check node_details, positions, detail_fallback_count, nodes non-empty, node_details count
+- [x] smoke: check all 4 unresolved HTML placeholders absent from index.html
+- [x] smoke: default prompt changed to English write_readme
+- [x] smoke: README.md seed order confirmed before plan-job
+- [x] tests: 11 new smoke text assertions; 1720 → 1731
+- [x] docs: viewer sanity diagnostic contract documented
 
 ## Next
-Commit, push, PR.
+Push. PR #26 already open.

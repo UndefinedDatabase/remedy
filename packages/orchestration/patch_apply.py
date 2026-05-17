@@ -12,9 +12,12 @@ v0 constraints (see docs/architecture.md):
   - repo_generated_write permission is required.
   - repo_overwrite is NOT used or required.
   - shell_exec is NOT used.
-  - modify: appends a clearly-marked generated section; never replaces content.
+  - modify: appends a plain Markdown section; never replaces content.
   - create: writes new file; blocked if target already exists.
   - Second apply on same intent is a no-op (already_applied).
+  - No Remedy control markers or raw HTML comments are written into repo files.
+  - Generated lines pass through _neutralize (output boundary).
+  - Idempotency is metadata-only via patch_intent_apply_records.
 
 Apply record schema (stored under artifact.metadata["patch_intent_apply_records"][intent_id]):
   {
@@ -46,6 +49,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from packages.orchestration.approval_queue import APPROVAL_APPROVED, get_patch_intent
+from packages.orchestration.markdown_output_safety import (
+    neutralize_markdown_html_comment_start as _neutralize,
+)
 from packages.orchestration.patch_intent import RISK_HIGH, RISK_UNKNOWN
 from packages.orchestration.permissions import Capability, is_allowed
 
@@ -54,18 +60,10 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# Markers and constants
+# Constants
 # ---------------------------------------------------------------------------
 
-_BEGIN_MARKER_TPL = "<!-- remedy:patch-intent {intent_id} begin -->"
-_END_MARKER_TPL   = "<!-- remedy:patch-intent {intent_id} end -->"
-
 _BLOCKED_RISKS: frozenset[str] = frozenset({RISK_HIGH, RISK_UNKNOWN})
-
-# Marker injection defense: proposed lines that contain this prefix are escaped
-# to an inert HTML-entity form so they cannot create nested/duplicate marker blocks.
-_MARKER_ESCAPE_FROM = "<!-- remedy:patch-intent"
-_MARKER_ESCAPE_TO   = "&lt;!-- remedy:patch-intent"
 
 # Section headers in the builder artifact content format (kept local).
 _ARTIFACT_SECTION_HEADERS: frozenset[str] = frozenset(
@@ -212,7 +210,7 @@ def apply_patch_intent(
     if action == "create":
         if resolved_target.exists():
             return _blocked("target_exists", target_path, action)
-        content = _build_create_content(intent_id, target_path, proposed_lines)
+        content = _build_create_content(target_path, proposed_lines)
         resolved_target.parent.mkdir(parents=True, exist_ok=True)
         resolved_target.write_text(content, encoding="utf-8")
         bytes_written = len(content.encode("utf-8"))
@@ -221,23 +219,9 @@ def apply_patch_intent(
     else:  # modify
         if not resolved_target.exists():
             return _blocked("target_missing", target_path, action)
-        begin_marker = _BEGIN_MARKER_TPL.format(intent_id=intent_id)
-        existing_content = resolved_target.read_text(encoding="utf-8")
-        if begin_marker in existing_content:
-            result = PatchApplyResult(
-                state="noop",
-                intent_id=intent_id,
-                target_path=target_path,
-                action=action,
-                outcome="already_applied",
-                bytes_written=0,
-                line_count=0,
-                blocked_reason=None,
-            )
-            _emit_run_log(job, result, data_dir)
-            return result
-        section = _build_modify_section(intent_id, proposed_lines)
-        append_text = "\n\n" + section + "\n"
+        # Idempotency is metadata-only (step 9b above); no file-content check here.
+        section = _build_modify_section(proposed_lines)
+        append_text = "\n\n" + section  # section already ends with exactly one newline
         with resolved_target.open("a", encoding="utf-8") as fh:
             fh.write(append_text)
         bytes_written = len(append_text.encode("utf-8"))
@@ -309,9 +293,6 @@ def format_apply_result(result: PatchApplyResult) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _escape_marker_line(line: str) -> str:
-    """Neutralize any Remedy control marker prefix embedded in a proposed line."""
-    return line.replace(_MARKER_ESCAPE_FROM, _MARKER_ESCAPE_TO)
 
 
 def _validate_target_path(target_path: str) -> str | None:
@@ -350,13 +331,19 @@ def _extract_proposed_lines(content: str) -> list[str]:
 
 
 def _build_create_content(
-    intent_id: str,
     target_path: str,
     proposed_lines: list[str],
 ) -> str:
-    """Build markdown content for a new (create) file."""
-    stem = Path(target_path).stem.replace("_", " ").replace("-", " ").title()
-    safe_lines = [_escape_marker_line(ln) for ln in proposed_lines]
+    """Build plain Markdown content for a new (create) file.
+
+    No Remedy control markers, intent IDs, or provenance metadata are written
+    into the file.  Provenance is recorded externally in apply records and run logs.
+    """
+    # Belt-and-suspenders: hyphen replacement already prevents "<!--" in normal
+    # path-derived stems (the "--" in "<!--" becomes spaces first).  _neutralize
+    # is applied as output-boundary defense for any residual edge cases.
+    stem = _neutralize(Path(target_path).stem.replace("_", " ").replace("-", " ").title())
+    safe_lines = [_neutralize(ln) for ln in proposed_lines]
     bullet_block = (
         "\n".join(f"- {ln}" for ln in safe_lines)
         if safe_lines
@@ -365,25 +352,25 @@ def _build_create_content(
     return (
         f"# {stem}\n"
         f"\n"
-        f"> Generated by Remedy from approved patch intent {intent_id}.\n"
-        f"\n"
         f"## Proposed Update\n"
         f"\n"
         f"{bullet_block}\n"
     )
 
 
-def _build_modify_section(intent_id: str, proposed_lines: list[str]) -> str:
-    """Build the marked section appended to an existing (modify) file."""
-    begin = _BEGIN_MARKER_TPL.format(intent_id=intent_id)
-    end   = _END_MARKER_TPL.format(intent_id=intent_id)
-    safe_lines = [_escape_marker_line(ln) for ln in proposed_lines]
+def _build_modify_section(proposed_lines: list[str]) -> str:
+    """Build a plain Markdown section appended to an existing (modify) file.
+
+    No Remedy control markers, intent IDs, or provenance metadata are written
+    into the file.  Idempotency is metadata-only via patch_intent_apply_records.
+    """
+    safe_lines = [_neutralize(ln) for ln in proposed_lines]
     bullet_block = (
         "\n".join(f"- {ln}" for ln in safe_lines)
         if safe_lines
         else "(no proposed changes found in artifact)"
     )
-    return f"{begin}\n## Remedy Proposed Update\n\n{bullet_block}\n{end}"
+    return f"## Proposed Update\n\n{bullet_block}\n"
 
 
 def _emit_run_log(

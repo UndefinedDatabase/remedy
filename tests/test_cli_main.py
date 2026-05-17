@@ -795,3 +795,138 @@ class TestProjectCommandsCLI:
         d = export_project_brain_json(graph)
         types = {n["type"] for n in d["nodes"]}
         assert "project_placeholder" not in types
+
+
+class TestCreateJobTaskType:
+    """Tests for create-job --task-type / --task-description (Step 30.12)."""
+
+    def _env(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+    # ------------------------------------------------------------------
+    # Happy-path: --task-type creates one task and sets state PLANNED
+    # ------------------------------------------------------------------
+
+    def test_task_type_creates_one_task(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job
+        from packages.orchestration.storage import load_job
+        _cmd_create_job("smoke prompt", task_type="write_readme")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert len(job.tasks) == 1
+
+    def test_task_type_sets_state_planned(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job
+        from packages.core.models import RunState
+        from packages.orchestration.storage import load_job
+        _cmd_create_job("smoke prompt", task_type="write_readme")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert job.state == RunState.PLANNED
+
+    def test_task_type_stored_in_task_inputs(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job
+        from packages.orchestration.storage import load_job
+        _cmd_create_job("prompt", task_type="analyze_code")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert job.tasks[0].inputs.get("task_type") == "analyze_code"
+
+    def test_task_description_stored_in_task(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job
+        from packages.orchestration.storage import load_job
+        _cmd_create_job("prompt", task_type="write_readme", task_description="Custom desc.")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert job.tasks[0].description == "Custom desc."
+
+    def test_default_description_when_none_given(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job
+        from packages.orchestration.storage import load_job
+        _cmd_create_job("prompt", task_type="write_readme")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert "write_readme" in job.tasks[0].description
+
+    def test_no_task_type_leaves_state_pending(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job
+        from packages.core.models import RunState
+        from packages.orchestration.storage import load_job
+        _cmd_create_job("plain prompt")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert job.state == RunState.PENDING
+        assert len(job.tasks) == 0
+
+    def test_hyphens_and_underscores_allowed_in_task_type(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job
+        from packages.orchestration.storage import load_job
+        _cmd_create_job("prompt", task_type="analyze-code_v2")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert job.tasks[0].inputs.get("task_type") == "analyze-code_v2"
+
+    # ------------------------------------------------------------------
+    # Error cases
+    # ------------------------------------------------------------------
+
+    def test_empty_task_type_exits_1(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_job
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_create_job("prompt", task_type="   ")
+        assert exc_info.value.code == 1
+        assert "empty" in capsys.readouterr().err.lower()
+
+    def test_invalid_chars_in_task_type_exits_1(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_job
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_create_job("prompt", task_type="bad type!")
+        assert exc_info.value.code == 1
+        err = capsys.readouterr().err
+        assert "invalid characters" in err.lower()
+
+    def test_task_description_without_task_type_exits_1(self, tmp_path, monkeypatch, capsys):
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.main import _cmd_create_job
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_create_job("prompt", task_description="some desc")
+        assert exc_info.value.code == 1
+        assert "--task-type" in capsys.readouterr().err
+
+    def test_combined_project_and_task_type(self, tmp_path, monkeypatch, capsys):
+        """--project + --task-type: metadata linked, 1 task, state PLANNED, project shows job."""
+        import json
+        self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+        from apps.cli.main import _cmd_create_job, _cmd_create_project, _cmd_show_project
+        from packages.core.models import RunState
+        from packages.orchestration.storage import load_job
+        _cmd_create_project("CombinedTest", None)
+        project_id = capsys.readouterr().out.strip()
+        _cmd_create_job("combined prompt", project_id=project_id, task_type="write_readme")
+        job_id = capsys.readouterr().out.strip()
+        job = load_job(UUID(job_id))
+        assert job.metadata.get("project_id") == project_id
+        assert len(job.tasks) == 1
+        assert job.tasks[0].inputs["task_type"] == "write_readme"
+        assert job.state == RunState.PLANNED
+        _cmd_show_project(project_id, json_output=True)
+        out = capsys.readouterr().out
+        d = json.loads(out)
+        assert any(j["id"] == job_id for j in d["jobs"])
