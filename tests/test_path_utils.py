@@ -107,15 +107,33 @@ class TestSanitizePathComponent:
 class TestDocstringAccuracy:
     """Docstring examples must match actual sanitize_path_component behaviour."""
 
-    def test_docstring_traversal_example_shows_escape_not_underscore_escape(self):
+    def test_docstring_traversal_input_is_present(self):
+        """The docstring must still document the '../escape' example."""
         from packages.orchestration import path_utils
         src = Path(path_utils.__file__).read_text()
-        assert '"../escape"' not in src or '"_escape"' not in src, (
-            'docstring example for "../escape" must show "escape", not "_escape"'
+        assert '"../escape"' in src, (
+            'docstring must contain the "../escape" example input'
+        )
+
+    def test_docstring_traversal_shows_escape_as_result(self):
+        """The docstring result for '../escape' must be 'escape' (no leading underscore)."""
+        from packages.orchestration import path_utils
+        src = Path(path_utils.__file__).read_text()
+        assert '"escape"' in src, (
+            'docstring must show "escape" as the result for the "../escape" example'
+        )
+
+    def test_docstring_traversal_does_not_show_underscore_escape(self):
+        """The docstring must not document '_escape' as the result (old incorrect example)."""
+        from packages.orchestration import path_utils
+        src = Path(path_utils.__file__).read_text()
+        assert '"_escape"' not in src, (
+            'docstring must not contain "_escape" — the correct result is "escape" '
+            '(leading underscore is stripped after sanitization)'
         )
 
     def test_docstring_traversal_example_consistent_with_runtime(self):
-        # Belt-and-suspenders: the docstring result must equal the actual result.
+        """Runtime result must equal what the docstring documents."""
         from packages.orchestration.path_utils import sanitize_path_component
         assert sanitize_path_component("../escape") == "escape"
 
