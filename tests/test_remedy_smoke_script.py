@@ -635,6 +635,12 @@ class TestSmokeScriptText:
             "structure sanity must check that _sanitize_path_component is gone from consumers"
         )
 
+    def test_smoke_structure_sanity_covers_repo_applicator(self):
+        text = _script_text()
+        assert "repo_applicator" in text, (
+            "structure sanity no-local-sanitizer check must cover repo_applicator.py"
+        )
+
     def test_smoke_structure_sanity_checks_remedy_data_dir(self):
         text = _script_text()
         assert "REMEDY_DATA_DIR" in text, (

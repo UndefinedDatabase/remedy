@@ -102,6 +102,7 @@ for mod_path in [
     'packages/orchestration/task_registry.py',
     'packages/orchestration/task_runner.py',
     'packages/orchestration/patch_intent.py',
+    'packages/orchestration/repo_applicator.py',
 ]:
     text = (repo / mod_path).read_text()
     if 'def _sanitize_path_component' in text:

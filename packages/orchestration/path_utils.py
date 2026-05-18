@@ -34,7 +34,7 @@ def sanitize_path_component(value: str) -> str:
 
         sanitize_path_component("write_readme")   -> "write_readme"
         sanitize_path_component("my-task")        -> "my-task"
-        sanitize_path_component("../escape")      -> "_escape"   (stripped)
+        sanitize_path_component("../escape")      -> "escape"    # ".","." -> "__", "/" -> "_" -> strip
         sanitize_path_component("a" * 60)         -> "a" * 48
         sanitize_path_component("...")            -> "unknown"
         sanitize_path_component("")               -> "unknown"

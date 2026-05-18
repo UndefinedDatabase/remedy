@@ -30,6 +30,11 @@ class JobNotFoundError(Exception):
         self.job_id = job_id
 
 
+# Evaluated once at import time using the REMEDY_DATA_DIR env var (if set) or
+# the repo-local default.  Tests that need a different jobs directory after
+# import must monkeypatch storage._DATA_DIR directly.
+# monkeypatch.setenv("REMEDY_DATA_DIR", ...) only affects storage if done
+# BEFORE this module is imported.
 _DATA_DIR: Path = jobs_dir()
 
 

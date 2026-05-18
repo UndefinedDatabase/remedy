@@ -104,6 +104,22 @@ class TestSanitizePathComponent:
                 assert safe_re.match(result), f"Unsafe chars in result for {val!r}: {result!r}"
 
 
+class TestDocstringAccuracy:
+    """Docstring examples must match actual sanitize_path_component behaviour."""
+
+    def test_docstring_traversal_example_shows_escape_not_underscore_escape(self):
+        from packages.orchestration import path_utils
+        src = Path(path_utils.__file__).read_text()
+        assert '"../escape"' not in src or '"_escape"' not in src, (
+            'docstring example for "../escape" must show "escape", not "_escape"'
+        )
+
+    def test_docstring_traversal_example_consistent_with_runtime(self):
+        # Belt-and-suspenders: the docstring result must equal the actual result.
+        from packages.orchestration.path_utils import sanitize_path_component
+        assert sanitize_path_component("../escape") == "escape"
+
+
 class TestSingleImplementationInvariant:
     """Verify the regex and max-length constant appear only once in production code."""
 
