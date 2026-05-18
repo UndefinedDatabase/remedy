@@ -273,11 +273,22 @@ def summarize_trust_report(
             # Show apply status if present (no content / diff text)
             apply_record = _get_apply_record(job, iid)
             if apply_record:
-                apply_state   = apply_record.get("state", "")
-                apply_outcome = apply_record.get("reason", "")
+                apply_state = apply_record.get("state", "")
                 parts.append(
                     f"      applied: yes  outcome={apply_state}  target={path}"
                 )
+                proof = apply_record.get("proof", {})
+                if proof:
+                    before_sha = str(proof.get("before_sha256", ""))
+                    after_sha  = str(proof.get("after_sha256", ""))
+                    bdelta = int(proof.get("bytes_delta", 0))
+                    ldelta = int(proof.get("line_delta", 0))
+                    before_str = (before_sha[:16] + "…") if before_sha else "(none)"
+                    parts.append(
+                        f"      proof:  before={before_str}"
+                        f"  after={after_sha[:16]}…"
+                        f"  Δbytes={bdelta:+d}  Δlines={ldelta:+d}"
+                    )
         parts.append("")
         n_applied = sum(
             1 for i in intents
