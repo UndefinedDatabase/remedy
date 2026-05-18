@@ -613,6 +613,60 @@ class TestSmokeScriptText:
             "smoke proof check must reject approval_reason"
         )
 
+    # --- Step 32: Repository structure sanity block -----------------------
+
+    def test_smoke_has_structure_sanity_step(self):
+        text = _script_text()
+        assert "Repository structure sanity" in text, (
+            "smoke must have a repository structure sanity check step"
+        )
+
+    def test_smoke_structure_sanity_checks_data_paths(self):
+        text = _script_text()
+        assert "data_paths" in text, "structure sanity must check data_paths module"
+
+    def test_smoke_structure_sanity_checks_path_utils(self):
+        text = _script_text()
+        assert "path_utils" in text, "structure sanity must check path_utils module"
+
+    def test_smoke_structure_sanity_checks_no_local_sanitize(self):
+        text = _script_text()
+        assert "_sanitize_path_component" in text, (
+            "structure sanity must check that _sanitize_path_component is gone from consumers"
+        )
+
+    def test_smoke_structure_sanity_checks_remedy_data_dir(self):
+        text = _script_text()
+        assert "REMEDY_DATA_DIR" in text, (
+            "structure sanity must verify no inline REMEDY_DATA_DIR reads in production code"
+        )
+
+    def test_smoke_structure_sanity_checks_reserved_docstrings(self):
+        text = _script_text()
+        assert "docstring" in text or "startswith" in text, (
+            "structure sanity must verify reserved namespace __init__.py files have docstrings"
+        )
+
+    def test_smoke_viewer_sanity_comment_has_no_unescaped_double_quotes_in_c_script(self):
+        """The python3 -c script for step 12 must not have unescaped double-quotes in comments.
+
+        An unescaped " inside a bash double-quoted string terminates it early,
+        causing subsequent words (e.g. 'not') to become sys.argv[1] instead of
+        VIEW_DIR, silently breaking the viewer sanity check.
+        """
+        text = _script_text()
+        # The specific comment that was broken: must use single quotes inside, not double
+        assert '"Does not include' not in text, (
+            "viewer sanity step 12 Python comment must use single quotes around the "
+            "example phrase to avoid terminating the bash double-quoted -c string early"
+        )
+
+    def test_smoke_proof_comment_mentions_lifecycle_prerequisite(self):
+        text = _script_text()
+        assert "approve/apply lifecycle" in text or "lifecycle" in text, (
+            "proof event check must note that it assumes approve/apply has already run"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)

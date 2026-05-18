@@ -1750,3 +1750,104 @@ class TestTimelineProof:
         events = self._load_events(tmp_path, str(job.id))
         out = summarize_timeline(job, events)
         assert "Δbytes=" in out or "bytes=" in out
+
+
+# ---------------------------------------------------------------------------
+# Part A — Proof dict identity (Step 32 polish)
+# ---------------------------------------------------------------------------
+
+
+class TestProofDictIdentity:
+    """Verify metadata proof and run-log proof are identical in value (Step 32).
+
+    The proof dict is constructed once in apply_patch_intent and reused for
+    both the artifact metadata 'proof' sub-key and the proof run-log event.
+    These tests confirm the two sources report the same values.
+    """
+
+    def _get_metadata_proof(self, job, intent_id: str) -> dict:
+        for art in job.artifacts:
+            record = art.metadata.get("patch_intent_apply_records", {}).get(intent_id, {})
+            if "proof" in record:
+                return record["proof"]
+        return {}
+
+    def _get_runlog_proof(self, tmp_path: Path, job, intent_id: str) -> dict:
+        runs_dir = tmp_path / "runs" / str(job.id)
+        if not runs_dir.exists():
+            return {}
+        for jsonl in sorted(runs_dir.glob("*.jsonl")):
+            for line in jsonl.read_text().splitlines():
+                if not line.strip():
+                    continue
+                ev = json.loads(line)
+                if (
+                    ev.get("event") == "patch_apply_proof_recorded"
+                    and ev.get("metadata", {}).get("intent_id") == intent_id
+                ):
+                    m = ev["metadata"]
+                    return {
+                        "before_sha256":     m["before_sha256"],
+                        "after_sha256":      m["after_sha256"],
+                        "before_bytes":      m["before_bytes"],
+                        "after_bytes":       m["after_bytes"],
+                        "bytes_delta":       m["bytes_delta"],
+                        "before_line_count": m["before_line_count"],
+                        "after_line_count":  m["after_line_count"],
+                        "line_delta":        m["line_delta"],
+                    }
+        return {}
+
+    def test_create_metadata_and_runlog_before_sha_identical(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        mp = self._get_metadata_proof(job, intent_id)
+        rp = self._get_runlog_proof(tmp_path, job, intent_id)
+        assert mp["before_sha256"] == rp["before_sha256"]
+
+    def test_create_metadata_and_runlog_after_sha_identical(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        mp = self._get_metadata_proof(job, intent_id)
+        rp = self._get_runlog_proof(tmp_path, job, intent_id)
+        assert mp["after_sha256"] == rp["after_sha256"]
+
+    def test_create_metadata_and_runlog_bytes_delta_identical(self, tmp_path):
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        mp = self._get_metadata_proof(job, intent_id)
+        rp = self._get_runlog_proof(tmp_path, job, intent_id)
+        assert mp["bytes_delta"] == rp["bytes_delta"]
+
+    def test_modify_metadata_and_runlog_line_delta_identical(self, tmp_path):
+        (tmp_path / "README.md").write_text("# Hello\n", encoding="utf-8")
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="modify", risk=RISK_LOW, target_path="README.md")
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        mp = self._get_metadata_proof(job, intent_id)
+        rp = self._get_runlog_proof(tmp_path, job, intent_id)
+        assert mp["line_delta"] == rp["line_delta"]
+
+    def test_modify_metadata_before_sha_matches_runlog_before_sha(self, tmp_path):
+        (tmp_path / "README.md").write_text("# Before content\n", encoding="utf-8")
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="modify", risk=RISK_LOW, target_path="README.md")
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        apply_patch_intent(job, intent_id, data_dir=tmp_path)
+        mp = self._get_metadata_proof(job, intent_id)
+        rp = self._get_runlog_proof(tmp_path, job, intent_id)
+        assert mp["before_sha256"] == rp["before_sha256"]
+        # For modify the before_sha must be non-empty (file existed)
+        assert mp["before_sha256"] != ""

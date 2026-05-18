@@ -15,10 +15,11 @@ Design constraints:
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import UUID
+
+from packages.orchestration.data_paths import workspaces_dir as _workspaces_dir
 
 
 # ---------------------------------------------------------------------------
@@ -59,19 +60,6 @@ class Workspace:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_workspace_root() -> Path:
-    """Resolve the base directory for all workspaces.
-
-    Checks REMEDY_DATA_DIR env var first; falls back to <repo_root>/.data/workspaces.
-    """
-    env = os.environ.get("REMEDY_DATA_DIR")
-    if env:
-        return Path(env) / "workspaces"
-    # packages/orchestration/workspace.py → repo root is 3 levels up
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    return repo_root / ".data" / "workspaces"
-
-
 class LocalWorkspaceRuntime:
     """Workspace runtime that materializes files on the local filesystem.
 
@@ -83,7 +71,7 @@ class LocalWorkspaceRuntime:
 
     def __init__(self, job_id: UUID) -> None:
         self._job_id = job_id
-        root = (_resolve_workspace_root() / str(job_id)).resolve()
+        root = (_workspaces_dir() / str(job_id)).resolve()
         root.mkdir(parents=True, exist_ok=True)
         self._workspace = Workspace(job_id=job_id, root=root)
 

@@ -34,7 +34,6 @@ Key constraints:
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -42,6 +41,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from packages.orchestration.path_utils import sanitize_path_component
 from packages.orchestration.task_registry import get_task_type_spec
 
 if TYPE_CHECKING:
@@ -106,26 +106,6 @@ class PatchIntentSet(BaseModel):
     task_id: UUID
     artifact_id: UUID
     intents: list[PatchIntent] = Field(default_factory=list)
-
-
-# ---------------------------------------------------------------------------
-# Path-safe helpers (used by materialize_patch_intents for workspace filenames)
-# ---------------------------------------------------------------------------
-
-_SAFE_PATH_RE = re.compile(r"[^a-zA-Z0-9_-]")
-_MAX_PATH_COMPONENT_LENGTH = 48
-
-
-def _sanitize_path_component(value: str) -> str:
-    """Sanitize a string for safe use as a single path component.
-
-    Same logic as task_registry._sanitize_path_component (canonical) — kept
-    local here for workspace filename generation in materialize_patch_intents
-    to avoid importing a private helper across modules.
-    """
-    sanitized = _SAFE_PATH_RE.sub("_", value)
-    sanitized = sanitized[:_MAX_PATH_COMPONENT_LENGTH].strip("_")
-    return sanitized or "unknown"
 
 
 def _derive_target_path(task_type: str) -> str | None:
@@ -265,7 +245,7 @@ def materialize_patch_intents(
     if not pis.intents:
         return None
 
-    safe_type = _sanitize_path_component(task_type)
+    safe_type = sanitize_path_component(task_type)
     short_id = pis.task_id.hex[:8]
     relative_path = f"patch_intents/{task_index:03d}_{safe_type}_{short_id}.json"
     content = pis.model_dump_json(indent=2)

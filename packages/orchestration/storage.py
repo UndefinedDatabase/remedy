@@ -1,22 +1,25 @@
 """
 Job persistence layer.
 
-Jobs are stored as JSON files under <data_dir>/<job_id>.json.
+Jobs are stored as JSON files under <data_dir>/jobs/<job_id>.json.
 
 Storage location resolution order:
 1. REMEDY_DATA_DIR environment variable, if set.
 2. Repository-local default: <repo_root>/.data/jobs
+
+Resolution is delegated to packages.orchestration.data_paths — that module
+is the single authoritative reader of REMEDY_DATA_DIR in production Python.
 
 No database. No external dependencies.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from uuid import UUID
 
 from packages.core.models import Job
+from packages.orchestration.data_paths import jobs_dir
 
 
 class JobNotFoundError(Exception):
@@ -27,20 +30,7 @@ class JobNotFoundError(Exception):
         self.job_id = job_id
 
 
-def _resolve_data_dir() -> Path:
-    """Resolve the storage directory.
-
-    Checks REMEDY_DATA_DIR env var first; falls back to <repo_root>/.data/jobs.
-    """
-    env = os.environ.get("REMEDY_DATA_DIR")
-    if env:
-        return Path(env)
-    # packages/orchestration/storage.py → repo root is 3 levels up
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    return repo_root / ".data" / "jobs"
-
-
-_DATA_DIR: Path = _resolve_data_dir()
+_DATA_DIR: Path = jobs_dir()
 
 
 def save_job(job: Job) -> None:

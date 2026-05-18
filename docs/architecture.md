@@ -2357,3 +2357,109 @@ The proof snapshot contains only structural hashes and counts. The following are
 - Approval reason text
 - Exception messages
 - Command output
+
+---
+
+## Step 32 — Repository Structure Foundation
+
+### Goal
+
+Low-risk structural cleanup: centralize REMEDY_DATA_DIR resolution and path-component sanitization, add reserved namespace docstrings. No new features. No CLI split. No orchestration subpackage moves.
+
+### Part A — Apply Proof Polish (`patch_apply.py`)
+
+The proof dict built from `_file_snapshot` before/after results is now constructed **once** and reused for both the artifact metadata entry (`proof` sub-key under `patch_intent_apply_records[intent_id]`) and the `_emit_proof_run_log` call. This guarantees the two proof sources are byte-identical without any duplicated construction.
+
+`_file_snapshot(path)` docstring clarifies that the third return value is `data.count(b"\n")` (newline byte count), which may differ by one from the number of text lines depending on whether the file ends with a newline.
+
+### Part B — `packages/orchestration/data_paths.py`
+
+**Single authoritative reader of `REMEDY_DATA_DIR` in production Python.**
+
+```
+packages/orchestration/data_paths.py
+```
+
+Public API:
+
+```python
+resolve_data_root() -> Path          # reads REMEDY_DATA_DIR or falls back to .data/
+jobs_dir(root=None) -> Path          # <root>/jobs
+runs_dir(root=None) -> Path          # <root>/runs
+projects_dir(root=None) -> Path      # <root>/projects
+workspaces_dir(root=None) -> Path    # <root>/workspaces
+viewers_dir(root=None) -> Path       # <root>/viewers
+```
+
+Resolution order (unchanged from historical convention):
+1. `REMEDY_DATA_DIR` environment variable, if set.
+2. `<repo_root>/.data`, where `repo_root` is derived from `data_paths.py`'s own `__file__`.
+
+**Updated callers** (all previously read `REMEDY_DATA_DIR` directly):
+- `packages/orchestration/storage.py` → uses `jobs_dir()`; retains `_DATA_DIR` for monkeypatch compatibility
+- `packages/orchestration/run_log.py` → uses `runs_dir()` via `_runs_dir_default`
+- `packages/orchestration/project_registry.py` → uses `projects_dir()`
+- `packages/orchestration/workspace.py` → uses `workspaces_dir()`
+- `apps/cli/main.py` → uses `resolve_data_root()` in all `_cmd_*` functions
+
+**Removed**: `_resolve_data_dir`, `_resolve_runs_root`, `_resolve_projects_dir`, `_resolve_workspace_root`.
+
+**Invariant**: In production Python under `apps/` and `packages/`, `data_paths.py` is the only file that contains `os.environ.get("REMEDY_DATA_DIR")`. Scripts and tests may still read it directly.
+
+### Part C — `packages/orchestration/path_utils.py`
+
+**Single canonical path-component sanitizer.**
+
+```
+packages/orchestration/path_utils.py
+```
+
+Public API:
+
+```python
+sanitize_path_component(value: str) -> str
+```
+
+Behavior (identical to all previous local copies):
+- Replace every char not in `[a-zA-Z0-9_-]` with `_`.
+- Truncate to 48 characters.
+- Strip leading/trailing `_`.
+- Return `"unknown"` if result is empty.
+
+**Removed local copies** from:
+- `packages/orchestration/task_registry.py` — `_sanitize_path_component` + `_SAFE_PATH_RE` + `_MAX_PATH_COMPONENT_LENGTH`
+- `packages/orchestration/task_runner.py` — same
+- `packages/orchestration/patch_intent.py` — same
+
+The regex `[^a-zA-Z0-9_-]` and the constant `48` now appear exactly once in production code.
+
+### Part D — Reserved Namespace Docstrings
+
+The following empty `__init__.py` files received module docstrings describing planned purpose, current status, and future layer:
+
+| File | Planned layer |
+|------|--------------|
+| `packages/artifacts/__init__.py` | Artifact persistence (Step 40+) |
+| `packages/memory/__init__.py` | MemPalace memory backend (post-Step 35) |
+| `packages/runtimes/__init__.py` | Pluggable runtime backends (Step 36+) |
+| `packages/verification/__init__.py` | Pluggable verification backends (Step 37+) |
+| `apps/api/__init__.py` | HTTP API server (Step 38+) |
+| `apps/worker/__init__.py` | Background worker/daemon (Step 39+) |
+| `packages/providers/claude_agent/__init__.py` | Claude-hosted provider (Step 33+) |
+| `packages/providers/docker_runtime/__init__.py` | Docker container runtime (Step 40+) |
+| `packages/providers/mempalace/__init__.py` | MemPalace provider client (post-Step 35) |
+
+### Intentional deferrals
+
+The following items are explicitly **not** done in Step 32:
+- CLI command module split
+- `packages/orchestration/brain|patching|execution|reporting` subpackage moves
+- Git integration
+- Rollback
+- Shell/test execution
+- MCP
+- MemPalace implementation
+- API/worker implementation
+- Provider implementation
+- Repo markers or provenance
+- Makefile

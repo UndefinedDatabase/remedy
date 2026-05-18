@@ -29,25 +29,9 @@ This registry is the intended single source of truth for:
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
-
-# ---------------------------------------------------------------------------
-# Path sanitization
-# Mirrors _sanitize_path_component in task_runner.py, patch_intent.py, and
-# repo_applicator.py.  Kept local to avoid importing a private helper.
-# ---------------------------------------------------------------------------
-
-_SAFE_PATH_RE = re.compile(r"[^a-zA-Z0-9_-]")
-_MAX_PATH_COMPONENT_LENGTH = 48
-
-
-def _sanitize_path_component(value: str) -> str:
-    """Replace unsafe characters and truncate for safe use in a path component."""
-    sanitized = _SAFE_PATH_RE.sub("_", value)
-    sanitized = sanitized[:_MAX_PATH_COMPONENT_LENGTH].strip("_")
-    return sanitized or "unknown"
+from packages.orchestration.path_utils import sanitize_path_component
 
 
 # ---------------------------------------------------------------------------
@@ -206,7 +190,7 @@ def get_task_type_spec(task_type: str) -> TaskTypeSpec:
     to this function — there is no independent routing table in either module.
     """
     lower = task_type.lower()
-    safe_type = _sanitize_path_component(task_type)
+    safe_type = sanitize_path_component(task_type)
     for keyword, description, route_template, verifier_profile in _ROUTE_RULES:
         if keyword in lower:
             return TaskTypeSpec(
@@ -259,7 +243,7 @@ def iter_task_type_specs() -> tuple[TaskTypeSpec, ...]:
     """
     specs: list[TaskTypeSpec] = []
     for keyword, description, route_template, verifier_profile in _ROUTE_RULES:
-        safe_type = _sanitize_path_component(keyword)
+        safe_type = sanitize_path_component(keyword)
         specs.append(
             TaskTypeSpec(
                 name=keyword,

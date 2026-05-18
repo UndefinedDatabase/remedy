@@ -25,30 +25,13 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-
-# ---------------------------------------------------------------------------
-# Storage location
-# ---------------------------------------------------------------------------
-
-
-def _resolve_runs_root() -> Path:
-    """Resolve the base directory for all run logs.
-
-    Checks REMEDY_DATA_DIR env var first; falls back to <repo_root>/.data/runs.
-    """
-    env = os.environ.get("REMEDY_DATA_DIR")
-    if env:
-        return Path(env) / "runs"
-    # packages/orchestration/run_log.py → repo root is 3 levels up
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    return repo_root / ".data" / "runs"
+from packages.orchestration.data_paths import runs_dir as _runs_dir_default
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +112,7 @@ class RunLogWriter:
     ) -> None:
         self._job_id = str(job_id)
         self._run_id = run_id if run_id is not None else new_run_id()
-        root = runs_root if runs_root is not None else _resolve_runs_root()
+        root = runs_root if runs_root is not None else _runs_dir_default()
         job_dir = root / self._job_id
         job_dir.mkdir(parents=True, exist_ok=True)
         self._path = job_dir / f"{self._run_id}.jsonl"
