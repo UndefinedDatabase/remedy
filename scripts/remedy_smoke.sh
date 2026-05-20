@@ -55,7 +55,24 @@ PYPROJECT_EOF
 # Tiny Internal Tool
 
 Initial README content.
+
+## Proposed Update
+
+Smoke-test placeholder.
 README_EOF
+
+    # Seed tests/ with a minimal pytest file for Step 33 test run smoke.
+    mkdir -p "${TARGET_REPO}/tests"
+    cat >"${TARGET_REPO}/tests/test_readme.py" <<'TEST_EOF'
+"""Smoke test: README.md exists and contains the expected section."""
+from pathlib import Path
+
+def test_readme_exists_and_has_proposed_update():
+    readme = Path(__file__).resolve().parents[1] / "README.md"
+    assert readme.exists(), "README.md must exist"
+    content = readme.read_text()
+    assert "Proposed Update" in content, "README.md must contain 'Proposed Update'"
+TEST_EOF
 
     # -------------------------------------------------------------------------
     # 1b. Repository structure sanity (Step 32)
@@ -418,6 +435,65 @@ for ev in events:
             sys.exit(1)
 print('    proof event: OK  events=' + str(len(events)) + '  after_sha=' + events[0]['metadata']['after_sha256'][:16] + '...')
 " "${JOB_ID}" "${RUNS_ROOT}"
+        # 6i. Step 33: grant repo_test_run, run tests, assert test_run node + run-log schema
+        echo "--- 6i. Grant repo_test_run permission"
+        remedy set-permission "${JOB_ID}" allow repo_test_run
+        echo "    repo_test_run: allowed"
+
+        echo "--- 6j. Run tests locally (Step 33)"
+        remedy run-tests-local "${JOB_ID}"
+        echo "    run-tests-local: OK"
+
+        echo "--- 6k. Assert test_run node in brain JSON"
+        remedy brain "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+if 'test_run' not in types:
+    print('ERROR: test_run node missing from brain after run-tests-local', file=sys.stderr)
+    sys.exit(1)
+tr_nodes = [n for n in data.get('nodes', []) if n['type'] == 'test_run']
+# Verify no forbidden keys in test_run node metadata
+forbidden = {'stdout', 'stderr', 'raw_output', 'command_output'}
+for n in tr_nodes:
+    bad = forbidden & set(n.get('metadata', {}).keys())
+    if bad:
+        print('ERROR: forbidden keys in test_run node metadata: ' + str(bad), file=sys.stderr)
+        sys.exit(1)
+print('    test_run node: OK  count=' + str(len(tr_nodes)) + '  status=' + (tr_nodes[0].get('status','?') if tr_nodes else '?'))
+"
+
+        echo "--- 6l. Assert test_run_completed run-log schema"
+        python3 -c "
+import json, sys
+from pathlib import Path
+job_id   = sys.argv[1]
+runs_dir = Path(sys.argv[2]) / job_id
+events   = []
+if runs_dir.exists():
+    for f in sorted(runs_dir.glob('*.jsonl')):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                ev = json.loads(line)
+                if ev.get('event') == 'test_run_completed':
+                    events.append(ev)
+if not events:
+    print('ERROR: no test_run_completed events found in ' + str(runs_dir), file=sys.stderr)
+    sys.exit(1)
+required_meta = frozenset({'test_run_id','command','status','exit_code','duration_ms','output_line_count','output_bytes'})
+bad_keys      = frozenset({'stdout','stderr','raw_output','command_output','cwd','env','traceback'})
+for ev in events:
+    meta = ev.get('metadata', {})
+    got  = frozenset(meta.keys())
+    if got != required_meta:
+        print('ERROR: test_run_completed metadata keys mismatch: got=' + str(sorted(got)) + ' want=' + str(sorted(required_meta)), file=sys.stderr)
+        sys.exit(1)
+    if got & bad_keys:
+        print('ERROR: forbidden metadata keys in test_run_completed: ' + str(sorted(got & bad_keys)), file=sys.stderr)
+        sys.exit(1)
+print('    test_run_completed schema: OK  events=' + str(len(events)) + '  status=' + events[0]['metadata']['status'])
+" "${JOB_ID}" "${RUNS_ROOT}"
+
     else
         echo "    No patch intents found — skipping apply lifecycle"
     fi

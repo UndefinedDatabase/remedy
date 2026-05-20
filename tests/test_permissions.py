@@ -166,13 +166,14 @@ class TestIsReserved:
 
 
 class TestEffectivePermissions:
-    def test_returns_all_four_capabilities(self):
+    def test_returns_all_capabilities(self):
         job = _make_job()
         rows = effective_permissions(job)
         names = {r["capability"] for r in rows}
         assert names == {
             "workspace_write",
             "repo_generated_write",
+            "repo_test_run",
             "repo_overwrite",
             "shell_exec",
         }
@@ -224,11 +225,12 @@ class TestCapabilityEnum:
         with pytest.raises(ValueError):
             Capability("nonexistent_capability")
 
-    def test_all_four_capabilities_exist(self):
+    def test_all_capabilities_exist(self):
         values = {c.value for c in Capability}
         assert values == {
             "workspace_write",
             "repo_generated_write",
+            "repo_test_run",
             "repo_overwrite",
             "shell_exec",
         }

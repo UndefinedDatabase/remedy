@@ -673,6 +673,63 @@ class TestSmokeScriptText:
             "proof event check must note that it assumes approve/apply has already run"
         )
 
+    # --- Step 33: Permission-gated test run block -------------------------
+
+    def test_smoke_has_run_tests_local_step(self):
+        text = _script_text()
+        assert "run-tests-local" in text, (
+            "smoke must call remedy run-tests-local as part of Step 33"
+        )
+
+    def test_smoke_grants_repo_test_run_permission(self):
+        text = _script_text()
+        assert "repo_test_run" in text, (
+            "smoke must grant repo_test_run permission before running tests"
+        )
+
+    def test_smoke_asserts_test_run_completed_schema(self):
+        text = _script_text()
+        assert "test_run_completed" in text, (
+            "smoke must verify test_run_completed run-log event is present"
+        )
+
+    def test_smoke_checks_test_run_required_metadata_keys(self):
+        text = _script_text()
+        # All 7 required schema keys must appear in the smoke check.
+        required = [
+            "test_run_id",
+            "command",
+            "status",
+            "exit_code",
+            "duration_ms",
+            "output_line_count",
+            "output_bytes",
+        ]
+        for key in required:
+            assert key in text, (
+                f"smoke test_run_completed schema check must reference key '{key}'"
+            )
+
+    def test_smoke_forbids_raw_output_in_test_run_log(self):
+        text = _script_text()
+        # The smoke must verify these forbidden keys don't appear in test_run metadata.
+        for key in ("stdout", "stderr", "raw_output", "command_output"):
+            assert key in text, (
+                f"smoke must block forbidden key '{key}' from test_run_completed metadata"
+            )
+
+    def test_smoke_asserts_test_run_node_in_brain(self):
+        text = _script_text()
+        assert "test_run" in text, (
+            "smoke must verify 'test_run' node type appears in brain after run-tests-local"
+        )
+
+    def test_smoke_target_repo_has_tests_directory(self):
+        text = _script_text()
+        assert "test_readme" in text or "tests/" in text, (
+            "smoke target repo must include a tests/ directory with a pytest file"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)

@@ -2463,3 +2463,93 @@ The following items are explicitly **not** done in Step 32:
 - Provider implementation
 - Repo markers or provenance
 - Makefile
+
+## Step 33 — Permission-gated Test Run v0
+
+### Command
+
+    remedy run-tests-local <job_id>
+
+### Behavior
+
+1. Load job.
+2. Require attached `target_repo` (directory must exist).
+3. Require explicit `repo_test_run = allow` in job permissions — exit 1 with a clear message if missing.
+4. Determine test command from allowlist only:
+   - Constitution test command if it exactly matches one of the three allowed forms.
+   - Else if `pyproject.toml` + `tests/` both exist in target_repo, use `python3 -m pytest`.
+   - Otherwise block with `status = "blocked"`, `reason = "no_supported_test_command"`.
+5. Capture output to `<workspace>/test_runs/<test_run_id>.txt` (local diagnostic only).
+6. Store a safe `TestRunRecord` on `job.metadata["test_runs"]`; write a `test_run_completed` run-log event.
+7. Exit 0 on `passed`, exit 1 otherwise.
+
+### Allowed command forms
+
+| Form | Notes |
+|------|-------|
+| `python3 -m pytest` | Preferred auto-detect form |
+| `python -m pytest` | Alternate interpreter |
+| `pytest` | Direct entry-point |
+
+No other command forms are allowed. `shell=True` is never used.
+
+### Safety constraints
+
+- `subprocess.run` receives an argv list; no shell string expansion.
+- `cwd` is the resolved `target_repo` path.
+- Environment is inherited from `os.environ`; `.env` files are never read.
+- Default timeout: 60 seconds (`subprocess.TimeoutExpired` → `status = "timeout"`).
+- Raw stdout/stderr are written to the workspace file **only**. They are never included in:
+  - run-log metadata
+  - Brain/Viewer JSON
+  - Trust Report
+  - Timeline
+
+### Run-log event schema (`test_run_completed`)
+
+Exactly 7 metadata keys — no more, no less:
+
+```json
+{
+  "test_run_id":       "<16-char hex>",
+  "command":          "python3 -m pytest",
+  "status":           "passed | failed | blocked | timeout",
+  "exit_code":        0,
+  "duration_ms":      1234,
+  "output_line_count": 5,
+  "output_bytes":     99
+}
+```
+
+Forbidden in metadata: `stdout`, `stderr`, `raw_output`, `command_output`, `cwd`, `env`, `traceback`.
+
+### Brain integration
+
+- New node type: `test_run` (constant `NT_TEST_RUN`).
+- Node ID: `test_run:<index>` (one per `test_run_completed` event).
+- Status mapping: `"passed"` → `"passed"`, `"failed"` → `"failed"`, else `"blocked"`.
+- Edges: `job --has_test_run--> test_run`; if a `patch_apply` node exists, also `test_run --verified_after_apply--> latest_patch_apply`.
+- `brain_detail.py` has a dedicated `_detail_test_run` handler with 7 evidence items and 2 redaction notes.
+
+### Trust Report
+
+Section 8 ("Test runs") lists each `test_run_completed` event: status, command, exit_code, duration_ms. Explicitly notes "raw stdout/stderr not included in this report".
+
+### Timeline
+
+`test_run_completed` events are rendered as:
+```
+✓/✕ test run  status=<status>  cmd=<command>  exit=<code>  <duration>  (raw output not shown)
+```
+
+### Intentional deferrals (Step 33)
+
+- No autonomy loop (no automatic repair after test failure).
+- No MCP.
+- No Browser.
+- No Git integration.
+- No PR creation.
+- No background worker.
+- No live streaming of test output.
+- No arbitrary command execution (`shell_exec` remains reserved).
+- No Context Coverage scoring change.

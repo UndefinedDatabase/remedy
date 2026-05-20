@@ -27,6 +27,7 @@ Node types:
   context_coverage    — deterministic context-health snapshot for the job
   project_placeholder — lightweight marker linking job to a RemyProject
   patch_apply         — an approved patch intent application record
+  test_run            — a permission-gated local test run result (Step 33)
 
 Edge types:
   has_task              — job → task
@@ -43,6 +44,8 @@ Edge types:
   future_mcp_layer      — job → mcp_placeholder
   has_context_snapshot  — job → context_coverage
   belongs_to_project    — job → project_placeholder
+  has_test_run          — job → test_run
+  verified_after_apply  — test_run → patch_apply (optional, when present)
 
 Redaction policy:
   Artifact content, diff previews, approval reasons, event messages, and
@@ -102,6 +105,7 @@ NT_MCP               = "mcp_placeholder"
 NT_CONTEXT_COVERAGE  = "context_coverage"
 NT_PROJECT_PLACEHOLDER = "project_placeholder"
 NT_PATCH_APPLY         = "patch_apply"
+NT_TEST_RUN            = "test_run"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -115,8 +119,10 @@ ET_INSPECTED            = "inspected_by"
 ET_GOVERNED             = "governed_by"
 ET_FUTURE_MEMORY        = "future_memory_layer"
 ET_FUTURE_MCP           = "future_mcp_layer"
-ET_HAS_CONTEXT_SNAPSHOT = "has_context_snapshot"
-ET_BELONGS_TO_PROJECT   = "belongs_to_project"
+ET_HAS_CONTEXT_SNAPSHOT  = "has_context_snapshot"
+ET_BELONGS_TO_PROJECT    = "belongs_to_project"
+ET_HAS_TEST_RUN          = "has_test_run"
+ET_VERIFIED_AFTER_APPLY  = "verified_after_apply"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -134,6 +140,7 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_MCP:                 12,
     NT_PROJECT_PLACEHOLDER: 13,
     NT_PATCH_APPLY:         14,
+    NT_TEST_RUN:            15,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -335,6 +342,64 @@ def build_project_brain(
                 source=pi_node_id,
                 target=apply_node_id,
                 type=ET_APPLIED_BY,
+            ))
+
+    # ── 4.6. Test run nodes (from test_run_completed events) ─────────────────
+    # Collect all patch_apply node IDs so we can optionally connect the latest
+    # test_run to the most recent patch_apply.
+    apply_node_ids: list[str] = [
+        n.id for n in nodes if n.type == NT_PATCH_APPLY
+    ]
+    last_apply_node_id: str | None = apply_node_ids[-1] if apply_node_ids else None
+
+    test_run_idx = 0
+    for ev in events:
+        if ev.get("event") != "test_run_completed":
+            continue
+        meta = ev.get("metadata", {})
+        tr_id = str(meta.get("test_run_id", f"tr{test_run_idx}"))
+        command = str(meta.get("command", ""))
+        status = str(meta.get("status", "unknown"))
+        exit_code_raw = meta.get("exit_code")
+        exit_code = int(exit_code_raw) if exit_code_raw is not None else -1
+        duration_ms = int(meta.get("duration_ms", 0))
+        output_line_count = int(meta.get("output_line_count", 0))
+        output_bytes = int(meta.get("output_bytes", 0))
+
+        node_status = (
+            "passed" if status == "passed"
+            else "failed" if status == "failed"
+            else "blocked"
+        )
+        tr_node_id = f"test_run:{test_run_idx}"
+        test_run_idx += 1
+        nodes.append(BrainNode(
+            id=tr_node_id,
+            type=NT_TEST_RUN,
+            label=f"test run: {status} ({command})",
+            status=node_status,
+            ref_id=tr_id,
+            metadata={
+                "test_run_id":      tr_id,
+                "command":          command,
+                "status":           status,
+                "exit_code":        exit_code,
+                "duration_ms":      duration_ms,
+                "output_line_count": output_line_count,
+                "output_bytes":     output_bytes,
+            },
+        ))
+        edges.append(BrainEdge(
+            source=job_node_id,
+            target=tr_node_id,
+            type=ET_HAS_TEST_RUN,
+        ))
+        # Optional: connect to the most recent patch_apply (deterministic).
+        if last_apply_node_id is not None:
+            edges.append(BrainEdge(
+                source=tr_node_id,
+                target=last_apply_node_id,
+                type=ET_VERIFIED_AFTER_APPLY,
             ))
 
     # ── 5. Event-derived nodes ───────────────────────────────────────────────
@@ -572,7 +637,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_JOB, NT_TASK, NT_ARTIFACT, NT_PATCH_INTENT, NT_APPROVAL,
         NT_VERIFICATION, NT_BLOCKER, NT_RUN_EVENT, NT_AGENT_LOOP,
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
-        NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY,
+        NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY, NT_TEST_RUN,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)
@@ -613,6 +678,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
     parts.append(f"  {_INFO} mcp_placeholder       — Step 24+ MCP Quarantine / tool layer")
     parts.append(f"  {_INFO} project_placeholder   — Project Registry v0 link (Step 28)")
     parts.append(f"  {_INFO} patch_apply           — approved patch application record (Step 30)")
+    parts.append(f"  {_INFO} test_run              — permission-gated local test run result (Step 33)")
     parts.append(f"  {_INFO} React Flow / Three.js / AG-UI / A2UI mapping — Step 24+")
 
     return "\n".join(parts)
@@ -716,4 +782,5 @@ def _node_symbol(node_type: str) -> str:
         NT_MCP:                 _INFO,
         NT_PROJECT_PLACEHOLDER: _INFO,
         NT_PATCH_APPLY:         _OK,
+        NT_TEST_RUN:            _INFO,
     }.get(node_type, _INFO)

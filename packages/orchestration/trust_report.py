@@ -314,8 +314,28 @@ def summarize_trust_report(
                 "Use: remedy approve-patch-intent <job_id> <intent_id>"
             )
 
-    # ── 8. Redaction / trust boundary ─────────────────────────────────────────
-    parts.append(_section("8. Redaction / trust boundary"))
+    # ── 8. Test runs ──────────────────────────────────────────────────────────
+    parts.append(_section("8. Test runs"))
+    test_run_events = [e for e in events if e.get("event") == "test_run_completed"]
+    if not test_run_events:
+        parts.append("  No test runs recorded.")
+    else:
+        for ev in test_run_events:
+            meta     = ev.get("metadata", {})
+            status   = str(meta.get("status", "unknown"))
+            command  = str(meta.get("command", ""))
+            exit_code = meta.get("exit_code")
+            dur_ms   = meta.get("duration_ms", 0)
+            sym      = _OK if status == "passed" else (_FAIL if status == "failed" else _WARN)
+            exit_str = f"  exit_code={exit_code}" if exit_code is not None else ""
+            parts.append(
+                f"  {sym} status={status}  command={command}"
+                f"{exit_str}  duration_ms={dur_ms}"
+            )
+            parts.append("      (raw stdout/stderr not included in this report)")
+
+    # ── 9. Redaction / trust boundary ─────────────────────────────────────────
+    parts.append(_section("9. Redaction / trust boundary"))
     parts.append(
         "  Raw prompts, artifact content, and full diff text are not included in this report."
     )
@@ -326,8 +346,8 @@ def summarize_trust_report(
         "  This report is generated from persisted Job JSON and JSONL run logs."
     )
 
-    # ── 9. Next safe action ────────────────────────────────────────────────────
-    parts.append(_section("9. Next safe action"))
+    # ── 10. Next safe action ───────────────────────────────────────────────────
+    parts.append(_section("10. Next safe action"))
     parts.append(_derive_next_action(job, signals))
 
     # Optional: run log dir path

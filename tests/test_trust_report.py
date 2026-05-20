@@ -529,7 +529,7 @@ class TestPatchIntentsSection:
 
 
 # ---------------------------------------------------------------------------
-# Section 8: Redaction / trust boundary
+# Section 9: Redaction / trust boundary
 # ---------------------------------------------------------------------------
 
 
@@ -560,14 +560,14 @@ class TestRedactionSection:
     def test_redaction_statement_present(self):
         job = _make_job()
         out = summarize_trust_report(job, [])
-        section = out.split("8. Redaction")[1].split("9.")[0]
+        section = out.split("9. Redaction")[1].split("10.")[0]
         assert "not included" in section or "raw" in section.lower()
 
     def test_trust_boundary_source_mentioned(self):
         """Report must mention it is generated from Job JSON + run logs."""
         job = _make_job()
         out = summarize_trust_report(job, [])
-        section = out.split("8. Redaction")[1].split("9.")[0]
+        section = out.split("9. Redaction")[1].split("10.")[0]
         assert "Job" in section or "run log" in section.lower()
 
     def test_unknown_events_do_not_crash(self):
@@ -579,7 +579,7 @@ class TestRedactionSection:
 
 
 # ---------------------------------------------------------------------------
-# Section 9: Next safe action
+# Section 10: Next safe action
 # ---------------------------------------------------------------------------
 
 
@@ -600,8 +600,8 @@ class TestNextSafeAction:
         """Before planning, 'Inspect generated files' would be misleading."""
         job = _make_job()
         out = summarize_trust_report(job, [])
-        section9 = out.split("9. Next safe action")[1]
-        assert "Inspect generated files" not in section9
+        section10 = out.split("10. Next safe action")[1]
+        assert "Inspect generated files" not in section10
 
     def test_pending_suggests_run(self):
         job = _make_job()

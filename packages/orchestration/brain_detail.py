@@ -55,6 +55,7 @@ from packages.orchestration.project_brain import (
     NT_PATCH_INTENT,
     NT_RUN_EVENT,
     NT_TASK,
+    NT_TEST_RUN,
     NT_VERIFICATION,
     ProjectBrainGraph,
 )
@@ -189,6 +190,9 @@ def build_brain_node_detail(
 
     if node.type == NT_PATCH_APPLY:
         return _detail_patch_apply(node, job_id_str, connected)
+
+    if node.type == NT_TEST_RUN:
+        return _detail_test_run(node, job_id_str, connected)
 
     # Fallback for unknown future node types
     return BrainNodeDetail(
@@ -952,6 +956,78 @@ def _detail_patch_apply(
         redaction_notes=(
             "Patch content is not rendered.",
             "Diff text is not rendered.",
+        ),
+    )
+
+
+def _detail_test_run(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    status        = node.status or "unknown"
+    test_run_id   = str(node.metadata.get("test_run_id", node.ref_id or ""))
+    command       = str(node.metadata.get("command", ""))
+    exit_code     = node.metadata.get("exit_code")
+    duration_ms   = int(node.metadata.get("duration_ms", 0))
+    output_lines  = int(node.metadata.get("output_line_count", 0))
+    output_bytes  = int(node.metadata.get("output_bytes", 0))
+
+    outcome_sym = (
+        "passed — all tests green"  if status == "passed"
+        else "failed — one or more tests failed" if status == "failed"
+        else "timed out" if status == "timeout"
+        else "blocked — could not run"
+    )
+
+    explanation = (
+        f"Local test run '{test_run_id}' using command '{command}'. "
+        f"Outcome: {outcome_sym}. "
+        f"Exit code: {exit_code if exit_code is not None else 'n/a'}. "
+        f"Duration: {duration_ms}ms. "
+        f"Output file ({output_bytes} bytes, {output_lines} lines) is stored locally "
+        f"but raw stdout/stderr are not rendered here."
+    )
+
+    evidence = [
+        f"test_run_id: {test_run_id}",
+        f"command: {command}",
+        f"status: {status}",
+        f"exit_code: {exit_code if exit_code is not None else 'n/a'}",
+        f"duration_ms: {duration_ms}",
+        f"output_bytes: {output_bytes}",
+        f"output_line_count: {output_lines}",
+    ]
+
+    next_actions: list[str] = []
+    if status == "failed":
+        next_actions.append(
+            f"Check the test run output file in the workspace/test_runs/ directory."
+        )
+    if status in ("blocked", "timeout"):
+        next_actions.append(
+            f"Verify that the test command is installed and the repo is accessible."
+        )
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_TEST_RUN,
+        title=f"test run: {status} ({command})",
+        status=status,
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Created when remedy run-tests-local was executed.",
+            "Records the outcome of a permission-gated test run against the attached repo.",
+        ),
+        connected_to=tuple(connected),
+        evidence=tuple(evidence),
+        affected_files=(),
+        next_actions=tuple(next_actions),
+        redaction_notes=(
+            "Raw stdout/stderr are not rendered.",
+            "Output file path is not included — use the workspace/test_runs/ directory.",
         ),
     )
 
