@@ -2574,3 +2574,78 @@ word "stdout" in isolation.
 - No live streaming of test output.
 - No arbitrary command execution (`shell_exec` remains reserved).
 - No Context Coverage scoring change.
+
+---
+
+## Step 34 — Project Command Discovery v0
+
+### Goal
+
+Eliminate Python-centrism in test execution.  Remedy discovers test / build /
+lint commands from project configuration files and selects the best one
+deterministically.  The central `ALLOWED_COMMANDS` list is gone — replaced by
+a modular detector architecture.
+
+### Module: `packages/orchestration/command_discovery.py`
+
+`discover_commands(job, repo_root) -> list[CommandCandidate]` runs all
+detectors in priority order and returns deduplicated `CommandCandidate`
+objects.  **No subprocess is called here.**
+
+`select_best_test_candidate(candidates) -> CommandCandidate | None` picks the
+single best test candidate: `high` confidence before `medium`, explicit
+sources (`constitution`, `pyproject`, `cargo`, `go`) before heuristic ones
+(`makefile`, `justfile`, etc.).  High-risk candidates are never returned.
+
+**Detectors (in order):**
+
+| Detector       | Source file      | Candidate command           |
+|----------------|------------------|-----------------------------|
+| constitution   | CONSTITUTION.md  | explicit test_commands      |
+| pyproject      | pyproject.toml   | `python3 -m pytest`         |
+| package_json   | package.json     | `npm run <script>`          |
+| makefile       | Makefile         | `make test` / `make lint`   |
+| justfile       | justfile         | `just test`                 |
+| taskfile       | Taskfile.yml     | `task test`                 |
+| cargo          | Cargo.toml       | `cargo test`                |
+| go             | go.mod           | `go test ./...`             |
+
+### `CommandCandidate` fields
+
+`id`, `purpose` (test/build/lint/format/unknown), `argv` (frozen tuple),
+`display`, `source_type`, `source_path`, `confidence` (high/medium/low),
+`risk` (low/medium/high), `reason`, `requires_permission`.
+
+### Execution safety guard
+
+`_EXECUTION_SAFE_EXECUTABLES` in `test_runner.py` is the closed set of
+executables that may be invoked.  It is **not** the project-logic allowlist
+(that is in `command_discovery.py`); it is the final hard guard before any
+`subprocess.run` call.  It does not grow ad-hoc.
+
+### Risk model
+
+Commands containing risky tokens (`rm`, `sudo`, `curl`, `deploy`, `publish`,
+`push`, `docker`, `kubectl`) are marked `risk=high`.  High-risk candidates are
+never passed to `subprocess.run`.
+
+### `test_run_completed` schema (Step 34, 11 keys)
+
+```
+test_run_id, command, status, exit_code, duration_ms,
+output_line_count, output_bytes,
+command_source_type, command_source_path, command_purpose, command_confidence
+```
+
+### CLI
+
+- `remedy discover-commands <job_id>` — text summary of all discovered candidates.
+- `remedy discover-commands <job_id> --json` — pure JSON (no extra text).
+
+### Intentional deferrals (Step 34)
+
+- Build / lint / format execution not yet gated (permissions `repo_build_run`
+  etc. are reserved for a future step).
+- No live command streaming.
+- No `.env` file loading.
+- No arbitrary script execution.

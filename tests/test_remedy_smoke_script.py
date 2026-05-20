@@ -695,7 +695,7 @@ class TestSmokeScriptText:
 
     def test_smoke_checks_test_run_required_metadata_keys(self):
         text = _script_text()
-        # All 7 required schema keys must appear in the smoke check.
+        # All 11 required schema keys must appear in the smoke check.
         required = [
             "test_run_id",
             "command",
@@ -704,6 +704,10 @@ class TestSmokeScriptText:
             "duration_ms",
             "output_line_count",
             "output_bytes",
+            "command_source_type",
+            "command_source_path",
+            "command_purpose",
+            "command_confidence",
         ]
         for key in required:
             assert key in text, (
@@ -728,6 +732,26 @@ class TestSmokeScriptText:
         text = _script_text()
         assert "test_readme" in text or "tests/" in text, (
             "smoke target repo must include a tests/ directory with a pytest file"
+        )
+
+    # --- Step 34: Command Discovery (step 6n) --------------------------------
+
+    def test_smoke_has_discover_commands_step(self):
+        text = _script_text()
+        assert "discover-commands" in text, (
+            "smoke must call remedy discover-commands as part of Step 34"
+        )
+
+    def test_smoke_discover_commands_checks_json(self):
+        text = _script_text()
+        assert "discover-commands" in text and "--json" in text, (
+            "smoke discover-commands step must use --json for structured verification"
+        )
+
+    def test_smoke_discover_commands_checks_command_source_type(self):
+        text = _script_text()
+        assert "command_source_type" in text, (
+            "smoke must verify command_source_type in test_run_completed metadata"
         )
 
     # --- Step 33.1: Trust/Timeline sanity section (step 6m) ----------------

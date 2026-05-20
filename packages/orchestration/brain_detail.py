@@ -965,13 +965,17 @@ def _detail_test_run(
     job_id_str: str,
     connected: list[dict[str, str]],
 ) -> BrainNodeDetail:
-    status        = node.status or "unknown"
-    test_run_id   = str(node.metadata.get("test_run_id", node.ref_id or ""))
-    command       = str(node.metadata.get("command", ""))
-    exit_code     = node.metadata.get("exit_code")
-    duration_ms   = int(node.metadata.get("duration_ms", 0))
-    output_lines  = int(node.metadata.get("output_line_count", 0))
-    output_bytes  = int(node.metadata.get("output_bytes", 0))
+    status          = node.status or "unknown"
+    test_run_id     = str(node.metadata.get("test_run_id", node.ref_id or ""))
+    command         = str(node.metadata.get("command", ""))
+    exit_code       = node.metadata.get("exit_code")
+    duration_ms     = int(node.metadata.get("duration_ms", 0))
+    output_lines    = int(node.metadata.get("output_line_count", 0))
+    output_bytes    = int(node.metadata.get("output_bytes", 0))
+    cmd_source_type = str(node.metadata.get("command_source_type", ""))
+    cmd_source_path = str(node.metadata.get("command_source_path", ""))
+    cmd_purpose     = str(node.metadata.get("command_purpose", ""))
+    cmd_confidence  = str(node.metadata.get("command_confidence", ""))
 
     outcome_sym = (
         "passed — all tests green"  if status == "passed"
@@ -980,8 +984,13 @@ def _detail_test_run(
         else "blocked — could not run"
     )
 
+    src_str = (
+        f" (discovered from {cmd_source_type}:{cmd_source_path}, "
+        f"confidence={cmd_confidence})"
+        if cmd_source_type else ""
+    )
     explanation = (
-        f"Local test run '{test_run_id}' using command '{command}'. "
+        f"Local test run '{test_run_id}' using command '{command}'{src_str}. "
         f"Outcome: {outcome_sym}. "
         f"Exit code: {exit_code if exit_code is not None else 'n/a'}. "
         f"Duration: {duration_ms}ms. "
@@ -997,6 +1006,10 @@ def _detail_test_run(
         f"duration_ms: {duration_ms}",
         f"output_bytes: {output_bytes}",
         f"output_line_count: {output_lines}",
+        f"command_source_type: {cmd_source_type}",
+        f"command_source_path: {cmd_source_path}",
+        f"command_purpose: {cmd_purpose}",
+        f"command_confidence: {cmd_confidence}",
     ]
 
     next_actions: list[str] = []

@@ -480,8 +480,12 @@ if runs_dir.exists():
 if not events:
     print('ERROR: no test_run_completed events found in ' + str(runs_dir), file=sys.stderr)
     sys.exit(1)
-required_meta = frozenset({'test_run_id','command','status','exit_code','duration_ms','output_line_count','output_bytes'})
-bad_keys      = frozenset({'stdout','stderr','raw_output','command_output','cwd','env','traceback'})
+required_meta = frozenset({
+    'test_run_id','command','status','exit_code','duration_ms',
+    'output_line_count','output_bytes',
+    'command_source_type','command_source_path','command_purpose','command_confidence',
+})
+bad_keys = frozenset({'stdout','stderr','raw_output','command_output','cwd','env','traceback'})
 for ev in events:
     meta = ev.get('metadata', {})
     got  = frozenset(meta.keys())
@@ -493,6 +497,37 @@ for ev in events:
         sys.exit(1)
 print('    test_run_completed schema: OK  events=' + str(len(events)) + '  status=' + events[0]['metadata']['status'])
 " "${JOB_ID}" "${RUNS_ROOT}"
+
+        echo "--- 6n. Discover commands (Step 34)"
+        DISCOVER_JSON="$(remedy discover-commands "${JOB_ID}" --json)"
+        python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+if 'candidates' not in data:
+    print('ERROR: discover-commands --json missing candidates key', file=sys.stderr)
+    sys.exit(1)
+candidates = data['candidates']
+if not candidates:
+    print('ERROR: no candidates discovered for target repo', file=sys.stderr)
+    sys.exit(1)
+# Verify required candidate keys
+required_keys = {'id','purpose','argv','display','source_type','source_path',
+                 'confidence','risk','reason','requires_permission'}
+for c in candidates:
+    missing = required_keys - set(c.keys())
+    if missing:
+        print('ERROR: candidate missing keys: ' + str(missing), file=sys.stderr)
+        sys.exit(1)
+    if not isinstance(c['argv'], list):
+        print('ERROR: argv must be a list, got: ' + type(c['argv']).__name__, file=sys.stderr)
+        sys.exit(1)
+test_c = [c for c in candidates if c['purpose'] == 'test']
+if not test_c:
+    print('ERROR: no test candidates discovered', file=sys.stderr)
+    sys.exit(1)
+best = test_c[0]
+print('    discover-commands: OK  candidates=' + str(len(candidates)) + '  best_source=' + str(best.get('source_type','?')))
+" "${DISCOVER_JSON}"
 
         echo "--- 6m. Trust/Timeline test-run sanity (human-readable output)"
         TRUST_OUT="$(remedy trust-report "${JOB_ID}")"

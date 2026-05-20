@@ -365,6 +365,10 @@ def build_project_brain(
         duration_ms = int(meta.get("duration_ms", 0))
         output_line_count = int(meta.get("output_line_count", 0))
         output_bytes = int(meta.get("output_bytes", 0))
+        cmd_source_type = str(meta.get("command_source_type", ""))
+        cmd_source_path = str(meta.get("command_source_path", ""))
+        cmd_purpose = str(meta.get("command_purpose", ""))
+        cmd_confidence = str(meta.get("command_confidence", ""))
 
         node_status = (
             "passed" if status == "passed"
@@ -380,13 +384,17 @@ def build_project_brain(
             status=node_status,
             ref_id=tr_id,
             metadata={
-                "test_run_id":      tr_id,
-                "command":          command,
-                "status":           status,
-                "exit_code":        exit_code,
-                "duration_ms":      duration_ms,
-                "output_line_count": output_line_count,
-                "output_bytes":     output_bytes,
+                "test_run_id":         tr_id,
+                "command":             command,
+                "status":              status,
+                "exit_code":           exit_code,
+                "duration_ms":         duration_ms,
+                "output_line_count":   output_line_count,
+                "output_bytes":        output_bytes,
+                "command_source_type": cmd_source_type,
+                "command_source_path": cmd_source_path,
+                "command_purpose":     cmd_purpose,
+                "command_confidence":  cmd_confidence,
             },
         ))
         edges.append(BrainEdge(
