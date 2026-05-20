@@ -1,27 +1,23 @@
 # Plan
 
 ## Goal
-Step 33: Permission-gated Test Run v0
+Step 33.1: Test Run Smoke Precision + Runner Polish
 
 ## Status
-COMPLETE — smoke passed, committing
+COMPLETE — committing
 
 ## Completed
-- [x] permissions.py: add repo_test_run capability (active, default deny)
-- [x] test_runner.py: new module with run_tests_local, TestRunRecord, ALLOWED_COMMANDS
-- [x] project_brain.py: NT_TEST_RUN node, ET_HAS_TEST_RUN / ET_VERIFIED_AFTER_APPLY edges
-- [x] brain_detail.py: _detail_test_run handler (7 evidence items + 2 redaction notes)
-- [x] timeline.py: test_run_completed rendering (no raw output)
-- [x] trust_report.py: new §8 Test runs; §8 Redaction → §9; §9 Next action → §10
-- [x] cli/main.py: run-tests-local subcommand with permission gate
-- [x] tests/test_test_runner.py: ~350 lines, 12 test classes
-- [x] tests/test_permissions.py: updated for 5-capability set
-- [x] tests/test_trust_report.py: updated section numbers
-- [x] smoke: steps 6i–6l (grant permission, run tests, verify brain node, verify schema)
-- [x] tests/test_remedy_smoke_script.py: 7 new smoke text assertions
-- [x] docs/architecture.md: Step 33 section appended
-- [x] 1941 tests passing
-- [x] remedy_smoke: PASSED
+- [x] test_runner.py: __test__ = False on TestRunRecord (suppress PytestCollectionWarning)
+- [x] test_runner.py: assert command in ALLOWED_COMMANDS before subprocess.run
+- [x] test_runner.py: FileNotFoundError → _blocked("command_not_found"), output_path == ""
+- [x] smoke step 6m: Trust/Timeline structural check, no bare-stdout false-positive
+- [x] tests: test_command_not_found_output_path_is_empty
+- [x] tests: test_allowed_command_invariant_fires_for_unknown_command
+- [x] tests: test_test_run_record_not_collected_by_pytest
+- [x] tests: 5 new smoke text assertions for step 6m
+- [x] docs/architecture.md: Step 33.1 clarification section
+- [x] 1949 tests passing
+- [x] remedy_smoke: PASSED (step 6m OK)
 
 ## Next
-Commit. Push. Open PR.
+Commit. Push. PR #29 already open — update it.

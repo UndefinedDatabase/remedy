@@ -114,6 +114,27 @@ class TestRunTestsLocalBlocked:
         assert record.status == "blocked"
         assert record.blocked_reason == "no_supported_test_command"
 
+    def test_command_not_found_output_path_is_empty(self, tmp_path):
+        """FileNotFoundError (command not installed) must use _blocked() → output_path == ''."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "pyproject.toml").write_text("[build-system]\n")
+        (repo / "tests").mkdir()
+        job = _make_job(with_repo=str(repo))
+        with patch("subprocess.run", side_effect=FileNotFoundError("pytest: not found")):
+            record = run_tests_local(job, tmp_path)
+        assert record.status == "blocked"
+        assert record.blocked_reason == "command_not_found"
+        assert record.output_path == "", (
+            "command_not_found blocked record must have output_path == '' (no file written)"
+        )
+        # No stray file should have been written.
+        test_runs_dir = tmp_path / "test_runs"
+        if test_runs_dir.exists():
+            assert list(test_runs_dir.iterdir()) == [], (
+                "no output file must be written when command is not found"
+            )
+
 
 class TestAllowedCommands:
     def test_allowed_commands_are_canonical(self):
@@ -123,6 +144,27 @@ class TestAllowedCommands:
 
     def test_timeout_default(self):
         assert TIMEOUT_DEFAULT_SEC == 60
+
+    def test_allowed_command_invariant_fires_for_unknown_command(self, tmp_path, monkeypatch):
+        """The hard assert before subprocess.run must fire if somehow an unknown command
+        reaches the execution path (e.g. a future refactor bypasses _select_command)."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "pyproject.toml").write_text("[build-system]\n")
+        (repo / "tests").mkdir()
+        job = _make_job(with_repo=str(repo))
+
+        # Patch _select_command to return a non-allowlisted command.
+        monkeypatch.setattr(
+            "packages.orchestration.test_runner._select_command",
+            lambda j, r: "rm -rf /",
+        )
+        with pytest.raises(AssertionError, match="BUG: command not in allowlist"):
+            run_tests_local(job, tmp_path)
+
+    def test_test_run_record_not_collected_by_pytest(self):
+        """TestRunRecord must declare __test__ = False to suppress PytestCollectionWarning."""
+        assert TestRunRecord.__test__ is False
 
 
 # ---------------------------------------------------------------------------

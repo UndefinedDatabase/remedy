@@ -2542,6 +2542,27 @@ Section 8 ("Test runs") lists each `test_run_completed` event: status, command, 
 ✓/✕ test run  status=<status>  cmd=<command>  exit=<code>  <duration>  (raw output not shown)
 ```
 
+### Human-readable vs structured output (Step 33.1 clarification)
+
+Human-readable outputs (Trust Report, Timeline) **may** mention "stdout/stderr" as part of
+explanatory redaction notes such as "(raw stdout/stderr not included in this report)" or
+"(raw output not shown)".  This is expected and correct.
+
+Structured outputs (run-log metadata, Brain node metadata, Viewer JSON) must **never** contain
+keys named `stdout`, `stderr`, `raw_output`, or `command_output`.  Smoke-level checks enforce
+this distinction: metadata key checks remain strict; human-text checks look for actual leak
+indicators (`raw_output`, `command_output`, `Traceback`, `Exception:`, etc.) rather than the
+word "stdout" in isolation.
+
+### Invariants (Step 33.1)
+
+- `assert command in ALLOWED_COMMANDS` fires immediately before `subprocess.run` in
+  `test_runner.py`, guarding against any future refactor that bypasses `_select_command`.
+- `FileNotFoundError` (command not installed) returns `_blocked("command_not_found")` with
+  `output_path == ""` — no file is written, consistent with all other blocked paths.
+- `TestRunRecord.__test__ = False` suppresses the `PytestCollectionWarning` that arises from
+  pytest trying to collect a frozen dataclass whose name starts with "Test".
+
 ### Intentional deferrals (Step 33)
 
 - No autonomy loop (no automatic repair after test failure).

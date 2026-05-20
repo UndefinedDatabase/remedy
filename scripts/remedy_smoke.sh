@@ -494,6 +494,37 @@ for ev in events:
 print('    test_run_completed schema: OK  events=' + str(len(events)) + '  status=' + events[0]['metadata']['status'])
 " "${JOB_ID}" "${RUNS_ROOT}"
 
+        echo "--- 6m. Trust/Timeline test-run sanity (human-readable output)"
+        TRUST_OUT="$(remedy trust-report "${JOB_ID}")"
+        TIMELINE_OUT="$(remedy timeline "${JOB_ID}")"
+        python3 -c "
+import sys
+trust    = sys.argv[1]
+timeline = sys.argv[2]
+# Structural presence checks.
+# Human-readable text may legitimately say 'raw stdout/stderr are not included';
+# that is a redaction note, NOT a leak.  We check for structural content only.
+if 'test run' not in trust.lower() and 'test_run' not in trust:
+    print('ERROR: trust report does not mention test run', file=sys.stderr)
+    sys.exit(1)
+if 'test run' not in timeline.lower() and 'test_run_completed' not in timeline:
+    print('ERROR: timeline does not mention test run', file=sys.stderr)
+    sys.exit(1)
+# Actual leak / debug tokens that must never appear in human-readable output.
+forbidden = [
+    'raw_output', 'command_output', 'RAW_COMMAND_OUTPUT', 'MUST_NOT_RENDER',
+    'Traceback', 'Exception:', 'approval_reason', 'diff_preview',
+]
+for tok in forbidden:
+    if tok in trust:
+        print('ERROR: trust report contains forbidden token: ' + repr(tok), file=sys.stderr)
+        sys.exit(1)
+    if tok in timeline:
+        print('ERROR: timeline contains forbidden token: ' + repr(tok), file=sys.stderr)
+        sys.exit(1)
+print('    OK: trust/timeline mention test run structurally')
+" "${TRUST_OUT}" "${TIMELINE_OUT}"
+
     else
         echo "    No patch intents found — skipping apply lifecycle"
     fi

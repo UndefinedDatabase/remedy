@@ -72,6 +72,8 @@ class TestRunRecord:
     Raw stdout/stderr are NOT included.  Only safe scalar metrics are stored.
     """
 
+    __test__ = False  # prevent pytest from collecting this dataclass as a test class
+
     test_run_id: str
     command: str           # e.g. "python3 -m pytest"
     status: str            # "passed" | "failed" | "blocked" | "timeout"
@@ -132,6 +134,7 @@ def run_tests_local(
     output_file = test_runs_dir / f"{test_run_id}.txt"
 
     # ── Run subprocess ───────────────────────────────────────────────────────
+    assert command in ALLOWED_COMMANDS, f"BUG: command not in allowlist: {command!r}"
     argv = command.split()  # safe: command is from the allowlist only
     start = time.monotonic()
     status: str
@@ -155,30 +158,13 @@ def run_tests_local(
         status = "timeout"
         exit_code = None
     except FileNotFoundError:
-        # e.g. "pytest" not installed
-        duration_ms = int((time.monotonic() - start) * 1000)
-        raw_output = b""
-        status = "blocked"
-        exit_code = None
+        # e.g. "pytest" not installed — return blocked with empty output_path
+        return _blocked(test_run_id, created_at, "command_not_found")
 
     # ── Write output file ────────────────────────────────────────────────────
     output_file.write_bytes(raw_output)
     output_bytes = len(raw_output)
     output_line_count = raw_output.count(b"\n")
-
-    if status == "blocked":
-        return TestRunRecord(
-            test_run_id=test_run_id,
-            command=command,
-            status="blocked",
-            exit_code=None,
-            duration_ms=duration_ms,
-            output_path=output_file.name,
-            output_line_count=output_line_count,
-            output_bytes=output_bytes,
-            created_at=created_at,
-            blocked_reason="command_not_found",
-        )
 
     return TestRunRecord(
         test_run_id=test_run_id,

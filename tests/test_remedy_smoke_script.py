@@ -730,6 +730,57 @@ class TestSmokeScriptText:
             "smoke target repo must include a tests/ directory with a pytest file"
         )
 
+    # --- Step 33.1: Trust/Timeline sanity section (step 6m) ----------------
+
+    def test_smoke_has_trust_timeline_sanity_step(self):
+        text = _script_text()
+        assert "trust-report" in text and "timeline" in text, (
+            "smoke must run both remedy trust-report and remedy timeline in step 6m"
+        )
+
+    def test_smoke_trust_timeline_sanity_checks_structural_presence(self):
+        text = _script_text()
+        # The step must verify the human output mentions "test run" structurally.
+        assert "test run" in text or "test_run" in text, (
+            "smoke 6m must check that trust/timeline mention 'test run' structurally"
+        )
+
+    def test_smoke_trust_timeline_sanity_does_not_reject_bare_stdout_in_human_text(self):
+        text = _script_text()
+        # Step 6m must NOT check `assert "stdout" not in trust` or similar.
+        # Such a check would false-positive on redaction notes like
+        # "(raw stdout/stderr not included in this report)".
+        # Verify the 6m section does not use bare "stdout" as a forbidden token check.
+        # We do this by confirming the human-text forbidden token list does NOT contain
+        # a bare 'stdout' string in the forbidden_tokens / tok-check block.
+        import re
+        # Find the 6m block between "6m." and "6n." or "else" or "7."
+        m = re.search(r"6m\..*?(?=echo.*?---\s+[67]\.|else\s+echo)", text, re.DOTALL)
+        section_6m = m.group(0) if m else text
+        # In the 6m section, "stdout" should only appear inside a comment/explanatory string,
+        # not as a standalone forbidden token string like 'stdout'.
+        # The forbidden list in 6m uses tokens like 'raw_output', 'command_output', etc.
+        assert "'stdout'" not in section_6m and '"stdout"' not in section_6m, (
+            "smoke 6m human-text check must not use bare 'stdout' as a forbidden token "
+            "(would false-positive on redaction note text)"
+        )
+
+    def test_smoke_trust_timeline_sanity_still_blocks_real_leak_tokens(self):
+        text = _script_text()
+        # Real leak indicators must still be forbidden in the 6m human-text check.
+        for tok in ("raw_output", "command_output", "RAW_COMMAND_OUTPUT",
+                    "Traceback", "Exception:"):
+            assert tok in text, (
+                f"smoke 6m must still block actual leak token '{tok}' "
+                "from trust report / timeline human output"
+            )
+
+    def test_smoke_trust_timeline_sanity_ok_message(self):
+        text = _script_text()
+        assert "trust/timeline mention test run structurally" in text, (
+            "smoke 6m must print confirmation that trust/timeline mention test run structurally"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)
