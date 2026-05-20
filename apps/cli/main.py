@@ -22,6 +22,7 @@ import time
 from uuid import UUID
 
 from packages.core.models import Job, RunState, Task
+from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.job_runner import PlanJobResult, plan_job
 from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
 
@@ -318,8 +319,6 @@ def _cmd_show_permissions(job_id_str: str) -> None:
 
 
 def _cmd_cockpit(job_id_str: str) -> None:
-    import os
-
     try:
         job_id = UUID(job_id_str)
     except ValueError:
@@ -331,17 +330,11 @@ def _cmd_cockpit(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from pathlib import Path
-
     from packages.orchestration.cockpit import summarize_cockpit
     from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.timeline import load_run_events
 
-    env = os.environ.get("REMEDY_DATA_DIR")
-    if env:
-        data_dir = Path(env)
-    else:
-        data_dir = Path(__file__).resolve().parent.parent.parent / ".data"
+    data_dir = resolve_data_root()
 
     target_repo_str = job.metadata.get("target_repo")
     constitution = load_project_constitution(Path(target_repo_str) if target_repo_str else None)
@@ -520,8 +513,6 @@ def _cmd_apply_patch_intent(
 
 
 def _cmd_constitution(job_id_str: str) -> None:
-    import os
-
     try:
         job_id = UUID(job_id_str)
     except ValueError:
@@ -558,8 +549,6 @@ def _cmd_constitution(job_id_str: str) -> None:
 
 
 def _cmd_agent_loop(job_id_str: str) -> None:
-    import os
-
     try:
         job_id = UUID(job_id_str)
     except ValueError:
@@ -571,8 +560,6 @@ def _cmd_agent_loop(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from pathlib import Path
-
     from packages.orchestration.agent_loop import (
         derive_agent_loop_state,
         summarize_agent_loop_state,
@@ -580,8 +567,7 @@ def _cmd_agent_loop(job_id_str: str) -> None:
     from packages.orchestration.run_log import RunLogWriter
     from packages.orchestration.timeline import load_run_events
 
-    env = os.environ.get("REMEDY_DATA_DIR")
-    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+    data_dir = resolve_data_root()
 
     events = load_run_events(data_dir, job_id)
     state = derive_agent_loop_state(job, events)
@@ -602,7 +588,6 @@ def _cmd_agent_loop(job_id_str: str) -> None:
 
 def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
     import json as _json
-    import os
 
     try:
         job_id = UUID(job_id_str)
@@ -626,8 +611,7 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.run_log import RunLogWriter
     from packages.orchestration.timeline import load_run_events
 
-    env = os.environ.get("REMEDY_DATA_DIR")
-    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+    data_dir = resolve_data_root()
 
     events = load_run_events(data_dir, job_id)
 
@@ -661,7 +645,6 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
 
 def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False) -> None:
     import json as _json
-    import os
 
     try:
         job_id = UUID(job_id_str)
@@ -686,8 +669,7 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
     from packages.orchestration.run_log import RunLogWriter
     from packages.orchestration.timeline import load_run_events
 
-    env = os.environ.get("REMEDY_DATA_DIR")
-    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+    data_dir = resolve_data_root()
 
     events = load_run_events(data_dir, job_id)
 
@@ -724,7 +706,6 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
 
 def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
     import json as _json
-    import os
 
     try:
         job_id = UUID(job_id_str)
@@ -748,8 +729,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.run_log import RunLogWriter
     from packages.orchestration.timeline import load_run_events
 
-    env = os.environ.get("REMEDY_DATA_DIR")
-    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+    data_dir = resolve_data_root()
 
     events = load_run_events(data_dir, job_id)
 
@@ -790,8 +770,6 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
 
 
 def _cmd_brain_view(job_id_str: str) -> None:
-    import os
-
     try:
         job_id = UUID(job_id_str)
     except ValueError:
@@ -814,8 +792,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
     from packages.orchestration.run_log import RunLogWriter
     from packages.orchestration.timeline import load_run_events
 
-    env = os.environ.get("REMEDY_DATA_DIR")
-    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+    data_dir = resolve_data_root()
 
     events = load_run_events(data_dir, job_id)
 
@@ -858,8 +835,6 @@ def _cmd_brain_view(job_id_str: str) -> None:
 
 
 def _cmd_trust_report(job_id_str: str) -> None:
-    import os
-
     try:
         job_id = UUID(job_id_str)
     except ValueError:
@@ -877,8 +852,7 @@ def _cmd_trust_report(job_id_str: str) -> None:
     from packages.orchestration.timeline import load_run_events
     from packages.orchestration.trust_report import summarize_trust_report
 
-    env = os.environ.get("REMEDY_DATA_DIR")
-    data_dir = Path(env) if env else Path(__file__).resolve().parent.parent.parent / ".data"
+    data_dir = resolve_data_root()
 
     target_repo_str = job.metadata.get("target_repo")
     constitution = (
@@ -892,8 +866,6 @@ def _cmd_trust_report(job_id_str: str) -> None:
 
 
 def _cmd_timeline(job_id_str: str) -> None:
-    import os
-
     try:
         job_id = UUID(job_id_str)
     except ValueError:
@@ -905,16 +877,9 @@ def _cmd_timeline(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from pathlib import Path
-
     from packages.orchestration.timeline import load_run_events, summarize_timeline
 
-    env = os.environ.get("REMEDY_DATA_DIR")
-    if env:
-        data_dir = Path(env)
-    else:
-        # apps/cli/main.py is at <repo_root>/apps/cli/main.py
-        data_dir = Path(__file__).resolve().parent.parent.parent / ".data"
+    data_dir = resolve_data_root()
 
     events = load_run_events(data_dir, job_id)
     if not events:

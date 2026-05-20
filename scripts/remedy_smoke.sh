@@ -58,6 +58,98 @@ Initial README content.
 README_EOF
 
     # -------------------------------------------------------------------------
+    # 1b. Repository structure sanity (Step 32)
+    # -------------------------------------------------------------------------
+    echo "--- 1b. Repository structure sanity"
+    python3 -c "
+import sys
+from pathlib import Path
+
+repo = Path(sys.argv[1])
+failed = []
+
+# data_paths.py exists and its public helpers work
+try:
+    from packages.orchestration.data_paths import (
+        resolve_data_root, jobs_dir, runs_dir, projects_dir, workspaces_dir, viewers_dir,
+    )
+    root = resolve_data_root()
+    expected = {
+        'jobs_dir':       jobs_dir(root) == root / 'jobs',
+        'runs_dir':       runs_dir(root) == root / 'runs',
+        'projects_dir':   projects_dir(root) == root / 'projects',
+        'workspaces_dir': workspaces_dir(root) == root / 'workspaces',
+        'viewers_dir':    viewers_dir(root) == root / 'viewers',
+    }
+    for name, ok in expected.items():
+        if not ok:
+            failed.append('data_paths.' + name + ' returned unexpected path')
+except Exception as exc:
+    failed.append('data_paths import/call failed: ' + str(exc))
+
+# path_utils.py exists and sanitize_path_component works
+try:
+    from packages.orchestration.path_utils import sanitize_path_component
+    assert sanitize_path_component('write_readme') == 'write_readme', 'basic case failed'
+    assert sanitize_path_component('../escape') == 'escape', 'traversal strip failed'
+    assert sanitize_path_component('...') == 'unknown', 'dots-only failed'
+    assert sanitize_path_component('a' * 60) == 'a' * 48, 'truncation failed'
+except Exception as exc:
+    failed.append('path_utils import/check failed: ' + str(exc))
+
+# No local _sanitize_path_component definitions in the three consumers
+for mod_path in [
+    'packages/orchestration/task_registry.py',
+    'packages/orchestration/task_runner.py',
+    'packages/orchestration/patch_intent.py',
+    'packages/orchestration/repo_applicator.py',
+]:
+    text = (repo / mod_path).read_text()
+    if 'def _sanitize_path_component' in text:
+        failed.append(mod_path + ' still has local _sanitize_path_component')
+
+# production Python outside data_paths.py must not directly read REMEDY_DATA_DIR
+import re
+env_re = re.compile(r'os\.environ\.get\([\"\\']REMEDY_DATA_DIR[\"\\']')
+for root_dir in ['apps', 'packages']:
+    for p in (repo / root_dir).rglob('*.py'):
+        if p.name == 'data_paths.py':
+            continue
+        if p.parts[-1].startswith('test_'):
+            continue
+        text = p.read_text()
+        if env_re.search(text):
+            failed.append(str(p.relative_to(repo)) + ' directly reads REMEDY_DATA_DIR')
+
+# reserved namespace __init__.py files have docstrings
+reserved = [
+    'packages/artifacts/__init__.py',
+    'packages/memory/__init__.py',
+    'packages/runtimes/__init__.py',
+    'packages/verification/__init__.py',
+    'apps/api/__init__.py',
+    'apps/worker/__init__.py',
+    'packages/providers/claude_agent/__init__.py',
+    'packages/providers/docker_runtime/__init__.py',
+    'packages/providers/mempalace/__init__.py',
+]
+for rp in reserved:
+    full = repo / rp
+    if not full.exists():
+        failed.append(rp + ' does not exist')
+        continue
+    text = full.read_text().strip()
+    if not text.startswith('\"\"\"') and not text.startswith(\"'''\"):
+        failed.append(rp + ' has no module docstring')
+
+if failed:
+    for msg in failed:
+        print('ERROR: structure sanity: ' + msg, file=sys.stderr)
+    sys.exit(1)
+print('    Repository structure sanity: OK')
+" "$(pwd)"
+
+    # -------------------------------------------------------------------------
     # 2. Create project
     # -------------------------------------------------------------------------
     echo "--- 2. Create project"
@@ -278,7 +370,9 @@ if bad:
 print('    target repo markerless: OK')
 " "${TARGET_REPO}" "${FIRST_INTENT_ID}"
 
-        # 6h. Verify patch_apply_proof_recorded event exists and has correct schema (Step 31)
+        # 6h. Verify patch_apply_proof_recorded event (Step 31).
+        # This check assumes the approve/apply lifecycle (6b–6c) has already
+        # completed successfully; proof events are only emitted on a successful apply.
         echo "--- 6h. Verify proof event (patch_apply_proof_recorded)"
         python3 -c "
 import json, sys
@@ -476,7 +570,7 @@ for ph in ('__VIEWER_DATA_JSON__', '__STATIC_FALLBACK__', '__JOB_SHORT_ID__', '_
 # These are metadata keys, uppercase sentinel markers, and exception strings that
 # must never leak into viewer files.  Plain phrases such as the words artifact content
 # or file content are NOT forbidden here: safe explanatory negations in viewer UI copy
-# (e.g. "Does not include raw prompt, file content, ...") are intentional text.
+# (e.g. 'Does not include raw prompt, file content, ...') are intentional text.
 forbidden_tokens = [
     'approval_reason',
     'diff_preview',

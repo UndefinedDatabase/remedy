@@ -17,9 +17,9 @@ import pytest
 
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.path_utils import sanitize_path_component as _sanitize_path_component
 from packages.orchestration.task_runner import (
     _extract_proposed_changes,
-    _sanitize_path_component,
     materialize_task_output,
     run_next_task,
 )

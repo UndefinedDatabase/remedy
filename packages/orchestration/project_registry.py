@@ -24,13 +24,14 @@ Public API::
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+from packages.orchestration.data_paths import projects_dir as _projects_dir
 
 
 def _utcnow() -> datetime:
@@ -67,21 +68,9 @@ class ProjectNotFoundError(Exception):
         self.project_id = project_id
 
 
-def _resolve_projects_dir() -> Path:
-    """Resolve the projects storage directory.
-
-    Checks REMEDY_DATA_DIR env var first; falls back to <repo_root>/.data/projects.
-    """
-    env = os.environ.get("REMEDY_DATA_DIR")
-    if env:
-        return Path(env) / "projects"
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    return repo_root / ".data" / "projects"
-
-
 def save_project(project: RemyProject) -> None:
     """Persist a RemyProject to disk as JSON."""
-    d = _resolve_projects_dir()
+    d = _projects_dir()
     d.mkdir(parents=True, exist_ok=True)
     (d / f"{project.id}.json").write_text(project.model_dump_json(indent=2))
 
@@ -91,7 +80,7 @@ def load_project(project_id: UUID) -> RemyProject:
 
     Raises ProjectNotFoundError if the project does not exist.
     """
-    path = _resolve_projects_dir() / f"{project_id}.json"
+    path = _projects_dir() / f"{project_id}.json"
     if not path.exists():
         raise ProjectNotFoundError(project_id)
     return RemyProject.model_validate_json(path.read_text())
@@ -99,7 +88,7 @@ def load_project(project_id: UUID) -> RemyProject:
 
 def list_projects() -> list[RemyProject]:
     """Return all persisted projects sorted by created_at descending."""
-    d = _resolve_projects_dir()
+    d = _projects_dir()
     if not d.exists():
         return []
     projects: list[RemyProject] = []

@@ -48,7 +48,6 @@ Materialization (Step 6 + 6.5):
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Callable
 from uuid import UUID
@@ -56,6 +55,7 @@ from uuid import UUID
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.artifact_index import planning_artifact
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.path_utils import sanitize_path_component
 from packages.orchestration.verifier import VerificationResult
 from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
 
@@ -339,11 +339,6 @@ def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
 # Used by _extract_proposed_changes to detect section boundaries.
 _ARTIFACT_SECTION_HEADERS = frozenset({"Proposed Changes:", "Notes:", "Risks:"})
 
-# Characters allowed in a workspace path component.
-_SAFE_PATH_RE = re.compile(r"[^a-zA-Z0-9_-]")
-_MAX_PATH_COMPONENT_LENGTH = 48
-
-
 def _extract_proposed_changes(content: str) -> list[str]:
     """Extract only the Proposed Changes lines from a builder artifact content string.
 
@@ -364,23 +359,6 @@ def _extract_proposed_changes(content: str) -> list[str]:
         elif in_section and line.startswith("  - "):
             changes.append(line)
     return changes
-
-
-def _sanitize_path_component(value: str) -> str:
-    """Sanitize a string for safe use as a single workspace path component.
-
-    Replaces any character that is not alphanumeric, underscore, or hyphen
-    with an underscore. Truncates to _MAX_PATH_COMPONENT_LENGTH characters.
-    Strips leading/trailing underscores. Returns "unknown" if the result is
-    empty after sanitization.
-
-    This neutralizes path traversal sequences ("../", "/") because "." and "/"
-    are both replaced. It does not implement a general path policy — callers
-    must still pass the result as a single component, not a path.
-    """
-    sanitized = _SAFE_PATH_RE.sub("_", value)
-    sanitized = sanitized[:_MAX_PATH_COMPONENT_LENGTH].strip("_")
-    return sanitized or "unknown"
 
 
 def materialize_task_output(
@@ -454,7 +432,7 @@ def materialize_task_output(
 
     task_type = artifact.metadata.get("task_type", "unknown")
     summary = artifact.metadata.get("summary", "")
-    safe_type = _sanitize_path_component(task_type)
+    safe_type = sanitize_path_component(task_type)
     short_id = result.task_id.hex[:8]
 
     changes = _extract_proposed_changes(artifact.content)

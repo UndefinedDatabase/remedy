@@ -234,6 +234,19 @@ def apply_patch_intent(
 
     # ── 10. Apply record ──────────────────────────────────────────────────
     applied_at = datetime.now(timezone.utc).isoformat()
+
+    # Build proof dict once; reused for metadata and run-log to guarantee identity.
+    proof = {
+        "before_sha256":     before_sha256,
+        "after_sha256":      after_sha256,
+        "before_bytes":      before_bytes,
+        "after_bytes":       after_bytes,
+        "bytes_delta":       after_bytes - before_bytes,
+        "before_line_count": before_line_count,
+        "after_line_count":  after_line_count,
+        "line_delta":        after_line_count - before_line_count,
+    }
+
     if "patch_intent_apply_records" not in artifact.metadata:
         artifact.metadata["patch_intent_apply_records"] = {}
     artifact.metadata["patch_intent_apply_records"][intent_id] = {
@@ -244,16 +257,7 @@ def apply_patch_intent(
         "bytes_written": bytes_written,
         "line_count": line_count,
         "reason": "applied",
-        "proof": {
-            "before_sha256":      before_sha256,
-            "after_sha256":       after_sha256,
-            "before_bytes":       before_bytes,
-            "after_bytes":        after_bytes,
-            "bytes_delta":        after_bytes - before_bytes,
-            "before_line_count":  before_line_count,
-            "after_line_count":   after_line_count,
-            "line_delta":         after_line_count - before_line_count,
-        },
+        "proof": proof,
     }
 
     # ── 11. Save job ──────────────────────────────────────────────────────
@@ -272,16 +276,7 @@ def apply_patch_intent(
 
     # ── 12. Run-log events ────────────────────────────────────────────────
     _emit_run_log(job, result, data_dir)
-    _emit_proof_run_log(job, result, data_dir, applied_at, {
-        "before_sha256":     before_sha256,
-        "after_sha256":      after_sha256,
-        "before_bytes":      before_bytes,
-        "after_bytes":       after_bytes,
-        "bytes_delta":       after_bytes - before_bytes,
-        "before_line_count": before_line_count,
-        "after_line_count":  after_line_count,
-        "line_delta":        after_line_count - before_line_count,
-    })
+    _emit_proof_run_log(job, result, data_dir, applied_at, proof)
 
     return result
 
@@ -322,7 +317,15 @@ def format_apply_result(result: PatchApplyResult) -> str:
 
 
 def _file_snapshot(path: Path) -> tuple[str, int, int]:
-    """Return (sha256hex, byte_count, line_count) for a file, or ("", 0, 0) if absent."""
+    """Return (sha256hex, byte_count, newline_count) for a file, or ("", 0, 0) if absent.
+
+    sha256hex:     lowercase hex digest of the raw file bytes (64 chars).
+    byte_count:    total number of bytes in the file.
+    newline_count: data.count(b"\\n") — number of newline bytes, NOT number of text lines.
+                   A file with N text lines has N-1 or N newlines depending on whether it
+                   ends with a newline.  Callers in apply records use this as line_count
+                   but should be aware of the convention.
+    """
     if not path.exists():
         return ("", 0, 0)
     data = path.read_bytes()

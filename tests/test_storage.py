@@ -88,3 +88,17 @@ def test_list_jobs_sorted_newest_first(storage):
     result = list_jobs()
     assert result[0].name == "newer"
     assert result[1].name == "older"
+
+
+def test_data_dir_import_time_comment_present():
+    """storage.py must document that _DATA_DIR is evaluated at import time."""
+    from pathlib import Path
+    import packages.orchestration.storage as _storage_mod
+    src = Path(_storage_mod.__file__).read_text()
+    assert "import time" in src or "import-time" in src or "at import" in src, (
+        "storage.py must have a comment near _DATA_DIR explaining it is evaluated "
+        "at import time and that tests should monkeypatch _DATA_DIR directly"
+    )
+    assert "monkeypatch" in src.lower() or "monkeypatch" in src, (
+        "storage.py comment must mention monkeypatch guidance for test authors"
+    )
