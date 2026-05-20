@@ -13,6 +13,11 @@ Defined capabilities:
   repo_generated_write — write generated documentation/markdown into a user-
                          attached target repository. Denied by default (opt-in).
                          ACTIVE: enforced by check_and_apply_to_repo().
+  repo_test_run        — execute an allowlisted pytest command inside the attached
+                         target repository. Denied by default (opt-in).
+                         ACTIVE: enforced by _cmd_run_tests_local() in the CLI.
+                         Only "python3 -m pytest", "python -m pytest", and "pytest"
+                         are allowed. No shell=True. No arbitrary commands.
   repo_overwrite       — overwrite existing files in the attached repo. Denied
                          by default. RESERVED: configurable but not yet enforced
                          at runtime. Setting it has no effect in this version.
@@ -56,6 +61,7 @@ class Capability(str, Enum):
 
     workspace_write = "workspace_write"
     repo_generated_write = "repo_generated_write"
+    repo_test_run = "repo_test_run"
     repo_overwrite = "repo_overwrite"
     shell_exec = "shell_exec"
 
@@ -64,6 +70,7 @@ class Capability(str, Enum):
 _DEFAULTS: dict[str, bool] = {
     "workspace_write": True,
     "repo_generated_write": False,
+    "repo_test_run": False,
     "repo_overwrite": False,
     "shell_exec": False,
 }

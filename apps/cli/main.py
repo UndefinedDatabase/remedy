@@ -512,6 +512,118 @@ def _cmd_apply_patch_intent(
         print(format_apply_result(result))
 
 
+def _cmd_run_tests_local(job_id_str: str) -> None:
+    from pathlib import Path
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.permissions import Capability
+    from packages.orchestration.permissions import is_allowed as _perm_allowed
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.test_runner import run_tests_local
+
+    # Permission gate — must be explicit allow.
+    if not _perm_allowed(job, Capability.repo_test_run):
+        print(
+            "Error: permission repo_test_run is required.\n"
+            f"Grant it with: remedy set-permission {job.id} allow repo_test_run",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Require attached target_repo.
+    target_repo_str = job.metadata.get("target_repo")
+    if not target_repo_str:
+        print(
+            "Error: no target_repo attached to this job.\n"
+            f"Attach one with: remedy attach-repo {job.id} <repo_path>",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    data_dir = resolve_data_root()
+    workspace_root = data_dir / "workspaces" / str(job_id)
+
+    record = run_tests_local(job, workspace_root)
+
+    log = RunLogWriter(job_id=job.id)
+
+    if record.status == "blocked":
+        log.log(
+            "test_run_completed",
+            **{
+                "test_run_id":       record.test_run_id,
+                "command":           record.command,
+                "status":            record.status,
+                "exit_code":         record.exit_code,
+                "duration_ms":       record.duration_ms,
+                "output_line_count": record.output_line_count,
+                "output_bytes":      record.output_bytes,
+            },
+        )
+        print(
+            f"Error: test run blocked — {record.blocked_reason}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    log.log(
+        "test_run_completed",
+        **{
+            "test_run_id":       record.test_run_id,
+            "command":           record.command,
+            "status":            record.status,
+            "exit_code":         record.exit_code,
+            "duration_ms":       record.duration_ms,
+            "output_line_count": record.output_line_count,
+            "output_bytes":      record.output_bytes,
+        },
+    )
+
+    # Store safe metadata on job.
+    if "test_runs" not in job.metadata:
+        job.metadata["test_runs"] = []
+    job.metadata["test_runs"].append({
+        "test_run_id":       record.test_run_id,
+        "command":           record.command,
+        "status":            record.status,
+        "exit_code":         record.exit_code,
+        "duration_ms":       record.duration_ms,
+        "output_path":       record.output_path,
+        "output_line_count": record.output_line_count,
+        "output_bytes":      record.output_bytes,
+        "created_at":        record.created_at,
+    })
+    save_job(job)
+
+    status_sym = "PASSED" if record.status == "passed" else (
+        "FAILED" if record.status == "failed" else record.status.upper()
+    )
+    output_info = (
+        f"output={record.output_path}" if record.output_path else "no output file"
+    )
+    print(
+        f"Job {job.id} | test_run_id={record.test_run_id}"
+        f"  status={record.status}  cmd={record.command}"
+        f"  exit={record.exit_code}  dur={record.duration_ms}ms"
+        f"  {output_info}  log={log.path}"
+    )
+    print(f"Test run: {status_sym}")
+    print("Note: raw stdout/stderr are in the workspace test_runs/ directory only.")
+
+    if record.status not in ("passed",):
+        sys.exit(1)
+
+
 def _cmd_constitution(job_id_str: str) -> None:
     try:
         job_id = UUID(job_id_str)
@@ -1464,6 +1576,15 @@ def main() -> None:
     )
     run_task.add_argument("job_id", help="UUID of the job to advance")
 
+    run_tests = subparsers.add_parser(
+        "run-tests-local",
+        help=(
+            "Run an allowlisted pytest command inside the attached repo "
+            "(requires repo_test_run permission)"
+        ),
+    )
+    run_tests.add_argument("job_id", help="UUID of the job")
+
     brain_node_p = subparsers.add_parser(
         "brain-node",
         help="Print detail for a single Project Brain node",
@@ -1639,6 +1760,8 @@ def main() -> None:
         _cmd_show_permissions(args.job_id)
     elif args.command == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
+    elif args.command == "run-tests-local":
+        _cmd_run_tests_local(args.job_id)
     elif args.command == "brain-node":
         _cmd_brain_node(args.job_id, args.node_id, json_output=args.json)
     elif args.command == "brain":

@@ -217,6 +217,20 @@ def _render_single_event(ev: dict[str, Any]) -> str | None:
             f"  Δbytes={bdelta:+d}  Δlines={ldelta:+d}"
         )
 
+    if name == "test_run_completed":
+        status    = str(meta.get("status", "unknown"))
+        command   = str(meta.get("command", ""))
+        exit_code = meta.get("exit_code")
+        dur_ms    = meta.get("duration_ms", 0)
+        sym       = _OK if status == "passed" else (_FAIL if status == "failed" else _WARN)
+        exit_str  = f"  exit={exit_code}" if exit_code is not None else ""
+        dur_str   = _fmt_elapsed({"elapsed_ms": dur_ms}) if dur_ms else ""
+        return (
+            f"  {sym} test run  status={status}  cmd={command}"
+            f"{exit_str}{dur_str}"
+            f"  (raw output not shown)"
+        )
+
     # All other events outside a task block: render as informational.
     return f"  {_INFO} {name}"
 
