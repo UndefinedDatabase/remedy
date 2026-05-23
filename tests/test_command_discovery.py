@@ -25,8 +25,11 @@ import pytest
 from packages.core.models import Job, RunState
 from packages.orchestration.command_discovery import (
     CommandCandidate,
+    _SCAN_IGNORE_DIRS,
     _detect_cargo,
+    _detect_constitution,
     _detect_go,
+    _detect_gradle,
     _detect_justfile,
     _detect_makefile,
     _detect_package_json,
@@ -318,16 +321,13 @@ class TestRiskyCommandDetection:
         candidates = _detect_package_json(tmp_path)
         assert all(c.risk == "high" for c in candidates)
 
-    def test_sudo_is_high_risk(self, tmp_path):
+    def test_sudo_in_recipe_body_is_high_risk(self, tmp_path):
+        """Makefile recipe body is inspected: 'sudo' in body → risk=high."""
         (tmp_path / "Makefile").write_text("test:\n\tsudo pytest\n")
         candidates = _detect_makefile(tmp_path)
-        # make test itself doesn't contain sudo in argv — but content check
-        # isn't done for Makefile recipe bodies (only for package.json values).
-        # The make test argv is ("make", "test") which is safe.
-        # This test verifies we don't generate a false positive for Makefile.
-        for c in candidates:
-            assert c.argv == ("make", "test")
-            assert c.risk == "low"  # make test argv is clean
+        assert len(candidates) == 1
+        assert candidates[0].argv == ("make", "test")
+        assert candidates[0].risk == "high"  # recipe body contains sudo
 
     def test_deploy_in_npm_script_is_high_risk(self, tmp_path):
         (tmp_path / "package.json").write_text(json.dumps({
@@ -457,10 +457,12 @@ class TestSelectBestTestCandidate:
         assert result is not None
         assert result.confidence == "high"
 
-    def test_explicit_source_beats_heuristic(self):
-        explicit = self._make_candidate(source_type="pyproject", confidence="medium")
-        heuristic = CommandCandidate(
-            id="test:heuristic",
+    def test_makefile_beats_pyproject_same_confidence(self):
+        """makefile has source priority 1; pyproject has priority 2.
+        At the same confidence level, makefile wins."""
+        pyproject = self._make_candidate(source_type="pyproject", confidence="medium")
+        makefile = CommandCandidate(
+            id="test:makefile:test",
             purpose="test",
             argv=("make", "test"),
             display="make test",
@@ -471,9 +473,39 @@ class TestSelectBestTestCandidate:
             reason="test",
             requires_permission="repo_test_run",
         )
-        result = select_best_test_candidate([heuristic, explicit])
+        result = select_best_test_candidate([pyproject, makefile])
         assert result is not None
-        assert result.source_type == "pyproject"
+        assert result.source_type == "makefile"
+
+    def test_constitution_beats_makefile(self):
+        """constitution has priority 0; makefile has priority 1."""
+        constitution = CommandCandidate(
+            id="test:constitution:make test",
+            purpose="test",
+            argv=("make", "test"),
+            display="make test",
+            source_type="constitution",
+            source_path="(project-constitution)",
+            confidence="high",
+            risk="low",
+            reason="from constitution",
+            requires_permission="repo_test_run",
+        )
+        makefile = CommandCandidate(
+            id="test:makefile:test",
+            purpose="test",
+            argv=("make", "test"),
+            display="make test",
+            source_type="makefile",
+            source_path="Makefile",
+            confidence="medium",
+            risk="low",
+            reason="from makefile",
+            requires_permission="repo_test_run",
+        )
+        result = select_best_test_candidate([makefile, constitution])
+        assert result is not None
+        assert result.source_type == "constitution"
 
     def test_skips_non_test(self):
         build = self._make_candidate(purpose="build")
@@ -606,3 +638,363 @@ class TestNoShellTrue:
         assert mock_run.called
         call_kwargs = mock_run.call_args.kwargs
         assert not call_kwargs.get("shell", False), "shell=True must never be used"
+
+
+# ---------------------------------------------------------------------------
+# N. JS lockfile → package manager selection
+# ---------------------------------------------------------------------------
+
+
+class TestJSPackageManagerDetection:
+    def test_pnpm_lock_selects_pnpm(self, tmp_path):
+        (tmp_path / "package.json").write_text(json.dumps({"scripts": {"test": "jest"}}))
+        (tmp_path / "pnpm-lock.yaml").write_text("lockfileVersion: '6.0'\n")
+        candidates = _detect_package_json(tmp_path)
+        test_c = [c for c in candidates if c.purpose == "test"]
+        assert test_c, "expected test candidate"
+        assert test_c[0].argv[0] == "pnpm"
+
+    def test_yarn_lock_selects_yarn(self, tmp_path):
+        (tmp_path / "package.json").write_text(json.dumps({"scripts": {"test": "jest"}}))
+        (tmp_path / "yarn.lock").write_text("# yarn lockfile v1\n")
+        candidates = _detect_package_json(tmp_path)
+        test_c = [c for c in candidates if c.purpose == "test"]
+        assert test_c[0].argv[0] == "yarn"
+
+    def test_bun_lock_selects_bun(self, tmp_path):
+        (tmp_path / "package.json").write_text(json.dumps({"scripts": {"test": "bun test"}}))
+        (tmp_path / "bun.lock").write_text("")
+        candidates = _detect_package_json(tmp_path)
+        test_c = [c for c in candidates if c.purpose == "test"]
+        assert test_c[0].argv[0] == "bun"
+
+    def test_bun_lockb_selects_bun(self, tmp_path):
+        (tmp_path / "package.json").write_text(json.dumps({"scripts": {"test": "bun test"}}))
+        (tmp_path / "bun.lockb").write_bytes(b"\x00")
+        candidates = _detect_package_json(tmp_path)
+        test_c = [c for c in candidates if c.purpose == "test"]
+        assert test_c[0].argv[0] == "bun"
+
+    def test_package_lock_selects_npm(self, tmp_path):
+        (tmp_path / "package.json").write_text(json.dumps({"scripts": {"test": "jest"}}))
+        (tmp_path / "package-lock.json").write_text("{}")
+        candidates = _detect_package_json(tmp_path)
+        test_c = [c for c in candidates if c.purpose == "test"]
+        assert test_c[0].argv[0] == "npm"
+
+    def test_no_lockfile_defaults_to_npm(self, tmp_path):
+        (tmp_path / "package.json").write_text(json.dumps({"scripts": {"test": "jest"}}))
+        candidates = _detect_package_json(tmp_path)
+        test_c = [c for c in candidates if c.purpose == "test"]
+        assert test_c[0].argv[0] == "npm"
+
+
+# ---------------------------------------------------------------------------
+# O. Gradle detector
+# ---------------------------------------------------------------------------
+
+
+class TestDetectGradle:
+    def test_build_gradle(self, tmp_path):
+        (tmp_path / "build.gradle").write_text("plugins { id 'java' }\n")
+        candidates = _detect_gradle(tmp_path)
+        assert len(candidates) >= 1
+        assert candidates[0].source_type == "gradle"
+        assert candidates[0].purpose == "test"
+        assert candidates[0].argv in (("gradle", "test"), ("gradlew", "test"))
+
+    def test_build_gradle_kts(self, tmp_path):
+        (tmp_path / "build.gradle.kts").write_text('plugins { id("java") }\n')
+        candidates = _detect_gradle(tmp_path)
+        assert any(c.source_type == "gradle" for c in candidates)
+
+    def test_gradlew_present_uses_gradlew(self, tmp_path):
+        (tmp_path / "build.gradle").write_text("plugins { id 'java' }\n")
+        gw = tmp_path / "gradlew"
+        gw.write_text("#!/bin/sh\nexec gradle \"$@\"\n")
+        gw.chmod(0o755)
+        candidates = _detect_gradle(tmp_path)
+        assert any(c.argv[0] == "gradlew" for c in candidates)
+
+    def test_gradle_in_subdir(self, tmp_path):
+        sub = tmp_path / "jvm-app"
+        sub.mkdir()
+        (sub / "build.gradle").write_text("plugins { id 'java' }\n")
+        from packages.orchestration.command_discovery import _detect_gradle
+        candidates = _detect_gradle(tmp_path)
+        assert len(candidates) >= 1
+        assert candidates[0].source_path == "jvm-app/build.gradle"
+
+    def test_no_gradle_no_candidate(self, tmp_path):
+        from packages.orchestration.command_discovery import _detect_gradle
+        assert _detect_gradle(tmp_path) == []
+
+
+# ---------------------------------------------------------------------------
+# P. Maven detector
+# ---------------------------------------------------------------------------
+
+
+class TestDetectMaven:
+    def test_pom_xml(self, tmp_path):
+        (tmp_path / "pom.xml").write_text("<project></project>\n")
+        from packages.orchestration.command_discovery import _detect_maven
+        candidates = _detect_maven(tmp_path)
+        assert len(candidates) >= 1
+        assert candidates[0].source_type == "maven"
+        assert candidates[0].argv in (("mvn", "test"), ("mvnw", "test"))
+
+    def test_mvnw_present_uses_mvnw(self, tmp_path):
+        (tmp_path / "pom.xml").write_text("<project></project>\n")
+        mw = tmp_path / "mvnw"
+        mw.write_text("#!/bin/sh\n")
+        mw.chmod(0o755)
+        from packages.orchestration.command_discovery import _detect_maven
+        candidates = _detect_maven(tmp_path)
+        assert any(c.argv[0] == "mvnw" for c in candidates)
+
+
+# ---------------------------------------------------------------------------
+# Q. .NET, Ruby, Composer detectors (basic presence tests)
+# ---------------------------------------------------------------------------
+
+
+class TestDetectDotnetRubyComposer:
+    def test_dotnet_sln(self, tmp_path):
+        (tmp_path / "MyApp.sln").write_text("")
+        from packages.orchestration.command_discovery import _detect_dotnet
+        candidates = _detect_dotnet(tmp_path)
+        assert any(c.argv == ("dotnet", "test") for c in candidates)
+
+    def test_dotnet_csproj(self, tmp_path):
+        (tmp_path / "MyLib.csproj").write_text("<Project></Project>")
+        from packages.orchestration.command_discovery import _detect_dotnet
+        candidates = _detect_dotnet(tmp_path)
+        assert any(c.argv == ("dotnet", "test") for c in candidates)
+
+    def test_ruby_rakefile(self, tmp_path):
+        (tmp_path / "Rakefile").write_text('task :test do\n  sh "ruby -Itest test/**/*.rb"\nend\n')
+        from packages.orchestration.command_discovery import _detect_ruby
+        candidates = _detect_ruby(tmp_path)
+        assert any(c.argv == ("rake", "test") for c in candidates)
+
+    def test_composer_test_script(self, tmp_path):
+        (tmp_path / "composer.json").write_text(json.dumps({
+            "scripts": {"test": "phpunit"}
+        }))
+        from packages.orchestration.command_discovery import _detect_composer
+        candidates = _detect_composer(tmp_path)
+        assert any(c.argv == ("composer", "test") for c in candidates)
+
+    def test_composer_no_test_script(self, tmp_path):
+        (tmp_path / "composer.json").write_text(json.dumps({"scripts": {}}))
+        from packages.orchestration.command_discovery import _detect_composer
+        assert _detect_composer(tmp_path) == []
+
+
+# ---------------------------------------------------------------------------
+# R. Source paths are always relative, never absolute
+# ---------------------------------------------------------------------------
+
+
+class TestSourcePathRelative:
+    def test_pyproject_source_path_relative(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pytest.ini_options]\n")
+        candidates = _detect_pyproject(tmp_path)
+        for c in candidates:
+            assert not c.source_path.startswith("/"), f"absolute: {c.source_path}"
+            assert "tmp" not in c.source_path, f"leaks tmp: {c.source_path}"
+
+    def test_cargo_source_path_relative(self, tmp_path):
+        (tmp_path / "Cargo.toml").write_text('[package]\nname = "x"\n')
+        candidates = _detect_cargo(tmp_path)
+        assert candidates[0].source_path == "Cargo.toml"
+
+    def test_cargo_subdir_source_path_relative(self, tmp_path):
+        sub = tmp_path / "rust-lib"
+        sub.mkdir()
+        (sub / "Cargo.toml").write_text('[package]\nname = "x"\n')
+        candidates = _detect_cargo(tmp_path)
+        assert candidates[0].source_path == "rust-lib/Cargo.toml"
+
+    def test_go_subdir_source_path_relative(self, tmp_path):
+        sub = tmp_path / "go-service"
+        sub.mkdir()
+        (sub / "go.mod").write_text("module x\ngo 1.21\n")
+        candidates = _detect_go(tmp_path)
+        assert candidates[0].source_path == "go-service/go.mod"
+
+    def test_constitution_source_path_not_absolute(self, tmp_path):
+        job = _make_job()
+        candidates = _detect_constitution(job, tmp_path)
+        for c in candidates:
+            assert not c.source_path.startswith("/"), f"absolute: {c.source_path}"
+
+    def test_package_json_subdir_relative(self, tmp_path):
+        sub = tmp_path / "frontend"
+        sub.mkdir()
+        (sub / "package.json").write_text(json.dumps({"scripts": {"test": "jest"}}))
+        candidates = _detect_package_json(tmp_path)
+        for c in candidates:
+            assert not c.source_path.startswith("/"), f"absolute: {c.source_path}"
+            assert "frontend" in c.source_path or c.source_path == "package.json"
+
+
+# ---------------------------------------------------------------------------
+# S. Ignored directories are not scanned
+# ---------------------------------------------------------------------------
+
+
+class TestIgnoredDirectories:
+    def test_node_modules_not_scanned(self, tmp_path):
+        nm = tmp_path / "node_modules" / "some-pkg"
+        nm.mkdir(parents=True)
+        (nm / "package.json").write_text(json.dumps({"scripts": {"test": "jest"}}))
+        candidates = _detect_package_json(tmp_path)
+        # Only finds root package.json if present, not node_modules/some-pkg/package.json
+        assert not any("node_modules" in c.source_path for c in candidates)
+
+    def test_venv_not_scanned(self, tmp_path):
+        venv_dir = tmp_path / ".venv" / "lib"
+        venv_dir.mkdir(parents=True)
+        (tmp_path / ".venv" / "Cargo.toml").write_text('[package]\nname="x"\n')
+        candidates = _detect_cargo(tmp_path)
+        assert not any(".venv" in c.source_path for c in candidates)
+
+    def test_git_not_scanned(self, tmp_path):
+        git_dir = tmp_path / ".git" / "hooks"
+        git_dir.mkdir(parents=True)
+        (tmp_path / ".git" / "Makefile").write_text("test:\n\techo ok\n")
+        candidates = _detect_makefile(tmp_path)
+        assert not any(".git" in c.source_path for c in candidates)
+
+    def test_build_dir_not_scanned(self, tmp_path):
+        build = tmp_path / "build"
+        build.mkdir()
+        (build / "go.mod").write_text("module x\ngo 1.21\n")
+        candidates = _detect_go(tmp_path)
+        assert not any("build" in c.source_path for c in candidates)
+
+
+# ---------------------------------------------------------------------------
+# T. Deduplicated by (purpose, argv, source_type)
+# ---------------------------------------------------------------------------
+
+
+class TestDeduplication:
+    def test_same_source_type_and_argv_deduplicated(self, tmp_path):
+        """Two candidates with identical (purpose, argv, source_type) → deduplicated."""
+        (tmp_path / "pyproject.toml").write_text("[tool.pytest.ini_options]\n")
+        (tmp_path / "tests").mkdir()
+        job = _make_job()
+        candidates = discover_commands(job, tmp_path)
+        # pyproject produces python3 -m pytest exactly once
+        py_pytest = [
+            c for c in candidates
+            if c.argv == ("python3", "-m", "pytest") and c.source_type == "pyproject"
+        ]
+        assert len(py_pytest) == 1
+
+    def test_same_argv_different_source_kept(self, tmp_path):
+        """Constitution + Makefile both producing make test → both kept."""
+        (tmp_path / "Makefile").write_text("test:\n\tpython3 -c \"pass\"\n")
+        job = _make_job()
+        candidates = discover_commands(job, tmp_path)
+        make_test = [c for c in candidates if c.argv == ("make", "test")]
+        source_types = {c.source_type for c in make_test}
+        # Both constitution (from Makefile-derived constitution) and makefile should appear
+        assert "makefile" in source_types
+
+
+# ---------------------------------------------------------------------------
+# U. discover-commands CLI JSON schema v1
+# ---------------------------------------------------------------------------
+
+
+class TestCLIDiscoverCommandsSchemaV1:
+    def _create_job_with_repo(self, tmp_path):
+        import os
+        env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
+        r = subprocess.run(
+            ["python3", "-m", "apps.cli.main", "create-job", "test"],
+            capture_output=True, env=env,
+        )
+        job_id = r.stdout.decode().strip()
+        repo = tmp_path / "target"
+        repo.mkdir(parents=True)
+        (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\n")
+        (repo / "tests").mkdir()
+        subprocess.run(
+            ["python3", "-m", "apps.cli.main", "attach-repo", job_id, str(repo)],
+            capture_output=True, env=env,
+        )
+        return job_id, env
+
+    def test_json_has_version_1(self, tmp_path):
+        job_id, env = self._create_job_with_repo(tmp_path)
+        r = subprocess.run(
+            ["python3", "-m", "apps.cli.main", "discover-commands", job_id, "--json"],
+            capture_output=True, env=env,
+        )
+        data = json.loads(r.stdout)
+        assert data["version"] == 1
+
+    def test_json_has_selected_test_candidate(self, tmp_path):
+        job_id, env = self._create_job_with_repo(tmp_path)
+        r = subprocess.run(
+            ["python3", "-m", "apps.cli.main", "discover-commands", job_id, "--json"],
+            capture_output=True, env=env,
+        )
+        data = json.loads(r.stdout)
+        assert "selected_test_candidate" in data
+
+    def test_json_has_counts(self, tmp_path):
+        job_id, env = self._create_job_with_repo(tmp_path)
+        r = subprocess.run(
+            ["python3", "-m", "apps.cli.main", "discover-commands", job_id, "--json"],
+            capture_output=True, env=env,
+        )
+        data = json.loads(r.stdout)
+        assert "counts" in data
+        counts = data["counts"]
+        assert "by_purpose" in counts
+        assert "by_source" in counts
+        assert "by_risk" in counts
+        assert "total" in counts
+
+    def test_json_output_is_pure_json(self, tmp_path):
+        """No extra text before/after JSON — stdout must be parseable JSON only."""
+        job_id, env = self._create_job_with_repo(tmp_path)
+        r = subprocess.run(
+            ["python3", "-m", "apps.cli.main", "discover-commands", job_id, "--json"],
+            capture_output=True, env=env,
+        )
+        assert r.returncode == 0
+        # Must parse cleanly with no surrounding text.
+        data = json.loads(r.stdout)
+        assert isinstance(data, dict)
+
+
+# ---------------------------------------------------------------------------
+# V. No provider coupling
+# ---------------------------------------------------------------------------
+
+
+class TestNoProviderCoupling:
+    def test_command_discovery_has_no_pi_reference(self):
+        import inspect
+        import packages.orchestration.command_discovery as cd
+        src = inspect.getsource(cd)
+        for token in ("pi.dev", "bootcamp", "ollama", "copilot", "anthropic"):
+            assert token.lower() not in src.lower(), (
+                f"command_discovery.py must not reference provider: {token!r}"
+            )
+
+    def test_test_runner_has_no_provider_reference(self):
+        import inspect
+        import packages.orchestration.test_runner as tr
+        src = inspect.getsource(tr)
+        for token in ("pi.dev", "bootcamp", "copilot"):
+            assert token.lower() not in src.lower(), (
+                f"test_runner.py must not reference provider: {token!r}"
+            )

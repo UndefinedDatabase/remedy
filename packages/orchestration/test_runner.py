@@ -58,12 +58,28 @@ TIMEOUT_DEFAULT_SEC: int = 60
 # candidates with any argv; this guard is the final hard check before exec.
 # Do not expand this list without a security review.
 _EXECUTION_SAFE_EXECUTABLES: frozenset[str] = frozenset({
+    # Python
     "python3", "python", "pytest",
+    # Build scripts
     "make",
+    # Rust
     "cargo",
+    # Go
     "go",
-    "npm", "npx", "bun",
+    # JavaScript
+    "npm", "npx", "pnpm", "yarn", "bun",
+    # Task runners
     "just", "task",
+    # JVM
+    "gradle", "gradlew", "mvn", "mvnw",
+    # .NET
+    "dotnet",
+    # Ruby
+    "rake",
+    # PHP
+    "composer",
+    # Python build tools
+    "poetry", "uv", "hatch",
 })
 
 

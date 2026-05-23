@@ -662,7 +662,15 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
     candidates = discover_commands(job, repo_root)
 
     if as_json:
+        from collections import Counter as _Counter
+        from packages.orchestration.command_discovery import select_best_test_candidate
+
+        selected = select_best_test_candidate(candidates)
+        by_purpose = dict(_Counter(c.purpose for c in candidates))
+        by_source  = dict(_Counter(c.source_type for c in candidates))
+        by_risk    = dict(_Counter(c.risk for c in candidates))
         output = {
+            "version": 1,
             "job_id": str(job_id),
             "repo_root": str(repo_root),
             "candidates": [
@@ -680,6 +688,22 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
                 }
                 for c in candidates
             ],
+            "selected_test_candidate": {
+                "id":          selected.id,
+                "purpose":     selected.purpose,
+                "argv":        list(selected.argv),
+                "display":     selected.display,
+                "source_type": selected.source_type,
+                "source_path": selected.source_path,
+                "confidence":  selected.confidence,
+                "risk":        selected.risk,
+            } if selected is not None else None,
+            "counts": {
+                "by_purpose": by_purpose,
+                "by_source":  by_source,
+                "by_risk":    by_risk,
+                "total":      len(candidates),
+            },
         }
         print(_json.dumps(output))
         return
