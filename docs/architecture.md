@@ -2861,3 +2861,63 @@ One node per known provider spec.
 - Worker adapter specs are metadata only — no actual provider connections,
   no secrets, no API calls.  Integration is a future step.
 - No user-configurable run contracts or token policies yet (defaults only).
+
+---
+
+## Group-first CLI v0 (Steps 38–40)
+
+Steps 38–40 restructure the Remedy CLI from flat commands (`remedy create-job`, `remedy brain`) to a group-first layout (`remedy job create`, `remedy brain graph`).
+
+### Command Catalog (`apps/cli/command_catalog.py`)
+
+Source of truth for the entire CLI surface.  Every public command has exactly one `CommandEntry` with:
+
+- `command_id` — `group.subcommand` format (e.g. `brain.graph`)
+- `group_id` — one of 8 groups: `job`, `project`, `patch`, `test`, `brain`, `policy`, `worker`, `dev`
+- `action_class` — `read_only`, `write_metadata`, `approval_gate`, `apply_write`, `test_execution`, `dev_helper`
+- `supports_json`, `requires_permission`, `may_mutate_repo`, `may_execute_commands` — boolean flags
+- `args` — tuple of `ArgDef` (positional or `--option`)
+- `related` — tuple of related command_ids for discoverability
+
+The catalog is a frozen tuple of dataclasses — no runtime mutation.
+
+### Grouped CLI (`apps/cli/grouped.py`)
+
+Entry point: `remedy = "apps.cli.grouped:main"` (pyproject.toml).
+
+Builds an argparse tree from the catalog:
+- `remedy` → top-level help listing all groups
+- `remedy <group>` → group help listing subcommands (custom `format_help` override, no argparse noise)
+- `remedy <group> <subcommand> [args]` → dispatch to handler
+
+Dispatch table maps `command_id` to handler lambdas that call `_cmd_*` functions from `apps.cli.main`.  Handlers are lazy-imported to avoid startup cost.
+
+### Design decisions
+
+- **Old flat commands are not the public contract.**  `apps/cli/main.py` handlers still exist and work, but the grouped CLI is the documented, tested entry point.
+- **Grouped CLI reduces Human Drift.**  Group membership, action classification, and permission flags are visible at the catalog level — humans can audit the full surface without reading handler code.
+- **Bootcamp/Pi are references, not integrated.**  The Bootcamp CLI (Typer) informed the UX design.  No Typer dependency added — stdlib argparse only.
+- **CLI grouping is an orientation/safety layer, not a change to execution semantics.**  Handlers, orchestration, and permission logic are unchanged.
+
+### Groups
+
+| Group    | Commands | Description |
+|----------|----------|-------------|
+| job      | 8        | Create, inspect, manage jobs |
+| project  | 6        | Create, inspect, manage projects |
+| patch    | 5        | Review and apply patch intents |
+| test     | 2        | Discover and run tests |
+| brain    | 8        | Inspect project brain graph |
+| policy   | 2        | Inspect execution policies |
+| worker   | 1        | List worker provider specs |
+| dev      | 2        | Developer utilities |
+
+### CLI
+
+```
+remedy job create "Build a README"
+remedy brain graph <job_id> --json
+remedy worker list --json
+remedy job              # shows group help
+remedy                  # shows all groups
+```

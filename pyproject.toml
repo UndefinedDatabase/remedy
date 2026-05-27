@@ -13,7 +13,7 @@ dev = ["pytest"]
 ollama = ["ollama>=0.4"]
 
 [project.scripts]
-remedy = "apps.cli.main:main"
+remedy = "apps.cli.grouped:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["packages", "apps"]

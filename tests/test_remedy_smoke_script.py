@@ -124,7 +124,7 @@ class TestSmokeScriptText:
         assert "remedy project" in _script_text()
 
     def test_show_project_asserted(self):
-        assert "remedy show-project" in _script_text()
+        assert "remedy project show" in _script_text()
 
     def test_project_placeholder_asserted(self):
         assert "project_placeholder" in _script_text()
@@ -137,8 +137,8 @@ class TestSmokeScriptText:
 
     def test_apply_after_approval_step_present(self):
         text = _script_text()
-        assert "apply-patch-intent" in text and "Apply approved patch intent" in text, (
-            "smoke must test apply-patch-intent after approval"
+        assert "patch apply" in text and "Apply approved patch intent" in text, (
+            "smoke must test patch apply after approval"
         )
 
     def test_apply_noop_step_present(self):
@@ -331,14 +331,14 @@ class TestSmokeScriptText:
             "smoke must seed README.md with initial content"
         )
 
-    def test_smoke_readme_seed_before_plan_job(self):
+    def test_smoke_readme_seed_before_job_run(self):
         text = _script_text()
         readme_pos = text.find("README.md")
-        plan_pos   = text.find("plan-job")
+        run_pos    = text.find("remedy job run-next")
         assert readme_pos != -1, "smoke must contain README.md seed"
-        assert plan_pos   != -1, "smoke must contain plan-job step"
-        assert readme_pos < plan_pos, (
-            "smoke must seed README.md before plan-job so the file exists when apply runs"
+        assert run_pos    != -1, "smoke must contain remedy job run-next step"
+        assert readme_pos < run_pos, (
+            "smoke must seed README.md before job run-next so the file exists when apply runs"
         )
 
     def test_smoke_default_prompt_forces_write_readme_task(self):
@@ -454,13 +454,12 @@ class TestSmokeScriptText:
 
     def test_plan_job_not_called_in_smoke(self):
         text = _script_text()
-        # 'plan-job' must not appear as a standalone remedy sub-command call.
-        # plan-job-local is a different command and is not called either, but
-        # the key invariant is that `remedy plan-job` is absent.
+        # 'job plan' must not appear as a standalone remedy call in smoke.
+        # The smoke uses --task-type on create to bypass the planner.
         import re
-        matches = re.findall(r'remedy\s+plan-job\b(?!-local)', text)
+        matches = re.findall(r'remedy\s+job\s+plan\b', text)
         assert matches == [], (
-            "smoke must not call 'remedy plan-job' — explicit --task-type replaces the planner. "
+            "smoke must not call 'remedy job plan' — explicit --task-type replaces the planner. "
             f"Found: {matches}"
         )
 
@@ -677,8 +676,8 @@ class TestSmokeScriptText:
 
     def test_smoke_has_run_tests_local_step(self):
         text = _script_text()
-        assert "run-tests-local" in text, (
-            "smoke must call remedy run-tests-local as part of Step 33"
+        assert "test run" in text, (
+            "smoke must call remedy test run as part of Step 33"
         )
 
     def test_smoke_grants_repo_test_run_permission(self):
@@ -725,7 +724,7 @@ class TestSmokeScriptText:
     def test_smoke_asserts_test_run_node_in_brain(self):
         text = _script_text()
         assert "test_run" in text, (
-            "smoke must verify 'test_run' node type appears in brain after run-tests-local"
+            "smoke must verify 'test_run' node type appears in brain after test run"
         )
 
     def test_smoke_target_repo_has_tests_directory(self):
@@ -738,14 +737,14 @@ class TestSmokeScriptText:
 
     def test_smoke_has_discover_commands_step(self):
         text = _script_text()
-        assert "discover-commands" in text, (
-            "smoke must call remedy discover-commands as part of Step 34"
+        assert "test discover" in text, (
+            "smoke must call remedy test discover as part of Step 34"
         )
 
     def test_smoke_discover_commands_checks_json(self):
         text = _script_text()
-        assert "discover-commands" in text and "--json" in text, (
-            "smoke discover-commands step must use --json for structured verification"
+        assert "test discover" in text and "--json" in text, (
+            "smoke test discover step must use --json for structured verification"
         )
 
     def test_smoke_discover_commands_checks_command_source_type(self):
@@ -855,8 +854,8 @@ class TestSmokeScriptText:
 
     def test_smoke_has_trust_timeline_sanity_step(self):
         text = _script_text()
-        assert "trust-report" in text and "timeline" in text, (
-            "smoke must run both remedy trust-report and remedy timeline in step 6m"
+        assert "brain trust" in text and "brain timeline" in text, (
+            "smoke must run both remedy brain trust and remedy brain timeline in step 6m"
         )
 
     def test_smoke_trust_timeline_sanity_checks_structural_presence(self):
@@ -907,8 +906,8 @@ class TestSmokeScriptText:
 
     def test_smoke_has_run_contract_check(self):
         text = _script_text()
-        assert "run-contract" in text, (
-            "smoke must call remedy run-contract as part of Step 35"
+        assert "policy contract" in text, (
+            "smoke must call remedy policy contract as part of Step 35"
         )
 
     def test_smoke_run_contract_checks_json_keys(self):
@@ -945,8 +944,8 @@ class TestSmokeScriptText:
 
     def test_smoke_has_token_policy_check(self):
         text = _script_text()
-        assert "token-policy" in text, (
-            "smoke must call remedy token-policy as part of Step 36"
+        assert "policy token" in text, (
+            "smoke must call remedy policy token as part of Step 36"
         )
 
     def test_smoke_token_policy_checks_zero_token(self):
@@ -993,8 +992,8 @@ class TestSmokeScriptText:
 
     def test_smoke_has_workers_check(self):
         text = _script_text()
-        assert "workers" in text, (
-            "smoke must call remedy workers as part of Step 37"
+        assert "worker list" in text, (
+            "smoke must call remedy worker list as part of Step 37"
         )
 
     def test_smoke_workers_checks_ollama(self):

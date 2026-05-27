@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# remedy_smoke.sh — Project Registry + Brain Viewer smoke test.
+# remedy_smoke.sh — Grouped CLI smoke test.
 #
 # Usage (source):
 #   source scripts/remedy_smoke.sh
@@ -8,8 +8,8 @@
 # Usage (direct):
 #   ./scripts/remedy_smoke.sh
 #
-# Requirements: remedy CLI on PATH, python3.
-# Optional: Ollama running locally (for run-next-task-local).
+# Requirements: remedy CLI on PATH (grouped entry point), python3.
+# Optional: Ollama running locally (for job run-next).
 #
 # Overrides:
 #   REMEDY_SMOKE_REPO  — temp repo path (default: /tmp/remedy-target-repo)
@@ -33,6 +33,18 @@ remedy_smoke() {
     else
         RUNS_ROOT=".data/runs"
     fi
+
+    # -------------------------------------------------------------------------
+    # 0. Verify group help for all groups
+    # -------------------------------------------------------------------------
+    echo "--- 0. Verify group help"
+    for grp in job project patch test brain policy worker dev; do
+        remedy "${grp}" >/dev/null 2>&1 || {
+            echo "ERROR: 'remedy ${grp}' failed" >&2
+            return 1
+        }
+    done
+    echo "    Group help: OK (job project patch test brain policy worker dev)"
 
     # -------------------------------------------------------------------------
     # 1. Create target repo
@@ -225,35 +237,33 @@ print('    Repository structure sanity: OK')
 " "$(pwd)"
 
     # -------------------------------------------------------------------------
-    # 2. Create project
+    # 2. Create project (grouped CLI)
     # -------------------------------------------------------------------------
     echo "--- 2. Create project"
-    PROJECT_ID="$(remedy create-project "Smoke Project" --description "smoke test project")"
+    PROJECT_ID="$(remedy project create "Smoke Project" --description "smoke test project")"
     if [[ -z "${PROJECT_ID}" ]]; then
-        echo "ERROR: create-project did not print a project ID" >&2
+        echo "ERROR: project create did not print a project ID" >&2
         return 1
     fi
     echo "    PROJECT_ID=${PROJECT_ID}"
 
     # -------------------------------------------------------------------------
-    # 3. Create job (linked to project, explicit task_type — no plan-job needed)
+    # 3. Create job (linked to project, explicit task_type — no plan needed)
     # -------------------------------------------------------------------------
     echo "--- 3. Create job"
-    JOB_ID="$(remedy create-job "${PROMPT}" \
+    JOB_ID="$(remedy job create "${PROMPT}" \
         --project "${PROJECT_ID}" \
         --task-type write_readme \
         --task-description "Write/update README.md for smoke target.")"
     if [[ -z "${JOB_ID}" ]]; then
-        echo "ERROR: create-job did not print a job ID" >&2
+        echo "ERROR: job create did not print a job ID" >&2
         return 1
     fi
     echo "    JOB_ID=${JOB_ID}"
 
     # Assert: job starts in PLANNED state with exactly one write_readme task.
-    # Pipe show-job output to a temp file so Python can parse it without
-    # calling remedy again via a nested subprocess from within the script.
     _TMP_JOB="$(mktemp)"
-    remedy show-job "${JOB_ID}" > "${_TMP_JOB}"
+    remedy job show "${JOB_ID}" > "${_TMP_JOB}"
     python3 -c "
 import json, sys
 from pathlib import Path
@@ -261,7 +271,7 @@ job = json.loads(Path(sys.argv[1]).read_text())
 state = job.get('state', '')
 tasks = job.get('tasks', [])
 if state != 'planned':
-    print('ERROR: job state must be planned after create-job --task-type, got: ' + repr(state), file=sys.stderr)
+    print('ERROR: job state must be planned after job create --task-type, got: ' + repr(state), file=sys.stderr)
     sys.exit(1)
 if len(tasks) != 1:
     print('ERROR: expected exactly 1 task, got ' + str(len(tasks)), file=sys.stderr)
@@ -278,15 +288,15 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # 4. Attach repo + set permission; link repo to project
     # -------------------------------------------------------------------------
     echo "--- 4. Attach repo + set permission"
-    remedy attach-repo "${JOB_ID}" "${TARGET_REPO}"
-    remedy set-permission "${JOB_ID}" allow repo_generated_write
-    remedy attach-project-repo "${PROJECT_ID}" "${TARGET_REPO}"
+    remedy job attach-repo "${JOB_ID}" "${TARGET_REPO}"
+    remedy job permit "${JOB_ID}" repo_generated_write allow
+    remedy project attach-repo "${PROJECT_ID}" "${TARGET_REPO}"
 
     # -------------------------------------------------------------------------
     # 5. Run next task (requires Ollama — skip gracefully if unavailable)
     # -------------------------------------------------------------------------
-    echo "--- 5. run-next-task-local"
-    if remedy run-next-task-local "${JOB_ID}"; then
+    echo "--- 5. job run-next"
+    if remedy job run-next "${JOB_ID}"; then
         echo "    Task run: OK"
     else
         echo "    Task run: SKIP (Ollama likely unavailable — continuing smoke)"
@@ -296,7 +306,7 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # 6. Patch apply lifecycle: before approval → approve → apply → noop
     # -------------------------------------------------------------------------
     echo "--- 6. Patch apply lifecycle (if intent present)"
-    FIRST_INTENT_ID="$(remedy brain "${JOB_ID}" --json | python3 -c "
+    FIRST_INTENT_ID="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
 for n in data.get('nodes', []):
@@ -308,30 +318,30 @@ for n in data.get('nodes', []):
     if [[ -n "${FIRST_INTENT_ID}" ]]; then
         # 6a. apply before approval must be blocked (non-zero exit)
         echo "--- 6a. Apply before approval (expect blocked)"
-        if remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" 2>/dev/null; then
-            echo "ERROR: apply-patch-intent should fail before approval" >&2
+        if remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}" 2>/dev/null; then
+            echo "ERROR: patch apply should fail before approval" >&2
             return 1
         fi
         echo "    apply before approval: blocked (OK)"
 
         # 6b. approve
         echo "--- 6b. Approve patch intent"
-        remedy approve-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" --reason "smoke approval"
+        remedy patch approve "${JOB_ID}" "${FIRST_INTENT_ID}" --reason "smoke approval"
         echo "    Approved: ${FIRST_INTENT_ID}"
 
         # 6c. apply approved intent (must succeed)
         echo "--- 6c. Apply approved patch intent"
-        remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
+        remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}"
         echo "    Applied: ${FIRST_INTENT_ID} (OK)"
 
         # 6d. repeat apply (must be no-op, exit 0)
         echo "--- 6d. Repeat apply (no-op)"
-        remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
+        remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}"
         echo "    Repeat apply: no-op (OK)"
 
         # 6e. verify applied file has no Remedy control markers
         echo "--- 6e. Verify applied file has no Remedy control markers"
-        APPLIED_TARGET="$(remedy brain "${JOB_ID}" --json | python3 -c "
+        APPLIED_TARGET="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 for n in data.get('nodes', []):
@@ -446,8 +456,6 @@ print('    target repo markerless: OK')
 " "${TARGET_REPO}" "${FIRST_INTENT_ID}"
 
         # 6h. Verify patch_apply_proof_recorded event (Step 31).
-        # This check assumes the approve/apply lifecycle (6b–6c) has already
-        # completed successfully; proof events are only emitted on a successful apply.
         echo "--- 6h. Verify proof event (patch_apply_proof_recorded)"
         python3 -c "
 import json, sys
@@ -493,22 +501,22 @@ for ev in events:
             sys.exit(1)
 print('    proof event: OK  events=' + str(len(events)) + '  after_sha=' + events[0]['metadata']['after_sha256'][:16] + '...')
 " "${JOB_ID}" "${RUNS_ROOT}"
-        # 6i. Step 33: grant repo_test_run, run tests, assert test_run node + run-log schema
+        # 6i. Step 33: grant repo_test_run, run tests
         echo "--- 6i. Grant repo_test_run permission"
-        remedy set-permission "${JOB_ID}" allow repo_test_run
+        remedy job permit "${JOB_ID}" repo_test_run allow
         echo "    repo_test_run: allowed"
 
         echo "--- 6j. Run tests locally (Step 33)"
-        remedy run-tests-local "${JOB_ID}"
-        echo "    run-tests-local: OK"
+        remedy test run "${JOB_ID}"
+        echo "    test run: OK"
 
         echo "--- 6k. Assert test_run node in brain JSON"
-        remedy brain "${JOB_ID}" --json | python3 -c "
+        remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 types = {n['type'] for n in data.get('nodes', [])}
 if 'test_run' not in types:
-    print('ERROR: test_run node missing from brain after run-tests-local', file=sys.stderr)
+    print('ERROR: test_run node missing from brain after test run', file=sys.stderr)
     sys.exit(1)
 tr_nodes = [n for n in data.get('nodes', []) if n['type'] == 'test_run']
 # Verify no forbidden keys in test_run node metadata
@@ -557,7 +565,7 @@ print('    test_run_completed schema: OK  events=' + str(len(events)) + '  statu
 " "${JOB_ID}" "${RUNS_ROOT}"
 
         echo "--- 6n. Discover commands (Step 34.1 — multi-ecosystem)"
-        DISCOVER_JSON="$(remedy discover-commands "${JOB_ID}" --json)"
+        DISCOVER_JSON="$(remedy test discover "${JOB_ID}" --json)"
         python3 -c "
 import json, sys, os
 data = json.loads(sys.argv[1])
@@ -630,15 +638,13 @@ print('    discover-commands: OK  total=' + str(len(candidates))
 " "${DISCOVER_JSON}"
 
         echo "--- 6m. Trust/Timeline test-run sanity (human-readable output)"
-        TRUST_OUT="$(remedy trust-report "${JOB_ID}")"
-        TIMELINE_OUT="$(remedy timeline "${JOB_ID}")"
+        TRUST_OUT="$(remedy brain trust "${JOB_ID}")"
+        TIMELINE_OUT="$(remedy brain timeline "${JOB_ID}")"
         python3 -c "
 import sys
 trust    = sys.argv[1]
 timeline = sys.argv[2]
 # Structural presence checks.
-# Human-readable text may legitimately say 'raw stdout/stderr are not included';
-# that is a redaction note, NOT a leak.  We check for structural content only.
 if 'test run' not in trust.lower() and 'test_run' not in trust:
     print('ERROR: trust report does not mention test run', file=sys.stderr)
     sys.exit(1)
@@ -665,10 +671,10 @@ print('    OK: trust/timeline mention test run structurally')
     fi
 
     # -------------------------------------------------------------------------
-    # 7. Assert: remedy project --json (alias)
+    # 7. Assert: remedy project show --json
     # -------------------------------------------------------------------------
-    echo "--- 7. Assert: remedy project --json"
-    PROJECT_JSON="$(remedy project "${PROJECT_ID}" --json)"
+    echo "--- 7. Assert: remedy project show --json"
+    PROJECT_JSON="$(remedy project show "${PROJECT_ID}" --json)"
     python3 -c "
 import json,sys
 data=json.loads(sys.argv[1])
@@ -676,26 +682,14 @@ assert data['version'] == 1, f'version must be 1, got {data[\"version\"]}'
 assert data['project']['id'] == sys.argv[2], 'project id mismatch'
 jobs = data.get('jobs', [])
 assert any(j['id'] == sys.argv[3] for j in jobs), f'job {sys.argv[3][:8]} not in project jobs'
-print(f'    remedy project --json: OK (version={data[\"version\"]}, jobs={len(jobs)})')
+print(f'    remedy project show --json: OK (version={data[\"version\"]}, jobs={len(jobs)})')
 " "${PROJECT_JSON}" "${PROJECT_ID}" "${JOB_ID}"
-
-    # -------------------------------------------------------------------------
-    # 8. Assert: remedy show-project --json (backward compat)
-    # -------------------------------------------------------------------------
-    echo "--- 8. Assert: remedy show-project --json"
-    SHOW_JSON="$(remedy show-project "${PROJECT_ID}" --json)"
-    python3 -c "
-import json,sys
-data=json.loads(sys.argv[1])
-assert data['version'] == 1, 'show-project version must be 1'
-print('    remedy show-project --json: OK')
-" "${SHOW_JSON}"
 
     # -------------------------------------------------------------------------
     # 9. Assert: context score 0..85
     # -------------------------------------------------------------------------
     echo "--- 9. Assert context score"
-    CTX_SCORE="$(remedy context "${JOB_ID}" --json | python3 -c "
+    CTX_SCORE="$(remedy brain context "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
 print(data['score'])
@@ -710,7 +704,7 @@ print(data['score'])
     # 10. Assert: brain JSON has required node types + project_placeholder
     # -------------------------------------------------------------------------
     echo "--- 10. Assert brain node types (including project_placeholder)"
-    remedy brain "${JOB_ID}" --json | python3 -c "
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
 types={n['type'] for n in data.get('nodes', [])}
@@ -732,15 +726,15 @@ print('    Brain types: '+', '.join(sorted(types)))
     # -------------------------------------------------------------------------
     # 11. Generate Brain Viewer
     # -------------------------------------------------------------------------
-    echo "--- 11. remedy brain-view"
-    BRAIN_VIEW_OUTPUT="$(remedy brain-view "${JOB_ID}")" || {
-        echo "ERROR: brain-view failed" >&2
+    echo "--- 11. remedy brain view"
+    BRAIN_VIEW_OUTPUT="$(remedy brain view "${JOB_ID}")" || {
+        echo "ERROR: brain view failed" >&2
         return 1
     }
     VIEW_PATH="$(printf '%s\n' "${BRAIN_VIEW_OUTPUT}" \
         | awk '/^Brain Viewer v0:/ {sub(/^Brain Viewer v0: /, ""); print; exit}' || true)"
     if [[ -z "${VIEW_PATH}" ]]; then
-        echo "ERROR: brain-view did not print a 'Brain Viewer v0:' line" >&2
+        echo "ERROR: brain view did not print a 'Brain Viewer v0:' line" >&2
         printf "Output was:\n%s\n" "${BRAIN_VIEW_OUTPUT}" >&2
         return 1
     fi
@@ -808,11 +802,7 @@ for ph in ('__VIEWER_DATA_JSON__', '__STATIC_FALLBACK__', '__JOB_SHORT_ID__', '_
     if ph in html:
         failed.append('index.html contains unresolved placeholder: ' + repr(ph))
 
-# Redaction sentinel scan: precise dangerous tokens must not appear in rendered output.
-# These are metadata keys, uppercase sentinel markers, and exception strings that
-# must never leak into viewer files.  Plain phrases such as the words artifact content
-# or file content are NOT forbidden here: safe explanatory negations in viewer UI copy
-# (e.g. 'Does not include raw prompt, file content, ...') are intentional text.
+# Redaction sentinel scan
 forbidden_tokens = [
     'approval_reason',
     'diff_preview',
@@ -841,21 +831,21 @@ print('    index.html: OK')
 " "${VIEW_DIR}"
 
     # -------------------------------------------------------------------------
-    # 12a. Assert: remedy run-contract --json (Step 35)
+    # 12a. Assert: remedy policy contract --json (Step 35)
     # -------------------------------------------------------------------------
-    echo "--- 12a. remedy run-contract --json"
+    echo "--- 12a. remedy policy contract --json"
     python3 -c "
 import subprocess, json, sys
 def chk(cond, msg):
     if not cond:
-        print('ERROR: run-contract: ' + msg, file=sys.stderr)
+        print('ERROR: policy contract: ' + msg, file=sys.stderr)
         sys.exit(1)
 result = subprocess.run(
-    ['python3', '-m', 'apps.cli.main', 'run-contract', '${JOB_ID}', '--json'],
+    ['python3', '-m', 'apps.cli.grouped', 'policy', 'contract', '${JOB_ID}', '--json'],
     capture_output=True, text=True
 )
 if result.returncode != 0:
-    print('ERROR: run-contract exited ' + str(result.returncode), file=sys.stderr)
+    print('ERROR: policy contract exited ' + str(result.returncode), file=sys.stderr)
     print(result.stderr, file=sys.stderr)
     sys.exit(1)
 data = json.loads(result.stdout)
@@ -875,25 +865,25 @@ chk(isinstance(data['denied_actions'], list), 'denied_actions not list')
 rc_str = json.dumps(data).lower()
 for bad in ('approval_reason', 'diff_preview', 'command_output', 'traceback', 'raw_stdout', 'raw_stderr'):
     chk(bad not in rc_str, 'run-contract JSON contains forbidden: ' + bad)
-print('    run-contract JSON: OK')
+print('    policy contract JSON: OK')
 "
 
     # -------------------------------------------------------------------------
-    # 12b. Assert: remedy token-policy --json (Step 36)
+    # 12b. Assert: remedy policy token --json (Step 36)
     # -------------------------------------------------------------------------
-    echo "--- 12b. remedy token-policy --json"
+    echo "--- 12b. remedy policy token --json"
     python3 -c "
 import subprocess, json, sys
 def chk(cond, msg):
     if not cond:
-        print('ERROR: token-policy: ' + msg, file=sys.stderr)
+        print('ERROR: policy token: ' + msg, file=sys.stderr)
         sys.exit(1)
 result = subprocess.run(
-    ['python3', '-m', 'apps.cli.main', 'token-policy', '${JOB_ID}', '--json'],
+    ['python3', '-m', 'apps.cli.grouped', 'policy', 'token', '${JOB_ID}', '--json'],
     capture_output=True, text=True
 )
 if result.returncode != 0:
-    print('ERROR: token-policy exited ' + str(result.returncode), file=sys.stderr)
+    print('ERROR: policy token exited ' + str(result.returncode), file=sys.stderr)
     print(result.stderr, file=sys.stderr)
     sys.exit(1)
 data = json.loads(result.stdout)
@@ -920,29 +910,29 @@ chk('artifact' in fc_joined, 'forbidden_context missing artifact')
 tp_str = json.dumps(data).lower()
 for bad in ('sk-', 'ghp_', 'xoxb-', 'begin private key', 'password=', 'api_key=', 'secret=', 'traceback (most recent'):
     chk(bad not in tp_str, 'token-policy JSON contains forbidden: ' + bad)
-print('    token-policy JSON: OK')
+print('    policy token JSON: OK')
 "
 
     # -------------------------------------------------------------------------
-    # 12c. Assert: remedy workers --json (Step 37)
+    # 12c. Assert: remedy worker list --json (Step 37)
     # -------------------------------------------------------------------------
-    echo "--- 12c. remedy workers --json"
+    echo "--- 12c. remedy worker list --json"
     python3 -c "
 import subprocess, json, sys
 def chk(cond, msg):
     if not cond:
-        print('ERROR: workers: ' + msg, file=sys.stderr)
+        print('ERROR: worker list: ' + msg, file=sys.stderr)
         sys.exit(1)
 result = subprocess.run(
-    ['python3', '-m', 'apps.cli.main', 'workers', '--json'],
+    ['python3', '-m', 'apps.cli.grouped', 'worker', 'list', '--json'],
     capture_output=True, text=True
 )
 if result.returncode != 0:
-    print('ERROR: workers exited ' + str(result.returncode), file=sys.stderr)
+    print('ERROR: worker list exited ' + str(result.returncode), file=sys.stderr)
     print(result.stderr, file=sys.stderr)
     sys.exit(1)
 data = json.loads(result.stdout)
-chk(isinstance(data, dict), 'workers output not dict')
+chk(isinstance(data, dict), 'worker list output not dict')
 chk('version' in data, 'missing version')
 chk('providers' in data, 'missing providers')
 chk(data['version'] == 1, 'version != 1')
@@ -953,7 +943,7 @@ ids = [s['provider_id'] for s in providers]
 chk('ollama' in ids, 'missing ollama')
 chk('claude_code' in ids, 'missing claude_code')
 chk(all('supported_roles' in s for s in providers), 'missing supported_roles')
-print('    workers JSON: OK (' + str(len(providers)) + ' providers)')
+print('    worker list JSON: OK (' + str(len(providers)) + ' providers)')
 "
 
     # -------------------------------------------------------------------------
@@ -967,11 +957,11 @@ def chk(cond, msg):
         print('ERROR: brain graph: ' + msg, file=sys.stderr)
         sys.exit(1)
 result = subprocess.run(
-    ['python3', '-m', 'apps.cli.main', 'brain', '${JOB_ID}', '--json'],
+    ['python3', '-m', 'apps.cli.grouped', 'brain', 'graph', '${JOB_ID}', '--json'],
     capture_output=True, text=True
 )
 if result.returncode != 0:
-    print('ERROR: brain --json exited ' + str(result.returncode), file=sys.stderr)
+    print('ERROR: brain graph --json exited ' + str(result.returncode), file=sys.stderr)
     sys.exit(1)
 data = json.loads(result.stdout)
 node_types = {n['type'] for n in data['nodes']}
