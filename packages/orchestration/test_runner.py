@@ -172,12 +172,14 @@ def run_tests_local(
     # ── Execution safety guard ───────────────────────────────────────────────
     # Validates the candidate's argv before any subprocess call.
     # This guard is independent of project discovery logic.
-    assert candidate.argv[0] in _EXECUTION_SAFE_EXECUTABLES, (
-        f"BUG: executable not in safe list: {candidate.argv[0]!r}"
-    )
-    assert candidate.risk != "high", (
-        f"BUG: high-risk candidate must not be executed: {candidate.display!r}"
-    )
+    if candidate.argv[0] not in _EXECUTION_SAFE_EXECUTABLES:
+        raise RuntimeError(
+            f"BUG: executable not in safe list: {candidate.argv[0]!r}"
+        )
+    if candidate.risk == "high":
+        raise RuntimeError(
+            f"BUG: high-risk candidate must not be executed: {candidate.display!r}"
+        )
 
     # ── Prepare output file ──────────────────────────────────────────────────
     test_runs_dir = workspace_root / "test_runs"

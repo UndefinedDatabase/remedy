@@ -173,7 +173,7 @@ class TestExecutionGuard:
             "packages.orchestration.command_discovery.select_best_test_candidate",
             lambda candidates: unsafe_candidate,
         )
-        with pytest.raises(AssertionError, match="BUG: executable not in safe list"):
+        with pytest.raises(RuntimeError, match="BUG: executable not in safe list"):
             run_tests_local(job, tmp_path)
 
     def test_test_run_record_not_collected_by_pytest(self):

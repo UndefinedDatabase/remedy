@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import fnmatch
 import json
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -229,7 +230,7 @@ def discover_commands(
                 all_candidates.extend(detector(repo_root))
         except Exception:
             # A broken detector must never crash discovery.
-            pass
+            logging.debug("command_discovery: detector %s failed", getattr(detector, "__name__", "?"), exc_info=True)
 
     # Deduplicate: (purpose, argv, source_type) is the uniqueness key.
     seen: set[tuple[str, tuple[str, ...], str]] = set()
