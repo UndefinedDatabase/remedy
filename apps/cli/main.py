@@ -1702,6 +1702,23 @@ def _cmd_workers(*, json_output: bool = False) -> None:
 
 
 def main() -> None:
+    # Bridge: if first arg is a grouped CLI group name, delegate to grouped CLI.
+    # This handles stale installed entrypoints that still point to apps.cli.main:main.
+    #
+    # Conflict: "brain" and "project" are both old flat commands (taking a job_id)
+    # AND group names.  We delegate only when the second arg (if any) is a known
+    # subcommand in that group, or when there is no second arg (group help).
+    if len(sys.argv) > 1:
+        from apps.cli.command_catalog import GROUPS, get_commands_for_group
+        first = sys.argv[1]
+        if first in GROUPS:
+            subcmds = {c.subcommand for c in get_commands_for_group(first)}
+            # Delegate if: no second arg (group help), or second arg is a subcommand
+            if len(sys.argv) <= 2 or sys.argv[2] in subcmds or sys.argv[2].startswith("-"):
+                from apps.cli.grouped import main as grouped_main
+                grouped_main(sys.argv[1:])
+                return
+
     parser = argparse.ArgumentParser(
         prog="remedy",
         description="Remedy orchestration CLI",

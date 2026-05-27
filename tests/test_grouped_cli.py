@@ -207,3 +207,73 @@ class TestGroupedExecution:
         stdout, stderr, rc = _capture_grouped(["dev", "smoke-help"])
         assert rc == 0
         assert "smoke" in stdout.lower()
+
+
+# ---------------------------------------------------------------------------
+# Bridge: apps.cli.main delegates group names to grouped CLI
+# ---------------------------------------------------------------------------
+
+
+def _capture_main(argv: list[str]) -> tuple[str, str, int]:
+    """Run old main entry point via subprocess, return (stdout, stderr, returncode)."""
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main"] + argv,
+        capture_output=True, text=True, timeout=30,
+    )
+    return result.stdout, result.stderr, result.returncode
+
+
+class TestMainEntrypointDelegatesGroupHelp:
+    """Bug: stale installed `remedy` pointed to apps.cli.main:main.
+
+    Typing `remedy job` produced 'invalid choice: job' instead of group help.
+    The bridge in main() must detect group names and delegate to grouped CLI.
+    """
+
+    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    def test_main_entrypoint_delegates_group_help_to_grouped_cli(self, group_id: str) -> None:
+        stdout, stderr, rc = _capture_main([group_id])
+        assert rc == 0, f"remedy {group_id} via main exited {rc}: {stderr}"
+        # Must show grouped help, not old flat "invalid choice" error
+        assert "invalid choice" not in stderr, (
+            f"remedy {group_id} via main still shows old flat argparse error"
+        )
+        assert "Traceback" not in stderr
+        # Must include expected subcommands
+        cmds = get_commands_for_group(group_id)
+        for cmd in cmds:
+            assert cmd.subcommand in stdout, (
+                f"'remedy {group_id}' via main missing subcommand '{cmd.subcommand}'"
+            )
+
+
+class TestMainEntrypointDelegatesGroupDispatch:
+    """Grouped commands dispatched through apps.cli.main must execute correctly."""
+
+    def test_worker_list_json_via_main(self) -> None:
+        stdout, stderr, rc = _capture_main(["worker", "list", "--json"])
+        assert rc == 0, f"worker list --json via main failed: {stderr}"
+        data = json.loads(stdout)
+        assert data["version"] == 1
+
+    def test_policy_contract_json_via_main(self) -> None:
+        job = _make_job()
+        save_job(job)
+        stdout, stderr, rc = _capture_main(["policy", "contract", str(job.id), "--json"])
+        assert rc == 0, f"policy contract --json via main failed: {stderr}"
+        data = json.loads(stdout)
+        assert data["scope"] == "job"
+
+
+class TestMainEntrypointFlatCommandsStillWork:
+    """Old flat commands must still work when invoked through main."""
+
+    def test_list_jobs_flat(self) -> None:
+        stdout, stderr, rc = _capture_main(["list-jobs"])
+        assert rc == 0, f"list-jobs flat failed: {stderr}"
+
+    def test_workers_flat(self) -> None:
+        stdout, stderr, rc = _capture_main(["workers", "--json"])
+        assert rc == 0, f"workers flat failed: {stderr}"
+        data = json.loads(stdout)
+        assert data["version"] == 1
