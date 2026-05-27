@@ -2723,8 +2723,9 @@ It is an execution boundary, not a capability promise.
 | Field                  | Type         | Default              |
 |------------------------|--------------|----------------------|
 | version                | int          | 1                    |
-| scope                  | str          | `job:<id> (N tasks)` |
-| autonomy_level         | str          | `supervised`         |
+| job_id                 | str          | job UUID             |
+| scope                  | str          | `job`                |
+| autonomy_level         | int          | `1` (supervised)     |
 | allowed_actions        | tuple[str]   | plan, build, test... |
 | denied_actions         | tuple[str]   | apply w/o approval...|
 | max_loops              | int          | 10                   |
@@ -2748,8 +2749,8 @@ It is an execution boundary, not a capability promise.
 
 ### Run-log event
 
-`run_contract_inspected` with metadata: version, autonomy_level, model_policy,
-command_policy, source.
+`run_contract_inspected` with metadata: autonomy_level, allowed_action_count,
+denied_action_count, max_loops, scope.
 
 ### Brain integration
 
@@ -2801,8 +2802,8 @@ A `TokenPolicy` classifies job steps by token cost tier:
 
 ### Run-log event
 
-`token_policy_inspected` with metadata: version, scope,
-zero_token_step_count, local_first_step_count, expensive_step_count.
+`token_policy_inspected` with metadata: scope, zero_token_step_count,
+local_first_step_count, expensive_step_count.
 
 ### Brain integration
 

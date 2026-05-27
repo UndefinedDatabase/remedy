@@ -1062,9 +1062,11 @@ def _detail_run_contract(
     job_id_str: str,
     connected: list[dict[str, str]],
 ) -> BrainNodeDetail:
-    autonomy = str(node.metadata.get("autonomy_level", "supervised"))
-    source = str(node.metadata.get("source", "default_v1"))
-    version = int(node.metadata.get("version", 1))
+    autonomy = node.metadata.get("autonomy_level", 1)
+    allowed = node.metadata.get("allowed_action_count", 0)
+    denied = node.metadata.get("denied_action_count", 0)
+    max_loops = node.metadata.get("max_loops", 10)
+    scope = str(node.metadata.get("scope", "job"))
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -1074,9 +1076,9 @@ def _detail_run_contract(
         status=node.status or "active",
         risk=None,
         explanation=(
-            f"Execution boundary contract (v{version}) for this job. "
-            f"Autonomy level: {autonomy}. Source: {source}. "
-            "Defines what actions are allowed, denied, and what requires approval. "
+            f"Execution boundary contract for this job. "
+            f"Autonomy level: {autonomy}. Scope: {scope}. "
+            f"{allowed} allowed actions, {denied} denied actions, max {max_loops} loops. "
             "This is a boundary definition, not a capability promise."
         ),
         why_it_exists=(
@@ -1085,9 +1087,11 @@ def _detail_run_contract(
         ),
         connected_to=tuple(connected),
         evidence=(
-            f"version: {version}",
             f"autonomy_level: {autonomy}",
-            f"source: {source}",
+            f"allowed_action_count: {allowed}",
+            f"denied_action_count: {denied}",
+            f"max_loops: {max_loops}",
+            f"scope: {scope}",
         ),
         affected_files=(),
         next_actions=(
@@ -1102,8 +1106,10 @@ def _detail_token_policy(
     job_id_str: str,
     connected: list[dict[str, str]],
 ) -> BrainNodeDetail:
-    version = int(node.metadata.get("version", 1))
     scope = str(node.metadata.get("scope", "job"))
+    zero_count = node.metadata.get("zero_token_step_count", 0)
+    local_count = node.metadata.get("local_first_step_count", 0)
+    expensive_count = node.metadata.get("expensive_step_count", 0)
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -1113,9 +1119,10 @@ def _detail_token_policy(
         status=node.status or "active",
         risk=None,
         explanation=(
-            f"Token routing policy (v{version}) for this job. Scope: {scope}. "
-            "Classifies steps as zero-token (local Python), local-first (cheap model), "
-            "or expensive (frontier model). Defines forbidden context and compaction rules."
+            f"Token routing policy for this job. Scope: {scope}. "
+            f"{zero_count} zero-token steps, {local_count} local-first steps, "
+            f"{expensive_count} expensive steps. "
+            "Defines forbidden context and compaction rules."
         ),
         why_it_exists=(
             "Token economy ensures efficient resource usage.",
@@ -1123,8 +1130,10 @@ def _detail_token_policy(
         ),
         connected_to=tuple(connected),
         evidence=(
-            f"version: {version}",
             f"scope: {scope}",
+            f"zero_token_step_count: {zero_count}",
+            f"local_first_step_count: {local_count}",
+            f"expensive_step_count: {expensive_count}",
         ),
         affected_files=(),
         next_actions=(
@@ -1141,8 +1150,7 @@ def _detail_worker_adapter(
 ) -> BrainNodeDetail:
     provider_id = str(node.metadata.get("provider_id", "unknown"))
     exec_mode = str(node.metadata.get("execution_mode", "unknown"))
-    roles = node.metadata.get("supported_roles", [])
-    roles_str = ", ".join(str(r) for r in roles) if roles else "none"
+    role_count = node.metadata.get("supported_role_count", 0)
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -1153,7 +1161,7 @@ def _detail_worker_adapter(
         risk=None,
         explanation=(
             f"Worker adapter spec for provider '{provider_id}'. "
-            f"Execution mode: {exec_mode}. Supported roles: {roles_str}. "
+            f"Execution mode: {exec_mode}. {role_count} supported roles. "
             "This is a provider-neutral specification — no connection or secrets."
         ),
         why_it_exists=(
@@ -1164,7 +1172,7 @@ def _detail_worker_adapter(
         evidence=(
             f"provider_id: {provider_id}",
             f"execution_mode: {exec_mode}",
-            f"supported_roles: {roles_str}",
+            f"supported_role_count: {role_count}",
         ),
         affected_files=(),
         next_actions=(

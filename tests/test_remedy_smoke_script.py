@@ -973,6 +973,22 @@ class TestSmokeScriptText:
             "smoke step 12b must validate forbidden_context in token-policy JSON"
         )
 
+    def test_smoke_token_policy_uses_precise_blocklist(self):
+        """Smoke 12b must use precise secret patterns, not dumb substring bans."""
+        text = _script_text()
+        # Must contain precise patterns
+        for pattern in ("sk-", "ghp_", "password="):
+            assert pattern in text, (
+                f"smoke step 12b must use precise pattern '{pattern}' for leak detection"
+            )
+        # The old false-positive pattern must not appear in the 12b section
+        idx_12b = text.index("12b")
+        section = text[idx_12b:idx_12b + 2000]
+        assert "'api_key'" not in section, (
+            "smoke 12b must not use bare 'api_key' as forbidden — "
+            "false-positives on category name 'api_keys'"
+        )
+
     # --- Step 37: Worker Adapters (step 12c) --------------------------------
 
     def test_smoke_has_workers_check(self):

@@ -624,7 +624,13 @@ def build_project_brain(
         type=NT_RUN_CONTRACT,
         label="Run Contract (execution boundary)",
         status="active",
-        metadata={"version": rc.version, "autonomy_level": rc.autonomy_level, "source": rc.source},
+        metadata={
+            "autonomy_level": rc.autonomy_level,
+            "allowed_action_count": len(rc.allowed_actions),
+            "denied_action_count": len(rc.denied_actions),
+            "max_loops": rc.max_loops,
+            "scope": rc.scope,
+        },
     ))
     edges.append(BrainEdge(
         source=job_node_id,
@@ -641,7 +647,12 @@ def build_project_brain(
         type=NT_TOKEN_POLICY,
         label="Token Policy (routing budget)",
         status="active",
-        metadata={"version": tp.version, "scope": tp.scope},
+        metadata={
+            "scope": tp.scope,
+            "zero_token_step_count": len(tp.zero_token_steps),
+            "local_first_step_count": len(tp.local_first_steps),
+            "expensive_step_count": len(tp.expensive_model_steps),
+        },
     ))
     edges.append(BrainEdge(
         source=job_node_id,
@@ -661,7 +672,7 @@ def build_project_brain(
             metadata={
                 "provider_id": spec.provider_id,
                 "execution_mode": spec.execution_mode,
-                "supported_roles": list(spec.supported_roles),
+                "supported_role_count": len(spec.supported_roles),
             },
         ))
         edges.append(BrainEdge(

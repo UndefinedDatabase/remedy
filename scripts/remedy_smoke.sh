@@ -914,9 +914,11 @@ chk('command output' in fc_joined or 'command_output' in fc_joined, 'forbidden_c
 chk('raw stdout' in fc_joined or 'raw_stdout' in fc_joined, 'forbidden_context missing raw stdout')
 chk('raw stderr' in fc_joined or 'raw_stderr' in fc_joined, 'forbidden_context missing raw stderr')
 chk('artifact' in fc_joined, 'forbidden_context missing artifact')
-# token-policy JSON must NOT contain leaking tokens
+# token-policy JSON must NOT contain leaking tokens/secrets.
+# Category names like 'api_keys', 'environment_secrets' are ALLOWED —
+# only actual secret patterns are forbidden.
 tp_str = json.dumps(data).lower()
-for bad in ('api_key', 'secret', 'token=', 'traceback'):
+for bad in ('sk-', 'ghp_', 'xoxb-', 'begin private key', 'password=', 'api_key=', 'secret=', 'traceback (most recent'):
     chk(bad not in tp_str, 'token-policy JSON contains forbidden: ' + bad)
 print('    token-policy JSON: OK')
 "

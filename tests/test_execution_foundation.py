@@ -7,10 +7,18 @@ Coverage:
   - Protocol interfaces exist and are runtime-checkable
   - R-0001 fix: execution safety guard uses raise, not assert
   - Run-log event metadata schemas
+  - CLI command output (run-contract, token-policy, workers)
+  - Brain node metadata alignment with run-log schemas
+  - Docs drift detection
 """
 
 from __future__ import annotations
 
+import json
+import re
+import sys
+from io import StringIO
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -171,3 +179,228 @@ class TestExecutionSafetyGuardRaise:
         guard_section = source[guard_start:guard_end]
         assert "assert " not in guard_section
         assert "raise RuntimeError" in guard_section
+
+
+# ---------------------------------------------------------------------------
+# Brain node metadata alignment tests
+# ---------------------------------------------------------------------------
+
+
+class TestBrainNodeMetadataAlignment:
+    """Brain node metadata must match run-log event metadata schemas."""
+
+    def test_run_contract_node_metadata_keys(self, tmp_path) -> None:
+        job = _make_job()
+        save_job(job)
+        graph = build_project_brain(job, [])
+        rc = [n for n in graph.nodes if n.type == NT_RUN_CONTRACT][0]
+        expected = {"autonomy_level", "allowed_action_count", "denied_action_count", "max_loops", "scope"}
+        assert set(rc.metadata.keys()) == expected
+
+    def test_token_policy_node_metadata_keys(self, tmp_path) -> None:
+        job = _make_job()
+        save_job(job)
+        graph = build_project_brain(job, [])
+        tp = [n for n in graph.nodes if n.type == NT_TOKEN_POLICY][0]
+        expected = {"scope", "zero_token_step_count", "local_first_step_count", "expensive_step_count"}
+        assert set(tp.metadata.keys()) == expected
+
+    def test_worker_adapter_node_metadata_scalar(self, tmp_path) -> None:
+        job = _make_job()
+        save_job(job)
+        graph = build_project_brain(job, [])
+        wa = [n for n in graph.nodes if n.type == NT_WORKER_ADAPTER][0]
+        assert "supported_role_count" in wa.metadata
+        assert isinstance(wa.metadata["supported_role_count"], int)
+        assert "supported_roles" not in wa.metadata  # list form removed
+
+    def test_run_contract_metadata_values(self, tmp_path) -> None:
+        job = _make_job()
+        save_job(job)
+        graph = build_project_brain(job, [])
+        rc = [n for n in graph.nodes if n.type == NT_RUN_CONTRACT][0]
+        assert rc.metadata["autonomy_level"] == 1
+        assert rc.metadata["scope"] == "job"
+        assert isinstance(rc.metadata["allowed_action_count"], int)
+        assert isinstance(rc.metadata["max_loops"], int)
+
+    def test_token_policy_metadata_values(self, tmp_path) -> None:
+        job = _make_job()
+        save_job(job)
+        graph = build_project_brain(job, [])
+        tp = [n for n in graph.nodes if n.type == NT_TOKEN_POLICY][0]
+        assert tp.metadata["scope"] == "job"
+        assert tp.metadata["zero_token_step_count"] > 0
+        assert isinstance(tp.metadata["local_first_step_count"], int)
+
+
+# ---------------------------------------------------------------------------
+# CLI command output tests (monkeypatch)
+# ---------------------------------------------------------------------------
+
+
+class TestCLIRunContract:
+    def test_json_output_is_pure_json(self, tmp_path, monkeypatch, capsys) -> None:
+        job = _make_job()
+        save_job(job)
+        monkeypatch.setattr(sys, "argv", [
+            "remedy", "run-contract", str(job.id), "--json",
+        ])
+        from apps.cli.main import main
+        with pytest.raises(SystemExit, match="0|None") if False else _no_exit(monkeypatch):
+            main()
+        out = capsys.readouterr().out.strip()
+        data = json.loads(out)
+        assert isinstance(data, dict)
+        for key in ("autonomy_level", "scope", "version", "job_id", "allowed_actions", "denied_actions"):
+            assert key in data, f"missing key: {key}"
+        assert isinstance(data["autonomy_level"], int)
+        assert data["scope"] == "job"
+
+    def test_json_has_no_secret_leaks(self, tmp_path, monkeypatch, capsys) -> None:
+        job = _make_job()
+        save_job(job)
+        monkeypatch.setattr(sys, "argv", [
+            "remedy", "run-contract", str(job.id), "--json",
+        ])
+        from apps.cli.main import main
+        with _no_exit(monkeypatch):
+            main()
+        raw = capsys.readouterr().out.lower()
+        for bad in ("sk-", "ghp_", "password=", "begin private key"):
+            assert bad not in raw, f"run-contract JSON leaks: {bad}"
+
+
+class TestCLITokenPolicy:
+    def test_json_output_is_pure_json(self, tmp_path, monkeypatch, capsys) -> None:
+        job = _make_job()
+        save_job(job)
+        monkeypatch.setattr(sys, "argv", [
+            "remedy", "token-policy", str(job.id), "--json",
+        ])
+        from apps.cli.main import main
+        with _no_exit(monkeypatch):
+            main()
+        out = capsys.readouterr().out.strip()
+        data = json.loads(out)
+        for key in ("scope", "version", "zero_token_steps", "forbidden_context", "budget"):
+            assert key in data, f"missing key: {key}"
+        assert data["scope"] == "job"
+
+    def test_json_has_no_secret_leaks(self, tmp_path, monkeypatch, capsys) -> None:
+        job = _make_job()
+        save_job(job)
+        monkeypatch.setattr(sys, "argv", [
+            "remedy", "token-policy", str(job.id), "--json",
+        ])
+        from apps.cli.main import main
+        with _no_exit(monkeypatch):
+            main()
+        raw = capsys.readouterr().out.lower()
+        for bad in ("sk-", "ghp_", "password=", "begin private key"):
+            assert bad not in raw, f"token-policy JSON leaks: {bad}"
+
+    def test_category_names_allowed_in_output(self, tmp_path, monkeypatch, capsys) -> None:
+        """Category names like 'api_keys' are expected in forbidden_context — not leaks."""
+        job = _make_job()
+        save_job(job)
+        monkeypatch.setattr(sys, "argv", [
+            "remedy", "token-policy", str(job.id), "--json",
+        ])
+        from apps.cli.main import main
+        with _no_exit(monkeypatch):
+            main()
+        data = json.loads(capsys.readouterr().out)
+        fc = data["forbidden_context"]
+        assert "api_keys" in fc
+        assert "environment_secrets" in fc
+
+
+class TestCLIWorkers:
+    def test_json_output_is_pure_json(self, tmp_path, monkeypatch, capsys) -> None:
+        monkeypatch.setattr(sys, "argv", ["remedy", "workers", "--json"])
+        from apps.cli.main import main
+        with _no_exit(monkeypatch):
+            main()
+        out = capsys.readouterr().out.strip()
+        data = json.loads(out)
+        assert isinstance(data, dict)
+        assert data["version"] == 1
+        assert isinstance(data["providers"], list)
+        assert len(data["providers"]) >= 5
+
+    def test_json_has_no_secret_leaks(self, tmp_path, monkeypatch, capsys) -> None:
+        monkeypatch.setattr(sys, "argv", ["remedy", "workers", "--json"])
+        from apps.cli.main import main
+        with _no_exit(monkeypatch):
+            main()
+        raw = capsys.readouterr().out.lower()
+        for bad in ("sk-", "ghp_", "password=", "begin private key"):
+            assert bad not in raw, f"workers JSON leaks: {bad}"
+
+
+class _no_exit:
+    """Context manager that catches SystemExit(0) from argparse/CLI."""
+
+    def __init__(self, monkeypatch):
+        self._mp = monkeypatch
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is SystemExit and (exc_val.code is None or exc_val.code == 0):
+            return True
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Docs drift-detection tests
+# ---------------------------------------------------------------------------
+
+
+_ARCH_DOC = Path(__file__).resolve().parent.parent / "docs" / "architecture.md"
+
+
+class TestDocsDriftDetection:
+    """Detect drift between docs/architecture.md and actual code values."""
+
+    def test_run_contract_scope_matches_code(self) -> None:
+        from packages.orchestration.run_contract import build_default_run_contract
+        job = _make_job()
+        rc = build_default_run_contract(job)
+        doc = _ARCH_DOC.read_text()
+        assert f"| scope" in doc
+        assert '`job`' in doc, "docs must document scope = job"
+        assert rc.scope == "job"
+
+    def test_run_contract_autonomy_level_matches_code(self) -> None:
+        from packages.orchestration.run_contract import build_default_run_contract
+        job = _make_job()
+        rc = build_default_run_contract(job)
+        doc = _ARCH_DOC.read_text()
+        assert "| autonomy_level" in doc
+        assert "int" in doc.split("autonomy_level")[1][:50], "docs must say autonomy_level is int"
+        assert isinstance(rc.autonomy_level, int)
+
+    def test_run_contract_has_job_id_in_docs(self) -> None:
+        doc = _ARCH_DOC.read_text()
+        assert "| job_id" in doc, "docs must document job_id field"
+
+    def test_run_log_rc_metadata_matches_code(self) -> None:
+        doc = _ARCH_DOC.read_text()
+        # Docs must list the actual run-log metadata keys
+        for key in ("autonomy_level", "allowed_action_count", "denied_action_count", "max_loops", "scope"):
+            assert key in doc, f"architecture.md missing run_contract_inspected key: {key}"
+        # Must NOT list stale keys
+        rc_section = doc[doc.index("run_contract_inspected"):doc.index("run_contract_inspected") + 200]
+        assert "model_policy" not in rc_section, "stale model_policy in run_contract_inspected docs"
+        assert "command_policy" not in rc_section, "stale command_policy in run_contract_inspected docs"
+
+    def test_run_log_tp_metadata_matches_code(self) -> None:
+        doc = _ARCH_DOC.read_text()
+        for key in ("zero_token_step_count", "local_first_step_count", "expensive_step_count"):
+            assert key in doc, f"architecture.md missing token_policy_inspected key: {key}"
+        tp_section = doc[doc.index("token_policy_inspected"):doc.index("token_policy_inspected") + 200]
+        assert "version" not in tp_section.split(",")[0] or "version" not in tp_section[:30], \
+            "token_policy_inspected docs should not lead with stale 'version' key"
