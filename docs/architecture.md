@@ -2641,6 +2641,26 @@ executables that may be invoked.  It is **not** the project-logic allowlist
 (that is in `command_discovery.py`); it is the final hard guard before any
 `subprocess.run` call.  It does not grow ad-hoc.
 
+### JVM wrapper commands (Step 34.1.1)
+
+Wrapper commands (`gradlew`, `mvnw`) are repo-local scripts.  They are
+represented explicitly as `./gradlew` and `./mvnw` in argv — **not** as bare
+names — because `subprocess.run(["gradlew", "test"])` would fail with
+`FileNotFoundError` (the wrapper is not on `$PATH`).
+
+Only exact known wrappers (`./gradlew`, `./mvnw`) are in
+`_EXECUTION_SAFE_EXECUTABLES`.  Arbitrary `./anything` is not permitted.
+
+### Zero-token / local-first principle
+
+Command discovery and test execution are entirely local and deterministic.
+No LLM, provider, remote service, MCP, browser, or agent provider is called
+from this path.  Remedy uses local structured signals (Makefiles, manifests,
+lockfiles) before spending tokens.  Run Contract (Step 35) and Token Economy
+(Step 36) now define when a costly provider is used — see below.
+
+This is provider-neutral: Pi.dev, Bootcamp, Claude, Ollama, and Copilot
+workers are future optional consumers of discovery results, not implemented.
 ### Risk model
 
 `_RISKY_RE` checks argv and Makefile/Justfile recipe bodies for patterns such
@@ -2686,3 +2706,157 @@ command_source_type, command_source_path, command_purpose, command_confidence
 - No live command streaming.
 - No `.env` file loading.
 - No arbitrary script execution.
+
+---
+
+## Run Contract v0 (Step 35)
+
+A `RunContract` defines what a run is allowed and not allowed to do.
+It is an execution boundary, not a capability promise.
+
+### Module
+
+`packages/orchestration/run_contract.py`
+
+### Data model (`RunContract`, frozen dataclass)
+
+| Field                  | Type         | Default              |
+|------------------------|--------------|----------------------|
+| version                | int          | 1                    |
+| scope                  | str          | `job:<id> (N tasks)` |
+| autonomy_level         | str          | `supervised`         |
+| allowed_actions        | tuple[str]   | plan, build, test... |
+| denied_actions         | tuple[str]   | apply w/o approval...|
+| max_loops              | int          | 10                   |
+| max_tokens             | int          | 200,000              |
+| max_cost_cents         | int          | 500                  |
+| model_policy           | str          | `local_first`        |
+| command_policy         | str          | `allowlist_only`     |
+| stop_conditions        | tuple[str]   | max exceeded, done...|
+| requires_approval_for  | tuple[str]   | patch_apply, high_risk|
+| source                 | str          | `default_v1`         |
+| notes                  | str          | auto-generated       |
+
+### Protocol
+
+`RunContractProvider` in `packages/contracts/interfaces.py` — `build(job) -> dict`.
+
+### CLI
+
+- `remedy run-contract <job_id>` — text summary.
+- `remedy run-contract <job_id> --json` — pure JSON.
+
+### Run-log event
+
+`run_contract_inspected` with metadata: version, autonomy_level, model_policy,
+command_policy, source.
+
+### Brain integration
+
+Node type `run_contract`, edge type `has_run_contract` (job → run_contract).
+Brain node detail explains the execution boundary.
+
+### Execution safety guard fix (R-0001)
+
+`test_runner.py` execution safety guard now uses `if/raise RuntimeError`
+instead of `assert`.  This ensures the guard is never stripped by `python -O`.
+
+---
+
+## Token Economy v0 (Step 36)
+
+A `TokenPolicy` classifies job steps by token cost tier:
+- **Zero-token**: command discovery, risk assessment, permission checks, brain
+  graph construction, run contract inspection, token policy inspection.
+- **Local-first**: planning, verification, constitution checks.
+- **Expensive**: artifact generation, complex refactoring, multi-file patches.
+
+### Module
+
+`packages/orchestration/token_policy.py`
+
+### Data model (`TokenPolicy`, frozen dataclass)
+
+| Field                  | Type         |
+|------------------------|--------------|
+| version                | int          |
+| job_id                 | str          |
+| scope                  | str          |
+| zero_token_steps       | tuple[str]   |
+| local_first_steps      | tuple[str]   |
+| expensive_model_steps  | tuple[str]   |
+| forbidden_context      | tuple[str]   |
+| compaction_rules       | tuple[str]   |
+| budget                 | dict         |
+| future_layers          | tuple[str]   |
+
+### Protocol
+
+`TokenPolicyProvider` in `packages/contracts/interfaces.py` — `build(job) -> dict`.
+
+### CLI
+
+- `remedy token-policy <job_id>` — text summary.
+- `remedy token-policy <job_id> --json` — pure JSON.
+
+### Run-log event
+
+`token_policy_inspected` with metadata: version, scope,
+zero_token_step_count, local_first_step_count, expensive_step_count.
+
+### Brain integration
+
+Node type `token_policy`, edge type `has_token_policy` (job → token_policy).
+
+---
+
+## Worker Adapter Foundation v0 (Step 37)
+
+Provider-neutral specifications for external worker providers.  No network,
+no secrets, no shell, no actual provider connections — pure data only.
+
+### Module
+
+`packages/orchestration/worker_adapters.py`
+
+### Data model (`WorkerProviderSpec`, frozen dataclass)
+
+| Field            | Type         |
+|------------------|--------------|
+| provider_id      | str          |
+| display_name     | str          |
+| supported_roles  | tuple[str]   |
+| execution_mode   | str          |
+| status           | str          |
+| notes            | str          |
+
+### Built-in provider specs
+
+| Provider    | Roles                      | Mode              | Status    |
+|-------------|----------------------------|--------------------|-----------|
+| ollama      | planner, builder, reviewer | local_process      | available |
+| claude_code | builder, reviewer, refactorer | external_harness | future    |
+| pi_dev      | builder, reviewer          | local_process      | future    |
+| copilot     | builder, completer         | api                | future    |
+| openai_api  | planner, builder, reviewer | api                | future    |
+
+### CLI
+
+- `remedy workers` — text summary.
+- `remedy workers --json` — pure JSON.
+
+### Brain integration
+
+Node type `worker_adapter`, edge type `has_worker_adapter` (job → worker_adapter).
+One node per known provider spec.
+
+### Intentional deferrals (Steps 35-37)
+
+- Run Contract fields (`max_loops`, `max_tokens`, `max_cost_cents`, `denied_actions`)
+  are defined but **not yet enforced** at runtime.  Enforcement hooks will be
+  wired in Step 35.1+ (e.g. `max_loops` → `agent_loop.py`).
+- Token Policy is a classification layer only — actual token metering and
+  budget enforcement are deferred.
+- Worker adapter specs are metadata only — no actual provider connections,
+  no secrets, no API calls.  Integration is a future step.
+- No user-configurable run contracts or token policies yet (defaults only).

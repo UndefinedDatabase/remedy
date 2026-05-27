@@ -106,6 +106,9 @@ NT_CONTEXT_COVERAGE  = "context_coverage"
 NT_PROJECT_PLACEHOLDER = "project_placeholder"
 NT_PATCH_APPLY         = "patch_apply"
 NT_TEST_RUN            = "test_run"
+NT_RUN_CONTRACT        = "run_contract"
+NT_TOKEN_POLICY        = "token_policy"
+NT_WORKER_ADAPTER      = "worker_adapter"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -123,6 +126,9 @@ ET_HAS_CONTEXT_SNAPSHOT  = "has_context_snapshot"
 ET_BELONGS_TO_PROJECT    = "belongs_to_project"
 ET_HAS_TEST_RUN          = "has_test_run"
 ET_VERIFIED_AFTER_APPLY  = "verified_after_apply"
+ET_HAS_RUN_CONTRACT      = "has_run_contract"
+ET_HAS_TOKEN_POLICY      = "has_token_policy"
+ET_HAS_WORKER_ADAPTER    = "has_worker_adapter"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -141,6 +147,9 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_PROJECT_PLACEHOLDER: 13,
     NT_PATCH_APPLY:         14,
     NT_TEST_RUN:            15,
+    NT_RUN_CONTRACT:        16,
+    NT_TOKEN_POLICY:        17,
+    NT_WORKER_ADAPTER:      18,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -606,7 +615,62 @@ def build_project_brain(
             type=ET_BELONGS_TO_PROJECT,
         ))
 
-    # ── 10. Sort ─────────────────────────────────────────────────────────────
+    # ── 10. Run Contract node (always present) ─────────────────────────────
+    from packages.orchestration.run_contract import build_default_run_contract
+    rc = build_default_run_contract(job)
+    rc_node_id = "run_contract"
+    nodes.append(BrainNode(
+        id=rc_node_id,
+        type=NT_RUN_CONTRACT,
+        label="Run Contract (execution boundary)",
+        status="active",
+        metadata={"version": rc.version, "autonomy_level": rc.autonomy_level, "source": rc.source},
+    ))
+    edges.append(BrainEdge(
+        source=job_node_id,
+        target=rc_node_id,
+        type=ET_HAS_RUN_CONTRACT,
+    ))
+
+    # ── 11. Token Policy node (always present) ───────────────────────────
+    from packages.orchestration.token_policy import build_default_token_policy
+    tp = build_default_token_policy(job)
+    tp_node_id = "token_policy"
+    nodes.append(BrainNode(
+        id=tp_node_id,
+        type=NT_TOKEN_POLICY,
+        label="Token Policy (routing budget)",
+        status="active",
+        metadata={"version": tp.version, "scope": tp.scope},
+    ))
+    edges.append(BrainEdge(
+        source=job_node_id,
+        target=tp_node_id,
+        type=ET_HAS_TOKEN_POLICY,
+    ))
+
+    # ── 12. Worker Adapter nodes (one per known provider spec) ────────────
+    from packages.orchestration.worker_adapters import list_worker_specs
+    for idx, spec in enumerate(list_worker_specs()):
+        wa_node_id = f"worker_adapter:{spec.provider_id}"
+        nodes.append(BrainNode(
+            id=wa_node_id,
+            type=NT_WORKER_ADAPTER,
+            label=f"Worker: {spec.display_name}",
+            status=spec.status,
+            metadata={
+                "provider_id": spec.provider_id,
+                "execution_mode": spec.execution_mode,
+                "supported_roles": list(spec.supported_roles),
+            },
+        ))
+        edges.append(BrainEdge(
+            source=job_node_id,
+            target=wa_node_id,
+            type=ET_HAS_WORKER_ADAPTER,
+        ))
+
+    # ── 13. Sort ─────────────────────────────────────────────────────────────
     sorted_nodes = tuple(
         sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
     )
@@ -646,6 +710,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_VERIFICATION, NT_BLOCKER, NT_RUN_EVENT, NT_AGENT_LOOP,
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
         NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY, NT_TEST_RUN,
+        NT_RUN_CONTRACT, NT_TOKEN_POLICY, NT_WORKER_ADAPTER,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)

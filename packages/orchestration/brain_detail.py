@@ -56,6 +56,9 @@ from packages.orchestration.project_brain import (
     NT_RUN_EVENT,
     NT_TASK,
     NT_TEST_RUN,
+    NT_RUN_CONTRACT,
+    NT_TOKEN_POLICY,
+    NT_WORKER_ADAPTER,
     NT_VERIFICATION,
     ProjectBrainGraph,
 )
@@ -193,6 +196,15 @@ def build_brain_node_detail(
 
     if node.type == NT_TEST_RUN:
         return _detail_test_run(node, job_id_str, connected)
+
+    if node.type == NT_RUN_CONTRACT:
+        return _detail_run_contract(node, job_id_str, connected)
+
+    if node.type == NT_TOKEN_POLICY:
+        return _detail_token_policy(node, job_id_str, connected)
+
+    if node.type == NT_WORKER_ADAPTER:
+        return _detail_worker_adapter(node, job_id_str, connected)
 
     # Fallback for unknown future node types
     return BrainNodeDetail(
@@ -1042,6 +1054,123 @@ def _detail_test_run(
             "Raw stdout/stderr are not rendered.",
             "Output file path is not included — use the workspace/test_runs/ directory.",
         ),
+    )
+
+
+def _detail_run_contract(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    autonomy = str(node.metadata.get("autonomy_level", "supervised"))
+    source = str(node.metadata.get("source", "default_v1"))
+    version = int(node.metadata.get("version", 1))
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_RUN_CONTRACT,
+        title="Run Contract (execution boundary)",
+        status=node.status or "active",
+        risk=None,
+        explanation=(
+            f"Execution boundary contract (v{version}) for this job. "
+            f"Autonomy level: {autonomy}. Source: {source}. "
+            "Defines what actions are allowed, denied, and what requires approval. "
+            "This is a boundary definition, not a capability promise."
+        ),
+        why_it_exists=(
+            "Every job has an execution boundary that governs what the run can do.",
+            "The run contract is the last line of defense before any action is taken.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"version: {version}",
+            f"autonomy_level: {autonomy}",
+            f"source: {source}",
+        ),
+        affected_files=(),
+        next_actions=(
+            "Inspect with `remedy run-contract <job_id>` for full contract details.",
+        ),
+        redaction_notes=("No sensitive data in run contract.",),
+    )
+
+
+def _detail_token_policy(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    version = int(node.metadata.get("version", 1))
+    scope = str(node.metadata.get("scope", "job"))
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_TOKEN_POLICY,
+        title="Token Policy (routing budget)",
+        status=node.status or "active",
+        risk=None,
+        explanation=(
+            f"Token routing policy (v{version}) for this job. Scope: {scope}. "
+            "Classifies steps as zero-token (local Python), local-first (cheap model), "
+            "or expensive (frontier model). Defines forbidden context and compaction rules."
+        ),
+        why_it_exists=(
+            "Token economy ensures efficient resource usage.",
+            "Zero-token steps avoid unnecessary LLM calls for deterministic operations.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"version: {version}",
+            f"scope: {scope}",
+        ),
+        affected_files=(),
+        next_actions=(
+            "Inspect with `remedy token-policy <job_id>` for full policy details.",
+        ),
+        redaction_notes=("No sensitive data in token policy.",),
+    )
+
+
+def _detail_worker_adapter(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    provider_id = str(node.metadata.get("provider_id", "unknown"))
+    exec_mode = str(node.metadata.get("execution_mode", "unknown"))
+    roles = node.metadata.get("supported_roles", [])
+    roles_str = ", ".join(str(r) for r in roles) if roles else "none"
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_WORKER_ADAPTER,
+        title=f"Worker: {node.label}",
+        status=node.status or "future",
+        risk=None,
+        explanation=(
+            f"Worker adapter spec for provider '{provider_id}'. "
+            f"Execution mode: {exec_mode}. Supported roles: {roles_str}. "
+            "This is a provider-neutral specification — no connection or secrets."
+        ),
+        why_it_exists=(
+            "Worker adapters describe available providers without binding to them.",
+            "Provider-neutral specs enable future multi-provider orchestration.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"provider_id: {provider_id}",
+            f"execution_mode: {exec_mode}",
+            f"supported_roles: {roles_str}",
+        ),
+        affected_files=(),
+        next_actions=(
+            "Inspect with `remedy workers` for all provider specs.",
+        ),
+        redaction_notes=("No secrets or API keys in worker specs.",),
     )
 
 

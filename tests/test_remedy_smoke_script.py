@@ -903,6 +903,87 @@ class TestSmokeScriptText:
         )
 
 
+    # --- Step 35: Run Contract (step 12a) -----------------------------------
+
+    def test_smoke_has_run_contract_check(self):
+        text = _script_text()
+        assert "run-contract" in text, (
+            "smoke must call remedy run-contract as part of Step 35"
+        )
+
+    def test_smoke_run_contract_checks_json_keys(self):
+        text = _script_text()
+        assert "autonomy_level" in text, (
+            "smoke step 12a must validate autonomy_level in run-contract JSON"
+        )
+
+    def test_smoke_run_contract_checks_allowed_actions(self):
+        text = _script_text()
+        assert "allowed_actions" in text, (
+            "smoke step 12a must validate allowed_actions in run-contract JSON"
+        )
+
+    # --- Step 36: Token Policy (step 12b) -----------------------------------
+
+    def test_smoke_has_token_policy_check(self):
+        text = _script_text()
+        assert "token-policy" in text, (
+            "smoke must call remedy token-policy as part of Step 36"
+        )
+
+    def test_smoke_token_policy_checks_zero_token(self):
+        text = _script_text()
+        assert "zero_token_steps" in text, (
+            "smoke step 12b must validate zero_token_steps in token-policy JSON"
+        )
+
+    def test_smoke_token_policy_checks_command_discovery_zero_token(self):
+        text = _script_text()
+        assert "command_discovery" in text, (
+            "smoke step 12b must verify command_discovery is a zero-token step"
+        )
+
+    # --- Step 37: Worker Adapters (step 12c) --------------------------------
+
+    def test_smoke_has_workers_check(self):
+        text = _script_text()
+        assert "workers" in text, (
+            "smoke must call remedy workers as part of Step 37"
+        )
+
+    def test_smoke_workers_checks_ollama(self):
+        text = _script_text()
+        assert "ollama" in text, (
+            "smoke step 12c must verify ollama is in worker specs"
+        )
+
+    def test_smoke_workers_checks_claude_code(self):
+        text = _script_text()
+        assert "claude_code" in text, (
+            "smoke step 12c must verify claude_code is in worker specs"
+        )
+
+    # --- Step 35-37: Brain node integration (step 12d) ----------------------
+
+    def test_smoke_brain_checks_run_contract_node(self):
+        text = _script_text()
+        assert "run_contract" in text, (
+            "smoke step 12d must verify run_contract node in brain graph"
+        )
+
+    def test_smoke_brain_checks_token_policy_node(self):
+        text = _script_text()
+        assert "token_policy" in text, (
+            "smoke step 12d must verify token_policy node in brain graph"
+        )
+
+    def test_smoke_brain_checks_worker_adapter_node(self):
+        text = _script_text()
+        assert "worker_adapter" in text, (
+            "smoke step 12d must verify worker_adapter node in brain graph"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)
 # ---------------------------------------------------------------------------

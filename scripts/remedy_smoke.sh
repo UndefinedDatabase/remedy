@@ -841,6 +841,122 @@ print('    index.html: OK')
 " "${VIEW_DIR}"
 
     # -------------------------------------------------------------------------
+    # 12a. Assert: remedy run-contract --json (Step 35)
+    # -------------------------------------------------------------------------
+    echo "--- 12a. remedy run-contract --json"
+    python3 -c "
+import subprocess, json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: run-contract: ' + msg, file=sys.stderr)
+        sys.exit(1)
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.main', 'run-contract', '${JOB_ID}', '--json'],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    print('ERROR: run-contract exited ' + str(result.returncode), file=sys.stderr)
+    print(result.stderr, file=sys.stderr)
+    sys.exit(1)
+data = json.loads(result.stdout)
+chk('version' in data, 'missing version')
+chk('autonomy_level' in data, 'missing autonomy_level')
+chk('allowed_actions' in data, 'missing allowed_actions')
+chk('denied_actions' in data, 'missing denied_actions')
+chk(data['version'] == 1, 'version != 1')
+chk(data['autonomy_level'] == 'supervised', 'autonomy != supervised')
+chk(isinstance(data['allowed_actions'], list), 'allowed_actions not list')
+chk(isinstance(data['denied_actions'], list), 'denied_actions not list')
+print('    run-contract JSON: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12b. Assert: remedy token-policy --json (Step 36)
+    # -------------------------------------------------------------------------
+    echo "--- 12b. remedy token-policy --json"
+    python3 -c "
+import subprocess, json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: token-policy: ' + msg, file=sys.stderr)
+        sys.exit(1)
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.main', 'token-policy', '${JOB_ID}', '--json'],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    print('ERROR: token-policy exited ' + str(result.returncode), file=sys.stderr)
+    print(result.stderr, file=sys.stderr)
+    sys.exit(1)
+data = json.loads(result.stdout)
+chk('version' in data, 'missing version')
+chk('zero_token_steps' in data, 'missing zero_token_steps')
+chk('local_first_steps' in data, 'missing local_first_steps')
+chk('expensive_model_steps' in data, 'missing expensive_model_steps')
+chk('budget' in data, 'missing budget')
+chk(isinstance(data['zero_token_steps'], list), 'zero_token_steps not list')
+chk('command_discovery' in data['zero_token_steps'], 'command_discovery not zero-token')
+print('    token-policy JSON: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12c. Assert: remedy workers --json (Step 37)
+    # -------------------------------------------------------------------------
+    echo "--- 12c. remedy workers --json"
+    python3 -c "
+import subprocess, json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: workers: ' + msg, file=sys.stderr)
+        sys.exit(1)
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.main', 'workers', '--json'],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    print('ERROR: workers exited ' + str(result.returncode), file=sys.stderr)
+    print(result.stderr, file=sys.stderr)
+    sys.exit(1)
+data = json.loads(result.stdout)
+chk(isinstance(data, list), 'workers output not list')
+chk(len(data) >= 5, 'expected >= 5 worker specs')
+ids = [s['provider_id'] for s in data]
+chk('ollama' in ids, 'missing ollama')
+chk('claude_code' in ids, 'missing claude_code')
+chk(all('supported_roles' in s for s in data), 'missing supported_roles')
+print('    workers JSON: OK (' + str(len(data)) + ' providers)')
+"
+
+    # -------------------------------------------------------------------------
+    # 12d. Assert: brain graph includes new Step 35-37 node types
+    # -------------------------------------------------------------------------
+    echo "--- 12d. brain graph has run_contract + token_policy + worker_adapter nodes"
+    python3 -c "
+import subprocess, json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: brain graph: ' + msg, file=sys.stderr)
+        sys.exit(1)
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.main', 'brain', '${JOB_ID}', '--json'],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    print('ERROR: brain --json exited ' + str(result.returncode), file=sys.stderr)
+    sys.exit(1)
+data = json.loads(result.stdout)
+node_types = {n['type'] for n in data['nodes']}
+chk('run_contract' in node_types, 'missing run_contract node')
+chk('token_policy' in node_types, 'missing token_policy node')
+chk('worker_adapter' in node_types, 'missing worker_adapter node')
+edge_types = {e['type'] for e in data['edges']}
+chk('has_run_contract' in edge_types, 'missing has_run_contract edge')
+chk('has_token_policy' in edge_types, 'missing has_token_policy edge')
+chk('has_worker_adapter' in edge_types, 'missing has_worker_adapter edge')
+print('    brain nodes: run_contract, token_policy, worker_adapter: OK')
+"
+
+    # -------------------------------------------------------------------------
     # 13. Summary
     # -------------------------------------------------------------------------
     echo ""

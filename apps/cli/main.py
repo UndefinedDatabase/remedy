@@ -1607,6 +1607,103 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
         )
 
 
+def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.run_contract import (
+        build_default_run_contract,
+        export_run_contract_json,
+        summarize_run_contract,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+
+    contract = build_default_run_contract(job)
+
+    if json_output:
+        print(_json.dumps(export_run_contract_json(contract), sort_keys=True))
+    else:
+        print(summarize_run_contract(contract))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "run_contract_inspected",
+        outcome="inspected",
+        version=contract.version,
+        autonomy_level=contract.autonomy_level,
+        model_policy=contract.model_policy,
+        command_policy=contract.command_policy,
+        source=contract.source,
+    )
+
+
+def _cmd_token_policy(job_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.token_policy import (
+        build_default_token_policy,
+        export_token_policy_json,
+        summarize_token_policy,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+
+    policy = build_default_token_policy(job)
+
+    if json_output:
+        print(_json.dumps(export_token_policy_json(policy), sort_keys=True))
+    else:
+        print(summarize_token_policy(policy))
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "token_policy_inspected",
+        outcome="inspected",
+        version=policy.version,
+        scope=policy.scope,
+        zero_token_step_count=len(policy.zero_token_steps),
+        local_first_step_count=len(policy.local_first_steps),
+        expensive_step_count=len(policy.expensive_model_steps),
+    )
+
+
+def _cmd_workers(*, json_output: bool = False) -> None:
+    import json as _json
+
+    from packages.orchestration.worker_adapters import (
+        export_worker_specs_json,
+        list_worker_specs,
+        summarize_worker_specs,
+    )
+
+    specs = list_worker_specs()
+
+    if json_output:
+        print(_json.dumps(export_worker_specs_json(specs), sort_keys=True))
+    else:
+        print(summarize_worker_specs(specs))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="remedy",
@@ -1845,6 +1942,29 @@ def main() -> None:
         "--json", action="store_true", dest="json", help="Output as JSON"
     )
 
+    run_contract_p = subparsers.add_parser(
+        "run-contract", help="Show the execution boundary contract for a job"
+    )
+    run_contract_p.add_argument("job_id", help="UUID of the job")
+    run_contract_p.add_argument(
+        "--json", action="store_true", dest="json", help="Output as JSON"
+    )
+
+    token_policy_p = subparsers.add_parser(
+        "token-policy", help="Show the token routing policy for a job"
+    )
+    token_policy_p.add_argument("job_id", help="UUID of the job")
+    token_policy_p.add_argument(
+        "--json", action="store_true", dest="json", help="Output as JSON"
+    )
+
+    workers_p = subparsers.add_parser(
+        "workers", help="List known worker provider specifications"
+    )
+    workers_p.add_argument(
+        "--json", action="store_true", dest="json", help="Output as JSON"
+    )
+
     args = parser.parse_args()
 
     if args.command == "create-job":
@@ -1914,6 +2034,12 @@ def main() -> None:
         _cmd_show_project(args.project_id, json_output=args.json)
     elif args.command == "project-context":
         _cmd_project_context(args.project_id, json_output=args.json)
+    elif args.command == "run-contract":
+        _cmd_run_contract(args.job_id, json_output=args.json)
+    elif args.command == "token-policy":
+        _cmd_token_policy(args.job_id, json_output=args.json)
+    elif args.command == "workers":
+        _cmd_workers(json_output=args.json)
 
 
 if __name__ == "__main__":

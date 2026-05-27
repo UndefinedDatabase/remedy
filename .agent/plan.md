@@ -1,39 +1,40 @@
 # Plan
 
 ## Goal
-Step 34.1: Dynamic Command Discovery Hardening + Provider-neutral Execution Foundation
+Steps 35-37: Run Contract v0, Token Economy v0, Worker Adapter Foundation v0
 
 ## Status
-COMPLETE — 2049 tests passing, smoke passed
+COMPLETE — 2165 tests passing, all Steps 35-37 implemented
 
 ## Completed
 
-### Step 34 (v0 — PR #30)
-- [x] command_discovery.py: CommandCandidate, discover_commands, select_best_test_candidate
-- [x] Detectors: constitution, pyproject, package_json, makefile, justfile, taskfile, cargo, go
-- [x] Risky token detection → high-risk candidates not auto-runnable
-- [x] test_runner.py: uses discover_commands; _EXECUTION_SAFE_EXECUTABLES guard
-- [x] TestRunRecord: 4 new provenance fields (command_source_type/path/purpose/confidence)
-- [x] CLI: discover-commands subcommand (text + --json)
-- [x] 1998 tests passing; smoke PASSED
+### Step 35 — Run Contract v0
+- [x] packages/orchestration/run_contract.py: RunContract dataclass, build_default, export JSON, summarize
+- [x] packages/contracts/interfaces.py: RunContractProvider protocol
+- [x] test_runner.py: R-0001 fix — assert→raise RuntimeError in execution safety guard
+- [x] CLI: remedy run-contract (text + --json) + run_contract_inspected run-log event
+- [x] Brain: NT_RUN_CONTRACT node type, ET_HAS_RUN_CONTRACT edge, detail builder
 
-### Step 34.1 (hardening)
-- [x] command_discovery.py full rewrite with 13 detectors (added gradle, maven, dotnet, ruby, composer)
-- [x] JS lockfile-based package manager selection (pnpm/yarn/bun/npm)
-- [x] _SCAN_IGNORE_DIRS: centralized ignore list; _SCAN_MAX_DEPTH=2 bounded scan
-- [x] _SOURCE_PRIORITY: deterministic priority (constitution=0 > makefile/justfile/taskfile=1 > manifests=2 > uncommon=3 > heuristic=9)
-- [x] Dedup key: (purpose, argv, source_type) — same argv from different sources both kept
-- [x] All source_path values repo-relative; constitution uses "(project-constitution)"
-- [x] Makefile/Justfile recipe body inspection for risk
-- [x] _EXECUTION_SAFE_EXECUTABLES expanded (pnpm, yarn, gradle, gradlew, mvn, mvnw, dotnet, rake, composer, poetry, uv, hatch)
-- [x] permissions.py: removed "pytest only" wording
-- [x] CLI discover-commands --json: schema v1 (version, selected_test_candidate, counts)
-- [x] remedy_smoke.sh: multi-ecosystem target repo (Makefile, pnpm-lock.yaml, rust-lib/Cargo.toml, go-service/go.mod, jvm-app/build.gradle)
-- [x] smoke step 6n: verifies version=1, multi-ecosystem sources, selected=constitution:make test, pnpm, relative paths
-- [x] tests/test_command_discovery.py: 20 test classes (N–V added: JS lockfiles, Gradle, Maven, .NET/Ruby/Composer, source_path relative, ignore dirs, dedup, CLI schema v1, no provider coupling)
-- [x] tests/test_remedy_smoke_script.py: 14 new Step 34.1 assertions
-- [x] docs/architecture.md: updated detector table + schema docs
-- [x] 2049 tests passing; smoke PASSED
+### Step 36 — Token Economy v0
+- [x] packages/orchestration/token_policy.py: TokenPolicy dataclass, build_default, export JSON, summarize
+- [x] packages/contracts/interfaces.py: TokenPolicyProvider protocol
+- [x] CLI: remedy token-policy (text + --json) + token_policy_inspected run-log event
+- [x] Brain: NT_TOKEN_POLICY node type, ET_HAS_TOKEN_POLICY edge, detail builder
+
+### Step 37 — Worker Adapter Foundation v0
+- [x] packages/orchestration/worker_adapters.py: WorkerProviderSpec, 5 provider specs, list/export/summarize
+- [x] CLI: remedy workers (text + --json)
+- [x] Brain: NT_WORKER_ADAPTER node type, ET_HAS_WORKER_ADAPTER edge, detail builder
+
+### Tests + Docs
+- [x] tests/test_run_contract.py: 27 tests
+- [x] tests/test_token_policy.py: 28 tests
+- [x] tests/test_worker_adapters.py: 18 tests
+- [x] tests/test_execution_foundation.py: 13 tests (brain integration + protocols + R-0001)
+- [x] tests/test_remedy_smoke_script.py: 12 new Step 35-37 assertions
+- [x] scripts/remedy_smoke.sh: steps 12a-12d (run-contract, token-policy, workers, brain nodes)
+- [x] docs/architecture.md: Steps 35-37 sections
+- [x] 2165 tests passing
 
 ## Next
 Commit. Push. Open PR.
