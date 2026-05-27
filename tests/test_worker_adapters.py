@@ -91,9 +91,11 @@ class TestListWorkerSpecs:
 
 
 class TestExportWorkerSpecsJson:
-    def test_returns_list(self) -> None:
+    def test_returns_dict_with_version(self) -> None:
         result = export_worker_specs_json()
-        assert isinstance(result, list)
+        assert isinstance(result, dict)
+        assert result["version"] == 1
+        assert "providers" in result
 
     def test_json_serializable(self) -> None:
         import json
@@ -103,11 +105,11 @@ class TestExportWorkerSpecsJson:
 
     def test_each_entry_has_required_keys(self) -> None:
         required = {"provider_id", "display_name", "supported_roles", "execution_mode", "status", "notes"}
-        for entry in export_worker_specs_json():
+        for entry in export_worker_specs_json()["providers"]:
             assert required.issubset(set(entry.keys()))
 
     def test_roles_are_lists(self) -> None:
-        for entry in export_worker_specs_json():
+        for entry in export_worker_specs_json()["providers"]:
             assert isinstance(entry["supported_roles"], list)
 
 

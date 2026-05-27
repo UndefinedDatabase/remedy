@@ -714,7 +714,7 @@ class TestDetectGradle:
         gw.write_text("#!/bin/sh\nexec gradle \"$@\"\n")
         gw.chmod(0o755)
         candidates = _detect_gradle(tmp_path)
-        assert any(c.argv[0] == "gradlew" for c in candidates)
+        assert any(c.argv[0] == "./gradlew" for c in candidates)
 
     def test_gradle_in_subdir(self, tmp_path):
         sub = tmp_path / "jvm-app"
@@ -742,7 +742,7 @@ class TestDetectMaven:
         candidates = _detect_maven(tmp_path)
         assert len(candidates) >= 1
         assert candidates[0].source_type == "maven"
-        assert candidates[0].argv in (("mvn", "test"), ("mvnw", "test"))
+        assert candidates[0].argv in (("mvn", "test"), ("./mvnw", "test"))
 
     def test_mvnw_present_uses_mvnw(self, tmp_path):
         (tmp_path / "pom.xml").write_text("<project></project>\n")
@@ -751,7 +751,7 @@ class TestDetectMaven:
         mw.chmod(0o755)
         from packages.orchestration.command_discovery import _detect_maven
         candidates = _detect_maven(tmp_path)
-        assert any(c.argv[0] == "mvnw" for c in candidates)
+        assert any(c.argv[0] == "./mvnw" for c in candidates)
 
 
 # ---------------------------------------------------------------------------

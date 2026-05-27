@@ -79,10 +79,9 @@ class TestBuildDefaultTokenPolicy:
         policy = build_default_token_policy(job)
         assert policy.job_id == str(job.id)
 
-    def test_scope_contains_job_id(self) -> None:
-        job = _make_job()
-        policy = build_default_token_policy(job)
-        assert str(job.id)[:8] in policy.scope
+    def test_scope_is_job(self) -> None:
+        policy = build_default_token_policy(_make_job())
+        assert policy.scope == "job"
 
     def test_zero_token_steps_are_deterministic_ops(self) -> None:
         policy = build_default_token_policy(_make_job())

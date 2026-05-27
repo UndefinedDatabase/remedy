@@ -1638,12 +1638,11 @@ def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
     log = RunLogWriter(job_id=job.id)
     log.log(
         "run_contract_inspected",
-        outcome="inspected",
-        version=contract.version,
         autonomy_level=contract.autonomy_level,
-        model_policy=contract.model_policy,
-        command_policy=contract.command_policy,
-        source=contract.source,
+        allowed_action_count=len(contract.allowed_actions),
+        denied_action_count=len(contract.denied_actions),
+        max_loops=contract.max_loops,
+        scope=contract.scope,
     )
 
 
@@ -1678,8 +1677,6 @@ def _cmd_token_policy(job_id_str: str, *, json_output: bool = False) -> None:
     log = RunLogWriter(job_id=job.id)
     log.log(
         "token_policy_inspected",
-        outcome="inspected",
-        version=policy.version,
         scope=policy.scope,
         zero_token_step_count=len(policy.zero_token_steps),
         local_first_step_count=len(policy.local_first_steps),

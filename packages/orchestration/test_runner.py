@@ -71,7 +71,7 @@ _EXECUTION_SAFE_EXECUTABLES: frozenset[str] = frozenset({
     # Task runners
     "just", "task",
     # JVM
-    "gradle", "gradlew", "mvn", "mvnw",
+    "gradle", "./gradlew", "mvn", "./mvnw",
     # .NET
     "dotnet",
     # Ruby

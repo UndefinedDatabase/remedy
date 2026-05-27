@@ -11,7 +11,7 @@ to any specific provider SDK, API key, or endpoint.
 Public API::
 
     list_worker_specs() -> tuple[WorkerProviderSpec, ...]
-    export_worker_specs_json(specs) -> list[dict[str, Any]]
+    export_worker_specs_json(specs) -> dict[str, Any]
     summarize_worker_specs(specs) -> str
 """
 
@@ -102,21 +102,24 @@ def list_worker_specs() -> tuple[WorkerProviderSpec, ...]:
 # ---------------------------------------------------------------------------
 
 
-def export_worker_specs_json(specs: tuple[WorkerProviderSpec, ...] | None = None) -> list[dict[str, Any]]:
-    """Export worker specs as JSON-serializable list."""
+def export_worker_specs_json(specs: tuple[WorkerProviderSpec, ...] | None = None) -> dict[str, Any]:
+    """Export worker specs as JSON-serializable dict with version envelope."""
     if specs is None:
         specs = _SPECS
-    return [
-        {
-            "provider_id":     s.provider_id,
-            "display_name":    s.display_name,
-            "supported_roles": list(s.supported_roles),
-            "execution_mode":  s.execution_mode,
-            "status":          s.status,
-            "notes":           s.notes,
-        }
-        for s in specs
-    ]
+    return {
+        "version": 1,
+        "providers": [
+            {
+                "provider_id":     s.provider_id,
+                "display_name":    s.display_name,
+                "supported_roles": list(s.supported_roles),
+                "execution_mode":  s.execution_mode,
+                "status":          s.status,
+                "notes":           s.notes,
+            }
+            for s in specs
+        ],
+    }
 
 
 def summarize_worker_specs(specs: tuple[WorkerProviderSpec, ...] | None = None) -> str:

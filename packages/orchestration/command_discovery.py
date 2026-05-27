@@ -403,7 +403,7 @@ def _assess_risk(argv: tuple[str, ...], extra_text: str = "") -> str:
         "python3", "python", "pytest",
         "make", "cargo", "go",
         "just", "task",
-        "gradle", "gradlew", "mvn", "mvnw",
+        "gradle", "./gradlew", "mvn", "./mvnw",
         "dotnet",
         "rake", "bundle",
         "composer",
@@ -835,11 +835,11 @@ def _detect_gradle(repo_root: Path) -> list[CommandCandidate]:
             seen_dirs.add(dir_key)
             rel = _rel(path, repo_root)
             # Prefer gradlew in the same directory.
+            # Use ./gradlew (not bare gradlew) because the wrapper is repo-local.
             gradlew = path.parent / "gradlew"
             if gradlew.is_file() and _is_within_repo(gradlew, repo_root):
-                gradlew_rel = _rel(gradlew, repo_root)
-                argv = ("gradlew", "test")
-                display = f"gradlew test  ({gradlew_rel})"
+                argv = ("./gradlew", "test")
+                display = "./gradlew test"
             else:
                 argv = ("gradle", "test")
                 display = "gradle test"
@@ -871,10 +871,11 @@ def _detect_maven(repo_root: Path) -> list[CommandCandidate]:
             continue
         seen_dirs.add(dir_key)
         rel = _rel(path, repo_root)
+        # Use ./mvnw (not bare mvnw) because the wrapper is repo-local.
         mvnw = path.parent / "mvnw"
         if mvnw.is_file() and _is_within_repo(mvnw, repo_root):
-            argv = ("mvnw", "test")
-            display = "mvnw test"
+            argv = ("./mvnw", "test")
+            display = "./mvnw test"
         else:
             argv = ("mvn", "test")
             display = "mvn test"

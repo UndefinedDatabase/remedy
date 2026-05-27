@@ -81,18 +81,19 @@ class TestBuildDefaultRunContract:
         contract = build_default_run_contract(_make_job())
         assert contract.version == 1
 
-    def test_autonomy_level_supervised(self) -> None:
+    def test_autonomy_level_is_int(self) -> None:
         contract = build_default_run_contract(_make_job())
-        assert contract.autonomy_level == "supervised"
+        assert isinstance(contract.autonomy_level, int)
+        assert contract.autonomy_level == 1
 
-    def test_scope_contains_job_id(self) -> None:
+    def test_scope_is_job(self) -> None:
+        contract = build_default_run_contract(_make_job())
+        assert contract.scope == "job"
+
+    def test_job_id_matches(self) -> None:
         job = _make_job()
         contract = build_default_run_contract(job)
-        assert str(job.id)[:8] in contract.scope
-
-    def test_scope_includes_task_count(self) -> None:
-        contract = build_default_run_contract(_make_job(task_count=3))
-        assert "3 tasks" in contract.scope
+        assert contract.job_id == str(job.id)
 
     def test_allowed_actions_non_empty(self) -> None:
         contract = build_default_run_contract(_make_job())
@@ -140,7 +141,7 @@ class TestExportRunContractJson:
         contract = build_default_run_contract(_make_job())
         result = export_run_contract_json(contract)
         required = {
-            "version", "scope", "autonomy_level", "allowed_actions",
+            "version", "job_id", "scope", "autonomy_level", "allowed_actions",
             "denied_actions", "max_loops", "max_tokens", "max_cost_cents",
             "model_policy", "command_policy", "stop_conditions",
             "requires_approval_for", "source", "notes",
@@ -174,7 +175,6 @@ class TestSummarizeRunContract:
         contract = build_default_run_contract(_make_job())
         summary = summarize_run_contract(contract)
         assert "Run Contract" in summary
-        assert "supervised" in summary
         assert "local_first" in summary
         assert "allowlist_only" in summary
 

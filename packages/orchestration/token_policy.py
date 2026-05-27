@@ -81,6 +81,10 @@ _DEFAULT_FORBIDDEN_CONTEXT: tuple[str, ...] = (
     "api_keys",
     "environment_secrets",
     "user_personal_data",
+    "raw_command_output",
+    "raw_stdout",
+    "raw_stderr",
+    "artifact_content",
 )
 
 _DEFAULT_COMPACTION: tuple[str, ...] = (
@@ -104,9 +108,7 @@ def build_default_token_policy(job: Job) -> TokenPolicy:
     """
     job_id_str = str(job.id)
     task_count = len(job.tasks) if job.tasks else 0
-    scope = f"job:{job_id_str[:8]}"
-    if task_count > 0:
-        scope += f" ({task_count} tasks)"
+    scope = "job"
 
     budget_local = 50_000
     budget_expensive = 100_000

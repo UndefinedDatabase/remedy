@@ -16,7 +16,7 @@ Public API::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from packages.core.models import Job
@@ -35,8 +35,9 @@ class RunContract:
     """
 
     version: int
+    job_id: str
     scope: str
-    autonomy_level: str
+    autonomy_level: int
     allowed_actions: tuple[str, ...]
     denied_actions: tuple[str, ...]
     max_loops: int
@@ -58,15 +59,16 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     "plan",
     "build_artifact",
     "create_patch_intent",
+    "apply_approved_markdown_patch",
     "run_tests_local",
     "discover_commands",
 )
 
 _DEFAULT_DENIED_ACTIONS: tuple[str, ...] = (
+    "arbitrary_shell",
     "apply_patch_without_approval",
-    "execute_arbitrary_shell",
     "modify_permissions_autonomously",
-    "network_requests",
+    "network_fetch",
     "install_packages",
 )
 
@@ -90,15 +92,11 @@ def build_default_run_contract(job: Job) -> RunContract:
     Deterministic — derives contract from job metadata only.
     No LLM calls, no network, no filesystem access.
     """
-    task_count = len(job.tasks) if job.tasks else 0
-    scope = f"job:{str(job.id)[:8]}"
-    if task_count > 0:
-        scope += f" ({task_count} tasks)"
-
     return RunContract(
         version=1,
-        scope=scope,
-        autonomy_level="supervised",
+        job_id=str(job.id),
+        scope="job",
+        autonomy_level=1,
         allowed_actions=_DEFAULT_ALLOWED_ACTIONS,
         denied_actions=_DEFAULT_DENIED_ACTIONS,
         max_loops=10,
@@ -122,6 +120,7 @@ def export_run_contract_json(contract: RunContract) -> dict[str, Any]:
     """Export a RunContract as a JSON-serializable dict."""
     return {
         "version":               contract.version,
+        "job_id":                contract.job_id,
         "scope":                 contract.scope,
         "autonomy_level":        contract.autonomy_level,
         "allowed_actions":       list(contract.allowed_actions),
@@ -143,6 +142,7 @@ def summarize_run_contract(contract: RunContract) -> str:
     lines: list[str] = []
     lines.append("Run Contract")
     lines.append(f"  Version:         {contract.version}")
+    lines.append(f"  Job:             {contract.job_id[:8]}")
     lines.append(f"  Scope:           {contract.scope}")
     lines.append(f"  Autonomy:        {contract.autonomy_level}")
     lines.append(f"  Model policy:    {contract.model_policy}")
