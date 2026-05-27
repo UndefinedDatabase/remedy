@@ -13,11 +13,11 @@ Defined capabilities:
   repo_generated_write — write generated documentation/markdown into a user-
                          attached target repository. Denied by default (opt-in).
                          ACTIVE: enforced by check_and_apply_to_repo().
-  repo_test_run        — execute an allowlisted pytest command inside the attached
+  repo_test_run        — execute a discovered test command inside the attached
                          target repository. Denied by default (opt-in).
                          ACTIVE: enforced by _cmd_run_tests_local() in the CLI.
-                         Only "python3 -m pytest", "python -m pytest", and "pytest"
-                         are allowed. No shell=True. No arbitrary commands.
+                         Command is selected by command_discovery.py (not Python-only).
+                         No shell=True. High-risk candidates are refused.
   repo_overwrite       — overwrite existing files in the attached repo. Denied
                          by default. RESERVED: configurable but not yet enforced
                          at runtime. Setting it has no effect in this version.

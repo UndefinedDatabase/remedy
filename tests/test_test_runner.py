@@ -34,9 +34,9 @@ from packages.orchestration.permissions import (
     set_permission,
 )
 from packages.orchestration.test_runner import (
-    ALLOWED_COMMANDS,
     TIMEOUT_DEFAULT_SEC,
     TestRunRecord,
+    _EXECUTION_SAFE_EXECUTABLES,
     run_tests_local,
 )
 
@@ -106,13 +106,13 @@ class TestRunTestsLocalBlocked:
         assert record.blocked_reason == "target_repo_not_a_directory"
 
     def test_no_supported_test_command(self, tmp_path):
-        # Repo dir exists but has neither pyproject.toml+tests/ nor allowlisted constitution cmd.
+        # Repo dir exists but no detectors find anything.
         repo = tmp_path / "repo"
         repo.mkdir()
         job = _make_job(with_repo=str(repo))
         record = run_tests_local(job, tmp_path)
         assert record.status == "blocked"
-        assert record.blocked_reason == "no_supported_test_command"
+        assert record.blocked_reason == "no_test_command_discovered"
 
     def test_command_not_found_output_path_is_empty(self, tmp_path):
         """FileNotFoundError (command not installed) must use _blocked() → output_path == ''."""
@@ -136,30 +136,44 @@ class TestRunTestsLocalBlocked:
             )
 
 
-class TestAllowedCommands:
-    def test_allowed_commands_are_canonical(self):
-        assert "python3 -m pytest" in ALLOWED_COMMANDS
-        assert "python -m pytest" in ALLOWED_COMMANDS
-        assert "pytest" in ALLOWED_COMMANDS
-
+class TestExecutionGuard:
     def test_timeout_default(self):
         assert TIMEOUT_DEFAULT_SEC == 60
 
-    def test_allowed_command_invariant_fires_for_unknown_command(self, tmp_path, monkeypatch):
-        """The hard assert before subprocess.run must fire if somehow an unknown command
-        reaches the execution path (e.g. a future refactor bypasses _select_command)."""
+    def test_execution_safe_executables_includes_core(self):
+        assert "python3" in _EXECUTION_SAFE_EXECUTABLES
+        assert "pytest" in _EXECUTION_SAFE_EXECUTABLES
+        assert "make" in _EXECUTION_SAFE_EXECUTABLES
+        assert "cargo" in _EXECUTION_SAFE_EXECUTABLES
+        assert "go" in _EXECUTION_SAFE_EXECUTABLES
+
+    def test_invariant_fires_for_unsafe_executable(self, tmp_path, monkeypatch):
+        """The execution guard assert must fire if a candidate has an unsafe argv[0]."""
+        from packages.orchestration.command_discovery import CommandCandidate
         repo = tmp_path / "repo"
         repo.mkdir()
         (repo / "pyproject.toml").write_text("[build-system]\n")
         (repo / "tests").mkdir()
         job = _make_job(with_repo=str(repo))
 
-        # Patch _select_command to return a non-allowlisted command.
-        monkeypatch.setattr(
-            "packages.orchestration.test_runner._select_command",
-            lambda j, r: "rm -rf /",
+        # Patch select_best_test_candidate to return a candidate with risky argv[0].
+        unsafe_candidate = CommandCandidate(
+            id="x",
+            purpose="test",
+            argv=("rm", "-rf", "/"),
+            display="rm -rf /",
+            source_type="heuristic",
+            source_path="",
+            confidence="high",
+            risk="low",  # risk bypassed to test the argv[0] guard specifically
+            reason="injected",
+            requires_permission="repo_test_run",
         )
-        with pytest.raises(AssertionError, match="BUG: command not in allowlist"):
+        monkeypatch.setattr(
+            "packages.orchestration.command_discovery.select_best_test_candidate",
+            lambda candidates: unsafe_candidate,
+        )
+        with pytest.raises(AssertionError, match="BUG: executable not in safe list"):
             run_tests_local(job, tmp_path)
 
     def test_test_run_record_not_collected_by_pytest(self):
@@ -202,11 +216,11 @@ class TestCommandAutoDetect:
         repo = tmp_path / "repo"
         repo.mkdir()
         (repo / "pyproject.toml").write_text("[build-system]\n")
-        # No tests/ dir.
+        # No tests/ dir — pyproject detector requires tests/ OR pytest config section.
         job = _make_job(with_repo=str(repo))
         record = run_tests_local(job, tmp_path)
         assert record.status == "blocked"
-        assert record.blocked_reason == "no_supported_test_command"
+        assert record.blocked_reason == "no_test_command_discovered"
 
 
 # ---------------------------------------------------------------------------
@@ -302,7 +316,7 @@ class TestRunTestsLocalOutcome:
 
 
 class TestRunLogEventSchema:
-    """test_run_completed must have exactly 7 metadata keys — no raw output."""
+    """test_run_completed must have exactly 11 metadata keys — no raw output."""
 
     REQUIRED_KEYS = {
         "test_run_id",
@@ -312,12 +326,15 @@ class TestRunLogEventSchema:
         "duration_ms",
         "output_line_count",
         "output_bytes",
+        "command_source_type",
+        "command_source_path",
+        "command_purpose",
+        "command_confidence",
     }
     FORBIDDEN_KEYS = {"stdout", "stderr", "output", "command_output", "raw_output", "cwd", "env"}
 
     def test_log_event_metadata_keys(self, tmp_path):
         from packages.orchestration.run_log import RunLogWriter, read_run_events
-        from uuid import UUID
 
         job = Job(name="test", state=RunState.PENDING)
         log = RunLogWriter(job_id=job.id, runs_root=tmp_path / "runs")
@@ -330,6 +347,10 @@ class TestRunLogEventSchema:
             duration_ms=1234,
             output_line_count=5,
             output_bytes=99,
+            command_source_type="pyproject",
+            command_source_path="pyproject.toml",
+            command_purpose="test",
+            command_confidence="high",
         )
 
         events = read_run_events(log.path)
@@ -362,6 +383,10 @@ class TestBrainTestRunNode:
                     "duration_ms": 500,
                     "output_line_count": 3,
                     "output_bytes": 42,
+                    "command_source_type": "pyproject",
+                    "command_source_path": "pyproject.toml",
+                    "command_purpose": "test",
+                    "command_confidence": "high",
                 },
             }
         ]
@@ -468,7 +493,7 @@ class TestBrainTestRunNode:
 
 
 class TestBrainDetailTestRun:
-    """test_run detail must have 7 evidence items and 2 redaction notes."""
+    """test_run detail must have 11 evidence items and 2 redaction notes."""
 
     def _build_detail(self):
         from packages.orchestration.brain_detail import (
@@ -495,6 +520,10 @@ class TestBrainDetailTestRun:
                     "duration_ms": 100,
                     "output_line_count": 2,
                     "output_bytes": 20,
+                    "command_source_type": "pyproject",
+                    "command_source_path": "pyproject.toml",
+                    "command_purpose": "test",
+                    "command_confidence": "high",
                 },
             }
         ]
@@ -503,9 +532,9 @@ class TestBrainDetailTestRun:
         detail = build_brain_node_detail(job, graph, tr_node.id, events)
         return detail, export_brain_node_detail_json(detail)
 
-    def test_detail_has_7_evidence_items(self):
+    def test_detail_has_11_evidence_items(self):
         detail, _ = self._build_detail()
-        assert len(detail.evidence) == 7
+        assert len(detail.evidence) == 11
 
     def test_detail_has_2_redaction_notes(self):
         detail, _ = self._build_detail()

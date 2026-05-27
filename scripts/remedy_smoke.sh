@@ -40,17 +40,75 @@ remedy_smoke() {
     echo "--- 1. Create target repo: ${TARGET_REPO}"
     rm -rf "${TARGET_REPO}"
     mkdir -p "${TARGET_REPO}"
+
     cat >"${TARGET_REPO}/AGENTS.md" <<'AGENTS_EOF'
 # Test Target Repo
 AGENTS_EOF
+
+    # Makefile with test target using python3 -c (no pytest required).
+    # The Project Constitution will extract "make test" from this file,
+    # making it the highest-priority discovered test command.
+    cat >"${TARGET_REPO}/Makefile" <<'MAKEFILE_EOF'
+.PHONY: test build lint
+
+test:
+	python3 -c "import sys; print('make test: smoke ok'); sys.exit(0)"
+
+build:
+	python3 -c "print('build ok')"
+
+lint:
+	python3 -c "print('lint ok')"
+MAKEFILE_EOF
+
     cat >"${TARGET_REPO}/pyproject.toml" <<'PYPROJECT_EOF'
 [project]
 name = "smoke-target"
 version = "0.1.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 PYPROJECT_EOF
-    # Seed README.md so modify-action apply always finds the target file.
-    # v0 patch apply only supports modify on existing files; create on new files.
-    # The write_readme task produces a modify intent targeting README.md.
+
+    # package.json with pnpm-lock.yaml to prove JS package-manager discovery.
+    cat >"${TARGET_REPO}/package.json" <<'PKG_EOF'
+{
+  "name": "smoke-target",
+  "scripts": {
+    "test": "echo 'no js tests' && exit 0",
+    "build": "echo 'no js build' && exit 0"
+  }
+}
+PKG_EOF
+    touch "${TARGET_REPO}/pnpm-lock.yaml"
+
+    # Subprojects to prove multi-ecosystem bounded scan.
+    mkdir -p "${TARGET_REPO}/rust-lib"
+    cat >"${TARGET_REPO}/rust-lib/Cargo.toml" <<'CARGO_EOF'
+[package]
+name = "smoke-rust-lib"
+version = "0.1.0"
+edition = "2021"
+CARGO_EOF
+
+    mkdir -p "${TARGET_REPO}/go-service"
+    cat >"${TARGET_REPO}/go-service/go.mod" <<'GOMOD_EOF'
+module smoke-go-service
+
+go 1.21
+GOMOD_EOF
+
+    mkdir -p "${TARGET_REPO}/jvm-app"
+    cat >"${TARGET_REPO}/jvm-app/build.gradle" <<'GRADLE_EOF'
+plugins {
+    id 'java'
+}
+test {
+    useJUnitPlatform()
+}
+GRADLE_EOF
+
+    # Seed README.md (modify-action apply target).
     cat >"${TARGET_REPO}/README.md" <<'README_EOF'
 # Tiny Internal Tool
 
@@ -61,7 +119,7 @@ Initial README content.
 Smoke-test placeholder.
 README_EOF
 
-    # Seed tests/ with a minimal pytest file for Step 33 test run smoke.
+    # Seed tests/ for pyproject pytest discovery.
     mkdir -p "${TARGET_REPO}/tests"
     cat >"${TARGET_REPO}/tests/test_readme.py" <<'TEST_EOF'
 """Smoke test: README.md exists and contains the expected section."""
@@ -480,8 +538,12 @@ if runs_dir.exists():
 if not events:
     print('ERROR: no test_run_completed events found in ' + str(runs_dir), file=sys.stderr)
     sys.exit(1)
-required_meta = frozenset({'test_run_id','command','status','exit_code','duration_ms','output_line_count','output_bytes'})
-bad_keys      = frozenset({'stdout','stderr','raw_output','command_output','cwd','env','traceback'})
+required_meta = frozenset({
+    'test_run_id','command','status','exit_code','duration_ms',
+    'output_line_count','output_bytes',
+    'command_source_type','command_source_path','command_purpose','command_confidence',
+})
+bad_keys = frozenset({'stdout','stderr','raw_output','command_output','cwd','env','traceback'})
 for ev in events:
     meta = ev.get('metadata', {})
     got  = frozenset(meta.keys())
@@ -493,6 +555,79 @@ for ev in events:
         sys.exit(1)
 print('    test_run_completed schema: OK  events=' + str(len(events)) + '  status=' + events[0]['metadata']['status'])
 " "${JOB_ID}" "${RUNS_ROOT}"
+
+        echo "--- 6n. Discover commands (Step 34.1 — multi-ecosystem)"
+        DISCOVER_JSON="$(remedy discover-commands "${JOB_ID}" --json)"
+        python3 -c "
+import json, sys, os
+data = json.loads(sys.argv[1])
+
+# Top-level schema (Step 34.1)
+for key in ('version', 'job_id', 'candidates', 'selected_test_candidate', 'counts'):
+    if key not in data:
+        print('ERROR: discover-commands JSON missing key: ' + key, file=sys.stderr)
+        sys.exit(1)
+if data['version'] != 1:
+    print('ERROR: expected version=1, got ' + str(data['version']), file=sys.stderr)
+    sys.exit(1)
+
+candidates = data['candidates']
+if not candidates:
+    print('ERROR: no candidates discovered for target repo', file=sys.stderr)
+    sys.exit(1)
+
+# Required candidate keys
+required_keys = {'id','purpose','argv','display','source_type','source_path',
+                 'confidence','risk','reason','requires_permission'}
+for c in candidates:
+    missing = required_keys - set(c.keys())
+    if missing:
+        print('ERROR: candidate missing keys: ' + str(missing), file=sys.stderr)
+        sys.exit(1)
+    if not isinstance(c['argv'], list):
+        print('ERROR: argv must be a list', file=sys.stderr)
+        sys.exit(1)
+    # source_path must be relative (not absolute, not starting with / or drive letter)
+    sp = c['source_path']
+    if sp.startswith('/') or (len(sp) > 1 and sp[1] == ':'):
+        print('ERROR: source_path must be relative, got: ' + repr(sp), file=sys.stderr)
+        sys.exit(1)
+
+# Multi-ecosystem coverage check
+source_types = {c['source_type'] for c in candidates}
+required_sources = {'constitution', 'makefile', 'package_json', 'cargo', 'go'}
+jvm_sources = {'gradle', 'maven'}
+missing_src = required_sources - source_types
+if missing_src:
+    print('ERROR: missing source types: ' + str(missing_src), file=sys.stderr)
+    print('  found: ' + str(sorted(source_types)), file=sys.stderr)
+    sys.exit(1)
+if not (jvm_sources & source_types):
+    print('ERROR: no JVM source type (gradle or maven) found', file=sys.stderr)
+    sys.exit(1)
+
+# selected_test_candidate must exist and come from constitution (highest priority)
+sel = data['selected_test_candidate']
+if sel is None:
+    print('ERROR: selected_test_candidate is null', file=sys.stderr)
+    sys.exit(1)
+if sel['source_type'] != 'constitution':
+    print('ERROR: expected selected source_type=constitution, got ' + repr(sel['source_type']), file=sys.stderr)
+    sys.exit(1)
+if sel['argv'] != ['make', 'test']:
+    print('ERROR: expected selected argv=[make, test], got ' + str(sel['argv']), file=sys.stderr)
+    sys.exit(1)
+
+# package_json must use pnpm (pnpm-lock.yaml present)
+pj_c = [c for c in candidates if c['source_type'] == 'package_json' and c['purpose'] == 'test']
+if pj_c and pj_c[0]['argv'][0] != 'pnpm':
+    print('ERROR: expected pnpm (pnpm-lock.yaml present), got ' + str(pj_c[0]['argv']), file=sys.stderr)
+    sys.exit(1)
+
+print('    discover-commands: OK  total=' + str(len(candidates))
+      + '  sources=' + str(sorted(source_types))
+      + '  selected=' + sel['source_type'] + ':' + ' '.join(sel['argv']))
+" "${DISCOVER_JSON}"
 
         echo "--- 6m. Trust/Timeline test-run sanity (human-readable output)"
         TRUST_OUT="$(remedy trust-report "${JOB_ID}")"

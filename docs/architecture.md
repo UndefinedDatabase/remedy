@@ -2574,3 +2574,115 @@ word "stdout" in isolation.
 - No live streaming of test output.
 - No arbitrary command execution (`shell_exec` remains reserved).
 - No Context Coverage scoring change.
+
+---
+
+## Step 34 — Project Command Discovery v0
+
+### Goal
+
+Eliminate Python-centrism in test execution.  Remedy discovers test / build /
+lint commands from project configuration files and selects the best one
+deterministically.  The central `ALLOWED_COMMANDS` list is gone — replaced by
+a modular detector architecture.
+
+### Module: `packages/orchestration/command_discovery.py`
+
+`discover_commands(job, repo_root) -> list[CommandCandidate]` runs all
+detectors and returns deduplicated `CommandCandidate` objects.
+**No subprocess is called here.**
+
+`select_best_test_candidate(candidates) -> CommandCandidate | None` picks the
+single best test candidate using `_SOURCE_PRIORITY` order (lower = higher
+priority).  High-risk candidates are never returned.
+
+**Detectors and source priority:**
+
+| Priority | Source type    | Source file(s)               | Example command            |
+|----------|----------------|------------------------------|----------------------------|
+| 0        | constitution   | CONSTITUTION.md              | `make test` (explicit)     |
+| 1        | makefile       | Makefile                     | `make test`, `make lint`   |
+| 1        | justfile       | justfile / Justfile          | `just test`                |
+| 1        | taskfile       | Taskfile.yml / .yaml         | `task test`                |
+| 2        | package_json   | package.json + lockfile      | `pnpm test` / `npm test`   |
+| 2        | pyproject      | pyproject.toml               | `python3 -m pytest`        |
+| 2        | cargo          | Cargo.toml (bounded scan)    | `cargo test`               |
+| 2        | go             | go.mod (bounded scan)        | `go test ./...`            |
+| 2        | gradle         | build.gradle / gradlew       | `gradle test`              |
+| 2        | maven          | pom.xml / mvnw               | `mvn test`                 |
+| 3        | dotnet         | *.sln / *.csproj             | `dotnet test`              |
+| 3        | ruby           | Rakefile                     | `rake test`                |
+| 3        | composer       | composer.json scripts.test   | `composer test`            |
+
+**JavaScript package-manager selection** is lockfile-based (not configurable):
+`pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, `bun.lock`/`bun.lockb` → bun,
+`package-lock.json` → npm, none → npm (fallback).
+
+**Bounded scan:** all detectors use `_find_files(repo_root, filename,
+max_depth=_SCAN_MAX_DEPTH)` which respects `_SCAN_IGNORE_DIRS` (node_modules,
+.venv, target, dist, build, .git, .data, …) and does not follow symlinks that
+escape the repo boundary.
+
+**Dedup key:** `(purpose, argv, source_type)` — the same argv from two
+different source types (e.g. constitution and makefile both produce `make test`)
+is kept as two separate entries; `select_best_test_candidate` picks the one with
+the lower priority number.
+
+### `CommandCandidate` fields
+
+`id`, `purpose` (test/build/lint/format/unknown), `argv` (frozen tuple),
+`display`, `source_type`, `source_path` (always repo-relative), `confidence`
+(high/medium/low), `risk` (low/medium/high), `reason`, `requires_permission`.
+
+### Execution safety guard
+
+`_EXECUTION_SAFE_EXECUTABLES` in `test_runner.py` is the closed set of
+executables that may be invoked.  It is **not** the project-logic allowlist
+(that is in `command_discovery.py`); it is the final hard guard before any
+`subprocess.run` call.  It does not grow ad-hoc.
+
+### Risk model
+
+`_RISKY_RE` checks argv and Makefile/Justfile recipe bodies for patterns such
+as `rm -rf`, `sudo`, `curl ... | bash`, `deploy`, `publish`, `push`,
+`docker run --privileged`, `kubectl apply/delete`.  Any match → `risk=high`.
+High-risk candidates are never passed to `subprocess.run`.
+
+### `test_run_completed` schema (11 keys)
+
+```
+test_run_id, command, status, exit_code, duration_ms,
+output_line_count, output_bytes,
+command_source_type, command_source_path, command_purpose, command_confidence
+```
+
+### `discover-commands --json` schema (v1)
+
+```json
+{
+  "version": 1,
+  "job_id": "...",
+  "repo_root": "...",
+  "candidates": [...],
+  "selected_test_candidate": {...} | null,
+  "counts": {
+    "by_purpose": {...},
+    "by_source": {...},
+    "by_risk": {...},
+    "total": N
+  }
+}
+```
+
+### CLI
+
+- `remedy discover-commands <job_id>` — text summary of all discovered candidates.
+- `remedy discover-commands <job_id> --json` — pure JSON (schema v1 above).
+
+### Intentional deferrals (Step 34)
+
+- Build / lint / format execution not yet gated (permissions `repo_build_run`
+  etc. are reserved for a future step).
+- No live command streaming.
+- No `.env` file loading.
+- No arbitrary script execution.

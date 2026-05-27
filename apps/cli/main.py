@@ -561,13 +561,17 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
         log.log(
             "test_run_completed",
             **{
-                "test_run_id":       record.test_run_id,
-                "command":           record.command,
-                "status":            record.status,
-                "exit_code":         record.exit_code,
-                "duration_ms":       record.duration_ms,
-                "output_line_count": record.output_line_count,
-                "output_bytes":      record.output_bytes,
+                "test_run_id":          record.test_run_id,
+                "command":              record.command,
+                "status":               record.status,
+                "exit_code":            record.exit_code,
+                "duration_ms":          record.duration_ms,
+                "output_line_count":    record.output_line_count,
+                "output_bytes":         record.output_bytes,
+                "command_source_type":  record.command_source_type,
+                "command_source_path":  record.command_source_path,
+                "command_purpose":      record.command_purpose,
+                "command_confidence":   record.command_confidence,
             },
         )
         print(
@@ -579,13 +583,17 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
     log.log(
         "test_run_completed",
         **{
-            "test_run_id":       record.test_run_id,
-            "command":           record.command,
-            "status":            record.status,
-            "exit_code":         record.exit_code,
-            "duration_ms":       record.duration_ms,
-            "output_line_count": record.output_line_count,
-            "output_bytes":      record.output_bytes,
+            "test_run_id":          record.test_run_id,
+            "command":              record.command,
+            "status":               record.status,
+            "exit_code":            record.exit_code,
+            "duration_ms":          record.duration_ms,
+            "output_line_count":    record.output_line_count,
+            "output_bytes":         record.output_bytes,
+            "command_source_type":  record.command_source_type,
+            "command_source_path":  record.command_source_path,
+            "command_purpose":      record.command_purpose,
+            "command_confidence":   record.command_confidence,
         },
     )
 
@@ -622,6 +630,96 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
 
     if record.status not in ("passed",):
         sys.exit(1)
+
+
+def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
+    """Discover command candidates for a job's attached target repo."""
+    import json as _json
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    target_repo_str = job.metadata.get("target_repo")
+    if not target_repo_str:
+        if as_json:
+            print(_json.dumps({"job_id": str(job_id), "candidates": [], "error": "no_target_repo"}))
+        else:
+            print("Error: no target_repo attached.", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path as _Path
+    from packages.orchestration.command_discovery import discover_commands
+
+    repo_root = _Path(target_repo_str).resolve()
+    candidates = discover_commands(job, repo_root)
+
+    if as_json:
+        from collections import Counter as _Counter
+        from packages.orchestration.command_discovery import select_best_test_candidate
+
+        selected = select_best_test_candidate(candidates)
+        by_purpose = dict(_Counter(c.purpose for c in candidates))
+        by_source  = dict(_Counter(c.source_type for c in candidates))
+        by_risk    = dict(_Counter(c.risk for c in candidates))
+        output = {
+            "version": 1,
+            "job_id": str(job_id),
+            "repo_root": str(repo_root),
+            "candidates": [
+                {
+                    "id":                  c.id,
+                    "purpose":             c.purpose,
+                    "argv":                list(c.argv),
+                    "display":             c.display,
+                    "source_type":         c.source_type,
+                    "source_path":         c.source_path,
+                    "confidence":          c.confidence,
+                    "risk":                c.risk,
+                    "reason":              c.reason,
+                    "requires_permission": c.requires_permission,
+                }
+                for c in candidates
+            ],
+            "selected_test_candidate": {
+                "id":          selected.id,
+                "purpose":     selected.purpose,
+                "argv":        list(selected.argv),
+                "display":     selected.display,
+                "source_type": selected.source_type,
+                "source_path": selected.source_path,
+                "confidence":  selected.confidence,
+                "risk":        selected.risk,
+            } if selected is not None else None,
+            "counts": {
+                "by_purpose": by_purpose,
+                "by_source":  by_source,
+                "by_risk":    by_risk,
+                "total":      len(candidates),
+            },
+        }
+        print(_json.dumps(output))
+        return
+
+    if not candidates:
+        print("No command candidates discovered.")
+        return
+
+    print(f"Discovered {len(candidates)} command candidate(s) in {repo_root}:")
+    for c in candidates:
+        risk_label = f"  risk={c.risk}" if c.risk != "low" else ""
+        print(
+            f"  [{c.purpose:6s}] {c.display:<30s} "
+            f"source={c.source_type}:{c.source_path}  "
+            f"conf={c.confidence}{risk_label}"
+        )
 
 
 def _cmd_constitution(job_id_str: str) -> None:
@@ -1579,11 +1677,23 @@ def main() -> None:
     run_tests = subparsers.add_parser(
         "run-tests-local",
         help=(
-            "Run an allowlisted pytest command inside the attached repo "
+            "Run the best discovered test command inside the attached repo "
             "(requires repo_test_run permission)"
         ),
     )
     run_tests.add_argument("job_id", help="UUID of the job")
+
+    discover_cmds = subparsers.add_parser(
+        "discover-commands",
+        help="Discover test/build/lint command candidates from the attached repo",
+    )
+    discover_cmds.add_argument("job_id", help="UUID of the job")
+    discover_cmds.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output as pure JSON",
+    )
 
     brain_node_p = subparsers.add_parser(
         "brain-node",
@@ -1762,6 +1872,8 @@ def main() -> None:
         _cmd_run_next_task_local(args.job_id)
     elif args.command == "run-tests-local":
         _cmd_run_tests_local(args.job_id)
+    elif args.command == "discover-commands":
+        _cmd_discover_commands(args.job_id, as_json=args.json)
     elif args.command == "brain-node":
         _cmd_brain_node(args.job_id, args.node_id, json_output=args.json)
     elif args.command == "brain":

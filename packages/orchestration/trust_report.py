@@ -321,16 +321,19 @@ def summarize_trust_report(
         parts.append("  No test runs recorded.")
     else:
         for ev in test_run_events:
-            meta     = ev.get("metadata", {})
-            status   = str(meta.get("status", "unknown"))
-            command  = str(meta.get("command", ""))
-            exit_code = meta.get("exit_code")
-            dur_ms   = meta.get("duration_ms", 0)
-            sym      = _OK if status == "passed" else (_FAIL if status == "failed" else _WARN)
-            exit_str = f"  exit_code={exit_code}" if exit_code is not None else ""
+            meta       = ev.get("metadata", {})
+            status     = str(meta.get("status", "unknown"))
+            command    = str(meta.get("command", ""))
+            exit_code  = meta.get("exit_code")
+            dur_ms     = meta.get("duration_ms", 0)
+            src_type   = str(meta.get("command_source_type", ""))
+            confidence = str(meta.get("command_confidence", ""))
+            sym        = _OK if status == "passed" else (_FAIL if status == "failed" else _WARN)
+            exit_str   = f"  exit_code={exit_code}" if exit_code is not None else ""
+            src_str    = f"  source={src_type}  confidence={confidence}" if src_type else ""
             parts.append(
                 f"  {sym} status={status}  command={command}"
-                f"{exit_str}  duration_ms={dur_ms}"
+                f"{exit_str}  duration_ms={dur_ms}{src_str}"
             )
             parts.append("      (raw stdout/stderr not included in this report)")
 

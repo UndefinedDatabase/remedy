@@ -695,7 +695,7 @@ class TestSmokeScriptText:
 
     def test_smoke_checks_test_run_required_metadata_keys(self):
         text = _script_text()
-        # All 7 required schema keys must appear in the smoke check.
+        # All 11 required schema keys must appear in the smoke check.
         required = [
             "test_run_id",
             "command",
@@ -704,6 +704,10 @@ class TestSmokeScriptText:
             "duration_ms",
             "output_line_count",
             "output_bytes",
+            "command_source_type",
+            "command_source_path",
+            "command_purpose",
+            "command_confidence",
         ]
         for key in required:
             assert key in text, (
@@ -728,6 +732,123 @@ class TestSmokeScriptText:
         text = _script_text()
         assert "test_readme" in text or "tests/" in text, (
             "smoke target repo must include a tests/ directory with a pytest file"
+        )
+
+    # --- Step 34: Command Discovery (step 6n) --------------------------------
+
+    def test_smoke_has_discover_commands_step(self):
+        text = _script_text()
+        assert "discover-commands" in text, (
+            "smoke must call remedy discover-commands as part of Step 34"
+        )
+
+    def test_smoke_discover_commands_checks_json(self):
+        text = _script_text()
+        assert "discover-commands" in text and "--json" in text, (
+            "smoke discover-commands step must use --json for structured verification"
+        )
+
+    def test_smoke_discover_commands_checks_command_source_type(self):
+        text = _script_text()
+        assert "command_source_type" in text, (
+            "smoke must verify command_source_type in test_run_completed metadata"
+        )
+
+    # --- Step 34.1: Multi-ecosystem Command Discovery (step 6n hardening) ----
+
+    def test_smoke_target_repo_has_makefile_with_test_target(self):
+        text = _script_text()
+        assert "Makefile" in text, (
+            "smoke target repo must include a Makefile for make test discovery"
+        )
+        assert "make test" in text or "make\ntest" in text or ".PHONY" in text, (
+            "smoke Makefile must declare a test target"
+        )
+
+    def test_smoke_target_repo_has_pnpm_lockfile(self):
+        text = _script_text()
+        assert "pnpm-lock.yaml" in text, (
+            "smoke target repo must include pnpm-lock.yaml for JS lockfile detection"
+        )
+
+    def test_smoke_target_repo_has_cargo_toml_subdir(self):
+        text = _script_text()
+        assert "Cargo.toml" in text, (
+            "smoke target repo must include a Cargo.toml subdir for Rust ecosystem detection"
+        )
+
+    def test_smoke_target_repo_has_go_mod_subdir(self):
+        text = _script_text()
+        assert "go.mod" in text, (
+            "smoke target repo must include a go.mod subdir for Go ecosystem detection"
+        )
+
+    def test_smoke_target_repo_has_jvm_manifest(self):
+        text = _script_text()
+        assert "build.gradle" in text or "pom.xml" in text, (
+            "smoke target repo must include a Gradle or Maven manifest for JVM detection"
+        )
+
+    def test_smoke_discover_commands_checks_schema_version(self):
+        text = _script_text()
+        assert "version" in text and ("version'] != 1" in text or "version == 1" in text
+                                       or "version.*1" in text or "!= 1" in text), (
+            "smoke step 6n must verify version=1 in discover-commands JSON schema"
+        )
+
+    def test_smoke_discover_commands_checks_selected_test_candidate(self):
+        text = _script_text()
+        assert "selected_test_candidate" in text, (
+            "smoke step 6n must verify selected_test_candidate field in discover-commands JSON"
+        )
+
+    def test_smoke_discover_commands_checks_constitution_source(self):
+        text = _script_text()
+        assert "constitution" in text, (
+            "smoke step 6n must verify selected candidate comes from constitution source"
+        )
+
+    def test_smoke_discover_commands_checks_make_test_selected(self):
+        text = _script_text()
+        # smoke must verify make test is selected (argv check)
+        assert ("make" in text and "test" in text
+                and ("argv" in text or "make.*test" in text)), (
+            "smoke step 6n must verify selected argv is ['make', 'test']"
+        )
+
+    def test_smoke_discover_commands_checks_pnpm_argv(self):
+        text = _script_text()
+        assert "pnpm" in text, (
+            "smoke step 6n must verify pnpm is chosen for JS package manager (pnpm-lock.yaml present)"
+        )
+
+    def test_smoke_discover_commands_checks_multi_ecosystem_source_types(self):
+        text = _script_text()
+        # All required source types must be referenced in step 6n verification
+        for src in ("constitution", "makefile", "package_json", "cargo", "go"):
+            assert src in text, (
+                f"smoke step 6n must verify source type '{src}' appears in discovered candidates"
+            )
+
+    def test_smoke_discover_commands_checks_jvm_source(self):
+        text = _script_text()
+        assert "gradle" in text or "maven" in text, (
+            "smoke step 6n must verify a JVM source type (gradle or maven) is discovered"
+        )
+
+    def test_smoke_discover_commands_checks_source_path_relative(self):
+        text = _script_text()
+        # step 6n must verify source paths are not absolute (don't start with /)
+        assert "source_path" in text and (
+            "startswith('/')" in text or "relative" in text or "absolute" in text
+        ), (
+            "smoke step 6n must verify source_path values are relative, not absolute"
+        )
+
+    def test_smoke_discover_commands_checks_counts_field(self):
+        text = _script_text()
+        assert "counts" in text, (
+            "smoke step 6n must verify 'counts' field in discover-commands JSON schema"
         )
 
     # --- Step 33.1: Trust/Timeline sanity section (step 6m) ----------------
