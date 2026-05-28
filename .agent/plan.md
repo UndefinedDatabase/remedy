@@ -1,15 +1,14 @@
 # Plan
 
 ## Goal
-Step 38.1: Grouped CLI Entry-Point Hardening
+Steps 44-46: CLI Modularization, Memory Gateway v0, Agent Loop Execution v0
 
 ## Current Step
-Complete — committing
+Step 45: Local Memory Gateway v0
 
 ## Tasks
-- [x] Add compatibility bridge in apps/cli/main.py (group name detection, subcommand disambiguation)
-- [x] Handle conflict: "brain" and "project" are both old flat commands and group names
-- [x] Add 12 behavioral tests for bridge delegation (group help, dispatch, flat compat)
-- [x] Verify full test suite: 2236 passed, 0 failed
-- [x] Verify `remedy job` exits 0 with grouped help via installed command
+- [x] Step 44: Split main.py into per-group command modules under apps/cli/commands/
+- [ ] Step 45: Implement packages/memory/local_gateway.py, memory CLI group, brain/context integration
+- [ ] Step 46: Add run_agent_loop() to agent_loop.py, job.run-loop CLI, run-log events, brain integration
+- [ ] Run full test suite + smoke
 - [ ] Commit and push

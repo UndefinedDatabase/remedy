@@ -1,1712 +1,70 @@
 """
-Remedy CLI entrypoint.
+Remedy CLI entrypoint — bridge to grouped CLI.
 
-Usage:
-    remedy create-job "<prompt>"
-    remedy list-jobs
-    remedy show-job <job_id>
-    remedy plan-job <job_id>
-    remedy plan-job-local <job_id>
-    remedy attach-repo <job_id> <repo_path>
-    remedy set-permission <job_id> <allow|deny> <capability>
-    remedy show-permissions <job_id>
-    remedy run-next-task-local <job_id>
+This module serves as the backward-compatible entry point. It delegates
+all group commands and help rendering to the grouped CLI (apps.cli.grouped).
+Old flat commands (create-job, list-jobs, etc.) are preserved for backward
+compatibility and dispatch to the same handler functions in apps.cli.commands.
 """
 
 from __future__ import annotations
 
 import argparse
-import re
 import sys
-import time
-from uuid import UUID
 
-from packages.core.models import Job, RunState, Task
-from packages.orchestration.data_paths import resolve_data_root
-from packages.orchestration.job_runner import PlanJobResult, plan_job
-from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
-
-# Allowed characters for an explicit task_type token.
-_SAFE_TASK_TYPE_RE = re.compile(r'^[A-Za-z0-9_-]+$')
-
-
-def _cmd_create_job(
-    prompt: str,
-    *,
-    project_id: str | None = None,
-    task_type: str | None = None,
-    task_description: str | None = None,
-) -> None:
-    from packages.orchestration.run_log import RunLogWriter
-
-    # --task-description without --task-type is ambiguous; reject it.
-    if task_description is not None and task_type is None:
-        print(
-            "Error: --task-description requires --task-type",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    # Validate task_type token format.
-    if task_type is not None:
-        task_type = task_type.strip()
-        if not task_type:
-            print("Error: --task-type must not be empty", file=sys.stderr)
-            sys.exit(1)
-        if not _SAFE_TASK_TYPE_RE.match(task_type):
-            print(
-                "Error: --task-type contains invalid characters; "
-                "allowed: letters, digits, underscores, hyphens",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-    project = None
-    if project_id:
-        from packages.orchestration.project_registry import (
-            ProjectNotFoundError,
-            load_project,
-        )
-        from uuid import UUID
-        try:
-            project = load_project(UUID(project_id))
-        except (ProjectNotFoundError, ValueError):
-            print("Warning: project unavailable; job created without project link.", file=sys.stderr)
-            project_id = None
-
-    metadata: dict = {}
-    if project_id:
-        metadata["project_id"] = project_id
-
-    tasks: list[Task] = []
-    state = RunState.PENDING
-    if task_type is not None:
-        description = (task_description or "").strip() or f"Execute {task_type} task."
-        tasks = [Task(description=description, inputs={"task_type": task_type})]
-        state = RunState.PLANNED
-
-    job = Job(
-        name=prompt[:50],
-        user_prompt=prompt,
-        state=state,
-        tasks=tasks,
-        metadata=metadata,
-    )
-    save_job(job)
-    print(job.id)
-    log = RunLogWriter(job_id=job.id)
-    log.log("job_created", outcome="created")
-
-    if project is not None:
-        from packages.orchestration.project_registry import attach_job, save_project
-        attach_job(project, str(job.id))
-        save_project(project)
-
-
-def _cmd_list_jobs() -> None:
-    jobs = list_jobs()
-    if not jobs:
-        print("No jobs found.")
-        return
-    for job in jobs:
-        print(f"{job.id}  {job.state.value:<12}  {job.created_at.isoformat()}  {job.name}")
-
-
-def _cmd_show_job(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-    print(job.model_dump_json(indent=2))
-
-
-def _cmd_plan_job(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    result: PlanJobResult = plan_job(job)
-    save_job(result.job)
-
-    if not result.changed:
-        print(f"Job {result.job.id} already planned — no changes made.")
-    else:
-        print(
-            f"Job {result.job.id} planned: "
-            f"{len(result.job.tasks)} task(s), {len(result.job.artifacts)} artifact(s)"
-        )
-
-
-def _cmd_plan_job_local(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.providers.ollama_planner.provider import OllamaPlanner
-
-    log = RunLogWriter(job_id=job.id)
-
-    planner = OllamaPlanner()
-    log.log(
-        "planning_started",
-        provider="ollama",
-        role="planner",
-        model=planner.model,
-    )
-
-    start = time.monotonic()
-    try:
-        result: PlanJobResult = plan_job_with_llm(job, planner.plan)
-    except ImportError as exc:
-        log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
-                outcome="error", message="planning failed",
-                error_category=type(exc).__name__)
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-    except Exception as exc:
-        log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
-                outcome="error", message="planning failed",
-                error_category=type(exc).__name__)
-        print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
-        sys.exit(1)
-    elapsed_ms = (time.monotonic() - start) * 1000
-
-    annotate_planning_result(
-        result,
-        provider="ollama",
-        role="planner",
-        model=planner.model,
-        elapsed_ms=elapsed_ms,
-    )
-    save_job(result.job)
-
-    if not result.changed:
-        log.log(
-            "planning_completed",
-            provider="ollama",
-            role="planner",
-            model=planner.model,
-            outcome="noop",
-        )
-        print(f"Job {result.job.id} already planned — no changes made.  log={log.path}")
-    else:
-        from packages.orchestration.artifact_index import planning_artifact
-
-        pa = planning_artifact(result.job.artifacts)
-        artifact_id_str = str(pa.id) if pa is not None else None
-        log.log(
-            "planning_completed",
-            provider="ollama",
-            role="planner",
-            model=planner.model,
-            artifact_id=artifact_id_str,
-            outcome="changed",
-            elapsed_ms=round(elapsed_ms),
-            task_count=len(result.job.tasks),
-        )
-        print(
-            f"Job {result.job.id} | role=planner model={planner.model} "
-            f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms  log={log.path}"
-        )
-
-
-def _cmd_attach_repo(job_id_str: str, repo_path_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-
-    repo_path = Path(repo_path_str)
-    if not repo_path.exists():
-        print(f"Error: repo_path does not exist: {repo_path_str!r}", file=sys.stderr)
-        sys.exit(1)
-    if not repo_path.is_dir():
-        print(f"Error: repo_path is not a directory: {repo_path_str!r}", file=sys.stderr)
-        sys.exit(1)
-
-    resolved = repo_path.resolve()
-    job.metadata["target_repo"] = str(resolved)
-    save_job(job)
-    print(f"Job {job.id} | repo={resolved}")
-
-
-def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    if action not in ("allow", "deny"):
-        print(f"Error: action must be 'allow' or 'deny', got {action!r}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.permissions import Capability, is_reserved, set_permission
-
-    try:
-        cap = Capability(capability_str)
-    except ValueError:
-        valid = ", ".join(c.value for c in Capability)
-        print(
-            f"Error: unknown capability {capability_str!r}. Valid: {valid}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    set_permission(job, cap, allow=(action == "allow"))
-    save_job(job)
-    print(f"Job {job.id} | permission {cap.value}={action}")
-    if is_reserved(cap):
-        print(
-            f"note: {cap.value} is reserved and has no effect in this version "
-            "(setting is persisted but not enforced at runtime)"
-        )
-
-
-def _cmd_show_permissions(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.permissions import effective_permissions
-
-    rows = effective_permissions(job)
-    print(f"Job {job.id} | permissions:")
-    for row in rows:
-        print(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]")
-
-
-def _cmd_cockpit(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.cockpit import summarize_cockpit
-    from packages.orchestration.project_constitution import load_project_constitution
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-
-    target_repo_str = job.metadata.get("target_repo")
-    constitution = load_project_constitution(Path(target_repo_str) if target_repo_str else None)
-
-    events = load_run_events(data_dir, job_id)
-    print(summarize_cockpit(job, events, data_dir=data_dir, constitution=constitution))
-
-
-def _cmd_list_patch_intents(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.approval_queue import format_intent_list, list_patch_intents
-
-    intents = list_patch_intents(job)
-    print(format_intent_list(intents))
-
-
-def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.approval_queue import (
-        _find_artifact_for_intent,
-        format_intent_detail,
-        get_patch_intent,
-    )
-
-    item = get_patch_intent(job, intent_id)
-    if item is None:
-        print(f"Error: patch intent {intent_id!r} not found in job {job_id}.", file=sys.stderr)
-        print("Use 'remedy list-patch-intents <job_id>' to see available intent IDs.", file=sys.stderr)
-        sys.exit(1)
-
-    # Pull truncated diff preview from artifact metadata (safe — never full content).
-    diff_preview: str | None = None
-    found = _find_artifact_for_intent(job, intent_id)
-    if found is not None:
-        artifact, _ = found
-        diff_preview = artifact.metadata.get("patch_intent_diff_preview")
-
-    print(format_intent_detail(item, diff_preview))
-
-
-def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.approval_queue import set_approval_state
-    from packages.orchestration.run_log import RunLogWriter
-
-    try:
-        entry = set_approval_state(job, intent_id, "approved", reason=reason)
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    save_job(job)
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "patch_intent_approved",
-        outcome="approved",
-        intent_id=entry["intent_id"],
-        target_path=entry["target_path"],
-        risk=entry["risk"],
-        reason_present=reason is not None,
-    )
-
-    print(f"Approved: {entry['intent_id']} ({entry['target_path']})")
-    print(f"  reason: {'recorded' if reason else 'none'}")
-    print("Note: approval is metadata only — no files have been modified.")
-
-
-def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.approval_queue import set_approval_state
-    from packages.orchestration.run_log import RunLogWriter
-
-    try:
-        entry = set_approval_state(job, intent_id, "rejected", reason=reason)
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    save_job(job)
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "patch_intent_rejected",
-        outcome="rejected",
-        intent_id=entry["intent_id"],
-        target_path=entry["target_path"],
-        risk=entry["risk"],
-        reason_present=reason is not None,
-    )
-
-    print(f"Rejected: {entry['intent_id']} ({entry['target_path']})")
-    print(f"  reason: {'recorded' if reason else 'none'}")
-    print("Note: rejection is metadata only — no files have been modified.")
-
-
-def _cmd_apply_patch_intent(
-    job_id_str: str,
-    intent_id: str,
-    *,
-    json_output: bool = False,
-) -> None:
-    import json as _json
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.patch_apply import apply_patch_intent, format_apply_result
-
-    result = apply_patch_intent(job, intent_id)
-
-    if result.state == "blocked":
-        print(f"Error: {result.blocked_reason}", file=sys.stderr)
-        sys.exit(1)
-
-    if json_output:
-        print(_json.dumps({
-            "state":         result.state,
-            "intent_id":     result.intent_id,
-            "target_path":   result.target_path,
-            "action":        result.action,
-            "outcome":       result.outcome,
-            "bytes_written": result.bytes_written,
-            "line_count":    result.line_count,
-        }, sort_keys=True))
-    else:
-        print(format_apply_result(result))
-
-
-def _cmd_run_tests_local(job_id_str: str) -> None:
-    from pathlib import Path
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.permissions import Capability
-    from packages.orchestration.permissions import is_allowed as _perm_allowed
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.test_runner import run_tests_local
-
-    # Permission gate — must be explicit allow.
-    if not _perm_allowed(job, Capability.repo_test_run):
-        print(
-            "Error: permission repo_test_run is required.\n"
-            f"Grant it with: remedy set-permission {job.id} allow repo_test_run",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    # Require attached target_repo.
-    target_repo_str = job.metadata.get("target_repo")
-    if not target_repo_str:
-        print(
-            "Error: no target_repo attached to this job.\n"
-            f"Attach one with: remedy attach-repo {job.id} <repo_path>",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    data_dir = resolve_data_root()
-    workspace_root = data_dir / "workspaces" / str(job_id)
-
-    record = run_tests_local(job, workspace_root)
-
-    log = RunLogWriter(job_id=job.id)
-
-    if record.status == "blocked":
-        log.log(
-            "test_run_completed",
-            **{
-                "test_run_id":          record.test_run_id,
-                "command":              record.command,
-                "status":               record.status,
-                "exit_code":            record.exit_code,
-                "duration_ms":          record.duration_ms,
-                "output_line_count":    record.output_line_count,
-                "output_bytes":         record.output_bytes,
-                "command_source_type":  record.command_source_type,
-                "command_source_path":  record.command_source_path,
-                "command_purpose":      record.command_purpose,
-                "command_confidence":   record.command_confidence,
-            },
-        )
-        print(
-            f"Error: test run blocked — {record.blocked_reason}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    log.log(
-        "test_run_completed",
-        **{
-            "test_run_id":          record.test_run_id,
-            "command":              record.command,
-            "status":               record.status,
-            "exit_code":            record.exit_code,
-            "duration_ms":          record.duration_ms,
-            "output_line_count":    record.output_line_count,
-            "output_bytes":         record.output_bytes,
-            "command_source_type":  record.command_source_type,
-            "command_source_path":  record.command_source_path,
-            "command_purpose":      record.command_purpose,
-            "command_confidence":   record.command_confidence,
-        },
-    )
-
-    # Store safe metadata on job.
-    if "test_runs" not in job.metadata:
-        job.metadata["test_runs"] = []
-    job.metadata["test_runs"].append({
-        "test_run_id":       record.test_run_id,
-        "command":           record.command,
-        "status":            record.status,
-        "exit_code":         record.exit_code,
-        "duration_ms":       record.duration_ms,
-        "output_path":       record.output_path,
-        "output_line_count": record.output_line_count,
-        "output_bytes":      record.output_bytes,
-        "created_at":        record.created_at,
-    })
-    save_job(job)
-
-    status_sym = "PASSED" if record.status == "passed" else (
-        "FAILED" if record.status == "failed" else record.status.upper()
-    )
-    output_info = (
-        f"output={record.output_path}" if record.output_path else "no output file"
-    )
-    print(
-        f"Job {job.id} | test_run_id={record.test_run_id}"
-        f"  status={record.status}  cmd={record.command}"
-        f"  exit={record.exit_code}  dur={record.duration_ms}ms"
-        f"  {output_info}  log={log.path}"
-    )
-    print(f"Test run: {status_sym}")
-    print("Note: raw stdout/stderr are in the workspace test_runs/ directory only.")
-
-    if record.status not in ("passed",):
-        sys.exit(1)
-
-
-def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
-    """Discover command candidates for a job's attached target repo."""
-    import json as _json
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    target_repo_str = job.metadata.get("target_repo")
-    if not target_repo_str:
-        if as_json:
-            print(_json.dumps({"job_id": str(job_id), "candidates": [], "error": "no_target_repo"}))
-        else:
-            print("Error: no target_repo attached.", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path as _Path
-    from packages.orchestration.command_discovery import discover_commands
-
-    repo_root = _Path(target_repo_str).resolve()
-    candidates = discover_commands(job, repo_root)
-
-    if as_json:
-        from collections import Counter as _Counter
-        from packages.orchestration.command_discovery import select_best_test_candidate
-
-        selected = select_best_test_candidate(candidates)
-        by_purpose = dict(_Counter(c.purpose for c in candidates))
-        by_source  = dict(_Counter(c.source_type for c in candidates))
-        by_risk    = dict(_Counter(c.risk for c in candidates))
-        output = {
-            "version": 1,
-            "job_id": str(job_id),
-            "repo_root": str(repo_root),
-            "candidates": [
-                {
-                    "id":                  c.id,
-                    "purpose":             c.purpose,
-                    "argv":                list(c.argv),
-                    "display":             c.display,
-                    "source_type":         c.source_type,
-                    "source_path":         c.source_path,
-                    "confidence":          c.confidence,
-                    "risk":                c.risk,
-                    "reason":              c.reason,
-                    "requires_permission": c.requires_permission,
-                }
-                for c in candidates
-            ],
-            "selected_test_candidate": {
-                "id":          selected.id,
-                "purpose":     selected.purpose,
-                "argv":        list(selected.argv),
-                "display":     selected.display,
-                "source_type": selected.source_type,
-                "source_path": selected.source_path,
-                "confidence":  selected.confidence,
-                "risk":        selected.risk,
-            } if selected is not None else None,
-            "counts": {
-                "by_purpose": by_purpose,
-                "by_source":  by_source,
-                "by_risk":    by_risk,
-                "total":      len(candidates),
-            },
-        }
-        print(_json.dumps(output))
-        return
-
-    if not candidates:
-        print("No command candidates discovered.")
-        return
-
-    print(f"Discovered {len(candidates)} command candidate(s) in {repo_root}:")
-    for c in candidates:
-        risk_label = f"  risk={c.risk}" if c.risk != "low" else ""
-        print(
-            f"  [{c.purpose:6s}] {c.display:<30s} "
-            f"source={c.source_type}:{c.source_path}  "
-            f"conf={c.confidence}{risk_label}"
-        )
-
-
-def _cmd_constitution(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-
-    from packages.orchestration.project_constitution import (
-        load_project_constitution,
-        render_constitution,
-    )
-    from packages.orchestration.run_log import RunLogWriter
-
-    target_repo_str = job.metadata.get("target_repo")
-    repo_root = Path(target_repo_str) if target_repo_str else None
-
-    constitution = load_project_constitution(repo_root)
-    print(render_constitution(constitution, repo_root))
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "project_constitution_loaded",
-        outcome="loaded",
-        source_count=len(constitution.source_files),
-        warning_count=len(constitution.warnings),
-        has_test_commands=bool(constitution.test_commands),
-    )
-
-
-def _cmd_agent_loop(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.agent_loop import (
-        derive_agent_loop_state,
-        summarize_agent_loop_state,
-    )
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-
-    events = load_run_events(data_dir, job_id)
-    state = derive_agent_loop_state(job, events)
-
-    print(summarize_agent_loop_state(job, state))
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "agent_loop_inspected",
-        outcome="inspected",
-        stage=state.current_stage.value,
-        decision=state.decision.value,
-        cycle=state.cycle,
-        max_cycles=state.max_cycles,
-        pending_finding_count=len(state.pending_findings),
-    )
-
-
-def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
-    import json as _json
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-
-    from packages.orchestration.project_brain import (
-        build_project_brain,
-        export_project_brain_json,
-        summarize_project_brain,
-    )
-    from packages.orchestration.project_constitution import load_project_constitution
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-
-    events = load_run_events(data_dir, job_id)
-
-    target_repo_str = job.metadata.get("target_repo")
-    constitution = (
-        load_project_constitution(Path(target_repo_str))
-        if target_repo_str
-        else None
-    )
-
-    graph = build_project_brain(job, events, constitution=constitution)
-
-    if json_output:
-        print(_json.dumps(export_project_brain_json(graph), sort_keys=True))
-    else:
-        print(summarize_project_brain(graph))
-
-    task_count = sum(1 for n in graph.nodes if n.type == "task")
-    patch_intent_count = sum(1 for n in graph.nodes if n.type == "patch_intent")
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "project_brain_inspected",
-        outcome="inspected",
-        node_count=len(graph.nodes),
-        edge_count=len(graph.edges),
-        task_count=task_count,
-        patch_intent_count=patch_intent_count,
-    )
-
-
-def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False) -> None:
-    import json as _json
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-
-    from packages.orchestration.brain_detail import (
-        build_brain_node_detail,
-        export_brain_node_detail_json,
-        summarize_brain_node_detail,
-    )
-    from packages.orchestration.project_brain import build_project_brain
-    from packages.orchestration.project_constitution import load_project_constitution
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-
-    events = load_run_events(data_dir, job_id)
-
-    target_repo_str = job.metadata.get("target_repo")
-    constitution = (
-        load_project_constitution(Path(target_repo_str))
-        if target_repo_str
-        else None
-    )
-
-    graph = build_project_brain(job, events, constitution=constitution)
-
-    try:
-        detail = build_brain_node_detail(job, graph, node_id, events)
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    if json_output:
-        print(_json.dumps(export_brain_node_detail_json(detail), sort_keys=True))
-    else:
-        print(summarize_brain_node_detail(detail))
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "brain_node_inspected",
-        outcome="inspected",
-        node_id=detail.node_id,
-        node_type=detail.node_type,
-        connected_count=len(detail.connected_to),
-        evidence_count=len(detail.evidence),
-    )
-
-
-def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
-    import json as _json
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-
-    from packages.orchestration.context_coverage import (
-        derive_context_coverage,
-        export_context_coverage_json,
-        summarize_context_coverage,
-    )
-    from packages.orchestration.project_constitution import load_project_constitution
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-
-    events = load_run_events(data_dir, job_id)
-
-    target_repo_str = job.metadata.get("target_repo")
-    constitution = None
-    if target_repo_str:
-        try:
-            repo_path = Path(target_repo_str)
-            if not repo_path.exists() or not repo_path.is_dir():
-                print(
-                    "Warning: project constitution unavailable for context coverage.",
-                    file=sys.stderr,
-                )
-            else:
-                constitution = load_project_constitution(repo_path)
-        except Exception:
-            print(
-                "Warning: project constitution unavailable for context coverage.",
-                file=sys.stderr,
-            )
-
-    snapshot = derive_context_coverage(job, events, constitution=constitution)
-
-    if json_output:
-        print(_json.dumps(export_context_coverage_json(snapshot), sort_keys=True))
-    else:
-        print(summarize_context_coverage(snapshot))
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "context_coverage_inspected",
-        outcome="inspected",
-        score=snapshot.score,
-        present_signal_count=sum(1 for s in snapshot.signals if s.present),
-        missing_signal_count=len(snapshot.missing_keys),
-        scope=snapshot.scope,
-    )
-
-
-def _cmd_brain_view(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-
-    from packages.orchestration.brain_viewer import (
-        build_brain_viewer_data,
-        write_brain_viewer_files,
-    )
-    from packages.orchestration.project_brain import build_project_brain
-    from packages.orchestration.project_constitution import load_project_constitution
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-
-    events = load_run_events(data_dir, job_id)
-
-    target_repo_str = job.metadata.get("target_repo")
-    constitution = None
-    if target_repo_str:
-        try:
-            repo_path = Path(target_repo_str)
-            if not repo_path.exists() or not repo_path.is_dir():
-                print(
-                    "Warning: project constitution unavailable for viewer.",
-                    file=sys.stderr,
-                )
-            else:
-                constitution = load_project_constitution(repo_path)
-        except Exception:
-            print(
-                "Warning: project constitution unavailable for viewer.",
-                file=sys.stderr,
-            )
-
-    graph = build_project_brain(job, events, constitution=constitution)
-    viewer_data = build_brain_viewer_data(job, graph, events)
-
-    out_dir = data_dir / "viewers" / str(job_id)
-    index_path = write_brain_viewer_files(viewer_data, out_dir)
-
-    print(f"Brain Viewer v0: {index_path}")
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "brain_viewer_prepared",
-        outcome="prepared",
-        node_count=len(graph.nodes),
-        edge_count=len(graph.edges),
-        detail_count=len(viewer_data.node_details),
-        detail_fallback_count=viewer_data.detail_fallback_count,
-        mode="static",
-    )
-
-
-def _cmd_trust_report(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-
-    from packages.orchestration.project_constitution import load_project_constitution
-    from packages.orchestration.timeline import load_run_events
-    from packages.orchestration.trust_report import summarize_trust_report
-
-    data_dir = resolve_data_root()
-
-    target_repo_str = job.metadata.get("target_repo")
-    constitution = (
-        load_project_constitution(Path(target_repo_str))
-        if target_repo_str
-        else None
-    )
-
-    events = load_run_events(data_dir, job_id)
-    print(summarize_trust_report(job, events, data_dir=data_dir, constitution=constitution))
-
-
-def _cmd_timeline(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.timeline import load_run_events, summarize_timeline
-
-    data_dir = resolve_data_root()
-
-    events = load_run_events(data_dir, job_id)
-    if not events:
-        print(f"No run logs found for job {job_id}.")
-        return
-
-    print(summarize_timeline(job, events))
-
-
-def _cmd_run_next_task_local(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-
-    from pydantic import ValidationError
-
-    from packages.orchestration.permissions import Capability
-    from packages.orchestration.permissions import is_allowed as _perm_allowed
-    from packages.orchestration.repo_applicator import check_and_apply_to_repo
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.task_runner import (
-        RunTaskResult,
-        annotate_task_result,
-        finalize_task,
-        materialize_task_output,
-        run_next_task,
-    )
-    from packages.orchestration.verifier import verify_task_output
-    from packages.orchestration.workspace import LocalWorkspaceRuntime
-    from packages.providers.ollama_builder.provider import OllamaBuilder
-
-    log = RunLogWriter(job_id=job.id)
-
-    # Fast path: no pending tasks — exit cleanly regardless of permissions.
-    if not any(t.status == RunState.PENDING for t in job.tasks):
-        log.log("task_run_noop", outcome="no_pending_tasks")
-        print(f"Job {job.id} — no pending tasks.  log={log.path}")
-        return
-
-    # Log task_run_started with the first pending task's context.
-    pending_task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
-    pending_task_type = pending_task.inputs.get("task_type", "unknown") if pending_task else None
-    log.log(
-        "task_run_started",
-        task_id=str(pending_task.id) if pending_task else None,
-        task_type=pending_task_type,
-    )
-
-    def _fail(outcome: str, **meta: object) -> None:
-        """Emit task_run_failed, preserving the terminal-event invariant."""
-        log.log(
-            "task_run_failed",
-            task_id=str(pending_task.id) if pending_task else None,
-            outcome=outcome,
-            task_type=pending_task_type,
-            **meta,
-        )
-
-    # Guard: deny workspace_write before the builder is called.
-    # This prevents wasting an LLM call when the permission is not granted.
-    if not _perm_allowed(job, Capability.workspace_write):
-        _fail("permission_denied", capability="workspace_write")
-        print(
-            f"Error: permission denied — workspace_write is not granted for job {job.id}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    start = time.monotonic()
-    try:
-        builder = OllamaBuilder()
-        log.log(
-            "builder_started",
-            task_id=str(pending_task.id) if pending_task else None,
-            provider="ollama",
-            role="builder",
-            model=builder.model,
-            task_type=pending_task_type,
-        )
-        result: RunTaskResult = run_next_task(job, builder.build)
-    except ImportError as exc:
-        _fail("missing_dependency", error_category="ImportError")
-        print(f"Error: missing dependency — {exc}", file=sys.stderr)
-        sys.exit(1)
-    except ValidationError as exc:
-        # Must precede ValueError: pydantic.ValidationError inherits from ValueError.
-        _fail("invalid_builder_output", error_category="ValidationError")
-        print(f"Error: builder returned invalid output — {exc}", file=sys.stderr)
-        sys.exit(1)
-    except ValueError as exc:
-        _fail("configuration_error", error_category="ValueError")
-        print(f"Error: configuration — {exc}", file=sys.stderr)
-        sys.exit(1)
-    except Exception as exc:
-        _fail("builder_error", error_category=type(exc).__name__)
-        print(f"Error: builder execution failed — {exc}", file=sys.stderr)
-        sys.exit(1)
-    elapsed_ms = (time.monotonic() - start) * 1000
-
-    if not result.changed:
-        log.log(
-            "task_run_noop",
-            task_id=str(pending_task.id) if pending_task else None,
-            outcome="no_change",
-            task_type=pending_task_type,
-            reason="builder_returned_no_change",
-        )
-        print(f"Job {job.id} — builder returned no change.  log={log.path}")
-        return
-
-    # Resolve the task artifact for logging context.
-    _task_obj_for_log = next(
-        (t for t in result.job.tasks if t.id == result.task_id), None
-    )
-    _artifact_id_for_log = (
-        str(_task_obj_for_log.output_artifact_ids[0])
-        if _task_obj_for_log and _task_obj_for_log.output_artifact_ids
-        else None
-    )
-    log.log(
-        "builder_completed",
-        task_id=str(result.task_id),
-        artifact_id=_artifact_id_for_log,
-        outcome="changed",
-        elapsed_ms=round(elapsed_ms),
-    )
-
-    # Annotate timing metadata onto the builder artifact.
-    annotate_task_result(
-        result,
-        provider="ollama",
-        role="builder",
-        model=builder.model,
-        elapsed_ms=elapsed_ms,
-    )
-
-    # Materialize builder output to workspace file.
-    # workspace_write was confirmed above — no conditional needed here.
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
-    mf = materialize_task_output(result, runtime)
-    log.log(
-        "workspace_materialized",
-        task_id=str(result.task_id),
-        workspace_file=str(mf.path),
-    )
-
-    # Verify: run Task Contract v1 checks (deterministic, local-only).
-    vr = verify_task_output(result.job, result.task_id)
-
-    # Log verification outcome.
-    _task_type_for_log = (
-        next(t for t in result.job.tasks if t.id == result.task_id)
-        .inputs.get("task_type", "unknown")
-    )
-    if vr.passed:
-        from packages.orchestration.task_registry import get_task_type_spec as _get_spec
-
-        _spec = _get_spec(_task_type_for_log)
-        log.log(
-            "verification_passed",
-            task_id=str(result.task_id),
-            outcome="pass",
-            verifier_profile=_spec.verifier_profile,
-        )
-    else:
-        _failed_checks = [c.check for c in vr.failures]
-        log.log(
-            "verification_failed",
-            task_id=str(result.task_id),
-            outcome="fail",
-            failure_count=len(vr.failures),
-            failed_checks=_failed_checks,
-        )
-
-    # Finalize: mark COMPLETED on pass, PENDING on failure.
-    finalize_task(result, vr)
-
-    # Apply to attached repo (only on pass, repo attached, permission granted).
-    repo_applied: list[str] = []
-    if vr.passed and job.metadata.get("target_repo"):
-        repo_root = Path(job.metadata["target_repo"])
-        if not repo_root.exists() or not repo_root.is_dir():
-            print(
-                f"  warning: attached repo {str(repo_root)!r} no longer exists or is not a "
-                "directory; skipping repo application",
-                file=sys.stderr,
-            )
-        else:
-            task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
-            if task_obj.output_artifact_ids:
-                artifact_id = task_obj.output_artifact_ids[0]
-                artifact = next((a for a in result.job.artifacts if a.id == artifact_id), None)
-                if artifact is not None:
-                    repo_applied = check_and_apply_to_repo(job, artifact, repo_root)
-                    if repo_applied:
-                        artifact.metadata["repo_applied_files"] = repo_applied
-                        log.log(
-                            "repo_application_completed",
-                            task_id=str(result.task_id),
-                            outcome="applied",
-                            file_count=len(repo_applied),
-                            files=repo_applied,
-                        )
-                    else:
-                        _skip_reason = artifact.metadata.get(
-                            "repo_application_skipped_reason"
-                        )
-                        if _skip_reason:
-                            log.log(
-                                "repo_application_skipped",
-                                task_id=str(result.task_id),
-                                outcome="skipped",
-                                reason=_skip_reason,
-                            )
-
-    # Derive and materialize patch intents (only on verification pass).
-    patch_intent_count = 0
-    dry_run_block = ""  # formatted explanation text for CLI output after main line
-    if vr.passed:
-        from packages.orchestration.patch_intent import (
-            derive_patch_intents,
-            format_dry_run_explanations,
-            generate_dry_run_preview,
-            materialize_patch_intents,
-            truncate_preview,
-            verify_patch_intent_set,
-        )
-        pi_task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
-        if pi_task_obj.output_artifact_ids:
-            pi_artifact_id = pi_task_obj.output_artifact_ids[0]
-            pi_artifact = next(
-                (a for a in result.job.artifacts if a.id == pi_artifact_id), None
-            )
-            if pi_artifact is not None:
-                pi_task_type = pi_artifact.metadata.get("task_type", "unknown")
-                pi_task_index = next(
-                    i for i, t in enumerate(result.job.tasks) if t.id == result.task_id
-                )
-                pis = derive_patch_intents(pi_artifact, pi_task_type)
-                pi_errors = verify_patch_intent_set(pis)
-                if pi_errors:
-                    print(
-                        f"  warning: patch intent verification failed "
-                        f"({len(pi_errors)} error(s)) — not materialized",
-                        file=sys.stderr,
-                    )
-                    pi_artifact.metadata["patch_intent_errors"] = pi_errors
-                    log.log(
-                        "patch_intent_failed",
-                        task_id=str(result.task_id),
-                        outcome="failed",
-                        error_count=len(pi_errors),
-                    )
-                elif pis.intents:
-                    pi_mf = materialize_patch_intents(pis, runtime, pi_task_index, pi_task_type)
-                    if pi_mf is not None:
-                        pi_artifact.metadata["patch_intent_file"] = str(pi_mf.path)
-                        pi_artifact.metadata["patch_intent_count"] = len(pis.intents)
-                        patch_intent_count = len(pis.intents)
-
-                    # Dry-run preview: read target file (read-only), produce explanation.
-                    # Uses the attached repo if one is configured; otherwise preview-only.
-                    pi_repo_root = (
-                        Path(job.metadata["target_repo"])
-                        if job.metadata.get("target_repo")
-                        else None
-                    )
-                    dry_run_results = generate_dry_run_preview(
-                        pis,
-                        pi_artifact.content or "",
-                        pi_task_type,
-                        pi_repo_root,
-                    )
-                    if dry_run_results:
-                        pi_artifact.metadata["patch_intent_explanations"] = [
-                            {
-                                "file": r.target_path,
-                                "action": r.action,
-                                "risk": r.risk_level,
-                                "reason": r.reason,
-                                "summary": r.summary,
-                            }
-                            for r in dry_run_results
-                        ]
-                        pi_artifact.metadata["patch_intent_risks"] = [
-                            r.risk_level for r in dry_run_results
-                        ]
-                        combined_preview = "\n\n".join(
-                            r.diff_preview for r in dry_run_results
-                        )
-                        # diff_preview is stored in metadata but not printed to the
-                        # terminal — avoids noisy output; guarded mode can surface it.
-                        pi_artifact.metadata["patch_intent_diff_preview"] = (
-                            truncate_preview(combined_preview)
-                        )
-                        dry_run_block = format_dry_run_explanations(dry_run_results)
-
-                    risk_levels = pi_artifact.metadata.get("patch_intent_risks", [])
-                    log.log(
-                        "patch_intent_created",
-                        task_id=str(result.task_id),
-                        outcome="created",
-                        intent_count=len(pis.intents),
-                        risk_levels=risk_levels,
-                    )
-                else:
-                    log.log(
-                        "patch_intent_skipped",
-                        task_id=str(result.task_id),
-                        outcome="no_intents",
-                    )
-
-    # Persist after verification, repo application, and patch intent materialization
-    # so the saved state is authoritative.
-    save_job(result.job)
-
-    task = next(t for t in result.job.tasks if t.id == result.task_id)
-    task_type = task.inputs.get("task_type", "unknown")
-    pending_remaining = sum(1 for t in result.job.tasks if t.status.value == "pending")
-
-    # Final run log event before printing summary.
-    if vr.passed:
-        log.log("task_run_completed", task_id=str(result.task_id), outcome="pass")
-    else:
-        log.log("task_run_failed", task_id=str(result.task_id), outcome="fail")
-
-    # mf is always set here: result.changed=True and workspace_write was confirmed above.
-    file_info = f" file={mf.path}"
-    repo_info = f" repo={repo_applied[0]}" if repo_applied else ""
-    pi_info = f" patch_intents={patch_intent_count}" if patch_intent_count > 0 else ""
-    verified_info = "verified=pass" if vr.passed else f"verified=FAIL({len(vr.failures)} check(s))"
-    print(
-        f"Job {result.job.id} | task={result.task_id} type={task_type} "
-        f"role=builder model={builder.model} elapsed={round(elapsed_ms)}ms "
-        f"remaining={pending_remaining}{file_info}{repo_info}{pi_info} {verified_info}"
-        f"  log={log.path}"
-    )
-    if dry_run_block:
-        print(dry_run_block)
-    if not vr.passed:
-        for failure in vr.failures:
-            print(f"  verification failure: {failure.check}: {failure.message}", file=sys.stderr)
-        sys.exit(1)
-
-
-def _cmd_create_project(name: str, description: str | None) -> None:
-    from packages.orchestration.project_registry import RemyProject, save_project
-
-    project = RemyProject(name=name, description=description)
-    save_project(project)
-    print(project.id)
-
-
-def _cmd_list_projects() -> None:
-    from packages.orchestration.project_registry import list_projects
-
-    projects = list_projects()
-    if not projects:
-        print("No projects found.")
-        return
-    for p in projects:
-        desc = f"  {p.description}" if p.description else ""
-        print(f"{p.id}  {p.name}{desc}")
-
-
-def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
-    from packages.orchestration.project_registry import (
-        ProjectNotFoundError,
-        attach_repo,
-        load_project,
-        save_project,
-    )
-    from uuid import UUID
-
-    try:
-        pid = UUID(project_id_str)
-    except ValueError:
-        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        project = load_project(pid)
-    except ProjectNotFoundError:
-        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
-    added = attach_repo(project, repo_path_str)
-    save_project(project)
-    if added:
-        print(f"Attached repo to project {str(pid)[:8]}")
-    else:
-        print(f"Repo already attached to project {str(pid)[:8]} (no-op)")
-
-
-def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
-    from packages.orchestration.project_registry import (
-        ProjectNotFoundError,
-        attach_job,
-        load_project,
-        save_project,
-    )
-    from uuid import UUID
-
-    try:
-        pid = UUID(project_id_str)
-    except ValueError:
-        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        project = load_project(pid)
-    except ProjectNotFoundError:
-        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(UUID(job_id_str))
-    except (ValueError, JobNotFoundError):
-        print(f"ERROR: job not found: {job_id_str}", file=sys.stderr)
-        sys.exit(1)
-    added = attach_job(project, job_id_str)
-    save_project(project)
-    if job.metadata.get("project_id") != project_id_str:
-        job.metadata["project_id"] = project_id_str
-        save_job(job)
-    if added:
-        print(f"Attached job {job_id_str[:8]} to project {str(pid)[:8]}")
-    else:
-        print(f"Job already attached to project {str(pid)[:8]} (no-op)")
-
-
-def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None:
-    import json as _json
-
-    from packages.orchestration.project_registry import (
-        ProjectNotFoundError,
-        export_project_json,
-        load_project,
-        summarize_project,
-    )
-    from packages.orchestration.storage import list_jobs
-    from uuid import UUID
-
-    try:
-        pid = UUID(project_id_str)
-    except ValueError:
-        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        project = load_project(pid)
-    except ProjectNotFoundError:
-        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
-    all_jobs = list_jobs()
-    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
-    if json_output:
-        print(_json.dumps(export_project_json(project, linked_jobs), indent=2))
-    else:
-        print(summarize_project(project, linked_jobs))
-
-
-def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> None:
-    import json as _json
-    from uuid import UUID
-
-    from packages.orchestration.project_context_coverage import (
-        derive_project_context_coverage,
-        export_project_context_coverage_json,
-        summarize_project_context_coverage,
-    )
-    from packages.orchestration.project_registry import (
-        ProjectNotFoundError,
-        load_project,
-    )
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.storage import list_jobs
-
-    try:
-        pid = UUID(project_id_str)
-    except ValueError:
-        print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        project = load_project(pid)
-    except ProjectNotFoundError:
-        print(f"Error: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
-
-    all_jobs = list_jobs()
-    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
-
-    snapshot = derive_project_context_coverage(project, linked_jobs)
-
-    if json_output:
-        print(_json.dumps(export_project_context_coverage_json(snapshot), sort_keys=True))
-    else:
-        print(summarize_project_context_coverage(snapshot))
-
-    if linked_jobs:
-        log = RunLogWriter(job_id=linked_jobs[0].id)
-        log.log(
-            "project_context_coverage_inspected",
-            outcome="inspected",
-            score=snapshot.score,
-            present_signal_count=snapshot.present_signal_count,
-            missing_signal_count=snapshot.missing_signal_count,
-            scope=snapshot.scope,
-            repo_count=snapshot.repo_count,
-            job_count=snapshot.job_count,
-        )
-
-
-def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
-    import json as _json
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.run_contract import (
-        build_default_run_contract,
-        export_run_contract_json,
-        summarize_run_contract,
-    )
-    from packages.orchestration.run_log import RunLogWriter
-
-    contract = build_default_run_contract(job)
-
-    if json_output:
-        print(_json.dumps(export_run_contract_json(contract), sort_keys=True))
-    else:
-        print(summarize_run_contract(contract))
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "run_contract_inspected",
-        autonomy_level=contract.autonomy_level,
-        allowed_action_count=len(contract.allowed_actions),
-        denied_action_count=len(contract.denied_actions),
-        max_loops=contract.max_loops,
-        scope=contract.scope,
-    )
-
-
-def _cmd_token_policy(job_id_str: str, *, json_output: bool = False) -> None:
-    import json as _json
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.token_policy import (
-        build_default_token_policy,
-        export_token_policy_json,
-        summarize_token_policy,
-    )
-    from packages.orchestration.run_log import RunLogWriter
-
-    policy = build_default_token_policy(job)
-
-    if json_output:
-        print(_json.dumps(export_token_policy_json(policy), sort_keys=True))
-    else:
-        print(summarize_token_policy(policy))
-
-    log = RunLogWriter(job_id=job.id)
-    log.log(
-        "token_policy_inspected",
-        scope=policy.scope,
-        zero_token_step_count=len(policy.zero_token_steps),
-        local_first_step_count=len(policy.local_first_steps),
-        expensive_step_count=len(policy.expensive_model_steps),
-    )
-
-
-def _cmd_workers(*, json_output: bool = False) -> None:
-    import json as _json
-
-    from packages.orchestration.worker_adapters import (
-        export_worker_specs_json,
-        list_worker_specs,
-        summarize_worker_specs,
-    )
-
-    specs = list_worker_specs()
-
-    if json_output:
-        print(_json.dumps(export_worker_specs_json(specs), sort_keys=True))
-    else:
-        print(summarize_worker_specs(specs))
+# Backward-compatible re-exports: tests and other code import _cmd_* from here.
+# The actual implementations live in apps.cli.commands.* modules.
+from apps.cli.commands.job import (  # noqa: F401
+    _cmd_attach_repo,
+    _cmd_create_job,
+    _cmd_list_jobs,
+    _cmd_plan_job_local,
+    _cmd_run_next_task_local,
+    _cmd_set_permission,
+    _cmd_show_job,
+    _cmd_show_permissions,
+)
+from apps.cli.commands.brain import (  # noqa: F401
+    _cmd_agent_loop,
+    _cmd_brain,
+    _cmd_brain_node,
+    _cmd_brain_view,
+    _cmd_cockpit,
+    _cmd_constitution,
+    _cmd_context,
+    _cmd_timeline,
+    _cmd_trust_report,
+)
+from apps.cli.commands.patch import (  # noqa: F401
+    _cmd_apply_patch_intent,
+    _cmd_approve_patch_intent,
+    _cmd_list_patch_intents,
+    _cmd_reject_patch_intent,
+    _cmd_show_patch_intent,
+)
+from apps.cli.commands.test_cmds import (  # noqa: F401
+    _cmd_discover_commands,
+    _cmd_run_tests_local,
+)
+from apps.cli.commands.project import (  # noqa: F401
+    _cmd_attach_project_job,
+    _cmd_attach_project_repo,
+    _cmd_create_project,
+    _cmd_list_projects,
+    _cmd_project_context,
+    _cmd_show_project,
+)
+from apps.cli.commands.policy import (  # noqa: F401
+    _cmd_run_contract,
+    _cmd_token_policy,
+)
+from apps.cli.commands.worker import _cmd_workers  # noqa: F401
 
 
 def main() -> None:
-    # Bridge: delegate to grouped CLI for all public-facing help and group commands.
-    # This handles stale installed entrypoints that still point to apps.cli.main:main.
     from apps.cli.command_catalog import GROUPS, get_commands_for_group
 
-    # No args or --help → show grouped root help
+    # No args or --help -> show grouped root help
     if len(sys.argv) <= 1 or sys.argv[1] in ("-h", "--help"):
         from apps.cli.grouped import main as grouped_main
         grouped_main(sys.argv[1:])
@@ -1715,346 +73,228 @@ def main() -> None:
     first = sys.argv[1]
     if first in GROUPS:
         subcmds = {c.subcommand for c in get_commands_for_group(first)}
-        # Delegate if: no second arg (group help), or second arg is a subcommand or flag
         if len(sys.argv) <= 2 or sys.argv[2] in subcmds or sys.argv[2].startswith("-"):
             from apps.cli.grouped import main as grouped_main
             grouped_main(sys.argv[1:])
             return
 
-    parser = argparse.ArgumentParser(
-        prog="remedy",
-        description="Remedy orchestration CLI",
-    )
+    # Old flat command parser for backward compatibility
+    parser = argparse.ArgumentParser(prog="remedy", description="Remedy orchestration CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     create = subparsers.add_parser("create-job", help="Create and persist a new job")
     create.add_argument("prompt", help="User prompt describing the job")
     create.add_argument("--project", default=None, help="Project UUID to attach the job to")
-    create.add_argument(
-        "--task-type",
-        default=None,
-        dest="task_type",
-        help="Create exactly one explicit task with this task_type (letters/digits/underscore/hyphen). "
-             "Sets job state to PLANNED immediately without calling plan-job.",
-    )
-    create.add_argument(
-        "--task-description",
-        default=None,
-        dest="task_description",
-        help="Description for the explicit task (requires --task-type).",
-    )
+    create.add_argument("--task-type", default=None, dest="task_type")
+    create.add_argument("--task-description", default=None, dest="task_description")
 
-    subparsers.add_parser("list-jobs", help="List all persisted jobs (newest first)")
+    subparsers.add_parser("list-jobs", help="List all persisted jobs")
 
     show = subparsers.add_parser("show-job", help="Print full JSON for a job")
-    show.add_argument("job_id", help="UUID of the job to show")
+    show.add_argument("job_id")
+
+    plan_local = subparsers.add_parser("plan-job-local", help="Plan a job using local Ollama")
+    plan_local.add_argument("job_id")
 
     plan = subparsers.add_parser("plan-job", help="Generate planning skeleton for a job")
-    plan.add_argument("job_id", help="UUID of the job to plan")
+    plan.add_argument("job_id")
 
-    plan_local = subparsers.add_parser(
-        "plan-job-local", help="Plan a job using local Ollama (requires ollama package)"
-    )
-    plan_local.add_argument("job_id", help="UUID of the job to plan")
+    attach = subparsers.add_parser("attach-repo", help="Attach a repository to a job")
+    attach.add_argument("job_id")
+    attach.add_argument("repo_path")
 
-    attach = subparsers.add_parser(
-        "attach-repo",
-        help="Attach a target repository directory to a job for safe file application",
-    )
-    attach.add_argument("job_id", help="UUID of the job")
-    attach.add_argument("repo_path", help="Path to the target repository directory")
+    perm = subparsers.add_parser("set-permission", help="Grant or deny a permission")
+    perm.add_argument("job_id")
+    perm.add_argument("action", choices=["allow", "deny"])
+    perm.add_argument("capability")
 
-    perm = subparsers.add_parser(
-        "set-permission",
-        help="Grant or deny an execution capability for a job",
-    )
-    perm.add_argument("job_id", help="UUID of the job")
-    perm.add_argument("action", choices=["allow", "deny"], help="allow or deny")
-    perm.add_argument(
-        "capability",
-        help="Capability name (workspace_write, repo_generated_write, repo_overwrite, shell_exec)",
-    )
+    show_perms = subparsers.add_parser("show-permissions", help="Show permissions")
+    show_perms.add_argument("job_id")
 
-    show_perms = subparsers.add_parser(
-        "show-permissions",
-        help="Show effective permission state for all capabilities on a job",
-    )
-    show_perms.add_argument("job_id", help="UUID of the job")
+    run_task = subparsers.add_parser("run-next-task-local", help="Execute the next pending task")
+    run_task.add_argument("job_id")
 
-    run_task = subparsers.add_parser(
-        "run-next-task-local",
-        help="Execute the next pending task using local Ollama (requires ollama package)",
-    )
-    run_task.add_argument("job_id", help="UUID of the job to advance")
+    run_tests = subparsers.add_parser("run-tests-local", help="Run tests")
+    run_tests.add_argument("job_id")
 
-    run_tests = subparsers.add_parser(
-        "run-tests-local",
-        help=(
-            "Run the best discovered test command inside the attached repo "
-            "(requires repo_test_run permission)"
-        ),
-    )
-    run_tests.add_argument("job_id", help="UUID of the job")
+    discover_cmds = subparsers.add_parser("discover-commands", help="Discover commands")
+    discover_cmds.add_argument("job_id")
+    discover_cmds.add_argument("--json", action="store_true", default=False)
 
-    discover_cmds = subparsers.add_parser(
-        "discover-commands",
-        help="Discover test/build/lint command candidates from the attached repo",
-    )
-    discover_cmds.add_argument("job_id", help="UUID of the job")
-    discover_cmds.add_argument(
-        "--json",
-        action="store_true",
-        default=False,
-        help="Output as pure JSON",
-    )
+    brain_node_p = subparsers.add_parser("brain-node", help="Brain node detail")
+    brain_node_p.add_argument("job_id")
+    brain_node_p.add_argument("node_id")
+    brain_node_p.add_argument("--json", action="store_true", default=False)
 
-    brain_node_p = subparsers.add_parser(
-        "brain-node",
-        help="Print detail for a single Project Brain node",
-    )
-    brain_node_p.add_argument("job_id", help="UUID of the job")
-    brain_node_p.add_argument("node_id", help="Node ID from the brain graph")
-    brain_node_p.add_argument(
-        "--json",
-        action="store_true",
-        default=False,
-        help="Output detail as JSON instead of text",
-    )
+    context_p = subparsers.add_parser("context", help="Context coverage")
+    context_p.add_argument("job_id")
+    context_p.add_argument("--json", action="store_true", default=False)
 
-    context_p = subparsers.add_parser(
-        "context",
-        help="Show Context Coverage signal for a job (what context Remedy currently has)",
-    )
-    context_p.add_argument("job_id", help="UUID of the job")
-    context_p.add_argument(
-        "--json",
-        action="store_true",
-        default=False,
-        help="Output coverage snapshot as JSON",
-    )
+    brain_view_p = subparsers.add_parser("brain-view", help="Brain viewer")
+    brain_view_p.add_argument("job_id")
 
-    brain_view_p = subparsers.add_parser(
-        "brain-view",
-        help="Generate a read-only local Brain Viewer (static HTML) for a job",
-    )
-    brain_view_p.add_argument("job_id", help="UUID of the job")
+    brain_p = subparsers.add_parser("brain", help="Brain graph")
+    brain_p.add_argument("job_id")
+    brain_p.add_argument("--json", action="store_true", default=False)
 
-    brain_p = subparsers.add_parser(
-        "brain",
-        help="Print the Project Brain Graph (node/edge graph) for a job",
-    )
-    brain_p.add_argument("job_id", help="UUID of the job to inspect")
-    brain_p.add_argument(
-        "--json",
-        action="store_true",
-        default=False,
-        help="Output graph as JSON instead of text summary (future frontend data source)",
-    )
+    agent_loop_p = subparsers.add_parser("agent-loop", help="Agent loop state")
+    agent_loop_p.add_argument("job_id")
 
-    agent_loop_p = subparsers.add_parser(
-        "agent-loop",
-        help="Inspect the external agent loop state for a job",
-    )
-    agent_loop_p.add_argument("job_id", help="UUID of the job to inspect")
+    constitution_p = subparsers.add_parser("constitution", help="Project constitution")
+    constitution_p.add_argument("job_id")
 
-    constitution_p = subparsers.add_parser(
-        "constitution",
-        help="Print the Project Constitution extracted from the attached repo",
-    )
-    constitution_p.add_argument("job_id", help="UUID of the job to show")
+    trust_report = subparsers.add_parser("trust-report", help="Trust report")
+    trust_report.add_argument("job_id")
 
-    trust_report = subparsers.add_parser(
-        "trust-report",
-        help="Print a full read-only audit/trust report for a job",
-    )
-    trust_report.add_argument("job_id", help="UUID of the job to show")
+    timeline = subparsers.add_parser("timeline", help="Event timeline")
+    timeline.add_argument("job_id")
 
-    timeline = subparsers.add_parser(
-        "timeline",
-        help="Print a human-readable timeline of all run-log events for a job",
-    )
-    timeline.add_argument("job_id", help="UUID of the job to show")
+    cockpit = subparsers.add_parser("cockpit", help="Cockpit summary")
+    cockpit.add_argument("job_id")
 
-    cockpit = subparsers.add_parser(
-        "cockpit",
-        help="Print a decision-oriented status overview for a job",
-    )
-    cockpit.add_argument("job_id", help="UUID of the job to show")
+    list_pi = subparsers.add_parser("list-patch-intents", help="List patch intents")
+    list_pi.add_argument("job_id")
 
-    list_pi = subparsers.add_parser(
-        "list-patch-intents",
-        help="List all patch intents for a job with their approval state",
-    )
-    list_pi.add_argument("job_id", help="UUID of the job")
+    show_pi = subparsers.add_parser("show-patch-intent", help="Show patch intent")
+    show_pi.add_argument("job_id")
+    show_pi.add_argument("intent_id")
 
-    show_pi = subparsers.add_parser(
-        "show-patch-intent",
-        help="Show details for a specific patch intent",
-    )
-    show_pi.add_argument("job_id", help="UUID of the job")
-    show_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
+    approve_pi = subparsers.add_parser("approve-patch-intent", help="Approve patch intent")
+    approve_pi.add_argument("job_id")
+    approve_pi.add_argument("intent_id")
+    approve_pi.add_argument("--reason", default=None)
 
-    approve_pi = subparsers.add_parser(
-        "approve-patch-intent",
-        help="Record an approval decision for a patch intent (metadata only, no files changed)",
-    )
-    approve_pi.add_argument("job_id", help="UUID of the job")
-    approve_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
-    approve_pi.add_argument("--reason", default=None, help="Optional note about this decision")
+    apply_pi = subparsers.add_parser("apply-patch-intent", help="Apply patch intent")
+    apply_pi.add_argument("job_id")
+    apply_pi.add_argument("intent_id")
+    apply_pi.add_argument("--json", action="store_true", dest="json")
 
-    apply_pi = subparsers.add_parser(
-        "apply-patch-intent",
-        help="Apply an approved patch intent to the attached repository (v0: Markdown only)",
-    )
-    apply_pi.add_argument("job_id", help="UUID of the job")
-    apply_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
-    apply_pi.add_argument(
-        "--json", action="store_true", dest="json", help="Output result as JSON"
-    )
+    reject_pi = subparsers.add_parser("reject-patch-intent", help="Reject patch intent")
+    reject_pi.add_argument("job_id")
+    reject_pi.add_argument("intent_id")
+    reject_pi.add_argument("--reason", default=None)
 
-    reject_pi = subparsers.add_parser(
-        "reject-patch-intent",
-        help="Record a rejection decision for a patch intent (metadata only, no files changed)",
-    )
-    reject_pi.add_argument("job_id", help="UUID of the job")
-    reject_pi.add_argument("intent_id", help="Intent ID (e.g. a1b2c3d4-0)")
-    reject_pi.add_argument("--reason", default=None, help="Optional note about this decision")
+    create_project = subparsers.add_parser("create-project", help="Create a project")
+    create_project.add_argument("name")
+    create_project.add_argument("--description", default=None)
 
-    create_project = subparsers.add_parser("create-project", help="Create a new project")
-    create_project.add_argument("name", help="Project name")
-    create_project.add_argument("--description", default=None, help="Optional project description")
+    subparsers.add_parser("list-projects", help="List projects")
 
-    subparsers.add_parser("list-projects", help="List all projects (newest first)")
+    attach_proj_repo = subparsers.add_parser("attach-project-repo", help="Attach repo to project")
+    attach_proj_repo.add_argument("project_id")
+    attach_proj_repo.add_argument("repo_path")
 
-    attach_proj_repo = subparsers.add_parser(
-        "attach-project-repo", help="Attach a repo path to a project"
-    )
-    attach_proj_repo.add_argument("project_id", help="UUID of the project")
-    attach_proj_repo.add_argument("repo_path", help="Path to the repository")
+    attach_proj_job = subparsers.add_parser("attach-project-job", help="Link job to project")
+    attach_proj_job.add_argument("project_id")
+    attach_proj_job.add_argument("job_id")
 
-    attach_proj_job = subparsers.add_parser(
-        "attach-project-job", help="Link a job to a project"
-    )
-    attach_proj_job.add_argument("project_id", help="UUID of the project")
-    attach_proj_job.add_argument("job_id", help="UUID of the job")
+    show_project = subparsers.add_parser("show-project", help="Show project")
+    show_project.add_argument("project_id")
+    show_project.add_argument("--json", action="store_true", dest="json")
 
-    show_project = subparsers.add_parser("show-project", help="Show project summary")
-    show_project.add_argument("project_id", help="UUID of the project")
-    show_project.add_argument(
-        "--json", action="store_true", dest="json", help="Output as JSON"
-    )
+    project_alias = subparsers.add_parser("project", help="Show project (alias)")
+    project_alias.add_argument("project_id")
+    project_alias.add_argument("--json", action="store_true", dest="json")
 
-    project_alias = subparsers.add_parser("project", help="Show project summary (alias for show-project)")
-    project_alias.add_argument("project_id", help="UUID of the project")
-    project_alias.add_argument(
-        "--json", action="store_true", dest="json", help="Output as JSON"
-    )
+    project_ctx_p = subparsers.add_parser("project-context", help="Project context coverage")
+    project_ctx_p.add_argument("project_id")
+    project_ctx_p.add_argument("--json", action="store_true", dest="json")
 
-    project_ctx_p = subparsers.add_parser(
-        "project-context", help="Show project-level context coverage"
-    )
-    project_ctx_p.add_argument("project_id", help="UUID of the project")
-    project_ctx_p.add_argument(
-        "--json", action="store_true", dest="json", help="Output as JSON"
-    )
+    run_contract_p = subparsers.add_parser("run-contract", help="Run contract")
+    run_contract_p.add_argument("job_id")
+    run_contract_p.add_argument("--json", action="store_true", dest="json")
 
-    run_contract_p = subparsers.add_parser(
-        "run-contract", help="Show the execution boundary contract for a job"
-    )
-    run_contract_p.add_argument("job_id", help="UUID of the job")
-    run_contract_p.add_argument(
-        "--json", action="store_true", dest="json", help="Output as JSON"
-    )
+    token_policy_p = subparsers.add_parser("token-policy", help="Token policy")
+    token_policy_p.add_argument("job_id")
+    token_policy_p.add_argument("--json", action="store_true", dest="json")
 
-    token_policy_p = subparsers.add_parser(
-        "token-policy", help="Show the token routing policy for a job"
-    )
-    token_policy_p.add_argument("job_id", help="UUID of the job")
-    token_policy_p.add_argument(
-        "--json", action="store_true", dest="json", help="Output as JSON"
-    )
-
-    workers_p = subparsers.add_parser(
-        "workers", help="List known worker provider specifications"
-    )
-    workers_p.add_argument(
-        "--json", action="store_true", dest="json", help="Output as JSON"
-    )
+    workers_p = subparsers.add_parser("workers", help="List workers")
+    workers_p.add_argument("--json", action="store_true", dest="json")
 
     args = parser.parse_args()
-
-    if args.command == "create-job":
-        _cmd_create_job(
-            args.prompt,
-            project_id=getattr(args, "project", None),
-            task_type=getattr(args, "task_type", None),
-            task_description=getattr(args, "task_description", None),
-        )
-    elif args.command == "list-jobs":
+    cmd = args.command
+    if cmd == "create-job":
+        _cmd_create_job(args.prompt, project_id=getattr(args, "project", None),
+                        task_type=getattr(args, "task_type", None),
+                        task_description=getattr(args, "task_description", None))
+    elif cmd == "list-jobs":
         _cmd_list_jobs()
-    elif args.command == "show-job":
+    elif cmd == "show-job":
         _cmd_show_job(args.job_id)
-    elif args.command == "plan-job":
-        _cmd_plan_job(args.job_id)
-    elif args.command == "plan-job-local":
+    elif cmd == "plan-job":
+        from packages.orchestration.job_runner import plan_job
+        from packages.orchestration.storage import load_job, save_job, JobNotFoundError
+        from uuid import UUID
+        try:
+            job = load_job(UUID(args.job_id))
+        except (ValueError, JobNotFoundError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
+        result = plan_job(job)
+        save_job(result.job)
+        if not result.changed:
+            print(f"Job {result.job.id} already planned — no changes made.")
+        else:
+            print(f"Job {result.job.id} planned: {len(result.job.tasks)} task(s), {len(result.job.artifacts)} artifact(s)")
+    elif cmd == "plan-job-local":
         _cmd_plan_job_local(args.job_id)
-    elif args.command == "attach-repo":
+    elif cmd == "attach-repo":
         _cmd_attach_repo(args.job_id, args.repo_path)
-    elif args.command == "set-permission":
+    elif cmd == "set-permission":
         _cmd_set_permission(args.job_id, args.action, args.capability)
-    elif args.command == "show-permissions":
+    elif cmd == "show-permissions":
         _cmd_show_permissions(args.job_id)
-    elif args.command == "run-next-task-local":
+    elif cmd == "run-next-task-local":
         _cmd_run_next_task_local(args.job_id)
-    elif args.command == "run-tests-local":
+    elif cmd == "run-tests-local":
         _cmd_run_tests_local(args.job_id)
-    elif args.command == "discover-commands":
+    elif cmd == "discover-commands":
         _cmd_discover_commands(args.job_id, as_json=args.json)
-    elif args.command == "brain-node":
+    elif cmd == "brain-node":
         _cmd_brain_node(args.job_id, args.node_id, json_output=args.json)
-    elif args.command == "brain":
+    elif cmd == "brain":
         _cmd_brain(args.job_id, json_output=args.json)
-    elif args.command == "context":
+    elif cmd == "context":
         _cmd_context(args.job_id, json_output=args.json)
-    elif args.command == "brain-view":
+    elif cmd == "brain-view":
         _cmd_brain_view(args.job_id)
-    elif args.command == "agent-loop":
+    elif cmd == "agent-loop":
         _cmd_agent_loop(args.job_id)
-    elif args.command == "constitution":
+    elif cmd == "constitution":
         _cmd_constitution(args.job_id)
-    elif args.command == "trust-report":
+    elif cmd == "trust-report":
         _cmd_trust_report(args.job_id)
-    elif args.command == "timeline":
+    elif cmd == "timeline":
         _cmd_timeline(args.job_id)
-    elif args.command == "cockpit":
+    elif cmd == "cockpit":
         _cmd_cockpit(args.job_id)
-    elif args.command == "list-patch-intents":
+    elif cmd == "list-patch-intents":
         _cmd_list_patch_intents(args.job_id)
-    elif args.command == "show-patch-intent":
+    elif cmd == "show-patch-intent":
         _cmd_show_patch_intent(args.job_id, args.intent_id)
-    elif args.command == "approve-patch-intent":
+    elif cmd == "approve-patch-intent":
         _cmd_approve_patch_intent(args.job_id, args.intent_id, args.reason)
-    elif args.command == "reject-patch-intent":
+    elif cmd == "reject-patch-intent":
         _cmd_reject_patch_intent(args.job_id, args.intent_id, args.reason)
-    elif args.command == "apply-patch-intent":
+    elif cmd == "apply-patch-intent":
         _cmd_apply_patch_intent(args.job_id, args.intent_id, json_output=args.json)
-    elif args.command == "create-project":
+    elif cmd == "create-project":
         _cmd_create_project(args.name, args.description)
-    elif args.command == "list-projects":
+    elif cmd == "list-projects":
         _cmd_list_projects()
-    elif args.command == "attach-project-repo":
+    elif cmd == "attach-project-repo":
         _cmd_attach_project_repo(args.project_id, args.repo_path)
-    elif args.command == "attach-project-job":
+    elif cmd == "attach-project-job":
         _cmd_attach_project_job(args.project_id, args.job_id)
-    elif args.command in ("show-project", "project"):
+    elif cmd in ("show-project", "project"):
         _cmd_show_project(args.project_id, json_output=args.json)
-    elif args.command == "project-context":
+    elif cmd == "project-context":
         _cmd_project_context(args.project_id, json_output=args.json)
-    elif args.command == "run-contract":
+    elif cmd == "run-contract":
         _cmd_run_contract(args.job_id, json_output=args.json)
-    elif args.command == "token-policy":
+    elif cmd == "token-policy":
         _cmd_token_policy(args.job_id, json_output=args.json)
-    elif args.command == "workers":
+    elif cmd == "workers":
         _cmd_workers(json_output=args.json)
 
 
