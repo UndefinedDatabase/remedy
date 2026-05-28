@@ -474,6 +474,38 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(1)
 
 
+def _cmd_run_loop(
+    job_id_str: str,
+    *,
+    max_cycles: int = 3,
+    auto_approve_low_risk: bool = False,
+    no_tests: bool = False,
+) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.agent_loop import run_agent_loop, summarize_agent_loop_state
+
+    state = run_agent_loop(
+        job,
+        max_cycles=max_cycles,
+        auto_approve_low_risk=auto_approve_low_risk,
+        run_tests=not no_tests,
+    )
+
+    # Reload job for latest state
+    job = load_job(job_id)
+    print(summarize_agent_loop_state(job, state))
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
@@ -488,4 +520,10 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "job.permissions": lambda args: _cmd_show_permissions(args.job_id),
     "job.run-next": lambda args: _cmd_run_next_task_local(args.job_id),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
+    "job.run-loop": lambda args: _cmd_run_loop(
+        args.job_id,
+        max_cycles=int(getattr(args, "max_cycles", "3")),
+        auto_approve_low_risk=getattr(args, "auto_approve_low_risk", False),
+        no_tests=getattr(args, "no_tests", False),
+    ),
 }
