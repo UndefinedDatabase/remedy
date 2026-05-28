@@ -19,6 +19,50 @@ from packages.memory.models import MemoryEntry
 from packages.orchestration.data_paths import resolve_data_root
 
 
+# ---------------------------------------------------------------------------
+# Redaction blocklist — reject values containing secret patterns
+# ---------------------------------------------------------------------------
+
+_FORBIDDEN_VALUE_PATTERNS: tuple[str, ...] = (
+    "sk-",
+    "ghp_",
+    "xoxb-",
+    "begin private key",
+    "password=",
+    "api_key=",
+    "secret=",
+    "traceback (most recent",
+)
+
+_FORBIDDEN_KEYS: frozenset[str] = frozenset({
+    "artifact.content",
+    "raw_stdout",
+    "raw_stderr",
+    "diff_preview",
+    "command_output",
+})
+
+
+class MemoryRedactionError(ValueError):
+    """Raised when a memory value or key violates the redaction blocklist."""
+
+
+def _validate_memory(key: str, value: str) -> None:
+    """Check key and value against the blocklist. Raises MemoryRedactionError."""
+    if key.lower() in _FORBIDDEN_KEYS:
+        raise MemoryRedactionError(
+            f"Forbidden memory key: {key!r}. "
+            "This key type is not allowed in memory storage."
+        )
+    val_lower = value.lower()
+    for pattern in _FORBIDDEN_VALUE_PATTERNS:
+        if pattern in val_lower:
+            raise MemoryRedactionError(
+                f"Memory value contains forbidden pattern ({pattern!r}). "
+                "Redact sensitive content before storing."
+            )
+
+
 def _memory_dir() -> Path:
     """Return the root memory directory."""
     return resolve_data_root() / "memory"
@@ -83,7 +127,11 @@ def store_memory(
     source_type: str = "human",
     approved: bool = False,
 ) -> MemoryEntry:
-    """Store a new memory entry. Returns the created entry."""
+    """Store a new memory entry. Returns the created entry.
+
+    Raises MemoryRedactionError if key or value violates the blocklist.
+    """
+    _validate_memory(key, value)
     entry = MemoryEntry(
         project_id=project_id,
         job_id=job_id,

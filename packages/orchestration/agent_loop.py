@@ -502,9 +502,11 @@ def run_agent_loop(
                     **{"metadata": {"cycle": cycle}})
             try:
                 _run_next_task_step(job)
-            except SystemExit:
+            except SystemExit as exc:
                 # run_next_task_local calls sys.exit on failure
-                pass
+                log.log("agent_loop_task_exit", outcome="task_exit",
+                        **{"metadata": {"cycle": cycle,
+                                        "exit_code": exc.code}})
 
         elif state.current_stage == AgentLoopStage.PLANNED:
             # Need planning first

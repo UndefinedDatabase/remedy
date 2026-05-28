@@ -37,7 +37,7 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
     if not _perm_allowed(job, Capability.repo_test_run):
         print(
             "Error: permission repo_test_run is required.\n"
-            f"Grant it with: remedy set-permission {job.id} allow repo_test_run",
+            f"Grant it with: remedy job permit {job.id} allow repo_test_run",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -46,7 +46,7 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
     if not target_repo_str:
         print(
             "Error: no target_repo attached to this job.\n"
-            f"Attach one with: remedy attach-repo {job.id} <repo_path>",
+            f"Attach one with: remedy job attach-repo {job.id} <repo_path>",
             file=sys.stderr,
         )
         sys.exit(1)

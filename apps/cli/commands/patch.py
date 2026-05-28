@@ -51,7 +51,7 @@ def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
     item = get_patch_intent(job, intent_id)
     if item is None:
         print(f"Error: patch intent {intent_id!r} not found in job {job_id}.", file=sys.stderr)
-        print("Use 'remedy list-patch-intents <job_id>' to see available intent IDs.", file=sys.stderr)
+        print("Use 'remedy patch list <job_id>' to see available intent IDs.", file=sys.stderr)
         sys.exit(1)
 
     diff_preview: str | None = None

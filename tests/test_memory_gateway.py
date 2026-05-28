@@ -10,6 +10,7 @@ import pytest
 
 from packages.memory.local_gateway import (
     LocalMemoryGateway,
+    MemoryRedactionError,
     delete_memory,
     has_approved_memory,
     list_memory,
@@ -236,3 +237,44 @@ class TestContextCoverageMemorySignal:
         snapshot = derive_context_coverage(job, [])
         pm_signal = next(s for s in snapshot.signals if s.key == "project_memory")
         assert pm_signal.present is True
+
+
+class TestMemoryRedactionBlocklist:
+    """R-0031: store_memory() must reject forbidden patterns and keys."""
+
+    @pytest.mark.parametrize("pattern", [
+        "sk-abc123secret",
+        "ghp_abcdefgh",
+        "xoxb-tokenvalue",
+        "-----BEGIN PRIVATE KEY-----",
+        "db_password=hunter2",
+        "api_key=abcdefg",
+        "secret=mysecret",
+        "Traceback (most recent call last)",
+    ])
+    def test_rejects_forbidden_value_patterns(self, tmp_path, monkeypatch, pattern) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        with pytest.raises(MemoryRedactionError, match="forbidden pattern"):
+            store_memory("some_key", f"prefix {pattern} suffix", project_id="proj")
+
+    @pytest.mark.parametrize("key", [
+        "artifact.content",
+        "raw_stdout",
+        "raw_stderr",
+        "diff_preview",
+        "command_output",
+    ])
+    def test_rejects_forbidden_keys(self, tmp_path, monkeypatch, key) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        with pytest.raises(MemoryRedactionError, match="Forbidden memory key"):
+            store_memory(key, "safe value", project_id="proj")
+
+    def test_allows_safe_content(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        entry = store_memory("architecture", "uses hexagonal pattern", project_id="proj")
+        assert entry.key == "architecture"
+
+    def test_forbidden_key_case_insensitive(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        with pytest.raises(MemoryRedactionError):
+            store_memory("Raw_Stdout", "safe value", project_id="proj")
