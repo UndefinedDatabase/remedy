@@ -277,3 +277,166 @@ class TestMainEntrypointFlatCommandsStillWork:
         assert rc == 0, f"workers flat failed: {stderr}"
         data = json.loads(stdout)
         assert data["version"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Step 43: Bootcamp-style UX lock tests
+# ---------------------------------------------------------------------------
+
+
+class TestBootcampStyleRootHelp:
+    """Root help must be Bootcamp-style with boxes, no old flat commands."""
+
+    def test_grouped_root_help_exits_zero(self) -> None:
+        stdout, _, rc = _capture_grouped([])
+        assert rc == 0
+
+    def test_grouped_root_help_has_boxes(self) -> None:
+        stdout, _, _ = _capture_grouped([])
+        assert "\u256d" in stdout, "Root help missing box top-left corner"
+        assert "\u256f" in stdout, "Root help missing box bottom-right corner"
+        assert "Commands" in stdout
+
+    def test_grouped_root_help_has_usage(self) -> None:
+        stdout, _, _ = _capture_grouped([])
+        assert "Usage:" in stdout
+
+    def test_grouped_root_help_has_options(self) -> None:
+        stdout, _, _ = _capture_grouped([])
+        assert "Options" in stdout
+        assert "--help" in stdout
+
+    def test_main_root_help_exits_zero(self) -> None:
+        stdout, _, rc = _capture_main([])
+        assert rc == 0
+
+    def test_main_root_help_has_boxes(self) -> None:
+        stdout, _, _ = _capture_main([])
+        assert "Commands" in stdout
+        assert "\u256d" in stdout
+
+    def test_grouped_help_flag_exits_zero(self) -> None:
+        stdout, _, rc = _capture_grouped(["--help"])
+        assert rc == 0
+        assert "Commands" in stdout
+
+    def test_main_help_flag_exits_zero(self) -> None:
+        stdout, _, rc = _capture_main(["--help"])
+        assert rc == 0
+        assert "Commands" in stdout
+
+
+class TestBootcampStyleGroupHelp:
+    """Group help must have Usage, Options, Commands sections."""
+
+    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    def test_group_help_has_usage(self, group_id: str) -> None:
+        stdout, _, _ = _capture_grouped([group_id])
+        assert "Usage:" in stdout
+
+    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    def test_group_help_has_options(self, group_id: str) -> None:
+        stdout, _, _ = _capture_grouped([group_id])
+        assert "Options" in stdout
+        assert "--help" in stdout
+
+    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    def test_group_help_has_commands_box(self, group_id: str) -> None:
+        stdout, _, _ = _capture_grouped([group_id])
+        assert "Commands" in stdout
+        assert "\u256d" in stdout
+
+    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    def test_group_help_flag(self, group_id: str) -> None:
+        stdout, _, rc = _capture_grouped([group_id, "--help"])
+        assert rc == 0
+        assert "Commands" in stdout
+
+
+class TestBootcampStyleCommandHelp:
+    """Command-level help must be clean and contain expected info."""
+
+    def test_job_create_help(self) -> None:
+        stdout, _, rc = _capture_grouped(["job", "create", "--help"])
+        assert rc == 0
+        assert "prompt" in stdout.lower()
+        assert "Arguments" in stdout or "Options" in stdout
+
+    def test_patch_apply_help(self) -> None:
+        stdout, _, rc = _capture_grouped(["patch", "apply", "--help"])
+        assert rc == 0
+        assert "job_id" in stdout.lower()
+        assert "intent_id" in stdout.lower()
+
+    def test_brain_graph_help(self) -> None:
+        stdout, _, rc = _capture_grouped(["brain", "graph", "--help"])
+        assert rc == 0
+        assert "--json" in stdout
+        assert "job_id" in stdout.lower()
+
+    def test_test_run_help(self) -> None:
+        stdout, _, rc = _capture_grouped(["test", "run", "--help"])
+        assert rc == 0
+        assert "job_id" in stdout.lower()
+
+
+class TestBootcampStyleErrors:
+    """Error output must be clean, no traceback, no argparse noise."""
+
+    def test_unknown_group_clean(self) -> None:
+        stdout, stderr, rc = _capture_grouped(["bogus"])
+        assert rc == 2
+        combined = stdout + stderr
+        assert "Traceback" not in combined
+        assert "Error" in combined
+
+    def test_unknown_subcommand_clean(self) -> None:
+        stdout, stderr, rc = _capture_grouped(["job", "bogus"])
+        assert rc == 2
+        combined = stdout + stderr
+        assert "Traceback" not in combined
+        assert "Error" in combined
+
+    def test_missing_args_shows_command_help(self) -> None:
+        stdout, stderr, rc = _capture_grouped(["job", "create"])
+        assert rc == 2
+        combined = stdout + stderr
+        assert "Traceback" not in combined
+        # Should show command help with prompt info
+        assert "prompt" in combined.lower()
+
+    def test_no_old_flat_error_format(self) -> None:
+        """Error must not say 'invalid choice' (old argparse)."""
+        stdout, stderr, rc = _capture_grouped(["bogus"])
+        combined = stdout + stderr
+        assert "invalid choice" not in combined
+
+    def test_no_traceback_on_bad_nested_args(self) -> None:
+        stdout, stderr, rc = _capture_grouped(["brain", "graph", "--bogus-flag"])
+        combined = stdout + stderr
+        assert "Traceback" not in combined
+
+
+class TestRootHelpNoOldFlatCommands:
+    """Root help must not show any old flat command names."""
+
+    OLD_FLAT = [
+        "create-job", "list-jobs", "show-job", "plan-job", "plan-job-local",
+        "attach-repo", "set-permission", "show-permissions",
+        "run-next-task-local", "run-tests-local", "discover-commands",
+        "brain-node", "brain-view", "list-patch-intents", "show-patch-intent",
+        "approve-patch-intent", "apply-patch-intent", "reject-patch-intent",
+        "create-project", "list-projects", "attach-project-repo",
+        "attach-project-job", "show-project", "project-context",
+        "run-contract", "token-policy",
+    ]
+
+    def test_grouped_no_old_flat(self) -> None:
+        stdout, _, _ = _capture_grouped([])
+        for old in self.OLD_FLAT:
+            assert old not in stdout, f"Root help still shows old flat command: {old}"
+
+    def test_main_no_old_flat(self) -> None:
+        stdout, _, _ = _capture_main([])
+        for old in self.OLD_FLAT:
+            assert old not in stdout, f"Main root help still shows old flat command: {old}"

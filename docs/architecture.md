@@ -2898,6 +2898,22 @@ Dispatch table maps `command_id` to handler lambdas that call `_cmd_*` functions
 - **Grouped CLI reduces Human Drift.**  Group membership, action classification, and permission flags are visible at the catalog level — humans can audit the full surface without reading handler code.
 - **Bootcamp/Pi are references, not integrated.**  The Bootcamp CLI (Typer) informed the UX design.  No Typer dependency added — stdlib argparse only.
 - **CLI grouping is an orientation/safety layer, not a change to execution semantics.**  Handlers, orchestration, and permission logic are unchanged.
+- **No pi.dev or Bootcamp worker execution is implemented.**  Bootcamp is a UX reference only.
+
+### Bootcamp-style Help (Steps 41–43)
+
+Steps 41–43 add a Bootcamp-style help renderer (`apps/cli/help_renderer.py`) that produces Unicode box-drawing output visually close to Typer/Rich without adding dependencies.
+
+- `remedy` — root help with Options and Commands boxes, exits 0
+- `remedy <group>` — group help with Options and Commands boxes, exits 0
+- `remedy <group> <command> --help` — command help with Arguments and Options boxes, exits 0
+- `remedy --help` — same as bare `remedy`
+- `remedy <group> --help` — same as bare `remedy <group>`
+- `python -m apps.cli.main` — shows grouped root help (bridge)
+
+Error UX is clean: no argparse noise, no tracebacks. Invalid commands show `Error:` with usage hint.
+
+Root help shows only the 8 groups — no old flat commands appear.
 
 ### Groups
 
