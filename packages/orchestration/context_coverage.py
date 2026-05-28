@@ -108,8 +108,8 @@ _SIGNALS: list[dict[str, Any]] = [
         "key": "project_memory",
         "label": "Project memory",
         "weight": 10,
-        "v0_always_false": True,
-        "v0_detail_absent": "MemPalace not connected yet",
+        "v0_always_false": False,
+        "v0_detail_absent": "",
     },
     {
         "key": "mcp_tool_context",
@@ -241,6 +241,21 @@ def derive_context_coverage(
             return present, (
                 "approval decisions recorded" if present
                 else "no approval decisions yet"
+            )
+
+        if key == "project_memory":
+            try:
+                from packages.memory.local_gateway import has_approved_memory
+                project_id = job.metadata.get("project_id")
+                present = has_approved_memory(
+                    project_id=project_id,
+                    job_id=str(job.id) if not project_id else None,
+                )
+            except Exception:
+                present = False
+            return present, (
+                "approved memory entries present" if present
+                else "no approved memory entries"
             )
 
         # Should never reach here for defined signals

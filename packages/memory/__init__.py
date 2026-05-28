@@ -1,16 +1,12 @@
 """
-packages.memory — Reserved namespace for Remedy memory and MemPalace integration.
+packages.memory — Local Memory Gateway for Remedy.
 
-Planned purpose:
-    MemPalace implementation: persistent, structured agent memory across job
-    sessions.  Includes memory indexing, retrieval, and eviction strategies
-    for long-running autonomous workflows.
+Provides persistent, structured memory storage across job sessions.
+Storage is JSONL-based at <DATA_DIR>/memory/<project_id>/memory.jsonl
+or <DATA_DIR>/memory/unscoped/<job_id>.jsonl.
 
-Current status:
-    Reserved namespace — no implementation in this step.
-    The MemPalace interface is acknowledged in project export (export_project_json)
-    as "not_implemented".
+Public API::
 
-Future layer:
-    MemPalace memory backend (planned post-Step 35).
+    from packages.memory.local_gateway import store_memory, recall_memory, list_memory
+    from packages.memory.models import MemoryEntry
 """

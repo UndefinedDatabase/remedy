@@ -333,7 +333,7 @@ class TestContextCoverageSignals:
         sig = next(s for s in snap.signals if s.key == "approval_decisions")
         assert sig.present
 
-    def test_project_memory_always_absent_in_v0(self):
+    def test_project_memory_absent_when_no_approved_entries(self):
         job = _make_job()
         job.metadata["target_repo"] = "/repo"
         snap = derive_context_coverage(
@@ -343,7 +343,7 @@ class TestContextCoverageSignals:
         )
         sig = next(s for s in snap.signals if s.key == "project_memory")
         assert not sig.present
-        assert "MemPalace" in sig.detail
+        assert "no approved memory" in sig.detail
 
     def test_mcp_tool_context_always_absent_in_v0(self):
         job = _make_job()

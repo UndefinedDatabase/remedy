@@ -88,6 +88,7 @@ GROUPS: dict[str, GroupDef] = {
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph."),
     "policy": GroupDef("policy", "Policy", "Inspect execution policies."),
     "worker": GroupDef("worker", "Worker", "List worker provider specs."),
+    "memory": GroupDef("memory", "Memory", "Store and recall project memory."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -191,6 +192,22 @@ CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(_JOB_ID,),
         related=("job.create", "job.run-next"),
+    ),
+    CommandEntry(
+        command_id="job.run-loop",
+        group_id="job",
+        subcommand="run-loop",
+        description="Run the agent execution loop for a job.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--max-cycles", "Maximum cycles (default: 3)", required=False, is_option=True, default="3"),
+            ArgDef("--auto-approve-low-risk", "Auto-approve low-risk intents", required=False, is_option=True, default="false"),
+            ArgDef("--no-tests", "Skip test runs", required=False, is_option=True, default="false"),
+        ),
+        may_execute_commands=True,
+        requires_permission=True,
+        related=("job.run-next", "job.plan"),
     ),
 
     # ── project ──────────────────────────────────────────────────────────
@@ -430,6 +447,50 @@ CATALOG: tuple[CommandEntry, ...] = (
         description="List known worker provider specs.",
         action_class="read_only",
         args=(_JSON_OPT,),
+        supports_json=True,
+    ),
+
+    # ── memory ───────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="memory.store",
+        group_id="memory",
+        subcommand="store",
+        description="Store a memory entry (key=value).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("key", "Memory key"),
+            ArgDef("value", "Memory value"),
+            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            ArgDef("--tags", "Comma-separated tags", required=False, is_option=True),
+            ArgDef("--approved", "Mark as approved", required=False, is_option=True, default="false"),
+        ),
+    ),
+    CommandEntry(
+        command_id="memory.recall",
+        group_id="memory",
+        subcommand="recall",
+        description="Recall memory entries by keyword.",
+        action_class="read_only",
+        args=(
+            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            ArgDef("--keyword", "Search keyword", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="memory.list",
+        group_id="memory",
+        subcommand="list",
+        description="List all memory entries for a scope.",
+        action_class="read_only",
+        args=(
+            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            _JSON_OPT,
+        ),
         supports_json=True,
     ),
 

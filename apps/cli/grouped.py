@@ -67,6 +67,20 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--task-description", default=None, dest="task_description", help=arg.help)
             elif arg.name == "--description":
                 parser.add_argument("--description", default=None, help=arg.help)
+            elif arg.name == "--job":
+                parser.add_argument("--job", default=None, help=arg.help)
+            elif arg.name == "--tags":
+                parser.add_argument("--tags", default=None, help=arg.help)
+            elif arg.name == "--keyword":
+                parser.add_argument("--keyword", default=None, help=arg.help)
+            elif arg.name == "--approved":
+                parser.add_argument("--approved", default="false", help=arg.help)
+            elif arg.name == "--max-cycles":
+                parser.add_argument("--max-cycles", default="3", dest="max_cycles", help=arg.help)
+            elif arg.name == "--auto-approve-low-risk":
+                parser.add_argument("--auto-approve-low-risk", action="store_true", dest="auto_approve_low_risk", help=arg.help)
+            elif arg.name == "--no-tests":
+                parser.add_argument("--no-tests", action="store_true", dest="no_tests", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:
