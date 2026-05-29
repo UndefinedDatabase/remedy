@@ -476,20 +476,22 @@ def build_project_brain(
                         type=ET_BLOCKED,
                     ))
 
-        elif ev_type == "agent_loop_inspected":
+        elif ev_type == "agent_loop_inspected" or ev_type.startswith("agent_loop_"):
             meta = ev.get("metadata", {})
             al_id = f"agent_loop:{agent_loop_idx}"
             agent_loop_idx += 1
             stage = str(meta.get("stage", ev.get("stage", "unknown")))
             decision = str(meta.get("decision", ev.get("decision", "unknown")))
             cycle = _safe_int(meta.get("cycle", ev.get("cycle")))
+            outcome = str(ev.get("outcome", ""))
             nodes.append(BrainNode(
                 id=al_id,
                 type=NT_AGENT_LOOP,
-                label=f"agent loop: {stage}/{decision}",
-                status=decision,
+                label=f"agent loop: {ev_type.replace('agent_loop_', '')}",
+                status=outcome or decision,
                 ref_id=str(job.id),
-                metadata={"stage": stage, "decision": decision, "cycle": cycle},
+                metadata={"stage": stage, "decision": decision, "cycle": cycle,
+                           "event_type": ev_type},
             ))
             edges.append(BrainEdge(
                 source=al_id,
@@ -751,7 +753,31 @@ def build_project_brain(
     except Exception:
         pass
 
-    # ── 14. Sort ─────────────────────────────────────────────────────────────
+    # ── 14. Context Pack node (from context_pack_created events) ─────────────
+    cp_events = [e for e in events if e.get("event") == "context_pack_created"]
+    if cp_events:
+        latest_cp = cp_events[-1]
+        cp_meta = latest_cp.get("metadata", {})
+        cp_node_id = "context_pack"
+        nodes.append(BrainNode(
+            id=cp_node_id,
+            type=NT_CONTEXT_PACK,
+            label=f"Context Pack ({cp_meta.get('mode', 'compact')})",
+            status="active",
+            metadata={
+                "mode": str(cp_meta.get("mode", "compact")),
+                "budget": int(cp_meta.get("budget", 0)),
+                "estimated_tokens": int(cp_meta.get("estimated_tokens", 0)),
+                "truncated": bool(cp_meta.get("truncated", False)),
+                "section_count": int(cp_meta.get("section_count", 0)),
+            },
+        ))
+        edges.append(BrainEdge(
+            source=job_node_id, target=cp_node_id,
+            type=ET_HAS_CONTEXT_PACK,
+        ))
+
+    # ── 15. Sort ─────────────────────────────────────────────────────────────
     sorted_nodes = tuple(
         sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
     )

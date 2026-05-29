@@ -449,7 +449,11 @@ def _loop_meta(
     outcome: str,
     reason: str,
 ) -> dict[str, Any]:
-    """Build the exact safe metadata dict for every agent_loop_* event."""
+    """Build the exact safe metadata dict for every agent_loop_* event.
+
+    Returns (outcome, metadata) where outcome is a top-level RunEvent field
+    and metadata contains exactly 10 keys (no outcome duplication).
+    """
     intents = list_patch_intents(job)
     pending_approvals = sum(
         1 for i in intents if i["state"] == APPROVAL_PENDING
@@ -462,12 +466,11 @@ def _loop_meta(
         if t.status in (RunState.COMPLETED, RunState.FAILED)
         and t.inputs.get("task_type") == "run_tests"
     )
-    return {
+    meta = {
         "cycle": cycle,
         "max_cycles": max_cycles,
         "decision": state.decision.value if state else "start",
         "stage": state.current_stage.value if state else "start",
-        "outcome": outcome,
         "reason": reason,
         "task_count": len(job.tasks),
         "pending_task_count": sum(
@@ -477,6 +480,7 @@ def _loop_meta(
         "applied_count": applied,
         "test_run_count": test_runs,
     }
+    return outcome, meta
 
 
 def run_agent_loop(
@@ -503,11 +507,10 @@ def run_agent_loop(
     data_dir = resolve_data_root()
     log = RunLogWriter(job_id=job.id)
 
-    def _emit(event_name: str, meta: dict[str, Any]) -> None:
-        """Log an agent_loop event. outcome at top level + in metadata."""
-        top_outcome = meta.get("outcome", "")
-        rest = {k: v for k, v in meta.items() if k != "outcome"}
-        log.log(event_name, outcome=top_outcome, **rest)
+    def _emit(event_name: str, outcome_and_meta: tuple[str, dict[str, Any]]) -> None:
+        """Log an agent_loop event. outcome at top level, metadata has 10 keys."""
+        outcome, meta = outcome_and_meta
+        log.log(event_name, outcome=outcome, **meta)
 
     _emit("agent_loop_started", _loop_meta(
         job, None, cycle=0, max_cycles=max_cycles,

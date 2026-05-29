@@ -260,7 +260,7 @@ def export_project_json(
             "scope": ctx_snap.scope,
             "present_signal_count": ctx_snap.present_signal_count,
             "missing_signal_count": ctx_snap.missing_signal_count,
-            "v0_max_score": 85,
+            "v0_max_score": 95,
         },
         "future_layers": {
             "repo_brain": "not_implemented",

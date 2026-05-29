@@ -353,8 +353,8 @@ def summarize_context_coverage(snapshot: ContextCoverageSnapshot) -> str:
         "  It is not model confidence and not a guarantee of correctness."
     )
     parts.append(
-        "  In v0, the maximum score is 85% — Project Memory (+10) and"
-        " MCP/tool context (+5) are not yet implemented."
+        "  In v0, the maximum score is 95% — only MCP/tool context (+5)"
+        " is not yet implemented. Local memory v0 is active."
     )
     parts.append("")
 

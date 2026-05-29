@@ -1004,7 +1004,7 @@ class TestSafeInt:
 
 
 class TestV0Ceiling:
-    """The maximum v0 score is 85 (project_memory +10 + mcp +5 always absent)."""
+    """Without approved memory, max score is 85. With memory, max is 95 (only MCP absent)."""
 
     def _fully_populated_job(self):
         job = _make_job()
@@ -1032,7 +1032,7 @@ class TestV0Ceiling:
         )
         assert snap.score == 85
 
-    def test_summary_mentions_85_ceiling(self):
+    def test_summary_mentions_95_ceiling(self):
         job = self._fully_populated_job()
         snap = derive_context_coverage(
             job,
@@ -1040,13 +1040,13 @@ class TestV0Ceiling:
             constitution=_mock_constitution(),
         )
         text = summarize_context_coverage(snap)
-        assert "85%" in text
+        assert "95%" in text
 
     def test_summary_mentions_v0_ceiling_explanation(self):
         snap = derive_context_coverage(_make_job(), [])
         text = summarize_context_coverage(snap)
         assert "v0" in text
-        assert "maximum" in text.lower() or "85%" in text
+        assert "maximum" in text.lower() or "95%" in text
 
     def test_json_score_is_integer(self):
         job = self._fully_populated_job()

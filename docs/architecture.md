@@ -1828,9 +1828,9 @@ Incremental hardening of Context Coverage v0.
 
 `context_coverage.py` now uses a `_safe_int(value, default=0)` helper for all artifact-metadata integer fields (starting with `patch_intent_count`).  Any value that cannot be parsed by `int()` — strings like `"not-an-int"`, empty lists, `None` — returns `default` instead of raising `ValueError` or `TypeError`.
 
-### v0 maximum score = 85
+### v0 maximum score = 95
 
-With local memory v0, `project_memory` (weight 10) becomes present when approved memory entries exist.  Only `mcp_tool_context` (weight 5) remains always absent in v0, so the maximum achievable score is **95** (with approved memory) or **85** (without).  The score is never normalized to 100.
+With local memory v0 active, `project_memory` (weight 10) becomes present when approved memory entries exist.  Only `mcp_tool_context` (weight 5) remains always absent in v0, so the maximum achievable score is **95** (with approved memory) or **85** (without).  The score is never normalized to 100.  MemPalace is not yet implemented; local memory v0 is the active backend.
 
 ### Stale repo warning in `remedy context`
 
@@ -1983,7 +1983,7 @@ Project-scoped in v0.  Aggregates linked jobs and repo paths only.  No repo scan
 | `project_memory` | 10 | present if approved local memory entries exist |
 | `mcp_tool_context` | 5 | **always absent in v0** — MCP Skill Registry not connected |
 
-`score = round(present_weight / 100 * 100)`, clamped 0..100.  **v0 maximum = 85.**
+`score = round(present_weight / 100 * 100)`, clamped 0..100.  **v0 maximum = 95** (only MCP absent).
 
 ### Public API
 
@@ -2036,7 +2036,7 @@ No raw prompts, artifact content, approval reasons, event messages, diff preview
   "missing_signal_count": int,
   "repo_count": int,
   "job_count": int,
-  "v0_max_score": 85,
+  "v0_max_score": 95,
   "signals": [{"key", "label", "weight", "present", "detail"}, ...],
   "missing_keys": ["<key>", ...]
 }
@@ -2052,7 +2052,7 @@ No raw prompts, artifact content, approval reasons, event messages, diff preview
   "scope": "project",
   "present_signal_count": int,
   "missing_signal_count": int,
-  "v0_max_score": 85
+  "v0_max_score": 95
 }
 ```
 
