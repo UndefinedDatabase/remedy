@@ -251,6 +251,9 @@ def derive_context_coverage(
                     project_id=project_id,
                     job_id=str(job.id) if not project_id else None,
                 )
+                # Also check job-scoped when project_id is set
+                if not present and project_id:
+                    present = has_approved_memory(job_id=str(job.id))
             except Exception:
                 present = False
             return present, (

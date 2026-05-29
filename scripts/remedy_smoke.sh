@@ -1050,9 +1050,9 @@ print('    memory list --json: OK (version=1, count=' + str(data['count']) + ')'
     # 12g. Memory store --approved + brain memory nodes (Step 46.2)
     # -------------------------------------------------------------------------
     echo "--- 12g. Memory store --approved + brain memory nodes"
-    remedy memory store "approved_smoke_key" "approved_smoke_val" --approved --tags "smoke,approved"
+    remedy memory store "approved_smoke_key" "approved_smoke_val" --approved --tags "smoke,approved" --job "${JOB_ID}"
     # Verify approved entry exists and approved=true
-    APPROVED_JSON="$(remedy memory list --json)"
+    APPROVED_JSON="$(remedy memory list --job "${JOB_ID}" --json)"
     python3 -c "
 import json, sys
 def chk(cond, msg):

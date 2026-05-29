@@ -1,13 +1,13 @@
 # Plan
 
 ## Goal
-Steps 50.1-53: Contract closure, causal proof graph, continue-from-node, project brain aggregate
+Steps 50.2, 51, 52, 53: Memory brain contract closure, causal proof graph, continue-from-node, project brain aggregate
 
 ## Current Step
-All steps complete.
+Step 50.2 complete. Verifying Steps 51-53.
 
 ## Tasks
-- [x] Step 50.1: Contract Closure for Steps 47-50
-- [x] Step 51: Causal Proof Graph v1 (patch_apply_proof node, causal edges, file why CLI)
-- [x] Step 52: Continue-from-node v0 (brain continue CLI, child job, provenance)
-- [x] Step 53: Project Brain Aggregate v0 (cross-job graph, project brain CLI)
+- [x] Step 50.2: Fix memory brain node bug (smoke 12g scope mismatch)
+- [ ] Step 51: Verify/fix Causal Proof Graph v1
+- [ ] Step 52: Verify/fix Continue-from-node v0
+- [ ] Step 53: Verify/fix Project Brain Aggregate v0

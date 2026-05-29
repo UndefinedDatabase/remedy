@@ -590,6 +590,11 @@ def build_project_brain(
             project_id=project_id,
             job_id=str(job.id) if not project_id else None,
         )
+        # Also check job-scoped memory when project_id is set
+        if project_id:
+            job_entries = list_memory(job_id=str(job.id))
+            seen_ids = {me.id for me in mem_entries}
+            mem_entries += [e for e in job_entries if e.id not in seen_ids]
         for me in mem_entries:
             if not me.approved:
                 continue
