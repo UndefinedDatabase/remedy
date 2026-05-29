@@ -71,6 +71,14 @@ def _build_job_summary(job: Job, mode: str) -> PackSection:
             f"job:{str(job.id)[:8]} state:{job.state.value} "
             f"tasks:{len(job.tasks)} prompt:{job.user_prompt[:60]}"
         )
+    elif mode == "standard":
+        content = (
+            f"Job: {str(job.id)} ({job.name})\n"
+            f"State: {job.state.value}\n"
+            f"Prompt: {job.user_prompt[:200]}\n"
+            f"Tasks: {len(job.tasks)}\n"
+            f"Artifacts: {len(job.artifacts)}"
+        )
     else:
         content = (
             f"Job: {str(job.id)[:8]} ({job.name})\n"
@@ -225,7 +233,7 @@ def build_context_pack(
     mode: str = "compact",
 ) -> ContextPack:
     """Build a token-budget-aware context pack."""
-    if mode not in ("compact", "caveman"):
+    if mode not in ("compact", "caveman", "standard"):
         mode = "compact"
 
     # Build all sections

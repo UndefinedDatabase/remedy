@@ -1345,6 +1345,70 @@ class TestSmokeScriptText:
             "smoke step 12d must verify worker_adapter node in brain graph"
         )
 
+    # --- Step 53.1: Project brain includes child job (step 12p) ---------------
+
+    def test_smoke_project_brain_checks_child_job(self):
+        text = _script_text()
+        assert "child" in text.lower() and "project brain" in text.lower(), (
+            "smoke 12p must verify child job in project brain aggregate"
+        )
+
+    # --- Step 54: Patch revert (step 12q) ------------------------------------
+
+    def test_smoke_has_revert_step(self):
+        text = _script_text()
+        assert "patch revert" in text, (
+            "smoke must call remedy patch revert"
+        )
+
+    def test_smoke_revert_checks_noop(self):
+        text = _script_text()
+        assert "second revert" in text.lower() or "noop" in text, (
+            "smoke must verify second revert is noop"
+        )
+
+    # --- Step 55: Change set (step 12r) --------------------------------------
+
+    def test_smoke_has_change_list(self):
+        text = _script_text()
+        assert "change list" in text, (
+            "smoke must call remedy change list"
+        )
+
+    def test_smoke_change_list_checks_schema(self):
+        text = _script_text()
+        assert "'changes'" in text or '"changes"' in text, (
+            "smoke must verify changes key in change list JSON"
+        )
+
+    # --- Step 56: Token economy (step 12s) -----------------------------------
+
+    def test_smoke_has_token_ordering(self):
+        text = _script_text()
+        assert "caveman" in text and "compact" in text and "standard" in text, (
+            "smoke must check all three context pack modes"
+        )
+
+    def test_smoke_has_worker_recommend(self):
+        text = _script_text()
+        assert "worker recommend" in text, (
+            "smoke must call remedy worker recommend"
+        )
+
+    def test_smoke_worker_recommend_checks_schema(self):
+        text = _script_text()
+        assert "recommended_worker" in text and "token_mode" in text, (
+            "smoke must verify worker recommend JSON schema"
+        )
+
+    # --- Step 54-56: Brain nodes (step 12t) ----------------------------------
+
+    def test_smoke_brain_checks_change_set_node(self):
+        text = _script_text()
+        assert "change_set" in text, (
+            "smoke must verify change_set node in brain graph"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)

@@ -102,12 +102,37 @@ def continue_from_node(
     # Link child to project if inherited
     if parent_project_id:
         try:
-            from packages.orchestration.project_registry import attach_job_to_project
-            attach_job_to_project(parent_project_id, str(child_id))
-        except Exception:
-            pass  # Best-effort project linking
+            from packages.orchestration.project_registry import (
+                ProjectNotFoundError,
+                attach_job,
+                load_project,
+                save_project,
+            )
+            project = load_project(UUID(parent_project_id))
+            attach_job(project, str(child_id))
+            save_project(project)
+        except (ValueError, FileNotFoundError, OSError, ProjectNotFoundError) as exc:
+            import sys
+            print(
+                f"WARNING: could not link child job to project "
+                f"{parent_project_id[:8]}: {exc}",
+                file=sys.stderr,
+            )
 
-    # Emit run-log event on child
+    # Emit run-log event on parent job
+    parent_log = RunLogWriter(job_id=parent_job.id)
+    parent_log.log(
+        "continued_from_node",
+        outcome="spawned_child",
+        parent_job_id=str(parent_job.id),
+        child_job_id=str(child_id),
+        origin_node_id=node_id,
+        origin_node_type=node.type,
+        inherited_project=bool(parent_project_id),
+        inherited_repo=bool(parent_repo),
+    )
+
+    # Emit run-log event on child job
     child_log = RunLogWriter(job_id=child_id)
     child_log.log(
         "continued_from_node",

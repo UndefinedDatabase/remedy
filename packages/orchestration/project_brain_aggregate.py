@@ -44,6 +44,7 @@ NT_REPO = "repo"
 ET_CONTAINS_JOB = "contains_job"
 ET_CONTAINS_REPO = "contains_repo"
 ET_TARGETS_REPO = "targets_repo"
+ET_CONTINUED_AS = "continued_as"
 
 
 @dataclass(frozen=True)
@@ -159,6 +160,21 @@ def build_project_brain_aggregate(
                 target=repo_map[target_repo],
                 type=ET_TARGETS_REPO,
             ))
+
+    # Continuation edges from run-log events
+    job_id_set = {str(j.id) for j in jobs}
+    for jid_str, events in all_events.items():
+        for ev in events:
+            if ev.get("event") == "continued_from_node" and ev.get("outcome") == "spawned_child":
+                child_id = ev.get("metadata", {}).get("child_job_id", "")
+                origin = ev.get("metadata", {}).get("origin_node_id", "")
+                if child_id in job_id_set:
+                    source = origin if origin else jid_str
+                    edges.append(BrainEdge(
+                        source=source,
+                        target=child_id,
+                        type=ET_CONTINUED_AS,
+                    ))
 
     # Summary counts
     summary = {

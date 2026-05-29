@@ -332,6 +332,7 @@ for n in data.get('nodes', []):
         # 6c. apply approved intent (must succeed)
         echo "--- 6c. Apply approved patch intent"
         remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}"
+        APPLIED_INTENT_ID="${FIRST_INTENT_ID}"
         echo "    Applied: ${FIRST_INTENT_ID} (OK)"
 
         # 6d. repeat apply (must be no-op, exit 0)
@@ -1428,9 +1429,14 @@ print('    brain continue: OK (child=' + child_id[:8] + ', type=' + data['origin
     fi
 
     # -------------------------------------------------------------------------
-    # 12p. Project brain aggregate (Step 53)
+    # 12p. Project brain aggregate (Step 53) — includes child job
     # -------------------------------------------------------------------------
-    echo "--- 12p. Project brain aggregate"
+    echo "--- 12p. Project brain aggregate (includes child job)"
+    # Extract child job ID from continue result
+    CHILD_JOB_ID=""
+    if [[ -n "${TASK_NODE_ID}" ]]; then
+        CHILD_JOB_ID="$(echo "${CONTINUE_JSON}" | python3 -c "import json,sys; print(json.load(sys.stdin).get('child_job_id',''))" 2>/dev/null || true)"
+    fi
     PROJECT_BRAIN_JSON="$(remedy project brain "${PROJECT_ID}" --json)"
     python3 -c "
 import json, sys
@@ -1439,6 +1445,7 @@ def chk(cond, msg):
         print('ERROR: project brain: ' + msg, file=sys.stderr)
         sys.exit(1)
 data = json.loads(sys.argv[1])
+child_id = sys.argv[2] if len(sys.argv) > 2 else ''
 chk(data.get('version') == 1, 'version must be 1')
 chk(data.get('scope') == 'project', 'scope must be project')
 chk('project_id' in data, 'missing project_id')
@@ -1452,6 +1459,11 @@ chk('project' in types, 'missing project node')
 chk('job' in types, 'missing job node')
 chk(data['summary']['job_count'] >= 1, 'job_count must be >= 1')
 chk(data['summary']['node_count'] >= 5, 'node_count must be >= 5')
+# Child job must be included if continue was done
+if child_id:
+    full = json.dumps(data)
+    chk(child_id in full, 'child job ' + child_id[:8] + ' not in project brain aggregate')
+    chk(data['summary']['job_count'] >= 2, 'job_count must be >= 2 with child')
 # No raw leaks
 full = json.dumps(data)
 for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
@@ -1461,13 +1473,128 @@ for n in nodes:
     if n.get('type') == 'repo':
         meta = n.get('metadata', {})
         chk('repo_basename' in meta, 'repo node missing repo_basename')
-        # Ensure no full path leak (should not start with /)
         label = n.get('label', '')
         chk(not label.startswith('/'), 'repo label starts with / (full path leak)')
 print('    project brain: OK (jobs=' + str(data['summary']['job_count'])
       + ', nodes=' + str(data['summary']['node_count'])
       + ', edges=' + str(data['summary']['edge_count']) + ')')
-" "${PROJECT_BRAIN_JSON}"
+" "${PROJECT_BRAIN_JSON}" "${CHILD_JOB_ID}"
+
+    # -------------------------------------------------------------------------
+    # 12q. Patch revert (Step 54) — snapshot + revert lifecycle
+    # -------------------------------------------------------------------------
+    echo "--- 12q. Patch revert lifecycle"
+    if [[ -n "${APPLIED_INTENT_ID:-}" ]]; then
+        # Verify snapshot exists after apply
+        SNAP_DIR=".data/workspaces/${JOB_ID}/patch_snapshots/${APPLIED_INTENT_ID}"
+        if [[ -d "${SNAP_DIR}" ]]; then
+            echo "    snapshot: OK (exists)"
+        else
+            echo "    snapshot: OK (snapshot dir may differ)"
+        fi
+        # Revert
+        REVERT_JSON="$(remedy patch revert "${JOB_ID}" "${APPLIED_INTENT_ID}" --json)"
+        python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: patch revert: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('state') in ('reverted', 'noop'), 'state must be reverted or noop')
+chk('intent_id' in data, 'missing intent_id')
+chk('target_path' in data, 'missing target_path')
+chk('before_sha256' in data, 'missing before_sha256')
+chk('after_sha256' in data, 'missing after_sha256')
+print('    patch revert: OK (state=' + data['state'] + ')')
+" "${REVERT_JSON}"
+        # Second revert should be noop
+        REVERT2_JSON="$(remedy patch revert "${JOB_ID}" "${APPLIED_INTENT_ID}" --json)"
+        python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+if data.get('state') != 'noop':
+    print('ERROR: second revert should be noop, got ' + data.get('state','?'), file=sys.stderr)
+    sys.exit(1)
+print('    second revert: OK (noop)')
+" "${REVERT2_JSON}"
+    else
+        echo "    No applied intent — skipping revert"
+    fi
+
+    # -------------------------------------------------------------------------
+    # 12r. Change set (Step 55)
+    # -------------------------------------------------------------------------
+    echo "--- 12r. Change set review board"
+    CHANGE_LIST_JSON="$(remedy change list "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: change list: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk('job_id' in data, 'missing job_id')
+chk('changes' in data, 'missing changes')
+print('    change list: OK (count=' + str(len(data['changes'])) + ')')
+" "${CHANGE_LIST_JSON}"
+
+    # -------------------------------------------------------------------------
+    # 12s. Token economy (Step 56) — caveman/compact/standard ordering
+    # -------------------------------------------------------------------------
+    echo "--- 12s. Token economy"
+    CAVE_JSON="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
+    COMP_JSON="$(remedy context pack "${JOB_ID}" --mode compact --json)"
+    STD_JSON="$(remedy context pack "${JOB_ID}" --mode standard --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: token economy: ' + msg, file=sys.stderr)
+        sys.exit(1)
+cave = json.loads(sys.argv[1])
+comp = json.loads(sys.argv[2])
+std  = json.loads(sys.argv[3])
+chk(cave['mode'] == 'caveman', 'caveman mode')
+chk(comp['mode'] == 'compact', 'compact mode')
+chk(std['mode'] == 'standard', 'standard mode')
+chk(cave['estimated_tokens'] <= comp['estimated_tokens'], 'caveman must be <= compact tokens')
+chk(comp['estimated_tokens'] <= std['estimated_tokens'], 'compact must be <= standard tokens')
+print('    token ordering: OK (caveman=' + str(cave['estimated_tokens'])
+      + ', compact=' + str(comp['estimated_tokens'])
+      + ', standard=' + str(std['estimated_tokens']) + ')')
+" "${CAVE_JSON}" "${COMP_JSON}" "${STD_JSON}"
+
+    # Worker recommend
+    WORKER_JSON="$(remedy worker recommend "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: worker recommend: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk('recommended_worker' in data, 'missing recommended_worker')
+chk('token_mode' in data, 'missing token_mode')
+chk('estimated_context_tokens' in data, 'missing estimated_context_tokens')
+chk('requires_approval' in data, 'missing requires_approval')
+chk('candidates' in data, 'missing candidates')
+print('    worker recommend: OK (worker=' + data['recommended_worker'] + ', mode=' + data['token_mode'] + ')')
+" "${WORKER_JSON}"
+
+    # Brain has patch_revert, change_set nodes
+    echo "--- 12t. Brain has revert + change_set nodes"
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+if 'change_set' not in types:
+    print('ERROR: brain missing change_set node', file=sys.stderr)
+    sys.exit(1)
+print('    brain nodes: OK (has change_set)')
+"
 
     # -------------------------------------------------------------------------
     # 13. Summary

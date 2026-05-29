@@ -121,6 +121,8 @@ NT_WORKER_ADAPTER      = "worker_adapter"
 NT_AUTONOMY_READINESS  = "autonomy_readiness"
 NT_CONTEXT_PACK        = "context_pack"
 NT_PATCH_APPLY_PROOF   = "patch_apply_proof"
+NT_PATCH_REVERT        = "patch_revert"
+NT_CHANGE_SET          = "change_set"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -152,6 +154,9 @@ ET_PROOF_VERIFIED_BY     = "proof_verified_by"
 ET_INFORMED_MEMORY       = "informed_memory"
 ET_SUMMARIZES            = "summarizes"
 ET_CONTINUED_AS          = "continued_as"
+ET_REVERTED_BY           = "reverted_by"
+ET_INCLUDES_INTENT       = "includes_intent"
+ET_INCLUDES_APPLY        = "includes_apply"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -894,7 +899,7 @@ def build_project_brain(
             ))
 
     # ── 17. Child job continuation edges (from continued_from_node events) ──
-    cont_events = [e for e in events if e.get("event") == "continued_from_node"]
+    cont_events = [e for e in events if e.get("event") == "continued_from_node" and e.get("outcome") == "spawned_child"]
     for ev in cont_events:
         meta = ev.get("metadata", {})
         child_id = str(meta.get("child_job_id", ""))
@@ -919,7 +924,80 @@ def build_project_brain(
                     type=ET_CONTINUED_AS,
                 ))
 
-    # ── 18. Sort ─────────────────────────────────────────────────────────────
+    # ── 18. Patch Revert nodes (from patch_intent_reverted events) ──────────
+    revert_events = [e for e in events if e.get("event") == "patch_intent_reverted"]
+    for ev in revert_events:
+        meta = ev.get("metadata", {})
+        iid = str(meta.get("intent_id", ""))
+        if not iid:
+            continue
+        revert_node_id = f"revert:{iid}"
+        nodes.append(BrainNode(
+            id=revert_node_id,
+            type=NT_PATCH_REVERT,
+            label=f"revert: {meta.get('target_path', '')}",
+            status=str(meta.get("outcome", "reverted")),
+            ref_id=iid,
+            metadata={
+                "intent_id": iid,
+                "target_path": str(meta.get("target_path", "")),
+                "outcome": str(meta.get("outcome", "")),
+                "existed_before": bool(meta.get("existed_before", False)),
+                "bytes_written": int(meta.get("bytes_written", 0)),
+                "line_count": int(meta.get("line_count", 0)),
+                "before_sha256": str(meta.get("before_sha256", "")),
+                "after_sha256": str(meta.get("after_sha256", "")),
+            },
+        ))
+        # Edge: patch_apply --reverted_by--> patch_revert
+        apply_node_id = f"apply:{iid}"
+        if any(n.id == apply_node_id for n in nodes):
+            edges.append(BrainEdge(
+                source=apply_node_id,
+                target=revert_node_id,
+                type=ET_REVERTED_BY,
+            ))
+
+    # ── 19. Change Set nodes (derived from intents) ──────────────────────
+    try:
+        from packages.orchestration.change_set import derive_change_set
+        change_entries = derive_change_set(job, events)
+        for ce in change_entries:
+            cs_node_id = f"change_set:{ce.intent_id}"
+            nodes.append(BrainNode(
+                id=cs_node_id,
+                type=NT_CHANGE_SET,
+                label=f"change: {ce.target_path}",
+                status=ce.status,
+                ref_id=ce.intent_id,
+                metadata={
+                    "intent_id": ce.intent_id,
+                    "target_path": ce.target_path,
+                    "risk": ce.risk,
+                    "status": ce.status,
+                    "approval_state": ce.approval.get("state", ""),
+                    "apply_outcome": ce.apply.get("outcome", ""),
+                    "test_status": ce.test.get("status", ""),
+                    "revert_outcome": ce.revert.get("outcome", ""),
+                },
+            ))
+            # Edges to related nodes
+            pi_node_id = f"pi:{ce.intent_id}"
+            if any(n.id == pi_node_id for n in nodes):
+                edges.append(BrainEdge(
+                    source=cs_node_id, target=pi_node_id,
+                    type=ET_INCLUDES_INTENT,
+                ))
+            apply_nid = f"apply:{ce.intent_id}"
+            if any(n.id == apply_nid for n in nodes):
+                edges.append(BrainEdge(
+                    source=cs_node_id, target=apply_nid,
+                    type=ET_INCLUDES_APPLY,
+                ))
+    except Exception:
+        pass  # Change set derivation is optional
+
+    # ── 20. Sort ─────────────────────────────────────────────────────────────
     sorted_nodes = tuple(
         sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
     )

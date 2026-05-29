@@ -1,13 +1,15 @@
 # Plan
 
 ## Goal
-Steps 50.2, 51, 52, 53: Memory brain contract closure, causal proof graph, continue-from-node, project brain aggregate
+Steps 53.1, 54, 55, 56: Project Brain Aggregate Closure, Apply Snapshot/Revert, Change Set Review, Token Economy v1
 
 ## Current Step
 All steps complete.
 
 ## Tasks
-- [x] Step 50.2: Fix memory brain node bug (smoke 12g scope mismatch)
-- [x] Step 51: Causal Proof Graph v1 — verified (patch_apply_proof, 6 causal edges, file why CLI)
-- [x] Step 52: Continue-from-node v0 — verified (brain continue CLI, child job provenance)
-- [x] Step 53: Project Brain Aggregate v0 — verified (project brain CLI, cross-job graph, basename safety)
+- [x] Step 53.1: Fix continue_from_node project linking (attach_job_to_project → load/attach/save)
+- [x] Step 54: Apply Snapshot + Revert v0 (patch_revert.py, snapshot storage, revert CLI)
+- [x] Step 55: Change Set / Review Board v0 (change_set.py, change list/show CLI)
+- [x] Step 56: Token Economy v1 (standard mode, worker recommend, token ordering)
+- [x] Smoke update: 12q-12t sections for revert, change, token, worker, brain nodes
+- [x] Tests: 2542 passing

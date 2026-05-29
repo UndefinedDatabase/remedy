@@ -91,6 +91,7 @@ GROUPS: dict[str, GroupDef] = {
     "memory": GroupDef("memory", "Memory", "Store and recall project memory."),
     "readiness": GroupDef("readiness", "Readiness", "Inspect autonomy readiness."),
     "context": GroupDef("context", "Context", "Context pack and coverage."),
+    "change": GroupDef("change", "Change", "Review change sets (proof chain view)."),
     "file": GroupDef("file", "File", "File-level provenance and tracing."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
@@ -330,6 +331,18 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("patch.approve", "test.run"),
     ),
 
+    CommandEntry(
+        command_id="patch.revert",
+        group_id="patch",
+        subcommand="revert",
+        description="Revert a previously applied patch intent using stored snapshot.",
+        action_class="apply_write",
+        args=(_JOB_ID, _INTENT_ID, _JSON_OPT),
+        supports_json=True,
+        may_mutate_repo=True,
+        related=("patch.apply",),
+    ),
+
     # ── test ─────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="test.discover",
@@ -480,6 +493,17 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
 
+    CommandEntry(
+        command_id="worker.recommend",
+        group_id="worker",
+        subcommand="recommend",
+        description="Recommend a worker for a job (local-first, no execution).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("worker.list", "policy.token"),
+    ),
+
     # ── memory ───────────────────────────────────────────────────────────
     CommandEntry(
         command_id="memory.store",
@@ -570,10 +594,32 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--budget", "Max tokens (default: 2000)", required=False, is_option=True, default="2000"),
-            ArgDef("--mode", "Pack mode: compact or caveman (default: compact)", required=False, is_option=True, default="compact"),
+            ArgDef("--mode", "Pack mode: caveman, compact, or standard (default: compact)", required=False, is_option=True, default="compact"),
             _JSON_OPT,
         ),
         supports_json=True,
+    ),
+
+    # ── change ───────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="change.list",
+        group_id="change",
+        subcommand="list",
+        description="List change sets for a job (proof chain review).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("change.show", "patch.list"),
+    ),
+    CommandEntry(
+        command_id="change.show",
+        group_id="change",
+        subcommand="show",
+        description="Show a single change set in detail.",
+        action_class="read_only",
+        args=(_JOB_ID, _INTENT_ID, _JSON_OPT),
+        supports_json=True,
+        related=("change.list",),
     ),
 
     # ── file ─────────────────────────────────────────────────────────────

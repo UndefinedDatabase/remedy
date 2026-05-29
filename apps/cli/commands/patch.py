@@ -159,10 +159,42 @@ def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: boo
         print(format_apply_result(result))
 
 
+def _cmd_revert_patch_intent(job_id_str: str, intent_id: str, *, json_output: bool = False) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.patch_revert import format_revert_result, revert_patch_intent
+
+    result = revert_patch_intent(job, intent_id)
+    if result.state == "blocked":
+        print(f"Error: {result.blocked_reason}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(_json.dumps({
+            "state": result.state, "intent_id": result.intent_id,
+            "target_path": result.target_path, "action": result.action,
+            "outcome": result.outcome, "existed_before": result.existed_before,
+            "bytes_written": result.bytes_written, "line_count": result.line_count,
+            "before_sha256": result.before_sha256, "after_sha256": result.after_sha256,
+        }, sort_keys=True))
+    else:
+        print(format_revert_result(result))
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "patch.list": lambda args: _cmd_list_patch_intents(args.job_id),
     "patch.show": lambda args: _cmd_show_patch_intent(args.job_id, args.intent_id),
     "patch.approve": lambda args: _cmd_approve_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
     "patch.reject": lambda args: _cmd_reject_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
     "patch.apply": lambda args: _cmd_apply_patch_intent(args.job_id, args.intent_id, json_output=getattr(args, "json", False)),
+    "patch.revert": lambda args: _cmd_revert_patch_intent(args.job_id, args.intent_id, json_output=getattr(args, "json", False)),
 }
