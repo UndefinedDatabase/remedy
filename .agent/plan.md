@@ -1,18 +1,13 @@
 # Plan
 
 ## Goal
-Steps 51-53: Causal Proof Graph, Continue-from-node, Project Brain Aggregate
+Steps 50.1-53: Contract closure, causal proof graph, continue-from-node, project brain aggregate
 
 ## Current Step
-Step 51: Causal Proof Graph v1
+All steps complete.
 
 ## Tasks
-- [ ] Step 51: Causal Proof Graph v1
-  - Add NT_PATCH_APPLY_PROOF node type + causal edge types
-  - Create proof nodes from patch_apply_proof_recorded events
-  - Add causal chain edges (approved_by, allowed_apply, recorded_proof, verified_by, informed_memory, summarizes)
-  - Add `file` group + `file.why` command (file_provenance.py)
-  - Brain detail for patch_apply_proof
-  - Tests + smoke
-- [ ] Step 52: Continue-from-node v0
-- [ ] Step 53: Project Brain Aggregate v0
+- [x] Step 50.1: Contract Closure for Steps 47-50
+- [x] Step 51: Causal Proof Graph v1 (patch_apply_proof node, causal edges, file why CLI)
+- [x] Step 52: Continue-from-node v0 (brain continue CLI, child job, provenance)
+- [x] Step 53: Project Brain Aggregate v0 (cross-job graph, project brain CLI)
