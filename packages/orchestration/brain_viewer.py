@@ -412,7 +412,7 @@ __STATIC_FALLBACK__
   <span>selected <span id="diag-sel">none</span></span>
   <span>status <span id="diag-status">static-fallback</span></span>
 </div>
-<div id="ftr">Brain Viewer v0 &middot; read-only &middot; consumes remedy brain --json and remedy brain-node --json &middot; foundation for React&nbsp;Flow / Three.js / AG-UI / A2UI</div>
+<div id="ftr">Brain Viewer v0 &middot; read-only &middot; consumes remedy brain --json and remedy brain node --json &middot; foundation for React&nbsp;Flow / Three.js / AG-UI / A2UI</div>
 <script id="viewer-data" type="application/json">__VIEWER_DATA_JSON__</script>
 <script>
 function _vErr(cat,msg){

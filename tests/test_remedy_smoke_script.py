@@ -496,7 +496,7 @@ class TestSmokeScriptText:
         text = _script_text()
         assert "mktemp" in text, (
             "smoke explicit-task sanity must use mktemp to create a temp file "
-            "for remedy show-job output"
+            "for remedy job show output"
         )
 
     # ------------------------------------------------------------------

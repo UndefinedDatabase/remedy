@@ -38,13 +38,13 @@ remedy_smoke() {
     # 0. Verify group help for all groups
     # -------------------------------------------------------------------------
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker dev; do
+    for grp in job project patch test brain policy worker memory dev; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
         }
     done
-    echo "    Group help: OK (job project patch test brain policy worker dev)"
+    echo "    Group help: OK (job project patch test brain policy worker memory dev)"
 
     # -------------------------------------------------------------------------
     # 1. Create target repo
@@ -1013,6 +1013,38 @@ for ev in tp_events:
     chk(got == tp_required, 'token_policy_inspected keys: got=' + str(sorted(got)) + ' want=' + str(sorted(tp_required)))
 print('    run-log schema: OK  rc_events=' + str(len(rc_events)) + '  tp_events=' + str(len(tp_events)))
 " "${JOB_ID}" "${RUNS_ROOT}"
+
+    # -------------------------------------------------------------------------
+    # 12f. Memory CLI contract (Step 46.1 Part B)
+    # -------------------------------------------------------------------------
+    echo "--- 12f. Memory CLI contract"
+    remedy memory store "smoke_key" "smoke_value" --tags "smoke,test"
+    RECALL_JSON="$(remedy memory recall --keyword smoke --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: memory recall: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1, got ' + repr(data.get('version')))
+chk('entries' in data, 'missing entries key')
+chk('count' in data, 'missing count key')
+print('    memory recall --json: OK (version=1, count=' + str(data['count']) + ')')
+" "${RECALL_JSON}"
+
+    LIST_JSON="$(remedy memory list --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: memory list: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1, got ' + repr(data.get('version')))
+chk('entries' in data, 'missing entries key')
+print('    memory list --json: OK (version=1, count=' + str(data['count']) + ')')
+" "${LIST_JSON}"
 
     # -------------------------------------------------------------------------
     # 13. Summary

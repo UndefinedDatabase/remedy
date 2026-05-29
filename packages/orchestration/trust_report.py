@@ -301,17 +301,17 @@ def summarize_trust_report(
             unapplied = n_approved - n_applied
             parts.append(
                 f"  {_INFO} {unapplied} approved intent(s) not yet applied. "
-                f"Apply with: remedy apply-patch-intent <job_id> <intent_id>"
+                f"Apply with: remedy patch apply <job_id> <intent_id>"
             )
         elif n_approved:
             parts.append(
                 f"  {_INFO} Note: pending intents must be decided before apply. "
-                f"Apply with: remedy apply-patch-intent <job_id> <intent_id>"
+                f"Apply with: remedy patch apply <job_id> <intent_id>"
             )
         else:
             parts.append(
                 "  Note: intents must be approved before apply. "
-                "Use: remedy approve-patch-intent <job_id> <intent_id>"
+                "Use: remedy patch approve <job_id> <intent_id>"
             )
 
     # ── 8. Test runs ──────────────────────────────────────────────────────────
@@ -436,7 +436,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if not job.tasks:
         return (
             f"  {_NEXT} Plan this job:\n"
-            f"      remedy plan-job-local {job.id}"
+            f"      remedy job plan {job.id}"
         )
 
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
@@ -445,15 +445,15 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if not ws_allowed and pending:
         return (
             f"  {_NEXT} Grant workspace permission, then run:\n"
-            f"      remedy set-permission {job.id} allow workspace_write\n"
-            f"      remedy run-next-task-local {job.id}"
+            f"      remedy job permit {job.id} workspace_write allow\n"
+            f"      remedy job run-next {job.id}"
         )
 
     if signals["has_interrupted"] and pending:
         return (
             f"  {_NEXT} Inspect the timeline, then resume:\n"
-            f"      remedy timeline {job.id}\n"
-            f"      remedy run-next-task-local {job.id}"
+            f"      remedy brain timeline {job.id}\n"
+            f"      remedy job run-next {job.id}"
         )
 
     intents = list_patch_intents(job)
@@ -467,25 +467,25 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if high_risk_pending and pending:
         return (
             f"  {_NEXT} Review and decide on patch intents, then continue:\n"
-            f"      remedy list-patch-intents {job.id}\n"
-            f"      remedy run-next-task-local {job.id}"
+            f"      remedy patch list {job.id}\n"
+            f"      remedy job run-next {job.id}"
         )
 
     if n_approved and not pending and not n_pending_intents:
         return (
             f"  {_NEXT} All patch intents approved. Apply with:\n"
-            f"      remedy apply-patch-intent {job.id} <intent_id>"
+            f"      remedy patch apply {job.id} <intent_id>"
         )
 
     if pending:
         return (
             f"  {_NEXT} Continue execution:\n"
-            f"      remedy run-next-task-local {job.id}"
+            f"      remedy job run-next {job.id}"
         )
 
     return (
         f"  {_NEXT} No pending tasks. Inspect generated files\n"
-        f"      or create a new job: remedy create-job \"<prompt>\""
+        f"      or create a new job: remedy job create \"<prompt>\""
     )
 
 

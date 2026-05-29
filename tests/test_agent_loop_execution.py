@@ -111,7 +111,7 @@ class TestRunAgentLoopEvents:
                 if line.strip():
                     events.append(json.loads(line))
         event_types = [e["event"] for e in events]
-        assert "cycle_started" in event_types
+        assert "agent_loop_cycle_started" in event_types
 
 
 class TestRunLoopCLI:

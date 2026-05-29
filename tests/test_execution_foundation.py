@@ -244,7 +244,7 @@ class TestCLIRunContract:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "run-contract", str(job.id), "--json",
+            "remedy", "policy", "contract", str(job.id), "--json",
         ])
         from apps.cli.main import main
         with pytest.raises(SystemExit, match="0|None") if False else _no_exit(monkeypatch):
@@ -261,7 +261,7 @@ class TestCLIRunContract:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "run-contract", str(job.id), "--json",
+            "remedy", "policy", "contract", str(job.id), "--json",
         ])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
@@ -276,7 +276,7 @@ class TestCLITokenPolicy:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "token-policy", str(job.id), "--json",
+            "remedy", "policy", "token", str(job.id), "--json",
         ])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
@@ -291,7 +291,7 @@ class TestCLITokenPolicy:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "token-policy", str(job.id), "--json",
+            "remedy", "policy", "token", str(job.id), "--json",
         ])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
@@ -305,7 +305,7 @@ class TestCLITokenPolicy:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "token-policy", str(job.id), "--json",
+            "remedy", "policy", "token", str(job.id), "--json",
         ])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
@@ -318,7 +318,7 @@ class TestCLITokenPolicy:
 
 class TestCLIWorkers:
     def test_json_output_is_pure_json(self, tmp_path, monkeypatch, capsys) -> None:
-        monkeypatch.setattr(sys, "argv", ["remedy", "workers", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "worker", "list", "--json"])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
             main()
@@ -330,7 +330,7 @@ class TestCLIWorkers:
         assert len(data["providers"]) >= 5
 
     def test_json_has_no_secret_leaks(self, tmp_path, monkeypatch, capsys) -> None:
-        monkeypatch.setattr(sys, "argv", ["remedy", "workers", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "worker", "list", "--json"])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
             main()

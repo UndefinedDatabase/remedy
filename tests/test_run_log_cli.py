@@ -107,7 +107,7 @@ class TestPlanJobLocalRunLog:
             ),
             patch("packages.orchestration.llm_planner.annotate_planning_result"),
         ):
-            from apps.cli.main import _cmd_plan_job_local
+            from apps.cli.commands.job import _cmd_plan_job_local
 
             _cmd_plan_job_local(str(job.id))
 
@@ -129,7 +129,7 @@ class TestPlanJobLocalRunLog:
             ),
             patch("packages.orchestration.llm_planner.annotate_planning_result"),
         ):
-            from apps.cli.main import _cmd_plan_job_local
+            from apps.cli.commands.job import _cmd_plan_job_local
 
             _cmd_plan_job_local(str(job.id))
 
@@ -151,7 +151,7 @@ class TestPlanJobLocalRunLog:
             ),
             patch("packages.orchestration.llm_planner.annotate_planning_result"),
         ):
-            from apps.cli.main import _cmd_plan_job_local
+            from apps.cli.commands.job import _cmd_plan_job_local
 
             _cmd_plan_job_local(str(job.id))
 
@@ -175,7 +175,7 @@ class TestPlanJobLocalRunLog:
             ),
             patch("packages.orchestration.llm_planner.annotate_planning_result"),
         ):
-            from apps.cli.main import _cmd_plan_job_local
+            from apps.cli.commands.job import _cmd_plan_job_local
 
             _cmd_plan_job_local(str(job.id))
 
@@ -200,7 +200,7 @@ class TestPlanJobLocalRunLog:
             ),
             patch("packages.orchestration.llm_planner.annotate_planning_result"),
         ):
-            from apps.cli.main import _cmd_plan_job_local
+            from apps.cli.commands.job import _cmd_plan_job_local
 
             _cmd_plan_job_local(str(job.id))
 
@@ -225,7 +225,7 @@ class TestPlanJobLocalRunLog:
             ),
             patch("packages.orchestration.llm_planner.annotate_planning_result"),
         ):
-            from apps.cli.main import _cmd_plan_job_local
+            from apps.cli.commands.job import _cmd_plan_job_local
 
             _cmd_plan_job_local(str(job.id))
 
@@ -244,7 +244,7 @@ class TestRunNextTaskLocalNoop:
         job = Job(name="test", state=RunState.PENDING)
         save_job(job)
 
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         _cmd_run_next_task_local(str(job.id))
 
@@ -256,7 +256,7 @@ class TestRunNextTaskLocalNoop:
         job = Job(name="test", state=RunState.PENDING)
         save_job(job)
 
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         _cmd_run_next_task_local(str(job.id))
 
@@ -269,7 +269,7 @@ class TestRunNextTaskLocalNoop:
         job = Job(name="test", state=RunState.PENDING)
         save_job(job)
 
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         _cmd_run_next_task_local(str(job.id))
 
@@ -359,7 +359,7 @@ class TestRunNextTaskLocalSuccess:
                 side_effect=fake_finalize,
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             _cmd_run_next_task_local(str(job.id))
 
@@ -495,7 +495,7 @@ class TestRunNextTaskVerificationFailure:
                 side_effect=fake_finalize,
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -607,7 +607,7 @@ class TestRunNextTaskRepoPermissionDenied:
                 side_effect=fake_finalize,
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             _cmd_run_next_task_local(str(job.id))
 
@@ -729,7 +729,7 @@ class TestRunNextTaskPatchIntentCreated:
                 return_value=[],
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             _cmd_run_next_task_local(str(job.id))
 
@@ -761,7 +761,7 @@ class TestRunNextTaskWorkspaceWriteDenialTerminal:
         set_permission(job, Capability.workspace_write, allow=False)
         save_job(job)
 
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit):
             _cmd_run_next_task_local(str(job.id))
@@ -823,7 +823,7 @@ class TestRunNextTaskImportErrorTerminal:
         with (
             patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -838,7 +838,7 @@ class TestRunNextTaskImportErrorTerminal:
         with (
             patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -855,7 +855,7 @@ class TestRunNextTaskImportErrorTerminal:
         with (
             patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -872,7 +872,7 @@ class TestRunNextTaskImportErrorTerminal:
         with (
             patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -912,7 +912,7 @@ class TestRunNextTaskValidationErrorTerminal:
                 side_effect=real_exc,
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -934,7 +934,7 @@ class TestRunNextTaskValidationErrorTerminal:
                 side_effect=real_exc,
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -956,7 +956,7 @@ class TestRunNextTaskValidationErrorTerminal:
             patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
             patch("packages.orchestration.task_runner.run_next_task", side_effect=real_exc),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -979,7 +979,7 @@ class TestRunNextTaskValidationErrorTerminal:
             patch("packages.providers.ollama_builder.provider.OllamaBuilder", builder_cls),
             patch("packages.orchestration.task_runner.run_next_task", side_effect=real_exc),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1005,7 +1005,7 @@ class TestRunNextTaskValueErrorTerminal:
                 side_effect=ValueError("bad config"),
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1026,7 +1026,7 @@ class TestRunNextTaskValueErrorTerminal:
                 side_effect=ValueError("bad config"),
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1046,7 +1046,7 @@ class TestRunNextTaskValueErrorTerminal:
             patch("packages.orchestration.task_runner.run_next_task",
                   side_effect=ValueError("bad config")),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1072,7 +1072,7 @@ class TestRunNextTaskGenericExceptionTerminal:
                 side_effect=RuntimeError("something exploded"),
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1093,7 +1093,7 @@ class TestRunNextTaskGenericExceptionTerminal:
                 side_effect=RuntimeError("something exploded"),
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1115,7 +1115,7 @@ class TestRunNextTaskGenericExceptionTerminal:
                 side_effect=RuntimeError("something exploded"),
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1138,7 +1138,7 @@ class TestRunNextTaskGenericExceptionTerminal:
                 side_effect=RuntimeError(secret_msg),
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1158,7 +1158,7 @@ class TestRunNextTaskGenericExceptionTerminal:
             patch("packages.orchestration.task_runner.run_next_task",
                   side_effect=RuntimeError("boom")),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
                 _cmd_run_next_task_local(str(job.id))
@@ -1199,7 +1199,7 @@ class TestRunNextTaskBuilderNoChange:
                 return_value=run_result,
             ),
         ):
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             _cmd_run_next_task_local(str(job.id))
 
@@ -1270,7 +1270,7 @@ class TestPlanJobLocalPlanningFailed:
                 side_effect=exc_to_raise,
             ),
         ):
-            from apps.cli.main import _cmd_plan_job_local
+            from apps.cli.commands.job import _cmd_plan_job_local
 
             with pytest.raises(SystemExit):
                 _cmd_plan_job_local(str(job.id))

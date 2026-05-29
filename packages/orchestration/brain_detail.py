@@ -343,8 +343,8 @@ def _detail_job(
 
     next_actions: list[str] = []
     if pending:
-        next_actions.append(f"remedy run-next-task-local {job_id_str}")
-    next_actions.append(f"remedy trust-report {job_id_str}")
+        next_actions.append(f"remedy job run-next {job_id_str}")
+    next_actions.append(f"remedy brain trust {job_id_str}")
     next_actions.append(f"remedy brain {job_id_str}")
 
     return BrainNodeDetail(
@@ -401,7 +401,7 @@ def _detail_task(
 
     next_actions: list[str] = []
     if task.status.value == "pending":
-        next_actions.append(f"remedy run-next-task-local {job_id_str}")
+        next_actions.append(f"remedy job run-next {job_id_str}")
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -515,12 +515,12 @@ def _detail_patch_intent(
     next_actions: list[str] = []
     if state == APPROVAL_PENDING:
         next_actions.append(
-            f"remedy approve-patch-intent {job_id_str} {intent_id}"
+            f"remedy patch approve {job_id_str} {intent_id}"
         )
         next_actions.append(
-            f"remedy reject-patch-intent {job_id_str} {intent_id}"
+            f"remedy patch reject {job_id_str} {intent_id}"
         )
-    next_actions.append(f"remedy show-patch-intent {job_id_str} {intent_id}")
+    next_actions.append(f"remedy patch show {job_id_str} {intent_id}")
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -648,8 +648,8 @@ def _detail_blocker(
     )
 
     next_actions = [
-        f"remedy set-permission {job_id_str} allow {capability}",
-        f"remedy show-permissions {job_id_str}",
+        f"remedy job permit {job_id_str} {capability} allow",
+        f"remedy job permissions {job_id_str}",
     ]
 
     evidence = [
@@ -902,7 +902,7 @@ def _detail_context_coverage(
         next_actions=(
             f"remedy context {job_id_str[:8]}",
             f"remedy brain {job_id_str[:8]}",
-            f"remedy trust-report {job_id_str[:8]}",
+            f"remedy brain trust {job_id_str[:8]}",
         ),
         redaction_notes=(
             "Does not include raw prompt, file content, artifact content, "
@@ -959,7 +959,7 @@ def _detail_patch_apply(
         explanation=explanation,
         why_it_exists=(
             "Records the successful application of an approved patch intent.",
-            "Created when remedy apply-patch-intent was run.",
+            "Created when remedy patch apply was run.",
         ),
         connected_to=tuple(connected),
         evidence=tuple(evidence),
@@ -1043,7 +1043,7 @@ def _detail_test_run(
         risk=None,
         explanation=explanation,
         why_it_exists=(
-            "Created when remedy run-tests-local was executed.",
+            "Created when remedy test run was executed.",
             "Records the outcome of a permission-gated test run against the attached repo.",
         ),
         connected_to=tuple(connected),
@@ -1095,7 +1095,7 @@ def _detail_run_contract(
         ),
         affected_files=(),
         next_actions=(
-            "Inspect with `remedy run-contract <job_id>` for full contract details.",
+            "Inspect with `remedy policy contract <job_id>` for full contract details.",
         ),
         redaction_notes=("No sensitive data in run contract.",),
     )
@@ -1137,7 +1137,7 @@ def _detail_token_policy(
         ),
         affected_files=(),
         next_actions=(
-            "Inspect with `remedy token-policy <job_id>` for full policy details.",
+            "Inspect with `remedy policy token <job_id>` for full policy details.",
         ),
         redaction_notes=("No sensitive data in token policy.",),
     )

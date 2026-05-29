@@ -395,7 +395,7 @@ class TestNextBestAction:
         job = _make_job()
         job.tasks.append(_make_pending_task())
         out = summarize_cockpit(job, [])
-        assert "run-next-task-local" in out
+        assert "job run-next" in out
         assert str(job.id) in out
 
     def test_workspace_denied_suggests_set_permission(self):
@@ -403,7 +403,7 @@ class TestNextBestAction:
         job.tasks.append(_make_pending_task())
         set_permission(job, Capability.workspace_write, allow=False)
         out = summarize_cockpit(job, [])
-        assert "set-permission" in out
+        assert "job permit" in out
         assert "workspace_write" in out
 
     def test_no_pending_suggests_inspect(self):
@@ -411,7 +411,7 @@ class TestNextBestAction:
         job.tasks.append(_completed_task())
         out = summarize_cockpit(job, [])
         action_section = out.split("Next best action")[1]
-        assert "create-job" in action_section or "Inspect" in action_section
+        assert "job create" in action_section or "Inspect" in action_section
 
     def test_interrupted_run_suggests_timeline_first(self):
         job = _make_job()
@@ -436,7 +436,7 @@ class TestNextBestAction:
              "metadata": {"intent_count": 1, "risk_levels": ["medium"]}},
         ]
         out = summarize_cockpit(job, events)
-        assert "run-next-task-local" in out
+        assert "job run-next" in out
 
 
 # ---------------------------------------------------------------------------
@@ -588,7 +588,7 @@ class TestCmdCockpit:
     def test_prints_cockpit_for_valid_job(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
 
-        from apps.cli.main import _cmd_cockpit
+        from apps.cli.commands.brain import _cmd_cockpit
 
         _cmd_cockpit(str(job.id))
         out = capsys.readouterr().out
@@ -600,7 +600,7 @@ class TestCmdCockpit:
         job.tasks.append(_make_pending_task())
         save_job(job)
 
-        from apps.cli.main import _cmd_cockpit
+        from apps.cli.commands.brain import _cmd_cockpit
 
         _cmd_cockpit(str(job.id))
         out = capsys.readouterr().out
@@ -609,7 +609,7 @@ class TestCmdCockpit:
     def test_invalid_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        from apps.cli.main import _cmd_cockpit
+        from apps.cli.commands.brain import _cmd_cockpit
 
         with pytest.raises(SystemExit) as exc_info:
             _cmd_cockpit("not-a-uuid")
@@ -618,7 +618,7 @@ class TestCmdCockpit:
     def test_unknown_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        from apps.cli.main import _cmd_cockpit
+        from apps.cli.commands.brain import _cmd_cockpit
 
         with pytest.raises(SystemExit) as exc_info:
             _cmd_cockpit(str(uuid4()))
@@ -628,7 +628,7 @@ class TestCmdCockpit:
         """Cockpit renders job state even when no run logs exist."""
         job = self._save(tmp_path, monkeypatch)
 
-        from apps.cli.main import _cmd_cockpit
+        from apps.cli.commands.brain import _cmd_cockpit
 
         _cmd_cockpit(str(job.id))  # must not raise
         out = capsys.readouterr().out

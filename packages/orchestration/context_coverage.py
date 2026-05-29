@@ -359,8 +359,8 @@ def summarize_context_coverage(snapshot: ContextCoverageSnapshot) -> str:
     parts.append("")
 
     parts.append("── Next useful action " + "─" * 31)
-    parts.append(f"  → remedy brain {snapshot.job_id[:8]}")
-    parts.append(f"  → remedy trust-report {snapshot.job_id[:8]}")
+    parts.append(f"  → remedy brain graph {snapshot.job_id[:8]}")
+    parts.append(f"  → remedy brain trust {snapshot.job_id[:8]}")
 
     return "\n".join(parts)
 

@@ -2,7 +2,7 @@
 Brain CLI JSON + Detail Smoke Hardening tests (Steps 24.1 / 24.2 / 24.3).
 
 These are the final pre-frontend smoke tests that lock the machine-readable JSON
-contract for `remedy brain --json` and `remedy brain-node --json`.  Future
+contract for `remedy brain --json` and `remedy brain node --json`.  Future
 frontend code must consume only these --json outputs and must never parse the
 human-readable text mode.
 
@@ -241,13 +241,13 @@ def _call_brain_json(job_id_str: str, monkeypatch, capsys) -> dict:
     """
     import sys
     from apps.cli.main import main
-    monkeypatch.setattr(sys, "argv", ["remedy", "brain", job_id_str, "--json"])
+    monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", job_id_str, "--json"])
     main()
     return json.loads(capsys.readouterr().out)
 
 
 def _call_brain_node_json(job_id_str: str, node_id: str, monkeypatch, capsys) -> dict:
-    """Run `remedy brain-node <job_id> <node_id> --json` and return parsed JSON.
+    """Run `remedy brain node <job_id> <node_id> --json` and return parsed JSON.
 
     Consumes both stdout and stderr via capsys.readouterr(). Tests that need
     to inspect stderr directly must call main() and capsys.readouterr() themselves
@@ -255,7 +255,7 @@ def _call_brain_node_json(job_id_str: str, node_id: str, monkeypatch, capsys) ->
     """
     import sys
     from apps.cli.main import main
-    monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", job_id_str, node_id, "--json"])
+    monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", job_id_str, node_id, "--json"])
     main()
     return json.loads(capsys.readouterr().out)
 
@@ -394,12 +394,12 @@ class TestBrainNodeJsonAllTypes:
         if events:
             _write_run_events(tmp_path, job.id, events)
 
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         brain = json.loads(capsys.readouterr().out)
         node = next(n for n in brain["nodes"] if n["type"] == node_type)
 
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), node["id"], "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), node["id"], "--json"])
         main()
         return json.loads(capsys.readouterr().out)
 
@@ -511,7 +511,7 @@ class TestBrainJsonRegression:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         captured = capsys.readouterr()
         assert captured.err == ""
@@ -537,7 +537,7 @@ class TestBrainJsonRegression:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id), "--json"])
         main()
         captured = capsys.readouterr()
         assert captured.err == ""
@@ -567,7 +567,7 @@ class TestBrainRunLogSchema:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         capsys.readouterr()
         ev = self._find(_read_run_log(tmp_path, job.id), "project_brain_inspected")
@@ -581,7 +581,7 @@ class TestBrainRunLogSchema:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         capsys.readouterr()
         ev = self._find(_read_run_log(tmp_path, job.id), "project_brain_inspected")
@@ -595,7 +595,7 @@ class TestBrainRunLogSchema:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id)])
         main()
         capsys.readouterr()
         ev = self._find(_read_run_log(tmp_path, job.id), "brain_node_inspected")
@@ -609,7 +609,7 @@ class TestBrainRunLogSchema:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id), "--json"])
         main()
         capsys.readouterr()
         ev = self._find(_read_run_log(tmp_path, job.id), "brain_node_inspected")
@@ -694,7 +694,7 @@ class TestBrainRedactionHardening:
         # could mask a leak by re-encoding sentinel bytes differently.
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), target_node["id"], "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), target_node["id"], "--json"])
         main()
         raw = capsys.readouterr().out
         self._no_sentinels(raw)
@@ -705,7 +705,7 @@ class TestBrainRedactionHardening:
         job = self._poisoned_setup(tmp_path)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -724,7 +724,7 @@ class TestBrainRedactionHardening:
         )
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), target_node["id"]])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), target_node["id"]])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -746,7 +746,7 @@ class TestBrainNodeUnknownNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit) as exc:
             main()
         assert exc.value.code == 1
@@ -757,7 +757,7 @@ class TestBrainNodeUnknownNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
             main()
         assert capsys.readouterr().out == ""
@@ -768,7 +768,7 @@ class TestBrainNodeUnknownNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
             main()
         err = capsys.readouterr().err
@@ -780,7 +780,7 @@ class TestBrainNodeUnknownNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
             main()
         assert "Traceback" not in capsys.readouterr().err
@@ -792,7 +792,7 @@ class TestBrainNodeUnknownNode:
         long_id = "x" * 200
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), long_id, "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), long_id, "--json"])
         with pytest.raises(SystemExit):
             main()
         err = capsys.readouterr().err

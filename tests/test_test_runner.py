@@ -822,7 +822,7 @@ class TestCliRunTestsLocal:
 
         env = {**__import__("os").environ, "REMEDY_DATA_DIR": str(tmp_path)}
         r = sp.run(
-            ["python3", "-m", "apps.cli.main", "create-job", "test job"],
+            ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
             capture_output=True, env=env,
         )
         return r.stdout.decode().strip()
@@ -831,7 +831,7 @@ class TestCliRunTestsLocal:
         env = {"REMEDY_DATA_DIR": str(tmp_path)}
         job_id = self._create_job(tmp_path)
         rc, out, err = self._run_cli(
-            ["run-tests-local", job_id],
+            ["test", "run", job_id],
             env=env,
         )
         assert rc == 1
@@ -847,12 +847,12 @@ class TestCliRunTestsLocal:
         # Grant permission but don't attach repo.
         sp.run(
             ["python3", "-m", "apps.cli.main",
-             "set-permission", job_id, "allow", "repo_test_run"],
+             "job", "permit", job_id, "repo_test_run", "allow"],
             env=env, capture_output=True,
         )
 
         rc, out, err = self._run_cli(
-            ["run-tests-local", job_id],
+            ["test", "run", job_id],
             env=env,
         )
         assert rc == 1

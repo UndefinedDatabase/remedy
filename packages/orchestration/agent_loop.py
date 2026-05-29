@@ -1,24 +1,29 @@
 """
-Agent Loop Contract v1 — Orchestration contract for external agent workflows.
+Agent Loop v0 — Local execution loop for Remedy jobs.
 
-Defines the data models and state derivation logic for coordinating workflows
-such as:
+Defines the data models, state derivation, and execution loop for coordinating
+workflows such as:
 
-    Remedy planner → builder agent → reviewer agent → fix cycle → verifier
+    Remedy planner → builder → reviewer → fix cycle → verifier
 
-IMPORTANT — Scope limitations (v1):
-  No external processes are called.  No Claude Code, Copilot CLI, Git
-  commands, shell commands, MCP tools, network requests, or repo mutations
-  beyond what already exists in Remedy.  This module is a contract and
-  inspection layer only — execution adapters are a future step.
+The ``run_agent_loop`` function drives the loop: plan → build → approve →
+test → repeat.  It delegates actual task execution to the existing CLI
+command handlers and emits structured run-log events at each stage.
 
-Run-log events (only ``agent_loop_inspected`` is emitted; the rest are
-reserved for future adapter steps):
-  agent_loop_inspected       — emitted by ``remedy agent-loop <job_id>``
-  external_agent_proposed    — future: external agent submitted a proposal
-  external_review_recorded   — future: reviewer agent returned findings
-  fix_cycle_requested        — future: fixer agent was requested
-  agent_loop_completed       — future: loop reached a terminal state
+Run-log events emitted by ``run_agent_loop``:
+  agent_loop_started          — loop begins
+  agent_loop_cycle_started    — each cycle begins
+  agent_loop_decision         — decision made (run_next_task, needs_planning)
+  agent_loop_cycle_completed  — each cycle ends
+  agent_loop_paused           — loop paused (needs_approval, blocked, needs_planning)
+  agent_loop_completed        — loop finished (all_done, max_cycles_reached)
+
+Metadata schema (all events):
+  cycle: int             — current cycle number
+  stage: str             — AgentLoopStage value
+  decision: str          — AgentLoopDecision value
+  max_cycles: int        — configured max cycles
+  blocked_reason: str?   — why the loop is blocked (if applicable)
 
 Stale-event policy:
   A historical ``task_run_failed outcome=permission_denied`` event does NOT
@@ -38,6 +43,7 @@ Public API::
     default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
     summarize_agent_loop_state(job, state) -> str
     derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
+    run_agent_loop(job, *, max_cycles=3, auto_approve_low_risk=False, run_tests=True) -> AgentLoopState
 """
 
 from __future__ import annotations
@@ -439,8 +445,8 @@ def run_agent_loop(
     Stops on: needs_approval (paused), blocked, complete, max_cycles reached.
 
     Run-log events emitted:
-      agent_loop_started, cycle_started, agent_loop_decision,
-      cycle_completed, agent_loop_paused, agent_loop_completed
+      agent_loop_started, agent_loop_cycle_started, agent_loop_decision,
+      agent_loop_cycle_completed, agent_loop_paused, agent_loop_completed
     """
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.run_log import RunLogWriter
@@ -463,7 +469,7 @@ def run_agent_loop(
         events = load_run_events(data_dir, job.id)
         state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
 
-        log.log("cycle_started", outcome="cycle_started",
+        log.log("agent_loop_cycle_started", outcome="cycle_started",
                 **{"metadata": {"cycle": cycle, "stage": state.current_stage.value,
                                 "decision": state.decision.value}})
 
@@ -516,7 +522,7 @@ def run_agent_loop(
                     **{"metadata": {"cycle": cycle}})
             return state
 
-        log.log("cycle_completed", outcome="cycle_completed",
+        log.log("agent_loop_cycle_completed", outcome="cycle_completed",
                 **{"metadata": {"cycle": cycle}})
 
     # Max cycles reached

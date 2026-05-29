@@ -380,7 +380,7 @@ def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
         cap = last_terminal.get("metadata", {}).get("capability", "workspace_write")
         return (
             f"  {_NEXT} Grant permission if appropriate:\n"
-            f"      remedy set-permission {job_id_str} allow {cap}"
+            f"      remedy job permit {job_id_str} {cap} allow"
         )
 
     # Patch intent risk: flag review if any medium/high/unknown risk present
@@ -396,10 +396,10 @@ def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
     if pending:
         return (
             f"  {_NEXT} Run the next pending task:\n"
-            f"      remedy run-next-task-local {job_id_str}"
+            f"      remedy job run-next {job_id_str}"
         )
 
     return (
         f"  {_NEXT} No pending tasks. Inspect generated repo/workspace files\n"
-        f"      or create a new job: remedy create-job \"<prompt>\""
+        f"      or create a new job: remedy job create \"<prompt>\""
     )

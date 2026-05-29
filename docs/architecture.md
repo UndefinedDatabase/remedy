@@ -833,13 +833,13 @@ The constitution is never persisted to job metadata — it is loaded fresh and r
 
 ### Agent Loop Contract v1 (Step 22)
 
-`packages/orchestration/agent_loop.py` defines the orchestration contract and data models
-for coordinating external agent workflows.
+`packages/orchestration/agent_loop.py` defines the orchestration contract, data models,
+and local execution loop for coordinating agent workflows.
 
-**Purpose:** This is a contract and inspection layer — not execution.  External tools
-(Claude Code, Copilot CLI, local models) are **not called** in v1.  The module provides
-immutable models, deterministic state derivation, and a CLI inspection command with an
-audit trail.
+**Purpose:** State derivation (read-only, deterministic) plus a local execution loop
+(`run_agent_loop`) that drives plan → build → approve → test → repeat cycles.
+External tools (Claude Code, Copilot CLI) are not called — execution delegates to
+existing CLI command handlers (task runner, test runner).
 
 **Models (all immutable):**
 
@@ -858,6 +858,7 @@ All `AgentAdapterSpec` instances default to `dry_run_only=True` — no execution
 default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
 summarize_agent_loop_state(job, state) -> str
 derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
+run_agent_loop(job, *, max_cycles=3, auto_approve_low_risk=False, run_tests=True) -> AgentLoopState
 ```
 
 **State derivation (deterministic, priority order):**
@@ -899,7 +900,7 @@ Historical `permission_denied` events are **ignored** (treated as stale) when:
 
 Summary output renders `"permission_denied:workspace_write"` as
 `blockers: permission_denied (workspace_write)`.  The next-action hint renders the
-concrete `remedy set-permission <job_id> allow workspace_write` command.
+concrete `remedy job permit <job_id> workspace_write` allow command.
 
 **`agent_loop_inspected` run-log schema (intentionally minimal and fixed):**
 
@@ -920,18 +921,21 @@ concrete `remedy set-permission <job_id> allow workspace_write` command.
 No raw artifact content, prompts, approval reasons, diff previews, command output,
 or exception messages appear in the run log.
 
-**CLI command:** `remedy agent-loop <job_id>` — loads job and run events, derives state,
-prints `summarize_agent_loop_state` output, writes `agent_loop_inspected` run log event.
+**CLI commands:**
+- `remedy dev agent-loop <job_id>` — inspect-only: derives state, prints summary, writes `agent_loop_inspected` event.
+- `remedy job run-loop <job_id>` — execution loop: runs cycles, emits structured events, stops on approval/block/completion.
 
 **Run-log event names:**
 
 | Event | Status | Description |
 |-------|--------|-------------|
-| `agent_loop_inspected` | active — emitted by `remedy agent-loop` | Loop state snapshot |
-| `external_agent_proposed` | reserved | External agent submitted a proposal |
-| `external_review_recorded` | reserved | Reviewer agent returned findings |
-| `fix_cycle_requested` | reserved | Fixer agent was requested |
-| `agent_loop_completed` | reserved | Loop reached a terminal state |
+| `agent_loop_inspected` | active — `dev agent-loop` | Loop state snapshot |
+| `agent_loop_started` | active — `job run-loop` | Loop begins |
+| `agent_loop_cycle_started` | active — `job run-loop` | Each cycle begins |
+| `agent_loop_decision` | active — `job run-loop` | Decision made (run_next_task, needs_planning) |
+| `agent_loop_cycle_completed` | active — `job run-loop` | Each cycle ends |
+| `agent_loop_paused` | active — `job run-loop` | Loop paused (needs_approval, blocked) |
+| `agent_loop_completed` | active — `job run-loop` | Loop finished (all_done, max_cycles_reached) |
 
 **Future adapter examples:** `claude_code_builder`, `copilot_cli_reviewer`,
 `local_model_reviewer`.  All adapters must be `dry_run_only=True` in v1.
@@ -2873,7 +2877,7 @@ Steps 38–40 restructure the Remedy CLI from flat commands (`remedy create-job`
 Source of truth for the entire CLI surface.  Every public command has exactly one `CommandEntry` with:
 
 - `command_id` — `group.subcommand` format (e.g. `brain.graph`)
-- `group_id` — one of 8 groups: `job`, `project`, `patch`, `test`, `brain`, `policy`, `worker`, `dev`
+- `group_id` — one of 9 groups: `job`, `project`, `patch`, `test`, `brain`, `policy`, `worker`, `memory`, `dev`
 - `action_class` — `read_only`, `write_metadata`, `approval_gate`, `apply_write`, `test_execution`, `dev_helper`
 - `supports_json`, `requires_permission`, `may_mutate_repo`, `may_execute_commands` — boolean flags
 - `args` — tuple of `ArgDef` (positional or `--option`)
@@ -2890,11 +2894,15 @@ Builds an argparse tree from the catalog:
 - `remedy <group>` → group help listing subcommands (custom `format_help` override, no argparse noise)
 - `remedy <group> <subcommand> [args]` → dispatch to handler
 
-Dispatch table maps `command_id` to handler lambdas that call `_cmd_*` functions from `apps.cli.main`.  Handlers are lazy-imported to avoid startup cost.
+Dispatch table maps `command_id` to handler lambdas in `apps/cli/commands/*.py` modules.  Handlers are lazy-imported to avoid startup cost.
+
+### `apps/cli/main.py` — Thin Bridge
+
+`main.py` is a thin entry point (<20 lines) that delegates entirely to `apps.cli.grouped.main()`.  It contains no `_cmd_*` definitions, no argparse imports, and no flat command handlers.  All handler code lives in `apps/cli/commands/` (one module per group).
 
 ### Design decisions
 
-- **Old flat commands are not the public contract.**  `apps/cli/main.py` handlers still exist and work, but the grouped CLI is the documented, tested entry point.
+- **Old flat commands are removed.**  `apps/cli/main.py` is a thin bridge; the grouped CLI is the only public contract.
 - **Grouped CLI reduces Human Drift.**  Group membership, action classification, and permission flags are visible at the catalog level — humans can audit the full surface without reading handler code.
 - **Bootcamp/Pi are references, not integrated.**  The Bootcamp CLI (Typer) informed the UX design.  No Typer dependency added — stdlib argparse only.
 - **CLI grouping is an orientation/safety layer, not a change to execution semantics.**  Handlers, orchestration, and permission logic are unchanged.
@@ -2913,7 +2921,7 @@ Steps 41–43 add a Bootcamp-style help renderer (`apps/cli/help_renderer.py`) t
 
 Error UX is clean: no argparse noise, no tracebacks. Invalid commands show `Error:` with usage hint.
 
-Root help shows only the 8 groups — no old flat commands appear.
+Root help shows only the 9 groups — no old flat commands appear.
 
 ### Groups
 
@@ -2926,7 +2934,16 @@ Root help shows only the 8 groups — no old flat commands appear.
 | brain    | 8        | Inspect project brain graph |
 | policy   | 2        | Inspect execution policies |
 | worker   | 1        | List worker provider specs |
+| memory   | 3        | Store and recall project memory |
 | dev      | 2        | Developer utilities |
+
+### Memory CLI Contract v0
+
+`remedy memory store/recall/list` — local key-value memory with project/job scoping.
+
+- `--limit N` on `recall` controls max entries (default 5, wired to `max_results`)
+- JSON output includes `version: 1` and `entries` array
+- `store` enforces redaction blocklist (`MemoryRedactionError` for forbidden patterns)
 
 ### CLI
 

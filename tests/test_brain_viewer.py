@@ -435,7 +435,7 @@ class TestBrainViewerRedaction:
         job = _poisoned_job()
         save_job(job)
         _write_run_events(tmp_path, job.id, _poisoned_events(str(job.id)))
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
 
@@ -455,7 +455,7 @@ class TestBrainViewerRedaction:
         job = _poisoned_job()
         save_job(job)
         _write_run_events(tmp_path, job.id, _poisoned_events(str(job.id)))
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
 
@@ -480,7 +480,7 @@ class TestConstitutionGuard:
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent" / "repo")
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         # Must not raise or exit with non-zero
         main()
         capsys.readouterr()
@@ -494,7 +494,7 @@ class TestConstitutionGuard:
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent" / "repo")
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
         assert (tmp_path / "viewers" / str(job.id) / "index.html").exists()
@@ -508,7 +508,7 @@ class TestConstitutionGuard:
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent" / "repo")
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         err = capsys.readouterr().err
         assert "Warning: project constitution unavailable for viewer." in err
@@ -522,7 +522,7 @@ class TestConstitutionGuard:
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent" / "repo")
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         err = capsys.readouterr().err
         assert "Traceback" not in err
@@ -539,7 +539,7 @@ class TestConstitutionGuard:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()  # no target_repo
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
         assert (tmp_path / "viewers" / str(job.id) / "index.html").exists()
@@ -595,7 +595,7 @@ class TestBrainViewCli:
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", "not-a-uuid"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", "not-a-uuid"])
         with pytest.raises(SystemExit) as exc_info:
             main()
         assert exc_info.value.code == 1
@@ -608,7 +608,7 @@ class TestBrainViewCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         fake_id = str(uuid4())
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", fake_id])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", fake_id])
         with pytest.raises(SystemExit) as exc_info:
             main()
         assert exc_info.value.code == 1
@@ -620,7 +620,7 @@ class TestBrainViewCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         index_path = tmp_path / "viewers" / str(job.id) / "index.html"
         assert index_path.exists()
@@ -632,7 +632,7 @@ class TestBrainViewCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         out = capsys.readouterr().out
         assert "Brain Viewer v0:" in out
@@ -645,7 +645,7 @@ class TestBrainViewCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -660,7 +660,7 @@ class TestBrainViewCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -680,7 +680,7 @@ class TestBrainViewCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -697,7 +697,7 @@ class TestBrainViewCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -714,7 +714,7 @@ class TestBrainViewCli:
         save_job(job)
         cwd = Path.cwd()
         before = set(cwd.glob("*.html")) | set(cwd.glob("*.json"))
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
         after = set(cwd.glob("*.html")) | set(cwd.glob("*.json"))
@@ -855,7 +855,7 @@ class TestBrainViewerDiagnostics:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)

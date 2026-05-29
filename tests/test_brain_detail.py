@@ -1,5 +1,5 @@
 """
-Tests for packages/orchestration/brain_detail.py and the `remedy brain-node` CLI command.
+Tests for packages/orchestration/brain_detail.py and the `remedy brain node` CLI command.
 
 Coverage:
   - BrainNodeDetail frozen model construction
@@ -276,7 +276,7 @@ class TestBuildBrainNodeDetail:
         graph = _build(job)
         job_node = next(n for n in graph.nodes if n.type == NT_JOB)
         detail = build_brain_node_detail(job, graph, job_node.id, [])
-        assert any("trust-report" in a for a in detail.next_actions)
+        assert any("brain trust" in a for a in detail.next_actions)
 
     # ── task node ────────────────────────────────────────────────────────────
 
@@ -372,7 +372,7 @@ class TestBuildBrainNodeDetail:
         graph = _build(job)
         pi_node = next(n for n in graph.nodes if n.type == NT_PATCH_INTENT)
         detail = build_brain_node_detail(job, graph, pi_node.id, [])
-        assert any("approve-patch-intent" in a for a in detail.next_actions)
+        assert any("patch approve" in a for a in detail.next_actions)
 
     # ── approval_decision node ───────────────────────────────────────────────
 
@@ -422,7 +422,7 @@ class TestBuildBrainNodeDetail:
         detail = build_brain_node_detail(job, graph, blk_node.id, events)
         assert detail.node_type == NT_BLOCKER
         assert "workspace_write" in detail.explanation
-        assert any("set-permission" in a for a in detail.next_actions)
+        assert any("job permit" in a for a in detail.next_actions)
 
     def test_blocker_next_action_has_capability(self):
         job = _make_job()
@@ -591,7 +591,7 @@ class TestSummarizeBrainNodeDetail:
         detail = build_brain_node_detail(job, graph, blk_node.id, events)
         out = summarize_brain_node_detail(detail)
         assert "Next actions" in out
-        assert "set-permission" in out
+        assert "job permit" in out
 
 
 # ---------------------------------------------------------------------------
@@ -758,7 +758,7 @@ class TestCLIBrainNode:
         import sys
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
-            monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", "bad-uuid", "some-node"])
+            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", "bad-uuid", "some-node"])
             main()
         assert exc.value.code == 1
 
@@ -767,7 +767,7 @@ class TestCLIBrainNode:
         import sys
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
-            monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(uuid4()), "some-node"])
+            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(uuid4()), "some-node"])
             main()
         assert exc.value.code == 1
 
@@ -778,7 +778,7 @@ class TestCLIBrainNode:
         import sys
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
-            monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), "does-not-exist"])
+            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist"])
             main()
         assert exc.value.code == 1
 
@@ -788,7 +788,7 @@ class TestCLIBrainNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), self._job_node_id(job)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
         out = capsys.readouterr().out
         assert "Remedy Brain Node Detail" in out
@@ -800,7 +800,7 @@ class TestCLIBrainNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), self._job_node_id(job), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -813,7 +813,7 @@ class TestCLIBrainNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), self._job_node_id(job), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
         main()
         data = json.loads(capsys.readouterr().out)
         expected = {
@@ -829,7 +829,7 @@ class TestCLIBrainNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), self._job_node_id(job)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
@@ -840,7 +840,7 @@ class TestCLIBrainNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), self._job_node_id(job)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         events = [
@@ -866,7 +866,7 @@ class TestCLIBrainNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), self._job_node_id(job)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         raw = next(runs_dir.glob("*.jsonl")).read_text()
@@ -880,7 +880,7 @@ class TestCLIBrainNode:
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain-node", str(job.id), self._job_node_id(job), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
         main()
         out = capsys.readouterr().out
         for sentinel in _ALL_SENTINELS:

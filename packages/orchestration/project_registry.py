@@ -202,7 +202,7 @@ def export_project_json(
         }
 
     context_coverage is a compact summary only — full signal detail is
-    available via `remedy project-context <project_id> --json`.
+    available via `remedy project context <project_id> --json`.
 
     Redaction: no artifact content, no approval reasons, no diff previews,
     no event messages, no command output, no raw exception text.

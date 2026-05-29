@@ -265,20 +265,6 @@ class TestMainEntrypointDelegatesGroupDispatch:
         assert data["scope"] == "job"
 
 
-class TestMainEntrypointFlatCommandsStillWork:
-    """Old flat commands must still work when invoked through main."""
-
-    def test_list_jobs_flat(self) -> None:
-        stdout, stderr, rc = _capture_main(["list-jobs"])
-        assert rc == 0, f"list-jobs flat failed: {stderr}"
-
-    def test_workers_flat(self) -> None:
-        stdout, stderr, rc = _capture_main(["workers", "--json"])
-        assert rc == 0, f"workers flat failed: {stderr}"
-        data = json.loads(stdout)
-        assert data["version"] == 1
-
-
 # ---------------------------------------------------------------------------
 # Step 43: Bootcamp-style UX lock tests
 # ---------------------------------------------------------------------------
@@ -417,6 +403,28 @@ class TestBootcampStyleErrors:
         assert "Traceback" not in combined
 
 
+class TestMainPyIsThin:
+    """main.py must be a thin bridge — under 80 lines, no _cmd_ definitions."""
+
+    def test_main_py_under_80_lines(self) -> None:
+        from pathlib import Path
+        main_py = Path(__file__).resolve().parent.parent / "apps" / "cli" / "main.py"
+        lines = main_py.read_text().splitlines()
+        assert len(lines) < 80, f"main.py has {len(lines)} lines — should be < 80"
+
+    def test_main_py_no_cmd_definitions(self) -> None:
+        from pathlib import Path
+        main_py = Path(__file__).resolve().parent.parent / "apps" / "cli" / "main.py"
+        text = main_py.read_text()
+        assert "def _cmd_" not in text, "main.py still contains _cmd_ handler definitions"
+
+    def test_main_py_no_argparse_import(self) -> None:
+        from pathlib import Path
+        main_py = Path(__file__).resolve().parent.parent / "apps" / "cli" / "main.py"
+        text = main_py.read_text()
+        assert "import argparse" not in text, "main.py still imports argparse directly"
+
+
 class TestRootHelpNoOldFlatCommands:
     """Root help must not show any old flat command names."""
 
@@ -440,3 +448,46 @@ class TestRootHelpNoOldFlatCommands:
         stdout, _, _ = _capture_main([])
         for old in self.OLD_FLAT:
             assert old not in stdout, f"Main root help still shows old flat command: {old}"
+
+
+class TestMemoryCLIContract:
+    """Memory CLI JSON must include version: 1 and entries."""
+
+    def test_root_help_shows_memory_group(self) -> None:
+        stdout, _, rc = _capture_grouped([])
+        assert rc == 0
+        assert "memory" in stdout.lower()
+
+    def test_memory_group_help_shows_subcommands(self) -> None:
+        stdout, _, rc = _capture_grouped(["memory", "--help"])
+        assert rc == 0
+        for sub in ("store", "recall", "list"):
+            assert sub in stdout
+
+    def test_recall_json_has_version_1(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_recall
+        from io import StringIO
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_recall(json_output=True)
+        data = json.loads(buf.getvalue())
+        assert data["version"] == 1
+        assert "entries" in data
+
+    def test_list_json_has_version_1(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list
+        from io import StringIO
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_list(json_output=True)
+        data = json.loads(buf.getvalue())
+        assert data["version"] == 1
+        assert "entries" in data
+
+    def test_recall_limit_arg_in_catalog(self) -> None:
+        from apps.cli.command_catalog import get_command
+        cmd = get_command("memory.recall")
+        arg_names = [a.name for a in cmd.args]
+        assert "--limit" in arg_names

@@ -38,6 +38,7 @@ def _cmd_memory_recall(
     project_id: str | None = None,
     job_id: str | None = None,
     keyword: str | None = None,
+    limit: int = 5,
     json_output: bool = False,
 ) -> None:
     from packages.memory.local_gateway import recall_memory
@@ -46,6 +47,7 @@ def _cmd_memory_recall(
         project_id=project_id,
         job_id=job_id,
         keyword=keyword,
+        max_results=limit,
     )
 
     if json_output:
@@ -58,7 +60,7 @@ def _cmd_memory_recall(
             }
             for e in entries
         ]
-        print(_json.dumps({"entries": output, "count": len(output)}, sort_keys=True))
+        print(_json.dumps({"version": 1, "entries": output, "count": len(output)}, sort_keys=True))
     else:
         if not entries:
             scope = f"project={project_id}" if project_id else (f"job={job_id}" if job_id else "global")
@@ -89,7 +91,7 @@ def _cmd_memory_list(
             }
             for e in entries
         ]
-        print(_json.dumps({"entries": output, "count": len(output)}, sort_keys=True))
+        print(_json.dumps({"version": 1, "entries": output, "count": len(output)}, sort_keys=True))
     else:
         if not entries:
             scope = f"project={project_id}" if project_id else (f"job={job_id}" if job_id else "global")
@@ -113,6 +115,7 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
         keyword=getattr(args, "keyword", None),
+        limit=int(getattr(args, "limit", "5")),
         json_output=getattr(args, "json", False),
     ),
     "memory.list": lambda args: _cmd_memory_list(

@@ -718,7 +718,7 @@ class TestRedactionHardening:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._make_job_with_sentinels()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -735,14 +735,14 @@ class TestRedactionHardening:
 class TestCLIAgentLoop:
     def test_invalid_uuid_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         with pytest.raises(SystemExit) as exc:
             _cmd_agent_loop("not-a-uuid")
         assert exc.value.code == 1
 
     def test_unknown_job_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         with pytest.raises(SystemExit) as exc:
             _cmd_agent_loop(str(uuid4()))
         assert exc.value.code == 1
@@ -751,7 +751,7 @@ class TestCLIAgentLoop:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         out = capsys.readouterr().out
         assert "Remedy Agent Loop" in out
@@ -761,7 +761,7 @@ class TestCLIAgentLoop:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -778,7 +778,7 @@ class TestCLIAgentLoop:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -802,7 +802,7 @@ class TestCLIAgentLoop:
             kind=ArtifactKind.BUILDER_PROPOSAL,
         ))
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -813,7 +813,7 @@ class TestCLIAgentLoop:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -826,7 +826,7 @@ class TestCLIAgentLoop:
         intent_id = _add_patch_artifact(job, risk=RISK_MEDIUM)
         set_approval_state(job, intent_id, APPROVAL_APPROVED, reason="top secret reason")
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         out = capsys.readouterr().out
         assert "top secret reason" not in out

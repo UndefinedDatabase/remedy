@@ -1,6 +1,6 @@
 """
 Tests for packages/orchestration/project_context_coverage.py
-and the `remedy project-context` CLI command.
+and the `remedy project context` CLI command.
 
 Coverage:
   - signal weights sum to 100
@@ -636,7 +636,7 @@ class TestRunLogSchema:
         import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.storage import save_job
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
             RemyProject, save_project, attach_job as _attach_job,
         )
@@ -678,7 +678,7 @@ class TestRunLogSchema:
         import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.storage import save_job
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
             RemyProject, save_project, attach_job as _attach_job,
         )
@@ -707,7 +707,7 @@ class TestRunLogSchema:
         import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.storage import save_job
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
             RemyProject, save_project, attach_job as _attach_job,
         )
@@ -728,7 +728,7 @@ class TestRunLogSchema:
 
     def test_no_run_log_written_without_jobs(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
 
         p = RemyProject(name="NoJobProject")
@@ -754,14 +754,14 @@ class TestProjectContextCLI:
 
     def test_invalid_uuid_exits_1(self, tmp_path, monkeypatch):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         with pytest.raises(SystemExit) as exc:
             _cmd_project_context("not-a-uuid")
         assert exc.value.code == 1
 
     def test_invalid_uuid_no_traceback_in_stderr(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         with pytest.raises(SystemExit):
             _cmd_project_context("not-a-uuid")
         err = capsys.readouterr().err
@@ -770,14 +770,14 @@ class TestProjectContextCLI:
 
     def test_missing_project_exits_1(self, tmp_path, monkeypatch):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         with pytest.raises(SystemExit) as exc:
             _cmd_project_context(str(uuid4()))
         assert exc.value.code == 1
 
     def test_missing_project_stderr_safe(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         with pytest.raises(SystemExit):
             _cmd_project_context(str(uuid4()))
         err = capsys.readouterr().err
@@ -786,7 +786,7 @@ class TestProjectContextCLI:
 
     def test_text_output_works(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="TextTest")
         save_project(p)
@@ -797,7 +797,7 @@ class TestProjectContextCLI:
 
     def test_json_output_valid_json(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="JsonTest")
         save_project(p)
@@ -808,7 +808,7 @@ class TestProjectContextCLI:
 
     def test_json_output_exact_top_keys(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="KeyTest")
         save_project(p)
@@ -818,7 +818,7 @@ class TestProjectContextCLI:
 
     def test_json_scope_is_project(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="ScopeTest")
         save_project(p)
@@ -828,7 +828,7 @@ class TestProjectContextCLI:
 
     def test_json_no_traceback_in_stdout(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="NTB")
         save_project(p)
@@ -838,7 +838,7 @@ class TestProjectContextCLI:
 
     def test_json_no_redaction_sentinels_in_stdout(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="RedactTest")
         save_project(p)
@@ -851,7 +851,7 @@ class TestProjectContextCLI:
         """Confirm `remedy context <job_id>` still works and uses job scope."""
         self._env(tmp_path, monkeypatch)
         from packages.orchestration.storage import save_job
-        from apps.cli.main import _cmd_context
+        from apps.cli.commands.brain import _cmd_context
         job = _make_job()
         save_job(job)
         _cmd_context(str(job.id), json_output=True)

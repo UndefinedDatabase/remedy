@@ -810,7 +810,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
             import sys
-            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "not-a-uuid"])
+            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", "not-a-uuid"])
             main()
         assert exc.value.code == 1
 
@@ -819,7 +819,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
             import sys
-            monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(uuid4())])
+            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(uuid4())])
             main()
         assert exc.value.code == 1
 
@@ -829,7 +829,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         out = capsys.readouterr().out
         assert "Remedy Project Brain" in out
@@ -841,7 +841,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         jsonl_files = list(runs_dir.glob("*.jsonl"))
@@ -860,7 +860,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         events = [
@@ -889,7 +889,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         raw = next(runs_dir.glob("*.jsonl")).read_text()
@@ -901,7 +901,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
@@ -912,7 +912,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -927,7 +927,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -962,7 +962,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
         for sentinel in [
@@ -978,7 +978,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         events = [

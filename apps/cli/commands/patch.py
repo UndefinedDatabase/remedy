@@ -164,5 +164,5 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "patch.show": lambda args: _cmd_show_patch_intent(args.job_id, args.intent_id),
     "patch.approve": lambda args: _cmd_approve_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
     "patch.reject": lambda args: _cmd_reject_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
-    "patch.apply": lambda args: _cmd_apply_patch_intent(args.job_id, args.intent_id, json_output=False),
+    "patch.apply": lambda args: _cmd_apply_patch_intent(args.job_id, args.intent_id, json_output=getattr(args, "json", False)),
 }
