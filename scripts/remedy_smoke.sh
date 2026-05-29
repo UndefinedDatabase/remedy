@@ -1375,6 +1375,59 @@ print('    brain causal proof: OK (proof_nodes=' + str(sum(1 for n in data['node
     fi
 
     # -------------------------------------------------------------------------
+    # 12o. Continue from node (Step 52)
+    # -------------------------------------------------------------------------
+    echo "--- 12o. Continue from node (brain continue)"
+    # Get the first task node from brain
+    TASK_NODE_ID="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for n in data.get('nodes', []):
+    if n.get('type') == 'task':
+        print(n['id'])
+        break
+" 2>/dev/null || true)"
+    if [[ -n "${TASK_NODE_ID}" ]]; then
+        CONTINUE_JSON="$(remedy brain continue "${JOB_ID}" "${TASK_NODE_ID}" --prompt "Follow-up from smoke test" --json)"
+        python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: brain continue: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk('parent_job_id' in data, 'missing parent_job_id')
+chk('child_job_id' in data, 'missing child_job_id')
+chk('origin_node_id' in data, 'missing origin_node_id')
+chk('origin_node_type' in data, 'missing origin_node_type')
+chk('inherited_project' in data, 'missing inherited_project')
+chk('inherited_repo' in data, 'missing inherited_repo')
+chk(data['origin_node_type'] == 'task', 'origin_node_type must be task')
+chk(data['inherited_project'] is True, 'project should be inherited')
+# Verify child job exists
+child_id = data['child_job_id']
+import subprocess
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.grouped', 'job', 'show', child_id],
+    capture_output=True, text=True
+)
+chk(result.returncode == 0, 'child job show failed: ' + result.stderr[:200])
+child_job = json.loads(result.stdout)
+meta = child_job.get('metadata', {})
+chk(meta.get('parent_job_id') == data['parent_job_id'], 'child metadata parent_job_id mismatch')
+chk(meta.get('origin_node_id') == data['origin_node_id'], 'child metadata origin_node_id mismatch')
+# No raw prompt in run-log
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in continue result: ' + bad)
+print('    brain continue: OK (child=' + child_id[:8] + ', type=' + data['origin_node_type'] + ')')
+" "${CONTINUE_JSON}"
+    else
+        echo "    No task node — skipping brain continue"
+    fi
+
+    # -------------------------------------------------------------------------
     # 13. Summary
     # -------------------------------------------------------------------------
     echo ""

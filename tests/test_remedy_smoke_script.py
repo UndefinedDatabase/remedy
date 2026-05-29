@@ -1128,6 +1128,33 @@ class TestSmokeScriptText:
             "smoke must include 'file' group in help verification loop"
         )
 
+    # --- Step 52: Continue from node (step 12o) ------------------------------
+
+    def test_smoke_has_brain_continue_step(self):
+        text = _script_text()
+        assert "brain continue" in text, (
+            "smoke must call remedy brain continue (Step 52)"
+        )
+
+    def test_smoke_brain_continue_checks_json_schema(self):
+        text = _script_text()
+        for key in ("parent_job_id", "child_job_id", "origin_node_id", "origin_node_type"):
+            assert key in text, (
+                f"smoke 12o must verify key '{key}' in brain continue JSON"
+            )
+
+    def test_smoke_brain_continue_checks_inherited(self):
+        text = _script_text()
+        assert "inherited_project" in text and "inherited_repo" in text, (
+            "smoke 12o must verify inherited_project and inherited_repo"
+        )
+
+    def test_smoke_brain_continue_verifies_child_job(self):
+        text = _script_text()
+        assert "child job" in text.lower() or "child_job_id" in text, (
+            "smoke 12o must verify child job exists"
+        )
+
     # --- Step 35: Run Contract (step 12a) -----------------------------------
 
     def test_smoke_has_run_contract_check(self):

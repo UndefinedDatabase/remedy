@@ -412,6 +412,22 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("brain.graph", "brain.trust"),
     ),
     CommandEntry(
+        command_id="brain.continue",
+        group_id="brain",
+        subcommand="continue",
+        description="Create a child job from a brain node (continue-from-node).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("node_id", "Brain node ID to continue from"),
+            ArgDef("--prompt", "Prompt for the child job", required=True, is_option=True),
+            ArgDef("--task-type", "Task type for the child job", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("brain.graph", "brain.node"),
+    ),
+    CommandEntry(
         command_id="brain.constitution",
         group_id="brain",
         subcommand="constitution",

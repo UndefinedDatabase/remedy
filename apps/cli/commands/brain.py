@@ -308,6 +308,55 @@ def _cmd_constitution(job_id_str: str) -> None:
     )
 
 
+def _cmd_brain_continue(
+    job_id_str: str, node_id: str, prompt: str,
+    *, task_type: str | None = None, json_output: bool = False,
+) -> None:
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+    from packages.orchestration.continue_from_node import (
+        continue_from_node, export_continue_result_json,
+    )
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.timeline import load_run_events
+
+    data_dir = resolve_data_root()
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = load_project_constitution(Path(target_repo_str)) if target_repo_str else None
+
+    graph = build_project_brain(job, events, constitution=constitution)
+
+    try:
+        result = continue_from_node(job, graph, node_id, prompt, task_type=task_type)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(_json.dumps(export_continue_result_json(result), sort_keys=True))
+    else:
+        print(f"Created child job: {result.child_job_id}")
+        print(f"  Parent: {result.parent_job_id[:8]}")
+        print(f"  Origin: {result.origin_node_type} ({result.origin_node_id})")
+        if result.inherited_project:
+            print("  Project: inherited")
+        if result.inherited_repo:
+            print("  Repo: inherited")
+
+
 def _cmd_agent_loop(job_id_str: str) -> None:
     try:
         job_id = UUID(job_id_str)
@@ -347,5 +396,10 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "brain.trust": lambda args: _cmd_trust_report(args.job_id),
     "brain.timeline": lambda args: _cmd_timeline(args.job_id),
     "brain.cockpit": lambda args: _cmd_cockpit(args.job_id),
+    "brain.continue": lambda args: _cmd_brain_continue(
+        args.job_id, args.node_id, args.prompt,
+        task_type=getattr(args, "task_type", None),
+        json_output=args.json,
+    ),
     "brain.constitution": lambda args: _cmd_constitution(args.job_id),
 }

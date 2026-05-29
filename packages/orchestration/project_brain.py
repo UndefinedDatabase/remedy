@@ -53,6 +53,7 @@ Edge types:
   proof_verified_by     — patch_apply_proof → test_run (causal)
   informed_memory       — patch_apply_proof → memory (causal)
   summarizes            — context_pack → readiness or job (causal)
+  continued_as          — origin_node → child_job_placeholder (Step 52)
 
 Redaction policy:
   Artifact content, diff previews, approval reasons, event messages, and
@@ -150,6 +151,7 @@ ET_RECORDED_PROOF        = "recorded_proof"
 ET_PROOF_VERIFIED_BY     = "proof_verified_by"
 ET_INFORMED_MEMORY       = "informed_memory"
 ET_SUMMARIZES            = "summarizes"
+ET_CONTINUED_AS          = "continued_as"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -188,6 +190,7 @@ _KEY_EVENTS: frozenset[str] = frozenset({
     "task_run_noop",
     "repo_application_completed",
     "patch_intent_failed",
+    "continued_from_node",
 })
 
 
@@ -885,7 +888,33 @@ def build_project_brain(
                 type=ET_SUMMARIZES,
             ))
 
-    # ── 17. Sort ─────────────────────────────────────────────────────────────
+    # ── 17. Child job continuation edges (from continued_from_node events) ──
+    cont_events = [e for e in events if e.get("event") == "continued_from_node"]
+    for ev in cont_events:
+        meta = ev.get("metadata", {})
+        child_id = str(meta.get("child_job_id", ""))
+        origin_nid = str(meta.get("origin_node_id", ""))
+        if child_id and origin_nid:
+            child_placeholder_id = f"child_job:{child_id[:8]}"
+            nodes.append(BrainNode(
+                id=child_placeholder_id,
+                type=NT_JOB,
+                label=f"Child Job {child_id[:8]}",
+                status="linked",
+                ref_id=child_id,
+                metadata={
+                    "parent_job_id": str(job.id),
+                    "origin_node_id": origin_nid,
+                },
+            ))
+            if any(n.id == origin_nid for n in nodes):
+                edges.append(BrainEdge(
+                    source=origin_nid,
+                    target=child_placeholder_id,
+                    type=ET_CONTINUED_AS,
+                ))
+
+    # ── 18. Sort ─────────────────────────────────────────────────────────────
     sorted_nodes = tuple(
         sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
     )

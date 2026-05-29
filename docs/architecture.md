@@ -2978,6 +2978,18 @@ Root help shows only the 12 groups — no old flat commands appear.
 - Brain detail for `patch_apply_proof` node type
 - `patch_apply_proof` metadata: 13 keys from the `patch_apply_proof_recorded` event (intent_id, target_path, action, outcome, before/after SHA256, bytes/lines deltas, applied_at)
 
+### Continue-from-node v0 (Step 52)
+
+`packages/orchestration/continue_from_node.py` — creates a linked child job from any Brain node.
+
+- CLI: `remedy brain continue <job_id> <node_id> --prompt "<prompt>" [--task-type <type>] [--json]`
+- Creates child job with provenance metadata: parent_job_id, origin_node_id, origin_node_type, origin_node_label, origin_reason
+- Inherits project_id and target_repo from parent (no permission escalation)
+- No auto-execution, no LLM call, no file mutation
+- Run-log: `continued_from_node` event with: parent_job_id, child_job_id, origin_node_id, origin_node_type, inherited_project, inherited_repo
+- Brain: `continued_as` edge from origin node to child job placeholder
+- Child brain shows continuation event as a run_event node
+
 ### Autonomy Readiness v0 (Step 48)
 
 `packages/orchestration/autonomy_readiness.py` — deterministic readiness assessment with 8 autonomy levels (0=observe through 7=provider_autonomy).
