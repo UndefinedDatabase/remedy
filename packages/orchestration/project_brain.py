@@ -101,6 +101,7 @@ NT_RUN_EVENT    = "run_event"
 NT_AGENT_LOOP   = "agent_loop"
 NT_CONSTITUTION      = "constitution"
 NT_MEMORY            = "memory_placeholder"
+NT_MEMORY_ENTRY      = "memory"
 NT_MCP               = "mcp_placeholder"
 NT_CONTEXT_COVERAGE  = "context_coverage"
 NT_PROJECT_PLACEHOLDER = "project_placeholder"
@@ -109,6 +110,8 @@ NT_TEST_RUN            = "test_run"
 NT_RUN_CONTRACT        = "run_contract"
 NT_TOKEN_POLICY        = "token_policy"
 NT_WORKER_ADAPTER      = "worker_adapter"
+NT_AUTONOMY_READINESS  = "autonomy_readiness"
+NT_CONTEXT_PACK        = "context_pack"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -120,6 +123,7 @@ ET_VERIFIED             = "verified_by"
 ET_BLOCKED              = "blocked_by"
 ET_INSPECTED            = "inspected_by"
 ET_GOVERNED             = "governed_by"
+ET_HAS_MEMORY           = "has_memory"
 ET_FUTURE_MEMORY        = "future_memory_layer"
 ET_FUTURE_MCP           = "future_mcp_layer"
 ET_HAS_CONTEXT_SNAPSHOT  = "has_context_snapshot"
@@ -129,6 +133,8 @@ ET_VERIFIED_AFTER_APPLY  = "verified_after_apply"
 ET_HAS_RUN_CONTRACT      = "has_run_contract"
 ET_HAS_TOKEN_POLICY      = "has_token_policy"
 ET_HAS_WORKER_ADAPTER    = "has_worker_adapter"
+ET_HAS_READINESS         = "has_readiness"
+ET_HAS_CONTEXT_PACK      = "has_context_pack"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -143,6 +149,7 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_CONSTITUTION:     9,
     NT_CONTEXT_COVERAGE:    10,
     NT_MEMORY:              11,
+    NT_MEMORY_ENTRY:        11,
     NT_MCP:                 12,
     NT_PROJECT_PLACEHOLDER: 13,
     NT_PATCH_APPLY:         14,
@@ -150,6 +157,8 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_RUN_CONTRACT:        16,
     NT_TOKEN_POLICY:        17,
     NT_WORKER_ADAPTER:      18,
+    NT_AUTONOMY_READINESS:  19,
+    NT_CONTEXT_PACK:        20,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -552,6 +561,40 @@ def build_project_brain(
         type=ET_FUTURE_MEMORY,
     ))
 
+    # ── 7b. Real local memory nodes (approved entries) ─────────────────────
+    try:
+        from packages.memory.local_gateway import list_memory
+        project_id = job.metadata.get("project_id")
+        mem_entries = list_memory(
+            project_id=project_id,
+            job_id=str(job.id) if not project_id else None,
+        )
+        for me in mem_entries:
+            if not me.approved:
+                continue
+            mem_node_id = f"memory:{me.id}"
+            nodes.append(BrainNode(
+                id=mem_node_id,
+                type=NT_MEMORY_ENTRY,
+                label=f"memory: {me.key}",
+                status="active",
+                metadata={
+                    "key": me.key,
+                    "tags": me.tags,
+                    "source_type": me.source_type,
+                    "source_id": me.source_id or "",
+                    "created_at": me.created_at,
+                    "approved": me.approved,
+                },
+            ))
+            edges.append(BrainEdge(
+                source=job_node_id,
+                target=mem_node_id,
+                type=ET_HAS_MEMORY,
+            ))
+    except Exception:
+        pass  # Memory not available — no nodes added.
+
     nodes.append(BrainNode(
         id="mcp_placeholder",
         type=NT_MCP,
@@ -681,7 +724,34 @@ def build_project_brain(
             type=ET_HAS_WORKER_ADAPTER,
         ))
 
-    # ── 13. Sort ─────────────────────────────────────────────────────────────
+    # ── 13. Autonomy Readiness node ─────────────────────────────────────────
+    try:
+        from packages.orchestration.autonomy_readiness import assess_job_readiness
+        from packages.orchestration.data_paths import resolve_data_root as _rdr
+        from packages.orchestration.timeline import load_run_events as _lre
+        _events = _lre(_rdr(), job.id)
+        _report = assess_job_readiness(job, _events)
+        ar_node_id = "autonomy_readiness"
+        nodes.append(BrainNode(
+            id=ar_node_id,
+            type=NT_AUTONOMY_READINESS,
+            label=f"Readiness: L{_report.highest_eligible_level}",
+            status="active",
+            metadata={
+                "highest_eligible_level": _report.highest_eligible_level,
+                "missing_count": sum(len(a.missing_signals) for a in _report.levels),
+                "blocker_count": sum(len(a.blockers) for a in _report.levels),
+                "scope": _report.scope,
+            },
+        ))
+        edges.append(BrainEdge(
+            source=job_node_id, target=ar_node_id,
+            type=ET_HAS_READINESS,
+        ))
+    except Exception:
+        pass
+
+    # ── 14. Sort ─────────────────────────────────────────────────────────────
     sorted_nodes = tuple(
         sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
     )
@@ -722,6 +792,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
         NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY, NT_TEST_RUN,
         NT_RUN_CONTRACT, NT_TOKEN_POLICY, NT_WORKER_ADAPTER,
+        NT_AUTONOMY_READINESS, NT_CONTEXT_PACK,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)

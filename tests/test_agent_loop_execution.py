@@ -114,6 +114,82 @@ class TestRunAgentLoopEvents:
         assert "agent_loop_cycle_started" in event_types
 
 
+REQUIRED_META_KEYS = frozenset({
+    "cycle", "max_cycles", "decision", "stage", "reason",
+    "task_count", "pending_task_count", "pending_approval_count",
+    "applied_count", "test_run_count",
+})
+
+
+class TestAgentLoopEventSchema:
+    """Every agent_loop_* event must have the exact 11-key metadata schema."""
+
+    def _collect_events(self, tmp_path, job_id):
+        runs_dir = tmp_path / "runs" / str(job_id)
+        events = []
+        if runs_dir.exists():
+            for lf in runs_dir.glob("*.jsonl"):
+                for line in lf.read_text().splitlines():
+                    if line.strip():
+                        events.append(json.loads(line))
+        return events
+
+    def test_completed_job_exact_schema(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(
+            id=uuid4(), name="done", user_prompt="done",
+            tasks=[Task(description="t", status=RunState.COMPLETED)],
+        )
+        save_job(job)
+        run_agent_loop(job, max_cycles=1)
+        events = self._collect_events(tmp_path, job.id)
+        loop_events = [e for e in events if e["event"].startswith("agent_loop_")]
+        assert len(loop_events) >= 2  # started + completed at minimum
+        for ev in loop_events:
+            meta = ev.get("metadata", {})
+            got = frozenset(meta.keys())
+            assert got == REQUIRED_META_KEYS, (
+                f"Event {ev['event']} has wrong keys: "
+                f"extra={got - REQUIRED_META_KEYS}, missing={REQUIRED_META_KEYS - got}"
+            )
+
+    def test_no_generic_cycle_events(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        run_agent_loop(job, max_cycles=1)
+        events = self._collect_events(tmp_path, job.id)
+        event_names = [e["event"] for e in events]
+        assert "cycle_started" not in event_names
+        assert "cycle_completed" not in event_names
+        assert "agent_loop_task_exit" not in event_names
+
+    def test_empty_job_logs_started_and_completed(self, tmp_path, monkeypatch):
+        """No-op completed job logs agent_loop_started + agent_loop_completed."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(
+            id=uuid4(), name="done", user_prompt="done",
+            tasks=[Task(description="t", status=RunState.COMPLETED)],
+        )
+        save_job(job)
+        run_agent_loop(job, max_cycles=1)
+        events = self._collect_events(tmp_path, job.id)
+        event_names = [e["event"] for e in events]
+        assert "agent_loop_started" in event_names
+        assert "agent_loop_completed" in event_names
+
+    def test_no_raw_output_leak(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        run_agent_loop(job, max_cycles=1)
+        events = self._collect_events(tmp_path, job.id)
+        full = json.dumps(events)
+        for forbidden in ("stdout", "stderr", "raw_output", "command_output",
+                          "Traceback", "diff_preview", "approval_reason"):
+            assert forbidden not in full, f"Forbidden string in events: {forbidden}"
+
+
 class TestRunLoopCLI:
     def _run(self, argv: list[str], env_extra: dict | None = None) -> tuple[str, str, int]:
         env = {**subprocess.os.environ, **(env_extra or {})}

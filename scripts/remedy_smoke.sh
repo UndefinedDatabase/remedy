@@ -38,7 +38,7 @@ remedy_smoke() {
     # 0. Verify group help for all groups
     # -------------------------------------------------------------------------
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev; do
+    for grp in job project patch test brain policy worker memory dev readiness context; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
@@ -1045,6 +1045,267 @@ chk(data.get('version') == 1, 'version must be 1, got ' + repr(data.get('version
 chk('entries' in data, 'missing entries key')
 print('    memory list --json: OK (version=1, count=' + str(data['count']) + ')')
 " "${LIST_JSON}"
+
+    # -------------------------------------------------------------------------
+    # 12g. Memory store --approved + brain memory nodes (Step 46.2)
+    # -------------------------------------------------------------------------
+    echo "--- 12g. Memory store --approved + brain memory nodes"
+    remedy memory store "approved_smoke_key" "approved_smoke_val" --approved --tags "smoke,approved"
+    # Verify approved entry exists and approved=true
+    APPROVED_JSON="$(remedy memory list --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: memory --approved: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+entries = data.get('entries', [])
+approved = [e for e in entries if e.get('approved') is True]
+chk(len(approved) >= 1, 'no approved entries after store --approved')
+chk(any(e['key'] == 'approved_smoke_key' for e in approved), 'approved_smoke_key not found among approved entries')
+print('    memory --approved store: OK (approved_count=' + str(len(approved)) + ')')
+" "${APPROVED_JSON}"
+
+    # Assert brain has 'memory' nodes when approved memory exists
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+if 'memory' not in types:
+    print('ERROR: brain graph missing memory node after approved memory stored', file=sys.stderr)
+    sys.exit(1)
+mem_nodes = [n for n in data.get('nodes', []) if n['type'] == 'memory']
+# Value must NOT leak into brain metadata
+for n in mem_nodes:
+    meta = n.get('metadata', {})
+    if 'value' in meta:
+        print('ERROR: memory node metadata contains value (leak)', file=sys.stderr)
+        sys.exit(1)
+print('    brain memory nodes: OK (count=' + str(len(mem_nodes)) + ')')
+"
+
+    # Assert context_coverage has project_memory signal
+    CTX_JSON="$(remedy brain context "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+signals = data.get('signals', [])
+sig_names = [s.get('name', '') for s in signals]
+if 'project_memory' not in sig_names:
+    print('ERROR: context_coverage missing project_memory signal', file=sys.stderr)
+    sys.exit(1)
+pm = [s for s in signals if s['name'] == 'project_memory'][0]
+if pm.get('present') is not True:
+    print('ERROR: project_memory signal not present', file=sys.stderr)
+    sys.exit(1)
+print('    context project_memory: OK (present=true)')
+" "${CTX_JSON}"
+
+    # -------------------------------------------------------------------------
+    # 12h. Agent loop run-log schema (Step 46.2)
+    # -------------------------------------------------------------------------
+    echo "--- 12h. Agent loop run-log schema"
+    # Run the agent loop on a completed job to generate events
+    remedy job run-loop "${JOB_ID}" --max-cycles 1 >/dev/null 2>&1 || true
+    python3 -c "
+import json, sys
+from pathlib import Path
+job_id   = sys.argv[1]
+runs_dir = Path(sys.argv[2]) / job_id
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: agent_loop schema: ' + msg, file=sys.stderr)
+        sys.exit(1)
+events = []
+if runs_dir.exists():
+    for f in sorted(runs_dir.glob('*.jsonl')):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                events.append(json.loads(line))
+loop_events = [e for e in events if e.get('event', '').startswith('agent_loop_')]
+chk(len(loop_events) >= 2, 'expected >= 2 agent_loop events, got ' + str(len(loop_events)))
+required_meta = frozenset({
+    'cycle', 'max_cycles', 'decision', 'stage', 'reason',
+    'task_count', 'pending_task_count', 'pending_approval_count',
+    'applied_count', 'test_run_count',
+})
+for ev in loop_events:
+    meta = ev.get('metadata', {})
+    got = frozenset(meta.keys())
+    chk(got == required_meta,
+        'event ' + ev['event'] + ' metadata keys mismatch: extra=' + str(sorted(got - required_meta))
+        + ' missing=' + str(sorted(required_meta - got)))
+# Must NOT have agent_loop_task_exit
+loop_names = [e['event'] for e in loop_events]
+chk('agent_loop_task_exit' not in loop_names, 'agent_loop_task_exit must not exist')
+# Forbidden strings in full event dump
+full = json.dumps(loop_events)
+for forbidden in ('stdout', 'stderr', 'raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(forbidden not in full, 'forbidden string in agent_loop events: ' + forbidden)
+print('    agent_loop schema: OK (events=' + str(len(loop_events)) + ', names=' + str(sorted(set(loop_names))) + ')')
+" "${JOB_ID}" "${RUNS_ROOT}"
+
+    # -------------------------------------------------------------------------
+    # 12i. Readiness job JSON (Step 48)
+    # -------------------------------------------------------------------------
+    echo "--- 12i. Readiness job JSON"
+    READINESS_JSON="$(remedy readiness job "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: readiness: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk(data.get('scope') == 'job', 'scope must be job')
+chk('highest_eligible_level' in data, 'missing highest_eligible_level')
+chk('levels' in data, 'missing levels')
+chk(len(data['levels']) == 8, 'expected 8 levels, got ' + str(len(data['levels'])))
+chk('next_actions' in data, 'missing next_actions')
+for lv in data['levels']:
+    for k in ('level', 'name', 'eligible', 'present_signals', 'missing_signals', 'blockers', 'next_actions'):
+        chk(k in lv, 'level missing key: ' + k)
+# Level 5+ must have blockers
+chk(not data['levels'][5]['eligible'], 'level 5 should not be eligible (rollback not implemented)')
+chk(not data['levels'][6]['eligible'], 'level 6 should not be eligible (MCP not connected)')
+full = json.dumps(data)
+for bad in ('stdout', 'stderr', 'raw_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in readiness: ' + bad)
+print('    readiness JSON: OK (highest=' + str(data['highest_eligible_level']) + ', levels=' + str(len(data['levels'])) + ')')
+" "${READINESS_JSON}"
+
+    # Assert brain has autonomy_readiness node
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+if 'autonomy_readiness' not in types:
+    print('ERROR: brain missing autonomy_readiness node', file=sys.stderr)
+    sys.exit(1)
+print('    brain autonomy_readiness: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12j. Context pack JSON (Step 49)
+    # -------------------------------------------------------------------------
+    echo "--- 12j. Context pack compact + caveman"
+    PACK_COMPACT="$(remedy context pack "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: context pack compact: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk(data.get('mode') == 'compact', 'mode must be compact')
+chk('budget' in data, 'missing budget')
+chk('estimated_tokens' in data, 'missing estimated_tokens')
+chk('truncated' in data, 'missing truncated')
+chk('sections' in data, 'missing sections')
+chk(len(data['sections']) > 0, 'no sections')
+for s in data['sections']:
+    for k in ('name', 'priority', 'content', 'estimated_tokens'):
+        chk(k in s, 'section missing key: ' + k)
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in pack: ' + bad)
+print('    context pack compact: OK (sections=' + str(len(data['sections'])) + ', tokens=' + str(data['estimated_tokens']) + ')')
+" "${PACK_COMPACT}"
+
+    PACK_CAVEMAN="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
+    python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+if data.get('mode') != 'caveman':
+    print('ERROR: context pack caveman mode != caveman', file=sys.stderr)
+    sys.exit(1)
+compact_tokens = int(sys.argv[2])
+if data['estimated_tokens'] > compact_tokens:
+    print('ERROR: caveman should not use more tokens than compact', file=sys.stderr)
+    sys.exit(1)
+print('    context pack caveman: OK (tokens=' + str(data['estimated_tokens']) + ' <= compact=' + str(compact_tokens) + ')')
+" "${PACK_CAVEMAN}" "$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['estimated_tokens'])" "${PACK_COMPACT}")"
+
+    # -------------------------------------------------------------------------
+    # 12k. Memory learn JSON (Step 50)
+    # -------------------------------------------------------------------------
+    echo "--- 12k. Memory learn"
+    LEARN_JSON="$(remedy memory learn "${JOB_ID}" --approved --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: memory learn: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk('job_id' in data, 'missing job_id')
+chk('learned_count' in data, 'missing learned_count')
+chk('skipped_count' in data, 'missing skipped_count')
+chk('entries' in data, 'missing entries')
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in learn: ' + bad)
+print('    memory learn: OK (learned=' + str(data['learned_count']) + ', skipped=' + str(data['skipped_count']) + ')')
+" "${LEARN_JSON}"
+
+    # Second learn must be idempotent
+    LEARN2_JSON="$(remedy memory learn "${JOB_ID}" --approved --json)"
+    python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+if data['learned_count'] != 0:
+    print('ERROR: second learn should create 0 new entries, got ' + str(data['learned_count']), file=sys.stderr)
+    sys.exit(1)
+print('    memory learn idempotent: OK (learned=0, skipped=' + str(data['skipped_count']) + ')')
+" "${LEARN2_JSON}"
+
+    # -------------------------------------------------------------------------
+    # 12l. Run-log schema: readiness_assessed + context_pack_created + memory_learned
+    # -------------------------------------------------------------------------
+    echo "--- 12l. Run-log schema: readiness + context_pack + memory_learned"
+    python3 -c "
+import json, sys
+from pathlib import Path
+job_id   = sys.argv[1]
+runs_dir = Path(sys.argv[2]) / job_id
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: run-log schema: ' + msg, file=sys.stderr)
+        sys.exit(1)
+events = []
+if runs_dir.exists():
+    for f in sorted(runs_dir.glob('*.jsonl')):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                events.append(json.loads(line))
+event_names = [e['event'] for e in events]
+chk('readiness_assessed' in event_names, 'no readiness_assessed event')
+chk('context_pack_created' in event_names, 'no context_pack_created event')
+chk('memory_learned' in event_names, 'no memory_learned event')
+# Check readiness_assessed metadata
+ra = [e for e in events if e['event'] == 'readiness_assessed']
+ra_required = frozenset({'scope', 'highest_eligible_level', 'missing_count', 'blocker_count'})
+for ev in ra:
+    got = frozenset(ev.get('metadata', {}).keys())
+    chk(got == ra_required, 'readiness_assessed keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ra_required)))
+# Check context_pack_created metadata
+cp = [e for e in events if e['event'] == 'context_pack_created']
+cp_required = frozenset({'budget', 'estimated_tokens', 'mode', 'truncated', 'section_count'})
+for ev in cp:
+    got = frozenset(ev.get('metadata', {}).keys())
+    chk(got == cp_required, 'context_pack_created keys: got=' + str(sorted(got)) + ' want=' + str(sorted(cp_required)))
+# Check memory_learned metadata
+ml = [e for e in events if e['event'] == 'memory_learned']
+ml_required = frozenset({'learned_count', 'skipped_count', 'approved', 'source_count'})
+for ev in ml:
+    got = frozenset(ev.get('metadata', {}).keys())
+    chk(got == ml_required, 'memory_learned keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ml_required)))
+print('    run-log schema: OK (readiness=' + str(len(ra)) + ', pack=' + str(len(cp)) + ', learn=' + str(len(ml)) + ')')
+" "${JOB_ID}" "${RUNS_ROOT}"
 
     # -------------------------------------------------------------------------
     # 13. Summary

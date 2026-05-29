@@ -491,3 +491,42 @@ class TestMemoryCLIContract:
         cmd = get_command("memory.recall")
         arg_names = [a.name for a in cmd.args]
         assert "--limit" in arg_names
+
+    def test_store_approved_flag_works(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_store, _cmd_memory_list
+        from io import StringIO
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_store("test_key", "test_value", approved=True)
+        buf2 = StringIO()
+        monkeypatch.setattr("sys.stdout", buf2)
+        _cmd_memory_list(json_output=True)
+        data = json.loads(buf2.getvalue())
+        assert data["count"] == 1
+        assert data["entries"][0]["approved"] is True
+
+    def test_store_approved_false_by_default(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_store, _cmd_memory_list
+        from io import StringIO
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_store("test_key", "test_value")
+        buf2 = StringIO()
+        monkeypatch.setattr("sys.stdout", buf2)
+        _cmd_memory_list(json_output=True)
+        data = json.loads(buf2.getvalue())
+        assert data["entries"][0]["approved"] is False
+
+    def test_approved_is_store_true_in_argparse(self) -> None:
+        from apps.cli.grouped import build_parser
+        parser = build_parser()
+        args = parser.parse_args(["memory", "store", "k", "v", "--approved"])
+        assert args.approved is True
+
+    def test_approved_absent_is_false_in_argparse(self) -> None:
+        from apps.cli.grouped import build_parser
+        parser = build_parser()
+        args = parser.parse_args(["memory", "store", "k", "v"])
+        assert args.approved is False

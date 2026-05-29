@@ -51,6 +51,7 @@ from packages.orchestration.project_brain import (
     NT_JOB,
     NT_MCP,
     NT_MEMORY,
+    NT_MEMORY_ENTRY,
     NT_PATCH_APPLY,
     NT_PATCH_INTENT,
     NT_RUN_EVENT,
@@ -59,6 +60,8 @@ from packages.orchestration.project_brain import (
     NT_RUN_CONTRACT,
     NT_TOKEN_POLICY,
     NT_WORKER_ADAPTER,
+    NT_AUTONOMY_READINESS,
+    NT_CONTEXT_PACK,
     NT_VERIFICATION,
     ProjectBrainGraph,
 )
@@ -185,6 +188,9 @@ def build_brain_node_detail(
     if node.type == NT_MEMORY:
         return _detail_memory_placeholder(node, job_id_str, connected)
 
+    if node.type == NT_MEMORY_ENTRY:
+        return _detail_memory_entry(node, job_id_str, connected)
+
     if node.type == NT_MCP:
         return _detail_mcp_placeholder(node, job_id_str, connected)
 
@@ -205,6 +211,12 @@ def build_brain_node_detail(
 
     if node.type == NT_WORKER_ADAPTER:
         return _detail_worker_adapter(node, job_id_str, connected)
+
+    if node.type == NT_AUTONOMY_READINESS:
+        return _detail_autonomy_readiness(node, job_id_str, connected)
+
+    if node.type == NT_CONTEXT_PACK:
+        return _detail_context_pack(node, job_id_str, connected)
 
     # Fallback for unknown future node types
     return BrainNodeDetail(
@@ -805,6 +817,54 @@ def _detail_constitution(
     )
 
 
+def _detail_memory_entry(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    key = meta.get("key", "unknown")
+    tags = meta.get("tags", [])
+    source_type = meta.get("source_type", "unknown")
+    created_at = meta.get("created_at", "unknown")
+    approved = meta.get("approved", False)
+
+    evidence = [
+        f"key: {key}",
+        f"source: {source_type}",
+        f"approved: {approved}",
+        f"created: {created_at}",
+    ]
+    if tags:
+        evidence.append(f"tags: {', '.join(tags)}")
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_MEMORY_ENTRY,
+        title=f"Memory: {key}",
+        status="active" if approved else "informational",
+        risk=None,
+        explanation=(
+            f"Local memory entry (key={key}). "
+            "Approved entries are visible to the agent loop and context coverage."
+        ),
+        why_it_exists=(
+            "Stored via 'remedy memory store' CLI command.",
+            "Approved entries contribute to the project_memory context signal.",
+        ),
+        connected_to=tuple(connected),
+        evidence=tuple(evidence),
+        affected_files=(),
+        next_actions=(
+            f"remedy memory recall --keyword {key} --json",
+        ),
+        redaction_notes=(
+            "Memory value is not shown in brain detail — only key, tags, and metadata.",
+        ),
+    )
+
+
 def _detail_memory_placeholder(
     node: Any,
     job_id_str: str,
@@ -1179,6 +1239,84 @@ def _detail_worker_adapter(
             "Inspect with `remedy workers` for all provider specs.",
         ),
         redaction_notes=("No secrets or API keys in worker specs.",),
+    )
+
+
+def _detail_autonomy_readiness(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    level = node.metadata.get("highest_eligible_level", 0)
+    missing = node.metadata.get("missing_count", 0)
+    blockers = node.metadata.get("blocker_count", 0)
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_AUTONOMY_READINESS,
+        title=f"Autonomy Readiness: Level {level}",
+        status=node.status or "active",
+        risk=None,
+        explanation=(
+            f"Autonomy readiness assessment. Highest eligible level: {level}. "
+            f"{missing} missing signals, {blockers} blockers. "
+            "This is factual infrastructure readiness, not model confidence."
+        ),
+        why_it_exists=(
+            "Quantifies what autonomy level the job can safely support.",
+            "Guides execution decisions and surfaces missing prerequisites.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"highest_eligible_level: {level}",
+            f"missing_count: {missing}",
+            f"blocker_count: {blockers}",
+        ),
+        affected_files=(),
+        next_actions=(
+            f"Inspect with `remedy readiness job {job_id_str[:8]}`.",
+        ),
+        redaction_notes=("No sensitive data in readiness assessment.",),
+    )
+
+
+def _detail_context_pack(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    tokens = node.metadata.get("estimated_tokens", 0)
+    budget = node.metadata.get("budget", 0)
+    truncated = node.metadata.get("truncated", False)
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_CONTEXT_PACK,
+        title="Context Pack",
+        status=node.status or "active",
+        risk=None,
+        explanation=(
+            f"Context pack: ~{tokens} tokens (budget={budget}). "
+            f"Truncated: {truncated}. "
+            "Deterministic compact context for future provider calls."
+        ),
+        why_it_exists=(
+            "Reduces token usage by preparing compact structured context.",
+            "No LLM calls, no network, no raw content included.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"estimated_tokens: {tokens}",
+            f"budget: {budget}",
+            f"truncated: {truncated}",
+        ),
+        affected_files=(),
+        next_actions=(
+            f"Build with `remedy context pack {job_id_str[:8]}`.",
+        ),
+        redaction_notes=("No raw content in context pack metadata.",),
     )
 
 

@@ -71,6 +71,7 @@ from packages.orchestration.project_brain import (
     NT_JOB,
     NT_MCP,
     NT_MEMORY,
+    NT_MEMORY_ENTRY,
     NT_PATCH_INTENT,
     NT_RUN_EVENT,
     NT_TASK,
@@ -885,3 +886,39 @@ class TestCLIBrainNode:
         out = capsys.readouterr().out
         for sentinel in _ALL_SENTINELS:
             assert sentinel not in out, f"sentinel leaked in --json: {sentinel}"
+
+
+# ---------------------------------------------------------------------------
+# Memory entry detail
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryEntryDetail:
+    def test_memory_entry_detail(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        save_job(job)
+        entry = store_memory(key="test_k", value="secret_v", job_id=str(job.id),
+                             tags=["t1"], approved=True)
+        graph = build_project_brain(job, [])
+        mem_node_id = f"memory:{entry.id}"
+        detail = build_brain_node_detail(job, graph, mem_node_id, [])
+        assert detail.node_type == NT_MEMORY_ENTRY
+        assert "test_k" in detail.title
+        assert "secret_v" not in summarize_brain_node_detail(detail)
+
+    def test_memory_entry_detail_no_forbidden_sentinels(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        save_job(job)
+        entry = store_memory(key="k", value="MUST_NOT_RENDER_VALUE", job_id=str(job.id),
+                             approved=True)
+        graph = build_project_brain(job, [])
+        mem_node_id = f"memory:{entry.id}"
+        detail = build_brain_node_detail(job, graph, mem_node_id, [])
+        text = summarize_brain_node_detail(detail)
+        for sentinel in _ALL_SENTINELS:
+            assert sentinel not in text
+        assert "MUST_NOT_RENDER_VALUE" not in text

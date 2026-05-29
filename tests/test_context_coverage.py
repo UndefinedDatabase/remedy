@@ -345,6 +345,20 @@ class TestContextCoverageSignals:
         assert not sig.present
         assert "no approved memory" in sig.detail
 
+    def test_project_memory_present_when_approved_entries_exist(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        store_memory(key="k", value="v", job_id=str(job.id), approved=True)
+        snap = derive_context_coverage(
+            job,
+            [{"event": "any", "job_id": str(job.id), "metadata": {}}],
+            constitution=_mock_constitution(),
+        )
+        sig = next(s for s in snap.signals if s.key == "project_memory")
+        assert sig.present
+        assert "approved memory" in sig.detail
+
     def test_mcp_tool_context_always_absent_in_v0(self):
         job = _make_job()
         snap = derive_context_coverage(job, [])

@@ -937,6 +937,31 @@ or exception messages appear in the run log.
 | `agent_loop_paused` | active — `job run-loop` | Loop paused (needs_approval, blocked) |
 | `agent_loop_completed` | active — `job run-loop` | Loop finished (all_done, max_cycles_reached) |
 
+**`job run-loop` execution events — 10-key metadata schema (exact keyset):**
+
+All `agent_loop_*` events emitted by `run_agent_loop()` use the same metadata schema:
+
+```json
+{
+  "event": "agent_loop_started",
+  "outcome": "started",
+  "metadata": {
+    "cycle": 0,
+    "max_cycles": 3,
+    "decision": "start",
+    "stage": "start",
+    "reason": "loop_started",
+    "task_count": 1,
+    "pending_task_count": 0,
+    "pending_approval_count": 0,
+    "applied_count": 0,
+    "test_run_count": 0
+  }
+}
+```
+
+`outcome` is at the top-level RunEvent field, not in metadata.  The `agent_loop_task_exit` event has been removed — `SystemExit` from task runners is silently caught.
+
 **Future adapter examples:** `claude_code_builder`, `copilot_cli_reviewer`,
 `local_model_reviewer`.  All adapters must be `dry_run_only=True` in v1.
 
@@ -1274,6 +1299,7 @@ All three functions are read-only, deterministic, and emit no side effects.
 | `run_event` | key lifecycle events | Notable run-log milestone |
 | `agent_loop` | `agent_loop_inspected` events | Agent loop snapshot |
 | `constitution` | constitution object or `project_constitution_loaded` event | Attached Project Constitution |
+| `memory` | approved local memory entries | Real local memory entry |
 | `memory_placeholder` | always | Reserved for Step 24+ MemPalace |
 | `mcp_placeholder` | always | Reserved for Step 24+ MCP Quarantine |
 
@@ -1290,6 +1316,7 @@ All three functions are read-only, deterministic, and emit no side effects.
 | `blocked_by` | task → permission_blocker | Blocker linkage |
 | `inspected_by` | agent_loop → job | Agent loop inspection |
 | `governed_by` | job → constitution | Constitution governance |
+| `has_memory` | job → memory | Local memory entry link |
 | `future_memory_layer` | job → memory_placeholder | Future MemPalace |
 | `future_mcp_layer` | job → mcp_placeholder | Future MCP Quarantine |
 
@@ -1744,7 +1771,7 @@ No labels, no prompt text, no paths, no raw details.
 | `verification_results` | 10 | present if `verification_passed` or `verification_failed` event |
 | `run_logs` | 10 | present if events list is non-empty |
 | `approval_decisions` | 5 | present if `patch_intent_approved` or `patch_intent_rejected` event |
-| `project_memory` | 10 | **always absent in v0** — MemPalace not connected |
+| `project_memory` | 10 | present if approved local memory entries exist |
 | `mcp_tool_context` | 5 | **always absent in v0** — MCP Quarantine not connected |
 
 `score = round(present_weight / 100 * 100)`, clamped 0..100.
@@ -1803,7 +1830,7 @@ Incremental hardening of Context Coverage v0.
 
 ### v0 maximum score = 85
 
-Because `project_memory` (weight 10) and `mcp_tool_context` (weight 5) are always absent in v0, the maximum achievable score is **85**.  This is "complete for v0" — the score is never normalized to 100.  The summary Meaning section now explicitly states: *"In v0, the maximum score is 85% — Project Memory (+10) and MCP/tool context (+5) are not yet implemented."*
+With local memory v0, `project_memory` (weight 10) becomes present when approved memory entries exist.  Only `mcp_tool_context` (weight 5) remains always absent in v0, so the maximum achievable score is **95** (with approved memory) or **85** (without).  The score is never normalized to 100.
 
 ### Stale repo warning in `remedy context`
 
@@ -1953,7 +1980,7 @@ Project-scoped in v0.  Aggregates linked jobs and repo paths only.  No repo scan
 | `patch_intents` | 10 | present if any linked job has derived patch intents |
 | `verification_results` | 10 | present if any `VERIFICATION` artifact or completed task across linked jobs |
 | `approval_decisions` | 5 | present if any linked job has approved or rejected patch intents |
-| `project_memory` | 10 | **always absent in v0** — MemPalace not connected |
+| `project_memory` | 10 | present if approved local memory entries exist |
 | `mcp_tool_context` | 5 | **always absent in v0** — MCP Skill Registry not connected |
 
 `score = round(present_weight / 100 * 100)`, clamped 0..100.  **v0 maximum = 85.**
@@ -2877,7 +2904,7 @@ Steps 38–40 restructure the Remedy CLI from flat commands (`remedy create-job`
 Source of truth for the entire CLI surface.  Every public command has exactly one `CommandEntry` with:
 
 - `command_id` — `group.subcommand` format (e.g. `brain.graph`)
-- `group_id` — one of 9 groups: `job`, `project`, `patch`, `test`, `brain`, `policy`, `worker`, `memory`, `dev`
+- `group_id` — one of 11 groups: `job`, `project`, `patch`, `test`, `brain`, `policy`, `worker`, `memory`, `dev`, `readiness`, `context`
 - `action_class` — `read_only`, `write_metadata`, `approval_gate`, `apply_write`, `test_execution`, `dev_helper`
 - `supports_json`, `requires_permission`, `may_mutate_repo`, `may_execute_commands` — boolean flags
 - `args` — tuple of `ArgDef` (positional or `--option`)
@@ -2921,26 +2948,65 @@ Steps 41–43 add a Bootcamp-style help renderer (`apps/cli/help_renderer.py`) t
 
 Error UX is clean: no argparse noise, no tracebacks. Invalid commands show `Error:` with usage hint.
 
-Root help shows only the 9 groups — no old flat commands appear.
+Root help shows only the 11 groups — no old flat commands appear.
 
 ### Groups
 
-| Group    | Commands | Description |
-|----------|----------|-------------|
-| job      | 8        | Create, inspect, manage jobs |
-| project  | 6        | Create, inspect, manage projects |
-| patch    | 5        | Review and apply patch intents |
-| test     | 2        | Discover and run tests |
-| brain    | 8        | Inspect project brain graph |
-| policy   | 2        | Inspect execution policies |
-| worker   | 1        | List worker provider specs |
-| memory   | 3        | Store and recall project memory |
-| dev      | 2        | Developer utilities |
+| Group     | Commands | Description |
+|-----------|----------|-------------|
+| job       | 8        | Create, inspect, manage jobs |
+| project   | 6        | Create, inspect, manage projects |
+| patch     | 5        | Review and apply patch intents |
+| test      | 2        | Discover and run tests |
+| brain     | 8        | Inspect project brain graph |
+| policy    | 2        | Inspect execution policies |
+| worker    | 1        | List worker provider specs |
+| memory    | 4        | Store, recall, list, and learn project memory |
+| dev       | 2        | Developer utilities |
+| readiness | 2        | Assess autonomy readiness (job/project) |
+| context   | 1        | Build token-budgeted context packs |
+
+### Autonomy Readiness v0 (Step 48)
+
+`packages/orchestration/autonomy_readiness.py` — deterministic readiness assessment with 8 autonomy levels (0=observe through 7=provider_autonomy).
+
+- Signal-based boolean checks only — no LLM, no network
+- Each level has: eligible, present_signals, missing_signals, blockers, next_actions
+- Levels 5+ always blocked (rollback/MCP/provider not yet implemented)
+- CLI: `remedy readiness job <id> --json`, `remedy readiness project <id> --json`
+- Brain: `autonomy_readiness` node type, `has_readiness` edge, layer=1, color=#2ea043
+- Run-log: `readiness_assessed` event with metadata: scope, highest_eligible_level, missing_count, blocker_count
+- Project readiness aggregates across jobs (ANY-eligible logic)
+
+### Token Budget + Context Pack v0 (Step 49)
+
+`packages/orchestration/context_pack.py` — deterministic compact context generator with budget enforcement.
+
+- 8 priority-ordered sections (job_summary through run_events)
+- Token estimation: `ceil(chars / 4)` — no LLM, no network
+- Modes: `compact` (readable) vs `caveman` (ultra-short, always ≤ compact tokens)
+- Budget enforcement: sections included in priority order until budget exceeded; truncated flag set when budget is too small
+- CLI: `remedy context pack <id> --budget N --mode compact|caveman --json`
+- Brain: `context_pack` node type, `has_context_pack` edge, layer=2, color=#58a6ff
+- Run-log: `context_pack_created` event with metadata: budget, estimated_tokens, mode, truncated, section_count
+
+### Memory Learn v0 (Step 50)
+
+`packages/orchestration/memory_learn.py` — converts structured run evidence into memory entries.
+
+- Extracts 6 categories: test_run, apply_proof, command_discovery, readiness, context_coverage, repo_basename
+- Idempotent via `upsert_memory(key, value, source_id=job_id)` — no infinite duplicates
+- CLI: `remedy memory learn <id> --approved --json`
+- Run-log: `memory_learned` event with metadata: learned_count, skipped_count, approved, source_count
+- No raw content stored — only structured key/value pairs (command names, status, paths, counts)
 
 ### Memory CLI Contract v0
 
 `remedy memory store/recall/list` — local key-value memory with project/job scoping.
 
+- `--approved` flag on `store` is `action="store_true"` boolean (no value argument)
+- Approved entries appear as `memory` nodes in the Brain graph (value never leaked)
+- `project_memory` context signal becomes present when approved entries exist
 - `--limit N` on `recall` controls max entries (default 5, wired to `max_results`)
 - JSON output includes `version: 1` and `entries` array
 - `store` enforces redaction blocklist (`MemoryRedactionError` for forbidden patterns)

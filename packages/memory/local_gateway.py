@@ -204,6 +204,54 @@ def delete_memory(
     return True
 
 
+def upsert_memory(
+    key: str,
+    value: str,
+    *,
+    source_id: str,
+    project_id: str | None = None,
+    job_id: str | None = None,
+    tags: list[str] | None = None,
+    source_type: str = "system",
+    approved: bool = False,
+) -> tuple[MemoryEntry, bool]:
+    """Store or update a memory entry by key+source_id. Returns (entry, created).
+
+    If an entry with the same key and source_id exists, updates its value
+    and returns (entry, False). Otherwise creates a new entry and returns
+    (entry, True).
+
+    Raises MemoryRedactionError if key or value violates the blocklist.
+    """
+    _validate_memory(key, value)
+    path = _jsonl_path(project_id, job_id)
+    entries = _load_entries(path)
+
+    for i, e in enumerate(entries):
+        if e.key == key and e.source_id == source_id:
+            # Update existing
+            e.value = value
+            e.tags = tags or e.tags
+            e.approved = approved
+            _rewrite_entries(path, entries)
+            return e, False
+
+    # Create new
+    entry = MemoryEntry(
+        project_id=project_id,
+        job_id=job_id,
+        key=key,
+        value=value,
+        tags=tags or [],
+        source_type=source_type,  # type: ignore[arg-type]
+        source_id=source_id,
+        approved=approved,
+        confidence_source="agent_derived",
+    )
+    _append_entry(path, entry)
+    return entry, True
+
+
 def has_approved_memory(
     *,
     project_id: str | None = None,

@@ -18,12 +18,20 @@ Run-log events emitted by ``run_agent_loop``:
   agent_loop_paused           — loop paused (needs_approval, blocked, needs_planning)
   agent_loop_completed        — loop finished (all_done, max_cycles_reached)
 
-Metadata schema (all events):
-  cycle: int             — current cycle number
-  stage: str             — AgentLoopStage value
-  decision: str          — AgentLoopDecision value
-  max_cycles: int        — configured max cycles
-  blocked_reason: str?   — why the loop is blocked (if applicable)
+Event top-level fields:
+  outcome: str                — event-specific outcome (RunEvent.outcome)
+
+Metadata schema (all events share the same 10 keys):
+  cycle: int                  — current cycle number (0 for started)
+  max_cycles: int             — configured max cycles
+  decision: str               — AgentLoopDecision value (or "start")
+  stage: str                  — AgentLoopStage value (or "start")
+  reason: str                 — safe literal reason
+  task_count: int             — total task count
+  pending_task_count: int     — pending tasks
+  pending_approval_count: int — pending patch intent approvals
+  applied_count: int          — applied patch intents
+  test_run_count: int         — completed test runs
 
 Stale-event policy:
   A historical ``task_run_failed outcome=permission_denied`` event does NOT
@@ -432,6 +440,45 @@ def _section(title: str) -> str:
     return f"\n{_LINE}{_LINE} {title} {bar}"
 
 
+def _loop_meta(
+    job: Job,
+    state: AgentLoopState | None,
+    *,
+    cycle: int,
+    max_cycles: int,
+    outcome: str,
+    reason: str,
+) -> dict[str, Any]:
+    """Build the exact safe metadata dict for every agent_loop_* event."""
+    intents = list_patch_intents(job)
+    pending_approvals = sum(
+        1 for i in intents if i["state"] == APPROVAL_PENDING
+    )
+    applied = sum(
+        1 for i in intents if i.get("state") == "applied"
+    )
+    test_runs = sum(
+        1 for t in job.tasks
+        if t.status in (RunState.COMPLETED, RunState.FAILED)
+        and t.inputs.get("task_type") == "run_tests"
+    )
+    return {
+        "cycle": cycle,
+        "max_cycles": max_cycles,
+        "decision": state.decision.value if state else "start",
+        "stage": state.current_stage.value if state else "start",
+        "outcome": outcome,
+        "reason": reason,
+        "task_count": len(job.tasks),
+        "pending_task_count": sum(
+            1 for t in job.tasks if t.status == RunState.PENDING
+        ),
+        "pending_approval_count": pending_approvals,
+        "applied_count": applied,
+        "test_run_count": test_runs,
+    }
+
+
 def run_agent_loop(
     job: Job,
     *,
@@ -444,7 +491,7 @@ def run_agent_loop(
     Safe local execution loop. Default does NOT auto-approve.
     Stops on: needs_approval (paused), blocked, complete, max_cycles reached.
 
-    Run-log events emitted:
+    Run-log events emitted (all use the same 10-key metadata schema):
       agent_loop_started, agent_loop_cycle_started, agent_loop_decision,
       agent_loop_cycle_completed, agent_loop_paused, agent_loop_completed
     """
@@ -456,10 +503,15 @@ def run_agent_loop(
     data_dir = resolve_data_root()
     log = RunLogWriter(job_id=job.id)
 
-    log.log("agent_loop_started", outcome="started",
-            **{"metadata": {"max_cycles": max_cycles,
-                            "auto_approve_low_risk": auto_approve_low_risk,
-                            "run_tests": run_tests}})
+    def _emit(event_name: str, meta: dict[str, Any]) -> None:
+        """Log an agent_loop event. outcome at top level + in metadata."""
+        top_outcome = meta.get("outcome", "")
+        rest = {k: v for k, v in meta.items() if k != "outcome"}
+        log.log(event_name, outcome=top_outcome, **rest)
+
+    _emit("agent_loop_started", _loop_meta(
+        job, None, cycle=0, max_cycles=max_cycles,
+        outcome="started", reason="loop_started"))
 
     state: AgentLoopState | None = None
 
@@ -469,20 +521,21 @@ def run_agent_loop(
         events = load_run_events(data_dir, job.id)
         state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
 
-        log.log("agent_loop_cycle_started", outcome="cycle_started",
-                **{"metadata": {"cycle": cycle, "stage": state.current_stage.value,
-                                "decision": state.decision.value}})
+        _emit("agent_loop_cycle_started", _loop_meta(
+            job, state, cycle=cycle, max_cycles=max_cycles,
+            outcome="cycle_started", reason="cycle_begin"))
 
         # Terminal conditions
         if state.decision == AgentLoopDecision.COMPLETE:
-            log.log("agent_loop_completed", outcome="complete",
-                    **{"metadata": {"cycle": cycle, "reason": "all_done"}})
+            _emit("agent_loop_completed", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="completed", reason="all_done"))
             return state
 
         if state.decision == AgentLoopDecision.BLOCKED:
-            log.log("agent_loop_paused", outcome="blocked",
-                    **{"metadata": {"cycle": cycle,
-                                    "blocked_reason": state.blocked_reason}})
+            _emit("agent_loop_paused", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="paused", reason="blocked"))
             return state
 
         if state.decision == AgentLoopDecision.NEEDS_APPROVAL:
@@ -493,45 +546,49 @@ def run_agent_loop(
                 events = load_run_events(data_dir, job.id)
                 state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
                 if state.decision == AgentLoopDecision.NEEDS_APPROVAL:
-                    # Still needs approval for non-low-risk intents
-                    log.log("agent_loop_paused", outcome="needs_approval",
-                            **{"metadata": {"cycle": cycle}})
+                    _emit("agent_loop_paused", _loop_meta(
+                        job, state, cycle=cycle, max_cycles=max_cycles,
+                        outcome="paused", reason="needs_approval"))
                     return state
             else:
-                log.log("agent_loop_paused", outcome="needs_approval",
-                        **{"metadata": {"cycle": cycle}})
+                _emit("agent_loop_paused", _loop_meta(
+                    job, state, cycle=cycle, max_cycles=max_cycles,
+                    outcome="paused", reason="needs_approval"))
                 return state
 
         # Execute: run next task if in BUILD stage
         if state.current_stage == AgentLoopStage.BUILD:
-            log.log("agent_loop_decision", outcome="run_next_task",
-                    **{"metadata": {"cycle": cycle}})
+            _emit("agent_loop_decision", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="run_next_task", reason="execute_task"))
             try:
                 _run_next_task_step(job)
-            except SystemExit as exc:
-                # run_next_task_local calls sys.exit on failure
-                log.log("agent_loop_task_exit", outcome="task_exit",
-                        **{"metadata": {"cycle": cycle,
-                                        "exit_code": exc.code}})
+            except SystemExit:
+                pass  # Task runner calls sys.exit on failure; loop continues.
 
         elif state.current_stage == AgentLoopStage.PLANNED:
-            # Need planning first
-            log.log("agent_loop_decision", outcome="needs_planning",
-                    **{"metadata": {"cycle": cycle}})
-            log.log("agent_loop_paused", outcome="needs_planning",
-                    **{"metadata": {"cycle": cycle}})
+            _emit("agent_loop_decision", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="needs_planning", reason="needs_planning"))
+            _emit("agent_loop_paused", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="paused", reason="needs_planning"))
             return state
 
-        log.log("agent_loop_cycle_completed", outcome="cycle_completed",
-                **{"metadata": {"cycle": cycle}})
+        # Reload after potential task execution
+        job = load_job(job.id)
+        _emit("agent_loop_cycle_completed", _loop_meta(
+            job, state, cycle=cycle, max_cycles=max_cycles,
+            outcome="cycle_completed", reason="cycle_end"))
 
     # Max cycles reached
     if state is None:
         events = load_run_events(data_dir, job.id)
         state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
 
-    log.log("agent_loop_completed", outcome="max_cycles_reached",
-            **{"metadata": {"max_cycles": max_cycles}})
+    _emit("agent_loop_completed", _loop_meta(
+        job, state, cycle=max_cycles, max_cycles=max_cycles,
+        outcome="max_cycles_reached", reason="max_cycles_reached"))
     return state
 
 

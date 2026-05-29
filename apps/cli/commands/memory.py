@@ -103,13 +103,60 @@ def _cmd_memory_list(
             print(f"  {e.key}: {e.value}{approved_mark}{tags_str}  (id={str(e.id)[:8]})")
 
 
+def _cmd_memory_learn(
+    job_id_str: str,
+    *,
+    approved: bool = False,
+    json_output: bool = False,
+) -> None:
+    from uuid import UUID
+
+    from packages.orchestration.storage import JobNotFoundError, load_job
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.memory_learn import export_learn_json, learn_from_job
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
+
+    data_dir = resolve_data_root()
+    events = load_run_events(data_dir, job.id)
+    result = learn_from_job(job, events, approved=approved)
+
+    if json_output:
+        print(_json.dumps(export_learn_json(result), sort_keys=True))
+    else:
+        print(f"Memory learn: {result.learned_count} created, {result.skipped_count} skipped")
+        for e in result.entries:
+            print(f"  {e['key']} = {e['value']} ({e['status']})")
+
+    log = RunLogWriter(job_id=job.id)
+    log.log(
+        "memory_learned",
+        learned_count=result.learned_count,
+        skipped_count=result.skipped_count,
+        approved=approved,
+        source_count=len(result.entries),
+    )
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "memory.store": lambda args: _cmd_memory_store(
         args.key, args.value,
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
         tags=getattr(args, "tags", None),
-        approved=getattr(args, "approved", "false") == "true",
+        approved=bool(getattr(args, "approved", False)),
     ),
     "memory.recall": lambda args: _cmd_memory_recall(
         project_id=getattr(args, "project", None),
@@ -121,6 +168,11 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "memory.list": lambda args: _cmd_memory_list(
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "memory.learn": lambda args: _cmd_memory_learn(
+        args.job_id,
+        approved=bool(getattr(args, "approved", False)),
         json_output=getattr(args, "json", False),
     ),
 }

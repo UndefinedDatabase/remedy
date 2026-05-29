@@ -89,6 +89,8 @@ GROUPS: dict[str, GroupDef] = {
     "policy": GroupDef("policy", "Policy", "Inspect execution policies."),
     "worker": GroupDef("worker", "Worker", "List worker provider specs."),
     "memory": GroupDef("memory", "Memory", "Store and recall project memory."),
+    "readiness": GroupDef("readiness", "Readiness", "Inspect autonomy readiness."),
+    "context": GroupDef("context", "Context", "Context pack and coverage."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -464,7 +466,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--project", "Project UUID scope", required=False, is_option=True),
             ArgDef("--job", "Job UUID scope", required=False, is_option=True),
             ArgDef("--tags", "Comma-separated tags", required=False, is_option=True),
-            ArgDef("--approved", "Mark as approved", required=False, is_option=True, default="false"),
+            ArgDef("--approved", "Mark as approved", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -491,6 +493,57 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--project", "Project UUID scope", required=False, is_option=True),
             ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+
+    CommandEntry(
+        command_id="memory.learn",
+        group_id="memory",
+        subcommand="learn",
+        description="Learn memory from job run evidence.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--approved", "Mark learned entries as approved", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+
+    # ── readiness ────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="readiness.job",
+        group_id="readiness",
+        subcommand="job",
+        description="Assess autonomy readiness for a job.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("brain.graph", "policy.contract"),
+    ),
+    CommandEntry(
+        command_id="readiness.project",
+        group_id="readiness",
+        subcommand="project",
+        description="Assess autonomy readiness for a project.",
+        action_class="read_only",
+        args=(_PROJECT_ID, _JSON_OPT),
+        supports_json=True,
+    ),
+
+    # ── context ──────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="context.pack",
+        group_id="context",
+        subcommand="pack",
+        description="Build a token-budget-aware context pack.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--budget", "Max tokens (default: 2000)", required=False, is_option=True, default="2000"),
+            ArgDef("--mode", "Pack mode: compact or caveman (default: compact)", required=False, is_option=True, default="compact"),
             _JSON_OPT,
         ),
         supports_json=True,

@@ -902,6 +902,190 @@ class TestSmokeScriptText:
         )
 
 
+    # --- Step 46.2: Memory --approved + brain memory nodes (step 12g) --------
+
+    def test_smoke_has_memory_approved_store(self):
+        text = _script_text()
+        assert "--approved" in text and "memory store" in text, (
+            "smoke must call remedy memory store --approved for approved memory test"
+        )
+
+    def test_smoke_checks_brain_memory_nodes(self):
+        text = _script_text()
+        assert "'memory'" in text or '"memory"' in text, (
+            "smoke must verify 'memory' node type in brain graph"
+        )
+
+    def test_smoke_checks_memory_value_no_leak(self):
+        text = _script_text()
+        assert "'value'" in text and "leak" in text, (
+            "smoke must verify memory node metadata does not contain 'value' (no leak)"
+        )
+
+    def test_smoke_checks_context_project_memory(self):
+        text = _script_text()
+        assert "project_memory" in text, (
+            "smoke must verify project_memory signal in context_coverage"
+        )
+
+    # --- Step 46.2: Agent loop run-log schema (step 12h) -------------------
+
+    def test_smoke_has_agent_loop_schema_check(self):
+        text = _script_text()
+        assert "agent_loop" in text and "schema" in text.lower(), (
+            "smoke must verify agent_loop event schema"
+        )
+
+    def test_smoke_checks_agent_loop_required_meta_keys(self):
+        text = _script_text()
+        for key in ("cycle", "max_cycles", "decision", "stage", "reason",
+                     "task_count", "pending_task_count", "pending_approval_count",
+                     "applied_count", "test_run_count"):
+            assert key in text, (
+                f"smoke agent_loop schema check must reference key '{key}'"
+            )
+
+    def test_smoke_checks_no_agent_loop_task_exit(self):
+        text = _script_text()
+        assert "agent_loop_task_exit" in text, (
+            "smoke must verify agent_loop_task_exit event does not exist"
+        )
+
+    def test_smoke_checks_agent_loop_forbidden_strings(self):
+        text = _script_text()
+        for s in ("stdout", "stderr", "raw_output", "Traceback"):
+            assert s in text, (
+                f"smoke agent_loop schema check must forbid '{s}'"
+            )
+
+    # --- Step 48: Readiness job JSON (step 12i) ----------------------------
+
+    def test_smoke_has_readiness_job_json_step(self):
+        text = _script_text()
+        assert "readiness job" in text and "--json" in text, (
+            "smoke must call remedy readiness job --json (Step 48)"
+        )
+
+    def test_smoke_readiness_checks_version_scope_levels(self):
+        text = _script_text()
+        assert "highest_eligible_level" in text, (
+            "smoke 12i must check highest_eligible_level in readiness JSON"
+        )
+
+    def test_smoke_readiness_checks_8_levels(self):
+        text = _script_text()
+        assert "8" in text and "levels" in text, (
+            "smoke 12i must verify 8 levels in readiness JSON"
+        )
+
+    def test_smoke_readiness_checks_level_5_6_blocked(self):
+        text = _script_text()
+        assert "rollback" in text or "level 5" in text, (
+            "smoke 12i must check level 5 is not eligible"
+        )
+        assert "MCP" in text or "level 6" in text, (
+            "smoke 12i must check level 6 is not eligible"
+        )
+
+    def test_smoke_brain_autonomy_readiness_node(self):
+        text = _script_text()
+        assert "autonomy_readiness" in text, (
+            "smoke 12i must verify autonomy_readiness node in brain graph"
+        )
+
+    # --- Step 49: Context pack JSON (step 12j) ----------------------------
+
+    def test_smoke_has_context_pack_step(self):
+        text = _script_text()
+        assert "context pack" in text and "--json" in text, (
+            "smoke must call remedy context pack --json (Step 49)"
+        )
+
+    def test_smoke_context_pack_checks_compact_mode(self):
+        text = _script_text()
+        assert "compact" in text and "mode" in text, (
+            "smoke 12j must verify compact mode in context pack JSON"
+        )
+
+    def test_smoke_context_pack_checks_caveman_mode(self):
+        text = _script_text()
+        assert "caveman" in text, (
+            "smoke 12j must verify caveman mode in context pack JSON"
+        )
+
+    def test_smoke_context_pack_checks_sections(self):
+        text = _script_text()
+        assert "sections" in text and "estimated_tokens" in text, (
+            "smoke 12j must verify sections and estimated_tokens"
+        )
+
+    def test_smoke_context_pack_caveman_le_compact(self):
+        text = _script_text()
+        assert "caveman" in text and "compact" in text, (
+            "smoke 12j must verify caveman tokens <= compact tokens"
+        )
+
+    # --- Step 50: Memory learn JSON (step 12k) ----------------------------
+
+    def test_smoke_has_memory_learn_step(self):
+        text = _script_text()
+        assert "memory learn" in text and "--approved" in text, (
+            "smoke must call remedy memory learn --approved --json (Step 50)"
+        )
+
+    def test_smoke_memory_learn_checks_version_schema(self):
+        text = _script_text()
+        assert "learned_count" in text and "skipped_count" in text, (
+            "smoke 12k must verify learned_count and skipped_count"
+        )
+
+    def test_smoke_memory_learn_idempotent(self):
+        text = _script_text()
+        assert "idempotent" in text or "second learn" in text, (
+            "smoke 12k must verify second learn creates 0 new entries"
+        )
+
+    # --- Steps 48-50: Run-log schema (step 12l) --------------------------
+
+    def test_smoke_has_readiness_assessed_event(self):
+        text = _script_text()
+        assert "readiness_assessed" in text, (
+            "smoke 12l must verify readiness_assessed run-log event"
+        )
+
+    def test_smoke_has_context_pack_created_event(self):
+        text = _script_text()
+        assert "context_pack_created" in text, (
+            "smoke 12l must verify context_pack_created run-log event"
+        )
+
+    def test_smoke_has_memory_learned_event(self):
+        text = _script_text()
+        assert "memory_learned" in text, (
+            "smoke 12l must verify memory_learned run-log event"
+        )
+
+    def test_smoke_readiness_assessed_metadata_keys(self):
+        text = _script_text()
+        for key in ("scope", "highest_eligible_level", "missing_count", "blocker_count"):
+            assert key in text, (
+                f"smoke 12l must verify readiness_assessed metadata key '{key}'"
+            )
+
+    def test_smoke_context_pack_created_metadata_keys(self):
+        text = _script_text()
+        for key in ("budget", "estimated_tokens", "mode", "truncated", "section_count"):
+            assert key in text, (
+                f"smoke 12l must verify context_pack_created metadata key '{key}'"
+            )
+
+    def test_smoke_memory_learned_metadata_keys(self):
+        text = _script_text()
+        for key in ("learned_count", "skipped_count", "approved", "source_count"):
+            assert key in text, (
+                f"smoke 12l must verify memory_learned metadata key '{key}'"
+            )
+
     # --- Step 35: Run Contract (step 12a) -----------------------------------
 
     def test_smoke_has_run_contract_check(self):
