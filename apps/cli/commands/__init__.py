@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 
 def collect_all_handlers() -> dict[str, Callable[["argparse.Namespace"], None]]:
     """Collect COMMAND_HANDLERS from every group module."""
-    from apps.cli.commands import brain, context, dev, job, memory, patch, policy, project, readiness, test_cmds, worker
+    from apps.cli.commands import brain, context, dev, file, job, memory, patch, policy, project, readiness, test_cmds, worker
 
     table: dict[str, Callable[["argparse.Namespace"], None]] = {}
-    for mod in (job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, dev):
+    for mod in (job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, dev):
         table.update(mod.COMMAND_HANDLERS)
     return table

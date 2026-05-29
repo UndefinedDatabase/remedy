@@ -38,13 +38,13 @@ remedy_smoke() {
     # 0. Verify group help for all groups
     # -------------------------------------------------------------------------
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness context; do
+    for grp in job project patch test brain policy worker memory dev readiness context file; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
         }
     done
-    echo "    Group help: OK (job project patch test brain policy worker memory dev)"
+    echo "    Group help: OK (job project patch test brain policy worker memory dev readiness context file)"
 
     # -------------------------------------------------------------------------
     # 1. Create target repo
@@ -1306,6 +1306,73 @@ for ev in ml:
     chk(got == ml_required, 'memory_learned keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ml_required)))
 print('    run-log schema: OK (readiness=' + str(len(ra)) + ', pack=' + str(len(cp)) + ', learn=' + str(len(ml)) + ')')
 " "${JOB_ID}" "${RUNS_ROOT}"
+
+    # -------------------------------------------------------------------------
+    # 12m. File provenance: remedy file why (Step 51)
+    # -------------------------------------------------------------------------
+    echo "--- 12m. File provenance (remedy file why)"
+    if [[ -n "${FIRST_INTENT_ID}" ]]; then
+        # Get target path from the brain
+        FILE_WHY_PATH="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for n in data.get('nodes', []):
+    if n.get('type') == 'patch_apply':
+        print(n.get('metadata', {}).get('target_path', ''))
+        break
+" 2>/dev/null || true)"
+        if [[ -n "${FILE_WHY_PATH}" ]]; then
+            FILE_WHY_JSON="$(remedy file why "${JOB_ID}" "${FILE_WHY_PATH}" --json)"
+            python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: file why: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk(data.get('found') is True, 'found must be true')
+chk(len(data.get('chain', [])) >= 3, 'chain must have >= 3 steps')
+steps = [c['step'] for c in data['chain']]
+chk('patch_intent' in steps, 'chain must include patch_intent')
+chk('patch_apply' in steps, 'chain must include patch_apply')
+chk('patch_apply_proof' in steps, 'chain must include patch_apply_proof')
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in file why: ' + bad)
+print('    file why JSON: OK (chain=' + str(len(data['chain'])) + ', steps=' + str(steps) + ')')
+" "${FILE_WHY_JSON}"
+        else
+            echo "    No patch_apply target_path — skipping file why"
+        fi
+    else
+        echo "    No intents — skipping file why"
+    fi
+
+    # -------------------------------------------------------------------------
+    # 12n. Brain has patch_apply_proof node and causal edges (Step 51)
+    # -------------------------------------------------------------------------
+    echo "--- 12n. Brain causal proof graph"
+    if [[ -n "${FIRST_INTENT_ID}" ]]; then
+        remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+edge_types = {e['type'] for e in data.get('edges', [])}
+if 'patch_apply_proof' not in types:
+    print('ERROR: brain missing patch_apply_proof node', file=sys.stderr)
+    sys.exit(1)
+# Check causal edges
+causal = {'approved_by', 'allowed_apply', 'recorded_proof'}
+missing = causal - edge_types
+if missing:
+    print('ERROR: brain missing causal edges: ' + str(missing), file=sys.stderr)
+    sys.exit(1)
+print('    brain causal proof: OK (proof_nodes=' + str(sum(1 for n in data['nodes'] if n['type'] == 'patch_apply_proof')) + ', causal_edges=' + str(sorted(causal & edge_types)) + ')')
+"
+    else
+        echo "    No intents — skipping causal proof check"
+    fi
 
     # -------------------------------------------------------------------------
     # 13. Summary

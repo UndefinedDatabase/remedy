@@ -91,6 +91,7 @@ GROUPS: dict[str, GroupDef] = {
     "memory": GroupDef("memory", "Memory", "Store and recall project memory."),
     "readiness": GroupDef("readiness", "Readiness", "Inspect autonomy readiness."),
     "context": GroupDef("context", "Context", "Context pack and coverage."),
+    "file": GroupDef("file", "File", "File-level provenance and tracing."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -547,6 +548,22 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
+    ),
+
+    # ── file ─────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="file.why",
+        group_id="file",
+        subcommand="why",
+        description="Trace why a file was changed (causal provenance chain).",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("path", "File path to trace"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("brain.graph", "patch.show"),
     ),
 
     # ── dev ──────────────────────────────────────────────────────────────

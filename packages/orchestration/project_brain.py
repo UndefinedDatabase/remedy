@@ -28,6 +28,7 @@ Node types:
   project_placeholder — lightweight marker linking job to a RemyProject
   patch_apply         — an approved patch intent application record
   test_run            — a permission-gated local test run result (Step 33)
+  patch_apply_proof   — cryptographic proof of a successful file apply (Step 51)
 
 Edge types:
   has_task              — job → task
@@ -46,6 +47,12 @@ Edge types:
   belongs_to_project    — job → project_placeholder
   has_test_run          — job → test_run
   verified_after_apply  — test_run → patch_apply (optional, when present)
+  approved_by           — patch_intent → approval_decision (causal)
+  allowed_apply         — approval_decision → patch_apply (causal)
+  recorded_proof        — patch_apply → patch_apply_proof (causal)
+  proof_verified_by     — patch_apply_proof → test_run (causal)
+  informed_memory       — patch_apply_proof → memory (causal)
+  summarizes            — context_pack → readiness or job (causal)
 
 Redaction policy:
   Artifact content, diff previews, approval reasons, event messages, and
@@ -112,6 +119,7 @@ NT_TOKEN_POLICY        = "token_policy"
 NT_WORKER_ADAPTER      = "worker_adapter"
 NT_AUTONOMY_READINESS  = "autonomy_readiness"
 NT_CONTEXT_PACK        = "context_pack"
+NT_PATCH_APPLY_PROOF   = "patch_apply_proof"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -135,6 +143,13 @@ ET_HAS_TOKEN_POLICY      = "has_token_policy"
 ET_HAS_WORKER_ADAPTER    = "has_worker_adapter"
 ET_HAS_READINESS         = "has_readiness"
 ET_HAS_CONTEXT_PACK      = "has_context_pack"
+# Causal chain edges (Step 51)
+ET_APPROVED_BY           = "approved_by"
+ET_ALLOWED_APPLY         = "allowed_apply"
+ET_RECORDED_PROOF        = "recorded_proof"
+ET_PROOF_VERIFIED_BY     = "proof_verified_by"
+ET_INFORMED_MEMORY       = "informed_memory"
+ET_SUMMARIZES            = "summarizes"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -159,6 +174,7 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_WORKER_ADAPTER:      18,
     NT_AUTONOMY_READINESS:  19,
     NT_CONTEXT_PACK:        20,
+    NT_PATCH_APPLY_PROOF:   21,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -777,7 +793,99 @@ def build_project_brain(
             type=ET_HAS_CONTEXT_PACK,
         ))
 
-    # ── 15. Sort ─────────────────────────────────────────────────────────────
+    # ── 15. Patch Apply Proof nodes (from patch_apply_proof_recorded events) ─
+    proof_events = [e for e in events if e.get("event") == "patch_apply_proof_recorded"]
+    proof_idx = 0
+    for ev in proof_events:
+        meta = ev.get("metadata", {})
+        intent_id = str(meta.get("intent_id", f"proof{proof_idx}"))
+        proof_node_id = f"proof:{intent_id}"
+        proof_idx += 1
+        nodes.append(BrainNode(
+            id=proof_node_id,
+            type=NT_PATCH_APPLY_PROOF,
+            label=f"proof: {meta.get('action', '')} {meta.get('target_path', '')}",
+            status=str(meta.get("outcome", "recorded")),
+            ref_id=intent_id,
+            metadata={
+                "intent_id":        intent_id,
+                "target_path":      str(meta.get("target_path", "")),
+                "action":           str(meta.get("action", "")),
+                "outcome":          str(meta.get("outcome", "")),
+                "before_sha256":    str(meta.get("before_sha256", "")),
+                "after_sha256":     str(meta.get("after_sha256", "")),
+                "before_bytes":     int(meta.get("before_bytes", 0)),
+                "after_bytes":      int(meta.get("after_bytes", 0)),
+                "bytes_delta":      int(meta.get("bytes_delta", 0)),
+                "before_line_count": int(meta.get("before_line_count", 0)),
+                "after_line_count": int(meta.get("after_line_count", 0)),
+                "line_delta":       int(meta.get("line_delta", 0)),
+                "applied_at":       str(meta.get("applied_at", "")),
+            },
+        ))
+        # Edge: patch_apply --recorded_proof--> patch_apply_proof
+        apply_node_id = f"apply:{intent_id}"
+        if any(n.id == apply_node_id for n in nodes):
+            edges.append(BrainEdge(
+                source=apply_node_id,
+                target=proof_node_id,
+                type=ET_RECORDED_PROOF,
+            ))
+
+    # ── 16. Causal chain edges (Step 51) ────────────────────────────────────
+    # patch_intent --approved_by--> approval_decision
+    for n in nodes:
+        if n.type == NT_APPROVAL and n.ref_id:
+            pi_node_id = f"pi:{n.ref_id}"
+            if any(nd.id == pi_node_id for nd in nodes):
+                edges.append(BrainEdge(
+                    source=pi_node_id, target=n.id,
+                    type=ET_APPROVED_BY,
+                ))
+    # approval_decision --allowed_apply--> patch_apply
+    for n in nodes:
+        if n.type == NT_PATCH_APPLY and n.ref_id:
+            adec_node_id = f"approval:{n.ref_id}"
+            if any(nd.id == adec_node_id for nd in nodes):
+                edges.append(BrainEdge(
+                    source=adec_node_id, target=n.id,
+                    type=ET_ALLOWED_APPLY,
+                ))
+    # patch_apply_proof --proof_verified_by--> test_run (when test run exists after proof)
+    proof_node_ids = [n.id for n in nodes if n.type == NT_PATCH_APPLY_PROOF]
+    test_run_node_ids = [n.id for n in nodes if n.type == NT_TEST_RUN]
+    if proof_node_ids and test_run_node_ids:
+        # Connect last proof to first test_run after it (deterministic heuristic)
+        edges.append(BrainEdge(
+            source=proof_node_ids[-1],
+            target=test_run_node_ids[-1],
+            type=ET_PROOF_VERIFIED_BY,
+        ))
+    # patch_apply_proof --informed_memory--> memory when memory entries exist
+    memory_node_ids = [n.id for n in nodes if n.type == NT_MEMORY_ENTRY]
+    if proof_node_ids and memory_node_ids:
+        for mem_id in memory_node_ids:
+            edges.append(BrainEdge(
+                source=proof_node_ids[-1],
+                target=mem_id,
+                type=ET_INFORMED_MEMORY,
+            ))
+    # context_pack --summarizes--> readiness or job
+    cp_node = next((n for n in nodes if n.type == NT_CONTEXT_PACK), None)
+    if cp_node:
+        ar_node = next((n for n in nodes if n.type == NT_AUTONOMY_READINESS), None)
+        if ar_node:
+            edges.append(BrainEdge(
+                source=cp_node.id, target=ar_node.id,
+                type=ET_SUMMARIZES,
+            ))
+        else:
+            edges.append(BrainEdge(
+                source=cp_node.id, target=job_node_id,
+                type=ET_SUMMARIZES,
+            ))
+
+    # ── 17. Sort ─────────────────────────────────────────────────────────────
     sorted_nodes = tuple(
         sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
     )
@@ -818,7 +926,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
         NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY, NT_TEST_RUN,
         NT_RUN_CONTRACT, NT_TOKEN_POLICY, NT_WORKER_ADAPTER,
-        NT_AUTONOMY_READINESS, NT_CONTEXT_PACK,
+        NT_AUTONOMY_READINESS, NT_CONTEXT_PACK, NT_PATCH_APPLY_PROOF,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)
@@ -964,4 +1072,5 @@ def _node_symbol(node_type: str) -> str:
         NT_PROJECT_PLACEHOLDER: _INFO,
         NT_PATCH_APPLY:         _OK,
         NT_TEST_RUN:            _INFO,
+        NT_PATCH_APPLY_PROOF:   _OK,
     }.get(node_type, _INFO)

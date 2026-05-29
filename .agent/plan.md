@@ -1,18 +1,18 @@
 # Plan
 
 ## Goal
-Steps 47-50: Contract Closure, Autonomy Readiness, Context Pack, Memory Learn
+Steps 51-53: Causal Proof Graph, Continue-from-node, Project Brain Aggregate
 
 ## Current Step
-Done — all steps complete. Running final tests.
+Step 51: Causal Proof Graph v1
 
 ## Tasks
-- [x] Step 47: Memory + Agent Loop Contract Closure (verified existing contracts)
-- [x] Step 48: Autonomy Readiness v0 (8 levels, CLI, brain node, run-log)
-- [x] Step 49: Token Budget + Context Pack v0 (budget enforcement, compact/caveman modes)
-- [x] Step 50: Memory Learn v0 (evidence extraction, idempotent upsert, CLI)
-- [x] Smoke script updated (12i-12l sections)
-- [x] Test assertions for smoke sections (test_remedy_smoke_script.py)
-- [x] docs/architecture.md updated (Steps 48-50, 11 groups)
-- [ ] Run full test suite
-- [ ] Commit
+- [ ] Step 51: Causal Proof Graph v1
+  - Add NT_PATCH_APPLY_PROOF node type + causal edge types
+  - Create proof nodes from patch_apply_proof_recorded events
+  - Add causal chain edges (approved_by, allowed_apply, recorded_proof, verified_by, informed_memory, summarizes)
+  - Add `file` group + `file.why` command (file_provenance.py)
+  - Brain detail for patch_apply_proof
+  - Tests + smoke
+- [ ] Step 52: Continue-from-node v0
+- [ ] Step 53: Project Brain Aggregate v0

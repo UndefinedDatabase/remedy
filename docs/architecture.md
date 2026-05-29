@@ -2904,7 +2904,7 @@ Steps 38–40 restructure the Remedy CLI from flat commands (`remedy create-job`
 Source of truth for the entire CLI surface.  Every public command has exactly one `CommandEntry` with:
 
 - `command_id` — `group.subcommand` format (e.g. `brain.graph`)
-- `group_id` — one of 11 groups: `job`, `project`, `patch`, `test`, `brain`, `policy`, `worker`, `memory`, `dev`, `readiness`, `context`
+- `group_id` — one of 12 groups: `job`, `project`, `patch`, `test`, `brain`, `policy`, `worker`, `memory`, `dev`, `readiness`, `context`, `file`
 - `action_class` — `read_only`, `write_metadata`, `approval_gate`, `apply_write`, `test_execution`, `dev_helper`
 - `supports_json`, `requires_permission`, `may_mutate_repo`, `may_execute_commands` — boolean flags
 - `args` — tuple of `ArgDef` (positional or `--option`)
@@ -2948,7 +2948,7 @@ Steps 41–43 add a Bootcamp-style help renderer (`apps/cli/help_renderer.py`) t
 
 Error UX is clean: no argparse noise, no tracebacks. Invalid commands show `Error:` with usage hint.
 
-Root help shows only the 11 groups — no old flat commands appear.
+Root help shows only the 12 groups — no old flat commands appear.
 
 ### Groups
 
@@ -2965,6 +2965,18 @@ Root help shows only the 11 groups — no old flat commands appear.
 | dev       | 2        | Developer utilities |
 | readiness | 2        | Assess autonomy readiness (job/project) |
 | context   | 1        | Build token-budgeted context packs |
+| file      | 1        | File-level provenance and tracing |
+
+### Causal Proof Graph v1 (Step 51)
+
+`packages/orchestration/file_provenance.py` — traces why a file was changed within a Remedy job.
+
+- New brain node: `patch_apply_proof` — created from `patch_apply_proof_recorded` events
+- Causal chain edges: `approved_by`, `allowed_apply`, `recorded_proof`, `proof_verified_by`, `informed_memory`, `summarizes`
+- Full chain: job → task → artifact → patch_intent → approval_decision → patch_apply → patch_apply_proof → test_run → memory → readiness/context_pack
+- CLI: `remedy file why <job_id> <path> [--json]`
+- Brain detail for `patch_apply_proof` node type
+- `patch_apply_proof` metadata: 13 keys from the `patch_apply_proof_recorded` event (intent_id, target_path, action, outcome, before/after SHA256, bytes/lines deltas, applied_at)
 
 ### Autonomy Readiness v0 (Step 48)
 

@@ -62,6 +62,7 @@ from packages.orchestration.project_brain import (
     NT_WORKER_ADAPTER,
     NT_AUTONOMY_READINESS,
     NT_CONTEXT_PACK,
+    NT_PATCH_APPLY_PROOF,
     NT_VERIFICATION,
     ProjectBrainGraph,
 )
@@ -217,6 +218,9 @@ def build_brain_node_detail(
 
     if node.type == NT_CONTEXT_PACK:
         return _detail_context_pack(node, job_id_str, connected)
+
+    if node.type == NT_PATCH_APPLY_PROOF:
+        return _detail_patch_apply_proof(node, job_id_str, connected)
 
     # Fallback for unknown future node types
     return BrainNodeDetail(
@@ -1317,6 +1321,67 @@ def _detail_context_pack(
             f"Build with `remedy context pack {job_id_str[:8]}`.",
         ),
         redaction_notes=("No raw content in context pack metadata.",),
+    )
+
+
+def _detail_patch_apply_proof(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    intent_id = str(meta.get("intent_id", node.ref_id or ""))
+    target_path = str(meta.get("target_path", ""))
+    action = str(meta.get("action", ""))
+    outcome = str(meta.get("outcome", ""))
+    before_sha = str(meta.get("before_sha256", ""))
+    after_sha = str(meta.get("after_sha256", ""))
+    bytes_delta = int(meta.get("bytes_delta", 0))
+    line_delta = int(meta.get("line_delta", 0))
+    applied_at = str(meta.get("applied_at", ""))
+
+    explanation = (
+        f"Cryptographic proof that patch intent '{intent_id}' was applied to "
+        f"'{target_path}' (action: {action}, outcome: {outcome}). "
+        f"SHA256 changed from {before_sha[:16]}… to {after_sha[:16]}…. "
+        f"Bytes delta: {bytes_delta:+d}, line delta: {line_delta:+d}. "
+        f"Applied at: {applied_at}."
+    )
+
+    evidence = [
+        f"intent_id: {intent_id}",
+        f"target_path: {target_path}",
+        f"action: {action}",
+        f"outcome: {outcome}",
+        f"before_sha256: {before_sha[:16]}…" if before_sha else "before_sha256: (none)",
+        f"after_sha256: {after_sha[:16]}…" if after_sha else "after_sha256: (none)",
+        f"bytes_delta: {bytes_delta:+d}",
+        f"line_delta: {line_delta:+d}",
+        f"applied_at: {applied_at}",
+    ]
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_PATCH_APPLY_PROOF,
+        title=f"proof: {action} {target_path}",
+        status=outcome or node.status or "recorded",
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Records the cryptographic proof (before/after SHA256) of a successful patch apply.",
+            "Enables causal tracing from intent → approval → apply → proof → test.",
+        ),
+        connected_to=tuple(connected),
+        evidence=tuple(evidence),
+        affected_files=(target_path,) if target_path else (),
+        next_actions=(
+            f"remedy file why {job_id_str[:8]} {target_path}" if target_path else "",
+        ),
+        redaction_notes=(
+            "No file content or diff text is rendered.",
+            "Only SHA256 hashes and byte/line deltas are shown.",
+        ),
     )
 
 

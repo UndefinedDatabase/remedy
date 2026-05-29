@@ -1086,6 +1086,48 @@ class TestSmokeScriptText:
                 f"smoke 12l must verify memory_learned metadata key '{key}'"
             )
 
+    # --- Step 51: File provenance (step 12m) --------------------------------
+
+    def test_smoke_has_file_why_step(self):
+        text = _script_text()
+        assert "file why" in text, (
+            "smoke must call remedy file why (Step 51)"
+        )
+
+    def test_smoke_file_why_checks_version_found_chain(self):
+        text = _script_text()
+        assert "found" in text and "chain" in text, (
+            "smoke 12m must verify found and chain in file why JSON"
+        )
+
+    def test_smoke_file_why_checks_chain_steps(self):
+        text = _script_text()
+        for step in ("patch_intent", "patch_apply", "patch_apply_proof"):
+            assert step in text, (
+                f"smoke 12m must verify chain includes step '{step}'"
+            )
+
+    # --- Step 51: Brain causal proof graph (step 12n) ----------------------
+
+    def test_smoke_has_brain_causal_proof_step(self):
+        text = _script_text()
+        assert "causal proof" in text.lower() or "patch_apply_proof" in text, (
+            "smoke must verify patch_apply_proof node in brain (Step 51)"
+        )
+
+    def test_smoke_checks_causal_edges(self):
+        text = _script_text()
+        for edge in ("approved_by", "allowed_apply", "recorded_proof"):
+            assert edge in text, (
+                f"smoke 12n must verify causal edge '{edge}' in brain graph"
+            )
+
+    def test_smoke_file_group_in_help(self):
+        text = _script_text()
+        assert "file" in text, (
+            "smoke must include 'file' group in help verification loop"
+        )
+
     # --- Step 35: Run Contract (step 12a) -----------------------------------
 
     def test_smoke_has_run_contract_check(self):
