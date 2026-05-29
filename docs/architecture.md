@@ -2990,6 +2990,18 @@ Root help shows only the 12 groups — no old flat commands appear.
 - Brain: `continued_as` edge from origin node to child job placeholder
 - Child brain shows continuation event as a run_event node
 
+### Project Brain Aggregate v0 (Step 53)
+
+`packages/orchestration/project_brain_aggregate.py` — read-only aggregate brain graph across all jobs in a project.
+
+- CLI: `remedy project brain <project_id> [--json]`
+- Project root node (type=project), repo placeholder nodes (type=repo, basename-only labels)
+- Job subgraphs included with all node types
+- Cross-job edges: contains_job, contains_repo, targets_repo
+- Summary: job_count, repo_count, node_count, edge_count, memory_count, proof_count, test_run_count
+- No raw content, no full repo paths in node labels/metadata
+- This is NOT Global Brain or MemPalace — it is how Remedy starts growing across jobs
+
 ### Autonomy Readiness v0 (Step 48)
 
 `packages/orchestration/autonomy_readiness.py` — deterministic readiness assessment with 8 autonomy levels (0=observe through 7=provider_autonomy).

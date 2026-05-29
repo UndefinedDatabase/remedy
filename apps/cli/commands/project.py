@@ -163,11 +163,64 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
         )
 
 
+def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> None:
+    from pathlib import Path
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.project_brain_aggregate import (
+        build_project_brain_aggregate,
+        export_project_brain_aggregate_json,
+        summarize_project_brain_aggregate,
+    )
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        load_project,
+    )
+    from packages.orchestration.timeline import load_run_events
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"Error: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+
+    all_jobs = list_jobs()
+    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+
+    data_dir = resolve_data_root()
+    all_events: dict[str, list[dict]] = {}
+    consts: dict[str, object | None] = {}
+    for job in linked_jobs:
+        jid = str(job.id)
+        all_events[jid] = load_run_events(data_dir, job.id)
+        target_repo = job.metadata.get("target_repo")
+        if target_repo:
+            try:
+                consts[jid] = load_project_constitution(Path(target_repo))
+            except Exception:
+                consts[jid] = None
+
+    agg = build_project_brain_aggregate(
+        project, linked_jobs, all_events, constitutions=consts,
+    )
+
+    if json_output:
+        print(_json.dumps(export_project_brain_aggregate_json(agg), sort_keys=True))
+    else:
+        print(summarize_project_brain_aggregate(agg))
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
     "project.list": lambda args: _cmd_list_projects(),
     "project.show": lambda args: _cmd_show_project(args.project_id, json_output=args.json),
     "project.attach-repo": lambda args: _cmd_attach_project_repo(args.project_id, args.repo_path),
     "project.attach-job": lambda args: _cmd_attach_project_job(args.project_id, args.job_id),
+    "project.brain": lambda args: _cmd_project_brain(args.project_id, json_output=args.json),
     "project.context": lambda args: _cmd_project_context(args.project_id, json_output=args.json),
 }

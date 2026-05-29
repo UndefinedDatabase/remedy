@@ -1428,6 +1428,48 @@ print('    brain continue: OK (child=' + child_id[:8] + ', type=' + data['origin
     fi
 
     # -------------------------------------------------------------------------
+    # 12p. Project brain aggregate (Step 53)
+    # -------------------------------------------------------------------------
+    echo "--- 12p. Project brain aggregate"
+    PROJECT_BRAIN_JSON="$(remedy project brain "${PROJECT_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: project brain: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk(data.get('scope') == 'project', 'scope must be project')
+chk('project_id' in data, 'missing project_id')
+chk('project_name' in data, 'missing project_name')
+chk('graph' in data, 'missing graph')
+chk('summary' in data, 'missing summary')
+nodes = data['graph']['nodes']
+edges = data['graph']['edges']
+types = {n['type'] for n in nodes}
+chk('project' in types, 'missing project node')
+chk('job' in types, 'missing job node')
+chk(data['summary']['job_count'] >= 1, 'job_count must be >= 1')
+chk(data['summary']['node_count'] >= 5, 'node_count must be >= 5')
+# No raw leaks
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in project brain: ' + bad)
+# No full repo paths in metadata (only basenames)
+for n in nodes:
+    if n.get('type') == 'repo':
+        meta = n.get('metadata', {})
+        chk('repo_basename' in meta, 'repo node missing repo_basename')
+        # Ensure no full path leak (should not start with /)
+        label = n.get('label', '')
+        chk(not label.startswith('/'), 'repo label starts with / (full path leak)')
+print('    project brain: OK (jobs=' + str(data['summary']['job_count'])
+      + ', nodes=' + str(data['summary']['node_count'])
+      + ', edges=' + str(data['summary']['edge_count']) + ')')
+" "${PROJECT_BRAIN_JSON}"
+
+    # -------------------------------------------------------------------------
     # 13. Summary
     # -------------------------------------------------------------------------
     echo ""

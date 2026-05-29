@@ -260,6 +260,16 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(_PROJECT_ID, _JOB_ID),
     ),
     CommandEntry(
+        command_id="project.brain",
+        group_id="project",
+        subcommand="brain",
+        description="Show the aggregate project brain graph across all jobs.",
+        action_class="read_only",
+        args=(_PROJECT_ID, _JSON_OPT),
+        supports_json=True,
+        related=("brain.graph", "project.show"),
+    ),
+    CommandEntry(
         command_id="project.context",
         group_id="project",
         subcommand="context",

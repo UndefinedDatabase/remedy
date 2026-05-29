@@ -1155,6 +1155,39 @@ class TestSmokeScriptText:
             "smoke 12o must verify child job exists"
         )
 
+    # --- Step 53: Project brain aggregate (step 12p) -------------------------
+
+    def test_smoke_has_project_brain_step(self):
+        text = _script_text()
+        assert "project brain" in text, (
+            "smoke must call remedy project brain (Step 53)"
+        )
+
+    def test_smoke_project_brain_checks_json_schema(self):
+        text = _script_text()
+        for key in ("project_id", "project_name", "scope"):
+            assert key in text, (
+                f"smoke 12p must verify key '{key}' in project brain JSON"
+            )
+
+    def test_smoke_project_brain_checks_graph_and_summary(self):
+        text = _script_text()
+        assert "graph" in text and "summary" in text, (
+            "smoke 12p must verify graph and summary in project brain JSON"
+        )
+
+    def test_smoke_project_brain_checks_project_node(self):
+        text = _script_text()
+        assert "'project'" in text or '"project"' in text, (
+            "smoke 12p must verify project node type exists"
+        )
+
+    def test_smoke_project_brain_checks_no_path_leak(self):
+        text = _script_text()
+        assert "repo_basename" in text, (
+            "smoke 12p must verify repo nodes have repo_basename (no full path)"
+        )
+
     # --- Step 35: Run Contract (step 12a) -----------------------------------
 
     def test_smoke_has_run_contract_check(self):
