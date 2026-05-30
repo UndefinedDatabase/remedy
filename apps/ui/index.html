@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="remedy-light" data-semantic-zoom="true" data-zoom-in-reveals-more="true" data-forward-flow="true" data-reduced-motion="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,9 +7,118 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #e8ecf1; }
-  #app { width: 100%; height: 100%; position: relative; }
-  #canvas-container { width: 100%; height: 100%; position: relative; }
-  #detail-card {
+  #app { width: 100%; height: 100%; position: relative; display: flex; }
+
+  /* Task progress ribbon (left side) */
+  #remedy-task-ribbon {
+    width: 260px;
+    min-width: 260px;
+    height: 100%;
+    background: #fff;
+    border-right: 1px solid #e2e6ec;
+    overflow-y: auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    z-index: 60;
+    transition: width 0.2s ease, min-width 0.2s ease, opacity 0.2s ease;
+  }
+  #remedy-task-ribbon.collapsed {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    border-right: none;
+  }
+  .ribbon-header {
+    padding: 16px 16px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #eef1f4;
+  }
+  .ribbon-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2332;
+  }
+  .ribbon-toggle {
+    width: 24px; height: 24px;
+    border: none; background: #f0f2f5;
+    border-radius: 6px; cursor: pointer;
+    font-size: 12px; color: #6b7a8d;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ribbon-toggle:hover { background: #e0e4e9; }
+  .ribbon-tasks { padding: 8px 0; }
+  .remedy-task-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 8px 16px;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #1a2332;
+    transition: background 0.15s;
+  }
+  .remedy-task-item:hover { background: #f8f9fb; }
+  .remedy-task-item .task-check {
+    width: 16px; height: 16px; min-width: 16px;
+    border: 2px solid #c8cfd8;
+    border-radius: 4px;
+    margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .remedy-task-item.remedy-task-completed { color: #a0aab4; }
+  .remedy-task-item.remedy-task-completed .task-check {
+    background: #48bb78;
+    border-color: #48bb78;
+    color: #fff;
+  }
+  .remedy-task-item.remedy-task-active { font-weight: 500; }
+  .remedy-task-item.remedy-task-active .task-check {
+    border-color: #4a9eff;
+    animation: pulse-check 1.5s ease-in-out infinite;
+  }
+  .remedy-task-item.remedy-task-future { color: #8899aa; }
+  .remedy-task-item.remedy-task-future .task-check { border-color: #dde2e8; }
+  .remedy-task-item.remedy-task-reviewer-suggested {
+    color: #8b5cf6;
+    font-style: italic;
+  }
+  .remedy-task-item.remedy-task-reviewer-suggested .task-check { border-color: #c4b5fd; }
+  .task-label { flex: 1; }
+
+  @keyframes pulse-check {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74,158,255,0.3); }
+    50% { box-shadow: 0 0 0 4px rgba(74,158,255,0); }
+  }
+
+  /* Canvas area */
+  #remedy-brain-canvas {
+    flex: 1;
+    height: 100%;
+    position: relative;
+  }
+
+  /* Expand button when ribbon collapsed */
+  #ribbon-expand {
+    display: none;
+    position: absolute;
+    top: 16px; left: 16px;
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid #e2e6ec;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px; color: #4a5568;
+    align-items: center; justify-content: center;
+    z-index: 70;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  #ribbon-expand.visible { display: flex; }
+
+  /* Detail card (right side) */
+  #detail-card, #node-detail-card {
     display: none;
     position: absolute;
     top: 24px;
@@ -25,25 +134,27 @@
     color: #1a2332;
     z-index: 100;
   }
-  #detail-card.visible { display: block; }
-  #detail-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-  #detail-card .subtitle { font-size: 12px; color: #6b7a8d; margin-bottom: 12px; }
-  #detail-card .field { margin-bottom: 10px; }
-  #detail-card .field-label { font-size: 11px; color: #8899aa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-  #detail-card .field-value { font-size: 13px; line-height: 1.4; }
-  #detail-card .close-btn {
+  #detail-card.visible, #node-detail-card.visible { display: block; }
+  #detail-card h3, #node-detail-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  #detail-card .subtitle, #node-detail-card .subtitle { font-size: 12px; color: #6b7a8d; margin-bottom: 12px; }
+  #detail-card .field, #node-detail-card .field { margin-bottom: 10px; }
+  #detail-card .field-label, #node-detail-card .field-label { font-size: 11px; color: #8899aa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  #detail-card .field-value, #node-detail-card .field-value { font-size: 13px; line-height: 1.4; }
+  .close-btn {
     position: absolute; top: 12px; right: 12px;
     width: 24px; height: 24px; border: none; background: #f0f2f5;
     border-radius: 6px; cursor: pointer; font-size: 14px; color: #6b7a8d;
     display: flex; align-items: center; justify-content: center;
   }
-  #detail-card .close-btn:hover { background: #e0e4e9; }
-  #detail-card .advanced-toggle {
+  .close-btn:hover { background: #e0e4e9; }
+  .advanced-toggle {
     font-size: 11px; color: #a0aab4; cursor: pointer; margin-top: 8px;
     border: none; background: none; padding: 4px 0;
   }
-  #detail-card .advanced-content { display: none; margin-top: 8px; border-top: 1px solid #eef1f4; padding-top: 8px; }
-  #detail-card .advanced-content.open { display: block; }
+  .advanced-content { display: none; margin-top: 8px; border-top: 1px solid #eef1f4; padding-top: 8px; }
+  .advanced-content.open { display: block; }
+
+  /* Zoom indicator */
   #zoom-indicator {
     position: absolute; bottom: 24px; left: 24px;
     background: rgba(255,255,255,0.85); border-radius: 8px;
@@ -51,6 +162,8 @@
     font-size: 12px; color: #4a5568; box-shadow: 0 1px 6px rgba(0,0,0,0.08);
     z-index: 50;
   }
+
+  /* Edge tooltip */
   #edge-tooltip {
     display: none;
     position: fixed;
@@ -65,14 +178,47 @@
     z-index: 80;
   }
   #edge-tooltip.visible { display: block; }
+
+  /* Follow toggle */
+  #follow-toggle {
+    position: absolute; bottom: 24px; right: 24px;
+    background: rgba(255,255,255,0.85); border-radius: 8px;
+    padding: 6px 12px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 11px; color: #4a5568; border: 1px solid #e2e6ec;
+    cursor: pointer; z-index: 50;
+  }
+  #follow-toggle.active { background: #4a9eff; color: #fff; border-color: #4a9eff; }
+
+  /* Reduced motion: disable all animations */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .remedy-task-item.remedy-task-active .task-check { animation: none; }
+  }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="canvas-container"></div>
-  <div id="detail-card"></div>
-  <div id="zoom-indicator">Origin</div>
-  <div id="edge-tooltip"></div>
+  <nav id="remedy-task-ribbon">
+    <div class="ribbon-header">
+      <span class="ribbon-title">Tasks</span>
+      <button class="ribbon-toggle" id="ribbon-collapse" title="Collapse">&lsaquo;</button>
+    </div>
+    <div class="ribbon-tasks" id="ribbon-tasks">
+      <!-- Populated by JS -->
+    </div>
+  </nav>
+  <div id="remedy-brain-canvas">
+    <div id="detail-card"></div>
+    <div id="node-detail-card"></div>
+    <div id="zoom-indicator">Origin</div>
+    <div id="edge-tooltip"></div>
+    <button id="follow-toggle">Follow</button>
+    <button id="ribbon-expand">&rsaquo;</button>
+  </div>
 </div>
 <script type="module" src="/src/main.ts"></script>
 </body>

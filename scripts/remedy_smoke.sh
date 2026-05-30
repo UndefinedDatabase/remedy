@@ -2282,40 +2282,27 @@ except URLError as e:
 try:
     resp = urlopen(base + '/', timeout=5)
     html = resp.read().decode()
-    panels = {
-        'what-happened': 'what-happened' in html,
-        'proven': 'proven' in html or 'What is proven' in html,
-        'needs-attention': 'needs-attention' in html,
-        'next-action': 'next-action' in html or 'Next safe action' in html,
-        'token-cost': 'token-cost' in html,
-        'explore-brain': 'explore-brain' in html,
+    # New UX contract markers (Steps 101-110)
+    markers = {
+        'remedy-brain-canvas': 'remedy-brain-canvas' in html,
+        'remedy-task-ribbon': 'remedy-task-ribbon' in html,
+        'remedy-task-item': 'remedy-task-item' in html,
+        'semantic-zoom': 'semantic-zoom' in html,
+        'zoom-in-reveals-more': 'zoom-in-reveals-more' in html,
+        'forward-flow': 'forward-flow' in html,
+        'node-detail-card': 'node-detail-card' in html,
+        'reduced-motion': 'reduced-motion' in html,
     }
-    failed = [k for k, v in panels.items() if not v]
+    failed = [k for k, v in markers.items() if not v]
     if failed:
         for f in failed:
-            print('ERROR: missing panel: ' + f, file=sys.stderr)
+            print('ERROR: missing UX marker: ' + f, file=sys.stderr)
         sys.exit(1)
 
     # 8. Default is light/ice theme
     if 'remedy-light' not in html:
         print('ERROR: default not light theme', file=sys.stderr)
         sys.exit(1)
-
-    # 9. Full graph not first visible region
-    if 'remedy-brain-explorer' in html:
-        # Should be display:none by default
-        idx = html.index('remedy-brain-explorer')
-        region = html[max(0, idx-200):idx+100]
-        if 'display: block' in region or 'visible' in region.split('class=')[0] if 'class=' in region else False:
-            print('ERROR: brain explorer visible by default', file=sys.stderr)
-            sys.exit(1)
-
-    # 10. Explore modes exist
-    modes = ['proof-path', 'attention', 'system-map', 'full-graph']
-    for m in modes:
-        if m not in html:
-            print('ERROR: missing explore mode: ' + m, file=sys.stderr)
-            sys.exit(1)
 
     # 12. No external assets
     for pattern in ['cdn.', 'googleapis.com', 'unpkg.com', 'jsdelivr.net']:

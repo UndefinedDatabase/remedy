@@ -38,14 +38,18 @@ const BLOCKER_EDGE_COLOR = 0xe8a0a0;
 const BG_COLOR = 0xe8ecf1;
 const ARROW_SIZE = 6;
 
+/**
+ * Semantic zoom: higher scale (zoomed in) = higher level = more detail.
+ * zoom_in_reveals_more: monotonic non-decreasing visible counts.
+ */
 function zoomLevelFromScale(scale: number): number {
-  if (scale < 0.2) return 6;
-  if (scale < 0.35) return 5;
-  if (scale < 0.5) return 4;
+  if (scale < 0.2) return 0;
+  if (scale < 0.35) return 1;
+  if (scale < 0.5) return 2;
   if (scale < 0.7) return 3;
-  if (scale < 1.0) return 2;
-  if (scale < 1.8) return 1;
-  return 0;
+  if (scale < 1.0) return 4;
+  if (scale < 1.8) return 5;
+  return 6;
 }
 
 export async function createRenderer(
@@ -298,6 +302,36 @@ export async function createRenderer(
   // Ticker for smooth label updates
   app.ticker.add(updateLabelPositions);
 
+  // Atmospheric particles (subtle, reduced-motion safe)
+  const reducedMotionMedia = window.matchMedia("(prefers-reduced-motion: reduce)");
+  if (!reducedMotionMedia.matches) {
+    const particleLayer = new Container();
+    particleLayer.alpha = 0.15;
+    viewport.addChildAt(particleLayer, 0);
+    const PARTICLE_COUNT = 30;
+    interface Particle { g: Graphics; vx: number; vy: number }
+    const particles: Particle[] = [];
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const pg = new Graphics();
+      const sz = 1.5 + Math.random() * 2;
+      pg.circle(0, 0, sz);
+      pg.fill({ color: 0xc8d8ea, alpha: 0.5 + Math.random() * 0.3 });
+      pg.position.set(Math.random() * 3000 - 500, Math.random() * 2000 - 300);
+      particleLayer.addChild(pg);
+      particles.push({ g: pg, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.2 });
+    }
+    app.ticker.add(() => {
+      for (const p of particles) {
+        p.g.position.x += p.vx;
+        p.g.position.y += p.vy;
+        if (p.g.position.x > 3000) p.g.position.x = -500;
+        if (p.g.position.x < -500) p.g.position.x = 3000;
+        if (p.g.position.y > 2000) p.g.position.y = -300;
+        if (p.g.position.y < -300) p.g.position.y = 2000;
+      }
+    });
+  }
+
   function resize() {
     const w = container.clientWidth;
     const h = container.clientHeight;
@@ -325,9 +359,18 @@ export async function createRenderer(
         }
         Object.assign(existing.node, newNode);
       }
-      // New nodes would need full creation — skip for now, require reload
+      // New nodes: skip full creation for now, require reload
     }
     updateVisibility(currentZoomLevel);
+
+    // Pulse active node if present
+    if ((newVm as any).active_task_id) {
+      const activeEntry = nodeEntries.find(e => e.node.id === (newVm as any).active_task_id);
+      if (activeEntry) {
+        activeEntry.glow.alpha = 0.5;
+        setTimeout(() => { activeEntry.glow.alpha = 0.2; }, 600);
+      }
+    }
   }
 
   return {

@@ -232,12 +232,12 @@ class TestUXAntiRegression:
             content = f.read_text()
             assert "scanline" not in content.lower(), f"Scanline reference in {f.name}"
 
-    def test_no_particle_field(self):
-        """No particle field effects."""
-        src_dir = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src"
-        for f in src_dir.rglob("*.ts"):
-            content = f.read_text()
-            assert "particle" not in content.lower(), f"Particle reference in {f.name}"
+    def test_particles_reduced_motion_safe(self):
+        """Atmospheric particles must be guarded by reduced-motion check."""
+        renderer = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts"
+        content = renderer.read_text()
+        if "particle" in content.lower():
+            assert "prefers-reduced-motion" in content, "Particles must be reduced-motion guarded"
 
     def test_pixi_viewport_in_renderer(self):
         """Renderer must use pixi-viewport for zoom/pan."""

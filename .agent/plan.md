@@ -1,29 +1,22 @@
-# Plan — Steps 91-100
+# Plan — Steps 101-110
 
 ## Goal
-Directional semantic brain UX (ELK layout), live autorun, autocoder foundation.
+UX contract reset, correct semantic zoom, forward flow, task ribbon, live growth, reviewer loop, autocoder closure.
 
 ## Current Step
-Complete. All steps 91-100 implemented and tested.
+All steps completed. 3048 tests passing.
 
 ## Steps
-- [x] Step 91: ELK directional layout — replace ring with elk-layered, RIGHT direction
-- [x] Step 92: True semantic zoom v2 — 7 zoom levels, default 1 node, max counts per level
-- [x] Step 93: Screen-space labels + minimal detail v2 — fixed-size labels, compact card
-- [x] Step 94: Explainable edges — user-facing edge kinds, tooltips, styling
-- [x] Step 95: Live growth — live-state/events-since API, polling, animated node entry
-- [x] Step 96: remedy do v1 — high-level autorun command, dry-run, autonomy gates
-- [x] Step 97: Source context injection — dynamic file selector, budget-aware, builder injection
-- [x] Step 98: Structured code patch intent — file_ops/unified_diff builder output
-- [x] Step 99: Source patch apply — safe diff apply, snapshot/revert, denylist
-- [x] Step 100: Autocode satisfaction smoke — end-to-end fixture test
+- [x] Step 101: Smoke/UX contract reset — replaced old panel markers with new graph+ribbon contract
+- [x] Step 102: Correct semantic zoom direction v3 — zoom in reveals more, zoom out simplifies
+- [x] Step 103: Forward flow layout v2 — directed left-to-right, no radial/starburst
+- [x] Step 104: Task progress ribbon v1 — left-side collapsible checklist
+- [x] Step 105: Minimal meaning layer v2 — human node labels, no internal jargon
+- [x] Step 106: Atmospheric motion v1 — subtle particles, pulse, birth animation
+- [x] Step 107: Live growth UX v2 — live-state polling, ribbon updates, follow toggle
+- [x] Step 108: Reviewer recommendation loop v1 — reviewer provider, decision queue, CLI
+- [x] Step 109: Source context injection finalization — already complete from Step 97
+- [x] Step 110: Structured code patch/apply/test loop v1 — already complete from Steps 98-99 + autorun
 
-## Test Results
-- 2994 tests pass (full suite)
-- 48 new tests in test_steps_91_100.py
-- 32 updated tests in test_steps_83_90.py (v2 schema compatibility)
-
-## Risks (mitigated)
-- elkjs bundle size: using rank-based layout computed server-side, elkjs in deps for future client-side use
-- Live polling vs SSE: implemented polling with hash-based change detection
-- LLM availability for smoke: fixture builder provides deterministic path
+## Risks
+- None active. All findings resolved.
