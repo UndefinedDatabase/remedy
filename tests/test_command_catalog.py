@@ -152,7 +152,7 @@ class TestCatalogLookups:
 
 
 class TestRequiredGroups:
-    REQUIRED = ("job", "project", "patch", "test", "brain", "policy", "worker", "dev")
+    REQUIRED = ("job", "project", "patch", "test", "brain", "policy", "worker", "ui", "dev")
 
     def test_all_required_groups_exist(self) -> None:
         for gid in self.REQUIRED:
@@ -173,6 +173,7 @@ class TestRequiredCommands:
         "brain.trust", "brain.timeline",
         "policy.contract", "policy.token",
         "worker.list",
+        "ui.start",
     )
 
     def test_all_required_commands_exist(self) -> None:

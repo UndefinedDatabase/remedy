@@ -1556,9 +1556,11 @@ On success the summary prints `VIEW_PATH` — the path to the generated `index.h
 open "file://<VIEW_PATH>"
 ```
 
-No http.server, no LAN URLs, no PID files.
+No LAN URLs, no PID files for static viewer.
 
-The frontend must consume only `viewer_data.json` and the embedded JSON already in `index.html`.  No other data sources are accepted.
+The static viewer frontend consumes only `viewer_data.json` and embedded JSON.
+
+**Localhost UI (Step 80):** A read-only HTTP server (`remedy ui start <job_id>`) is allowed for interactive UI preview. It binds only 127.0.0.1, requires a per-run token, serves no mutation endpoints, and returns only safe summaries. Static export remains available via `remedy brain export-viewer` for offline/share use.
 
 **Constitution loading is advisory.**  If the attached repo path is absent, stale, or inaccessible, the viewer continues with `constitution=None` and prints a safe warning to stderr:
 

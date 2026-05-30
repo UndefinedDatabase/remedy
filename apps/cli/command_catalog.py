@@ -99,6 +99,7 @@ GROUPS: dict[str, GroupDef] = {
     "decision": GroupDef("decision", "Decision", "Human decision queue."),
     "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards."),
     "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions."),
+    "ui": GroupDef("ui", "UI", "Localhost UI server — primary interactive experience."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -981,6 +982,23 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
         related=("readiness.job", "decision.list", "dashboard.job"),
+    ),
+
+    # ── ui ───────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="ui.start",
+        group_id="ui",
+        subcommand="start",
+        description="Start the localhost UI server for a job.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--port", "Port number (0 = auto, default: 8787)", required=False, is_option=True, default="8787"),
+            ArgDef("--host", "Bind host (only 127.0.0.1 allowed)", required=False, is_option=True, default="127.0.0.1"),
+            ArgDef("--open", "Open browser (default: false)", required=False, is_option=True, default="false"),
+            ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
+        ),
+        related=("brain.view", "dashboard.job"),
     ),
 
     # ── dev ──────────────────────────────────────────────────────────────

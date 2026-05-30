@@ -62,7 +62,7 @@ SUMEOF
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide; do
+    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide ui; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
@@ -2195,6 +2195,150 @@ if not manifest.get('safe_to_share'):
     sys.exit(1)
 print('    export-viewer: OK (manifest valid)')
 "
+
+    # -------------------------------------------------------------------------
+    # 12an. Localhost UI server (Step 80)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12an"
+    echo "--- 12an. Localhost UI server"
+    UI_INFO_FILE="${_SMOKE_LOG_DIR}/ui_info.json"
+    # Start server in background, --port 0 picks free port, --no-open skips browser
+    remedy ui start "${JOB_ID}" --port 0 --info-file "${UI_INFO_FILE}" &
+    UI_PID=$!
+    # Wait for info file
+    for _i in $(seq 1 30); do
+        [[ -f "${UI_INFO_FILE}" ]] && break
+        sleep 0.2
+    done
+    if [[ ! -f "${UI_INFO_FILE}" ]]; then
+        kill "${UI_PID}" 2>/dev/null || true
+        echo "ERROR: UI server did not write info file" >&2
+        return 1
+    fi
+    python3 -c "
+import json, sys
+from urllib.request import urlopen, Request
+from urllib.error import URLError
+
+info = json.loads(open(sys.argv[1]).read())
+# 1. info-file schema
+required = {'version', 'url', 'host', 'port', 'token', 'job_id', 'pid', 'started_at'}
+missing = required - set(info.keys())
+if missing:
+    print('ERROR: ui info missing: ' + repr(missing), file=sys.stderr)
+    sys.exit(1)
+
+# 2. URL starts with http://127.0.0.1
+url = info['url']
+if not url.startswith('http://127.0.0.1:'):
+    print('ERROR: UI URL not localhost: ' + url, file=sys.stderr)
+    sys.exit(1)
+
+# 3. URL contains token
+if info['token'] not in url:
+    print('ERROR: UI URL missing token', file=sys.stderr)
+    sys.exit(1)
+
+# 4. Host is 127.0.0.1
+if info['host'] != '127.0.0.1':
+    print('ERROR: UI host not 127.0.0.1: ' + info['host'], file=sys.stderr)
+    sys.exit(1)
+
+base = 'http://127.0.0.1:' + str(info['port'])
+token = info['token']
+job_id = info['job_id']
+
+# 5. API without token returns 403
+try:
+    resp = urlopen(base + '/api/state?job_id=' + job_id, timeout=5)
+    body = json.loads(resp.read())
+    if 'error' not in body:
+        print('ERROR: API without token did not fail', file=sys.stderr)
+        sys.exit(1)
+except URLError:
+    pass  # Connection refused is also acceptable
+
+# 6. API with token returns safe state
+try:
+    resp = urlopen(base + '/api/jobs/' + job_id + '/dashboard?token=' + token, timeout=5)
+    data = json.loads(resp.read())
+    if data.get('version') != 1:
+        print('ERROR: dashboard version != 1', file=sys.stderr)
+        sys.exit(1)
+    if 'state' not in data:
+        print('ERROR: dashboard missing state', file=sys.stderr)
+        sys.exit(1)
+    # No raw leaks
+    full = json.dumps(data)
+    for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+        if bad in full:
+            print('ERROR: dashboard raw leak: ' + bad, file=sys.stderr)
+            sys.exit(1)
+except URLError as e:
+    print('ERROR: API request failed: ' + str(e), file=sys.stderr)
+    sys.exit(1)
+
+# 7. App shell has calm entry panels
+try:
+    resp = urlopen(base + '/', timeout=5)
+    html = resp.read().decode()
+    panels = {
+        'what-happened': 'what-happened' in html,
+        'proven': 'proven' in html or 'What is proven' in html,
+        'needs-attention': 'needs-attention' in html,
+        'next-action': 'next-action' in html or 'Next safe action' in html,
+        'token-cost': 'token-cost' in html,
+        'explore-brain': 'explore-brain' in html,
+    }
+    failed = [k for k, v in panels.items() if not v]
+    if failed:
+        for f in failed:
+            print('ERROR: missing panel: ' + f, file=sys.stderr)
+        sys.exit(1)
+
+    # 8. Default is light/ice theme
+    if 'remedy-light' not in html:
+        print('ERROR: default not light theme', file=sys.stderr)
+        sys.exit(1)
+
+    # 9. Full graph not first visible region
+    if 'remedy-brain-explorer' in html:
+        # Should be display:none by default
+        idx = html.index('remedy-brain-explorer')
+        region = html[max(0, idx-200):idx+100]
+        if 'display: block' in region or 'visible' in region.split('class=')[0] if 'class=' in region else False:
+            print('ERROR: brain explorer visible by default', file=sys.stderr)
+            sys.exit(1)
+
+    # 10. Explore modes exist
+    modes = ['proof-path', 'attention', 'system-map', 'full-graph']
+    for m in modes:
+        if m not in html:
+            print('ERROR: missing explore mode: ' + m, file=sys.stderr)
+            sys.exit(1)
+
+    # 12. No external assets
+    for pattern in ['cdn.', 'googleapis.com', 'unpkg.com', 'jsdelivr.net']:
+        if pattern in html:
+            print('ERROR: external asset in shell: ' + pattern, file=sys.stderr)
+            sys.exit(1)
+
+    # 13. No raw leaks
+    for bad in ['raw_output', 'command_output', 'MUST_NOT_RENDER', 'diff_preview', 'approval_reason']:
+        if bad in html:
+            print('ERROR: raw leak in shell: ' + bad, file=sys.stderr)
+            sys.exit(1)
+
+except URLError as e:
+    print('ERROR: app shell request failed: ' + str(e), file=sys.stderr)
+    sys.exit(1)
+
+print('    localhost UI: OK (url=' + url + ')')
+" "${UI_INFO_FILE}"
+    # 15. Kill server cleanly
+    kill "${UI_PID}" 2>/dev/null || true
+    wait "${UI_PID}" 2>/dev/null || true
+    echo "    UI server stopped"
 
     # -------------------------------------------------------------------------
     # 13. Summary
