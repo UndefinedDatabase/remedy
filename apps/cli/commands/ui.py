@@ -181,7 +181,7 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         args.job_id,
         port=int(getattr(args, "port", None) or 8787),
         host=getattr(args, "host", None) or "127.0.0.1",
-        open_browser=str(getattr(args, "open", "false")).lower() == "true",
+        open_browser=not getattr(args, "no_open", False),
         info_file=getattr(args, "info_file", None) or None,
     ),
     "ui.latest": lambda _args: _cmd_ui_latest(),

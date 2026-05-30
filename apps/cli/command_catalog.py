@@ -1023,7 +1023,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("--port", "Port number (0 = auto, default: 8787)", required=False, is_option=True, default="8787"),
             ArgDef("--host", "Bind host (only 127.0.0.1 allowed)", required=False, is_option=True, default="127.0.0.1"),
-            ArgDef("--open", "Open browser (default: false)", required=False, is_option=True, default="false"),
+            ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
             ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
         ),
         related=("brain.view", "dashboard.job"),
