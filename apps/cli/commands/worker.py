@@ -202,7 +202,11 @@ def _cmd_worker_unload(
     if not shutil.which("ollama"):
         msg = "ollama not found — no models to unload"
         if json_output:
-            print(_json.dumps({"version": 1, "error": msg}))
+            print(_json.dumps({
+                "version": 1, "provider": provider,
+                "attempted": 0, "stopped": [], "skipped": [],
+                "errors": [], "unavailable": True,
+            }))
         else:
             print(msg)
         return
@@ -238,7 +242,15 @@ def _cmd_worker_unload(
         except (subprocess.TimeoutExpired, OSError) as e:
             results.append({"model": t, "stopped": False, "error": str(e)})
 
-    out = {"version": 1, "provider": provider, "attempted": len(targets), "results": results}
+    stopped = [r["model"] for r in results if r["stopped"]]
+    errors = [r["model"] for r in results if not r["stopped"] and r["error"]]
+    skipped: list[str] = []  # targets already unloaded (future: detect from ollama ps)
+    out = {
+        "version": 1, "provider": provider,
+        "attempted": len(targets),
+        "stopped": stopped, "skipped": skipped,
+        "errors": errors, "unavailable": False,
+    }
     if json_output:
         print(_json.dumps(out, sort_keys=True))
     else:

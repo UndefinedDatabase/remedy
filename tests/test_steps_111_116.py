@@ -181,7 +181,8 @@ class TestStep112_ResourceCleanup:
         out = capsys.readouterr().out
         data = json.loads(out)
         assert data["attempted"] == 2
-        assert len(data["results"]) == 2
+        assert len(data["stopped"]) == 2
+        assert data["unavailable"] is False
 
     def test_no_shell_true_in_worker(self):
         """No shell=True usage in worker.py (docstrings excluded)."""
@@ -263,12 +264,12 @@ class TestStep113_SemanticZoom:
         vm = build_brain_view_model(job, [])
         assert vm["label_counts_by_zoom"][0] == 0
 
-    def test_version_is_3(self):
-        """View model version should be 3."""
+    def test_version_is_4(self):
+        """View model version should be 4."""
         job = _make_job()
         from packages.orchestration.ui_view_model import build_brain_view_model
         vm = build_brain_view_model(job, [])
-        assert vm["version"] == 3
+        assert vm["version"] == 4
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -469,8 +470,9 @@ class TestStep116_AutocoderE2E:
             _run_fixture_builder(
                 job, "Make tests pass", Path(tmp), data_dir, autonomy_level=4,
             )
-            assert (Path(tmp) / "test_fixture.py").exists()
-            assert (Path(tmp) / "fixture_module.py").exists()
+            assert (Path(tmp) / "tests" / "test_calc.py").exists()
+            assert (Path(tmp) / "calc.py").exists()
+            assert (Path(tmp) / "Makefile").exists()
 
     def test_fixture_test_passes(self):
         """The fixture test should actually pass after apply."""
@@ -509,13 +511,13 @@ class TestStep116_AutocoderE2E:
         patch = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(
-                path="fixture_module.py",
+                path="calc.py",
                 action="create",
                 language="python",
-                content="def greet(name): return f'Hello, {name}!'\n",
+                content="def add(a: int, b: int) -> int:\n    return a + b\n\n\ndef mul(a: int, b: int) -> int:\n    return a * b\n",
                 risk="low",
             ),),
-            target_paths=("fixture_module.py",),
+            target_paths=("calc.py",),
             risk="low",
             applicability="applicable",
             requires_approval=True,

@@ -2321,12 +2321,39 @@ except URLError as e:
     print('ERROR: app shell request failed: ' + str(e), file=sys.stderr)
     sys.exit(1)
 
+
+# 9. Brain view-model: exactly one origin node
+try:
+    resp = urlopen(base + '/api/jobs/' + job_id + '/brain-view-model?token=' + token, timeout=5)
+    vm = json.loads(resp.read())
+    origins = [n for n in vm.get('nodes', []) if n.get('is_origin')]
+    if len(origins) != 1:
+        print('ERROR: expected 1 origin, got ' + str(len(origins)), file=sys.stderr)
+        sys.exit(1)
+    if origins[0]['id'] != job_id:
+        print('ERROR: origin node is not focus job', file=sys.stderr)
+        sys.exit(1)
+    if vm.get('version') != 4:
+        print('ERROR: view-model version != 4, got ' + str(vm.get('version')), file=sys.stderr)
+        sys.exit(1)
+except URLError as e:
+    print('ERROR: brain-view-model request failed: ' + str(e), file=sys.stderr)
+    sys.exit(1)
+
 print('    localhost UI: OK (url=' + url + ')')
 " "${UI_INFO_FILE}"
     # 15. Kill server cleanly
     kill "${UI_PID}" 2>/dev/null || true
     wait "${UI_PID}" 2>/dev/null || true
     echo "    UI server stopped"
+
+    # -------------------------------------------------------------------------
+    # 12b. Optional VRAM cleanup
+    # -------------------------------------------------------------------------
+    if [[ "${REMEDY_SMOKE_UNLOAD_MODELS:-}" == "1" ]]; then
+        echo "--- 12b. Unloading models (REMEDY_SMOKE_UNLOAD_MODELS=1)"
+        remedy worker unload --all --json || echo "    (unload skipped — ollama not available)"
+    fi
 
     # -------------------------------------------------------------------------
     # 13. Summary

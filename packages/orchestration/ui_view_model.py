@@ -295,6 +295,7 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
     from packages.orchestration.project_brain import build_project_brain
 
     graph = build_project_brain(job, events)
+    focus_job_id = str(job.id)
 
     # Build node list with rank/zone/zoom assignments
     raw_nodes = []
@@ -303,6 +304,12 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
         rank = _RANK_MAP.get(ntype, 7)
         zoom = _ZOOM_MAP.get(ntype, 6)
         label_zoom = _LABEL_ZOOM.get(ntype, zoom + 1)
+
+        # Only the focus job is origin; child/continuation jobs are demoted
+        is_origin = (ntype == "job" and node.id == focus_job_id)
+        if ntype == "job" and node.id != focus_job_id:
+            zoom = max(zoom, 5)  # push child jobs to System level
+            label_zoom = max(label_zoom, 5)
 
         raw_nodes.append({
             "id": node.id,
@@ -321,7 +328,7 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
             "cluster_id": _ZONE_MAP.get(ntype, "other"),
             "visible_from_zoom": zoom,
             "show_label_from_zoom": min(label_zoom, 6),
-            "is_origin": ntype == "job",
+            "is_origin": is_origin,
             "is_primary_chain": _is_primary_chain_node(ntype),
             "is_attention": _is_attention_node(ntype, node.status, node.risk),
         })
@@ -414,7 +421,7 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
         ntype = n["type"]
         nstatus = n.get("status")
         if ntype == "job":
-            n["flow_role"] = "origin"
+            n["flow_role"] = "origin" if n["is_origin"] else "continuation"
         elif ntype == "task":
             if nstatus == "completed":
                 n["flow_role"] = "task_completed"
@@ -454,7 +461,7 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
         e["primary_path"] = e["is_primary_chain"]
 
     return {
-        "version": 3,
+        "version": 4,
         "job_id": str(job.id),
         "layout_engine": "elk-layered",
         "direction": "RIGHT",

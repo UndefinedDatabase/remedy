@@ -1078,6 +1078,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--dry-run", "Show plan without executing", required=False, is_option=True, default="false"),
             ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
             ArgDef("--fixture-builder", "Use fixture builder for testing", required=False, is_option=True, default="false"),
+            ArgDef("--no-ui", "Suppress UI server even if --ui is set", required=False, is_option=True, default="false"),
         ),
         may_mutate_repo=True,
         may_execute_commands=True,

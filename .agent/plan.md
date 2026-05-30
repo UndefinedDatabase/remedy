@@ -1,20 +1,18 @@
-# Plan — Steps 111-116
+# Plan — Steps 122-126
 
 ## Goal
-UI CLI contract fix, resource cleanup, semantic zoom v4, forward flow v3, task ribbon v2, autocoder E2E.
+Job-focused origin fix, view-model hardening, worker unload schema, autocoder calc.py fixture, smoke closure.
 
 ## Current Step
 All steps complete. Final review and commit.
 
 ## Steps
-- [x] Step 111: `remedy ui <job_id>` direct form (default-command rewrite in grouped.py)
-- [x] Step 112: `worker resources` + `worker unload` commands (no shell=True)
-- [x] Step 113: visible_node_ids_by_zoom, label_counts_by_zoom, subset monotonicity, wheel max level 5
-- [x] Step 114: flow_role, lane, source_rank/target_rank/primary_path on edges, low-zoom edge filtering
-- [x] Step 115: Task progress v2 with proof_status, test_status, is_current, is_future, is_reviewer_suggested
-- [x] Step 116: Fixture builder E2E slice — source context, structured patch, apply, test, proof
+- [x] Step 122: Job-focused origin — only focus_job_id gets is_origin=true, child jobs demoted to zoom>=5, flow_role="continuation"
+- [x] Step 123: View-model hardening — 39 behavioral tests covering all field contracts, zoom/subset monotonicity, version=4
+- [x] Step 124: Worker unload JSON — flat stopped/skipped/errors/unavailable fields, unavailable=true when ollama missing
+- [x] Step 125: Autocoder calc.py fixture — calc.py + tests/test_calc.py + Makefile, --no-ui flag in catalog/do_cmd
+- [x] Step 126: Smoke closure — brain-view-model origin check, version 4 check, REMEDY_SMOKE_UNLOAD_MODELS section
 
 ## Tests
-- 54 new tests in test_steps_111_116.py
-- 3102 total tests passing
-- Frontend builds clean (Vite)
+- 39 new tests in test_steps_122_126.py
+- 3141 total tests passing
