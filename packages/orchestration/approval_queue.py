@@ -233,7 +233,7 @@ def set_approval_state(
     if found is None:
         raise ValueError(
             f"Patch intent {intent_id!r} not found in job {job.id}.  "
-            "Use 'remedy list-patch-intents <job_id>' to see available intent IDs."
+            "Use 'remedy patch list <job_id>' to see available intent IDs."
         )
 
     artifact, idx = found

@@ -1,15 +1,15 @@
 """
 Tests for packages/orchestration/project_context_coverage.py
-and the `remedy project-context` CLI command.
+and the `remedy project context` CLI command.
 
 Coverage:
   - signal weights sum to 100
-  - V0_MAX_SCORE == 85
+  - V0_MAX_SCORE == 95
   - project_memory and mcp_tool_context always absent in v0 with explanation
   - empty project (no linked jobs/repos) produces score=10 (only project_metadata)
   - project with linked repos and jobs gets those signals
   - project with full context (tasks, artifacts, intents, verification, approvals)
-    reaches 85% maximum
+    reaches 85% maximum (without memory; 95% with approved memory)
   - ProjectContextCoverageSnapshot is frozen/immutable
   - summarize output: header, project name, coverage bar, sections, meaning
   - JSON schema exact top-level keys and values
@@ -141,8 +141,8 @@ class TestSignalWeights:
     def test_total_weight_is_100(self):
         assert _TOTAL_WEIGHT == 100
 
-    def test_v0_max_score_is_85(self):
-        assert V0_MAX_SCORE == 85
+    def test_v0_max_score_is_95(self):
+        assert V0_MAX_SCORE == 95
 
     def test_project_memory_weight_is_10(self):
         spec = next(s for s in _SIGNALS if s["key"] == "project_memory")
@@ -152,17 +152,17 @@ class TestSignalWeights:
         spec = next(s for s in _SIGNALS if s["key"] == "mcp_tool_context")
         assert spec["weight"] == 5
 
-    def test_project_memory_always_false(self):
+    def test_project_memory_not_always_false(self):
         spec = next(s for s in _SIGNALS if s["key"] == "project_memory")
-        assert spec["v0_always_false"] is True
+        assert spec["v0_always_false"] is False
 
     def test_mcp_tool_context_always_false(self):
         spec = next(s for s in _SIGNALS if s["key"] == "mcp_tool_context")
         assert spec["v0_always_false"] is True
 
-    def test_no_other_signal_always_false(self):
+    def test_only_mcp_always_false(self):
         always_false = [s["key"] for s in _SIGNALS if s["v0_always_false"]]
-        assert set(always_false) == {"project_memory", "mcp_tool_context"}
+        assert set(always_false) == {"mcp_tool_context"}
 
     def test_ten_signals_defined(self):
         assert len(_SIGNALS) == 10
@@ -321,7 +321,7 @@ class TestDeriveProjectContextCoverage:
         p = _make_project()
         snap = derive_project_context_coverage(p, [])
         sig = next(s for s in snap.signals if s.key == "project_memory")
-        assert "MemPalace" in sig.detail or "not connected" in sig.detail.lower()
+        assert "memory" in sig.detail.lower()
 
     def test_mcp_tool_context_detail_explains_reason(self):
         p = _make_project()
@@ -329,14 +329,15 @@ class TestDeriveProjectContextCoverage:
         sig = next(s for s in snap.signals if s.key == "mcp_tool_context")
         assert "MCP" in sig.detail or "not connected" in sig.detail.lower()
 
-    def test_full_project_reaches_v0_max(self, tmp_path):
+    def test_full_project_without_memory_reaches_85(self, tmp_path):
         p = _make_project()
         attach_repo(p, str(tmp_path))
         job = _make_job_with_approval()
         # Add tasks and verification to the same job
         job.tasks.append(Task(description="task 1", status=RunState.COMPLETED))
         snap = derive_project_context_coverage(p, [job])
-        assert snap.score == V0_MAX_SCORE
+        # Without approved memory: 85 (all except project_memory + mcp)
+        assert snap.score == 85
 
     def test_score_never_exceeds_v0_max(self, tmp_path):
         p = _make_project()
@@ -454,7 +455,7 @@ class TestSummarize:
         p = _make_project()
         snap = derive_project_context_coverage(p, [])
         text = summarize_project_context_coverage(snap)
-        assert "85%" in text
+        assert "95%" in text
 
     def test_mempalace_mentioned(self):
         p = _make_project()
@@ -523,11 +524,11 @@ class TestExportJson:
         d = export_project_context_coverage_json(snap)
         assert d["scope"] == "project"
 
-    def test_v0_max_score_is_85(self):
+    def test_v0_max_score_is_95(self):
         p = _make_project()
         snap = derive_project_context_coverage(p, [])
         d = export_project_context_coverage_json(snap)
-        assert d["v0_max_score"] == 85
+        assert d["v0_max_score"] == 95
 
     def test_project_id_matches(self):
         p = _make_project()
@@ -609,12 +610,12 @@ class TestExportJson:
         d = export_project_json(p, [])
         assert d["context_coverage"]["scope"] == "project"
 
-    def test_project_json_v0_max_score_is_85(self, tmp_path, monkeypatch):
+    def test_project_json_v0_max_score_is_95(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.project_registry import export_project_json
         p = _make_project()
         d = export_project_json(p, [])
-        assert d["context_coverage"]["v0_max_score"] == 85
+        assert d["context_coverage"]["v0_max_score"] == 95
 
 
 # ---------------------------------------------------------------------------
@@ -636,7 +637,7 @@ class TestRunLogSchema:
         import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.storage import save_job
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
             RemyProject, save_project, attach_job as _attach_job,
         )
@@ -678,7 +679,7 @@ class TestRunLogSchema:
         import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.storage import save_job
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
             RemyProject, save_project, attach_job as _attach_job,
         )
@@ -707,7 +708,7 @@ class TestRunLogSchema:
         import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.storage import save_job
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
             RemyProject, save_project, attach_job as _attach_job,
         )
@@ -728,7 +729,7 @@ class TestRunLogSchema:
 
     def test_no_run_log_written_without_jobs(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
 
         p = RemyProject(name="NoJobProject")
@@ -754,14 +755,14 @@ class TestProjectContextCLI:
 
     def test_invalid_uuid_exits_1(self, tmp_path, monkeypatch):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         with pytest.raises(SystemExit) as exc:
             _cmd_project_context("not-a-uuid")
         assert exc.value.code == 1
 
     def test_invalid_uuid_no_traceback_in_stderr(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         with pytest.raises(SystemExit):
             _cmd_project_context("not-a-uuid")
         err = capsys.readouterr().err
@@ -770,14 +771,14 @@ class TestProjectContextCLI:
 
     def test_missing_project_exits_1(self, tmp_path, monkeypatch):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         with pytest.raises(SystemExit) as exc:
             _cmd_project_context(str(uuid4()))
         assert exc.value.code == 1
 
     def test_missing_project_stderr_safe(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         with pytest.raises(SystemExit):
             _cmd_project_context(str(uuid4()))
         err = capsys.readouterr().err
@@ -786,7 +787,7 @@ class TestProjectContextCLI:
 
     def test_text_output_works(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="TextTest")
         save_project(p)
@@ -797,7 +798,7 @@ class TestProjectContextCLI:
 
     def test_json_output_valid_json(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="JsonTest")
         save_project(p)
@@ -808,7 +809,7 @@ class TestProjectContextCLI:
 
     def test_json_output_exact_top_keys(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="KeyTest")
         save_project(p)
@@ -818,7 +819,7 @@ class TestProjectContextCLI:
 
     def test_json_scope_is_project(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="ScopeTest")
         save_project(p)
@@ -828,7 +829,7 @@ class TestProjectContextCLI:
 
     def test_json_no_traceback_in_stdout(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="NTB")
         save_project(p)
@@ -838,7 +839,7 @@ class TestProjectContextCLI:
 
     def test_json_no_redaction_sentinels_in_stdout(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_project_context
+        from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import RemyProject, save_project
         p = RemyProject(name="RedactTest")
         save_project(p)
@@ -851,7 +852,7 @@ class TestProjectContextCLI:
         """Confirm `remedy context <job_id>` still works and uses job scope."""
         self._env(tmp_path, monkeypatch)
         from packages.orchestration.storage import save_job
-        from apps.cli.main import _cmd_context
+        from apps.cli.commands.brain import _cmd_context
         job = _make_job()
         save_job(job)
         _cmd_context(str(job.id), json_output=True)

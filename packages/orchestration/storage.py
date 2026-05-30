@@ -67,6 +67,6 @@ def list_jobs() -> list[Job]:
     for path in _DATA_DIR.glob("*.json"):
         try:
             jobs.append(Job.model_validate_json(path.read_text()))
-        except Exception:
+        except (ValueError, OSError):
             pass  # skip corrupted files; will be surfaced in a later step
     return sorted(jobs, key=lambda j: j.created_at, reverse=True)

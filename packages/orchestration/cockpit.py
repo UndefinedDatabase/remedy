@@ -34,12 +34,15 @@ if TYPE_CHECKING:
 # Symbols (consistent with timeline.py)
 # ---------------------------------------------------------------------------
 
-_OK   = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -79,11 +82,11 @@ def summarize_cockpit(
         parts.append("Progress: unplanned (no tasks yet)")
 
     # ── Situation ────────────────────────────────────────────────────────
-    parts.append(_section("Situation"))
+    parts.append(section("Situation", width=64))
     parts.extend(_render_situation(job, signals))
 
     # ── Needs your attention ─────────────────────────────────────────────
-    parts.append(_section("Needs your attention"))
+    parts.append(section("Needs your attention", width=64))
     attention = _derive_attention(job, signals)
     if attention:
         for item in attention:
@@ -92,7 +95,7 @@ def summarize_cockpit(
         parts.append(f"  {_OK} Nothing needs your attention right now.")
 
     # ── Can continue automatically ───────────────────────────────────────
-    parts.append(_section("Can continue automatically"))
+    parts.append(section("Can continue automatically", width=64))
     can_auto, auto_reason = _can_auto_continue(job, signals)
     flag = "yes" if can_auto else "no"
     parts.append(f"  {flag} — {auto_reason}")
@@ -103,12 +106,12 @@ def summarize_cockpit(
         n = len(constitution.source_files)
         artifacts.append(("constitution:", f"{n} source file(s)"))
     if artifacts:
-        parts.append(_section("Important artifacts"))
+        parts.append(section("Important artifacts", width=64))
         for label, value in artifacts:
             parts.append(f"  {label:<16} {value}")
 
     # ── Next best action ─────────────────────────────────────────────────
-    parts.append(_section("Next best action"))
+    parts.append(section("Next best action", width=64))
     parts.append(_derive_next_action(job, signals))
 
     return "\n".join(parts)
@@ -266,7 +269,7 @@ def _derive_attention(job: Job, signals: dict[str, Any]) -> list[str]:
     if pending and not is_allowed(job, Capability.workspace_write):
         items.append(
             "workspace_write is required to run tasks — "
-            "grant with: remedy set-permission <job_id> allow workspace_write"
+            "grant with: remedy job permit <job_id> workspace_write allow"
         )
 
     # Patch intent risk and approval state
@@ -278,7 +281,7 @@ def _derive_attention(job: Job, signals: dict[str, Any]) -> list[str]:
             if ac[APPROVAL_PENDING] > 0:
                 items.append(
                     f"Review patch intent risk — {ac[APPROVAL_PENDING]} pending "
-                    "decision(s): remedy list-patch-intents <job_id>"
+                    "decision(s): remedy patch list <job_id>"
                 )
             else:
                 items.append("Review patch intent risk levels before applying future changes.")
@@ -286,7 +289,7 @@ def _derive_attention(job: Job, signals: dict[str, Any]) -> list[str]:
         if ac[APPROVAL_REJECTED] > 0:
             items.append(
                 f"{ac[APPROVAL_REJECTED]} patch intent(s) rejected — review or re-evaluate: "
-                "remedy list-patch-intents <job_id>"
+                "remedy patch list <job_id>"
             )
 
     # Verification failure on the most recent failed task run
@@ -309,7 +312,7 @@ def _derive_attention(job: Job, signals: dict[str, Any]) -> list[str]:
     if (signals["last_patch"] or signals["last_repo"]) and repo_explicitly_denied:
         items.append(
             "Repo writes are denied — allow with: "
-            "remedy set-permission <job_id> allow repo_generated_write"
+            "remedy job permit <job_id> repo_generated_write allow"
         )
 
     return items
@@ -385,7 +388,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if pending and not ws_ok:
         return (
             f"  {_NEXT} Grant workspace_write permission:\n"
-            f"      remedy set-permission {job_id_str} allow workspace_write"
+            f"      remedy job permit {job_id_str} workspace_write allow"
         )
 
     # Interrupted run with pending tasks: inspect first
@@ -394,7 +397,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
             f"  {_NEXT} Inspect the interrupted run:\n"
             f"      remedy timeline {job_id_str}\n"
             f"  Then resume:\n"
-            f"      remedy run-next-task-local {job_id_str}"
+            f"      remedy job run-next {job_id_str}"
         )
 
     # Patch risk with pending tasks: direct to approval queue if any decisions pending
@@ -406,20 +409,20 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
             if ac[APPROVAL_PENDING] > 0:
                 return (
                     f"  {_NEXT} Approve or reject pending patch intents, then run next task:\n"
-                    f"      remedy list-patch-intents {job_id_str}\n"
-                    f"      remedy approve-patch-intent {job_id_str} <intent_id>\n"
-                    f"      remedy run-next-task-local {job_id_str}"
+                    f"      remedy patch list {job_id_str}\n"
+                    f"      remedy patch approve {job_id_str} <intent_id>\n"
+                    f"      remedy job run-next {job_id_str}"
                 )
             return (
                 f"  {_NEXT} Review patch intent risk levels, then run next task:\n"
-                f"      remedy run-next-task-local {job_id_str}"
+                f"      remedy job run-next {job_id_str}"
             )
 
     # Normal: pending tasks and all permissions OK
     if pending:
         return (
             f"  {_NEXT} Run the next pending task:\n"
-            f"      remedy run-next-task-local {job_id_str}"
+            f"      remedy job run-next {job_id_str}"
         )
 
     # All patch intents approved and no pending tasks
@@ -428,21 +431,11 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if total_intents > 0 and ac[APPROVAL_APPROVED] == total_intents:
         return (
             f"  {_NEXT} All patch intents approved — apply step is not implemented in v1.\n"
-            f"      Use: remedy show-patch-intent {job_id_str} <intent_id> to review."
+            f"      Use: remedy patch show {job_id_str} <intent_id> to review."
         )
 
     # Nothing left to run
     return (
         f"  {_NEXT} No pending tasks. Inspect generated files\n"
-        f"      or create a new job: remedy create-job \"<prompt>\""
+        f"      or create a new job: remedy job create \"<prompt>\""
     )
-
-
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
-
-
-def _section(title: str) -> str:
-    fill = _LINE * max(1, 64 - len(title))
-    return f"\n{_LINE * 2} {title} {fill}"

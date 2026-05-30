@@ -534,7 +534,7 @@ class TestCLIDiscoverCommands:
         import os
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "create-job", "test job"],
+            ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
             capture_output=True, env=env,
         )
         job_id = r.stdout.decode().strip()
@@ -544,7 +544,7 @@ class TestCLIDiscoverCommands:
         (repo / "pyproject.toml").write_text("[project]\nname='x'\n")
         (repo / "tests").mkdir()
         subprocess.run(
-            ["python3", "-m", "apps.cli.main", "attach-repo", job_id, str(repo)],
+            ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
             capture_output=True, env=env,
         )
         return job_id
@@ -553,7 +553,7 @@ class TestCLIDiscoverCommands:
         env = {"REMEDY_DATA_DIR": str(tmp_path)}
         job_id = self._create_job_with_repo(tmp_path)
         rc, out, err = self._run_cli(
-            ["discover-commands", job_id, "--json"],
+            ["test", "discover", job_id, "--json"],
             env=env,
         )
         assert rc == 0, f"Expected rc=0, got {rc}\nstderr: {err}"
@@ -566,7 +566,7 @@ class TestCLIDiscoverCommands:
         env = {"REMEDY_DATA_DIR": str(tmp_path)}
         job_id = self._create_job_with_repo(tmp_path)
         rc, out, _ = self._run_cli(
-            ["discover-commands", job_id, "--json"],
+            ["test", "discover", job_id, "--json"],
             env=env,
         )
         assert rc == 0
@@ -581,7 +581,7 @@ class TestCLIDiscoverCommands:
         env = {"REMEDY_DATA_DIR": str(tmp_path)}
         job_id = self._create_job_with_repo(tmp_path)
         rc, out, _ = self._run_cli(
-            ["discover-commands", job_id, "--json"],
+            ["test", "discover", job_id, "--json"],
             env=env,
         )
         assert rc == 0
@@ -593,7 +593,7 @@ class TestCLIDiscoverCommands:
         env = {"REMEDY_DATA_DIR": str(tmp_path)}
         job_id = self._create_job_with_repo(tmp_path)
         rc, out, err = self._run_cli(
-            ["discover-commands", job_id],
+            ["test", "discover", job_id],
             env=env,
         )
         assert rc == 0, f"rc={rc}\nstderr: {err}"
@@ -714,7 +714,7 @@ class TestDetectGradle:
         gw.write_text("#!/bin/sh\nexec gradle \"$@\"\n")
         gw.chmod(0o755)
         candidates = _detect_gradle(tmp_path)
-        assert any(c.argv[0] == "gradlew" for c in candidates)
+        assert any(c.argv[0] == "./gradlew" for c in candidates)
 
     def test_gradle_in_subdir(self, tmp_path):
         sub = tmp_path / "jvm-app"
@@ -742,7 +742,7 @@ class TestDetectMaven:
         candidates = _detect_maven(tmp_path)
         assert len(candidates) >= 1
         assert candidates[0].source_type == "maven"
-        assert candidates[0].argv in (("mvn", "test"), ("mvnw", "test"))
+        assert candidates[0].argv in (("mvn", "test"), ("./mvnw", "test"))
 
     def test_mvnw_present_uses_mvnw(self, tmp_path):
         (tmp_path / "pom.xml").write_text("<project></project>\n")
@@ -751,7 +751,7 @@ class TestDetectMaven:
         mw.chmod(0o755)
         from packages.orchestration.command_discovery import _detect_maven
         candidates = _detect_maven(tmp_path)
-        assert any(c.argv[0] == "mvnw" for c in candidates)
+        assert any(c.argv[0] == "./mvnw" for c in candidates)
 
 
 # ---------------------------------------------------------------------------
@@ -916,7 +916,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         import os
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "create-job", "test"],
+            ["python3", "-m", "apps.cli.main", "job", "create", "test"],
             capture_output=True, env=env,
         )
         job_id = r.stdout.decode().strip()
@@ -925,7 +925,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\n")
         (repo / "tests").mkdir()
         subprocess.run(
-            ["python3", "-m", "apps.cli.main", "attach-repo", job_id, str(repo)],
+            ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
             capture_output=True, env=env,
         )
         return job_id, env
@@ -933,7 +933,7 @@ class TestCLIDiscoverCommandsSchemaV1:
     def test_json_has_version_1(self, tmp_path):
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "discover-commands", job_id, "--json"],
+            ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
             capture_output=True, env=env,
         )
         data = json.loads(r.stdout)
@@ -942,7 +942,7 @@ class TestCLIDiscoverCommandsSchemaV1:
     def test_json_has_selected_test_candidate(self, tmp_path):
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "discover-commands", job_id, "--json"],
+            ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
             capture_output=True, env=env,
         )
         data = json.loads(r.stdout)
@@ -951,7 +951,7 @@ class TestCLIDiscoverCommandsSchemaV1:
     def test_json_has_counts(self, tmp_path):
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "discover-commands", job_id, "--json"],
+            ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
             capture_output=True, env=env,
         )
         data = json.loads(r.stdout)
@@ -966,7 +966,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         """No extra text before/after JSON — stdout must be parseable JSON only."""
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "discover-commands", job_id, "--json"],
+            ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
             capture_output=True, env=env,
         )
         assert r.returncode == 0

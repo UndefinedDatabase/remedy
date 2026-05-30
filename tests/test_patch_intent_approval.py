@@ -366,7 +366,7 @@ class TestCmdListPatchIntents:
 
     def test_no_intents_prints_placeholder(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_list_patch_intents
+        from apps.cli.commands.patch import _cmd_list_patch_intents
         _cmd_list_patch_intents(str(job.id))
         out = capsys.readouterr().out
         assert "No patch intents" in out
@@ -375,7 +375,7 @@ class TestCmdListPatchIntents:
         job = self._save(tmp_path, monkeypatch)
         _add_patch_artifact(job)
         save_job(job)
-        from apps.cli.main import _cmd_list_patch_intents
+        from apps.cli.commands.patch import _cmd_list_patch_intents
         _cmd_list_patch_intents(str(job.id))
         out = capsys.readouterr().out
         assert "docs/file_0.md" in out
@@ -383,14 +383,14 @@ class TestCmdListPatchIntents:
 
     def test_invalid_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_list_patch_intents
+        from apps.cli.commands.patch import _cmd_list_patch_intents
         with pytest.raises(SystemExit) as exc_info:
             _cmd_list_patch_intents("not-a-uuid")
         assert exc_info.value.code == 1
 
     def test_unknown_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_list_patch_intents
+        from apps.cli.commands.patch import _cmd_list_patch_intents
         with pytest.raises(SystemExit) as exc_info:
             _cmd_list_patch_intents(str(uuid4()))
         assert exc_info.value.code == 1
@@ -412,7 +412,7 @@ class TestCmdShowPatchIntent:
         job = self._save(tmp_path, monkeypatch)
         intent_id = _add_patch_artifact(job)
         save_job(job)
-        from apps.cli.main import _cmd_show_patch_intent
+        from apps.cli.commands.patch import _cmd_show_patch_intent
         _cmd_show_patch_intent(str(job.id), intent_id)
         out = capsys.readouterr().out
         assert RISK_MEDIUM in out
@@ -424,7 +424,7 @@ class TestCmdShowPatchIntent:
         # Patch the artifact's diff preview to be long enough to trigger truncation
         job.artifacts[-1].metadata["patch_intent_diff_preview"] = "x" * 500
         save_job(job)
-        from apps.cli.main import _cmd_show_patch_intent
+        from apps.cli.commands.patch import _cmd_show_patch_intent
         _cmd_show_patch_intent(str(job.id), intent_id)
         out = capsys.readouterr().out
         # Full 500-char preview must not appear verbatim
@@ -432,7 +432,7 @@ class TestCmdShowPatchIntent:
 
     def test_invalid_intent_id_exits_1(self, tmp_path, monkeypatch):
         job = self._save(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_patch_intent
+        from apps.cli.commands.patch import _cmd_show_patch_intent
         with pytest.raises(SystemExit) as exc_info:
             _cmd_show_patch_intent(str(job.id), "deadbeef-0")
         assert exc_info.value.code == 1
@@ -453,7 +453,7 @@ class TestCmdApprovePatchIntent:
 
     def test_approve_writes_metadata(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         from packages.orchestration.storage import load_job
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
         reloaded = load_job(job.id)
@@ -463,7 +463,7 @@ class TestCmdApprovePatchIntent:
 
     def test_approve_emits_run_log_event(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         from packages.orchestration.run_log import RunLogWriter
         # Capture events by reading the JSONL file after the command.
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
@@ -482,7 +482,7 @@ class TestCmdApprovePatchIntent:
 
     def test_approve_confirmation_printed(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
         out = capsys.readouterr().out
         assert "Approved" in out
@@ -490,7 +490,7 @@ class TestCmdApprovePatchIntent:
 
     def test_approve_prints_no_files_modified_note(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
         out = capsys.readouterr().out
         # Must reassure user that no repo files were changed.
@@ -498,7 +498,7 @@ class TestCmdApprovePatchIntent:
 
     def test_approve_with_reason(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         from packages.orchestration.storage import load_job
         _cmd_approve_patch_intent(str(job.id), intent_id, "LGTM")
         reloaded = load_job(job.id)
@@ -508,28 +508,28 @@ class TestCmdApprovePatchIntent:
     def test_approve_with_reason_does_not_echo_raw_text(self, tmp_path, monkeypatch, capsys):
         """Raw approval reason must not appear in CLI output."""
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         _cmd_approve_patch_intent(str(job.id), intent_id, "SECRET_APPROVAL_REASON_DO_NOT_RENDER")
         out = capsys.readouterr().out
         assert "SECRET_APPROVAL_REASON_DO_NOT_RENDER" not in out
 
     def test_approve_with_reason_prints_recorded(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         _cmd_approve_patch_intent(str(job.id), intent_id, "any reason text")
         out = capsys.readouterr().out
         assert "reason: recorded" in out
 
     def test_approve_without_reason_prints_none(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
         out = capsys.readouterr().out
         assert "reason: none" in out
 
     def test_approve_invalid_intent_id_exits_1(self, tmp_path, monkeypatch):
         job, _ = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         with pytest.raises(SystemExit) as exc_info:
             _cmd_approve_patch_intent(str(job.id), "deadbeef-0", None)
         assert exc_info.value.code == 1
@@ -539,7 +539,7 @@ class TestCmdApprovePatchIntent:
         job, intent_id = self._setup(tmp_path, monkeypatch)
         # Record files in tmp_path before
         before = set(tmp_path.rglob("*"))
-        from apps.cli.main import _cmd_approve_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
         after = set(tmp_path.rglob("*"))
         new_files = after - before
@@ -563,7 +563,7 @@ class TestCmdRejectPatchIntent:
 
     def test_reject_writes_metadata(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         from packages.orchestration.storage import load_job
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
         reloaded = load_job(job.id)
@@ -573,7 +573,7 @@ class TestCmdRejectPatchIntent:
 
     def test_reject_emits_run_log_event(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
         runs_dir = tmp_path / "runs" / str(job.id)
         events = []
@@ -589,7 +589,7 @@ class TestCmdRejectPatchIntent:
 
     def test_reject_confirmation_printed(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
         out = capsys.readouterr().out
         assert "Rejected" in out
@@ -597,7 +597,7 @@ class TestCmdRejectPatchIntent:
 
     def test_approve_after_reject_updates_state(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_approve_patch_intent, _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_approve_patch_intent, _cmd_reject_patch_intent
         from packages.orchestration.storage import load_job
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
@@ -607,7 +607,7 @@ class TestCmdRejectPatchIntent:
 
     def test_reject_prints_metadata_only_note(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
         out = capsys.readouterr().out
         assert "no files" in out.lower() or "metadata only" in out.lower()
@@ -615,28 +615,28 @@ class TestCmdRejectPatchIntent:
     def test_reject_with_reason_does_not_echo_raw_text(self, tmp_path, monkeypatch, capsys):
         """Raw rejection reason must not appear in CLI output."""
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, "SECRET_APPROVAL_REASON_DO_NOT_RENDER")
         out = capsys.readouterr().out
         assert "SECRET_APPROVAL_REASON_DO_NOT_RENDER" not in out
 
     def test_reject_with_reason_prints_recorded(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, "needs more work")
         out = capsys.readouterr().out
         assert "reason: recorded" in out
 
     def test_reject_without_reason_prints_none(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
         out = capsys.readouterr().out
         assert "reason: none" in out
 
     def test_reject_invalid_intent_id_exits_1(self, tmp_path, monkeypatch):
         job, _ = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         with pytest.raises(SystemExit) as exc_info:
             _cmd_reject_patch_intent(str(job.id), "deadbeef-0", None)
         assert exc_info.value.code == 1
@@ -644,7 +644,7 @@ class TestCmdRejectPatchIntent:
     def test_run_log_reason_present_false_when_no_reason(self, tmp_path, monkeypatch):
         """reason_present=False logged when no reason given (not the absence of a key)."""
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
         runs_dir = tmp_path / "runs" / str(job.id)
         events = []
@@ -657,7 +657,7 @@ class TestCmdRejectPatchIntent:
 
     def test_run_log_reason_present_true_when_reason_given(self, tmp_path, monkeypatch):
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, "not ready")
         runs_dir = tmp_path / "runs" / str(job.id)
         events = []
@@ -671,7 +671,7 @@ class TestCmdRejectPatchIntent:
     def test_run_log_does_not_contain_raw_reason_text(self, tmp_path, monkeypatch):
         """The reason string must NOT appear in the run log — only reason_present=True."""
         job, intent_id = self._setup(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_reject_patch_intent
+        from apps.cli.commands.patch import _cmd_reject_patch_intent
         secret_reason = "SECRET_REASON_TEXT_MUST_NOT_LOG"
         _cmd_reject_patch_intent(str(job.id), intent_id, secret_reason)
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -736,7 +736,7 @@ class TestCockpitApprovalIntegration:
             _patch_intent_event(str(job.id), task_id, RISK_MEDIUM),
         ]
         out = summarize_cockpit(job, events)
-        assert "list-patch-intents" in out
+        assert "patch list" in out
 
     def test_no_approval_attention_when_low_risk_and_no_intents_in_job(self):
         """Low risk patch events with no artifact approvals → no approval attention."""

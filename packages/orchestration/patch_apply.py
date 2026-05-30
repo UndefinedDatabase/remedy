@@ -181,6 +181,13 @@ def apply_patch_intent(
     if not is_allowed(job, Capability.repo_generated_write):
         return _blocked("permission_denied", target_path, action)
 
+    # ── 8b. Store pre-apply snapshot ──────────────────────────────────────
+    try:
+        from packages.orchestration.patch_revert import store_pre_apply_snapshot
+        store_pre_apply_snapshot(job, intent_id, target_path, action, repo_root, data_dir=data_dir)
+    except (ImportError, OSError, ValueError):
+        pass  # Snapshot is best-effort; apply must not be blocked by snapshot failure.
+
     # ── 9a. Owning artifact ───────────────────────────────────────────────
     artifact = next(
         (a for a in job.artifacts if str(a.id) == intent["artifact_id"]), None

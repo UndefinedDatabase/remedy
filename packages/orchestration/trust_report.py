@@ -36,12 +36,15 @@ from packages.orchestration.permissions import Capability, effective_permissions
 # Symbols (consistent with timeline.py / cockpit.py)
 # ---------------------------------------------------------------------------
 
-_OK   = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +76,7 @@ def summarize_trust_report(
     parts.append("")
 
     # ── 1. User request ─────────────────────────────────────────────────────
-    parts.append(_section("1. User request"))
+    parts.append(section("1. User request"))
     if job.user_prompt:
         # Truncate very long prompts — raw content cap for display only.
         prompt = job.user_prompt[:400] + "…" if len(job.user_prompt) > 400 else job.user_prompt
@@ -82,7 +85,7 @@ def summarize_trust_report(
         parts.append(f"  (no prompt recorded — job name: {job.name!r})")
 
     # ── 2. Plan ─────────────────────────────────────────────────────────────
-    parts.append(_section("2. Plan"))
+    parts.append(section("2. Plan"))
     total = len(job.tasks)
     if not total:
         parts.append("  No tasks planned yet.")
@@ -108,7 +111,7 @@ def summarize_trust_report(
             parts.append(f"    [{status_label:<9}] {task_type} — {desc}")
 
     # ── 3. Execution summary ─────────────────────────────────────────────────
-    parts.append(_section("3. Execution summary"))
+    parts.append(section("3. Execution summary"))
     n_started     = signals["run_invocations"]
     n_completed_r = signals["run_completed"]
     n_failed_r    = signals["run_failed"]
@@ -136,7 +139,7 @@ def summarize_trust_report(
             parts.append("  Run logs present but no task_run_started events recorded.")
 
     # ── 4. Artifacts ─────────────────────────────────────────────────────────
-    parts.append(_section("4. Artifacts"))
+    parts.append(section("4. Artifacts"))
     if not job.artifacts:
         parts.append("  No artifacts recorded.")
     else:
@@ -168,7 +171,7 @@ def summarize_trust_report(
                 parts.append(f"  {'unknown':<28} {a_name} ({a_short})")
 
     # ── 5. Verification ──────────────────────────────────────────────────────
-    parts.append(_section("5. Verification"))
+    parts.append(section("5. Verification"))
     vevents = signals["verification_events"]
     if not vevents:
         parts.append("  No verification events recorded.")
@@ -195,7 +198,7 @@ def summarize_trust_report(
                 parts.append(f"  {_INFO} Task {short_task}: {outcome or ev_name}")
 
     # ── 6. Permissions and safety ─────────────────────────────────────────────
-    parts.append(_section("6. Permissions and safety"))
+    parts.append(section("6. Permissions and safety"))
     for row in effective_permissions(job):
         cap    = row["capability"]
         eff    = row["effective"]
@@ -240,7 +243,7 @@ def summarize_trust_report(
             parts.append(f"  {_INFO} Project Constitution: no attached repo")
 
     # ── 7. Patch intents and decisions ────────────────────────────────────────
-    parts.append(_section("7. Patch intents and decisions"))
+    parts.append(section("7. Patch intents and decisions"))
     intents = list_patch_intents(job)
     if not intents:
         parts.append("  No patch intents recorded.")
@@ -301,21 +304,21 @@ def summarize_trust_report(
             unapplied = n_approved - n_applied
             parts.append(
                 f"  {_INFO} {unapplied} approved intent(s) not yet applied. "
-                f"Apply with: remedy apply-patch-intent <job_id> <intent_id>"
+                f"Apply with: remedy patch apply <job_id> <intent_id>"
             )
         elif n_approved:
             parts.append(
                 f"  {_INFO} Note: pending intents must be decided before apply. "
-                f"Apply with: remedy apply-patch-intent <job_id> <intent_id>"
+                f"Apply with: remedy patch apply <job_id> <intent_id>"
             )
         else:
             parts.append(
                 "  Note: intents must be approved before apply. "
-                "Use: remedy approve-patch-intent <job_id> <intent_id>"
+                "Use: remedy patch approve <job_id> <intent_id>"
             )
 
     # ── 8. Test runs ──────────────────────────────────────────────────────────
-    parts.append(_section("8. Test runs"))
+    parts.append(section("8. Test runs"))
     test_run_events = [e for e in events if e.get("event") == "test_run_completed"]
     if not test_run_events:
         parts.append("  No test runs recorded.")
@@ -338,7 +341,7 @@ def summarize_trust_report(
             parts.append("      (raw stdout/stderr not included in this report)")
 
     # ── 9. Redaction / trust boundary ─────────────────────────────────────────
-    parts.append(_section("9. Redaction / trust boundary"))
+    parts.append(section("9. Redaction / trust boundary"))
     parts.append(
         "  Raw prompts, artifact content, and full diff text are not included in this report."
     )
@@ -350,7 +353,7 @@ def summarize_trust_report(
     )
 
     # ── 10. Next safe action ───────────────────────────────────────────────────
-    parts.append(_section("10. Next safe action"))
+    parts.append(section("10. Next safe action"))
     parts.append(_derive_next_action(job, signals))
 
     # Optional: run log dir path
@@ -436,7 +439,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if not job.tasks:
         return (
             f"  {_NEXT} Plan this job:\n"
-            f"      remedy plan-job-local {job.id}"
+            f"      remedy job plan {job.id}"
         )
 
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
@@ -445,15 +448,15 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if not ws_allowed and pending:
         return (
             f"  {_NEXT} Grant workspace permission, then run:\n"
-            f"      remedy set-permission {job.id} allow workspace_write\n"
-            f"      remedy run-next-task-local {job.id}"
+            f"      remedy job permit {job.id} workspace_write allow\n"
+            f"      remedy job run-next {job.id}"
         )
 
     if signals["has_interrupted"] and pending:
         return (
             f"  {_NEXT} Inspect the timeline, then resume:\n"
-            f"      remedy timeline {job.id}\n"
-            f"      remedy run-next-task-local {job.id}"
+            f"      remedy brain timeline {job.id}\n"
+            f"      remedy job run-next {job.id}"
         )
 
     intents = list_patch_intents(job)
@@ -467,25 +470,25 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if high_risk_pending and pending:
         return (
             f"  {_NEXT} Review and decide on patch intents, then continue:\n"
-            f"      remedy list-patch-intents {job.id}\n"
-            f"      remedy run-next-task-local {job.id}"
+            f"      remedy patch list {job.id}\n"
+            f"      remedy job run-next {job.id}"
         )
 
     if n_approved and not pending and not n_pending_intents:
         return (
             f"  {_NEXT} All patch intents approved. Apply with:\n"
-            f"      remedy apply-patch-intent {job.id} <intent_id>"
+            f"      remedy patch apply {job.id} <intent_id>"
         )
 
     if pending:
         return (
             f"  {_NEXT} Continue execution:\n"
-            f"      remedy run-next-task-local {job.id}"
+            f"      remedy job run-next {job.id}"
         )
 
     return (
         f"  {_NEXT} No pending tasks. Inspect generated files\n"
-        f"      or create a new job: remedy create-job \"<prompt>\""
+        f"      or create a new job: remedy job create \"<prompt>\""
     )
 
 
@@ -501,13 +504,3 @@ def _get_apply_record(job: Job, intent_id: str) -> dict | None:
         if intent_id in records:
             return records[intent_id]
     return None
-
-
-# ---------------------------------------------------------------------------
-# Section header helper
-# ---------------------------------------------------------------------------
-
-
-def _section(title: str) -> str:
-    bar = _LINE * (50 - len(title) - 1)
-    return f"\n{_LINE}{_LINE} {title} {bar}"

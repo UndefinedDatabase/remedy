@@ -95,7 +95,7 @@ def list_projects() -> list[RemyProject]:
     for path in d.glob("*.json"):
         try:
             projects.append(RemyProject.model_validate_json(path.read_text()))
-        except Exception:
+        except (ValueError, OSError):
             pass
     return sorted(projects, key=lambda p: p.created_at, reverse=True)
 
@@ -202,7 +202,7 @@ def export_project_json(
         }
 
     context_coverage is a compact summary only — full signal detail is
-    available via `remedy project-context <project_id> --json`.
+    available via `remedy project context <project_id> --json`.
 
     Redaction: no artifact content, no approval reasons, no diff previews,
     no event messages, no command output, no raw exception text.
@@ -260,7 +260,7 @@ def export_project_json(
             "scope": ctx_snap.scope,
             "present_signal_count": ctx_snap.present_signal_count,
             "missing_signal_count": ctx_snap.missing_signal_count,
-            "v0_max_score": 85,
+            "v0_max_score": 95,
         },
         "future_layers": {
             "repo_brain": "not_implemented",

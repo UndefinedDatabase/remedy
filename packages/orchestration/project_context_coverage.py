@@ -20,10 +20,10 @@ Signals (weights sum to 100):
   patch_intents           — +10   any linked job has derived patch intents
   verification_results    — +10   any linked job has VERIFICATION artifacts or completed tasks
   approval_decisions      — +5    any linked job has approved/rejected patch intents
-  project_memory          — +10   always absent in v0 (MemPalace)
+  project_memory          — +10   local memory v0 (approved entries)
   mcp_tool_context        — +5    always absent in v0 (MCP Skill Registry)
 
-v0 maximum score = 85 (project_memory + mcp_tool_context are always absent).
+v0 maximum score = 95 (only mcp_tool_context is always absent).
 
 Public API::
 
@@ -110,8 +110,8 @@ _SIGNALS: list[dict[str, Any]] = [
         "key": "project_memory",
         "label": "Project memory",
         "weight": 10,
-        "v0_always_false": True,
-        "v0_detail_absent": "MemPalace not connected yet",
+        "v0_always_false": False,
+        "v0_detail_absent": "",
     },
     {
         "key": "mcp_tool_context",
@@ -264,6 +264,25 @@ def derive_project_context_coverage(
                 else "no approval decisions yet"
             )
 
+        if key == "project_memory":
+            try:
+                from packages.memory.local_gateway import has_approved_memory
+                present = has_approved_memory(
+                    project_id=str(project.id),
+                )
+                if not present:
+                    # Check any linked job
+                    for j in jobs:
+                        if has_approved_memory(job_id=str(j.id)):
+                            present = True
+                            break
+            except (ImportError, ValueError, OSError):
+                present = False
+            return present, (
+                "approved memory entries present" if present
+                else "no approved memory entries"
+            )
+
         return False, "unknown signal"
 
     built: list[ProjectContextSignal] = []
@@ -364,8 +383,8 @@ def summarize_project_context_coverage(
         "  It is not model confidence and not a guarantee of correctness."
     )
     parts.append(
-        f"  In v0, the maximum score is {V0_MAX_SCORE}% — Project Memory (+10)"
-        " and MCP/tool context (+5) are not yet implemented."
+        f"  In v0, the maximum score is {V0_MAX_SCORE}% —"
+        " MCP/tool context (+5) is not yet implemented."
     )
 
     return "\n".join(parts)
@@ -388,7 +407,7 @@ def export_project_context_coverage_json(
             "missing_signal_count": int,
             "repo_count": int,
             "job_count": int,
-            "v0_max_score": 85,
+            "v0_max_score": 95,
             "signals": [{"key", "label", "weight", "present", "detail"}, ...],
             "missing_keys": [...],
         }

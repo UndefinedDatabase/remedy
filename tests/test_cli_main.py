@@ -46,7 +46,7 @@ def _make_and_save_job(tmp_path, monkeypatch, **metadata_overrides) -> Job:
 class TestSetPermissionReservedNotice:
     def test_reserved_cap_prints_notice_on_allow(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_set_permission
+        from apps.cli.commands.job import _cmd_set_permission
 
         _cmd_set_permission(str(job.id), "allow", "repo_overwrite")
         out = capsys.readouterr().out
@@ -55,7 +55,7 @@ class TestSetPermissionReservedNotice:
 
     def test_reserved_cap_prints_notice_on_deny(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_set_permission
+        from apps.cli.commands.job import _cmd_set_permission
 
         _cmd_set_permission(str(job.id), "deny", "shell_exec")
         out = capsys.readouterr().out
@@ -64,7 +64,7 @@ class TestSetPermissionReservedNotice:
 
     def test_active_cap_no_reserved_notice(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_set_permission
+        from apps.cli.commands.job import _cmd_set_permission
 
         _cmd_set_permission(str(job.id), "allow", "repo_generated_write")
         out = capsys.readouterr().out
@@ -72,7 +72,7 @@ class TestSetPermissionReservedNotice:
 
     def test_workspace_write_no_reserved_notice(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_set_permission
+        from apps.cli.commands.job import _cmd_set_permission
 
         _cmd_set_permission(str(job.id), "deny", "workspace_write")
         out = capsys.readouterr().out
@@ -80,7 +80,7 @@ class TestSetPermissionReservedNotice:
 
     def test_set_permission_still_persists_for_reserved_cap(self, tmp_path, monkeypatch):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_set_permission
+        from apps.cli.commands.job import _cmd_set_permission
         from packages.orchestration.storage import load_job
 
         _cmd_set_permission(str(job.id), "allow", "repo_overwrite")
@@ -96,7 +96,7 @@ class TestSetPermissionReservedNotice:
 class TestShowPermissions:
     def test_shows_all_four_capabilities(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_permissions
+        from apps.cli.commands.job import _cmd_show_permissions
 
         _cmd_show_permissions(str(job.id))
         out = capsys.readouterr().out
@@ -107,7 +107,7 @@ class TestShowPermissions:
 
     def test_reserved_capabilities_are_labeled(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_permissions
+        from apps.cli.commands.job import _cmd_show_permissions
 
         _cmd_show_permissions(str(job.id))
         out = capsys.readouterr().out
@@ -115,7 +115,7 @@ class TestShowPermissions:
 
     def test_active_capabilities_are_labeled(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_permissions
+        from apps.cli.commands.job import _cmd_show_permissions
 
         _cmd_show_permissions(str(job.id))
         out = capsys.readouterr().out
@@ -123,7 +123,7 @@ class TestShowPermissions:
 
     def test_workspace_write_line_has_active_label(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_permissions
+        from apps.cli.commands.job import _cmd_show_permissions
 
         _cmd_show_permissions(str(job.id))
         out = capsys.readouterr().out
@@ -132,7 +132,7 @@ class TestShowPermissions:
 
     def test_repo_overwrite_line_has_reserved_label(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_permissions
+        from apps.cli.commands.job import _cmd_show_permissions
 
         _cmd_show_permissions(str(job.id))
         out = capsys.readouterr().out
@@ -141,7 +141,7 @@ class TestShowPermissions:
 
     def test_default_workspace_write_shows_allow(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_permissions
+        from apps.cli.commands.job import _cmd_show_permissions
 
         _cmd_show_permissions(str(job.id))
         out = capsys.readouterr().out
@@ -154,7 +154,7 @@ class TestShowPermissions:
         set_permission(job, Capability.repo_generated_write, allow=True)
         save_job(job)
 
-        from apps.cli.main import _cmd_show_permissions
+        from apps.cli.commands.job import _cmd_show_permissions
 
         _cmd_show_permissions(str(job.id))
         out = capsys.readouterr().out
@@ -166,7 +166,7 @@ class TestShowPermissions:
         set_permission(job, Capability.workspace_write, allow=False)
         save_job(job)
 
-        from apps.cli.main import _cmd_show_permissions
+        from apps.cli.commands.job import _cmd_show_permissions
 
         _cmd_show_permissions(str(job.id))
         out = capsys.readouterr().out
@@ -201,7 +201,7 @@ class TestWorkspaceWriteDenialPreBuilder:
 
     def test_denied_exits_nonzero(self, tmp_path, monkeypatch):
         job = self._setup_denied_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit) as exc_info:
             _cmd_run_next_task_local(str(job.id))
@@ -209,7 +209,7 @@ class TestWorkspaceWriteDenialPreBuilder:
 
     def test_denied_prints_error_to_stderr(self, tmp_path, monkeypatch, capsys):
         job = self._setup_denied_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit):
             _cmd_run_next_task_local(str(job.id))
@@ -219,7 +219,7 @@ class TestWorkspaceWriteDenialPreBuilder:
 
     def test_denied_does_not_mutate_task_state(self, tmp_path, monkeypatch):
         job = self._setup_denied_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit):
             _cmd_run_next_task_local(str(job.id))
@@ -229,7 +229,7 @@ class TestWorkspaceWriteDenialPreBuilder:
 
     def test_denied_does_not_create_artifacts(self, tmp_path, monkeypatch):
         job = self._setup_denied_job(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit):
             _cmd_run_next_task_local(str(job.id))
@@ -252,7 +252,7 @@ class TestNoPendingTasksWithPermissionDenied:
         set_permission(job, Capability.workspace_write, allow=False)
         save_job(job)
 
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         # Should return normally (no SystemExit) even with workspace_write denied
         _cmd_run_next_task_local(str(job.id))
@@ -267,7 +267,7 @@ class TestNoPendingTasksWithPermissionDenied:
         set_permission(job, Capability.workspace_write, allow=False)
         save_job(job)
 
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         _cmd_run_next_task_local(str(job.id))
         out = capsys.readouterr().out
@@ -281,7 +281,7 @@ class TestNoPendingTasksWithPermissionDenied:
         job = Job(name="test", state=RunState.PENDING)
         save_job(job)
 
-        from apps.cli.main import _cmd_run_next_task_local
+        from apps.cli.commands.job import _cmd_run_next_task_local
 
         _cmd_run_next_task_local(str(job.id))
         out = capsys.readouterr().out
@@ -378,7 +378,7 @@ class TestPatchIntentErrorsCLI:
             instance.build = MagicMock()
             MockBuilder.return_value = instance
 
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             _cmd_run_next_task_local(str(job.id))
 
@@ -482,7 +482,7 @@ class TestPatchIntentErrorsCLI:
             instance.build = MagicMock()
             MockBuilder.return_value = instance
 
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             # CLI exits non-zero on verifier failure — expected behavior.
             with pytest.raises(SystemExit) as exc_info:
@@ -606,7 +606,7 @@ class TestPatchIntentRisksCLI:
             instance.build = MagicMock()
             MockBuilder.return_value = instance
 
-            from apps.cli.main import _cmd_run_next_task_local
+            from apps.cli.commands.job import _cmd_run_next_task_local
 
             _cmd_run_next_task_local(str(job.id))
 
@@ -676,7 +676,7 @@ class TestProjectCommandsCLI:
 
     def test_create_project_prints_uuid(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_project
+        from apps.cli.commands.project import _cmd_create_project
         import uuid
         _cmd_create_project("MyApp", None)
         out = capsys.readouterr().out.strip()
@@ -685,7 +685,7 @@ class TestProjectCommandsCLI:
     def test_project_alias_json_version_1(self, tmp_path, monkeypatch, capsys):
         import json
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_project, _cmd_show_project
+        from apps.cli.commands.project import _cmd_create_project, _cmd_show_project
         _cmd_create_project("AliasTest", None)
         project_id = capsys.readouterr().out.strip()
         _cmd_show_project(project_id, json_output=True)
@@ -696,7 +696,7 @@ class TestProjectCommandsCLI:
     def test_show_project_json_version_1(self, tmp_path, monkeypatch, capsys):
         import json
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_project, _cmd_show_project
+        from apps.cli.commands.project import _cmd_create_project, _cmd_show_project
         _cmd_create_project("ShowTest", None)
         project_id = capsys.readouterr().out.strip()
         _cmd_show_project(project_id, json_output=True)
@@ -708,7 +708,7 @@ class TestProjectCommandsCLI:
         import pytest
         from uuid import uuid4
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_project
+        from apps.cli.commands.project import _cmd_show_project
         with pytest.raises(SystemExit) as exc:
             _cmd_show_project(str(uuid4()), json_output=False)
         assert exc.value.code == 1
@@ -717,7 +717,7 @@ class TestProjectCommandsCLI:
         import pytest
         from uuid import uuid4
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_show_project
+        from apps.cli.commands.project import _cmd_show_project
         with pytest.raises(SystemExit):
             _cmd_show_project(str(uuid4()), json_output=False)
         err = capsys.readouterr().err
@@ -726,7 +726,7 @@ class TestProjectCommandsCLI:
 
     def test_attach_project_repo_idempotent_message(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_attach_project_repo, _cmd_create_project
+        from apps.cli.commands.project import _cmd_attach_project_repo, _cmd_create_project
         _cmd_create_project("RepoTest", None)
         project_id = capsys.readouterr().out.strip()
         repo = str(tmp_path / "myrepo")
@@ -739,7 +739,8 @@ class TestProjectCommandsCLI:
 
     def test_attach_project_job_sets_metadata(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_attach_project_job, _cmd_create_job, _cmd_create_project
+        from apps.cli.commands.job import _cmd_create_job
+        from apps.cli.commands.project import _cmd_attach_project_job, _cmd_create_project
         from packages.orchestration.storage import load_job
         from uuid import UUID
         _cmd_create_project("JobLink", None)
@@ -754,7 +755,8 @@ class TestProjectCommandsCLI:
     def test_create_job_with_valid_project_links(self, tmp_path, monkeypatch, capsys):
         import json
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_job, _cmd_create_project, _cmd_show_project
+        from apps.cli.commands.job import _cmd_create_job
+        from apps.cli.commands.project import _cmd_create_project, _cmd_show_project
         _cmd_create_project("Linked", None)
         project_id = capsys.readouterr().out.strip()
         _cmd_create_job("linked prompt", project_id=project_id)
@@ -767,7 +769,7 @@ class TestProjectCommandsCLI:
     def test_create_job_with_missing_project_warns(self, tmp_path, monkeypatch, capsys):
         from uuid import uuid4
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         _cmd_create_job("warn prompt", project_id=str(uuid4()))
         out = capsys.readouterr()
         assert "warning" in out.err.lower()
@@ -776,7 +778,7 @@ class TestProjectCommandsCLI:
     def test_create_job_missing_project_does_not_set_metadata(self, tmp_path, monkeypatch, capsys):
         from uuid import UUID, uuid4
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("no-link prompt", project_id=str(uuid4()))
         job_id = capsys.readouterr().out.strip()
@@ -810,7 +812,7 @@ class TestCreateJobTaskType:
     def test_task_type_creates_one_task(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("smoke prompt", task_type="write_readme")
         job_id = capsys.readouterr().out.strip()
@@ -820,7 +822,7 @@ class TestCreateJobTaskType:
     def test_task_type_sets_state_planned(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         from packages.core.models import RunState
         from packages.orchestration.storage import load_job
         _cmd_create_job("smoke prompt", task_type="write_readme")
@@ -831,7 +833,7 @@ class TestCreateJobTaskType:
     def test_task_type_stored_in_task_inputs(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("prompt", task_type="analyze_code")
         job_id = capsys.readouterr().out.strip()
@@ -841,7 +843,7 @@ class TestCreateJobTaskType:
     def test_task_description_stored_in_task(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("prompt", task_type="write_readme", task_description="Custom desc.")
         job_id = capsys.readouterr().out.strip()
@@ -851,7 +853,7 @@ class TestCreateJobTaskType:
     def test_default_description_when_none_given(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("prompt", task_type="write_readme")
         job_id = capsys.readouterr().out.strip()
@@ -861,7 +863,7 @@ class TestCreateJobTaskType:
     def test_no_task_type_leaves_state_pending(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         from packages.core.models import RunState
         from packages.orchestration.storage import load_job
         _cmd_create_job("plain prompt")
@@ -873,7 +875,7 @@ class TestCreateJobTaskType:
     def test_hyphens_and_underscores_allowed_in_task_type(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("prompt", task_type="analyze-code_v2")
         job_id = capsys.readouterr().out.strip()
@@ -886,7 +888,7 @@ class TestCreateJobTaskType:
 
     def test_empty_task_type_exits_1(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         with pytest.raises(SystemExit) as exc_info:
             _cmd_create_job("prompt", task_type="   ")
         assert exc_info.value.code == 1
@@ -894,7 +896,7 @@ class TestCreateJobTaskType:
 
     def test_invalid_chars_in_task_type_exits_1(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         with pytest.raises(SystemExit) as exc_info:
             _cmd_create_job("prompt", task_type="bad type!")
         assert exc_info.value.code == 1
@@ -903,7 +905,7 @@ class TestCreateJobTaskType:
 
     def test_task_description_without_task_type_exits_1(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_create_job
+        from apps.cli.commands.job import _cmd_create_job
         with pytest.raises(SystemExit) as exc_info:
             _cmd_create_job("prompt", task_description="some desc")
         assert exc_info.value.code == 1
@@ -914,7 +916,8 @@ class TestCreateJobTaskType:
         import json
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
-        from apps.cli.main import _cmd_create_job, _cmd_create_project, _cmd_show_project
+        from apps.cli.commands.job import _cmd_create_job
+        from apps.cli.commands.project import _cmd_create_project, _cmd_show_project
         from packages.core.models import RunState
         from packages.orchestration.storage import load_job
         _cmd_create_project("CombinedTest", None)

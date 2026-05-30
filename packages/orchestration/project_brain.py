@@ -28,6 +28,9 @@ Node types:
   project_placeholder — lightweight marker linking job to a RemyProject
   patch_apply         — an approved patch intent application record
   test_run            — a permission-gated local test run result (Step 33)
+  patch_apply_proof   — cryptographic proof of a successful file apply (Step 51)
+  decision_queue      — human decision queue summary (Step 69)
+  context_budget      — context budget optimizer summary (Step 71)
 
 Edge types:
   has_task              — job → task
@@ -46,6 +49,15 @@ Edge types:
   belongs_to_project    — job → project_placeholder
   has_test_run          — job → test_run
   verified_after_apply  — test_run → patch_apply (optional, when present)
+  approved_by           — patch_intent → approval_decision (causal)
+  has_decision_queue    — job → decision_queue
+  has_context_budget    — job → context_budget
+  allowed_apply         — approval_decision → patch_apply (causal)
+  recorded_proof        — patch_apply → patch_apply_proof (causal)
+  proof_verified_by     — patch_apply_proof → test_run (causal)
+  informed_memory       — patch_apply_proof → memory (causal)
+  summarizes            — context_pack → readiness or job (causal)
+  continued_as          — origin_node → child_job_placeholder (Step 52)
 
 Redaction policy:
   Artifact content, diff previews, approval reasons, event messages, and
@@ -71,19 +83,29 @@ from packages.orchestration.approval_queue import (
     APPROVAL_PENDING,
     list_patch_intents,
 )
+from packages.orchestration.autonomy_readiness import assess_job_readiness
 from packages.orchestration.context_coverage import derive_context_coverage
+from packages.orchestration.run_contract import build_default_run_contract
+from packages.orchestration.token_policy import build_default_token_policy
+from packages.orchestration.worker_adapters import list_worker_specs
+from packages.orchestration.change_set import derive_change_set
+from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.timeline import load_run_events
 
 
 # ---------------------------------------------------------------------------
 # Symbols
 # ---------------------------------------------------------------------------
 
-_OK   = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -101,11 +123,25 @@ NT_RUN_EVENT    = "run_event"
 NT_AGENT_LOOP   = "agent_loop"
 NT_CONSTITUTION      = "constitution"
 NT_MEMORY            = "memory_placeholder"
+NT_MEMORY_ENTRY      = "memory"
 NT_MCP               = "mcp_placeholder"
 NT_CONTEXT_COVERAGE  = "context_coverage"
 NT_PROJECT_PLACEHOLDER = "project_placeholder"
 NT_PATCH_APPLY         = "patch_apply"
 NT_TEST_RUN            = "test_run"
+NT_RUN_CONTRACT        = "run_contract"
+NT_TOKEN_POLICY        = "token_policy"
+NT_WORKER_ADAPTER      = "worker_adapter"
+NT_AUTONOMY_READINESS  = "autonomy_readiness"
+NT_CONTEXT_PACK        = "context_pack"
+NT_PATCH_APPLY_PROOF   = "patch_apply_proof"
+NT_PATCH_REVERT        = "patch_revert"
+NT_CHANGE_SET          = "change_set"
+NT_GIT_STATUS          = "git_status"
+NT_EVENT_LEDGER        = "event_ledger"
+NT_STOP_REASON         = "stop_reason"
+NT_DECISION_QUEUE      = "decision_queue"
+NT_CONTEXT_BUDGET      = "context_budget"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -117,12 +153,34 @@ ET_VERIFIED             = "verified_by"
 ET_BLOCKED              = "blocked_by"
 ET_INSPECTED            = "inspected_by"
 ET_GOVERNED             = "governed_by"
+ET_HAS_MEMORY           = "has_memory"
 ET_FUTURE_MEMORY        = "future_memory_layer"
 ET_FUTURE_MCP           = "future_mcp_layer"
 ET_HAS_CONTEXT_SNAPSHOT  = "has_context_snapshot"
 ET_BELONGS_TO_PROJECT    = "belongs_to_project"
 ET_HAS_TEST_RUN          = "has_test_run"
 ET_VERIFIED_AFTER_APPLY  = "verified_after_apply"
+ET_HAS_RUN_CONTRACT      = "has_run_contract"
+ET_HAS_TOKEN_POLICY      = "has_token_policy"
+ET_HAS_WORKER_ADAPTER    = "has_worker_adapter"
+ET_HAS_READINESS         = "has_readiness"
+ET_HAS_CONTEXT_PACK      = "has_context_pack"
+# Causal chain edges (Step 51)
+ET_APPROVED_BY           = "approved_by"
+ET_ALLOWED_APPLY         = "allowed_apply"
+ET_RECORDED_PROOF        = "recorded_proof"
+ET_PROOF_VERIFIED_BY     = "proof_verified_by"
+ET_INFORMED_MEMORY       = "informed_memory"
+ET_SUMMARIZES            = "summarizes"
+ET_CONTINUED_AS          = "continued_as"
+ET_REVERTED_BY           = "reverted_by"
+ET_INCLUDES_INTENT       = "includes_intent"
+ET_INCLUDES_APPLY        = "includes_apply"
+ET_HAS_GIT_STATUS        = "has_git_status"
+ET_HAS_EVENT_LEDGER      = "has_event_ledger"
+ET_HAS_STOP_REASON       = "has_stop_reason"
+ET_HAS_DECISION_QUEUE    = "has_decision_queue"
+ET_HAS_CONTEXT_BUDGET    = "has_context_budget"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -137,10 +195,22 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_CONSTITUTION:     9,
     NT_CONTEXT_COVERAGE:    10,
     NT_MEMORY:              11,
+    NT_MEMORY_ENTRY:        11,
     NT_MCP:                 12,
     NT_PROJECT_PLACEHOLDER: 13,
     NT_PATCH_APPLY:         14,
     NT_TEST_RUN:            15,
+    NT_RUN_CONTRACT:        16,
+    NT_TOKEN_POLICY:        17,
+    NT_WORKER_ADAPTER:      18,
+    NT_AUTONOMY_READINESS:  19,
+    NT_CONTEXT_PACK:        20,
+    NT_PATCH_APPLY_PROOF:   21,
+    NT_GIT_STATUS:          22,
+    NT_EVENT_LEDGER:        23,
+    NT_STOP_REASON:         24,
+    NT_DECISION_QUEUE:      25,
+    NT_CONTEXT_BUDGET:      26,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -154,6 +224,7 @@ _KEY_EVENTS: frozenset[str] = frozenset({
     "task_run_noop",
     "repo_application_completed",
     "patch_intent_failed",
+    "continued_from_node",
 })
 
 
@@ -192,6 +263,722 @@ class ProjectBrainGraph:
     job_id: UUID
     nodes: tuple[BrainNode, ...]
     edges: tuple[BrainEdge, ...]
+    degraded: tuple[str, ...] = ()
+
+
+# ---------------------------------------------------------------------------
+# Graph accumulator — mutable workspace for section builders
+# ---------------------------------------------------------------------------
+
+
+class _Acc:
+    """Mutable accumulator passed to each section builder."""
+
+    __slots__ = ("job", "events", "constitution", "nodes", "edges",
+                 "job_node_id", "degraded")
+
+    def __init__(
+        self,
+        job: Job,
+        events: list[dict[str, Any]],
+        constitution: object | None,
+    ) -> None:
+        self.job = job
+        self.events = events
+        self.constitution = constitution
+        self.nodes: list[BrainNode] = []
+        self.edges: list[BrainEdge] = []
+        self.job_node_id = str(job.id)
+        self.degraded: list[str] = []
+
+    def node_id_set(self) -> set[str]:
+        """Build index of all node IDs for O(1) existence checks."""
+        return {n.id for n in self.nodes}
+
+
+# ---------------------------------------------------------------------------
+# Section builders
+# ---------------------------------------------------------------------------
+
+
+def _build_job_node(acc: _Acc) -> None:
+    short_name = acc.job.name if len(acc.job.name) <= 50 else acc.job.name[:50] + "\u2026"
+    acc.nodes.append(BrainNode(
+        id=acc.job_node_id,
+        type=NT_JOB,
+        label=short_name,
+        status=acc.job.state.value,
+        ref_id=str(acc.job.id),
+        metadata={"task_count": len(acc.job.tasks), "artifact_count": len(acc.job.artifacts)},
+    ))
+
+
+def _build_task_nodes(acc: _Acc) -> None:
+    for task in acc.job.tasks:
+        tid = str(task.id)
+        desc = task.description
+        label = desc if len(desc) <= 60 else desc[:60] + "\u2026"
+        tt = str(task.inputs.get("task_type", "unknown"))
+        acc.nodes.append(BrainNode(
+            id=tid, type=NT_TASK, label=label,
+            status=task.status.value, ref_id=tid,
+            metadata={"task_type": tt},
+        ))
+        acc.edges.append(BrainEdge(source=acc.job_node_id, target=tid, type=ET_HAS_TASK))
+
+
+def _build_artifact_nodes(acc: _Acc) -> None:
+    for art in acc.job.artifacts:
+        aid = str(art.id)
+        name = art.name
+        label = name if len(name) <= 60 else name[:60] + "\u2026"
+        acc.nodes.append(BrainNode(
+            id=aid, type=NT_ARTIFACT, label=label,
+            status="available", ref_id=aid,
+            metadata={"kind": art.kind.value},
+        ))
+        owner = str(art.task_id) if art.task_id is not None else acc.job_node_id
+        acc.edges.append(BrainEdge(source=owner, target=aid, type=ET_CREATED))
+
+
+def _build_patch_intent_nodes(acc: _Acc) -> None:
+    intents = list_patch_intents(acc.job)
+    for intent in intents:
+        pi_id = intent["intent_id"]
+        pi_nid = f"pi:{pi_id}"
+        acc.nodes.append(BrainNode(
+            id=pi_nid, type=NT_PATCH_INTENT,
+            label=f"patch intent {pi_id}",
+            status=intent["state"], risk=intent["risk"], ref_id=pi_id,
+            metadata={"risk": intent["risk"], "state": intent["state"]},
+        ))
+        art_short = intent["artifact_id_short"]
+        matching = next((a for a in acc.job.artifacts if a.id.hex[:8] == art_short), None)
+        if matching:
+            acc.edges.append(BrainEdge(source=str(matching.id), target=pi_nid, type=ET_PRODUCED_PI))
+        if intent["state"] != APPROVAL_PENDING:
+            adec_nid = f"approval:{pi_id}"
+            acc.nodes.append(BrainNode(
+                id=adec_nid, type=NT_APPROVAL,
+                label=f"{intent['state']} {pi_id}",
+                status=intent["state"], ref_id=pi_id,
+                metadata={"state": intent["state"]},
+            ))
+            acc.edges.append(BrainEdge(source=pi_nid, target=adec_nid, type=ET_DECIDED))
+
+
+def _build_apply_nodes(acc: _Acc) -> None:
+    for art in acc.job.artifacts:
+        records: dict = art.metadata.get("patch_intent_apply_records", {})
+        for iid, rec in records.items():
+            nid = f"apply:{iid}"
+            acc.nodes.append(BrainNode(
+                id=nid, type=NT_PATCH_APPLY,
+                label=f"applied {iid}",
+                status=rec.get("state", "unknown"), ref_id=iid,
+                metadata={
+                    "target_path": rec.get("target_path", ""),
+                    "action": rec.get("action", ""),
+                    "bytes_written": int(rec.get("bytes_written", 0)),
+                    "line_count": int(rec.get("line_count", 0)),
+                    **_extract_proof_fields(rec.get("proof", {})),
+                },
+            ))
+            acc.edges.append(BrainEdge(source=f"pi:{iid}", target=nid, type=ET_APPLIED_BY))
+
+
+def _build_test_run_nodes(acc: _Acc) -> None:
+    apply_ids = [n.id for n in acc.nodes if n.type == NT_PATCH_APPLY]
+    last_apply = apply_ids[-1] if apply_ids else None
+    idx = 0
+    for ev in acc.events:
+        if ev.get("event") != "test_run_completed":
+            continue
+        meta = ev.get("metadata", {})
+        tr_id = str(meta.get("test_run_id", f"tr{idx}"))
+        command = str(meta.get("command", ""))
+        status = str(meta.get("status", "unknown"))
+        exit_code_raw = meta.get("exit_code")
+        exit_code = int(exit_code_raw) if exit_code_raw is not None else -1
+        node_status = "passed" if status == "passed" else "failed" if status == "failed" else "blocked"
+        nid = f"test_run:{idx}"
+        idx += 1
+        acc.nodes.append(BrainNode(
+            id=nid, type=NT_TEST_RUN,
+            label=f"test run: {status} ({command})",
+            status=node_status, ref_id=tr_id,
+            metadata={
+                "test_run_id": tr_id, "command": command,
+                "status": status, "exit_code": exit_code,
+                "duration_ms": int(meta.get("duration_ms", 0)),
+                "output_line_count": int(meta.get("output_line_count", 0)),
+                "output_bytes": int(meta.get("output_bytes", 0)),
+                "command_source_type": str(meta.get("command_source_type", "")),
+                "command_source_path": str(meta.get("command_source_path", "")),
+                "command_purpose": str(meta.get("command_purpose", "")),
+                "command_confidence": str(meta.get("command_confidence", "")),
+            },
+        ))
+        acc.edges.append(BrainEdge(source=acc.job_node_id, target=nid, type=ET_HAS_TEST_RUN))
+        if last_apply is not None:
+            acc.edges.append(BrainEdge(source=nid, target=last_apply, type=ET_VERIFIED_AFTER_APPLY))
+
+
+def _build_event_derived_nodes(acc: _Acc) -> None:
+    ver_idx = blk_idx = al_idx = re_idx = 0
+    for ev in acc.events:
+        ev_type = ev.get("event", "")
+        ev_task_id = ev.get("task_id")
+
+        if ev_type == "task_run_completed" and ev_task_id:
+            vid = f"verification:{ver_idx}"
+            ver_idx += 1
+            acc.nodes.append(BrainNode(
+                id=vid, type=NT_VERIFICATION,
+                label=f"verification passed (task {str(ev_task_id)[:8]})",
+                status="passed", ref_id=str(ev_task_id),
+                metadata={"task_id": str(ev_task_id)[:36]},
+            ))
+            acc.edges.append(BrainEdge(source=str(ev_task_id), target=vid, type=ET_VERIFIED))
+
+        elif ev_type == "task_run_failed":
+            outcome = ev.get("outcome") or ev.get("metadata", {}).get("outcome", "")
+            if outcome == "permission_denied":
+                cap = ev.get("capability") or ev.get("metadata", {}).get("capability", "unknown")
+                bid = f"blocker:{blk_idx}"
+                blk_idx += 1
+                acc.nodes.append(BrainNode(
+                    id=bid, type=NT_BLOCKER,
+                    label=f"permission_denied:{cap}", status="blocked",
+                    ref_id=str(ev_task_id) if ev_task_id else None,
+                    metadata={"capability": str(cap)},
+                ))
+                if ev_task_id:
+                    acc.edges.append(BrainEdge(source=str(ev_task_id), target=bid, type=ET_BLOCKED))
+
+        elif ev_type == "agent_loop_inspected" or ev_type.startswith("agent_loop_"):
+            meta = ev.get("metadata", {})
+            aid = f"agent_loop:{al_idx}"
+            al_idx += 1
+            stage = str(meta.get("stage", ev.get("stage", "unknown")))
+            decision = str(meta.get("decision", ev.get("decision", "unknown")))
+            cycle = _safe_int(meta.get("cycle", ev.get("cycle")))
+            outcome = str(ev.get("outcome", ""))
+            acc.nodes.append(BrainNode(
+                id=aid, type=NT_AGENT_LOOP,
+                label=f"agent loop: {ev_type.replace('agent_loop_', '')}",
+                status=outcome or decision, ref_id=str(acc.job.id),
+                metadata={"stage": stage, "decision": decision, "cycle": cycle, "event_type": ev_type},
+            ))
+            acc.edges.append(BrainEdge(source=aid, target=acc.job_node_id, type=ET_INSPECTED))
+
+        elif ev_type in _KEY_EVENTS:
+            rid = f"run_event:{re_idx}"
+            re_idx += 1
+            outcome = ev.get("outcome", "recorded")
+            acc.nodes.append(BrainNode(
+                id=rid, type=NT_RUN_EVENT,
+                label=ev_type.replace("_", " "),
+                status=str(outcome) if outcome else "recorded",
+                ref_id=str(acc.job.id), metadata={"event_type": ev_type},
+            ))
+            acc.edges.append(BrainEdge(source=acc.job_node_id, target=rid, type=ET_EMITTED))
+
+
+def _build_constitution_node(acc: _Acc) -> None:
+    has_event = any(e.get("event") == "project_constitution_loaded" for e in acc.events)
+    if acc.constitution is None and not has_event:
+        return
+    con_meta: dict[str, str | int | bool] = {}
+    con_label = "Project Constitution"
+    con_status = "loaded"
+    if acc.constitution is not None:
+        try:
+            sc = len(acc.constitution.source_files)
+            ht = bool(acc.constitution.test_commands)
+            con_meta = {"source_count": sc, "has_test_commands": ht}
+            con_label = f"Project Constitution (sources={sc})"
+        except AttributeError:
+            pass
+    else:
+        con_status = "from_event"
+    acc.nodes.append(BrainNode(
+        id="constitution", type=NT_CONSTITUTION,
+        label=con_label, status=con_status,
+        ref_id=str(acc.job.id), metadata=con_meta,
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="constitution", type=ET_GOVERNED))
+
+
+def _build_memory_nodes(acc: _Acc) -> None:
+    # Placeholder (always present)
+    acc.nodes.append(BrainNode(
+        id="memory_placeholder", type=NT_MEMORY,
+        label="MemPalace (future)", status="informational",
+        metadata={"note": "reserved for Step 24+ memory layer"},
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="memory_placeholder", type=ET_FUTURE_MEMORY))
+
+    # Real local memory entries
+    try:
+        from packages.memory.local_gateway import list_memory
+        project_id = acc.job.metadata.get("project_id")
+        entries = list_memory(
+            project_id=project_id,
+            job_id=str(acc.job.id) if not project_id else None,
+        )
+        if project_id:
+            job_entries = list_memory(job_id=str(acc.job.id))
+            seen = {me.id for me in entries}
+            entries += [e for e in job_entries if e.id not in seen]
+        for me in entries:
+            if not me.approved:
+                continue
+            mnid = f"memory:{me.id}"
+            acc.nodes.append(BrainNode(
+                id=mnid, type=NT_MEMORY_ENTRY,
+                label=f"memory: {me.key}", status=me.validity,
+                metadata={
+                    "key": me.key, "summary": me.summary,
+                    "tags": me.tags,
+                    "source_type": me.source_type,
+                    "source_id": me.source_id or "",
+                    "scope": me.scope,
+                    "validity": me.validity,
+                    "review_status": me.review_status,
+                    "approved": me.approved,
+                    "evidence_refs_count": len(me.evidence_refs),
+                    "created_at": me.created_at,
+                },
+            ))
+            acc.edges.append(BrainEdge(source=acc.job_node_id, target=mnid, type=ET_HAS_MEMORY))
+    except (ImportError, FileNotFoundError, OSError):
+        acc.degraded.append("memory")
+
+    # MCP placeholder (always present)
+    acc.nodes.append(BrainNode(
+        id="mcp_placeholder", type=NT_MCP,
+        label="MCP Quarantine (future)", status="informational",
+        metadata={"note": "reserved for Step 24+ MCP layer"},
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="mcp_placeholder", type=ET_FUTURE_MCP))
+
+
+def _build_context_coverage_node(acc: _Acc) -> None:
+    cov = derive_context_coverage(acc.job, acc.events, constitution=acc.constitution)
+    score = cov.score
+    status = "low" if score < 50 else "partial" if score < 80 else "strong"
+    acc.nodes.append(BrainNode(
+        id="context_coverage", type=NT_CONTEXT_COVERAGE,
+        label=f"Context Coverage ({score}%)", status=status,
+        metadata={
+            "score": score,
+            "present_signal_count": sum(1 for s in cov.signals if s.present),
+            "missing_signal_count": len(cov.missing_keys),
+            "scope": "job",
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="context_coverage", type=ET_HAS_CONTEXT_SNAPSHOT))
+
+
+def _build_project_placeholder(acc: _Acc) -> None:
+    raw = acc.job.metadata.get("project_id") if acc.job.metadata else None
+    if not raw:
+        return
+    try:
+        UUID(str(raw))
+        pid = str(raw)
+    except (ValueError, AttributeError):
+        return
+    nid = f"project:{pid}"
+    acc.nodes.append(BrainNode(
+        id=nid, type=NT_PROJECT_PLACEHOLDER,
+        label=f"Project {pid[:8]}", status="linked",
+        metadata={"project_id": pid},
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target=nid, type=ET_BELONGS_TO_PROJECT))
+
+
+def _build_run_contract_node(acc: _Acc) -> None:
+    rc = build_default_run_contract(acc.job)
+    acc.nodes.append(BrainNode(
+        id="run_contract", type=NT_RUN_CONTRACT,
+        label="Run Contract (execution boundary)", status="active",
+        metadata={
+            "autonomy_level": rc.autonomy_level,
+            "allowed_action_count": len(rc.allowed_actions),
+            "denied_action_count": len(rc.denied_actions),
+            "max_loops": rc.max_loops, "scope": rc.scope,
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="run_contract", type=ET_HAS_RUN_CONTRACT))
+
+
+def _build_token_policy_node(acc: _Acc) -> None:
+    tp = build_default_token_policy(acc.job)
+    acc.nodes.append(BrainNode(
+        id="token_policy", type=NT_TOKEN_POLICY,
+        label="Token Policy (routing budget)", status="active",
+        metadata={
+            "scope": tp.scope,
+            "zero_token_step_count": len(tp.zero_token_steps),
+            "local_first_step_count": len(tp.local_first_steps),
+            "expensive_step_count": len(tp.expensive_model_steps),
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="token_policy", type=ET_HAS_TOKEN_POLICY))
+
+
+def _build_worker_adapter_nodes(acc: _Acc) -> None:
+    for spec in list_worker_specs():
+        nid = f"worker_adapter:{spec.provider_id}"
+        acc.nodes.append(BrainNode(
+            id=nid, type=NT_WORKER_ADAPTER,
+            label=f"Worker: {spec.display_name}", status=spec.status,
+            metadata={
+                "provider_id": spec.provider_id,
+                "execution_mode": spec.execution_mode,
+                "supported_role_count": len(spec.supported_roles),
+            },
+        ))
+        acc.edges.append(BrainEdge(source=acc.job_node_id, target=nid, type=ET_HAS_WORKER_ADAPTER))
+
+
+def _build_readiness_node(acc: _Acc) -> None:
+    try:
+        evts = load_run_events(resolve_data_root(), acc.job.id)
+        report = assess_job_readiness(acc.job, evts)
+        sigs = report.signals
+        acc.nodes.append(BrainNode(
+            id="autonomy_readiness", type=NT_AUTONOMY_READINESS,
+            label=f"Readiness: L{report.highest_eligible_level}", status="active",
+            metadata={
+                "highest_eligible_level": report.highest_eligible_level,
+                "missing_count": sum(len(a.missing_signals) for a in report.levels),
+                "blocker_count": sum(len(a.blockers) for a in report.levels),
+                "scope": report.scope,
+                "revert_capable": sigs.get("revert_snapshot", False),
+                "test_capable": sigs.get("test_proof", False),
+                "memory_present": sigs.get("approved_memory", False),
+                "token_policy_applied": sigs.get("token_policy_applied", False),
+            },
+        ))
+        acc.edges.append(BrainEdge(source=acc.job_node_id, target="autonomy_readiness", type=ET_HAS_READINESS))
+    except (ImportError, FileNotFoundError, OSError):
+        acc.degraded.append("readiness")
+
+
+def _build_context_pack_node(acc: _Acc) -> None:
+    cp_events = [e for e in acc.events if e.get("event") == "context_pack_created"]
+    if not cp_events:
+        return
+    meta = cp_events[-1].get("metadata", {})
+    acc.nodes.append(BrainNode(
+        id="context_pack", type=NT_CONTEXT_PACK,
+        label=f"Context Pack ({meta.get('mode', 'compact')})", status="active",
+        metadata={
+            "mode": str(meta.get("mode", "compact")),
+            "budget": int(meta.get("budget", 0)),
+            "estimated_tokens": int(meta.get("estimated_tokens", 0)),
+            "truncated": bool(meta.get("truncated", False)),
+            "section_count": int(meta.get("section_count", 0)),
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="context_pack", type=ET_HAS_CONTEXT_PACK))
+
+
+def _build_proof_nodes(acc: _Acc) -> None:
+    proof_events = [e for e in acc.events if e.get("event") == "patch_apply_proof_recorded"]
+    nids = acc.node_id_set()
+    for idx, ev in enumerate(proof_events):
+        meta = ev.get("metadata", {})
+        iid = str(meta.get("intent_id", f"proof{idx}"))
+        pnid = f"proof:{iid}"
+        acc.nodes.append(BrainNode(
+            id=pnid, type=NT_PATCH_APPLY_PROOF,
+            label=f"proof: {meta.get('action', '')} {meta.get('target_path', '')}",
+            status=str(meta.get("outcome", "recorded")), ref_id=iid,
+            metadata={
+                "intent_id": iid,
+                "target_path": str(meta.get("target_path", "")),
+                "action": str(meta.get("action", "")),
+                "outcome": str(meta.get("outcome", "")),
+                "before_sha256": str(meta.get("before_sha256", "")),
+                "after_sha256": str(meta.get("after_sha256", "")),
+                "before_bytes": int(meta.get("before_bytes", 0)),
+                "after_bytes": int(meta.get("after_bytes", 0)),
+                "bytes_delta": int(meta.get("bytes_delta", 0)),
+                "before_line_count": int(meta.get("before_line_count", 0)),
+                "after_line_count": int(meta.get("after_line_count", 0)),
+                "line_delta": int(meta.get("line_delta", 0)),
+                "applied_at": str(meta.get("applied_at", "")),
+            },
+        ))
+        apply_nid = f"apply:{iid}"
+        if apply_nid in nids:
+            acc.edges.append(BrainEdge(source=apply_nid, target=pnid, type=ET_RECORDED_PROOF))
+
+
+def _build_revert_nodes(acc: _Acc) -> None:
+    nids = acc.node_id_set()
+    for ev in acc.events:
+        if ev.get("event") != "patch_intent_reverted":
+            continue
+        meta = ev.get("metadata", {})
+        iid = str(meta.get("intent_id", ""))
+        if not iid:
+            continue
+        rnid = f"revert:{iid}"
+        acc.nodes.append(BrainNode(
+            id=rnid, type=NT_PATCH_REVERT,
+            label=f"revert: {meta.get('target_path', '')}",
+            status=str(meta.get("outcome", "reverted")), ref_id=iid,
+            metadata={
+                "intent_id": iid,
+                "target_path": str(meta.get("target_path", "")),
+                "outcome": str(meta.get("outcome", "")),
+                "existed_before": bool(meta.get("existed_before", False)),
+                "bytes_written": int(meta.get("bytes_written", 0)),
+                "line_count": int(meta.get("line_count", 0)),
+                "before_sha256": str(meta.get("before_sha256", "")),
+                "after_sha256": str(meta.get("after_sha256", "")),
+            },
+        ))
+        apply_nid = f"apply:{iid}"
+        if apply_nid in nids:
+            acc.edges.append(BrainEdge(source=apply_nid, target=rnid, type=ET_REVERTED_BY))
+
+
+def _build_change_set_nodes(acc: _Acc) -> None:
+    try:
+        entries = derive_change_set(acc.job, acc.events)
+    except (ImportError, FileNotFoundError, OSError):
+        acc.degraded.append("change_set")
+        return
+    nids = acc.node_id_set()
+    for ce in entries:
+        csnid = f"change_set:{ce.intent_id}"
+        acc.nodes.append(BrainNode(
+            id=csnid, type=NT_CHANGE_SET,
+            label=f"change: {ce.target_path}", status=ce.status, ref_id=ce.intent_id,
+            metadata={
+                "intent_id": ce.intent_id, "target_path": ce.target_path,
+                "risk": ce.risk, "status": ce.status,
+                "approval_state": ce.approval.get("state", ""),
+                "apply_outcome": ce.apply.get("outcome", ""),
+                "test_status": ce.test.get("status", ""),
+                "revert_outcome": ce.revert.get("outcome", ""),
+            },
+        ))
+        pi_nid = f"pi:{ce.intent_id}"
+        if pi_nid in nids:
+            acc.edges.append(BrainEdge(source=csnid, target=pi_nid, type=ET_INCLUDES_INTENT))
+        apply_nid = f"apply:{ce.intent_id}"
+        if apply_nid in nids:
+            acc.edges.append(BrainEdge(source=csnid, target=apply_nid, type=ET_INCLUDES_APPLY))
+
+
+def _build_git_status_node(acc: _Acc) -> None:
+    target_repo = acc.job.metadata.get("target_repo") if acc.job.metadata else None
+    if not target_repo:
+        return
+    try:
+        from packages.orchestration.git_status import read_git_status
+        status = read_git_status(str(target_repo))
+    except (ImportError, OSError):
+        acc.degraded.append("git_status")
+        return
+
+    import hashlib
+    changed = len(status.modified_files) + len(status.untracked_files) + len(status.staged_files)
+    raw = f"{status.current_branch}:{status.head_sha}:{status.is_clean}:{changed}"
+    status_hash = hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+    acc.nodes.append(BrainNode(
+        id="git_status", type=NT_GIT_STATUS,
+        label=f"Git: {status.current_branch} ({status.head_sha})" if status.is_git_repo else "Git: unavailable",
+        status="clean" if status.is_clean else ("dirty" if status.is_git_repo else "unavailable"),
+        metadata={
+            "is_git_repo": status.is_git_repo,
+            "git_available": status.is_git_repo,
+            "branch": status.current_branch,
+            "head_sha": status.head_sha,
+            "dirty": not status.is_clean,
+            "changed_file_count": changed,
+            "status_hash": status_hash,
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="git_status", type=ET_HAS_GIT_STATUS))
+
+
+def _build_event_ledger_node(acc: _Acc) -> None:
+    """Summary node for event ledger — counts only, no individual events."""
+    try:
+        from packages.orchestration.event_ledger import build_event_summary
+        summary = build_event_summary(acc.events)
+    except (ImportError, OSError):
+        acc.degraded.append("event_ledger")
+        return
+    acc.nodes.append(BrainNode(
+        id="event_ledger", type=NT_EVENT_LEDGER,
+        label=f"Events: {summary.event_count}",
+        status="ok" if summary.failed_count == 0 else "has_failures",
+        metadata={
+            "event_count": summary.event_count,
+            "failed_count": summary.failed_count,
+            "proof_count": summary.proof_count,
+            "test_count": summary.test_count,
+            "last_event_at": summary.last_event_at,
+            "type_count": len(summary.type_counts),
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="event_ledger", type=ET_HAS_EVENT_LEDGER))
+
+
+def _build_stop_reason_nodes(acc: _Acc) -> None:
+    """Add stop reason nodes from derived blockers."""
+    try:
+        from packages.orchestration.stop_reasons import derive_stop_reasons
+        stops = derive_stop_reasons(acc.job, acc.events)
+    except (ImportError, OSError):
+        acc.degraded.append("stop_reasons")
+        return
+    for s in stops:
+        nid = f"stop:{s.id}"
+        acc.nodes.append(BrainNode(
+            id=nid, type=NT_STOP_REASON,
+            label=f"blocker: {s.reason_code}",
+            status=s.status,
+            metadata={
+                "reason_code": s.reason_code,
+                "severity": s.severity,
+                "status": s.status,
+                "source": s.source,
+                "related_intent_id": s.related_intent_id,
+                "related_file": s.related_file,
+                "next_action_count": len(s.next_actions),
+            },
+        ))
+        acc.edges.append(BrainEdge(source=nid, target=acc.job_node_id, type=ET_HAS_STOP_REASON))
+
+
+def _build_decision_queue_node(acc: _Acc) -> None:
+    """Add decision queue summary node."""
+    try:
+        from packages.orchestration.decision_queue import build_decision_summary, list_decisions
+        decisions = list_decisions(acc.job, acc.events)
+        summary = build_decision_summary(decisions)
+    except (ImportError, OSError):
+        acc.degraded.append("decision_queue")
+        return
+    acc.nodes.append(BrainNode(
+        id="decision_queue", type=NT_DECISION_QUEUE,
+        label=f"decisions: {summary.get('open_count', 0)} open",
+        status="active" if summary.get("open_count", 0) > 0 else "idle",
+        metadata=summary,
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="decision_queue", type=ET_HAS_DECISION_QUEUE))
+
+
+def _build_context_budget_node(acc: _Acc) -> None:
+    """Add context budget summary node."""
+    try:
+        from packages.orchestration.context_optimizer import optimize_context
+        data = optimize_context(acc.job, acc.events)
+    except (ImportError, OSError):
+        acc.degraded.append("context_budget")
+        return
+    acc.nodes.append(BrainNode(
+        id="context_budget", type=NT_CONTEXT_BUDGET,
+        label=f"context: {data.get('recommended_mode', '?')}",
+        status="ok",
+        metadata={
+            "recommended_mode": data.get("recommended_mode", ""),
+            "budget": data.get("budget", 0),
+            "estimated_tokens": data.get("estimated_tokens", 0),
+            "token_savings": data.get("token_savings", 0),
+            "recommended_worker": data.get("recommended_worker", ""),
+            "included_section_count": len(data.get("included_sections", [])),
+            "excluded_section_count": len(data.get("excluded_sections", [])),
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="context_budget", type=ET_HAS_CONTEXT_BUDGET))
+
+
+def _build_causal_edges(acc: _Acc) -> None:
+    nids = acc.node_id_set()
+
+    # patch_intent --approved_by--> approval_decision
+    for n in acc.nodes:
+        if n.type == NT_APPROVAL and n.ref_id:
+            pi_nid = f"pi:{n.ref_id}"
+            if pi_nid in nids:
+                acc.edges.append(BrainEdge(source=pi_nid, target=n.id, type=ET_APPROVED_BY))
+
+    # approval_decision --allowed_apply--> patch_apply
+    for n in acc.nodes:
+        if n.type == NT_PATCH_APPLY and n.ref_id:
+            adec_nid = f"approval:{n.ref_id}"
+            if adec_nid in nids:
+                acc.edges.append(BrainEdge(source=adec_nid, target=n.id, type=ET_ALLOWED_APPLY))
+
+    # proof --proof_verified_by--> test_run (chronological pairing)
+    proof_ids = [n.id for n in acc.nodes if n.type == NT_PATCH_APPLY_PROOF]
+    test_ids = [n.id for n in acc.nodes if n.type == NT_TEST_RUN]
+    if proof_ids and test_ids:
+        # Connect each proof to the next test_run after it by index
+        ti = 0
+        for pi in proof_ids:
+            if ti < len(test_ids):
+                acc.edges.append(BrainEdge(source=pi, target=test_ids[ti], type=ET_PROOF_VERIFIED_BY))
+                ti += 1
+
+    # proof --informed_memory--> memory (match by source_id when possible)
+    memory_nodes = [n for n in acc.nodes if n.type == NT_MEMORY_ENTRY]
+    if proof_ids and memory_nodes:
+        # Build proof intent_id map
+        proof_intent_map: dict[str, str] = {}
+        for n in acc.nodes:
+            if n.type == NT_PATCH_APPLY_PROOF and n.ref_id:
+                proof_intent_map[n.ref_id] = n.id
+        for mn in memory_nodes:
+            src_id = mn.metadata.get("source_id", "")
+            # Match source_id to proof intent_id
+            matched_proof = proof_intent_map.get(src_id)
+            if matched_proof:
+                acc.edges.append(BrainEdge(source=matched_proof, target=mn.id, type=ET_INFORMED_MEMORY))
+            elif proof_ids:
+                # Fallback: last proof for unmatched memory
+                acc.edges.append(BrainEdge(source=proof_ids[-1], target=mn.id, type=ET_INFORMED_MEMORY))
+
+    # context_pack --summarizes--> readiness or job
+    cp = next((n for n in acc.nodes if n.type == NT_CONTEXT_PACK), None)
+    if cp:
+        ar = next((n for n in acc.nodes if n.type == NT_AUTONOMY_READINESS), None)
+        target = ar.id if ar else acc.job_node_id
+        acc.edges.append(BrainEdge(source=cp.id, target=target, type=ET_SUMMARIZES))
+
+
+def _build_continuation_edges(acc: _Acc) -> None:
+    nids = acc.node_id_set()
+    cont_events = [
+        e for e in acc.events
+        if e.get("event") == "continued_from_node" and e.get("outcome") == "spawned_child"
+    ]
+    for ev in cont_events:
+        meta = ev.get("metadata", {})
+        child_id = str(meta.get("child_job_id", ""))
+        origin_nid = str(meta.get("origin_node_id", ""))
+        if not child_id or not origin_nid:
+            continue
+        placeholder_id = f"child_job:{child_id[:8]}"
+        acc.nodes.append(BrainNode(
+            id=placeholder_id, type=NT_JOB,
+            label=f"Child Job {child_id[:8]}", status="linked", ref_id=child_id,
+            metadata={"parent_job_id": str(acc.job.id), "origin_node_id": origin_nid},
+        ))
+        if origin_nid in nids:
+            acc.edges.append(BrainEdge(source=origin_nid, target=placeholder_id, type=ET_CONTINUED_AS))
 
 
 # ---------------------------------------------------------------------------
@@ -214,410 +1001,45 @@ def build_project_brain(
     The memory_placeholder and mcp_placeholder nodes are ALWAYS present to
     signal the future extension points for MemPalace and MCP Quarantine.
     """
-    nodes: list[BrainNode] = []
-    edges: list[BrainEdge] = []
-    job_node_id = str(job.id)
+    acc = _Acc(job, events, constitution)
 
-    # ── 1. Job node ─────────────────────────────────────────────────────────
-    short_name = job.name if len(job.name) <= 50 else job.name[:50] + "…"
-    nodes.append(BrainNode(
-        id=job_node_id,
-        type=NT_JOB,
-        label=short_name,
-        status=job.state.value,
-        ref_id=str(job.id),
-        metadata={"task_count": len(job.tasks), "artifact_count": len(job.artifacts)},
-    ))
+    # Node builders (order matters for some — e.g. apply before test_run)
+    _build_job_node(acc)
+    _build_task_nodes(acc)
+    _build_artifact_nodes(acc)
+    _build_patch_intent_nodes(acc)
+    _build_apply_nodes(acc)
+    _build_test_run_nodes(acc)
+    _build_event_derived_nodes(acc)
+    _build_constitution_node(acc)
+    _build_memory_nodes(acc)
+    _build_context_coverage_node(acc)
+    _build_project_placeholder(acc)
+    _build_run_contract_node(acc)
+    _build_token_policy_node(acc)
+    _build_worker_adapter_nodes(acc)
+    _build_readiness_node(acc)
+    _build_context_pack_node(acc)
+    _build_proof_nodes(acc)
+    _build_revert_nodes(acc)
+    _build_change_set_nodes(acc)
+    _build_git_status_node(acc)
+    _build_event_ledger_node(acc)
+    _build_stop_reason_nodes(acc)
+    _build_decision_queue_node(acc)
+    _build_context_budget_node(acc)
 
-    # ── 2. Task nodes ────────────────────────────────────────────────────────
-    for task in job.tasks:
-        task_node_id = str(task.id)
-        desc = task.description
-        label = desc if len(desc) <= 60 else desc[:60] + "…"
-        task_type = str(task.inputs.get("task_type", "unknown"))
-        nodes.append(BrainNode(
-            id=task_node_id,
-            type=NT_TASK,
-            label=label,
-            status=task.status.value,
-            ref_id=task_node_id,
-            metadata={"task_type": task_type},
-        ))
-        edges.append(BrainEdge(
-            source=job_node_id,
-            target=task_node_id,
-            type=ET_HAS_TASK,
-        ))
+    # Edge builders (need full node set)
+    _build_causal_edges(acc)
+    _build_continuation_edges(acc)
 
-    # ── 3. Artifact nodes ────────────────────────────────────────────────────
-    for artifact in job.artifacts:
-        art_node_id = str(artifact.id)
-        art_name = artifact.name
-        label = art_name if len(art_name) <= 60 else art_name[:60] + "…"
-        nodes.append(BrainNode(
-            id=art_node_id,
-            type=NT_ARTIFACT,
-            label=label,
-            status="available",
-            ref_id=art_node_id,
-            metadata={"kind": artifact.kind.value},
-        ))
-        owner = str(artifact.task_id) if artifact.task_id is not None else job_node_id
-        edges.append(BrainEdge(
-            source=owner,
-            target=art_node_id,
-            type=ET_CREATED,
-        ))
-
-    # ── 4. Patch intent + approval decision nodes ────────────────────────────
-    intents = list_patch_intents(job)
-    for intent in intents:
-        pi_id = intent["intent_id"]
-        pi_node_id = f"pi:{pi_id}"
-        nodes.append(BrainNode(
-            id=pi_node_id,
-            type=NT_PATCH_INTENT,
-            label=f"patch intent {pi_id}",
-            status=intent["state"],
-            risk=intent["risk"],
-            ref_id=pi_id,
-            metadata={"risk": intent["risk"], "state": intent["state"]},
-        ))
-        # Edge: owning artifact → patch_intent
-        art_short = intent["artifact_id_short"]
-        matching_art = next(
-            (a for a in job.artifacts if a.id.hex[:8] == art_short),
-            None,
-        )
-        if matching_art:
-            edges.append(BrainEdge(
-                source=str(matching_art.id),
-                target=pi_node_id,
-                type=ET_PRODUCED_PI,
-            ))
-
-        # Approval decision node (only for decided intents)
-        if intent["state"] != APPROVAL_PENDING:
-            adec_node_id = f"approval:{pi_id}"
-            nodes.append(BrainNode(
-                id=adec_node_id,
-                type=NT_APPROVAL,
-                label=f"{intent['state']} {pi_id}",
-                status=intent["state"],
-                ref_id=pi_id,
-                # approval_reason is NOT included — redacted
-                metadata={"state": intent["state"]},
-            ))
-            edges.append(BrainEdge(
-                source=pi_node_id,
-                target=adec_node_id,
-                type=ET_DECIDED,
-            ))
-
-    # ── 4.5. Patch apply record nodes ────────────────────────────────────────
-    for artifact in job.artifacts:
-        apply_records: dict = artifact.metadata.get("patch_intent_apply_records", {})
-        for apply_intent_id, record in apply_records.items():
-            apply_node_id = f"apply:{apply_intent_id}"
-            apply_state   = record.get("state", "unknown")
-            apply_action  = record.get("action", "")
-            apply_path    = record.get("target_path", "")
-            nodes.append(BrainNode(
-                id=apply_node_id,
-                type=NT_PATCH_APPLY,
-                label=f"applied {apply_intent_id}",
-                status=apply_state,
-                ref_id=apply_intent_id,
-                metadata={
-                    "target_path":   apply_path,
-                    "action":        apply_action,
-                    "bytes_written": int(record.get("bytes_written", 0)),
-                    "line_count":    int(record.get("line_count", 0)),
-                    **_extract_proof_fields(record.get("proof", {})),
-                },
-            ))
-            # Edge: patch_intent --applied_by--> patch_apply
-            pi_node_id = f"pi:{apply_intent_id}"
-            edges.append(BrainEdge(
-                source=pi_node_id,
-                target=apply_node_id,
-                type=ET_APPLIED_BY,
-            ))
-
-    # ── 4.6. Test run nodes (from test_run_completed events) ─────────────────
-    # Collect all patch_apply node IDs so we can optionally connect the latest
-    # test_run to the most recent patch_apply.
-    apply_node_ids: list[str] = [
-        n.id for n in nodes if n.type == NT_PATCH_APPLY
-    ]
-    last_apply_node_id: str | None = apply_node_ids[-1] if apply_node_ids else None
-
-    test_run_idx = 0
-    for ev in events:
-        if ev.get("event") != "test_run_completed":
-            continue
-        meta = ev.get("metadata", {})
-        tr_id = str(meta.get("test_run_id", f"tr{test_run_idx}"))
-        command = str(meta.get("command", ""))
-        status = str(meta.get("status", "unknown"))
-        exit_code_raw = meta.get("exit_code")
-        exit_code = int(exit_code_raw) if exit_code_raw is not None else -1
-        duration_ms = int(meta.get("duration_ms", 0))
-        output_line_count = int(meta.get("output_line_count", 0))
-        output_bytes = int(meta.get("output_bytes", 0))
-        cmd_source_type = str(meta.get("command_source_type", ""))
-        cmd_source_path = str(meta.get("command_source_path", ""))
-        cmd_purpose = str(meta.get("command_purpose", ""))
-        cmd_confidence = str(meta.get("command_confidence", ""))
-
-        node_status = (
-            "passed" if status == "passed"
-            else "failed" if status == "failed"
-            else "blocked"
-        )
-        tr_node_id = f"test_run:{test_run_idx}"
-        test_run_idx += 1
-        nodes.append(BrainNode(
-            id=tr_node_id,
-            type=NT_TEST_RUN,
-            label=f"test run: {status} ({command})",
-            status=node_status,
-            ref_id=tr_id,
-            metadata={
-                "test_run_id":         tr_id,
-                "command":             command,
-                "status":              status,
-                "exit_code":           exit_code,
-                "duration_ms":         duration_ms,
-                "output_line_count":   output_line_count,
-                "output_bytes":        output_bytes,
-                "command_source_type": cmd_source_type,
-                "command_source_path": cmd_source_path,
-                "command_purpose":     cmd_purpose,
-                "command_confidence":  cmd_confidence,
-            },
-        ))
-        edges.append(BrainEdge(
-            source=job_node_id,
-            target=tr_node_id,
-            type=ET_HAS_TEST_RUN,
-        ))
-        # Optional: connect to the most recent patch_apply (deterministic).
-        if last_apply_node_id is not None:
-            edges.append(BrainEdge(
-                source=tr_node_id,
-                target=last_apply_node_id,
-                type=ET_VERIFIED_AFTER_APPLY,
-            ))
-
-    # ── 5. Event-derived nodes ───────────────────────────────────────────────
-    verification_idx = 0
-    blocker_idx = 0
-    agent_loop_idx = 0
-    run_event_idx = 0
-
-    for ev in events:
-        ev_type = ev.get("event", "")
-        ev_task_id = ev.get("task_id")
-
-        if ev_type == "task_run_completed" and ev_task_id:
-            ver_id = f"verification:{verification_idx}"
-            verification_idx += 1
-            nodes.append(BrainNode(
-                id=ver_id,
-                type=NT_VERIFICATION,
-                label=f"verification passed (task {str(ev_task_id)[:8]})",
-                status="passed",
-                ref_id=str(ev_task_id),
-                metadata={"task_id": str(ev_task_id)[:36]},
-            ))
-            edges.append(BrainEdge(
-                source=str(ev_task_id),
-                target=ver_id,
-                type=ET_VERIFIED,
-            ))
-
-        elif ev_type == "task_run_failed":
-            outcome = ev.get("outcome") or ev.get("metadata", {}).get("outcome", "")
-            if outcome == "permission_denied":
-                cap = ev.get("capability") or ev.get("metadata", {}).get("capability", "unknown")
-                blk_id = f"blocker:{blocker_idx}"
-                blocker_idx += 1
-                nodes.append(BrainNode(
-                    id=blk_id,
-                    type=NT_BLOCKER,
-                    label=f"permission_denied:{cap}",
-                    status="blocked",
-                    ref_id=str(ev_task_id) if ev_task_id else None,
-                    metadata={"capability": str(cap)},
-                ))
-                if ev_task_id:
-                    edges.append(BrainEdge(
-                        source=str(ev_task_id),
-                        target=blk_id,
-                        type=ET_BLOCKED,
-                    ))
-
-        elif ev_type == "agent_loop_inspected":
-            meta = ev.get("metadata", {})
-            al_id = f"agent_loop:{agent_loop_idx}"
-            agent_loop_idx += 1
-            stage = str(meta.get("stage", ev.get("stage", "unknown")))
-            decision = str(meta.get("decision", ev.get("decision", "unknown")))
-            cycle = _safe_int(meta.get("cycle", ev.get("cycle")))
-            nodes.append(BrainNode(
-                id=al_id,
-                type=NT_AGENT_LOOP,
-                label=f"agent loop: {stage}/{decision}",
-                status=decision,
-                ref_id=str(job.id),
-                metadata={"stage": stage, "decision": decision, "cycle": cycle},
-            ))
-            edges.append(BrainEdge(
-                source=al_id,
-                target=job_node_id,
-                type=ET_INSPECTED,
-            ))
-
-        elif ev_type in _KEY_EVENTS:
-            re_id = f"run_event:{run_event_idx}"
-            run_event_idx += 1
-            outcome = ev.get("outcome", "recorded")
-            nodes.append(BrainNode(
-                id=re_id,
-                type=NT_RUN_EVENT,
-                label=ev_type.replace("_", " "),
-                status=str(outcome) if outcome else "recorded",
-                ref_id=str(job.id),
-                metadata={"event_type": ev_type},
-            ))
-            edges.append(BrainEdge(
-                source=job_node_id,
-                target=re_id,
-                type=ET_EMITTED,
-            ))
-
-    # ── 6. Constitution node ─────────────────────────────────────────────────
-    has_constitution_event = any(
-        e.get("event") == "project_constitution_loaded" for e in events
-    )
-    if constitution is not None or has_constitution_event:
-        con_meta: dict[str, str | int | bool] = {}
-        con_label = "Project Constitution"
-        con_status = "loaded"
-        if constitution is not None:
-            try:
-                source_count = len(constitution.source_files)
-                has_tests = bool(constitution.test_commands)
-                con_meta = {"source_count": source_count, "has_test_commands": has_tests}
-                con_label = f"Project Constitution (sources={source_count})"
-            except AttributeError:
-                pass
-        else:
-            con_status = "from_event"
-        nodes.append(BrainNode(
-            id="constitution",
-            type=NT_CONSTITUTION,
-            label=con_label,
-            status=con_status,
-            ref_id=str(job.id),
-            metadata=con_meta,
-        ))
-        edges.append(BrainEdge(
-            source=job_node_id,
-            target="constitution",
-            type=ET_GOVERNED,
-        ))
-
-    # ── 7. Memory + MCP placeholder nodes (always present) ──────────────────
-    nodes.append(BrainNode(
-        id="memory_placeholder",
-        type=NT_MEMORY,
-        label="MemPalace (future)",
-        status="informational",
-        metadata={"note": "reserved for Step 24+ memory layer"},
-    ))
-    edges.append(BrainEdge(
-        source=job_node_id,
-        target="memory_placeholder",
-        type=ET_FUTURE_MEMORY,
-    ))
-
-    nodes.append(BrainNode(
-        id="mcp_placeholder",
-        type=NT_MCP,
-        label="MCP Quarantine (future)",
-        status="informational",
-        metadata={"note": "reserved for Step 24+ MCP layer"},
-    ))
-    edges.append(BrainEdge(
-        source=job_node_id,
-        target="mcp_placeholder",
-        type=ET_FUTURE_MCP,
-    ))
-
-    # ── 8. Context Coverage snapshot node (always present) ──────────────────
-    cov = derive_context_coverage(job, events, constitution=constitution)
-    cov_score = cov.score
-    cov_status = (
-        "low" if cov_score < 50
-        else "partial" if cov_score < 80
-        else "strong"
-    )
-    nodes.append(BrainNode(
-        id="context_coverage",
-        type=NT_CONTEXT_COVERAGE,
-        label=f"Context Coverage ({cov_score}%)",
-        status=cov_status,
-        metadata={
-            "score": cov_score,
-            "present_signal_count": sum(1 for s in cov.signals if s.present),
-            "missing_signal_count": len(cov.missing_keys),
-            "scope": "job",
-        },
-    ))
-    edges.append(BrainEdge(
-        source=job_node_id,
-        target="context_coverage",
-        type=ET_HAS_CONTEXT_SNAPSHOT,
-    ))
-
-    # ── 9. Project placeholder node (present only when job is linked) ────────
-    _raw_pid = job.metadata.get("project_id") if job.metadata else None
-    project_id_str: str | None = None
-    if _raw_pid:
-        try:
-            UUID(str(_raw_pid))
-            project_id_str = str(_raw_pid)
-        except (ValueError, AttributeError):
-            pass  # malformed project_id — silently omit placeholder
-    if project_id_str:
-        proj_node_id = f"project:{project_id_str}"
-        nodes.append(BrainNode(
-            id=proj_node_id,
-            type=NT_PROJECT_PLACEHOLDER,
-            label=f"Project {str(project_id_str)[:8]}",
-            status="linked",
-            metadata={"project_id": str(project_id_str)},
-        ))
-        edges.append(BrainEdge(
-            source=job_node_id,
-            target=proj_node_id,
-            type=ET_BELONGS_TO_PROJECT,
-        ))
-
-    # ── 10. Sort ─────────────────────────────────────────────────────────────
-    sorted_nodes = tuple(
-        sorted(nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id))
-    )
-    sorted_edges = tuple(
-        sorted(edges, key=lambda e: (e.source, e.target, e.type))
-    )
+    # Sort and freeze
+    sorted_nodes = tuple(sorted(acc.nodes, key=lambda n: (_NODE_TYPE_ORDER.get(n.type, 99), n.id)))
+    sorted_edges = tuple(sorted(acc.edges, key=lambda e: (e.source, e.target, e.type)))
 
     return ProjectBrainGraph(
-        job_id=job.id,
-        nodes=sorted_nodes,
-        edges=sorted_edges,
+        job_id=job.id, nodes=sorted_nodes, edges=sorted_edges,
+        degraded=tuple(acc.degraded),
     )
 
 
@@ -640,12 +1062,16 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
     parts.append(f"Nodes: {len(graph.nodes)}   Edges: {len(graph.edges)}")
 
     # ── Node type summary ──────────────────────────────────────────────────
-    parts.append(_section("Node summary"))
+    parts.append(section("Node summary"))
     _all_types = [
         NT_JOB, NT_TASK, NT_ARTIFACT, NT_PATCH_INTENT, NT_APPROVAL,
         NT_VERIFICATION, NT_BLOCKER, NT_RUN_EVENT, NT_AGENT_LOOP,
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
         NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY, NT_TEST_RUN,
+        NT_RUN_CONTRACT, NT_TOKEN_POLICY, NT_WORKER_ADAPTER,
+        NT_AUTONOMY_READINESS, NT_CONTEXT_PACK, NT_PATCH_APPLY_PROOF,
+        NT_GIT_STATUS, NT_EVENT_LEDGER, NT_STOP_REASON,
+        NT_DECISION_QUEUE, NT_CONTEXT_BUDGET,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)
@@ -653,7 +1079,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
             parts.append(f"  {nt:<22}  {count}")
 
     # ── Node listing ───────────────────────────────────────────────────────
-    parts.append(_section("Graph nodes"))
+    parts.append(section("Graph nodes"))
     for node in graph.nodes:
         sym = _node_symbol(node.type)
         status_str = f" [{node.status}]" if node.status else ""
@@ -663,14 +1089,14 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         parts.append(f"  {sym} {node.type:<22} {id_short:<28} {lbl}{status_str}{risk_str}")
 
     # ── Edge listing ───────────────────────────────────────────────────────
-    parts.append(_section("Graph edges"))
+    parts.append(section("Graph edges"))
     for edge in graph.edges:
         src = edge.source[:20]
         tgt = edge.target[:20]
         parts.append(f"  {src:<20}  --{edge.type}-->  {tgt}")
 
     # ── Visual status legend (Step 24+ mapping — no frontend exists yet) ──
-    parts.append(_section("Visual status legend (Step 24+)"))
+    parts.append(section("Visual status legend (Step 24+)"))
     parts.append("  pending nodes: grey")
     parts.append("  running nodes: pulsing")
     parts.append("  completed nodes: white")
@@ -680,14 +1106,14 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
     parts.append("  mcp quarantine: orange")
 
     # ── Future layers note ─────────────────────────────────────────────────
-    parts.append(_section("Future layers"))
-    parts.append(f"  {_INFO} context_coverage      — deterministic context-health signal (Step 26)")
-    parts.append(f"  {_INFO} memory_placeholder    — Step 24+ MemPalace / semantic memory")
-    parts.append(f"  {_INFO} mcp_placeholder       — Step 24+ MCP Quarantine / tool layer")
-    parts.append(f"  {_INFO} project_placeholder   — Project Registry v0 link (Step 28)")
-    parts.append(f"  {_INFO} patch_apply           — approved patch application record (Step 30)")
-    parts.append(f"  {_INFO} test_run              — permission-gated local test run result (Step 33)")
-    parts.append(f"  {_INFO} React Flow / Three.js / AG-UI / A2UI mapping — Step 24+")
+    parts.append(section("Future layers"))
+    parts.append(f"  {_INFO} context_coverage      \u2014 deterministic context-health signal (Step 26)")
+    parts.append(f"  {_INFO} memory_placeholder    \u2014 Step 24+ MemPalace / semantic memory")
+    parts.append(f"  {_INFO} mcp_placeholder       \u2014 Step 24+ MCP Quarantine / tool layer")
+    parts.append(f"  {_INFO} project_placeholder   \u2014 Project Registry v0 link (Step 28)")
+    parts.append(f"  {_INFO} patch_apply           \u2014 approved patch application record (Step 30)")
+    parts.append(f"  {_INFO} test_run              \u2014 permission-gated local test run result (Step 33)")
+    parts.append(f"  {_INFO} React Flow / Three.js / AG-UI / A2UI mapping \u2014 Step 24+")
 
     return "\n".join(parts)
 
@@ -731,6 +1157,7 @@ def export_project_brain_json(graph: ProjectBrainGraph) -> dict[str, Any]:
             }
             for e in graph.edges
         ],
+        "degraded": list(graph.degraded),
     }
 
 
@@ -769,10 +1196,6 @@ def _safe_int(val: object, default: int = 0) -> int:
         return default
 
 
-def _section(title: str) -> str:
-    bar = _LINE * (50 - len(title) - 1)
-    return f"\n{_LINE}{_LINE} {title} {bar}"
-
 
 def _node_symbol(node_type: str) -> str:
     return {
@@ -791,4 +1214,5 @@ def _node_symbol(node_type: str) -> str:
         NT_PROJECT_PLACEHOLDER: _INFO,
         NT_PATCH_APPLY:         _OK,
         NT_TEST_RUN:            _INFO,
+        NT_PATCH_APPLY_PROOF:   _OK,
     }.get(node_type, _INFO)

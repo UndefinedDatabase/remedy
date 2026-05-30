@@ -428,14 +428,14 @@ via the CLI.
 
 ```bash
 # Allow repo generated-file writes for a specific job
-remedy set-permission <job_id> allow repo_generated_write
+remedy job permit <job_id> repo_generated_write allow
 # → Job <id> | permission repo_generated_write=allow
 
 # Revoke it
-remedy set-permission <job_id> deny repo_generated_write
+remedy job permit <job_id> repo_generated_write deny
 
 # Setting a reserved capability prints a notice
-remedy set-permission <job_id> allow repo_overwrite
+remedy job permit <job_id> repo_overwrite allow
 # → Job <id> | permission repo_overwrite=allow
 # → note: repo_overwrite is reserved and has no effect in this version ...
 ```
@@ -470,7 +470,7 @@ remedy run-next-task-local <job_id>
 # (no repo= field — application was skipped)
 
 # After granting permission: repo write proceeds
-remedy set-permission <job_id> allow repo_generated_write
+remedy job permit <job_id> repo_generated_write allow
 remedy run-next-task-local <job_id>
 # → Job <id> | ... repo=/path/to/repo/docs/remedy/analyze_requirements.md verified=pass
 ```
@@ -482,7 +482,7 @@ exits immediately with a clear error **before** calling the builder — no LLM c
 made, no task state is mutated, no artifacts are created:
 
 ```bash
-remedy set-permission <job_id> deny workspace_write
+remedy job permit <job_id> workspace_write deny
 remedy run-next-task-local <job_id>
 # → Error: permission denied — workspace_write is not granted for job <id>  (stderr)
 # exit code 1

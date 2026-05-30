@@ -645,7 +645,7 @@ class TestDeriveNextAction:
         job = _make_job()
         job.tasks.append(Task(description="t", inputs={}))
         out = summarize_timeline(job, [])
-        assert "run-next-task-local" in out
+        assert "job run-next" in out
         assert str(job.id) in out
 
     def test_permission_denied_suggests_set_permission(self):
@@ -660,7 +660,7 @@ class TestDeriveNextAction:
              "metadata": {"capability": "workspace_write"}},
         ]
         out = summarize_timeline(job, events)
-        assert "set-permission" in out
+        assert "job permit" in out
         assert "workspace_write" in out
 
     def test_patch_intent_with_high_risk_warns(self):
@@ -713,7 +713,7 @@ class TestCmdTimeline:
         job = self._make_and_save_job(tmp_path, monkeypatch)
         self._write_events(tmp_path, job.id, _simple_events(str(job.id)))
 
-        from apps.cli.main import _cmd_timeline
+        from apps.cli.commands.brain import _cmd_timeline
 
         _cmd_timeline(str(job.id))
 
@@ -727,7 +727,7 @@ class TestCmdTimeline:
         job = self._make_and_save_job(tmp_path, monkeypatch)
         self._write_events(tmp_path, job.id, _simple_events(str(job.id)))
 
-        from apps.cli.main import _cmd_timeline
+        from apps.cli.commands.brain import _cmd_timeline
 
         _cmd_timeline(str(job.id))
 
@@ -739,7 +739,7 @@ class TestCmdTimeline:
     ):
         job = self._make_and_save_job(tmp_path, monkeypatch)
 
-        from apps.cli.main import _cmd_timeline
+        from apps.cli.commands.brain import _cmd_timeline
 
         _cmd_timeline(str(job.id))  # must not raise
 
@@ -749,7 +749,7 @@ class TestCmdTimeline:
     def test_no_logs_exits_0(self, tmp_path, monkeypatch):
         job = self._make_and_save_job(tmp_path, monkeypatch)
 
-        from apps.cli.main import _cmd_timeline
+        from apps.cli.commands.brain import _cmd_timeline
 
         # Should not raise SystemExit
         _cmd_timeline(str(job.id))
@@ -757,7 +757,7 @@ class TestCmdTimeline:
     def test_invalid_job_id_exits_1(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        from apps.cli.main import _cmd_timeline
+        from apps.cli.commands.brain import _cmd_timeline
 
         with pytest.raises(SystemExit) as exc_info:
             _cmd_timeline("not-a-uuid")
@@ -766,7 +766,7 @@ class TestCmdTimeline:
     def test_unknown_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        from apps.cli.main import _cmd_timeline
+        from apps.cli.commands.brain import _cmd_timeline
 
         with pytest.raises(SystemExit) as exc_info:
             _cmd_timeline(str(uuid4()))
@@ -778,7 +778,7 @@ class TestCmdTimeline:
         job = self._make_and_save_job(tmp_path, monkeypatch)
         self._write_events(tmp_path, job.id, _simple_events(str(job.id)))
 
-        from apps.cli.main import _cmd_timeline
+        from apps.cli.commands.brain import _cmd_timeline
 
         _cmd_timeline(str(job.id))
 

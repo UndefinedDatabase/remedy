@@ -1003,11 +1003,11 @@ class TestCLI:
                 return (exc.code or 0), "", ""
 
     def test_invalid_uuid_exits_1(self, tmp_path, capsys):
-        code, _, _ = self._run_cli("apply-patch-intent", "not-a-uuid", "abc-0")
+        code, _, _ = self._run_cli("patch", "apply", "not-a-uuid", "abc-0")
         assert code == 1
 
     def test_unknown_job_exits_1(self, tmp_path, capsys):
-        code, _, _ = self._run_cli("apply-patch-intent", str(uuid4()), "abc-0")
+        code, _, _ = self._run_cli("patch", "apply", str(uuid4()), "abc-0")
         assert code == 1
 
     def test_pending_intent_exits_1(self, tmp_path):
@@ -1017,7 +1017,7 @@ class TestCLI:
         _grant_repo_write(job)
         save_job(job)
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "apply-patch-intent", str(job.id), intent_id]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.id), intent_id]):
             from apps.cli.main import main
             with pytest.raises(SystemExit) as exc_info:
                 main()
@@ -1031,7 +1031,7 @@ class TestCLI:
         _grant_repo_write(job)
         save_job(job)
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "apply-patch-intent", str(job.id), intent_id]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.id), intent_id]):
             from apps.cli.main import main
             try:
                 main()
@@ -1043,7 +1043,7 @@ class TestCLI:
 
     def test_no_traceback_on_failures(self, tmp_path, capsys):
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "apply-patch-intent", str(uuid4()), "abc-0"]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(uuid4()), "abc-0"]):
             from apps.cli.main import main
             with pytest.raises(SystemExit):
                 main()
@@ -1061,7 +1061,7 @@ class TestCLI:
         _grant_repo_write(job)
         save_job(job)
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "apply-patch-intent", str(job.id), intent_id]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.id), intent_id]):
             from apps.cli.main import main
             try:
                 main()
@@ -1078,7 +1078,7 @@ class TestCLI:
         _grant_repo_write(job)
         save_job(job)
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "apply-patch-intent", str(job.id), intent_id, "--json"]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.id), intent_id, "--json"]):
             from apps.cli.main import main
             try:
                 main()
@@ -1143,7 +1143,7 @@ class TestTrustReport:
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
         _approve(job, intent_id)
         out = summarize_trust_report(job, [])
-        assert "apply-patch-intent" in out
+        assert "patch apply" in out
 
 
 # ---------------------------------------------------------------------------

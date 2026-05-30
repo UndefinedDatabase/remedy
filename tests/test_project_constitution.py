@@ -469,14 +469,14 @@ class TestCmdConstitution:
 
     def test_prints_constitution_for_valid_job(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_constitution
+        from apps.cli.commands.brain import _cmd_constitution
         _cmd_constitution(str(job.id))
         out = capsys.readouterr().out
         assert "Remedy Project Constitution" in out
 
     def test_no_repo_attached_exits_0(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_constitution
+        from apps.cli.commands.brain import _cmd_constitution
         _cmd_constitution(str(job.id))  # must not raise
         out = capsys.readouterr().out
         assert "no attached repo" in out.lower() or "unavailable" in out.lower()
@@ -491,21 +491,21 @@ class TestCmdConstitution:
         job = _make_job()
         job.metadata["target_repo"] = str(repo_dir)
         save_job(job)
-        from apps.cli.main import _cmd_constitution
+        from apps.cli.commands.brain import _cmd_constitution
         _cmd_constitution(str(job.id))
         out = capsys.readouterr().out
         assert "pytest" in out
 
     def test_invalid_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_constitution
+        from apps.cli.commands.brain import _cmd_constitution
         with pytest.raises(SystemExit) as exc_info:
             _cmd_constitution("not-a-uuid")
         assert exc_info.value.code == 1
 
     def test_unknown_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_constitution
+        from apps.cli.commands.brain import _cmd_constitution
         with pytest.raises(SystemExit) as exc_info:
             _cmd_constitution(str(uuid4()))
         assert exc_info.value.code == 1
@@ -519,7 +519,7 @@ class TestCmdConstitution:
         job = _make_job()
         job.metadata["target_repo"] = str(repo_dir)
         save_job(job)
-        from apps.cli.main import _cmd_constitution
+        from apps.cli.commands.brain import _cmd_constitution
         _cmd_constitution(str(job.id))
         capsys.readouterr()
         # Check run log
@@ -643,7 +643,7 @@ class TestTrustReportCLIConstitution:
         self, tmp_path, monkeypatch, capsys
     ):
         job, _ = self._setup_repo(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
         _cmd_trust_report(str(job.id))
         out = capsys.readouterr().out
         assert "Project Constitution" in out
@@ -653,7 +653,7 @@ class TestTrustReportCLIConstitution:
     def test_attached_repo_does_not_say_not_loaded(self, tmp_path, monkeypatch, capsys):
         """The old 'not loaded' hint must not appear when repo is attached."""
         job, _ = self._setup_repo(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
         _cmd_trust_report(str(job.id))
         out = capsys.readouterr().out
         assert "not loaded" not in out
@@ -662,7 +662,7 @@ class TestTrustReportCLIConstitution:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
         _cmd_trust_report(str(job.id))
         out = capsys.readouterr().out
         assert "no attached repo" in out.lower()
@@ -674,7 +674,7 @@ class TestTrustReportCLIConstitution:
         job = _make_job()
         job.metadata["target_repo"] = str(repo_dir)
         save_job(job)
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
         _cmd_trust_report(str(job.id))
         out = capsys.readouterr().out
         assert "Project Constitution" in out
@@ -685,7 +685,7 @@ class TestTrustReportCLIConstitution:
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "does_not_exist")
         save_job(job)
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
         _cmd_trust_report(str(job.id))
         out = capsys.readouterr().out
         assert "Project Constitution" in out
@@ -694,7 +694,7 @@ class TestTrustReportCLIConstitution:
     def test_no_raw_conventions_in_trust_report_output(self, tmp_path, monkeypatch, capsys):
         """Trust report must not dump raw AGENTS.md lines from the constitution."""
         job, _ = self._setup_repo(tmp_path, monkeypatch)
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
         _cmd_trust_report(str(job.id))
         out = capsys.readouterr().out
         # The trust report shows constitution summary only, not full convention list

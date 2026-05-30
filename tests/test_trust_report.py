@@ -1,5 +1,5 @@
 """
-Tests for packages/orchestration/trust_report.py and the `remedy trust-report` CLI command.
+Tests for packages/orchestration/trust_report.py and the `remedy brain trust` CLI command.
 
 Coverage:
   - no run logs: renders gracefully with "No run logs available"
@@ -485,14 +485,14 @@ class TestPatchIntentsSection:
         intent_id = _add_patch_artifact(job, risk=RISK_LOW)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
         out = summarize_trust_report(job, [])
-        assert "apply-patch-intent" in out or "approved" in out
+        assert "patch apply" in out or "approved" in out
 
     def test_approve_command_shown_when_pending(self):
         """Pending intents show approval instructions."""
         job = _make_job()
         _add_patch_artifact(job, risk=RISK_MEDIUM)
         out = summarize_trust_report(job, [])
-        assert "approve-patch-intent" in out or "approved" in out or "pending" in out
+        assert "patch approve" in out or "approved" in out or "pending" in out
 
     def test_target_path_shown(self):
         job = _make_job()
@@ -585,16 +585,16 @@ class TestRedactionSection:
 
 class TestNextSafeAction:
     def test_no_tasks_suggests_plan(self):
-        """Empty task list → suggest plan-job-local before anything else."""
+        """Empty task list → suggest job plan before anything else."""
         job = _make_job()
         out = summarize_trust_report(job, [])
-        assert "plan-job-local" in out
+        assert "job plan" in out
 
     def test_no_tasks_pending_state_suggests_plan(self):
-        """Pending state with no tasks → plan-job-local."""
+        """Pending state with no tasks → job plan."""
         job = _make_job(state=RunState.PENDING)
         out = summarize_trust_report(job, [])
-        assert "plan-job-local" in out
+        assert "job plan" in out
 
     def test_no_tasks_does_not_say_inspect_generated_files(self):
         """Before planning, 'Inspect generated files' would be misleading."""
@@ -607,14 +607,14 @@ class TestNextSafeAction:
         job = _make_job()
         job.tasks.append(_make_pending_task())
         out = summarize_trust_report(job, [])
-        assert "run-next-task-local" in out
+        assert "job run-next" in out
 
     def test_workspace_denied_suggests_set_permission(self):
         job = _make_job()
         job.tasks.append(_make_pending_task())
         set_permission(job, Capability.workspace_write, allow=False)
         out = summarize_trust_report(job, [])
-        assert "set-permission" in out
+        assert "job permit" in out
 
     def test_interrupted_suggests_timeline(self):
         job = _make_job()
@@ -633,20 +633,20 @@ class TestNextSafeAction:
         intent_id = _add_patch_artifact(job, risk=RISK_LOW)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
         out = summarize_trust_report(job, [])
-        assert "apply-patch-intent" in out
+        assert "patch apply" in out
 
     def test_high_risk_pending_suggests_list_patch_intents(self):
         job = _make_job()
         job.tasks.append(_make_pending_task())
         _add_patch_artifact(job, risk=RISK_HIGH)
         out = summarize_trust_report(job, [])
-        assert "list-patch-intents" in out
+        assert "patch list" in out
 
     def test_no_pending_no_intents_suggests_inspect_or_create(self):
         job = _make_job(state=RunState.COMPLETED)
         job.tasks.append(_completed_task())
         out = summarize_trust_report(job, [])
-        assert "create-job" in out or "Inspect" in out
+        assert "job create" in out or "Inspect" in out
 
 
 # ---------------------------------------------------------------------------
@@ -681,7 +681,7 @@ class TestCmdTrustReport:
     def test_prints_report_for_valid_job(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
 
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
 
         _cmd_trust_report(str(job.id))
         out = capsys.readouterr().out
@@ -691,7 +691,7 @@ class TestCmdTrustReport:
     def test_report_includes_permissions(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
 
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
 
         _cmd_trust_report(str(job.id))
         out = capsys.readouterr().out
@@ -700,7 +700,7 @@ class TestCmdTrustReport:
     def test_invalid_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
 
         with pytest.raises(SystemExit) as exc_info:
             _cmd_trust_report("not-a-uuid")
@@ -709,7 +709,7 @@ class TestCmdTrustReport:
     def test_unknown_job_id_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
 
         with pytest.raises(SystemExit) as exc_info:
             _cmd_trust_report(str(uuid4()))
@@ -719,7 +719,7 @@ class TestCmdTrustReport:
         """trust-report should exit cleanly (0) even when no run logs exist."""
         job = self._save(tmp_path, monkeypatch)
 
-        from apps.cli.main import _cmd_trust_report
+        from apps.cli.commands.brain import _cmd_trust_report
 
         _cmd_trust_report(str(job.id))  # Must not raise SystemExit
         out = capsys.readouterr().out

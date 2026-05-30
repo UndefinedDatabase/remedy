@@ -833,13 +833,13 @@ The constitution is never persisted to job metadata — it is loaded fresh and r
 
 ### Agent Loop Contract v1 (Step 22)
 
-`packages/orchestration/agent_loop.py` defines the orchestration contract and data models
-for coordinating external agent workflows.
+`packages/orchestration/agent_loop.py` defines the orchestration contract, data models,
+and local execution loop for coordinating agent workflows.
 
-**Purpose:** This is a contract and inspection layer — not execution.  External tools
-(Claude Code, Copilot CLI, local models) are **not called** in v1.  The module provides
-immutable models, deterministic state derivation, and a CLI inspection command with an
-audit trail.
+**Purpose:** State derivation (read-only, deterministic) plus a local execution loop
+(`run_agent_loop`) that drives plan → build → approve → test → repeat cycles.
+External tools (Claude Code, Copilot CLI) are not called — execution delegates to
+existing CLI command handlers (task runner, test runner).
 
 **Models (all immutable):**
 
@@ -858,6 +858,7 @@ All `AgentAdapterSpec` instances default to `dry_run_only=True` — no execution
 default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
 summarize_agent_loop_state(job, state) -> str
 derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
+run_agent_loop(job, *, max_cycles=3, auto_approve_low_risk=False, run_tests=True) -> AgentLoopState
 ```
 
 **State derivation (deterministic, priority order):**
@@ -899,7 +900,7 @@ Historical `permission_denied` events are **ignored** (treated as stale) when:
 
 Summary output renders `"permission_denied:workspace_write"` as
 `blockers: permission_denied (workspace_write)`.  The next-action hint renders the
-concrete `remedy set-permission <job_id> allow workspace_write` command.
+concrete `remedy job permit <job_id> workspace_write` allow command.
 
 **`agent_loop_inspected` run-log schema (intentionally minimal and fixed):**
 
@@ -920,18 +921,46 @@ concrete `remedy set-permission <job_id> allow workspace_write` command.
 No raw artifact content, prompts, approval reasons, diff previews, command output,
 or exception messages appear in the run log.
 
-**CLI command:** `remedy agent-loop <job_id>` — loads job and run events, derives state,
-prints `summarize_agent_loop_state` output, writes `agent_loop_inspected` run log event.
+**CLI commands:**
+- `remedy dev agent-loop <job_id>` — inspect-only: derives state, prints summary, writes `agent_loop_inspected` event.
+- `remedy job run-loop <job_id>` — execution loop: runs cycles, emits structured events, stops on approval/block/completion.
 
 **Run-log event names:**
 
 | Event | Status | Description |
 |-------|--------|-------------|
-| `agent_loop_inspected` | active — emitted by `remedy agent-loop` | Loop state snapshot |
-| `external_agent_proposed` | reserved | External agent submitted a proposal |
-| `external_review_recorded` | reserved | Reviewer agent returned findings |
-| `fix_cycle_requested` | reserved | Fixer agent was requested |
-| `agent_loop_completed` | reserved | Loop reached a terminal state |
+| `agent_loop_inspected` | active — `dev agent-loop` | Loop state snapshot |
+| `agent_loop_started` | active — `job run-loop` | Loop begins |
+| `agent_loop_cycle_started` | active — `job run-loop` | Each cycle begins |
+| `agent_loop_decision` | active — `job run-loop` | Decision made (run_next_task, needs_planning) |
+| `agent_loop_cycle_completed` | active — `job run-loop` | Each cycle ends |
+| `agent_loop_paused` | active — `job run-loop` | Loop paused (needs_approval, blocked) |
+| `agent_loop_completed` | active — `job run-loop` | Loop finished (all_done, max_cycles_reached) |
+
+**`job run-loop` execution events — 10-key metadata schema (exact keyset):**
+
+All `agent_loop_*` events emitted by `run_agent_loop()` use the same metadata schema:
+
+```json
+{
+  "event": "agent_loop_started",
+  "outcome": "started",
+  "metadata": {
+    "cycle": 0,
+    "max_cycles": 3,
+    "decision": "start",
+    "stage": "start",
+    "reason": "loop_started",
+    "task_count": 1,
+    "pending_task_count": 0,
+    "pending_approval_count": 0,
+    "applied_count": 0,
+    "test_run_count": 0
+  }
+}
+```
+
+`outcome` is at the top-level RunEvent field, not in metadata.  The `agent_loop_task_exit` event has been removed — `SystemExit` from task runners is silently caught.
 
 **Future adapter examples:** `claude_code_builder`, `copilot_cli_reviewer`,
 `local_model_reviewer`.  All adapters must be `dry_run_only=True` in v1.
@@ -1270,6 +1299,7 @@ All three functions are read-only, deterministic, and emit no side effects.
 | `run_event` | key lifecycle events | Notable run-log milestone |
 | `agent_loop` | `agent_loop_inspected` events | Agent loop snapshot |
 | `constitution` | constitution object or `project_constitution_loaded` event | Attached Project Constitution |
+| `memory` | approved local memory entries | Real local memory entry |
 | `memory_placeholder` | always | Reserved for Step 24+ MemPalace |
 | `mcp_placeholder` | always | Reserved for Step 24+ MCP Quarantine |
 
@@ -1286,6 +1316,7 @@ All three functions are read-only, deterministic, and emit no side effects.
 | `blocked_by` | task → permission_blocker | Blocker linkage |
 | `inspected_by` | agent_loop → job | Agent loop inspection |
 | `governed_by` | job → constitution | Constitution governance |
+| `has_memory` | job → memory | Local memory entry link |
 | `future_memory_layer` | job → memory_placeholder | Future MemPalace |
 | `future_mcp_layer` | job → mcp_placeholder | Future MCP Quarantine |
 
@@ -1740,7 +1771,7 @@ No labels, no prompt text, no paths, no raw details.
 | `verification_results` | 10 | present if `verification_passed` or `verification_failed` event |
 | `run_logs` | 10 | present if events list is non-empty |
 | `approval_decisions` | 5 | present if `patch_intent_approved` or `patch_intent_rejected` event |
-| `project_memory` | 10 | **always absent in v0** — MemPalace not connected |
+| `project_memory` | 10 | present if approved local memory entries exist |
 | `mcp_tool_context` | 5 | **always absent in v0** — MCP Quarantine not connected |
 
 `score = round(present_weight / 100 * 100)`, clamped 0..100.
@@ -1797,9 +1828,9 @@ Incremental hardening of Context Coverage v0.
 
 `context_coverage.py` now uses a `_safe_int(value, default=0)` helper for all artifact-metadata integer fields (starting with `patch_intent_count`).  Any value that cannot be parsed by `int()` — strings like `"not-an-int"`, empty lists, `None` — returns `default` instead of raising `ValueError` or `TypeError`.
 
-### v0 maximum score = 85
+### v0 maximum score = 95
 
-Because `project_memory` (weight 10) and `mcp_tool_context` (weight 5) are always absent in v0, the maximum achievable score is **85**.  This is "complete for v0" — the score is never normalized to 100.  The summary Meaning section now explicitly states: *"In v0, the maximum score is 85% — Project Memory (+10) and MCP/tool context (+5) are not yet implemented."*
+With local memory v0 active, `project_memory` (weight 10) becomes present when approved memory entries exist.  Only `mcp_tool_context` (weight 5) remains always absent in v0, so the maximum achievable score is **95** (with approved memory) or **85** (without).  The score is never normalized to 100.  MemPalace is not yet implemented; local memory v0 is the active backend.
 
 ### Stale repo warning in `remedy context`
 
@@ -1949,10 +1980,10 @@ Project-scoped in v0.  Aggregates linked jobs and repo paths only.  No repo scan
 | `patch_intents` | 10 | present if any linked job has derived patch intents |
 | `verification_results` | 10 | present if any `VERIFICATION` artifact or completed task across linked jobs |
 | `approval_decisions` | 5 | present if any linked job has approved or rejected patch intents |
-| `project_memory` | 10 | **always absent in v0** — MemPalace not connected |
+| `project_memory` | 10 | present if approved local memory entries exist |
 | `mcp_tool_context` | 5 | **always absent in v0** — MCP Skill Registry not connected |
 
-`score = round(present_weight / 100 * 100)`, clamped 0..100.  **v0 maximum = 85.**
+`score = round(present_weight / 100 * 100)`, clamped 0..100.  **v0 maximum = 95** (only MCP absent).
 
 ### Public API
 
@@ -2005,7 +2036,7 @@ No raw prompts, artifact content, approval reasons, event messages, diff preview
   "missing_signal_count": int,
   "repo_count": int,
   "job_count": int,
-  "v0_max_score": 85,
+  "v0_max_score": 95,
   "signals": [{"key", "label", "weight", "present", "detail"}, ...],
   "missing_keys": ["<key>", ...]
 }
@@ -2021,7 +2052,7 @@ No raw prompts, artifact content, approval reasons, event messages, diff preview
   "scope": "project",
   "present_signal_count": int,
   "missing_signal_count": int,
-  "v0_max_score": 85
+  "v0_max_score": 95
 }
 ```
 
@@ -2641,6 +2672,26 @@ executables that may be invoked.  It is **not** the project-logic allowlist
 (that is in `command_discovery.py`); it is the final hard guard before any
 `subprocess.run` call.  It does not grow ad-hoc.
 
+### JVM wrapper commands (Step 34.1.1)
+
+Wrapper commands (`gradlew`, `mvnw`) are repo-local scripts.  They are
+represented explicitly as `./gradlew` and `./mvnw` in argv — **not** as bare
+names — because `subprocess.run(["gradlew", "test"])` would fail with
+`FileNotFoundError` (the wrapper is not on `$PATH`).
+
+Only exact known wrappers (`./gradlew`, `./mvnw`) are in
+`_EXECUTION_SAFE_EXECUTABLES`.  Arbitrary `./anything` is not permitted.
+
+### Zero-token / local-first principle
+
+Command discovery and test execution are entirely local and deterministic.
+No LLM, provider, remote service, MCP, browser, or agent provider is called
+from this path.  Remedy uses local structured signals (Makefiles, manifests,
+lockfiles) before spending tokens.  Run Contract (Step 35) and Token Economy
+(Step 36) now define when a costly provider is used — see below.
+
+This is provider-neutral: Pi.dev, Bootcamp, Claude, Ollama, and Copilot
+workers are future optional consumers of discovery results, not implemented.
 ### Risk model
 
 `_RISKY_RE` checks argv and Makefile/Justfile recipe bodies for patterns such
@@ -2686,3 +2737,322 @@ command_source_type, command_source_path, command_purpose, command_confidence
 - No live command streaming.
 - No `.env` file loading.
 - No arbitrary script execution.
+
+---
+
+## Run Contract v0 (Step 35)
+
+A `RunContract` defines what a run is allowed and not allowed to do.
+It is an execution boundary, not a capability promise.
+
+### Module
+
+`packages/orchestration/run_contract.py`
+
+### Data model (`RunContract`, frozen dataclass)
+
+| Field                  | Type         | Default              |
+|------------------------|--------------|----------------------|
+| version                | int          | 1                    |
+| job_id                 | str          | job UUID             |
+| scope                  | str          | `job`                |
+| autonomy_level         | int          | `1` (supervised)     |
+| allowed_actions        | tuple[str]   | plan, build, test... |
+| denied_actions         | tuple[str]   | apply w/o approval...|
+| max_loops              | int          | 10                   |
+| max_tokens             | int          | 200,000              |
+| max_cost_cents         | int          | 500                  |
+| model_policy           | str          | `local_first`        |
+| command_policy         | str          | `allowlist_only`     |
+| stop_conditions        | tuple[str]   | max exceeded, done...|
+| requires_approval_for  | tuple[str]   | patch_apply, high_risk|
+| source                 | str          | `default_v1`         |
+| notes                  | str          | auto-generated       |
+
+### Protocol
+
+`RunContractProvider` in `packages/contracts/interfaces.py` — `build(job) -> dict`.
+
+### CLI
+
+- `remedy run-contract <job_id>` — text summary.
+- `remedy run-contract <job_id> --json` — pure JSON.
+
+### Run-log event
+
+`run_contract_inspected` with metadata: autonomy_level, allowed_action_count,
+denied_action_count, max_loops, scope.
+
+### Brain integration
+
+Node type `run_contract`, edge type `has_run_contract` (job → run_contract).
+Brain node detail explains the execution boundary.
+
+### Execution safety guard fix (R-0001)
+
+`test_runner.py` execution safety guard now uses `if/raise RuntimeError`
+instead of `assert`.  This ensures the guard is never stripped by `python -O`.
+
+---
+
+## Token Economy v0 (Step 36)
+
+A `TokenPolicy` classifies job steps by token cost tier:
+- **Zero-token**: command discovery, risk assessment, permission checks, brain
+  graph construction, run contract inspection, token policy inspection.
+- **Local-first**: planning, verification, constitution checks.
+- **Expensive**: artifact generation, complex refactoring, multi-file patches.
+
+### Module
+
+`packages/orchestration/token_policy.py`
+
+### Data model (`TokenPolicy`, frozen dataclass)
+
+| Field                  | Type         |
+|------------------------|--------------|
+| version                | int          |
+| job_id                 | str          |
+| scope                  | str          |
+| zero_token_steps       | tuple[str]   |
+| local_first_steps      | tuple[str]   |
+| expensive_model_steps  | tuple[str]   |
+| forbidden_context      | tuple[str]   |
+| compaction_rules       | tuple[str]   |
+| budget                 | dict         |
+| future_layers          | tuple[str]   |
+
+### Protocol
+
+`TokenPolicyProvider` in `packages/contracts/interfaces.py` — `build(job) -> dict`.
+
+### CLI
+
+- `remedy token-policy <job_id>` — text summary.
+- `remedy token-policy <job_id> --json` — pure JSON.
+
+### Run-log event
+
+`token_policy_inspected` with metadata: scope, zero_token_step_count,
+local_first_step_count, expensive_step_count.
+
+### Brain integration
+
+Node type `token_policy`, edge type `has_token_policy` (job → token_policy).
+
+---
+
+## Worker Adapter Foundation v0 (Step 37)
+
+Provider-neutral specifications for external worker providers.  No network,
+no secrets, no shell, no actual provider connections — pure data only.
+
+### Module
+
+`packages/orchestration/worker_adapters.py`
+
+### Data model (`WorkerProviderSpec`, frozen dataclass)
+
+| Field            | Type         |
+|------------------|--------------|
+| provider_id      | str          |
+| display_name     | str          |
+| supported_roles  | tuple[str]   |
+| execution_mode   | str          |
+| status           | str          |
+| notes            | str          |
+
+### Built-in provider specs
+
+| Provider    | Roles                      | Mode              | Status    |
+|-------------|----------------------------|--------------------|-----------|
+| ollama      | planner, builder, reviewer | local_process      | available |
+| claude_code | builder, reviewer, refactorer | external_harness | future    |
+| pi_dev      | builder, reviewer          | local_process      | future    |
+| copilot     | builder, completer         | api                | future    |
+| openai_api  | planner, builder, reviewer | api                | future    |
+
+### CLI
+
+- `remedy workers` — text summary.
+- `remedy workers --json` — pure JSON.
+
+### Brain integration
+
+Node type `worker_adapter`, edge type `has_worker_adapter` (job → worker_adapter).
+One node per known provider spec.
+
+### Intentional deferrals (Steps 35-37)
+
+- Run Contract fields (`max_loops`, `max_tokens`, `max_cost_cents`, `denied_actions`)
+  are defined but **not yet enforced** at runtime.  Enforcement hooks will be
+  wired in Step 35.1+ (e.g. `max_loops` → `agent_loop.py`).
+- Token Policy is a classification layer only — actual token metering and
+  budget enforcement are deferred.
+- Worker adapter specs are metadata only — no actual provider connections,
+  no secrets, no API calls.  Integration is a future step.
+- No user-configurable run contracts or token policies yet (defaults only).
+
+---
+
+## Group-first CLI v0 (Steps 38–40)
+
+Steps 38–40 restructure the Remedy CLI from flat commands (`remedy create-job`, `remedy brain`) to a group-first layout (`remedy job create`, `remedy brain graph`).
+
+### Command Catalog (`apps/cli/command_catalog.py`)
+
+Source of truth for the entire CLI surface.  Every public command has exactly one `CommandEntry` with:
+
+- `command_id` — `group.subcommand` format (e.g. `brain.graph`)
+- `group_id` — one of 12 groups: `job`, `project`, `patch`, `test`, `brain`, `policy`, `worker`, `memory`, `dev`, `readiness`, `context`, `file`
+- `action_class` — `read_only`, `write_metadata`, `approval_gate`, `apply_write`, `test_execution`, `dev_helper`
+- `supports_json`, `requires_permission`, `may_mutate_repo`, `may_execute_commands` — boolean flags
+- `args` — tuple of `ArgDef` (positional or `--option`)
+- `related` — tuple of related command_ids for discoverability
+
+The catalog is a frozen tuple of dataclasses — no runtime mutation.
+
+### Grouped CLI (`apps/cli/grouped.py`)
+
+Entry point: `remedy = "apps.cli.grouped:main"` (pyproject.toml).
+
+Builds an argparse tree from the catalog:
+- `remedy` → top-level help listing all groups
+- `remedy <group>` → group help listing subcommands (custom `format_help` override, no argparse noise)
+- `remedy <group> <subcommand> [args]` → dispatch to handler
+
+Dispatch table maps `command_id` to handler lambdas in `apps/cli/commands/*.py` modules.  Handlers are lazy-imported to avoid startup cost.
+
+### `apps/cli/main.py` — Thin Bridge
+
+`main.py` is a thin entry point (<20 lines) that delegates entirely to `apps.cli.grouped.main()`.  It contains no `_cmd_*` definitions, no argparse imports, and no flat command handlers.  All handler code lives in `apps/cli/commands/` (one module per group).
+
+### Design decisions
+
+- **Old flat commands are removed.**  `apps/cli/main.py` is a thin bridge; the grouped CLI is the only public contract.
+- **Grouped CLI reduces Human Drift.**  Group membership, action classification, and permission flags are visible at the catalog level — humans can audit the full surface without reading handler code.
+- **Bootcamp/Pi are references, not integrated.**  The Bootcamp CLI (Typer) informed the UX design.  No Typer dependency added — stdlib argparse only.
+- **CLI grouping is an orientation/safety layer, not a change to execution semantics.**  Handlers, orchestration, and permission logic are unchanged.
+- **No pi.dev or Bootcamp worker execution is implemented.**  Bootcamp is a UX reference only.
+
+### Bootcamp-style Help (Steps 41–43)
+
+Steps 41–43 add a Bootcamp-style help renderer (`apps/cli/help_renderer.py`) that produces Unicode box-drawing output visually close to Typer/Rich without adding dependencies.
+
+- `remedy` — root help with Options and Commands boxes, exits 0
+- `remedy <group>` — group help with Options and Commands boxes, exits 0
+- `remedy <group> <command> --help` — command help with Arguments and Options boxes, exits 0
+- `remedy --help` — same as bare `remedy`
+- `remedy <group> --help` — same as bare `remedy <group>`
+- `python -m apps.cli.main` — shows grouped root help (bridge)
+
+Error UX is clean: no argparse noise, no tracebacks. Invalid commands show `Error:` with usage hint.
+
+Root help shows only the 12 groups — no old flat commands appear.
+
+### Groups
+
+| Group     | Commands | Description |
+|-----------|----------|-------------|
+| job       | 8        | Create, inspect, manage jobs |
+| project   | 6        | Create, inspect, manage projects |
+| patch     | 5        | Review and apply patch intents |
+| test      | 2        | Discover and run tests |
+| brain     | 8        | Inspect project brain graph |
+| policy    | 2        | Inspect execution policies |
+| worker    | 1        | List worker provider specs |
+| memory    | 4        | Store, recall, list, and learn project memory |
+| dev       | 2        | Developer utilities |
+| readiness | 2        | Assess autonomy readiness (job/project) |
+| context   | 1        | Build token-budgeted context packs |
+| file      | 1        | File-level provenance and tracing |
+
+### Causal Proof Graph v1 (Step 51)
+
+`packages/orchestration/file_provenance.py` — traces why a file was changed within a Remedy job.
+
+- New brain node: `patch_apply_proof` — created from `patch_apply_proof_recorded` events
+- Causal chain edges: `approved_by`, `allowed_apply`, `recorded_proof`, `proof_verified_by`, `informed_memory`, `summarizes`
+- Full chain: job → task → artifact → patch_intent → approval_decision → patch_apply → patch_apply_proof → test_run → memory → readiness/context_pack
+- CLI: `remedy file why <job_id> <path> [--json]`
+- Brain detail for `patch_apply_proof` node type
+- `patch_apply_proof` metadata: 13 keys from the `patch_apply_proof_recorded` event (intent_id, target_path, action, outcome, before/after SHA256, bytes/lines deltas, applied_at)
+
+### Continue-from-node v0 (Step 52)
+
+`packages/orchestration/continue_from_node.py` — creates a linked child job from any Brain node.
+
+- CLI: `remedy brain continue <job_id> <node_id> --prompt "<prompt>" [--task-type <type>] [--json]`
+- Creates child job with provenance metadata: parent_job_id, origin_node_id, origin_node_type, origin_node_label, origin_reason
+- Inherits project_id and target_repo from parent (no permission escalation)
+- No auto-execution, no LLM call, no file mutation
+- Run-log: `continued_from_node` event with: parent_job_id, child_job_id, origin_node_id, origin_node_type, inherited_project, inherited_repo
+- Brain: `continued_as` edge from origin node to child job placeholder
+- Child brain shows continuation event as a run_event node
+
+### Project Brain Aggregate v0 (Step 53)
+
+`packages/orchestration/project_brain_aggregate.py` — read-only aggregate brain graph across all jobs in a project.
+
+- CLI: `remedy project brain <project_id> [--json]`
+- Project root node (type=project), repo placeholder nodes (type=repo, basename-only labels)
+- Job subgraphs included with all node types
+- Cross-job edges: contains_job, contains_repo, targets_repo
+- Summary: job_count, repo_count, node_count, edge_count, memory_count, proof_count, test_run_count
+- No raw content, no full repo paths in node labels/metadata
+- This is NOT Global Brain or MemPalace — it is how Remedy starts growing across jobs
+
+### Autonomy Readiness v0 (Step 48)
+
+`packages/orchestration/autonomy_readiness.py` — deterministic readiness assessment with 8 autonomy levels (0=observe through 7=provider_autonomy).
+
+- Signal-based boolean checks only — no LLM, no network
+- Each level has: eligible, present_signals, missing_signals, blockers, next_actions
+- Levels 5+ always blocked (rollback/MCP/provider not yet implemented)
+- CLI: `remedy readiness job <id> --json`, `remedy readiness project <id> --json`
+- Brain: `autonomy_readiness` node type, `has_readiness` edge, layer=1, color=#2ea043
+- Run-log: `readiness_assessed` event with metadata: scope, highest_eligible_level, missing_count, blocker_count
+- Project readiness aggregates across jobs (ANY-eligible logic)
+
+### Token Budget + Context Pack v0 (Step 49)
+
+`packages/orchestration/context_pack.py` — deterministic compact context generator with budget enforcement.
+
+- 8 priority-ordered sections (job_summary through run_events)
+- Token estimation: `ceil(chars / 4)` — no LLM, no network
+- Modes: `compact` (readable) vs `caveman` (ultra-short, always ≤ compact tokens)
+- Budget enforcement: sections included in priority order until budget exceeded; truncated flag set when budget is too small
+- CLI: `remedy context pack <id> --budget N --mode compact|caveman --json`
+- Brain: `context_pack` node type, `has_context_pack` edge, layer=2, color=#58a6ff
+- Run-log: `context_pack_created` event with metadata: budget, estimated_tokens, mode, truncated, section_count
+
+### Memory Learn v0 (Step 50)
+
+`packages/orchestration/memory_learn.py` — converts structured run evidence into memory entries.
+
+- Extracts 6 categories: test_run, apply_proof, command_discovery, readiness, context_coverage, repo_basename
+- Idempotent via `upsert_memory(key, value, source_id=job_id)` — no infinite duplicates
+- CLI: `remedy memory learn <id> --approved --json`
+- Run-log: `memory_learned` event with metadata: learned_count, skipped_count, approved, source_count
+- No raw content stored — only structured key/value pairs (command names, status, paths, counts)
+
+### Memory CLI Contract v0
+
+`remedy memory store/recall/list` — local key-value memory with project/job scoping.
+
+- `--approved` flag on `store` is `action="store_true"` boolean (no value argument)
+- Approved entries appear as `memory` nodes in the Brain graph (value never leaked)
+- `project_memory` context signal becomes present when approved entries exist
+- `--limit N` on `recall` controls max entries (default 5, wired to `max_results`)
+- JSON output includes `version: 1` and `entries` array
+- `store` enforces redaction blocklist (`MemoryRedactionError` for forbidden patterns)
+
+### CLI
+
+```
+remedy job create "Build a README"
+remedy brain graph <job_id> --json
+remedy worker list --json
+remedy job              # shows group help
+remedy                  # shows all groups
+```

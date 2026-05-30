@@ -109,6 +109,16 @@ If a new unrelated task is requested:
 
 Never implement multiple unrelated tasks in the same branch.
 
+### PR Scope Drift Prevention
+
+When a new step range (e.g. Steps 48-50) is requested and an open PR already exists for an earlier step range (e.g. Steps 35-37) on the current branch:
+
+1. **Preferred**: Merge the existing PR first (via Open PR Gate), then create a new branch for the new step range.
+2. **If merge is blocked** (conflicts, pending review, etc.): Create a new branch from the current branch tip, do the new work there, and create a separate PR.
+3. **Last resort only** (user explicitly requests continuing on the same branch): Update the existing PR title and description to cover all included step ranges immediately after the first commit of new work.
+
+Never let a PR title/description fall out of sync with the actual commits on the branch. A PR whose title says "Steps 35-37" but contains Steps 35-50 is a review hazard.
+
 ------------------------------------------------------------------------
 
 ### Mandatory Self-Review Loop (Before Every Commit)
@@ -172,6 +182,9 @@ Files must remain:
 - Commit after every logical step.
 - Use clear commit messages.
 - Avoid large or mixed commits.
+- Target one step per commit. Do not bundle multiple unrelated steps.
+- If a diff exceeds 500 lines, stop and split before committing.
+- Never mix refactoring with new features in the same commit.
 
 If changes become too large:
 

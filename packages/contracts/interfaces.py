@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import AsyncIterator, Protocol, runtime_checkable
 
-from packages.core.models import AcceptanceCheck, Artifact, Task
+from packages.core.models import AcceptanceCheck, Artifact, Job, Task
 
 
 @runtime_checkable
@@ -84,4 +84,30 @@ class Verifier(Protocol):
 
         Returns (passed, list_of_failure_messages).
         """
+        ...
+
+
+@runtime_checkable
+class RunContractProvider(Protocol):
+    """Builds an execution-boundary contract for a job run.
+
+    The contract defines what a run is allowed and not allowed to do.
+    Provider-neutral — no model names, no network calls.
+    """
+
+    def build(self, job: Job) -> dict[str, object]:
+        """Return a JSON-serializable run contract for the job."""
+        ...
+
+
+@runtime_checkable
+class TokenPolicyProvider(Protocol):
+    """Builds a token-routing policy for a job run.
+
+    The policy classifies steps as zero-token, local-first, or expensive.
+    Provider-neutral — no model names, no network calls.
+    """
+
+    def build(self, job: Job) -> dict[str, object]:
+        """Return a JSON-serializable token policy for the job."""
         ...

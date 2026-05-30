@@ -124,7 +124,7 @@ class TestSmokeScriptText:
         assert "remedy project" in _script_text()
 
     def test_show_project_asserted(self):
-        assert "remedy show-project" in _script_text()
+        assert "remedy project show" in _script_text()
 
     def test_project_placeholder_asserted(self):
         assert "project_placeholder" in _script_text()
@@ -137,8 +137,8 @@ class TestSmokeScriptText:
 
     def test_apply_after_approval_step_present(self):
         text = _script_text()
-        assert "apply-patch-intent" in text and "Apply approved patch intent" in text, (
-            "smoke must test apply-patch-intent after approval"
+        assert "patch apply" in text and "Apply approved patch intent" in text, (
+            "smoke must test patch apply after approval"
         )
 
     def test_apply_noop_step_present(self):
@@ -331,14 +331,14 @@ class TestSmokeScriptText:
             "smoke must seed README.md with initial content"
         )
 
-    def test_smoke_readme_seed_before_plan_job(self):
+    def test_smoke_readme_seed_before_job_run(self):
         text = _script_text()
         readme_pos = text.find("README.md")
-        plan_pos   = text.find("plan-job")
+        run_pos    = text.find("remedy job run-next")
         assert readme_pos != -1, "smoke must contain README.md seed"
-        assert plan_pos   != -1, "smoke must contain plan-job step"
-        assert readme_pos < plan_pos, (
-            "smoke must seed README.md before plan-job so the file exists when apply runs"
+        assert run_pos    != -1, "smoke must contain remedy job run-next step"
+        assert readme_pos < run_pos, (
+            "smoke must seed README.md before job run-next so the file exists when apply runs"
         )
 
     def test_smoke_default_prompt_forces_write_readme_task(self):
@@ -454,13 +454,12 @@ class TestSmokeScriptText:
 
     def test_plan_job_not_called_in_smoke(self):
         text = _script_text()
-        # 'plan-job' must not appear as a standalone remedy sub-command call.
-        # plan-job-local is a different command and is not called either, but
-        # the key invariant is that `remedy plan-job` is absent.
+        # 'job plan' must not appear as a standalone remedy call in smoke.
+        # The smoke uses --task-type on create to bypass the planner.
         import re
-        matches = re.findall(r'remedy\s+plan-job\b(?!-local)', text)
+        matches = re.findall(r'remedy\s+job\s+plan\b', text)
         assert matches == [], (
-            "smoke must not call 'remedy plan-job' — explicit --task-type replaces the planner. "
+            "smoke must not call 'remedy job plan' — explicit --task-type replaces the planner. "
             f"Found: {matches}"
         )
 
@@ -497,7 +496,7 @@ class TestSmokeScriptText:
         text = _script_text()
         assert "mktemp" in text, (
             "smoke explicit-task sanity must use mktemp to create a temp file "
-            "for remedy show-job output"
+            "for remedy job show output"
         )
 
     # ------------------------------------------------------------------
@@ -677,8 +676,8 @@ class TestSmokeScriptText:
 
     def test_smoke_has_run_tests_local_step(self):
         text = _script_text()
-        assert "run-tests-local" in text, (
-            "smoke must call remedy run-tests-local as part of Step 33"
+        assert "test run" in text, (
+            "smoke must call remedy test run as part of Step 33"
         )
 
     def test_smoke_grants_repo_test_run_permission(self):
@@ -725,7 +724,7 @@ class TestSmokeScriptText:
     def test_smoke_asserts_test_run_node_in_brain(self):
         text = _script_text()
         assert "test_run" in text, (
-            "smoke must verify 'test_run' node type appears in brain after run-tests-local"
+            "smoke must verify 'test_run' node type appears in brain after test run"
         )
 
     def test_smoke_target_repo_has_tests_directory(self):
@@ -738,14 +737,14 @@ class TestSmokeScriptText:
 
     def test_smoke_has_discover_commands_step(self):
         text = _script_text()
-        assert "discover-commands" in text, (
-            "smoke must call remedy discover-commands as part of Step 34"
+        assert "test discover" in text, (
+            "smoke must call remedy test discover as part of Step 34"
         )
 
     def test_smoke_discover_commands_checks_json(self):
         text = _script_text()
-        assert "discover-commands" in text and "--json" in text, (
-            "smoke discover-commands step must use --json for structured verification"
+        assert "test discover" in text and "--json" in text, (
+            "smoke test discover step must use --json for structured verification"
         )
 
     def test_smoke_discover_commands_checks_command_source_type(self):
@@ -855,8 +854,8 @@ class TestSmokeScriptText:
 
     def test_smoke_has_trust_timeline_sanity_step(self):
         text = _script_text()
-        assert "trust-report" in text and "timeline" in text, (
-            "smoke must run both remedy trust-report and remedy timeline in step 6m"
+        assert "brain trust" in text and "brain timeline" in text, (
+            "smoke must run both remedy brain trust and remedy brain timeline in step 6m"
         )
 
     def test_smoke_trust_timeline_sanity_checks_structural_presence(self):
@@ -900,6 +899,550 @@ class TestSmokeScriptText:
         text = _script_text()
         assert "trust/timeline mention test run structurally" in text, (
             "smoke 6m must print confirmation that trust/timeline mention test run structurally"
+        )
+
+
+    # --- Step 46.2: Memory --approved + brain memory nodes (step 12g) --------
+
+    def test_smoke_has_memory_approved_store(self):
+        text = _script_text()
+        assert "--approved" in text and "memory store" in text, (
+            "smoke must call remedy memory store --approved for approved memory test"
+        )
+
+    def test_smoke_checks_brain_memory_nodes(self):
+        text = _script_text()
+        assert "'memory'" in text or '"memory"' in text, (
+            "smoke must verify 'memory' node type in brain graph"
+        )
+
+    def test_smoke_checks_memory_value_no_leak(self):
+        text = _script_text()
+        assert "'value'" in text and "leak" in text, (
+            "smoke must verify memory node metadata does not contain 'value' (no leak)"
+        )
+
+    def test_smoke_checks_context_project_memory(self):
+        text = _script_text()
+        assert "project_memory" in text, (
+            "smoke must verify project_memory signal in context_coverage"
+        )
+
+    # --- Step 46.2: Agent loop run-log schema (step 12h) -------------------
+
+    def test_smoke_has_agent_loop_schema_check(self):
+        text = _script_text()
+        assert "agent_loop" in text and "schema" in text.lower(), (
+            "smoke must verify agent_loop event schema"
+        )
+
+    def test_smoke_checks_agent_loop_required_meta_keys(self):
+        text = _script_text()
+        for key in ("cycle", "max_cycles", "decision", "stage", "reason",
+                     "task_count", "pending_task_count", "pending_approval_count",
+                     "applied_count", "test_run_count"):
+            assert key in text, (
+                f"smoke agent_loop schema check must reference key '{key}'"
+            )
+
+    def test_smoke_checks_no_agent_loop_task_exit(self):
+        text = _script_text()
+        assert "agent_loop_task_exit" in text, (
+            "smoke must verify agent_loop_task_exit event does not exist"
+        )
+
+    def test_smoke_checks_agent_loop_forbidden_strings(self):
+        text = _script_text()
+        for s in ("stdout", "stderr", "raw_output", "Traceback"):
+            assert s in text, (
+                f"smoke agent_loop schema check must forbid '{s}'"
+            )
+
+    # --- Step 48: Readiness job JSON (step 12i) ----------------------------
+
+    def test_smoke_has_readiness_job_json_step(self):
+        text = _script_text()
+        assert "readiness job" in text and "--json" in text, (
+            "smoke must call remedy readiness job --json (Step 48)"
+        )
+
+    def test_smoke_readiness_checks_version_scope_levels(self):
+        text = _script_text()
+        assert "highest_eligible_level" in text, (
+            "smoke 12i must check highest_eligible_level in readiness JSON"
+        )
+
+    def test_smoke_readiness_checks_8_levels(self):
+        text = _script_text()
+        assert "8" in text and "levels" in text, (
+            "smoke 12i must verify 8 levels in readiness JSON"
+        )
+
+    def test_smoke_readiness_checks_level_5_6_blocked(self):
+        text = _script_text()
+        assert "rollback" in text or "level 5" in text, (
+            "smoke 12i must check level 5 is not eligible"
+        )
+        assert "MCP" in text or "level 6" in text, (
+            "smoke 12i must check level 6 is not eligible"
+        )
+
+    def test_smoke_brain_autonomy_readiness_node(self):
+        text = _script_text()
+        assert "autonomy_readiness" in text, (
+            "smoke 12i must verify autonomy_readiness node in brain graph"
+        )
+
+    # --- Step 49: Context pack JSON (step 12j) ----------------------------
+
+    def test_smoke_has_context_pack_step(self):
+        text = _script_text()
+        assert "context pack" in text and "--json" in text, (
+            "smoke must call remedy context pack --json (Step 49)"
+        )
+
+    def test_smoke_context_pack_checks_compact_mode(self):
+        text = _script_text()
+        assert "compact" in text and "mode" in text, (
+            "smoke 12j must verify compact mode in context pack JSON"
+        )
+
+    def test_smoke_context_pack_checks_caveman_mode(self):
+        text = _script_text()
+        assert "caveman" in text, (
+            "smoke 12j must verify caveman mode in context pack JSON"
+        )
+
+    def test_smoke_context_pack_checks_sections(self):
+        text = _script_text()
+        assert "sections" in text and "estimated_tokens" in text, (
+            "smoke 12j must verify sections and estimated_tokens"
+        )
+
+    def test_smoke_context_pack_caveman_le_compact(self):
+        text = _script_text()
+        assert "caveman" in text and "compact" in text, (
+            "smoke 12j must verify caveman tokens <= compact tokens"
+        )
+
+    # --- Step 50: Memory learn JSON (step 12k) ----------------------------
+
+    def test_smoke_has_memory_learn_step(self):
+        text = _script_text()
+        assert "memory learn" in text and "--approved" in text, (
+            "smoke must call remedy memory learn --approved --json (Step 50)"
+        )
+
+    def test_smoke_memory_learn_checks_version_schema(self):
+        text = _script_text()
+        assert "learned_count" in text and "skipped_count" in text, (
+            "smoke 12k must verify learned_count and skipped_count"
+        )
+
+    def test_smoke_memory_learn_idempotent(self):
+        text = _script_text()
+        assert "idempotent" in text or "second learn" in text, (
+            "smoke 12k must verify second learn creates 0 new entries"
+        )
+
+    # --- Steps 48-50: Run-log schema (step 12l) --------------------------
+
+    def test_smoke_has_readiness_assessed_event(self):
+        text = _script_text()
+        assert "readiness_assessed" in text, (
+            "smoke 12l must verify readiness_assessed run-log event"
+        )
+
+    def test_smoke_has_context_pack_created_event(self):
+        text = _script_text()
+        assert "context_pack_created" in text, (
+            "smoke 12l must verify context_pack_created run-log event"
+        )
+
+    def test_smoke_has_memory_learned_event(self):
+        text = _script_text()
+        assert "memory_learned" in text, (
+            "smoke 12l must verify memory_learned run-log event"
+        )
+
+    def test_smoke_readiness_assessed_metadata_keys(self):
+        text = _script_text()
+        for key in ("scope", "highest_eligible_level", "missing_count", "blocker_count"):
+            assert key in text, (
+                f"smoke 12l must verify readiness_assessed metadata key '{key}'"
+            )
+
+    def test_smoke_context_pack_created_metadata_keys(self):
+        text = _script_text()
+        for key in ("budget", "estimated_tokens", "mode", "truncated", "section_count"):
+            assert key in text, (
+                f"smoke 12l must verify context_pack_created metadata key '{key}'"
+            )
+
+    def test_smoke_memory_learned_metadata_keys(self):
+        text = _script_text()
+        for key in ("learned_count", "skipped_count", "approved", "source_count"):
+            assert key in text, (
+                f"smoke 12l must verify memory_learned metadata key '{key}'"
+            )
+
+    # --- Step 51: File provenance (step 12m) --------------------------------
+
+    def test_smoke_has_file_why_step(self):
+        text = _script_text()
+        assert "file why" in text, (
+            "smoke must call remedy file why (Step 51)"
+        )
+
+    def test_smoke_file_why_checks_version_found_chain(self):
+        text = _script_text()
+        assert "found" in text and "chain" in text, (
+            "smoke 12m must verify found and chain in file why JSON"
+        )
+
+    def test_smoke_file_why_checks_chain_steps(self):
+        text = _script_text()
+        for step in ("patch_intent", "patch_apply", "patch_apply_proof"):
+            assert step in text, (
+                f"smoke 12m must verify chain includes step '{step}'"
+            )
+
+    # --- Step 51: Brain causal proof graph (step 12n) ----------------------
+
+    def test_smoke_has_brain_causal_proof_step(self):
+        text = _script_text()
+        assert "causal proof" in text.lower() or "patch_apply_proof" in text, (
+            "smoke must verify patch_apply_proof node in brain (Step 51)"
+        )
+
+    def test_smoke_checks_causal_edges(self):
+        text = _script_text()
+        for edge in ("approved_by", "allowed_apply", "recorded_proof"):
+            assert edge in text, (
+                f"smoke 12n must verify causal edge '{edge}' in brain graph"
+            )
+
+    def test_smoke_file_group_in_help(self):
+        text = _script_text()
+        assert "file" in text, (
+            "smoke must include 'file' group in help verification loop"
+        )
+
+    # --- Step 52: Continue from node (step 12o) ------------------------------
+
+    def test_smoke_has_brain_continue_step(self):
+        text = _script_text()
+        assert "brain continue" in text, (
+            "smoke must call remedy brain continue (Step 52)"
+        )
+
+    def test_smoke_brain_continue_checks_json_schema(self):
+        text = _script_text()
+        for key in ("parent_job_id", "child_job_id", "origin_node_id", "origin_node_type"):
+            assert key in text, (
+                f"smoke 12o must verify key '{key}' in brain continue JSON"
+            )
+
+    def test_smoke_brain_continue_checks_inherited(self):
+        text = _script_text()
+        assert "inherited_project" in text and "inherited_repo" in text, (
+            "smoke 12o must verify inherited_project and inherited_repo"
+        )
+
+    def test_smoke_brain_continue_verifies_child_job(self):
+        text = _script_text()
+        assert "child job" in text.lower() or "child_job_id" in text, (
+            "smoke 12o must verify child job exists"
+        )
+
+    # --- Step 53: Project brain aggregate (step 12p) -------------------------
+
+    def test_smoke_has_project_brain_step(self):
+        text = _script_text()
+        assert "project brain" in text, (
+            "smoke must call remedy project brain (Step 53)"
+        )
+
+    def test_smoke_project_brain_checks_json_schema(self):
+        text = _script_text()
+        for key in ("project_id", "project_name", "scope"):
+            assert key in text, (
+                f"smoke 12p must verify key '{key}' in project brain JSON"
+            )
+
+    def test_smoke_project_brain_checks_graph_and_summary(self):
+        text = _script_text()
+        assert "graph" in text and "summary" in text, (
+            "smoke 12p must verify graph and summary in project brain JSON"
+        )
+
+    def test_smoke_project_brain_checks_project_node(self):
+        text = _script_text()
+        assert "'project'" in text or '"project"' in text, (
+            "smoke 12p must verify project node type exists"
+        )
+
+    def test_smoke_project_brain_checks_no_path_leak(self):
+        text = _script_text()
+        assert "repo_basename" in text, (
+            "smoke 12p must verify repo nodes have repo_basename (no full path)"
+        )
+
+    # --- Step 35: Run Contract (step 12a) -----------------------------------
+
+    def test_smoke_has_run_contract_check(self):
+        text = _script_text()
+        assert "policy contract" in text, (
+            "smoke must call remedy policy contract as part of Step 35"
+        )
+
+    def test_smoke_run_contract_checks_json_keys(self):
+        text = _script_text()
+        assert "autonomy_level" in text, (
+            "smoke step 12a must validate autonomy_level in run-contract JSON"
+        )
+
+    def test_smoke_run_contract_checks_allowed_actions(self):
+        text = _script_text()
+        assert "allowed_actions" in text, (
+            "smoke step 12a must validate allowed_actions in run-contract JSON"
+        )
+
+    def test_smoke_run_contract_checks_scope_job(self):
+        text = _script_text()
+        assert "scope" in text and "'job'" in text, (
+            "smoke step 12a must validate scope == 'job' in run-contract JSON"
+        )
+
+    def test_smoke_run_contract_checks_autonomy_int(self):
+        text = _script_text()
+        assert "autonomy_level" in text and "int" in text, (
+            "smoke step 12a must validate autonomy_level is int"
+        )
+
+    def test_smoke_run_contract_checks_forbidden_strings(self):
+        text = _script_text()
+        assert "approval_reason" in text and "diff_preview" in text, (
+            "smoke step 12a must check forbidden strings in run-contract JSON"
+        )
+
+    # --- Step 36: Token Policy (step 12b) -----------------------------------
+
+    def test_smoke_has_token_policy_check(self):
+        text = _script_text()
+        assert "policy token" in text, (
+            "smoke must call remedy policy token as part of Step 36"
+        )
+
+    def test_smoke_token_policy_checks_zero_token(self):
+        text = _script_text()
+        assert "zero_token_steps" in text, (
+            "smoke step 12b must validate zero_token_steps in token-policy JSON"
+        )
+
+    def test_smoke_token_policy_checks_command_discovery_zero_token(self):
+        text = _script_text()
+        assert "command_discovery" in text, (
+            "smoke step 12b must verify command_discovery is a zero-token step"
+        )
+
+    def test_smoke_token_policy_checks_scope_job(self):
+        text = _script_text()
+        assert "scope" in text, (
+            "smoke step 12b must validate scope in token-policy JSON"
+        )
+
+    def test_smoke_token_policy_checks_forbidden_context(self):
+        text = _script_text()
+        assert "forbidden_context" in text, (
+            "smoke step 12b must validate forbidden_context in token-policy JSON"
+        )
+
+    def test_smoke_token_policy_uses_precise_blocklist(self):
+        """Smoke 12b must use precise secret patterns, not dumb substring bans."""
+        text = _script_text()
+        # Must contain precise patterns
+        for pattern in ("sk-", "ghp_", "password="):
+            assert pattern in text, (
+                f"smoke step 12b must use precise pattern '{pattern}' for leak detection"
+            )
+        # The old false-positive pattern must not appear in the 12b section
+        idx_12b = text.index("12b")
+        section = text[idx_12b:idx_12b + 2000]
+        assert "'api_key'" not in section, (
+            "smoke 12b must not use bare 'api_key' as forbidden — "
+            "false-positives on category name 'api_keys'"
+        )
+
+    # --- Step 37: Worker Adapters (step 12c) --------------------------------
+
+    def test_smoke_has_workers_check(self):
+        text = _script_text()
+        assert "worker list" in text, (
+            "smoke must call remedy worker list as part of Step 37"
+        )
+
+    def test_smoke_workers_checks_ollama(self):
+        text = _script_text()
+        assert "ollama" in text, (
+            "smoke step 12c must verify ollama is in worker specs"
+        )
+
+    def test_smoke_workers_checks_claude_code(self):
+        text = _script_text()
+        assert "claude_code" in text, (
+            "smoke step 12c must verify claude_code is in worker specs"
+        )
+
+    def test_smoke_workers_checks_version_envelope(self):
+        text = _script_text()
+        assert "providers" in text, (
+            "smoke step 12c must check for 'providers' key in workers JSON envelope"
+        )
+
+    # --- Step 35-37: Run-log schema (step 12e) ----------------------------
+
+    def test_smoke_has_run_log_schema_step_12e(self):
+        text = _script_text()
+        assert "run_contract_inspected" in text, (
+            "smoke step 12e must verify run_contract_inspected run-log schema"
+        )
+        assert "token_policy_inspected" in text, (
+            "smoke step 12e must verify token_policy_inspected run-log schema"
+        )
+
+    def test_smoke_run_log_checks_exact_rc_keys(self):
+        text = _script_text()
+        for key in ("allowed_action_count", "denied_action_count", "max_loops"):
+            assert key in text, (
+                f"smoke step 12e must verify run_contract_inspected key '{key}'"
+            )
+
+    def test_smoke_run_log_checks_exact_tp_keys(self):
+        text = _script_text()
+        for key in ("zero_token_step_count", "local_first_step_count", "expensive_step_count"):
+            assert key in text, (
+                f"smoke step 12e must verify token_policy_inspected key '{key}'"
+            )
+
+    # --- Step 35-37: Brain node integration (step 12d) ----------------------
+
+    def test_smoke_brain_checks_run_contract_node(self):
+        text = _script_text()
+        assert "run_contract" in text, (
+            "smoke step 12d must verify run_contract node in brain graph"
+        )
+
+    def test_smoke_brain_checks_token_policy_node(self):
+        text = _script_text()
+        assert "token_policy" in text, (
+            "smoke step 12d must verify token_policy node in brain graph"
+        )
+
+    def test_smoke_brain_checks_worker_adapter_node(self):
+        text = _script_text()
+        assert "worker_adapter" in text, (
+            "smoke step 12d must verify worker_adapter node in brain graph"
+        )
+
+    # --- Step 53.1: Project brain includes child job (step 12p) ---------------
+
+    def test_smoke_project_brain_checks_child_job(self):
+        text = _script_text()
+        assert "child" in text.lower() and "project brain" in text.lower(), (
+            "smoke 12p must verify child job in project brain aggregate"
+        )
+
+    # --- Step 54: Patch revert (step 12q) ------------------------------------
+
+    def test_smoke_has_revert_step(self):
+        text = _script_text()
+        assert "patch revert" in text, (
+            "smoke must call remedy patch revert"
+        )
+
+    def test_smoke_revert_checks_noop(self):
+        text = _script_text()
+        assert "second revert" in text.lower() or "noop" in text, (
+            "smoke must verify second revert is noop"
+        )
+
+    # --- Step 55: Change set (step 12r) --------------------------------------
+
+    def test_smoke_has_change_list(self):
+        text = _script_text()
+        assert "change list" in text, (
+            "smoke must call remedy change list"
+        )
+
+    def test_smoke_change_list_checks_schema(self):
+        text = _script_text()
+        assert "'changes'" in text or '"changes"' in text, (
+            "smoke must verify changes key in change list JSON"
+        )
+
+    # --- Step 56: Token economy (step 12s) -----------------------------------
+
+    def test_smoke_has_token_ordering(self):
+        text = _script_text()
+        assert "caveman" in text and "compact" in text and "standard" in text, (
+            "smoke must check all three context pack modes"
+        )
+
+    def test_smoke_has_worker_recommend(self):
+        text = _script_text()
+        assert "worker recommend" in text, (
+            "smoke must call remedy worker recommend"
+        )
+
+    def test_smoke_worker_recommend_checks_schema(self):
+        text = _script_text()
+        assert "recommended_worker" in text and "token_mode" in text, (
+            "smoke must verify worker recommend JSON schema"
+        )
+
+    # --- Step 54-56: Brain nodes (step 12t) ----------------------------------
+
+    def test_smoke_brain_checks_change_set_node(self):
+        text = _script_text()
+        assert "change_set" in text, (
+            "smoke must verify change_set node in brain graph"
+        )
+
+    # --- Step 63: Memory card commands (step 12u) ----------------------------
+
+    def test_smoke_has_memory_card_show(self):
+        text = _script_text()
+        assert "card-show" in text, (
+            "smoke must verify memory card-show help"
+        )
+
+    # --- Step 64: Worker show + explain (steps 12v-12w) ----------------------
+
+    def test_smoke_has_worker_show(self):
+        text = _script_text()
+        assert "worker show" in text, (
+            "smoke must call remedy worker show"
+        )
+
+    def test_smoke_has_worker_explain(self):
+        text = _script_text()
+        assert "worker explain" in text, (
+            "smoke must call remedy worker explain"
+        )
+
+    # --- Step 65: Repo status + git_status brain (steps 12x-12y) -------------
+
+    def test_smoke_has_repo_status(self):
+        text = _script_text()
+        assert "repo status" in text, (
+            "smoke must call remedy repo status"
+        )
+
+    def test_smoke_brain_checks_git_status_node(self):
+        text = _script_text()
+        assert "git_status" in text, (
+            "smoke must verify git_status node in brain graph"
         )
 
 

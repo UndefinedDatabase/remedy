@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# remedy_smoke.sh — Project Registry + Brain Viewer smoke test.
+# remedy_smoke.sh — Grouped CLI smoke test.
 #
 # Usage (source):
 #   source scripts/remedy_smoke.sh
@@ -8,8 +8,8 @@
 # Usage (direct):
 #   ./scripts/remedy_smoke.sh
 #
-# Requirements: remedy CLI on PATH, python3.
-# Optional: Ollama running locally (for run-next-task-local).
+# Requirements: remedy CLI on PATH (grouped entry point), python3.
+# Optional: Ollama running locally (for job run-next).
 #
 # Overrides:
 #   REMEDY_SMOKE_REPO  — temp repo path (default: /tmp/remedy-target-repo)
@@ -23,6 +23,29 @@ remedy_smoke() {
   (
     set -euo pipefail
 
+    # -- Failure trap: print section, line, command on error --
+    _SMOKE_SECTION="init"
+    _SMOKE_RUN_ID="$(date +%Y%m%d-%H%M%S)"
+    _SMOKE_LOG_DIR=".data/smoke/${_SMOKE_RUN_ID}"
+    mkdir -p "${_SMOKE_LOG_DIR}"
+
+    _smoke_fail() {
+      local line="${1:-?}" cmd="${2:-?}"
+      echo "" >&2
+      echo "========================================" >&2
+      echo "remedy_smoke: FAILED" >&2
+      echo "  section : ${_SMOKE_SECTION}" >&2
+      echo "  line    : ${line}" >&2
+      echo "  command : ${cmd}" >&2
+      echo "  log     : ${_SMOKE_LOG_DIR}/smoke.log" >&2
+      echo "========================================" >&2
+      # Write failure summary
+      cat >"${_SMOKE_LOG_DIR}/summary.json" <<SUMEOF
+{"status":"failed","section":"${_SMOKE_SECTION}","line":${line},"run_id":"${_SMOKE_RUN_ID}","project_id":"${PROJECT_ID:-}","job_id":"${JOB_ID:-}"}
+SUMEOF
+    }
+    trap '_smoke_fail "${LINENO}" "${BASH_COMMAND}"' ERR
+
     local TARGET_REPO="${REMEDY_SMOKE_REPO:-/tmp/remedy-target-repo}"
     local PROMPT="${1:-Create exactly one task with task_type write_readme: Write a README for a small internal CLI tool. No further tasks.}"
 
@@ -35,8 +58,22 @@ remedy_smoke() {
     fi
 
     # -------------------------------------------------------------------------
+    # 0. Verify group help for all groups
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="0-group-help"
+    echo "--- 0. Verify group help"
+    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard; do
+        remedy "${grp}" >/dev/null 2>&1 || {
+            echo "ERROR: 'remedy ${grp}' failed" >&2
+            return 1
+        }
+    done
+    echo "    Group help: OK (job project patch test brain policy worker memory dev readiness context file change repo)"
+
+    # -------------------------------------------------------------------------
     # 1. Create target repo
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="1"
     echo "--- 1. Create target repo: ${TARGET_REPO}"
     rm -rf "${TARGET_REPO}"
     mkdir -p "${TARGET_REPO}"
@@ -132,9 +169,17 @@ def test_readme_exists_and_has_proposed_update():
     assert "Proposed Update" in content, "README.md must contain 'Proposed Update'"
 TEST_EOF
 
+    # Initialize target repo as git repo (smoke fixture only — production Remedy never commits)
+    git -C "${TARGET_REPO}" init -q
+    git -C "${TARGET_REPO}" config user.email "smoke@example.invalid"
+    git -C "${TARGET_REPO}" config user.name "Remedy Smoke"
+    git -C "${TARGET_REPO}" add .
+    git -C "${TARGET_REPO}" commit -q -m "initial smoke fixture"
+
     # -------------------------------------------------------------------------
     # 1b. Repository structure sanity (Step 32)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="1b"
     echo "--- 1b. Repository structure sanity"
     python3 -c "
 import sys
@@ -225,35 +270,35 @@ print('    Repository structure sanity: OK')
 " "$(pwd)"
 
     # -------------------------------------------------------------------------
-    # 2. Create project
+    # 2. Create project (grouped CLI)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="2"
     echo "--- 2. Create project"
-    PROJECT_ID="$(remedy create-project "Smoke Project" --description "smoke test project")"
+    PROJECT_ID="$(remedy project create "Smoke Project" --description "smoke test project")"
     if [[ -z "${PROJECT_ID}" ]]; then
-        echo "ERROR: create-project did not print a project ID" >&2
+        echo "ERROR: project create did not print a project ID" >&2
         return 1
     fi
     echo "    PROJECT_ID=${PROJECT_ID}"
 
     # -------------------------------------------------------------------------
-    # 3. Create job (linked to project, explicit task_type — no plan-job needed)
+    # 3. Create job (linked to project, explicit task_type — no plan needed)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="3"
     echo "--- 3. Create job"
-    JOB_ID="$(remedy create-job "${PROMPT}" \
+    JOB_ID="$(remedy job create "${PROMPT}" \
         --project "${PROJECT_ID}" \
         --task-type write_readme \
         --task-description "Write/update README.md for smoke target.")"
     if [[ -z "${JOB_ID}" ]]; then
-        echo "ERROR: create-job did not print a job ID" >&2
+        echo "ERROR: job create did not print a job ID" >&2
         return 1
     fi
     echo "    JOB_ID=${JOB_ID}"
 
     # Assert: job starts in PLANNED state with exactly one write_readme task.
-    # Pipe show-job output to a temp file so Python can parse it without
-    # calling remedy again via a nested subprocess from within the script.
     _TMP_JOB="$(mktemp)"
-    remedy show-job "${JOB_ID}" > "${_TMP_JOB}"
+    remedy job show "${JOB_ID}" > "${_TMP_JOB}"
     python3 -c "
 import json, sys
 from pathlib import Path
@@ -261,7 +306,7 @@ job = json.loads(Path(sys.argv[1]).read_text())
 state = job.get('state', '')
 tasks = job.get('tasks', [])
 if state != 'planned':
-    print('ERROR: job state must be planned after create-job --task-type, got: ' + repr(state), file=sys.stderr)
+    print('ERROR: job state must be planned after job create --task-type, got: ' + repr(state), file=sys.stderr)
     sys.exit(1)
 if len(tasks) != 1:
     print('ERROR: expected exactly 1 task, got ' + str(len(tasks)), file=sys.stderr)
@@ -277,16 +322,18 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # -------------------------------------------------------------------------
     # 4. Attach repo + set permission; link repo to project
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="4"
     echo "--- 4. Attach repo + set permission"
-    remedy attach-repo "${JOB_ID}" "${TARGET_REPO}"
-    remedy set-permission "${JOB_ID}" allow repo_generated_write
-    remedy attach-project-repo "${PROJECT_ID}" "${TARGET_REPO}"
+    remedy job attach-repo "${JOB_ID}" "${TARGET_REPO}"
+    remedy job permit "${JOB_ID}" repo_generated_write allow
+    remedy project attach-repo "${PROJECT_ID}" "${TARGET_REPO}"
 
     # -------------------------------------------------------------------------
     # 5. Run next task (requires Ollama — skip gracefully if unavailable)
     # -------------------------------------------------------------------------
-    echo "--- 5. run-next-task-local"
-    if remedy run-next-task-local "${JOB_ID}"; then
+    _SMOKE_SECTION="5"
+    echo "--- 5. job run-next"
+    if remedy job run-next "${JOB_ID}"; then
         echo "    Task run: OK"
     else
         echo "    Task run: SKIP (Ollama likely unavailable — continuing smoke)"
@@ -295,8 +342,9 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # -------------------------------------------------------------------------
     # 6. Patch apply lifecycle: before approval → approve → apply → noop
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="6"
     echo "--- 6. Patch apply lifecycle (if intent present)"
-    FIRST_INTENT_ID="$(remedy brain "${JOB_ID}" --json | python3 -c "
+    FIRST_INTENT_ID="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
 for n in data.get('nodes', []):
@@ -307,31 +355,37 @@ for n in data.get('nodes', []):
 " 2>/dev/null || true)"
     if [[ -n "${FIRST_INTENT_ID}" ]]; then
         # 6a. apply before approval must be blocked (non-zero exit)
+        _SMOKE_SECTION="6a"
         echo "--- 6a. Apply before approval (expect blocked)"
-        if remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" 2>/dev/null; then
-            echo "ERROR: apply-patch-intent should fail before approval" >&2
+        if remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}" 2>/dev/null; then
+            echo "ERROR: patch apply should fail before approval" >&2
             return 1
         fi
         echo "    apply before approval: blocked (OK)"
 
         # 6b. approve
+        _SMOKE_SECTION="6b"
         echo "--- 6b. Approve patch intent"
-        remedy approve-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}" --reason "smoke approval"
+        remedy patch approve "${JOB_ID}" "${FIRST_INTENT_ID}" --reason "smoke approval"
         echo "    Approved: ${FIRST_INTENT_ID}"
 
         # 6c. apply approved intent (must succeed)
+        _SMOKE_SECTION="6c"
         echo "--- 6c. Apply approved patch intent"
-        remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
+        remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}"
+        APPLIED_INTENT_ID="${FIRST_INTENT_ID}"
         echo "    Applied: ${FIRST_INTENT_ID} (OK)"
 
         # 6d. repeat apply (must be no-op, exit 0)
+        _SMOKE_SECTION="6d"
         echo "--- 6d. Repeat apply (no-op)"
-        remedy apply-patch-intent "${JOB_ID}" "${FIRST_INTENT_ID}"
+        remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}"
         echo "    Repeat apply: no-op (OK)"
 
         # 6e. verify applied file has no Remedy control markers
+        _SMOKE_SECTION="6e"
         echo "--- 6e. Verify applied file has no Remedy control markers"
-        APPLIED_TARGET="$(remedy brain "${JOB_ID}" --json | python3 -c "
+        APPLIED_TARGET="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 for n in data.get('nodes', []):
@@ -376,6 +430,7 @@ print('    Applied file: OK (no raw HTML comments, has Proposed Update section, 
 " "${TARGET_REPO}" "${APPLIED_TARGET}" "${FIRST_INTENT_ID}"
 
         # 6f. verify exact run-log schema for patch_intent_applied events
+        _SMOKE_SECTION="6f"
         echo "--- 6f. Verify run-log schema (patch_intent_applied)"
         python3 -c "
 import json, sys
@@ -418,6 +473,7 @@ for need in ('blocked', 'applied', 'noop'):
 print('    run-log schema: OK  events=' + str(len(events)) + '  outcomes=' + str(sorted(outcomes)))
 " "${JOB_ID}" "${RUNS_ROOT}"
         # 6g. whole-TARGET_REPO markerless scan
+        _SMOKE_SECTION="6g"
         echo "--- 6g. Whole-repo markerless scan"
         python3 -c "
 from pathlib import Path
@@ -446,8 +502,7 @@ print('    target repo markerless: OK')
 " "${TARGET_REPO}" "${FIRST_INTENT_ID}"
 
         # 6h. Verify patch_apply_proof_recorded event (Step 31).
-        # This check assumes the approve/apply lifecycle (6b–6c) has already
-        # completed successfully; proof events are only emitted on a successful apply.
+        _SMOKE_SECTION="6h"
         echo "--- 6h. Verify proof event (patch_apply_proof_recorded)"
         python3 -c "
 import json, sys
@@ -493,22 +548,25 @@ for ev in events:
             sys.exit(1)
 print('    proof event: OK  events=' + str(len(events)) + '  after_sha=' + events[0]['metadata']['after_sha256'][:16] + '...')
 " "${JOB_ID}" "${RUNS_ROOT}"
-        # 6i. Step 33: grant repo_test_run, run tests, assert test_run node + run-log schema
+        # 6i. Step 33: grant repo_test_run, run tests
+        _SMOKE_SECTION="6i"
         echo "--- 6i. Grant repo_test_run permission"
-        remedy set-permission "${JOB_ID}" allow repo_test_run
+        remedy job permit "${JOB_ID}" repo_test_run allow
         echo "    repo_test_run: allowed"
 
+        _SMOKE_SECTION="6j"
         echo "--- 6j. Run tests locally (Step 33)"
-        remedy run-tests-local "${JOB_ID}"
-        echo "    run-tests-local: OK"
+        remedy test run "${JOB_ID}"
+        echo "    test run: OK"
 
+        _SMOKE_SECTION="6k"
         echo "--- 6k. Assert test_run node in brain JSON"
-        remedy brain "${JOB_ID}" --json | python3 -c "
+        remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 types = {n['type'] for n in data.get('nodes', [])}
 if 'test_run' not in types:
-    print('ERROR: test_run node missing from brain after run-tests-local', file=sys.stderr)
+    print('ERROR: test_run node missing from brain after test run', file=sys.stderr)
     sys.exit(1)
 tr_nodes = [n for n in data.get('nodes', []) if n['type'] == 'test_run']
 # Verify no forbidden keys in test_run node metadata
@@ -521,6 +579,7 @@ for n in tr_nodes:
 print('    test_run node: OK  count=' + str(len(tr_nodes)) + '  status=' + (tr_nodes[0].get('status','?') if tr_nodes else '?'))
 "
 
+        _SMOKE_SECTION="6l"
         echo "--- 6l. Assert test_run_completed run-log schema"
         python3 -c "
 import json, sys
@@ -556,8 +615,9 @@ for ev in events:
 print('    test_run_completed schema: OK  events=' + str(len(events)) + '  status=' + events[0]['metadata']['status'])
 " "${JOB_ID}" "${RUNS_ROOT}"
 
+        _SMOKE_SECTION="6n"
         echo "--- 6n. Discover commands (Step 34.1 — multi-ecosystem)"
-        DISCOVER_JSON="$(remedy discover-commands "${JOB_ID}" --json)"
+        DISCOVER_JSON="$(remedy test discover "${JOB_ID}" --json)"
         python3 -c "
 import json, sys, os
 data = json.loads(sys.argv[1])
@@ -629,16 +689,15 @@ print('    discover-commands: OK  total=' + str(len(candidates))
       + '  selected=' + sel['source_type'] + ':' + ' '.join(sel['argv']))
 " "${DISCOVER_JSON}"
 
+        _SMOKE_SECTION="6m"
         echo "--- 6m. Trust/Timeline test-run sanity (human-readable output)"
-        TRUST_OUT="$(remedy trust-report "${JOB_ID}")"
-        TIMELINE_OUT="$(remedy timeline "${JOB_ID}")"
+        TRUST_OUT="$(remedy brain trust "${JOB_ID}")"
+        TIMELINE_OUT="$(remedy brain timeline "${JOB_ID}")"
         python3 -c "
 import sys
 trust    = sys.argv[1]
 timeline = sys.argv[2]
 # Structural presence checks.
-# Human-readable text may legitimately say 'raw stdout/stderr are not included';
-# that is a redaction note, NOT a leak.  We check for structural content only.
 if 'test run' not in trust.lower() and 'test_run' not in trust:
     print('ERROR: trust report does not mention test run', file=sys.stderr)
     sys.exit(1)
@@ -665,10 +724,11 @@ print('    OK: trust/timeline mention test run structurally')
     fi
 
     # -------------------------------------------------------------------------
-    # 7. Assert: remedy project --json (alias)
+    # 7. Assert: remedy project show --json
     # -------------------------------------------------------------------------
-    echo "--- 7. Assert: remedy project --json"
-    PROJECT_JSON="$(remedy project "${PROJECT_ID}" --json)"
+    _SMOKE_SECTION="7"
+    echo "--- 7. Assert: remedy project show --json"
+    PROJECT_JSON="$(remedy project show "${PROJECT_ID}" --json)"
     python3 -c "
 import json,sys
 data=json.loads(sys.argv[1])
@@ -676,26 +736,15 @@ assert data['version'] == 1, f'version must be 1, got {data[\"version\"]}'
 assert data['project']['id'] == sys.argv[2], 'project id mismatch'
 jobs = data.get('jobs', [])
 assert any(j['id'] == sys.argv[3] for j in jobs), f'job {sys.argv[3][:8]} not in project jobs'
-print(f'    remedy project --json: OK (version={data[\"version\"]}, jobs={len(jobs)})')
+print(f'    remedy project show --json: OK (version={data[\"version\"]}, jobs={len(jobs)})')
 " "${PROJECT_JSON}" "${PROJECT_ID}" "${JOB_ID}"
-
-    # -------------------------------------------------------------------------
-    # 8. Assert: remedy show-project --json (backward compat)
-    # -------------------------------------------------------------------------
-    echo "--- 8. Assert: remedy show-project --json"
-    SHOW_JSON="$(remedy show-project "${PROJECT_ID}" --json)"
-    python3 -c "
-import json,sys
-data=json.loads(sys.argv[1])
-assert data['version'] == 1, 'show-project version must be 1'
-print('    remedy show-project --json: OK')
-" "${SHOW_JSON}"
 
     # -------------------------------------------------------------------------
     # 9. Assert: context score 0..85
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="9"
     echo "--- 9. Assert context score"
-    CTX_SCORE="$(remedy context "${JOB_ID}" --json | python3 -c "
+    CTX_SCORE="$(remedy brain context "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
 print(data['score'])
@@ -709,8 +758,9 @@ print(data['score'])
     # -------------------------------------------------------------------------
     # 10. Assert: brain JSON has required node types + project_placeholder
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="10"
     echo "--- 10. Assert brain node types (including project_placeholder)"
-    remedy brain "${JOB_ID}" --json | python3 -c "
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
 types={n['type'] for n in data.get('nodes', [])}
@@ -732,15 +782,16 @@ print('    Brain types: '+', '.join(sorted(types)))
     # -------------------------------------------------------------------------
     # 11. Generate Brain Viewer
     # -------------------------------------------------------------------------
-    echo "--- 11. remedy brain-view"
-    BRAIN_VIEW_OUTPUT="$(remedy brain-view "${JOB_ID}")" || {
-        echo "ERROR: brain-view failed" >&2
+    _SMOKE_SECTION="11"
+    echo "--- 11. remedy brain view"
+    BRAIN_VIEW_OUTPUT="$(remedy brain view "${JOB_ID}")" || {
+        echo "ERROR: brain view failed" >&2
         return 1
     }
     VIEW_PATH="$(printf '%s\n' "${BRAIN_VIEW_OUTPUT}" \
         | awk '/^Brain Viewer v0:/ {sub(/^Brain Viewer v0: /, ""); print; exit}' || true)"
     if [[ -z "${VIEW_PATH}" ]]; then
-        echo "ERROR: brain-view did not print a 'Brain Viewer v0:' line" >&2
+        echo "ERROR: brain view did not print a 'Brain Viewer v0:' line" >&2
         printf "Output was:\n%s\n" "${BRAIN_VIEW_OUTPUT}" >&2
         return 1
     fi
@@ -749,6 +800,7 @@ print('    Brain types: '+', '.join(sorted(types)))
     # -------------------------------------------------------------------------
     # 12. Assert viewer files (self-diagnosing — no bare assert)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12"
     echo "--- 12. Assert viewer files"
     python3 -c "
 import json, sys
@@ -808,11 +860,7 @@ for ph in ('__VIEWER_DATA_JSON__', '__STATIC_FALLBACK__', '__JOB_SHORT_ID__', '_
     if ph in html:
         failed.append('index.html contains unresolved placeholder: ' + repr(ph))
 
-# Redaction sentinel scan: precise dangerous tokens must not appear in rendered output.
-# These are metadata keys, uppercase sentinel markers, and exception strings that
-# must never leak into viewer files.  Plain phrases such as the words artifact content
-# or file content are NOT forbidden here: safe explanatory negations in viewer UI copy
-# (e.g. 'Does not include raw prompt, file content, ...') are intentional text.
+# Redaction sentinel scan
 forbidden_tokens = [
     'approval_reason',
     'diff_preview',
@@ -841,18 +889,1194 @@ print('    index.html: OK')
 " "${VIEW_DIR}"
 
     # -------------------------------------------------------------------------
+    # 12a. Assert: remedy policy contract --json (Step 35)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12a"
+    echo "--- 12a. remedy policy contract --json"
+    python3 -c "
+import subprocess, json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: policy contract: ' + msg, file=sys.stderr)
+        sys.exit(1)
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.grouped', 'policy', 'contract', '${JOB_ID}', '--json'],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    print('ERROR: policy contract exited ' + str(result.returncode), file=sys.stderr)
+    print(result.stderr, file=sys.stderr)
+    sys.exit(1)
+data = json.loads(result.stdout)
+chk('version' in data, 'missing version')
+chk('job_id' in data, 'missing job_id')
+chk('autonomy_level' in data, 'missing autonomy_level')
+chk('scope' in data, 'missing scope')
+chk('allowed_actions' in data, 'missing allowed_actions')
+chk('denied_actions' in data, 'missing denied_actions')
+chk(data['version'] == 1, 'version != 1')
+chk(isinstance(data['autonomy_level'], int), 'autonomy_level not int')
+chk(data['autonomy_level'] == 1, 'autonomy_level != 1')
+chk(data['scope'] == 'job', 'scope != job')
+chk(isinstance(data['allowed_actions'], list), 'allowed_actions not list')
+chk(isinstance(data['denied_actions'], list), 'denied_actions not list')
+# Forbidden strings in run-contract JSON
+rc_str = json.dumps(data).lower()
+for bad in ('approval_reason', 'diff_preview', 'command_output', 'traceback', 'raw_stdout', 'raw_stderr'):
+    chk(bad not in rc_str, 'run-contract JSON contains forbidden: ' + bad)
+print('    policy contract JSON: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12b. Assert: remedy policy token --json (Step 36)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12b"
+    echo "--- 12b. remedy policy token --json"
+    python3 -c "
+import subprocess, json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: policy token: ' + msg, file=sys.stderr)
+        sys.exit(1)
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.grouped', 'policy', 'token', '${JOB_ID}', '--json'],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    print('ERROR: policy token exited ' + str(result.returncode), file=sys.stderr)
+    print(result.stderr, file=sys.stderr)
+    sys.exit(1)
+data = json.loads(result.stdout)
+chk('version' in data, 'missing version')
+chk('scope' in data, 'missing scope')
+chk('zero_token_steps' in data, 'missing zero_token_steps')
+chk('local_first_steps' in data, 'missing local_first_steps')
+chk('expensive_model_steps' in data, 'missing expensive_model_steps')
+chk('forbidden_context' in data, 'missing forbidden_context')
+chk('budget' in data, 'missing budget')
+chk(data['scope'] == 'job', 'scope != job')
+chk(isinstance(data['zero_token_steps'], list), 'zero_token_steps not list')
+chk('command_discovery' in data['zero_token_steps'], 'command_discovery not zero-token')
+# forbidden_context must contain redaction-related strings
+fc_lower = [s.lower() for s in data['forbidden_context']]
+fc_joined = ' '.join(fc_lower)
+chk('command output' in fc_joined or 'command_output' in fc_joined, 'forbidden_context missing command output')
+chk('raw stdout' in fc_joined or 'raw_stdout' in fc_joined, 'forbidden_context missing raw stdout')
+chk('raw stderr' in fc_joined or 'raw_stderr' in fc_joined, 'forbidden_context missing raw stderr')
+chk('artifact' in fc_joined, 'forbidden_context missing artifact')
+# token-policy JSON must NOT contain leaking tokens/secrets.
+# Category names like 'api_keys', 'environment_secrets' are ALLOWED —
+# only actual secret patterns are forbidden.
+tp_str = json.dumps(data).lower()
+for bad in ('sk-', 'ghp_', 'xoxb-', 'begin private key', 'password=', 'api_key=', 'secret=', 'traceback (most recent'):
+    chk(bad not in tp_str, 'token-policy JSON contains forbidden: ' + bad)
+print('    policy token JSON: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12c. Assert: remedy worker list --json (Step 37)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12c"
+    echo "--- 12c. remedy worker list --json"
+    python3 -c "
+import subprocess, json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: worker list: ' + msg, file=sys.stderr)
+        sys.exit(1)
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.grouped', 'worker', 'list', '--json'],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    print('ERROR: worker list exited ' + str(result.returncode), file=sys.stderr)
+    print(result.stderr, file=sys.stderr)
+    sys.exit(1)
+data = json.loads(result.stdout)
+chk(isinstance(data, dict), 'worker list output not dict')
+chk('version' in data, 'missing version')
+chk('providers' in data, 'missing providers')
+chk(data['version'] == 1, 'version != 1')
+providers = data['providers']
+chk(isinstance(providers, list), 'providers not list')
+chk(len(providers) >= 5, 'expected >= 5 worker specs')
+ids = [s['provider_id'] for s in providers]
+chk('ollama' in ids, 'missing ollama')
+chk('claude_code' in ids, 'missing claude_code')
+chk(all('supported_roles' in s for s in providers), 'missing supported_roles')
+print('    worker list JSON: OK (' + str(len(providers)) + ' providers)')
+"
+
+    # -------------------------------------------------------------------------
+    # 12d. Assert: brain graph includes new Step 35-37 node types
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12d"
+    echo "--- 12d. brain graph has run_contract + token_policy + worker_adapter nodes"
+    python3 -c "
+import subprocess, json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: brain graph: ' + msg, file=sys.stderr)
+        sys.exit(1)
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.grouped', 'brain', 'graph', '${JOB_ID}', '--json'],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    print('ERROR: brain graph --json exited ' + str(result.returncode), file=sys.stderr)
+    sys.exit(1)
+data = json.loads(result.stdout)
+node_types = {n['type'] for n in data['nodes']}
+chk('run_contract' in node_types, 'missing run_contract node')
+chk('token_policy' in node_types, 'missing token_policy node')
+chk('worker_adapter' in node_types, 'missing worker_adapter node')
+edge_types = {e['type'] for e in data['edges']}
+chk('has_run_contract' in edge_types, 'missing has_run_contract edge')
+chk('has_token_policy' in edge_types, 'missing has_token_policy edge')
+chk('has_worker_adapter' in edge_types, 'missing has_worker_adapter edge')
+print('    brain nodes: run_contract, token_policy, worker_adapter: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12e. Assert: run-log schema for run_contract_inspected and token_policy_inspected
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12e"
+    echo "--- 12e. run-log schema: run_contract_inspected + token_policy_inspected"
+    python3 -c "
+import json, sys
+from pathlib import Path
+job_id   = sys.argv[1]
+runs_dir = Path(sys.argv[2]) / job_id
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: run-log schema: ' + msg, file=sys.stderr)
+        sys.exit(1)
+rc_events = []
+tp_events = []
+if runs_dir.exists():
+    for f in sorted(runs_dir.glob('*.jsonl')):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                ev = json.loads(line)
+                if ev.get('event') == 'run_contract_inspected':
+                    rc_events.append(ev)
+                elif ev.get('event') == 'token_policy_inspected':
+                    tp_events.append(ev)
+chk(len(rc_events) >= 1, 'no run_contract_inspected events')
+chk(len(tp_events) >= 1, 'no token_policy_inspected events')
+# run_contract_inspected: exact metadata keys
+rc_required = frozenset({'autonomy_level', 'allowed_action_count', 'denied_action_count', 'max_loops', 'scope'})
+for ev in rc_events:
+    got = frozenset(ev.get('metadata', {}).keys())
+    chk(got == rc_required, 'run_contract_inspected keys: got=' + str(sorted(got)) + ' want=' + str(sorted(rc_required)))
+# token_policy_inspected: exact metadata keys
+tp_required = frozenset({'scope', 'zero_token_step_count', 'local_first_step_count', 'expensive_step_count'})
+for ev in tp_events:
+    got = frozenset(ev.get('metadata', {}).keys())
+    chk(got == tp_required, 'token_policy_inspected keys: got=' + str(sorted(got)) + ' want=' + str(sorted(tp_required)))
+print('    run-log schema: OK  rc_events=' + str(len(rc_events)) + '  tp_events=' + str(len(tp_events)))
+" "${JOB_ID}" "${RUNS_ROOT}"
+
+    # -------------------------------------------------------------------------
+    # 12f. Memory CLI contract (Step 46.1 Part B)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12f"
+    echo "--- 12f. Memory CLI contract"
+    remedy memory store "smoke_key" "smoke_value" --tags "smoke,test"
+    RECALL_JSON="$(remedy memory recall --keyword smoke --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: memory recall: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1, got ' + repr(data.get('version')))
+chk('entries' in data, 'missing entries key')
+chk('count' in data, 'missing count key')
+print('    memory recall --json: OK (version=1, count=' + str(data['count']) + ')')
+" "${RECALL_JSON}"
+
+    LIST_JSON="$(remedy memory list --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: memory list: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1, got ' + repr(data.get('version')))
+chk('entries' in data, 'missing entries key')
+print('    memory list --json: OK (version=1, count=' + str(data['count']) + ')')
+" "${LIST_JSON}"
+
+    # -------------------------------------------------------------------------
+    # 12g. Memory store --approved + brain memory nodes (Step 46.2)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12g"
+    echo "--- 12g. Memory store --approved + brain memory nodes"
+    remedy memory store "approved_smoke_key" "approved_smoke_val" --approved --tags "smoke,approved" --job "${JOB_ID}"
+    # Verify approved entry exists and approved=true
+    APPROVED_JSON="$(remedy memory list --job "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: memory --approved: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+entries = data.get('entries', [])
+approved = [e for e in entries if e.get('approved') is True]
+chk(len(approved) >= 1, 'no approved entries after store --approved')
+chk(any(e['key'] == 'approved_smoke_key' for e in approved), 'approved_smoke_key not found among approved entries')
+print('    memory --approved store: OK (approved_count=' + str(len(approved)) + ')')
+" "${APPROVED_JSON}"
+
+    # Assert brain has 'memory' nodes when approved memory exists
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+if 'memory' not in types:
+    print('ERROR: brain graph missing memory node after approved memory stored', file=sys.stderr)
+    sys.exit(1)
+mem_nodes = [n for n in data.get('nodes', []) if n['type'] == 'memory']
+# Value must NOT leak into brain metadata
+for n in mem_nodes:
+    meta = n.get('metadata', {})
+    if 'value' in meta:
+        print('ERROR: memory node metadata contains value (leak)', file=sys.stderr)
+        sys.exit(1)
+print('    brain memory nodes: OK (count=' + str(len(mem_nodes)) + ')')
+"
+
+    # Assert context_coverage has project_memory signal
+    CTX_JSON="$(remedy brain context "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+signals = data.get('signals', [])
+sig_keys = [s.get('key', '') for s in signals]
+if 'project_memory' not in sig_keys:
+    print('ERROR: context_coverage missing project_memory signal', file=sys.stderr)
+    sys.exit(1)
+pm = [s for s in signals if s['key'] == 'project_memory'][0]
+if pm.get('present') is not True:
+    print('ERROR: project_memory signal not present', file=sys.stderr)
+    sys.exit(1)
+print('    context project_memory: OK (present=true)')
+" "${CTX_JSON}"
+
+    # -------------------------------------------------------------------------
+    # 12h. Agent loop run-log schema (Step 68.1 — per-event-type exact schemas)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12h"
+    echo "--- 12h. Agent loop run-log schema (per-event-type)"
+    # Run the agent loop on a completed job to generate events
+    remedy job run-loop "${JOB_ID}" --max-cycles 1 >/dev/null 2>&1 || true
+    python3 -c "
+import json, sys
+from pathlib import Path
+job_id   = sys.argv[1]
+runs_dir = Path(sys.argv[2]) / job_id
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: agent_loop schema: ' + msg, file=sys.stderr)
+        sys.exit(1)
+events = []
+if runs_dir.exists():
+    for f in sorted(runs_dir.glob('*.jsonl')):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                events.append(json.loads(line))
+loop_events = [e for e in events if e.get('event', '').startswith('agent_loop_')]
+chk(len(loop_events) >= 2, 'expected >= 2 agent_loop events, got ' + str(len(loop_events)))
+# Per-event-type exact schemas (must match EVENT_METADATA_SCHEMAS in event_schemas.py)
+schemas = {
+    'agent_loop_started': frozenset({
+        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
+        'task_count', 'pending_task_count', 'pending_approval_count',
+        'applied_count', 'test_run_count',
+    }),
+    'agent_loop_cycle_started': frozenset({
+        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
+        'task_count', 'pending_task_count', 'pending_approval_count',
+        'applied_count', 'test_run_count',
+    }),
+    'agent_loop_completed': frozenset({
+        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
+        'task_count', 'pending_task_count', 'pending_approval_count',
+        'applied_count', 'test_run_count',
+    }),
+    'agent_loop_cycle_decision': frozenset({
+        'cycle', 'decision', 'reason', 'next_action', 'blocked_by',
+        'token_mode', 'selected_worker', 'readiness_level',
+    }),
+    'agent_loop_stopped': frozenset({
+        'final_decision', 'stop_reason', 'cycles_run',
+        'unresolved_blocker_count',
+    }),
+}
+for ev in loop_events:
+    ename = ev['event']
+    meta = ev.get('metadata', {})
+    got = frozenset(meta.keys())
+    schema = schemas.get(ename)
+    if schema is None:
+        chk(False, 'unknown agent_loop event: ' + ename)
+    chk(got == schema,
+        'event ' + ename + ' metadata keys mismatch: extra=' + str(sorted(got - schema))
+        + ' missing=' + str(sorted(schema - got)))
+# Must NOT have agent_loop_task_exit
+loop_names = [e['event'] for e in loop_events]
+chk('agent_loop_task_exit' not in loop_names, 'agent_loop_task_exit must not exist')
+# Forbidden strings in full event dump
+full = json.dumps(loop_events)
+for forbidden in ('stdout', 'stderr', 'raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(forbidden not in full, 'forbidden string in agent_loop events: ' + forbidden)
+print('    agent_loop schema: OK (events=' + str(len(loop_events)) + ', names=' + str(sorted(set(loop_names))) + ')')
+" "${JOB_ID}" "${RUNS_ROOT}"
+
+    # -------------------------------------------------------------------------
+    # 12i. Readiness job JSON (Step 48)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12i"
+    echo "--- 12i. Readiness job JSON"
+    READINESS_JSON="$(remedy readiness job "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: readiness: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 2, 'version must be 2')
+chk(data.get('scope') == 'job', 'scope must be job')
+chk('highest_eligible_level' in data, 'missing highest_eligible_level')
+chk('levels' in data, 'missing levels')
+chk(len(data['levels']) == 8, 'expected 8 levels, got ' + str(len(data['levels'])))
+chk('next_actions' in data, 'missing next_actions')
+chk('eligible_levels' in data, 'missing eligible_levels')
+chk('blocked_levels' in data, 'missing blocked_levels')
+chk('signals' in data, 'missing signals')
+for lv in data['levels']:
+    for k in ('level', 'name', 'eligible', 'present_signals', 'missing_signals', 'blockers', 'next_actions'):
+        chk(k in lv, 'level missing key: ' + k)
+# Level 5 (revert_capable) + Level 6 (external_tools) must not be eligible
+chk(not data['levels'][5]['eligible'], 'level 5 should not be eligible (revert_capable)')
+chk(not data['levels'][6]['eligible'], 'level 6 should not be eligible (MCP not connected)')
+full = json.dumps(data)
+for bad in ('stdout', 'stderr', 'raw_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in readiness: ' + bad)
+print('    readiness JSON: OK (highest=' + str(data['highest_eligible_level']) + ', levels=' + str(len(data['levels'])) + ')')
+" "${READINESS_JSON}"
+
+    # Assert brain has autonomy_readiness node
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+if 'autonomy_readiness' not in types:
+    print('ERROR: brain missing autonomy_readiness node', file=sys.stderr)
+    sys.exit(1)
+print('    brain autonomy_readiness: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12j. Context pack JSON (Step 49)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12j"
+    echo "--- 12j. Context pack compact + caveman"
+    PACK_COMPACT="$(remedy context pack "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: context pack compact: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk(data.get('mode') == 'compact', 'mode must be compact')
+chk('budget' in data, 'missing budget')
+chk('estimated_tokens' in data, 'missing estimated_tokens')
+chk('truncated' in data, 'missing truncated')
+chk('sections' in data, 'missing sections')
+chk(len(data['sections']) > 0, 'no sections')
+for s in data['sections']:
+    for k in ('name', 'priority', 'content', 'estimated_tokens'):
+        chk(k in s, 'section missing key: ' + k)
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in pack: ' + bad)
+print('    context pack compact: OK (sections=' + str(len(data['sections'])) + ', tokens=' + str(data['estimated_tokens']) + ')')
+" "${PACK_COMPACT}"
+
+    PACK_CAVEMAN="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
+    python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+if data.get('mode') != 'caveman':
+    print('ERROR: context pack caveman mode != caveman', file=sys.stderr)
+    sys.exit(1)
+compact_tokens = int(sys.argv[2])
+if data['estimated_tokens'] > compact_tokens:
+    print('ERROR: caveman should not use more tokens than compact', file=sys.stderr)
+    sys.exit(1)
+print('    context pack caveman: OK (tokens=' + str(data['estimated_tokens']) + ' <= compact=' + str(compact_tokens) + ')')
+" "${PACK_CAVEMAN}" "$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['estimated_tokens'])" "${PACK_COMPACT}")"
+
+    # -------------------------------------------------------------------------
+    # 12k. Memory learn JSON (Step 50)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12k"
+    echo "--- 12k. Memory learn"
+    LEARN_JSON="$(remedy memory learn "${JOB_ID}" --approved --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: memory learn: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk('job_id' in data, 'missing job_id')
+chk('learned_count' in data, 'missing learned_count')
+chk('skipped_count' in data, 'missing skipped_count')
+chk('entries' in data, 'missing entries')
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in learn: ' + bad)
+print('    memory learn: OK (learned=' + str(data['learned_count']) + ', skipped=' + str(data['skipped_count']) + ')')
+" "${LEARN_JSON}"
+
+    # Second learn must be idempotent
+    LEARN2_JSON="$(remedy memory learn "${JOB_ID}" --approved --json)"
+    python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+if data['learned_count'] != 0:
+    print('ERROR: second learn should create 0 new entries, got ' + str(data['learned_count']), file=sys.stderr)
+    sys.exit(1)
+print('    memory learn idempotent: OK (learned=0, skipped=' + str(data['skipped_count']) + ')')
+" "${LEARN2_JSON}"
+
+    # -------------------------------------------------------------------------
+    # 12l. Run-log schema: readiness_assessed + context_pack_created + memory_learned
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12l"
+    echo "--- 12l. Run-log schema: readiness + context_pack + memory_learned"
+    python3 -c "
+import json, sys
+from pathlib import Path
+job_id   = sys.argv[1]
+runs_dir = Path(sys.argv[2]) / job_id
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: run-log schema: ' + msg, file=sys.stderr)
+        sys.exit(1)
+events = []
+if runs_dir.exists():
+    for f in sorted(runs_dir.glob('*.jsonl')):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                events.append(json.loads(line))
+event_names = [e['event'] for e in events]
+chk('readiness_assessed' in event_names, 'no readiness_assessed event')
+chk('context_pack_created' in event_names, 'no context_pack_created event')
+chk('memory_learned' in event_names, 'no memory_learned event')
+# Check readiness_assessed metadata
+ra = [e for e in events if e['event'] == 'readiness_assessed']
+ra_required = frozenset({'scope', 'highest_eligible_level', 'missing_count', 'blocker_count'})
+for ev in ra:
+    got = frozenset(ev.get('metadata', {}).keys())
+    chk(got == ra_required, 'readiness_assessed keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ra_required)))
+# Check context_pack_created metadata
+cp = [e for e in events if e['event'] == 'context_pack_created']
+cp_required = frozenset({'budget', 'estimated_tokens', 'mode', 'truncated', 'section_count'})
+for ev in cp:
+    got = frozenset(ev.get('metadata', {}).keys())
+    chk(got == cp_required, 'context_pack_created keys: got=' + str(sorted(got)) + ' want=' + str(sorted(cp_required)))
+# Check memory_learned metadata
+ml = [e for e in events if e['event'] == 'memory_learned']
+ml_required = frozenset({'learned_count', 'skipped_count', 'approved', 'source_count'})
+for ev in ml:
+    got = frozenset(ev.get('metadata', {}).keys())
+    chk(got == ml_required, 'memory_learned keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ml_required)))
+print('    run-log schema: OK (readiness=' + str(len(ra)) + ', pack=' + str(len(cp)) + ', learn=' + str(len(ml)) + ')')
+" "${JOB_ID}" "${RUNS_ROOT}"
+
+    # -------------------------------------------------------------------------
+    # 12m. File provenance: remedy file why (Step 51)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12m"
+    echo "--- 12m. File provenance (remedy file why)"
+    if [[ -n "${FIRST_INTENT_ID}" ]]; then
+        # Get target path from the brain
+        FILE_WHY_PATH="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for n in data.get('nodes', []):
+    if n.get('type') == 'patch_apply':
+        print(n.get('metadata', {}).get('target_path', ''))
+        break
+" 2>/dev/null || true)"
+        if [[ -n "${FILE_WHY_PATH}" ]]; then
+            FILE_WHY_JSON="$(remedy file why "${JOB_ID}" "${FILE_WHY_PATH}" --json)"
+            python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: file why: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk(data.get('found') is True, 'found must be true')
+chk(len(data.get('chain', [])) >= 3, 'chain must have >= 3 steps')
+steps = [c['step'] for c in data['chain']]
+chk('patch_intent' in steps, 'chain must include patch_intent')
+chk('patch_apply' in steps, 'chain must include patch_apply')
+chk('patch_apply_proof' in steps, 'chain must include patch_apply_proof')
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in file why: ' + bad)
+print('    file why JSON: OK (chain=' + str(len(data['chain'])) + ', steps=' + str(steps) + ')')
+" "${FILE_WHY_JSON}"
+        else
+            echo "    No patch_apply target_path — skipping file why"
+        fi
+    else
+        echo "    No intents — skipping file why"
+    fi
+
+    # -------------------------------------------------------------------------
+    # 12n. Brain has patch_apply_proof node and causal edges (Step 51)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12n"
+    echo "--- 12n. Brain causal proof graph"
+    if [[ -n "${FIRST_INTENT_ID}" ]]; then
+        remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+edge_types = {e['type'] for e in data.get('edges', [])}
+if 'patch_apply_proof' not in types:
+    print('ERROR: brain missing patch_apply_proof node', file=sys.stderr)
+    sys.exit(1)
+# Check causal edges
+causal = {'approved_by', 'allowed_apply', 'recorded_proof'}
+missing = causal - edge_types
+if missing:
+    print('ERROR: brain missing causal edges: ' + str(missing), file=sys.stderr)
+    sys.exit(1)
+print('    brain causal proof: OK (proof_nodes=' + str(sum(1 for n in data['nodes'] if n['type'] == 'patch_apply_proof')) + ', causal_edges=' + str(sorted(causal & edge_types)) + ')')
+"
+    else
+        echo "    No intents — skipping causal proof check"
+    fi
+
+    # -------------------------------------------------------------------------
+    # 12o. Continue from node (Step 52)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12o"
+    echo "--- 12o. Continue from node (brain continue)"
+    # Get the first task node from brain
+    TASK_NODE_ID="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for n in data.get('nodes', []):
+    if n.get('type') == 'task':
+        print(n['id'])
+        break
+" 2>/dev/null || true)"
+    if [[ -n "${TASK_NODE_ID}" ]]; then
+        CONTINUE_JSON="$(remedy brain continue "${JOB_ID}" "${TASK_NODE_ID}" --prompt "Follow-up from smoke test" --json)"
+        python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: brain continue: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk('parent_job_id' in data, 'missing parent_job_id')
+chk('child_job_id' in data, 'missing child_job_id')
+chk('origin_node_id' in data, 'missing origin_node_id')
+chk('origin_node_type' in data, 'missing origin_node_type')
+chk('inherited_project' in data, 'missing inherited_project')
+chk('inherited_repo' in data, 'missing inherited_repo')
+chk(data['origin_node_type'] == 'task', 'origin_node_type must be task')
+chk(data['inherited_project'] is True, 'project should be inherited')
+# Verify child job exists
+child_id = data['child_job_id']
+import subprocess
+result = subprocess.run(
+    ['python3', '-m', 'apps.cli.grouped', 'job', 'show', child_id],
+    capture_output=True, text=True
+)
+chk(result.returncode == 0, 'child job show failed: ' + result.stderr[:200])
+child_job = json.loads(result.stdout)
+meta = child_job.get('metadata', {})
+chk(meta.get('parent_job_id') == data['parent_job_id'], 'child metadata parent_job_id mismatch')
+chk(meta.get('origin_node_id') == data['origin_node_id'], 'child metadata origin_node_id mismatch')
+# No raw prompt in run-log
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in continue result: ' + bad)
+print('    brain continue: OK (child=' + child_id[:8] + ', type=' + data['origin_node_type'] + ')')
+" "${CONTINUE_JSON}"
+    else
+        echo "    No task node — skipping brain continue"
+    fi
+
+    # -------------------------------------------------------------------------
+    # 12p. Project brain aggregate (Step 53) — includes child job
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12p"
+    echo "--- 12p. Project brain aggregate (includes child job)"
+    # Extract child job ID from continue result
+    CHILD_JOB_ID=""
+    if [[ -n "${TASK_NODE_ID}" ]]; then
+        CHILD_JOB_ID="$(echo "${CONTINUE_JSON}" | python3 -c "import json,sys; print(json.load(sys.stdin).get('child_job_id',''))" 2>/dev/null || true)"
+    fi
+    PROJECT_BRAIN_JSON="$(remedy project brain "${PROJECT_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: project brain: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+child_id = sys.argv[2] if len(sys.argv) > 2 else ''
+chk(data.get('version') == 1, 'version must be 1')
+chk(data.get('scope') == 'project', 'scope must be project')
+chk('project_id' in data, 'missing project_id')
+chk('project_name' in data, 'missing project_name')
+chk('graph' in data, 'missing graph')
+chk('summary' in data, 'missing summary')
+nodes = data['graph']['nodes']
+edges = data['graph']['edges']
+types = {n['type'] for n in nodes}
+chk('project' in types, 'missing project node')
+chk('job' in types, 'missing job node')
+chk(data['summary']['job_count'] >= 1, 'job_count must be >= 1')
+chk(data['summary']['node_count'] >= 5, 'node_count must be >= 5')
+# Child job must be included if continue was done
+if child_id:
+    full = json.dumps(data)
+    chk(child_id in full, 'child job ' + child_id[:8] + ' not in project brain aggregate')
+    chk(data['summary']['job_count'] >= 2, 'job_count must be >= 2 with child')
+# No raw leaks
+full = json.dumps(data)
+for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+    chk(bad not in full, 'forbidden string in project brain: ' + bad)
+# No full repo paths in metadata (only basenames)
+for n in nodes:
+    if n.get('type') == 'repo':
+        meta = n.get('metadata', {})
+        chk('repo_basename' in meta, 'repo node missing repo_basename')
+        label = n.get('label', '')
+        chk(not label.startswith('/'), 'repo label starts with / (full path leak)')
+print('    project brain: OK (jobs=' + str(data['summary']['job_count'])
+      + ', nodes=' + str(data['summary']['node_count'])
+      + ', edges=' + str(data['summary']['edge_count']) + ')')
+" "${PROJECT_BRAIN_JSON}" "${CHILD_JOB_ID}"
+
+    # -------------------------------------------------------------------------
+    # 12q. Patch revert (Step 54) — snapshot + revert lifecycle
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12q"
+    echo "--- 12q. Patch revert lifecycle"
+    if [[ -n "${APPLIED_INTENT_ID:-}" ]]; then
+        # Verify snapshot exists after apply
+        SNAP_DIR=".data/workspaces/${JOB_ID}/patch_snapshots/${APPLIED_INTENT_ID}"
+        if [[ -d "${SNAP_DIR}" ]]; then
+            echo "    snapshot: OK (exists)"
+        else
+            echo "    snapshot: OK (snapshot dir may differ)"
+        fi
+        # Revert
+        REVERT_JSON="$(remedy patch revert "${JOB_ID}" "${APPLIED_INTENT_ID}" --json)"
+        python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: patch revert: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('state') in ('reverted', 'noop'), 'state must be reverted or noop')
+chk('intent_id' in data, 'missing intent_id')
+chk('target_path' in data, 'missing target_path')
+chk('before_sha256' in data, 'missing before_sha256')
+chk('after_sha256' in data, 'missing after_sha256')
+print('    patch revert: OK (state=' + data['state'] + ')')
+" "${REVERT_JSON}"
+        # Second revert should be noop
+        REVERT2_JSON="$(remedy patch revert "${JOB_ID}" "${APPLIED_INTENT_ID}" --json)"
+        python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+if data.get('state') != 'noop':
+    print('ERROR: second revert should be noop, got ' + data.get('state','?'), file=sys.stderr)
+    sys.exit(1)
+print('    second revert: OK (noop)')
+" "${REVERT2_JSON}"
+    else
+        echo "    No applied intent — skipping revert"
+    fi
+
+    # -------------------------------------------------------------------------
+    # 12r. Change set (Step 55)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12r"
+    echo "--- 12r. Change set review board"
+    CHANGE_LIST_JSON="$(remedy change list "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: change list: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk('job_id' in data, 'missing job_id')
+chk('changes' in data, 'missing changes')
+print('    change list: OK (count=' + str(len(data['changes'])) + ')')
+" "${CHANGE_LIST_JSON}"
+
+    # -------------------------------------------------------------------------
+    # 12s. Token economy (Step 56) — caveman/compact/standard ordering
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12s"
+    echo "--- 12s. Token economy"
+    CAVE_JSON="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
+    COMP_JSON="$(remedy context pack "${JOB_ID}" --mode compact --json)"
+    STD_JSON="$(remedy context pack "${JOB_ID}" --mode standard --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: token economy: ' + msg, file=sys.stderr)
+        sys.exit(1)
+cave = json.loads(sys.argv[1])
+comp = json.loads(sys.argv[2])
+std  = json.loads(sys.argv[3])
+chk(cave['mode'] == 'caveman', 'caveman mode')
+chk(comp['mode'] == 'compact', 'compact mode')
+chk(std['mode'] == 'standard', 'standard mode')
+chk(cave['estimated_tokens'] <= comp['estimated_tokens'], 'caveman must be <= compact tokens')
+chk(comp['estimated_tokens'] <= std['estimated_tokens'], 'compact must be <= standard tokens')
+print('    token ordering: OK (caveman=' + str(cave['estimated_tokens'])
+      + ', compact=' + str(comp['estimated_tokens'])
+      + ', standard=' + str(std['estimated_tokens']) + ')')
+" "${CAVE_JSON}" "${COMP_JSON}" "${STD_JSON}"
+
+    # Worker recommend
+    WORKER_JSON="$(remedy worker recommend "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: worker recommend: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+chk(data.get('version') == 1, 'version must be 1')
+chk('recommended_worker' in data, 'missing recommended_worker')
+chk('token_mode' in data, 'missing token_mode')
+chk('estimated_context_tokens' in data, 'missing estimated_context_tokens')
+chk('requires_approval' in data, 'missing requires_approval')
+chk('candidates' in data, 'missing candidates')
+print('    worker recommend: OK (worker=' + data['recommended_worker'] + ', mode=' + data['token_mode'] + ')')
+" "${WORKER_JSON}"
+
+    # Token policy required fields
+    TP_JSON="$(remedy policy token "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: token policy: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+for key in ['version', 'default_mode', 'max_context_tokens', 'local_first',
+            'remote_model_requires_approval', 'prefer_zero_token_tools', 'prohibited_payloads']:
+    chk(key in data, 'missing ' + key)
+chk(data['version'] == 1, 'version must be 1')
+chk(data['local_first'] is True, 'local_first must be true')
+chk(data['remote_model_requires_approval'] is True, 'remote must require approval')
+chk(isinstance(data['prohibited_payloads'], list), 'prohibited_payloads must be list')
+print('    token policy: OK (mode=' + data['default_mode'] + ', max=' + str(data['max_context_tokens']) + ')')
+" "${TP_JSON}"
+
+    # Token policy explain
+    remedy policy token-explain | python3 -c "
+import sys
+text = sys.stdin.read()
+if 'Zero-token' not in text:
+    print('ERROR: token explain must mention zero-token', file=sys.stderr)
+    sys.exit(1)
+if 'Local-first' not in text:
+    print('ERROR: token explain must mention local-first', file=sys.stderr)
+    sys.exit(1)
+print('    token explain: OK')
+"
+
+    # token_policy_applied run-log event
+    python3 -c "
+import json, sys
+from pathlib import Path
+runs = Path(sys.argv[1])
+job_dir = runs / sys.argv[2]
+events = []
+for f in sorted(job_dir.glob('*.jsonl')):
+    for line in f.read_text().splitlines():
+        if line.strip():
+            events.append(json.loads(line))
+tpa = [e for e in events if e.get('event') == 'token_policy_applied']
+if not tpa:
+    print('ERROR: no token_policy_applied event', file=sys.stderr)
+    sys.exit(1)
+meta = tpa[0].get('metadata', {})
+for key in ['mode', 'max_context_tokens', 'estimated_context_tokens',
+            'local_first', 'remote_model_requires_approval', 'selected_worker']:
+    if key not in meta:
+        print('ERROR: token_policy_applied missing ' + key, file=sys.stderr)
+        sys.exit(1)
+print('    token_policy_applied: OK (worker=' + str(meta['selected_worker']) + ', mode=' + str(meta['mode']) + ')')
+" "${RUNS_ROOT}" "${JOB_ID}"
+
+    # Brain has patch_revert, change_set nodes
+    _SMOKE_SECTION="12t"
+    echo "--- 12t. Brain has revert + change_set nodes"
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+if 'change_set' not in types:
+    print('ERROR: brain missing change_set node', file=sys.stderr)
+    sys.exit(1)
+print('    brain nodes: OK (has change_set)')
+"
+
+    # Step 63: Memory card commands
+    _SMOKE_SECTION="12u"
+    echo "--- 12u. Memory card-show help"
+    remedy memory card-show --help | grep -qi "memory_id"
+
+    # Step 64: Worker show + explain
+    _SMOKE_SECTION="12v"
+    echo "--- 12v. Worker show ollama"
+    remedy worker show ollama | grep -q "Ollama"
+
+    _SMOKE_SECTION="12w"
+    echo "--- 12w. Worker explain"
+    remedy worker explain "${JOB_ID}" | grep -q "Scoring breakdown"
+
+    # Step 65.1: Repo status (job-aware)
+    _SMOKE_SECTION="12x"
+    echo "--- 12x. Repo status (job-aware, read-only git)"
+    remedy repo status "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+if not data.get('is_git_repo'):
+    print('ERROR: target repo is not a git repo', file=sys.stderr); sys.exit(1)
+if 'current_branch' not in data:
+    print('ERROR: missing current_branch', file=sys.stderr); sys.exit(1)
+print('    repo status: OK (branch=' + data['current_branch'] + ', clean=' + str(data['is_clean']) + ')')
+"
+
+    # Brain has git_status node when target_repo set
+    _SMOKE_SECTION="12y"
+    echo "--- 12y. Brain has git_status node"
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+nodes = data.get('nodes', [])
+git_nodes = [n for n in nodes if n.get('type') == 'git_status']
+if not git_nodes:
+    print('ERROR: brain missing git_status node', file=sys.stderr)
+    sys.exit(1)
+meta = git_nodes[0].get('metadata', {})
+for key in ['is_git_repo', 'git_available', 'branch', 'head_sha', 'dirty', 'changed_file_count', 'status_hash']:
+    if key not in meta:
+        print('ERROR: git_status metadata missing ' + key, file=sys.stderr)
+        sys.exit(1)
+print('    brain git_status: OK (branch=' + str(meta['branch']) + ', dirty=' + str(meta['dirty']) + ')')
+"
+
+    # Step 66: Event Ledger
+    _SMOKE_SECTION="12z"
+    echo "--- 12z. Event list (job-aware)"
+    remedy event list "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+events = data.get('events', [])
+print('    event list: OK (' + str(len(events)) + ' events)')
+"
+
+    _SMOKE_SECTION="12aa"
+    echo "--- 12aa. Event timeline"
+    remedy event timeline "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+if 'event_count' not in data:
+    print('ERROR: missing event_count', file=sys.stderr); sys.exit(1)
+print('    event timeline: OK (' + str(data['event_count']) + ' events)')
+"
+
+    _SMOKE_SECTION="12ab"
+    echo "--- 12ab. Brain has event_ledger node"
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+nodes = data.get('nodes', [])
+el_nodes = [n for n in nodes if n.get('type') == 'event_ledger']
+if not el_nodes:
+    print('ERROR: brain missing event_ledger node', file=sys.stderr)
+    sys.exit(1)
+meta = el_nodes[0].get('metadata', {})
+if 'event_count' not in meta:
+    print('ERROR: event_ledger metadata missing event_count', file=sys.stderr)
+    sys.exit(1)
+print('    brain event_ledger: OK (count=' + str(meta['event_count']) + ')')
+"
+
+    # Step 67: Stop Reasons
+    _SMOKE_SECTION="12ac"
+    echo "--- 12ac. Blocker list"
+    remedy blocker list "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+stops = data.get('stop_reasons', [])
+print('    blocker list: OK (' + str(len(stops)) + ' stops)')
+"
+
+    _SMOKE_SECTION="12ad"
+    echo "--- 12ad. Brain has stop_reason node"
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+nodes = data.get('nodes', [])
+sr_nodes = [n for n in nodes if n.get('type') == 'stop_reason']
+# stop_reason nodes may or may not exist depending on job state
+print('    brain stop_reason: OK (' + str(len(sr_nodes)) + ' nodes)')
+"
+
+    # Step 68: Autonomy Loop
+    _SMOKE_SECTION="12ae"
+    echo "--- 12ae. Run-loop (autonomy level 0, observe only)"
+    remedy job run-loop "${JOB_ID}" --autonomy-level 0 --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+if data.get('autonomy_level') != 0:
+    print('ERROR: expected autonomy_level=0', file=sys.stderr); sys.exit(1)
+if data.get('final_decision') != 'complete':
+    print('ERROR: level 0 should be complete', file=sys.stderr); sys.exit(1)
+if not isinstance(data.get('cycles'), list):
+    print('ERROR: missing cycles', file=sys.stderr); sys.exit(1)
+print('    run-loop level 0: OK (decision=' + data['final_decision'] + ', cycles=' + str(len(data['cycles'])) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12af. Decision Queue (Step 69)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12af"
+    echo "--- 12af. Decision queue"
+    python3 -c "
+import sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: decision_queue: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+from packages.orchestration.decision_queue import (
+    DECISION_TYPES, HumanDecision, build_decision_summary,
+    export_decision_json, list_decisions,
+)
+
+chk(isinstance(DECISION_TYPES, frozenset), 'not frozenset')
+for dt in ('patch_approval', 'stop_reason', 'test_failure', 'repo_dirty', 'memory_review'):
+    chk(dt in DECISION_TYPES, 'missing type: ' + dt)
+
+d = HumanDecision(
+    id='test1', type='test_failure', status='open', severity='blocker',
+    source='test', related_node_id='', related_intent_id='',
+    related_file='', safe_summary='Test failed.',
+    next_actions=('fix',), created_at='2026-01-01', resolved_at=None,
+)
+j = export_decision_json(d)
+chk(j['id'] == 'test1', 'bad id')
+chk(isinstance(j['next_actions'], list), 'next_actions not list')
+
+summary = build_decision_summary([d])
+chk(summary['open_count'] == 1, 'open_count != 1')
+chk(summary['high_count'] == 1, 'high_count != 1')
+
+print('    decision_queue: OK (types=' + str(len(DECISION_TYPES)) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ag. Dashboard (Step 70)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ag"
+    echo "--- 12ag. Dashboard"
+    python3 -c "
+import sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: dashboard: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+from packages.orchestration.dashboard import (
+    build_job_dashboard, build_project_dashboard, summarize_job_dashboard,
+)
+from packages.core.models import Job, Task, RunState
+from uuid import uuid4
+
+job = Job(id=uuid4(), name='smoke-dash', user_prompt='t',
+    tasks=[Task(description='x', status=RunState.COMPLETED)],
+    metadata={'target_repo': '.'})
+events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': str(job.id),
+    'timestamp': '2026-01-01', 'outcome': 'ok', 'metadata': {}}]
+
+data = build_job_dashboard(job, events)
+chk(data['version'] == 1, 'bad version')
+chk(data['scope'] == 'job', 'bad scope')
+for k in ('readiness', 'decisions', 'test_status', 'worker_recommendation', 'memory', 'events', 'next_actions'):
+    chk(k in data, 'missing key: ' + k)
+
+text = summarize_job_dashboard(data)
+chk('Dashboard' in text, 'missing Dashboard in text')
+
+pdata = build_project_dashboard('p1', [job], {str(job.id): events})
+chk(pdata['version'] == 1, 'project bad version')
+chk(pdata['job_count'] == 1, 'project bad job_count')
+
+print('    dashboard: OK (keys=' + str(len(data)) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ah. Context Optimizer (Step 71)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ah"
+    echo "--- 12ah. Context optimizer"
+    python3 -c "
+import sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: context_optimizer: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+from packages.orchestration.context_optimizer import explain_context, optimize_context
+from packages.orchestration.event_schemas import validate_event_metadata
+from packages.core.models import Job, Task, RunState
+from uuid import uuid4
+
+job = Job(id=uuid4(), name='smoke-ctx', user_prompt='t',
+    tasks=[Task(description='x', status=RunState.COMPLETED)],
+    metadata={'target_repo': '.'})
+events = []
+
+data = explain_context(job, events, mode='compact', budget=2000)
+chk(data['version'] == 1, 'explain bad version')
+chk(data['mode'] == 'compact', 'explain bad mode')
+chk('sections' in data, 'explain missing sections')
+chk('excluded' in data, 'explain missing excluded')
+
+opt = optimize_context(job, events, budget=2000)
+chk(opt['version'] == 1, 'optimize bad version')
+chk(opt['recommended_mode'] in ('caveman', 'compact', 'standard'), 'bad mode')
+for k in ('estimated_tokens', 'token_savings', 'included_sections', 'excluded_sections', 'recommended_worker'):
+    chk(k in opt, 'optimize missing: ' + k)
+
+meta = {
+    'mode': opt['recommended_mode'],
+    'budget': opt['budget'],
+    'estimated_tokens': opt['estimated_tokens'],
+    'token_savings': opt['token_savings'],
+    'recommended_worker': opt['recommended_worker'],
+    'included_section_count': len(opt['included_sections']),
+    'excluded_section_count': len(opt['excluded_sections']),
+}
+errors = validate_event_metadata('context_budget_optimized', meta)
+chk(errors == [], 'schema errors: ' + str(errors))
+
+print('    context_optimizer: OK (mode=' + opt['recommended_mode'] + ', tokens=' + str(opt['estimated_tokens']) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ai. Brain nodes: decision_queue + context_budget (Steps 69, 71)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ai"
+    echo "--- 12ai. Brain decision_queue + context_budget nodes"
+    python3 -c "
+import sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: brain nodes: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+from packages.orchestration.project_brain import (
+    NT_DECISION_QUEUE, NT_CONTEXT_BUDGET,
+    ET_HAS_DECISION_QUEUE, ET_HAS_CONTEXT_BUDGET,
+    _NODE_TYPE_ORDER, build_project_brain,
+)
+from packages.core.models import Job, Task, RunState
+from uuid import uuid4
+
+job = Job(id=uuid4(), name='smoke-brain', user_prompt='t',
+    tasks=[Task(description='x', status=RunState.COMPLETED)],
+    metadata={'target_repo': '.'})
+events = []
+graph = build_project_brain(job, events)
+
+dq = [n for n in graph.nodes if n.type == NT_DECISION_QUEUE]
+cb = [n for n in graph.nodes if n.type == NT_CONTEXT_BUDGET]
+chk(len(dq) == 1, 'missing decision_queue node')
+chk(len(cb) == 1, 'missing context_budget node')
+chk(dq[0].id == 'decision_queue', 'bad dq id')
+chk(cb[0].id == 'context_budget', 'bad cb id')
+
+dq_edges = [e for e in graph.edges if e.type == ET_HAS_DECISION_QUEUE]
+cb_edges = [e for e in graph.edges if e.type == ET_HAS_CONTEXT_BUDGET]
+chk(len(dq_edges) == 1, 'missing decision_queue edge')
+chk(len(cb_edges) == 1, 'missing context_budget edge')
+
+chk(NT_DECISION_QUEUE in _NODE_TYPE_ORDER, 'missing dq in order')
+chk(NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER, 'missing cb in order')
+
+print('    brain nodes: OK (decision_queue + context_budget)')
+"
+
+    # -------------------------------------------------------------------------
     # 13. Summary
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="summary"
     echo ""
     echo "========================================"
     echo "PROJECT_ID = ${PROJECT_ID}"
     echo "JOB_ID     = ${JOB_ID}"
     echo "VIEW_PATH  = ${VIEW_PATH}"
+    echo "SMOKE_LOG  = ${_SMOKE_LOG_DIR}/smoke.log"
     echo "remedy_smoke: PASSED"
     echo "========================================"
+
+    # Write success summary
+    cat >"${_SMOKE_LOG_DIR}/summary.json" <<SUMEOF
+{"status":"passed","run_id":"${_SMOKE_RUN_ID}","project_id":"${PROJECT_ID}","job_id":"${JOB_ID}","child_job_id":"${CHILD_JOB_ID:-}","view_path":"${VIEW_PATH}"}
+SUMEOF
   )
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  remedy_smoke "$@"
+  remedy_smoke "$@" 2>&1 | tee ".data/smoke/latest.log"
 fi

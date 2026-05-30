@@ -19,7 +19,7 @@ Coverage:
   - summarize sections: Agents, Loop state, Next action
   - next action for each decision type
   - blockers display: "permission_denied (workspace_write)"
-  - next action uses concrete capability: "remedy set-permission … allow workspace_write"
+  - next action uses concrete capability: "remedy job permit … workspace_write allow"
   - stale blocker fix: historical perm_denied + task_run_completed → not blocked
   - historical perm_denied + later pass + pending medium intent → needs_approval
   - historical perm_denied + later pass + approved intent → complete
@@ -518,13 +518,13 @@ class TestSummarizeLoopState:
         job.tasks.append(_pending_task())
         state = derive_agent_loop_state(job, [])
         out = summarize_agent_loop_state(job, state)
-        assert "run-next-task-local" in out
+        assert "job run-next" in out
 
     def test_next_action_planned_suggests_plan(self):
         job = _make_job()
         state = derive_agent_loop_state(job, [])
         out = summarize_agent_loop_state(job, state)
-        assert "plan-job-local" in out
+        assert "job plan" in out
 
     def test_next_action_blocked_suggests_set_permission_with_capability(self):
         """Next action for BLOCKED must include the concrete capability name."""
@@ -534,7 +534,7 @@ class TestSummarizeLoopState:
         events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
         state = derive_agent_loop_state(job, events)
         out = summarize_agent_loop_state(job, state)
-        assert "set-permission" in out
+        assert "job permit" in out
         assert "workspace_write" in out
 
     def test_next_action_blocked_no_capability_fallback(self):
@@ -552,7 +552,7 @@ class TestSummarizeLoopState:
         }
         state = derive_agent_loop_state(job, [ev])
         out = summarize_agent_loop_state(job, state)
-        assert "set-permission" in out
+        assert "job permit" in out
         assert "<capability>" in out
 
     def test_next_action_needs_approval_suggests_list_intents(self):
@@ -561,14 +561,14 @@ class TestSummarizeLoopState:
         _add_patch_artifact(job, risk=RISK_MEDIUM)
         state = derive_agent_loop_state(job, [])
         out = summarize_agent_loop_state(job, state)
-        assert "list-patch-intents" in out
+        assert "patch list" in out
 
     def test_next_action_complete_suggests_trust_report(self):
         job = _make_job()
         job.tasks.append(_completed_task())
         state = derive_agent_loop_state(job, [])
         out = summarize_agent_loop_state(job, state)
-        assert "trust-report" in out
+        assert "brain trust" in out
 
     def test_blockers_display_includes_capability_parens(self):
         """Blocker with capability → 'permission_denied (workspace_write)'."""
@@ -718,7 +718,7 @@ class TestRedactionHardening:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._make_job_with_sentinels()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -735,14 +735,14 @@ class TestRedactionHardening:
 class TestCLIAgentLoop:
     def test_invalid_uuid_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         with pytest.raises(SystemExit) as exc:
             _cmd_agent_loop("not-a-uuid")
         assert exc.value.code == 1
 
     def test_unknown_job_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         with pytest.raises(SystemExit) as exc:
             _cmd_agent_loop(str(uuid4()))
         assert exc.value.code == 1
@@ -751,7 +751,7 @@ class TestCLIAgentLoop:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         out = capsys.readouterr().out
         assert "Remedy Agent Loop" in out
@@ -761,7 +761,7 @@ class TestCLIAgentLoop:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -778,7 +778,7 @@ class TestCLIAgentLoop:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -802,7 +802,7 @@ class TestCLIAgentLoop:
             kind=ArtifactKind.BUILDER_PROPOSAL,
         ))
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -813,7 +813,7 @@ class TestCLIAgentLoop:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -826,7 +826,7 @@ class TestCLIAgentLoop:
         intent_id = _add_patch_artifact(job, risk=RISK_MEDIUM)
         set_approval_state(job, intent_id, APPROVAL_APPROVED, reason="top secret reason")
         save_job(job)
-        from apps.cli.main import _cmd_agent_loop
+        from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         out = capsys.readouterr().out
         assert "top secret reason" not in out

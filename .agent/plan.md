@@ -1,39 +1,27 @@
 # Plan
 
 ## Goal
-Step 34.1: Dynamic Command Discovery Hardening + Provider-neutral Execution Foundation
+Steps 65.1, 66, 67, 68: Git Status Brain Closure, Event Ledger v1, Stop Reasons v1, Autonomy Loop v1
 
-## Status
-COMPLETE — 2049 tests passing, smoke passed
+## Current Step
+All steps complete. Pending: commit + push + PR.
 
-## Completed
-
-### Step 34 (v0 — PR #30)
-- [x] command_discovery.py: CommandCandidate, discover_commands, select_best_test_candidate
-- [x] Detectors: constitution, pyproject, package_json, makefile, justfile, taskfile, cargo, go
-- [x] Risky token detection → high-risk candidates not auto-runnable
-- [x] test_runner.py: uses discover_commands; _EXECUTION_SAFE_EXECUTABLES guard
-- [x] TestRunRecord: 4 new provenance fields (command_source_type/path/purpose/confidence)
-- [x] CLI: discover-commands subcommand (text + --json)
-- [x] 1998 tests passing; smoke PASSED
-
-### Step 34.1 (hardening)
-- [x] command_discovery.py full rewrite with 13 detectors (added gradle, maven, dotnet, ruby, composer)
-- [x] JS lockfile-based package manager selection (pnpm/yarn/bun/npm)
-- [x] _SCAN_IGNORE_DIRS: centralized ignore list; _SCAN_MAX_DEPTH=2 bounded scan
-- [x] _SOURCE_PRIORITY: deterministic priority (constitution=0 > makefile/justfile/taskfile=1 > manifests=2 > uncommon=3 > heuristic=9)
-- [x] Dedup key: (purpose, argv, source_type) — same argv from different sources both kept
-- [x] All source_path values repo-relative; constitution uses "(project-constitution)"
-- [x] Makefile/Justfile recipe body inspection for risk
-- [x] _EXECUTION_SAFE_EXECUTABLES expanded (pnpm, yarn, gradle, gradlew, mvn, mvnw, dotnet, rake, composer, poetry, uv, hatch)
-- [x] permissions.py: removed "pytest only" wording
-- [x] CLI discover-commands --json: schema v1 (version, selected_test_candidate, counts)
-- [x] remedy_smoke.sh: multi-ecosystem target repo (Makefile, pnpm-lock.yaml, rust-lib/Cargo.toml, go-service/go.mod, jvm-app/build.gradle)
-- [x] smoke step 6n: verifies version=1, multi-ecosystem sources, selected=constitution:make test, pnpm, relative paths
-- [x] tests/test_command_discovery.py: 20 test classes (N–V added: JS lockfiles, Gradle, Maven, .NET/Ruby/Composer, source_path relative, ignore dirs, dedup, CLI schema v1, no provider coupling)
-- [x] tests/test_remedy_smoke_script.py: 14 new Step 34.1 assertions
-- [x] docs/architecture.md: updated detector table + schema docs
-- [x] 2049 tests passing; smoke PASSED
-
-## Next
-Commit. Push. Open PR.
+## Tasks
+- [x] Step 65.1: Git Status Brain Closure (job-aware repo status, git init in smoke, brain always creates node when target_repo set, git_status_read event)
+- [x] Step 66: Event Ledger v1 (LedgerEvent model, redaction, deterministic IDs, event CLI, brain event_ledger node)
+- [x] Step 67: Stop Reasons v1 (StopReason model, JSONL storage, derive from job state, blocker CLI, brain stop_reason node)
+- [x] Step 68: Autonomy Loop v1 (CycleDecision/LoopResult, level 0-7 decisions, run-loop CLI, run-log events)
+- [x] Brain detail handlers for event_ledger and stop_reason
+- [x] Tests: 2683 passing
+- [x] Smoke: updated (12z-12ae for Steps 66-68)
+- [x] Step 68.1: Agent Loop Schema Closure (per-event-type schemas, event_schemas.py, smoke 12h fix)
+- [x] Step 69: Human Decision Queue v1 (HumanDecision model, 5 sources, decision CLI, brain node, readiness signal)
+- [x] Step 70: Project Dashboard v1 (build_job_dashboard, build_project_dashboard, dashboard CLI)
+- [x] Step 71: Context Budget Optimizer v1 (explain_context, optimize_context, context CLI, brain node, 7-field event schema)
+- [x] Brain detail handlers for decision_queue and context_budget
+- [x] Readiness integration: no_open_decisions signal at level 4
+- [x] Bug fix: context_pack NoneType on null user_prompt
+- [x] Tests: 2740 passing
+- [x] Smoke: updated (12af-12ai for Steps 68.1-71, group help: decision + dashboard)
+- [x] Update live_review.md — PASS, 0 blockers
+- [ ] Commit + push

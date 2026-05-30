@@ -23,12 +23,15 @@ from packages.core.models import Job, RunState
 # Symbols
 # ---------------------------------------------------------------------------
 
-_OK = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -82,31 +85,21 @@ def summarize_timeline(job: Job, events: list[dict[str, Any]]) -> str:
     parts.append(f"Tasks: {completed} completed, {pending} pending, {running} running")
 
     # ── Events ──────────────────────────────────────────────────────────
-    parts.append(_section("Events"))
+    parts.append(section("Events", width=64))
     if not events:
         parts.append(f"  {_INFO} No run log events found.")
     else:
         parts.extend(_render_events(events))
 
     # ── Status ──────────────────────────────────────────────────────────
-    parts.append(_section("Current status"))
+    parts.append(section("Current status", width=64))
     parts.append(_derive_status(job))
 
     # ── Next action ─────────────────────────────────────────────────────
-    parts.append(_section("Next suggested action"))
+    parts.append(section("Next suggested action", width=64))
     parts.append(_derive_next_action(job, events))
 
     return "\n".join(parts)
-
-
-# ---------------------------------------------------------------------------
-# Internal: section separator
-# ---------------------------------------------------------------------------
-
-
-def _section(title: str) -> str:
-    fill = _LINE * max(1, 64 - len(title))
-    return f"\n{_LINE * 2} {title} {fill}"
 
 
 # ---------------------------------------------------------------------------
@@ -380,7 +373,7 @@ def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
         cap = last_terminal.get("metadata", {}).get("capability", "workspace_write")
         return (
             f"  {_NEXT} Grant permission if appropriate:\n"
-            f"      remedy set-permission {job_id_str} allow {cap}"
+            f"      remedy job permit {job_id_str} {cap} allow"
         )
 
     # Patch intent risk: flag review if any medium/high/unknown risk present
@@ -396,10 +389,10 @@ def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
     if pending:
         return (
             f"  {_NEXT} Run the next pending task:\n"
-            f"      remedy run-next-task-local {job_id_str}"
+            f"      remedy job run-next {job_id_str}"
         )
 
     return (
         f"  {_NEXT} No pending tasks. Inspect generated repo/workspace files\n"
-        f"      or create a new job: remedy create-job \"<prompt>\""
+        f"      or create a new job: remedy job create \"<prompt>\""
     )

@@ -51,12 +51,27 @@ from packages.orchestration.project_brain import (
     NT_JOB,
     NT_MCP,
     NT_MEMORY,
+    NT_MEMORY_ENTRY,
     NT_PATCH_APPLY,
     NT_PATCH_INTENT,
     NT_RUN_EVENT,
     NT_TASK,
     NT_TEST_RUN,
+    NT_RUN_CONTRACT,
+    NT_TOKEN_POLICY,
+    NT_WORKER_ADAPTER,
+    NT_AUTONOMY_READINESS,
+    NT_CONTEXT_PACK,
+    NT_PATCH_APPLY_PROOF,
+    NT_PATCH_REVERT,
+    NT_CHANGE_SET,
+    NT_GIT_STATUS,
+    NT_PROJECT_PLACEHOLDER,
     NT_VERIFICATION,
+    NT_EVENT_LEDGER,
+    NT_STOP_REASON,
+    NT_DECISION_QUEUE,
+    NT_CONTEXT_BUDGET,
     ProjectBrainGraph,
 )
 
@@ -65,12 +80,15 @@ from packages.orchestration.project_brain import (
 # Symbols
 # ---------------------------------------------------------------------------
 
-_OK   = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -148,51 +166,14 @@ def build_brain_node_detail(
                     "node_label": other.label[:60],
                 })
 
-    # ── Node-type-specific detail ────────────────────────────────────────────
-    if node.type == NT_JOB:
-        return _detail_job(job, node, job_id_str, connected)
+    # ── Node-type-specific detail via registry ────────────────────────────────
+    handler_with_job = _DETAIL_REGISTRY_JOB.get(node.type)
+    if handler_with_job is not None:
+        return handler_with_job(job, node, job_id_str, connected)
 
-    if node.type == NT_TASK:
-        return _detail_task(job, node, job_id_str, connected)
-
-    if node.type == NT_ARTIFACT:
-        return _detail_artifact(job, node, job_id_str, connected)
-
-    if node.type == NT_PATCH_INTENT:
-        return _detail_patch_intent(job, node, job_id_str, connected)
-
-    if node.type == NT_APPROVAL:
-        return _detail_approval(job, node, job_id_str, connected)
-
-    if node.type == NT_VERIFICATION:
-        return _detail_verification(node, job_id_str, connected)
-
-    if node.type == NT_BLOCKER:
-        return _detail_blocker(node, job_id_str, connected)
-
-    if node.type == NT_RUN_EVENT:
-        return _detail_run_event(node, job_id_str, connected)
-
-    if node.type == NT_AGENT_LOOP:
-        return _detail_agent_loop(node, job_id_str, connected)
-
-    if node.type == NT_CONSTITUTION:
-        return _detail_constitution(node, job_id_str, connected)
-
-    if node.type == NT_MEMORY:
-        return _detail_memory_placeholder(node, job_id_str, connected)
-
-    if node.type == NT_MCP:
-        return _detail_mcp_placeholder(node, job_id_str, connected)
-
-    if node.type == NT_CONTEXT_COVERAGE:
-        return _detail_context_coverage(node, job_id_str, connected)
-
-    if node.type == NT_PATCH_APPLY:
-        return _detail_patch_apply(node, job_id_str, connected)
-
-    if node.type == NT_TEST_RUN:
-        return _detail_test_run(node, job_id_str, connected)
+    handler = _DETAIL_REGISTRY.get(node.type)
+    if handler is not None:
+        return handler(node, job_id_str, connected)
 
     # Fallback for unknown future node types
     return BrainNodeDetail(
@@ -228,24 +209,24 @@ def summarize_brain_node_detail(detail: BrainNodeDetail) -> str:
     if detail.risk:
         parts.append(f"Risk: {detail.risk}")
 
-    parts.append(_section("Explanation"))
+    parts.append(section("Explanation"))
     parts.append(f"  {detail.explanation}")
 
-    parts.append(_section("Why it exists"))
+    parts.append(section("Why it exists"))
     for line in detail.why_it_exists:
         parts.append(f"  {_INFO} {line}")
 
     if detail.evidence:
-        parts.append(_section("Evidence"))
+        parts.append(section("Evidence"))
         for item in detail.evidence:
             parts.append(f"  {_OK} {item}")
 
     if detail.affected_files:
-        parts.append(_section("Affected files"))
+        parts.append(section("Affected files"))
         for f in detail.affected_files:
             parts.append(f"  {_WARN} {f}")
 
-    parts.append(_section("Connections"))
+    parts.append(section("Connections"))
     if detail.connected_to:
         for conn in detail.connected_to:
             arrow = f"--{conn['edge_type']}-->"
@@ -258,12 +239,12 @@ def summarize_brain_node_detail(detail: BrainNodeDetail) -> str:
         parts.append("  (no connections)")
 
     if detail.next_actions:
-        parts.append(_section("Next actions"))
+        parts.append(section("Next actions"))
         for action in detail.next_actions:
             parts.append(f"  {_NEXT} {action}")
 
     if detail.redaction_notes:
-        parts.append(_section("Redaction"))
+        parts.append(section("Redaction"))
         for note in detail.redaction_notes:
             parts.append(f"  {_INFO} {note}")
 
@@ -331,8 +312,8 @@ def _detail_job(
 
     next_actions: list[str] = []
     if pending:
-        next_actions.append(f"remedy run-next-task-local {job_id_str}")
-    next_actions.append(f"remedy trust-report {job_id_str}")
+        next_actions.append(f"remedy job run-next {job_id_str}")
+    next_actions.append(f"remedy brain trust {job_id_str}")
     next_actions.append(f"remedy brain {job_id_str}")
 
     return BrainNodeDetail(
@@ -389,7 +370,7 @@ def _detail_task(
 
     next_actions: list[str] = []
     if task.status.value == "pending":
-        next_actions.append(f"remedy run-next-task-local {job_id_str}")
+        next_actions.append(f"remedy job run-next {job_id_str}")
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -503,12 +484,12 @@ def _detail_patch_intent(
     next_actions: list[str] = []
     if state == APPROVAL_PENDING:
         next_actions.append(
-            f"remedy approve-patch-intent {job_id_str} {intent_id}"
+            f"remedy patch approve {job_id_str} {intent_id}"
         )
         next_actions.append(
-            f"remedy reject-patch-intent {job_id_str} {intent_id}"
+            f"remedy patch reject {job_id_str} {intent_id}"
         )
-    next_actions.append(f"remedy show-patch-intent {job_id_str} {intent_id}")
+    next_actions.append(f"remedy patch show {job_id_str} {intent_id}")
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -636,8 +617,8 @@ def _detail_blocker(
     )
 
     next_actions = [
-        f"remedy set-permission {job_id_str} allow {capability}",
-        f"remedy show-permissions {job_id_str}",
+        f"remedy job permit {job_id_str} {capability} allow",
+        f"remedy job permissions {job_id_str}",
     ]
 
     evidence = [
@@ -793,6 +774,54 @@ def _detail_constitution(
     )
 
 
+def _detail_memory_entry(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    key = meta.get("key", "unknown")
+    tags = meta.get("tags", [])
+    source_type = meta.get("source_type", "unknown")
+    created_at = meta.get("created_at", "unknown")
+    approved = meta.get("approved", False)
+
+    evidence = [
+        f"key: {key}",
+        f"source: {source_type}",
+        f"approved: {approved}",
+        f"created: {created_at}",
+    ]
+    if tags:
+        evidence.append(f"tags: {', '.join(tags)}")
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_MEMORY_ENTRY,
+        title=f"Memory: {key}",
+        status="active" if approved else "informational",
+        risk=None,
+        explanation=(
+            f"Local memory entry (key={key}). "
+            "Approved entries are visible to the agent loop and context coverage."
+        ),
+        why_it_exists=(
+            "Stored via 'remedy memory store' CLI command.",
+            "Approved entries contribute to the project_memory context signal.",
+        ),
+        connected_to=tuple(connected),
+        evidence=tuple(evidence),
+        affected_files=(),
+        next_actions=(
+            f"remedy memory recall --keyword {key} --json",
+        ),
+        redaction_notes=(
+            "Memory value is not shown in brain detail — only key, tags, and metadata.",
+        ),
+    )
+
+
 def _detail_memory_placeholder(
     node: Any,
     job_id_str: str,
@@ -890,7 +919,7 @@ def _detail_context_coverage(
         next_actions=(
             f"remedy context {job_id_str[:8]}",
             f"remedy brain {job_id_str[:8]}",
-            f"remedy trust-report {job_id_str[:8]}",
+            f"remedy brain trust {job_id_str[:8]}",
         ),
         redaction_notes=(
             "Does not include raw prompt, file content, artifact content, "
@@ -947,7 +976,7 @@ def _detail_patch_apply(
         explanation=explanation,
         why_it_exists=(
             "Records the successful application of an approved patch intent.",
-            "Created when remedy apply-patch-intent was run.",
+            "Created when remedy patch apply was run.",
         ),
         connected_to=tuple(connected),
         evidence=tuple(evidence),
@@ -1031,7 +1060,7 @@ def _detail_test_run(
         risk=None,
         explanation=explanation,
         why_it_exists=(
-            "Created when remedy run-tests-local was executed.",
+            "Created when remedy test run was executed.",
             "Records the outcome of a permission-gated test run against the attached repo.",
         ),
         connected_to=tuple(connected),
@@ -1043,6 +1072,646 @@ def _detail_test_run(
             "Output file path is not included — use the workspace/test_runs/ directory.",
         ),
     )
+
+
+def _detail_run_contract(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    autonomy = node.metadata.get("autonomy_level", 1)
+    allowed = node.metadata.get("allowed_action_count", 0)
+    denied = node.metadata.get("denied_action_count", 0)
+    max_loops = node.metadata.get("max_loops", 10)
+    scope = str(node.metadata.get("scope", "job"))
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_RUN_CONTRACT,
+        title="Run Contract (execution boundary)",
+        status=node.status or "active",
+        risk=None,
+        explanation=(
+            f"Execution boundary contract for this job. "
+            f"Autonomy level: {autonomy}. Scope: {scope}. "
+            f"{allowed} allowed actions, {denied} denied actions, max {max_loops} loops. "
+            "This is a boundary definition, not a capability promise."
+        ),
+        why_it_exists=(
+            "Every job has an execution boundary that governs what the run can do.",
+            "The run contract is the last line of defense before any action is taken.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"autonomy_level: {autonomy}",
+            f"allowed_action_count: {allowed}",
+            f"denied_action_count: {denied}",
+            f"max_loops: {max_loops}",
+            f"scope: {scope}",
+        ),
+        affected_files=(),
+        next_actions=(
+            "Inspect with `remedy policy contract <job_id>` for full contract details.",
+        ),
+        redaction_notes=("No sensitive data in run contract.",),
+    )
+
+
+def _detail_token_policy(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    scope = str(node.metadata.get("scope", "job"))
+    zero_count = node.metadata.get("zero_token_step_count", 0)
+    local_count = node.metadata.get("local_first_step_count", 0)
+    expensive_count = node.metadata.get("expensive_step_count", 0)
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_TOKEN_POLICY,
+        title="Token Policy (routing budget)",
+        status=node.status or "active",
+        risk=None,
+        explanation=(
+            f"Token routing policy for this job. Scope: {scope}. "
+            f"{zero_count} zero-token steps, {local_count} local-first steps, "
+            f"{expensive_count} expensive steps. "
+            "Defines forbidden context and compaction rules."
+        ),
+        why_it_exists=(
+            "Token economy ensures efficient resource usage.",
+            "Zero-token steps avoid unnecessary LLM calls for deterministic operations.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"scope: {scope}",
+            f"zero_token_step_count: {zero_count}",
+            f"local_first_step_count: {local_count}",
+            f"expensive_step_count: {expensive_count}",
+        ),
+        affected_files=(),
+        next_actions=(
+            "Inspect with `remedy policy token <job_id>` for full policy details.",
+        ),
+        redaction_notes=("No sensitive data in token policy.",),
+    )
+
+
+def _detail_worker_adapter(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    provider_id = str(node.metadata.get("provider_id", "unknown"))
+    exec_mode = str(node.metadata.get("execution_mode", "unknown"))
+    role_count = node.metadata.get("supported_role_count", 0)
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_WORKER_ADAPTER,
+        title=f"Worker: {node.label}",
+        status=node.status or "future",
+        risk=None,
+        explanation=(
+            f"Worker adapter spec for provider '{provider_id}'. "
+            f"Execution mode: {exec_mode}. {role_count} supported roles. "
+            "This is a provider-neutral specification — no connection or secrets."
+        ),
+        why_it_exists=(
+            "Worker adapters describe available providers without binding to them.",
+            "Provider-neutral specs enable future multi-provider orchestration.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"provider_id: {provider_id}",
+            f"execution_mode: {exec_mode}",
+            f"supported_role_count: {role_count}",
+        ),
+        affected_files=(),
+        next_actions=(
+            "Inspect with `remedy workers` for all provider specs.",
+        ),
+        redaction_notes=("No secrets or API keys in worker specs.",),
+    )
+
+
+def _detail_autonomy_readiness(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    level = node.metadata.get("highest_eligible_level", 0)
+    missing = node.metadata.get("missing_count", 0)
+    blockers = node.metadata.get("blocker_count", 0)
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_AUTONOMY_READINESS,
+        title=f"Autonomy Readiness: Level {level}",
+        status=node.status or "active",
+        risk=None,
+        explanation=(
+            f"Autonomy readiness assessment. Highest eligible level: {level}. "
+            f"{missing} missing signals, {blockers} blockers. "
+            "This is factual infrastructure readiness, not model confidence."
+        ),
+        why_it_exists=(
+            "Quantifies what autonomy level the job can safely support.",
+            "Guides execution decisions and surfaces missing prerequisites.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"highest_eligible_level: {level}",
+            f"missing_count: {missing}",
+            f"blocker_count: {blockers}",
+        ),
+        affected_files=(),
+        next_actions=(
+            f"Inspect with `remedy readiness job {job_id_str[:8]}`.",
+        ),
+        redaction_notes=("No sensitive data in readiness assessment.",),
+    )
+
+
+def _detail_context_pack(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    tokens = node.metadata.get("estimated_tokens", 0)
+    budget = node.metadata.get("budget", 0)
+    truncated = node.metadata.get("truncated", False)
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_CONTEXT_PACK,
+        title="Context Pack",
+        status=node.status or "active",
+        risk=None,
+        explanation=(
+            f"Context pack: ~{tokens} tokens (budget={budget}). "
+            f"Truncated: {truncated}. "
+            "Deterministic compact context for future provider calls."
+        ),
+        why_it_exists=(
+            "Reduces token usage by preparing compact structured context.",
+            "No LLM calls, no network, no raw content included.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"estimated_tokens: {tokens}",
+            f"budget: {budget}",
+            f"truncated: {truncated}",
+        ),
+        affected_files=(),
+        next_actions=(
+            f"Build with `remedy context pack {job_id_str[:8]}`.",
+        ),
+        redaction_notes=("No raw content in context pack metadata.",),
+    )
+
+
+def _detail_patch_apply_proof(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    intent_id = str(meta.get("intent_id", node.ref_id or ""))
+    target_path = str(meta.get("target_path", ""))
+    action = str(meta.get("action", ""))
+    outcome = str(meta.get("outcome", ""))
+    before_sha = str(meta.get("before_sha256", ""))
+    after_sha = str(meta.get("after_sha256", ""))
+    bytes_delta = int(meta.get("bytes_delta", 0))
+    line_delta = int(meta.get("line_delta", 0))
+    applied_at = str(meta.get("applied_at", ""))
+
+    explanation = (
+        f"Cryptographic proof that patch intent '{intent_id}' was applied to "
+        f"'{target_path}' (action: {action}, outcome: {outcome}). "
+        f"SHA256 changed from {before_sha[:16]}… to {after_sha[:16]}…. "
+        f"Bytes delta: {bytes_delta:+d}, line delta: {line_delta:+d}. "
+        f"Applied at: {applied_at}."
+    )
+
+    evidence = [
+        f"intent_id: {intent_id}",
+        f"target_path: {target_path}",
+        f"action: {action}",
+        f"outcome: {outcome}",
+        f"before_sha256: {before_sha[:16]}…" if before_sha else "before_sha256: (none)",
+        f"after_sha256: {after_sha[:16]}…" if after_sha else "after_sha256: (none)",
+        f"bytes_delta: {bytes_delta:+d}",
+        f"line_delta: {line_delta:+d}",
+        f"applied_at: {applied_at}",
+    ]
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_PATCH_APPLY_PROOF,
+        title=f"proof: {action} {target_path}",
+        status=outcome or node.status or "recorded",
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Records the cryptographic proof (before/after SHA256) of a successful patch apply.",
+            "Enables causal tracing from intent → approval → apply → proof → test.",
+        ),
+        connected_to=tuple(connected),
+        evidence=tuple(evidence),
+        affected_files=(target_path,) if target_path else (),
+        next_actions=(
+            f"remedy file why {job_id_str[:8]} {target_path}" if target_path else "",
+        ),
+        redaction_notes=(
+            "No file content or diff text is rendered.",
+            "Only SHA256 hashes and byte/line deltas are shown.",
+        ),
+    )
+
+
+def _detail_project_placeholder(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    project_id = str(meta.get("project_id", ""))
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_PROJECT_PLACEHOLDER,
+        title=f"Project: {project_id[:8]}" if project_id else "Project (unlinked)",
+        status=node.status or "linked",
+        risk=None,
+        explanation=(
+            f"Lightweight marker linking this job to project '{project_id[:8]}'."
+        ),
+        why_it_exists=(
+            "Jobs can be linked to projects for cross-job aggregation.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(f"project_id: {project_id}",) if project_id else (),
+        affected_files=(),
+        next_actions=(),
+        redaction_notes=(),
+    )
+
+
+def _detail_patch_revert(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    intent_id = str(meta.get("intent_id", node.ref_id or ""))
+    target_path = str(meta.get("target_path", ""))
+    outcome = str(meta.get("outcome", ""))
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_PATCH_REVERT,
+        title=f"Revert: {target_path}" if target_path else "Patch Revert",
+        status=node.status or outcome or "reverted",
+        risk=None,
+        explanation=(
+            f"Reverted patch intent '{intent_id}' on '{target_path}'. "
+            f"Outcome: {outcome}."
+        ),
+        why_it_exists=(
+            "A previously applied patch was reverted to restore original state.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"intent_id: {intent_id}",
+            f"target_path: {target_path}",
+            f"outcome: {outcome}",
+        ),
+        affected_files=(target_path,) if target_path else (),
+        next_actions=(),
+        redaction_notes=("No file content is rendered.",),
+    )
+
+
+def _detail_git_status(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    is_git = bool(meta.get("is_git_repo", False))
+    branch = str(meta.get("branch", ""))
+    sha = str(meta.get("head_sha", ""))
+    dirty = bool(meta.get("dirty", True))
+    changed = int(meta.get("changed_file_count", 0))
+    status_hash = str(meta.get("status_hash", ""))
+
+    status_str = "dirty" if dirty else ("clean" if is_git else "unavailable")
+    explanation = (
+        f"Read-only git status snapshot. "
+        f"Branch: {branch} ({sha}). Working tree: {status_str}. "
+        f"{changed} changed files. Hash: {status_hash}."
+    )
+
+    evidence = [
+        f"is_git_repo: {is_git}",
+        f"branch: {branch}",
+        f"head_sha: {sha}",
+        f"dirty: {dirty}",
+        f"changed_file_count: {changed}",
+        f"status_hash: {status_hash}",
+    ]
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_GIT_STATUS,
+        title=f"Git: {branch} ({sha})" if is_git else "Git: unavailable",
+        status=status_str,
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Read-only snapshot of the attached repository's git state.",
+            "No git write operations are performed.",
+        ),
+        connected_to=tuple(connected),
+        evidence=tuple(evidence),
+        affected_files=(),
+        next_actions=(
+            f"remedy repo status {job_id_str} --json",
+        ),
+        redaction_notes=("No file content or diff text is rendered.",),
+    )
+
+
+def _detail_change_set(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    intent_id = str(meta.get("intent_id", node.ref_id or ""))
+    target_path = str(meta.get("target_path", ""))
+    risk = str(meta.get("risk", ""))
+    status = str(meta.get("status", ""))
+    approval = str(meta.get("approval_state", ""))
+    apply_outcome = str(meta.get("apply_outcome", ""))
+    test_status = str(meta.get("test_status", ""))
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_CHANGE_SET,
+        title=f"Change: {target_path}" if target_path else "Change Set Entry",
+        status=node.status or status,
+        risk=risk or None,
+        explanation=(
+            f"Change set entry for '{target_path}'. "
+            f"Approval: {approval}. Apply: {apply_outcome}. Test: {test_status}."
+        ),
+        why_it_exists=(
+            "Tracks the full lifecycle of a single file change.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"intent_id: {intent_id}",
+            f"target_path: {target_path}",
+            f"risk: {risk}",
+            f"approval: {approval}",
+            f"apply: {apply_outcome}",
+            f"test: {test_status}",
+        ),
+        affected_files=(target_path,) if target_path else (),
+        next_actions=(),
+        redaction_notes=("No diff content is rendered.",),
+    )
+
+
+def _detail_event_ledger(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    event_count = int(meta.get("event_count", 0))
+    failed_count = int(meta.get("failed_count", 0))
+    proof_count = int(meta.get("proof_count", 0))
+    test_count = int(meta.get("test_count", 0))
+    last_event_at = str(meta.get("last_event_at", ""))
+
+    explanation = (
+        f"Event ledger summary: {event_count} total events, "
+        f"{failed_count} failed, {proof_count} proof, {test_count} test. "
+        f"Last event: {last_event_at or 'none'}."
+    )
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_EVENT_LEDGER,
+        title=f"Event Ledger ({event_count} events)",
+        status=node.status or "active",
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Aggregates run-log events into a summary for the brain graph.",
+            "Individual events are not stored in the brain — only counts.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"event_count: {event_count}",
+            f"failed_count: {failed_count}",
+            f"proof_count: {proof_count}",
+            f"test_count: {test_count}",
+            f"last_event_at: {last_event_at}",
+        ),
+        affected_files=(),
+        next_actions=(
+            f"remedy event list {job_id_str[:8]} --json",
+            f"remedy event timeline {job_id_str[:8]}",
+        ),
+        redaction_notes=("Individual event messages are not rendered.",),
+    )
+
+
+def _detail_stop_reason(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    reason_code = str(meta.get("reason_code", "unknown"))
+    severity = str(meta.get("severity", "unknown"))
+    status = str(meta.get("status", "open"))
+    source = str(meta.get("source", ""))
+
+    explanation = (
+        f"Stop reason '{reason_code}' (severity: {severity}, status: {status}). "
+        f"Source: {source or 'derived'}."
+    )
+
+    next_actions: list[str] = []
+    if status == "open":
+        next_actions.append(f"remedy blocker list {job_id_str[:8]}")
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_STOP_REASON,
+        title=f"Stop: {reason_code}",
+        status=status,
+        risk=severity if severity in ("high", "critical") else None,
+        explanation=explanation,
+        why_it_exists=(
+            "Derived from job state to explain why execution cannot proceed.",
+            "Must be resolved before the autonomy loop can continue.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"reason_code: {reason_code}",
+            f"severity: {severity}",
+            f"status: {status}",
+            f"source: {source}",
+        ),
+        affected_files=(),
+        next_actions=tuple(next_actions),
+        redaction_notes=("No raw content in stop reasons.",),
+    )
+
+
+def _detail_decision_queue(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    open_count = int(meta.get("open_count", 0))
+    high_count = int(meta.get("high_count", 0))
+
+    explanation = (
+        f"{open_count} open decision(s), {high_count} high-priority. "
+        "Derived from job state — patch approvals, stop reasons, test failures, etc."
+    )
+
+    next_actions: list[str] = []
+    if open_count > 0:
+        next_actions.append(f"remedy decision list {job_id_str[:8]}")
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_DECISION_QUEUE,
+        title=f"Decisions: {open_count} open",
+        status="active" if open_count > 0 else "idle",
+        risk="high" if high_count > 0 else None,
+        explanation=explanation,
+        why_it_exists=(
+            "Aggregates everything needing human attention into one surface.",
+            "Derived read-only from existing records — not a second source of truth.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"open_count: {open_count}",
+            f"high_count: {high_count}",
+        ),
+        affected_files=(),
+        next_actions=tuple(next_actions),
+        redaction_notes=("Summary counts only — no raw content.",),
+    )
+
+
+def _detail_context_budget(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    mode = str(meta.get("recommended_mode", "?"))
+    budget = int(meta.get("budget", 0))
+    tokens = int(meta.get("estimated_tokens", 0))
+    savings = int(meta.get("token_savings", 0))
+
+    explanation = (
+        f"Recommended mode: {mode}, budget: {budget}, "
+        f"estimated: {tokens} tokens, savings: {savings}."
+    )
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_CONTEXT_BUDGET,
+        title=f"Context: {mode}",
+        status="ok",
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Deterministic context budget optimizer recommendation.",
+            "Compares modes and picks best fit for the token budget.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"recommended_mode: {mode}",
+            f"budget: {budget}",
+            f"estimated_tokens: {tokens}",
+            f"token_savings: {savings}",
+        ),
+        affected_files=(),
+        next_actions=(
+            f"remedy context explain {job_id_str[:8]}",
+            f"remedy context optimize {job_id_str[:8]}",
+        ),
+        redaction_notes=("Counts and mode only — no raw content.",),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Detail handler registries — maps node type to handler function.
+# Handlers needing the Job model use _DETAIL_REGISTRY_JOB.
+# Handlers needing only node metadata use _DETAIL_REGISTRY.
+# ---------------------------------------------------------------------------
+
+_DETAIL_REGISTRY_JOB: dict[str, Any] = {
+    NT_JOB: _detail_job,
+    NT_TASK: _detail_task,
+    NT_ARTIFACT: _detail_artifact,
+    NT_PATCH_INTENT: _detail_patch_intent,
+    NT_APPROVAL: _detail_approval,
+}
+
+_DETAIL_REGISTRY: dict[str, Any] = {
+    NT_VERIFICATION: _detail_verification,
+    NT_BLOCKER: _detail_blocker,
+    NT_RUN_EVENT: _detail_run_event,
+    NT_AGENT_LOOP: _detail_agent_loop,
+    NT_CONSTITUTION: _detail_constitution,
+    NT_MEMORY: _detail_memory_placeholder,
+    NT_MEMORY_ENTRY: _detail_memory_entry,
+    NT_MCP: _detail_mcp_placeholder,
+    NT_CONTEXT_COVERAGE: _detail_context_coverage,
+    NT_PATCH_APPLY: _detail_patch_apply,
+    NT_TEST_RUN: _detail_test_run,
+    NT_RUN_CONTRACT: _detail_run_contract,
+    NT_TOKEN_POLICY: _detail_token_policy,
+    NT_WORKER_ADAPTER: _detail_worker_adapter,
+    NT_AUTONOMY_READINESS: _detail_autonomy_readiness,
+    NT_CONTEXT_PACK: _detail_context_pack,
+    NT_PATCH_APPLY_PROOF: _detail_patch_apply_proof,
+    NT_PROJECT_PLACEHOLDER: _detail_project_placeholder,
+    NT_PATCH_REVERT: _detail_patch_revert,
+    NT_CHANGE_SET: _detail_change_set,
+    NT_GIT_STATUS: _detail_git_status,
+    NT_EVENT_LEDGER: _detail_event_ledger,
+    NT_STOP_REASON: _detail_stop_reason,
+    NT_DECISION_QUEUE: _detail_decision_queue,
+    NT_CONTEXT_BUDGET: _detail_context_budget,
+}
 
 
 def _fallback(
@@ -1066,13 +1735,3 @@ def _fallback(
         next_actions=(),
         redaction_notes=("Raw content fields are not rendered.",),
     )
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
-def _section(title: str) -> str:
-    bar = _LINE * (50 - len(title) - 1)
-    return f"\n{_LINE}{_LINE} {title} {bar}"

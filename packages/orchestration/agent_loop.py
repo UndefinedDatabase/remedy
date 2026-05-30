@@ -1,24 +1,37 @@
 """
-Agent Loop Contract v1 — Orchestration contract for external agent workflows.
+Agent Loop v0 — Local execution loop for Remedy jobs.
 
-Defines the data models and state derivation logic for coordinating workflows
-such as:
+Defines the data models, state derivation, and execution loop for coordinating
+workflows such as:
 
-    Remedy planner → builder agent → reviewer agent → fix cycle → verifier
+    Remedy planner → builder → reviewer → fix cycle → verifier
 
-IMPORTANT — Scope limitations (v1):
-  No external processes are called.  No Claude Code, Copilot CLI, Git
-  commands, shell commands, MCP tools, network requests, or repo mutations
-  beyond what already exists in Remedy.  This module is a contract and
-  inspection layer only — execution adapters are a future step.
+The ``run_agent_loop`` function drives the loop: plan → build → approve →
+test → repeat.  It delegates actual task execution to the existing CLI
+command handlers and emits structured run-log events at each stage.
 
-Run-log events (only ``agent_loop_inspected`` is emitted; the rest are
-reserved for future adapter steps):
-  agent_loop_inspected       — emitted by ``remedy agent-loop <job_id>``
-  external_agent_proposed    — future: external agent submitted a proposal
-  external_review_recorded   — future: reviewer agent returned findings
-  fix_cycle_requested        — future: fixer agent was requested
-  agent_loop_completed       — future: loop reached a terminal state
+Run-log events emitted by ``run_agent_loop``:
+  agent_loop_started          — loop begins
+  agent_loop_cycle_started    — each cycle begins
+  agent_loop_decision         — decision made (run_next_task, needs_planning)
+  agent_loop_cycle_completed  — each cycle ends
+  agent_loop_paused           — loop paused (needs_approval, blocked, needs_planning)
+  agent_loop_completed        — loop finished (all_done, max_cycles_reached)
+
+Event top-level fields:
+  outcome: str                — event-specific outcome (RunEvent.outcome)
+
+Metadata schema (all events share the same 10 keys):
+  cycle: int                  — current cycle number (0 for started)
+  max_cycles: int             — configured max cycles
+  decision: str               — AgentLoopDecision value (or "start")
+  stage: str                  — AgentLoopStage value (or "start")
+  reason: str                 — safe literal reason
+  task_count: int             — total task count
+  pending_task_count: int     — pending tasks
+  pending_approval_count: int — pending patch intent approvals
+  applied_count: int          — applied patch intents
+  test_run_count: int         — completed test runs
 
 Stale-event policy:
   A historical ``task_run_failed outcome=permission_denied`` event does NOT
@@ -38,6 +51,7 @@ Public API::
     default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
     summarize_agent_loop_state(job, state) -> str
     derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
+    run_agent_loop(job, *, max_cycles=3, auto_approve_low_risk=False, run_tests=True) -> AgentLoopState
 """
 
 from __future__ import annotations
@@ -61,12 +75,15 @@ from packages.orchestration.permissions import Capability, is_allowed, is_reserv
 # Symbols (consistent with other orchestration views)
 # ---------------------------------------------------------------------------
 
-_OK   = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -279,12 +296,12 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
     parts.append(f"Cycle: {state.cycle}/{state.max_cycles}")
 
     # ── Agents ──────────────────────────────────────────────────────────────
-    parts.append(_section("Agents"))
+    parts.append(section("Agents"))
     parts.append(f"  builder:  {state.builder.name  if state.builder  else 'not configured'}")
     parts.append(f"  reviewer: {state.reviewer.name if state.reviewer else 'not configured'}")
 
     # ── Loop state ──────────────────────────────────────────────────────────
-    parts.append(_section("Loop state"))
+    parts.append(section("Loop state"))
     parts.append(f"  pending tasks: {len(pending_tasks)}")
 
     # Patch intent summary — structured counts/risk labels only.
@@ -324,7 +341,7 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
             parts.append(f"  finding: {finding}")
 
     # ── Next action ─────────────────────────────────────────────────────────
-    parts.append(_section("Next action"))
+    parts.append(section("Next action"))
     parts.append(_next_action(job, state))
 
     return "\n".join(parts)
@@ -421,9 +438,198 @@ def _format_blocker(blocked_reason: str) -> str:
     return blocked_reason
 
 
-def _section(title: str) -> str:
-    bar = _LINE * (50 - len(title) - 1)
-    return f"\n{_LINE}{_LINE} {title} {bar}"
+def _loop_meta(
+    job: Job,
+    state: AgentLoopState | None,
+    *,
+    cycle: int,
+    max_cycles: int,
+    outcome: str,
+    reason: str,
+) -> dict[str, Any]:
+    """Build the exact safe metadata dict for every agent_loop_* event.
+
+    Returns (outcome, metadata) where outcome is a top-level RunEvent field
+    and metadata contains exactly 10 keys (no outcome duplication).
+    """
+    intents = list_patch_intents(job)
+    pending_approvals = sum(
+        1 for i in intents if i["state"] == APPROVAL_PENDING
+    )
+    applied = sum(
+        1 for i in intents if i.get("state") == "applied"
+    )
+    test_runs = sum(
+        1 for t in job.tasks
+        if t.status in (RunState.COMPLETED, RunState.FAILED)
+        and t.inputs.get("task_type") == "run_tests"
+    )
+    meta = {
+        "cycle": cycle,
+        "max_cycles": max_cycles,
+        "decision": state.decision.value if state else "start",
+        "stage": state.current_stage.value if state else "start",
+        "reason": reason,
+        "task_count": len(job.tasks),
+        "pending_task_count": sum(
+            1 for t in job.tasks if t.status == RunState.PENDING
+        ),
+        "pending_approval_count": pending_approvals,
+        "applied_count": applied,
+        "test_run_count": test_runs,
+    }
+    return outcome, meta
+
+
+def run_agent_loop(
+    job: Job,
+    *,
+    max_cycles: int = 3,
+    auto_approve_low_risk: bool = False,
+    run_tests: bool = True,
+) -> AgentLoopState:
+    """Run the agent execution loop for a job.
+
+    Safe local execution loop. Default does NOT auto-approve.
+    Stops on: needs_approval (paused), blocked, complete, max_cycles reached.
+
+    Run-log events emitted (all use the same 10-key metadata schema):
+      agent_loop_started, agent_loop_cycle_started, agent_loop_decision,
+      agent_loop_cycle_completed, agent_loop_paused, agent_loop_completed
+    """
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.timeline import load_run_events
+
+    data_dir = resolve_data_root()
+    log = RunLogWriter(job_id=job.id)
+
+    def _emit(event_name: str, outcome_and_meta: tuple[str, dict[str, Any]]) -> None:
+        """Log an agent_loop event. outcome at top level, metadata has 10 keys."""
+        outcome, meta = outcome_and_meta
+        log.log(event_name, outcome=outcome, **meta)
+
+    _emit("agent_loop_started", _loop_meta(
+        job, None, cycle=0, max_cycles=max_cycles,
+        outcome="started", reason="loop_started"))
+
+    # Emit token_policy_applied once at loop start
+    from packages.orchestration.token_policy import build_default_token_policy
+    from packages.orchestration.worker_recommend import recommend_worker
+    _tp = build_default_token_policy(job)
+    _initial_events = load_run_events(data_dir, job.id)
+    _rec = recommend_worker(job, _initial_events)
+    log.log(
+        "token_policy_applied",
+        outcome="applied",
+        mode=_rec.token_mode,
+        max_context_tokens=_tp.budget.get("expensive_tokens", 100_000),
+        estimated_context_tokens=_rec.estimated_context_tokens,
+        local_first=True,
+        remote_model_requires_approval=_rec.requires_approval,
+        selected_worker=_rec.recommended_worker,
+    )
+
+    state: AgentLoopState | None = None
+
+    for cycle in range(1, max_cycles + 1):
+        # Reload job and events each cycle to get latest state
+        job = load_job(job.id)
+        events = load_run_events(data_dir, job.id)
+        state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
+
+        _emit("agent_loop_cycle_started", _loop_meta(
+            job, state, cycle=cycle, max_cycles=max_cycles,
+            outcome="cycle_started", reason="cycle_begin"))
+
+        # Terminal conditions
+        if state.decision == AgentLoopDecision.COMPLETE:
+            _emit("agent_loop_completed", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="completed", reason="all_done"))
+            return state
+
+        if state.decision == AgentLoopDecision.BLOCKED:
+            _emit("agent_loop_paused", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="paused", reason="blocked"))
+            return state
+
+        if state.decision == AgentLoopDecision.NEEDS_APPROVAL:
+            if auto_approve_low_risk:
+                _auto_approve_low_risk_intents(job, log)
+                # Re-derive after auto-approval
+                job = load_job(job.id)
+                events = load_run_events(data_dir, job.id)
+                state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
+                if state.decision == AgentLoopDecision.NEEDS_APPROVAL:
+                    _emit("agent_loop_paused", _loop_meta(
+                        job, state, cycle=cycle, max_cycles=max_cycles,
+                        outcome="paused", reason="needs_approval"))
+                    return state
+            else:
+                _emit("agent_loop_paused", _loop_meta(
+                    job, state, cycle=cycle, max_cycles=max_cycles,
+                    outcome="paused", reason="needs_approval"))
+                return state
+
+        # Execute: run next task if in BUILD stage
+        if state.current_stage == AgentLoopStage.BUILD:
+            _emit("agent_loop_decision", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="run_next_task", reason="execute_task"))
+            try:
+                _run_next_task_step(job)
+            except SystemExit:
+                pass  # Task runner calls sys.exit on failure; loop continues.
+
+        elif state.current_stage == AgentLoopStage.PLANNED:
+            _emit("agent_loop_decision", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="needs_planning", reason="needs_planning"))
+            _emit("agent_loop_paused", _loop_meta(
+                job, state, cycle=cycle, max_cycles=max_cycles,
+                outcome="paused", reason="needs_planning"))
+            return state
+
+        # Reload after potential task execution
+        job = load_job(job.id)
+        _emit("agent_loop_cycle_completed", _loop_meta(
+            job, state, cycle=cycle, max_cycles=max_cycles,
+            outcome="cycle_completed", reason="cycle_end"))
+
+    # Max cycles reached
+    if state is None:
+        events = load_run_events(data_dir, job.id)
+        state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
+
+    _emit("agent_loop_completed", _loop_meta(
+        job, state, cycle=max_cycles, max_cycles=max_cycles,
+        outcome="max_cycles_reached", reason="max_cycles_reached"))
+    return state
+
+
+def _auto_approve_low_risk_intents(job: Job, log: Any) -> None:
+    """Auto-approve low-risk patch intents."""
+    from packages.orchestration.approval_queue import set_approval_state
+    from packages.orchestration.storage import save_job
+
+    intents = list_patch_intents(job)
+    for intent in intents:
+        if intent["state"] == APPROVAL_PENDING and intent["risk"] == RISK_LOW:
+            try:
+                set_approval_state(job, intent["intent_id"], "approved",
+                                   reason="auto-approved (low risk)")
+            except ValueError:
+                continue
+    save_job(job)
+
+
+def _run_next_task_step(job: Job) -> None:
+    """Execute one run-next-task step. Delegates to the job command handler."""
+    from apps.cli.commands.job import _cmd_run_next_task_local
+    _cmd_run_next_task_local(str(job.id))
 
 
 def _next_action(job: Job, state: AgentLoopState) -> str:
@@ -437,17 +643,17 @@ def _next_action(job: Job, state: AgentLoopState) -> str:
             cap_arg = state.blocked_reason.split(":", 1)[1]
         return (
             f"  {_NEXT} Grant the missing permission:\n"
-            f"      remedy set-permission {full_id} allow {cap_arg}"
+            f"      remedy job permit {full_id} {cap_arg} allow"
         )
     if d == AgentLoopDecision.NEEDS_APPROVAL:
         return (
             f"  {_NEXT} Review and approve patch intents:\n"
-            f"      remedy list-patch-intents {full_id}"
+            f"      remedy patch list {full_id}"
         )
     if d == AgentLoopDecision.NEEDS_REVIEW:
         return (
             f"  {_NEXT} Review patch intents:\n"
-            f"      remedy list-patch-intents {full_id}"
+            f"      remedy patch list {full_id}"
         )
     if d == AgentLoopDecision.NEEDS_FIX:
         return (
@@ -457,15 +663,15 @@ def _next_action(job: Job, state: AgentLoopState) -> str:
         return (
             f"  {_NEXT} Inspect generated files and open PR,"
             " or review the trust report:\n"
-            f"      remedy trust-report {full_id}"
+            f"      remedy brain trust {full_id}"
         )
     # CONTINUE
     if state.current_stage == AgentLoopStage.BUILD:
         return (
             f"  {_NEXT} Run next Remedy task:\n"
-            f"      remedy run-next-task-local {full_id}"
+            f"      remedy job run-next {full_id}"
         )
     return (
         f"  {_NEXT} Plan the job:\n"
-        f"      remedy plan-job-local {full_id}"
+        f"      remedy job plan {full_id}"
     )

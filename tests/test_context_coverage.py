@@ -197,7 +197,7 @@ def _add_patch_intent_artifact(job: Job) -> Artifact:
 def _call_context_json(job_id_str: str, monkeypatch, capsys) -> dict:
     import sys
     from apps.cli.main import main
-    monkeypatch.setattr(sys, "argv", ["remedy", "context", job_id_str, "--json"])
+    monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", job_id_str, "--json"])
     main()
     return json.loads(capsys.readouterr().out)
 
@@ -333,7 +333,7 @@ class TestContextCoverageSignals:
         sig = next(s for s in snap.signals if s.key == "approval_decisions")
         assert sig.present
 
-    def test_project_memory_always_absent_in_v0(self):
+    def test_project_memory_absent_when_no_approved_entries(self):
         job = _make_job()
         job.metadata["target_repo"] = "/repo"
         snap = derive_context_coverage(
@@ -343,7 +343,21 @@ class TestContextCoverageSignals:
         )
         sig = next(s for s in snap.signals if s.key == "project_memory")
         assert not sig.present
-        assert "MemPalace" in sig.detail
+        assert "no approved memory" in sig.detail
+
+    def test_project_memory_present_when_approved_entries_exist(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        store_memory(key="k", value="v", job_id=str(job.id), approved=True)
+        snap = derive_context_coverage(
+            job,
+            [{"event": "any", "job_id": str(job.id), "metadata": {}}],
+            constitution=_mock_constitution(),
+        )
+        sig = next(s for s in snap.signals if s.key == "project_memory")
+        assert sig.present
+        assert "approved memory" in sig.detail
 
     def test_mcp_tool_context_always_absent_in_v0(self):
         job = _make_job()
@@ -482,7 +496,7 @@ class TestSummarizeContextCoverage:
     def test_next_actions_present(self):
         text = summarize_context_coverage(self._basic_snap())
         assert "remedy brain" in text
-        assert "remedy trust-report" in text
+        assert "remedy brain trust" in text
 
     def test_scope_present(self):
         text = summarize_context_coverage(self._basic_snap())
@@ -538,7 +552,7 @@ class TestContextCoverageCli:
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", "not-a-uuid"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", "not-a-uuid"])
         with pytest.raises(SystemExit) as exc_info:
             main()
         assert exc_info.value.code == 1
@@ -550,7 +564,7 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "context", str(uuid4())]
+            sys, "argv", ["remedy", "brain", "context", str(uuid4())]
         )
         with pytest.raises(SystemExit) as exc_info:
             main()
@@ -563,7 +577,7 @@ class TestContextCoverageCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
         main()
         out = capsys.readouterr().out
         assert "Remedy Context Coverage" in out
@@ -577,7 +591,7 @@ class TestContextCoverageCli:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "context", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "context", str(job.id), "--json"]
         )
         main()
         raw = capsys.readouterr().out
@@ -592,7 +606,7 @@ class TestContextCoverageCli:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "context", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "context", str(job.id), "--json"]
         )
         main()
         raw = capsys.readouterr().out
@@ -606,7 +620,7 @@ class TestContextCoverageCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -620,7 +634,7 @@ class TestContextCoverageCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -640,7 +654,7 @@ class TestContextCoverageCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -655,7 +669,7 @@ class TestContextCoverageCli:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "context", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "context", str(job.id), "--json"]
         )
         main()
         out = capsys.readouterr().out
@@ -669,7 +683,7 @@ class TestContextCoverageCli:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
         main()
         capsys.readouterr()
         events = _read_run_log(tmp_path, job.id)
@@ -759,7 +773,7 @@ class TestBrainContextCoverageNode:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"]
         )
         main()
         brain = json.loads(capsys.readouterr().out)
@@ -783,7 +797,7 @@ class TestBrainNodeContextCoverageDetail:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"]
         )
         main()
         brain = json.loads(capsys.readouterr().out)
@@ -791,7 +805,7 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setattr(
             sys, "argv",
-            ["remedy", "brain-node", str(job.id), cc_node["id"], "--json"],
+            ["remedy", "brain", "node", str(job.id), cc_node["id"], "--json"],
         )
         main()
         detail = json.loads(capsys.readouterr().out)
@@ -807,7 +821,7 @@ class TestBrainNodeContextCoverageDetail:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"]
         )
         main()
         brain = json.loads(capsys.readouterr().out)
@@ -815,7 +829,7 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setattr(
             sys, "argv",
-            ["remedy", "brain-node", str(job.id), cc_node["id"], "--json"],
+            ["remedy", "brain", "node", str(job.id), cc_node["id"], "--json"],
         )
         main()
         detail = json.loads(capsys.readouterr().out)
@@ -831,7 +845,7 @@ class TestBrainNodeContextCoverageDetail:
         job = _make_job()
         save_job(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"]
         )
         main()
         brain = json.loads(capsys.readouterr().out)
@@ -839,7 +853,7 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setattr(
             sys, "argv",
-            ["remedy", "brain-node", str(job.id), cc_node["id"], "--json"],
+            ["remedy", "brain", "node", str(job.id), cc_node["id"], "--json"],
         )
         main()
         detail = json.loads(capsys.readouterr().out)
@@ -977,7 +991,7 @@ class TestSafeInt:
         )
         job.artifacts.append(a)
         save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         raw = capsys.readouterr().out
         parsed = json.loads(raw)
@@ -990,7 +1004,7 @@ class TestSafeInt:
 
 
 class TestV0Ceiling:
-    """The maximum v0 score is 85 (project_memory +10 + mcp +5 always absent)."""
+    """Without approved memory, max score is 85. With memory, max is 95 (only MCP absent)."""
 
     def _fully_populated_job(self):
         job = _make_job()
@@ -1018,7 +1032,7 @@ class TestV0Ceiling:
         )
         assert snap.score == 85
 
-    def test_summary_mentions_85_ceiling(self):
+    def test_summary_mentions_95_ceiling(self):
         job = self._fully_populated_job()
         snap = derive_context_coverage(
             job,
@@ -1026,13 +1040,13 @@ class TestV0Ceiling:
             constitution=_mock_constitution(),
         )
         text = summarize_context_coverage(snap)
-        assert "85%" in text
+        assert "95%" in text
 
     def test_summary_mentions_v0_ceiling_explanation(self):
         snap = derive_context_coverage(_make_job(), [])
         text = summarize_context_coverage(snap)
         assert "v0" in text
-        assert "maximum" in text.lower() or "85%" in text
+        assert "maximum" in text.lower() or "95%" in text
 
     def test_json_score_is_integer(self):
         job = self._fully_populated_job()
@@ -1068,7 +1082,7 @@ class TestContextCmdStaleRepo:
         import sys
         from apps.cli.main import main
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", job_id_str])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", job_id_str])
         main()
         return capsys.readouterr()
 
@@ -1086,7 +1100,7 @@ class TestContextCmdStaleRepo:
         import sys
         from apps.cli.main import main
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
         main()  # must not raise SystemExit
 
     def test_file_not_dir_warns_stderr(self, tmp_path, monkeypatch, capsys):
@@ -1118,7 +1132,7 @@ class TestContextCmdStaleRepo:
         import sys
         from apps.cli.main import main
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        monkeypatch.setattr(sys, "argv", ["remedy", "context", str(job2.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job2.id)])
         main()
         result = capsys.readouterr()
         assert "SECRET_INTERNAL_PATH_DATA" not in result.err
@@ -1156,14 +1170,14 @@ class TestContextCoverageDetailConfidenceKeys:
         job = _make_job()
         save_job(job)
 
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         brain = json.loads(capsys.readouterr().out)
         cc_node = next(n for n in brain["nodes"] if n["type"] == "context_coverage")
 
         monkeypatch.setattr(
             sys, "argv",
-            ["remedy", "brain-node", str(job.id), cc_node["id"], "--json"],
+            ["remedy", "brain", "node", str(job.id), cc_node["id"], "--json"],
         )
         main()
         return json.loads(capsys.readouterr().out)

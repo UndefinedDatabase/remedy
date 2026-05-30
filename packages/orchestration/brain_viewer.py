@@ -61,9 +61,12 @@ _LAYER_MAP: dict[str, int] = {
     "verification": 3,
     "permission_blocker": 3,
     "memory_placeholder": 4,
+    "memory": 4,
     "mcp_placeholder": 4,
     "project_placeholder": 1,
     "patch_apply": 4,
+    "autonomy_readiness": 1,
+    "context_pack": 2,
 }
 _LAYER_RADIUS = [0.0, 150.0, 290.0, 420.0, 530.0]
 _CX = 500.0
@@ -111,7 +114,7 @@ def build_brain_viewer_data(
         try:
             detail = build_brain_node_detail(job, graph, node.id, events)
             node_details[node.id] = export_brain_node_detail_json(detail)
-        except Exception:
+        except (KeyError, ValueError, AttributeError, TypeError, RuntimeError, OSError):
             detail_fallback_count += 1
             node_details[node.id] = {
                 "job_id": str(job.id),
@@ -412,7 +415,7 @@ __STATIC_FALLBACK__
   <span>selected <span id="diag-sel">none</span></span>
   <span>status <span id="diag-status">static-fallback</span></span>
 </div>
-<div id="ftr">Brain Viewer v0 &middot; read-only &middot; consumes remedy brain --json and remedy brain-node --json &middot; foundation for React&nbsp;Flow / Three.js / AG-UI / A2UI</div>
+<div id="ftr">Brain Viewer v0 &middot; read-only &middot; consumes remedy brain --json and remedy brain node --json &middot; foundation for React&nbsp;Flow / Three.js / AG-UI / A2UI</div>
 <script id="viewer-data" type="application/json">__VIEWER_DATA_JSON__</script>
 <script>
 function _vErr(cat,msg){
@@ -452,6 +455,9 @@ var selId=null;
 function col(n){
   var t=n.type,s=n.status||'';
   if(t==='memory_placeholder')return'#7c4fb0';
+  if(t==='memory')return'#9b6fcf';
+  if(t==='autonomy_readiness')return'#2ea043';
+  if(t==='context_pack')return'#58a6ff';
   if(t==='mcp_placeholder')return'#e06c1a';
   if(s==='blocked')return'#cf4444';
   if(s==='running')return'#4488ff';

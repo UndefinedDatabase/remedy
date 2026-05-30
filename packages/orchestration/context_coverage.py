@@ -108,8 +108,8 @@ _SIGNALS: list[dict[str, Any]] = [
         "key": "project_memory",
         "label": "Project memory",
         "weight": 10,
-        "v0_always_false": True,
-        "v0_detail_absent": "MemPalace not connected yet",
+        "v0_always_false": False,
+        "v0_detail_absent": "",
     },
     {
         "key": "mcp_tool_context",
@@ -243,6 +243,24 @@ def derive_context_coverage(
                 else "no approval decisions yet"
             )
 
+        if key == "project_memory":
+            try:
+                from packages.memory.local_gateway import has_approved_memory
+                project_id = job.metadata.get("project_id")
+                present = has_approved_memory(
+                    project_id=project_id,
+                    job_id=str(job.id) if not project_id else None,
+                )
+                # Also check job-scoped when project_id is set
+                if not present and project_id:
+                    present = has_approved_memory(job_id=str(job.id))
+            except (ImportError, ValueError, OSError):
+                present = False
+            return present, (
+                "approved memory entries present" if present
+                else "no approved memory entries"
+            )
+
         # Should never reach here for defined signals
         return False, "unknown signal"
 
@@ -338,14 +356,14 @@ def summarize_context_coverage(snapshot: ContextCoverageSnapshot) -> str:
         "  It is not model confidence and not a guarantee of correctness."
     )
     parts.append(
-        "  In v0, the maximum score is 85% — Project Memory (+10) and"
-        " MCP/tool context (+5) are not yet implemented."
+        "  In v0, the maximum score is 95% — only MCP/tool context (+5)"
+        " is not yet implemented. Local memory v0 is active."
     )
     parts.append("")
 
     parts.append("── Next useful action " + "─" * 31)
-    parts.append(f"  → remedy brain {snapshot.job_id[:8]}")
-    parts.append(f"  → remedy trust-report {snapshot.job_id[:8]}")
+    parts.append(f"  → remedy brain graph {snapshot.job_id[:8]}")
+    parts.append(f"  → remedy brain trust {snapshot.job_id[:8]}")
 
     return "\n".join(parts)
 

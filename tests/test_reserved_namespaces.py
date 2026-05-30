@@ -19,7 +19,6 @@ def _repo_root() -> Path:
 
 RESERVED_INIT_FILES = [
     "packages/artifacts/__init__.py",
-    "packages/memory/__init__.py",
     "packages/runtimes/__init__.py",
     "packages/verification/__init__.py",
     "apps/api/__init__.py",

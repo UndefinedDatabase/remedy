@@ -65,6 +65,7 @@ from packages.orchestration.project_brain import (
     ET_EMITTED,
     ET_FUTURE_MEMORY,
     ET_FUTURE_MCP,
+    ET_HAS_MEMORY,
     ET_GOVERNED,
     ET_HAS_TASK,
     ET_INSPECTED,
@@ -78,6 +79,7 @@ from packages.orchestration.project_brain import (
     NT_JOB,
     NT_MCP,
     NT_MEMORY,
+    NT_MEMORY_ENTRY,
     NT_PATCH_INTENT,
     NT_PROJECT_PLACEHOLDER,
     NT_RUN_EVENT,
@@ -687,7 +689,7 @@ class TestExportProjectBrainJson:
         job = _make_job()
         graph = build_project_brain(job, [])
         export = export_project_brain_json(graph)
-        assert set(export.keys()) == {"version", "job_id", "nodes", "edges"}
+        assert set(export.keys()) == {"version", "job_id", "nodes", "edges", "degraded"}
 
 
 # ---------------------------------------------------------------------------
@@ -810,7 +812,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
             import sys
-            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "not-a-uuid"])
+            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", "not-a-uuid"])
             main()
         assert exc.value.code == 1
 
@@ -819,7 +821,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
             import sys
-            monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(uuid4())])
+            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(uuid4())])
             main()
         assert exc.value.code == 1
 
@@ -829,7 +831,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         out = capsys.readouterr().out
         assert "Remedy Project Brain" in out
@@ -841,7 +843,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         jsonl_files = list(runs_dir.glob("*.jsonl"))
@@ -860,7 +862,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         events = [
@@ -889,7 +891,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         raw = next(runs_dir.glob("*.jsonl")).read_text()
@@ -901,7 +903,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
@@ -912,7 +914,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -927,11 +929,11 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
-        assert set(data.keys()) == {"version", "job_id", "nodes", "edges"}
+        assert set(data.keys()) == {"version", "job_id", "nodes", "edges", "degraded"}
 
     def test_json_flag_does_not_leak_sentinels(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -962,7 +964,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
         for sentinel in [
@@ -978,7 +980,7 @@ class TestCLIBrain:
         save_job(job)
         from apps.cli.main import main
         import sys
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
         events = [
@@ -1252,3 +1254,80 @@ class TestProjectPlaceholderNode:
         d = export_project_brain_json(graph)
         types = {n["type"] for n in d["nodes"]}
         assert "project_placeholder" in types
+
+
+# ---------------------------------------------------------------------------
+# Real memory nodes in Brain
+# ---------------------------------------------------------------------------
+
+
+class TestRealMemoryNodesInBrain:
+    """Approved local memory entries appear as real 'memory' nodes."""
+
+    def test_approved_memory_creates_memory_node(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        save_job(job)
+        store_memory(key="test_k", value="test_v", job_id=str(job.id), approved=True)
+        graph = build_project_brain(job, [])
+        types = {n.type for n in graph.nodes}
+        assert NT_MEMORY_ENTRY in types
+
+    def test_unapproved_memory_not_in_brain(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        save_job(job)
+        store_memory(key="test_k", value="test_v", job_id=str(job.id), approved=False)
+        graph = build_project_brain(job, [])
+        types = {n.type for n in graph.nodes}
+        assert NT_MEMORY_ENTRY not in types
+
+    def test_memory_node_has_correct_metadata(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        save_job(job)
+        store_memory(key="my_key", value="secret_val", job_id=str(job.id),
+                     tags=["t1"], approved=True)
+        graph = build_project_brain(job, [])
+        mem_nodes = [n for n in graph.nodes if n.type == NT_MEMORY_ENTRY]
+        assert len(mem_nodes) == 1
+        meta = mem_nodes[0].metadata
+        assert meta["key"] == "my_key"
+        assert "value" not in meta, "memory.value must not leak into brain metadata"
+        assert meta["approved"] is True
+        assert meta["tags"] == ["t1"]
+
+    def test_memory_node_has_edge(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        save_job(job)
+        store_memory(key="k", value="v", job_id=str(job.id), approved=True)
+        graph = build_project_brain(job, [])
+        edge_types = {e.type for e in graph.edges}
+        assert ET_HAS_MEMORY in edge_types
+
+    def test_memory_placeholder_still_present(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        save_job(job)
+        store_memory(key="k", value="v", job_id=str(job.id), approved=True)
+        graph = build_project_brain(job, [])
+        types = {n.type for n in graph.nodes}
+        assert NT_MEMORY in types, "memory_placeholder still present for future MemPalace"
+
+    def test_memory_node_export_no_value_leak(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.memory.local_gateway import store_memory
+        job = _make_job()
+        save_job(job)
+        store_memory(key="k", value="SECRET_VALUE_42", job_id=str(job.id), approved=True)
+        graph = build_project_brain(job, [])
+        exported = export_project_brain_json(graph)
+        import json
+        exported_str = json.dumps(exported)
+        assert "SECRET_VALUE_42" not in exported_str
