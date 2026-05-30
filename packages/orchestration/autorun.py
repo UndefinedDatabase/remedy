@@ -209,16 +209,27 @@ def _run_fixture_builder(
 
     fx: dict[str, Any] = {"stage": "builder_complete"}
 
-    # 1. Create a tiny failing test in repo
-    test_path = repo / "test_fixture.py"
-    src_path = repo / "fixture_module.py"
+    # 1. Create a tiny failing test in repo — calc.py fixture
+    (repo / "tests").mkdir(parents=True, exist_ok=True)
+    test_path = repo / "tests" / "test_calc.py"
+    src_path = repo / "calc.py"
     test_content = (
-        "from fixture_module import greet\n"
+        "from calc import add, mul\n"
         "\n"
-        "def test_greet():\n"
-        "    assert greet('world') == 'Hello, world!'\n"
+        "def test_add():\n"
+        "    assert add(2, 3) == 5\n"
+        "\n"
+        "def test_mul():\n"
+        "    assert mul(4, 5) == 20\n"
     )
     test_path.write_text(test_content, encoding="utf-8")
+    # Makefile for build/test contract
+    makefile_path = repo / "Makefile"
+    makefile_path.write_text(
+        "test:\n"
+        "\tpython -m pytest tests/ -x -q\n",
+        encoding="utf-8",
+    )
 
     # 2. Source context injection
     try:
@@ -239,20 +250,24 @@ def _run_fixture_builder(
 
     # 3. Create structured patch (the "fix")
     fix_content = (
-        "def greet(name: str) -> str:\n"
-        "    return f'Hello, {name}!'\n"
+        "def add(a: int, b: int) -> int:\n"
+        "    return a + b\n"
+        "\n"
+        "\n"
+        "def mul(a: int, b: int) -> int:\n"
+        "    return a * b\n"
     )
     patch = StructuredPatch(
         intent_kind="file_ops",
         file_ops=(FileOp(
-            path="fixture_module.py",
+            path="calc.py",
             action="create",
             language="python",
             content=fix_content,
             risk="low",
-            summary="Create greet function",
+            summary="Create calc functions (add, mul)",
         ),),
-        target_paths=("fixture_module.py",),
+        target_paths=("calc.py",),
         risk="low",
         applicability="applicable",
         requires_approval=True,

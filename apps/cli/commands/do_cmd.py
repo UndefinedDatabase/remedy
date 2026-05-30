@@ -86,7 +86,10 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         project=getattr(args, "project", None),
         autonomy_level=int(getattr(args, "autonomy_level", None) or 2),
         max_cycles=int(getattr(args, "max_cycles", None) or 3),
-        enable_ui=str(getattr(args, "ui", "false")).lower() == "true",
+        enable_ui=(
+            str(getattr(args, "ui", "false")).lower() == "true"
+            and not getattr(args, "no_ui", False)
+        ),
         dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
         fixture_builder=getattr(args, "fixture_builder", False),

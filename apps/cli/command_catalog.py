@@ -1078,6 +1078,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--dry-run", "Show plan without executing", required=False, is_option=True, default="false"),
             ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
             ArgDef("--fixture-builder", "Use fixture builder for testing", required=False, is_option=True, default="false"),
+            ArgDef("--no-ui", "Suppress UI server even if --ui is set", required=False, is_option=True, default="false"),
         ),
         may_mutate_repo=True,
         may_execute_commands=True,
@@ -1146,6 +1147,16 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="smoke-help",
         description="Show smoke test instructions.",
         action_class="dev_helper",
+    ),
+    CommandEntry(
+        command_id="dev.status",
+        group_id="dev",
+        subcommand="status",
+        description="Show developer status summary.",
+        action_class="dev_helper",
+        args=(
+            ArgDef("--json", "Output JSON", required=False, is_option=True),
+        ),
     ),
 )
 

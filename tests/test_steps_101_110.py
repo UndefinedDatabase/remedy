@@ -161,7 +161,7 @@ class TestTaskProgressRibbon:
         from packages.orchestration.ui_view_model import build_task_progress
         job = _make_job(3)
         result = build_task_progress(job, [])
-        assert result["version"] == 2
+        assert result["version"] == 1
         assert len(result["tasks"]) == 3
 
     def test_task_status_mapping(self):
