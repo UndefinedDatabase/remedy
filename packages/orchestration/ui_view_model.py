@@ -397,8 +397,64 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
     # visible_counts_by_zoom — monotonic non-decreasing (Step 102 contract)
     visible_counts_by_zoom = [zl["visible_count"] for zl in zoom_levels]
 
+    # visible_node_ids_by_zoom — Step 113: subset monotonicity proof
+    visible_node_ids_by_zoom: list[list[str]] = []
+    for level in range(7):
+        ids = sorted(n["id"] for n in raw_nodes if n["visible_from_zoom"] <= level)
+        visible_node_ids_by_zoom.append(ids)
+
+    # label_counts_by_zoom — how many labels visible at each level
+    label_counts_by_zoom: list[int] = []
+    for level in range(7):
+        count = sum(1 for n in raw_nodes if n["show_label_from_zoom"] <= level)
+        label_counts_by_zoom.append(count)
+
+    # Edge flow_role enrichment — Step 114
+    for n in raw_nodes:
+        ntype = n["type"]
+        nstatus = n.get("status")
+        if ntype == "job":
+            n["flow_role"] = "origin"
+        elif ntype == "task":
+            if nstatus == "completed":
+                n["flow_role"] = "task_completed"
+            elif nstatus in ("running", "active"):
+                n["flow_role"] = "task_active"
+            else:
+                n["flow_role"] = "task_future"
+        elif ntype in ("artifact",):
+            n["flow_role"] = "artifact"
+        elif ntype in ("patch_intent",):
+            n["flow_role"] = "change"
+        elif ntype in ("approval_decision",):
+            n["flow_role"] = "approval"
+        elif ntype in ("patch_apply",):
+            n["flow_role"] = "apply"
+        elif ntype in ("patch_apply_proof",):
+            n["flow_role"] = "proof"
+        elif ntype in ("test_run", "verification"):
+            n["flow_role"] = "test"
+        elif ntype in ("decision_queue",):
+            n["flow_role"] = "decision"
+        elif ntype in ("memory_placeholder",):
+            n["flow_role"] = "memory"
+        elif ntype in ("permission_blocker",):
+            n["flow_role"] = "decision"
+        else:
+            n["flow_role"] = "system"
+        # lane = rank for simplicity
+        n["lane"] = n["rank"]
+
+    # Edge enrichment — Step 114
+    for e in edge_list:
+        src = node_map.get(e["source"])
+        tgt = node_map.get(e["target"])
+        e["source_rank"] = src["rank"] if src else 0
+        e["target_rank"] = tgt["rank"] if tgt else 0
+        e["primary_path"] = e["is_primary_chain"]
+
     return {
-        "version": 2,
+        "version": 3,
         "job_id": str(job.id),
         "layout_engine": "elk-layered",
         "direction": "RIGHT",
@@ -411,6 +467,8 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
         "full_graph_requires_explicit_toggle": True,
         "zoom_policy": _ZOOM_POLICY,
         "visible_counts_by_zoom": visible_counts_by_zoom,
+        "visible_node_ids_by_zoom": visible_node_ids_by_zoom,
+        "label_counts_by_zoom": label_counts_by_zoom,
         "layers": [
             {"level": i, "name": _ZOOM_NAMES[i], "node_count": zoom_levels[i]["visible_count"]}
             for i in range(7)
@@ -503,10 +561,11 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
                 verified = True
                 break
 
-        # Determine source
+        # Determine source — check metadata (legacy) or inputs dict
         source = "planner"
-        if hasattr(task, "metadata") and task.metadata:
-            source = task.metadata.get("source", "planner")
+        meta = getattr(task, "metadata", None) or getattr(task, "inputs", None) or {}
+        if isinstance(meta, dict):
+            source = meta.get("source", "planner")
 
         # Status mapping
         if status_val == "completed":
@@ -524,22 +583,42 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
         if source == "reviewer" and status_val == "pending":
             ribbon_status = "reviewer-suggested"
 
+        # Proof/test status from events
+        proof_status = "none"
+        test_status = "none"
+        for e in events:
+            eid = e.get("task_id") or e.get("metadata", {}).get("task_id", "")
+            if eid == str(task.id):
+                if e.get("event") == "proof_collected":
+                    proof_status = "collected"
+                elif e.get("event") == "test_run_completed":
+                    exit_code = e.get("metadata", {}).get("exit_code")
+                    test_status = "pass" if exit_code == 0 else "fail"
+
+        is_current = ribbon_status == "active"
+        is_future = ribbon_status in ("future", "pending")
+        is_reviewer = source == "reviewer"
+
         task_entry = {
             "id": str(task.id),
             "title": _short_label(task.task_type if hasattr(task, "task_type") else str(task.id)[:8]),
             "status": ribbon_status,
             "verified": verified,
             "source": source,
-            "origin_node_id": str(task.id),
             "accepted": ribbon_status != "reviewer-suggested",
             "rank": i + 1,
             "related_node_id": str(task.id),
             "short_reason": "",
+            "proof_status": proof_status,
+            "test_status": test_status,
+            "is_current": is_current,
+            "is_future": is_future,
+            "is_reviewer_suggested": is_reviewer,
         }
         tasks.append(task_entry)
 
     return {
-        "version": 1,
+        "version": 2,
         "job_id": str(job.id),
         "tasks": tasks,
     }

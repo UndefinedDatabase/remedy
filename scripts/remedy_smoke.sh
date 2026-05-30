@@ -2203,7 +2203,8 @@ print('    export-viewer: OK (manifest valid)')
     echo "--- 12an. Localhost UI server"
     UI_INFO_FILE="${_SMOKE_LOG_DIR}/ui_info.json"
     # Start server in background, --port 0 picks free port, --no-open skips browser
-    remedy ui start "${JOB_ID}" --port 0 --info-file "${UI_INFO_FILE}" &
+    # Direct form: remedy ui <job_id> (Step 111 contract)
+    remedy ui "${JOB_ID}" --port 0 --info-file "${UI_INFO_FILE}" &
     UI_PID=$!
     # Wait for info file
     for _i in $(seq 1 30); do

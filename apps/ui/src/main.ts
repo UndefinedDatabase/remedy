@@ -53,6 +53,8 @@ export interface ViewModelNode {
   is_attention: boolean;
   user_title?: string;
   user_kind?: string;
+  flow_role?: string;
+  lane?: number;
 }
 
 export interface ViewModelEdge {
@@ -92,6 +94,8 @@ export interface ViewModel {
   edges: ViewModelEdge[];
   clusters: { id: string; node_ids: string[]; count: number }[];
   visible_counts_by_zoom?: number[];
+  visible_node_ids_by_zoom?: string[][];
+  label_counts_by_zoom?: number[];
   zoom_policy?: { direction: string };
 }
 
@@ -107,15 +111,27 @@ interface TaskProgress {
 
 interface TaskItem {
   id: string;
-  task_type: string;
-  label: string;
-  status: string; // completed, active, pending, reviewer-suggested
-  order: number;
+  title: string;
+  status: string; // completed, active, pending, future, reviewer-suggested
+  rank: number;
+  related_node_id: string;
+  is_current: boolean;
+  is_future: boolean;
+  is_reviewer_suggested: boolean;
+  proof_status: string;
+  test_status: string;
+  verified: boolean;
 }
 
 // ---------------------------------------------------------------------------
 // Ribbon rendering
 // ---------------------------------------------------------------------------
+
+let ribbonClickHandler: ((nodeId: string) => void) | null = null;
+
+function setRibbonClickHandler(handler: (nodeId: string) => void) {
+  ribbonClickHandler = handler;
+}
 
 function renderRibbon(tasks: TaskItem[]) {
   const container = document.getElementById("ribbon-tasks");
@@ -126,16 +142,26 @@ function renderRibbon(tasks: TaskItem[]) {
     const el = document.createElement("div");
     let statusClass = "remedy-task-future";
     let checkContent = "";
+    let suffix = "";
     if (t.status === "completed") {
       statusClass = "remedy-task-completed";
-      checkContent = "✓";
+      checkContent = "\u2713";
     } else if (t.status === "active") {
       statusClass = "remedy-task-active";
     } else if (t.status === "reviewer-suggested") {
       statusClass = "remedy-task-reviewer-suggested";
+      suffix = " (suggested)";
+    } else if (t.status === "pending") {
+      statusClass = "remedy-task-future";
     }
     el.className = `remedy-task-item ${statusClass}`;
-    el.innerHTML = `<div class="task-check">${checkContent}</div><div class="task-label">${esc(t.label)}</div>`;
+    el.style.cursor = "pointer";
+    el.innerHTML = `<div class="task-check">${checkContent}</div><div class="task-label">${esc(t.title)}${suffix}</div>`;
+    el.addEventListener("click", () => {
+      if (ribbonClickHandler && t.related_node_id) {
+        ribbonClickHandler(t.related_node_id);
+      }
+    });
     container.appendChild(el);
   }
 }
@@ -222,6 +248,11 @@ async function main() {
         tooltip.classList.remove("visible");
       }
     },
+  });
+
+  // Wire ribbon click → node focus + detail card
+  setRibbonClickHandler((nodeId: string) => {
+    detailCard.show(nodeId);
   });
 
   window.addEventListener("resize", () => renderer.resize());

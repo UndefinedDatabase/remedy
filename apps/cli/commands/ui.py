@@ -172,7 +172,7 @@ def _cmd_ui_open(job_id_str: str) -> None:
             return
 
     print(f"No active UI session for job {job_id_str}.", file=sys.stderr)
-    print("Start one with: remedy ui start <job_id>", file=sys.stderr)
+    print("Start one with: remedy ui <job_id>", file=sys.stderr)
     sys.exit(1)
 
 

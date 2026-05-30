@@ -41,15 +41,30 @@ const ARROW_SIZE = 6;
 /**
  * Semantic zoom: higher scale (zoomed in) = higher level = more detail.
  * zoom_in_reveals_more: monotonic non-decreasing visible counts.
+ *
+ * Truth table (Step 113):
+ *   scale 0.1 -> 0 (Origin)
+ *   scale 0.3 -> 1 (Intent Path)
+ *   scale 0.6 -> 2-3 (Work/Proof Path)
+ *   scale 1.0 -> >=3 (Proof+ Path)
+ *   scale 2.0 -> >=5 (System)
+ *
+ * Wheel zoom maxes at level 5. Level 6 (Full Graph) requires explicit toggle.
  */
-function zoomLevelFromScale(scale: number): number {
+export function semanticZoomLevelFromScale(scale: number): number {
   if (scale < 0.2) return 0;
   if (scale < 0.35) return 1;
   if (scale < 0.5) return 2;
   if (scale < 0.7) return 3;
   if (scale < 1.0) return 4;
   if (scale < 1.8) return 5;
-  return 6;
+  // Wheel cannot reach level 6 — requires explicit toggle
+  return 5;
+}
+
+/** @deprecated Use semanticZoomLevelFromScale */
+function zoomLevelFromScale(scale: number): number {
+  return semanticZoomLevelFromScale(scale);
 }
 
 export async function createRenderer(
@@ -263,7 +278,13 @@ export async function createRenderer(
     }
 
     for (const { g, edge } of edgeEntries) {
-      g.visible = edge.visible_from_zoom <= effectiveLevel;
+      // Step 114: at low zoom (<=1), only primary path edges visible.
+      // Non-primary edges hidden until zoom >= their visible_from_zoom.
+      if (effectiveLevel <= 1 && !edge.is_primary_chain) {
+        g.visible = false;
+      } else {
+        g.visible = edge.visible_from_zoom <= effectiveLevel;
+      }
     }
 
     updateLabelPositions();

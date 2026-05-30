@@ -579,6 +579,32 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("worker.recommend", "policy.token"),
     ),
 
+    CommandEntry(
+        command_id="worker.resources",
+        group_id="worker",
+        subcommand="resources",
+        description="Show GPU/VRAM and loaded model resources (best-effort).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("worker.unload",),
+    ),
+    CommandEntry(
+        command_id="worker.unload",
+        group_id="worker",
+        subcommand="unload",
+        description="Unload local models from VRAM (Ollama).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--provider", "Provider to unload (default: ollama)", required=False, is_option=True, default="ollama"),
+            ArgDef("--model", "Specific model to unload", required=False, is_option=True),
+            ArgDef("--all", "Unload all loaded models", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("worker.resources",),
+    ),
+
     # ── memory ───────────────────────────────────────────────────────────
     CommandEntry(
         command_id="memory.store",
