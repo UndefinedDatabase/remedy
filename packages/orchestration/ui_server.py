@@ -324,6 +324,16 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         last_exit = test_events[-1].get("metadata", {}).get("exit_code")
         test_status = "pass" if last_exit == 0 else "fail"
 
+    # Active/latest completed task
+    active_task_id = ""
+    latest_completed_task_id = ""
+    for t in job.tasks:
+        tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
+        if tstat == "running":
+            active_task_id = str(t.id)
+        if tstat == "completed":
+            latest_completed_task_id = str(t.id)
+
     return {
         "version": 1,
         "job_id": str(job.id),
@@ -334,10 +344,19 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "node_count": node_count,
         "edge_count": 0,
         "open_decision_count": open_decisions,
+        "active_task_id": active_task_id,
+        "latest_completed_task_id": latest_completed_task_id,
         "test_status": test_status,
         "token_mode": "compact",
         "view_model_hash": vm_hash,
     }
+
+
+def _build_task_progress_json(job: Any) -> dict[str, Any]:
+    """Build task progress ribbon data."""
+    from packages.orchestration.ui_view_model import build_task_progress
+    events = _load_events(job)
+    return build_task_progress(job, events)
 
 
 def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
@@ -457,6 +476,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "brain": _build_brain_json,
                 "brain-view-model": _build_brain_view_model_json,
                 "live-state": _build_live_state_json,
+                "task-progress": _build_task_progress_json,
                 "guide": _build_guide_json,
                 "events": _build_events_json,
                 "readiness": _build_readiness_json,

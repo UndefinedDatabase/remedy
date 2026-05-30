@@ -2,7 +2,8 @@
  * Remedy Brain Canvas — PixiJS + pixi-viewport + ELK directional layout.
  *
  * Entry point. Reads job_id and token from URL params,
- * fetches brain-view-model, initializes renderer.
+ * fetches brain-view-model, initializes renderer,
+ * manages task ribbon and live polling.
  */
 
 import { createRenderer } from "./brain/renderer";
@@ -50,6 +51,8 @@ export interface ViewModelNode {
   is_origin: boolean;
   is_primary_chain: boolean;
   is_attention: boolean;
+  user_title?: string;
+  user_kind?: string;
 }
 
 export interface ViewModelEdge {
@@ -88,29 +91,123 @@ export interface ViewModel {
   nodes: ViewModelNode[];
   edges: ViewModelEdge[];
   clusters: { id: string; node_ids: string[]; count: number }[];
+  visible_counts_by_zoom?: number[];
+  zoom_policy?: { direction: string };
 }
 
+// ---------------------------------------------------------------------------
+// Task ribbon types
+// ---------------------------------------------------------------------------
+
+interface TaskProgress {
+  version: number;
+  job_id: string;
+  tasks: TaskItem[];
+}
+
+interface TaskItem {
+  id: string;
+  task_type: string;
+  label: string;
+  status: string; // completed, active, pending, reviewer-suggested
+  order: number;
+}
+
+// ---------------------------------------------------------------------------
+// Ribbon rendering
+// ---------------------------------------------------------------------------
+
+function renderRibbon(tasks: TaskItem[]) {
+  const container = document.getElementById("ribbon-tasks");
+  if (!container) return;
+
+  container.innerHTML = "";
+  for (const t of tasks) {
+    const el = document.createElement("div");
+    let statusClass = "remedy-task-future";
+    let checkContent = "";
+    if (t.status === "completed") {
+      statusClass = "remedy-task-completed";
+      checkContent = "✓";
+    } else if (t.status === "active") {
+      statusClass = "remedy-task-active";
+    } else if (t.status === "reviewer-suggested") {
+      statusClass = "remedy-task-reviewer-suggested";
+    }
+    el.className = `remedy-task-item ${statusClass}`;
+    el.innerHTML = `<div class="task-check">${checkContent}</div><div class="task-label">${esc(t.label)}</div>`;
+    container.appendChild(el);
+  }
+}
+
+function esc(s: string): string {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
 async function main() {
-  const container = document.getElementById("canvas-container")!;
+  const canvasContainer = document.getElementById("remedy-brain-canvas")!;
   const detailEl = document.getElementById("detail-card")!;
   const zoomIndicator = document.getElementById("zoom-indicator")!;
 
+  // Ribbon collapse/expand
+  const ribbon = document.getElementById("remedy-task-ribbon")!;
+  const collapseBtn = document.getElementById("ribbon-collapse");
+  const expandBtn = document.getElementById("ribbon-expand");
+  if (collapseBtn) {
+    collapseBtn.addEventListener("click", () => {
+      ribbon.classList.add("collapsed");
+      expandBtn?.classList.add("visible");
+    });
+  }
+  if (expandBtn) {
+    expandBtn.addEventListener("click", () => {
+      ribbon.classList.remove("collapsed");
+      expandBtn.classList.remove("visible");
+    });
+  }
+
+  // Follow toggle
+  const followBtn = document.getElementById("follow-toggle");
+  let followActive = false;
+  if (followBtn) {
+    followBtn.addEventListener("click", () => {
+      followActive = !followActive;
+      followBtn.classList.toggle("active", followActive);
+      followBtn.textContent = followActive ? "Following" : "Follow";
+    });
+  }
+
+  // Fetch view model
   let viewModel: ViewModel;
   try {
     viewModel = await fetchJSON<ViewModel>("brain-view-model");
   } catch (e) {
-    container.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#666">
+    canvasContainer.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#666">
       <p>Loading brain view model failed.</p>
       <p style="font-size:12px;color:#999">${e}</p>
     </div>`;
     return;
   }
 
+  // Fetch initial task progress
+  try {
+    const progress = await fetchJSON<TaskProgress>("task-progress");
+    renderRibbon(progress.tasks);
+  } catch {
+    // Task progress not available yet
+  }
+
   const detailCard = new DetailCard(detailEl, async (nodeId: string) => {
     return fetchJSON(`nodes/${nodeId}/detail`);
   });
 
-  const renderer = await createRenderer(container, viewModel, {
+  const renderer = await createRenderer(canvasContainer, viewModel, {
     onNodeClick: (nodeId: string) => detailCard.show(nodeId),
     onZoomChange: (level: number) => {
       const zl = viewModel.zoom_levels[level];
@@ -129,26 +226,48 @@ async function main() {
 
   window.addEventListener("resize", () => renderer.resize());
 
-  // Live polling (Step 95)
-  startLivePolling(viewModel, renderer);
+  // Live polling (Step 107)
+  startLivePolling(viewModel, renderer, followActive);
 }
 
-async function startLivePolling(_viewModel: ViewModel, renderer: { mergeViewModel: (vm: ViewModel) => void }) {
+async function startLivePolling(
+  _viewModel: ViewModel,
+  renderer: { mergeViewModel: (vm: ViewModel) => void },
+  _followActive: boolean,
+) {
   let lastHash = "";
+  let lastTaskHash = "";
   const poll = async () => {
     try {
-      const state = await fetchJSON<{ view_model_hash?: string }>("live-state");
+      const state = await fetchJSON<{
+        view_model_hash?: string;
+        active_task_id?: string;
+        latest_completed_task_id?: string;
+      }>("live-state");
+
       if (state.view_model_hash && state.view_model_hash !== lastHash) {
         lastHash = state.view_model_hash || "";
         const newVm = await fetchJSON<ViewModel>("brain-view-model");
+        (newVm as any).active_task_id = state.active_task_id;
         renderer.mergeViewModel(newVm);
+      }
+
+      // Update ribbon on change
+      const taskKey = `${state.active_task_id}:${state.latest_completed_task_id}`;
+      if (taskKey !== lastTaskHash) {
+        lastTaskHash = taskKey;
+        try {
+          const progress = await fetchJSON<{ tasks: TaskItem[] }>("task-progress");
+          renderRibbon(progress.tasks);
+        } catch {
+          // ignore
+        }
       }
     } catch {
       // Silently ignore — server may not have live-state yet
     }
   };
 
-  // Check reduced motion preference
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const interval = reducedMotion ? 5000 : 2000;
   setInterval(poll, interval);

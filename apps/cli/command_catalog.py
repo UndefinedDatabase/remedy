@@ -101,6 +101,7 @@ GROUPS: dict[str, GroupDef] = {
     "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions."),
     "ui": GroupDef("ui", "UI", "Localhost UI server — primary interactive experience."),
     "do": GroupDef("do", "Do", "High-level guided autorun — one command to start a Remedy run."),
+    "review": GroupDef("review", "Review", "Reviewer recommendations — suggest, accept, reject follow-up tasks."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -1054,6 +1055,53 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=True,
         may_execute_commands=True,
+    ),
+
+    # ── review ───────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="review.run",
+        group_id="review",
+        subcommand="run",
+        description="Run reviewer to suggest follow-up tasks.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--after-task", "Task ID to review after", required=False, is_option=True),
+            ArgDef("--json", "Output JSON", required=False, is_option=True),
+        ),
+    ),
+    CommandEntry(
+        command_id="review.list",
+        group_id="review",
+        subcommand="list",
+        description="List reviewer recommendations for a job.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--json", "Output JSON", required=False, is_option=True),
+        ),
+    ),
+    CommandEntry(
+        command_id="review.accept",
+        group_id="review",
+        subcommand="accept",
+        description="Accept a reviewer recommendation (append as task).",
+        action_class="apply_write",
+        args=(
+            _JOB_ID,
+            ArgDef("recommendation_id", "Recommendation ID to accept", required=True),
+        ),
+    ),
+    CommandEntry(
+        command_id="review.reject",
+        group_id="review",
+        subcommand="reject",
+        description="Reject a reviewer recommendation.",
+        action_class="apply_write",
+        args=(
+            _JOB_ID,
+            ArgDef("recommendation_id", "Recommendation ID to reject", required=True),
+        ),
     ),
 
     # ── dev ──────────────────────────────────────────────────────────────

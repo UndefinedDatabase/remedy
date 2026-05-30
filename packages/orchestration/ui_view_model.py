@@ -24,6 +24,7 @@ Public API::
 
     build_brain_view_model(job, events) -> dict
     build_node_detail(job, events, node_id) -> dict
+    build_task_progress(job, events) -> dict
 """
 
 from __future__ import annotations
@@ -165,6 +166,41 @@ _EDGE_KIND_MAP: dict[str, tuple[str, str]] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Human-readable node labels — Step 105
+# ---------------------------------------------------------------------------
+
+_HUMAN_NODE_LABELS: dict[str, tuple[str, str]] = {
+    "job": ("Goal", "The goal you asked Remedy to achieve"),
+    "task": ("Task", "A step toward achieving the goal"),
+    "artifact": ("Output", "Content produced by a task"),
+    "patch_intent": ("Proposed change", "A code change proposal for review"),
+    "approval_decision": ("Approval", "A human approval or rejection"),
+    "patch_apply": ("Applied change", "A code change that was applied"),
+    "patch_apply_proof": ("Proof", "Evidence that a change was applied correctly"),
+    "test_run": ("Test result", "Result of running automated tests"),
+    "verification": ("Verification", "Automated quality check result"),
+    "permission_blocker": ("Needs permission", "Action blocked until permission is granted"),
+    "decision_queue": ("Needs decision", "Something requires your attention"),
+    "run_event": ("Event", "A logged event in the workflow"),
+    "agent_loop": ("Agent cycle", "One cycle of the automation loop"),
+    "context_budget": ("Context budget", "Token budget for this job"),
+    "context_coverage": ("Context coverage", "How much context is available"),
+    "constitution": ("Project rules", "Rules extracted from your project"),
+    "project_placeholder": ("Project", "Project configuration"),
+    "memory_placeholder": ("Memory", "Learned facts (future)"),
+    "mcp_placeholder": ("Tool", "External tool integration (future)"),
+}
+
+# Zoom policy object — returned in view model for frontend contract
+_ZOOM_POLICY = {
+    "direction": "zoom_in_reveals_more",
+    "zoom_out_reduces_complexity": True,
+    "labels_follow_screen_space": True,
+    "full_graph_requires_explicit_toggle": True,
+}
+
+
 def _importance(node_type: str, status: str | None, risk: str | None) -> float:
     """Compute 0-1 importance score for a node."""
     base = {
@@ -271,7 +307,9 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
         raw_nodes.append({
             "id": node.id,
             "type": ntype,
-            "kind": ntype.replace("_", " "),
+            "kind": _HUMAN_NODE_LABELS.get(ntype, (ntype.replace("_", " "), ""))[0],
+            "user_title": _HUMAN_NODE_LABELS.get(ntype, (ntype.replace("_", " "), ""))[0],
+            "user_kind": _HUMAN_NODE_LABELS.get(ntype, (ntype.replace("_", " "), ""))[1],
             "label_short": _short_label(node.label),
             "label_full": node.label,
             "layer": zoom,
@@ -356,6 +394,9 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
             "visible_count": len(visible),
         })
 
+    # visible_counts_by_zoom — monotonic non-decreasing (Step 102 contract)
+    visible_counts_by_zoom = [zl["visible_count"] for zl in zoom_levels]
+
     return {
         "version": 2,
         "job_id": str(job.id),
@@ -368,6 +409,8 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
         "max_initial_nodes": 1,
         "advanced_full_graph_available": True,
         "full_graph_requires_explicit_toggle": True,
+        "zoom_policy": _ZOOM_POLICY,
+        "visible_counts_by_zoom": visible_counts_by_zoom,
         "layers": [
             {"level": i, "name": _ZOOM_NAMES[i], "node_count": zoom_levels[i]["visible_count"]}
             for i in range(7)
@@ -441,3 +484,62 @@ def build_node_detail(job: Any, events: list[dict[str, Any]], node_id: str) -> d
     if commands:
         result["copy_command"] = str(commands[0])
     return result
+
+
+def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build task progress ribbon data — Step 104."""
+    from packages.core.models import RunState
+
+    tasks = []
+    for i, task in enumerate(job.tasks):
+        status_val = task.status
+        if hasattr(status_val, "value"):
+            status_val = status_val.value
+
+        # Determine verified status from events
+        verified = False
+        for e in events:
+            if e.get("event") == "task_run_completed" and e.get("task_id") == str(task.id):
+                verified = True
+                break
+
+        # Determine source
+        source = "planner"
+        if hasattr(task, "metadata") and task.metadata:
+            source = task.metadata.get("source", "planner")
+
+        # Status mapping
+        if status_val == "completed":
+            ribbon_status = "completed"
+        elif status_val == "running":
+            ribbon_status = "active"
+        elif status_val == "pending":
+            ribbon_status = "pending"
+        elif status_val == "failed":
+            ribbon_status = "active"  # show as needs attention
+        else:
+            ribbon_status = "future"
+
+        # Reviewer-suggested tasks
+        if source == "reviewer" and status_val == "pending":
+            ribbon_status = "reviewer-suggested"
+
+        task_entry = {
+            "id": str(task.id),
+            "title": _short_label(task.task_type if hasattr(task, "task_type") else str(task.id)[:8]),
+            "status": ribbon_status,
+            "verified": verified,
+            "source": source,
+            "origin_node_id": str(task.id),
+            "accepted": ribbon_status != "reviewer-suggested",
+            "rank": i + 1,
+            "related_node_id": str(task.id),
+            "short_reason": "",
+        }
+        tasks.append(task_entry)
+
+    return {
+        "version": 1,
+        "job_id": str(job.id),
+        "tasks": tasks,
+    }
