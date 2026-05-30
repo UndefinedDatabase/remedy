@@ -1,12 +1,13 @@
 """
-UI App Shell — single-page HTML shell for the Remedy localhost UI.
+UI App Shell (Legacy Fallback) — inline HTML shell for the Remedy localhost UI.
+
+**Status: Legacy fallback.**  The primary UI is now the PixiJS-based semantic
+brain canvas served from built assets in ``apps/ui/dist/``.  This module is
+used only as a fallback when the built frontend is not available.
 
 Produces a self-contained HTML page with embedded CSS/JS that fetches
 job data from the localhost API endpoints.  No external assets, CDN,
 npm, or build step.
-
-Visual direction: bright / white / ice / soft teal.
-Calm entry UX — dashboard first, graph behind "Explore Brain" button.
 
 Public API::
 

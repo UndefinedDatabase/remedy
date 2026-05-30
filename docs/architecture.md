@@ -1560,7 +1560,7 @@ No LAN URLs, no PID files for static viewer.
 
 The static viewer frontend consumes only `viewer_data.json` and embedded JSON.
 
-**Localhost UI (Step 80):** A read-only HTTP server (`remedy ui start <job_id>`) is allowed for interactive UI preview. It binds only 127.0.0.1, requires a per-run token, serves no mutation endpoints, and returns only safe summaries. Static export remains available via `remedy brain export-viewer` for offline/share use.
+**Localhost UI (Steps 80, 83-90):** The **primary interactive experience** is `remedy ui start <job_id>`, a read-only HTTP server that serves the PixiJS-based semantic brain canvas from `apps/ui/dist/`. It binds only 127.0.0.1, requires a per-run token, serves no mutation endpoints, and returns only safe summaries. The frontend uses PixiJS + pixi-viewport + d3-force for smooth wheel zoom, drag/pan, and semantic zoom layering (6 levels from origin to full graph). Additional commands: `remedy ui latest` (open most recent session), `remedy ui status` (list sessions), `remedy ui stop` (stop all sessions), `remedy ui open <job_id>` (open specific session). Session state is persisted in `.data/ui/sessions/`. Static export remains available via `remedy brain view` for offline/share use (legacy/static snapshot only).
 
 **Constitution loading is advisory.**  If the attached repo path is absent, stale, or inaccessible, the viewer continues with `constitution=None` and prints a safe warning to stderr:
 

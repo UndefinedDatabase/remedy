@@ -1,5 +1,9 @@
 """
-Brain Viewer — local read-only static HTML viewer for the Project Brain Graph.
+Brain Viewer (Legacy/Static) — static HTML snapshot export for the Project Brain Graph.
+
+**Status: Legacy.** The primary interactive experience is now ``remedy ui start``
+which serves the PixiJS-based semantic brain canvas at localhost.  This module
+remains available as a static snapshot/export tool via ``remedy brain view``.
 
 Generates a self-contained index.html (with embedded viewer data) under
 REMEDY_DATA_DIR/viewers/<job_id>/.  The viewer consumes only the existing

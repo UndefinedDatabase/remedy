@@ -261,6 +261,40 @@ def _build_guide_json(job: Any) -> dict[str, Any]:
         return {"version": 1, "cards": [], "error": "guidance unavailable"}
 
 
+def _build_brain_view_model_json(job: Any) -> dict[str, Any]:
+    """Build semantic zoom view-model for the PixiJS brain canvas."""
+    from packages.orchestration.ui_view_model import build_brain_view_model
+    events = _load_events(job)
+    return build_brain_view_model(job, events)
+
+
+def _build_node_detail_json(job: Any, node_id: str) -> dict[str, Any]:
+    """Build compact node detail for the floating card."""
+    from packages.orchestration.ui_view_model import build_node_detail
+    events = _load_events(job)
+    return build_node_detail(job, events, node_id)
+
+
+def _get_frontend_dist() -> Path | None:
+    """Return path to built PixiJS frontend dist/ if it exists."""
+    dist = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "dist"
+    index = dist / "index.html"
+    if index.is_file():
+        return dist
+    return None
+
+
+def _load_frontend(job_id: str, token: str) -> str:
+    """Load frontend HTML — prefer PixiJS build, fall back to legacy shell."""
+    dist = _get_frontend_dist()
+    if dist is not None:
+        html = (dist / "index.html").read_text(encoding="utf-8")
+        html = html.replace("__JOB_ID__", job_id).replace("__TOKEN__", token)
+        return html
+    from packages.orchestration.ui_app_shell import build_app_shell
+    return build_app_shell(job_id, token)
+
+
 def _build_context_budget_json(job: Any) -> dict[str, Any]:
     """Build safe context budget payload."""
     try:
@@ -301,6 +335,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._send_html(200, self.app_html)
             return
 
+        # Static assets from PixiJS dist/ (JS/CSS bundles)
+        if path.startswith("/assets/"):
+            self._serve_static(path)
+            return
+
         # API routes — token required
         token = (qs.get("token") or [""])[0]
         if token != self.server_token:
@@ -329,6 +368,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             handlers = {
                 "dashboard": _build_dashboard,
                 "brain": _build_brain_json,
+                "brain-view-model": _build_brain_view_model_json,
                 "guide": _build_guide_json,
                 "events": _build_events_json,
                 "readiness": _build_readiness_json,
@@ -338,6 +378,18 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             if handler:
                 self._send_json(200, handler(job))
                 return
+
+        # /api/jobs/<job_id>/nodes/<node_id>/detail
+        if (len(parts) == 7 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "nodes" and parts[6] == "detail"):
+            job_id_str = parts[3]
+            node_id = parts[5]
+            job, err = _load_job(job_id_str)
+            if err:
+                self._send_json(*err)
+                return
+            self._send_json(200, _build_node_detail_json(job, node_id))
+            return
 
         self._send_json(*_safe_error(404, "not found"))
 
@@ -365,6 +417,43 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    _MIME_TYPES: dict[str, str] = {
+        ".js": "application/javascript",
+        ".css": "text/css",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".woff2": "font/woff2",
+        ".json": "application/json",
+    }
+
+    def _serve_static(self, url_path: str) -> None:
+        """Serve static files from PixiJS dist/assets/. Path-traversal safe."""
+        dist = _get_frontend_dist()
+        if dist is None:
+            self._send_json(*_safe_error(404, "not found"))
+            return
+        # Resolve and ensure within dist/
+        try:
+            target = (dist / url_path.lstrip("/")).resolve()
+            if not str(target).startswith(str(dist.resolve())):
+                self._send_json(*_safe_error(403, "forbidden"))
+                return
+            if not target.is_file():
+                self._send_json(*_safe_error(404, "not found"))
+                return
+        except (ValueError, OSError):
+            self._send_json(*_safe_error(404, "not found"))
+            return
+        suffix = target.suffix.lower()
+        content_type = self._MIME_TYPES.get(suffix, "application/octet-stream")
+        body = target.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "public, max-age=31536000, immutable")
         self.end_headers()
         self.wfile.write(body)
 
@@ -399,9 +488,8 @@ def start_ui_server(
     if token is None:
         token = secrets.token_urlsafe(24)
 
-    # Import app shell
-    from packages.orchestration.ui_app_shell import build_app_shell
-    app_html = build_app_shell(job_id, token)
+    # Prefer built PixiJS frontend; fall back to legacy inline shell
+    app_html = _load_frontend(job_id, token)
 
     # Create handler class with bound state
     handler_class = type(

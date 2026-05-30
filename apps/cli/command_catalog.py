@@ -1000,6 +1000,38 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         related=("brain.view", "dashboard.job"),
     ),
+    CommandEntry(
+        command_id="ui.latest",
+        group_id="ui",
+        subcommand="latest",
+        description="Open the most recently started UI session in a browser.",
+        action_class="read_only",
+        args=(),
+    ),
+    CommandEntry(
+        command_id="ui.status",
+        group_id="ui",
+        subcommand="status",
+        description="Show status of all UI sessions.",
+        action_class="read_only",
+        args=(),
+    ),
+    CommandEntry(
+        command_id="ui.stop",
+        group_id="ui",
+        subcommand="stop",
+        description="Stop all running UI sessions.",
+        action_class="read_only",
+        args=(),
+    ),
+    CommandEntry(
+        command_id="ui.open",
+        group_id="ui",
+        subcommand="open",
+        description="Open browser for a specific job UI session.",
+        action_class="read_only",
+        args=(_JOB_ID,),
+    ),
 
     # ── dev ──────────────────────────────────────────────────────────────
     CommandEntry(

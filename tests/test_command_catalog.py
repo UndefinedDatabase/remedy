@@ -173,7 +173,7 @@ class TestRequiredCommands:
         "brain.trust", "brain.timeline",
         "policy.contract", "policy.token",
         "worker.list",
-        "ui.start",
+        "ui.start", "ui.latest", "ui.status", "ui.stop", "ui.open",
     )
 
     def test_all_required_commands_exist(self) -> None:

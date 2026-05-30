@@ -211,3 +211,6 @@ packages.zip
 .data/
 
 .brain/
+
+# Node.js (apps/ui frontend)
+node_modules/
