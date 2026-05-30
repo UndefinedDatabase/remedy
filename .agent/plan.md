@@ -1,22 +1,20 @@
-# Plan — Steps 101-110
+# Plan — Steps 111-116
 
 ## Goal
-UX contract reset, correct semantic zoom, forward flow, task ribbon, live growth, reviewer loop, autocoder closure.
+UI CLI contract fix, resource cleanup, semantic zoom v4, forward flow v3, task ribbon v2, autocoder E2E.
 
 ## Current Step
-All steps completed. 3048 tests passing.
+All steps complete. Final review and commit.
 
 ## Steps
-- [x] Step 101: Smoke/UX contract reset — replaced old panel markers with new graph+ribbon contract
-- [x] Step 102: Correct semantic zoom direction v3 — zoom in reveals more, zoom out simplifies
-- [x] Step 103: Forward flow layout v2 — directed left-to-right, no radial/starburst
-- [x] Step 104: Task progress ribbon v1 — left-side collapsible checklist
-- [x] Step 105: Minimal meaning layer v2 — human node labels, no internal jargon
-- [x] Step 106: Atmospheric motion v1 — subtle particles, pulse, birth animation
-- [x] Step 107: Live growth UX v2 — live-state polling, ribbon updates, follow toggle
-- [x] Step 108: Reviewer recommendation loop v1 — reviewer provider, decision queue, CLI
-- [x] Step 109: Source context injection finalization — already complete from Step 97
-- [x] Step 110: Structured code patch/apply/test loop v1 — already complete from Steps 98-99 + autorun
+- [x] Step 111: `remedy ui <job_id>` direct form (default-command rewrite in grouped.py)
+- [x] Step 112: `worker resources` + `worker unload` commands (no shell=True)
+- [x] Step 113: visible_node_ids_by_zoom, label_counts_by_zoom, subset monotonicity, wheel max level 5
+- [x] Step 114: flow_role, lane, source_rank/target_rank/primary_path on edges, low-zoom edge filtering
+- [x] Step 115: Task progress v2 with proof_status, test_status, is_current, is_future, is_reviewer_suggested
+- [x] Step 116: Fixture builder E2E slice — source context, structured patch, apply, test, proof
 
-## Risks
-- None active. All findings resolved.
+## Tests
+- 54 new tests in test_steps_111_116.py
+- 3102 total tests passing
+- Frontend builds clean (Vite)

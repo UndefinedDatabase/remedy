@@ -168,8 +168,13 @@ def run_autorun(
     # Phase 4: Run builder (if autonomy >= 2)
     if autonomy_level >= 2:
         if fixture_builder:
-            _run_fixture_builder(job, goal, repo, data_dir)
-            result.stage = "builder_complete"
+            fx_result = _run_fixture_builder(job, goal, repo, data_dir, autonomy_level)
+            result.stage = fx_result.get("stage", "builder_complete")
+            # Merge fixture result into autorun result events
+            for key in ("source_context_injected", "structured_patch_created",
+                        "approval_required", "source_patch_applied", "tests_passed"):
+                if key in fx_result:
+                    result.events.append({"event": key, "value": str(fx_result[key])})
         else:
             # Real builder would go here — requires worker adapter
             result.stage = "builder_skipped_no_worker"
@@ -190,20 +195,122 @@ def run_autorun(
     return result
 
 
-def _run_fixture_builder(job: Any, goal: str, repo: Path, data_dir: str | Path) -> None:
-    """Fixture builder for smoke testing — deterministic, no LLM."""
+def _run_fixture_builder(
+    job: Any, goal: str, repo: Path, data_dir: str | Path, autonomy_level: int,
+) -> dict[str, Any]:
+    """Fixture builder — deterministic E2E autocoder slice, no LLM.
+
+    Creates a failing test, builds structured patch to fix it,
+    applies, runs test, records proof. Step 116.
+    """
+    from packages.orchestration.source_apply import apply_structured_patch
+    from packages.orchestration.structured_patch import FileOp, StructuredPatch
     from packages.orchestration.timeline import append_run_event
 
-    # Look for test files to understand what needs to pass
-    test_files = list(repo.glob("**/test_*.py")) + list(repo.glob("**/*_test.py"))
-    source_files = [f for f in repo.glob("**/*.py") if "test" not in f.name and f.name != "__pycache__"]
+    fx: dict[str, Any] = {"stage": "builder_complete"}
 
-    # Create a simple structured patch intent
-    _emit(data_dir, job.id, "fixture_builder_run", {
-        "goal": goal[:200],
-        "test_files_found": len(test_files),
-        "source_files_found": len(source_files),
+    # 1. Create a tiny failing test in repo
+    test_path = repo / "test_fixture.py"
+    src_path = repo / "fixture_module.py"
+    test_content = (
+        "from fixture_module import greet\n"
+        "\n"
+        "def test_greet():\n"
+        "    assert greet('world') == 'Hello, world!'\n"
+    )
+    test_path.write_text(test_content, encoding="utf-8")
+
+    # 2. Source context injection
+    try:
+        from packages.orchestration.source_context import inject_source_context
+        ctx = inject_source_context(job, repo, data_dir=str(data_dir))
+        fx["source_context_injected"] = True
+        _emit(data_dir, job.id, "source_context_injected", {
+            "file_count": ctx.file_count,
+            "manifest_count": ctx.manifest_count,
+            "test_file_count": ctx.test_file_count,
+            "estimated_tokens": ctx.estimated_tokens,
+            "mode": ctx.mode,
+            "truncated": ctx.truncated,
+            "selection_hash": ctx.selection_hash,
+        })
+    except Exception:
+        fx["source_context_injected"] = False
+
+    # 3. Create structured patch (the "fix")
+    fix_content = (
+        "def greet(name: str) -> str:\n"
+        "    return f'Hello, {name}!'\n"
+    )
+    patch = StructuredPatch(
+        intent_kind="file_ops",
+        file_ops=(FileOp(
+            path="fixture_module.py",
+            action="create",
+            language="python",
+            content=fix_content,
+            risk="low",
+            summary="Create greet function",
+        ),),
+        target_paths=("fixture_module.py",),
+        risk="low",
+        applicability="applicable",
+        requires_approval=True,
+    )
+    _emit(data_dir, job.id, "structured_patch_intent_created", {
+        "intent_kind": patch.intent_kind,
+        "target_path_count": len(patch.target_paths),
+        "risk": patch.risk,
+        "applicability": patch.applicability,
+        "requires_approval": patch.requires_approval,
     })
+    fx["structured_patch_created"] = True
+    fx["approval_required"] = patch.requires_approval
+
+    # 4. Apply patch (fixture auto-approves)
+    if autonomy_level >= 3:
+        apply_result = apply_structured_patch(
+            patch, repo, data_dir=str(data_dir), job_id=job.id,
+        )
+        fx["source_patch_applied"] = apply_result.success
+    else:
+        fx["source_patch_applied"] = False
+
+    # 5. Run test (if autonomy >= 4)
+    if autonomy_level >= 4 and fx.get("source_patch_applied"):
+        import subprocess
+        import sys as _sys
+        try:
+            proc = subprocess.run(
+                [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q", "--tb=short", "--no-header"],
+                capture_output=True, text=True, timeout=30,
+                cwd=str(repo),
+            )
+            passed = proc.returncode == 0
+            fx["tests_passed"] = passed
+            _emit(data_dir, job.id, "test_run_completed", {
+                "exit_code": proc.returncode,
+                "passed": passed,
+                "fixture": True,
+            })
+            # Record proof
+            if passed:
+                import hashlib
+                proof_hash = hashlib.sha256(
+                    (fix_content + test_content).encode()
+                ).hexdigest()[:16]
+                _emit(data_dir, job.id, "proof_collected", {
+                    "content_hash": proof_hash,
+                    "source": "fixture_test",
+                    "test_passed": True,
+                })
+                fx["stage"] = "proof_collected"
+        except (subprocess.TimeoutExpired, OSError):
+            fx["tests_passed"] = False
+    else:
+        fx["tests_passed"] = False
+
+    return fx
 
 
 def _autonomy_label(level: int) -> str:

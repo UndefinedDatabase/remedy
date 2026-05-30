@@ -54,7 +54,7 @@ class TestBrainViewModel:
         job, events = self._make_graph_and_events()
         vm = build_brain_view_model(job, events)
 
-        assert vm["version"] == 2
+        assert vm["version"] == 3
         assert "nodes" in vm
         assert "edges" in vm
         assert "layers" in vm

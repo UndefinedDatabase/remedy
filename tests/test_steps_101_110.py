@@ -131,8 +131,8 @@ class TestSemanticZoomDirection:
         src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts").read_text()
         # In correct mapping: scale < 0.2 → 0 (fewest nodes when zoomed out)
         assert "if (scale < 0.2) return 0;" in src
-        # And scale >= 1.8 → 6 (most nodes when zoomed in)
-        assert "return 6;" in src
+        # Wheel maxes at level 5 (Step 113: full graph requires explicit toggle)
+        assert "return 5;" in src
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ class TestTaskProgressRibbon:
         from packages.orchestration.ui_view_model import build_task_progress
         job = _make_job(3)
         result = build_task_progress(job, [])
-        assert result["version"] == 1
+        assert result["version"] == 2
         assert len(result["tasks"]) == 3
 
     def test_task_status_mapping(self):

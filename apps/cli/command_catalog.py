@@ -579,6 +579,32 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("worker.recommend", "policy.token"),
     ),
 
+    CommandEntry(
+        command_id="worker.resources",
+        group_id="worker",
+        subcommand="resources",
+        description="Show GPU/VRAM and loaded model resources (best-effort).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("worker.unload",),
+    ),
+    CommandEntry(
+        command_id="worker.unload",
+        group_id="worker",
+        subcommand="unload",
+        description="Unload local models from VRAM (Ollama).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--provider", "Provider to unload (default: ollama)", required=False, is_option=True, default="ollama"),
+            ArgDef("--model", "Specific model to unload", required=False, is_option=True),
+            ArgDef("--all", "Unload all loaded models", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("worker.resources",),
+    ),
+
     # ── memory ───────────────────────────────────────────────────────────
     CommandEntry(
         command_id="memory.store",
@@ -997,7 +1023,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("--port", "Port number (0 = auto, default: 8787)", required=False, is_option=True, default="8787"),
             ArgDef("--host", "Bind host (only 127.0.0.1 allowed)", required=False, is_option=True, default="127.0.0.1"),
-            ArgDef("--open", "Open browser (default: false)", required=False, is_option=True, default="false"),
+            ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
             ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
         ),
         related=("brain.view", "dashboard.job"),

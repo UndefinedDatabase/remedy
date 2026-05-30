@@ -93,8 +93,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--port", default=arg.default, help=arg.help)
             elif arg.name == "--host":
                 parser.add_argument("--host", default=arg.default, help=arg.help)
-            elif arg.name == "--open":
-                parser.add_argument("--open", default=arg.default, help=arg.help)
+            elif arg.name == "--no-open":
+                parser.add_argument("--no-open", action="store_true", dest="no_open", help=arg.help)
             elif arg.name == "--info-file":
                 parser.add_argument("--info-file", default=None, dest="info_file", help=arg.help)
             elif arg.name == "--out":
@@ -109,6 +109,14 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--ui", default=arg.default, help=arg.help)
             elif arg.name == "--after-task":
                 parser.add_argument("--after-task", default=None, dest="after_task", help=arg.help)
+            elif arg.name == "--provider":
+                parser.add_argument("--provider", default=arg.default, help=arg.help)
+            elif arg.name == "--model":
+                parser.add_argument("--model", default=None, help=arg.help)
+            elif arg.name == "--all":
+                parser.add_argument("--all", action="store_true", dest="all", help=arg.help)
+            elif arg.name == "--no-ui":
+                parser.add_argument("--no-ui", action="store_true", dest="no_ui", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:
@@ -239,6 +247,24 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     parser = build_parser()
+
+    # ---------------------------------------------------------------------------
+    # Default-command support: ``remedy ui <job_id>`` → ``remedy ui start <job_id>``
+    # If the token after a group name is NOT a known subcommand and does not
+    # start with '-', rewrite argv to inject the default subcommand.
+    # ---------------------------------------------------------------------------
+    _DEFAULT_COMMAND: dict[str, str] = {"ui": "start"}
+
+    raw = argv if argv is not None else sys.argv[1:]
+    if (
+        len(raw) >= 2
+        and raw[0] in _DEFAULT_COMMAND
+        and raw[1] not in {c.subcommand for c in get_commands_for_group(raw[0])}
+        and not raw[1].startswith("-")
+    ):
+        default_sub = _DEFAULT_COMMAND[raw[0]]
+        raw = [raw[0], default_sub] + raw[1:]
+        argv = raw
 
     # Intercept argparse errors for clean output
     try:

@@ -55,13 +55,21 @@ def _cmd_do(
     )
 
     if json_output:
-        print(json.dumps({
+        out: dict = {
+            "version": 1,
             "job_id": result.job_id,
             "stage": result.stage,
             "cycles_run": result.cycles_run,
             "ui_url": result.ui_url,
             "error": result.error,
-        }, indent=2))
+        }
+        # Merge fixture/E2E event flags (Step 116)
+        for ev in result.events:
+            key = ev.get("event", "")
+            val = ev.get("value", "")
+            if key:
+                out[key] = val == "True"
+        print(json.dumps(out, indent=2))
     else:
         print(f"Job: {result.job_id}")
         print(f"Stage: {result.stage}")

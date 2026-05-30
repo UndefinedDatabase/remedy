@@ -117,9 +117,148 @@ def _cmd_worker_explain(job_id_str: str, *, json_output: bool = False) -> None:
             print(f"  {marker} {c.provider_id}: score={c.score} ({c.reason})")
 
 
+def _cmd_worker_resources(*, json_output: bool = False) -> None:
+    """Best-effort GPU/VRAM and loaded model report."""
+    import shutil
+    import subprocess
+
+    result: dict = {"version": 1, "ollama": None, "gpu": None}
+
+    # Ollama loaded models
+    if shutil.which("ollama"):
+        try:
+            proc = subprocess.run(
+                ["ollama", "ps"],
+                capture_output=True, text=True, timeout=10,
+            )
+            lines = proc.stdout.strip().splitlines()
+            models = []
+            for line in lines[1:]:  # skip header
+                parts = line.split()
+                if parts:
+                    models.append({"name": parts[0], "raw": line.strip()})
+            result["ollama"] = {"available": True, "loaded_models": models}
+        except (subprocess.TimeoutExpired, OSError):
+            result["ollama"] = {"available": True, "error": "ollama ps failed"}
+    else:
+        result["ollama"] = {"available": False}
+
+    # GPU memory via nvidia-smi
+    if shutil.which("nvidia-smi"):
+        try:
+            proc = subprocess.run(
+                ["nvidia-smi", "--query-gpu=memory.used,memory.total,name", "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=10,
+            )
+            gpus = []
+            for line in proc.stdout.strip().splitlines():
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 3:
+                    gpus.append({"used_mb": int(parts[0]), "total_mb": int(parts[1]), "name": parts[2]})
+            result["gpu"] = {"available": True, "devices": gpus}
+        except (subprocess.TimeoutExpired, OSError, ValueError):
+            result["gpu"] = {"available": True, "error": "nvidia-smi failed"}
+    else:
+        result["gpu"] = {"available": False}
+
+    if json_output:
+        print(_json.dumps(result, sort_keys=True))
+    else:
+        print("Worker Resources")
+        ol = result["ollama"]
+        if ol and ol.get("available"):
+            models = ol.get("loaded_models", [])
+            if models:
+                print(f"  Ollama: {len(models)} model(s) loaded")
+                for m in models:
+                    print(f"    - {m['name']}")
+            else:
+                print("  Ollama: no models loaded")
+        else:
+            print("  Ollama: not available")
+        gpu = result["gpu"]
+        if gpu and gpu.get("available"):
+            for g in gpu.get("devices", []):
+                print(f"  GPU: {g['name']} ({g['used_mb']}/{g['total_mb']} MB)")
+        else:
+            print("  GPU: nvidia-smi not available")
+
+
+def _cmd_worker_unload(
+    *,
+    provider: str = "ollama",
+    model: str | None = None,
+    unload_all: bool = False,
+    json_output: bool = False,
+) -> None:
+    """Unload models from VRAM. No shell=True."""
+    import shutil
+    import subprocess
+
+    if provider != "ollama":
+        print(f"Error: unsupported provider for unload: {provider}", file=sys.stderr)
+        sys.exit(1)
+
+    if not shutil.which("ollama"):
+        msg = "ollama not found — no models to unload"
+        if json_output:
+            print(_json.dumps({"version": 1, "error": msg}))
+        else:
+            print(msg)
+        return
+
+    targets: list[str] = []
+    if model:
+        targets = [model]
+    elif unload_all:
+        # Get loaded models from ollama ps
+        try:
+            proc = subprocess.run(
+                ["ollama", "ps"],
+                capture_output=True, text=True, timeout=10,
+            )
+            for line in proc.stdout.strip().splitlines()[1:]:
+                parts = line.split()
+                if parts:
+                    targets.append(parts[0])
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+    else:
+        print("Error: specify --model NAME or --all", file=sys.stderr)
+        sys.exit(1)
+
+    results: list[dict] = []
+    for t in targets:
+        try:
+            proc = subprocess.run(
+                ["ollama", "stop", t],
+                capture_output=True, text=True, timeout=30,
+            )
+            results.append({"model": t, "stopped": proc.returncode == 0, "error": proc.stderr.strip() or None})
+        except (subprocess.TimeoutExpired, OSError) as e:
+            results.append({"model": t, "stopped": False, "error": str(e)})
+
+    out = {"version": 1, "provider": provider, "attempted": len(targets), "results": results}
+    if json_output:
+        print(_json.dumps(out, sort_keys=True))
+    else:
+        for r in results:
+            status = "stopped" if r["stopped"] else f"failed ({r['error']})"
+            print(f"  {r['model']}: {status}")
+        if not results:
+            print("  No models to unload.")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "worker.list": lambda args: _cmd_workers(json_output=args.json),
     "worker.recommend": lambda args: _cmd_worker_recommend(args.job_id, json_output=args.json),
     "worker.show": lambda args: _cmd_worker_show(args.provider_id, json_output=args.json),
     "worker.explain": lambda args: _cmd_worker_explain(args.job_id, json_output=args.json),
+    "worker.resources": lambda args: _cmd_worker_resources(json_output=args.json),
+    "worker.unload": lambda args: _cmd_worker_unload(
+        provider=getattr(args, "provider", None) or "ollama",
+        model=getattr(args, "model", None),
+        unload_all=getattr(args, "all", False),
+        json_output=args.json,
+    ),
 }
