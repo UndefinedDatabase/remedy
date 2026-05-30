@@ -359,6 +359,13 @@ def _build_task_progress_json(job: Any) -> dict[str, Any]:
     return build_task_progress(job, events)
 
 
+def _build_next_action_json(job: Any) -> dict[str, Any]:
+    """Build next-action suggestion."""
+    from packages.orchestration.ui_view_model import build_next_action
+    events = _load_events(job)
+    return build_next_action(job, events)
+
+
 def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
     """Return safe event summaries since cursor position."""
     events = _load_events(job)
@@ -477,6 +484,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "brain-view-model": _build_brain_view_model_json,
                 "live-state": _build_live_state_json,
                 "task-progress": _build_task_progress_json,
+                "next-action": _build_next_action_json,
                 "guide": _build_guide_json,
                 "events": _build_events_json,
                 "readiness": _build_readiness_json,

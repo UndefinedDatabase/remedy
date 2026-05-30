@@ -209,10 +209,20 @@ def _run_fixture_builder(
 
     fx: dict[str, Any] = {"stage": "builder_complete"}
 
-    # 1. Create a tiny failing test in repo — calc.py fixture
+    # 1. Create a wrong calc.py + failing test in repo — calc.py fixture
     (repo / "tests").mkdir(parents=True, exist_ok=True)
     test_path = repo / "tests" / "test_calc.py"
     src_path = repo / "calc.py"
+    # Wrong implementation — add subtracts, mul adds
+    wrong_content = (
+        "def add(a: int, b: int) -> int:\n"
+        "    return a - b  # BUG: should be a + b\n"
+        "\n"
+        "\n"
+        "def mul(a: int, b: int) -> int:\n"
+        "    return a + b  # BUG: should be a * b\n"
+    )
+    src_path.write_text(wrong_content, encoding="utf-8")
     test_content = (
         "from calc import add, mul\n"
         "\n"
@@ -261,11 +271,11 @@ def _run_fixture_builder(
         intent_kind="file_ops",
         file_ops=(FileOp(
             path="calc.py",
-            action="create",
+            action="modify",
             language="python",
             content=fix_content,
             risk="low",
-            summary="Create calc functions (add, mul)",
+            summary="Fix calc functions (add, mul)",
         ),),
         target_paths=("calc.py",),
         risk="low",

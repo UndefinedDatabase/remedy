@@ -253,7 +253,7 @@ def main(argv: list[str] | None = None) -> None:
     # If the token after a group name is NOT a known subcommand and does not
     # start with '-', rewrite argv to inject the default subcommand.
     # ---------------------------------------------------------------------------
-    _DEFAULT_COMMAND: dict[str, str] = {"ui": "start"}
+    _DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run"}
 
     raw = argv if argv is not None else sys.argv[1:]
     if (

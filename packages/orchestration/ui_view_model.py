@@ -631,3 +631,117 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
         "job_id": str(job.id),
         "tasks": tasks,
     }
+
+
+def build_next_action(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build next-action suggestion grounded in actual job state."""
+    from packages.core.models import RunState
+
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    job_id = str(job.id)
+
+    # Scan for pending approvals
+    has_pending_approval = False
+    for art in job.artifacts:
+        meta = art.metadata or {}
+        for intent in meta.get("patch_intent_explanations", []):
+            if intent.get("approval_state") == "pending":
+                has_pending_approval = True
+                break
+
+    # Scan for failed tests
+    has_failed_test = False
+    for e in reversed(events):
+        if e.get("event") == "test_run_completed":
+            if e.get("metadata", {}).get("exit_code") != 0:
+                has_failed_test = True
+            break
+
+    # Scan for blockers
+    has_blocker = any(
+        e.get("event") == "stop_reason_recorded" and e.get("outcome") != "resolved"
+        for e in events
+    )
+
+    # Scan for reviewer suggestions
+    has_reviewer_suggestion = any(
+        (getattr(t, "metadata", None) or getattr(t, "inputs", None) or {}).get("source") == "reviewer"
+        and (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending"
+        for t in job.tasks
+    )
+
+    # Determine primary action
+    primary: dict[str, Any]
+    if has_blocker:
+        primary = {
+            "label": "Resolve blocker",
+            "command": f"remedy blocker list {job_id} --json",
+            "risk": "low",
+            "requires_human": True,
+        }
+    elif has_pending_approval:
+        primary = {
+            "label": "Review pending patch",
+            "command": f"remedy patch list {job_id} --json",
+            "risk": "medium",
+            "requires_human": True,
+        }
+    elif has_reviewer_suggestion:
+        primary = {
+            "label": "Review suggested tasks",
+            "command": f"remedy review list {job_id} --json",
+            "risk": "low",
+            "requires_human": True,
+        }
+    elif has_failed_test:
+        primary = {
+            "label": "Inspect test failure",
+            "command": f"remedy test list {job_id} --json",
+            "risk": "low",
+            "requires_human": True,
+        }
+    elif state in ("active", "running"):
+        primary = {
+            "label": "Open UI to monitor progress",
+            "command": f"remedy ui {job_id}",
+            "risk": "low",
+            "requires_human": False,
+        }
+    elif state == "completed":
+        primary = {
+            "label": "No action needed",
+            "command": "",
+            "risk": "low",
+            "requires_human": False,
+        }
+    else:
+        primary = {
+            "label": "Open UI",
+            "command": f"remedy ui {job_id}",
+            "risk": "low",
+            "requires_human": False,
+        }
+
+    # Secondary actions
+    secondary = []
+    if state != "completed":
+        secondary.append({
+            "label": "Open UI",
+            "command": f"remedy ui {job_id}",
+            "risk": "low",
+            "requires_human": False,
+        })
+    secondary.append({
+        "label": "Free VRAM",
+        "command": "remedy worker unload --all",
+        "risk": "low",
+        "requires_human": False,
+    })
+
+    return {
+        "version": 1,
+        "job_id": job_id,
+        "stage": state,
+        "primary_action": primary,
+        "secondary_actions": secondary,
+    }
