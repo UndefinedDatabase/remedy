@@ -299,7 +299,7 @@ class TestStep123_ViewModelHardening:
             {"type": "t2", "status": "running"},
         ])
         tp = build_task_progress(job, [])
-        assert tp["version"] == 2
+        assert tp["version"] == 1
         required = {
             "id", "title", "status", "verified", "source",
             "accepted", "rank", "related_node_id", "short_reason",

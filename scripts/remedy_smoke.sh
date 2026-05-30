@@ -2204,7 +2204,7 @@ print('    export-viewer: OK (manifest valid)')
     UI_INFO_FILE="${_SMOKE_LOG_DIR}/ui_info.json"
     # Start server in background, --port 0 picks free port, --no-open skips browser
     # Direct form: remedy ui <job_id> (Step 111 contract)
-    remedy ui "${JOB_ID}" --port 0 --info-file "${UI_INFO_FILE}" &
+    remedy ui "${JOB_ID}" --port 0 --no-open --info-file "${UI_INFO_FILE}" &
     UI_PID=$!
     # Wait for info file
     for _i in $(seq 1 30); do
@@ -2338,6 +2338,59 @@ try:
         sys.exit(1)
 except URLError as e:
     print('ERROR: brain-view-model request failed: ' + str(e), file=sys.stderr)
+    sys.exit(1)
+
+
+# 10. Task progress API: version 1, required fields
+try:
+    resp = urlopen(base + '/api/jobs/' + job_id + '/task-progress?token=' + token, timeout=5)
+    tp = json.loads(resp.read())
+    if tp.get('version') != 1:
+        print('ERROR: task-progress version != 1, got ' + str(tp.get('version')), file=sys.stderr)
+        print('  payload: ' + json.dumps(tp)[:500], file=sys.stderr)
+        sys.exit(1)
+    if tp.get('job_id') != job_id:
+        print('ERROR: task-progress job_id mismatch', file=sys.stderr)
+        sys.exit(1)
+    tasks = tp.get('tasks', [])
+    req_fields = {'id', 'title', 'status', 'verified', 'source', 'accepted',
+                  'rank', 'related_node_id', 'short_reason', 'proof_status',
+                  'test_status', 'is_current', 'is_future', 'is_reviewer_suggested'}
+    for t in tasks:
+        missing = req_fields - set(t.keys())
+        if missing:
+            print('ERROR: task missing fields: ' + repr(missing), file=sys.stderr)
+            print('  task keys: ' + repr(list(t.keys())), file=sys.stderr)
+            sys.exit(1)
+    # No raw leaks
+    tp_str = json.dumps(tp)
+    for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+        if bad in tp_str:
+            print('ERROR: task-progress raw leak: ' + bad, file=sys.stderr)
+            sys.exit(1)
+except URLError as e:
+    print('ERROR: task-progress request failed: ' + str(e), file=sys.stderr)
+    sys.exit(1)
+
+# 11. Node detail API: safe schema
+try:
+    origin_id = origins[0]['id']
+    resp = urlopen(base + '/api/jobs/' + job_id + '/nodes/' + origin_id + '/detail?token=' + token, timeout=5)
+    nd = json.loads(resp.read())
+    nd_required = {'version', 'job_id', 'node_id', 'title', 'status', 'status_text',
+                   'why_this_matters', 'evidence_summary', 'next_safe_action',
+                   'copy_command', 'advanced'}
+    nd_missing = nd_required - set(nd.keys())
+    if nd_missing:
+        print('ERROR: node detail missing: ' + repr(nd_missing), file=sys.stderr)
+        sys.exit(1)
+    nd_str = json.dumps(nd)
+    for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview'):
+        if bad in nd_str:
+            print('ERROR: node detail raw leak: ' + bad, file=sys.stderr)
+            sys.exit(1)
+except URLError as e:
+    print('ERROR: node detail request failed: ' + str(e), file=sys.stderr)
     sys.exit(1)
 
 print('    localhost UI: OK (url=' + url + ')')

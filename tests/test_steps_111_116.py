@@ -351,12 +351,12 @@ class TestStep114_ForwardFlow:
 
 class TestStep115_TaskRibbon:
 
-    def test_task_progress_version_2(self):
-        """Task progress API should return version 2."""
+    def test_task_progress_version_1(self):
+        """Task progress API should return version 1 (stable contract)."""
         job = _make_job(tasks=[{"type": "readme_draft", "status": "completed"}])
         from packages.orchestration.ui_view_model import build_task_progress
         tp = build_task_progress(job, [])
-        assert tp["version"] == 2
+        assert tp["version"] == 1
 
     def test_task_progress_fields(self):
         """Each task should have the exact required fields."""

@@ -243,7 +243,7 @@ def _cmd_worker_unload(
             results.append({"model": t, "stopped": False, "error": str(e)})
 
     stopped = [r["model"] for r in results if r["stopped"]]
-    errors = [r["model"] for r in results if not r["stopped"] and r["error"]]
+    errors = [r["model"] for r in results if not r["stopped"]]
     skipped: list[str] = []  # targets already unloaded (future: detect from ollama ps)
     out = {
         "version": 1, "provider": provider,

@@ -526,8 +526,10 @@ def build_node_detail(job: Any, events: list[dict[str, Any]], node_id: str) -> d
 
     result: dict[str, Any] = {
         "version": 2,
+        "job_id": str(job.id),
         "node_id": node_id,
         "title": target.label,
+        "status": target.status or "",
         "status_text": status_text,
         "why_this_matters": detail_json.get("meaning", ""),
         "evidence_summary": detail_json.get("evidence", [])[:3],
@@ -625,7 +627,7 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
         tasks.append(task_entry)
 
     return {
-        "version": 2,
+        "version": 1,
         "job_id": str(job.id),
         "tasks": tasks,
     }

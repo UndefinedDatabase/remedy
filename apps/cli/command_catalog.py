@@ -1148,6 +1148,16 @@ CATALOG: tuple[CommandEntry, ...] = (
         description="Show smoke test instructions.",
         action_class="dev_helper",
     ),
+    CommandEntry(
+        command_id="dev.status",
+        group_id="dev",
+        subcommand="status",
+        description="Show developer status summary.",
+        action_class="dev_helper",
+        args=(
+            ArgDef("--json", "Output JSON", required=False, is_option=True),
+        ),
+    ),
 )
 
 
