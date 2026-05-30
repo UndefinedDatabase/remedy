@@ -2409,6 +2409,50 @@ print('    localhost UI: OK (url=' + url + ')')
     fi
 
     # -------------------------------------------------------------------------
+    # 12c. Commit-readiness preview (read-only, no git writes)
+    # -------------------------------------------------------------------------
+    echo "--- 12c. Commit-readiness preview"
+    _CR_OUTPUT=$(remedy repo commit-readiness "${JOB_ID}" --json 2>&1) || {
+        echo "    commit-readiness command failed"
+        echo "    stdout/stderr: ${_CR_OUTPUT}"
+        echo "    help:"
+        remedy repo commit-readiness --help 2>&1 || true
+        _fail "commit-readiness command returned non-zero"
+    }
+    echo "${_CR_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: commit-readiness output is not valid JSON', file=sys.stderr)
+    print('Raw output: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+required = {'version','job_id','repo_path','ready','reasons','changed_files',
+            'tests_passed','proof_present','revert_available','suggested_commit_message',
+            'next_action','changed_files_truncated'}
+missing = required - set(d.keys())
+if missing:
+    print('ERROR: commit-readiness missing fields: ' + str(missing), file=sys.stderr)
+    sys.exit(1)
+if d['version'] != 1:
+    print('ERROR: commit-readiness version != 1', file=sys.stderr)
+    sys.exit(1)
+na = d.get('next_action', {})
+for f in ('label','command','risk','requires_human'):
+    if f not in na:
+        print('ERROR: next_action missing: ' + f, file=sys.stderr)
+        sys.exit(1)
+# No raw leaks
+full = json.dumps(d)
+for bad in ('raw_output','command_output','Traceback','diff_preview','approval_reason'):
+    if bad in full:
+        print('ERROR: commit-readiness raw leak: ' + bad, file=sys.stderr)
+        sys.exit(1)
+print('    commit-readiness: OK (ready=' + str(d['ready']) + ', reasons=' + str(len(d['reasons'])) + ')')
+"
+
+    # -------------------------------------------------------------------------
     # 13. Summary
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="summary"

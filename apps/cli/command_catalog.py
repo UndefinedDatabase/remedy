@@ -93,7 +93,7 @@ GROUPS: dict[str, GroupDef] = {
     "context": GroupDef("context", "Context", "Context pack and coverage."),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view)."),
     "file": GroupDef("file", "File", "File-level provenance and tracing."),
-    "repo": GroupDef("repo", "Repo", "Read-only repository inspection."),
+    "repo": GroupDef("repo", "Repo", "Read-only repository inspection (commit-readiness does not commit)."),
     "event": GroupDef("event", "Event", "Query the audit event ledger."),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons."),
     "decision": GroupDef("decision", "Decision", "Human decision queue."),

@@ -1,20 +1,20 @@
-# Plan — Steps 135-140
+# Plan — Steps 141-146
 
 ## Goal
-Do-direct contract fix, autocoder fake-E2E closure, smoke gates, honest dev status, next-action surface, commit-readiness preview.
+Commit-readiness closure, safe-smoke final pass, dev status integration, next action polish, CLI help.
 
 ## Current Step
 All steps complete. Final commit.
 
 ## Steps
-- [x] Step 135: `remedy do "<goal>"` direct contract — `"do": "run"` added to `_DEFAULT_COMMAND`
-- [x] Step 136: Autocoder fake-E2E — calc.py starts wrong (`a - b`), fixed via structured patch modify
-- [x] Step 137: Both smoke gates pass (built-in + external safe-smoke)
-- [x] Step 138: `remedy dev status --json` reports honest `latest_smoke` object (not flat bool)
-- [x] Step 139: `build_next_action()` surface with `/api/jobs/<id>/next-action` endpoint
-- [x] Step 140: `remedy repo commit-readiness <job_id> --json` — read-only, no git writes
+- [x] Step 141: Fix commit-readiness crash — `_safe_task_label()` helper, no .task_type assumption
+- [x] Step 142: Contract hardening — `changed_files_truncated`, full schema, no raw leaks
+- [x] Step 143: `commit_readiness_ok` in dev status (null if no job, false on crash)
+- [x] Step 144: Smoke script includes commit-readiness validation section
+- [x] Step 145: `next_action` in commit-readiness JSON, grounded in reasons
+- [x] Step 146: CLI help polish — happy path footer, repo group description, docs
 
 ## Tests
-- 41 new tests in test_steps_135_140.py
-- 3244 total tests passing
+- 37 new tests in test_steps_141_146.py
+- 3281 total tests passing
 - Frontend builds clean (Vite)

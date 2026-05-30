@@ -5,11 +5,33 @@ from __future__ import annotations
 import hashlib
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 from uuid import UUID
 
 if TYPE_CHECKING:
     import argparse
+
+
+def _safe_task_label(task: Any) -> str:
+    """Extract a safe, short label from a Task without assuming .task_type exists.
+
+    Resolution order:
+    1. task.inputs.get("task_type")
+    2. task.inputs.get("type")
+    3. First short phrase of task.description
+    4. "task"
+    """
+    inputs = getattr(task, "inputs", None) or {}
+    for key in ("task_type", "type"):
+        val = inputs.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()[:60].replace("\n", " ")
+
+    desc = getattr(task, "description", None)
+    if isinstance(desc, str) and desc.strip():
+        return desc.strip().split("\n")[0][:60]
+
+    return "task"
 
 
 def _cmd_repo_status(
@@ -76,6 +98,64 @@ def _cmd_repo_status(
         print(summarize_git_status(status))
 
 
+def _build_readiness_next_action(
+    ready: bool,
+    reasons: list[str],
+    job_id: str,
+    changed_files: list[str],
+) -> dict[str, Any]:
+    """Build a next-action hint grounded in readiness reasons."""
+    if ready:
+        return {
+            "label": "Review changes and create commit manually",
+            "command": "git status && git diff --stat",
+            "risk": "medium",
+            "requires_human": True,
+        }
+    for r in reasons:
+        if "tests" in r:
+            return {
+                "label": "Run tests",
+                "command": f"remedy test run {job_id}",
+                "risk": "low",
+                "requires_human": False,
+            }
+        if "proof" in r:
+            return {
+                "label": "Inspect patch lifecycle",
+                "command": f"remedy patch list {job_id}",
+                "risk": "low",
+                "requires_human": True,
+            }
+        if "revert" in r:
+            return {
+                "label": "Revert snapshot missing; do not commit yet",
+                "command": f"remedy patch list {job_id}",
+                "risk": "low",
+                "requires_human": True,
+            }
+        if "not a git" in r:
+            return {
+                "label": "Attach a git repository",
+                "command": f"remedy job attach-repo {job_id} <path>",
+                "risk": "low",
+                "requires_human": True,
+            }
+        if "no changed files" in r:
+            return {
+                "label": "Review unrelated local changes",
+                "command": "git status --short",
+                "risk": "low",
+                "requires_human": True,
+            }
+    return {
+        "label": "Resolve issues listed in reasons",
+        "command": f"remedy repo commit-readiness {job_id} --json",
+        "risk": "low",
+        "requires_human": True,
+    }
+
+
 def _cmd_commit_readiness(
     job_id_str: str,
     *,
@@ -135,9 +215,14 @@ def _cmd_commit_readiness(
     short_id = str(job.id)[:8]
     task_summary = ""
     if job.tasks:
-        types = [t.task_type for t in job.tasks[:3]]
+        types = [_safe_task_label(t) for t in job.tasks[:3]]
         task_summary = ", ".join(types)
-    suggested = f"remedy/{short_id}: {task_summary or job.name}"
+    suggested = f"remedy/{short_id}: {task_summary or job.name}"[:120]
+
+    # Next action — grounded in reasons
+    next_action = _build_readiness_next_action(
+        ready, reasons, str(job.id), changed_files,
+    )
 
     result = {
         "version": 1,
@@ -146,10 +231,12 @@ def _cmd_commit_readiness(
         "ready": ready,
         "reasons": reasons,
         "changed_files": changed_files[:50],
+        "changed_files_truncated": len(changed_files) > 50,
         "tests_passed": tests_passed,
         "proof_present": proof_present,
         "revert_available": revert_available,
         "suggested_commit_message": suggested,
+        "next_action": next_action,
     }
 
     if json_output:
@@ -169,6 +256,10 @@ def _cmd_commit_readiness(
                 print(f"    - {r}")
         if ready:
             print(f"  Suggested: {suggested}")
+        if next_action:
+            print(f"  Next: {next_action['label']}")
+            if next_action["command"]:
+                print(f"    $ {next_action['command']}")
         print()
         print("Note: This is read-only. No git add/commit/push.")
 

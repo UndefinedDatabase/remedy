@@ -24,14 +24,15 @@ def _make_job(*, tasks=None, name="test"):
     job = Job(name=name)
     if tasks:
         for t in tasks:
+            task_type = t.get("type", "readme_draft")
+            inputs = dict(t.get("metadata", {}))
+            inputs.setdefault("task_type", task_type)
             task = Task(
-                task_type=t.get("type", "readme_draft"),
-                description=t.get("description", t.get("type", "task")),
+                description=t.get("description", task_type),
+                inputs=inputs,
             )
             if "status" in t:
                 task.status = RunState(t["status"])
-            if "metadata" in t:
-                task.inputs = t["metadata"]
             job.tasks.append(task)
     return job
 
@@ -283,7 +284,8 @@ class TestStep138_DevStatusHonesty:
             required = {
                 "version", "cli_ok", "latest_smoke", "ui_contract_ok",
                 "task_progress_ok", "worker_cleanup_ok",
-                "autocoder_fake_e2e_ok", "remaining_blockers",
+                "autocoder_fake_e2e_ok", "commit_readiness_ok",
+                "remaining_blockers",
             }
             missing = required - set(data.keys())
             assert not missing
@@ -435,8 +437,10 @@ class TestStep140_CommitReadiness:
             data = json.loads(mock_print.call_args[0][0])
             required = {
                 "version", "job_id", "repo_path", "ready", "reasons",
-                "changed_files", "tests_passed", "proof_present",
+                "changed_files", "changed_files_truncated",
+                "tests_passed", "proof_present",
                 "revert_available", "suggested_commit_message",
+                "next_action",
             }
             missing = required - set(data.keys())
             assert not missing, f"Missing: {missing}"
