@@ -1,16 +1,15 @@
 """
-Brain Viewer v0 — local read-only static HTML viewer for the Project Brain Graph.
+Brain Viewer — local read-only static HTML viewer for the Project Brain Graph.
 
 Generates a self-contained index.html (with embedded viewer data) under
 REMEDY_DATA_DIR/viewers/<job_id>/.  The viewer consumes only the existing
 --json machine contracts (export_project_brain_json and
 export_brain_node_detail_json) and renders nodes/edges in a 2D visual.
 
-IMPORTANT — Scope limitations (v0):
+Scope limitations:
   Read-only only.  No repo mutation, no patch apply, no permission mutation,
   no shell/subprocess/Git/Docker/network/MCP/Claude execution, no memory
-  writes, no frontend framework.  This is the foundation for future
-  React Flow / Three.js / AG-UI / A2UI integration.
+  writes, no frontend framework.
 
 Redaction policy:
   Same as brain_detail.py — no artifact content, diff previews, approval
@@ -45,8 +44,42 @@ from packages.orchestration.project_brain import (
 
 
 # ---------------------------------------------------------------------------
-# Radial layout constants
+# Semantic zone layout — maps node types to zones and radial layers
 # ---------------------------------------------------------------------------
+
+_ZONE_MAP: dict[str, str] = {
+    "job": "intent",
+    "task": "plan",
+    "artifact": "artifact",
+    "constitution": "policy",
+    "context_coverage": "policy",
+    "run_event": "event",
+    "agent_loop": "event",
+    "event_ledger": "event",
+    "patch_intent": "artifact",
+    "approval_decision": "approval",
+    "patch_apply": "approval",
+    "patch_apply_proof": "proof",
+    "verification": "proof",
+    "test_run": "proof",
+    "permission_blocker": "decision",
+    "stop_reason": "decision",
+    "decision_queue": "decision",
+    "memory_placeholder": "memory",
+    "memory": "memory",
+    "mcp_placeholder": "future",
+    "project_placeholder": "intent",
+    "autonomy_readiness": "policy",
+    "context_pack": "policy",
+    "context_budget": "policy",
+    "run_contract": "policy",
+    "token_policy": "policy",
+    "worker_adapter": "policy",
+    "git_status": "repo",
+    "change_set": "repo",
+    "patch_revert": "repo",
+    "guidance_summary": "intent",
+}
 
 _LAYER_MAP: dict[str, int] = {
     "job": 0,
@@ -67,7 +100,36 @@ _LAYER_MAP: dict[str, int] = {
     "patch_apply": 4,
     "autonomy_readiness": 1,
     "context_pack": 2,
+    "event_ledger": 2,
+    "stop_reason": 3,
+    "decision_queue": 3,
+    "context_budget": 2,
+    "run_contract": 1,
+    "token_policy": 1,
+    "worker_adapter": 2,
+    "git_status": 2,
+    "change_set": 3,
+    "patch_revert": 3,
+    "patch_apply_proof": 4,
+    "test_run": 4,
+    "guidance_summary": 1,
 }
+
+# Zone angle offsets — each zone gets a sector of the circle
+_ZONE_ANGLES: dict[str, float] = {
+    "intent": 0.0,
+    "plan": 0.4,
+    "artifact": 0.8,
+    "approval": 1.2,
+    "proof": 1.6,
+    "event": 2.0,
+    "policy": 2.8,
+    "decision": 3.6,
+    "memory": 4.0,
+    "repo": 4.8,
+    "future": 5.4,
+}
+
 _LAYER_RADIUS = [0.0, 150.0, 290.0, 420.0, 530.0]
 _CX = 500.0
 _CY = 350.0
@@ -108,6 +170,10 @@ def build_brain_viewer_data(
     """
     graph_dict = export_project_brain_json(graph)
 
+    # Inject zone metadata into each node
+    for node in graph_dict["nodes"]:
+        node["zone"] = _ZONE_MAP.get(node["type"], "future")
+
     node_details: dict[str, dict[str, Any]] = {}
     detail_fallback_count = 0
     for node in graph.nodes:
@@ -145,22 +211,7 @@ def build_brain_viewer_data(
 
 
 def export_brain_viewer_json(data: BrainViewerData) -> dict[str, Any]:
-    """Export viewer data as a JSON-serialisable dict.
-
-    Schema::
-
-        {
-            "version": 1,
-            "job_id": "<uuid>",
-            "generated_at": "<iso>",
-            "graph": { ... },                // export_project_brain_json output
-            "node_details": { ... },         // node_id -> export_brain_node_detail_json output
-            "positions": { ... },            // node_id -> [x, y]
-            "detail_fallback_count": <int>,  // nodes that used fallback detail
-        }
-
-    Redaction: same policy as build_brain_viewer_data.
-    """
+    """Export viewer data as a JSON-serialisable dict."""
     return {
         "version": 1,
         "job_id": data.job_id,
@@ -187,7 +238,6 @@ def write_brain_viewer_files(data: BrainViewerData, out_dir: Path) -> Path:
         encoding="utf-8",
     )
 
-    # Escape </script> to prevent tag break in both data island and execution script.
     safe_json = json.dumps(viewer_dict, sort_keys=True).replace(
         "</script>", r"<\/script>"
     )
@@ -205,33 +255,38 @@ def write_brain_viewer_files(data: BrainViewerData, out_dir: Path) -> Path:
 
 
 def _compute_positions(nodes: list[dict[str, Any]]) -> dict[str, list[float]]:
-    """Assign 2D positions using a layered radial layout.
+    """Assign 2D positions using semantic zone + layered radial layout.
 
+    Nodes in the same zone are grouped together in a sector.
     Returns {node_id: [x, y]} in a nominal 1000x700 coordinate space.
-    The JavaScript renderer scales these to fit the actual viewport.
     """
-    by_layer: dict[int, list[dict[str, Any]]] = {}
+    # Group by (layer, zone)
+    by_zone_layer: dict[tuple[str, int], list[dict[str, Any]]] = {}
     for node in nodes:
+        zone = _ZONE_MAP.get(node["type"], "future")
         layer = _LAYER_MAP.get(node["type"], 3)
-        by_layer.setdefault(layer, []).append(node)
+        by_zone_layer.setdefault((zone, layer), []).append(node)
 
     positions: dict[str, list[float]] = {}
-    for layer_idx, layer_nodes in sorted(by_layer.items()):
+    for (zone, layer_idx), layer_nodes in sorted(by_zone_layer.items()):
         r = (
             _LAYER_RADIUS[layer_idx]
             if layer_idx < len(_LAYER_RADIUS)
             else _LAYER_RADIUS[-1] + 80.0
         )
+        base_angle = _ZONE_ANGLES.get(zone, 5.8)
         count = len(layer_nodes)
+        spread = 0.35  # radians spread within zone
         for i, node in enumerate(layer_nodes):
             if r == 0.0:
                 x, y = _CX, _CY
             elif count == 1:
-                angle = -math.pi / 2.0
+                angle = base_angle - math.pi / 2.0
                 x = round(_CX + r * math.cos(angle), 1)
                 y = round(_CY + r * math.sin(angle), 1)
             else:
-                angle = (2.0 * math.pi * i / count) - math.pi / 2.0
+                offset = (i - (count - 1) / 2.0) * spread / max(count - 1, 1)
+                angle = base_angle + offset - math.pi / 2.0
                 x = round(_CX + r * math.cos(angle), 1)
                 y = round(_CY + r * math.sin(angle), 1)
             positions[node["id"]] = [x, y]
@@ -299,7 +354,7 @@ def _render_html(
     return (
         _HTML
         .replace("__REMEDY_CSS__", REMEDY_CSS)
-        .replace("__VIEWER_DATA_JSON__", viewer_json_str)  # must precede __STATIC_FALLBACK__
+        .replace("__VIEWER_DATA_JSON__", viewer_json_str)
         .replace("__STATIC_FALLBACK__", static_fallback_html)
         .replace("__JOB_SHORT_ID__", job_short_id)
         .replace("__GENERATED_AT__", generated_at)
@@ -307,8 +362,8 @@ def _render_html(
 
 
 # ---------------------------------------------------------------------------
-# HTML template  (placeholders: __VIEWER_DATA_JSON__, __STATIC_FALLBACK__,
-#                              __JOB_SHORT_ID__, __GENERATED_AT__)
+# HTML template  (placeholders: __REMEDY_CSS__, __VIEWER_DATA_JSON__,
+#                 __STATIC_FALLBACK__, __JOB_SHORT_ID__, __GENERATED_AT__)
 # ---------------------------------------------------------------------------
 
 _HTML = """\
@@ -322,8 +377,8 @@ _HTML = """\
 __REMEDY_CSS__
 *{box-sizing:border-box;margin:0;padding:0}
 body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-#hdr{background:var(--remedy-bg-panel);padding:9px 16px;display:flex;align-items:center;gap:10px;
-     border-bottom:1px solid var(--remedy-panel-border);flex-shrink:0;z-index:2}
+#hdr{background:var(--remedy-bg-panel);padding:6px 16px;display:flex;align-items:center;gap:10px;
+     border-bottom:1px solid var(--remedy-panel-border);flex-shrink:0;z-index:3}
 #hdr h1{font-size:14px;font-weight:bold;color:var(--remedy-teal);font-family:var(--remedy-font-sans)}
 .badge{background:rgba(56,200,200,0.08);color:var(--remedy-teal);padding:2px 8px;border-radius:4px;
        font-size:11px;border:1px solid var(--remedy-panel-border)}
@@ -332,11 +387,31 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 #render-badge[data-status="error"]{background:rgba(224,82,82,0.1);color:var(--remedy-risk);border-color:rgba(224,82,82,0.2)}
 #render-badge[data-status="empty"]{background:rgba(56,200,200,0.05);color:var(--remedy-fg-muted);border-color:var(--remedy-panel-border)}
 #render-badge[data-status="static-fallback"]{background:rgba(58,74,90,0.3);color:var(--remedy-fg-muted);border-color:var(--remedy-muted)}
-#info-bar{display:flex;gap:8px;padding:6px 16px;flex-wrap:wrap;font-size:11px;
+/* ── Search bar ── */
+#search-bar{display:flex;gap:8px;padding:4px 16px;align-items:center;
+  border-bottom:1px solid var(--remedy-panel-border);flex-shrink:0;z-index:3;
+  background:var(--remedy-bg-panel)}
+#search-input{background:rgba(56,200,200,0.04);border:1px solid var(--remedy-panel-border);
+  color:var(--remedy-fg);font-family:var(--remedy-font);font-size:12px;padding:4px 10px;
+  border-radius:4px;flex:1;max-width:300px;outline:none}
+#search-input:focus{border-color:var(--remedy-teal);box-shadow:0 0 6px var(--remedy-glow)}
+#search-input::placeholder{color:var(--remedy-fg-muted)}
+.filter-btn{background:rgba(56,200,200,0.04);border:1px solid var(--remedy-panel-border);
+  color:var(--remedy-fg-muted);font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;
+  font-family:var(--remedy-font);transition:all .15s}
+.filter-btn:hover,.filter-btn.active{background:rgba(56,200,200,0.12);color:var(--remedy-teal);
+  border-color:var(--remedy-teal)}
+.filter-btn:focus-visible{outline:2px solid var(--remedy-teal);outline-offset:2px}
+/* ── Info bar ── */
+#info-bar{display:flex;gap:8px;padding:4px 16px;flex-wrap:wrap;font-size:11px;
   border-bottom:1px solid var(--remedy-panel-border);flex-shrink:0;z-index:2;
   background:var(--remedy-bg-panel)}
 #info-bar .info-item{padding:3px 10px;border-radius:4px;
   background:rgba(56,200,200,0.04);border:1px solid var(--remedy-panel-border)}
+/* ── Proof chain ── */
+#proof-chain-panel{padding:0 16px;flex-shrink:0;z-index:1;
+  border-bottom:1px solid var(--remedy-panel-border)}
+/* ── Static fallback ── */
 #static-fallback{padding:12px 16px;background:var(--remedy-bg);border-bottom:1px solid var(--remedy-panel-border);
   font-size:12px;overflow-y:auto;max-height:200px;flex-shrink:0;z-index:1}
 .sf-sum{display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap}
@@ -346,15 +421,39 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .sf-tbl th{color:var(--remedy-fg-muted);font-weight:normal}
 .sf-tbl td{color:var(--remedy-fg-muted)}
 .sf-trunc{margin-top:4px;color:var(--remedy-fg-muted);font-size:10px;font-style:italic}
+/* ── Main layout ── */
 #main{display:flex;flex:1;overflow:hidden;min-height:0;position:relative}
+/* ── Left filter rail ── */
+#filter-rail{width:180px;background:var(--remedy-bg-panel);border-right:1px solid var(--remedy-panel-border);
+  overflow-y:auto;flex-shrink:0;padding:8px;font-size:11px;z-index:1}
+#filter-rail .fr-section{margin-bottom:8px}
+#filter-rail .fr-label{color:var(--remedy-fg-muted);font-size:9px;text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:4px}
+#filter-rail .fr-item{display:flex;align-items:center;gap:4px;padding:2px 4px;cursor:pointer;
+  border-radius:3px;color:var(--remedy-fg-muted);transition:all .12s}
+#filter-rail .fr-item:hover{background:rgba(56,200,200,0.06);color:var(--remedy-fg)}
+#filter-rail .fr-item.active{color:var(--remedy-teal)}
+#filter-rail .fr-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+/* ── Graph ── */
 #gwrap{flex:1;position:relative;overflow:hidden}
 svg#g{width:100%;height:100%;display:block}
+/* ── Mist/depth layers ── */
+.remedy-mist{position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(10,14,20,0.6) 100%)}
+.remedy-scanlines{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:0.03;
+  background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(56,200,200,0.15) 2px, rgba(56,200,200,0.15) 3px)}
+.remedy-grid{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:0.04;
+  background-size:40px 40px;
+  background-image:linear-gradient(rgba(56,200,200,0.2) 1px, transparent 1px),
+                   linear-gradient(90deg, rgba(56,200,200,0.2) 1px, transparent 1px)}
+/* ── Error panel ── */
 #err-panel{display:none;position:absolute;top:10px;left:10px;right:10px;
   background:rgba(224,82,82,0.1);color:var(--remedy-risk);border:1px solid rgba(224,82,82,0.3);
   border-radius:6px;padding:10px 14px;font-size:12px;z-index:10}
+/* ── Side panels ── */
 #side-panels{width:340px;display:flex;flex-direction:column;overflow-y:auto;
   border-left:1px solid var(--remedy-panel-border);flex-shrink:0;
-  background:var(--remedy-bg-panel)}
+  background:var(--remedy-bg-panel);z-index:1}
 #dp{padding:12px;font-size:12px;flex:1;overflow-y:auto}
 #dh{color:var(--remedy-fg-muted);padding:24px 0;text-align:center;font-size:13px}
 .dt{font-size:14px;font-weight:bold;color:var(--remedy-teal);margin-bottom:8px;word-break:break-all}
@@ -363,15 +462,39 @@ svg#g{width:100%;height:100%;display:block}
     padding-bottom:2px;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
 .di{margin:2px 0 2px 8px;color:var(--remedy-fg-muted);word-break:break-all}
 .drd{color:var(--remedy-muted);font-style:italic}
-#proof-chain-panel{padding:0 16px;flex-shrink:0;z-index:1;
-  border-bottom:1px solid var(--remedy-panel-border)}
+/* ── Next action rail ── */
+#next-action-rail{padding:8px 12px;border-top:1px solid var(--remedy-panel-border)}
+#next-action-rail .na-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--remedy-fg-muted);margin-bottom:4px}
+.na-card{background:rgba(56,200,200,0.04);border:1px solid var(--remedy-panel-border);
+  border-radius:4px;padding:6px 8px;margin:3px 0;font-size:11px;cursor:default}
+.na-card .na-title{color:var(--remedy-fg)}
+.na-card .na-cmd{color:var(--remedy-teal);font-family:var(--remedy-font);font-size:10px;
+  margin-top:2px;display:flex;align-items:center;gap:4px}
+.copy-btn{background:none;border:1px solid var(--remedy-panel-border);color:var(--remedy-fg-muted);
+  font-size:9px;padding:1px 6px;border-radius:3px;cursor:pointer;font-family:var(--remedy-font)}
+.copy-btn:hover{color:var(--remedy-teal);border-color:var(--remedy-teal)}
+.copy-btn:focus-visible{outline:2px solid var(--remedy-teal);outline-offset:1px}
+/* ── Decision/Readiness side sections ── */
+.remedy-decision-panel{border-left:2px solid var(--remedy-warning);padding-left:12px;margin:8px 0}
+.remedy-readiness-panel{border-left:2px solid var(--remedy-teal);padding-left:12px;margin:8px 0}
+/* ── Timeline ── */
 #timeline-panel{padding:0 16px;flex-shrink:0;z-index:1;
   border-bottom:1px solid var(--remedy-panel-border)}
-#leg{background:var(--remedy-bg-panel);padding:5px 16px;border-top:1px solid var(--remedy-panel-border);
-     display:flex;gap:14px;font-size:10px;flex-wrap:wrap;
-     align-items:center;flex-shrink:0;z-index:2}
+/* ── Guidance rail ── */
+#guidance-rail{padding:4px 16px;flex-shrink:0;z-index:1;display:flex;gap:6px;flex-wrap:wrap;
+  border-bottom:1px solid var(--remedy-panel-border);background:var(--remedy-bg-panel);font-size:11px}
+.guide-card{background:rgba(56,200,200,0.04);border:1px solid var(--remedy-panel-border);
+  border-radius:4px;padding:4px 8px;display:flex;align-items:center;gap:4px}
+.guide-card.high{border-color:rgba(224,82,82,0.3);color:var(--remedy-risk)}
+.guide-card.medium{border-color:rgba(232,168,56,0.3);color:var(--remedy-warning)}
+.guide-card.info{color:var(--remedy-fg-muted)}
+/* ── Legend ── */
+#leg{background:var(--remedy-bg-panel);padding:4px 16px;border-top:1px solid var(--remedy-panel-border);
+     display:flex;gap:14px;font-size:10px;flex-wrap:wrap;align-items:center;flex-shrink:0;z-index:2}
 .li{display:flex;align-items:center;gap:4px}
 .ld{width:11px;height:11px;border-radius:50%;border:1px solid var(--remedy-muted)}
+/* ── Diag ── */
 #diag{background:var(--remedy-bg);padding:3px 16px;border-top:1px solid var(--remedy-panel-border);
   font-size:10px;color:var(--remedy-fg-muted);display:flex;gap:14px;flex-wrap:wrap;
   align-items:center;flex-shrink:0;z-index:2}
@@ -379,17 +502,38 @@ svg#g{width:100%;height:100%;display:block}
 #diag span{color:var(--remedy-fg-muted)}
 #ftr{background:var(--remedy-bg-panel);padding:3px 16px;font-size:10px;color:var(--remedy-muted);
      border-top:1px solid var(--remedy-panel-border);flex-shrink:0;z-index:2}
-.el{stroke:var(--remedy-line);stroke-width:1.5}
-.nd{cursor:pointer}
-.nd circle{stroke-width:2;transition:stroke .15s,stroke-width .15s}
-.nd:hover circle,.nd.sel circle{stroke:var(--remedy-teal) !important;stroke-width:3}
+/* ── SVG styles ── */
+.el{stroke:var(--remedy-line);stroke-width:1.5;transition:stroke .15s,opacity .15s}
+.el.proof-edge{stroke:var(--remedy-proof);stroke-width:2;opacity:0.6}
+.el.blocked-edge{stroke:var(--remedy-risk);stroke-dasharray:4 3}
+.el.future-edge{stroke:var(--remedy-muted);opacity:0.3;stroke-dasharray:2 4}
+.el.sel-edge{stroke:var(--remedy-teal);stroke-width:2.5;opacity:0.9}
+.el.dim{opacity:0.08}
+.nd{cursor:pointer;transition:transform .15s}
+.nd circle{stroke-width:2;transition:stroke .15s,stroke-width .15s,filter .15s}
+.nd:hover circle{stroke:var(--remedy-teal) !important;stroke-width:3;
+  filter:drop-shadow(0 0 6px var(--remedy-glow))}
+.nd.sel circle{stroke:var(--remedy-teal) !important;stroke-width:3;
+  filter:drop-shadow(0 0 10px var(--remedy-teal))}
+.nd.dim circle{opacity:0.15}
+.nd.dim text{opacity:0.15}
 .nd text{font-size:9px;fill:var(--remedy-fg-muted);pointer-events:none;text-anchor:middle}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .nd.run circle{animation:pulse 1.5s ease-in-out infinite}
+@keyframes sel-pulse{0%,100%{filter:drop-shadow(0 0 8px var(--remedy-teal))}50%{filter:drop-shadow(0 0 14px var(--remedy-teal))}}
+.nd.sel circle{animation:sel-pulse 2s ease-in-out infinite}
+/* ── Zone labels ── */
+.zone-label{font-size:10px;fill:var(--remedy-fg-muted);opacity:0.4;text-anchor:middle;
+  font-family:var(--remedy-font-sans);text-transform:uppercase;letter-spacing:.08em;pointer-events:none}
+/* ── Accessibility ── */
 @media (prefers-reduced-motion: reduce) {
   .nd.run circle{animation:none}
+  .nd.sel circle{animation:none;filter:drop-shadow(0 0 10px var(--remedy-teal))}
   .remedy-particle-field{animation:none !important}
+  .remedy-scanlines{display:none}
 }
+[tabindex]:focus-visible,.filter-btn:focus-visible,#search-input:focus-visible{
+  outline:2px solid var(--remedy-teal);outline-offset:2px}
 </style>
 </head>
 <body class="remedy-shell" data-render-status="static-fallback">
@@ -402,6 +546,13 @@ svg#g{width:100%;height:100%;display:block}
   <span class="badge">__GENERATED_AT__</span>
   <span class="badge" id="ctx-badge">Context: —%</span>
   <span class="badge" id="render-badge" data-status="static-fallback">● static</span>
+</div>
+<div id="search-bar">
+  <input id="search-input" type="text" placeholder="/ search nodes..." aria-label="Search nodes" tabindex="0">
+  <button class="filter-btn" data-filter="blocker" tabindex="0">Blockers</button>
+  <button class="filter-btn" data-filter="proof" tabindex="0">Proofs</button>
+  <button class="filter-btn" data-filter="decision" tabindex="0">Decisions</button>
+  <button class="filter-btn" data-filter="all" tabindex="0">Reset</button>
 </div>
 <div id="info-bar">
   <span class="info-item" id="info-readiness">Readiness: —</span>
@@ -417,7 +568,24 @@ svg#g{width:100%;height:100%;display:block}
 __STATIC_FALLBACK__
 </div>
 <div id="main">
+  <div id="filter-rail">
+    <div class="fr-section">
+      <div class="fr-label">Zones</div>
+      <div id="zone-filters"></div>
+    </div>
+    <div class="fr-section">
+      <div class="fr-label">Status</div>
+      <div id="status-filters"></div>
+    </div>
+    <div class="fr-section">
+      <div class="fr-label">Risk</div>
+      <div id="risk-filters"></div>
+    </div>
+  </div>
   <div id="gwrap">
+    <div class="remedy-grid"></div>
+    <div class="remedy-scanlines"></div>
+    <div class="remedy-mist"></div>
     <svg id="g"></svg>
     <div id="err-panel" style="display:none"><strong>Viewer error</strong> — <span id="err-msg"></span></div>
   </div>
@@ -425,6 +593,10 @@ __STATIC_FALLBACK__
     <div id="dp">
       <p id="dh">&larr; Click a node to inspect it</p>
       <div id="db" style="display:none"></div>
+    </div>
+    <div id="next-action-rail" style="display:none">
+      <div class="na-label">Next Actions</div>
+      <div id="na-cards"></div>
     </div>
     <div id="decision-section" class="remedy-decision-panel" style="display:none;padding:8px 12px">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--remedy-fg-muted);margin-bottom:4px">Decisions</div>
@@ -438,6 +610,7 @@ __STATIC_FALLBACK__
     </div>
   </div>
 </div>
+<div id="guidance-rail"></div>
 <div id="timeline-panel">
   <div class="remedy-timeline" id="timeline"></div>
 </div>
@@ -460,7 +633,7 @@ __STATIC_FALLBACK__
   <span>selected <span id="diag-sel">none</span></span>
   <span>status <span id="diag-status">static-fallback</span></span>
 </div>
-<div id="ftr">Remedy Brain Viewer &middot; read-only &middot; static export &middot; foundation for future 2D/3D viewer</div>
+<div id="ftr">Remedy Brain Viewer &middot; read-only &middot; static export &middot; no external assets</div>
 <script id="viewer-data" type="application/json">__VIEWER_DATA_JSON__</script>
 <script>
 function _vErr(cat,msg){
@@ -497,21 +670,23 @@ if(!_src)throw new Error('viewer-data island missing');
 var VD=JSON.parse(_src.textContent);
 var G=VD.graph,DET=VD.node_details,POS=VD.positions;
 var selId=null;
+var activeFilter=null;
+var searchTerm='';
+var JOB_ID=VD.job_id||'';
+
 function col(n){
   var t=n.type,s=n.status||'';
-  if(t==='memory_placeholder')return'#7c4fb0';
-  if(t==='memory')return'#9b6fcf';
-  if(t==='autonomy_readiness')return'#2ea043';
-  if(t==='context_pack')return'#58a6ff';
-  if(t==='mcp_placeholder')return'#e06c1a';
-  if(s==='blocked')return'#cf4444';
-  if(s==='running')return'#4488ff';
-  if(s==='completed'||s==='passed'||s==='loaded')return'#d0d7de';
-  if(t==='patch_intent'&&s==='pending')return'#d9a520';
-  if(s==='approved')return'#3fb950';
-  if(s==='rejected')return'#cf4444';
-  if(s==='informational')return'#444c56';
-  return'#6e7681';
+  if(t==='memory_placeholder'||t==='memory')return'var(--remedy-memory)';
+  if(t==='autonomy_readiness')return'var(--remedy-proof)';
+  if(t==='context_pack'||t==='context_budget')return'var(--remedy-cyan)';
+  if(t==='mcp_placeholder')return'var(--remedy-muted)';
+  if(s==='blocked'||s==='failed'||s==='rejected')return'var(--remedy-risk)';
+  if(s==='running')return'var(--remedy-cyan)';
+  if(s==='completed'||s==='passed'||s==='loaded'||s==='approved')return'var(--remedy-teal)';
+  if(t==='patch_intent'&&s==='pending')return'var(--remedy-warning)';
+  if(s==='needs_decision'||s==='needs_approval')return'var(--remedy-warning)';
+  if(s==='informational')return'var(--remedy-muted)';
+  return'var(--remedy-fg-muted)';
 }
 function rad(n){
   if(n.type==='job')return 22;
@@ -520,6 +695,27 @@ function rad(n){
 }
 function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function edgeClass(e){
+  var t=e.type||'';
+  if(t.indexOf('proof')>=0||t.indexOf('verified')>=0)return'el proof-edge';
+  if(t.indexOf('blocked')>=0)return'el blocked-edge';
+  if(t.indexOf('future')>=0||t.indexOf('inert')>=0)return'el future-edge';
+  return'el';
+}
+function nodeVisible(n){
+  if(searchTerm){
+    var q=searchTerm.toLowerCase();
+    if((n.label||'').toLowerCase().indexOf(q)<0&&(n.type||'').toLowerCase().indexOf(q)<0&&(n.id||'').toLowerCase().indexOf(q)<0)return false;
+  }
+  if(!activeFilter||activeFilter==='all')return true;
+  if(activeFilter==='blocker')return n.status==='blocked'||n.status==='failed'||n.type==='stop_reason'||n.type==='permission_blocker';
+  if(activeFilter==='proof')return n.type==='test_run'||n.type==='verification'||n.type==='patch_apply_proof'||n.status==='passed';
+  if(activeFilter==='decision')return n.type==='decision_queue'||n.type==='approval_decision'||n.status==='needs_decision'||n.status==='needs_approval';
+  if(activeFilter.indexOf('zone:')==0){var z=activeFilter.slice(5);return(n.zone||'')==z;}
+  if(activeFilter.indexOf('status:')==0){var st=activeFilter.slice(7);return(n.status||'')==st;}
+  if(activeFilter.indexOf('risk:')==0)return!!n.risk;
+  return true;
 }
 function scaledPos(W,H){
   var xs=Object.values(POS).map(function(p){return p[0];});
@@ -542,25 +738,62 @@ function render(){
   var svg=document.getElementById('g');
   svg.setAttribute('viewBox','0 0 '+W+' '+H);
   var pm=scaledPos(W,H);
+  var visIds={};
+  G.nodes.forEach(function(n){if(nodeVisible(n))visIds[n.id]=true;});
   var h='<g>';
+  // Zone labels
+  var zonePts={};
+  G.nodes.forEach(function(n){
+    var z=n.zone||'';var p=pm[n.id];if(!p||!z)return;
+    if(!zonePts[z])zonePts[z]={sx:0,sy:0,c:0};
+    zonePts[z].sx+=p[0];zonePts[z].sy+=p[1];zonePts[z].c++;
+  });
+  for(var zn in zonePts){
+    var zp=zonePts[zn];
+    h+='<text class="zone-label" x="'+(zp.sx/zp.c).toFixed(0)+'" y="'+((zp.sy/zp.c)-25).toFixed(0)+'">'+esc(zn)+'</text>';
+  }
+  // Edges
   G.edges.forEach(function(e){
     var s=pm[e.source],t=pm[e.target];
     if(!s||!t)return;
-    h+='<line class="el" x1="'+s[0].toFixed(1)+'" y1="'+s[1].toFixed(1)+'" x2="'+t[0].toFixed(1)+'" y2="'+t[1].toFixed(1)+'"/>';
+    var cls=edgeClass(e);
+    var isSel=selId&&(e.source===selId||e.target===selId);
+    if(isSel)cls+=' sel-edge';
+    else if(selId||activeFilter)if(!visIds[e.source]&&!visIds[e.target])cls+=' dim';
+    h+='<line class="'+cls+'" x1="'+s[0].toFixed(1)+'" y1="'+s[1].toFixed(1)+'" x2="'+t[0].toFixed(1)+'" y2="'+t[1].toFixed(1)+'"/>';
   });
+  // Nodes
   G.nodes.forEach(function(n){
     var p=pm[n.id];if(!p)return;
     var x=p[0],y=p[1],r=rad(n),c=col(n);
-    var cls='nd'+(n.status==='running'?' run':'')+(n.id===selId?' sel':'');
-    var stk=n.id===selId?'#c9d1d9':'#30363d';
+    var vis=visIds[n.id];
+    var cls='nd'+(n.status==='running'?' run':'')+(n.id===selId?' sel':'')+(vis?'':' dim');
     var lbl=n.label.length>15?n.label.slice(0,14)+'\\u2026':n.label;
-    h+='<g class="'+cls+'" data-nid="'+esc(n.id)+'" onclick="pick(this.dataset.nid)">';
-    h+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+r+'" fill="'+c+'" stroke="'+stk+'" stroke-width="2"/>';
+    h+='<g class="'+cls+'" data-nid="'+esc(n.id)+'" tabindex="0" onclick="pick(this.dataset.nid)" onkeydown="if(event.key===\\'Enter\\')pick(this.dataset.nid)">';
+    h+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+r+'" fill="'+c+'" stroke="var(--remedy-node-border)" stroke-width="2"/>';
     h+='<text x="'+x.toFixed(1)+'" y="'+(y+r+9).toFixed(1)+'">'+esc(lbl)+'</text>';
     h+='</g>';
   });
   h+='</g>';
   svg.innerHTML=h;
+}
+function buildCmdSuggestions(d){
+  var cmds=[];
+  var jid=JOB_ID.slice(0,8);
+  cmds.push({label:'Inspect node',cmd:'remedy brain node '+jid+' '+d.node_id});
+  if(d.node_type==='task'||d.node_type==='artifact')
+    cmds.push({label:'View graph',cmd:'remedy brain graph '+jid+' --json'});
+  if(d.affected_files&&d.affected_files.length)
+    cmds.push({label:'File provenance',cmd:'remedy file why '+jid+' <path>'});
+  if(d.node_type==='decision_queue'||d.node_type==='approval_decision')
+    cmds.push({label:'Decisions',cmd:'remedy decision list '+jid});
+  if(d.node_type==='stop_reason'||d.node_type==='permission_blocker')
+    cmds.push({label:'Blockers',cmd:'remedy blocker list '+jid});
+  if(d.node_type==='autonomy_readiness')
+    cmds.push({label:'Readiness',cmd:'remedy readiness job '+jid});
+  cmds.push({label:'Dashboard',cmd:'remedy dashboard job '+jid});
+  cmds.push({label:'Guide',cmd:'remedy guide job '+jid});
+  return cmds;
 }
 window.pick=function(nodeId){
   selId=nodeId;render();
@@ -570,7 +803,7 @@ window.pick=function(nodeId){
   var body=document.getElementById('db');
   body.style.display='block';
   var d=DET[nodeId];
-  if(!d){body.innerHTML='<p style="color:#484f58">No detail available.</p>';return;}
+  if(!d){body.innerHTML='<p style="color:var(--remedy-fg-muted)">No detail available.</p>';return;}
   var h='<div class="dt">'+esc(d.title)+'</div>';
   h+='<div class="dr"><span class="dl">type </span><span class="dv">'+esc(d.node_type)+'</span></div>';
   h+='<div class="dr"><span class="dl">status </span><span class="dv">'+esc(String(d.status))+'</span></div>';
@@ -603,9 +836,59 @@ window.pick=function(nodeId){
     d.redaction_notes.forEach(function(r){h+='<div class="di drd">\\u25cb '+esc(r)+'</div>';});
   }
   body.innerHTML=h;
+  // Next action rail
+  var nar=document.getElementById('next-action-rail');
+  var nac=document.getElementById('na-cards');
+  if(nar&&nac){
+    var cmds=buildCmdSuggestions(d);
+    var ch='';
+    cmds.forEach(function(c){
+      ch+='<div class="na-card"><div class="na-title">'+esc(c.label)+'</div>';
+      ch+='<div class="na-cmd"><code>'+esc(c.cmd)+'</code> ';
+      ch+='<button class="copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\\''+esc(c.cmd).replace(/'/g,"\\\\'")+'\\')" tabindex="0">copy</button>';
+      ch+='</div></div>';
+    });
+    nac.innerHTML=ch;
+    nar.style.display='block';
+  }
 };
+// ── Search ──
+var si=document.getElementById('search-input');
+if(si){
+  si.addEventListener('input',function(){searchTerm=si.value;render();});
+}
+// ── Filter buttons ──
+document.querySelectorAll('.filter-btn[data-filter]').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var f=btn.getAttribute('data-filter');
+    document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
+    if(f==='all'||activeFilter===f){activeFilter=null;}
+    else{activeFilter=f;btn.classList.add('active');}
+    render();
+  });
+});
+// ── Keyboard ──
+document.addEventListener('keydown',function(e){
+  if(e.key==='/'){
+    e.preventDefault();
+    var si2=document.getElementById('search-input');
+    if(si2)si2.focus();
+  }
+  if(e.key==='Escape'){
+    selId=null;searchTerm='';activeFilter=null;
+    var si3=document.getElementById('search-input');
+    if(si3){si3.value='';si3.blur();}
+    document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
+    document.getElementById('dh').style.display='';
+    document.getElementById('db').style.display='none';
+    var nar2=document.getElementById('next-action-rail');
+    if(nar2)nar2.style.display='none';
+    render();
+  }
+});
 window.addEventListener('resize',render);
 render();
+// ── Diag ──
 var dn=document.getElementById('diag-nodes');
 var de=document.getElementById('diag-edges');
 var dd=document.getElementById('diag-details');
@@ -614,6 +897,7 @@ if(dn)dn.textContent=G.nodes.length;
 if(de)de.textContent=G.edges.length;
 if(dd)dd.textContent=Object.keys(DET).length;
 if(df)df.textContent=VD.detail_fallback_count||0;
+// ── Context badge ──
 (function(){
   var cc=G.nodes.find(function(n){return n.type==='context_coverage';});
   if(cc&&cc.metadata!=null){
@@ -621,7 +905,44 @@ if(df)df.textContent=VD.detail_fallback_count||0;
     if(el)el.textContent='Context: '+cc.metadata.score+'%';
   }
 })();
-// ── Populate info-bar from graph nodes ──
+// ── Filter rail ──
+(function(){
+  var zf=document.getElementById('zone-filters');
+  var sf=document.getElementById('status-filters');
+  var rf=document.getElementById('risk-filters');
+  if(!zf)return;
+  var zones={},statuses={},hasRisk=false;
+  G.nodes.forEach(function(n){
+    zones[n.zone||'other']=true;
+    if(n.status)statuses[n.status]=true;
+    if(n.risk)hasRisk=true;
+  });
+  var zh='';
+  Object.keys(zones).sort().forEach(function(z){
+    zh+='<div class="fr-item" data-filt="zone:'+esc(z)+'" tabindex="0"><div class="fr-dot" style="background:var(--remedy-teal)"></div>'+esc(z)+'</div>';
+  });
+  zf.innerHTML=zh;
+  var sh='';
+  Object.keys(statuses).sort().forEach(function(s){
+    sh+='<div class="fr-item" data-filt="status:'+esc(s)+'" tabindex="0"><div class="fr-dot" style="background:var(--remedy-fg-muted)"></div>'+esc(s)+'</div>';
+  });
+  sf.innerHTML=sh;
+  if(hasRisk){
+    rf.innerHTML='<div class="fr-item" data-filt="risk:yes" tabindex="0"><div class="fr-dot" style="background:var(--remedy-risk)"></div>has risk</div>';
+  }
+  document.getElementById('filter-rail').addEventListener('click',function(ev){
+    var item=ev.target.closest('.fr-item');
+    if(!item)return;
+    var f=item.getAttribute('data-filt');
+    if(activeFilter===f){activeFilter=null;item.classList.remove('active');}
+    else{
+      document.querySelectorAll('.fr-item').forEach(function(i){i.classList.remove('active');});
+      activeFilter=f;item.classList.add('active');
+    }
+    render();
+  });
+})();
+// ── Info bar from graph nodes ──
 (function(){
   var ar=G.nodes.find(function(n){return n.type==='autonomy_readiness';});
   if(ar){
@@ -670,7 +991,7 @@ if(df)df.textContent=VD.detail_fallback_count||0;
     if(el5)el5.textContent='Git: '+(gm.branch||'\\u2014');
   }
 })();
-// ── Populate proof chain from verified nodes ──
+// ── Proof chain ──
 (function(){
   var pc=document.getElementById('proof-chain');
   if(!pc)return;
@@ -684,7 +1005,7 @@ if(df)df.textContent=VD.detail_fallback_count||0;
   if(verified.length>12)h+='<span class="chain-arrow">\\u2026 +'+(verified.length-12)+'</span>';
   pc.innerHTML=h;
 })();
-// ── Populate timeline from events in graph ──
+// ── Timeline ──
 (function(){
   var tl=document.getElementById('timeline');
   if(!tl)return;
@@ -697,6 +1018,26 @@ if(df)df.textContent=VD.detail_fallback_count||0;
   });
   if(evts.length>15)h+='<span class="tl-dot"></span><span class="tl-event">+'+(evts.length-15)+' more</span>';
   tl.innerHTML=h;
+})();
+// ── Guidance rail ──
+(function(){
+  var gr=document.getElementById('guidance-rail');
+  if(!gr)return;
+  var cards=[];
+  var blocked=G.nodes.filter(function(n){return n.status==='blocked'||n.status==='failed';});
+  if(blocked.length)cards.push({sev:'high',text:blocked.length+' blocker(s)'});
+  var dq=G.nodes.find(function(n){return n.type==='decision_queue';});
+  if(dq&&dq.metadata&&dq.metadata.open_count>0)cards.push({sev:'high',text:dq.metadata.open_count+' decision(s) pending'});
+  var ar=G.nodes.find(function(n){return n.type==='autonomy_readiness';});
+  if(ar&&ar.metadata)cards.push({sev:'info',text:'Readiness L'+ar.metadata.level});
+  var tp2=G.nodes.find(function(n){return n.type==='token_policy';});
+  if(tp2&&tp2.metadata)cards.push({sev:'info',text:'Token: '+(tp2.metadata.mode||'default')});
+  if(!cards.length){gr.style.display='none';return;}
+  var h='';
+  cards.forEach(function(c){
+    h+='<div class="guide-card '+c.sev+'">'+esc(c.text)+'</div>';
+  });
+  gr.innerHTML=h;
 })();
 setRenderStatus(G.nodes.length===0?'empty':'ready');
 }catch(e){

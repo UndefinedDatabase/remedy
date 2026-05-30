@@ -146,7 +146,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
     out_dir = data_dir / "viewers" / str(job_id)
     index_path = write_brain_viewer_files(viewer_data, out_dir)
 
-    print(f"Brain Viewer v0: {index_path}")
+    print(f"Brain Viewer: {index_path}")
 
     log = RunLogWriter(job_id=job.id)
     log.log(
@@ -155,6 +155,119 @@ def _cmd_brain_view(job_id_str: str) -> None:
         detail_count=len(viewer_data.node_details),
         detail_fallback_count=viewer_data.detail_fallback_count, mode="static",
     )
+
+
+def _prepare_viewer(job_id_str: str):
+    """Shared helper: build viewer, return (index_path, job)."""
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path
+    from packages.orchestration.brain_viewer import build_brain_viewer_data, write_brain_viewer_files
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.project_constitution import load_project_constitution
+    from packages.orchestration.timeline import load_run_events
+
+    data_dir = resolve_data_root()
+    events = load_run_events(data_dir, job_id)
+
+    target_repo_str = job.metadata.get("target_repo")
+    constitution = None
+    if target_repo_str:
+        try:
+            repo_path = Path(target_repo_str)
+            if repo_path.exists() and repo_path.is_dir():
+                constitution = load_project_constitution(repo_path)
+        except Exception:
+            pass
+
+    graph = build_project_brain(job, events, constitution=constitution)
+    viewer_data = build_brain_viewer_data(job, graph, events)
+    out_dir = data_dir / "viewers" / str(job_id)
+    index_path = write_brain_viewer_files(viewer_data, out_dir)
+    return index_path, job, viewer_data, graph
+
+
+def _cmd_brain_open(job_id_str: str) -> None:
+    index_path, job, _, _ = _prepare_viewer(job_id_str)
+    print(f"Brain Viewer: {index_path}")
+
+    import platform
+    import subprocess
+    system = platform.system()
+    try:
+        if system == "Darwin":
+            subprocess.Popen(["open", str(index_path)])
+        elif system == "Linux":
+            subprocess.Popen(["xdg-open", str(index_path)])
+        elif system == "Windows":
+            import os
+            os.startfile(str(index_path))  # type: ignore[attr-defined]
+        else:
+            print("(open manually — no platform opener detected)", file=sys.stderr)
+    except (OSError, FileNotFoundError):
+        print("(open manually — opener unavailable)", file=sys.stderr)
+
+
+def _cmd_viewer_path(job_id_str: str, *, json_output: bool = False) -> None:
+    index_path, job, viewer_data, graph = _prepare_viewer(job_id_str)
+    if json_output:
+        import json as _j
+        print(_j.dumps({
+            "version": 1,
+            "job_id": str(job.id),
+            "index_path": str(index_path),
+            "viewer_data_path": str(index_path.parent / "viewer_data.json"),
+            "node_count": len(graph.nodes),
+            "edge_count": len(graph.edges),
+            "detail_count": len(viewer_data.node_details),
+        }, sort_keys=True))
+    else:
+        print(str(index_path))
+
+
+def _cmd_export_viewer(job_id_str: str, out_path: str) -> None:
+    import json as _j
+    import shutil
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    index_path, job, viewer_data, graph = _prepare_viewer(job_id_str)
+    src_dir = index_path.parent
+    dst = Path(out_path)
+    dst.mkdir(parents=True, exist_ok=True)
+
+    # Copy viewer files
+    for f in src_dir.iterdir():
+        if f.is_file():
+            shutil.copy2(f, dst / f.name)
+
+    # Write manifest
+    manifest = {
+        "version": 1,
+        "job_id": str(job.id),
+        "project_id": str(job.metadata.get("project_id", "")),
+        "created_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "index_path": "index.html",
+        "viewer_data_path": "viewer_data.json",
+        "node_count": len(graph.nodes),
+        "edge_count": len(graph.edges),
+        "detail_count": len(viewer_data.node_details),
+        "style_version": 1,
+        "safe_to_share": True,
+        "redaction_summary": "No raw content, secrets, or external assets.",
+    }
+    (dst / "viewer_manifest.json").write_text(_j.dumps(manifest, sort_keys=True, indent=2))
+    print(f"Exported to: {dst}")
+    print(f"  index.html, viewer_data.json, viewer_manifest.json")
 
 
 def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
@@ -392,6 +505,9 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "brain.graph": lambda args: _cmd_brain(args.job_id, json_output=args.json),
     "brain.node": lambda args: _cmd_brain_node(args.job_id, args.node_id, json_output=args.json),
     "brain.view": lambda args: _cmd_brain_view(args.job_id),
+    "brain.open": lambda args: _cmd_brain_open(args.job_id),
+    "brain.viewer-path": lambda args: _cmd_viewer_path(args.job_id, json_output=args.json),
+    "brain.export-viewer": lambda args: _cmd_export_viewer(args.job_id, args.out),
     "brain.context": lambda args: _cmd_context(args.job_id, json_output=args.json),
     "brain.trust": lambda args: _cmd_trust_report(args.job_id),
     "brain.timeline": lambda args: _cmd_timeline(args.job_id),

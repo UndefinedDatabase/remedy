@@ -62,7 +62,7 @@ SUMEOF
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard; do
+    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
@@ -789,9 +789,9 @@ print('    Brain types: '+', '.join(sorted(types)))
         return 1
     }
     VIEW_PATH="$(printf '%s\n' "${BRAIN_VIEW_OUTPUT}" \
-        | awk '/^Brain Viewer v0:/ {sub(/^Brain Viewer v0: /, ""); print; exit}' || true)"
+        | awk '/^Brain Viewer:/ {sub(/^Brain Viewer: /, ""); print; exit}' || true)"
     if [[ -z "${VIEW_PATH}" ]]; then
-        echo "ERROR: brain view did not print a 'Brain Viewer v0:' line" >&2
+        echo "ERROR: brain view did not print a 'Brain Viewer:' line" >&2
         printf "Output was:\n%s\n" "${BRAIN_VIEW_OUTPUT}" >&2
         return 1
     fi
@@ -2055,6 +2055,145 @@ chk(NT_DECISION_QUEUE in _NODE_TYPE_ORDER, 'missing dq in order')
 chk(NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER, 'missing cb in order')
 
 print('    brain nodes: OK (decision_queue + context_budget)')
+"
+
+    # -------------------------------------------------------------------------
+    # 12aj. Redaction precision (Step 74.1)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12aj"
+    echo "--- 12aj. Redaction precision"
+    python3 -c "
+import sys
+from packages.orchestration.redaction_patterns import find_forbidden_surface_tokens
+# Category words must be allowed
+for safe in ('No secrets or API keys', 'redact secrets', 'environment_secrets'):
+    r = find_forbidden_surface_tokens(safe)
+    if r:
+        print('ERROR: false positive on: ' + repr(safe) + ' -> ' + repr(r), file=sys.stderr)
+        sys.exit(1)
+# Actual secrets must be blocked
+for bad in ('secret=abc', 'password=x', 'sk-abcdefghij12', 'ghp_abcdefghij12', 'approval_reason', 'diff_preview', 'raw_stdout'):
+    r = find_forbidden_surface_tokens(bad)
+    if not r:
+        print('ERROR: missed forbidden: ' + repr(bad), file=sys.stderr)
+        sys.exit(1)
+print('    redaction precision: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ak. Viewer UX panels (Steps 75-77)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ak"
+    echo "--- 12ak. Viewer UX panels"
+    python3 -c "
+import sys
+from pathlib import Path
+view_dir = Path('${VIEW_DIR}')
+html = (view_dir / 'index.html').read_text()
+checks = {
+    'search-input': 'id=\"search-input\"' in html,
+    'filter-rail': 'id=\"filter-rail\"' in html,
+    'filter-btn': 'filter-btn' in html,
+    'next-action-rail': 'next-action-rail' in html,
+    'copy-btn': 'copy-btn' in html,
+    'zone-label': 'zone-label' in html,
+    'remedy-mist': 'remedy-mist' in html,
+    'remedy-scanlines': 'remedy-scanlines' in html,
+    'remedy-grid': 'remedy-grid' in html,
+    'guidance-rail': 'guidance-rail' in html,
+    'guide-card': 'guide-card' in html,
+    'sel-pulse': 'sel-pulse' in html,
+    'prefers-reduced-motion': 'prefers-reduced-motion' in html,
+    'focus-visible': 'focus-visible' in html,
+    'data-render-status': 'data-render-status' in html,
+    'remedy-shell': 'remedy-shell' in html,
+    'remedy-proof-chain': 'remedy-proof-chain' in html,
+}
+failed = [k for k, v in checks.items() if not v]
+if failed:
+    for f in failed:
+        print('ERROR: viewer missing: ' + f, file=sys.stderr)
+    sys.exit(1)
+print('    viewer UX panels: OK (' + str(len(checks)) + ' checks)')
+" "${VIEW_DIR}"
+
+    # -------------------------------------------------------------------------
+    # 12al. Guidance rail (Step 78)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12al"
+    echo "--- 12al. Guidance rail"
+    GUIDE_JSON="$(remedy guide job "${JOB_ID}" --json)" || {
+        echo "ERROR: guide job failed" >&2
+        return 1
+    }
+    python3 -c "
+import json, sys
+data = json.loads('''${GUIDE_JSON}''')
+required = {'version', 'scope', 'job_id', 'cards', 'summary', 'recommended_next_action'}
+got = set(data.keys())
+missing = required - got
+if missing:
+    print('ERROR: guide JSON missing keys: ' + repr(missing), file=sys.stderr)
+    sys.exit(1)
+if data['version'] != 1:
+    print('ERROR: guide version != 1', file=sys.stderr)
+    sys.exit(1)
+if not isinstance(data['cards'], list):
+    print('ERROR: cards not a list', file=sys.stderr)
+    sys.exit(1)
+for card in data['cards']:
+    for k in ('id', 'title', 'severity', 'why_it_matters', 'safe_next_action', 'command'):
+        if k not in card:
+            print('ERROR: card missing: ' + k, file=sys.stderr)
+            sys.exit(1)
+print('    guidance rail: OK (cards=' + str(len(data['cards'])) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12am. Viewer path / export (Step 79)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12am"
+    echo "--- 12am. Viewer path / export"
+    VP_JSON="$(remedy brain viewer-path "${JOB_ID}" --json)" || {
+        echo "ERROR: viewer-path failed" >&2
+        return 1
+    }
+    python3 -c "
+import json, sys
+data = json.loads('''${VP_JSON}''')
+required = {'version', 'job_id', 'index_path', 'viewer_data_path', 'node_count', 'edge_count', 'detail_count'}
+got = set(data.keys())
+missing = required - got
+if missing:
+    print('ERROR: viewer-path JSON missing: ' + repr(missing), file=sys.stderr)
+    sys.exit(1)
+print('    viewer-path: OK')
+"
+    EXPORT_DIR="${_SMOKE_LOG_DIR}/viewer-export"
+    remedy brain export-viewer "${JOB_ID}" --out "${EXPORT_DIR}" >/dev/null || {
+        echo "ERROR: export-viewer failed" >&2
+        return 1
+    }
+    python3 -c "
+import json, sys
+from pathlib import Path
+d = Path('${EXPORT_DIR}')
+for f in ('index.html', 'viewer_data.json', 'viewer_manifest.json'):
+    if not (d / f).exists():
+        print('ERROR: export missing: ' + f, file=sys.stderr)
+        sys.exit(1)
+manifest = json.loads((d / 'viewer_manifest.json').read_text())
+required = {'version', 'job_id', 'created_at', 'index_path', 'viewer_data_path',
+            'node_count', 'edge_count', 'detail_count', 'style_version',
+            'safe_to_share', 'redaction_summary'}
+missing = required - set(manifest.keys())
+if missing:
+    print('ERROR: manifest missing: ' + repr(missing), file=sys.stderr)
+    sys.exit(1)
+if not manifest.get('safe_to_share'):
+    print('ERROR: safe_to_share not true', file=sys.stderr)
+    sys.exit(1)
+print('    export-viewer: OK (manifest valid)')
 "
 
     # -------------------------------------------------------------------------

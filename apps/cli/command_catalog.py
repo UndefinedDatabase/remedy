@@ -98,6 +98,7 @@ GROUPS: dict[str, GroupDef] = {
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons."),
     "decision": GroupDef("decision", "Decision", "Human decision queue."),
     "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards."),
+    "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -466,6 +467,37 @@ CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JOB_ID,),
         related=("brain.context",),
+    ),
+    CommandEntry(
+        command_id="brain.open",
+        group_id="brain",
+        subcommand="open",
+        description="Generate and open the brain viewer in default browser.",
+        action_class="read_only",
+        args=(_JOB_ID,),
+        related=("brain.view", "brain.viewer-path"),
+    ),
+    CommandEntry(
+        command_id="brain.viewer-path",
+        group_id="brain",
+        subcommand="viewer-path",
+        description="Print the path to the brain viewer index.html.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("brain.open", "brain.export-viewer"),
+    ),
+    CommandEntry(
+        command_id="brain.export-viewer",
+        group_id="brain",
+        subcommand="export-viewer",
+        description="Export the brain viewer to a target directory.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--out", "Output directory path", required=True, is_option=True),
+        ),
+        related=("brain.open", "brain.viewer-path"),
     ),
 
     # ── policy ───────────────────────────────────────────────────────────
@@ -937,6 +969,18 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
+    ),
+
+    # ── guide ─────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="guide.job",
+        group_id="guide",
+        subcommand="job",
+        description="Show human guidance rail for a job — next safe actions.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("readiness.job", "decision.list", "dashboard.job"),
     ),
 
     # ── dev ──────────────────────────────────────────────────────────────
