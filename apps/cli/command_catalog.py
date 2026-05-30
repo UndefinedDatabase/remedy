@@ -100,6 +100,7 @@ GROUPS: dict[str, GroupDef] = {
     "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards."),
     "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions."),
     "ui": GroupDef("ui", "UI", "Localhost UI server — primary interactive experience."),
+    "do": GroupDef("do", "Do", "High-level guided autorun — one command to start a Remedy run."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -1031,6 +1032,28 @@ CATALOG: tuple[CommandEntry, ...] = (
         description="Open browser for a specific job UI session.",
         action_class="read_only",
         args=(_JOB_ID,),
+    ),
+
+    # ── do ───────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="do.run",
+        group_id="do",
+        subcommand="run",
+        description="Start a controlled autorun for a goal.",
+        action_class="apply_write",
+        args=(
+            ArgDef("goal", "The goal to accomplish", required=True),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            ArgDef("--project", "Project ID to use or create", required=False, is_option=True),
+            ArgDef("--autonomy-level", "Autonomy level 0-7 (default: 2)", required=False, is_option=True, default="2"),
+            ArgDef("--max-cycles", "Maximum cycles (default: 3)", required=False, is_option=True, default="3"),
+            ArgDef("--ui", "Start UI alongside run (default: false)", required=False, is_option=True, default="false"),
+            ArgDef("--dry-run", "Show plan without executing", required=False, is_option=True, default="false"),
+            ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
+            ArgDef("--fixture-builder", "Use fixture builder for testing", required=False, is_option=True, default="false"),
+        ),
+        may_mutate_repo=True,
+        may_execute_commands=True,
     ),
 
     # ── dev ──────────────────────────────────────────────────────────────

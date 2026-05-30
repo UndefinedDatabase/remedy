@@ -275,6 +275,93 @@ def _build_node_detail_json(job: Any, node_id: str) -> dict[str, Any]:
     return build_node_detail(job, events, node_id)
 
 
+def _build_live_state_json(job: Any) -> dict[str, Any]:
+    """Build live state for polling — lightweight check for UI updates."""
+    import hashlib as _hl
+
+    events = _load_events(job)
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+
+    # Compute view-model hash for change detection
+    node_count = len(events)
+    raw = f"{job.id}:{state}:{node_count}"
+    vm_hash = _hl.md5(raw.encode()).hexdigest()[:12]
+
+    # Latest event
+    latest_at = ""
+    if events:
+        latest_at = events[-1].get("timestamp", "")
+
+    # Cursor = event count
+    cursor = str(len(events))
+
+    # Stage detection
+    stage = "idle"
+    if events:
+        last_event = events[-1].get("event", "")
+        stage_map = {
+            "task_created": "planning",
+            "patch_intent_created": "proposing",
+            "patch_intent_approved": "approved",
+            "patch_intent_applied": "applying",
+            "test_run_completed": "testing",
+            "proof_collected": "proving",
+            "stop_reason_recorded": "stopped",
+        }
+        stage = stage_map.get(last_event, "active")
+
+    # Open decisions
+    open_decisions = sum(
+        1 for e in events
+        if e.get("event") == "human_decision_requested"
+        and e.get("outcome") != "resolved"
+    )
+
+    # Test status
+    test_events = [e for e in events if e.get("event") == "test_run_completed"]
+    test_status = "none"
+    if test_events:
+        last_exit = test_events[-1].get("metadata", {}).get("exit_code")
+        test_status = "pass" if last_exit == 0 else "fail"
+
+    return {
+        "version": 1,
+        "job_id": str(job.id),
+        "cursor": cursor,
+        "stage": stage,
+        "running": state == "active",
+        "latest_event_at": latest_at,
+        "node_count": node_count,
+        "edge_count": 0,
+        "open_decision_count": open_decisions,
+        "test_status": test_status,
+        "token_mode": "compact",
+        "view_model_hash": vm_hash,
+    }
+
+
+def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
+    """Return safe event summaries since cursor position."""
+    events = _load_events(job)
+    start = 0
+    if cursor.isdigit():
+        start = int(cursor)
+    new_events = events[start:]
+    safe = []
+    for e in new_events[:50]:
+        safe.append({
+            "event": e.get("event", ""),
+            "timestamp": e.get("timestamp", ""),
+            "outcome": e.get("outcome", ""),
+        })
+    return {
+        "version": 1,
+        "job_id": str(job.id),
+        "cursor": str(len(events)),
+        "events": safe,
+    }
+
+
 def _get_frontend_dist() -> Path | None:
     """Return path to built PixiJS frontend dist/ if it exists."""
     dist = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "dist"
@@ -369,6 +456,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "dashboard": _build_dashboard,
                 "brain": _build_brain_json,
                 "brain-view-model": _build_brain_view_model_json,
+                "live-state": _build_live_state_json,
                 "guide": _build_guide_json,
                 "events": _build_events_json,
                 "readiness": _build_readiness_json,
@@ -377,6 +465,12 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             handler = handlers.get(endpoint)
             if handler:
                 self._send_json(200, handler(job))
+                return
+
+            # events-since with cursor param
+            if endpoint == "events-since":
+                cursor = (qs.get("cursor") or ["0"])[0]
+                self._send_json(200, _build_events_since_json(job, cursor))
                 return
 
         # /api/jobs/<job_id>/nodes/<node_id>/detail

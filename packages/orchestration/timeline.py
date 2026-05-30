@@ -39,6 +39,25 @@ from packages.orchestration._symbols import (
 # ---------------------------------------------------------------------------
 
 
+def append_run_event(
+    data_dir: str | Path,
+    job_id: UUID | str,
+    *,
+    event: str,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Append a single event to the run log for a job.
+
+    Convenience wrapper around RunLogWriter for one-shot event recording.
+    ``data_dir`` is the Remedy data root (e.g. ``.data/``).
+    """
+    from packages.orchestration.run_log import RunLogWriter
+
+    jid = job_id if isinstance(job_id, UUID) else UUID(str(job_id))
+    writer = RunLogWriter(jid, runs_root=Path(data_dir) / "runs")
+    writer.log(event, **(metadata or {}))
+
+
 def load_run_events(data_dir: Path, job_id: UUID | str) -> list[dict[str, Any]]:
     """Load all run log events for a job, sorted by timestamp.
 

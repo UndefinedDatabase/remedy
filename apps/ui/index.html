@@ -8,14 +8,14 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #e8ecf1; }
   #app { width: 100%; height: 100%; position: relative; }
-  #canvas-container { width: 100%; height: 100%; }
+  #canvas-container { width: 100%; height: 100%; position: relative; }
   #detail-card {
     display: none;
     position: absolute;
     top: 24px;
     right: 24px;
-    width: 320px;
-    max-height: calc(100vh - 48px);
+    width: 300px;
+    max-height: 360px;
     overflow-y: auto;
     background: #fff;
     border-radius: 12px;
@@ -39,10 +39,10 @@
   }
   #detail-card .close-btn:hover { background: #e0e4e9; }
   #detail-card .advanced-toggle {
-    font-size: 12px; color: #6b7a8d; cursor: pointer; margin-top: 8px;
+    font-size: 11px; color: #a0aab4; cursor: pointer; margin-top: 8px;
     border: none; background: none; padding: 4px 0;
   }
-  #detail-card .advanced-content { display: none; margin-top: 8px; }
+  #detail-card .advanced-content { display: none; margin-top: 8px; border-top: 1px solid #eef1f4; padding-top: 8px; }
   #detail-card .advanced-content.open { display: block; }
   #zoom-indicator {
     position: absolute; bottom: 24px; left: 24px;
@@ -51,13 +51,28 @@
     font-size: 12px; color: #4a5568; box-shadow: 0 1px 6px rgba(0,0,0,0.08);
     z-index: 50;
   }
+  #edge-tooltip {
+    display: none;
+    position: fixed;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.92);
+    border-radius: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 11px;
+    color: #4a5568;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    pointer-events: none;
+    z-index: 80;
+  }
+  #edge-tooltip.visible { display: block; }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="canvas-container"></div>
   <div id="detail-card"></div>
-  <div id="zoom-indicator">Zoom: Origin</div>
+  <div id="zoom-indicator">Origin</div>
+  <div id="edge-tooltip"></div>
 </div>
 <script type="module" src="/src/main.ts"></script>
 </body>

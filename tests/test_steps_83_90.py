@@ -54,11 +54,11 @@ class TestBrainViewModel:
         job, events = self._make_graph_and_events()
         vm = build_brain_view_model(job, events)
 
-        assert vm["version"] == 1
+        assert vm["version"] == 2
         assert "nodes" in vm
         assert "edges" in vm
         assert "layers" in vm
-        assert len(vm["layers"]) == 6
+        assert len(vm["layers"]) == 7
 
     def test_layer_names(self):
         from packages.orchestration.ui_view_model import build_brain_view_model
@@ -66,7 +66,7 @@ class TestBrainViewModel:
         vm = build_brain_view_model(job, events)
 
         names = [l["name"] for l in vm["layers"]]
-        assert names == ["Origin", "Core Lifecycle", "Attention", "Evidence", "System Map", "Full Graph"]
+        assert names == ["Origin", "Intent Path", "Work Path", "Proof Path", "Attention", "System Clusters", "Full Graph"]
 
     def test_job_node_is_layer_zero(self):
         from packages.orchestration.ui_view_model import build_brain_view_model
@@ -80,13 +80,13 @@ class TestBrainViewModel:
             assert jn["visible_from_zoom"] == 0
 
     def test_origin_max_nodes(self):
-        """At zoom level 0 (origin), at most 3 nodes visible."""
+        """At zoom level 0 (origin), at most 1 node visible."""
         from packages.orchestration.ui_view_model import build_brain_view_model
         job, events = self._make_graph_and_events()
         vm = build_brain_view_model(job, events)
 
         zoom0_nodes = [n for n in vm["nodes"] if n["visible_from_zoom"] <= 0]
-        assert len(zoom0_nodes) <= 3, f"Origin zoom shows {len(zoom0_nodes)} nodes, max 3"
+        assert len(zoom0_nodes) <= 1, f"Origin zoom shows {len(zoom0_nodes)} nodes, max 1"
 
     def test_no_labels_at_origin_except_job(self):
         """At zoom level 0, only job node may show label."""
@@ -106,9 +106,8 @@ class TestBrainViewModel:
         vm = build_brain_view_model(job, events)
 
         for n in vm["nodes"]:
-            assert "position" in n
-            assert "x" in n["position"]
-            assert "y" in n["position"]
+            assert "x" in n
+            assert "y" in n
 
     def test_node_has_cluster(self):
         from packages.orchestration.ui_view_model import build_brain_view_model
@@ -120,6 +119,7 @@ class TestBrainViewModel:
             assert n["cluster_id"] in (
                 "origin", "lifecycle", "patches", "testing",
                 "attention", "events", "system", "other",
+                "proofs", "future",
             )
 
     def test_edge_visibility(self):
@@ -129,7 +129,7 @@ class TestBrainViewModel:
 
         for e in vm["edges"]:
             assert "visible_from_zoom" in e
-            assert 0 <= e["visible_from_zoom"] <= 5
+            assert 0 <= e["visible_from_zoom"] <= 6
 
 
 # ---------------------------------------------------------------------------
@@ -157,10 +157,10 @@ class TestNodeDetail:
         if vm["nodes"]:
             node_id = vm["nodes"][0]["id"]
             detail = build_node_detail(job, events, node_id)
-            assert detail["version"] == 1
+            assert detail["version"] == 2
             assert detail["node_id"] == node_id
-            assert "type" in detail
-            assert "label" in detail
+            assert "title" in detail
+            assert "status_text" in detail
 
     def test_detail_missing_node(self):
         from packages.orchestration.ui_view_model import build_node_detail
@@ -200,7 +200,7 @@ class TestFrontendBuild:
         deps = data.get("dependencies", {})
         assert "pixi.js" in deps
         assert "pixi-viewport" in deps
-        assert "d3-force" in deps
+        assert "elkjs" in deps
 
 
 # ---------------------------------------------------------------------------
@@ -260,10 +260,10 @@ class TestUXAntiRegression:
         assert "position: absolute" in html, "Detail card not absolutely positioned"
         assert "display: none" in html, "Detail card not hidden by default"
 
-    def test_view_model_six_layers(self):
-        """View model must define exactly 6 zoom layers."""
-        from packages.orchestration.ui_view_model import _LAYER_NAMES
-        assert len(_LAYER_NAMES) == 6
+    def test_view_model_seven_zoom_levels(self):
+        """View model must define exactly 7 zoom levels."""
+        from packages.orchestration.ui_view_model import _ZOOM_NAMES
+        assert len(_ZOOM_NAMES) == 7
 
 
 # ---------------------------------------------------------------------------
