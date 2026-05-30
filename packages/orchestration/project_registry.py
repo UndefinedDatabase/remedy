@@ -95,7 +95,7 @@ def list_projects() -> list[RemyProject]:
     for path in d.glob("*.json"):
         try:
             projects.append(RemyProject.model_validate_json(path.read_text()))
-        except Exception:
+        except (ValueError, OSError):
             pass
     return sorted(projects, key=lambda p: p.created_at, reverse=True)
 

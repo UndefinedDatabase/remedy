@@ -158,25 +158,37 @@ def _build_readiness_summary(job: Job, events: list[dict[str, Any]], mode: str) 
                 f"Readiness: Level {report.highest_eligible_level}\n"
                 + ("\n".join(f"  → {a}" for a in report.next_actions) if report.next_actions else "  (no missing actions)")
             )
-    except Exception:
+    except (ImportError, ValueError, OSError):
         content = "(readiness unavailable)"
     return PackSection(name="readiness_summary", priority=5, content=content,
                         estimated_tokens=_estimate_tokens(content))
 
 
 def _build_memory_keys(mode: str) -> PackSection:
-    """Priority 6: memory keys/tags."""
+    """Priority 6: approved active memory summaries (no raw values)."""
     try:
         from packages.memory.local_gateway import list_memory
-        entries = list_memory()
+        all_entries = list_memory()
+        entries = [e for e in all_entries if e.approved and e.validity == "active"]
         lines = []
-        for e in entries[:10]:
-            if mode == "caveman":
-                lines.append(f"mem:{e.key}{'[ok]' if e.approved else ''}")
-            else:
-                lines.append(f"  {e.key} (approved={e.approved}, tags={','.join(e.tags)})")
-        content = "\n".join(lines) if lines else "(no memory entries)"
-    except Exception:
+        if mode == "caveman":
+            lines.append(f"mem:{len(entries)}/{len(all_entries)}")
+            for e in entries[:10]:
+                lines.append(f"  {e.key}")
+        elif mode == "standard":
+            for e in entries[:10]:
+                summary = e.summary[:80] if e.summary else "(no summary)"
+                lines.append(
+                    f"  {e.key}: {summary}\n"
+                    f"    scope={e.scope} review={e.review_status} "
+                    f"evidence={len(e.evidence_refs)} src={e.source_type}"
+                )
+        else:
+            for e in entries[:10]:
+                summary = e.summary[:60] if e.summary else ""
+                lines.append(f"  {e.key}: {summary}" if summary else f"  {e.key}")
+        content = "\n".join(lines) if lines else "(no approved memory)"
+    except (ImportError, ValueError, OSError):
         content = "(memory unavailable)"
     return PackSection(name="memory_keys", priority=6, content=content,
                         estimated_tokens=_estimate_tokens(content))

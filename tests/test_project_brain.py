@@ -689,7 +689,7 @@ class TestExportProjectBrainJson:
         job = _make_job()
         graph = build_project_brain(job, [])
         export = export_project_brain_json(graph)
-        assert set(export.keys()) == {"version", "job_id", "nodes", "edges"}
+        assert set(export.keys()) == {"version", "job_id", "nodes", "edges", "degraded"}
 
 
 # ---------------------------------------------------------------------------
@@ -933,7 +933,7 @@ class TestCLIBrain:
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
-        assert set(data.keys()) == {"version", "job_id", "nodes", "edges"}
+        assert set(data.keys()) == {"version", "job_id", "nodes", "edges", "degraded"}
 
     def test_json_flag_does_not_leak_sentinels(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

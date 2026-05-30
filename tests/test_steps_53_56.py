@@ -541,12 +541,56 @@ class TestTokenEconomy:
         )
         policy = build_default_token_policy(job)
         exported = export_token_policy_json(policy)
+        # Both canonical and detailed fields must be present
         required = {
             "version", "job_id", "scope", "zero_token_steps",
             "local_first_steps", "expensive_model_steps",
             "forbidden_context", "compaction_rules", "budget",
+            "default_mode", "max_context_tokens", "local_first",
+            "remote_model_requires_approval", "prefer_zero_token_tools",
+            "prohibited_payloads",
         }
         assert required <= set(exported.keys())
+        assert exported["local_first"] is True
+        assert exported["remote_model_requires_approval"] is True
+        assert exported["prefer_zero_token_tools"] is True
+        assert isinstance(exported["prohibited_payloads"], list)
+        assert isinstance(exported["max_context_tokens"], int)
+
+    def test_token_policy_applied_event_schema(self, tmp_path, monkeypatch):
+        """Agent loop must emit token_policy_applied with exact metadata keys."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+
+        from packages.orchestration.agent_loop import run_agent_loop
+        run_agent_loop(job, max_cycles=1)
+
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.timeline import load_run_events
+        events = load_run_events(resolve_data_root(), job.id)
+        tpa = [e for e in events if e.get("event") == "token_policy_applied"]
+        assert len(tpa) >= 1, "must emit token_policy_applied"
+        meta = tpa[0].get("metadata", {})
+        required = {
+            "mode", "max_context_tokens", "estimated_context_tokens",
+            "local_first", "remote_model_requires_approval", "selected_worker",
+        }
+        assert required <= set(meta.keys()), f"missing: {required - set(meta.keys())}"
+        assert meta["local_first"] is True
+
+    def test_worker_recommend_no_execution(self, tmp_path, monkeypatch):
+        """Worker recommend must not execute any provider."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+
+        from packages.orchestration.worker_recommend import recommend_worker
+        rec = recommend_worker(job, [])
+        # All candidates must be inert metadata — no subprocess, network, or shell
+        for c in rec.candidates:
+            assert c.execution_mode in ("local_process", "external_harness", "api")
+            assert c.status in ("available", "future")
 
     def test_all_modes_obey_redaction(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

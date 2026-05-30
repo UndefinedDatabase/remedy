@@ -78,7 +78,34 @@ def _cmd_token_policy(job_id_str: str, *, json_output: bool = False) -> None:
     )
 
 
+def _cmd_token_explain() -> None:
+    print(
+        "Token Economy Policy\n"
+        "\n"
+        "Remedy routes work through a token-aware pipeline:\n"
+        "\n"
+        "  Zero-token steps: command discovery, risk assessment, permission\n"
+        "    checks, brain graph construction — pure local Python, no LLM.\n"
+        "\n"
+        "  Local-first steps: planning, verification, constitution checks —\n"
+        "    prefer cheap local models (e.g. Ollama).\n"
+        "\n"
+        "  Expensive steps: artifact generation, complex refactoring —\n"
+        "    require frontier models, budget-capped.\n"
+        "\n"
+        "  Prohibited payloads: raw credentials, API keys, secrets,\n"
+        "    raw command output, artifact content — never sent to LLM.\n"
+        "\n"
+        "  Default mode: caveman (minimal tokens). Modes: caveman, compact,\n"
+        "    standard — ordered by token usage.\n"
+        "\n"
+        "  Local-first: always true. Remote models require approval.\n"
+        "  No provider execution without explicit human approval.\n"
+    )
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "policy.contract": lambda args: _cmd_run_contract(args.job_id, json_output=args.json),
     "policy.token": lambda args: _cmd_token_policy(args.job_id, json_output=args.json),
+    "policy.token-explain": lambda args: _cmd_token_explain(),
 }

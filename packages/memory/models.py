@@ -17,6 +17,10 @@ class MemoryEntry:
     tags, source_type, source_id, created_at, expires_at, approved,
     confidence_source, redaction_policy.
 
+    Evidence Card extensions (v2):
+    summary, scope, validity, review_status, updated_at, supersedes,
+    contradicts, evidence_refs.
+
     No raw artifact/stdout/diff/secret content is stored.
     """
 
@@ -34,6 +38,15 @@ class MemoryEntry:
     approved: bool = False
     confidence_source: Literal["human_explicit", "human_implicit", "agent_derived", "system"] = "human_explicit"
     redaction_policy: Literal["none", "redact_secrets", "redact_all"] = "redact_secrets"
+    # Evidence Card extensions
+    summary: str = ""
+    scope: Literal["job", "project", "global"] = "job"
+    validity: Literal["active", "stale", "superseded", "contradicted"] = "active"
+    review_status: Literal["proposed", "approved", "rejected", "needs_review"] = "proposed"
+    updated_at: str | None = None
+    supersedes: str | None = None  # memory_id this supersedes
+    contradicts: str | None = None  # memory_id this contradicts
+    evidence_refs: list[str] = field(default_factory=list)  # list of source IDs
 
     def to_json_line(self) -> str:
         """Serialize to compact JSON line."""
@@ -52,6 +65,14 @@ class MemoryEntry:
             "approved": self.approved,
             "confidence_source": self.confidence_source,
             "redaction_policy": self.redaction_policy,
+            "summary": self.summary,
+            "scope": self.scope,
+            "validity": self.validity,
+            "review_status": self.review_status,
+            "updated_at": self.updated_at,
+            "supersedes": self.supersedes,
+            "contradicts": self.contradicts,
+            "evidence_refs": self.evidence_refs,
         }
         return json.dumps(d, separators=(",", ":"))
 
@@ -73,4 +94,12 @@ class MemoryEntry:
             approved=d.get("approved", False),
             confidence_source=d.get("confidence_source", "human_explicit"),
             redaction_policy=d.get("redaction_policy", "redact_secrets"),
+            summary=d.get("summary", ""),
+            scope=d.get("scope", "job"),
+            validity=d.get("validity", "active"),
+            review_status=d.get("review_status", "proposed"),
+            updated_at=d.get("updated_at"),
+            supersedes=d.get("supersedes"),
+            contradicts=d.get("contradicts"),
+            evidence_refs=d.get("evidence_refs", []),
         )

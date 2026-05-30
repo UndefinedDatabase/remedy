@@ -135,11 +135,23 @@ def build_default_token_policy(job: Job) -> TokenPolicy:
 
 
 def export_token_policy_json(policy: TokenPolicy) -> dict[str, Any]:
-    """Export a TokenPolicy as a JSON-serializable dict."""
+    """Export a TokenPolicy as a JSON-serializable dict.
+
+    Includes both canonical field names (default_mode, max_context_tokens, etc.)
+    and detailed breakdown fields (zero_token_steps, local_first_steps, etc.).
+    """
     return {
         "version":              policy.version,
         "job_id":               policy.job_id,
         "scope":                policy.scope,
+        # Canonical summary fields (Step 56 spec)
+        "default_mode":         "caveman",
+        "max_context_tokens":   policy.budget.get("expensive_tokens", 100_000),
+        "local_first":          True,
+        "remote_model_requires_approval": True,
+        "prefer_zero_token_tools": True,
+        "prohibited_payloads":  list(policy.forbidden_context),
+        # Detailed breakdown
         "zero_token_steps":     list(policy.zero_token_steps),
         "local_first_steps":    list(policy.local_first_steps),
         "expensive_model_steps": list(policy.expensive_model_steps),

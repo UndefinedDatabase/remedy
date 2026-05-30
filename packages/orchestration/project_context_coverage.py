@@ -276,7 +276,7 @@ def derive_project_context_coverage(
                         if has_approved_memory(job_id=str(j.id)):
                             present = True
                             break
-            except Exception:
+            except (ImportError, ValueError, OSError):
                 present = False
             return present, (
                 "approved memory entries present" if present

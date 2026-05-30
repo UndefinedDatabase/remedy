@@ -23,6 +23,29 @@ remedy_smoke() {
   (
     set -euo pipefail
 
+    # -- Failure trap: print section, line, command on error --
+    _SMOKE_SECTION="init"
+    _SMOKE_RUN_ID="$(date +%Y%m%d-%H%M%S)"
+    _SMOKE_LOG_DIR=".data/smoke/${_SMOKE_RUN_ID}"
+    mkdir -p "${_SMOKE_LOG_DIR}"
+
+    _smoke_fail() {
+      local line="${1:-?}" cmd="${2:-?}"
+      echo "" >&2
+      echo "========================================" >&2
+      echo "remedy_smoke: FAILED" >&2
+      echo "  section : ${_SMOKE_SECTION}" >&2
+      echo "  line    : ${line}" >&2
+      echo "  command : ${cmd}" >&2
+      echo "  log     : ${_SMOKE_LOG_DIR}/smoke.log" >&2
+      echo "========================================" >&2
+      # Write failure summary
+      cat >"${_SMOKE_LOG_DIR}/summary.json" <<SUMEOF
+{"status":"failed","section":"${_SMOKE_SECTION}","line":${line},"run_id":"${_SMOKE_RUN_ID}","project_id":"${PROJECT_ID:-}","job_id":"${JOB_ID:-}"}
+SUMEOF
+    }
+    trap '_smoke_fail "${LINENO}" "${BASH_COMMAND}"' ERR
+
     local TARGET_REPO="${REMEDY_SMOKE_REPO:-/tmp/remedy-target-repo}"
     local PROMPT="${1:-Create exactly one task with task_type write_readme: Write a README for a small internal CLI tool. No further tasks.}"
 
@@ -37,6 +60,7 @@ remedy_smoke() {
     # -------------------------------------------------------------------------
     # 0. Verify group help for all groups
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
     for grp in job project patch test brain policy worker memory dev readiness context file; do
         remedy "${grp}" >/dev/null 2>&1 || {
@@ -49,6 +73,7 @@ remedy_smoke() {
     # -------------------------------------------------------------------------
     # 1. Create target repo
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="1"
     echo "--- 1. Create target repo: ${TARGET_REPO}"
     rm -rf "${TARGET_REPO}"
     mkdir -p "${TARGET_REPO}"
@@ -147,6 +172,7 @@ TEST_EOF
     # -------------------------------------------------------------------------
     # 1b. Repository structure sanity (Step 32)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="1b"
     echo "--- 1b. Repository structure sanity"
     python3 -c "
 import sys
@@ -239,6 +265,7 @@ print('    Repository structure sanity: OK')
     # -------------------------------------------------------------------------
     # 2. Create project (grouped CLI)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="2"
     echo "--- 2. Create project"
     PROJECT_ID="$(remedy project create "Smoke Project" --description "smoke test project")"
     if [[ -z "${PROJECT_ID}" ]]; then
@@ -250,6 +277,7 @@ print('    Repository structure sanity: OK')
     # -------------------------------------------------------------------------
     # 3. Create job (linked to project, explicit task_type — no plan needed)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="3"
     echo "--- 3. Create job"
     JOB_ID="$(remedy job create "${PROMPT}" \
         --project "${PROJECT_ID}" \
@@ -287,6 +315,7 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # -------------------------------------------------------------------------
     # 4. Attach repo + set permission; link repo to project
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="4"
     echo "--- 4. Attach repo + set permission"
     remedy job attach-repo "${JOB_ID}" "${TARGET_REPO}"
     remedy job permit "${JOB_ID}" repo_generated_write allow
@@ -295,6 +324,7 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # -------------------------------------------------------------------------
     # 5. Run next task (requires Ollama — skip gracefully if unavailable)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="5"
     echo "--- 5. job run-next"
     if remedy job run-next "${JOB_ID}"; then
         echo "    Task run: OK"
@@ -305,6 +335,7 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # -------------------------------------------------------------------------
     # 6. Patch apply lifecycle: before approval → approve → apply → noop
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="6"
     echo "--- 6. Patch apply lifecycle (if intent present)"
     FIRST_INTENT_ID="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json,sys
@@ -317,6 +348,7 @@ for n in data.get('nodes', []):
 " 2>/dev/null || true)"
     if [[ -n "${FIRST_INTENT_ID}" ]]; then
         # 6a. apply before approval must be blocked (non-zero exit)
+        _SMOKE_SECTION="6a"
         echo "--- 6a. Apply before approval (expect blocked)"
         if remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}" 2>/dev/null; then
             echo "ERROR: patch apply should fail before approval" >&2
@@ -325,22 +357,26 @@ for n in data.get('nodes', []):
         echo "    apply before approval: blocked (OK)"
 
         # 6b. approve
+        _SMOKE_SECTION="6b"
         echo "--- 6b. Approve patch intent"
         remedy patch approve "${JOB_ID}" "${FIRST_INTENT_ID}" --reason "smoke approval"
         echo "    Approved: ${FIRST_INTENT_ID}"
 
         # 6c. apply approved intent (must succeed)
+        _SMOKE_SECTION="6c"
         echo "--- 6c. Apply approved patch intent"
         remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}"
         APPLIED_INTENT_ID="${FIRST_INTENT_ID}"
         echo "    Applied: ${FIRST_INTENT_ID} (OK)"
 
         # 6d. repeat apply (must be no-op, exit 0)
+        _SMOKE_SECTION="6d"
         echo "--- 6d. Repeat apply (no-op)"
         remedy patch apply "${JOB_ID}" "${FIRST_INTENT_ID}"
         echo "    Repeat apply: no-op (OK)"
 
         # 6e. verify applied file has no Remedy control markers
+        _SMOKE_SECTION="6e"
         echo "--- 6e. Verify applied file has no Remedy control markers"
         APPLIED_TARGET="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json, sys
@@ -387,6 +423,7 @@ print('    Applied file: OK (no raw HTML comments, has Proposed Update section, 
 " "${TARGET_REPO}" "${APPLIED_TARGET}" "${FIRST_INTENT_ID}"
 
         # 6f. verify exact run-log schema for patch_intent_applied events
+        _SMOKE_SECTION="6f"
         echo "--- 6f. Verify run-log schema (patch_intent_applied)"
         python3 -c "
 import json, sys
@@ -429,6 +466,7 @@ for need in ('blocked', 'applied', 'noop'):
 print('    run-log schema: OK  events=' + str(len(events)) + '  outcomes=' + str(sorted(outcomes)))
 " "${JOB_ID}" "${RUNS_ROOT}"
         # 6g. whole-TARGET_REPO markerless scan
+        _SMOKE_SECTION="6g"
         echo "--- 6g. Whole-repo markerless scan"
         python3 -c "
 from pathlib import Path
@@ -457,6 +495,7 @@ print('    target repo markerless: OK')
 " "${TARGET_REPO}" "${FIRST_INTENT_ID}"
 
         # 6h. Verify patch_apply_proof_recorded event (Step 31).
+        _SMOKE_SECTION="6h"
         echo "--- 6h. Verify proof event (patch_apply_proof_recorded)"
         python3 -c "
 import json, sys
@@ -503,14 +542,17 @@ for ev in events:
 print('    proof event: OK  events=' + str(len(events)) + '  after_sha=' + events[0]['metadata']['after_sha256'][:16] + '...')
 " "${JOB_ID}" "${RUNS_ROOT}"
         # 6i. Step 33: grant repo_test_run, run tests
+        _SMOKE_SECTION="6i"
         echo "--- 6i. Grant repo_test_run permission"
         remedy job permit "${JOB_ID}" repo_test_run allow
         echo "    repo_test_run: allowed"
 
+        _SMOKE_SECTION="6j"
         echo "--- 6j. Run tests locally (Step 33)"
         remedy test run "${JOB_ID}"
         echo "    test run: OK"
 
+        _SMOKE_SECTION="6k"
         echo "--- 6k. Assert test_run node in brain JSON"
         remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json, sys
@@ -530,6 +572,7 @@ for n in tr_nodes:
 print('    test_run node: OK  count=' + str(len(tr_nodes)) + '  status=' + (tr_nodes[0].get('status','?') if tr_nodes else '?'))
 "
 
+        _SMOKE_SECTION="6l"
         echo "--- 6l. Assert test_run_completed run-log schema"
         python3 -c "
 import json, sys
@@ -565,6 +608,7 @@ for ev in events:
 print('    test_run_completed schema: OK  events=' + str(len(events)) + '  status=' + events[0]['metadata']['status'])
 " "${JOB_ID}" "${RUNS_ROOT}"
 
+        _SMOKE_SECTION="6n"
         echo "--- 6n. Discover commands (Step 34.1 — multi-ecosystem)"
         DISCOVER_JSON="$(remedy test discover "${JOB_ID}" --json)"
         python3 -c "
@@ -638,6 +682,7 @@ print('    discover-commands: OK  total=' + str(len(candidates))
       + '  selected=' + sel['source_type'] + ':' + ' '.join(sel['argv']))
 " "${DISCOVER_JSON}"
 
+        _SMOKE_SECTION="6m"
         echo "--- 6m. Trust/Timeline test-run sanity (human-readable output)"
         TRUST_OUT="$(remedy brain trust "${JOB_ID}")"
         TIMELINE_OUT="$(remedy brain timeline "${JOB_ID}")"
@@ -674,6 +719,7 @@ print('    OK: trust/timeline mention test run structurally')
     # -------------------------------------------------------------------------
     # 7. Assert: remedy project show --json
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="7"
     echo "--- 7. Assert: remedy project show --json"
     PROJECT_JSON="$(remedy project show "${PROJECT_ID}" --json)"
     python3 -c "
@@ -689,6 +735,7 @@ print(f'    remedy project show --json: OK (version={data[\"version\"]}, jobs={l
     # -------------------------------------------------------------------------
     # 9. Assert: context score 0..85
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="9"
     echo "--- 9. Assert context score"
     CTX_SCORE="$(remedy brain context "${JOB_ID}" --json | python3 -c "
 import json,sys
@@ -704,6 +751,7 @@ print(data['score'])
     # -------------------------------------------------------------------------
     # 10. Assert: brain JSON has required node types + project_placeholder
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="10"
     echo "--- 10. Assert brain node types (including project_placeholder)"
     remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json,sys
@@ -727,6 +775,7 @@ print('    Brain types: '+', '.join(sorted(types)))
     # -------------------------------------------------------------------------
     # 11. Generate Brain Viewer
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="11"
     echo "--- 11. remedy brain view"
     BRAIN_VIEW_OUTPUT="$(remedy brain view "${JOB_ID}")" || {
         echo "ERROR: brain view failed" >&2
@@ -744,6 +793,7 @@ print('    Brain types: '+', '.join(sorted(types)))
     # -------------------------------------------------------------------------
     # 12. Assert viewer files (self-diagnosing — no bare assert)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12"
     echo "--- 12. Assert viewer files"
     python3 -c "
 import json, sys
@@ -834,6 +884,7 @@ print('    index.html: OK')
     # -------------------------------------------------------------------------
     # 12a. Assert: remedy policy contract --json (Step 35)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12a"
     echo "--- 12a. remedy policy contract --json"
     python3 -c "
 import subprocess, json, sys
@@ -872,6 +923,7 @@ print('    policy contract JSON: OK')
     # -------------------------------------------------------------------------
     # 12b. Assert: remedy policy token --json (Step 36)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12b"
     echo "--- 12b. remedy policy token --json"
     python3 -c "
 import subprocess, json, sys
@@ -917,6 +969,7 @@ print('    policy token JSON: OK')
     # -------------------------------------------------------------------------
     # 12c. Assert: remedy worker list --json (Step 37)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12c"
     echo "--- 12c. remedy worker list --json"
     python3 -c "
 import subprocess, json, sys
@@ -950,6 +1003,7 @@ print('    worker list JSON: OK (' + str(len(providers)) + ' providers)')
     # -------------------------------------------------------------------------
     # 12d. Assert: brain graph includes new Step 35-37 node types
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12d"
     echo "--- 12d. brain graph has run_contract + token_policy + worker_adapter nodes"
     python3 -c "
 import subprocess, json, sys
@@ -979,6 +1033,7 @@ print('    brain nodes: run_contract, token_policy, worker_adapter: OK')
     # -------------------------------------------------------------------------
     # 12e. Assert: run-log schema for run_contract_inspected and token_policy_inspected
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12e"
     echo "--- 12e. run-log schema: run_contract_inspected + token_policy_inspected"
     python3 -c "
 import json, sys
@@ -1018,6 +1073,7 @@ print('    run-log schema: OK  rc_events=' + str(len(rc_events)) + '  tp_events=
     # -------------------------------------------------------------------------
     # 12f. Memory CLI contract (Step 46.1 Part B)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12f"
     echo "--- 12f. Memory CLI contract"
     remedy memory store "smoke_key" "smoke_value" --tags "smoke,test"
     RECALL_JSON="$(remedy memory recall --keyword smoke --json)"
@@ -1050,6 +1106,7 @@ print('    memory list --json: OK (version=1, count=' + str(data['count']) + ')'
     # -------------------------------------------------------------------------
     # 12g. Memory store --approved + brain memory nodes (Step 46.2)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12g"
     echo "--- 12g. Memory store --approved + brain memory nodes"
     remedy memory store "approved_smoke_key" "approved_smoke_val" --approved --tags "smoke,approved" --job "${JOB_ID}"
     # Verify approved entry exists and approved=true
@@ -1092,11 +1149,11 @@ print('    brain memory nodes: OK (count=' + str(len(mem_nodes)) + ')')
 import json, sys
 data = json.loads(sys.argv[1])
 signals = data.get('signals', [])
-sig_names = [s.get('name', '') for s in signals]
-if 'project_memory' not in sig_names:
+sig_keys = [s.get('key', '') for s in signals]
+if 'project_memory' not in sig_keys:
     print('ERROR: context_coverage missing project_memory signal', file=sys.stderr)
     sys.exit(1)
-pm = [s for s in signals if s['name'] == 'project_memory'][0]
+pm = [s for s in signals if s['key'] == 'project_memory'][0]
 if pm.get('present') is not True:
     print('ERROR: project_memory signal not present', file=sys.stderr)
     sys.exit(1)
@@ -1106,6 +1163,7 @@ print('    context project_memory: OK (present=true)')
     # -------------------------------------------------------------------------
     # 12h. Agent loop run-log schema (Step 46.2)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12h"
     echo "--- 12h. Agent loop run-log schema"
     # Run the agent loop on a completed job to generate events
     remedy job run-loop "${JOB_ID}" --max-cycles 1 >/dev/null 2>&1 || true
@@ -1150,6 +1208,7 @@ print('    agent_loop schema: OK (events=' + str(len(loop_events)) + ', names=' 
     # -------------------------------------------------------------------------
     # 12i. Readiness job JSON (Step 48)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12i"
     echo "--- 12i. Readiness job JSON"
     READINESS_JSON="$(remedy readiness job "${JOB_ID}" --json)"
     python3 -c "
@@ -1159,17 +1218,20 @@ def chk(cond, msg):
         print('ERROR: readiness: ' + msg, file=sys.stderr)
         sys.exit(1)
 data = json.loads(sys.argv[1])
-chk(data.get('version') == 1, 'version must be 1')
+chk(data.get('version') == 2, 'version must be 2')
 chk(data.get('scope') == 'job', 'scope must be job')
 chk('highest_eligible_level' in data, 'missing highest_eligible_level')
 chk('levels' in data, 'missing levels')
 chk(len(data['levels']) == 8, 'expected 8 levels, got ' + str(len(data['levels'])))
 chk('next_actions' in data, 'missing next_actions')
+chk('eligible_levels' in data, 'missing eligible_levels')
+chk('blocked_levels' in data, 'missing blocked_levels')
+chk('signals' in data, 'missing signals')
 for lv in data['levels']:
     for k in ('level', 'name', 'eligible', 'present_signals', 'missing_signals', 'blockers', 'next_actions'):
         chk(k in lv, 'level missing key: ' + k)
-# Level 5+ must have blockers
-chk(not data['levels'][5]['eligible'], 'level 5 should not be eligible (rollback not implemented)')
+# Level 5 (revert_capable) + Level 6 (external_tools) must not be eligible
+chk(not data['levels'][5]['eligible'], 'level 5 should not be eligible (revert_capable)')
 chk(not data['levels'][6]['eligible'], 'level 6 should not be eligible (MCP not connected)')
 full = json.dumps(data)
 for bad in ('stdout', 'stderr', 'raw_output', 'Traceback', 'diff_preview', 'approval_reason'):
@@ -1191,6 +1253,7 @@ print('    brain autonomy_readiness: OK')
     # -------------------------------------------------------------------------
     # 12j. Context pack JSON (Step 49)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12j"
     echo "--- 12j. Context pack compact + caveman"
     PACK_COMPACT="$(remedy context pack "${JOB_ID}" --json)"
     python3 -c "
@@ -1233,6 +1296,7 @@ print('    context pack caveman: OK (tokens=' + str(data['estimated_tokens']) + 
     # -------------------------------------------------------------------------
     # 12k. Memory learn JSON (Step 50)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12k"
     echo "--- 12k. Memory learn"
     LEARN_JSON="$(remedy memory learn "${JOB_ID}" --approved --json)"
     python3 -c "
@@ -1267,6 +1331,7 @@ print('    memory learn idempotent: OK (learned=0, skipped=' + str(data['skipped
     # -------------------------------------------------------------------------
     # 12l. Run-log schema: readiness_assessed + context_pack_created + memory_learned
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12l"
     echo "--- 12l. Run-log schema: readiness + context_pack + memory_learned"
     python3 -c "
 import json, sys
@@ -1311,6 +1376,7 @@ print('    run-log schema: OK (readiness=' + str(len(ra)) + ', pack=' + str(len(
     # -------------------------------------------------------------------------
     # 12m. File provenance: remedy file why (Step 51)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12m"
     echo "--- 12m. File provenance (remedy file why)"
     if [[ -n "${FIRST_INTENT_ID}" ]]; then
         # Get target path from the brain
@@ -1353,6 +1419,7 @@ print('    file why JSON: OK (chain=' + str(len(data['chain'])) + ', steps=' + s
     # -------------------------------------------------------------------------
     # 12n. Brain has patch_apply_proof node and causal edges (Step 51)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12n"
     echo "--- 12n. Brain causal proof graph"
     if [[ -n "${FIRST_INTENT_ID}" ]]; then
         remedy brain graph "${JOB_ID}" --json | python3 -c "
@@ -1378,6 +1445,7 @@ print('    brain causal proof: OK (proof_nodes=' + str(sum(1 for n in data['node
     # -------------------------------------------------------------------------
     # 12o. Continue from node (Step 52)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12o"
     echo "--- 12o. Continue from node (brain continue)"
     # Get the first task node from brain
     TASK_NODE_ID="$(remedy brain graph "${JOB_ID}" --json | python3 -c "
@@ -1431,6 +1499,7 @@ print('    brain continue: OK (child=' + child_id[:8] + ', type=' + data['origin
     # -------------------------------------------------------------------------
     # 12p. Project brain aggregate (Step 53) — includes child job
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12p"
     echo "--- 12p. Project brain aggregate (includes child job)"
     # Extract child job ID from continue result
     CHILD_JOB_ID=""
@@ -1483,6 +1552,7 @@ print('    project brain: OK (jobs=' + str(data['summary']['job_count'])
     # -------------------------------------------------------------------------
     # 12q. Patch revert (Step 54) — snapshot + revert lifecycle
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12q"
     echo "--- 12q. Patch revert lifecycle"
     if [[ -n "${APPLIED_INTENT_ID:-}" ]]; then
         # Verify snapshot exists after apply
@@ -1525,6 +1595,7 @@ print('    second revert: OK (noop)')
     # -------------------------------------------------------------------------
     # 12r. Change set (Step 55)
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12r"
     echo "--- 12r. Change set review board"
     CHANGE_LIST_JSON="$(remedy change list "${JOB_ID}" --json)"
     python3 -c "
@@ -1543,6 +1614,7 @@ print('    change list: OK (count=' + str(len(data['changes'])) + ')')
     # -------------------------------------------------------------------------
     # 12s. Token economy (Step 56) — caveman/compact/standard ordering
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12s"
     echo "--- 12s. Token economy"
     CAVE_JSON="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
     COMP_JSON="$(remedy context pack "${JOB_ID}" --mode compact --json)"
@@ -1584,7 +1656,64 @@ chk('candidates' in data, 'missing candidates')
 print('    worker recommend: OK (worker=' + data['recommended_worker'] + ', mode=' + data['token_mode'] + ')')
 " "${WORKER_JSON}"
 
+    # Token policy required fields
+    TP_JSON="$(remedy policy token "${JOB_ID}" --json)"
+    python3 -c "
+import json, sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: token policy: ' + msg, file=sys.stderr)
+        sys.exit(1)
+data = json.loads(sys.argv[1])
+for key in ['version', 'default_mode', 'max_context_tokens', 'local_first',
+            'remote_model_requires_approval', 'prefer_zero_token_tools', 'prohibited_payloads']:
+    chk(key in data, 'missing ' + key)
+chk(data['version'] == 1, 'version must be 1')
+chk(data['local_first'] is True, 'local_first must be true')
+chk(data['remote_model_requires_approval'] is True, 'remote must require approval')
+chk(isinstance(data['prohibited_payloads'], list), 'prohibited_payloads must be list')
+print('    token policy: OK (mode=' + data['default_mode'] + ', max=' + str(data['max_context_tokens']) + ')')
+" "${TP_JSON}"
+
+    # Token policy explain
+    remedy policy token-explain | python3 -c "
+import sys
+text = sys.stdin.read()
+if 'Zero-token' not in text:
+    print('ERROR: token explain must mention zero-token', file=sys.stderr)
+    sys.exit(1)
+if 'Local-first' not in text:
+    print('ERROR: token explain must mention local-first', file=sys.stderr)
+    sys.exit(1)
+print('    token explain: OK')
+"
+
+    # token_policy_applied run-log event
+    python3 -c "
+import json, sys
+from pathlib import Path
+runs = Path(sys.argv[1])
+job_dir = runs / sys.argv[2]
+events = []
+for f in sorted(job_dir.glob('*.jsonl')):
+    for line in f.read_text().splitlines():
+        if line.strip():
+            events.append(json.loads(line))
+tpa = [e for e in events if e.get('event') == 'token_policy_applied']
+if not tpa:
+    print('ERROR: no token_policy_applied event', file=sys.stderr)
+    sys.exit(1)
+meta = tpa[0].get('metadata', {})
+for key in ['mode', 'max_context_tokens', 'estimated_context_tokens',
+            'local_first', 'remote_model_requires_approval', 'selected_worker']:
+    if key not in meta:
+        print('ERROR: token_policy_applied missing ' + key, file=sys.stderr)
+        sys.exit(1)
+print('    token_policy_applied: OK (worker=' + str(meta['selected_worker']) + ', mode=' + str(meta['mode']) + ')')
+" "${RUNS_ROOT}" "${JOB_ID}"
+
     # Brain has patch_revert, change_set nodes
+    _SMOKE_SECTION="12t"
     echo "--- 12t. Brain has revert + change_set nodes"
     remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json, sys
@@ -1596,19 +1725,66 @@ if 'change_set' not in types:
 print('    brain nodes: OK (has change_set)')
 "
 
+    # Step 63: Memory card commands
+    _SMOKE_SECTION="12u"
+    echo "--- 12u. Memory card-show help"
+    remedy memory card-show --help | grep -qi "memory_id"
+
+    # Step 64: Worker show + explain
+    _SMOKE_SECTION="12v"
+    echo "--- 12v. Worker show ollama"
+    remedy worker show ollama | grep -q "Ollama"
+
+    _SMOKE_SECTION="12w"
+    echo "--- 12w. Worker explain"
+    remedy worker explain "${JOB_ID}" | grep -q "Scoring breakdown"
+
+    # Step 65: Repo status
+    _SMOKE_SECTION="12x"
+    echo "--- 12x. Repo status (read-only git)"
+    remedy repo status --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+if 'is_git_repo' not in data:
+    print('ERROR: missing is_git_repo', file=sys.stderr); sys.exit(1)
+print('    repo status: OK (is_git_repo=' + str(data['is_git_repo']) + ')')
+"
+
+    # Brain has git_status node when target_repo set
+    _SMOKE_SECTION="12y"
+    echo "--- 12y. Brain has git_status node"
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+types = {n['type'] for n in data.get('nodes', [])}
+if 'git_status' not in types:
+    print('ERROR: brain missing git_status node', file=sys.stderr)
+    sys.exit(1)
+print('    brain nodes: OK (has git_status)')
+"
+
     # -------------------------------------------------------------------------
     # 13. Summary
     # -------------------------------------------------------------------------
+    _SMOKE_SECTION="summary"
     echo ""
     echo "========================================"
     echo "PROJECT_ID = ${PROJECT_ID}"
     echo "JOB_ID     = ${JOB_ID}"
     echo "VIEW_PATH  = ${VIEW_PATH}"
+    echo "SMOKE_LOG  = ${_SMOKE_LOG_DIR}/smoke.log"
     echo "remedy_smoke: PASSED"
     echo "========================================"
+
+    # Write success summary
+    cat >"${_SMOKE_LOG_DIR}/summary.json" <<SUMEOF
+{"status":"passed","run_id":"${_SMOKE_RUN_ID}","project_id":"${PROJECT_ID}","job_id":"${JOB_ID}","child_job_id":"${CHILD_JOB_ID:-}","view_path":"${VIEW_PATH}"}
+SUMEOF
   )
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  remedy_smoke "$@"
+  remedy_smoke "$@" 2>&1 | tee ".data/smoke/latest.log"
 fi

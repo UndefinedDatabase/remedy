@@ -33,7 +33,7 @@ class TestReadinessBasic:
     def test_empty_events_returns_report(self):
         job = _make_job()
         report = assess_job_readiness(job, [])
-        assert report.version == 1
+        assert report.version == 2
         assert report.scope == "job"
         assert len(report.levels) == len(LEVELS)
 
@@ -56,11 +56,11 @@ class TestReadinessBasic:
         assert report.levels[1].eligible is False
         assert "attached_repo" in report.levels[1].missing_signals
 
-    def test_level_5_blocked(self):
+    def test_level_5_missing_signals(self):
         job = _make_job()
         report = assess_job_readiness(job, [])
         assert report.levels[5].eligible is False
-        assert "rollback_not_implemented" in report.levels[5].blockers
+        assert "revert_snapshot" in report.levels[5].missing_signals
 
     def test_level_6_blocked(self):
         job = _make_job()
@@ -85,11 +85,14 @@ class TestReadinessJSON:
         job = _make_job()
         report = assess_job_readiness(job, [])
         data = export_readiness_json(report)
-        assert data["version"] == 1
+        assert data["version"] == 2
         assert data["scope"] == "job"
         assert "highest_eligible_level" in data
         assert "levels" in data
         assert "next_actions" in data
+        assert "eligible_levels" in data
+        assert "blocked_levels" in data
+        assert "signals" in data
         assert len(data["levels"]) == len(LEVELS)
 
     def test_json_level_fields(self):
@@ -193,7 +196,7 @@ class TestReadinessCLI:
         )
         assert result.returncode == 0, f"stderr={result.stderr}"
         data = json.loads(result.stdout)
-        assert data["version"] == 1
+        assert data["version"] == 2
         assert data["scope"] == "job"
 
 

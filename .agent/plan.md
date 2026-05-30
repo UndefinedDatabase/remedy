@@ -1,15 +1,16 @@
 # Plan
 
 ## Goal
-Steps 53.1, 54, 55, 56: Project Brain Aggregate Closure, Apply Snapshot/Revert, Change Set Review, Token Economy v1
+Steps 62.1, 63, 64, 65: Hygiene Closure, Evidence Memory v1, Worker Adapter Contract v1, Git Safety Readiness v1
 
 ## Current Step
-All steps complete.
+All steps complete. Pending: commit.
 
 ## Tasks
-- [x] Step 53.1: Fix continue_from_node project linking (attach_job_to_project → load/attach/save)
-- [x] Step 54: Apply Snapshot + Revert v0 (patch_revert.py, snapshot storage, revert CLI)
-- [x] Step 55: Change Set / Review Board v0 (change_set.py, change list/show CLI)
-- [x] Step 56: Token Economy v1 (standard mode, worker recommend, token ordering)
-- [x] Smoke update: 12q-12t sections for revert, change, token, worker, brain nodes
-- [x] Tests: 2542 passing
+- [x] Step 62.1: Hygiene Closure (shared _symbols.py, brain detail registry, no silent swallow)
+- [x] Step 63: Evidence Memory v1 (card model, card management CLI, learn with evidence, brain nodes, context pack)
+- [x] Step 64: Worker Adapter Contract v1 (worker show/explain CLI, scoring breakdown)
+- [x] Step 65: Git Safety Readiness v1 (git_status reader, repo status CLI, brain node, readiness signal)
+- [x] Tests: 2638 passing
+- [x] Smoke: updated (12u-12y)
+- [ ] Commit

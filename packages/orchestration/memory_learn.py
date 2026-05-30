@@ -51,7 +51,10 @@ def learn_from_job(
     skipped = 0
     entry_summaries: list[dict[str, str]] = []
 
-    def _store(key: str, value: str, tags: list[str]) -> None:
+    def _store(
+        key: str, value: str, tags: list[str],
+        *, source_type: str = "run_log", evidence_ref: str = "",
+    ) -> None:
         nonlocal learned, skipped
         try:
             _entry, created = upsert_memory(
@@ -60,15 +63,22 @@ def learn_from_job(
                 project_id=project_id,
                 job_id=job_id if not project_id else None,
                 tags=tags,
-                source_type="system",
+                source_type=source_type,
                 approved=approved,
             )
+            # Set evidence card fields on the entry
+            _entry.summary = value[:120]
+            _entry.scope = "project" if project_id else "job"
+            _entry.review_status = "approved" if approved else "proposed"
+            if evidence_ref:
+                if evidence_ref not in _entry.evidence_refs:
+                    _entry.evidence_refs.append(evidence_ref)
             if created:
                 learned += 1
             else:
                 skipped += 1
             entry_summaries.append({"key": key, "value": value, "status": "created" if created else "updated"})
-        except Exception:
+        except (ImportError, ValueError, OSError):
             skipped += 1
 
     # 1. Test run completed → repo.test_command.primary, repo.last_verified_test
@@ -78,9 +88,11 @@ def learn_from_job(
         cmd = last.get("command", "")
         status = last.get("status", "")
         if cmd:
-            _store("repo.test_command.primary", cmd, ["test", "command"])
+            _store("repo.test_command.primary", cmd, ["test", "command"],
+                   source_type="test_run", evidence_ref="test_run_completed")
         if status:
-            _store("repo.last_verified_test", status, ["test", "status"])
+            _store("repo.last_verified_test", status, ["test", "status"],
+                   source_type="test_run", evidence_ref="test_run_completed")
 
     # 2. Apply proof → patch.last_applied_target
     proofs = [e for e in events if e.get("event") == "patch_apply_proof_recorded"]
@@ -88,7 +100,8 @@ def learn_from_job(
         last = proofs[-1].get("metadata", {})
         target = last.get("target_path", "")
         if target:
-            _store("patch.last_applied_target", target, ["patch", "apply"])
+            _store("patch.last_applied_target", target, ["patch", "apply"],
+                   source_type="patch_apply_proof", evidence_ref="patch_apply_proof_recorded")
 
     # 3. Command discovery → context.command_discovery.sources
     disc = [e for e in events if e.get("event") == "command_discovery_completed"]
@@ -112,7 +125,7 @@ def learn_from_job(
             str(report.highest_eligible_level),
             ["readiness", "autonomy"],
         )
-    except Exception:
+    except (ImportError, ValueError, OSError):
         pass
 
     # 5. Context coverage score
@@ -120,7 +133,7 @@ def learn_from_job(
         from packages.orchestration.context_coverage import derive_context_coverage
         snap = derive_context_coverage(job, events)
         _store("context.coverage_score", str(snap.score), ["context", "coverage"])
-    except Exception:
+    except (ImportError, ValueError, OSError):
         pass
 
     # 6. Target repo basename

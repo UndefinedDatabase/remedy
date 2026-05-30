@@ -182,6 +182,9 @@ Files must remain:
 - Commit after every logical step.
 - Use clear commit messages.
 - Avoid large or mixed commits.
+- Target one step per commit. Do not bundle multiple unrelated steps.
+- If a diff exceeds 500 lines, stop and split before committing.
+- Never mix refactoring with new features in the same commit.
 
 If changes become too large:
 

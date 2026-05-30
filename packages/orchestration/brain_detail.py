@@ -63,6 +63,10 @@ from packages.orchestration.project_brain import (
     NT_AUTONOMY_READINESS,
     NT_CONTEXT_PACK,
     NT_PATCH_APPLY_PROOF,
+    NT_PATCH_REVERT,
+    NT_CHANGE_SET,
+    NT_GIT_STATUS,
+    NT_PROJECT_PLACEHOLDER,
     NT_VERIFICATION,
     ProjectBrainGraph,
 )
@@ -72,12 +76,15 @@ from packages.orchestration.project_brain import (
 # Symbols
 # ---------------------------------------------------------------------------
 
-_OK   = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -155,72 +162,14 @@ def build_brain_node_detail(
                     "node_label": other.label[:60],
                 })
 
-    # ── Node-type-specific detail ────────────────────────────────────────────
-    if node.type == NT_JOB:
-        return _detail_job(job, node, job_id_str, connected)
+    # ── Node-type-specific detail via registry ────────────────────────────────
+    handler_with_job = _DETAIL_REGISTRY_JOB.get(node.type)
+    if handler_with_job is not None:
+        return handler_with_job(job, node, job_id_str, connected)
 
-    if node.type == NT_TASK:
-        return _detail_task(job, node, job_id_str, connected)
-
-    if node.type == NT_ARTIFACT:
-        return _detail_artifact(job, node, job_id_str, connected)
-
-    if node.type == NT_PATCH_INTENT:
-        return _detail_patch_intent(job, node, job_id_str, connected)
-
-    if node.type == NT_APPROVAL:
-        return _detail_approval(job, node, job_id_str, connected)
-
-    if node.type == NT_VERIFICATION:
-        return _detail_verification(node, job_id_str, connected)
-
-    if node.type == NT_BLOCKER:
-        return _detail_blocker(node, job_id_str, connected)
-
-    if node.type == NT_RUN_EVENT:
-        return _detail_run_event(node, job_id_str, connected)
-
-    if node.type == NT_AGENT_LOOP:
-        return _detail_agent_loop(node, job_id_str, connected)
-
-    if node.type == NT_CONSTITUTION:
-        return _detail_constitution(node, job_id_str, connected)
-
-    if node.type == NT_MEMORY:
-        return _detail_memory_placeholder(node, job_id_str, connected)
-
-    if node.type == NT_MEMORY_ENTRY:
-        return _detail_memory_entry(node, job_id_str, connected)
-
-    if node.type == NT_MCP:
-        return _detail_mcp_placeholder(node, job_id_str, connected)
-
-    if node.type == NT_CONTEXT_COVERAGE:
-        return _detail_context_coverage(node, job_id_str, connected)
-
-    if node.type == NT_PATCH_APPLY:
-        return _detail_patch_apply(node, job_id_str, connected)
-
-    if node.type == NT_TEST_RUN:
-        return _detail_test_run(node, job_id_str, connected)
-
-    if node.type == NT_RUN_CONTRACT:
-        return _detail_run_contract(node, job_id_str, connected)
-
-    if node.type == NT_TOKEN_POLICY:
-        return _detail_token_policy(node, job_id_str, connected)
-
-    if node.type == NT_WORKER_ADAPTER:
-        return _detail_worker_adapter(node, job_id_str, connected)
-
-    if node.type == NT_AUTONOMY_READINESS:
-        return _detail_autonomy_readiness(node, job_id_str, connected)
-
-    if node.type == NT_CONTEXT_PACK:
-        return _detail_context_pack(node, job_id_str, connected)
-
-    if node.type == NT_PATCH_APPLY_PROOF:
-        return _detail_patch_apply_proof(node, job_id_str, connected)
+    handler = _DETAIL_REGISTRY.get(node.type)
+    if handler is not None:
+        return handler(node, job_id_str, connected)
 
     # Fallback for unknown future node types
     return BrainNodeDetail(
@@ -256,24 +205,24 @@ def summarize_brain_node_detail(detail: BrainNodeDetail) -> str:
     if detail.risk:
         parts.append(f"Risk: {detail.risk}")
 
-    parts.append(_section("Explanation"))
+    parts.append(section("Explanation"))
     parts.append(f"  {detail.explanation}")
 
-    parts.append(_section("Why it exists"))
+    parts.append(section("Why it exists"))
     for line in detail.why_it_exists:
         parts.append(f"  {_INFO} {line}")
 
     if detail.evidence:
-        parts.append(_section("Evidence"))
+        parts.append(section("Evidence"))
         for item in detail.evidence:
             parts.append(f"  {_OK} {item}")
 
     if detail.affected_files:
-        parts.append(_section("Affected files"))
+        parts.append(section("Affected files"))
         for f in detail.affected_files:
             parts.append(f"  {_WARN} {f}")
 
-    parts.append(_section("Connections"))
+    parts.append(section("Connections"))
     if detail.connected_to:
         for conn in detail.connected_to:
             arrow = f"--{conn['edge_type']}-->"
@@ -286,12 +235,12 @@ def summarize_brain_node_detail(detail: BrainNodeDetail) -> str:
         parts.append("  (no connections)")
 
     if detail.next_actions:
-        parts.append(_section("Next actions"))
+        parts.append(section("Next actions"))
         for action in detail.next_actions:
             parts.append(f"  {_NEXT} {action}")
 
     if detail.redaction_notes:
-        parts.append(_section("Redaction"))
+        parts.append(section("Redaction"))
         for note in detail.redaction_notes:
             parts.append(f"  {_INFO} {note}")
 
@@ -1385,6 +1334,211 @@ def _detail_patch_apply_proof(
     )
 
 
+def _detail_project_placeholder(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    project_id = str(meta.get("project_id", ""))
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_PROJECT_PLACEHOLDER,
+        title=f"Project: {project_id[:8]}" if project_id else "Project (unlinked)",
+        status=node.status or "linked",
+        risk=None,
+        explanation=(
+            f"Lightweight marker linking this job to project '{project_id[:8]}'."
+        ),
+        why_it_exists=(
+            "Jobs can be linked to projects for cross-job aggregation.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(f"project_id: {project_id}",) if project_id else (),
+        affected_files=(),
+        next_actions=(),
+        redaction_notes=(),
+    )
+
+
+def _detail_patch_revert(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    intent_id = str(meta.get("intent_id", node.ref_id or ""))
+    target_path = str(meta.get("target_path", ""))
+    outcome = str(meta.get("outcome", ""))
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_PATCH_REVERT,
+        title=f"Revert: {target_path}" if target_path else "Patch Revert",
+        status=node.status or outcome or "reverted",
+        risk=None,
+        explanation=(
+            f"Reverted patch intent '{intent_id}' on '{target_path}'. "
+            f"Outcome: {outcome}."
+        ),
+        why_it_exists=(
+            "A previously applied patch was reverted to restore original state.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"intent_id: {intent_id}",
+            f"target_path: {target_path}",
+            f"outcome: {outcome}",
+        ),
+        affected_files=(target_path,) if target_path else (),
+        next_actions=(),
+        redaction_notes=("No file content is rendered.",),
+    )
+
+
+def _detail_git_status(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    branch = str(meta.get("current_branch", ""))
+    sha = str(meta.get("head_sha", ""))
+    is_clean = bool(meta.get("is_clean", False))
+    modified = int(meta.get("modified_count", 0))
+    untracked = int(meta.get("untracked_count", 0))
+    staged = int(meta.get("staged_count", 0))
+    has_upstream = bool(meta.get("has_upstream", False))
+    upstream = str(meta.get("upstream_branch", ""))
+    ahead = int(meta.get("ahead_count", 0))
+    behind = int(meta.get("behind_count", 0))
+
+    clean_str = "clean" if is_clean else "dirty"
+    explanation = (
+        f"Read-only git status snapshot. "
+        f"Branch: {branch} ({sha}). Working tree: {clean_str}. "
+        f"{modified} modified, {untracked} untracked, {staged} staged."
+    )
+    if has_upstream:
+        explanation += f" Upstream: {upstream} (ahead={ahead}, behind={behind})."
+
+    evidence = [
+        f"branch: {branch}",
+        f"head_sha: {sha}",
+        f"is_clean: {is_clean}",
+        f"modified: {modified}",
+        f"untracked: {untracked}",
+        f"staged: {staged}",
+    ]
+    if has_upstream:
+        evidence.append(f"upstream: {upstream}")
+        evidence.append(f"ahead: {ahead}")
+        evidence.append(f"behind: {behind}")
+
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_GIT_STATUS,
+        title=f"Git: {branch} ({sha})",
+        status=clean_str,
+        risk=None,
+        explanation=explanation,
+        why_it_exists=(
+            "Read-only snapshot of the attached repository's git state.",
+            "No git write operations are performed.",
+        ),
+        connected_to=tuple(connected),
+        evidence=tuple(evidence),
+        affected_files=(),
+        next_actions=(
+            f"remedy repo status --json",
+        ),
+        redaction_notes=("No file content or diff text is rendered.",),
+    )
+
+
+def _detail_change_set(
+    node: Any,
+    job_id_str: str,
+    connected: list[dict[str, str]],
+) -> BrainNodeDetail:
+    meta = node.metadata or {}
+    intent_id = str(meta.get("intent_id", node.ref_id or ""))
+    target_path = str(meta.get("target_path", ""))
+    risk = str(meta.get("risk", ""))
+    status = str(meta.get("status", ""))
+    approval = str(meta.get("approval_state", ""))
+    apply_outcome = str(meta.get("apply_outcome", ""))
+    test_status = str(meta.get("test_status", ""))
+    return BrainNodeDetail(
+        job_id=job_id_str,
+        node_id=node.id,
+        node_type=NT_CHANGE_SET,
+        title=f"Change: {target_path}" if target_path else "Change Set Entry",
+        status=node.status or status,
+        risk=risk or None,
+        explanation=(
+            f"Change set entry for '{target_path}'. "
+            f"Approval: {approval}. Apply: {apply_outcome}. Test: {test_status}."
+        ),
+        why_it_exists=(
+            "Tracks the full lifecycle of a single file change.",
+        ),
+        connected_to=tuple(connected),
+        evidence=(
+            f"intent_id: {intent_id}",
+            f"target_path: {target_path}",
+            f"risk: {risk}",
+            f"approval: {approval}",
+            f"apply: {apply_outcome}",
+            f"test: {test_status}",
+        ),
+        affected_files=(target_path,) if target_path else (),
+        next_actions=(),
+        redaction_notes=("No diff content is rendered.",),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Detail handler registries — maps node type to handler function.
+# Handlers needing the Job model use _DETAIL_REGISTRY_JOB.
+# Handlers needing only node metadata use _DETAIL_REGISTRY.
+# ---------------------------------------------------------------------------
+
+_DETAIL_REGISTRY_JOB: dict[str, Any] = {
+    NT_JOB: _detail_job,
+    NT_TASK: _detail_task,
+    NT_ARTIFACT: _detail_artifact,
+    NT_PATCH_INTENT: _detail_patch_intent,
+    NT_APPROVAL: _detail_approval,
+}
+
+_DETAIL_REGISTRY: dict[str, Any] = {
+    NT_VERIFICATION: _detail_verification,
+    NT_BLOCKER: _detail_blocker,
+    NT_RUN_EVENT: _detail_run_event,
+    NT_AGENT_LOOP: _detail_agent_loop,
+    NT_CONSTITUTION: _detail_constitution,
+    NT_MEMORY: _detail_memory_placeholder,
+    NT_MEMORY_ENTRY: _detail_memory_entry,
+    NT_MCP: _detail_mcp_placeholder,
+    NT_CONTEXT_COVERAGE: _detail_context_coverage,
+    NT_PATCH_APPLY: _detail_patch_apply,
+    NT_TEST_RUN: _detail_test_run,
+    NT_RUN_CONTRACT: _detail_run_contract,
+    NT_TOKEN_POLICY: _detail_token_policy,
+    NT_WORKER_ADAPTER: _detail_worker_adapter,
+    NT_AUTONOMY_READINESS: _detail_autonomy_readiness,
+    NT_CONTEXT_PACK: _detail_context_pack,
+    NT_PATCH_APPLY_PROOF: _detail_patch_apply_proof,
+    NT_PROJECT_PLACEHOLDER: _detail_project_placeholder,
+    NT_PATCH_REVERT: _detail_patch_revert,
+    NT_CHANGE_SET: _detail_change_set,
+    NT_GIT_STATUS: _detail_git_status,
+}
+
+
 def _fallback(
     node: Any,
     job_id_str: str,
@@ -1406,13 +1560,3 @@ def _fallback(
         next_actions=(),
         redaction_notes=("Raw content fields are not rendered.",),
     )
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
-def _section(title: str) -> str:
-    bar = _LINE * (50 - len(title) - 1)
-    return f"\n{_LINE}{_LINE} {title} {bar}"

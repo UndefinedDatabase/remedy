@@ -114,7 +114,7 @@ def build_brain_viewer_data(
         try:
             detail = build_brain_node_detail(job, graph, node.id, events)
             node_details[node.id] = export_brain_node_detail_json(detail)
-        except Exception:
+        except (KeyError, ValueError, AttributeError, TypeError, RuntimeError, OSError):
             detail_fallback_count += 1
             node_details[node.id] = {
                 "job_id": str(job.id),

@@ -297,14 +297,9 @@ def load_project_constitution(repo_root: Path | None) -> ProjectConstitution:
 
 def render_constitution(constitution: ProjectConstitution, repo_root: Path | None) -> str:
     """Render a ProjectConstitution as a human-readable plain-text report."""
-    _LINE = "─"
-    _INFO = "○"
-    _WARN = "!"
-    _OK   = "✓"
-
-    def _section(title: str) -> str:
-        bar = _LINE * (50 - len(title) - 1)
-        return f"\n{_LINE}{_LINE} {title} {bar}"
+    from packages.orchestration._symbols import (
+        OK as _OK, INFO as _INFO, WARN as _WARN, LINE as _LINE, section as _section,
+    )
 
     parts: list[str] = []
     parts.append("Remedy Project Constitution")

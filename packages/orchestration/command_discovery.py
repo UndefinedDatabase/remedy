@@ -228,7 +228,7 @@ def discover_commands(
                 all_candidates.extend(detector(job, repo_root))  # type: ignore[call-arg]
             else:
                 all_candidates.extend(detector(repo_root))
-        except Exception:
+        except (OSError, ValueError, KeyError, TypeError):
             # A broken detector must never crash discovery.
             logging.debug("command_discovery: detector %s failed", getattr(detector, "__name__", "?"), exc_info=True)
 
@@ -497,7 +497,7 @@ def _detect_constitution(job: "Job", repo_root: Path) -> list[CommandCandidate]:
                     requires_permission=_permission_for(purpose),
                 ))
         return candidates
-    except Exception:
+    except (OSError, ValueError, KeyError, TypeError):
         return []
 
 
@@ -663,7 +663,7 @@ def _detect_package_json(repo_root: Path) -> list[CommandCandidate]:
             continue
         try:
             data = json.loads(pj.read_text())
-        except Exception:
+        except (ValueError, OSError):
             continue
         scripts: dict = data.get("scripts", {})
         if not isinstance(scripts, dict):
@@ -961,7 +961,7 @@ def _detect_composer(repo_root: Path) -> list[CommandCandidate]:
             continue
         try:
             data = json.loads(pj.read_text())
-        except Exception:
+        except (ValueError, OSError):
             continue
         scripts = data.get("scripts", {})
         if not isinstance(scripts, dict) or "test" not in scripts:

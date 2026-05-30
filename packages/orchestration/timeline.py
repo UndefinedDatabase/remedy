@@ -23,12 +23,15 @@ from packages.core.models import Job, RunState
 # Symbols
 # ---------------------------------------------------------------------------
 
-_OK = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -82,31 +85,21 @@ def summarize_timeline(job: Job, events: list[dict[str, Any]]) -> str:
     parts.append(f"Tasks: {completed} completed, {pending} pending, {running} running")
 
     # ── Events ──────────────────────────────────────────────────────────
-    parts.append(_section("Events"))
+    parts.append(section("Events", width=64))
     if not events:
         parts.append(f"  {_INFO} No run log events found.")
     else:
         parts.extend(_render_events(events))
 
     # ── Status ──────────────────────────────────────────────────────────
-    parts.append(_section("Current status"))
+    parts.append(section("Current status", width=64))
     parts.append(_derive_status(job))
 
     # ── Next action ─────────────────────────────────────────────────────
-    parts.append(_section("Next suggested action"))
+    parts.append(section("Next suggested action", width=64))
     parts.append(_derive_next_action(job, events))
 
     return "\n".join(parts)
-
-
-# ---------------------------------------------------------------------------
-# Internal: section separator
-# ---------------------------------------------------------------------------
-
-
-def _section(title: str) -> str:
-    fill = _LINE * max(1, 64 - len(title))
-    return f"\n{_LINE * 2} {title} {fill}"
 
 
 # ---------------------------------------------------------------------------

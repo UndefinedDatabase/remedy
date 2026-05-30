@@ -1409,6 +1409,42 @@ class TestSmokeScriptText:
             "smoke must verify change_set node in brain graph"
         )
 
+    # --- Step 63: Memory card commands (step 12u) ----------------------------
+
+    def test_smoke_has_memory_card_show(self):
+        text = _script_text()
+        assert "card-show" in text, (
+            "smoke must verify memory card-show help"
+        )
+
+    # --- Step 64: Worker show + explain (steps 12v-12w) ----------------------
+
+    def test_smoke_has_worker_show(self):
+        text = _script_text()
+        assert "worker show" in text, (
+            "smoke must call remedy worker show"
+        )
+
+    def test_smoke_has_worker_explain(self):
+        text = _script_text()
+        assert "worker explain" in text, (
+            "smoke must call remedy worker explain"
+        )
+
+    # --- Step 65: Repo status + git_status brain (steps 12x-12y) -------------
+
+    def test_smoke_has_repo_status(self):
+        text = _script_text()
+        assert "repo status" in text, (
+            "smoke must call remedy repo status"
+        )
+
+    def test_smoke_brain_checks_git_status_node(self):
+        text = _script_text()
+        assert "git_status" in text, (
+            "smoke must verify git_status node in brain graph"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Execution tests (require bash)

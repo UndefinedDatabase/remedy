@@ -34,12 +34,15 @@ if TYPE_CHECKING:
 # Symbols (consistent with timeline.py)
 # ---------------------------------------------------------------------------
 
-_OK   = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -79,11 +82,11 @@ def summarize_cockpit(
         parts.append("Progress: unplanned (no tasks yet)")
 
     # ── Situation ────────────────────────────────────────────────────────
-    parts.append(_section("Situation"))
+    parts.append(section("Situation", width=64))
     parts.extend(_render_situation(job, signals))
 
     # ── Needs your attention ─────────────────────────────────────────────
-    parts.append(_section("Needs your attention"))
+    parts.append(section("Needs your attention", width=64))
     attention = _derive_attention(job, signals)
     if attention:
         for item in attention:
@@ -92,7 +95,7 @@ def summarize_cockpit(
         parts.append(f"  {_OK} Nothing needs your attention right now.")
 
     # ── Can continue automatically ───────────────────────────────────────
-    parts.append(_section("Can continue automatically"))
+    parts.append(section("Can continue automatically", width=64))
     can_auto, auto_reason = _can_auto_continue(job, signals)
     flag = "yes" if can_auto else "no"
     parts.append(f"  {flag} — {auto_reason}")
@@ -103,12 +106,12 @@ def summarize_cockpit(
         n = len(constitution.source_files)
         artifacts.append(("constitution:", f"{n} source file(s)"))
     if artifacts:
-        parts.append(_section("Important artifacts"))
+        parts.append(section("Important artifacts", width=64))
         for label, value in artifacts:
             parts.append(f"  {label:<16} {value}")
 
     # ── Next best action ─────────────────────────────────────────────────
-    parts.append(_section("Next best action"))
+    parts.append(section("Next best action", width=64))
     parts.append(_derive_next_action(job, signals))
 
     return "\n".join(parts)
@@ -436,13 +439,3 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
         f"  {_NEXT} No pending tasks. Inspect generated files\n"
         f"      or create a new job: remedy job create \"<prompt>\""
     )
-
-
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
-
-
-def _section(title: str) -> str:
-    fill = _LINE * max(1, 64 - len(title))
-    return f"\n{_LINE * 2} {title} {fill}"

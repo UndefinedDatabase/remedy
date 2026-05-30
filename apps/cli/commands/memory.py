@@ -54,8 +54,10 @@ def _cmd_memory_recall(
         output = [
             {
                 "id": str(e.id), "key": e.key, "value": e.value,
-                "tags": e.tags, "approved": e.approved,
-                "source_type": e.source_type,
+                "summary": e.summary, "tags": e.tags,
+                "approved": e.approved, "source_type": e.source_type,
+                "validity": e.validity, "review_status": e.review_status,
+                "scope": e.scope, "evidence_refs": e.evidence_refs,
                 "created_at": e.created_at,
             }
             for e in entries
@@ -85,8 +87,10 @@ def _cmd_memory_list(
         output = [
             {
                 "id": str(e.id), "key": e.key, "value": e.value,
-                "tags": e.tags, "approved": e.approved,
-                "source_type": e.source_type,
+                "summary": e.summary, "tags": e.tags,
+                "approved": e.approved, "source_type": e.source_type,
+                "validity": e.validity, "review_status": e.review_status,
+                "scope": e.scope, "evidence_refs": e.evidence_refs,
                 "created_at": e.created_at,
             }
             for e in entries
@@ -150,6 +154,122 @@ def _cmd_memory_learn(
     )
 
 
+def _cmd_memory_card_show(
+    memory_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+    json_output: bool = False,
+) -> None:
+    from packages.memory.local_gateway import get_memory_card
+
+    card = get_memory_card(memory_id, project_id=project_id, job_id=job_id)
+    if card is None:
+        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "id": str(card.id), "key": card.key, "value": card.value,
+            "summary": card.summary, "tags": card.tags,
+            "source_type": card.source_type, "source_id": card.source_id,
+            "scope": card.scope, "validity": card.validity,
+            "review_status": card.review_status, "approved": card.approved,
+            "evidence_refs": card.evidence_refs,
+            "supersedes": card.supersedes, "contradicts": card.contradicts,
+            "created_at": card.created_at, "updated_at": card.updated_at,
+        }, sort_keys=True))
+    else:
+        print(f"Memory Card: {card.id}")
+        print(f"  key: {card.key}")
+        print(f"  value: {card.value}")
+        print(f"  summary: {card.summary}")
+        print(f"  validity: {card.validity}  review: {card.review_status}  approved: {card.approved}")
+        print(f"  source: {card.source_type}  scope: {card.scope}")
+        if card.evidence_refs:
+            print(f"  evidence: {', '.join(card.evidence_refs)}")
+
+
+def _cmd_memory_card_approve(
+    memory_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> None:
+    from packages.memory.local_gateway import approve_memory_card
+
+    card = approve_memory_card(memory_id, project_id=project_id, job_id=job_id)
+    if card is None:
+        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Approved: {card.id} key={card.key}")
+
+
+def _cmd_memory_card_reject(
+    memory_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> None:
+    from packages.memory.local_gateway import reject_memory_card
+
+    card = reject_memory_card(memory_id, project_id=project_id, job_id=job_id)
+    if card is None:
+        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Rejected: {card.id} key={card.key}")
+
+
+def _cmd_memory_card_stale(
+    memory_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> None:
+    from packages.memory.local_gateway import mark_stale
+
+    card = mark_stale(memory_id, project_id=project_id, job_id=job_id)
+    if card is None:
+        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Marked stale: {card.id} key={card.key}")
+
+
+def _cmd_memory_card_supersede(
+    old_id: str,
+    new_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> None:
+    from packages.memory.local_gateway import supersede_memory_card
+
+    old, new = supersede_memory_card(old_id, new_id, project_id=project_id, job_id=job_id)
+    if old is None:
+        print(f"Error: old memory card not found: {old_id}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Superseded: {old_id[:8]} by {new_id[:8]}")
+
+
+def _cmd_memory_card_contradict(
+    memory_id: str,
+    by_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> None:
+    from packages.memory.local_gateway import contradict_memory_card
+
+    contradicted, by = contradict_memory_card(
+        memory_id, by_id, project_id=project_id, job_id=job_id,
+    )
+    if contradicted is None:
+        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Contradicted: {memory_id[:8]} by {by_id[:8]}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "memory.store": lambda args: _cmd_memory_store(
         args.key, args.value,
@@ -174,5 +294,36 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         args.job_id,
         approved=bool(getattr(args, "approved", False)),
         json_output=getattr(args, "json", False),
+    ),
+    "memory.card-show": lambda args: _cmd_memory_card_show(
+        args.memory_id,
+        project_id=getattr(args, "project", None),
+        job_id=getattr(args, "job", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "memory.card-approve": lambda args: _cmd_memory_card_approve(
+        args.memory_id,
+        project_id=getattr(args, "project", None),
+        job_id=getattr(args, "job", None),
+    ),
+    "memory.card-reject": lambda args: _cmd_memory_card_reject(
+        args.memory_id,
+        project_id=getattr(args, "project", None),
+        job_id=getattr(args, "job", None),
+    ),
+    "memory.card-stale": lambda args: _cmd_memory_card_stale(
+        args.memory_id,
+        project_id=getattr(args, "project", None),
+        job_id=getattr(args, "job", None),
+    ),
+    "memory.card-supersede": lambda args: _cmd_memory_card_supersede(
+        args.old_id, args.new_id,
+        project_id=getattr(args, "project", None),
+        job_id=getattr(args, "job", None),
+    ),
+    "memory.card-contradict": lambda args: _cmd_memory_card_contradict(
+        args.memory_id, args.by_id,
+        project_id=getattr(args, "project", None),
+        job_id=getattr(args, "job", None),
     ),
 }

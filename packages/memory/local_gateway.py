@@ -264,6 +264,123 @@ def has_approved_memory(
 
 
 # ---------------------------------------------------------------------------
+# Evidence Memory Card management
+# ---------------------------------------------------------------------------
+
+
+def get_memory_card(
+    entry_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> MemoryEntry | None:
+    """Get a single memory card by ID."""
+    path = _jsonl_path(project_id, job_id)
+    for e in _load_entries(path):
+        if str(e.id) == entry_id:
+            return e
+    return None
+
+
+def _update_entry_field(
+    entry_id: str,
+    project_id: str | None,
+    job_id: str | None,
+    **updates: Any,
+) -> MemoryEntry | None:
+    """Update fields on a memory entry by ID. Returns updated entry or None."""
+    from datetime import datetime, timezone
+
+    path = _jsonl_path(project_id, job_id)
+    entries = _load_entries(path)
+    for e in entries:
+        if str(e.id) == entry_id:
+            for k, v in updates.items():
+                setattr(e, k, v)
+            e.updated_at = datetime.now(timezone.utc).isoformat()
+            _rewrite_entries(path, entries)
+            return e
+    return None
+
+
+def approve_memory_card(
+    entry_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> MemoryEntry | None:
+    """Mark a memory card as approved."""
+    return _update_entry_field(
+        entry_id, project_id, job_id,
+        approved=True, review_status="approved",
+    )
+
+
+def reject_memory_card(
+    entry_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> MemoryEntry | None:
+    """Mark a memory card as rejected."""
+    return _update_entry_field(
+        entry_id, project_id, job_id,
+        approved=False, review_status="rejected",
+    )
+
+
+def mark_stale(
+    entry_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> MemoryEntry | None:
+    """Mark a memory card as stale."""
+    return _update_entry_field(
+        entry_id, project_id, job_id,
+        validity="stale",
+    )
+
+
+def supersede_memory_card(
+    old_id: str,
+    new_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> tuple[MemoryEntry | None, MemoryEntry | None]:
+    """Mark old card as superseded by new card. Returns (old, new)."""
+    old = _update_entry_field(
+        old_id, project_id, job_id,
+        validity="superseded", supersedes=None,
+    )
+    new = _update_entry_field(
+        new_id, project_id, job_id,
+        supersedes=old_id,
+    )
+    return old, new
+
+
+def contradict_memory_card(
+    entry_id: str,
+    by_id: str,
+    *,
+    project_id: str | None = None,
+    job_id: str | None = None,
+) -> tuple[MemoryEntry | None, MemoryEntry | None]:
+    """Mark a card as contradicted by another. Returns (contradicted, by)."""
+    contradicted = _update_entry_field(
+        entry_id, project_id, job_id,
+        validity="contradicted", contradicts=by_id,
+    )
+    by_card = _update_entry_field(
+        by_id, project_id, job_id,
+        contradicts=entry_id,
+    )
+    return contradicted, by_card
+
+
+# ---------------------------------------------------------------------------
 # Async MemoryGateway protocol implementation
 # ---------------------------------------------------------------------------
 

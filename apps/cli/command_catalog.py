@@ -93,6 +93,7 @@ GROUPS: dict[str, GroupDef] = {
     "context": GroupDef("context", "Context", "Context pack and coverage."),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view)."),
     "file": GroupDef("file", "File", "File-level provenance and tracing."),
+    "repo": GroupDef("repo", "Repo", "Read-only repository inspection."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -479,7 +480,17 @@ CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
-        related=("policy.contract",),
+        related=("policy.contract", "policy.token-explain"),
+    ),
+    CommandEntry(
+        command_id="policy.token-explain",
+        group_id="policy",
+        subcommand="token-explain",
+        description="Explain the token economy policy (text only).",
+        action_class="read_only",
+        args=(),
+        supports_json=False,
+        related=("policy.token",),
     ),
 
     # ── worker ───────────────────────────────────────────────────────────
@@ -502,6 +513,28 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
         related=("worker.list", "policy.token"),
+    ),
+
+    CommandEntry(
+        command_id="worker.show",
+        group_id="worker",
+        subcommand="show",
+        description="Show details of a single worker adapter.",
+        action_class="read_only",
+        args=(ArgDef("provider_id", "Provider ID (e.g. ollama)"), _JSON_OPT),
+        supports_json=True,
+        related=("worker.list",),
+    ),
+
+    CommandEntry(
+        command_id="worker.explain",
+        group_id="worker",
+        subcommand="explain",
+        description="Explain worker recommendation scoring for a job.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("worker.recommend", "policy.token"),
     ),
 
     # ── memory ───────────────────────────────────────────────────────────
@@ -561,6 +594,83 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
+    ),
+
+    CommandEntry(
+        command_id="memory.card-show",
+        group_id="memory",
+        subcommand="card-show",
+        description="Show a memory card by ID.",
+        action_class="read_only",
+        args=(
+            ArgDef("memory_id", "Memory entry ID", required=True),
+            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="memory.card-approve",
+        group_id="memory",
+        subcommand="card-approve",
+        description="Approve a memory card.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("memory_id", "Memory entry ID", required=True),
+            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+        ),
+    ),
+    CommandEntry(
+        command_id="memory.card-reject",
+        group_id="memory",
+        subcommand="card-reject",
+        description="Reject a memory card.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("memory_id", "Memory entry ID", required=True),
+            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+        ),
+    ),
+    CommandEntry(
+        command_id="memory.card-stale",
+        group_id="memory",
+        subcommand="card-stale",
+        description="Mark a memory card as stale.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("memory_id", "Memory entry ID", required=True),
+            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+        ),
+    ),
+    CommandEntry(
+        command_id="memory.card-supersede",
+        group_id="memory",
+        subcommand="card-supersede",
+        description="Mark a memory card as superseded by another.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("old_id", "Memory ID to supersede", required=True),
+            ArgDef("new_id", "Memory ID that supersedes", required=True),
+            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+        ),
+    ),
+    CommandEntry(
+        command_id="memory.card-contradict",
+        group_id="memory",
+        subcommand="card-contradict",
+        description="Mark a memory card as contradicted by another.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("memory_id", "Memory ID to contradict", required=True),
+            ArgDef("by_id", "Memory ID that contradicts", required=True),
+            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+        ),
     ),
 
     # ── readiness ────────────────────────────────────────────────────────
@@ -636,6 +746,21 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("brain.graph", "patch.show"),
+    ),
+
+    # ── repo ────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="repo.status",
+        group_id="repo",
+        subcommand="status",
+        description="Show read-only git status of the target repository.",
+        action_class="read_only",
+        args=(
+            ArgDef("--path", "Path to repository (default: current dir)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("readiness.show",),
     ),
 
     # ── dev ──────────────────────────────────────────────────────────────

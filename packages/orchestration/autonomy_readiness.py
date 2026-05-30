@@ -1,19 +1,20 @@
 """
-Autonomy Readiness v0 — deterministic readiness assessment for jobs and projects.
+Autonomy Readiness v2 — deterministic readiness assessment for jobs and projects.
 
 Reports which autonomy levels the current job/project can safely support,
 based on factual signals (attached repo, permissions, apply proofs, test proofs,
-memory, etc.).  This is NOT model confidence — it is infrastructure readiness.
+memory, revert snapshots, token policy, etc.).
+This is NOT model confidence — it is infrastructure readiness.
 
 Autonomy levels:
-  0 observe         — read-only inspection
-  1 propose         — can generate plans/artifacts
-  2 approved_apply  — can apply approved markdown patches
-  3 test_execution  — can run discovered test commands
-  4 bounded_loop    — can run agent loop with max_cycles
-  5 repair_loop     — rollback + retry (not implemented)
-  6 external_tools  — MCP/external tool use (not implemented)
-  7 provider_autonomy — provider-level autonomy (not implemented)
+  0 observe            — read-only inspection
+  1 propose            — can generate plans/artifacts
+  2 approved_apply     — can apply approved markdown patches
+  3 test_execution     — can run discovered test commands
+  4 bounded_loop       — can run agent loop with max_cycles
+  5 revert_capable     — can revert applied patches (snapshot-backed)
+  6 external_tools     — MCP/external tool use (future only)
+  7 provider_autonomy  — provider-level autonomy (future only)
 
 Public API::
 
@@ -41,7 +42,7 @@ LEVELS: list[dict[str, Any]] = [
     {"level": 2, "name": "approved_apply"},
     {"level": 3, "name": "test_execution"},
     {"level": 4, "name": "bounded_loop"},
-    {"level": 5, "name": "repair_loop"},
+    {"level": 5, "name": "revert_capable"},
     {"level": 6, "name": "external_tools"},
     {"level": 7, "name": "provider_autonomy"},
 ]
@@ -71,6 +72,7 @@ class ReadinessReport:
     highest_eligible_level: int
     levels: tuple[LevelAssessment, ...]
     next_actions: tuple[str, ...]
+    signals: dict[str, bool] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -117,11 +119,15 @@ def _has_token_policy(events: list[dict[str, Any]]) -> bool:
     return any(e.get("event") == "token_policy_inspected" for e in events)
 
 
+def _has_token_policy_applied(events: list[dict[str, Any]]) -> bool:
+    return any(e.get("event") == "token_policy_applied" for e in events)
+
+
 def _has_approved_memory() -> bool:
     try:
         from packages.memory.local_gateway import has_approved_memory
         return has_approved_memory()
-    except Exception:
+    except (ImportError, ValueError, OSError):
         return False
 
 
@@ -135,6 +141,60 @@ def _has_agent_loop(events: list[dict[str, Any]]) -> bool:
     )
 
 
+def _has_revert_snapshot(events: list[dict[str, Any]]) -> bool:
+    return any(e.get("event") == "patch_intent_reverted" for e in events)
+
+
+def _has_git_status(events: list[dict[str, Any]]) -> bool:
+    return any(e.get("event") == "git_status_read" for e in events)
+
+
+def _has_pending_approvals(events: list[dict[str, Any]]) -> bool:
+    """Check if there are unresolved approval blockers."""
+    approved = set()
+    rejected = set()
+    for e in events:
+        ev = e.get("event", "")
+        iid = e.get("metadata", {}).get("intent_id", "")
+        if ev == "patch_intent_approved":
+            approved.add(iid)
+        elif ev == "patch_intent_rejected":
+            rejected.add(iid)
+    # If there are patch intents that are neither approved nor rejected
+    intent_ids = set()
+    for e in events:
+        if e.get("event") == "patch_intent_created":
+            iid = e.get("metadata", {}).get("intent_id", "")
+            if iid:
+                intent_ids.add(iid)
+    pending = intent_ids - approved - rejected
+    return len(pending) > 0
+
+
+def _collect_signals(job: Job, events: list[dict[str, Any]]) -> dict[str, bool]:
+    """Collect all readiness signals into a flat dict."""
+    return {
+        "attached_repo": _has_attached_repo(job),
+        "project_link": bool(job.metadata.get("project_id")),
+        "constitution": _has_constitution(events),
+        "tasks_defined": _has_tasks(job),
+        "command_discovery": _has_command_discovery(events),
+        "repo_generated_write": _has_permission(job, "repo_generated_write"),
+        "repo_test_run": _has_permission(job, "repo_test_run"),
+        "approved_patch": _has_approved_patch(events),
+        "apply_proof": _has_apply_proof(events),
+        "test_proof": _has_test_proof(events),
+        "approved_memory": _has_approved_memory(),
+        "token_policy": _has_token_policy(events),
+        "token_policy_applied": _has_token_policy_applied(events),
+        "run_contract": _has_run_contract(events),
+        "agent_loop": _has_agent_loop(events),
+        "revert_snapshot": _has_revert_snapshot(events),
+        "no_pending_approvals": not _has_pending_approvals(events),
+        "git_status": _has_git_status(events),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Level assessment
 # ---------------------------------------------------------------------------
@@ -143,6 +203,7 @@ def _assess_level(
     level_def: dict[str, Any],
     job: Job,
     events: list[dict[str, Any]],
+    signals: dict[str, bool],
 ) -> LevelAssessment:
     """Assess a single autonomy level for a job."""
     lvl = level_def["level"]
@@ -152,6 +213,14 @@ def _assess_level(
     missing: list[str] = []
     blockers: list[str] = []
     actions: list[str] = []
+
+    def _check(signal_key: str, action: str | None = None) -> None:
+        if signals.get(signal_key, False):
+            present.append(signal_key)
+        else:
+            missing.append(signal_key)
+            if action:
+                actions.append(action)
 
     if lvl == 0:
         # observe: always eligible
@@ -164,74 +233,35 @@ def _assess_level(
 
     if lvl == 1:
         # propose: need repo + tasks
-        if _has_attached_repo(job):
-            present.append("attached_repo")
-        else:
-            missing.append("attached_repo")
-            actions.append("remedy job attach-repo <job_id> <path>")
-        if _has_tasks(job):
-            present.append("tasks_defined")
-        else:
-            missing.append("tasks_defined")
-            actions.append("remedy job create ... --task-type <type>")
+        _check("attached_repo", "remedy job attach-repo <job_id> <path>")
+        _check("tasks_defined", "remedy job create ... --task-type <type>")
 
     elif lvl == 2:
-        # approved_apply: need repo + permission + approved patch
-        if _has_attached_repo(job):
-            present.append("attached_repo")
-        else:
-            missing.append("attached_repo")
-        if _has_permission(job, "repo_generated_write"):
-            present.append("repo_generated_write")
-        else:
-            missing.append("repo_generated_write")
-            actions.append("remedy job permit <job_id> repo_generated_write allow")
-        if _has_approved_patch(events):
-            present.append("approved_patch")
-        else:
-            missing.append("approved_patch")
-        if _has_apply_proof(events):
-            present.append("apply_proof")
-        else:
-            missing.append("apply_proof")
+        # approved_apply: need repo + permission + approved patch + proof
+        _check("attached_repo")
+        _check("repo_generated_write", "remedy job permit <job_id> repo_generated_write allow")
+        _check("approved_patch")
+        _check("apply_proof")
 
     elif lvl == 3:
-        # test_execution: need command discovery + permission
-        if _has_command_discovery(events):
-            present.append("command_discovery")
-        else:
-            missing.append("command_discovery")
-            actions.append("remedy test discover <job_id>")
-        if _has_permission(job, "repo_test_run"):
-            present.append("repo_test_run")
-        else:
-            missing.append("repo_test_run")
-            actions.append("remedy job permit <job_id> repo_test_run allow")
-        if _has_test_proof(events):
-            present.append("test_proof")
-        else:
-            missing.append("test_proof")
+        # test_execution: need command discovery + permission + test proof
+        _check("command_discovery", "remedy test discover <job_id>")
+        _check("repo_test_run", "remedy job permit <job_id> repo_test_run allow")
+        _check("test_proof")
 
     elif lvl == 4:
         # bounded_loop: need agent loop + run contract + token policy
-        if _has_agent_loop(events):
-            present.append("agent_loop")
-        else:
-            missing.append("agent_loop")
-            actions.append("remedy job run-loop <job_id>")
-        if _has_run_contract(events):
-            present.append("run_contract")
-        else:
-            missing.append("run_contract")
-        if _has_token_policy(events):
-            present.append("token_policy")
-        else:
-            missing.append("token_policy")
+        _check("agent_loop", "remedy job run-loop <job_id>")
+        _check("run_contract")
+        _check("token_policy")
+        _check("token_policy_applied")
 
     elif lvl == 5:
-        # repair_loop: rollback not implemented
-        blockers.append("rollback_not_implemented")
-        missing.append("rollback_capability")
+        # revert_capable: need apply proof + revert snapshot + test proof
+        _check("apply_proof")
+        _check("revert_snapshot")
+        _check("test_proof")
+        _check("approved_memory")
 
     elif lvl == 6:
         # external_tools: MCP not implemented
@@ -261,7 +291,8 @@ def assess_job_readiness(
     events: list[dict[str, Any]],
 ) -> ReadinessReport:
     """Assess autonomy readiness for a single job."""
-    assessments = tuple(_assess_level(ld, job, events) for ld in LEVELS)
+    signals = _collect_signals(job, events)
+    assessments = tuple(_assess_level(ld, job, events, signals) for ld in LEVELS)
     highest = -1
     for a in assessments:
         if a.eligible:
@@ -275,13 +306,14 @@ def assess_job_readiness(
             break
 
     return ReadinessReport(
-        version=1,
+        version=2,
         scope="job",
         job_id=str(job.id),
         project_id=job.metadata.get("project_id", ""),
         highest_eligible_level=highest,
         levels=assessments,
         next_actions=tuple(all_actions),
+        signals=signals,
     )
 
 
@@ -302,15 +334,25 @@ def assess_project_readiness(
             for ld in LEVELS
         )
         return ReadinessReport(
-            version=1, scope="project", job_id="",
+            version=2, scope="project", job_id="",
             project_id=project_id, highest_eligible_level=0,
             levels=empty_levels, next_actions=("Create a linked job",),
+            signals={},
         )
 
     # Aggregate: level eligible if ANY linked job is eligible at that level
+    # Collect signals from all jobs
+    agg_signals: dict[str, bool] = {}
+    job_signals_list = []
+    for j in jobs:
+        js = _collect_signals(j, all_events.get(str(j.id), []))
+        job_signals_list.append(js)
+        for k, v in js.items():
+            agg_signals[k] = agg_signals.get(k, False) or v
+
     level_results: list[LevelAssessment] = []
     for ld in LEVELS:
-        per_job = [_assess_level(ld, j, all_events.get(str(j.id), [])) for j in jobs]
+        per_job = [_assess_level(ld, j, all_events.get(str(j.id), []), js) for j, js in zip(jobs, job_signals_list)]
         any_eligible = any(a.eligible for a in per_job)
         all_present = set()
         all_missing = set()
@@ -339,10 +381,11 @@ def assess_project_readiness(
             break
 
     return ReadinessReport(
-        version=1, scope="project", job_id="",
+        version=2, scope="project", job_id="",
         project_id=project_id, highest_eligible_level=highest,
         levels=tuple(level_results),
         next_actions=first_missing_actions,
+        signals=agg_signals,
     )
 
 
@@ -366,7 +409,10 @@ def export_readiness_json(report: ReadinessReport) -> dict[str, Any]:
             }
             for a in report.levels
         ],
+        "eligible_levels": [a.level for a in report.levels if a.eligible],
+        "blocked_levels": [a.level for a in report.levels if a.blockers],
         "next_actions": list(report.next_actions),
+        "signals": report.signals,
     }
 
 
@@ -376,7 +422,7 @@ def summarize_readiness(report: ReadinessReport) -> str:
     lines.append(f"Highest eligible level: {report.highest_eligible_level}")
     lines.append("")
     for a in report.levels:
-        mark = "✓" if a.eligible else "✕"
+        mark = "\u2713" if a.eligible else "\u2715"
         lines.append(f"  [{mark}] Level {a.level}: {a.name}")
         if a.present_signals:
             lines.append(f"      present: {', '.join(a.present_signals)}")
@@ -388,5 +434,5 @@ def summarize_readiness(report: ReadinessReport) -> str:
         lines.append("")
         lines.append("Next actions:")
         for act in report.next_actions:
-            lines.append(f"  → {act}")
+            lines.append(f"  \u2192 {act}")
     return "\n".join(lines)

@@ -185,7 +185,7 @@ def apply_patch_intent(
     try:
         from packages.orchestration.patch_revert import store_pre_apply_snapshot
         store_pre_apply_snapshot(job, intent_id, target_path, action, repo_root, data_dir=data_dir)
-    except Exception:
+    except (ImportError, OSError, ValueError):
         pass  # Snapshot is best-effort; apply must not be blocked by snapshot failure.
 
     # ── 9a. Owning artifact ───────────────────────────────────────────────

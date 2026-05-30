@@ -75,12 +75,15 @@ from packages.orchestration.permissions import Capability, is_allowed, is_reserv
 # Symbols (consistent with other orchestration views)
 # ---------------------------------------------------------------------------
 
-_OK   = "✓"
-_FAIL = "✕"
-_WARN = "!"
-_INFO = "○"
-_NEXT = "→"
-_LINE = "─"
+from packages.orchestration._symbols import (
+    OK as _OK,
+    FAIL as _FAIL,
+    WARN as _WARN,
+    INFO as _INFO,
+    NEXT as _NEXT,
+    LINE as _LINE,
+    section,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -293,12 +296,12 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
     parts.append(f"Cycle: {state.cycle}/{state.max_cycles}")
 
     # ── Agents ──────────────────────────────────────────────────────────────
-    parts.append(_section("Agents"))
+    parts.append(section("Agents"))
     parts.append(f"  builder:  {state.builder.name  if state.builder  else 'not configured'}")
     parts.append(f"  reviewer: {state.reviewer.name if state.reviewer else 'not configured'}")
 
     # ── Loop state ──────────────────────────────────────────────────────────
-    parts.append(_section("Loop state"))
+    parts.append(section("Loop state"))
     parts.append(f"  pending tasks: {len(pending_tasks)}")
 
     # Patch intent summary — structured counts/risk labels only.
@@ -338,7 +341,7 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
             parts.append(f"  finding: {finding}")
 
     # ── Next action ─────────────────────────────────────────────────────────
-    parts.append(_section("Next action"))
+    parts.append(section("Next action"))
     parts.append(_next_action(job, state))
 
     return "\n".join(parts)
@@ -435,11 +438,6 @@ def _format_blocker(blocked_reason: str) -> str:
     return blocked_reason
 
 
-def _section(title: str) -> str:
-    bar = _LINE * (50 - len(title) - 1)
-    return f"\n{_LINE}{_LINE} {title} {bar}"
-
-
 def _loop_meta(
     job: Job,
     state: AgentLoopState | None,
@@ -515,6 +513,23 @@ def run_agent_loop(
     _emit("agent_loop_started", _loop_meta(
         job, None, cycle=0, max_cycles=max_cycles,
         outcome="started", reason="loop_started"))
+
+    # Emit token_policy_applied once at loop start
+    from packages.orchestration.token_policy import build_default_token_policy
+    from packages.orchestration.worker_recommend import recommend_worker
+    _tp = build_default_token_policy(job)
+    _initial_events = load_run_events(data_dir, job.id)
+    _rec = recommend_worker(job, _initial_events)
+    log.log(
+        "token_policy_applied",
+        outcome="applied",
+        mode=_rec.token_mode,
+        max_context_tokens=_tp.budget.get("expensive_tokens", 100_000),
+        estimated_context_tokens=_rec.estimated_context_tokens,
+        local_first=True,
+        remote_model_requires_approval=_rec.requires_approval,
+        selected_worker=_rec.recommended_worker,
+    )
 
     state: AgentLoopState | None = None
 
