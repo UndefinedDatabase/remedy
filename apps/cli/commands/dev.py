@@ -61,6 +61,10 @@ def _dev_status(*, json_output: bool = False) -> None:
         "worker_cleanup_ok": False,
         "autocoder_fake_e2e_ok": False,
         "commit_readiness_ok": None,
+        "repair_loop_ok": None,
+        "reviewer_loop_ok": None,
+        "memory_candidates_ok": None,
+        "live_ui_ok": None,
         "remaining_blockers": [],
         "advisories": [],
     }
@@ -98,7 +102,6 @@ def _dev_status(*, json_output: bool = False) -> None:
     try:
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
         from packages.orchestration.source_apply import apply_structured_patch
-        # Verify patch model can be constructed
         _p = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path="test.py", action="create", language="python",
@@ -109,6 +112,34 @@ def _dev_status(*, json_output: bool = False) -> None:
         status["autocoder_fake_e2e_ok"] = callable(apply_structured_patch)
     except (ImportError, Exception):
         status["autocoder_fake_e2e_ok"] = False
+
+    # Check repair loop — module importable and build_repair_context callable
+    try:
+        from packages.orchestration.repair_context import build_repair_context
+        status["repair_loop_ok"] = callable(build_repair_context)
+    except (ImportError, Exception):
+        status["repair_loop_ok"] = False
+
+    # Check reviewer loop — module importable
+    try:
+        from packages.orchestration.reviewer import run_reviewer, _fixture_reviewer
+        status["reviewer_loop_ok"] = callable(run_reviewer)
+    except (ImportError, Exception):
+        status["reviewer_loop_ok"] = False
+
+    # Check memory candidates — module importable
+    try:
+        from packages.orchestration.memory_candidates import create_candidate
+        status["memory_candidates_ok"] = callable(create_candidate)
+    except (ImportError, Exception):
+        status["memory_candidates_ok"] = False
+
+    # Check live UI — server importable and build function callable
+    try:
+        from packages.orchestration.ui_server import _build_live_state_json
+        status["live_ui_ok"] = callable(_build_live_state_json)
+    except (ImportError, Exception):
+        status["live_ui_ok"] = False
 
     # Check commit-readiness — only if we have a smoke job to test against
     _cr_crashed = False
@@ -143,6 +174,17 @@ def _dev_status(*, json_output: bool = False) -> None:
         advisories.append("commit-readiness not ready (normal for smoke/reverted jobs)")
     if not status["worker_cleanup_ok"]:
         advisories.append("ollama not found — worker unload unavailable")
+    # New capability checks — null means untested, false means crashed
+    for cap_key, cap_label in (
+        ("repair_loop_ok", "repair loop"),
+        ("reviewer_loop_ok", "reviewer loop"),
+        ("memory_candidates_ok", "memory candidates"),
+        ("live_ui_ok", "live UI"),
+    ):
+        if status[cap_key] is False:
+            blockers.append(f"{cap_label} module import failed")
+        elif status[cap_key] is None:
+            advisories.append(f"{cap_label} not verified")
     status["remaining_blockers"] = blockers
     status["advisories"] = advisories
 
@@ -157,7 +199,9 @@ def _dev_status(*, json_output: bool = False) -> None:
             print(f"    job_id: {smoke_info['job_id']}")
         for key in ("cli_ok", "ui_contract_ok", "task_progress_ok",
                      "worker_cleanup_ok", "autocoder_fake_e2e_ok",
-                     "commit_readiness_ok"):
+                     "commit_readiness_ok", "repair_loop_ok",
+                     "reviewer_loop_ok", "memory_candidates_ok",
+                     "live_ui_ok"):
             val = status[key]
             mark = "N/A" if val is None else "OK" if val else "FAIL"
             print(f"  {key}: {mark}")
@@ -176,7 +220,10 @@ def _dev_status(*, json_output: bool = False) -> None:
         print("  remedy ui <job_id>                          — open UI")
         print("  remedy worker unload --all                  — free VRAM")
         print("  remedy repo commit-readiness <job_id>       — commit preview")
-        print('  remedy do "goal" --fixture-builder --no-ui --json  — fake E2E')
+        print('  remedy do "goal" --fixture-builder repair-loop --no-ui --json  — repair E2E')
+        print("  remedy review run <job_id> --fixture-reviewer --json  — reviewer")
+        print("  remedy memory candidates <job_id> --json    — memory candidates")
+        print("  remedy dev status --json                    — this status")
         print("  source scripts/remedy_smoke.sh && remedy_smoke     — smoke")
 
 

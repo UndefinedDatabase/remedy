@@ -104,9 +104,11 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
             elif arg.name == "--dry-run":
                 parser.add_argument("--dry-run", action="store_true", dest="dry_run", help=arg.help)
             elif arg.name == "--fixture-builder":
-                parser.add_argument("--fixture-builder", action="store_true", dest="fixture_builder", help=arg.help)
+                parser.add_argument("--fixture-builder", nargs="?", const="true", default="false", dest="fixture_builder", help=arg.help)
             elif arg.name == "--ui":
-                parser.add_argument("--ui", default=arg.default, help=arg.help)
+                parser.add_argument("--ui", action="store_true", dest="ui", help=arg.help)
+            elif arg.name == "--fixture-reviewer":
+                parser.add_argument("--fixture-reviewer", action="store_true", dest="fixture_reviewer", help=arg.help)
             elif arg.name == "--after-task":
                 parser.add_argument("--after-task", default=None, dest="after_task", help=arg.help)
             elif arg.name == "--provider":
@@ -180,8 +182,10 @@ _QUICK_START = """\
    1. remedy do "<goal>" --repo <path>     — create + run job
    2. remedy ui <job_id>                   — open UI
    3. remedy repo commit-readiness <id>    — inspect readiness
-   4. remedy worker unload --all           — free VRAM
-   5. remedy dev status                    — check everything"""
+   4. remedy review run <id> --json        — reviewer recommendations (human approval)
+   5. remedy memory candidates <id> --json — memory candidates (human approval)
+   6. remedy worker unload --all           — free VRAM
+   7. remedy dev status                    — check everything"""
 
 
 def _print_root_help() -> None:

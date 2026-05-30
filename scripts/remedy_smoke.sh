@@ -62,7 +62,7 @@ SUMEOF
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide ui; do
+    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide ui do review; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
@@ -2450,6 +2450,178 @@ for bad in ('raw_output','command_output','Traceback','diff_preview','approval_r
         print('ERROR: commit-readiness raw leak: ' + bad, file=sys.stderr)
         sys.exit(1)
 print('    commit-readiness: OK (ready=' + str(d['ready']) + ', reasons=' + str(len(d['reasons'])) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ao. Repair-loop fixture E2E (Step 155-156)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ao"
+    echo "--- 12ao. Repair-loop fixture E2E"
+    TMP_REPAIR=$(mktemp -d)
+    _REPAIR_OUTPUT=$(remedy do "Make tests pass" --repo "${TMP_REPAIR}" --autonomy-level 6 --max-cycles 3 --fixture-builder repair-loop --no-ui --json 2>&1) || {
+        echo "    repair-loop command failed (rc=$?)"
+        echo "    output: ${_REPAIR_OUTPUT}"
+        remedy do run --help 2>&1 || true
+        return 1
+    }
+    echo "${_REPAIR_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: repair-loop output not valid JSON', file=sys.stderr)
+    print('Raw: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+if d.get('version') != 1:
+    print('ERROR: repair-loop version != 1', file=sys.stderr)
+    sys.exit(1)
+if not d.get('job_id'):
+    print('ERROR: repair-loop missing job_id', file=sys.stderr)
+    sys.exit(1)
+if d.get('cycles_run', 0) < 2:
+    print('ERROR: repair-loop cycles_run < 2: ' + str(d.get('cycles_run')), file=sys.stderr)
+    sys.exit(1)
+if not d.get('repair_context_created'):
+    print('ERROR: repair_context_created not true', file=sys.stderr)
+    sys.exit(1)
+if not d.get('repair_loop_used'):
+    print('ERROR: repair_loop_used not true', file=sys.stderr)
+    sys.exit(1)
+if not d.get('tests_passed'):
+    print('ERROR: tests_passed not true', file=sys.stderr)
+    sys.exit(1)
+# No raw leaks
+full = json.dumps(d)
+for bad in ('raw_output','command_output','Traceback','stdout','stderr'):
+    if bad in full:
+        print('ERROR: repair-loop raw leak: ' + bad, file=sys.stderr)
+        sys.exit(1)
+print('    repair-loop: OK (cycles=' + str(d['cycles_run']) + ', stage=' + d.get('stage','?') + ')')
+"
+    REPAIR_JOB_ID=$(echo "${_REPAIR_OUTPUT}" | python3 -c "import sys,json; print(json.loads(sys.stdin.read())['job_id'])")
+    rm -rf "${TMP_REPAIR}"
+
+    # -------------------------------------------------------------------------
+    # 12ap. Reviewer recommendation loop (Step 157)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ap"
+    echo "--- 12ap. Reviewer recommendation loop"
+    _REVIEW_OUTPUT=$(remedy review run "${REPAIR_JOB_ID}" --fixture-reviewer --json 2>&1) || {
+        echo "    review run command failed (rc=$?)"
+        echo "    output: ${_REVIEW_OUTPUT}"
+        remedy review run --help 2>&1 || true
+        return 1
+    }
+    echo "${_REVIEW_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: review run output not valid JSON', file=sys.stderr)
+    print('Raw: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+if d.get('version') != 1:
+    print('ERROR: review run version != 1', file=sys.stderr)
+    sys.exit(1)
+if d.get('recommendation_count', 0) < 1:
+    print('ERROR: fixture reviewer returned 0 recommendations', file=sys.stderr)
+    sys.exit(1)
+recs = d.get('recommendations', [])
+if not recs:
+    print('ERROR: recommendations list empty', file=sys.stderr)
+    sys.exit(1)
+# Get first recommendation ID for accept test
+first_id = recs[0].get('id', '')
+if not first_id:
+    print('ERROR: recommendation missing id', file=sys.stderr)
+    sys.exit(1)
+print('    review run: OK (count=' + str(d['recommendation_count']) + ')')
+# Write rec ID for accept step
+with open('/tmp/_smoke_rec_id.txt', 'w') as f:
+    f.write(first_id)
+"
+    _REC_ID=$(cat /tmp/_smoke_rec_id.txt)
+    # Accept first recommendation
+    _ACCEPT_OUTPUT=$(remedy review accept "${REPAIR_JOB_ID}" "${_REC_ID}" --json 2>&1) || {
+        echo "    review accept failed (rc=$?)"
+        echo "    output: ${_ACCEPT_OUTPUT}"
+        return 1
+    }
+    echo "${_ACCEPT_OUTPUT}" | python3 -c "
+import sys, json
+d = json.loads(sys.stdin.read())
+if not d.get('accepted'):
+    print('ERROR: review accept did not return accepted=true', file=sys.stderr)
+    sys.exit(1)
+if not d.get('task_appended'):
+    print('ERROR: review accept did not append task', file=sys.stderr)
+    sys.exit(1)
+print('    review accept: OK')
+"
+    rm -f /tmp/_smoke_rec_id.txt
+
+    # -------------------------------------------------------------------------
+    # 12aq. Memory candidates (Step 158)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12aq"
+    echo "--- 12aq. Memory candidates"
+    _MC_OUTPUT=$(remedy memory candidates "${REPAIR_JOB_ID}" --json 2>&1) || {
+        echo "    memory candidates command failed (rc=$?)"
+        echo "    output: ${_MC_OUTPUT}"
+        remedy memory candidates --help 2>&1 || true
+        return 1
+    }
+    echo "${_MC_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: memory candidates output not valid JSON', file=sys.stderr)
+    print('Raw: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+if d.get('version') != 1:
+    print('ERROR: memory candidates version != 1', file=sys.stderr)
+    sys.exit(1)
+candidates = d.get('candidates', [])
+# Repair loop should have created at least one candidate
+if candidates:
+    # Verify all are pending (not auto-approved)
+    for c in candidates:
+        if c.get('status') != 'pending':
+            print('ERROR: candidate auto-approved: ' + c.get('id','?') + ' status=' + c.get('status','?'), file=sys.stderr)
+            sys.exit(1)
+    print('    memory candidates: OK (count=' + str(len(candidates)) + ', all pending)')
+else:
+    print('    memory candidates: OK (no candidates — acceptable)')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ar. Dev status expanded (Step 161)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ar"
+    echo "--- 12ar. Dev status expanded"
+    _DS_OUTPUT=$(remedy dev status --json 2>&1)
+    echo "${_DS_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: dev status output not valid JSON', file=sys.stderr)
+    print('Raw: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+for key in ('repair_loop_ok', 'reviewer_loop_ok', 'memory_candidates_ok', 'live_ui_ok'):
+    if key not in d:
+        print('ERROR: dev status missing: ' + key, file=sys.stderr)
+        sys.exit(1)
+# advisories key must exist
+if 'advisories' not in d:
+    print('ERROR: dev status missing advisories', file=sys.stderr)
+    sys.exit(1)
+print('    dev status: OK (blockers=' + str(len(d.get('remaining_blockers',[]))) + ')')
 "
 
     # -------------------------------------------------------------------------

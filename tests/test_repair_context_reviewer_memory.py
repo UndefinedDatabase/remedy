@@ -255,7 +255,8 @@ class TestStep150_RepairLoopFixture:
         assert _parse_fixture_builder("repair-loop") == "repair-loop"
         assert _parse_fixture_builder("true") is True
         assert _parse_fixture_builder("false") is False
-        assert _parse_fixture_builder("anything") is False
+        with pytest.raises(SystemExit):
+            _parse_fixture_builder("anything")
 
 
 # =========================================================================

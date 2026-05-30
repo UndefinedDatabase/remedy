@@ -270,6 +270,117 @@ def _cmd_memory_card_contradict(
     print(f"Contradicted: {memory_id[:8]} by {by_id[:8]}")
 
 
+def _cmd_memory_candidates(
+    job_id_str: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    """List memory candidates for a job."""
+    from uuid import UUID
+    from packages.orchestration.storage import load_job
+    from packages.orchestration.memory_candidates import list_candidates
+
+    job = load_job(UUID(job_id_str))
+    candidates = list_candidates(job)
+
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "job_id": str(job.id),
+            "candidates": candidates,
+        }, indent=2))
+    else:
+        if not candidates:
+            print("No memory candidates.")
+            return
+        for c in candidates:
+            status = c.get("status", "?")
+            kind = c.get("kind", "?")
+            summary = c.get("safe_summary", "?")[:60]
+            cid = c.get("id", "?")
+            print(f"  [{status}] {cid}  {kind}: {summary}")
+
+
+def _cmd_memory_approve_candidate(
+    job_id_str: str,
+    candidate_id: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    """Approve a memory candidate."""
+    from uuid import UUID
+    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.memory_candidates import approve_candidate
+
+    job = load_job(UUID(job_id_str))
+    ok = approve_candidate(job, candidate_id)
+    if ok:
+        save_job(job)
+        if json_output:
+            print(_json.dumps({
+                "version": 1,
+                "job_id": str(job.id),
+                "candidate_id": candidate_id,
+                "approved": True,
+                "memory_created": True,
+            }, indent=2))
+        else:
+            print(f"Approved: {candidate_id}")
+    else:
+        if json_output:
+            print(_json.dumps({
+                "version": 1,
+                "job_id": str(job.id),
+                "candidate_id": candidate_id,
+                "approved": False,
+                "memory_created": False,
+                "error": "not found or already resolved",
+            }, indent=2))
+        else:
+            print(f"Not found or already resolved: {candidate_id}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _cmd_memory_reject_candidate(
+    job_id_str: str,
+    candidate_id: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    """Reject a memory candidate."""
+    from uuid import UUID
+    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.memory_candidates import reject_candidate
+
+    job = load_job(UUID(job_id_str))
+    ok = reject_candidate(job, candidate_id)
+    if ok:
+        save_job(job)
+        if json_output:
+            print(_json.dumps({
+                "version": 1,
+                "job_id": str(job.id),
+                "candidate_id": candidate_id,
+                "rejected": True,
+                "memory_created": False,
+            }, indent=2))
+        else:
+            print(f"Rejected: {candidate_id}")
+    else:
+        if json_output:
+            print(_json.dumps({
+                "version": 1,
+                "job_id": str(job.id),
+                "candidate_id": candidate_id,
+                "rejected": False,
+                "memory_created": False,
+                "error": "not found or already resolved",
+            }, indent=2))
+        else:
+            print(f"Not found or already resolved: {candidate_id}", file=sys.stderr)
+        sys.exit(1)
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "memory.store": lambda args: _cmd_memory_store(
         args.key, args.value,
@@ -325,5 +436,17 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         args.memory_id, args.by_id,
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
+    ),
+    "memory.candidates": lambda args: _cmd_memory_candidates(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "memory.approve-candidate": lambda args: _cmd_memory_approve_candidate(
+        args.job_id, args.candidate_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "memory.reject-candidate": lambda args: _cmd_memory_reject_candidate(
+        args.job_id, args.candidate_id,
+        json_output=getattr(args, "json", False),
     ),
 }

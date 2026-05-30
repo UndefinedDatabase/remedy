@@ -79,14 +79,28 @@ def _cmd_do(
             print(f"Error: {result.error}", file=sys.stderr)
 
 
+_VALID_FIXTURE_MODES = frozenset({"true", "false", "repair-loop"})
+
+
 def _parse_fixture_builder(val: object) -> bool | str:
-    """Parse --fixture-builder value: true/false/repair-loop."""
+    """Parse --fixture-builder value: true/false/repair-loop.
+
+    Fails with SystemExit(2) on unknown modes.
+    """
     s = str(val).lower().strip()
     if s in ("true", "1", "yes"):
         return True
     if s == "repair-loop":
         return "repair-loop"
-    return False
+    if s in ("false", "0", "no"):
+        return False
+    import sys
+    print(
+        f"Error: invalid --fixture-builder mode: {val!r}. "
+        f"Allowed: true, false, repair-loop.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
@@ -97,11 +111,11 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         autonomy_level=int(getattr(args, "autonomy_level", None) or 2),
         max_cycles=int(getattr(args, "max_cycles", None) or 3),
         enable_ui=(
-            str(getattr(args, "ui", "false")).lower() == "true"
+            bool(getattr(args, "ui", False))
             and not getattr(args, "no_ui", False)
         ),
         dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
-        fixture_builder=_parse_fixture_builder(getattr(args, "fixture_builder", False)),
+        fixture_builder=_parse_fixture_builder(getattr(args, "fixture_builder", "false")),
     ),
 }

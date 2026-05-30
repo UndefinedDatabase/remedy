@@ -1,23 +1,24 @@
-# Plan — Steps 147-154
+# Plan — Steps 155-162
 
 ## Goal
-Blocker/advisory split, repair context, repair loop, reviewer recommendations,
-memory candidates, live UI v2, UX polish.
+CLI closure for execution loop: fixture-builder parsing, repair-loop E2E,
+reviewer CLI, memory candidate CLI, --ui flag, smoke, dev status, docs.
 
 ## Current Step
 All steps complete. Final commit.
 
 ## Steps
-- [x] Step 147: Dev status blocker/advisory split — crash=blocker, not-ready=advisory
-- [x] Step 148: Commit-readiness can return ready=true for fixture job
-- [x] Step 149: Repair context v1 — safe failure summary, no raw stdout/stderr
-- [x] Step 150: Deterministic repair loop E2E — 2-cycle fixture via --fixture-builder repair-loop
-- [x] Step 151: Reviewer recommendation v1 — fixture reviewer, accept/reject, no auto-append
-- [x] Step 152: Memory candidate v1 — human approval required, deduplication
-- [x] Step 153: Live run UI v2 — repair_loop_used, reviewer_pending_count, memory_candidate_count
-- [x] Step 154: UX polish gate — task ribbon, reduced-motion, next-action, no metadata wall
+- [x] Step 155: --fixture-builder nargs=? (bare/repair-loop/=repair-loop), invalid mode fails
+- [x] Step 156: Repair-loop fake E2E closure — 2 cycles, max_cycles=1 stops safely
+- [x] Step 157: Reviewer CLI — run/list/accept/reject with --fixture-reviewer, --json
+- [x] Step 158: Memory candidate CLI — candidates/approve-candidate/reject-candidate with --json
+- [x] Step 159: --ui store_true boolean flag, --no-ui overrides
+- [x] Step 160: Smoke script — sections 12ao-12ar for repair-loop, reviewer, memory, dev status
+- [x] Step 161: Dev status — repair_loop_ok, reviewer_loop_ok, memory_candidates_ok, live_ui_ok
+- [x] Step 162: Docs/help — quick start updated, review/memory in catalog, no auto-approve docs
 
 ## Tests
-- 32 new tests in test_steps_147_154.py
-- 3313 total tests passing
+- 42 new tests in test_cli_execution_loop_closure.py
+- 32 tests updated in test_repair_context_reviewer_memory.py
+- 3355 total tests passing
 - Frontend builds clean (Vite)
