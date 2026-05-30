@@ -832,6 +832,19 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("readiness.show",),
     ),
 
+    CommandEntry(
+        command_id="repo.commit-readiness",
+        group_id="repo",
+        subcommand="commit-readiness",
+        description="Preview commit readiness — read-only, no git writes.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+
     # ── event ────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="event.list",

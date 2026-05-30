@@ -569,7 +569,7 @@ class TestStep134_ClosureReport:
             _dev_status(json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             required = {
-                "version", "cli_ok", "smoke_ok", "ui_contract_ok",
+                "version", "cli_ok", "latest_smoke", "ui_contract_ok",
                 "task_progress_ok", "worker_cleanup_ok",
                 "autocoder_fake_e2e_ok", "remaining_blockers",
             }
