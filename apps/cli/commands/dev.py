@@ -60,6 +60,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         "task_progress_ok": False,
         "worker_cleanup_ok": False,
         "autocoder_fake_e2e_ok": False,
+        "commit_readiness_ok": None,
         "remaining_blockers": [],
     }
 
@@ -108,6 +109,23 @@ def _dev_status(*, json_output: bool = False) -> None:
     except (ImportError, Exception):
         status["autocoder_fake_e2e_ok"] = False
 
+    # Check commit-readiness — only if we have a smoke job to test against
+    if smoke_info["found"] and smoke_info["job_id"]:
+        try:
+            from apps.cli.commands.repo import _cmd_commit_readiness
+            import io, contextlib
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                _cmd_commit_readiness(smoke_info["job_id"], json_output=True)
+            cr_data = json.loads(buf.getvalue())
+            status["commit_readiness_ok"] = cr_data.get("ready", False)
+            if not cr_data.get("ready"):
+                cr_reasons = cr_data.get("reasons", [])
+                if cr_reasons:
+                    status["commit_readiness_ok"] = False
+        except (Exception, SystemExit):
+            status["commit_readiness_ok"] = False
+
     # Remaining blockers
     blockers = []
     if not smoke_info["found"]:
@@ -118,6 +136,8 @@ def _dev_status(*, json_output: bool = False) -> None:
         blockers.append("UI contract check failed")
     if not status["task_progress_ok"]:
         blockers.append("task-progress version mismatch")
+    if status["commit_readiness_ok"] is False:
+        blockers.append("commit-readiness not ready — run: remedy repo commit-readiness <job_id> --json")
     status["remaining_blockers"] = blockers
 
     if json_output:
@@ -130,8 +150,10 @@ def _dev_status(*, json_output: bool = False) -> None:
         if smoke_info["found"]:
             print(f"    job_id: {smoke_info['job_id']}")
         for key in ("cli_ok", "ui_contract_ok", "task_progress_ok",
-                     "worker_cleanup_ok", "autocoder_fake_e2e_ok"):
-            mark = "OK" if status[key] else "FAIL"
+                     "worker_cleanup_ok", "autocoder_fake_e2e_ok",
+                     "commit_readiness_ok"):
+            val = status[key]
+            mark = "N/A" if val is None else "OK" if val else "FAIL"
             print(f"  {key}: {mark}")
         if blockers:
             print(f"  blockers: {len(blockers)}")
@@ -141,10 +163,11 @@ def _dev_status(*, json_output: bool = False) -> None:
             print("  blockers: none")
         print()
         print("Commands:")
-        print("  remedy ui <job_id>              — open UI")
-        print("  remedy worker unload --all      — free VRAM")
+        print("  remedy ui <job_id>                          — open UI")
+        print("  remedy worker unload --all                  — free VRAM")
+        print("  remedy repo commit-readiness <job_id>       — commit preview")
         print('  remedy do "goal" --fixture-builder --no-ui --json  — fake E2E')
-        print("  source scripts/remedy_smoke.sh && remedy_smoke  — smoke")
+        print("  source scripts/remedy_smoke.sh && remedy_smoke     — smoke")
 
 
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {

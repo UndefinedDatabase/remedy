@@ -175,10 +175,22 @@ def build_parser() -> argparse.ArgumentParser:
 # Help rendering from catalog
 # ---------------------------------------------------------------------------
 
+_QUICK_START = """\
+ Happy path:
+   1. remedy do "<goal>" --repo <path>     — create + run job
+   2. remedy ui <job_id>                   — open UI
+   3. remedy repo commit-readiness <id>    — inspect readiness
+   4. remedy worker unload --all           — free VRAM
+   5. remedy dev status                    — check everything"""
+
+
 def _print_root_help() -> None:
     """Print Bootcamp-style root help and exit 0."""
     groups = [(gid, gdef.description) for gid, gdef in GROUPS.items()]
-    print(render_root_help("remedy", "Remedy \u2014 Human-in-the-loop Project Brain", groups))
+    print(render_root_help(
+        "remedy", "Remedy \u2014 Human-in-the-loop Project Brain", groups,
+        footer=_QUICK_START,
+    ))
 
 
 def _print_group_help(group_id: str) -> None:

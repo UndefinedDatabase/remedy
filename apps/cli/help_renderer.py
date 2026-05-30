@@ -36,6 +36,8 @@ def render_root_help(
     prog: str,
     description: str,
     groups: list[tuple[str, str]],
+    *,
+    footer: str = "",
 ) -> str:
     """Render top-level help: usage, description, options box, commands box."""
     parts: list[str] = []
@@ -45,6 +47,9 @@ def render_root_help(
     parts.append("")
     parts.append(_box("Commands", groups))
     parts.append("")
+    if footer:
+        parts.append(footer)
+        parts.append("")
     return "\n".join(parts)
 
 
