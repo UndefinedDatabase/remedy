@@ -294,8 +294,11 @@ def _render_html(
     static_fallback_html: str,
 ) -> str:
     """Return self-contained HTML with JSON data island and server-rendered fallback."""
+    from packages.orchestration.brain_viewer_theme import REMEDY_CSS
+
     return (
         _HTML
+        .replace("__REMEDY_CSS__", REMEDY_CSS)
         .replace("__VIEWER_DATA_JSON__", viewer_json_str)  # must precede __STATIC_FALLBACK__
         .replace("__STATIC_FALLBACK__", static_fallback_html)
         .replace("__JOB_SHORT_ID__", job_short_id)
@@ -314,74 +317,101 @@ _HTML = """\
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Remedy Brain Viewer v0 — __JOB_SHORT_ID__</title>
+<title>Remedy Brain Viewer — __JOB_SHORT_ID__</title>
 <style>
+__REMEDY_CSS__
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d1117;color:#c9d1d9;font-family:ui-monospace,SFMono-Regular,monospace;
-     display:flex;flex-direction:column;height:100vh;overflow:hidden}
-#hdr{background:#161b22;padding:9px 16px;display:flex;align-items:center;gap:10px;
-     border-bottom:1px solid #21262d;flex-shrink:0}
-#hdr h1{font-size:14px;font-weight:bold;color:#c9d1d9}
-.badge{background:#1f2937;color:#7aa7e8;padding:2px 8px;border-radius:4px;
-       font-size:11px;border:1px solid #2d3748}
-.badge-warn{background:#2d1a08;color:#ffaa44;border-color:#4a2d10}
-#render-badge[data-status="ready"]{background:#0a2a0a;color:#3fb950;border-color:#1a4a1a}
-#render-badge[data-status="error"]{background:#2d1a08;color:#ffaa44;border-color:#4a2d10}
-#render-badge[data-status="empty"]{background:#1a1a2d;color:#7aa7e8;border-color:#2d3a5a}
-#render-badge[data-status="static-fallback"]{background:#1a1a2d;color:#8b949e;border-color:#2d3748}
-#static-fallback{padding:12px 16px;background:#0d1117;border-bottom:1px solid #21262d;
-  font-size:12px;overflow-y:auto;max-height:200px;flex-shrink:0}
+body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+#hdr{background:var(--remedy-bg-panel);padding:9px 16px;display:flex;align-items:center;gap:10px;
+     border-bottom:1px solid var(--remedy-panel-border);flex-shrink:0;z-index:2}
+#hdr h1{font-size:14px;font-weight:bold;color:var(--remedy-teal);font-family:var(--remedy-font-sans)}
+.badge{background:rgba(56,200,200,0.08);color:var(--remedy-teal);padding:2px 8px;border-radius:4px;
+       font-size:11px;border:1px solid var(--remedy-panel-border)}
+.badge-warn{background:rgba(232,168,56,0.1);color:var(--remedy-warning);border-color:rgba(232,168,56,0.2)}
+#render-badge[data-status="ready"]{background:rgba(56,200,136,0.1);color:var(--remedy-proof);border-color:rgba(56,200,136,0.2)}
+#render-badge[data-status="error"]{background:rgba(224,82,82,0.1);color:var(--remedy-risk);border-color:rgba(224,82,82,0.2)}
+#render-badge[data-status="empty"]{background:rgba(56,200,200,0.05);color:var(--remedy-fg-muted);border-color:var(--remedy-panel-border)}
+#render-badge[data-status="static-fallback"]{background:rgba(58,74,90,0.3);color:var(--remedy-fg-muted);border-color:var(--remedy-muted)}
+#info-bar{display:flex;gap:8px;padding:6px 16px;flex-wrap:wrap;font-size:11px;
+  border-bottom:1px solid var(--remedy-panel-border);flex-shrink:0;z-index:2;
+  background:var(--remedy-bg-panel)}
+#info-bar .info-item{padding:3px 10px;border-radius:4px;
+  background:rgba(56,200,200,0.04);border:1px solid var(--remedy-panel-border)}
+#static-fallback{padding:12px 16px;background:var(--remedy-bg);border-bottom:1px solid var(--remedy-panel-border);
+  font-size:12px;overflow-y:auto;max-height:200px;flex-shrink:0;z-index:1}
 .sf-sum{display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap}
-.sf-sum span{color:#8b949e}.sf-sum b{color:#c9d1d9}
+.sf-sum span{color:var(--remedy-fg-muted)}.sf-sum b{color:var(--remedy-fg)}
 .sf-tbl{border-collapse:collapse;font-size:11px}
-.sf-tbl th,.sf-tbl td{padding:2px 8px;text-align:left;border:1px solid #21262d}
-.sf-tbl th{color:#484f58;font-weight:normal}
-.sf-tbl td{color:#8b949e}
-.sf-trunc{margin-top:4px;color:#484f58;font-size:10px;font-style:italic}
-#main{display:flex;flex:1;overflow:hidden;min-height:0}
+.sf-tbl th,.sf-tbl td{padding:2px 8px;text-align:left;border:1px solid var(--remedy-panel-border)}
+.sf-tbl th{color:var(--remedy-fg-muted);font-weight:normal}
+.sf-tbl td{color:var(--remedy-fg-muted)}
+.sf-trunc{margin-top:4px;color:var(--remedy-fg-muted);font-size:10px;font-style:italic}
+#main{display:flex;flex:1;overflow:hidden;min-height:0;position:relative}
 #gwrap{flex:1;position:relative;overflow:hidden}
 svg#g{width:100%;height:100%;display:block}
 #err-panel{display:none;position:absolute;top:10px;left:10px;right:10px;
-  background:#1a0e08;color:#ffb347;border:1px solid #4a2d10;
+  background:rgba(224,82,82,0.1);color:var(--remedy-risk);border:1px solid rgba(224,82,82,0.3);
   border-radius:6px;padding:10px 14px;font-size:12px;z-index:10}
-#dp{width:330px;background:#161b22;border-left:1px solid #21262d;
-    padding:12px;overflow-y:auto;font-size:12px;flex-shrink:0}
-#dh{color:#484f58;padding:24px 0;text-align:center;font-size:13px}
-.dt{font-size:14px;font-weight:bold;color:#7aa7e8;margin-bottom:8px;word-break:break-all}
-.dr{margin:3px 0}.dl{color:#484f58}.dv{color:#c9d1d9}
-.ds{margin:8px 0 3px;color:#7aa7e8;border-bottom:1px solid #21262d;
+#side-panels{width:340px;display:flex;flex-direction:column;overflow-y:auto;
+  border-left:1px solid var(--remedy-panel-border);flex-shrink:0;
+  background:var(--remedy-bg-panel)}
+#dp{padding:12px;font-size:12px;flex:1;overflow-y:auto}
+#dh{color:var(--remedy-fg-muted);padding:24px 0;text-align:center;font-size:13px}
+.dt{font-size:14px;font-weight:bold;color:var(--remedy-teal);margin-bottom:8px;word-break:break-all}
+.dr{margin:3px 0}.dl{color:var(--remedy-fg-muted)}.dv{color:var(--remedy-fg)}
+.ds{margin:8px 0 3px;color:var(--remedy-teal);border-bottom:1px solid var(--remedy-panel-border);
     padding-bottom:2px;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
-.di{margin:2px 0 2px 8px;color:#8b949e;word-break:break-all}
-.drd{color:#6e4c2e;font-style:italic}
-#leg{background:#161b22;padding:5px 16px;border-top:1px solid #21262d;
+.di{margin:2px 0 2px 8px;color:var(--remedy-fg-muted);word-break:break-all}
+.drd{color:var(--remedy-muted);font-style:italic}
+#proof-chain-panel{padding:0 16px;flex-shrink:0;z-index:1;
+  border-bottom:1px solid var(--remedy-panel-border)}
+#timeline-panel{padding:0 16px;flex-shrink:0;z-index:1;
+  border-bottom:1px solid var(--remedy-panel-border)}
+#leg{background:var(--remedy-bg-panel);padding:5px 16px;border-top:1px solid var(--remedy-panel-border);
      display:flex;gap:14px;font-size:10px;flex-wrap:wrap;
-     align-items:center;flex-shrink:0}
+     align-items:center;flex-shrink:0;z-index:2}
 .li{display:flex;align-items:center;gap:4px}
-.ld{width:11px;height:11px;border-radius:50%;border:1px solid #30363d}
-#diag{background:#0d1117;padding:3px 16px;border-top:1px solid #21262d;
-  font-size:10px;color:#484f58;display:flex;gap:14px;flex-wrap:wrap;
-  align-items:center;flex-shrink:0}
-#diag b{color:#30363d}
-#diag span{color:#8b949e}
-#ftr{background:#161b22;padding:3px 16px;font-size:10px;color:#30363d;
-     border-top:1px solid #21262d;flex-shrink:0}
-.el{stroke:#2d3748;stroke-width:1.5}
+.ld{width:11px;height:11px;border-radius:50%;border:1px solid var(--remedy-muted)}
+#diag{background:var(--remedy-bg);padding:3px 16px;border-top:1px solid var(--remedy-panel-border);
+  font-size:10px;color:var(--remedy-fg-muted);display:flex;gap:14px;flex-wrap:wrap;
+  align-items:center;flex-shrink:0;z-index:2}
+#diag b{color:var(--remedy-muted)}
+#diag span{color:var(--remedy-fg-muted)}
+#ftr{background:var(--remedy-bg-panel);padding:3px 16px;font-size:10px;color:var(--remedy-muted);
+     border-top:1px solid var(--remedy-panel-border);flex-shrink:0;z-index:2}
+.el{stroke:var(--remedy-line);stroke-width:1.5}
 .nd{cursor:pointer}
 .nd circle{stroke-width:2;transition:stroke .15s,stroke-width .15s}
-.nd:hover circle,.nd.sel circle{stroke:#c9d1d9 !important;stroke-width:3}
-.nd text{font-size:9px;fill:#8b949e;pointer-events:none;text-anchor:middle}
+.nd:hover circle,.nd.sel circle{stroke:var(--remedy-teal) !important;stroke-width:3}
+.nd text{font-size:9px;fill:var(--remedy-fg-muted);pointer-events:none;text-anchor:middle}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .nd.run circle{animation:pulse 1.5s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce) {
+  .nd.run circle{animation:none}
+  .remedy-particle-field{animation:none !important}
+}
 </style>
 </head>
-<body data-render-status="static-fallback">
+<body class="remedy-shell" data-render-status="static-fallback">
+<div class="remedy-orbit-bg"></div>
+<div class="remedy-particle-field"></div>
 <div id="hdr">
   <h1>Remedy Brain Viewer</h1>
-  <span class="badge badge-warn">read-only &middot; v0</span>
+  <span class="badge badge-warn">read-only</span>
   <span class="badge">job __JOB_SHORT_ID__</span>
   <span class="badge">__GENERATED_AT__</span>
   <span class="badge" id="ctx-badge">Context: —%</span>
   <span class="badge" id="render-badge" data-status="static-fallback">● static</span>
+</div>
+<div id="info-bar">
+  <span class="info-item" id="info-readiness">Readiness: —</span>
+  <span class="info-item" id="info-decisions">Decisions: —</span>
+  <span class="info-item" id="info-worker">Worker: —</span>
+  <span class="info-item" id="info-token-mode">Token: —</span>
+  <span class="info-item" id="info-git">Git: —</span>
+</div>
+<div id="proof-chain-panel">
+  <div class="remedy-proof-chain" id="proof-chain"></div>
 </div>
 <div id="static-fallback">
 __STATIC_FALLBACK__
@@ -391,20 +421,35 @@ __STATIC_FALLBACK__
     <svg id="g"></svg>
     <div id="err-panel" style="display:none"><strong>Viewer error</strong> — <span id="err-msg"></span></div>
   </div>
-  <div id="dp">
-    <p id="dh">&larr; Click a node to inspect it</p>
-    <div id="db" style="display:none"></div>
+  <div id="side-panels">
+    <div id="dp">
+      <p id="dh">&larr; Click a node to inspect it</p>
+      <div id="db" style="display:none"></div>
+    </div>
+    <div id="decision-section" class="remedy-decision-panel" style="display:none;padding:8px 12px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--remedy-fg-muted);margin-bottom:4px">Decisions</div>
+      <div class="decision-count" id="decision-count">0</div>
+      <div id="decision-list" style="font-size:11px;color:var(--remedy-fg-muted)"></div>
+    </div>
+    <div id="readiness-section" class="remedy-readiness-panel" style="display:none;padding:8px 12px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--remedy-fg-muted);margin-bottom:4px">Readiness</div>
+      <div class="readiness-level" id="readiness-level">—</div>
+      <div id="readiness-missing" style="font-size:11px;color:var(--remedy-fg-muted)"></div>
+    </div>
   </div>
 </div>
+<div id="timeline-panel">
+  <div class="remedy-timeline" id="timeline"></div>
+</div>
 <div id="leg">
-  <strong style="color:#484f58">Legend:</strong>
-  <div class="li"><div class="ld" style="background:#6e7681"></div>pending</div>
-  <div class="li"><div class="ld" style="background:#4488ff"></div>running</div>
-  <div class="li"><div class="ld" style="background:#d0d7de;border-color:#6e7681"></div>completed</div>
-  <div class="li"><div class="ld" style="background:#cf4444"></div>blocked</div>
-  <div class="li"><div class="ld" style="background:#d9a520"></div>needs approval</div>
-  <div class="li"><div class="ld" style="background:#7c4fb0"></div>memory layer (future)</div>
-  <div class="li"><div class="ld" style="background:#e06c1a"></div>mcp quarantine (future)</div>
+  <strong style="color:var(--remedy-fg-muted)">Legend:</strong>
+  <div class="li"><div class="ld" style="background:var(--remedy-fg-muted)"></div>pending</div>
+  <div class="li"><div class="ld" style="background:var(--remedy-cyan)"></div>running</div>
+  <div class="li"><div class="ld" style="background:var(--remedy-teal)"></div>completed</div>
+  <div class="li"><div class="ld" style="background:var(--remedy-risk)"></div>blocked</div>
+  <div class="li"><div class="ld" style="background:var(--remedy-warning)"></div>needs approval</div>
+  <div class="li"><div class="ld" style="background:var(--remedy-memory)"></div>memory</div>
+  <div class="li"><div class="ld" style="background:var(--remedy-muted)"></div>future</div>
 </div>
 <div id="diag">
   <b>diag:</b>
@@ -415,7 +460,7 @@ __STATIC_FALLBACK__
   <span>selected <span id="diag-sel">none</span></span>
   <span>status <span id="diag-status">static-fallback</span></span>
 </div>
-<div id="ftr">Brain Viewer v0 &middot; read-only &middot; consumes remedy brain --json and remedy brain node --json &middot; foundation for React&nbsp;Flow / Three.js / AG-UI / A2UI</div>
+<div id="ftr">Remedy Brain Viewer &middot; read-only &middot; static export &middot; foundation for future 2D/3D viewer</div>
 <script id="viewer-data" type="application/json">__VIEWER_DATA_JSON__</script>
 <script>
 function _vErr(cat,msg){
@@ -575,6 +620,83 @@ if(df)df.textContent=VD.detail_fallback_count||0;
     var el=document.getElementById('ctx-badge');
     if(el)el.textContent='Context: '+cc.metadata.score+'%';
   }
+})();
+// ── Populate info-bar from graph nodes ──
+(function(){
+  var ar=G.nodes.find(function(n){return n.type==='autonomy_readiness';});
+  if(ar){
+    var m=ar.metadata||{};
+    var el=document.getElementById('info-readiness');
+    if(el)el.textContent='Readiness: '+(m.level!=null?m.level:'\\u2014');
+    var rs=document.getElementById('readiness-section');
+    if(rs){
+      rs.style.display='block';
+      var rl=document.getElementById('readiness-level');
+      if(rl)rl.textContent=m.level!=null?String(m.level):'\\u2014';
+      var rm=document.getElementById('readiness-missing');
+      if(rm&&m.missing&&m.missing.length){
+        rm.innerHTML=m.missing.map(function(s){return '<div>\\u2022 '+esc(s)+'</div>';}).join('');
+      }
+    }
+  }
+  var dq=G.nodes.find(function(n){return n.type==='decision_queue';});
+  if(dq){
+    var dm=dq.metadata||{};
+    var el2=document.getElementById('info-decisions');
+    if(el2)el2.textContent='Decisions: '+(dm.open_count!=null?dm.open_count:'\\u2014');
+    var ds2=document.getElementById('decision-section');
+    if(ds2&&dm.open_count>0){
+      ds2.style.display='block';
+      var dc=document.getElementById('decision-count');
+      if(dc)dc.textContent=String(dm.open_count);
+    }
+  }
+  var wa=G.nodes.find(function(n){return n.type==='worker_adapter';});
+  if(wa){
+    var wm=wa.metadata||{};
+    var el3=document.getElementById('info-worker');
+    if(el3)el3.textContent='Worker: '+(wm.worker||wm.recommended_worker||'\\u2014');
+  }
+  var tp=G.nodes.find(function(n){return n.type==='token_policy';});
+  if(tp){
+    var tm=tp.metadata||{};
+    var el4=document.getElementById('info-token-mode');
+    if(el4)el4.textContent='Token: '+(tm.mode||'\\u2014');
+  }
+  var gs=G.nodes.find(function(n){return n.type==='git_status';});
+  if(gs){
+    var gm=gs.metadata||{};
+    var el5=document.getElementById('info-git');
+    if(el5)el5.textContent='Git: '+(gm.branch||'\\u2014');
+  }
+})();
+// ── Populate proof chain from verified nodes ──
+(function(){
+  var pc=document.getElementById('proof-chain');
+  if(!pc)return;
+  var verified=G.nodes.filter(function(n){return n.status==='completed'||n.status==='passed';});
+  if(!verified.length){pc.innerHTML='<span style="color:var(--remedy-fg-muted);font-size:11px">No verified steps yet</span>';return;}
+  var h='';
+  verified.slice(0,12).forEach(function(n,i){
+    if(i>0)h+='<span class="chain-arrow">\\u2192</span>';
+    h+='<span class="chain-step">'+esc(n.label.length>18?n.label.slice(0,17)+'\\u2026':n.label)+'</span>';
+  });
+  if(verified.length>12)h+='<span class="chain-arrow">\\u2026 +'+(verified.length-12)+'</span>';
+  pc.innerHTML=h;
+})();
+// ── Populate timeline from events in graph ──
+(function(){
+  var tl=document.getElementById('timeline');
+  if(!tl)return;
+  var evts=G.nodes.filter(function(n){return n.type==='run_event'||n.type==='agent_loop';});
+  if(!evts.length){tl.innerHTML='<span style="color:var(--remedy-fg-muted);font-size:10px">No events</span>';return;}
+  var h='';
+  evts.slice(0,15).forEach(function(n,i){
+    if(i>0)h+='<span class="tl-dot"></span>';
+    h+='<span class="tl-event">'+esc(n.label.length>20?n.label.slice(0,19)+'\\u2026':n.label)+'</span>';
+  });
+  if(evts.length>15)h+='<span class="tl-dot"></span><span class="tl-event">+'+(evts.length-15)+' more</span>';
+  tl.innerHTML=h;
 })();
 setRenderStatus(G.nodes.length===0?'empty':'ready');
 }catch(e){

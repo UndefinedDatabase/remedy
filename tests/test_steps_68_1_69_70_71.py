@@ -446,6 +446,63 @@ class TestBrainDetail:
         assert "context" in detail.title.lower() or "Context" in detail.title
 
 
+# ── Step 71.1: Token Policy Applied ──────────────────────────────────────
+
+
+class TestTokenPolicyApplied:
+    def test_schema_registered(self):
+        from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
+        assert "token_policy_applied" in EVENT_METADATA_SCHEMAS
+        schema = EVENT_METADATA_SCHEMAS["token_policy_applied"]
+        assert len(schema) == 6
+        assert "mode" in schema
+        assert "max_context_tokens" in schema
+        assert "estimated_context_tokens" in schema
+        assert "local_first" in schema
+        assert "remote_model_requires_approval" in schema
+        assert "selected_worker" in schema
+
+    def test_autonomy_loop_emits_event(self, tmp_path, monkeypatch):
+        """Autonomy loop must emit token_policy_applied at start."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.storage import save_job
+        job = _make_job()
+        save_job(job)
+
+        from packages.orchestration.autonomy_loop import run_autonomy_loop
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.timeline import load_run_events
+
+        run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
+
+        events = load_run_events(resolve_data_root(), job.id)
+        tpa = [e for e in events if e.get("event") == "token_policy_applied"]
+        assert len(tpa) >= 1, "must emit token_policy_applied"
+        meta = tpa[0].get("metadata", {})
+        required = {"mode", "max_context_tokens", "estimated_context_tokens",
+                     "local_first", "remote_model_requires_approval", "selected_worker"}
+        assert required <= set(meta.keys()), f"missing: {required - set(meta.keys())}"
+
+    def test_schema_validation(self):
+        from packages.orchestration.event_schemas import validate_event_metadata
+        valid_meta = {
+            "mode": "compact",
+            "max_context_tokens": 100000,
+            "estimated_context_tokens": 500,
+            "local_first": True,
+            "remote_model_requires_approval": True,
+            "selected_worker": "ollama/qwen3:8b",
+        }
+        errors = validate_event_metadata("token_policy_applied", valid_meta)
+        assert errors == []
+
+        # Extra key should fail
+        bad = {**valid_meta, "extra": True}
+        errors = validate_event_metadata("token_policy_applied", bad)
+        assert len(errors) == 1
+        assert "extra keys" in errors[0]
+
+
 # ── Readiness Integration ───────────────────────────────────────────────
 
 

@@ -1507,7 +1507,7 @@ Both schemas hold regardless of whether `--json` is used.
 ### Future frontend priority (Step 24+)
 
 1. **2D graph** via `remedy brain --json` + `remedy brain-node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
-2. **3D / Animus** — Three.js / WebGL rendering of the same graph JSON contract.
+2. **3D** — Three.js / WebGL rendering of the same graph JSON contract.
 3. **MemPalace** — `memory_placeholder` nodes become live semantic memory nodes when the MemPalace layer is implemented (Step 24+).
 4. **MCP Quarantine** — `mcp_placeholder` nodes become live MCP tool nodes when the MCP integration layer is implemented (Step 24+).
 
@@ -1646,7 +1646,7 @@ Any parse failure is caught by the surrounding `try/catch`, which calls `_vErr` 
 
 v0 is the read-only foundation.  Future steps will add:
 1. **React Flow** — interactive 2D graph replacing the SVG layer.
-2. **Three.js / Animus** — 3D visualisation.
+2. **Three.js** — 3D visualisation.
 3. **MemPalace** — live semantic memory nodes replacing `memory_placeholder`.
 4. **MCP Quarantine** — live MCP tool nodes replacing `mcp_placeholder`.
 5. **AG-UI / A2UI** — real-time streaming updates.

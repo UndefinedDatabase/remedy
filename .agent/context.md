@@ -95,7 +95,7 @@ Modified:
 - project_brain_inspected schema: {node_count, edge_count, task_count, patch_intent_count}
 - brain_node_inspected schema: {node_id, node_type, connected_count, evidence_count}
 - Future frontend must treat --json stdout as only machine input; must not parse human text output
-- Future frontend priority: 2D graph → 3D/Animus → MemPalace → MCP
+- Future frontend priority: 2D graph → 3D → MemPalace → MCP
 
 ## Key facts (Brain Node Detail — Step 24)
 - BrainNodeDetail frozen=True: 13 fields including why_it_exists, connected_to, evidence,

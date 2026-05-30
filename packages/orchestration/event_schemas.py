@@ -49,6 +49,11 @@ EVENT_METADATA_SCHEMAS: dict[str, frozenset[str]] = {
         "recommended_worker", "included_section_count",
         "excluded_section_count",
     }),
+    "token_policy_applied": frozenset({
+        "mode", "max_context_tokens", "estimated_context_tokens",
+        "local_first", "remote_model_requires_approval",
+        "selected_worker",
+    }),
 }
 
 # Strings that must never appear in any event metadata value
