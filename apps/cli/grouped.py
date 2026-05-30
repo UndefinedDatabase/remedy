@@ -81,10 +81,21 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--auto-approve-low-risk", action="store_true", dest="auto_approve_low_risk", help=arg.help)
             elif arg.name == "--no-tests":
                 parser.add_argument("--no-tests", action="store_true", dest="no_tests", help=arg.help)
+            elif arg.name == "--autonomy-level":
+                parser.add_argument("--autonomy-level", default="1", dest="autonomy_level", help=arg.help)
+            elif arg.name == "--path":
+                parser.add_argument("--path", default=None, help=arg.help)
+            elif arg.name == "--type":
+                parser.add_argument("--type", default=None, dest="type", help=arg.help)
+            elif arg.name == "--since":
+                parser.add_argument("--since", default=None, help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:
-            parser.add_argument(arg.name, help=arg.help)
+            if not arg.required:
+                parser.add_argument(arg.name, nargs="?", default=arg.default, help=arg.help)
+            else:
+                parser.add_argument(arg.name, help=arg.help)
 
 
 class _SilentParser(argparse.ArgumentParser):

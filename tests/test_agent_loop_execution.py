@@ -220,6 +220,7 @@ class TestRunLoopCLI:
         job = Job(
             id=uuid4(), name="done", user_prompt="done",
             tasks=[Task(description="t", status=RunState.COMPLETED)],
+            metadata={"target_repo": "."},
         )
         save_job(job)
         assert (tmp_path / "jobs" / f"{job.id}.json").exists()

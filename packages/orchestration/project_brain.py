@@ -29,6 +29,8 @@ Node types:
   patch_apply         — an approved patch intent application record
   test_run            — a permission-gated local test run result (Step 33)
   patch_apply_proof   — cryptographic proof of a successful file apply (Step 51)
+  decision_queue      — human decision queue summary (Step 69)
+  context_budget      — context budget optimizer summary (Step 71)
 
 Edge types:
   has_task              — job → task
@@ -48,6 +50,8 @@ Edge types:
   has_test_run          — job → test_run
   verified_after_apply  — test_run → patch_apply (optional, when present)
   approved_by           — patch_intent → approval_decision (causal)
+  has_decision_queue    — job → decision_queue
+  has_context_budget    — job → context_budget
   allowed_apply         — approval_decision → patch_apply (causal)
   recorded_proof        — patch_apply → patch_apply_proof (causal)
   proof_verified_by     — patch_apply_proof → test_run (causal)
@@ -134,6 +138,10 @@ NT_PATCH_APPLY_PROOF   = "patch_apply_proof"
 NT_PATCH_REVERT        = "patch_revert"
 NT_CHANGE_SET          = "change_set"
 NT_GIT_STATUS          = "git_status"
+NT_EVENT_LEDGER        = "event_ledger"
+NT_STOP_REASON         = "stop_reason"
+NT_DECISION_QUEUE      = "decision_queue"
+NT_CONTEXT_BUDGET      = "context_budget"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -169,6 +177,10 @@ ET_REVERTED_BY           = "reverted_by"
 ET_INCLUDES_INTENT       = "includes_intent"
 ET_INCLUDES_APPLY        = "includes_apply"
 ET_HAS_GIT_STATUS        = "has_git_status"
+ET_HAS_EVENT_LEDGER      = "has_event_ledger"
+ET_HAS_STOP_REASON       = "has_stop_reason"
+ET_HAS_DECISION_QUEUE    = "has_decision_queue"
+ET_HAS_CONTEXT_BUDGET    = "has_context_budget"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -195,6 +207,10 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_CONTEXT_PACK:        20,
     NT_PATCH_APPLY_PROOF:   21,
     NT_GIT_STATUS:          22,
+    NT_EVENT_LEDGER:        23,
+    NT_STOP_REASON:         24,
+    NT_DECISION_QUEUE:      25,
+    NT_CONTEXT_BUDGET:      26,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -772,26 +788,121 @@ def _build_git_status_node(acc: _Acc) -> None:
     except (ImportError, OSError):
         acc.degraded.append("git_status")
         return
-    if not status.is_git_repo:
-        return
+
+    import hashlib
+    changed = len(status.modified_files) + len(status.untracked_files) + len(status.staged_files)
+    raw = f"{status.current_branch}:{status.head_sha}:{status.is_clean}:{changed}"
+    status_hash = hashlib.sha256(raw.encode()).hexdigest()[:16]
+
     acc.nodes.append(BrainNode(
         id="git_status", type=NT_GIT_STATUS,
-        label=f"Git: {status.current_branch} ({status.head_sha})",
-        status="clean" if status.is_clean else "dirty",
+        label=f"Git: {status.current_branch} ({status.head_sha})" if status.is_git_repo else "Git: unavailable",
+        status="clean" if status.is_clean else ("dirty" if status.is_git_repo else "unavailable"),
         metadata={
-            "current_branch": status.current_branch,
+            "is_git_repo": status.is_git_repo,
+            "git_available": status.is_git_repo,
+            "branch": status.current_branch,
             "head_sha": status.head_sha,
-            "is_clean": status.is_clean,
-            "modified_count": len(status.modified_files),
-            "untracked_count": len(status.untracked_files),
-            "staged_count": len(status.staged_files),
-            "has_upstream": status.has_upstream,
-            "upstream_branch": status.upstream_branch,
-            "ahead_count": status.ahead_count,
-            "behind_count": status.behind_count,
+            "dirty": not status.is_clean,
+            "changed_file_count": changed,
+            "status_hash": status_hash,
         },
     ))
     acc.edges.append(BrainEdge(source=acc.job_node_id, target="git_status", type=ET_HAS_GIT_STATUS))
+
+
+def _build_event_ledger_node(acc: _Acc) -> None:
+    """Summary node for event ledger — counts only, no individual events."""
+    try:
+        from packages.orchestration.event_ledger import build_event_summary
+        summary = build_event_summary(acc.events)
+    except (ImportError, OSError):
+        acc.degraded.append("event_ledger")
+        return
+    acc.nodes.append(BrainNode(
+        id="event_ledger", type=NT_EVENT_LEDGER,
+        label=f"Events: {summary.event_count}",
+        status="ok" if summary.failed_count == 0 else "has_failures",
+        metadata={
+            "event_count": summary.event_count,
+            "failed_count": summary.failed_count,
+            "proof_count": summary.proof_count,
+            "test_count": summary.test_count,
+            "last_event_at": summary.last_event_at,
+            "type_count": len(summary.type_counts),
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="event_ledger", type=ET_HAS_EVENT_LEDGER))
+
+
+def _build_stop_reason_nodes(acc: _Acc) -> None:
+    """Add stop reason nodes from derived blockers."""
+    try:
+        from packages.orchestration.stop_reasons import derive_stop_reasons
+        stops = derive_stop_reasons(acc.job, acc.events)
+    except (ImportError, OSError):
+        acc.degraded.append("stop_reasons")
+        return
+    for s in stops:
+        nid = f"stop:{s.id}"
+        acc.nodes.append(BrainNode(
+            id=nid, type=NT_STOP_REASON,
+            label=f"blocker: {s.reason_code}",
+            status=s.status,
+            metadata={
+                "reason_code": s.reason_code,
+                "severity": s.severity,
+                "status": s.status,
+                "source": s.source,
+                "related_intent_id": s.related_intent_id,
+                "related_file": s.related_file,
+                "next_action_count": len(s.next_actions),
+            },
+        ))
+        acc.edges.append(BrainEdge(source=nid, target=acc.job_node_id, type=ET_HAS_STOP_REASON))
+
+
+def _build_decision_queue_node(acc: _Acc) -> None:
+    """Add decision queue summary node."""
+    try:
+        from packages.orchestration.decision_queue import build_decision_summary, list_decisions
+        decisions = list_decisions(acc.job, acc.events)
+        summary = build_decision_summary(decisions)
+    except (ImportError, OSError):
+        acc.degraded.append("decision_queue")
+        return
+    acc.nodes.append(BrainNode(
+        id="decision_queue", type=NT_DECISION_QUEUE,
+        label=f"decisions: {summary.get('open_count', 0)} open",
+        status="active" if summary.get("open_count", 0) > 0 else "idle",
+        metadata=summary,
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="decision_queue", type=ET_HAS_DECISION_QUEUE))
+
+
+def _build_context_budget_node(acc: _Acc) -> None:
+    """Add context budget summary node."""
+    try:
+        from packages.orchestration.context_optimizer import optimize_context
+        data = optimize_context(acc.job, acc.events)
+    except (ImportError, OSError):
+        acc.degraded.append("context_budget")
+        return
+    acc.nodes.append(BrainNode(
+        id="context_budget", type=NT_CONTEXT_BUDGET,
+        label=f"context: {data.get('recommended_mode', '?')}",
+        status="ok",
+        metadata={
+            "recommended_mode": data.get("recommended_mode", ""),
+            "budget": data.get("budget", 0),
+            "estimated_tokens": data.get("estimated_tokens", 0),
+            "token_savings": data.get("token_savings", 0),
+            "recommended_worker": data.get("recommended_worker", ""),
+            "included_section_count": len(data.get("included_sections", [])),
+            "excluded_section_count": len(data.get("excluded_sections", [])),
+        },
+    ))
+    acc.edges.append(BrainEdge(source=acc.job_node_id, target="context_budget", type=ET_HAS_CONTEXT_BUDGET))
 
 
 def _build_causal_edges(acc: _Acc) -> None:
@@ -913,6 +1024,10 @@ def build_project_brain(
     _build_revert_nodes(acc)
     _build_change_set_nodes(acc)
     _build_git_status_node(acc)
+    _build_event_ledger_node(acc)
+    _build_stop_reason_nodes(acc)
+    _build_decision_queue_node(acc)
+    _build_context_budget_node(acc)
 
     # Edge builders (need full node set)
     _build_causal_edges(acc)
@@ -955,7 +1070,8 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY, NT_TEST_RUN,
         NT_RUN_CONTRACT, NT_TOKEN_POLICY, NT_WORKER_ADAPTER,
         NT_AUTONOMY_READINESS, NT_CONTEXT_PACK, NT_PATCH_APPLY_PROOF,
-        NT_GIT_STATUS,
+        NT_GIT_STATUS, NT_EVENT_LEDGER, NT_STOP_REASON,
+        NT_DECISION_QUEUE, NT_CONTEXT_BUDGET,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)

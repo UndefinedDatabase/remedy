@@ -62,13 +62,13 @@ SUMEOF
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness context file; do
+    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
         }
     done
-    echo "    Group help: OK (job project patch test brain policy worker memory dev readiness context file)"
+    echo "    Group help: OK (job project patch test brain policy worker memory dev readiness context file change repo)"
 
     # -------------------------------------------------------------------------
     # 1. Create target repo
@@ -168,6 +168,13 @@ def test_readme_exists_and_has_proposed_update():
     content = readme.read_text()
     assert "Proposed Update" in content, "README.md must contain 'Proposed Update'"
 TEST_EOF
+
+    # Initialize target repo as git repo (smoke fixture only — production Remedy never commits)
+    git -C "${TARGET_REPO}" init -q
+    git -C "${TARGET_REPO}" config user.email "smoke@example.invalid"
+    git -C "${TARGET_REPO}" config user.name "Remedy Smoke"
+    git -C "${TARGET_REPO}" add .
+    git -C "${TARGET_REPO}" commit -q -m "initial smoke fixture"
 
     # -------------------------------------------------------------------------
     # 1b. Repository structure sanity (Step 32)
@@ -1161,10 +1168,10 @@ print('    context project_memory: OK (present=true)')
 " "${CTX_JSON}"
 
     # -------------------------------------------------------------------------
-    # 12h. Agent loop run-log schema (Step 46.2)
+    # 12h. Agent loop run-log schema (Step 68.1 — per-event-type exact schemas)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12h"
-    echo "--- 12h. Agent loop run-log schema"
+    echo "--- 12h. Agent loop run-log schema (per-event-type)"
     # Run the agent loop on a completed job to generate events
     remedy job run-loop "${JOB_ID}" --max-cycles 1 >/dev/null 2>&1 || true
     python3 -c "
@@ -1184,17 +1191,42 @@ if runs_dir.exists():
                 events.append(json.loads(line))
 loop_events = [e for e in events if e.get('event', '').startswith('agent_loop_')]
 chk(len(loop_events) >= 2, 'expected >= 2 agent_loop events, got ' + str(len(loop_events)))
-required_meta = frozenset({
-    'cycle', 'max_cycles', 'decision', 'stage', 'reason',
-    'task_count', 'pending_task_count', 'pending_approval_count',
-    'applied_count', 'test_run_count',
-})
+# Per-event-type exact schemas (must match EVENT_METADATA_SCHEMAS in event_schemas.py)
+schemas = {
+    'agent_loop_started': frozenset({
+        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
+        'task_count', 'pending_task_count', 'pending_approval_count',
+        'applied_count', 'test_run_count',
+    }),
+    'agent_loop_cycle_started': frozenset({
+        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
+        'task_count', 'pending_task_count', 'pending_approval_count',
+        'applied_count', 'test_run_count',
+    }),
+    'agent_loop_completed': frozenset({
+        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
+        'task_count', 'pending_task_count', 'pending_approval_count',
+        'applied_count', 'test_run_count',
+    }),
+    'agent_loop_cycle_decision': frozenset({
+        'cycle', 'decision', 'reason', 'next_action', 'blocked_by',
+        'token_mode', 'selected_worker', 'readiness_level',
+    }),
+    'agent_loop_stopped': frozenset({
+        'final_decision', 'stop_reason', 'cycles_run',
+        'unresolved_blocker_count',
+    }),
+}
 for ev in loop_events:
+    ename = ev['event']
     meta = ev.get('metadata', {})
     got = frozenset(meta.keys())
-    chk(got == required_meta,
-        'event ' + ev['event'] + ' metadata keys mismatch: extra=' + str(sorted(got - required_meta))
-        + ' missing=' + str(sorted(required_meta - got)))
+    schema = schemas.get(ename)
+    if schema is None:
+        chk(False, 'unknown agent_loop event: ' + ename)
+    chk(got == schema,
+        'event ' + ename + ' metadata keys mismatch: extra=' + str(sorted(got - schema))
+        + ' missing=' + str(sorted(schema - got)))
 # Must NOT have agent_loop_task_exit
 loop_names = [e['event'] for e in loop_events]
 chk('agent_loop_task_exit' not in loop_names, 'agent_loop_task_exit must not exist')
@@ -1739,17 +1771,19 @@ print('    brain nodes: OK (has change_set)')
     echo "--- 12w. Worker explain"
     remedy worker explain "${JOB_ID}" | grep -q "Scoring breakdown"
 
-    # Step 65: Repo status
+    # Step 65.1: Repo status (job-aware)
     _SMOKE_SECTION="12x"
-    echo "--- 12x. Repo status (read-only git)"
-    remedy repo status --json | python3 -c "
+    echo "--- 12x. Repo status (job-aware, read-only git)"
+    remedy repo status "${JOB_ID}" --json | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 if data.get('version') != 1:
     print('ERROR: bad version', file=sys.stderr); sys.exit(1)
-if 'is_git_repo' not in data:
-    print('ERROR: missing is_git_repo', file=sys.stderr); sys.exit(1)
-print('    repo status: OK (is_git_repo=' + str(data['is_git_repo']) + ')')
+if not data.get('is_git_repo'):
+    print('ERROR: target repo is not a git repo', file=sys.stderr); sys.exit(1)
+if 'current_branch' not in data:
+    print('ERROR: missing current_branch', file=sys.stderr); sys.exit(1)
+print('    repo status: OK (branch=' + data['current_branch'] + ', clean=' + str(data['is_clean']) + ')')
 "
 
     # Brain has git_status node when target_repo set
@@ -1758,11 +1792,269 @@ print('    repo status: OK (is_git_repo=' + str(data['is_git_repo']) + ')')
     remedy brain graph "${JOB_ID}" --json | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
-types = {n['type'] for n in data.get('nodes', [])}
-if 'git_status' not in types:
+nodes = data.get('nodes', [])
+git_nodes = [n for n in nodes if n.get('type') == 'git_status']
+if not git_nodes:
     print('ERROR: brain missing git_status node', file=sys.stderr)
     sys.exit(1)
-print('    brain nodes: OK (has git_status)')
+meta = git_nodes[0].get('metadata', {})
+for key in ['is_git_repo', 'git_available', 'branch', 'head_sha', 'dirty', 'changed_file_count', 'status_hash']:
+    if key not in meta:
+        print('ERROR: git_status metadata missing ' + key, file=sys.stderr)
+        sys.exit(1)
+print('    brain git_status: OK (branch=' + str(meta['branch']) + ', dirty=' + str(meta['dirty']) + ')')
+"
+
+    # Step 66: Event Ledger
+    _SMOKE_SECTION="12z"
+    echo "--- 12z. Event list (job-aware)"
+    remedy event list "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+events = data.get('events', [])
+print('    event list: OK (' + str(len(events)) + ' events)')
+"
+
+    _SMOKE_SECTION="12aa"
+    echo "--- 12aa. Event timeline"
+    remedy event timeline "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+if 'event_count' not in data:
+    print('ERROR: missing event_count', file=sys.stderr); sys.exit(1)
+print('    event timeline: OK (' + str(data['event_count']) + ' events)')
+"
+
+    _SMOKE_SECTION="12ab"
+    echo "--- 12ab. Brain has event_ledger node"
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+nodes = data.get('nodes', [])
+el_nodes = [n for n in nodes if n.get('type') == 'event_ledger']
+if not el_nodes:
+    print('ERROR: brain missing event_ledger node', file=sys.stderr)
+    sys.exit(1)
+meta = el_nodes[0].get('metadata', {})
+if 'event_count' not in meta:
+    print('ERROR: event_ledger metadata missing event_count', file=sys.stderr)
+    sys.exit(1)
+print('    brain event_ledger: OK (count=' + str(meta['event_count']) + ')')
+"
+
+    # Step 67: Stop Reasons
+    _SMOKE_SECTION="12ac"
+    echo "--- 12ac. Blocker list"
+    remedy blocker list "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+stops = data.get('stop_reasons', [])
+print('    blocker list: OK (' + str(len(stops)) + ' stops)')
+"
+
+    _SMOKE_SECTION="12ad"
+    echo "--- 12ad. Brain has stop_reason node"
+    remedy brain graph "${JOB_ID}" --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+nodes = data.get('nodes', [])
+sr_nodes = [n for n in nodes if n.get('type') == 'stop_reason']
+# stop_reason nodes may or may not exist depending on job state
+print('    brain stop_reason: OK (' + str(len(sr_nodes)) + ' nodes)')
+"
+
+    # Step 68: Autonomy Loop
+    _SMOKE_SECTION="12ae"
+    echo "--- 12ae. Run-loop (autonomy level 0, observe only)"
+    remedy job run-loop "${JOB_ID}" --autonomy-level 0 --json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if data.get('version') != 1:
+    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
+if data.get('autonomy_level') != 0:
+    print('ERROR: expected autonomy_level=0', file=sys.stderr); sys.exit(1)
+if data.get('final_decision') != 'complete':
+    print('ERROR: level 0 should be complete', file=sys.stderr); sys.exit(1)
+if not isinstance(data.get('cycles'), list):
+    print('ERROR: missing cycles', file=sys.stderr); sys.exit(1)
+print('    run-loop level 0: OK (decision=' + data['final_decision'] + ', cycles=' + str(len(data['cycles'])) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12af. Decision Queue (Step 69)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12af"
+    echo "--- 12af. Decision queue"
+    python3 -c "
+import sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: decision_queue: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+from packages.orchestration.decision_queue import (
+    DECISION_TYPES, HumanDecision, build_decision_summary,
+    export_decision_json, list_decisions,
+)
+
+chk(isinstance(DECISION_TYPES, frozenset), 'not frozenset')
+for dt in ('patch_approval', 'stop_reason', 'test_failure', 'repo_dirty', 'memory_review'):
+    chk(dt in DECISION_TYPES, 'missing type: ' + dt)
+
+d = HumanDecision(
+    id='test1', type='test_failure', status='open', severity='blocker',
+    source='test', related_node_id='', related_intent_id='',
+    related_file='', safe_summary='Test failed.',
+    next_actions=('fix',), created_at='2026-01-01', resolved_at=None,
+)
+j = export_decision_json(d)
+chk(j['id'] == 'test1', 'bad id')
+chk(isinstance(j['next_actions'], list), 'next_actions not list')
+
+summary = build_decision_summary([d])
+chk(summary['open_count'] == 1, 'open_count != 1')
+chk(summary['high_count'] == 1, 'high_count != 1')
+
+print('    decision_queue: OK (types=' + str(len(DECISION_TYPES)) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ag. Dashboard (Step 70)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ag"
+    echo "--- 12ag. Dashboard"
+    python3 -c "
+import sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: dashboard: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+from packages.orchestration.dashboard import (
+    build_job_dashboard, build_project_dashboard, summarize_job_dashboard,
+)
+from packages.core.models import Job, Task, RunState
+from uuid import uuid4
+
+job = Job(id=uuid4(), name='smoke-dash', user_prompt='t',
+    tasks=[Task(description='x', status=RunState.COMPLETED)],
+    metadata={'target_repo': '.'})
+events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': str(job.id),
+    'timestamp': '2026-01-01', 'outcome': 'ok', 'metadata': {}}]
+
+data = build_job_dashboard(job, events)
+chk(data['version'] == 1, 'bad version')
+chk(data['scope'] == 'job', 'bad scope')
+for k in ('readiness', 'decisions', 'test_status', 'worker_recommendation', 'memory', 'events', 'next_actions'):
+    chk(k in data, 'missing key: ' + k)
+
+text = summarize_job_dashboard(data)
+chk('Dashboard' in text, 'missing Dashboard in text')
+
+pdata = build_project_dashboard('p1', [job], {str(job.id): events})
+chk(pdata['version'] == 1, 'project bad version')
+chk(pdata['job_count'] == 1, 'project bad job_count')
+
+print('    dashboard: OK (keys=' + str(len(data)) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ah. Context Optimizer (Step 71)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ah"
+    echo "--- 12ah. Context optimizer"
+    python3 -c "
+import sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: context_optimizer: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+from packages.orchestration.context_optimizer import explain_context, optimize_context
+from packages.orchestration.event_schemas import validate_event_metadata
+from packages.core.models import Job, Task, RunState
+from uuid import uuid4
+
+job = Job(id=uuid4(), name='smoke-ctx', user_prompt='t',
+    tasks=[Task(description='x', status=RunState.COMPLETED)],
+    metadata={'target_repo': '.'})
+events = []
+
+data = explain_context(job, events, mode='compact', budget=2000)
+chk(data['version'] == 1, 'explain bad version')
+chk(data['mode'] == 'compact', 'explain bad mode')
+chk('sections' in data, 'explain missing sections')
+chk('excluded' in data, 'explain missing excluded')
+
+opt = optimize_context(job, events, budget=2000)
+chk(opt['version'] == 1, 'optimize bad version')
+chk(opt['recommended_mode'] in ('caveman', 'compact', 'standard'), 'bad mode')
+for k in ('estimated_tokens', 'token_savings', 'included_sections', 'excluded_sections', 'recommended_worker'):
+    chk(k in opt, 'optimize missing: ' + k)
+
+meta = {
+    'mode': opt['recommended_mode'],
+    'budget': opt['budget'],
+    'estimated_tokens': opt['estimated_tokens'],
+    'token_savings': opt['token_savings'],
+    'recommended_worker': opt['recommended_worker'],
+    'included_section_count': len(opt['included_sections']),
+    'excluded_section_count': len(opt['excluded_sections']),
+}
+errors = validate_event_metadata('context_budget_optimized', meta)
+chk(errors == [], 'schema errors: ' + str(errors))
+
+print('    context_optimizer: OK (mode=' + opt['recommended_mode'] + ', tokens=' + str(opt['estimated_tokens']) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ai. Brain nodes: decision_queue + context_budget (Steps 69, 71)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ai"
+    echo "--- 12ai. Brain decision_queue + context_budget nodes"
+    python3 -c "
+import sys
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: brain nodes: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+from packages.orchestration.project_brain import (
+    NT_DECISION_QUEUE, NT_CONTEXT_BUDGET,
+    ET_HAS_DECISION_QUEUE, ET_HAS_CONTEXT_BUDGET,
+    _NODE_TYPE_ORDER, build_project_brain,
+)
+from packages.core.models import Job, Task, RunState
+from uuid import uuid4
+
+job = Job(id=uuid4(), name='smoke-brain', user_prompt='t',
+    tasks=[Task(description='x', status=RunState.COMPLETED)],
+    metadata={'target_repo': '.'})
+events = []
+graph = build_project_brain(job, events)
+
+dq = [n for n in graph.nodes if n.type == NT_DECISION_QUEUE]
+cb = [n for n in graph.nodes if n.type == NT_CONTEXT_BUDGET]
+chk(len(dq) == 1, 'missing decision_queue node')
+chk(len(cb) == 1, 'missing context_budget node')
+chk(dq[0].id == 'decision_queue', 'bad dq id')
+chk(cb[0].id == 'context_budget', 'bad cb id')
+
+dq_edges = [e for e in graph.edges if e.type == ET_HAS_DECISION_QUEUE]
+cb_edges = [e for e in graph.edges if e.type == ET_HAS_CONTEXT_BUDGET]
+chk(len(dq_edges) == 1, 'missing decision_queue edge')
+chk(len(cb_edges) == 1, 'missing context_budget edge')
+
+chk(NT_DECISION_QUEUE in _NODE_TYPE_ORDER, 'missing dq in order')
+chk(NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER, 'missing cb in order')
+
+print('    brain nodes: OK (decision_queue + context_budget)')
 "
 
     # -------------------------------------------------------------------------

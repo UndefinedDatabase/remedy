@@ -66,16 +66,17 @@ def _estimate_tokens(text: str) -> int:
 
 def _build_job_summary(job: Job, mode: str) -> PackSection:
     """Priority 1: job overview."""
+    prompt = job.user_prompt or ""
     if mode == "caveman":
         content = (
             f"job:{str(job.id)[:8]} state:{job.state.value} "
-            f"tasks:{len(job.tasks)} prompt:{job.user_prompt[:60]}"
+            f"tasks:{len(job.tasks)} prompt:{prompt[:60]}"
         )
     elif mode == "standard":
         content = (
             f"Job: {str(job.id)} ({job.name})\n"
             f"State: {job.state.value}\n"
-            f"Prompt: {job.user_prompt[:200]}\n"
+            f"Prompt: {prompt[:200]}\n"
             f"Tasks: {len(job.tasks)}\n"
             f"Artifacts: {len(job.artifacts)}"
         )
@@ -83,7 +84,7 @@ def _build_job_summary(job: Job, mode: str) -> PackSection:
         content = (
             f"Job: {str(job.id)[:8]} ({job.name})\n"
             f"State: {job.state.value}\n"
-            f"Prompt: {job.user_prompt[:100]}\n"
+            f"Prompt: {prompt[:100]}\n"
             f"Tasks: {len(job.tasks)}"
         )
     return PackSection(name="job_summary", priority=1, content=content,

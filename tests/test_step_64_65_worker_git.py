@@ -214,9 +214,13 @@ class TestGitStatusBrainNode:
         git_nodes = [n for n in graph.nodes if n.type == "git_status"]
         assert len(git_nodes) == 1
         meta = git_nodes[0].metadata
-        assert "current_branch" in meta
-        assert "is_clean" in meta
+        assert "is_git_repo" in meta
+        assert "git_available" in meta
+        assert "branch" in meta
         assert "head_sha" in meta
+        assert "dirty" in meta
+        assert "changed_file_count" in meta
+        assert "status_hash" in meta
 
     def test_git_status_node_no_repo(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -232,6 +236,54 @@ class TestGitStatusBrainNode:
         git_nodes = [n for n in graph.nodes if n.type == "git_status"]
         # No target_repo → no git_status node
         assert len(git_nodes) == 0
+
+    def test_git_status_non_git_target(self, tmp_path, monkeypatch):
+        """Non-git target_repo creates node with is_git_repo=False."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_brain import build_project_brain
+        from packages.orchestration.storage import save_job
+
+        non_git = tmp_path / "not-a-git-repo"
+        non_git.mkdir()
+        job = Job(
+            id=uuid4(), name="brain-non-git", user_prompt="test",
+            tasks=[Task(description="t", status=RunState.PENDING)],
+            metadata={"target_repo": str(non_git)},
+        )
+        save_job(job)
+        graph = build_project_brain(job, [])
+        git_nodes = [n for n in graph.nodes if n.type == "git_status"]
+        assert len(git_nodes) == 1
+        assert git_nodes[0].metadata["is_git_repo"] is False
+        assert git_nodes[0].status == "unavailable"
+
+    def test_job_aware_repo_status(self, tmp_path, monkeypatch):
+        """Job-aware repo status reads target_repo and emits run-log event."""
+        import os
+        from pathlib import Path
+        import packages.orchestration.storage as _storage
+
+        jobs_dir = tmp_path / "jobs"
+        jobs_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.setattr(_storage, "_DATA_DIR", jobs_dir)
+
+        from packages.orchestration.storage import save_job
+
+        job = Job(
+            id=uuid4(), name="repo-aware", user_prompt="test",
+            tasks=[Task(description="t", status=RunState.PENDING)],
+            metadata={"target_repo": "."},
+        )
+        save_job(job)
+        env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
+        result = subprocess.run(
+            [sys.executable, "-m", "apps.cli.grouped", "repo", "status", str(job.id), "--json"],
+            capture_output=True, text=True, timeout=10, env=env,
+        )
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["is_git_repo"] is True
 
 
 class TestGitReadinessSignal:

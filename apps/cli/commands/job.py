@@ -478,9 +478,13 @@ def _cmd_run_loop(
     job_id_str: str,
     *,
     max_cycles: int = 3,
+    autonomy_level: int = 1,
     auto_approve_low_risk: bool = False,
     no_tests: bool = False,
+    json_output: bool = False,
 ) -> None:
+    import json as _json
+
     try:
         job_id = UUID(job_id_str)
     except ValueError:
@@ -492,18 +496,49 @@ def _cmd_run_loop(
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.agent_loop import run_agent_loop, summarize_agent_loop_state
+    from packages.orchestration.autonomy_loop import (
+        export_loop_result_json,
+        run_autonomy_loop,
+        summarize_loop_result,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.timeline import load_run_events
 
-    state = run_agent_loop(
-        job,
+    data_dir = resolve_data_root()
+    events = load_run_events(data_dir, job_id)
+
+    result = run_autonomy_loop(
+        job, events,
         max_cycles=max_cycles,
-        auto_approve_low_risk=auto_approve_low_risk,
-        run_tests=not no_tests,
+        autonomy_level=autonomy_level,
     )
 
-    # Reload job for latest state
-    job = load_job(job_id)
-    print(summarize_agent_loop_state(job, state))
+    # Emit run-log events
+    log = RunLogWriter(job_id=job.id)
+    for c in result.cycles:
+        log.log(
+            "agent_loop_cycle_decision",
+            cycle=c.cycle,
+            decision=c.decision,
+            reason=c.reason,
+            next_action=c.next_action,
+            blocked_by=c.blocked_by,
+            token_mode=c.token_mode,
+            selected_worker=c.selected_worker,
+            readiness_level=c.readiness_level,
+        )
+    log.log(
+        "agent_loop_stopped",
+        final_decision=result.final_decision,
+        stop_reason=result.stop_reasons[0] if result.stop_reasons else "",
+        cycles_run=len(result.cycles),
+        unresolved_blocker_count=len(result.stop_reasons),
+    )
+
+    if json_output:
+        print(_json.dumps(export_loop_result_json(result), sort_keys=True))
+    else:
+        print(summarize_loop_result(result))
 
 
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
@@ -523,7 +558,9 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "job.run-loop": lambda args: _cmd_run_loop(
         args.job_id,
         max_cycles=int(getattr(args, "max_cycles", "3")),
+        autonomy_level=int(getattr(args, "autonomy_level", "1")),
         auto_approve_low_risk=getattr(args, "auto_approve_low_risk", False),
         no_tests=getattr(args, "no_tests", False),
+        json_output=getattr(args, "json", False),
     ),
 }

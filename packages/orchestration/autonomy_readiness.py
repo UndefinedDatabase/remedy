@@ -171,6 +171,17 @@ def _has_pending_approvals(events: list[dict[str, Any]]) -> bool:
     return len(pending) > 0
 
 
+def _has_no_open_decisions(job: Job, events: list[dict[str, Any]]) -> bool:
+    """True when there are no open human decisions pending."""
+    try:
+        from packages.orchestration.decision_queue import build_decision_summary, list_decisions
+        decisions = list_decisions(job, events)
+        summary = build_decision_summary(decisions)
+        return summary.get("open_count", 0) == 0
+    except (ImportError, OSError):
+        return True  # If module unavailable, don't block
+
+
 def _collect_signals(job: Job, events: list[dict[str, Any]]) -> dict[str, bool]:
     """Collect all readiness signals into a flat dict."""
     return {
@@ -192,6 +203,7 @@ def _collect_signals(job: Job, events: list[dict[str, Any]]) -> dict[str, bool]:
         "revert_snapshot": _has_revert_snapshot(events),
         "no_pending_approvals": not _has_pending_approvals(events),
         "git_status": _has_git_status(events),
+        "no_open_decisions": _has_no_open_decisions(job, events),
     }
 
 
@@ -250,11 +262,12 @@ def _assess_level(
         _check("test_proof")
 
     elif lvl == 4:
-        # bounded_loop: need agent loop + run contract + token policy
+        # bounded_loop: need agent loop + run contract + token policy + no open decisions
         _check("agent_loop", "remedy job run-loop <job_id>")
         _check("run_contract")
         _check("token_policy")
         _check("token_policy_applied")
+        _check("no_open_decisions", "remedy decision list <job_id>")
 
     elif lvl == 5:
         # revert_capable: need apply proof + revert snapshot + test proof
