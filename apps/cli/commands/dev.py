@@ -62,6 +62,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         "autocoder_fake_e2e_ok": False,
         "commit_readiness_ok": None,
         "remaining_blockers": [],
+        "advisories": [],
     }
 
     # Check UI contract
@@ -110,6 +111,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         status["autocoder_fake_e2e_ok"] = False
 
     # Check commit-readiness — only if we have a smoke job to test against
+    _cr_crashed = False
     if smoke_info["found"] and smoke_info["job_id"]:
         try:
             from apps.cli.commands.repo import _cmd_commit_readiness
@@ -119,15 +121,13 @@ def _dev_status(*, json_output: bool = False) -> None:
                 _cmd_commit_readiness(smoke_info["job_id"], json_output=True)
             cr_data = json.loads(buf.getvalue())
             status["commit_readiness_ok"] = cr_data.get("ready", False)
-            if not cr_data.get("ready"):
-                cr_reasons = cr_data.get("reasons", [])
-                if cr_reasons:
-                    status["commit_readiness_ok"] = False
         except (Exception, SystemExit):
             status["commit_readiness_ok"] = False
+            _cr_crashed = True
 
-    # Remaining blockers
+    # Remaining blockers (hard failures) vs advisories (informational)
     blockers = []
+    advisories: list[str] = []
     if not smoke_info["found"]:
         blockers.append("no smoke summary found — run: source scripts/remedy_smoke.sh && remedy_smoke")
     elif smoke_info["status"] != "passed":
@@ -136,9 +136,15 @@ def _dev_status(*, json_output: bool = False) -> None:
         blockers.append("UI contract check failed")
     if not status["task_progress_ok"]:
         blockers.append("task-progress version mismatch")
-    if status["commit_readiness_ok"] is False:
-        blockers.append("commit-readiness not ready — run: remedy repo commit-readiness <job_id> --json")
+    # Commit-readiness: crash = blocker, normal not-ready = advisory
+    if _cr_crashed:
+        blockers.append("commit-readiness command crashed")
+    elif status["commit_readiness_ok"] is False:
+        advisories.append("commit-readiness not ready (normal for smoke/reverted jobs)")
+    if not status["worker_cleanup_ok"]:
+        advisories.append("ollama not found — worker unload unavailable")
     status["remaining_blockers"] = blockers
+    status["advisories"] = advisories
 
     if json_output:
         print(json.dumps(status, indent=2))
@@ -161,6 +167,10 @@ def _dev_status(*, json_output: bool = False) -> None:
                 print(f"    - {b}")
         else:
             print("  blockers: none")
+        if advisories:
+            print(f"  advisories: {len(advisories)}")
+            for a in advisories:
+                print(f"    - {a}")
         print()
         print("Commands:")
         print("  remedy ui <job_id>                          — open UI")

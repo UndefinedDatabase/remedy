@@ -20,7 +20,7 @@ def _cmd_do(
     enable_ui: bool = False,
     dry_run: bool = False,
     json_output: bool = False,
-    fixture_builder: bool = False,
+    fixture_builder: bool | str = False,
 ) -> None:
     if dry_run:
         from packages.orchestration.autorun import dry_run_autorun
@@ -79,6 +79,16 @@ def _cmd_do(
             print(f"Error: {result.error}", file=sys.stderr)
 
 
+def _parse_fixture_builder(val: object) -> bool | str:
+    """Parse --fixture-builder value: true/false/repair-loop."""
+    s = str(val).lower().strip()
+    if s in ("true", "1", "yes"):
+        return True
+    if s == "repair-loop":
+        return "repair-loop"
+    return False
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "do.run": lambda args: _cmd_do(
         args.goal,
@@ -92,6 +102,6 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         ),
         dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
-        fixture_builder=getattr(args, "fixture_builder", False),
+        fixture_builder=_parse_fixture_builder(getattr(args, "fixture_builder", False)),
     ),
 }

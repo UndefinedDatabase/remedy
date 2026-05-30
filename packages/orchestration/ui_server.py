@@ -334,12 +334,25 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         if tstat == "completed":
             latest_completed_task_id = str(t.id)
 
+    # Repair loop detection
+    repair_loop_used = any(
+        e.get("event") == "repair_context_created" for e in events
+    )
+
+    # Reviewer pending count
+    recs = (job.metadata or {}).get("reviewer_recommendations", [])
+    reviewer_pending = sum(1 for r in recs if r.get("status") == "pending")
+
+    # Memory candidate count
+    candidates = (job.metadata or {}).get("memory_candidates", [])
+    memory_candidate_count = len(candidates)
+
     return {
-        "version": 1,
+        "version": 2,
         "job_id": str(job.id),
         "cursor": cursor,
         "stage": stage,
-        "running": state == "active",
+        "running": state in ("active", "running"),
         "latest_event_at": latest_at,
         "node_count": node_count,
         "edge_count": 0,
@@ -349,6 +362,9 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "test_status": test_status,
         "token_mode": "compact",
         "view_model_hash": vm_hash,
+        "repair_loop_used": repair_loop_used,
+        "reviewer_pending_count": reviewer_pending,
+        "memory_candidate_count": memory_candidate_count,
     }
 
 
