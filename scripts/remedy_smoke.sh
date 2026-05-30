@@ -62,7 +62,7 @@ SUMEOF
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard; do
+    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide ui; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
@@ -789,9 +789,9 @@ print('    Brain types: '+', '.join(sorted(types)))
         return 1
     }
     VIEW_PATH="$(printf '%s\n' "${BRAIN_VIEW_OUTPUT}" \
-        | awk '/^Brain Viewer v0:/ {sub(/^Brain Viewer v0: /, ""); print; exit}' || true)"
+        | awk '/^Brain Viewer:/ {sub(/^Brain Viewer: /, ""); print; exit}' || true)"
     if [[ -z "${VIEW_PATH}" ]]; then
-        echo "ERROR: brain view did not print a 'Brain Viewer v0:' line" >&2
+        echo "ERROR: brain view did not print a 'Brain Viewer:' line" >&2
         printf "Output was:\n%s\n" "${BRAIN_VIEW_OUTPUT}" >&2
         return 1
     fi
@@ -2056,6 +2056,289 @@ chk(NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER, 'missing cb in order')
 
 print('    brain nodes: OK (decision_queue + context_budget)')
 "
+
+    # -------------------------------------------------------------------------
+    # 12aj. Redaction precision (Step 74.1)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12aj"
+    echo "--- 12aj. Redaction precision"
+    python3 -c "
+import sys
+from packages.orchestration.redaction_patterns import find_forbidden_surface_tokens
+# Category words must be allowed
+for safe in ('No secrets or API keys', 'redact secrets', 'environment_secrets'):
+    r = find_forbidden_surface_tokens(safe)
+    if r:
+        print('ERROR: false positive on: ' + repr(safe) + ' -> ' + repr(r), file=sys.stderr)
+        sys.exit(1)
+# Actual secrets must be blocked
+for bad in ('secret=abc', 'password=x', 'sk-abcdefghij12', 'ghp_abcdefghij12', 'approval_reason', 'diff_preview', 'raw_stdout'):
+    r = find_forbidden_surface_tokens(bad)
+    if not r:
+        print('ERROR: missed forbidden: ' + repr(bad), file=sys.stderr)
+        sys.exit(1)
+print('    redaction precision: OK')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ak. Viewer UX panels (Steps 75-77)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ak"
+    echo "--- 12ak. Viewer UX panels"
+    python3 -c "
+import sys
+from pathlib import Path
+view_dir = Path('${VIEW_DIR}')
+html = (view_dir / 'index.html').read_text()
+checks = {
+    'search-input': 'id=\"search-input\"' in html,
+    'filter-rail': 'id=\"filter-rail\"' in html,
+    'filter-btn': 'filter-btn' in html,
+    'next-action-rail': 'next-action-rail' in html,
+    'copy-btn': 'copy-btn' in html,
+    'zone-label': 'zone-label' in html,
+    'remedy-mist': 'remedy-mist' in html,
+    'remedy-scanlines': 'remedy-scanlines' in html,
+    'remedy-grid': 'remedy-grid' in html,
+    'guidance-rail': 'guidance-rail' in html,
+    'guide-card': 'guide-card' in html,
+    'sel-pulse': 'sel-pulse' in html,
+    'prefers-reduced-motion': 'prefers-reduced-motion' in html,
+    'focus-visible': 'focus-visible' in html,
+    'data-render-status': 'data-render-status' in html,
+    'remedy-shell': 'remedy-shell' in html,
+    'remedy-proof-chain': 'remedy-proof-chain' in html,
+}
+failed = [k for k, v in checks.items() if not v]
+if failed:
+    for f in failed:
+        print('ERROR: viewer missing: ' + f, file=sys.stderr)
+    sys.exit(1)
+print('    viewer UX panels: OK (' + str(len(checks)) + ' checks)')
+" "${VIEW_DIR}"
+
+    # -------------------------------------------------------------------------
+    # 12al. Guidance rail (Step 78)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12al"
+    echo "--- 12al. Guidance rail"
+    GUIDE_JSON="$(remedy guide job "${JOB_ID}" --json)" || {
+        echo "ERROR: guide job failed" >&2
+        return 1
+    }
+    python3 -c "
+import json, sys
+data = json.loads('''${GUIDE_JSON}''')
+required = {'version', 'scope', 'job_id', 'cards', 'summary', 'recommended_next_action'}
+got = set(data.keys())
+missing = required - got
+if missing:
+    print('ERROR: guide JSON missing keys: ' + repr(missing), file=sys.stderr)
+    sys.exit(1)
+if data['version'] != 1:
+    print('ERROR: guide version != 1', file=sys.stderr)
+    sys.exit(1)
+if not isinstance(data['cards'], list):
+    print('ERROR: cards not a list', file=sys.stderr)
+    sys.exit(1)
+for card in data['cards']:
+    for k in ('id', 'title', 'severity', 'why_it_matters', 'safe_next_action', 'command'):
+        if k not in card:
+            print('ERROR: card missing: ' + k, file=sys.stderr)
+            sys.exit(1)
+print('    guidance rail: OK (cards=' + str(len(data['cards'])) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12am. Viewer path / export (Step 79)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12am"
+    echo "--- 12am. Viewer path / export"
+    VP_JSON="$(remedy brain viewer-path "${JOB_ID}" --json)" || {
+        echo "ERROR: viewer-path failed" >&2
+        return 1
+    }
+    python3 -c "
+import json, sys
+data = json.loads('''${VP_JSON}''')
+required = {'version', 'job_id', 'index_path', 'viewer_data_path', 'node_count', 'edge_count', 'detail_count'}
+got = set(data.keys())
+missing = required - got
+if missing:
+    print('ERROR: viewer-path JSON missing: ' + repr(missing), file=sys.stderr)
+    sys.exit(1)
+print('    viewer-path: OK')
+"
+    EXPORT_DIR="${_SMOKE_LOG_DIR}/viewer-export"
+    remedy brain export-viewer "${JOB_ID}" --out "${EXPORT_DIR}" >/dev/null || {
+        echo "ERROR: export-viewer failed" >&2
+        return 1
+    }
+    python3 -c "
+import json, sys
+from pathlib import Path
+d = Path('${EXPORT_DIR}')
+for f in ('index.html', 'viewer_data.json', 'viewer_manifest.json'):
+    if not (d / f).exists():
+        print('ERROR: export missing: ' + f, file=sys.stderr)
+        sys.exit(1)
+manifest = json.loads((d / 'viewer_manifest.json').read_text())
+required = {'version', 'job_id', 'created_at', 'index_path', 'viewer_data_path',
+            'node_count', 'edge_count', 'detail_count', 'style_version',
+            'safe_to_share', 'redaction_summary'}
+missing = required - set(manifest.keys())
+if missing:
+    print('ERROR: manifest missing: ' + repr(missing), file=sys.stderr)
+    sys.exit(1)
+if not manifest.get('safe_to_share'):
+    print('ERROR: safe_to_share not true', file=sys.stderr)
+    sys.exit(1)
+print('    export-viewer: OK (manifest valid)')
+"
+
+    # -------------------------------------------------------------------------
+    # 12an. Localhost UI server (Step 80)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12an"
+    echo "--- 12an. Localhost UI server"
+    UI_INFO_FILE="${_SMOKE_LOG_DIR}/ui_info.json"
+    # Start server in background, --port 0 picks free port, --no-open skips browser
+    remedy ui start "${JOB_ID}" --port 0 --info-file "${UI_INFO_FILE}" &
+    UI_PID=$!
+    # Wait for info file
+    for _i in $(seq 1 30); do
+        [[ -f "${UI_INFO_FILE}" ]] && break
+        sleep 0.2
+    done
+    if [[ ! -f "${UI_INFO_FILE}" ]]; then
+        kill "${UI_PID}" 2>/dev/null || true
+        echo "ERROR: UI server did not write info file" >&2
+        return 1
+    fi
+    python3 -c "
+import json, sys
+from urllib.request import urlopen, Request
+from urllib.error import URLError
+
+info = json.loads(open(sys.argv[1]).read())
+# 1. info-file schema
+required = {'version', 'url', 'host', 'port', 'token', 'job_id', 'pid', 'started_at'}
+missing = required - set(info.keys())
+if missing:
+    print('ERROR: ui info missing: ' + repr(missing), file=sys.stderr)
+    sys.exit(1)
+
+# 2. URL starts with http://127.0.0.1
+url = info['url']
+if not url.startswith('http://127.0.0.1:'):
+    print('ERROR: UI URL not localhost: ' + url, file=sys.stderr)
+    sys.exit(1)
+
+# 3. URL contains token
+if info['token'] not in url:
+    print('ERROR: UI URL missing token', file=sys.stderr)
+    sys.exit(1)
+
+# 4. Host is 127.0.0.1
+if info['host'] != '127.0.0.1':
+    print('ERROR: UI host not 127.0.0.1: ' + info['host'], file=sys.stderr)
+    sys.exit(1)
+
+base = 'http://127.0.0.1:' + str(info['port'])
+token = info['token']
+job_id = info['job_id']
+
+# 5. API without token returns 403
+try:
+    resp = urlopen(base + '/api/state?job_id=' + job_id, timeout=5)
+    body = json.loads(resp.read())
+    if 'error' not in body:
+        print('ERROR: API without token did not fail', file=sys.stderr)
+        sys.exit(1)
+except URLError:
+    pass  # Connection refused is also acceptable
+
+# 6. API with token returns safe state
+try:
+    resp = urlopen(base + '/api/jobs/' + job_id + '/dashboard?token=' + token, timeout=5)
+    data = json.loads(resp.read())
+    if data.get('version') != 1:
+        print('ERROR: dashboard version != 1', file=sys.stderr)
+        sys.exit(1)
+    if 'state' not in data:
+        print('ERROR: dashboard missing state', file=sys.stderr)
+        sys.exit(1)
+    # No raw leaks
+    full = json.dumps(data)
+    for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
+        if bad in full:
+            print('ERROR: dashboard raw leak: ' + bad, file=sys.stderr)
+            sys.exit(1)
+except URLError as e:
+    print('ERROR: API request failed: ' + str(e), file=sys.stderr)
+    sys.exit(1)
+
+# 7. App shell has calm entry panels
+try:
+    resp = urlopen(base + '/', timeout=5)
+    html = resp.read().decode()
+    panels = {
+        'what-happened': 'what-happened' in html,
+        'proven': 'proven' in html or 'What is proven' in html,
+        'needs-attention': 'needs-attention' in html,
+        'next-action': 'next-action' in html or 'Next safe action' in html,
+        'token-cost': 'token-cost' in html,
+        'explore-brain': 'explore-brain' in html,
+    }
+    failed = [k for k, v in panels.items() if not v]
+    if failed:
+        for f in failed:
+            print('ERROR: missing panel: ' + f, file=sys.stderr)
+        sys.exit(1)
+
+    # 8. Default is light/ice theme
+    if 'remedy-light' not in html:
+        print('ERROR: default not light theme', file=sys.stderr)
+        sys.exit(1)
+
+    # 9. Full graph not first visible region
+    if 'remedy-brain-explorer' in html:
+        # Should be display:none by default
+        idx = html.index('remedy-brain-explorer')
+        region = html[max(0, idx-200):idx+100]
+        if 'display: block' in region or 'visible' in region.split('class=')[0] if 'class=' in region else False:
+            print('ERROR: brain explorer visible by default', file=sys.stderr)
+            sys.exit(1)
+
+    # 10. Explore modes exist
+    modes = ['proof-path', 'attention', 'system-map', 'full-graph']
+    for m in modes:
+        if m not in html:
+            print('ERROR: missing explore mode: ' + m, file=sys.stderr)
+            sys.exit(1)
+
+    # 12. No external assets
+    for pattern in ['cdn.', 'googleapis.com', 'unpkg.com', 'jsdelivr.net']:
+        if pattern in html:
+            print('ERROR: external asset in shell: ' + pattern, file=sys.stderr)
+            sys.exit(1)
+
+    # 13. No raw leaks
+    for bad in ['raw_output', 'command_output', 'MUST_NOT_RENDER', 'diff_preview', 'approval_reason']:
+        if bad in html:
+            print('ERROR: raw leak in shell: ' + bad, file=sys.stderr)
+            sys.exit(1)
+
+except URLError as e:
+    print('ERROR: app shell request failed: ' + str(e), file=sys.stderr)
+    sys.exit(1)
+
+print('    localhost UI: OK (url=' + url + ')')
+" "${UI_INFO_FILE}"
+    # 15. Kill server cleanly
+    kill "${UI_PID}" 2>/dev/null || true
+    wait "${UI_PID}" 2>/dev/null || true
+    echo "    UI server stopped"
 
     # -------------------------------------------------------------------------
     # 13. Summary

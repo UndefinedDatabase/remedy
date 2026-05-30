@@ -635,7 +635,7 @@ class TestBrainViewCli:
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
         main()
         out = capsys.readouterr().out
-        assert "Brain Viewer v0:" in out
+        assert "Brain Viewer:" in out
         assert "index.html" in out
 
     def test_happy_path_logs_brain_viewer_prepared(self, tmp_path, monkeypatch, capsys):

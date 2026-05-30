@@ -98,6 +98,9 @@ GROUPS: dict[str, GroupDef] = {
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons."),
     "decision": GroupDef("decision", "Decision", "Human decision queue."),
     "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards."),
+    "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions."),
+    "ui": GroupDef("ui", "UI", "Localhost UI server — primary interactive experience."),
+    "do": GroupDef("do", "Do", "High-level guided autorun — one command to start a Remedy run."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -466,6 +469,37 @@ CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JOB_ID,),
         related=("brain.context",),
+    ),
+    CommandEntry(
+        command_id="brain.open",
+        group_id="brain",
+        subcommand="open",
+        description="Generate and open the brain viewer in default browser.",
+        action_class="read_only",
+        args=(_JOB_ID,),
+        related=("brain.view", "brain.viewer-path"),
+    ),
+    CommandEntry(
+        command_id="brain.viewer-path",
+        group_id="brain",
+        subcommand="viewer-path",
+        description="Print the path to the brain viewer index.html.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("brain.open", "brain.export-viewer"),
+    ),
+    CommandEntry(
+        command_id="brain.export-viewer",
+        group_id="brain",
+        subcommand="export-viewer",
+        description="Export the brain viewer to a target directory.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--out", "Output directory path", required=True, is_option=True),
+        ),
+        related=("brain.open", "brain.viewer-path"),
     ),
 
     # ── policy ───────────────────────────────────────────────────────────
@@ -937,6 +971,89 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
+    ),
+
+    # ── guide ─────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="guide.job",
+        group_id="guide",
+        subcommand="job",
+        description="Show human guidance rail for a job — next safe actions.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("readiness.job", "decision.list", "dashboard.job"),
+    ),
+
+    # ── ui ───────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="ui.start",
+        group_id="ui",
+        subcommand="start",
+        description="Start the localhost UI server for a job.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--port", "Port number (0 = auto, default: 8787)", required=False, is_option=True, default="8787"),
+            ArgDef("--host", "Bind host (only 127.0.0.1 allowed)", required=False, is_option=True, default="127.0.0.1"),
+            ArgDef("--open", "Open browser (default: false)", required=False, is_option=True, default="false"),
+            ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
+        ),
+        related=("brain.view", "dashboard.job"),
+    ),
+    CommandEntry(
+        command_id="ui.latest",
+        group_id="ui",
+        subcommand="latest",
+        description="Open the most recently started UI session in a browser.",
+        action_class="read_only",
+        args=(),
+    ),
+    CommandEntry(
+        command_id="ui.status",
+        group_id="ui",
+        subcommand="status",
+        description="Show status of all UI sessions.",
+        action_class="read_only",
+        args=(),
+    ),
+    CommandEntry(
+        command_id="ui.stop",
+        group_id="ui",
+        subcommand="stop",
+        description="Stop all running UI sessions.",
+        action_class="read_only",
+        args=(),
+    ),
+    CommandEntry(
+        command_id="ui.open",
+        group_id="ui",
+        subcommand="open",
+        description="Open browser for a specific job UI session.",
+        action_class="read_only",
+        args=(_JOB_ID,),
+    ),
+
+    # ── do ───────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="do.run",
+        group_id="do",
+        subcommand="run",
+        description="Start a controlled autorun for a goal.",
+        action_class="apply_write",
+        args=(
+            ArgDef("goal", "The goal to accomplish", required=True),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            ArgDef("--project", "Project ID to use or create", required=False, is_option=True),
+            ArgDef("--autonomy-level", "Autonomy level 0-7 (default: 2)", required=False, is_option=True, default="2"),
+            ArgDef("--max-cycles", "Maximum cycles (default: 3)", required=False, is_option=True, default="3"),
+            ArgDef("--ui", "Start UI alongside run (default: false)", required=False, is_option=True, default="false"),
+            ArgDef("--dry-run", "Show plan without executing", required=False, is_option=True, default="false"),
+            ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
+            ArgDef("--fixture-builder", "Use fixture builder for testing", required=False, is_option=True, default="false"),
+        ),
+        may_mutate_repo=True,
+        may_execute_commands=True,
     ),
 
     # ── dev ──────────────────────────────────────────────────────────────

@@ -89,6 +89,24 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--type", default=None, dest="type", help=arg.help)
             elif arg.name == "--since":
                 parser.add_argument("--since", default=None, help=arg.help)
+            elif arg.name == "--port":
+                parser.add_argument("--port", default=arg.default, help=arg.help)
+            elif arg.name == "--host":
+                parser.add_argument("--host", default=arg.default, help=arg.help)
+            elif arg.name == "--open":
+                parser.add_argument("--open", default=arg.default, help=arg.help)
+            elif arg.name == "--info-file":
+                parser.add_argument("--info-file", default=None, dest="info_file", help=arg.help)
+            elif arg.name == "--out":
+                parser.add_argument("--out", default=None, help=arg.help)
+            elif arg.name == "--repo":
+                parser.add_argument("--repo", default=arg.default, help=arg.help)
+            elif arg.name == "--dry-run":
+                parser.add_argument("--dry-run", action="store_true", dest="dry_run", help=arg.help)
+            elif arg.name == "--fixture-builder":
+                parser.add_argument("--fixture-builder", action="store_true", dest="fixture_builder", help=arg.help)
+            elif arg.name == "--ui":
+                parser.add_argument("--ui", default=arg.default, help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

@@ -77,7 +77,7 @@ class TestSmokeScriptText:
     def test_view_path_extraction_has_safe_fallback(self):
         text = _script_text()
         # Must use awk or a pipeline ending in `|| true` for VIEW_PATH extraction
-        assert ("awk" in text and "Brain Viewer v0" in text) or \
+        assert ("awk" in text and "Brain Viewer" in text) or \
                ("grep" in text and "|| true" in text), (
             "VIEW_PATH extraction must use awk-based or '|| true' safe fallback"
         )
@@ -85,8 +85,8 @@ class TestSmokeScriptText:
     def test_view_path_uses_awk_sub(self):
         text = _script_text()
         # Must use sub() to strip the prefix, not -F': ' field splitting
-        assert "sub(/^Brain Viewer v0: /, \"\")" in text or \
-               "sub(/^Brain Viewer v0: /," in text, (
+        assert "sub(/^Brain Viewer: /, \"\")" in text or \
+               "sub(/^Brain Viewer: /," in text, (
             "VIEW_PATH extraction must use awk sub() to avoid colon-truncation on unusual paths"
         )
 
