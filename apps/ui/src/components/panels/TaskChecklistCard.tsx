@@ -46,7 +46,7 @@ export function TaskChecklistCard({ tasks, onSelectNode }: { tasks: RemedyTaskIt
   const completed = allRows.filter(r => r.checked).length;
 
   return (
-    <section className={`${styles.card} ${styles.tasksCard} remedy-checklist`} data-ui="task-checklist">
+    <section className={`${styles.card} ${styles.tasksCard} remedy-checklist`} data-ui="task-checklist-card">
       <header className={styles.cardHeader}>
         <h2>Tasks</h2>
         <span>{completed} of {allRows.length} completed</span>

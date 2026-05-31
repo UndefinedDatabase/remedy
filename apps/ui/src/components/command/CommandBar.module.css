@@ -1,19 +1,19 @@
 .commandBar {
-  height: 56px;
+  height: 100%;
   display: grid;
-  grid-template-columns: 56px 1fr 48px;
+  grid-template-columns: 48px 1fr 42px;
   align-items: center;
-  padding: 0 10px 0 18px;
-  border-radius: 24px;
+  padding: 0 10px 0 14px;
+  border-radius: clamp(16px, 1.4vw, 24px);
   background: rgba(255,255,255,.46);
   border: 1px solid rgba(58,91,150,.13);
-  box-shadow: 0 18px 52px rgba(54,84,134,.08);
+  box-shadow: 0 14px 40px rgba(54,84,134,.07);
   backdrop-filter: blur(22px);
 }
 
 .spark {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   color: #4c83ff;
@@ -24,18 +24,18 @@
   outline: 0;
   background: transparent;
   color: #122f6a;
-  font-size: 15px;
+  font-size: clamp(13px, 1.2vw, 15px);
 }
 
 .commandBar input::placeholder {
-  color: rgba(18,47,106,.58);
+  color: rgba(18,47,106,.52);
 }
 
 .commandBar button {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 1px solid rgba(36,89,214,.24);
+  border: 1px solid rgba(36,89,214,.2);
   color: #2459d6;
   background: rgba(255,255,255,.72);
   cursor: pointer;

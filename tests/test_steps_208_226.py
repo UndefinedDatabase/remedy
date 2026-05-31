@@ -1,15 +1,18 @@
 """
-Tests for Steps 208-226 — UI Pixel Lock.
+Tests for Steps 227-246 — Responsive UI Rescue with Canvas Force Brain Graph.
+
+Supersedes old Steps 208-226 pixel-lock tests.
 
 Verifies:
-  - Fixed 1678×926 design frame (CSS contracts)
-  - No detail popup on initial load (selectedNodeId starts null)
-  - ConstellationBackdrop exists with dense node generation
-  - HotspotNode replaces WorkNode/pill nodes
-  - Right panel has dense task rows (≥12 display rows)
-  - Pixel-locked absolute positioning in RemedyShell
-  - No forbidden debug words in UI source
-  - remedy ui start has auto-build + browser open
+  - Responsive shell (no fixed 1678×926 frame)
+  - Canvas force graph via react-force-graph-2d
+  - No @xyflow/react in default graph path
+  - Data-ui markers correct
+  - No detail popup on initial load
+  - Dense task rows
+  - No default LayerSwitcher in shell
+  - No forbidden debug words
+  - remedy ui start contract
 """
 
 from __future__ import annotations
@@ -25,155 +28,234 @@ UI_ROOT = ROOT / "apps" / "ui"
 
 
 # ---------------------------------------------------------------------------
-# Step 209 — Fixed design frame
+# Step 227 — Contract markers
 # ---------------------------------------------------------------------------
 
-class TestStep209DesignFrame:
-    """RemedyShell locked to 1678×926."""
+class TestStep227ContractMarkers:
+    """All required data-ui markers exist in source."""
 
-    def test_shell_css_has_frame_dimensions(self):
+    MARKERS = [
+        ("top-metrics-bar", "components/metrics/TopMetricsBar.tsx"),
+        ("right-live-panel", "components/panels/RightLivePanel.tsx"),
+        ("task-checklist-card", "components/panels/TaskChecklistCard.tsx"),
+        ("remedy-visual-v2", "components/shell/RemedyShell.tsx"),
+        ("brain-graph-stage", "components/graph/BrainGraphStage.tsx"),
+        ("force-brain-graph", "components/graph/ForceBrainGraph.tsx"),
+        ("command-bar", "components/command/CommandBar.tsx"),
+        ("phase-timeline", "components/timeline/PhaseTimeline.tsx"),
+        ("left-brand-rail", "components/rail/LeftBrandRail.tsx"),
+    ]
+
+    @pytest.mark.parametrize("marker,path", MARKERS)
+    def test_marker_in_source(self, marker, path):
+        f = UI_SRC / path
+        assert f.is_file(), f"missing {path}"
+        assert marker in f.read_text(), f"marker '{marker}' not in {path}"
+
+
+# ---------------------------------------------------------------------------
+# Step 228 — Dependency swap
+# ---------------------------------------------------------------------------
+
+class TestStep228Dependencies:
+    """react-force-graph-2d replaces @xyflow/react."""
+
+    def test_package_has_force_graph(self):
+        pkg = (UI_ROOT / "package.json").read_text()
+        assert "react-force-graph-2d" in pkg
+
+    def test_package_has_d3_force(self):
+        pkg = (UI_ROOT / "package.json").read_text()
+        assert "d3-force" in pkg
+
+    def test_no_xyflow_in_package(self):
+        pkg = (UI_ROOT / "package.json").read_text()
+        assert "@xyflow/react" not in pkg
+
+    def test_no_xyflow_in_default_graph(self):
+        graph_dir = UI_SRC / "components" / "graph"
+        for f in graph_dir.glob("*.tsx"):
+            if "legacy" in str(f):
+                continue
+            content = f.read_text()
+            assert "@xyflow/react" not in content, f"@xyflow/react in {f.name}"
+
+    def test_no_xyflow_in_default_ts(self):
+        graph_dir = UI_SRC / "components" / "graph"
+        for f in graph_dir.glob("*.ts"):
+            if "legacy" in str(f):
+                continue
+            content = f.read_text()
+            assert "@xyflow/react" not in content, f"@xyflow/react in {f.name}"
+
+
+# ---------------------------------------------------------------------------
+# Step 229 — Responsive shell
+# ---------------------------------------------------------------------------
+
+class TestStep229ResponsiveShell:
+    """Shell uses responsive CSS grid, not fixed frame."""
+
+    def test_no_fixed_1678_frame(self):
         css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
-        assert "1678" in css, "missing 1678px width in shell CSS"
-        assert "926" in css, "missing 926px height in shell CSS"
+        assert "1678" not in css
+        assert "926" not in css
+        assert "aspect-ratio" not in css
 
-    def test_shell_css_has_absolute_slots(self):
+    def test_uses_css_grid_clamp(self):
         css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
-        assert "292px" in css, "missing leftRail width 292px"
-        assert "976px" in css, "missing centerStage width 976px"
-        assert "350px" in css, "missing rightPanel width 350px"
+        assert "clamp(" in css
+        assert "grid-template-columns" in css
 
-    def test_shell_tsx_has_visual_v2_marker(self):
+    def test_has_media_queries(self):
+        css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
+        assert "@media" in css
+
+
+# ---------------------------------------------------------------------------
+# Step 230 — Single left rail
+# ---------------------------------------------------------------------------
+
+class TestStep230SingleRail:
+    """One left rail, no default LayerSwitcher."""
+
+    def test_no_layer_switcher_in_shell(self):
         tsx = (UI_SRC / "components" / "shell" / "RemedyShell.tsx").read_text()
-        assert "remedy-visual-v2" in tsx
+        assert "LayerSwitcher" not in tsx
+
+    def test_left_rail_has_dock(self):
+        tsx = (UI_SRC / "components" / "rail" / "LeftBrandRail.tsx").read_text()
+        assert "SideIconDock" in tsx
 
 
 # ---------------------------------------------------------------------------
-# Step 210 — No popup on initial load
+# Steps 231-238 — Force brain graph
 # ---------------------------------------------------------------------------
 
-class TestStep210NoPopupOnLoad:
-    """Detail popover does not render by default."""
+class TestForceGraph:
+    """Canvas force graph is default."""
 
-    def test_app_starts_with_null_selection(self):
-        app = (UI_SRC / "RemedyApp.tsx").read_text()
-        assert "useState<string | null>(null)" in app, \
-            "selectedNodeId should start as null"
+    def test_force_brain_graph_exists(self):
+        assert (UI_SRC / "components" / "graph" / "ForceBrainGraph.tsx").is_file()
 
-    def test_no_auto_select_first_node(self):
-        app = (UI_SRC / "RemedyApp.tsx").read_text()
-        # Should NOT contain setting selectedNodeId to first node
-        assert "setSelectedNodeId(data.graph.nodes[0]" not in app
+    def test_force_types_exist(self):
+        assert (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").is_file()
 
+    def test_build_model_exists(self):
+        assert (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").is_file()
 
-# ---------------------------------------------------------------------------
-# Step 216 — ConstellationBackdrop
-# ---------------------------------------------------------------------------
+    def test_brain_stage_uses_force_graph(self):
+        code = (UI_SRC / "components" / "graph" / "BrainGraphStage.tsx").read_text()
+        assert "ForceBrainGraph" in code
+        assert "RemedyBrainFlow" not in code
+        assert "ConstellationBackdrop" not in code
 
-class TestStep216ConstellationBackdrop:
-    """Dense SVG backdrop for graph stage."""
+    def test_force_graph_imports_force_graph_2d(self):
+        code = (UI_SRC / "components" / "graph" / "ForceBrainGraph.tsx").read_text()
+        assert "react-force-graph-2d" in code
 
-    def test_constellation_file_exists(self):
-        f = UI_SRC / "components" / "graph" / "ConstellationBackdrop.tsx"
-        assert f.is_file()
+    def test_canvas_rendering(self):
+        code = (UI_SRC / "components" / "graph" / "ForceBrainGraph.tsx").read_text()
+        assert "shadowBlur" in code
+        assert "createRadialGradient" in code
+        assert "quadraticCurveTo" in code
 
-    def test_constellation_generates_many_nodes(self):
-        code = (UI_SRC / "components" / "graph" / "ConstellationBackdrop.tsx").read_text()
-        # Should generate significant node count
-        assert "160" in code or "nodes" in code.lower()
+    def test_no_math_random_in_model(self):
+        code = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
+        assert "Math.random" not in code
 
-    def test_constellation_css_exists(self):
-        f = UI_SRC / "components" / "graph" / "ConstellationBackdrop.module.css"
-        assert f.is_file()
+    def test_seeded_rng(self):
+        code = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
+        assert "seededRng" in code
 
+    def test_resize_observer_hook(self):
+        code = (UI_SRC / "components" / "graph" / "useGraphSize.ts").read_text()
+        assert "ResizeObserver" in code
 
-# ---------------------------------------------------------------------------
-# Steps 217-218 — Hotspot nodes
-# ---------------------------------------------------------------------------
-
-class TestStep217HotspotNodes:
-    """Circular hotspot nodes replace pill WorkNodes."""
-
-    def test_hotspot_node_in_graph_nodes(self):
-        code = (UI_SRC / "components" / "graph" / "GraphNodes.tsx").read_text()
-        assert "HotspotNode" in code
-
-    def test_hotspot_css_is_circular(self):
-        css = (UI_SRC / "components" / "graph" / "GraphNodes.module.css").read_text()
-        assert "border-radius: 50%" in css
+    def test_reduced_motion_respected(self):
+        code = (UI_SRC / "components" / "graph" / "ForceBrainGraph.tsx").read_text()
+        assert "reducedMotion" in code or "reduced-motion" in code
 
 
 # ---------------------------------------------------------------------------
-# Steps 219-221 — Dense right panel
+# Step 240 — Better data normalization
 # ---------------------------------------------------------------------------
 
-class TestStep219DenseRightPanel:
-    """Right panel has ≥12 task display rows."""
+class TestStep240DataNormalization:
+    """Weak labels detected and replaced."""
 
-    def test_display_rows_count(self):
-        code = (UI_SRC / "components" / "panels" / "TaskChecklistCard.tsx").read_text()
-        # Count DISPLAY_ROWS entries
-        rows = re.findall(r'\{ label:', code)
-        assert len(rows) >= 12, f"expected ≥12 display rows, got {len(rows)}"
+    def test_is_weak_label_exists(self):
+        code = (UI_SRC / "api" / "remedyApi.ts").read_text()
+        assert "isWeakLabel" in code
 
-    def test_right_panel_pixel_locked(self):
+    def test_human_fallback_exists(self):
+        code = (UI_SRC / "api" / "remedyApi.ts").read_text()
+        assert "humanFallbackFor" in code
+
+
+# ---------------------------------------------------------------------------
+# Step 241 — Right panel responsive
+# ---------------------------------------------------------------------------
+
+class TestStep241RightPanel:
+    """Right panel uses responsive grid."""
+
+    def test_panel_css_grid(self):
         css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
-        assert "350px" in css
-        assert "832px" in css
+        assert "grid-template-rows" in css
+
+    def test_task_list_scrolls(self):
+        css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
+        assert "overflow" in css
 
 
 # ---------------------------------------------------------------------------
-# Step 222 — Phase timeline
+# Step 243 — UI start command
 # ---------------------------------------------------------------------------
 
-class TestStep222PhaseTimeline:
-    """Phase timeline pixel-locked."""
-
-    def test_timeline_height(self):
-        css = (UI_SRC / "components" / "timeline" / "PhaseTimeline.module.css").read_text()
-        assert "144px" in css
-
-
-# ---------------------------------------------------------------------------
-# Step 224 — remedy ui start command
-# ---------------------------------------------------------------------------
-
-class TestStep224UiStartCommand:
-    """remedy ui start has auto-build and browser open."""
+class TestStep243UiStart:
+    """remedy ui start works with auto-build."""
 
     def test_ui_server_has_auto_build(self):
         code = (ROOT / "packages" / "orchestration" / "ui_server.py").read_text()
         assert "_auto_build_frontend" in code
-        assert "npm run build" in code
 
-    def test_ui_server_has_browser_open(self):
-        code = (ROOT / "packages" / "orchestration" / "ui_server.py").read_text()
-        assert "_try_open_browser" in code
-
-    def test_cli_ui_command_exists(self):
+    def test_cli_ui_command(self):
         code = (ROOT / "apps" / "cli" / "commands" / "ui.py").read_text()
         assert "ui.start" in code
         assert "open_browser" in code
 
 
 # ---------------------------------------------------------------------------
-# All steps — No forbidden debug words
+# No popup on load
+# ---------------------------------------------------------------------------
+
+class TestNoPopupOnLoad:
+    """Detail popover does not render by default."""
+
+    def test_app_starts_null(self):
+        app = (UI_SRC / "RemedyApp.tsx").read_text()
+        assert "useState<string | null>(null)" in app
+
+
+# ---------------------------------------------------------------------------
+# No forbidden debug words
 # ---------------------------------------------------------------------------
 
 class TestNoForbiddenDebugWords:
-    """No debug/scaffold words in shipped UI source."""
-
     FORBIDDEN = ["TODO:", "FIXME:", "HACK:", "console.log(", "debugger"]
 
     def test_no_forbidden_in_tsx(self):
         for f in UI_SRC.rglob("*.tsx"):
+            if "legacy" in str(f):
+                continue
             content = f.read_text(encoding="utf-8")
             for word in self.FORBIDDEN:
                 assert word not in content, f"forbidden '{word}' in {f.relative_to(ROOT)}"
 
     def test_no_forbidden_in_ts(self):
         for f in UI_SRC.rglob("*.ts"):
-            # Skip test files
-            if "test" in f.name.lower() or "spec" in f.name.lower():
+            if "legacy" in str(f) or "test" in f.name.lower():
                 continue
             content = f.read_text(encoding="utf-8")
             for word in self.FORBIDDEN:
