@@ -1,7 +1,15 @@
-.flowWrap { position: absolute; inset: 0; overflow: hidden; border-radius: 28px; }
-.reactFlow { background: transparent; }
+.flowWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.reactFlow {
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+}
+
 .reactFlow :global(.react-flow__node) { font-family: inherit; }
 .reactFlow :global(.react-flow__handle) { display: none; }
-.softCenterGlow { position: absolute; left: 50%; top: 52%; width: 640px; height: 360px; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255,255,255,.84), rgba(111,156,255,.14) 35%, transparent 70%); mix-blend-mode: screen; opacity: .72; }
-.particleVeil { position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(circle, rgba(255,255,255,.86) 0 1px, transparent 1.8px), radial-gradient(circle, rgba(76,131,255,.26) 0 1px, transparent 1.8px); background-size: 88px 88px, 137px 137px; background-position: 0 0, 34px 52px; opacity: .55; animation: remedyDrift 24s linear infinite; }
-@keyframes remedyDrift { from { transform: translate3d(0,0,0); } to { transform: translate3d(-60px,42px,0); } }
+.reactFlow :global(.react-flow__background) { display: none; }

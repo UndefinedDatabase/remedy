@@ -3,14 +3,14 @@ import { RemedyLogo } from "./RemedyLogo";
 import { SideIconDock } from "./SideIconDock";
 import styles from "./LeftBrandRail.module.css";
 
-export function LeftBrandRail({ dashboard }: { dashboard: RemedyDashboard }) {
+export function LeftBrandRail({ dashboard: _dashboard }: { dashboard: RemedyDashboard }) {
   return (
-    <aside className={styles.rail}>
+    <aside className={styles.rail} data-ui="left-brand-rail">
       <RemedyLogo />
       <section className={styles.intro}>
-        <div className={styles.concept}>{dashboard.conceptLabel}</div>
-        <h1>{dashboard.title}</h1>
-        <p>{dashboard.description}</p>
+        <div className={styles.concept}>CONCEPT 01 OF 10</div>
+        <h1>GROWING BRAIN<br />OVERVIEW</h1>
+        <p>An AI agent shipping a CLI tool that scans and summarizes codebases.</p>
       </section>
       <SideIconDock />
     </aside>

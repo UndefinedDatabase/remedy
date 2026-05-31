@@ -22,10 +22,7 @@ export default function RemedyApp() {
       if (!jobId || !token) { setError("Missing job or token in the URL."); return; }
       try {
         const data = await loadRemedyDashboard({ jobId, token });
-        if (!cancelled) {
-          setDashboard(data);
-          setSelectedNodeId(data.graph.nodes[0]?.nodeId ?? null);
-        }
+        if (!cancelled) setDashboard(data);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Could not load Remedy UI.");
       }

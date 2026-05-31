@@ -2303,9 +2303,9 @@ try:
         js_url = base + js_match.group(1)
         js_resp = urlopen(js_url, timeout=10)
         js_code = js_resp.read().decode(errors='replace')
-        react_markers = ['remedy-shell', 'brain-graph', 'react-flow', 'metrics-bar',
+        react_markers = ['remedy-shell', 'brain-graph-stage', 'react-flow', 'metrics-bar',
                          'command-bar', 'right-panel', 'task-checklist', 'phase-timeline',
-                         'detail-popover', 'layer-switcher']
+                         'detail-popover', 'layer-switcher', 'remedy-visual-v2']
         missing_markers = [m for m in react_markers if m not in js_code]
         if missing_markers:
             for m in missing_markers:
@@ -2326,6 +2326,18 @@ try:
             if 'prefers-reduced-motion' not in css_code:
                 print('ERROR: missing prefers-reduced-motion in CSS', file=sys.stderr)
                 sys.exit(1)
+
+            # 7e2. Pixel-lock CSS contracts (Steps 208-226)
+            pixel_contracts = ['1678', '926', '292px', '976px', '350px', '832px']
+            missing_px = [c for c in pixel_contracts if c not in css_code]
+            if missing_px:
+                print('ERROR: missing pixel-lock CSS values: ' + repr(missing_px), file=sys.stderr)
+                sys.exit(1)
+
+        # 7e3. Constellation backdrop in JS bundle
+        if 'constellation' not in js_code.lower():
+            print('ERROR: missing constellation backdrop in bundle', file=sys.stderr)
+            sys.exit(1)
 
     # 7f. No external assets
     for pattern in ['cdn.', 'googleapis.com', 'unpkg.com', 'jsdelivr.net']:

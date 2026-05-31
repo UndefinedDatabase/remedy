@@ -6,7 +6,7 @@ import { LiveStatusPill } from "./LiveStatusPill";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string) => void }) {
+export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void }) {
   return (
     <aside className={styles.panel} data-ui="right-panel">
       <LiveStatusPill live={dashboard.live.running} />

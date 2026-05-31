@@ -1,5 +1,82 @@
-.shell { width: 100vw; height: 100vh; position: relative; display: grid; grid-template-columns: var(--remedy-left-width) minmax(680px, 1fr) var(--remedy-right-width); gap: 26px; padding: 24px 26px; background: radial-gradient(circle at 52% 48%, rgba(255,255,255,.78), transparent 28%), radial-gradient(circle at 44% 58%, rgba(76,131,255,.12), transparent 38%), linear-gradient(135deg, #f8fbff 0%, #edf3fb 48%, #e5edf7 100%); overflow: hidden; }
-.backgroundAura { position: absolute; inset: -20%; pointer-events: none; background: radial-gradient(circle at 50% 52%, rgba(111,156,255,.16), transparent 18%), radial-gradient(circle at 62% 32%, rgba(83,214,223,.08), transparent 20%); filter: blur(20px); }
-.mainStage { position: relative; z-index: 1; display: grid; grid-template-rows: 102px 64px 1fr 154px; min-width: 0; gap: 18px; }
-@media (max-width: 1180px) { .shell { grid-template-columns: 84px minmax(0, 1fr); } }
-@media (max-width: 900px) { .shell { grid-template-columns: 1fr; padding: 16px; } .mainStage { grid-template-rows: auto auto 1fr auto; } }
+.viewport {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255,255,255,.98) 0 18%, rgba(238,245,255,.92) 38%, rgba(225,235,248,.96) 100%),
+    linear-gradient(135deg, #f9fcff 0%, #edf4fc 52%, #e6eef8 100%);
+}
+
+.frame {
+  width: min(100vw, 1678px);
+  height: min(100vh, 926px);
+  aspect-ratio: 1678 / 926;
+  position: relative;
+  overflow: hidden;
+  color: var(--remedy-text);
+  background:
+    radial-gradient(circle at 51% 45%, rgba(255,255,255,.92), transparent 30%),
+    radial-gradient(circle at 47% 50%, rgba(103,151,255,.16), transparent 42%),
+    linear-gradient(135deg, rgba(249,252,255,.9), rgba(232,241,252,.9));
+}
+
+.leftRail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 292px;
+  height: 926px;
+  z-index: 3;
+}
+
+.centerStage {
+  position: absolute;
+  left: 292px;
+  top: 0;
+  width: 976px;
+  height: 926px;
+  z-index: 1;
+}
+
+.topMetricsSlot {
+  position: absolute;
+  left: 0;
+  top: 24px;
+  width: 976px;
+  height: 90px;
+}
+
+.commandSlot {
+  position: absolute;
+  left: 0;
+  top: 132px;
+  width: 976px;
+  height: 56px;
+}
+
+.graphSlot {
+  position: absolute;
+  left: 0;
+  top: 190px;
+  width: 976px;
+  height: 552px;
+}
+
+.timelineSlot {
+  position: absolute;
+  left: -142px;
+  top: 758px;
+  width: 1116px;
+  height: 144px;
+}
+
+.rightPanelSlot {
+  position: absolute;
+  left: 1286px;
+  top: 24px;
+  width: 350px;
+  height: 832px;
+  z-index: 4;
+}

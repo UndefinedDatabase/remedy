@@ -1,4 +1,46 @@
-.dock { width: 68px; padding: 18px 0; display: flex; flex-direction: column; gap: 16px; align-items: center; border-radius: 26px; background: rgba(255,255,255,.58); border: 1px solid rgba(91,126,188,.16); box-shadow: var(--remedy-shadow-soft); backdrop-filter: blur(18px); }
-.button, .active { width: 42px; height: 42px; display: grid; place-items: center; border: 0; background: transparent; color: var(--remedy-blue-700); border-radius: 50%; transition: 160ms ease; }
-.active { background: rgba(255,255,255,.9); box-shadow: inset 0 0 0 1px rgba(76,131,255,.2), 0 10px 24px rgba(76,131,255,.18); }
-.button:hover { background: rgba(255,255,255,.56); }
+.dock {
+  position: absolute;
+  left: 24px;
+  top: 302px;
+  width: 58px;
+  min-height: 438px;
+  padding: 15px 0;
+  border-radius: 29px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  background: rgba(255,255,255,.48);
+  border: 1px solid rgba(61,98,164,.12);
+  box-shadow: 0 24px 70px rgba(55,86,138,.12);
+  backdrop-filter: blur(20px);
+}
+
+.button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  color: #2459d6;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.active {
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #3d7cff, #7ca8ff);
+  box-shadow: 0 16px 36px rgba(76,131,255,.28), 0 0 0 10px rgba(76,131,255,.08);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.button:hover {
+  background: rgba(255,255,255,.56);
+}

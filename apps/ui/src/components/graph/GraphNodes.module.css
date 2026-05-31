@@ -1,14 +1,86 @@
-.rootNode { position: relative; width: 86px; height: 86px; transform: translate(-43px, -43px); }
-.codeOrb { position: relative; z-index: 2; width: 86px; height: 86px; filter: drop-shadow(0 0 32px rgba(76,131,255,.66)) drop-shadow(0 16px 34px rgba(36,89,214,.18)); }
-.rootPulse { position: absolute; inset: -30px; border-radius: 50%; background: radial-gradient(circle, rgba(76,131,255,.28), transparent 68%); animation: remedyPulse 3.8s ease-in-out infinite; }
-.workNode { min-width: 152px; max-width: 206px; min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; background: rgba(255,255,255,.76); border: 1px solid rgba(76,131,255,.2); color: var(--remedy-blue-900); box-shadow: 0 10px 26px rgba(65,91,142,.12); backdrop-filter: blur(12px); }
-.workLabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 700; }
-.statusIcon { flex: 0 0 auto; width: 15px; height: 15px; display: grid; place-items: center; font-size: 13px; }
-.tinyNode { width: 18px; height: 18px; border-radius: 50%; transform: translate(-9px, -9px); background: rgba(255,255,255,.9); border: 2px solid rgba(76,131,255,.48); box-shadow: 0 0 0 5px rgba(76,131,255,.08), 0 0 24px rgba(76,131,255,.2); }
-.done { border-color: rgba(76,198,129,.58); }
-.current { border-color: rgba(76,131,255,.95); box-shadow: 0 0 0 6px rgba(76,131,255,.12), 0 0 42px rgba(76,131,255,.3); }
-.suggested { border-color: rgba(162,140,255,.58); }
-.blocked { border-color: rgba(245,163,78,.68); }
-.pending { border-color: rgba(143,179,255,.5); }
-.selected { outline: 3px solid rgba(76,131,255,.26); outline-offset: 5px; }
+.rootNode {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  transform: translate(-43px, -43px);
+}
+
+.codeOrb {
+  position: relative;
+  z-index: 2;
+  width: 86px;
+  height: 86px;
+  filter: drop-shadow(0 0 32px rgba(76,131,255,.66)) drop-shadow(0 16px 34px rgba(36,89,214,.18));
+}
+
+.rootPulse {
+  position: absolute;
+  inset: -30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(76,131,255,.28), transparent 68%);
+  animation: remedyPulse 3.8s ease-in-out infinite;
+}
+
+.hotspotNode {
+  width: 22px;
+  height: 22px;
+  transform: translate(-11px, -11px);
+  border-radius: 50%;
+  background: rgba(255,255,255,.92);
+  border: 2px solid rgba(76,131,255,.56);
+  box-shadow:
+    0 0 0 6px rgba(76,131,255,.08),
+    0 0 22px rgba(76,131,255,.36);
+  position: relative;
+}
+
+.hotspotNode.current {
+  width: 26px;
+  height: 26px;
+  transform: translate(-13px, -13px);
+  border-color: rgba(76,131,255,.98);
+  box-shadow:
+    0 0 0 8px rgba(76,131,255,.13),
+    0 0 38px rgba(76,131,255,.52);
+}
+
+.hotspotNode.done {
+  border-color: rgba(76,198,129,.66);
+}
+
+.hotspotNode.suggested {
+  border-color: rgba(162,140,255,.66);
+}
+
+.hotspotNode.blocked {
+  border-color: rgba(245,163,78,.68);
+}
+
+.hotspotNode.pending {
+  border-color: rgba(143,179,255,.5);
+}
+
+.nodeLabel {
+  position: absolute;
+  left: 50%;
+  top: 28px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(18,47,106,.72);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.selected .nodeLabel {
+  opacity: 1;
+}
+
+.selected {
+  outline: 3px solid rgba(76,131,255,.26);
+  outline-offset: 5px;
+}
+
 @keyframes remedyPulse { 0%,100% { opacity: .45; transform: scale(.92); } 50% { opacity: .78; transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .rootPulse { animation: none; } }

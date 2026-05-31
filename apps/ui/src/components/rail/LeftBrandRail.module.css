@@ -1,6 +1,41 @@
-.rail { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 56px; color: var(--remedy-blue-900); min-width: 0; }
-.intro { max-width: 238px; }
-.concept { color: var(--remedy-blue-700); opacity: .72; text-transform: uppercase; font-size: 14px; letter-spacing: .08em; margin-bottom: 16px; }
-.intro h1 { margin: 0; color: var(--remedy-blue-900); font-size: 30px; line-height: 1.16; font-weight: 700; letter-spacing: -.04em; }
-.intro p { color: var(--remedy-blue-900); margin: 24px 0 0; font-size: 16px; line-height: 1.58; max-width: 218px; }
+.rail {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 292px;
+  padding: 36px 0 0 30px;
+  color: var(--remedy-blue-900);
+}
+
+.intro {
+  position: absolute;
+  left: 31px;
+  top: 118px;
+  width: 210px;
+}
+
+.concept {
+  font-size: 13px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(36,89,214,.72);
+  margin-bottom: 16px;
+}
+
+.intro h1 {
+  margin: 0;
+  font-size: 27px;
+  line-height: 1.15;
+  font-weight: 650;
+  letter-spacing: -.035em;
+  color: #122f6a;
+}
+
+.intro p {
+  margin: 24px 0 0;
+  max-width: 205px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #122f6a;
+}
+
 @media (max-width: 1180px) { .intro { display: none; } }

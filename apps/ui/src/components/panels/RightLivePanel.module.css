@@ -1,17 +1,96 @@
-.panel { position: relative; z-index: 3; display: flex; flex-direction: column; gap: 14px; min-width: 0; overflow-y: auto; }
-.livePill { align-self: flex-end; height: 48px; min-width: 110px; display: inline-flex; justify-content: center; align-items: center; gap: 10px; border-radius: 18px; background: rgba(255,255,255,.64); border: 1px solid rgba(78,111,172,.14); box-shadow: var(--remedy-shadow-soft); color: var(--remedy-blue-900); font-weight: 800; letter-spacing: .06em; }
-.liveDot, .idleDot { width: 10px; height: 10px; border-radius: 50%; } .liveDot { background: var(--remedy-green-500); box-shadow: 0 0 0 6px rgba(76,198,129,.12); } .idleDot { background: var(--remedy-faint); }
-.card { border-radius: 22px; background: rgba(255,255,255,.62); border: 1px solid rgba(78,111,172,.14); box-shadow: var(--remedy-shadow-soft); backdrop-filter: blur(20px); padding: 20px; }
-.cardHeader { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 16px; color: var(--remedy-blue-900); }
+.panel {
+  position: absolute;
+  inset: 0;
+  width: 350px;
+  height: 832px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.livePill {
+  align-self: flex-end;
+  width: 106px;
+  height: 46px;
+  border-radius: 17px;
+  background: rgba(255,255,255,.66);
+  border: 1px solid rgba(61,98,164,.13);
+  box-shadow: 0 16px 44px rgba(55,86,138,.11);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  color: var(--remedy-blue-900);
+  font-weight: 800;
+  letter-spacing: .06em;
+  font-size: 12px;
+}
+
+.liveDot, .idleDot { width: 10px; height: 10px; border-radius: 50%; }
+.liveDot { background: var(--remedy-green-500); box-shadow: 0 0 0 6px rgba(76,198,129,.12); }
+.idleDot { background: var(--remedy-faint); }
+
+.card {
+  border-radius: 22px;
+  padding: 19px 20px;
+  background: rgba(255,255,255,.62);
+  border: 1px solid rgba(61,98,164,.13);
+  box-shadow: 0 18px 52px rgba(55,86,138,.12);
+  backdrop-filter: blur(24px);
+}
+
+.agentCard { min-height: 96px; }
+.activityCard { min-height: 230px; }
+.tasksCard { min-height: 410px; flex: 1; }
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 14px;
+  color: var(--remedy-blue-900);
+}
+
 .cardHeader h2 { margin: 0; font-size: 14px; letter-spacing: .05em; font-weight: 900; text-transform: uppercase; }
 .cardHeader span { color: var(--remedy-muted); font-size: 12px; font-weight: 700; }
-.liveSmall { display: inline-flex; align-items: center; gap: 6px; } .liveSmall span { width: 7px; height: 7px; border-radius: 50%; background: var(--remedy-green-500); }
+
+.liveSmall { display: inline-flex; align-items: center; gap: 6px; }
+.liveSmall span { width: 7px; height: 7px; border-radius: 50%; background: var(--remedy-green-500); }
+
 .agentNow, .activityItem { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px; }
 .agentNow strong, .activityMeta strong { color: var(--remedy-blue-900); font-size: 13px; }
-.agentNow p, .activityItem p { margin: 3px 0 0; color: var(--remedy-blue-900); font-size: 12px; line-height: 1.35; } .agentNow time { color: var(--remedy-muted); font-size: 12px; }
+.agentNow p, .activityItem p { margin: 3px 0 0; color: var(--remedy-blue-900); font-size: 12px; line-height: 1.35; }
+.agentNow time { color: var(--remedy-muted); font-size: 12px; }
 .actorIcon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; color: white; background: linear-gradient(135deg, #3478ff, #75a3ff); box-shadow: 0 12px 22px rgba(76,131,255,.22); }
-.activityList { display: flex; flex-direction: column; gap: 16px; } .activityMeta { display: flex; gap: 10px; align-items: center; } .activityMeta span { color: var(--remedy-muted); font-size: 12px; }
-.askBar { margin-top: 18px; display: grid; grid-template-columns: 1fr 38px; gap: 10px; } .askBar input { height: 38px; border: 1px solid rgba(78,111,172,.18); border-radius: 10px; padding: 0 12px; background: rgba(255,255,255,.72); color: var(--remedy-blue-900); } .askBar button, .addTask { border: 0; color: white; background: linear-gradient(135deg, #3478ff, #5d8dff); border-radius: 10px; }
-.taskList { display: flex; flex-direction: column; gap: 7px; } .taskRow { height: 26px; display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--remedy-blue-900); padding: 0; text-align: left; } .taskIcon { width: 18px; height: 18px; display: grid; place-items: center; } .taskLabel { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 700; } .taskState { color: var(--remedy-blue-700); font-size: 11px; font-weight: 800; }
-.done .taskIcon { color: var(--remedy-green-500); } .current .taskIcon, .current .taskState { color: var(--remedy-blue-500); } .pending { opacity: .72; } .suggested { opacity: .64; color: var(--remedy-purple-400); }
+.activityList { display: flex; flex-direction: column; gap: 16px; }
+.activityMeta { display: flex; gap: 10px; align-items: center; }
+.activityMeta span { color: var(--remedy-muted); font-size: 12px; }
+
+.askBar { margin-top: 18px; display: grid; grid-template-columns: 1fr 38px; gap: 10px; }
+.askBar input { height: 38px; border: 1px solid rgba(78,111,172,.18); border-radius: 10px; padding: 0 12px; background: rgba(255,255,255,.72); color: var(--remedy-blue-900); }
+.askBar button, .addTask { border: 0; color: white; background: linear-gradient(135deg, #3478ff, #5d8dff); border-radius: 10px; cursor: pointer; }
+
+.taskList { display: flex; flex-direction: column; gap: 4px; }
+.taskRow {
+  height: 21px;
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.taskIcon { width: 16px; height: 16px; display: grid; place-items: center; font-size: 14px; }
+.taskLabel { font-size: 11px; font-weight: 760; color: #122f6a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.taskState { font-size: 10px; font-weight: 760; color: rgba(36,89,214,.7); }
+.done .taskIcon { color: #4cc681; }
+.current .taskIcon, .current .taskState { color: #4c83ff; }
+.pending { opacity: .74; }
+.suggested { opacity: .64; color: var(--remedy-purple-400); }
+
 .addTask { height: 42px; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 800; background: rgba(255,255,255,.58); color: var(--remedy-blue-700); border: 1px solid rgba(78,111,172,.14); border-radius: 10px; }

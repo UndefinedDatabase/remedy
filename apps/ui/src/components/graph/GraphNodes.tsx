@@ -1,6 +1,4 @@
 import type { NodeProps } from "@xyflow/react";
-import CheckIcon from "@mui/icons-material/Check";
-import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { CodeOrbIcon } from "../icons/CodeOrbIcon";
 import styles from "./GraphNodes.module.css";
 
@@ -21,16 +19,15 @@ export function RootNode({ selected }: NodeProps) {
   );
 }
 
-export function WorkNode({ data, selected }: NodeProps) {
+export function HotspotNode({ data, selected }: NodeProps) {
   const state = String(data.state || "pending");
   return (
-    <div className={`${styles.workNode} ${stateClass(state)} ${selected ? styles.selected : ""}`}>
-      <span className={styles.statusIcon}>{state === "done" ? <CheckIcon fontSize="inherit" /> : <RadioButtonUncheckedIcon fontSize="inherit" />}</span>
-      <span className={styles.workLabel}>{String(data.label || "Work item")}</span>
+    <div className={`${styles.hotspotNode} ${stateClass(state)} ${selected ? styles.selected : ""}`}>
+      <span className={styles.nodeLabel}>{String(data.label || "")}</span>
     </div>
   );
 }
 
-export function TinyNode({ data, selected }: NodeProps) {
-  return <div className={`${styles.tinyNode} ${stateClass(String(data.state || "pending"))} ${selected ? styles.selected : ""}`} title={String(data.label || "")} />;
-}
+// Keep WorkNode export for backward compat
+export const WorkNode = HotspotNode;
+export const TinyNode = HotspotNode;
