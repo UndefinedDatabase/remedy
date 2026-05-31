@@ -268,6 +268,40 @@ def _build_brain_view_model_json(job: Any) -> dict[str, Any]:
     return build_brain_view_model(job, events)
 
 
+def _build_story_json(job: Any) -> dict[str, Any]:
+    """Build human story model — Step 164."""
+    from packages.orchestration.ui_view_model import build_story
+    events = _load_events(job)
+    return build_story(job, events)
+
+
+def _build_human_node_detail_json(job: Any, node_id: str) -> dict[str, Any]:
+    """Build human-only node detail — Step 165."""
+    from packages.orchestration.ui_view_model import build_human_node_detail
+    events = _load_events(job)
+    return build_human_node_detail(job, events, node_id)
+
+
+def _build_layers_json() -> dict[str, Any]:
+    """Build layer definitions — Step 167."""
+    from packages.orchestration.ui_view_model import build_layers
+    return build_layers()
+
+
+def _build_diagnostics_json(job: Any) -> dict[str, Any]:
+    """Build diagnostics-only nodes — Step 167."""
+    from packages.orchestration.ui_view_model import build_diagnostics_nodes
+    events = _load_events(job)
+    return build_diagnostics_nodes(job, events)
+
+
+def _build_checklist_json(job: Any) -> dict[str, Any]:
+    """Build task checklist — Step 168."""
+    from packages.orchestration.ui_view_model import build_checklist
+    events = _load_events(job)
+    return build_checklist(job, events)
+
+
 def _build_node_detail_json(job: Any, node_id: str) -> dict[str, Any]:
     """Build compact node detail for the floating card."""
     from packages.orchestration.ui_view_model import build_node_detail
@@ -505,6 +539,9 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "events": _build_events_json,
                 "readiness": _build_readiness_json,
                 "context-budget": _build_context_budget_json,
+                "story": _build_story_json,
+                "checklist": _build_checklist_json,
+                "diagnostics": _build_diagnostics_json,
             }
             handler = handlers.get(endpoint)
             if handler:
@@ -517,9 +554,38 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 self._send_json(200, _build_events_since_json(job, cursor))
                 return
 
+        # /api/layers
+        if path == "/api/layers":
+            self._send_json(200, _build_layers_json())
+            return
+
         # /api/jobs/<job_id>/nodes/<node_id>/detail
         if (len(parts) == 7 and parts[1] == "api" and parts[2] == "jobs"
                 and parts[4] == "nodes" and parts[6] == "detail"):
+            job_id_str = parts[3]
+            node_id = parts[5]
+            job, err = _load_job(job_id_str)
+            if err:
+                self._send_json(*err)
+                return
+            self._send_json(200, _build_node_detail_json(job, node_id))
+            return
+
+        # /api/jobs/<job_id>/nodes/<node_id>/human-detail (Step 165)
+        if (len(parts) == 7 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "nodes" and parts[6] == "human-detail"):
+            job_id_str = parts[3]
+            node_id = parts[5]
+            job, err = _load_job(job_id_str)
+            if err:
+                self._send_json(*err)
+                return
+            self._send_json(200, _build_human_node_detail_json(job, node_id))
+            return
+
+        # /api/jobs/<job_id>/nodes/<node_id>/debug-detail (Step 165 — advanced)
+        if (len(parts) == 7 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "nodes" and parts[6] == "debug-detail"):
             job_id_str = parts[3]
             node_id = parts[5]
             job, err = _load_job(job_id_str)

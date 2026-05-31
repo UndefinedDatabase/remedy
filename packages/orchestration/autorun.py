@@ -348,6 +348,22 @@ def _run_fixture_builder(
     else:
         fx["tests_passed"] = False
 
+    # Create memory candidate if tests passed (standard fixture)
+    if fx.get("tests_passed"):
+        try:
+            from packages.orchestration.memory_candidates import create_candidate
+            create_candidate(
+                job, "test_command",
+                "Test command pytest passes for calc fixture",
+                confidence="high",
+            )
+        except Exception:
+            pass
+
+    # Persist final state
+    from packages.orchestration.storage import save_job as _save
+    _save(job)
+
     return fx
 
 
@@ -502,13 +518,19 @@ def _run_repair_loop_fixture(
                 # Memory candidate from repair success
                 try:
                     from packages.orchestration.memory_candidates import create_candidate
+                    from packages.orchestration.storage import save_job
                     create_candidate(
                         job, "repair_pattern",
                         "Repair loop fixed mul function after partial fix",
                         confidence="medium",
                     )
+                    save_job(job)
                 except Exception:
                     pass
+
+    # Persist final state (ensures candidates/metadata survive)
+    from packages.orchestration.storage import save_job as _save
+    _save(job)
 
     return fx
 

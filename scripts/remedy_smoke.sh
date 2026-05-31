@@ -2625,6 +2625,80 @@ print('    dev status: OK (blockers=' + str(len(d.get('remaining_blockers',[])))
 "
 
     # -------------------------------------------------------------------------
+    # 12as. UX Smoke Gate — Story API (Step 170)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12as"
+    echo "--- 12as. UX smoke gate — story API"
+    python3 -c "
+import sys, json
+sys.path.insert(0, '.')
+from uuid import UUID
+from packages.orchestration.storage import load_job
+from packages.orchestration.ui_view_model import build_story, build_checklist, build_human_node_detail, build_layers
+from packages.orchestration.timeline import load_run_events
+from packages.orchestration.data_paths import resolve_data_root
+
+job = load_job(UUID('${REPAIR_JOB_ID}'))
+data_dir = resolve_data_root()
+events = load_run_events(data_dir, job.id)
+
+# Story
+story = build_story(job, events)
+assert story['version'] == 1, 'story version != 1'
+assert story.get('headline'), 'story missing headline'
+assert story.get('plain_status'), 'story missing plain_status'
+assert 'progress' in story, 'story missing progress'
+for pk in ('completed', 'active', 'pending', 'blocked', 'needs_review'):
+    assert pk in story['progress'], 'story progress missing: ' + pk
+assert 'journey' in story, 'story missing journey'
+assert len(story['journey']) > 0, 'story journey is empty'
+
+# Check journey items have human labels
+for j in story['journey']:
+    assert j.get('title'), 'journey item missing title'
+    assert j.get('kind'), 'journey item missing kind'
+    assert j.get('state'), 'journey item missing state'
+    # No forbidden debug words
+    title_lower = j['title'].lower()
+    for fw in ('rank', 'importance', 'node_type', 'zone', 'metadata', 'edge_type'):
+        assert fw not in title_lower, 'journey title contains forbidden word: ' + fw
+
+# Checklist
+cl = build_checklist(job, events)
+assert cl['version'] == 1, 'checklist version != 1'
+assert len(cl.get('items', [])) > 0, 'checklist items empty'
+has_checked = any(i.get('checked') for i in cl['items'])
+assert has_checked, 'no checked items in checklist after repair loop'
+for item in cl['items']:
+    assert item.get('label'), 'checklist item missing label'
+    label = item['label']
+    # No bare UUID/hash as labels
+    import re
+    if re.match(r'^[0-9a-f-]{8,}$', label):
+        print('ERROR: bare ID as label: ' + label, file=sys.stderr)
+        sys.exit(1)
+
+# Layers
+layers = build_layers()
+assert layers['version'] == 1, 'layers version != 1'
+assert len(layers.get('layers', [])) >= 2, 'layers too few'
+default_layers = [l for l in layers['layers'] if l.get('default')]
+assert len(default_layers) == 1, 'expected exactly 1 default layer'
+assert default_layers[0]['id'] == 'journey', 'default layer must be journey'
+
+# Human node detail (pick first journey node)
+first_id = story['journey'][0]['node_id']
+detail = build_human_node_detail(job, events, first_id)
+assert detail.get('version') == 3, 'human detail version != 3'
+assert detail.get('title'), 'human detail missing title'
+detail_str = json.dumps(detail).lower()
+for fw in ('rank', 'importance', 'node_type', 'context coverage', 'present signals', 'missing signals', 'zone', 'connected_to', 'edge_type'):
+    assert fw not in detail_str, 'human detail contains forbidden word: ' + fw
+
+print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey items, checklist=' + str(len(cl['items'])) + ' items)')
+"
+
+    # -------------------------------------------------------------------------
     # 13. Summary
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="summary"
