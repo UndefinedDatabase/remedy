@@ -50,6 +50,7 @@ import fnmatch
 import json
 import logging
 import re
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -482,7 +483,20 @@ def _detect_constitution(job: "Job", repo_root: Path) -> list[CommandCandidate]:
                 stripped = cmd.strip()
                 if not stripped:
                     continue
-                parts = tuple(stripped.split())
+                # Reject shell control operators — prevent injection
+                _SHELL_METACHARACTERS = ("|", "&&", ";", ">>", ">", "<", "`", "$(")
+                if any(mc in stripped for mc in _SHELL_METACHARACTERS):
+                    logging.getLogger(__name__).warning(
+                        "Rejected constitution command with shell metacharacters: %s", stripped[:60]
+                    )
+                    continue
+                try:
+                    parts = tuple(shlex.split(stripped))
+                except ValueError:
+                    # Malformed quoting
+                    continue
+                if not parts:
+                    continue
                 risk = _assess_risk(parts)
                 candidates.append(CommandCandidate(
                     id=_candidate_id(purpose, "constitution", stripped[:40]),

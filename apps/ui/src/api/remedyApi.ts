@@ -227,11 +227,13 @@ export async function loadRemedyDashboard(o: ApiClientOptions): Promise<RemedyDa
     fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/story?${q}`),
     fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/events-since?cursor=0&${q}`),
   ]);
-  const brainData: Record<string, unknown> = brain.status === "fulfilled" ? brain.value : {};
-  const progressData: Record<string, unknown> = progress.status === "fulfilled" ? progress.value : {};
-  const liveData: Record<string, unknown> = live.status === "fulfilled" ? live.value : {};
-  const storyData: Record<string, unknown> = story.status === "fulfilled" ? story.value : (brainData?.story as Record<string, unknown>) || {};
-  const eventsData: Record<string, unknown> = eventsSince.status === "fulfilled" ? eventsSince.value : {};
+  // Track failed endpoints for apiHealth
+  const failedEndpoints: string[] = [];
+  const brainData: Record<string, unknown> = brain.status === "fulfilled" ? brain.value : (failedEndpoints.push("brain-view-model"), {});
+  const progressData: Record<string, unknown> = progress.status === "fulfilled" ? progress.value : (failedEndpoints.push("task-progress"), {});
+  const liveData: Record<string, unknown> = live.status === "fulfilled" ? live.value : (failedEndpoints.push("live-state"), {});
+  const storyData: Record<string, unknown> = story.status === "fulfilled" ? story.value : (failedEndpoints.push("story"), (brainData?.story as Record<string, unknown>) || {});
+  const eventsData: Record<string, unknown> = eventsSince.status === "fulfilled" ? eventsSince.value : (failedEndpoints.push("events-since"), {});
   const journey = normalizeJourney(storyData, brainData);
   const tasks = normalizeTasks(progressData, journey);
   const graph = normalizeGraph(journey, tasks);
@@ -254,11 +256,15 @@ export async function loadRemedyDashboard(o: ApiClientOptions): Promise<RemedyDa
         }
       : nextAction(),
     live: {
-      running: Boolean(liveData?.running ?? true),
-      stage: scrubUiText(liveData?.stage, "live"),
+      running: Boolean(liveData?.running ?? false),
+      stage: scrubUiText(liveData?.stage, "unknown"),
       activeTaskLabel: tasks.find(t => t.state === "current")?.label || "Waiting for next safe action",
-      latestMessage: scrubUiText(liveData?.latest_message || liveData?.latestMessage, "Project state updated."),
+      latestMessage: scrubUiText(liveData?.latest_message || liveData?.latestMessage, ""),
       latestActor: "Builder",
+    },
+    apiHealth: {
+      degraded: failedEndpoints.length > 0,
+      failedEndpoints,
     },
   };
 }

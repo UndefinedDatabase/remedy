@@ -167,46 +167,149 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
                 "latest": matching[-1].get("timestamp", ""),
             })
 
-    # Truth contract — how many fields are placeholders vs real data
+    # Truth contract
     has_real_events = len(events) > 0
     has_real_tasks = task_count > 0
     synthetic_count = 0
     if not has_real_events:
-        synthetic_count += 4  # lifecycle, latest_proof, latest_test, token_mode
+        synthetic_count += 4
+    missing_sources: list[str] = []
+    if not has_real_events:
+        missing_sources.append("events")
     if not has_real_tasks:
-        synthetic_count += 1  # task_count is zero but not "fake"
+        missing_sources.append("tasks")
+
+    # Build tasks list for dashboard
+    task_items: list[dict[str, Any]] = []
+    for idx, t in enumerate(job.tasks):
+        tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
+        task_items.append({
+            "id": str(t.id),
+            "title": t.description[:80] if t.description else f"Task {idx + 1}",
+            "status": tstat,
+            "verified": tstat == "completed",
+            "source": "real",
+            "accepted": tstat == "completed",
+            "rank": idx,
+            "related_node_id": str(t.id),
+            "short_reason": "",
+            "proof_status": "verified" if any(
+                e.get("event") == "proof_collected" and e.get("metadata", {}).get("task_id") == str(t.id)
+                for e in events
+            ) else "none",
+            "test_status": "pass" if any(
+                e.get("event") == "test_run_completed" and e.get("metadata", {}).get("exit_code") == 0
+                for e in events
+            ) else "none",
+            "is_current": tstat in ("running", "active"),
+            "is_future": tstat == "pending",
+            "is_reviewer_suggested": False,
+        })
+
+    # Build activity from events
+    activity_items: list[dict[str, Any]] = []
+    _event_actors = {
+        "task_created": "Builder", "patch_intent_created": "Builder",
+        "patch_intent_approved": "User", "patch_intent_applied": "Builder",
+        "test_run_completed": "Builder", "proof_collected": "Builder",
+        "stop_reason_recorded": "System", "human_decision_requested": "System",
+    }
+    for e in events[-8:]:
+        ev = e.get("event", "")
+        activity_items.append({
+            "id": f"evt-{e.get('timestamp', '')[:19]}",
+            "time": e.get("timestamp", ""),
+            "actor": _event_actors.get(ev, "System"),
+            "event_kind": ev,
+            "summary": ev.replace("_", " ").capitalize(),
+            "related_node_id": "",
+            "severity": "info",
+            "source": "event_ledger",
+        })
+
+    # Phases
+    phases = [
+        {"id": "planning", "title": "Planning", "status": "done" if has_real_tasks else "current", "rank": 0, "started_at": "", "completed_at": "", "current": not has_real_tasks, "source": "derived"},
+        {"id": "build", "title": "Build", "status": "current" if apply_count > 0 else "pending", "rank": 1, "started_at": "", "completed_at": "", "current": apply_count > 0, "source": "derived"},
+        {"id": "test", "title": "Test", "status": "done" if test_count > 0 else "pending", "rank": 2, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+        {"id": "review", "title": "Review", "status": "pending", "rank": 3, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+    ]
+
+    # Live state
+    running = state in ("active", "running")
+    last_event_at = events[-1].get("timestamp", "") if events else ""
+
+    # Graph summary
+    graph_node_count = task_count + artifact_count
+    graph_edge_count = max(0, graph_node_count - 1)
+
+    # Next action
+    na_label = next_action if next_action else "Review project state"
+    na_command = next_action if next_action else "remedy dev status"
+
+    generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return {
-        "version": 2,
+        "version": 3,
         "job_id": str(job.id),
+        "generated_at": generated_at,
+        "source": "server",
+        "live": {
+            "running": running,
+            "state": state,
+            "current_actor": "Builder" if running else "",
+            "current_action": "",
+            "current_task_id": "",
+            "last_event_at": last_event_at,
+            "stale": not has_real_events,
+            "source": "event_ledger",
+            "confidence": "high" if has_real_events else "none",
+        },
+        "metrics": {
+            "open": blocker_count + decision_count,
+            "planned": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "pending"),
+            "done": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed"),
+            "progress_percent": round((sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed") / max(task_count, 1)) * 100),
+            "source_counts": {"tasks": task_count, "events": len(events), "artifacts": artifact_count},
+            "computed_from": "job_tasks_and_events",
+        },
+        "tasks": task_items,
+        "activity": activity_items,
+        "phases": phases,
+        "graph_summary": {
+            "node_count": graph_node_count,
+            "edge_count": graph_edge_count,
+            "visible_node_count": graph_node_count,
+            "visible_edge_count": graph_edge_count,
+            "source": "project_brain",
+            "mode": "force_graph",
+            "full_graph_requires_explicit_toggle": False,
+        },
+        "next_action": {
+            "kind": "guidance",
+            "label": na_label,
+            "reason": "Next recommended step",
+            "requires_user": True,
+            "related_node_id": "",
+        },
+        "truth": {
+            "fallback_count": 0 if has_real_events else 1,
+            "synthetic_count": synthetic_count,
+            "demo_mode": not has_real_events,
+            "stale_sources": [] if has_real_events else ["events"],
+            "missing_sources": missing_sources,
+            "computed_from": "job_model_and_event_ledger",
+        },
+        "redaction": {
+            "policy": "safe_summaries_only",
+            "raw_content_exposed": False,
+            "unsafe_fields_blocked": True,
+        },
+        # Legacy fields (backward compat)
         "job_name": job.name,
-        "state": state,
         "task_count": task_count,
-        "artifact_count": artifact_count,
-        "apply_count": apply_count,
-        "proof_count": proof_count,
-        "test_count": test_count,
-        "revert_count": revert_count,
-        "pending_approvals": pending_approvals,
-        "blocker_count": blocker_count,
-        "decision_count": decision_count,
-        "latest_proof": latest_proof,
-        "latest_test": latest_test,
-        "token_mode": token_mode,
-        "next_action": next_action,
         "guidance": guidance_cards,
         "lifecycle": lifecycle,
-        # Truth contract fields
-        "demo_mode": not has_real_events,
-        "synthetic_count": synthetic_count,
-        "data_sources": {
-            "events": "real" if has_real_events else "none",
-            "tasks": "real" if has_real_tasks else "none",
-            "guidance": "real" if guidance_cards else "none",
-            "lifecycle": "real" if lifecycle else "none",
-            "latest_proof": "real" if latest_proof else "none",
-            "latest_test": "real" if latest_test else "none",
-        },
     }
 
 
@@ -255,15 +358,18 @@ def _build_events_json(job: Any) -> dict[str, Any]:
 
 
 def _build_readiness_json(job: Any) -> dict[str, Any]:
-    """Build safe readiness payload."""
+    """Build safe readiness payload from autonomy_readiness module."""
     try:
-        from packages.orchestration.readiness import assess_readiness, export_readiness_json
+        from packages.orchestration.autonomy_readiness import (
+            assess_job_readiness,
+            export_readiness_json,
+        )
 
         events = _load_events(job)
-        result = assess_readiness(job, events, scope="job")
-        return export_readiness_json(result)
-    except Exception:
-        return {"version": 1, "error": "readiness unavailable"}
+        report = assess_job_readiness(job, events)
+        return export_readiness_json(report)
+    except (ImportError, OSError, ValueError) as exc:
+        return {"version": 2, "error": f"readiness unavailable: {type(exc).__name__}"}
 
 
 def _build_guide_json(job: Any) -> dict[str, Any]:
@@ -474,9 +580,18 @@ def _get_frontend_dist() -> Path | None:
 
 
 def _auto_build_frontend() -> Path | None:
-    """Attempt to build the React frontend via npm. Returns dist Path or None."""
+    """Attempt to build the React frontend via npm. Returns dist Path or None.
+
+    ONLY runs if REMEDY_UI_AUTO_BUILD=1 is set explicitly.
+    Read-only UI must not mutate by default.
+    """
     import subprocess
 
+    # Opt-in only — read-only UI must not mutate the repo by default
+    if os.environ.get("REMEDY_UI_AUTO_BUILD") != "1":
+        return None
+
+    # Legacy backward compat: explicit disable still works
     if os.environ.get("REMEDY_UI_NO_AUTO_BUILD") == "1":
         return None
 
@@ -549,13 +664,13 @@ def _load_frontend(job_id: str, token: str) -> str:
     # Fail loudly
     print(
         "\n"
-        "ERROR: React UI not built and auto-build failed.\n"
+        "ERROR: React UI not built.\n"
         "\n"
         "  To fix, run:\n"
         "    cd apps/ui && npm install && npm run build\n"
         "\n"
-        "  Or set REMEDY_UI_ALLOW_LEGACY_FALLBACK=1 to use the old UI.\n"
-        "  Or set REMEDY_UI_NO_AUTO_BUILD=1 to skip auto-build.\n",
+        "  Or set REMEDY_UI_AUTO_BUILD=1 to auto-build on startup.\n"
+        "  Or set REMEDY_UI_ALLOW_LEGACY_FALLBACK=1 to use the old UI.\n",
         file=sys.stderr,
     )
     sys.exit(1)

@@ -1,20 +1,22 @@
-# Plan — Steps 247-252
+# Plan — Steps 253-260
 
 ## Goal
-Data-Honest Mission Control Contract: remove fake UI state, create truth contract.
+Contract Repair, Safety Quick Wins, Real Runtime Tests.
 
 ## Current Step
 All steps complete. Ready to commit.
 
 ## Steps
-- [x] Step 247: Repo + handoff truth hygiene (context.md, plan.md, PR gate)
-- [x] Step 248: Dashboard truth contract v1 (source_kind, synthetic_count, demo_mode)
-- [x] Step 249: No-fake UI state pass (remove DISPLAY_ROWS, honest empty states)
-- [x] Step 250: Real graph source contract (source_kind on nodes)
-- [x] Step 251: Event ledger → live activity (derive from run-log)
-- [x] Step 252: Operator summary + smoke alignment (CLI + tests)
+- [x] Step 253: Review + Test Integrity Reset (live_review, context, plan, runtime tests)
+- [x] Step 254: Readiness Endpoint Repair (fix import, real readiness)
+- [x] Step 255: Read-Only UI Startup (disable auto-build by default)
+- [x] Step 256: Degraded UI API State (no optimistic LIVE, apiHealth)
+- [x] Step 257: Exact Dashboard Truth Contract v2 (server-side truth source)
+- [x] Step 258: Generated Command Contract Repair (fix wrong commands)
+- [x] Step 259: Autonomy Level Single Source Of Truth (unify readiness + loop)
+- [x] Step 260: Mutation + Execution Safety Quick Wins (source_apply, test_runner, command parsing)
 
 ## Test Results
-- 148 tests passed (test_steps_172_201 + test_steps_208_226 + test_steps_247_252), 0 failed
+- 185 tests passed (all test suites), 0 failed
 - TypeScript: clean (no errors)
-- Build: 1.80s, 515 kB JS, 15 kB CSS
+- Build: 1.80s, clean

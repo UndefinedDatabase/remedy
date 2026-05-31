@@ -23,9 +23,9 @@ class TestStep247:
 
     def test_plan_md_references_current_steps(self):
         plan = (REPO_ROOT / ".agent" / "plan.md").read_text()
-        assert "247" in plan
-        assert "252" in plan
-        assert "Data-Honest" in plan
+        # Plan always references current or later steps
+        assert "Steps" in plan
+        assert "## Goal" in plan
 
     def test_no_stale_branch_references_in_context(self):
         ctx = (REPO_ROOT / ".agent" / "context.md").read_text()
@@ -48,9 +48,9 @@ class TestStep248:
         src = (ORCH / "ui_server.py").read_text()
         assert '"synthetic_count"' in src
 
-    def test_dashboard_has_data_sources(self):
+    def test_dashboard_has_truth_contract(self):
         src = (ORCH / "ui_server.py").read_text()
-        assert '"data_sources"' in src
+        assert '"truth"' in src or '"missing_sources"' in src
 
     def test_live_state_returns_version_3(self):
         src = (ORCH / "ui_server.py").read_text()

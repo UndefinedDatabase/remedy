@@ -149,11 +149,23 @@ def _decide(
     active_blockers: list,
     cycle_num: int,
 ) -> tuple[str, str, str, str]:
-    """Return (decision, reason, next_action, blocked_by)."""
+    """Return (decision, reason, next_action, blocked_by).
+
+    Level semantics match autonomy_readiness.LEVELS:
+      0 observe           — read-only inspection
+      1 propose           — can generate plans/artifacts
+      2 approved_apply    — can apply approved patches
+      3 test_execution    — can run discovered test commands
+      4 bounded_loop      — can run agent loop with max_cycles
+      5 revert_capable    — can revert applied patches
+      6 external_tools    — blocked (future)
+      7 provider_autonomy — blocked (future)
+    """
+    from packages.orchestration.autonomy_readiness import LEVELS as _LEVELS  # noqa: F811
 
     # Level 0: observe only
     if autonomy_level == 0:
-        return ("complete", "observe-only mode", "none", "")
+        return ("complete", "observe-only mode (level 0: observe)", "none", "")
 
     # Check if job is already complete
     if job.state == RunState.COMPLETED:
@@ -166,66 +178,63 @@ def _decide(
                 active_blockers[0].next_actions[0] if active_blockers[0].next_actions else "resolve blockers",
                 blocker_codes)
 
-    # Level 1: propose only
+    # Refuse if requested level exceeds readiness
+    if autonomy_level > readiness_level:
+        level_name = _LEVELS[min(autonomy_level, 7)]["name"] if autonomy_level <= 7 else "unknown"
+        return ("blocked", f"readiness insufficient for level {autonomy_level} ({level_name})",
+                "improve readiness signals", "readiness_insufficient")
+
+    # Level 1: propose — can generate plans/artifacts
     if autonomy_level == 1:
         pending = [t for t in (job.tasks or []) if t.status == RunState.PENDING]
         if pending:
-            return ("needs_approval", "pending tasks require approval",
+            return ("needs_approval", "pending tasks require approval (level 1: propose)",
                     "remedy job run-next <job_id>", "")
         return ("complete", "no pending tasks", "none", "")
 
-    # Level 2: approve-required generated write
+    # Level 2: approved_apply — can apply approved patches
     if autonomy_level == 2:
-        pending = [t for t in (job.tasks or []) if t.status == RunState.PENDING]
-        if pending:
-            return ("needs_approval", "generated writes require approval before apply",
-                    "remedy patch approve <job_id> <intent_id>", "")
-        return ("complete", "no pending tasks", "none", "")
-
-    # Level 3: approved apply + proof
-    if autonomy_level == 3:
-        # Check for approved but unapplied intents
         has_approved = any(
-            e.get("event") == "approval_decision"
-            and e.get("outcome") == "approved"
+            e.get("event") == "patch_intent_approved"
             for e in events
         )
         if has_approved:
-            return ("apply_approved", "approved intents ready for apply",
+            return ("apply_approved", "approved intents ready for apply (level 2: approved_apply)",
                     "remedy patch apply <job_id> <intent_id>", "")
         pending = [t for t in (job.tasks or []) if t.status == RunState.PENDING]
         if pending:
-            return ("needs_approval", "tasks pending, no approved intents",
-                    "approve pending intents", "")
-        return ("complete", "all tasks resolved", "none", "")
+            return ("needs_approval", "generated writes require approval before apply (level 2: approved_apply)",
+                    "remedy patch approve <job_id> <intent_id>", "")
+        return ("complete", "no pending tasks", "none", "")
 
-    # Level 4: test execution
-    if autonomy_level == 4:
+    # Level 3: test_execution — can run discovered test commands
+    if autonomy_level == 3:
         perms = (job.metadata or {}).get("permissions", {})
-        if perms.get("repo_test_run"):
-            return ("run_tests", "test execution allowed",
+        if perms.get("repo_test_run") == "allow":
+            return ("run_tests", "test execution allowed (level 3: test_execution)",
                     "remedy test run <job_id>", "")
-        return ("blocked", "repo_test_run permission not granted",
-                "grant repo_test_run permission", "missing_permission")
+        return ("blocked", "repo_test_run permission not granted (level 3: test_execution)",
+                "remedy job permit <job_id> repo_test_run allow", "missing_permission")
 
-    # Level 5: revert capable
+    # Level 4: bounded_loop — can run agent loop with max_cycles
+    if autonomy_level == 4:
+        pending = [t for t in (job.tasks or []) if t.status == RunState.PENDING]
+        if not pending:
+            return ("complete", "no pending tasks (level 4: bounded_loop)", "none", "")
+        return ("run_task", "bounded loop cycle (level 4: bounded_loop)",
+                "remedy job run-next <job_id>", "")
+
+    # Level 5: revert_capable — can revert applied patches
     if autonomy_level == 5:
         has_snapshot = any(e.get("event") == "snapshot_created" for e in events)
         if not has_snapshot:
-            return ("blocked", "no snapshot for revert",
+            return ("blocked", "no snapshot for revert (level 5: revert_capable)",
                     "create snapshot before revert", "missing_snapshot")
-        return ("complete", "revert capability confirmed", "none", "")
+        return ("complete", "revert capability confirmed (level 5: revert_capable)", "none", "")
 
-    # Level 6: limited loop with cycle cap
-    if autonomy_level == 6:
-        pending = [t for t in (job.tasks or []) if t.status == RunState.PENDING]
-        if not pending:
-            return ("complete", "no pending tasks", "none", "")
-        return ("run_task", "limited loop cycle",
-                "remedy job run-next <job_id>", "")
-
-    # Level 7+: future / blocked
-    return ("blocked", "autonomy level not yet supported",
+    # Levels 6-7: blocked (future only)
+    level_name = _LEVELS[min(autonomy_level, 7)]["name"] if autonomy_level <= 7 else "unknown"
+    return ("blocked", f"level {autonomy_level} ({level_name}) not yet supported",
             "reduce autonomy level", "unsupported_level")
 
 

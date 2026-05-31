@@ -220,7 +220,12 @@ def run_tests_local(
             confidence=candidate.confidence,
         )
 
-    # ── Write output file ────────────────────────────────────────────────────
+    # ── Truncate and write output file ─────────────────────────────────────
+    _MAX_OUTPUT_BYTES = 1_048_576  # 1 MiB
+    original_output_bytes = len(raw_output)
+    output_truncated = original_output_bytes > _MAX_OUTPUT_BYTES
+    if output_truncated:
+        raw_output = raw_output[:_MAX_OUTPUT_BYTES] + b"\n[remedy output truncated]\n"
     output_file.write_bytes(raw_output)
     output_bytes = len(raw_output)
     output_line_count = raw_output.count(b"\n")
