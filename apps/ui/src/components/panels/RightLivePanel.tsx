@@ -1,0 +1,19 @@
+import type { RemedyDashboard } from "../../api/types";
+import { ActivityFeedCard } from "./ActivityFeedCard";
+import { AddTaskButton } from "./AddTaskButton";
+import { AgentNowCard } from "./AgentNowCard";
+import { LiveStatusPill } from "./LiveStatusPill";
+import { TaskChecklistCard } from "./TaskChecklistCard";
+import styles from "./RightLivePanel.module.css";
+
+export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void }) {
+  return (
+    <aside className={styles.panel} data-ui="right-panel">
+      <LiveStatusPill live={dashboard.live.running} />
+      <AgentNowCard dashboard={dashboard} />
+      <ActivityFeedCard activity={dashboard.activity} />
+      <TaskChecklistCard tasks={dashboard.tasks} onSelectNode={onSelectNode} />
+      <AddTaskButton />
+    </aside>
+  );
+}

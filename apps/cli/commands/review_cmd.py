@@ -1,5 +1,7 @@
 """
 CLI handlers for ``remedy review`` commands — reviewer recommendation loop.
+
+Recommendations require human approval. Reviewer does NOT auto-append tasks.
 """
 
 from __future__ import annotations
@@ -15,17 +17,42 @@ def _cmd_review_run(args: Any) -> None:
     from packages.orchestration.reviewer import (
         run_reviewer,
         store_recommendations,
+        _fixture_reviewer,
     )
     from packages.orchestration.storage import load_job, save_job
 
     job = load_job(UUID(args.job_id))
     after_task = getattr(args, "after_task", None)
-    recs = run_reviewer(job, after_task_id=after_task)
+
+    # Use fixture reviewer if requested
+    reviewer_fn = None
+    if getattr(args, "fixture_reviewer", False):
+        reviewer_fn = _fixture_reviewer
+
+    recs = run_reviewer(job, after_task_id=after_task, reviewer_fn=reviewer_fn)
     store_recommendations(job, recs)
     save_job(job)
 
     if getattr(args, "json", False):
-        print(json.dumps({"recommendations": len(recs), "job_id": str(job.id)}))
+        out = {
+            "version": 1,
+            "job_id": str(job.id),
+            "recommendation_count": len(recs),
+            "recommendations": [
+                {
+                    "id": r.id,
+                    "title": r.title,
+                    "description": r.description,
+                    "task_type": r.task_type,
+                    "reason": r.reason,
+                    "risk": r.risk,
+                    "priority": r.priority,
+                    "status": r.status,
+                }
+                for r in recs
+            ],
+        }
+        print(json.dumps(out, indent=2))
     else:
         if recs:
             for r in recs:
@@ -43,7 +70,11 @@ def _cmd_review_list(args: Any) -> None:
     recs = list_recommendations(job)
 
     if getattr(args, "json", False):
-        print(json.dumps({"version": 1, "job_id": str(job.id), "recommendations": recs}))
+        print(json.dumps({
+            "version": 1,
+            "job_id": str(job.id),
+            "recommendations": recs,
+        }, indent=2))
     else:
         if not recs:
             print("No reviewer recommendations.")
@@ -64,9 +95,28 @@ def _cmd_review_accept(args: Any) -> None:
     ok = accept_recommendation(job, args.recommendation_id)
     if ok:
         save_job(job)
-        print(f"Accepted: {args.recommendation_id}")
+        if getattr(args, "json", False):
+            print(json.dumps({
+                "version": 1,
+                "job_id": str(job.id),
+                "recommendation_id": args.recommendation_id,
+                "accepted": True,
+                "task_appended": True,
+            }, indent=2))
+        else:
+            print(f"Accepted: {args.recommendation_id}")
     else:
-        print(f"Not found or already resolved: {args.recommendation_id}", file=sys.stderr)
+        if getattr(args, "json", False):
+            print(json.dumps({
+                "version": 1,
+                "job_id": str(job.id),
+                "recommendation_id": args.recommendation_id,
+                "accepted": False,
+                "task_appended": False,
+                "error": "not found or already resolved",
+            }, indent=2))
+        else:
+            print(f"Not found or already resolved: {args.recommendation_id}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -79,9 +129,28 @@ def _cmd_review_reject(args: Any) -> None:
     ok = reject_recommendation(job, args.recommendation_id)
     if ok:
         save_job(job)
-        print(f"Rejected: {args.recommendation_id}")
+        if getattr(args, "json", False):
+            print(json.dumps({
+                "version": 1,
+                "job_id": str(job.id),
+                "recommendation_id": args.recommendation_id,
+                "rejected": True,
+                "task_appended": False,
+            }, indent=2))
+        else:
+            print(f"Rejected: {args.recommendation_id}")
     else:
-        print(f"Not found or already resolved: {args.recommendation_id}", file=sys.stderr)
+        if getattr(args, "json", False):
+            print(json.dumps({
+                "version": 1,
+                "job_id": str(job.id),
+                "recommendation_id": args.recommendation_id,
+                "rejected": False,
+                "task_appended": False,
+                "error": "not found or already resolved",
+            }, indent=2))
+        else:
+            print(f"Not found or already resolved: {args.recommendation_id}", file=sys.stderr)
         sys.exit(1)
 
 

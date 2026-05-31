@@ -1,0 +1,33 @@
+:root {
+  --remedy-bg: #edf3fb;
+  --remedy-bg-2: #f8fbff;
+  --remedy-blue-950: #071b49;
+  --remedy-blue-900: #122f6a;
+  --remedy-blue-800: #173f8f;
+  --remedy-blue-700: #2459d6;
+  --remedy-blue-500: #4c83ff;
+  --remedy-blue-300: #8fb3ff;
+  --remedy-blue-100: #dce8ff;
+  --remedy-cyan-400: #53d6df;
+  --remedy-green-500: #4cc681;
+  --remedy-purple-400: #a28cff;
+  --remedy-orange-400: #f5a34e;
+  --remedy-line: rgba(44, 82, 150, 0.16);
+  --remedy-line-strong: rgba(44, 82, 150, 0.28);
+  --remedy-card: rgba(255, 255, 255, 0.68);
+  --remedy-card-strong: rgba(255, 255, 255, 0.86);
+  --remedy-card-soft: rgba(255, 255, 255, 0.48);
+  --remedy-text: #14254b;
+  --remedy-muted: #6e7fa3;
+  --remedy-faint: #9aa9c5;
+  --remedy-radius-xl: 28px;
+  --remedy-radius-lg: 22px;
+  --remedy-radius-md: 16px;
+  --remedy-shadow: 0 24px 70px rgba(55, 86, 138, 0.16);
+  --remedy-shadow-soft: 0 14px 36px rgba(55, 86, 138, 0.12);
+  --remedy-glow: 0 0 44px rgba(76, 131, 255, 0.38);
+  --remedy-glow-strong: 0 0 90px rgba(76, 131, 255, 0.56);
+  --remedy-left-width: 292px;
+  --remedy-right-width: 404px;
+  color-scheme: light;
+}

@@ -745,3 +745,383 @@ def build_next_action(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
         "primary_action": primary,
         "secondary_actions": secondary,
     }
+
+
+# ---------------------------------------------------------------------------
+# Step 164 — Human Story ViewModel
+# ---------------------------------------------------------------------------
+
+
+def build_story(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build human-facing story model — Step 164.
+
+    Returns headline, plain status, progress, journey items.
+    No debug words (rank, importance, node_type, zone, etc.).
+    """
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.ui_copy import (
+        human_label,
+        human_state,
+        human_subtitle,
+        is_default_visible,
+        journey_kind,
+    )
+
+    graph = build_project_brain(job, events)
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+
+    # Progress counts
+    completed = 0
+    active = 0
+    pending = 0
+    blocked = 0
+    needs_review = 0
+    for node in graph.nodes:
+        if not is_default_visible(node.type):
+            continue
+        s = node.status or ""
+        if s in ("completed", "passed", "approved"):
+            completed += 1
+        elif s in ("running", "active"):
+            active += 1
+        elif s in ("blocked", "failed"):
+            blocked += 1
+        elif s in ("needs_decision", "needs_approval"):
+            needs_review += 1
+        elif s == "pending":
+            pending += 1
+
+    # Headline
+    job_name = job.name if len(job.name) <= 60 else job.name[:57] + "..."
+    headline = f"{job_name}"
+    plain_status = human_state(state)
+
+    # Primary next action
+    next_action_data = build_next_action(job, events)
+    primary_next_action = next_action_data.get("primary_action", {})
+
+    # Journey items — only default-visible nodes, ranked left-to-right
+    journey: list[dict[str, Any]] = []
+    for node in graph.nodes:
+        if not is_default_visible(node.type):
+            continue
+        s = node.status or ""
+        if s in ("completed", "passed", "approved"):
+            j_state = "done"
+        elif s in ("running", "active"):
+            j_state = "current"
+        elif s in ("blocked", "failed"):
+            j_state = "blocked"
+        elif s in ("needs_decision", "needs_approval"):
+            j_state = "current"
+        else:
+            j_state = "pending"
+
+        title = human_label(node.type)
+        # Use node label if it's not just the type name
+        label = node.label[:60] if node.label else title
+        if label == node.type or label == node.id:
+            label = title
+
+        journey.append({
+            "id": node.id,
+            "kind": journey_kind(node.type),
+            "title": title,
+            "subtitle": label if label != title else human_subtitle(node.type),
+            "state": j_state,
+            "node_id": node.id,
+            "visible_from_zoom": _ZOOM_MAP.get(node.type, 6),
+        })
+
+    # Sort journey by rank
+    rank_order = {
+        "goal": 0, "task": 1, "change": 2, "approval": 3,
+        "apply": 4, "test": 5, "proof": 6, "review": 7,
+        "memory": 8, "decision": 9,
+    }
+    journey.sort(key=lambda j: (rank_order.get(j["kind"], 99), j["id"]))
+
+    return {
+        "version": 1,
+        "job_id": str(job.id),
+        "headline": headline,
+        "plain_status": plain_status,
+        "primary_next_action": primary_next_action,
+        "progress": {
+            "completed": completed,
+            "active": active,
+            "pending": pending,
+            "blocked": blocked,
+            "needs_review": needs_review,
+        },
+        "journey": journey,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Step 165 — Human-Only Node Detail
+# ---------------------------------------------------------------------------
+
+
+def build_human_node_detail(
+    job: Any, events: list[dict[str, Any]], node_id: str,
+) -> dict[str, Any]:
+    """Build human-only node detail — Step 165.
+
+    No rank, importance, node_type, zone, present/missing signals,
+    metadata, connected_to, edge_type in default output.
+    Advanced available separately via debug-detail.
+    """
+    from packages.orchestration.brain_detail import (
+        build_brain_node_detail,
+        export_brain_node_detail_json,
+    )
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.ui_copy import human_label, human_state, human_subtitle
+
+    graph = build_project_brain(job, events)
+    target = None
+    for node in graph.nodes:
+        if node.id == node_id:
+            target = node
+            break
+    if target is None:
+        return {"error": "node not found", "node_id": node_id}
+
+    try:
+        detail = build_brain_node_detail(job, graph, node_id, events)
+        detail_json = export_brain_node_detail_json(detail)
+    except (ValueError, KeyError):
+        detail_json = {}
+
+    title = human_label(target.type)
+    label = target.label[:60] if target.label else title
+    if label != title and label != target.type:
+        title = label
+
+    # What happened timeline
+    what_happened: list[str] = []
+    for item in detail_json.get("why_it_exists", []):
+        what_happened.append(str(item))
+
+    # Evidence (safe summaries only)
+    evidence: list[str] = []
+    for item in detail_json.get("evidence", []):
+        s = str(item)
+        # Strip internal key-value pairs that expose debug info
+        if ":" in s and s.split(":")[0].strip() in (
+            "status", "kind", "owner", "passed", "outcome",
+        ):
+            evidence.append(s)
+
+    # Next action
+    next_action: dict[str, Any] = {}
+    actions = detail_json.get("next_actions", [])
+    if actions:
+        next_action = {
+            "label": str(actions[0]),
+            "command": str(actions[0]) if "remedy" in str(actions[0]) else "",
+        }
+
+    return {
+        "version": 3,
+        "job_id": str(job.id),
+        "node_id": node_id,
+        "title": title,
+        "state": human_state(target.status),
+        "summary": detail_json.get("explanation", human_subtitle(target.type)),
+        "why_it_matters": human_subtitle(target.type),
+        "what_happened": what_happened[:5],
+        "evidence": evidence[:5],
+        "next_action": next_action,
+        "advanced_available": True,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Step 167 — Diagnostics Layers
+# ---------------------------------------------------------------------------
+
+
+def build_layers() -> dict[str, Any]:
+    """Return layer definitions — Step 167."""
+    from packages.orchestration.ui_copy import LAYERS
+    return {
+        "version": 1,
+        "layers": LAYERS,
+    }
+
+
+def build_diagnostics_nodes(
+    job: Any, events: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Return diagnostics-only nodes — Step 167."""
+    from packages.orchestration.project_brain import build_project_brain
+    from packages.orchestration.ui_copy import human_label, is_diagnostics_only
+
+    graph = build_project_brain(job, events)
+    diag_nodes = []
+    for node in graph.nodes:
+        if is_diagnostics_only(node.type):
+            diag_nodes.append({
+                "id": node.id,
+                "title": human_label(node.type),
+                "type": node.type,
+                "status": node.status or "",
+            })
+    return {
+        "version": 1,
+        "job_id": str(job.id),
+        "layer": "diagnostics",
+        "nodes": diag_nodes,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Step 168 — Task Ribbon Checklist
+# ---------------------------------------------------------------------------
+
+
+def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build task ribbon checklist — Step 168.
+
+    Human-readable labels, no bare UUIDs, proper states.
+    """
+    from packages.orchestration.ui_copy import human_label, human_state, journey_kind
+
+    items: list[dict[str, Any]] = []
+
+    # Goal item
+    job_name = job.name if len(job.name) <= 60 else job.name[:57] + "..."
+    state_val = job.state.value if hasattr(job.state, "value") else str(job.state)
+    items.append({
+        "id": str(job.id),
+        "label": job_name,
+        "state": "done" if state_val == "completed" else "current",
+        "kind": "goal",
+        "checked": state_val == "completed",
+        "muted": False,
+        "node_id": str(job.id),
+        "next_action": {},
+    })
+
+    # Task items
+    for task in job.tasks:
+        t_status = task.status.value if hasattr(task.status, "value") else str(task.status)
+        desc = task.description if len(task.description) <= 50 else task.description[:47] + "..."
+
+        if t_status == "completed":
+            cl_state = "done"
+            checked = True
+        elif t_status in ("running", "active"):
+            cl_state = "current"
+            checked = False
+        elif t_status in ("blocked", "failed"):
+            cl_state = "blocked"
+            checked = False
+        else:
+            cl_state = "pending"
+            checked = False
+
+        # Reviewer-suggested?
+        source = (getattr(task, "inputs", None) or {}).get("source", "planner")
+        if source == "reviewer" and t_status == "pending":
+            cl_state = "suggested"
+
+        items.append({
+            "id": str(task.id),
+            "label": desc if desc and desc != str(task.id) else human_label("task"),
+            "state": cl_state,
+            "kind": "task",
+            "checked": checked,
+            "muted": cl_state in ("pending", "suggested"),
+            "node_id": str(task.id),
+            "next_action": {},
+        })
+
+    # Patch intents / approvals from events
+    for e in events:
+        etype = e.get("event", "")
+        if etype == "structured_patch_intent_created":
+            items.append({
+                "id": f"change-{len(items)}",
+                "label": "Proposed change",
+                "state": "done",
+                "kind": "change",
+                "checked": True,
+                "muted": False,
+                "node_id": "",
+                "next_action": {},
+            })
+        elif etype == "source_patch_applied":
+            items.append({
+                "id": f"apply-{len(items)}",
+                "label": "Applied change",
+                "state": "done",
+                "kind": "apply",
+                "checked": True,
+                "muted": False,
+                "node_id": "",
+                "next_action": {},
+            })
+        elif etype == "test_run_completed":
+            meta = e.get("metadata", {})
+            passed = meta.get("exit_code") == 0 or meta.get("passed")
+            items.append({
+                "id": f"test-{len(items)}",
+                "label": "Tests passed" if passed else "Tests failed",
+                "state": "done" if passed else "blocked",
+                "kind": "test",
+                "checked": bool(passed),
+                "muted": False,
+                "node_id": "",
+                "next_action": {},
+            })
+        elif etype == "proof_collected":
+            items.append({
+                "id": f"proof-{len(items)}",
+                "label": "Proof collected",
+                "state": "done",
+                "kind": "proof",
+                "checked": True,
+                "muted": False,
+                "node_id": "",
+                "next_action": {},
+            })
+
+    # Memory candidates from job metadata
+    candidates = (job.metadata or {}).get("memory_candidates", [])
+    for c in candidates:
+        items.append({
+            "id": c.get("id", f"mem-{len(items)}"),
+            "label": f"Memory: {c.get('safe_summary', 'candidate')[:40]}",
+            "state": "current" if c.get("status") == "pending" else "done",
+            "kind": "memory",
+            "checked": c.get("status") in ("approved", "rejected"),
+            "muted": c.get("status") != "pending",
+            "node_id": "",
+            "next_action": {
+                "label": "Review candidate",
+                "command": f"remedy memory candidates {str(job.id)[:8]}",
+            } if c.get("status") == "pending" else {},
+        })
+
+    # Reviewer recommendations
+    recs = (job.metadata or {}).get("reviewer_recommendations", [])
+    for r in recs:
+        items.append({
+            "id": r.get("id", f"review-{len(items)}"),
+            "label": f"Review: {r.get('safe_summary', 'suggestion')[:40]}",
+            "state": "suggested" if r.get("status") == "pending" else "done",
+            "kind": "review",
+            "checked": r.get("status") in ("accepted", "rejected"),
+            "muted": r.get("status") != "pending",
+            "node_id": "",
+            "next_action": {},
+        })
+
+    return {
+        "version": 1,
+        "job_id": str(job.id),
+        "items": items,
+    }

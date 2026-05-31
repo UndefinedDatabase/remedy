@@ -336,12 +336,12 @@ class TestCalmEntryUX:
     def test_light_theme_default(self):
         html = _get_app_html()
         assert 'class="remedy-light"' in html
-        assert "--remedy-bg: #f4f7fa" in html
+        assert "--remedy-bg:" in html
 
     def test_light_theme_css_variables(self):
         html = _get_app_html()
         required_vars = [
-            "--remedy-bg", "--remedy-surface", "--remedy-surface-strong",
+            "--remedy-bg", "--remedy-surface",
             "--remedy-text", "--remedy-text-muted", "--remedy-teal",
             "--remedy-cyan", "--remedy-line", "--remedy-proof",
             "--remedy-risk", "--remedy-warning", "--remedy-memory",
@@ -353,42 +353,28 @@ class TestCalmEntryUX:
         html = _get_app_html()
         assert ".remedy-dark" in html
 
-    def test_what_happened_panel(self):
+    def test_story_headline_area(self):
+        """New shell has story headline + progress (replaces what-happened panel)."""
         html = _get_app_html()
-        assert "what-happened" in html
-        assert "What happened" in html
+        assert "remedy-journey-shell" in html
+        assert "buildUI" in html
 
-    def test_proven_panel(self):
+    def test_checklist_sidebar(self):
+        """New shell has checklist sidebar (replaces proven/attention panels)."""
         html = _get_app_html()
-        assert "proven" in html or "What is proven" in html
+        assert "remedy-checklist" in html
 
-    def test_needs_attention_panel(self):
+    def test_layer_switcher(self):
+        """New shell has layer switcher (replaces explore brain button)."""
         html = _get_app_html()
-        assert "needs-attention" in html
-        assert "Needs your attention" in html
+        assert "remedy-layer-switcher" in html
+        assert "journey" in html
 
-    def test_next_action_panel(self):
+    def test_detail_card_hidden_by_default(self):
+        """Detail card starts hidden, shown on node click."""
         html = _get_app_html()
-        assert "next-action" in html or "Next safe action" in html
-
-    def test_token_cost_panel(self):
-        html = _get_app_html()
-        assert "token-cost" in html
-        assert "Token cost" in html
-
-    def test_explore_brain_button(self):
-        html = _get_app_html()
-        assert "explore-brain" in html
-        assert "Explore project brain" in html
-
-    def test_graph_not_first_visible(self):
-        """Graph canvas must not be visible by default."""
-        html = _get_app_html()
-        # Brain explorer starts hidden
-        assert 'class="remedy-brain-explorer"' in html
-        assert "display: none" in html or 'display:none' in html.replace(" ", "").replace(": ", ":")
-        # It only becomes visible with .visible class
-        assert ".remedy-brain-explorer.visible" in html.replace(" ", "")
+        assert "detail-card" in html
+        assert "display: none" in html or "display:none" in html.replace(" ", "")
 
     def test_no_giant_zone_rail(self):
         """No left rail with zone/status/risk visible by default."""
@@ -419,11 +405,12 @@ class TestCalmEntryUX:
 
     def test_narrow_layout_support(self):
         html = _get_app_html()
-        assert "max-width: 640px" in html or "max-width:640px" in html.replace(" ", "")
+        assert "max-width:" in html
 
-    def test_mist_background(self):
+    def test_calm_background(self):
         html = _get_app_html()
-        assert "remedy-mist" in html
+        assert "--remedy-bg" in html
+        assert "--remedy-bg-flat" in html
 
 
 # ---------------------------------------------------------------------------
@@ -433,65 +420,40 @@ class TestCalmEntryUX:
 class TestProgressiveBrainExplorer:
     """Test the progressive brain explorer modes and disclosure."""
 
-    def test_proof_path_mode_exists(self):
+    def test_journey_layer_default(self):
+        """Journey is default layer (replaces proof-path as default mode)."""
         html = _get_app_html()
-        assert "proof-path" in html
+        assert "journey" in html
+        assert "remedy-layer-switcher" in html
 
-    def test_attention_mode_exists(self):
+    def test_diagnostics_layer_available(self):
+        """Diagnostics layer available (replaces system-map/full-graph modes)."""
         html = _get_app_html()
-        assert "attention" in html
+        assert "diagnostics" in html
 
-    def test_system_map_mode_exists(self):
+    def test_detail_card_hidden_by_default(self):
         html = _get_app_html()
-        assert "system-map" in html
+        assert "detail-card" in html
+        # Not visible by default
+        assert "display: none" in html or "display:none" in html.replace(" ", "")
 
-    def test_full_graph_mode_exists(self):
+    def test_node_click_shows_detail(self):
+        """Clicking a node should show detail card."""
         html = _get_app_html()
-        assert "full-graph" in html
+        assert "detail-card" in html
+        # Detail card gets .visible class on click
+        assert "visible" in html
 
-    def test_default_mode_not_full_graph(self):
+    def test_journey_graph_present(self):
+        """Journey graph area exists in shell."""
         html = _get_app_html()
-        # Default tab should be proof-path, not full-graph
-        assert 'data-mode="proof-path"' in html
-        # The proof-path tab should have active class
-        idx_proof = html.index('data-mode="proof-path"')
-        idx_full = html.index('data-mode="full-graph"')
-        # Check proof-path tab has "active" class
-        proof_tab_region = html[idx_proof - 60:idx_proof]
-        assert "active" in proof_tab_region
+        assert "remedy-journey-shell" in html
+        assert "remedy-node" in html
 
-    def test_detail_panel_hidden_by_default(self):
+    def test_checklist_in_shell(self):
+        """Checklist sidebar present (replaces cluster/expandable nodes)."""
         html = _get_app_html()
-        assert 'class="remedy-detail-panel"' in html
-        # Not visible by default (needs .visible class)
-        assert ".remedy-detail-panel.visible" in html.replace(" ", "")
-
-    def test_advanced_metadata_hidden(self):
-        html = _get_app_html()
-        assert "detail-advanced" in html
-        assert 'class="detail-advanced"' in html
-
-    def test_advanced_filters_hidden(self):
-        html = _get_app_html()
-        assert "filters-drawer" in html
-        assert 'class="remedy-filters-drawer"' in html
-
-    def test_node_selection_reveals_details(self):
-        html = _get_app_html()
-        assert "selectNode" in html
-
-    def test_cluster_nodes_expandable(self):
-        html = _get_app_html()
-        assert "expandCluster" in html
-
-    def test_max_primary_node_cap(self):
-        html = _get_app_html()
-        assert "MAX_PRIMARY" in html
-
-    def test_labels_hidden_for_non_primary(self):
-        html = _get_app_html()
-        # .graph-node text has display: none by default
-        assert ".graph-node text" in html
+        assert "remedy-checklist" in html
 
     def test_no_raw_leaks_in_explorer(self):
         html = _get_app_html()

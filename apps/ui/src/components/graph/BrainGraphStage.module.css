@@ -1,0 +1,33 @@
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 47% 50%, rgba(255,255,255,.72), transparent 20%),
+    radial-gradient(circle at 47% 49%, rgba(76,131,255,.18), transparent 42%);
+}
+
+.haloA {
+  position: absolute;
+  left: 150px;
+  top: 40px;
+  width: 680px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.85), rgba(111,156,255,.16) 42%, transparent 72%);
+  filter: blur(16px);
+  pointer-events: none;
+}
+
+.haloB {
+  position: absolute;
+  left: 330px;
+  top: 170px;
+  width: 280px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(76,131,255,.22), transparent 72%);
+  filter: blur(20px);
+  pointer-events: none;
+}

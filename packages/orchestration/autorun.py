@@ -121,10 +121,14 @@ def run_autorun(
     autonomy_level: int = 2,
     max_cycles: int = 3,
     enable_ui: bool = False,
-    fixture_builder: bool = False,
+    fixture_builder: bool | str = False,
     json_output: bool = False,
 ) -> AutorunResult:
-    """Run the autorun loop. Creates job, injects context, runs builder, etc."""
+    """Run the autorun loop. Creates job, injects context, runs builder, etc.
+
+    ``fixture_builder`` can be True (standard fixture) or "repair-loop"
+    (two-cycle repair loop fixture).
+    """
     import sys
 
     from packages.orchestration.data_paths import resolve_data_root
@@ -163,25 +167,33 @@ def run_autorun(
             inject_source_context(job, repo, data_dir=str(data_dir))
             result.stage = "context_injected"
         except ImportError:
-            pass  # Module not yet created — will be in Step 97
+            pass
 
     # Phase 4: Run builder (if autonomy >= 2)
     if autonomy_level >= 2:
-        if fixture_builder:
+        if fixture_builder == "repair-loop":
+            fx_result = _run_repair_loop_fixture(
+                job, goal, repo, data_dir, autonomy_level, max_cycles,
+            )
+            result.stage = fx_result.get("stage", "builder_complete")
+            result.cycles_run = fx_result.get("cycles_run", 1)
+            for key in ("source_context_injected", "structured_patch_created",
+                        "approval_required", "source_patch_applied", "tests_passed",
+                        "repair_context_created", "repair_loop_used"):
+                if key in fx_result:
+                    result.events.append({"event": key, "value": str(fx_result[key])})
+        elif fixture_builder:
             fx_result = _run_fixture_builder(job, goal, repo, data_dir, autonomy_level)
             result.stage = fx_result.get("stage", "builder_complete")
-            # Merge fixture result into autorun result events
             for key in ("source_context_injected", "structured_patch_created",
                         "approval_required", "source_patch_applied", "tests_passed"):
                 if key in fx_result:
                     result.events.append({"event": key, "value": str(fx_result[key])})
         else:
-            # Real builder would go here — requires worker adapter
             result.stage = "builder_skipped_no_worker"
 
     # Phase 5: Approval gate (if autonomy >= 3)
     if autonomy_level >= 3 and result.stage == "builder_complete":
-        # Check for pending approvals
         result.stage = "approval_pending"
 
     # Phase 6: Start UI if requested
@@ -191,7 +203,8 @@ def run_autorun(
         result.ui_url = f"http://127.0.0.1:8787/?job={result.job_id}&token={token}"
         print(f"\nRemedy UI: {result.ui_url}\n", file=sys.stderr)
 
-    result.cycles_run = 1
+    if not result.cycles_run:
+        result.cycles_run = 1
     return result
 
 
@@ -334,6 +347,190 @@ def _run_fixture_builder(
             fx["tests_passed"] = False
     else:
         fx["tests_passed"] = False
+
+    # Create memory candidate if tests passed (standard fixture)
+    if fx.get("tests_passed"):
+        try:
+            from packages.orchestration.memory_candidates import create_candidate
+            create_candidate(
+                job, "test_command",
+                "Test command pytest passes for calc fixture",
+                confidence="high",
+            )
+        except Exception:
+            pass
+
+    # Persist final state
+    from packages.orchestration.storage import save_job as _save
+    _save(job)
+
+    return fx
+
+
+def _run_repair_loop_fixture(
+    job: Any, goal: str, repo: Path, data_dir: str | Path,
+    autonomy_level: int, max_cycles: int,
+) -> dict[str, Any]:
+    """Repair-loop fixture — two-cycle deterministic E2E.
+
+    Cycle 1: Apply wrong-ish fix → tests fail → repair_context_created.
+    Cycle 2: Apply correct fix → tests pass → proof_collected.
+    """
+    from packages.orchestration.source_apply import apply_structured_patch
+    from packages.orchestration.structured_patch import FileOp, StructuredPatch
+    from packages.orchestration.repair_context import build_repair_context
+    import subprocess, sys as _sys
+
+    fx: dict[str, Any] = {"stage": "builder_complete", "cycles_run": 0}
+
+    # Setup: wrong calc.py + test
+    (repo / "tests").mkdir(parents=True, exist_ok=True)
+    test_path = repo / "tests" / "test_calc.py"
+    src_path = repo / "calc.py"
+    wrong_content = (
+        "def add(a: int, b: int) -> int:\n"
+        "    return a - b  # BUG\n"
+        "\n\ndef mul(a: int, b: int) -> int:\n"
+        "    return a + b  # BUG\n"
+    )
+    src_path.write_text(wrong_content, encoding="utf-8")
+    test_content = (
+        "from calc import add, mul\n\n"
+        "def test_add():\n    assert add(2, 3) == 5\n\n"
+        "def test_mul():\n    assert mul(4, 5) == 20\n"
+    )
+    test_path.write_text(test_content, encoding="utf-8")
+
+    # Source context
+    try:
+        from packages.orchestration.source_context import inject_source_context
+        inject_source_context(job, repo, data_dir=str(data_dir))
+        fx["source_context_injected"] = True
+    except Exception:
+        fx["source_context_injected"] = False
+
+    # Cycle 1: partially wrong fix (add correct, mul still wrong)
+    cycle1_content = (
+        "def add(a: int, b: int) -> int:\n"
+        "    return a + b\n"
+        "\n\ndef mul(a: int, b: int) -> int:\n"
+        "    return a + b  # still wrong\n"
+    )
+    patch1 = StructuredPatch(
+        intent_kind="file_ops",
+        file_ops=(FileOp(
+            path="calc.py", action="modify", language="python",
+            content=cycle1_content, risk="low",
+            summary="Partial fix: add correct, mul still wrong",
+        ),),
+        target_paths=("calc.py",), risk="low",
+        applicability="applicable", requires_approval=True,
+    )
+    _emit(data_dir, job.id, "structured_patch_intent_created", {
+        "intent_kind": "file_ops", "target_path_count": 1,
+        "risk": "low", "cycle": 1,
+    })
+    fx["structured_patch_created"] = True
+    fx["approval_required"] = True
+
+    if autonomy_level >= 3:
+        apply_structured_patch(patch1, repo, data_dir=str(data_dir), job_id=job.id)
+        fx["source_patch_applied"] = True
+
+    if autonomy_level >= 4 and max_cycles >= 1:
+        fx["cycles_run"] = 1
+        proc = subprocess.run(
+            [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
+             "--tb=short", "--no-header"],
+            capture_output=True, text=True, timeout=30, cwd=str(repo),
+        )
+        passed = proc.returncode == 0
+        test_event = {"event": "test_run_completed", "metadata": {
+            "exit_code": proc.returncode, "passed": passed, "fixture": True, "cycle": 1,
+        }}
+        _emit(data_dir, job.id, "test_run_completed", test_event["metadata"])
+        fx["tests_passed"] = passed
+
+        if not passed and autonomy_level >= 6 and max_cycles >= 2:
+            # Repair context
+            from packages.orchestration.timeline import load_run_events
+            events = load_run_events(data_dir, job.id)
+            rc = build_repair_context(job.id, test_event, events)
+            _emit(data_dir, job.id, "repair_context_created", {
+                "test_run_id": rc["test_run_id"],
+                "related_apply_id": rc["related_apply_id"],
+                "failure_kind": rc["failure_kind"],
+                "affected_file_count": len(rc["affected_files"]),
+                "estimated_tokens": rc["estimated_tokens"],
+                "truncated": rc["truncated"],
+            })
+            fx["repair_context_created"] = True
+            fx["repair_loop_used"] = True
+
+            # Cycle 2: correct fix
+            fix_content = (
+                "def add(a: int, b: int) -> int:\n"
+                "    return a + b\n"
+                "\n\ndef mul(a: int, b: int) -> int:\n"
+                "    return a * b\n"
+            )
+            patch2 = StructuredPatch(
+                intent_kind="file_ops",
+                file_ops=(FileOp(
+                    path="calc.py", action="modify", language="python",
+                    content=fix_content, risk="low",
+                    summary="Repair fix: correct mul",
+                ),),
+                target_paths=("calc.py",), risk="low",
+                applicability="applicable", requires_approval=True,
+            )
+            _emit(data_dir, job.id, "structured_patch_intent_created", {
+                "intent_kind": "file_ops", "target_path_count": 1,
+                "risk": "low", "cycle": 2,
+            })
+            apply_structured_patch(patch2, repo, data_dir=str(data_dir), job_id=job.id)
+
+            proc2 = subprocess.run(
+                [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
+                 "--tb=short", "--no-header"],
+                capture_output=True, text=True, timeout=30, cwd=str(repo),
+            )
+            passed2 = proc2.returncode == 0
+            _emit(data_dir, job.id, "test_run_completed", {
+                "exit_code": proc2.returncode, "passed": passed2,
+                "fixture": True, "cycle": 2,
+            })
+            fx["tests_passed"] = passed2
+            fx["cycles_run"] = 2
+
+            if passed2:
+                import hashlib
+                proof_hash = hashlib.sha256(
+                    (fix_content + test_content).encode()
+                ).hexdigest()[:16]
+                _emit(data_dir, job.id, "proof_collected", {
+                    "content_hash": proof_hash,
+                    "source": "repair_loop_fixture",
+                    "test_passed": True,
+                })
+                fx["stage"] = "completed"
+
+                # Memory candidate from repair success
+                try:
+                    from packages.orchestration.memory_candidates import create_candidate
+                    from packages.orchestration.storage import save_job
+                    create_candidate(
+                        job, "repair_pattern",
+                        "Repair loop fixed mul function after partial fix",
+                        confidence="medium",
+                    )
+                    save_job(job)
+                except Exception:
+                    pass
+
+    # Persist final state (ensures candidates/metadata survive)
+    from packages.orchestration.storage import save_job as _save
+    _save(job)
 
     return fx
 

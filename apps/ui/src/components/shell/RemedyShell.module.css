@@ -1,0 +1,82 @@
+.viewport {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255,255,255,.98) 0 18%, rgba(238,245,255,.92) 38%, rgba(225,235,248,.96) 100%),
+    linear-gradient(135deg, #f9fcff 0%, #edf4fc 52%, #e6eef8 100%);
+}
+
+.frame {
+  width: min(100vw, 1678px);
+  height: min(100vh, 926px);
+  aspect-ratio: 1678 / 926;
+  position: relative;
+  overflow: hidden;
+  color: var(--remedy-text);
+  background:
+    radial-gradient(circle at 51% 45%, rgba(255,255,255,.92), transparent 30%),
+    radial-gradient(circle at 47% 50%, rgba(103,151,255,.16), transparent 42%),
+    linear-gradient(135deg, rgba(249,252,255,.9), rgba(232,241,252,.9));
+}
+
+.leftRail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 292px;
+  height: 926px;
+  z-index: 3;
+}
+
+.centerStage {
+  position: absolute;
+  left: 292px;
+  top: 0;
+  width: 976px;
+  height: 926px;
+  z-index: 1;
+}
+
+.topMetricsSlot {
+  position: absolute;
+  left: 0;
+  top: 24px;
+  width: 976px;
+  height: 90px;
+}
+
+.commandSlot {
+  position: absolute;
+  left: 0;
+  top: 132px;
+  width: 976px;
+  height: 56px;
+}
+
+.graphSlot {
+  position: absolute;
+  left: 0;
+  top: 190px;
+  width: 976px;
+  height: 552px;
+}
+
+.timelineSlot {
+  position: absolute;
+  left: -142px;
+  top: 758px;
+  width: 1116px;
+  height: 144px;
+}
+
+.rightPanelSlot {
+  position: absolute;
+  left: 1286px;
+  top: 24px;
+  width: 350px;
+  height: 832px;
+  z-index: 4;
+}

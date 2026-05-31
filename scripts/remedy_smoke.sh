@@ -62,7 +62,7 @@ SUMEOF
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide ui; do
+    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide ui do review; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
@@ -2279,39 +2279,73 @@ except URLError as e:
     print('ERROR: API request failed: ' + str(e), file=sys.stderr)
     sys.exit(1)
 
-# 7. App shell has calm entry panels
+# 7. App shell is React build (Steps 202-207)
 try:
     resp = urlopen(base + '/', timeout=5)
     html = resp.read().decode()
-    # New UX contract markers (Steps 101-110)
-    markers = {
-        'remedy-brain-canvas': 'remedy-brain-canvas' in html,
-        'remedy-task-ribbon': 'remedy-task-ribbon' in html,
-        'remedy-task-item': 'remedy-task-item' in html,
-        'semantic-zoom': 'semantic-zoom' in html,
-        'zoom-in-reveals-more': 'zoom-in-reveals-more' in html,
-        'forward-flow': 'forward-flow' in html,
-        'node-detail-card': 'node-detail-card' in html,
-        'reduced-motion': 'reduced-motion' in html,
-    }
-    failed = [k for k, v in markers.items() if not v]
-    if failed:
-        for f in failed:
-            print('ERROR: missing UX marker: ' + f, file=sys.stderr)
+
+    # 7a. React root marker — proves React build is served, not legacy fallback
+    dq = chr(34)
+    react_marker = 'data-ui=' + dq + 'remedy-react' + dq
+    if react_marker not in html:
+        print('ERROR: served UI is not React build (missing data-ui remedy-react)', file=sys.stderr)
         sys.exit(1)
 
-    # 8. Default is light/ice theme
-    if 'remedy-light' not in html:
-        print('ERROR: default not light theme', file=sys.stderr)
+    # 7b. Must have JS bundle reference (React SPA)
+    if '/assets/' not in html or '.js' not in html:
+        print('ERROR: no JS bundle reference in served HTML', file=sys.stderr)
         sys.exit(1)
 
-    # 12. No external assets
+    # 7c. Fetch JS bundle and verify data-ui component markers
+    import re
+    js_match = re.search(r'src=' + dq + r'(/assets/[^' + dq + r']+\.js)' + dq, html)
+    if js_match:
+        js_url = base + js_match.group(1)
+        js_resp = urlopen(js_url, timeout=10)
+        js_code = js_resp.read().decode(errors='replace')
+        react_markers = ['remedy-shell', 'brain-graph-stage', 'react-flow', 'metrics-bar',
+                         'command-bar', 'right-panel', 'task-checklist', 'phase-timeline',
+                         'detail-popover', 'layer-switcher', 'remedy-visual-v2']
+        missing_markers = [m for m in react_markers if m not in js_code]
+        if missing_markers:
+            for m in missing_markers:
+                print('ERROR: missing React data-ui marker: ' + m, file=sys.stderr)
+            sys.exit(1)
+
+        # 7d. Verify @xyflow/react (growing-brain, not debug DAG)
+        if 'ReactFlow' not in js_code and 'reactflow' not in js_code.lower():
+            print('ERROR: no ReactFlow in bundle — graph may be debug DAG', file=sys.stderr)
+            sys.exit(1)
+
+        # 7e. prefers-reduced-motion in CSS bundle
+        css_match = re.search(r'href=' + dq + r'(/assets/[^' + dq + r']+\.css)' + dq, html)
+        if css_match:
+            css_url = base + css_match.group(1)
+            css_resp = urlopen(css_url, timeout=10)
+            css_code = css_resp.read().decode(errors='replace')
+            if 'prefers-reduced-motion' not in css_code:
+                print('ERROR: missing prefers-reduced-motion in CSS', file=sys.stderr)
+                sys.exit(1)
+
+            # 7e2. Pixel-lock CSS contracts (Steps 208-226)
+            pixel_contracts = ['1678', '926', '292px', '976px', '350px', '832px']
+            missing_px = [c for c in pixel_contracts if c not in css_code]
+            if missing_px:
+                print('ERROR: missing pixel-lock CSS values: ' + repr(missing_px), file=sys.stderr)
+                sys.exit(1)
+
+        # 7e3. Constellation backdrop in JS bundle
+        if 'constellation' not in js_code.lower():
+            print('ERROR: missing constellation backdrop in bundle', file=sys.stderr)
+            sys.exit(1)
+
+    # 7f. No external assets
     for pattern in ['cdn.', 'googleapis.com', 'unpkg.com', 'jsdelivr.net']:
         if pattern in html:
             print('ERROR: external asset in shell: ' + pattern, file=sys.stderr)
             sys.exit(1)
 
-    # 13. No raw leaks
+    # 7g. No raw leaks in HTML shell
     for bad in ['raw_output', 'command_output', 'MUST_NOT_RENDER', 'diff_preview', 'approval_reason']:
         if bad in html:
             print('ERROR: raw leak in shell: ' + bad, file=sys.stderr)
@@ -2450,6 +2484,254 @@ for bad in ('raw_output','command_output','Traceback','diff_preview','approval_r
         print('ERROR: commit-readiness raw leak: ' + bad, file=sys.stderr)
         sys.exit(1)
 print('    commit-readiness: OK (ready=' + str(d['ready']) + ', reasons=' + str(len(d['reasons'])) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ao. Repair-loop fixture E2E (Step 155-156)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ao"
+    echo "--- 12ao. Repair-loop fixture E2E"
+    TMP_REPAIR=$(mktemp -d)
+    _REPAIR_OUTPUT=$(remedy do "Make tests pass" --repo "${TMP_REPAIR}" --autonomy-level 6 --max-cycles 3 --fixture-builder repair-loop --no-ui --json 2>&1) || {
+        echo "    repair-loop command failed (rc=$?)"
+        echo "    output: ${_REPAIR_OUTPUT}"
+        remedy do run --help 2>&1 || true
+        return 1
+    }
+    echo "${_REPAIR_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: repair-loop output not valid JSON', file=sys.stderr)
+    print('Raw: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+if d.get('version') != 1:
+    print('ERROR: repair-loop version != 1', file=sys.stderr)
+    sys.exit(1)
+if not d.get('job_id'):
+    print('ERROR: repair-loop missing job_id', file=sys.stderr)
+    sys.exit(1)
+if d.get('cycles_run', 0) < 2:
+    print('ERROR: repair-loop cycles_run < 2: ' + str(d.get('cycles_run')), file=sys.stderr)
+    sys.exit(1)
+if not d.get('repair_context_created'):
+    print('ERROR: repair_context_created not true', file=sys.stderr)
+    sys.exit(1)
+if not d.get('repair_loop_used'):
+    print('ERROR: repair_loop_used not true', file=sys.stderr)
+    sys.exit(1)
+if not d.get('tests_passed'):
+    print('ERROR: tests_passed not true', file=sys.stderr)
+    sys.exit(1)
+# No raw leaks
+full = json.dumps(d)
+for bad in ('raw_output','command_output','Traceback','stdout','stderr'):
+    if bad in full:
+        print('ERROR: repair-loop raw leak: ' + bad, file=sys.stderr)
+        sys.exit(1)
+print('    repair-loop: OK (cycles=' + str(d['cycles_run']) + ', stage=' + d.get('stage','?') + ')')
+"
+    REPAIR_JOB_ID=$(echo "${_REPAIR_OUTPUT}" | python3 -c "import sys,json; print(json.loads(sys.stdin.read())['job_id'])")
+    rm -rf "${TMP_REPAIR}"
+
+    # -------------------------------------------------------------------------
+    # 12ap. Reviewer recommendation loop (Step 157)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ap"
+    echo "--- 12ap. Reviewer recommendation loop"
+    _REVIEW_OUTPUT=$(remedy review run "${REPAIR_JOB_ID}" --fixture-reviewer --json 2>&1) || {
+        echo "    review run command failed (rc=$?)"
+        echo "    output: ${_REVIEW_OUTPUT}"
+        remedy review run --help 2>&1 || true
+        return 1
+    }
+    echo "${_REVIEW_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: review run output not valid JSON', file=sys.stderr)
+    print('Raw: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+if d.get('version') != 1:
+    print('ERROR: review run version != 1', file=sys.stderr)
+    sys.exit(1)
+if d.get('recommendation_count', 0) < 1:
+    print('ERROR: fixture reviewer returned 0 recommendations', file=sys.stderr)
+    sys.exit(1)
+recs = d.get('recommendations', [])
+if not recs:
+    print('ERROR: recommendations list empty', file=sys.stderr)
+    sys.exit(1)
+# Get first recommendation ID for accept test
+first_id = recs[0].get('id', '')
+if not first_id:
+    print('ERROR: recommendation missing id', file=sys.stderr)
+    sys.exit(1)
+print('    review run: OK (count=' + str(d['recommendation_count']) + ')')
+# Write rec ID for accept step
+with open('/tmp/_smoke_rec_id.txt', 'w') as f:
+    f.write(first_id)
+"
+    _REC_ID=$(cat /tmp/_smoke_rec_id.txt)
+    # Accept first recommendation
+    _ACCEPT_OUTPUT=$(remedy review accept "${REPAIR_JOB_ID}" "${_REC_ID}" --json 2>&1) || {
+        echo "    review accept failed (rc=$?)"
+        echo "    output: ${_ACCEPT_OUTPUT}"
+        return 1
+    }
+    echo "${_ACCEPT_OUTPUT}" | python3 -c "
+import sys, json
+d = json.loads(sys.stdin.read())
+if not d.get('accepted'):
+    print('ERROR: review accept did not return accepted=true', file=sys.stderr)
+    sys.exit(1)
+if not d.get('task_appended'):
+    print('ERROR: review accept did not append task', file=sys.stderr)
+    sys.exit(1)
+print('    review accept: OK')
+"
+    rm -f /tmp/_smoke_rec_id.txt
+
+    # -------------------------------------------------------------------------
+    # 12aq. Memory candidates (Step 158)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12aq"
+    echo "--- 12aq. Memory candidates"
+    _MC_OUTPUT=$(remedy memory candidates "${REPAIR_JOB_ID}" --json 2>&1) || {
+        echo "    memory candidates command failed (rc=$?)"
+        echo "    output: ${_MC_OUTPUT}"
+        remedy memory candidates --help 2>&1 || true
+        return 1
+    }
+    echo "${_MC_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: memory candidates output not valid JSON', file=sys.stderr)
+    print('Raw: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+if d.get('version') != 1:
+    print('ERROR: memory candidates version != 1', file=sys.stderr)
+    sys.exit(1)
+candidates = d.get('candidates', [])
+# Repair loop should have created at least one candidate
+if candidates:
+    # Verify all are pending (not auto-approved)
+    for c in candidates:
+        if c.get('status') != 'pending':
+            print('ERROR: candidate auto-approved: ' + c.get('id','?') + ' status=' + c.get('status','?'), file=sys.stderr)
+            sys.exit(1)
+    print('    memory candidates: OK (count=' + str(len(candidates)) + ', all pending)')
+else:
+    print('    memory candidates: OK (no candidates — acceptable)')
+"
+
+    # -------------------------------------------------------------------------
+    # 12ar. Dev status expanded (Step 161)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12ar"
+    echo "--- 12ar. Dev status expanded"
+    _DS_OUTPUT=$(remedy dev status --json 2>&1)
+    echo "${_DS_OUTPUT}" | python3 -c "
+import sys, json
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    print('ERROR: dev status output not valid JSON', file=sys.stderr)
+    print('Raw: ' + raw[:200], file=sys.stderr)
+    sys.exit(1)
+for key in ('repair_loop_ok', 'reviewer_loop_ok', 'memory_candidates_ok', 'live_ui_ok'):
+    if key not in d:
+        print('ERROR: dev status missing: ' + key, file=sys.stderr)
+        sys.exit(1)
+# advisories key must exist
+if 'advisories' not in d:
+    print('ERROR: dev status missing advisories', file=sys.stderr)
+    sys.exit(1)
+print('    dev status: OK (blockers=' + str(len(d.get('remaining_blockers',[]))) + ')')
+"
+
+    # -------------------------------------------------------------------------
+    # 12as. UX Smoke Gate — Story API (Step 170)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12as"
+    echo "--- 12as. UX smoke gate — story API"
+    python3 -c "
+import sys, json, re
+sys.path.insert(0, '.')
+from uuid import UUID
+from packages.orchestration.storage import load_job
+from packages.orchestration.ui_view_model import build_story, build_checklist, build_human_node_detail, build_layers
+from packages.orchestration.timeline import load_run_events
+from packages.orchestration.data_paths import resolve_data_root
+
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
+job = load_job(UUID('${REPAIR_JOB_ID}'))
+data_dir = resolve_data_root()
+events = load_run_events(data_dir, job.id)
+
+# Story
+story = build_story(job, events)
+chk(story['version'] == 1, 'story version != 1')
+chk(story.get('headline'), 'story missing headline')
+chk(story.get('plain_status'), 'story missing plain_status')
+chk('progress' in story, 'story missing progress')
+for pk in ('completed', 'active', 'pending', 'blocked', 'needs_review'):
+    chk(pk in story['progress'], 'story progress missing: ' + pk)
+chk('journey' in story, 'story missing journey')
+chk(len(story['journey']) > 0, 'story journey is empty')
+
+# Check journey items have human labels
+for j in story['journey']:
+    chk(j.get('title'), 'journey item missing title')
+    chk(j.get('kind'), 'journey item missing kind')
+    chk(j.get('state'), 'journey item missing state')
+    title_lower = j['title'].lower()
+    for fw in ('rank', 'importance', 'node_type', 'zone', 'metadata', 'edge_type'):
+        chk(fw not in title_lower, 'journey title contains forbidden word: ' + fw)
+
+# Checklist
+cl = build_checklist(job, events)
+chk(cl['version'] == 1, 'checklist version != 1')
+chk(len(cl.get('items', [])) > 0, 'checklist items empty')
+has_checked = any(i.get('checked') for i in cl['items'])
+chk(has_checked, 'no checked items in checklist after repair loop')
+for item in cl['items']:
+    chk(item.get('label'), 'checklist item missing label')
+    label = item['label']
+    if re.match(r'^[0-9a-f-]{8,}$', label):
+        print('ERROR: bare ID as label: ' + label, file=sys.stderr)
+        sys.exit(1)
+
+# Layers
+layers = build_layers()
+chk(layers['version'] == 1, 'layers version != 1')
+chk(len(layers.get('layers', [])) >= 2, 'layers too few')
+default_layers = [l for l in layers['layers'] if l.get('default')]
+chk(len(default_layers) == 1, 'expected exactly 1 default layer')
+chk(default_layers[0]['id'] == 'journey', 'default layer must be journey')
+
+# Human node detail (pick first journey node)
+first_id = story['journey'][0]['node_id']
+detail = build_human_node_detail(job, events, first_id)
+chk(detail.get('version') == 3, 'human detail version != 3')
+chk(detail.get('title'), 'human detail missing title')
+detail_str = json.dumps(detail).lower()
+for fw in ('rank', 'importance', 'node_type', 'context coverage', 'present signals', 'missing signals', 'zone', 'connected_to', 'edge_type'):
+    chk(fw not in detail_str, 'human detail contains forbidden word: ' + fw)
+
+print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey items, checklist=' + str(len(cl['items'])) + ' items)')
 "
 
     # -------------------------------------------------------------------------

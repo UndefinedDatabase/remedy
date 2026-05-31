@@ -412,13 +412,11 @@ class TestStep115_TaskRibbon:
         assert tp["tasks"][0]["verified"] is False
 
     def test_html_has_ribbon_markers(self):
-        """index.html must have remedy-task-ribbon and remedy-task-item."""
-        html = Path(_ROOT / "apps" / "ui" / "index.html").read_text()
-        assert "remedy-task-ribbon" in html
-        assert "remedy-task-item" in html
-        assert "remedy-task-completed" in html
-        assert "remedy-task-active" in html
-        assert "remedy-task-future" in html
+        """React TaskChecklistCard must exist and use remedy-checklist class."""
+        src_path = Path(_ROOT / "apps" / "ui" / "src" / "components" / "panels" / "TaskChecklistCard.tsx")
+        assert src_path.exists(), "TaskChecklistCard.tsx not found"
+        src = src_path.read_text()
+        assert "remedy-checklist" in src
 
     def test_no_raw_leaks_in_task_progress(self):
         job = _make_job(tasks=[{"type": "write", "status": "completed"}])
@@ -572,21 +570,19 @@ class TestSmokeSafety:
             assert pattern not in html
 
     def test_index_html_has_ux_contract_markers(self):
-        html = Path(_ROOT / "apps" / "ui" / "index.html").read_text()
-        for marker in [
-            "remedy-brain-canvas", "remedy-task-ribbon", "remedy-task-item",
-            "semantic-zoom", "zoom-in-reveals-more", "forward-flow",
-            "node-detail-card", "reduced-motion",
-        ]:
-            assert marker in html, f"missing UX marker: {marker}"
+        """React source must have semantic zoom module and reduced-motion support."""
+        sz = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts")
+        assert sz.exists(), "semanticZoom.ts not found"
+        css = Path(_ROOT / "apps" / "ui" / "src" / "styles" / "globals.css").read_text()
+        assert "prefers-reduced-motion" in css, "missing reduced-motion in globals.css"
 
     def test_renderer_exports_semantic_zoom_fn(self):
-        """renderer.ts should export semanticZoomLevelFromScale."""
-        src = Path(_ROOT / "apps" / "ui" / "src" / "brain" / "renderer.ts").read_text()
-        assert "export function semanticZoomLevelFromScale" in src
+        """semanticZoom.ts should export semanticZoomLevelFromViewportZoom."""
+        src = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts").read_text()
+        assert "semanticZoomLevelFromViewportZoom" in src
 
     def test_renderer_wheel_cannot_reach_level_6(self):
-        """Wheel zoom should max at level 5, not reach 6."""
-        src = Path(_ROOT / "apps" / "ui" / "src" / "brain" / "renderer.ts").read_text()
-        # The function should return 5 for very high scale, not 6
-        assert "return 5;" in src
+        """Semantic zoom max level should be 4, not 6."""
+        src = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts").read_text()
+        # The function should return 4 at the top, not 5 or 6
+        assert "return 4;" in src

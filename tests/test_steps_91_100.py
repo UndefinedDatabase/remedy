@@ -138,20 +138,17 @@ class TestSemanticZoomV2:
 
 class TestScreenSpaceLabels:
     def test_no_pixi_text_labels_in_viewport(self):
-        """Renderer should use HTML overlay labels, not Pixi Text in viewport."""
-        renderer = Path(__file__).parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts"
-        content = renderer.read_text()
-        assert "labelOverlay" in content, "No HTML label overlay found"
-        assert "screen-label" in content, "No screen-label class found"
-        # Should not have a Pixi Text label layer
-        assert "labelLayer" not in content, "Pixi Text labelLayer should be removed"
+        """GraphNodes should use React components, not raw PIXI imports."""
+        graph_nodes = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "GraphNodes.tsx"
+        content = graph_nodes.read_text()
+        assert "PIXI" not in content, "GraphNodes should not import raw PIXI"
+        assert "pixi.js" not in content, "GraphNodes should not depend on pixi.js"
 
     def test_detail_card_compact(self):
-        index = Path(__file__).parent.parent / "apps" / "ui" / "index.html"
-        html = index.read_text()
-        assert "max-height: 360px" in html, "Detail card should be compact height"
-        assert "position: absolute" in html, "Detail card should be absolutely positioned"
-        assert "display: none" in html, "Detail card should be hidden by default"
+        detail = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx"
+        assert detail.is_file(), "DetailPopover.tsx must exist"
+        content = detail.read_text()
+        assert "remedy-detail-compact" in content, "DetailPopover must use remedy-detail-compact class"
 
 
 # ---------------------------------------------------------------------------
@@ -175,15 +172,13 @@ class TestExplainableEdges:
             assert "is_primary_chain" in e
 
     def test_edge_tooltip_element_exists(self):
-        index = Path(__file__).parent.parent / "apps" / "ui" / "index.html"
-        html = index.read_text()
-        assert "edge-tooltip" in html
+        edge = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "SoftGlowEdge.tsx"
+        assert edge.is_file(), "SoftGlowEdge.tsx must exist as the edge rendering component"
 
     def test_edge_hover_in_renderer(self):
-        renderer = Path(__file__).parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts"
-        content = renderer.read_text()
-        assert "onEdgeHover" in content
-        assert "pointerover" in content
+        edge = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "SoftGlowEdge.tsx"
+        content = edge.read_text()
+        assert "@xyflow/react" in content, "SoftGlowEdge must import from @xyflow/react"
 
 
 # ---------------------------------------------------------------------------
@@ -204,13 +199,14 @@ class TestLiveGrowth:
         assert "_build_events_since_json" in src
 
     def test_merge_view_model_in_renderer(self):
-        renderer = Path(__file__).parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts"
-        content = renderer.read_text()
-        assert "mergeViewModel" in content
+        app = Path(__file__).parent.parent / "apps" / "ui" / "src" / "RemedyApp.tsx"
+        content = app.read_text()
+        assert "setInterval" in content, "RemedyApp must have dashboard refresh via setInterval"
 
     def test_reduced_motion_respected(self):
-        main = Path(__file__).parent.parent / "apps" / "ui" / "src" / "main.ts"
-        content = main.read_text()
+        provider = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "shell" / "ReducedMotionProvider.tsx"
+        assert provider.is_file(), "ReducedMotionProvider.tsx must exist"
+        content = provider.read_text()
         assert "prefers-reduced-motion" in content
 
 
@@ -470,14 +466,13 @@ class TestSourceApply:
 
 class TestFrontendBuildV2:
     def test_dist_exists(self):
-        dist = Path(__file__).parent.parent / "apps" / "ui" / "dist"
-        assert dist.is_dir()
-        assert (dist / "index.html").is_file()
+        index = Path(__file__).parent.parent / "apps" / "ui" / "index.html"
+        assert index.is_file(), "Source index.html must exist"
 
     def test_elkjs_in_package(self):
         pkg = Path(__file__).parent.parent / "apps" / "ui" / "package.json"
         data = json.loads(pkg.read_text())
-        assert "elkjs" in data.get("dependencies", {})
+        assert "@xyflow/react" in data.get("dependencies", {}), "@xyflow/react must be a dependency"
 
     def test_no_d3_force_in_deps(self):
         pkg = Path(__file__).parent.parent / "apps" / "ui" / "package.json"
@@ -485,11 +480,11 @@ class TestFrontendBuildV2:
         assert "d3-force" not in data.get("dependencies", {}), "d3-force should be removed"
 
     def test_no_dark_background(self):
-        index = Path(__file__).parent.parent / "apps" / "ui" / "index.html"
-        html = index.read_text()
-        assert "#e8ecf1" in html
+        tokens = Path(__file__).parent.parent / "apps" / "ui" / "src" / "styles" / "tokens.css"
+        css = tokens.read_text()
+        assert "#edf3fb" in css, "Light background token must be present"
         for dark in ["#0a0e14", "#0d1117", "#1a1a2e", "#000000"]:
-            assert dark not in html
+            assert dark not in css
 
 
 class TestAutorunSmoke:

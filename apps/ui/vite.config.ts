@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  plugins: [react()],
   root: ".",
   base: "/",
   build: {
@@ -10,5 +12,8 @@ export default defineConfig({
     rollupOptions: {
       input: "index.html",
     },
+  },
+  server: {
+    host: "127.0.0.1",
   },
 });

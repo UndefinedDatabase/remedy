@@ -42,6 +42,28 @@ def _default_reviewer(context: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
+def _fixture_reviewer(context: dict[str, Any]) -> list[dict[str, Any]]:
+    """Deterministic fixture reviewer — returns 2 recommendations for testing."""
+    return [
+        {
+            "title": "Add edge case tests",
+            "description": "Add tests for zero and negative inputs to calc functions",
+            "task_type": "test_improvement",
+            "reason": "Current tests only cover positive integers",
+            "risk": "low",
+            "priority": "medium",
+        },
+        {
+            "title": "Add type hints to calc.py",
+            "description": "Ensure all function signatures have complete type annotations",
+            "task_type": "code_quality",
+            "reason": "Type hints improve maintainability",
+            "risk": "low",
+            "priority": "low",
+        },
+    ]
+
+
 def run_reviewer(
     job: Any,
     *,
@@ -65,7 +87,7 @@ def run_reviewer(
         if tstat == "completed":
             context["completed_tasks"].append({
                 "id": str(t.id),
-                "task_type": t.task_type if hasattr(t, "task_type") else "unknown",
+                "task_type": (getattr(t, "inputs", None) or {}).get("task_type", "unknown"),
                 "status": tstat,
             })
 
@@ -98,15 +120,15 @@ def accept_recommendation(job: Any, recommendation_id: str) -> bool:
             rec["status"] = "accepted"
             # Create task from recommendation
             task = Task(
-                task_type=rec.get("task_type", "unknown"),
                 description=rec.get("title", "Reviewer recommendation"),
+                inputs={
+                    "task_type": rec.get("task_type", "unknown"),
+                    "source": "reviewer",
+                    "reviewer_recommendation_id": recommendation_id,
+                    "origin_task_id": rec.get("origin_task_id", ""),
+                },
                 status=RunState.PENDING,
             )
-            if hasattr(task, "metadata"):
-                task.metadata = task.metadata or {}
-                task.metadata["source"] = "reviewer"
-                task.metadata["reviewer_recommendation_id"] = recommendation_id
-                task.metadata["origin_task_id"] = rec.get("origin_task_id", "")
             job.tasks.append(task)
             _save_recommendations(job, recs)
             return True
