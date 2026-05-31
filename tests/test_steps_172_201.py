@@ -130,7 +130,7 @@ class TestStep174Structure:
         pkg = json.loads((UI_ROOT / "package.json").read_text(encoding="utf-8"))
         assert pkg["name"] == "@remedy/ui"
         assert "react" in pkg.get("dependencies", {})
-        assert "@xyflow/react" in pkg.get("dependencies", {})
+        assert "react-force-graph-2d" in pkg.get("dependencies", {})
         assert "@mui/material" in pkg.get("dependencies", {})
 
     def test_no_pixi_dependency(self):
@@ -267,36 +267,30 @@ class TestStep180_183Graph:
     def test_brain_graph_stage(self):
         assert (UI_SRC / "components" / "graph" / "BrainGraphStage.tsx").is_file()
 
-    def test_remedy_brain_flow(self):
-        f = UI_SRC / "components" / "graph" / "RemedyBrainFlow.tsx"
+    def test_force_brain_graph(self):
+        f = UI_SRC / "components" / "graph" / "ForceBrainGraph.tsx"
         assert f.is_file()
         content = f.read_text(encoding="utf-8")
-        assert "ReactFlow" in content
-        assert "@xyflow/react" in content
+        assert "react-force-graph-2d" in content
+        assert "nodeCanvasObject" in content
 
-    def test_graph_nodes(self):
-        f = UI_SRC / "components" / "graph" / "GraphNodes.tsx"
+    def test_force_brain_model(self):
+        f = UI_SRC / "components" / "graph" / "buildForceBrainModel.ts"
         assert f.is_file()
         content = f.read_text(encoding="utf-8")
-        assert "RootNode" in content
-        assert "WorkNode" in content
-        assert "TinyNode" in content
+        assert "seededRng" in content
+        assert "ForceBrainNode" in content
 
-    def test_soft_glow_edge(self):
-        assert (UI_SRC / "components" / "graph" / "SoftGlowEdge.tsx").is_file()
+    def test_force_brain_types(self):
+        assert (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").is_file()
 
-    def test_organic_layout_deterministic(self):
-        content = (UI_SRC / "components" / "graph" / "organicLayout.ts").read_text(encoding="utf-8")
-        assert "hash" in content
-        assert "seededOffset" in content
+    def test_graph_deterministic(self):
+        content = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text(encoding="utf-8")
+        assert "Math.random" not in content
 
-    def test_organic_layout_bounded(self):
-        content = (UI_SRC / "components" / "graph" / "organicLayout.ts").read_text(encoding="utf-8")
-        assert "120" in content  # max 120 nodes
-
-    def test_semantic_zoom_function(self):
-        content = (UI_SRC / "components" / "graph" / "semanticZoom.ts").read_text(encoding="utf-8")
-        assert "semanticZoomLevelFromViewportZoom" in content
+    def test_resize_observer(self):
+        content = (UI_SRC / "components" / "graph" / "useGraphSize.ts").read_text(encoding="utf-8")
+        assert "ResizeObserver" in content
 
     def test_graph_filter_chips(self):
         f = UI_SRC / "components" / "graph" / "GraphFilterChips.tsx"
@@ -307,10 +301,10 @@ class TestStep180_183Graph:
         assert '"Planned"' in content
         assert '"Done"' in content
 
-    def test_no_default_debug_labels_in_nodes(self):
-        content = (UI_SRC / "components" / "graph" / "GraphNodes.tsx").read_text(encoding="utf-8")
+    def test_no_default_debug_labels_in_graph(self):
+        content = (UI_SRC / "components" / "graph" / "ForceBrainGraph.tsx").read_text(encoding="utf-8")
         for word in ["rank", "importance", "node_type", "context coverage", "zone"]:
-            assert word not in content.lower(), f"Debug word in GraphNodes: {word}"
+            assert word not in content.lower(), f"Debug word in ForceBrainGraph: {word}"
 
 
 # ---------------------------------------------------------------------------
@@ -429,7 +423,7 @@ class TestStep192_193Visual:
             assert "googleapis.com" not in content, f"External resource in {f}"
 
     def test_particles_respect_reduced_motion(self):
-        f = UI_SRC / "components" / "graph" / "RemedyBrainFlow.tsx"
+        f = UI_SRC / "components" / "graph" / "ForceBrainGraph.tsx"
         content = f.read_text(encoding="utf-8")
         assert "reducedMotion" in content
 

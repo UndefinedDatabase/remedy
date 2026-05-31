@@ -9,9 +9,9 @@ import styles from "./SideIconDock.module.css";
 
 const items = [["Overview", AutoAwesomeIcon], ["Checks", CheckCircleOutlineIcon], ["Activity", ShowChartIcon], ["Files", FolderOutlinedIcon], ["History", HistoryIcon], ["Docs", MenuBookOutlinedIcon], ["Settings", SettingsOutlinedIcon]] as const;
 
-export function SideIconDock() {
+export function SideIconDock({ className }: { className?: string }) {
   return (
-    <nav className={styles.dock} aria-label="Remedy sections">
+    <nav className={`${styles.dock} ${className || ""}`} aria-label="Remedy sections">
       {items.map(([label, Icon], i) => (
         <button key={label} className={i === 0 ? styles.active : styles.button} aria-label={label}>
           <Icon fontSize="small" />

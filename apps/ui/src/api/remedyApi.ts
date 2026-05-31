@@ -3,6 +3,24 @@ import type { RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphN
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
+const FALLBACK_LABELS: Record<string, string> = {
+  goal: "Project goal", task: "Current work", change: "Proposed change",
+  apply: "Applied change", test: "Test result", proof: "Proof recorded",
+  review: "Review suggestion", memory: "Learning note",
+  decision: "Needs your decision", blocker: "Blocker",
+};
+
+function isWeakLabel(label: string): boolean {
+  if (!label || label.length < 3) return true;
+  if (/^[0-9a-f-]{8,}$/i.test(label)) return true;
+  const weak = ["task", "output", "memory", "goal", "blocker"];
+  return weak.includes(label.toLowerCase().trim());
+}
+
+function humanFallbackFor(kind: string, _index?: number): string {
+  return FALLBACK_LABELS[kind] || FALLBACK_LABELS.task;
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const r = await fetch(path, { method: "GET", credentials: "same-origin" });
   if (!r.ok) throw new Error(`Request failed ${r.status}: ${path}`);
@@ -95,7 +113,7 @@ function normalizeTasks(progress: any, journey: RemedyJourneyItem[]): RemedyTask
     const state = normalizeState(i.state || i.status || (i.checked ? "done" : "pending"));
     return {
       id: scrubUiText(i.id || `task-${idx}`, `task-${idx}`),
-      label: scrubUiText(i.label || i.title || i.short_reason || humanLabel(kind), humanLabel(kind)),
+      label: (() => { const raw = scrubUiText(i.label || i.title || i.short_reason || humanLabel(kind), humanLabel(kind)); return isWeakLabel(raw) ? humanFallbackFor(kind, idx) : raw; })(),
       state, kind,
       checked: Boolean(i.checked ?? i.verified ?? state === "done"),
       muted: Boolean(i.muted ?? (state === "pending" || state === "suggested")),

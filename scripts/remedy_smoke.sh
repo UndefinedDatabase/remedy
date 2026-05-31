@@ -2303,18 +2303,19 @@ try:
         js_url = base + js_match.group(1)
         js_resp = urlopen(js_url, timeout=10)
         js_code = js_resp.read().decode(errors='replace')
-        react_markers = ['remedy-shell', 'brain-graph-stage', 'react-flow', 'metrics-bar',
-                         'command-bar', 'right-panel', 'task-checklist', 'phase-timeline',
-                         'detail-popover', 'layer-switcher', 'remedy-visual-v2']
+        react_markers = ['remedy-visual-v2', 'brain-graph-stage', 'force-brain-graph',
+                         'top-metrics-bar', 'command-bar', 'right-live-panel',
+                         'task-checklist-card', 'phase-timeline', 'detail-popover',
+                         'left-brand-rail']
         missing_markers = [m for m in react_markers if m not in js_code]
         if missing_markers:
             for m in missing_markers:
                 print('ERROR: missing React data-ui marker: ' + m, file=sys.stderr)
             sys.exit(1)
 
-        # 7d. Verify @xyflow/react (growing-brain, not debug DAG)
-        if 'ReactFlow' not in js_code and 'reactflow' not in js_code.lower():
-            print('ERROR: no ReactFlow in bundle — graph may be debug DAG', file=sys.stderr)
+        # 7d. Verify Canvas force graph (not legacy ReactFlow DAG)
+        if 'force-brain-graph' not in js_code:
+            print('ERROR: no force-brain-graph in bundle — graph may be legacy DAG', file=sys.stderr)
             sys.exit(1)
 
         # 7e. prefers-reduced-motion in CSS bundle
@@ -2327,16 +2328,16 @@ try:
                 print('ERROR: missing prefers-reduced-motion in CSS', file=sys.stderr)
                 sys.exit(1)
 
-            # 7e2. Pixel-lock CSS contracts (Steps 208-226)
-            pixel_contracts = ['1678', '926', '292px', '976px', '350px', '832px']
-            missing_px = [c for c in pixel_contracts if c not in css_code]
-            if missing_px:
-                print('ERROR: missing pixel-lock CSS values: ' + repr(missing_px), file=sys.stderr)
+            # 7e2. Responsive CSS contracts (Steps 227-246)
+            responsive_contracts = ['clamp(', 'minmax(', 'grid-template-columns', 'max-width']
+            missing_resp = [c for c in responsive_contracts if c not in css_code]
+            if missing_resp:
+                print('ERROR: missing responsive CSS patterns: ' + repr(missing_resp), file=sys.stderr)
                 sys.exit(1)
 
-        # 7e3. Constellation backdrop in JS bundle
-        if 'constellation' not in js_code.lower():
-            print('ERROR: missing constellation backdrop in bundle', file=sys.stderr)
+        # 7e3. Canvas force graph in JS bundle
+        if 'shadowBlur' not in js_code or 'quadraticCurveTo' not in js_code:
+            print('ERROR: missing Canvas force graph render code in bundle', file=sys.stderr)
             sys.exit(1)
 
     # 7f. No external assets

@@ -9,7 +9,7 @@ const iconByKey = { open: AssignmentOutlinedIcon, planned: CalendarMonthOutlined
 
 export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
   return (
-    <section className={`${styles.bar} remedy-glass-card`} aria-label="Project metrics" data-ui="metrics-bar">
+    <section className={`${styles.bar} remedy-glass-card`} aria-label="Project metrics" data-ui="top-metrics-bar">
       {metrics.map(m => {
         const Icon = iconByKey[m.key];
         return (

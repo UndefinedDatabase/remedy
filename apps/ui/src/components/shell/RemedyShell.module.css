@@ -1,82 +1,60 @@
 .viewport {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
-  display: grid;
-  place-items: center;
   background:
-    radial-gradient(circle at 50% 44%, rgba(255,255,255,.98) 0 18%, rgba(238,245,255,.92) 38%, rgba(225,235,248,.96) 100%),
-    linear-gradient(135deg, #f9fcff 0%, #edf4fc 52%, #e6eef8 100%);
-}
-
-.frame {
-  width: min(100vw, 1678px);
-  height: min(100vh, 926px);
-  aspect-ratio: 1678 / 926;
-  position: relative;
-  overflow: hidden;
+    radial-gradient(circle at 48% 42%, rgba(255,255,255,.98) 0 16%, rgba(238,245,255,.92) 42%, rgba(225,236,249,.98) 100%),
+    linear-gradient(135deg, #f9fcff 0%, #eef5fd 52%, #e4edf8 100%);
   color: var(--remedy-text);
-  background:
-    radial-gradient(circle at 51% 45%, rgba(255,255,255,.92), transparent 30%),
-    radial-gradient(circle at 47% 50%, rgba(103,151,255,.16), transparent 42%),
-    linear-gradient(135deg, rgba(249,252,255,.9), rgba(232,241,252,.9));
 }
 
-.leftRail {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 292px;
-  height: 926px;
-  z-index: 3;
+.shell {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns:
+    clamp(220px, 16vw, 292px)
+    minmax(680px, 1fr)
+    clamp(320px, 22vw, 390px);
+  grid-template-rows: 1fr;
+  gap: clamp(18px, 1.8vw, 28px);
+  padding: clamp(18px, 2vw, 30px);
+  box-sizing: border-box;
 }
 
-.centerStage {
-  position: absolute;
-  left: 292px;
-  top: 0;
-  width: 976px;
-  height: 926px;
-  z-index: 1;
+.main {
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows:
+    clamp(78px, 9vh, 98px)
+    clamp(52px, 6vh, 64px)
+    minmax(360px, 1fr)
+    clamp(118px, 16vh, 158px);
+  gap: clamp(14px, 1.8vh, 22px);
 }
 
-.topMetricsSlot {
-  position: absolute;
-  left: 0;
-  top: 24px;
-  width: 976px;
-  height: 90px;
+@media (max-width: 1280px) {
+  .shell {
+    grid-template-columns: 84px minmax(0, 1fr) clamp(300px, 28vw, 360px);
+  }
 }
 
-.commandSlot {
-  position: absolute;
-  left: 0;
-  top: 132px;
-  width: 976px;
-  height: 56px;
+@media (max-width: 980px) {
+  .shell {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+  :global([data-ui="right-live-panel"]) {
+    display: none;
+  }
 }
 
-.graphSlot {
-  position: absolute;
-  left: 0;
-  top: 190px;
-  width: 976px;
-  height: 552px;
-}
-
-.timelineSlot {
-  position: absolute;
-  left: -142px;
-  top: 758px;
-  width: 1116px;
-  height: 144px;
-}
-
-.rightPanelSlot {
-  position: absolute;
-  left: 1286px;
-  top: 24px;
-  width: 350px;
-  height: 832px;
-  z-index: 4;
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  :global([data-ui="left-brand-rail"]) {
+    display: none;
+  }
 }

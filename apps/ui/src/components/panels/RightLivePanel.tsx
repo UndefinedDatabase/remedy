@@ -8,7 +8,7 @@ import styles from "./RightLivePanel.module.css";
 
 export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void }) {
   return (
-    <aside className={styles.panel} data-ui="right-panel">
+    <aside className={styles.panel} data-ui="right-live-panel">
       <LiveStatusPill live={dashboard.live.running} />
       <AgentNowCard dashboard={dashboard} />
       <ActivityFeedCard activity={dashboard.activity} />

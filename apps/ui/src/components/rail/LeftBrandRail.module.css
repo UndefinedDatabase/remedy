@@ -1,41 +1,45 @@
 .rail {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 292px;
-  padding: 36px 0 0 30px;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+  padding: clamp(24px, 3vh, 36px) 0 0 clamp(18px, 1.8vw, 30px);
   color: var(--remedy-blue-900);
 }
 
-.intro {
-  position: absolute;
-  left: 31px;
-  top: 118px;
-  width: 210px;
+.logoBlock { height: 40px; }
+
+.copyBlock {
+  margin-top: clamp(52px, 8vh, 76px);
+  max-width: 220px;
+}
+
+.copyBlock h1 {
+  margin: 8px 0 0;
+  font-size: clamp(16px, 1.6vw, 22px);
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: .02em;
+}
+
+.copyBlock p {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--remedy-muted);
 }
 
 .concept {
-  font-size: 13px;
+  font-size: 10px;
+  font-weight: 800;
   letter-spacing: .12em;
-  text-transform: uppercase;
-  color: rgba(36,89,214,.72);
-  margin-bottom: 16px;
+  color: var(--remedy-muted);
 }
 
-.intro h1 {
-  margin: 0;
-  font-size: 27px;
-  line-height: 1.15;
-  font-weight: 650;
-  letter-spacing: -.035em;
-  color: #122f6a;
+.dock {
+  margin-top: clamp(34px, 5vh, 48px);
 }
 
-.intro p {
-  margin: 24px 0 0;
-  max-width: 205px;
-  font-size: 15px;
-  line-height: 1.55;
-  color: #122f6a;
+@media (max-width: 1280px) {
+  .copyBlock { display: none; }
+  .rail { padding-left: 10px; display: flex; flex-direction: column; align-items: center; }
 }
-
-@media (max-width: 1180px) { .intro { display: none; } }
