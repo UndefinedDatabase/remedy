@@ -7,8 +7,8 @@ Token-gated API access via per-run random token in URL.
 
 Scope:
   - Read-only only.
-  - No repo mutation, no shell, no subprocess (except optional opener).
-  - No external network, CDN, npm, or build step.
+  - No repo mutation, no shell (except optional opener and auto-build).
+  - No external network, CDN (auto-build uses local npm only).
   - Serves only safe summaries, counts, statuses, IDs, hashes, next actions.
   - No raw artifact content, file content, diffs, stdout/stderr, approval
     reasons, secrets, or tracebacks in any response.
@@ -439,7 +439,7 @@ def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
 
 
 def _get_frontend_dist() -> Path | None:
-    """Return path to built PixiJS frontend dist/ if it exists."""
+    """Return path to built React frontend dist/ if it exists."""
     dist = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "dist"
     index = dist / "index.html"
     if index.is_file():
@@ -447,15 +447,92 @@ def _get_frontend_dist() -> Path | None:
     return None
 
 
-def _load_frontend(job_id: str, token: str) -> str:
-    """Load frontend HTML — prefer PixiJS build, fall back to legacy shell."""
+def _auto_build_frontend() -> Path | None:
+    """Attempt to build the React frontend via npm. Returns dist Path or None."""
+    import subprocess
+
+    if os.environ.get("REMEDY_UI_NO_AUTO_BUILD") == "1":
+        return None
+
+    ui_root = Path(__file__).resolve().parent.parent.parent / "apps" / "ui"
+    if not (ui_root / "package.json").is_file():
+        return None
+
+    print("[remedy-ui] dist/ not found — attempting auto-build…", file=sys.stderr)
+
+    # npm install
+    try:
+        subprocess.run(
+            ["npm", "install", "--no-audit", "--no-fund"],
+            cwd=str(ui_root),
+            check=True,
+            capture_output=True,
+            timeout=120,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        print(f"[remedy-ui] npm install failed: {exc}", file=sys.stderr)
+        return None
+
+    # npm run build
+    try:
+        subprocess.run(
+            ["npm", "run", "build"],
+            cwd=str(ui_root),
+            check=True,
+            capture_output=True,
+            timeout=120,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        print(f"[remedy-ui] npm run build failed: {exc}", file=sys.stderr)
+        return None
+
     dist = _get_frontend_dist()
     if dist is not None:
+        print("[remedy-ui] auto-build succeeded.", file=sys.stderr)
+    return dist
+
+
+def _load_frontend(job_id: str, token: str) -> str:
+    """Load frontend HTML — React build required. Auto-builds if missing.
+
+    Behavior:
+      1. If apps/ui/dist/ exists → serve it.
+      2. If missing → auto-build (npm install + npm run build).
+      3. If auto-build fails → fail loudly (no silent fallback).
+      4. Legacy fallback only if REMEDY_UI_ALLOW_LEGACY_FALLBACK=1.
+    """
+    dist = _get_frontend_dist()
+
+    # Auto-build if dist missing
+    if dist is None:
+        dist = _auto_build_frontend()
+
+    if dist is not None:
         html = (dist / "index.html").read_text(encoding="utf-8")
+        # Inject job/token as URL params for the React app
         html = html.replace("__JOB_ID__", job_id).replace("__TOKEN__", token)
         return html
-    from packages.orchestration.ui_app_shell import build_app_shell
-    return build_app_shell(job_id, token)
+
+    # Legacy fallback — only if explicitly allowed
+    if os.environ.get("REMEDY_UI_ALLOW_LEGACY_FALLBACK") == "1":
+        print("[remedy-ui] WARNING: serving legacy fallback (REMEDY_UI_ALLOW_LEGACY_FALLBACK=1)",
+              file=sys.stderr)
+        from packages.orchestration.ui_app_shell import build_app_shell
+        return build_app_shell(job_id, token)
+
+    # Fail loudly
+    print(
+        "\n"
+        "ERROR: React UI not built and auto-build failed.\n"
+        "\n"
+        "  To fix, run:\n"
+        "    cd apps/ui && npm install && npm run build\n"
+        "\n"
+        "  Or set REMEDY_UI_ALLOW_LEGACY_FALLBACK=1 to use the old UI.\n"
+        "  Or set REMEDY_UI_NO_AUTO_BUILD=1 to skip auto-build.\n",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def _build_context_budget_json(job: Any) -> dict[str, Any]:
@@ -498,7 +575,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._send_html(200, self.app_html)
             return
 
-        # Static assets from PixiJS dist/ (JS/CSS bundles)
+        # Static assets from React dist/ (JS/CSS bundles)
         if path.startswith("/assets/"):
             self._serve_static(path)
             return
@@ -634,7 +711,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     }
 
     def _serve_static(self, url_path: str) -> None:
-        """Serve static files from PixiJS dist/assets/. Path-traversal safe."""
+        """Serve static files from React dist/assets/. Path-traversal safe."""
         dist = _get_frontend_dist()
         if dist is None:
             self._send_json(*_safe_error(404, "not found"))
@@ -692,7 +769,7 @@ def start_ui_server(
     if token is None:
         token = secrets.token_urlsafe(24)
 
-    # Prefer built PixiJS frontend; fall back to legacy inline shell
+    # Load React frontend (auto-builds if dist/ missing)
     app_html = _load_frontend(job_id, token)
 
     # Create handler class with bound state

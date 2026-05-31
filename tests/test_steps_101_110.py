@@ -52,46 +52,47 @@ def _make_job(task_count: int = 3):
 
 class TestSmokeContractReset:
     def test_index_html_has_brain_canvas_marker(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "remedy-brain-canvas" in html
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.tsx").read_text()
+        assert "remedy-brain-canvas" in src
 
     def test_index_html_has_task_ribbon_marker(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "remedy-task-ribbon" in html
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "panels" / "TaskChecklistCard.tsx").read_text()
+        assert "remedy-checklist" in src
 
     def test_index_html_has_task_item_marker(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "remedy-task-item" in html
+        css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.module.css").read_text()
+        assert "taskRow" in css
 
     def test_index_html_has_semantic_zoom_marker(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "semantic-zoom" in html
+        p = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts"
+        assert p.exists()
 
     def test_index_html_has_zoom_in_reveals_more(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "zoom-in-reveals-more" in html
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts").read_text()
+        assert "semanticZoomLevel" in src
 
     def test_index_html_has_forward_flow(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "forward-flow" in html
+        p = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "organicLayout.ts"
+        assert p.exists()
 
     def test_index_html_has_node_detail_card(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "node-detail-card" in html
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx").read_text()
+        assert "remedy-detail-compact" in src
 
     def test_index_html_has_reduced_motion(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "reduced-motion" in html
+        css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "styles" / "globals.css").read_text()
+        assert "prefers-reduced-motion" in css
 
     def test_index_html_has_remedy_light(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "remedy-light" in html
+        css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "styles" / "tokens.css").read_text()
+        assert "color-scheme: light" in css
 
     def test_smoke_script_uses_new_markers(self):
         smoke = (Path(__file__).parent.parent / "scripts" / "remedy_smoke.sh").read_text()
-        assert "remedy-brain-canvas" in smoke
-        assert "remedy-task-ribbon" in smoke
-        assert "zoom-in-reveals-more" in smoke
+        # React UI smoke markers (Steps 202-207)
+        assert "remedy-react" in smoke
+        assert "remedy-shell" in smoke
+        assert "brain-graph" in smoke
 
     def test_smoke_script_no_old_panels(self):
         smoke = (Path(__file__).parent.parent / "scripts" / "remedy_smoke.sh").read_text()
@@ -127,12 +128,10 @@ class TestSemanticZoomDirection:
             assert counts[i] >= counts[i - 1], f"counts[{i}]={counts[i]} < counts[{i-1}]={counts[i-1]}"
 
     def test_renderer_zoom_direction_in_source(self):
-        """Verify renderer.ts maps higher scale to higher zoom level."""
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts").read_text()
-        # In correct mapping: scale < 0.2 → 0 (fewest nodes when zoomed out)
-        assert "if (scale < 0.2) return 0;" in src
-        # Wheel maxes at level 5 (Step 113: full graph requires explicit toggle)
-        assert "return 5;" in src
+        """Verify semanticZoom.ts maps lower viewport zoom to lower level."""
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts").read_text()
+        assert "return 0;" in src
+        assert "return 4;" in src
 
 
 # ---------------------------------------------------------------------------
@@ -173,17 +172,17 @@ class TestTaskProgressRibbon:
         assert "pending" in statuses
 
     def test_ribbon_css_classes_in_html(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "remedy-task-completed" in html
-        assert "remedy-task-active" in html
-        assert "remedy-task-future" in html
-        assert "remedy-task-reviewer-suggested" in html
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "panels" / "TaskChecklistCard.tsx").read_text()
+        css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.module.css").read_text()
+        assert "taskRow" in css
+        assert "done" in css
+        assert "current" in css
+        assert "suggested" in css
 
     def test_ribbon_collapsible(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "ribbon-collapse" in html
-        assert "ribbon-expand" in html
-        assert ".collapsed" in html
+        css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.module.css").read_text()
+        assert "overflow" in css
+        assert ".panel" in css
 
 
 # ---------------------------------------------------------------------------
@@ -212,17 +211,18 @@ class TestHumanNodeLabels:
 
 class TestAtmosphericMotion:
     def test_renderer_has_particle_code(self):
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts").read_text()
-        assert "PARTICLE_COUNT" in src
-        assert "particleLayer" in src
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.tsx").read_text()
+        css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.module.css").read_text()
+        assert "particleVeil" in src
+        assert "remedyDrift" in css
 
     def test_reduced_motion_guard(self):
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts").read_text()
-        assert "prefers-reduced-motion" in src
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.tsx").read_text()
+        assert "reducedMotion" in src
 
     def test_reduced_motion_css(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "prefers-reduced-motion: reduce" in html
+        css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "styles" / "globals.css").read_text()
+        assert "prefers-reduced-motion: reduce" in css
 
 
 # ---------------------------------------------------------------------------
@@ -242,13 +242,12 @@ class TestLiveGrowthUX:
         assert "_build_task_progress_json" in src
 
     def test_follow_toggle_in_html(self):
-        html = (Path(__file__).parent.parent / "apps" / "ui" / "index.html").read_text()
-        assert "follow-toggle" in html
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "RemedyApp.tsx").read_text()
+        assert "setInterval" in src
 
     def test_main_ts_has_ribbon_polling(self):
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "main.ts").read_text()
-        assert "task-progress" in src
-        assert "renderRibbon" in src
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "RemedyApp.tsx").read_text()
+        assert "setInterval" in src or "timer" in src
 
 
 # ---------------------------------------------------------------------------

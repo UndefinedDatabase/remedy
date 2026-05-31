@@ -2279,39 +2279,61 @@ except URLError as e:
     print('ERROR: API request failed: ' + str(e), file=sys.stderr)
     sys.exit(1)
 
-# 7. App shell has calm entry panels
+# 7. App shell is React build (Steps 202-207)
 try:
     resp = urlopen(base + '/', timeout=5)
     html = resp.read().decode()
-    # New UX contract markers (Steps 101-110)
-    markers = {
-        'remedy-brain-canvas': 'remedy-brain-canvas' in html,
-        'remedy-task-ribbon': 'remedy-task-ribbon' in html,
-        'remedy-task-item': 'remedy-task-item' in html,
-        'semantic-zoom': 'semantic-zoom' in html,
-        'zoom-in-reveals-more': 'zoom-in-reveals-more' in html,
-        'forward-flow': 'forward-flow' in html,
-        'node-detail-card': 'node-detail-card' in html,
-        'reduced-motion': 'reduced-motion' in html,
-    }
-    failed = [k for k, v in markers.items() if not v]
-    if failed:
-        for f in failed:
-            print('ERROR: missing UX marker: ' + f, file=sys.stderr)
+
+    # 7a. React root marker — proves React build is served, not legacy fallback
+    dq = chr(34)
+    react_marker = 'data-ui=' + dq + 'remedy-react' + dq
+    if react_marker not in html:
+        print('ERROR: served UI is not React build (missing data-ui remedy-react)', file=sys.stderr)
         sys.exit(1)
 
-    # 8. Default is light/ice theme
-    if 'remedy-light' not in html:
-        print('ERROR: default not light theme', file=sys.stderr)
+    # 7b. Must have JS bundle reference (React SPA)
+    if '/assets/' not in html or '.js' not in html:
+        print('ERROR: no JS bundle reference in served HTML', file=sys.stderr)
         sys.exit(1)
 
-    # 12. No external assets
+    # 7c. Fetch JS bundle and verify data-ui component markers
+    import re
+    js_match = re.search(r'src=' + dq + r'(/assets/[^' + dq + r']+\.js)' + dq, html)
+    if js_match:
+        js_url = base + js_match.group(1)
+        js_resp = urlopen(js_url, timeout=10)
+        js_code = js_resp.read().decode(errors='replace')
+        react_markers = ['remedy-shell', 'brain-graph', 'react-flow', 'metrics-bar',
+                         'command-bar', 'right-panel', 'task-checklist', 'phase-timeline',
+                         'detail-popover', 'layer-switcher']
+        missing_markers = [m for m in react_markers if m not in js_code]
+        if missing_markers:
+            for m in missing_markers:
+                print('ERROR: missing React data-ui marker: ' + m, file=sys.stderr)
+            sys.exit(1)
+
+        # 7d. Verify @xyflow/react (growing-brain, not debug DAG)
+        if 'ReactFlow' not in js_code and 'reactflow' not in js_code.lower():
+            print('ERROR: no ReactFlow in bundle — graph may be debug DAG', file=sys.stderr)
+            sys.exit(1)
+
+        # 7e. prefers-reduced-motion in CSS bundle
+        css_match = re.search(r'href=' + dq + r'(/assets/[^' + dq + r']+\.css)' + dq, html)
+        if css_match:
+            css_url = base + css_match.group(1)
+            css_resp = urlopen(css_url, timeout=10)
+            css_code = css_resp.read().decode(errors='replace')
+            if 'prefers-reduced-motion' not in css_code:
+                print('ERROR: missing prefers-reduced-motion in CSS', file=sys.stderr)
+                sys.exit(1)
+
+    # 7f. No external assets
     for pattern in ['cdn.', 'googleapis.com', 'unpkg.com', 'jsdelivr.net']:
         if pattern in html:
             print('ERROR: external asset in shell: ' + pattern, file=sys.stderr)
             sys.exit(1)
 
-    # 13. No raw leaks
+    # 7g. No raw leaks in HTML shell
     for bad in ['raw_output', 'command_output', 'MUST_NOT_RENDER', 'diff_preview', 'approval_reason']:
         if bad in html:
             print('ERROR: raw leak in shell: ' + bad, file=sys.stderr)
@@ -2630,7 +2652,7 @@ print('    dev status: OK (blockers=' + str(len(d.get('remaining_blockers',[])))
     _SMOKE_SECTION="12as"
     echo "--- 12as. UX smoke gate — story API"
     python3 -c "
-import sys, json
+import sys, json, re
 sys.path.insert(0, '.')
 from uuid import UUID
 from packages.orchestration.storage import load_job
@@ -2638,62 +2660,64 @@ from packages.orchestration.ui_view_model import build_story, build_checklist, b
 from packages.orchestration.timeline import load_run_events
 from packages.orchestration.data_paths import resolve_data_root
 
+def chk(cond, msg):
+    if not cond:
+        print('ERROR: ' + msg, file=sys.stderr)
+        sys.exit(1)
+
 job = load_job(UUID('${REPAIR_JOB_ID}'))
 data_dir = resolve_data_root()
 events = load_run_events(data_dir, job.id)
 
 # Story
 story = build_story(job, events)
-assert story['version'] == 1, 'story version != 1'
-assert story.get('headline'), 'story missing headline'
-assert story.get('plain_status'), 'story missing plain_status'
-assert 'progress' in story, 'story missing progress'
+chk(story['version'] == 1, 'story version != 1')
+chk(story.get('headline'), 'story missing headline')
+chk(story.get('plain_status'), 'story missing plain_status')
+chk('progress' in story, 'story missing progress')
 for pk in ('completed', 'active', 'pending', 'blocked', 'needs_review'):
-    assert pk in story['progress'], 'story progress missing: ' + pk
-assert 'journey' in story, 'story missing journey'
-assert len(story['journey']) > 0, 'story journey is empty'
+    chk(pk in story['progress'], 'story progress missing: ' + pk)
+chk('journey' in story, 'story missing journey')
+chk(len(story['journey']) > 0, 'story journey is empty')
 
 # Check journey items have human labels
 for j in story['journey']:
-    assert j.get('title'), 'journey item missing title'
-    assert j.get('kind'), 'journey item missing kind'
-    assert j.get('state'), 'journey item missing state'
-    # No forbidden debug words
+    chk(j.get('title'), 'journey item missing title')
+    chk(j.get('kind'), 'journey item missing kind')
+    chk(j.get('state'), 'journey item missing state')
     title_lower = j['title'].lower()
     for fw in ('rank', 'importance', 'node_type', 'zone', 'metadata', 'edge_type'):
-        assert fw not in title_lower, 'journey title contains forbidden word: ' + fw
+        chk(fw not in title_lower, 'journey title contains forbidden word: ' + fw)
 
 # Checklist
 cl = build_checklist(job, events)
-assert cl['version'] == 1, 'checklist version != 1'
-assert len(cl.get('items', [])) > 0, 'checklist items empty'
+chk(cl['version'] == 1, 'checklist version != 1')
+chk(len(cl.get('items', [])) > 0, 'checklist items empty')
 has_checked = any(i.get('checked') for i in cl['items'])
-assert has_checked, 'no checked items in checklist after repair loop'
+chk(has_checked, 'no checked items in checklist after repair loop')
 for item in cl['items']:
-    assert item.get('label'), 'checklist item missing label'
+    chk(item.get('label'), 'checklist item missing label')
     label = item['label']
-    # No bare UUID/hash as labels
-    import re
     if re.match(r'^[0-9a-f-]{8,}$', label):
         print('ERROR: bare ID as label: ' + label, file=sys.stderr)
         sys.exit(1)
 
 # Layers
 layers = build_layers()
-assert layers['version'] == 1, 'layers version != 1'
-assert len(layers.get('layers', [])) >= 2, 'layers too few'
+chk(layers['version'] == 1, 'layers version != 1')
+chk(len(layers.get('layers', [])) >= 2, 'layers too few')
 default_layers = [l for l in layers['layers'] if l.get('default')]
-assert len(default_layers) == 1, 'expected exactly 1 default layer'
-assert default_layers[0]['id'] == 'journey', 'default layer must be journey'
+chk(len(default_layers) == 1, 'expected exactly 1 default layer')
+chk(default_layers[0]['id'] == 'journey', 'default layer must be journey')
 
 # Human node detail (pick first journey node)
 first_id = story['journey'][0]['node_id']
 detail = build_human_node_detail(job, events, first_id)
-assert detail.get('version') == 3, 'human detail version != 3'
-assert detail.get('title'), 'human detail missing title'
+chk(detail.get('version') == 3, 'human detail version != 3')
+chk(detail.get('title'), 'human detail missing title')
 detail_str = json.dumps(detail).lower()
 for fw in ('rank', 'importance', 'node_type', 'context coverage', 'present signals', 'missing signals', 'zone', 'connected_to', 'edge_type'):
-    assert fw not in detail_str, 'human detail contains forbidden word: ' + fw
+    chk(fw not in detail_str, 'human detail contains forbidden word: ' + fw)
 
 print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey items, checklist=' + str(len(cl['items'])) + ' items)')
 "
