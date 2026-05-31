@@ -484,14 +484,10 @@ class TestStep154_UXPolish:
 
     def test_reduced_motion_in_ui_source(self):
         """UI must respect prefers-reduced-motion."""
-        main_ts = _ROOT / "apps" / "ui" / "src" / "main.ts"
-        renderer_ts = _ROOT / "apps" / "ui" / "src" / "brain" / "renderer.ts"
-        found = False
-        for p in (main_ts, renderer_ts):
-            if p.exists() and "reduced-motion" in p.read_text():
-                found = True
-                break
-        assert found, "reduced-motion not found in UI source"
+        provider = _ROOT / "apps" / "ui" / "src" / "components" / "shell" / "ReducedMotionProvider.tsx"
+        assert provider.exists(), "ReducedMotionProvider.tsx not found"
+        content = provider.read_text()
+        assert "prefers-reduced-motion" in content, "reduced-motion not found in UI source"
 
     def test_next_action_endpoint_exists(self):
         """UI server must expose next-action endpoint handler."""

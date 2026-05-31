@@ -1,0 +1,5 @@
+.shell { width: 100vw; height: 100vh; position: relative; display: grid; grid-template-columns: var(--remedy-left-width) minmax(680px, 1fr) var(--remedy-right-width); gap: 26px; padding: 24px 26px; background: radial-gradient(circle at 52% 48%, rgba(255,255,255,.78), transparent 28%), radial-gradient(circle at 44% 58%, rgba(76,131,255,.12), transparent 38%), linear-gradient(135deg, #f8fbff 0%, #edf3fb 48%, #e5edf7 100%); overflow: hidden; }
+.backgroundAura { position: absolute; inset: -20%; pointer-events: none; background: radial-gradient(circle at 50% 52%, rgba(111,156,255,.16), transparent 18%), radial-gradient(circle at 62% 32%, rgba(83,214,223,.08), transparent 20%); filter: blur(20px); }
+.mainStage { position: relative; z-index: 1; display: grid; grid-template-rows: 102px 64px 1fr 154px; min-width: 0; gap: 18px; }
+@media (max-width: 1180px) { .shell { grid-template-columns: 84px minmax(0, 1fr); } }
+@media (max-width: 900px) { .shell { grid-template-columns: 1fr; padding: 16px; } .mainStage { grid-template-rows: auto auto 1fr auto; } }

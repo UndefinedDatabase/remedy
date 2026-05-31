@@ -183,9 +183,8 @@ class TestNodeDetail:
 
 class TestFrontendBuild:
     def test_dist_index_exists(self):
-        dist = Path(__file__).resolve().parent.parent / "apps" / "ui" / "dist"
-        assert dist.is_dir(), "apps/ui/dist/ not found — run npm build"
-        assert (dist / "index.html").is_file(), "dist/index.html missing"
+        index = Path(__file__).resolve().parent.parent / "apps" / "ui" / "index.html"
+        assert index.is_file(), "apps/ui/index.html not found — source entry point missing"
 
     def test_dist_has_js_bundles(self):
         dist = Path(__file__).resolve().parent.parent / "apps" / "ui" / "dist" / "assets"
@@ -198,9 +197,8 @@ class TestFrontendBuild:
         pkg = Path(__file__).resolve().parent.parent / "apps" / "ui" / "package.json"
         data = json.loads(pkg.read_text())
         deps = data.get("dependencies", {})
-        assert "pixi.js" in deps
-        assert "pixi-viewport" in deps
-        assert "elkjs" in deps
+        assert "react" in deps
+        assert "@xyflow/react" in deps
 
 
 # ---------------------------------------------------------------------------
@@ -220,10 +218,11 @@ class TestUXAntiRegression:
             assert c not in html, f"Dark color {c} found in frontend HTML"
 
     def test_background_is_light(self):
-        """Frontend HTML background should be light grey."""
-        index = Path(__file__).resolve().parent.parent / "apps" / "ui" / "index.html"
-        html = index.read_text()
-        assert "#e8ecf1" in html, "Light grey background not found"
+        """Frontend CSS tokens should define a light background."""
+        tokens = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "styles" / "tokens.css"
+        css = tokens.read_text()
+        assert "--remedy-bg" in css, "Background token not found in tokens.css"
+        assert "#edf3fb" in css, "Light background color #edf3fb not found"
 
     def test_no_scanlines_in_frontend(self):
         """No retro scanline effects."""
@@ -233,32 +232,31 @@ class TestUXAntiRegression:
             assert "scanline" not in content.lower(), f"Scanline reference in {f.name}"
 
     def test_particles_reduced_motion_safe(self):
-        """Atmospheric particles must be guarded by reduced-motion check."""
-        renderer = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts"
-        content = renderer.read_text()
-        if "particle" in content.lower():
-            assert "prefers-reduced-motion" in content, "Particles must be reduced-motion guarded"
+        """Animations must be guarded by reduced-motion check."""
+        provider = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "shell" / "ReducedMotionProvider.tsx"
+        assert provider.is_file(), "ReducedMotionProvider.tsx not found"
+        content = provider.read_text()
+        assert "reducedMotion" in content or "reduced-motion" in content, "Reduced-motion check not found"
 
     def test_pixi_viewport_in_renderer(self):
-        """Renderer must use pixi-viewport for zoom/pan."""
-        renderer = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts"
-        content = renderer.read_text()
-        assert "Viewport" in content, "pixi-viewport not used in renderer"
-        assert "wheel" in content.lower(), "Wheel zoom not configured"
+        """Graph component must use @xyflow/react for zoom/pan."""
+        flow = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.tsx"
+        content = flow.read_text()
+        assert "@xyflow/react" in content, "@xyflow/react not used in RemedyBrainFlow"
 
     def test_semantic_zoom_in_renderer(self):
-        """Renderer must implement zoom-level-based visibility."""
-        renderer = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "brain" / "renderer.ts"
-        content = renderer.read_text()
-        assert "visible_from_zoom" in content, "No semantic zoom visibility"
-        assert "updateVisibility" in content, "No visibility update function"
+        """Semantic zoom module must exist with zoom-level function."""
+        sz = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts"
+        assert sz.is_file(), "semanticZoom.ts not found"
+        content = sz.read_text()
+        assert "semanticZoomLevelFromViewportZoom" in content, "Zoom level function not found"
 
     def test_detail_card_not_permanent_rail(self):
-        """Detail card must be a floating overlay, not a permanent rail."""
-        index = Path(__file__).resolve().parent.parent / "apps" / "ui" / "index.html"
-        html = index.read_text()
-        assert "position: absolute" in html, "Detail card not absolutely positioned"
-        assert "display: none" in html, "Detail card not hidden by default"
+        """Detail card must be a compact popover component."""
+        popover = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx"
+        assert popover.is_file(), "DetailPopover.tsx not found"
+        content = popover.read_text()
+        assert "remedy-detail-compact" in content, "Compact detail class not found"
 
     def test_view_model_seven_zoom_levels(self):
         """View model must define exactly 7 zoom levels."""

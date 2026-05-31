@@ -1,0 +1,3 @@
+.logo { display: flex; align-items: center; gap: 14px; }
+.mark { width: 42px; height: 42px; filter: drop-shadow(0 8px 18px rgba(76,131,255,.22)); }
+.word { color: var(--remedy-blue-900); font-weight: 700; font-size: 25px; letter-spacing: .42em; }

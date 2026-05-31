@@ -1,0 +1,9 @@
+.timeline { position: relative; border-radius: 26px; padding: 26px 36px 22px; background: rgba(255,255,255,.5); border: 1px solid rgba(78,111,172,.14); box-shadow: var(--remedy-shadow-soft); backdrop-filter: blur(20px); }
+.mainLine { position: absolute; left: 58px; right: 58px; top: 66px; height: 2px; background: rgba(39,77,143,.28); }
+.phaseRow { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(6, 1fr); align-items: start; }
+.phase { display: grid; justify-items: center; gap: 10px; color: var(--remedy-blue-900); font-size: 14px; font-weight: 700; }
+.phaseIcon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.8); color: var(--remedy-blue-700); border: 1px solid rgba(39,77,143,.24); }
+.current .phaseIcon { color: white; background: linear-gradient(135deg, #3478ff, #6da0ff); box-shadow: 0 0 0 8px rgba(76,131,255,.12), 0 14px 28px rgba(76,131,255,.22); }
+.done .phaseIcon { color: var(--remedy-green-500); } .pending { opacity: .68; }
+.microLine { margin: 18px 74px 0; display: flex; justify-content: space-between; align-items: center; } .microLine span { width: 4px; height: 4px; border-radius: 50%; background: rgba(76,131,255,.32); } .microLine .microStrong { width: 8px; height: 8px; background: rgba(76,131,255,.7); }
+.legend { margin-top: 18px; display: flex; justify-content: center; gap: 54px; color: var(--remedy-muted); font-size: 12px; font-weight: 700; }

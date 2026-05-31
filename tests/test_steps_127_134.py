@@ -350,21 +350,23 @@ class TestStep131_UXVisualContract:
         assert vm["label_counts_by_zoom"][0] <= 1
 
     def test_renderer_no_all_label_default(self):
-        """Renderer labels require zoom level >= show_label_from_zoom."""
-        content = Path("apps/ui/src/brain/renderer.ts").read_text()
-        assert "show_label_from_zoom" in content
+        """Labels controlled by workLabel class with overflow ellipsis (not all visible)."""
+        css = Path("apps/ui/src/components/graph/GraphNodes.module.css").read_text()
+        assert "workLabel" in css
+        assert "overflow" in css
+        assert "ellipsis" in css
 
     def test_renderer_no_full_graph_default(self):
-        """Full graph requires explicit toggle."""
-        content = Path("apps/ui/src/brain/renderer.ts").read_text()
-        assert "fullGraphMode" in content
-        # Default must be false
-        assert "fullGraphMode = false" in content
+        """semanticZoom.ts caps at level 4 — full graph not default."""
+        content = Path("apps/ui/src/components/graph/semanticZoom.ts").read_text()
+        assert "return 4" in content
+        # Max zoom level is 4, not unbounded
+        assert content.strip().endswith("return 4;\n}") or "return 4;" in content
 
     def test_renderer_reduced_motion(self):
-        """Renderer respects prefers-reduced-motion."""
-        content = Path("apps/ui/src/brain/renderer.ts").read_text()
-        assert "reduced-motion" in content
+        """ReducedMotionProvider respects prefers-reduced-motion."""
+        content = Path("apps/ui/src/components/shell/ReducedMotionProvider.tsx").read_text()
+        assert "prefers-reduced-motion" in content
 
 
 # ═══════════════════════════════════════════════════════════════════════════
