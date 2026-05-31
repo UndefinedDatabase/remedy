@@ -9,11 +9,13 @@ import styles from "./RightLivePanel.module.css";
 const iconByActor = { Builder: CodeIcon, Reviewer: RateReviewOutlinedIcon, User: PersonOutlineIcon, System: SettingsOutlinedIcon };
 
 export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] }) {
+  const hasActivity = activity.length > 0;
+
   return (
     <section className={styles.card}>
-      <header className={styles.cardHeader}><h2>Chat / Activity</h2></header>
+      <header className={styles.cardHeader}><h2>Activity</h2></header>
       <div className={styles.activityList}>
-        {activity.slice(0, 4).map(item => {
+        {hasActivity ? activity.slice(0, 4).map(item => {
           const Icon = iconByActor[item.actor];
           return (
             <article key={item.id} className={styles.activityItem}>
@@ -24,7 +26,9 @@ export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] 
               </div>
             </article>
           );
-        })}
+        }) : (
+          <p className={styles.emptyState}>No activity yet. Events will appear here as the agent works.</p>
+        )}
       </div>
       <div className={styles.askBar}>
         <input readOnly placeholder="Ask something..." aria-label="Ask something" />

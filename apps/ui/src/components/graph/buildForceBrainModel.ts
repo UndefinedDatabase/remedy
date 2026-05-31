@@ -40,7 +40,7 @@ export function buildForceBrainModel(
   // Root node — fixed center
   const root: ForceBrainNode = {
     id: "root", nodeId: dashboard.jobId, kind: "root", state: "current",
-    label: "Project", depth: 0, value: 28, fx: 0, fy: 0,
+    label: "Project", sourceKind: "layout_only", depth: 0, value: 28, fx: 0, fy: 0,
     clickable: false, visibleLabel: true, alpha: 1, color: "#3478ff",
   };
   nodes.push(root);
@@ -55,7 +55,7 @@ export function buildForceBrainModel(
     const r = baseRadius + (rng() * 40 - 20);
     const anchor: ForceBrainNode = {
       id: def.id, kind: "cluster", state: def.state, label: def.label,
-      clusterId: def.id, depth: 1, value: 14,
+      sourceKind: "layout_only", clusterId: def.id, depth: 1, value: 14,
       fx: Math.cos(angle) * r, fy: Math.sin(angle) * r,
       clickable: false, visibleLabel: false, alpha: 0.7, color: def.color,
     };
@@ -76,7 +76,7 @@ export function buildForceBrainModel(
 
     const node: ForceBrainNode = {
       id: gn.id || `real-${idx}`, nodeId: gn.nodeId, kind, state, label: gn.label,
-      clusterId: cluster, depth: 2, value: 6,
+      sourceKind: "real_brain", clusterId: cluster, depth: 2, value: 6,
       x: (clusterAnchor.fx ?? 0) + Math.cos(angle) * dist,
       y: (clusterAnchor.fy ?? 0) + Math.sin(angle) * dist,
       clickable: true, visibleLabel: false, alpha: 0.9, color: clusterAnchor.color,
@@ -95,7 +95,7 @@ export function buildForceBrainModel(
       const particleId = `${def.id}-p${p}`;
       const particle: ForceBrainNode = {
         id: particleId, kind: "particle", state: def.state, label: "",
-        clusterId: def.id, depth: 3, value: 2,
+        sourceKind: "layout_only", clusterId: def.id, depth: 3, value: 2,
         x: (anchor.fx ?? 0) + Math.cos(angle) * dist,
         y: (anchor.fy ?? 0) + Math.sin(angle) * dist,
         clickable: false, visibleLabel: false,

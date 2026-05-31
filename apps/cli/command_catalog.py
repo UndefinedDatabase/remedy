@@ -226,6 +226,17 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("job.run-next", "job.plan"),
     ),
 
+    CommandEntry(
+        command_id="job.summary",
+        group_id="job",
+        subcommand="summary",
+        description="Print an honest summary of job state (truth contract).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.show",),
+    ),
+
     # ── project ──────────────────────────────────────────────────────────
     CommandEntry(
         command_id="project.create",

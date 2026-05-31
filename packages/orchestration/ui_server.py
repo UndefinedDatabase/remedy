@@ -167,8 +167,17 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
                 "latest": matching[-1].get("timestamp", ""),
             })
 
+    # Truth contract — how many fields are placeholders vs real data
+    has_real_events = len(events) > 0
+    has_real_tasks = task_count > 0
+    synthetic_count = 0
+    if not has_real_events:
+        synthetic_count += 4  # lifecycle, latest_proof, latest_test, token_mode
+    if not has_real_tasks:
+        synthetic_count += 1  # task_count is zero but not "fake"
+
     return {
-        "version": 1,
+        "version": 2,
         "job_id": str(job.id),
         "job_name": job.name,
         "state": state,
@@ -187,6 +196,17 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "next_action": next_action,
         "guidance": guidance_cards,
         "lifecycle": lifecycle,
+        # Truth contract fields
+        "demo_mode": not has_real_events,
+        "synthetic_count": synthetic_count,
+        "data_sources": {
+            "events": "real" if has_real_events else "none",
+            "tasks": "real" if has_real_tasks else "none",
+            "guidance": "real" if guidance_cards else "none",
+            "lifecycle": "real" if lifecycle else "none",
+            "latest_proof": "real" if latest_proof else "none",
+            "latest_test": "real" if latest_test else "none",
+        },
     }
 
 
@@ -381,8 +401,10 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     candidates = (job.metadata or {}).get("memory_candidates", [])
     memory_candidate_count = len(candidates)
 
+    has_real_events = len(events) > 0
+
     return {
-        "version": 2,
+        "version": 3,
         "job_id": str(job.id),
         "cursor": cursor,
         "stage": stage,
@@ -399,6 +421,10 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "repair_loop_used": repair_loop_used,
         "reviewer_pending_count": reviewer_pending,
         "memory_candidate_count": memory_candidate_count,
+        # Truth contract
+        "demo_mode": not has_real_events,
+        "idle": not has_real_events or stage == "idle",
+        "stale": not has_real_events,
     }
 
 

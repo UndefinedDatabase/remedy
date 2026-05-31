@@ -160,28 +160,78 @@ function normalizeGraph(journey: RemedyJourneyItem[], tasks: RemedyTaskItem[]): 
   return { nodes, edges };
 }
 
-function normalizeActivity(live: any, tasks: RemedyTaskItem[]): RemedyActivityItem[] {
-  const active = tasks.find(t => t.state === "current");
-  return [
-    { id: "now", actor: "Builder", message: scrubUiText(live?.latestMessage || live?.latest_message || (active ? `Working on ${active.label}` : "Waiting for the next safe action."), "Project state updated."), timeLabel: "Just now", kind: "build" },
-    { id: "system", actor: "System", message: "Project state is ready for review.", timeLabel: "Now", kind: "system" },
-  ];
+const EVENT_LABELS: Record<string, { actor: RemedyActivityItem["actor"]; kind: RemedyActivityItem["kind"]; label: string }> = {
+  task_created: { actor: "Builder", kind: "build", label: "Task created" },
+  patch_intent_created: { actor: "Builder", kind: "build", label: "Change proposed" },
+  patch_intent_approved: { actor: "User", kind: "user", label: "Change approved" },
+  patch_intent_applied: { actor: "Builder", kind: "build", label: "Change applied" },
+  test_run_completed: { actor: "Builder", kind: "test", label: "Tests run" },
+  proof_collected: { actor: "Builder", kind: "build", label: "Proof collected" },
+  review_recommendation: { actor: "Reviewer", kind: "review", label: "Review suggestion" },
+  stop_reason_recorded: { actor: "System", kind: "system", label: "Stopped" },
+};
+
+function normalizeActivity(live: any, tasks: RemedyTaskItem[], events?: any): RemedyActivityItem[] {
+  // Derive from real event ledger if available
+  const eventList = Array.isArray(events?.events) ? events.events : [];
+  if (eventList.length > 0) {
+    return eventList.slice(-4).reverse().map((e: any, idx: number) => {
+      const meta = EVENT_LABELS[e.event] || { actor: "System" as const, kind: "system" as const, label: e.event };
+      return {
+        id: `event-${idx}`,
+        actor: meta.actor,
+        message: meta.label,
+        timeLabel: e.timestamp ? formatEventTime(e.timestamp) : "",
+        kind: meta.kind,
+      };
+    });
+  }
+
+  // Fallback: derive from live state
+  const isIdle = !live?.running && !live?.latest_message && !live?.latestMessage;
+  if (isIdle) return [];
+
+  const items: RemedyActivityItem[] = [];
+  const msg = live?.latestMessage || live?.latest_message;
+  if (msg) {
+    items.push({ id: "now", actor: "Builder", message: scrubUiText(msg, "Working."), timeLabel: "Just now", kind: "build" });
+  } else {
+    const active = tasks.find(t => t.state === "current");
+    if (active) {
+      items.push({ id: "now", actor: "Builder", message: `Working on ${active.label}`, timeLabel: "Just now", kind: "build" });
+    }
+  }
+  return items;
+}
+
+function formatEventTime(ts: string): string {
+  try {
+    const d = new Date(ts);
+    const now = Date.now();
+    const diffMs = now - d.getTime();
+    if (diffMs < 60_000) return "Just now";
+    if (diffMs < 3_600_000) return `${Math.round(diffMs / 60_000)}m ago`;
+    if (diffMs < 86_400_000) return `${Math.round(diffMs / 3_600_000)}h ago`;
+    return d.toLocaleDateString();
+  } catch { return ""; }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export async function loadRemedyDashboard(o: ApiClientOptions): Promise<RemedyDashboard> {
   const base = o.baseUrl || "";
   const q = `token=${encodeURIComponent(o.token)}`;
-  const [brain, progress, live, story] = await Promise.allSettled([
+  const [brain, progress, live, story, eventsSince] = await Promise.allSettled([
     fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/brain-view-model?${q}`),
     fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/task-progress?${q}`),
     fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/live-state?${q}`),
     fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/story?${q}`),
+    fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/events-since?cursor=0&${q}`),
   ]);
   const brainData: Record<string, unknown> = brain.status === "fulfilled" ? brain.value : {};
   const progressData: Record<string, unknown> = progress.status === "fulfilled" ? progress.value : {};
   const liveData: Record<string, unknown> = live.status === "fulfilled" ? live.value : {};
   const storyData: Record<string, unknown> = story.status === "fulfilled" ? story.value : (brainData?.story as Record<string, unknown>) || {};
+  const eventsData: Record<string, unknown> = eventsSince.status === "fulfilled" ? eventsSince.value : {};
   const journey = normalizeJourney(storyData, brainData);
   const tasks = normalizeTasks(progressData, journey);
   const graph = normalizeGraph(journey, tasks);
@@ -193,7 +243,7 @@ export async function loadRemedyDashboard(o: ApiClientOptions): Promise<RemedyDa
     metrics: buildMetrics(tasks),
     phases: buildPhases(tasks),
     tasks,
-    activity: normalizeActivity(liveData, tasks),
+    activity: normalizeActivity(liveData, tasks, eventsData),
     graph,
     nextAction: (storyData?.primary_next_action as Record<string, unknown>)
       ? {
