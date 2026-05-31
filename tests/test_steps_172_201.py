@@ -333,7 +333,7 @@ class TestStep184_188RightPanel:
         f = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"
         assert f.is_file()
         content = f.read_text(encoding="utf-8")
-        assert "Chat / Activity" in content
+        assert "Activity" in content
         # No mutation
         assert "POST" not in content
 

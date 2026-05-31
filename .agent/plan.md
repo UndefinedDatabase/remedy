@@ -1,23 +1,20 @@
-# Plan — Steps 227-246
+# Plan — Steps 247-252
 
 ## Goal
-Responsive UI Rescue with Canvas Force Brain Graph.
+Data-Honest Mission Control Contract: remove fake UI state, create truth contract.
 
 ## Current Step
 All steps complete. Ready to commit.
 
 ## Steps
-- [x] Step 227: Fix UI contract markers (top-metrics-bar, right-live-panel, etc.)
-- [x] Step 228: Dependency swap — remove @xyflow/react, add react-force-graph-2d + d3-force
-- [x] Step 229: Responsive shell layout (CSS grid + clamp, no fixed 1678×926 frame)
-- [x] Step 230: Single left rail, no duplicate menus, no default LayerSwitcher
-- [x] Steps 231-238: Force brain graph (Canvas, seeded topology, glow nodes, curved links)
-- [x] Steps 239-242: Size/density pass, responsive panels, better labels
-- [x] Steps 243-244: remedy ui start contract + served smoke validation
-- [x] Steps 245-246: Cleanup legacy, TypeScript passes, final build clean
+- [x] Step 247: Repo + handoff truth hygiene (context.md, plan.md, PR gate)
+- [x] Step 248: Dashboard truth contract v1 (source_kind, synthetic_count, demo_mode)
+- [x] Step 249: No-fake UI state pass (remove DISPLAY_ROWS, honest empty states)
+- [x] Step 250: Real graph source contract (source_kind on nodes)
+- [x] Step 251: Event ledger → live activity (derive from run-log)
+- [x] Step 252: Operator summary + smoke alignment (CLI + tests)
 
 ## Test Results
-- 112 tests passed (test_steps_172_201 + test_steps_208_226), 0 failed
+- 148 tests passed (test_steps_172_201 + test_steps_208_226 + test_steps_247_252), 0 failed
 - TypeScript: clean (no errors)
-- Build: 1.86s, 514 kB JS, 15 kB CSS
-- All bundle markers verified
+- Build: 1.80s, 515 kB JS, 15 kB CSS

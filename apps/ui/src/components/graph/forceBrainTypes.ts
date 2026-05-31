@@ -1,5 +1,6 @@
 export type BrainNodeKind = "root" | "cluster" | "task" | "proof" | "review" | "memory" | "particle";
 export type BrainNodeState = "done" | "current" | "planned" | "blocked" | "suggested" | "idle";
+export type BrainSourceKind = "real_brain" | "layout_only" | "demo_fixture";
 
 export interface ForceBrainNode {
   id: string;
@@ -7,6 +8,7 @@ export interface ForceBrainNode {
   kind: BrainNodeKind;
   state: BrainNodeState;
   label: string;
+  sourceKind: BrainSourceKind;
   clusterId?: string;
   depth: number;
   value: number;
