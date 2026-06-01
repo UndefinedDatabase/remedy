@@ -215,14 +215,16 @@ def _create_and_approve_fixture_intent(job: Any, patch_summary: str) -> str:
     Creates a minimal artifact with patch_intent_explanations and records
     approval through approval_queue helpers.
     """
-    from unittest.mock import MagicMock
+    from packages.core.models import Artifact
     from packages.orchestration.approval_queue import (
         make_intent_id, set_approval_state, APPROVAL_APPROVED,
     )
 
-    artifact = MagicMock()
-    artifact.id = uuid4()
-    artifact.task_id = uuid4()
+    artifact = Artifact(
+        task_id=uuid4(),
+        name="fixture-intent",
+        content="",
+    )
     artifact.metadata = {
         "patch_intent_explanations": [
             {"file": "fixture", "action": "modify", "risk": "low",

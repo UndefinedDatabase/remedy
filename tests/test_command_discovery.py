@@ -527,6 +527,7 @@ class TestCLIDiscoverCommands:
             ["python3", "-m", "apps.cli.main"] + args,
             capture_output=True,
             env={**os.environ, **(env or {})},
+            timeout=15,
         )
         return result.returncode, result.stdout.decode(), result.stderr.decode()
 
@@ -535,7 +536,7 @@ class TestCLIDiscoverCommands:
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         job_id = r.stdout.decode().strip()
         # Create a target repo with pyproject + tests.
@@ -545,7 +546,7 @@ class TestCLIDiscoverCommands:
         (repo / "tests").mkdir()
         subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         return job_id
 
@@ -917,7 +918,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "create", "test"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         job_id = r.stdout.decode().strip()
         repo = tmp_path / "target"
@@ -926,7 +927,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         (repo / "tests").mkdir()
         subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         return job_id, env
 
@@ -934,7 +935,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         data = json.loads(r.stdout)
         assert data["version"] == 1
@@ -943,7 +944,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         data = json.loads(r.stdout)
         assert "selected_test_candidate" in data
@@ -952,7 +953,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         data = json.loads(r.stdout)
         assert "counts" in data
@@ -967,7 +968,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         assert r.returncode == 0
         # Must parse cleanly with no surrounding text.

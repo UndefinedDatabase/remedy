@@ -410,19 +410,24 @@ class TestStep152_MemoryCandidate:
 class TestStep153_LiveStateV2:
     """Live-state must include repair_loop_used, reviewer/memory counts."""
 
-    def test_live_state_v2_schema(self):
+    def test_live_state_v3_schema(self):
         from packages.orchestration.ui_server import _build_live_state_json
         job = _make_job()
         job.metadata = {}
         with patch("packages.orchestration.ui_server._load_events", return_value=[]):
             state = _build_live_state_json(job)
-        assert state["version"] == 2
+        assert state["version"] == 3
+        # v2 fields still present
         assert "repair_loop_used" in state
         assert "reviewer_pending_count" in state
         assert "memory_candidate_count" in state
         assert isinstance(state["repair_loop_used"], bool)
         assert isinstance(state["reviewer_pending_count"], int)
         assert isinstance(state["memory_candidate_count"], int)
+        # v3 fields
+        assert state["demo_mode"] is False
+        assert isinstance(state["stale"], bool)
+        assert isinstance(state["idle"], bool)
 
     def test_live_state_repair_loop_detected(self):
         from packages.orchestration.ui_server import _build_live_state_json

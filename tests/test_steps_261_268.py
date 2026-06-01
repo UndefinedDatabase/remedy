@@ -533,14 +533,26 @@ class TestStep267:
         assert result is not None
         assert result.risk != "high"
 
-    def test_full_suite_runs_without_timeout(self):
-        """test_command_discovery.py runs within 30s."""
-        import subprocess
-        r = subprocess.run(
-            [sys.executable, "-m", "pytest", "tests/test_command_discovery.py", "-x", "-q"],
-            capture_output=True, timeout=30,
-        )
-        assert r.returncode == 0, f"test_command_discovery.py failed:\n{r.stderr.decode()}"
+    def test_discovery_runtime_does_not_hang(self, tmp_path):
+        """Command discovery on a multi-source repo completes quickly (no hang)."""
+        import time
+        from packages.orchestration.command_discovery import discover_commands
+
+        # Build a repo with multiple manifest types
+        (tmp_path / "pyproject.toml").write_text("[project]\nname = 'x'\n")
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "Makefile").write_text("test:\n\tpytest\n")
+        (tmp_path / "package.json").write_text('{"scripts":{"test":"jest"}}')
+        (tmp_path / "Cargo.toml").write_text('[package]\nname = "x"\n')
+        (tmp_path / "go.mod").write_text("module x\ngo 1.21\n")
+
+        job = _make_job()
+        start = time.monotonic()
+        candidates = discover_commands(job, tmp_path)
+        elapsed = time.monotonic() - start
+
+        assert elapsed < 5.0, f"discover_commands took {elapsed:.1f}s — should be <5s"
+        assert len(candidates) >= 3, f"expected >=3 candidates, got {len(candidates)}"
 
 
 # ---------------------------------------------------------------------------
@@ -591,21 +603,26 @@ class TestStep268:
         assert "Steps 261-268" in content
 
     def test_context_md_updated(self):
-        """context.md references Steps 261-268."""
+        """context.md references a valid step range (living document)."""
+        import re
         content = Path(".agent/context.md").read_text()
-        assert "261-268" in content
+        assert re.search(r"Steps?\s+\d+-\d+", content, re.IGNORECASE), \
+            "context.md must reference a valid step range"
 
     def test_context_md_no_stale_problems(self):
         """context.md doesn't list already-fixed items as current problems."""
         content = Path(".agent/context.md").read_text()
-        # These were fixed in this block
+        # These were fixed in steps 261-268
         assert "allow repo_test_run" not in content  # fixed in 261
         assert "synthetic_count: 4" not in content  # fixed in 263
+        assert "job=None source_apply bypass" not in content  # fixed in 265
 
     def test_plan_md_current(self):
-        """plan.md references Steps 261-268."""
+        """plan.md references a valid step range (living document)."""
+        import re
         content = Path(".agent/plan.md").read_text()
-        assert "261-268" in content
+        assert re.search(r"Steps?\s+\d+-\d+", content, re.IGNORECASE), \
+            "plan.md must reference a valid step range"
 
     def test_no_shell_true_in_orchestration(self):
         """No shell=True in orchestration package (AST check)."""
