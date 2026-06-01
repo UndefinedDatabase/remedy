@@ -136,26 +136,25 @@ def apply_structured_patch(
     *,
     data_dir: str | None = None,
     job_id: UUID | None = None,
-    job: Any | None = None,
+    job: Any,
 ) -> ApplyResult:
     """Apply a structured patch to the repo. Snapshot before each change.
 
     Requires:
-      - job with repo_generated_write permission, OR
-      - job=None (legacy callers — permission assumed pre-checked by caller)
+      - job parameter (mandatory — no bypass)
+      - job must have repo_generated_write permission
 
     No mutation occurs without explicit permission boundary.
     """
     apply_id = uuid4().hex[:12]
     result = ApplyResult(apply_id=apply_id, success=True, files_modified=0, files_created=0)
 
-    # Permission boundary: if job provided, check permission
-    if job is not None:
-        from packages.orchestration.permissions import Capability, is_allowed
-        if not is_allowed(job, Capability.repo_generated_write):
-            result.success = False
-            result.errors.append("permission denied: repo_generated_write not granted")
-            return result
+    # Permission boundary: always enforced
+    from packages.orchestration.permissions import Capability, is_allowed
+    if not is_allowed(job, Capability.repo_generated_write):
+        result.success = False
+        result.errors.append("permission denied: repo_generated_write not granted")
+        return result
 
     # Validate first
     issues = validate_structured_patch(patch)

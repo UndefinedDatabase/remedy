@@ -308,7 +308,7 @@ def _run_fixture_builder(
     # 4. Apply patch (fixture auto-approves)
     if autonomy_level >= 3:
         apply_result = apply_structured_patch(
-            patch, repo, data_dir=str(data_dir), job_id=job.id,
+            patch, repo, data_dir=str(data_dir), job_id=job.id, job=job,
         )
         fx["source_patch_applied"] = apply_result.success
     else:
@@ -434,7 +434,7 @@ def _run_repair_loop_fixture(
     fx["approval_required"] = True
 
     if autonomy_level >= 3:
-        apply_structured_patch(patch1, repo, data_dir=str(data_dir), job_id=job.id)
+        apply_structured_patch(patch1, repo, data_dir=str(data_dir), job_id=job.id, job=job)
         fx["source_patch_applied"] = True
 
     if autonomy_level >= 4 and max_cycles >= 1:
@@ -488,7 +488,7 @@ def _run_repair_loop_fixture(
                 "intent_kind": "file_ops", "target_path_count": 1,
                 "risk": "low", "cycle": 2,
             })
-            apply_structured_patch(patch2, repo, data_dir=str(data_dir), job_id=job.id)
+            apply_structured_patch(patch2, repo, data_dir=str(data_dir), job_id=job.id, job=job)
 
             proc2 = subprocess.run(
                 [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",

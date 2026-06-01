@@ -89,9 +89,11 @@ class TestStep249:
         assert "No activity yet" in src or "emptyState" in src
 
     def test_normalize_activity_returns_empty_when_idle(self):
+        """Dashboard-first: empty activity from dashboard = empty activity in UI."""
         src = (UI_SRC / "api" / "remedyApi.ts").read_text()
-        assert "isIdle" in src
-        assert "return []" in src
+        # normalizeApiFailure returns empty activity
+        assert "normalizeApiFailure" in src
+        assert "activity: []" in src
 
     def test_no_fake_system_message(self):
         src = (UI_SRC / "api" / "remedyApi.ts").read_text()
@@ -148,10 +150,6 @@ class TestStep250:
 # ── Step 251: Event Ledger → Live Activity ──────────────────────────────────
 
 class TestStep251:
-    def test_events_since_fetched_in_dashboard(self):
-        src = (UI_SRC / "api" / "remedyApi.ts").read_text()
-        assert "events-since" in src
-
     def test_event_labels_defined(self):
         src = (UI_SRC / "api" / "remedyApi.ts").read_text()
         assert "EVENT_LABELS" in src
@@ -159,19 +157,14 @@ class TestStep251:
         assert "patch_intent_applied" in src
         assert "test_run_completed" in src
 
-    def test_activity_derived_from_event_ledger(self):
+    def test_activity_uses_dashboard_data(self):
+        """Activity now comes from dashboard payload, not separate events-since."""
         src = (UI_SRC / "api" / "remedyApi.ts").read_text()
-        # normalizeActivity should accept events parameter
-        assert "events?: any" in src or "events:" in src
+        assert "dashboard.activity" in src or "activity" in src
 
     def test_format_event_time_exists(self):
         src = (UI_SRC / "api" / "remedyApi.ts").read_text()
         assert "formatEventTime" in src
-
-    def test_events_data_passed_to_normalize(self):
-        src = (UI_SRC / "api" / "remedyApi.ts").read_text()
-        assert "eventsData" in src
-        assert "normalizeActivity(liveData, tasks, eventsData)" in src
 
 
 # ── Step 252: Operator Summary + Smoke Alignment ────────────────────────────

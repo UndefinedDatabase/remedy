@@ -140,7 +140,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             }
             for c in cards
         ]
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
 
     # Primary next action
@@ -170,9 +170,9 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     # Truth contract
     has_real_events = len(events) > 0
     has_real_tasks = task_count > 0
+    # Demo mode only with explicit flag — normal empty jobs are NOT demo
+    demo_mode = os.environ.get("REMEDY_UI_DEMO_MODE") == "1"
     synthetic_count = 0
-    if not has_real_events:
-        synthetic_count += 4
     missing_sources: list[str] = []
     if not has_real_events:
         missing_sources.append("events")
@@ -283,7 +283,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "visible_edge_count": graph_edge_count,
             "source": "project_brain",
             "mode": "force_graph",
-            "full_graph_requires_explicit_toggle": False,
+            "full_graph_requires_explicit_toggle": True,
         },
         "next_action": {
             "kind": "guidance",
@@ -295,7 +295,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "truth": {
             "fallback_count": 0 if has_real_events else 1,
             "synthetic_count": synthetic_count,
-            "demo_mode": not has_real_events,
+            "demo_mode": demo_mode,
             "stale_sources": [] if has_real_events else ["events"],
             "missing_sources": missing_sources,
             "computed_from": "job_model_and_event_ledger",
@@ -383,8 +383,12 @@ def _build_guide_json(job: Any) -> dict[str, Any]:
         events = _load_events(job)
         cards = build_guidance_cards(job, events)
         return export_guidance_json(job, cards)
-    except Exception:
-        return {"version": 1, "cards": [], "error": "guidance unavailable"}
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {
+            "version": 1, "cards": [],
+            "error": "guidance unavailable",
+            "degraded": True, "error_kind": "guidance_build_failed", "source": "server",
+        }
 
 
 def _build_brain_view_model_json(job: Any) -> dict[str, Any]:
@@ -528,7 +532,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "reviewer_pending_count": reviewer_pending,
         "memory_candidate_count": memory_candidate_count,
         # Truth contract
-        "demo_mode": not has_real_events,
+        "demo_mode": os.environ.get("REMEDY_UI_DEMO_MODE") == "1",
         "idle": not has_real_events or stage == "idle",
         "stale": not has_real_events,
     }
@@ -688,8 +692,12 @@ def _build_context_budget_json(job: Any) -> dict[str, Any]:
         for s in data.get("sections", []):
             s.pop("content", None)
         return data
-    except Exception:
-        return {"version": 1, "error": "context budget unavailable"}
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {
+            "version": 1,
+            "error": "context budget unavailable",
+            "degraded": True, "error_kind": "context_budget_build_failed", "source": "server",
+        }
 
 
 # ---------------------------------------------------------------------------

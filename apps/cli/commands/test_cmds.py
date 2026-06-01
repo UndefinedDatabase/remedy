@@ -37,7 +37,7 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
     if not _perm_allowed(job, Capability.repo_test_run):
         print(
             "Error: permission repo_test_run is required.\n"
-            f"Grant it with: remedy job permit {job.id} allow repo_test_run",
+            f"Grant it with: remedy job permit {job.id} repo_test_run allow",
             file=sys.stderr,
         )
         sys.exit(1)

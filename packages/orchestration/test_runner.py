@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 TIMEOUT_DEFAULT_SEC: int = 60
+MAX_TEST_OUTPUT_BYTES: int = 1_048_576  # 1 MiB
 
 # Execution safety guard — NOT project logic.
 # This is the closed set of executables we are willing to invoke.
@@ -105,7 +106,7 @@ class TestRunRecord:
     duration_ms: int
     output_path: str               # basename of the output file, or "" when blocked
     output_line_count: int
-    output_bytes: int
+    output_bytes: int              # persisted bytes (after truncation)
     created_at: str                # ISO-8601 UTC timestamp
     blocked_reason: str            # non-empty only when status == "blocked"
     # Command provenance (Step 34) — empty strings when blocked before discovery.
@@ -113,6 +114,10 @@ class TestRunRecord:
     command_source_path: str       # relative path to source file
     command_purpose: str           # "test" | "build" | "lint" | ...
     command_confidence: str        # "high" | "medium" | "low"
+    # Truncation metadata (Step 266)
+    output_truncated: bool = False
+    original_output_bytes: int = 0
+    persisted_output_bytes: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -221,13 +226,12 @@ def run_tests_local(
         )
 
     # ── Truncate and write output file ─────────────────────────────────────
-    _MAX_OUTPUT_BYTES = 1_048_576  # 1 MiB
     original_output_bytes = len(raw_output)
-    output_truncated = original_output_bytes > _MAX_OUTPUT_BYTES
+    output_truncated = original_output_bytes > MAX_TEST_OUTPUT_BYTES
     if output_truncated:
-        raw_output = raw_output[:_MAX_OUTPUT_BYTES] + b"\n[remedy output truncated]\n"
+        raw_output = raw_output[:MAX_TEST_OUTPUT_BYTES] + b"\n[remedy output truncated]\n"
     output_file.write_bytes(raw_output)
-    output_bytes = len(raw_output)
+    persisted_output_bytes = len(raw_output)
     output_line_count = raw_output.count(b"\n")
 
     return TestRunRecord(
@@ -238,13 +242,16 @@ def run_tests_local(
         duration_ms=duration_ms,
         output_path=output_file.name,
         output_line_count=output_line_count,
-        output_bytes=output_bytes,
+        output_bytes=persisted_output_bytes,
         created_at=created_at,
         blocked_reason="",
         command_source_type=candidate.source_type,
         command_source_path=candidate.source_path,
         command_purpose=candidate.purpose,
         command_confidence=candidate.confidence,
+        output_truncated=output_truncated,
+        original_output_bytes=original_output_bytes,
+        persisted_output_bytes=persisted_output_bytes,
     )
 
 
