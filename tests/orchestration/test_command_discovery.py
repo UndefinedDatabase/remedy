@@ -66,7 +66,7 @@ def _make_job_s127(*, tasks=None, name="test"):
 
 
 
-class TestStep124_WorkerUnloadSchema:
+class TestWorkerUnloadJsonSchema:
     """Worker unload JSON must have flat stopped/skipped/errors/unavailable."""
 
     def test_unload_unavailable_schema(self):
@@ -133,7 +133,7 @@ class TestStep124_WorkerUnloadSchema:
 
 
 
-class TestStep130_WorkerVRAMCleanup:
+class TestWorkerUnloadExactSchemaEdgeCases:
     """Worker unload must have exact schema and handle all edge cases."""
 
     def test_unload_exact_schema(self):

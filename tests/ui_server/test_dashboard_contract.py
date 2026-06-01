@@ -209,7 +209,7 @@ class TestUIServer:
 
 
 
-class TestStep247:
+class TestAgentStateFilesCurrentBranch:
     def test_context_md_references_current_branch(self):
         ctx = (REPO_ROOT / ".agent" / "context.md").read_text()
         assert "steps-247-252" in ctx
@@ -233,7 +233,7 @@ class TestStep247:
 
 
 
-class TestStep248:
+class TestDashboardTruthFieldsExist:
     def test_dashboard_returns_version_2(self):
         src = (ORCH / "ui_server.py").read_text()
         assert '"version": 2' in src or "'version': 2" in src
@@ -265,7 +265,7 @@ class TestStep248:
 
 
 
-class TestStep249:
+class TestNoFakeUiStateInComponents:
     def test_no_display_rows_fake_data(self):
         src = (UI_SRC / "components" / "panels" / "TaskChecklistCard.tsx").read_text()
         assert "DISPLAY_ROWS" not in src
@@ -311,7 +311,7 @@ class TestStep249:
 
 
 
-class TestStep250:
+class TestRealGraphSourceKindContract:
     def test_brain_source_kind_type_exists(self):
         src = (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").read_text()
         assert "BrainSourceKind" in src
@@ -356,7 +356,7 @@ class TestStep250:
 
 
 
-class TestStep251:
+class TestEventLedgerLiveActivity:
     def test_event_labels_defined(self):
         src = (UI_SRC / "api" / "remedyApi.ts").read_text()
         assert "EVENT_LABELS" in src
@@ -379,7 +379,7 @@ class TestStep251:
 
 
 
-class TestStep252:
+class TestJobSummaryCommandContract:
     def test_job_summary_command_exists(self):
         src = (CLI_COMMANDS / "job.py").read_text()
         assert "_cmd_job_summary" in src
@@ -441,7 +441,7 @@ class TestStep252:
 
 
 
-class TestStep253:
+class TestLiveReviewAndAgentStateRefs:
     def test_live_review_has_steps_253_260_section(self):
         review = (REPO_ROOT / ".data" / "live_review.md").read_text()
         assert "Steps 253-260" in review
@@ -472,7 +472,7 @@ class TestStep253:
 
 
 
-class TestStep254:
+class TestReadinessEndpointUsesAutonomyReadiness:
     def test_readiness_endpoint_uses_autonomy_readiness(self):
         """Verify ui_server imports from autonomy_readiness, not readiness."""
         src = (ORCH / "ui_server.py").read_text()
@@ -530,7 +530,7 @@ class TestStep254:
 
 
 
-class TestStep255:
+class TestAutoBuildDisabledByDefault:
     def test_auto_build_disabled_by_default(self):
         """Without REMEDY_UI_AUTO_BUILD=1, _auto_build_frontend must return None."""
         import os

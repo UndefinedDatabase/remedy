@@ -2,6 +2,11 @@
 
 Migration from step-numbered test files to domain-oriented suites.
 
+> **Note (Step 297):** All step-numbered class names (e.g. `TestStep247...`) were
+> renamed to descriptive invariant names (e.g. `TestDashboardRequiresAuthToken`).
+> The class names in this document reflect the original migration mapping and may
+> not match current names. See the actual test files for current class names.
+
 ## Source Files (25 total, ~1088 tests)
 
 ### test_steps_53_56.py

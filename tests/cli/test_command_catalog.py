@@ -95,7 +95,7 @@ class TestUICommands:
 
 
 
-class TestStep111_UICLIContract:
+class TestUiDirectFormCommandRewrite:
     """remedy ui <job_id> direct form must work."""
 
     def test_default_command_rewrite_ui(self):
@@ -168,7 +168,7 @@ class TestStep111_UICLIContract:
 
 
 
-class TestStep146_HelpPolish:
+class TestCliHelpIncludesHappyPath:
     """CLI help must include key commands and no stale content."""
 
     def test_root_help_includes_happy_path(self):

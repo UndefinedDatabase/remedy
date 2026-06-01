@@ -179,7 +179,7 @@ class TestAutorunSmoke:
 
 
 
-class TestStep116_AutocoderE2E:
+class TestFixtureBuilderStructuredPatch:
 
     def test_fixture_builder_creates_patch(self):
         """Fixture builder should use structured patch model."""
@@ -294,7 +294,7 @@ class TestStep116_AutocoderE2E:
 
 
 
-class TestStep125_AutocoderCalcFixture:
+class TestCalcFixtureBuilderWithProof:
     """Fixture builder must use calc.py, Makefile, and --no-ui must work."""
 
     def test_fixture_creates_calc_and_makefile(self):
@@ -426,7 +426,7 @@ class TestStep125_AutocoderCalcFixture:
 
 
 
-class TestStep133_AutocoderFakeE2E:
+class TestFixtureBuilderFakeE2ERepair:
     """Autocoder fixture builder proves real code change path."""
 
     def test_fixture_file_fixed(self):
@@ -521,7 +521,7 @@ class TestStep133_AutocoderFakeE2E:
 
 
 
-class TestStep136_AutocoderFakeE2E:
+class TestFixtureBuilderWrongCalcRepair:
     """Fixture builder uses wrong calc.py as starting point."""
 
     def test_fixture_starts_with_wrong_calc(self):

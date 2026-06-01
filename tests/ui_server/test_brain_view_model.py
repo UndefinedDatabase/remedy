@@ -303,7 +303,7 @@ class TestNodeDetail:
 
 
 
-class TestStep123_ViewModelHardening:
+class TestViewModelFieldAndZoomContract:
     """Exact API field contracts, zoom contracts, node/edge contracts."""
 
     def test_version_is_4(self):
@@ -486,7 +486,7 @@ class TestStep123_ViewModelHardening:
 
 
 
-class TestStep132_NodeDetailEdgeMeaning:
+class TestNodeDetailEdgeMeaningContract:
     """Node detail and edge meaning contracts."""
 
     def test_node_detail_exact_schema(self):
@@ -580,7 +580,7 @@ class TestStep132_NodeDetailEdgeMeaning:
 
 
 
-class TestStep165HumanDetail:
+class TestHumanNodeDetailSchema:
     """Human-only node detail."""
 
     def test_human_detail_schema(self):

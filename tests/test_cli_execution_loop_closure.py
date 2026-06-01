@@ -39,7 +39,7 @@ def _make_job(*, tasks=None, name="test", metadata=None):
 # Step 155 — Fixture Builder Mode CLI Closure
 # =========================================================================
 
-class TestStep155_FixtureBuilderCLI:
+class TestFixtureBuilderCliParsing:
     """--fixture-builder must accept bare, repair-loop, =repair-loop forms."""
 
     def test_parser_bare_fixture_builder(self):
@@ -106,7 +106,7 @@ class TestStep155_FixtureBuilderCLI:
 # Step 156 — Repair-loop Fake E2E Closure
 # =========================================================================
 
-class TestStep156_RepairLoopE2E:
+class TestRepairLoopFullE2EClosure:
     """Repair loop fixture proves 2-cycle controlled architecture."""
 
     def test_repair_loop_full_json(self):
@@ -174,7 +174,7 @@ class TestStep156_RepairLoopE2E:
 # Step 157 — Reviewer CLI Closure
 # =========================================================================
 
-class TestStep157_ReviewerCLI:
+class TestReviewerCliJsonOutput:
     """Review commands support --fixture-reviewer and --json."""
 
     def test_review_run_fixture_json(self):
@@ -273,7 +273,7 @@ class TestStep157_ReviewerCLI:
 # Step 158 — Memory Candidate CLI Closure
 # =========================================================================
 
-class TestStep158_MemoryCandidateCLI:
+class TestMemoryCandidateCliCommands:
     """Memory candidate commands exist and produce correct JSON."""
 
     def test_candidates_in_catalog(self):
@@ -358,7 +358,7 @@ class TestStep158_MemoryCandidateCLI:
 # Step 159 — --ui boolean flag + live UI contract
 # =========================================================================
 
-class TestStep159_UIBooleanFlag:
+class TestUiBooleanFlagParsing:
     """--ui must be store_true boolean flag."""
 
     def test_ui_bare_flag_parses(self):
@@ -409,7 +409,7 @@ class TestStep159_UIBooleanFlag:
 # Step 160 — Smoke script structural checks
 # =========================================================================
 
-class TestStep160_SmokeStructure:
+class TestSmokeScriptNewCliSections:
     """Smoke script includes new CLI contracts."""
 
     def test_smoke_has_repair_loop_section(self):
@@ -440,7 +440,7 @@ class TestStep160_SmokeStructure:
 # Step 161 — Dev Status Expanded
 # =========================================================================
 
-class TestStep161_DevStatusExpanded:
+class TestDevStatusExpandedCapabilities:
     """Dev status includes repair_loop_ok, reviewer_loop_ok, etc."""
 
     def test_dev_status_expanded_schema(self):
@@ -486,7 +486,7 @@ class TestStep161_DevStatusExpanded:
 # Step 162 — Docs/Help Closure
 # =========================================================================
 
-class TestStep162_DocsHelp:
+class TestDocsHelpReviewMemoryCommands:
     """Help pages include new commands."""
 
     def test_review_group_in_catalog(self):

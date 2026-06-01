@@ -587,7 +587,7 @@ class TestBrainIntegration:
 
 
 
-class TestStep163MemoryCandidates:
+class TestMemoryCandidateCreateApproveReject:
     """Memory candidate contract closure."""
 
     def test_create_candidate_basic(self):
@@ -673,7 +673,7 @@ class TestStep163MemoryCandidates:
 
 
 
-class TestStep164Story:
+class TestStoryViewModelSchema:
     """Story ViewModel."""
 
     def test_story_schema(self):
@@ -735,7 +735,7 @@ class TestStep164Story:
 
 
 
-class TestStep173Spec:
+class TestUiRebuildSpecDocument:
     """UI rebuild spec document present and complete."""
 
     @pytest.fixture(autouse=True)
@@ -786,7 +786,7 @@ class TestStep173Spec:
 
 
 
-class TestStep174Structure:
+class TestFrontendProjectStructure:
     """Frontend has clean modern React structure."""
 
     def test_package_json_valid(self):

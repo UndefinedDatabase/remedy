@@ -546,6 +546,10 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     candidates = (job.metadata or {}).get("memory_candidates", [])
     memory_candidate_count = len(candidates)
 
+    # Approved memory usage from events
+    mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
+    memory_used_count = mem_events[-1].get("metadata", {}).get("item_count", 0) if mem_events else 0
+
     has_real_events = len(events) > 0
 
     return {
@@ -566,6 +570,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "repair_loop_used": repair_loop_used,
         "reviewer_pending_count": reviewer_pending,
         "memory_candidate_count": memory_candidate_count,
+        "memory_used_count": memory_used_count,
         # Truth contract
         "demo_mode": os.environ.get("REMEDY_UI_DEMO_MODE") == "1",
         "idle": not has_real_events or stage == "idle",

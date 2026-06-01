@@ -518,7 +518,7 @@ class TestForwardFlowLayout:
 
 
 
-class TestStep113_SemanticZoom:
+class TestSemanticZoomMonotonicVisibility:
 
     def test_zoom_policy_in_view_model(self):
         """View model must have zoom_policy with correct direction."""
@@ -591,7 +591,7 @@ class TestStep113_SemanticZoom:
 
 
 
-class TestStep114_ForwardFlow:
+class TestForwardFlowEdgeRankContract:
 
     def test_nodes_have_flow_role(self):
         """Every node must have flow_role."""
@@ -667,7 +667,7 @@ class TestStep114_ForwardFlow:
 
 
 
-class TestStep166JourneyLayout:
+class TestJourneyLeftToRightLayout:
     """Journey graph layout."""
 
     def test_journey_left_to_right(self):
@@ -711,7 +711,7 @@ class TestStep166JourneyLayout:
 
 
 
-class TestStep167Layers:
+class TestDiagnosticsLayerSchema:
     """Diagnostics layers."""
 
     def test_layer_schema(self):
@@ -754,7 +754,7 @@ class TestStep167Layers:
 
 
 
-class TestStep180_183Graph:
+class TestForceGraphComponentIntegrity:
     """React Flow graph components."""
 
     def test_brain_graph_stage(self):
@@ -807,7 +807,7 @@ class TestStep180_183Graph:
 
 
 
-class TestStep228Dependencies:
+class TestForceGraphDependencySwap:
     """react-force-graph-2d replaces @xyflow/react."""
 
     def test_package_has_force_graph(self):

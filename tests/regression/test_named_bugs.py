@@ -409,7 +409,7 @@ class TestSmokeSafety:
 
 
 
-class TestStep126_SmokeClosure:
+class TestSmokeOriginCheckAndUnload:
     """Smoke script must have origin check and UNLOAD section."""
 
     def test_smoke_has_brain_view_model_check(self):
@@ -464,7 +464,7 @@ class TestStep126_SmokeClosure:
 
 
 
-class TestStep128_SmokeClosure:
+class TestSmokeTaskProgressNodeDetail:
     """Built-in smoke has task-progress and node-detail checks."""
 
     def test_smoke_has_task_progress_check(self):
@@ -497,7 +497,7 @@ class TestStep128_SmokeClosure:
 
 
 
-class TestStep134_ClosureReport:
+class TestDevStatusCommandSchema:
     """Dev status command exists and works."""
 
     def test_dev_status_in_catalog(self):
@@ -563,7 +563,7 @@ class TestStep134_ClosureReport:
 
 
 
-class TestStep137_SmokeClosure:
+class TestSmokeScriptStructuralChecks:
     """Smoke script checks."""
 
     def test_smoke_has_task_progress(self):
@@ -592,7 +592,7 @@ class TestStep137_SmokeClosure:
 
 
 
-class TestStep144_SmokeClosure:
+class TestSmokeCommitReadinessSection:
     """Smoke script must include commit-readiness check."""
 
     def test_smoke_has_commit_readiness(self):
@@ -622,7 +622,7 @@ class TestStep144_SmokeClosure:
 
 
 
-class TestStep172Quarantine:
+class TestLegacyViewerSourceQuarantine:
     """Old viewer source moved to legacy."""
 
     def test_legacy_dir_exists(self):
@@ -712,7 +712,7 @@ class TestGlobalNoCDN:
 
 
 
-class TestStep200DocsDeprecation:
+class TestDocsNoOldViewerAsPrimary:
     """Docs don't recommend old viewer as primary."""
 
     def test_spec_no_old_viewer(self):

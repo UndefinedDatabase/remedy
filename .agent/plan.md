@@ -1,17 +1,17 @@
-# Plan — Steps 289-296
+# Plan — Steps 297-304
 
 ## Goal
-Test suite re-architecture, source apply transactionality, dashboard truth, frontend fixes, truncation metadata, and final baseline.
+Post-rearchitecture polish, source apply cleanup, project memory into planning/execution.
 
 ## Current Step
 All steps complete. Ready for commit + push.
 
 ## Steps
-- [x] Step 289: Test taxonomy, migration map, domain directory structure
-- [x] Step 290: Migrate ~1088 tests from 25 step files into 19 domain-oriented suites + guard test
-- [x] Step 291: Source apply transactionality + unified diff hunk validation
-- [x] Step 292: Taskfile command body risk inspection (parity with Makefile/package.json)
-- [x] Step 293: Dashboard truth v3 — scoped test_status, event-backed actor, real graph data, runnable command
-- [x] Step 294: Frontend degraded state visibility (DegradedBanner) + CommandBar copies command
-- [x] Step 295: Truncation metadata survives CLI event log, job metadata, trust report
-- [x] Step 296: Full baseline 3677 passed, 1 skipped, 0 failed. Guardrails green.
+- [x] Step 297: Rename 97 step-numbered test classes to descriptive invariant names
+- [x] Step 298: Consolidate _rollback/revert_apply, surface rollback errors (R-6007/R-6008)
+- [x] Step 299: Define MemoryContextSummary contract — approved-only, bounded, redacted
+- [x] Step 300: Feed approved memory into planner prompt with safe metadata
+- [x] Step 301: Feed approved memory into TaskExecutionContext with safe metadata
+- [x] Step 302: Emit project_memory_recalled events, add memory_used_count to dashboard
+- [x] Step 303: 14 memory safety/regression tests — no leaks, no fake nodes
+- [x] Step 304: Full baseline 3727 passed, 1 skipped. Vitest 21 passed. TypeScript clean. Build OK.

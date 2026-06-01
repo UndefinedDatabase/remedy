@@ -118,7 +118,7 @@ class TestPatchApplyTestLoop:
 
 
 
-class TestStep129_HeadlessHygiene:
+class TestHeadlessSmokeNosBrowserLaunch:
     """Smoke uses HTTP only, no browser launch."""
 
     def test_no_open_does_not_call_opener(self):
@@ -166,7 +166,7 @@ class TestStep129_HeadlessHygiene:
 
 
 
-class TestStep261:
+class TestPermitGuidanceArgOrder:
     def test_permit_guidance_has_correct_arg_order(self):
         """test_cmds.py must show: remedy job permit <id> repo_test_run allow"""
         src = Path("apps/cli/commands/test_cmds.py").read_text()
@@ -252,7 +252,7 @@ class TestStep261:
 
 
 
-class TestStep262:
+class TestDashboardPrimaryUiTruthSource:
     def test_remedyapi_fetches_dashboard_first(self):
         """remedyApi.ts loadRemedyDashboard fetches /dashboard as primary."""
         src = Path("apps/ui/src/api/remedyApi.ts").read_text()
@@ -290,7 +290,7 @@ class TestStep262:
 
 
 
-class TestStep263:
+class TestDashboardEmptyJobNotDemoMode:
     def test_empty_job_not_demo_mode(self):
         """Empty real job returns demo_mode=false."""
         from packages.orchestration.ui_server import _build_dashboard
@@ -367,7 +367,7 @@ class TestStep263:
 
 
 
-class TestStep264:
+class TestVitestFrontendTestFoundation:
     def test_vitest_config_exists(self):
         assert Path("apps/ui/vitest.config.ts").is_file()
 
@@ -396,7 +396,7 @@ class TestStep264:
 
 
 
-class TestStep265:
+class TestSourceApplyPermissionBoundary:
     def test_job_parameter_required(self):
         """apply_structured_patch requires job parameter."""
         import inspect
@@ -514,7 +514,7 @@ class TestStep265:
 
 
 
-class TestStep266:
+class TestTestRunnerOutputTruncation:
     def test_max_constant_at_module_level(self):
         """MAX_TEST_OUTPUT_BYTES is a module-level constant."""
         from packages.orchestration.test_runner import MAX_TEST_OUTPUT_BYTES
@@ -588,7 +588,7 @@ class TestStep266:
 
 
 
-class TestStep267:
+class TestCommandDiscoveryRuntimeSafety:
     def test_quoted_command_parsed_correctly(self):
         """Constitution command with quotes produces correct argv."""
         from packages.orchestration.command_discovery import _detect_constitution
@@ -684,7 +684,7 @@ class TestStep267:
 
 
 
-class TestStep268:
+class TestNoBroadExceptAndDegradedSignals:
     def test_no_broad_except_exception_in_dashboard(self):
         """No broad 'except Exception' in ui_server.py touched paths."""
         src = Path("packages/orchestration/ui_server.py").read_text()

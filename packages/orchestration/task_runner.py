@@ -108,6 +108,30 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
                         prior_summaries.append(s)
                     break
 
+    # Recall approved project memory (bounded, redacted)
+    memory_context: str | None = None
+    memory_metadata: dict = {}
+    try:
+        from packages.memory.context_summary import build_memory_context, format_memory_section
+        project_id = job.metadata.get("project_id")
+        ctx = build_memory_context(
+            project_id=project_id,
+            job_id=str(job.id) if not project_id else None,
+            budget=500,
+        )
+        section = format_memory_section(ctx)
+        if section:
+            memory_context = section
+        memory_metadata = {
+            "memory_item_count": ctx.item_count,
+            "memory_estimated_tokens": ctx.estimated_tokens,
+            "memory_truncated": ctx.truncated,
+            "memory_scope": ctx.scope,
+            "memory_context_hash": ctx.context_hash,
+        }
+    except (ImportError, OSError, ValueError):
+        pass
+
     return TaskExecutionContext(
         job_id=job.id,
         job_prompt=job.user_prompt,
@@ -116,6 +140,8 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
         task_description=task.description,
         planning_summary=planning_summary,
         prior_task_summaries=prior_summaries,
+        memory_context=memory_context,
+        memory_metadata=memory_metadata,
     )
 
 
@@ -197,6 +223,7 @@ def run_next_task(
         metadata={
             "task_type": task_type,
             "summary": output.summary,
+            **context.memory_metadata,
         },
     )
 

@@ -437,7 +437,7 @@ class TestTokenPolicyAppliedSchema:
 
 
 
-class TestStep112_ResourceCleanup:
+class TestWorkerResourcesAndUnloadCli:
 
     def test_catalog_has_worker_resources(self):
         from apps.cli.command_catalog import get_command

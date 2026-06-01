@@ -26,6 +26,8 @@ class TaskExecutionContext(BaseModel):
     task_description:     Human-readable description of what the task should accomplish.
     planning_summary:     Summary from the planning artifact, if available.
     prior_task_summaries: Summaries from already-completed task artifacts, in order.
+    memory_context:       Optional compact text from approved project memory (no raw content).
+    memory_metadata:      Safe metadata about memory injection (counts, hash, no raw text).
     """
 
     job_id: UUID
@@ -35,6 +37,8 @@ class TaskExecutionContext(BaseModel):
     task_description: str
     planning_summary: str | None = None
     prior_task_summaries: list[str] = []
+    memory_context: str | None = None
+    memory_metadata: dict = Field(default_factory=dict)
 
 
 class BuilderOutput(BaseModel):

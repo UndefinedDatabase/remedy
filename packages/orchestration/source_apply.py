@@ -196,13 +196,13 @@ def apply_structured_patch(
         for op in patch.file_ops:
             _apply_file_op(op, repo_root, result)
             if not result.success:
-                _rollback(result.snapshots, repo_root)
+                _rollback(result.snapshots, repo_root, result)
                 break
     elif patch.intent_kind == "unified_diff":
         for diff in patch.unified_diffs:
             _apply_unified_diff(diff, repo_root, result)
             if not result.success:
-                _rollback(result.snapshots, repo_root)
+                _rollback(result.snapshots, repo_root, result)
                 break
     else:
         result.errors.append(f"non-applicable intent kind: {patch.intent_kind}")
@@ -222,8 +222,13 @@ def apply_structured_patch(
     return result
 
 
-def _rollback(snapshots: list[FileSnapshot], repo_root: Path) -> None:
-    """Rollback all applied changes using snapshots (all-or-nothing)."""
+def _rollback(snapshots: list[FileSnapshot], repo_root: Path, result: ApplyResult) -> None:
+    """Rollback all applied changes using snapshots (all-or-nothing).
+
+    Rollback errors are appended to result.errors so they are observable.
+    result.success remains False (the original failure is preserved).
+    """
+    rollback_failures: list[str] = []
     for snap in reversed(snapshots):
         full = repo_root / snap.path
         try:
@@ -231,8 +236,13 @@ def _rollback(snapshots: list[FileSnapshot], repo_root: Path) -> None:
                 full.write_text(snap.content, encoding="utf-8")
             elif full.exists():
                 full.unlink()
-        except OSError:
-            pass  # Best effort
+        except OSError as exc:
+            rollback_failures.append(f"rollback failed for {snap.path}: {type(exc).__name__}")
+    if rollback_failures:
+        result.errors.append(
+            f"rollback incomplete ({len(rollback_failures)} file(s)): "
+            + "; ".join(rollback_failures)
+        )
 
 
 def _apply_file_op(op: FileOp, repo_root: Path, result: ApplyResult) -> None:
@@ -386,15 +396,11 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
 
 
 def revert_apply(snapshots: list[FileSnapshot], repo_path: Path) -> bool:
-    """Revert files to their snapshot state."""
-    success = True
-    for snap in snapshots:
-        full = repo_path / snap.path
-        try:
-            if snap.existed:
-                full.write_text(snap.content, encoding="utf-8")
-            elif full.exists():
-                full.unlink()
-        except OSError:
-            success = False
-    return success
+    """Revert files to their snapshot state.
+
+    Returns True if all reverts succeeded, False if any failed.
+    Uses the same rollback logic as transactional apply.
+    """
+    dummy = ApplyResult(apply_id="revert", success=True, files_modified=0, files_created=0)
+    _rollback(snapshots, repo_path, dummy)
+    return len(dummy.errors) == 0

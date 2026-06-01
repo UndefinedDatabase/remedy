@@ -132,7 +132,7 @@ class TestReadinessDecisionIntegration:
 
 
 
-class TestStep138_DevStatusHonesty:
+class TestDevStatusHonestySchema:
     """Dev status must be honest about actual state."""
 
     def test_status_json_schema(self):
@@ -182,7 +182,7 @@ class TestStep138_DevStatusHonesty:
 
 
 
-class TestStep139_NextAction:
+class TestNextActionGroundedInJobState:
     """Next action must be grounded in job state."""
 
     def test_completed_job_no_action(self):
@@ -265,7 +265,7 @@ class TestStep139_NextAction:
 
 
 
-class TestStep140_CommitReadiness:
+class TestCommitReadinessPreviewReadOnly:
     """Commit readiness preview — read-only, no git writes."""
 
     def test_catalog_entry_exists(self):
@@ -362,7 +362,7 @@ class TestStep140_CommitReadiness:
 
 
 
-class TestStep143_DevStatusCommitReadiness:
+class TestDevStatusIncludesCommitReadiness:
     """Dev status must include commit_readiness_ok."""
 
     def test_schema_includes_commit_readiness(self):
@@ -419,7 +419,7 @@ class TestStep143_DevStatusCommitReadiness:
 
 
 
-class TestStep145_NextAction:
+class TestCommitReadinessNextActionSurface:
     """Commit-readiness must include grounded next_action."""
 
     def test_next_action_schema(self):
@@ -480,7 +480,7 @@ class TestStep145_NextAction:
 
 
 
-class TestStep256:
+class TestLiveRunningDefaultsFalseOnFailure:
     def test_live_running_defaults_false(self):
         """When liveData is empty (API failed), live.running must be false."""
         src = (UI_SRC / "api" / "remedyApi.ts").read_text()
@@ -509,7 +509,7 @@ class TestStep256:
 
 
 
-class TestStep257:
+class TestDashboardV3RuntimeContract:
     def test_dashboard_v3_runtime(self):
         """Runtime test: _build_dashboard returns exact v2 contract shape."""
         from packages.core.models import Job
@@ -620,7 +620,7 @@ class TestStep257:
 
 
 
-class TestStep258:
+class TestGeneratedCommandCatalogConsistency:
     def test_no_remedy_test_list_in_production(self):
         """remedy test list is not a valid command."""
         for f in ORCH.glob("*.py"):
@@ -662,7 +662,7 @@ class TestStep258:
 
 
 
-class TestStep259:
+class TestAutonomyLevelSingleSourceOfTruth:
     def test_loop_imports_shared_levels(self):
         """Loop uses LEVELS from autonomy_readiness."""
         src = (ORCH / "autonomy_loop.py").read_text()
@@ -707,7 +707,7 @@ class TestStep259:
 
 
 
-class TestStep260:
+class TestMutationExecutionSafetyInvariants:
     # Part A: source_apply permission boundary
     def test_source_apply_permission_denied(self):
         """source_apply blocks without repo_generated_write permission."""

@@ -650,7 +650,7 @@ class TestFrontendBuildV2:
 
 
 
-class TestStep176_179ShellComponents:
+class TestShellLayoutComponents:
     """Shell layout and top-level components exist."""
 
     def test_shell_exists(self):
@@ -701,7 +701,7 @@ class TestStep176_179ShellComponents:
 
 
 
-class TestStep184_188RightPanel:
+class TestRightPanelCards:
     """Right live panel components."""
 
     def test_right_live_panel(self):
@@ -750,7 +750,7 @@ class TestStep184_188RightPanel:
 
 
 
-class TestStep227ContractMarkers:
+class TestDataUiMarkerPresence:
     """All required data-ui markers exist in source."""
 
     MARKERS = [
@@ -779,7 +779,7 @@ class TestStep227ContractMarkers:
 
 
 
-class TestStep229ResponsiveShell:
+class TestResponsiveCssGridShell:
     """Shell uses responsive CSS grid, not fixed frame."""
 
     def test_no_fixed_1678_frame(self):
@@ -805,7 +805,7 @@ class TestStep229ResponsiveShell:
 
 
 
-class TestStep230SingleRail:
+class TestSingleLeftRailNoLayerSwitcher:
     """One left rail, no default LayerSwitcher."""
 
     def test_no_layer_switcher_in_shell(self):
@@ -824,7 +824,7 @@ class TestStep230SingleRail:
 
 
 
-class TestStep241RightPanel:
+class TestRightPanelResponsiveGrid:
     """Right panel uses responsive grid."""
 
     def test_panel_css_grid(self):
@@ -843,7 +843,7 @@ class TestStep241RightPanel:
 
 
 
-class TestStep243UiStart:
+class TestUiStartAutoBuildCommand:
     """remedy ui start works with auto-build."""
 
     def test_ui_server_has_auto_build(self):

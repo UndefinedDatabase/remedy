@@ -232,7 +232,7 @@ class TestReviewCLI:
 
 
 
-class TestStep122_JobFocusedOrigin:
+class TestJobFocusedSingleOrigin:
     """Only the requested job_id should be is_origin=true."""
 
     def test_single_job_has_one_origin(self):
@@ -323,7 +323,7 @@ class TestStep122_JobFocusedOrigin:
 
 
 
-class TestStep135_DoDirectContract:
+class TestDoDirectGoalCommandRewrite:
     """remedy do '<goal>' must work via default-command rewrite."""
 
     def test_do_default_rewrite(self):
@@ -411,7 +411,7 @@ class TestStep135_DoDirectContract:
 
 
 
-class TestStep141_SafeTaskLabel:
+class TestSafeTaskLabelSanitization:
     """_safe_task_label must not crash and must sanitize output."""
 
     def test_task_with_inputs_task_type(self):

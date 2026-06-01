@@ -475,7 +475,7 @@ class TestLiveGrowthUX:
 
 
 
-class TestStep175ApiAdapter:
+class TestApiAdapterTypesAndNormalization:
     """API adapter types and implementation exist."""
 
     def test_types_file_exists(self):
@@ -516,7 +516,7 @@ class TestStep175ApiAdapter:
 
 
 
-class TestStep196ServerIntegration:
+class TestServerPrefersReactDistLocalhostOnly:
     """Server points at React UI."""
 
     def test_server_prefers_react_dist(self):
@@ -542,7 +542,7 @@ class TestStep196ServerIntegration:
 
 
 
-class TestStep240DataNormalization:
+class TestWeakLabelDetectionAndReplacement:
     """Weak labels detected and replaced."""
 
     def test_is_weak_label_exists(self):

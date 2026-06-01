@@ -41,6 +41,40 @@ def _deduplicate_task_types(proposed_tasks: list[ProposedTask]) -> list[Task]:
     return tasks
 
 
+def _recall_memory_for_planning(job: Job) -> tuple[str, dict]:
+    """Recall approved memory for planner context injection.
+
+    Returns (memory_section_text, metadata_dict).
+    Empty string and metadata when no memory available.
+    """
+    try:
+        from packages.memory.context_summary import (
+            build_memory_context,
+            format_memory_section,
+        )
+        project_id = job.metadata.get("project_id")
+        ctx = build_memory_context(
+            project_id=project_id,
+            job_id=str(job.id) if not project_id else None,
+            budget=500,
+        )
+        section = format_memory_section(ctx)
+        meta = {
+            "memory_item_count": ctx.item_count,
+            "memory_estimated_tokens": ctx.estimated_tokens,
+            "memory_truncated": ctx.truncated,
+            "memory_scope": ctx.scope,
+            "memory_context_hash": ctx.context_hash,
+        }
+        # Emit audit event
+        from packages.memory.context_summary import emit_memory_recalled_event
+        data_dir = job.metadata.get("data_dir")
+        emit_memory_recalled_event(ctx, data_dir=data_dir, job_id=str(job.id), stage="planning")
+        return section, meta
+    except (ImportError, OSError, ValueError):
+        return "", {}
+
+
 def plan_job_with_llm(
     job: Job,
     call_planner: Callable[[str], PlannerOutput],
@@ -56,6 +90,7 @@ def plan_job_with_llm(
       - transforming PlannerOutput into Job.tasks and a planning Artifact
       - deduplicating task_type values to avoid ambiguous downstream execution
       - NOT mutating the job through the provider
+      - injecting approved project memory context when available
 
     Caller must persist result.job after this call returns.
 
@@ -66,7 +101,13 @@ def plan_job_with_llm(
 
     job.state = RunState.RUNNING
 
+    # Recall approved memory (safe, bounded, no raw content)
+    memory_section, memory_meta = _recall_memory_for_planning(job)
+
     prompt = job.user_prompt or job.name
+    if memory_section:
+        prompt = f"{prompt}\n\n{memory_section}"
+
     output: PlannerOutput = call_planner(prompt)
 
     job.tasks = _deduplicate_task_types(output.proposed_tasks)
@@ -103,7 +144,7 @@ def plan_job_with_llm(
             mime_type="text/plain",
             task_id=None,
             kind=ArtifactKind.PLANNING,
-            metadata={"summary": output.summary},
+            metadata={"summary": output.summary, **memory_meta},
         )
     ]
 

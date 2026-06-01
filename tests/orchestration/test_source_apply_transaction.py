@@ -50,15 +50,44 @@ class TestTransactionRollback:
         f.write_text("original")
         snap = FileSnapshot(path="a.py", existed=True, content_hash="x", content="original")
         f.write_text("modified")
-        _rollback([snap], tmp_path)
+        result = ApplyResult(apply_id="t", success=False, files_modified=0, files_created=0)
+        _rollback([snap], tmp_path, result)
         assert f.read_text() == "original"
+        assert len(result.errors) == 0  # rollback succeeded
 
     def test_rollback_removes_created_file(self, tmp_path):
         f = tmp_path / "new.py"
         snap = FileSnapshot(path="new.py", existed=False, content_hash="", content="")
         f.write_text("created")
-        _rollback([snap], tmp_path)
+        result = ApplyResult(apply_id="t", success=False, files_modified=0, files_created=0)
+        _rollback([snap], tmp_path, result)
         assert not f.exists()
+        assert len(result.errors) == 0
+
+    def test_rollback_failure_surfaces_in_errors(self, tmp_path):
+        """If rollback cannot restore a file, error is reported, not swallowed."""
+        snap = FileSnapshot(path="readonly.py", existed=True, content_hash="x", content="orig")
+        # Create a directory where the file should be — write_text will fail
+        d = tmp_path / "readonly.py"
+        d.mkdir()
+        result = ApplyResult(apply_id="t", success=False, files_modified=0, files_created=0,
+                             errors=["original failure"])
+        _rollback([snap], tmp_path, result)
+        # Original error preserved
+        assert "original failure" in result.errors[0]
+        # Rollback failure appended
+        assert any("rollback" in e for e in result.errors)
+
+    def test_rollback_preserves_original_failure(self, tmp_path):
+        """result.success stays False regardless of rollback outcome."""
+        f = tmp_path / "a.py"
+        f.write_text("modified")
+        snap = FileSnapshot(path="a.py", existed=True, content_hash="x", content="original")
+        result = ApplyResult(apply_id="t", success=False, files_modified=1, files_created=0,
+                             errors=["b.py: file not found (modify)"])
+        _rollback([snap], tmp_path, result)
+        assert not result.success
+        assert "b.py" in result.errors[0]
 
     def test_file_ops_rollback_on_second_failure(self, tmp_path, monkeypatch):
         """If second file_op fails, first file_op is rolled back."""

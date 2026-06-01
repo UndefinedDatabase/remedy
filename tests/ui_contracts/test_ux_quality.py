@@ -649,7 +649,7 @@ class TestAtmosphericMotion:
 
 
 
-class TestStep115_TaskRibbon:
+class TestTaskRibbonFieldContract:
 
     def test_task_progress_version_1(self):
         """Task progress API should return version 1 (stable contract)."""
@@ -734,7 +734,7 @@ class TestStep115_TaskRibbon:
 
 
 
-class TestStep127_TaskProgressContract:
+class TestTaskProgressApiSchema:
     """Task progress API must return version 1 with exact fields."""
 
     def test_version_is_1(self):
@@ -861,7 +861,7 @@ class TestStep127_TaskProgressContract:
 
 
 
-class TestStep131_UXVisualContract:
+class TestUXZoomAndLabelVisibility:
     """UX semantics verified via API contracts."""
 
     def test_initial_view_one_node(self):
@@ -942,7 +942,7 @@ class TestStep131_UXVisualContract:
 
 
 
-class TestStep142_ContractHardening:
+class TestCommitReadinessSchemaCompleteness:
     """Commit-readiness schema must be complete and safe."""
 
     def test_full_schema(self):
@@ -1057,7 +1057,7 @@ class TestStep142_ContractHardening:
 
 
 
-class TestStep168Checklist:
+class TestChecklistSchemaAndLabels:
     """Task ribbon checklist."""
 
     def test_checklist_schema(self):
@@ -1125,7 +1125,7 @@ class TestStep168Checklist:
 
 
 
-class TestStep169CopyDictionary:
+class TestHumanCopyDictionaryLabels:
     """Human copy dictionary."""
 
     def test_all_default_types_have_labels(self):
@@ -1181,7 +1181,7 @@ class TestStep169CopyDictionary:
 
 
 
-class TestStep170UXSmokeGate:
+class TestUXSmokeGateStoryChecklist:
     """UX smoke gate checks."""
 
     def test_story_available(self):
@@ -1235,7 +1235,7 @@ class TestStep170UXSmokeGate:
 
 
 
-class TestStep171VisualPolish:
+class TestAppShellVisualPolishClasses:
     """Visual polish checks."""
 
     def test_app_shell_has_semantic_classes(self):
@@ -1295,7 +1295,7 @@ class TestStep171VisualPolish:
 
 
 
-class TestStep189_191TimelineDetailLayers:
+class TestTimelineDetailLayerComponents:
     """Timeline, detail popover, and layer switcher."""
 
     def test_phase_timeline(self):
@@ -1337,7 +1337,7 @@ class TestStep189_191TimelineDetailLayers:
 
 
 
-class TestStep192_193Visual:
+class TestCssTokensAndReducedMotion:
     """Visual tokens and CSS modules."""
 
     def test_tokens_has_required_vars(self):
@@ -1389,7 +1389,7 @@ class TestStep192_193Visual:
 
 
 
-class TestStep194HumanCopy:
+class TestFrontendHumanCopyMapping:
     """Human copy mapping in frontend."""
 
     def test_human_copy_exists(self):
