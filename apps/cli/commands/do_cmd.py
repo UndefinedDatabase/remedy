@@ -73,6 +73,12 @@ def _cmd_do(
     else:
         print(f"Job: {result.job_id}")
         print(f"Stage: {result.stage}")
+        print(f"Cycles: {result.cycles_run}")
+        for ev in result.events:
+            key = ev.get("event", "")
+            val = ev.get("value", "")
+            if key:
+                print(f"  {key}: {val}")
         if result.ui_url:
             print(f"UI: {result.ui_url}")
         if result.error:

@@ -4,15 +4,20 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 297-304: Post-rearchitecture polish, source apply cleanup, project memory integration.
+Steps 305-312: Structured builder pipeline, Ollama patch bridge, bounded autocoder E2E.
 
 ## Completed
-- Test re-architecture (25 step files → 19 domain suites, 97 class renames)
-- Rollback consolidation (R-6007/R-6008 resolved)
-- Memory planning integration (approved memory → planner prompt)
-- Memory execution integration (approved memory → TaskExecutionContext)
-- Memory event/visibility (project_memory_recalled events, dashboard)
-- Memory safety coverage (14 regression tests)
+- Prompt redaction (raw prompt → [redacted] hash/length in planning artifact)
+- BuilderOutput v2 (structured_patch_text + structured_patch_format fields)
+- BuilderPatchResult model + parse_builder_patch() with safety checks
+- Structured patch parser: plain JSON + fenced JSON + unified diff detection
+- Ollama builder prompt: requests structured patch file_ops JSON
+- Builder bridge: BuilderOutput → parse → intent → approval → source_apply → test → proof
+- Fixture smoke tests for CI, opt-in real Ollama smoke
+- Bounded repair loop: build → bridge → test → repair_context → rebuild (max_cycles)
+- .pyc cache fix (PYTHONDONTWRITEBYTECODE=1) for repair loop test reliability
+- Dashboard: builder_patch_parsed, repair_loop_cycle, repair_loop_max_cycles
+- CLI: events displayed in text output, cycles shown
 
 ## Current Problems
 - R-7001: Duplicate imports in 15/24 domain test files (cosmetic)
@@ -29,6 +34,7 @@ Steps 297-304: Post-rearchitecture polish, source apply cleanup, project memory 
 - Graph architecture is Canvas/Force (not React Flow)
 - Test files use domain directories — no step-numbered files or class names
 - Memory: approved-only, bounded, redacted, no raw leaks
+- BuilderOutput: structured_patch_text parsed, not trusted raw
 
 ## Recommended Next Block
-Steps 305-312 — Event-Ledger Replay And Checkpoint Resume
+Steps 313-320 — Event-Ledger Replay And Checkpoint Resume

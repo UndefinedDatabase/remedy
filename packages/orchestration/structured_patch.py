@@ -71,6 +71,16 @@ def parse_structured_patch(raw_output: str) -> StructuredPatch:
         except (json.JSONDecodeError, KeyError, TypeError):
             pass
 
+    # Try plain JSON (no fencing)
+    stripped = raw_output.strip()
+    if stripped.startswith("{"):
+        try:
+            data = json.loads(stripped)
+            if isinstance(data, dict) and ("file_ops" in data or "unified_diffs" in data):
+                return _parse_json_patch(data)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
+
     # Try unified diff detection
     if _looks_like_diff(raw_output):
         return _parse_diff_output(raw_output)

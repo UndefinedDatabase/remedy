@@ -112,10 +112,13 @@ def plan_job_with_llm(
 
     job.tasks = _deduplicate_task_types(output.proposed_tasks)
 
+    import hashlib as _hashlib
+    _raw_prompt = job.user_prompt or job.name
+    _prompt_hash = _hashlib.sha256(_raw_prompt.encode()).hexdigest()[:16]
     content_lines = [
         "LLM Planning Output",
         f"Job:    {job.id}",
-        f"Prompt: {prompt}",
+        f"Prompt: [redacted] (hash={_prompt_hash}, len={len(_raw_prompt)})",
         "",
         f"Summary: {output.summary}",
         "",
@@ -144,7 +147,13 @@ def plan_job_with_llm(
             mime_type="text/plain",
             task_id=None,
             kind=ArtifactKind.PLANNING,
-            metadata={"summary": output.summary, **memory_meta},
+            metadata={
+                "summary": output.summary,
+                "prompt_present": bool(_raw_prompt),
+                "prompt_hash": _prompt_hash,
+                "prompt_length": len(_raw_prompt),
+                **memory_meta,
+            },
         )
     ]
 

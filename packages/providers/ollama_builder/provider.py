@@ -41,6 +41,11 @@ Rules:
 - proposed_changes: list of concrete changes or actions (e.g. "Write function foo in bar.py", "Add test for edge case X")
 - notes: optional list of assumptions or observations
 - risks: optional list of potential issues or blockers
+- structured_patch_text: when the task involves code changes, include a JSON string \
+containing {"file_ops": [{"path": "relative/path.py", "action": "create"|"modify"|"delete", \
+"content": "full file content"}]}. Omit for planning-only tasks.
+- structured_patch_format: set to "json" when structured_patch_text contains file_ops JSON, \
+or "none" if no patch is provided
 
 Respond only with valid JSON matching the requested schema. No markdown, no extra text.\
 """
@@ -108,6 +113,10 @@ def _build_user_message(context: TaskExecutionContext) -> str:
         parts.append("Prior completed tasks (for context):")
         for summary in context.prior_task_summaries:
             parts.append(f"  - {summary}")
+
+    if context.memory_context:
+        parts.append("")
+        parts.append(context.memory_context)
 
     return "\n".join(parts)
 

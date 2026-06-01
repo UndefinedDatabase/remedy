@@ -506,6 +506,12 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
             "test_run_completed": "testing",
             "proof_collected": "proving",
             "stop_reason_recorded": "stopped",
+            "builder_patch_parsed": "parsing",
+            "builder_bridge_intent_approved": "approved",
+            "builder_bridge_test_completed": "testing",
+            "repair_loop_cycle_started": "repairing",
+            "repair_loop_succeeded": "proving",
+            "repair_loop_stopped": "stopped",
         }
         stage = stage_map.get(last_event, "active")
 
@@ -538,6 +544,15 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         e.get("event") == "repair_context_created" for e in events
     )
 
+    # Builder bridge pipeline visibility
+    bridge_parse_events = [e for e in events if e.get("event") == "builder_patch_parsed"]
+    bridge_parse_success = bridge_parse_events[-1].get("metadata", {}).get("parse_success", False) if bridge_parse_events else None
+    bridge_parse_error = bridge_parse_events[-1].get("metadata", {}).get("error_kind", "") if bridge_parse_events and not bridge_parse_success else ""
+
+    loop_cycle_events = [e for e in events if e.get("event") == "repair_loop_cycle_started"]
+    repair_loop_cycle = loop_cycle_events[-1].get("metadata", {}).get("cycle", 0) if loop_cycle_events else 0
+    repair_loop_max = loop_cycle_events[-1].get("metadata", {}).get("max_cycles", 0) if loop_cycle_events else 0
+
     # Reviewer pending count
     recs = (job.metadata or {}).get("reviewer_recommendations", [])
     reviewer_pending = sum(1 for r in recs if r.get("status") == "pending")
@@ -568,6 +583,10 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "token_mode": "compact",
         "view_model_hash": vm_hash,
         "repair_loop_used": repair_loop_used,
+        "repair_loop_cycle": repair_loop_cycle,
+        "repair_loop_max_cycles": repair_loop_max,
+        "builder_patch_parsed": bridge_parse_success,
+        "builder_patch_error": bridge_parse_error,
         "reviewer_pending_count": reviewer_pending,
         "memory_candidate_count": memory_candidate_count,
         "memory_used_count": memory_used_count,
