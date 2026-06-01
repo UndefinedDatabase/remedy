@@ -1,17 +1,17 @@
-# Plan — Steps 261-268
+# Plan — Steps 269-276
 
 ## Goal
-False PASS Cleanup, Real Dashboard Truth, Runtime Test Closure.
+Merge Gate Closure, Historical Suite Reconciliation, Source Apply Approval Gate.
 
 ## Current Step
 All steps complete. Ready for commit + PR.
 
 ## Steps
-- [x] Step 261: Fix generated permission guidance (test_cmds.py arg order)
-- [x] Step 262: Make /dashboard primary UI truth source
-- [x] Step 263: Fix dashboard truth for empty/unknown state
-- [x] Step 264: Add real frontend test foundation (Vitest)
-- [x] Step 265: Make source_apply permission boundary non-optional
-- [x] Step 266: Complete test runner output bounding contract
-- [x] Step 267: Command discovery runtime hardening
-- [x] Step 268: Review honesty + broad exception cleanup
+- [x] Step 269: Fix R-3011 — historical tests pass job= and intent_id= to source_apply
+- [x] Step 270: Reconcile historical UI tests with Canvas/Force architecture
+- [x] Step 271: Add explicit approval gate to source_apply (intent_id required, must be approved)
+- [x] Step 272: Repair autorun/fixture builders for new approval gate
+- [x] Step 273: Strengthen command discovery with constitution-level integration tests
+- [x] Step 274: Classify legacy dashboard fields under "legacy" key
+- [x] Step 275: Full historical suite baseline — 595 passed, 0 failed, 13 suites
+- [x] Step 276: Honest merge gate + handoff with live_review verdict

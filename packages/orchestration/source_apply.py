@@ -137,14 +137,16 @@ def apply_structured_patch(
     data_dir: str | None = None,
     job_id: UUID | None = None,
     job: Any,
+    intent_id: str | None = None,
 ) -> ApplyResult:
     """Apply a structured patch to the repo. Snapshot before each change.
 
     Requires:
       - job parameter (mandatory — no bypass)
       - job must have repo_generated_write permission
+      - intent_id must reference an approved patch intent
 
-    No mutation occurs without explicit permission boundary.
+    No mutation occurs without permission + approval.
     """
     apply_id = uuid4().hex[:12]
     result = ApplyResult(apply_id=apply_id, success=True, files_modified=0, files_created=0)
@@ -154,6 +156,26 @@ def apply_structured_patch(
     if not is_allowed(job, Capability.repo_generated_write):
         result.success = False
         result.errors.append("permission denied: repo_generated_write not granted")
+        return result
+
+    # Approval gate: intent_id required, must be approved
+    if intent_id is None:
+        result.success = False
+        result.errors.append("approval required: intent_id not provided")
+        return result
+
+    from packages.orchestration.approval_queue import get_patch_intent, APPROVAL_APPROVED
+    intent = get_patch_intent(job, intent_id)
+    if intent is None:
+        result.success = False
+        result.errors.append(f"approval required: intent {intent_id!r} not found")
+        return result
+    if intent["state"] != APPROVAL_APPROVED:
+        result.success = False
+        result.errors.append(
+            f"approval required: intent {intent_id!r} state is "
+            f"{intent['state']!r}, not 'approved'"
+        )
         return result
 
     # Validate first

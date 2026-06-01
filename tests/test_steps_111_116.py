@@ -570,19 +570,19 @@ class TestSmokeSafety:
             assert pattern not in html
 
     def test_index_html_has_ux_contract_markers(self):
-        """React source must have semantic zoom module and reduced-motion support."""
-        sz = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts")
-        assert sz.exists(), "semanticZoom.ts not found"
+        """Legacy semantic zoom module exists under legacy/ and reduced-motion support present."""
+        sz = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts")
+        assert sz.exists(), "semanticZoom.ts not found under legacy/"
         css = Path(_ROOT / "apps" / "ui" / "src" / "styles" / "globals.css").read_text()
         assert "prefers-reduced-motion" in css, "missing reduced-motion in globals.css"
 
     def test_renderer_exports_semantic_zoom_fn(self):
-        """semanticZoom.ts should export semanticZoomLevelFromViewportZoom."""
-        src = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts").read_text()
+        """Legacy semanticZoom.ts should export semanticZoomLevelFromViewportZoom."""
+        src = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts").read_text()
         assert "semanticZoomLevelFromViewportZoom" in src
 
     def test_renderer_wheel_cannot_reach_level_6(self):
         """Semantic zoom max level should be 4, not 6."""
-        src = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts").read_text()
+        src = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts").read_text()
         # The function should return 4 at the top, not 5 or 6
         assert "return 4;" in src

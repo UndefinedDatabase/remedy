@@ -30,6 +30,27 @@ def _make_job(**kw: Any) -> Job:
     return Job(name=kw.pop("name", "test"), state=kw.pop("state", RunState.PENDING), **kw)
 
 
+def _make_approved_job() -> tuple[Job, str]:
+    """Create a job with repo_generated_write + an approved patch intent."""
+    from packages.core.models import Artifact
+    from packages.orchestration.approval_queue import (
+        make_intent_id, set_approval_state, APPROVAL_APPROVED,
+    )
+    from packages.orchestration.permissions import Capability, set_permission
+
+    job = _make_job()
+    set_permission(job, Capability.repo_generated_write, allow=True)
+    artifact = Artifact(task_id=uuid4(), name="test-intent", content_type="patch", content="")
+    artifact.metadata["patch_intent_explanations"] = [
+        {"file": "fixture", "action": "create", "risk": "low",
+         "reason": "test", "summary": "test fixture"}
+    ]
+    job.artifacts.append(artifact)
+    intent_id = make_intent_id(artifact.id, 0)
+    set_approval_state(job, intent_id, APPROVAL_APPROVED, decided_by="test")
+    return job, intent_id
+
+
 # ---------------------------------------------------------------------------
 # Step 261 — Fix Generated Permission Guidance
 # ---------------------------------------------------------------------------
@@ -300,14 +321,12 @@ class TestStep265:
         assert not result.success
         assert any("permission denied" in e for e in result.errors)
 
-    def test_permission_granted_can_write(self, tmp_path):
-        """Job with repo_generated_write can apply patches."""
-        from packages.orchestration.permissions import Capability, set_permission
+    def test_permission_granted_and_approved_can_write(self, tmp_path):
+        """Job with repo_generated_write + approved intent can apply patches."""
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
-        job = _make_job()
-        set_permission(job, Capability.repo_generated_write, allow=True)
+        job, intent_id = _make_approved_job()
 
         patch = StructuredPatch(
             intent_kind="file_ops",
@@ -316,18 +335,16 @@ class TestStep265:
             target_paths=("test.py",),
             risk="low", applicability="applicable", requires_approval=False,
         )
-        result = apply_structured_patch(patch, tmp_path, job=job)
+        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
         assert result.success
         assert (tmp_path / "test.py").read_text() == "pass\n"
 
     def test_unsafe_paths_still_blocked(self, tmp_path):
-        """Symlink/traversal/.env paths blocked even with permission."""
-        from packages.orchestration.permissions import Capability, set_permission
+        """Symlink/traversal/.env paths blocked even with permission + approval."""
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
-        job = _make_job()
-        set_permission(job, Capability.repo_generated_write, allow=True)
+        job, intent_id = _make_approved_job()
 
         for bad_path in [".env", "../escape.py", "/etc/passwd"]:
             patch = StructuredPatch(
@@ -337,11 +354,29 @@ class TestStep265:
                 target_paths=(bad_path,),
                 risk="low", applicability="applicable", requires_approval=False,
             )
-            result = apply_structured_patch(patch, tmp_path, job=job)
+            result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
             assert not result.success, f"should block {bad_path}"
 
+    def test_missing_intent_id_blocked(self, tmp_path):
+        """source_apply without intent_id is blocked even with permission."""
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.source_apply import apply_structured_patch
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
+
+        job = _make_job()
+        set_permission(job, Capability.repo_generated_write, allow=True)
+
+        patch = StructuredPatch(
+            intent_kind="file_ops",
+            file_ops=(FileOp(path="t.py", action="create", content="x"),),
+            target_paths=("t.py",),
+        )
+        result = apply_structured_patch(patch, tmp_path, job=job)
+        assert not result.success
+        assert any("intent_id" in e for e in result.errors)
+
     def test_no_public_command_reaches_without_permission(self):
-        """No CLI command can invoke source_apply without permission check."""
+        """No CLI command can invoke source_apply without permission + intent."""
         src = Path("packages/orchestration/autorun.py").read_text()
         lines = src.splitlines()
         call_starts = [i for i, line in enumerate(lines)
@@ -349,8 +384,9 @@ class TestStep265:
         assert len(call_starts) >= 1
         for start in call_starts:
             # Collect lines until we find the closing call
-            block = "\n".join(lines[start:start + 5])
+            block = "\n".join(lines[start:start + 6])
             assert "job=job" in block, f"call at line {start + 1} missing job=job:\n{block}"
+            assert "intent_id=" in block, f"call at line {start + 1} missing intent_id:\n{block}"
 
 
 # ---------------------------------------------------------------------------

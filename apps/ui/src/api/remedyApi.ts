@@ -120,7 +120,7 @@ export function normalizeDashboardPayload(
     : nextAction();
 
   // Title/description
-  const title = scrubUiText(dashboard.job_name || brainDetail?.title || brainDetail?.job_title, "Growing Brain Overview");
+  const title = scrubUiText(dashboard.legacy?.job_name || brainDetail?.title || brainDetail?.job_title, "Growing Brain Overview");
   const description = scrubUiText(
     brainDetail?.description || "An AI agent working through a verified project plan.",
     "An AI agent working through a verified project plan.",

@@ -39,6 +39,38 @@ def _make_job():
     return job
 
 
+def _make_permitted_job():
+    """Create a job with repo_generated_write permission granted."""
+    job = _make_job()
+    job.metadata["permissions"] = {"repo_generated_write": "allow"}
+    return job
+
+
+def _make_approved_job() -> tuple:
+    """Create a job with permission + an approved patch intent. Returns (job, intent_id)."""
+    job = _make_permitted_job()
+    # Create artifact with patch intent explanation + approval
+    artifact = MagicMock()
+    artifact.id = uuid4()
+    artifact.task_id = uuid4()
+    intent_id = f"{artifact.id.hex[:8]}-0"
+    artifact.metadata = {
+        "patch_intent_explanations": [
+            {"file": "test.py", "action": "create", "risk": "low", "reason": "test", "summary": "test"}
+        ],
+        "patch_intent_approvals": {
+            intent_id: {
+                "intent_id": intent_id,
+                "state": "approved",
+                "decided_at": "2026-01-01T00:00:00Z",
+                "decided_by": "test",
+            }
+        },
+    }
+    job.artifacts = [artifact]
+    return job, intent_id
+
+
 # ---------------------------------------------------------------------------
 # Step 91 — ELK Directional Layout
 # ---------------------------------------------------------------------------
@@ -137,12 +169,17 @@ class TestSemanticZoomV2:
 # ---------------------------------------------------------------------------
 
 class TestScreenSpaceLabels:
-    def test_no_pixi_text_labels_in_viewport(self):
-        """GraphNodes should use React components, not raw PIXI imports."""
-        graph_nodes = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "GraphNodes.tsx"
-        content = graph_nodes.read_text()
-        assert "PIXI" not in content, "GraphNodes should not import raw PIXI"
-        assert "pixi.js" not in content, "GraphNodes should not depend on pixi.js"
+    def test_no_pixi_in_current_graph(self):
+        """Current graph renderer (Canvas/Force) must not use raw PIXI imports."""
+        graph = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx"
+        content = graph.read_text()
+        assert "PIXI" not in content, "ForceBrainGraph should not import raw PIXI"
+        assert "pixi.js" not in content, "ForceBrainGraph should not depend on pixi.js"
+
+    def test_legacy_graph_nodes_under_legacy(self):
+        """Old GraphNodes.tsx lives under legacy/, not top-level graph/."""
+        legacy = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "GraphNodes.tsx"
+        assert legacy.is_file(), "GraphNodes.tsx must exist under legacy/"
 
     def test_detail_card_compact(self):
         detail = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx"
@@ -171,14 +208,16 @@ class TestExplainableEdges:
         for e in vm["edges"]:
             assert "is_primary_chain" in e
 
-    def test_edge_tooltip_element_exists(self):
-        edge = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "SoftGlowEdge.tsx"
-        assert edge.is_file(), "SoftGlowEdge.tsx must exist as the edge rendering component"
+    def test_legacy_edge_component_under_legacy(self):
+        """Old SoftGlowEdge.tsx is preserved under legacy/."""
+        edge = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "SoftGlowEdge.tsx"
+        assert edge.is_file(), "SoftGlowEdge.tsx must exist under legacy/"
 
-    def test_edge_hover_in_renderer(self):
-        edge = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "SoftGlowEdge.tsx"
-        content = edge.read_text()
-        assert "@xyflow/react" in content, "SoftGlowEdge must import from @xyflow/react"
+    def test_current_graph_uses_force(self):
+        """Current graph renderer uses react-force-graph-2d, not @xyflow/react."""
+        graph = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx"
+        content = graph.read_text()
+        assert "react-force-graph-2d" in content
 
 
 # ---------------------------------------------------------------------------
@@ -379,12 +418,13 @@ class TestSourceApply:
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
+        job, intent_id = _make_approved_job()
         patch = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path="hello.py", action="create", content="print('hi')"),),
             target_paths=("hello.py",),
         )
-        result = apply_structured_patch(patch, tmp_path)
+        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
         assert result.success
         assert result.files_created == 1
         assert (tmp_path / "hello.py").read_text() == "print('hi')"
@@ -393,13 +433,14 @@ class TestSourceApply:
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
+        job, intent_id = _make_approved_job()
         (tmp_path / "main.py").write_text("old content")
         patch = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path="main.py", action="modify", content="new content"),),
             target_paths=("main.py",),
         )
-        result = apply_structured_patch(patch, tmp_path)
+        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
         assert result.success
         assert result.files_modified == 1
         assert (tmp_path / "main.py").read_text() == "new content"
@@ -408,37 +449,46 @@ class TestSourceApply:
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
+        job, intent_id = _make_approved_job()
         patch = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path=".env", action="create", content="SECRET=x"),),
             target_paths=(".env",),
         )
-        result = apply_structured_patch(patch, tmp_path)
+        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
         assert not result.success
+        # Failure must be path safety, not missing permission or approval
+        assert any(".env" in e for e in result.errors)
+        assert not any("permission denied" in e for e in result.errors)
+        assert not any("approval" in e for e in result.errors)
 
     def test_apply_blocks_path_traversal(self, tmp_path):
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
+        job, intent_id = _make_approved_job()
         patch = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path="../escape.py", action="create", content="bad"),),
             target_paths=("../escape.py",),
         )
-        result = apply_structured_patch(patch, tmp_path)
+        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
         assert not result.success
+        # Failure must be path traversal, not missing permission
+        assert any("traversal" in e for e in result.errors)
 
     def test_snapshot_and_revert(self, tmp_path):
         from packages.orchestration.source_apply import apply_structured_patch, revert_apply
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
+        job, intent_id = _make_approved_job()
         (tmp_path / "orig.py").write_text("original")
         patch = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path="orig.py", action="modify", content="modified"),),
             target_paths=("orig.py",),
         )
-        result = apply_structured_patch(patch, tmp_path)
+        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
         assert result.success
         assert (tmp_path / "orig.py").read_text() == "modified"
 
@@ -451,13 +501,59 @@ class TestSourceApply:
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
+        job, intent_id = _make_approved_job()
         patch = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path="data.bin", action="create", content="hello\x00world"),),
             target_paths=("data.bin",),
         )
-        result = apply_structured_patch(patch, tmp_path)
+        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
         assert not result.success
+        # Failure must be binary content, not missing permission
+        assert any("binary" in e for e in result.errors)
+
+    def test_apply_without_intent_blocked(self, tmp_path):
+        """source_apply without intent_id is blocked."""
+        from packages.orchestration.source_apply import apply_structured_patch
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
+
+        patch = StructuredPatch(
+            intent_kind="file_ops",
+            file_ops=(FileOp(path="x.py", action="create", content="x"),),
+            target_paths=("x.py",),
+        )
+        result = apply_structured_patch(patch, tmp_path, job=_make_permitted_job())
+        assert not result.success
+        assert any("intent_id" in e for e in result.errors)
+
+    def test_apply_with_pending_intent_blocked(self, tmp_path):
+        """source_apply with pending (not approved) intent is blocked."""
+        from packages.orchestration.source_apply import apply_structured_patch
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
+
+        job = _make_permitted_job()
+        artifact = MagicMock()
+        artifact.id = uuid4()
+        artifact.task_id = uuid4()
+        intent_id = f"{artifact.id.hex[:8]}-0"
+        artifact.metadata = {
+            "patch_intent_explanations": [
+                {"file": "t.py", "action": "create", "risk": "low", "reason": "t", "summary": "t"}
+            ],
+            "patch_intent_approvals": {
+                intent_id: {"intent_id": intent_id, "state": "pending"}
+            },
+        }
+        job.artifacts = [artifact]
+
+        patch = StructuredPatch(
+            intent_kind="file_ops",
+            file_ops=(FileOp(path="x.py", action="create", content="x"),),
+            target_paths=("x.py",),
+        )
+        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
+        assert not result.success
+        assert any("pending" in e for e in result.errors)
 
 
 # ---------------------------------------------------------------------------
@@ -469,15 +565,13 @@ class TestFrontendBuildV2:
         index = Path(__file__).parent.parent / "apps" / "ui" / "index.html"
         assert index.is_file(), "Source index.html must exist"
 
-    def test_elkjs_in_package(self):
+    def test_force_graph_in_package(self):
+        """Current graph uses react-force-graph-2d + d3-force, not @xyflow/react."""
         pkg = Path(__file__).parent.parent / "apps" / "ui" / "package.json"
         data = json.loads(pkg.read_text())
-        assert "@xyflow/react" in data.get("dependencies", {}), "@xyflow/react must be a dependency"
-
-    def test_no_d3_force_in_deps(self):
-        pkg = Path(__file__).parent.parent / "apps" / "ui" / "package.json"
-        data = json.loads(pkg.read_text())
-        assert "d3-force" not in data.get("dependencies", {}), "d3-force should be removed"
+        deps = data.get("dependencies", {})
+        assert "react-force-graph-2d" in deps, "react-force-graph-2d must be a dependency"
+        assert "d3-force" in deps, "d3-force must be a dependency for force graph"
 
     def test_no_dark_background(self):
         tokens = Path(__file__).parent.parent / "apps" / "ui" / "src" / "styles" / "tokens.css"

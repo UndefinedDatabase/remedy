@@ -51,8 +51,16 @@ def _make_job(task_count: int = 3):
 # ---------------------------------------------------------------------------
 
 class TestSmokeContractReset:
-    def test_index_html_has_brain_canvas_marker(self):
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.tsx").read_text()
+    def test_current_graph_renderer_exists(self):
+        """Current Canvas/Force graph renderer exists at expected path."""
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx").read_text()
+        assert "react-force-graph-2d" in src
+
+    def test_legacy_brain_flow_under_legacy(self):
+        """Old RemedyBrainFlow.tsx preserved under legacy/."""
+        p = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "RemedyBrainFlow.tsx"
+        assert p.is_file()
+        src = p.read_text()
         assert "remedy-brain-canvas" in src
 
     def test_index_html_has_task_ribbon_marker(self):
@@ -63,16 +71,16 @@ class TestSmokeContractReset:
         css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.module.css").read_text()
         assert "taskRow" in css
 
-    def test_index_html_has_semantic_zoom_marker(self):
-        p = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts"
+    def test_legacy_semantic_zoom_under_legacy(self):
+        """Old semanticZoom.ts preserved under legacy/."""
+        p = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts"
         assert p.exists()
-
-    def test_index_html_has_zoom_in_reveals_more(self):
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts").read_text()
+        src = p.read_text()
         assert "semanticZoomLevel" in src
 
-    def test_index_html_has_forward_flow(self):
-        p = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "organicLayout.ts"
+    def test_legacy_organic_layout_under_legacy(self):
+        """Old organicLayout.ts preserved under legacy/."""
+        p = Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "organicLayout.ts"
         assert p.exists()
 
     def test_index_html_has_node_detail_card(self):
@@ -127,9 +135,9 @@ class TestSemanticZoomDirection:
         for i in range(1, len(counts)):
             assert counts[i] >= counts[i - 1], f"counts[{i}]={counts[i]} < counts[{i-1}]={counts[i-1]}"
 
-    def test_renderer_zoom_direction_in_source(self):
-        """Verify semanticZoom.ts maps lower viewport zoom to lower level."""
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts").read_text()
+    def test_renderer_zoom_direction_in_legacy_source(self):
+        """Verify legacy semanticZoom.ts maps lower viewport zoom to lower level."""
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts").read_text()
         assert "return 0;" in src
         assert "return 4;" in src
 
@@ -210,15 +218,15 @@ class TestHumanNodeLabels:
 # ---------------------------------------------------------------------------
 
 class TestAtmosphericMotion:
-    def test_renderer_has_particle_code(self):
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.tsx").read_text()
-        css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.module.css").read_text()
-        assert "particleVeil" in src
-        assert "remedyDrift" in css
+    def test_current_graph_is_canvas_force(self):
+        """Current renderer is Canvas/Force-based, not React Flow."""
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx").read_text()
+        assert "ForceGraph2D" in src or "react-force-graph-2d" in src
 
-    def test_reduced_motion_guard(self):
-        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.tsx").read_text()
-        assert "reducedMotion" in src
+    def test_current_graph_reduced_motion_guard(self):
+        """Current Canvas/Force graph respects reduced motion."""
+        src = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx").read_text()
+        assert "reducedMotion" in src or "reduced-motion" in src
 
     def test_reduced_motion_css(self):
         css = (Path(__file__).parent.parent / "apps" / "ui" / "src" / "styles" / "globals.css").read_text()

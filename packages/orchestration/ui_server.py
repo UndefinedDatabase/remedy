@@ -305,11 +305,15 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "raw_content_exposed": False,
             "unsafe_fields_blocked": True,
         },
-        # Legacy fields (backward compat)
-        "job_name": job.name,
-        "task_count": task_count,
-        "guidance": guidance_cards,
-        "lifecycle": lifecycle,
+        # Legacy fields — classified under "legacy" key.
+        # Primary truth is in metrics, tasks, phases, truth, live.
+        # Do not use legacy fields as core truth in new consumers.
+        "legacy": {
+            "job_name": job.name,
+            "task_count": task_count,
+            "guidance": guidance_cards,
+            "lifecycle": lifecycle,
+        },
     }
 
 

@@ -208,6 +208,35 @@ def run_autorun(
     return result
 
 
+def _create_and_approve_fixture_intent(job: Any, patch_summary: str) -> str:
+    """Create a real patch intent record on job and approve it. Returns intent_id.
+
+    Used by fixture builders to satisfy the source_apply approval gate.
+    Creates a minimal artifact with patch_intent_explanations and records
+    approval through approval_queue helpers.
+    """
+    from unittest.mock import MagicMock
+    from packages.orchestration.approval_queue import (
+        make_intent_id, set_approval_state, APPROVAL_APPROVED,
+    )
+
+    artifact = MagicMock()
+    artifact.id = uuid4()
+    artifact.task_id = uuid4()
+    artifact.metadata = {
+        "patch_intent_explanations": [
+            {"file": "fixture", "action": "modify", "risk": "low",
+             "reason": "fixture auto-approve", "summary": patch_summary}
+        ],
+    }
+    job.artifacts.append(artifact)
+
+    intent_id = make_intent_id(artifact.id, 0)
+    set_approval_state(job, intent_id, APPROVAL_APPROVED,
+                       reason="fixture auto-approve", decided_by="fixture")
+    return intent_id
+
+
 def _run_fixture_builder(
     job: Any, goal: str, repo: Path, data_dir: str | Path, autonomy_level: int,
 ) -> dict[str, Any]:
@@ -216,9 +245,13 @@ def _run_fixture_builder(
     Creates a failing test, builds structured patch to fix it,
     applies, runs test, records proof. Step 116.
     """
+    from packages.orchestration.permissions import Capability, set_permission
     from packages.orchestration.source_apply import apply_structured_patch
     from packages.orchestration.structured_patch import FileOp, StructuredPatch
     from packages.orchestration.timeline import append_run_event
+
+    # Grant write permission for fixture
+    set_permission(job, Capability.repo_generated_write, allow=True)
 
     fx: dict[str, Any] = {"stage": "builder_complete"}
 
@@ -305,10 +338,12 @@ def _run_fixture_builder(
     fx["structured_patch_created"] = True
     fx["approval_required"] = patch.requires_approval
 
-    # 4. Apply patch (fixture auto-approves)
+    # 4. Apply patch (fixture auto-approves via real intent)
     if autonomy_level >= 3:
+        intent_id = _create_and_approve_fixture_intent(job, "Fix calc functions")
         apply_result = apply_structured_patch(
             patch, repo, data_dir=str(data_dir), job_id=job.id, job=job,
+            intent_id=intent_id,
         )
         fx["source_patch_applied"] = apply_result.success
     else:
@@ -376,10 +411,14 @@ def _run_repair_loop_fixture(
     Cycle 1: Apply wrong-ish fix → tests fail → repair_context_created.
     Cycle 2: Apply correct fix → tests pass → proof_collected.
     """
+    from packages.orchestration.permissions import Capability, set_permission
     from packages.orchestration.source_apply import apply_structured_patch
     from packages.orchestration.structured_patch import FileOp, StructuredPatch
     from packages.orchestration.repair_context import build_repair_context
     import subprocess, sys as _sys
+
+    # Grant write permission for fixture
+    set_permission(job, Capability.repo_generated_write, allow=True)
 
     fx: dict[str, Any] = {"stage": "builder_complete", "cycles_run": 0}
 
@@ -434,7 +473,9 @@ def _run_repair_loop_fixture(
     fx["approval_required"] = True
 
     if autonomy_level >= 3:
-        apply_structured_patch(patch1, repo, data_dir=str(data_dir), job_id=job.id, job=job)
+        intent_id1 = _create_and_approve_fixture_intent(job, "Partial fix cycle 1")
+        apply_structured_patch(patch1, repo, data_dir=str(data_dir), job_id=job.id, job=job,
+                               intent_id=intent_id1)
         fx["source_patch_applied"] = True
 
     if autonomy_level >= 4 and max_cycles >= 1:
@@ -488,7 +529,9 @@ def _run_repair_loop_fixture(
                 "intent_kind": "file_ops", "target_path_count": 1,
                 "risk": "low", "cycle": 2,
             })
-            apply_structured_patch(patch2, repo, data_dir=str(data_dir), job_id=job.id, job=job)
+            intent_id2 = _create_and_approve_fixture_intent(job, "Repair fix cycle 2")
+            apply_structured_patch(patch2, repo, data_dir=str(data_dir), job_id=job.id, job=job,
+                                   intent_id=intent_id2)
 
             proc2 = subprocess.run(
                 [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
