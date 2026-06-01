@@ -4,10 +4,10 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 283-288: Full Repo Baseline Reconciliation, Stale Historical Tests, Final Merge Honesty.
+Steps 289-296: Test suite re-architecture, source apply transactionality, dashboard truth, frontend fixes, truncation metadata.
 
 ## Current Problems
-- (none — R-5001 and R-5002 resolved, full baseline green)
+- (none — full baseline green, all guardrails pass)
 
 ## Constraints
 - No mutation endpoints, no shell=True, no 0.0.0.0
@@ -19,6 +19,7 @@ Steps 283-288: Full Repo Baseline Reconciliation, Stale Historical Tests, Final 
 - No unittest.mock in production packages
 - Dashboard is version 3
 - Graph architecture is Canvas/Force (not React Flow)
+- Test files use domain directories (tests/orchestration/, tests/ui_server/, etc.) — no step-numbered files
 
 ## Recommended Next Block
 Project Memory integration into Planning/Execution pipeline.

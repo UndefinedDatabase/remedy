@@ -334,9 +334,14 @@ def summarize_trust_report(
             sym        = _OK if status == "passed" else (_FAIL if status == "failed" else _WARN)
             exit_str   = f"  exit_code={exit_code}" if exit_code is not None else ""
             src_str    = f"  source={src_type}  confidence={confidence}" if src_type else ""
+            trunc_str = ""
+            if meta.get("output_truncated"):
+                orig = meta.get("original_output_bytes", 0)
+                kept = meta.get("persisted_output_bytes", 0)
+                trunc_str = f"  OUTPUT TRUNCATED ({orig} -> {kept} bytes)"
             parts.append(
                 f"  {sym} status={status}  command={command}"
-                f"{exit_str}  duration_ms={dur_ms}{src_str}"
+                f"{exit_str}  duration_ms={dur_ms}{src_str}{trunc_str}"
             )
             parts.append("      (raw stdout/stderr not included in this report)")
 

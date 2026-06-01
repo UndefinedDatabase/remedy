@@ -613,7 +613,11 @@ def _detect_justfile(repo_root: Path) -> list[CommandCandidate]:
 
 
 def _detect_taskfile(repo_root: Path) -> list[CommandCandidate]:
-    """Detect test/lint/build tasks from Taskfile.yml."""
+    """Detect test/lint/build tasks from Taskfile.yml.
+
+    Inspects task command bodies for risky patterns (parity with
+    Makefile/package.json risk detection).
+    """
     tf_path: Path | None = None
     for name in ("Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml"):
         p = repo_root / name
@@ -628,38 +632,85 @@ def _detect_taskfile(repo_root: Path) -> list[CommandCandidate]:
     except OSError:
         return []
 
+    # Parse tasks and their command bodies
+    tasks = _parse_taskfile_tasks(text)
+
     candidates: list[CommandCandidate] = []
     seen: set[str] = set()
     rel_path = _rel(tf_path, repo_root)
-    in_tasks = False
 
-    for line in text.splitlines():
+    for task_name, body in tasks.items():
+        purpose = _PURPOSE_MAP.get(task_name.lower())
+        if purpose is not None and task_name.lower() not in seen:
+            seen.add(task_name.lower())
+            argv = ("task", task_name)
+            candidates.append(CommandCandidate(
+                id=_candidate_id(purpose, "taskfile", task_name),
+                purpose=purpose,
+                argv=argv,
+                display=f"task {task_name}",
+                source_type="taskfile",
+                source_path=rel_path,
+                confidence="medium",
+                risk=_assess_risk(argv, extra_text=body),
+                reason=f"Taskfile task '{task_name}'.",
+                requires_permission=_permission_for(purpose),
+            ))
+    return candidates
+
+
+def _parse_taskfile_tasks(text: str) -> dict[str, str]:
+    """Parse Taskfile YAML and return {task_name: body_text}.
+
+    body_text is the concatenated cmds/script content for risk inspection.
+    """
+    tasks: dict[str, str] = {}
+    lines = text.splitlines()
+    i = 0
+    in_tasks = False
+    current_task: str | None = None
+    body_lines: list[str] = []
+
+    while i < len(lines):
+        line = lines[i]
+
         if re.match(r'^tasks\s*:', line):
             in_tasks = True
+            i += 1
             continue
-        if in_tasks:
-            m = re.match(r'^  ([a-zA-Z][a-zA-Z0-9_-]*)\s*:', line)
-            if m:
-                task_name = m.group(1)
-                purpose = _PURPOSE_MAP.get(task_name.lower())
-                if purpose is not None and task_name.lower() not in seen:
-                    seen.add(task_name.lower())
-                    argv = ("task", task_name)
-                    candidates.append(CommandCandidate(
-                        id=_candidate_id(purpose, "taskfile", task_name),
-                        purpose=purpose,
-                        argv=argv,
-                        display=f"task {task_name}",
-                        source_type="taskfile",
-                        source_path=rel_path,
-                        confidence="medium",
-                        risk=_assess_risk(argv),
-                        reason=f"Taskfile task '{task_name}'.",
-                        requires_permission=_permission_for(purpose),
-                    ))
-            elif line and not line.startswith(" ") and not line.startswith("#"):
-                in_tasks = False
-    return candidates
+
+        if not in_tasks:
+            i += 1
+            continue
+
+        # Top-level key (not indented or single-indent) exits tasks section
+        if line and not line.startswith(" ") and not line.startswith("#"):
+            if current_task:
+                tasks[current_task] = "\n".join(body_lines)
+            in_tasks = False
+            i += 1
+            continue
+
+        # Task definition: exactly 2-space indent
+        m = re.match(r'^  ([a-zA-Z][a-zA-Z0-9_-]*)\s*:', line)
+        if m:
+            if current_task:
+                tasks[current_task] = "\n".join(body_lines)
+            current_task = m.group(1)
+            body_lines = []
+            i += 1
+            continue
+
+        # Task body lines (deeper indent)
+        if current_task and line.startswith("    "):
+            body_lines.append(line.strip())
+
+        i += 1
+
+    if current_task:
+        tasks[current_task] = "\n".join(body_lines)
+
+    return tasks
 
 
 def _detect_package_json(repo_root: Path) -> list[CommandCandidate]:

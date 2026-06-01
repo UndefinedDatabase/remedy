@@ -66,6 +66,9 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
             "command_source_path": record.command_source_path,
             "command_purpose": record.command_purpose,
             "command_confidence": record.command_confidence,
+            "output_truncated": record.output_truncated,
+            "original_output_bytes": record.original_output_bytes,
+            "persisted_output_bytes": record.persisted_output_bytes,
         })
         print(f"Error: test run blocked — {record.blocked_reason}", file=sys.stderr)
         sys.exit(1)
@@ -78,6 +81,9 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
         "command_source_path": record.command_source_path,
         "command_purpose": record.command_purpose,
         "command_confidence": record.command_confidence,
+        "output_truncated": record.output_truncated,
+        "original_output_bytes": record.original_output_bytes,
+        "persisted_output_bytes": record.persisted_output_bytes,
     })
 
     if "test_runs" not in job.metadata:
@@ -88,6 +94,9 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
         "duration_ms": record.duration_ms, "output_path": record.output_path,
         "output_line_count": record.output_line_count, "output_bytes": record.output_bytes,
         "created_at": record.created_at,
+        "output_truncated": record.output_truncated,
+        "original_output_bytes": record.original_output_bytes,
+        "persisted_output_bytes": record.persisted_output_bytes,
     })
     save_job(job)
 
@@ -102,6 +111,11 @@ def _cmd_run_tests_local(job_id_str: str) -> None:
         f"  {output_info}  log={log.path}"
     )
     print(f"Test run: {status_sym}")
+    if record.output_truncated:
+        print(
+            f"Warning: output truncated ({record.original_output_bytes}"
+            f" -> {record.persisted_output_bytes} bytes)"
+        )
     print("Note: raw stdout/stderr are in the workspace test_runs/ directory only.")
 
     if record.status not in ("passed",):

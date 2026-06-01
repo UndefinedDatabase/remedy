@@ -191,12 +191,19 @@ def apply_structured_patch(
         result.errors.append(f"repo path not found: {repo_root}")
         return result
 
+    # Transactional apply: snapshot all first, apply all, rollback on any failure
     if patch.intent_kind == "file_ops":
         for op in patch.file_ops:
             _apply_file_op(op, repo_root, result)
+            if not result.success:
+                _rollback(result.snapshots, repo_root)
+                break
     elif patch.intent_kind == "unified_diff":
         for diff in patch.unified_diffs:
             _apply_unified_diff(diff, repo_root, result)
+            if not result.success:
+                _rollback(result.snapshots, repo_root)
+                break
     else:
         result.errors.append(f"non-applicable intent kind: {patch.intent_kind}")
         result.success = False
@@ -213,6 +220,19 @@ def apply_structured_patch(
         })
 
     return result
+
+
+def _rollback(snapshots: list[FileSnapshot], repo_root: Path) -> None:
+    """Rollback all applied changes using snapshots (all-or-nothing)."""
+    for snap in reversed(snapshots):
+        full = repo_root / snap.path
+        try:
+            if snap.existed:
+                full.write_text(snap.content, encoding="utf-8")
+            elif full.exists():
+                full.unlink()
+        except OSError:
+            pass  # Best effort
 
 
 def _apply_file_op(op: FileOp, repo_root: Path, result: ApplyResult) -> None:
@@ -295,14 +315,17 @@ def _apply_unified_diff(diff: UnifiedDiff, repo_root: Path, result: ApplyResult)
 
 
 def _apply_hunks(original: str, diff_text: str) -> str | None:
-    """Apply unified diff hunks to original text. Returns None if fails."""
+    """Apply unified diff hunks to original text.
+
+    Validates context and removal lines against actual file content.
+    Returns None if any hunk fails to apply.
+    """
     import re
 
     lines = original.split("\n")
     result_lines = list(lines)
     offset = 0
 
-    # Parse hunks
     hunk_re = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
     diff_lines = diff_text.split("\n")
@@ -326,11 +349,23 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
             if line.startswith("@@") or line.startswith("diff ") or line.startswith("---") or line.startswith("+++"):
                 break
             if line.startswith("-"):
+                # Validate removal line matches actual content
+                actual_idx = pos
+                if actual_idx < 0 or actual_idx >= len(lines):
+                    return None  # out of range
+                if lines[actual_idx] != line[1:]:
+                    return None  # removal line mismatch
                 removals.append(pos + offset)
                 pos += 1
             elif line.startswith("+"):
                 additions.append((pos + offset, line[1:]))
             elif line.startswith(" "):
+                # Validate context line matches actual content
+                actual_idx = pos
+                if actual_idx < 0 or actual_idx >= len(lines):
+                    return None  # context out of range
+                if lines[actual_idx] != line[1:]:
+                    return None  # context line mismatch
                 pos += 1
             else:
                 pos += 1

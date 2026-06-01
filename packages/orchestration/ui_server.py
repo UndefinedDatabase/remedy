@@ -62,6 +62,33 @@ def _load_job(job_id_str: str) -> Any:
     return job, None
 
 
+def _task_test_status(task_id: str, events: list[dict]) -> str:
+    """Return scoped test status for a task: 'pass', 'fail', or 'none'."""
+    task_tests = [
+        e for e in events
+        if e.get("event") == "test_run_completed"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    if not task_tests:
+        return "none"
+    latest = task_tests[-1]
+    return "pass" if latest.get("metadata", {}).get("exit_code") == 0 else "fail"
+
+
+def _event_backed_actor(events: list[dict]) -> str:
+    """Derive current actor from most recent event, not hardcoded."""
+    if not events:
+        return ""
+    _actor_map = {
+        "task_created": "Builder", "patch_intent_created": "Builder",
+        "patch_intent_approved": "User", "patch_intent_applied": "Builder",
+        "test_run_completed": "Builder", "proof_collected": "Builder",
+        "stop_reason_recorded": "System", "human_decision_requested": "User",
+    }
+    last_event = events[-1].get("event", "")
+    return _actor_map.get(last_event, "System")
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -197,10 +224,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
                 e.get("event") == "proof_collected" and e.get("metadata", {}).get("task_id") == str(t.id)
                 for e in events
             ) else "none",
-            "test_status": "pass" if any(
-                e.get("event") == "test_run_completed" and e.get("metadata", {}).get("exit_code") == 0
-                for e in events
-            ) else "none",
+            "test_status": _task_test_status(str(t.id), events),
             "is_current": tstat in ("running", "active"),
             "is_future": tstat == "pending",
             "is_reviewer_suggested": False,
@@ -239,9 +263,15 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     running = state in ("active", "running")
     last_event_at = events[-1].get("timestamp", "") if events else ""
 
-    # Graph summary
-    graph_node_count = task_count + artifact_count
-    graph_edge_count = max(0, graph_node_count - 1)
+    # Graph summary from actual brain data
+    try:
+        from packages.orchestration.project_brain import build_project_brain
+        brain = build_project_brain(job, events)
+        graph_node_count = len(brain.nodes)
+        graph_edge_count = len(brain.edges)
+    except (ImportError, TypeError, ValueError, KeyError, AttributeError):
+        graph_node_count = task_count + artifact_count
+        graph_edge_count = max(0, graph_node_count - 1)
 
     # Next action
     na_label = next_action if next_action else "Review project state"
@@ -257,7 +287,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "live": {
             "running": running,
             "state": state,
-            "current_actor": "Builder" if running else "",
+            "current_actor": _event_backed_actor(events) if running else "",
             "current_action": "",
             "current_task_id": "",
             "last_event_at": last_event_at,
@@ -288,6 +318,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "next_action": {
             "kind": "guidance",
             "label": na_label,
+            "command": na_command,
             "reason": "Next recommended step",
             "requires_user": True,
             "related_node_id": "",
