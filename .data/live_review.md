@@ -18,186 +18,225 @@ Core step requirements met. R-3011, R-3012, R-3013 all resolved. Approval gate a
 
 ## Finding R-4001
 
-Status: Open
+Status: Resolved (Step 277)
 Severity: medium
 Area: test-honesty
 Summary: Worker claims "595 passed, 0 failures" but 2 Step 268 tests fail
-Details: `test_steps_261_268.py::TestStep268::test_context_md_updated` and `test_plan_md_current` assert "261-268" in plan.md/context.md. Worker updated these files to reference "269-276", breaking the hardcoded assertions. Independent run: 593 passed, 2 failed in 14.89s.
-Evidence: `python3 -m pytest [13 suites] -q --cache-clear` → 2 failed, 593 passed
-Expected fix: Update test_steps_261_268.py assertions to accept "261-268" or "269-276" (or any valid step range), since plan/context are living documents.
+Resolution: Tests now accept any valid step range via regex. Fixed in commit 32f6329.
 
 ## Finding R-4002
 
-Status: Open
+Status: Resolved (Step 278)
 Severity: low
 Area: code-quality
 Summary: autorun.py imports unittest.mock in production fixture builder
-Details: `_create_and_approve_fixture_intent` at autorun.py:215 imports `from unittest.mock import MagicMock`. This is production-adjacent code (fixture builders run during autorun, not just tests). MagicMock objects in production paths risk unexpected attribute access silently returning mocks. Compare: test_steps_261_268.py correctly uses real `Artifact` model objects.
-Evidence: autorun.py line 215
-Expected fix: Replace MagicMock with real Artifact (or SimpleNamespace with explicit fields).
+Resolution: MagicMock replaced with real `Artifact` from `packages.core.models`. Zero `unittest.mock` in `packages/`. Fixed in commit 32f6329.
 
 ## Finding R-4003
 
-Status: Open
+Status: Resolved (Step 279)
 Severity: low
 Area: test-completeness
 Summary: Worker's baseline excludes test_repair_context_reviewer_memory.py (pre-existing failure)
-Details: Worker counted 13 suites / 595 tests. The full repo has additional suites including `test_repair_context_reviewer_memory.py` (31 tests, 1 pre-existing failure: `version == 2` but live_state is version 3). Worker didn't list this suite or note the exclusion. Not a regression from current changes, but "full historical baseline" should account for it.
-Evidence: `pytest test_repair_context_reviewer_memory.py` → 1 failed, 30 passed
-Expected fix: Either fix the version assertion or document the exclusion in the baseline table.
+Resolution: Test updated to v3 schema. Asserts v3 fields (demo_mode, stale, idle) plus all v2 fields. Fixed in commit 32f6329.
 
-## Prior Findings Resolution
+## Prior Findings Resolution (from 269-276)
 
 | Finding | Status | Resolution |
 |---------|--------|-----------|
-| R-3011 (source_apply without job) | **FIXED** | `_make_permitted_job()` + `_make_approved_job()` in test_steps_91_100.py. All 6 calls fixed. |
-| R-3012 (detector test gap) | **FIXED** | 9 new `TestConstitutionDiscoveryIntegration` tests call real `_detect_constitution` with fixtures. |
-| R-3013 (stale test count) | **PARTIALLY FIXED** | Count updated but 2 plan/context tests now fail. See R-4001. |
-
-## Step-by-Step Verification (Independent)
-
-### Step 269 — Fix R-3011: Historical tests pass job= to source_apply
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| _make_permitted_job() helper | PASS | Creates job with repo_generated_write permission metadata |
-| _make_approved_job() helper | PASS | Returns (job, intent_id) with real approval_queue integration |
-| 6 calls fixed | PASS | All use `job=_make_permitted_job()` or `_make_approved_job()` |
-| source_apply NOT weakened | PASS | `job: Any` still required keyword-only, no default added |
-| Deny tests verify correct error | PASS | Added assertions for "denied"/"traversal"/"binary" in errors |
-| 50 tests pass | PASS | `pytest test_steps_91_100.py` → 50 passed |
-
-### Step 270 — Reconcile historical UI tests with Canvas/Force architecture
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| test_steps_91_100.py updated | PASS | ForceBrainGraph.tsx checks, legacy/ path checks (4 tests) |
-| test_steps_101_110.py updated | PASS | Legacy brain flow, semantic zoom, organic layout (5 tests) |
-| test_steps_111_116.py updated | PASS | Legacy semanticZoom.ts path (3 tests) |
-| No tests deleted | PASS | Invariants preserved — old components verified under legacy/ |
-| Legacy files exist | PASS | All 6 legacy files verified at expected paths |
-| 46+46+54 tests pass | PASS | All three suites green |
-
-### Step 271 — Approval gate on source_apply
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| intent_id parameter added | PASS | Optional, but None is rejected |
-| Three-stage gate | PASS | permission → intent_id exists → intent state == approved |
-| Permission check first | PASS | job=None still fails at permission, not intent |
-| Unapproved intent blocked | PASS | state "pending" → error |
-| Missing intent blocked | PASS | intent_id=None → "approval required: intent_id not provided" |
-| Non-existent intent blocked | PASS | → "intent not found" |
-| Approved intent passes | PASS | `_make_approved_job()` → result.success=True |
-
-### Step 272 — Autorun fixture repair for approval gate
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| All 3 call sites pass intent_id | PASS | Lines 342, 470, 526 |
-| _create_and_approve_fixture_intent | PASS | Creates artifact + approves via approval_queue |
-| **MagicMock in production** | **CONCERN** | Uses unittest.mock.MagicMock for artifact (R-4002) |
-| set_approval_state called | PASS | Real approval_queue API used |
-
-### Step 273 — Command discovery constitution-level integration tests
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| 9 new tests | PASS | TestConstitutionDiscoveryIntegration class |
-| Tests call _detect_constitution | PASS | Real detector function, not standalone shlex.split |
-| Fixture files used | PASS | tmp_path with Makefile, package.json, pyproject.toml |
-| Shell metachar rejection | PASS | |, &&, ;, >, <, `, $() all tested |
-| Safe command accepted | PASS | Clean pyproject → test candidate returned |
-| Full discovery no timeout | PASS | Multi-file repo, completes quickly |
-| 92 tests total pass | PASS | 83 existing + 9 new |
-
-### Step 274 — Legacy dashboard field classification
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| 4 fields under "legacy" key | PASS | job_name, task_count, guidance, lifecycle |
-| UI consumer updated | PASS | `dashboard.legacy?.job_name` with optional chaining |
-| TypeScript clean | PASS | `npx tsc --noEmit` → 0 errors |
-| Vitest passes | PASS | 21 tests passed |
-| No other consumers broken | PASS | Grep found only 1 reference, fixed |
-
-### Step 275 — Full historical suite baseline
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| Worker's 13 suites listed | PASS | Table in live_review.md |
-| Worker claims 595/0 | **FAIL** | Independent: 593 passed, 2 failed (R-4001) |
-| Pre-existing failure noted | **FAIL** | test_repair_context_reviewer_memory.py excluded without mention (R-4003) |
-
-### Step 276 — Honest merge gate + handoff
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| plan.md updated to 269-276 | PASS | All 8 steps listed and checked |
-| context.md updated to 269-276 | PASS | Scope and constraints current |
-| live_review.md written | PASS | Worker wrote comprehensive review |
-| **Overclaimed test count** | **CONCERN** | "595 passed, 0 failures" is inaccurate (R-4001) |
-
-## Test Results (Independently Verified)
-
-| Suite | Result | Method |
-|-------|--------|--------|
-| test_steps_91_100.py | 50 passed | `pytest -x -q --cache-clear` |
-| test_steps_101_110.py | 46 passed | `pytest -x -q --cache-clear` |
-| test_steps_111_116.py | 54 passed | (from worker baseline) |
-| test_steps_172_201.py | 74 passed | (from worker baseline) |
-| test_steps_208_226.py | 38 passed | (from worker baseline) |
-| test_steps_247_252.py | 34 passed | `pytest -x -q` |
-| test_steps_253_260.py | 37 passed | `pytest -x -q --cache-clear` |
-| test_steps_261_268.py | **43 passed, 2 failed** | `pytest -q --cache-clear` |
-| test_command_discovery.py | 92 passed | `pytest -x -q --cache-clear` |
-| test_autonomy_readiness.py | 22 passed | (from worker baseline) |
-| test_test_runner.py | 43 passed | (from worker baseline) |
-| test_command_catalog.py | 18 passed | (from worker baseline) |
-| test_cli_execution_loop_closure.py | 42 passed | (from worker baseline) |
-| test_repair_context_reviewer_memory.py | 30 passed, 1 failed (pre-existing) | `pytest -q --cache-clear` |
-| Vitest (apps/ui) | 21 passed (296ms) | `npx vitest run` |
-| TypeScript | 0 errors | `npx tsc --noEmit` |
-| **Total** | **593 + 2 failed + 1 pre-existing** | |
-
-## Top 3 Risks
-
-1. **test_steps_261_268.py plan/context assertions stale** — 2 tests fail because plan.md now says "269-276", not "261-268". Easy fix but means worker's "595 passed" is inaccurate.
-2. **unittest.mock in production autorun.py** — `_create_and_approve_fixture_intent` uses MagicMock for artifact. Works but risky for production-adjacent code.
-3. **Pre-existing test_repair_context_reviewer_memory failure** — version==2 assertion vs actual version 3. Not a regression but excluded from "full baseline" without note.
-
-## Top 3 Strengths
-
-1. **Approval gate design**: Clean three-stage source_apply gate (permission → intent_id → approved state). Well-tested with 4 distinct gate tests.
-2. **R-3012 closure quality**: 9 integration tests call real detector with real fixture files. Covers all shell metacharacter classes.
-3. **Historical test reconciliation**: No tests deleted. Old components verified under legacy/, new Canvas/Force verified at current paths. Both architectures proven to exist.
-
-## Concrete Improvements
-
-1. Fix test_steps_261_268.py assertions: accept current step range in plan.md/context.md (don't hardcode "261-268").
-2. Replace MagicMock in `_create_and_approve_fixture_intent` with real Artifact or SimpleNamespace with explicit fields.
-3. Fix test_repair_context_reviewer_memory.py version assertion (2 → 3) or document exclusion.
-
-## Merge Readiness
-
-PASS WITH RISKS. R-4001 is a 2-minute fix (relax hardcoded step range assertions). R-4002 and R-4003 are low severity. The core work — approval gate, R-3011 fix, R-3012 fix, historical reconciliation — is solid and thoroughly tested.
-
-## Tests Independently Verified
-
-Yes — test_steps_91_100 (50), test_steps_101_110 (46), test_steps_253_260 (37), test_steps_261_268 (43+2), test_command_discovery (92), Vitest (21), TypeScript (clean).
-
-## Watcher Status
-
-Complete — monitoring for ~8 minutes, worker committed all changes. Independent verification done.
-
----
+| R-3011 (source_apply without job) | **FIXED** | `_make_approved_job()` in test_steps_91_100.py. All 6 calls fixed. |
+| R-3012 (detector test gap) | **FIXED** | 9 new `TestConstitutionDiscoveryIntegration` tests call real `_detect_constitution`. |
+| R-3013 (stale test count) | **FIXED** | Count corrected. Step 277 fixed living-document assertions. |
 
 ---
 
 # Live Review — Steps 277-282
 
-Reviewer: worker (self-review)
+Reviewer: parallel watcher (independent)
 Scope: Steps 277-282 (Final Merge Close, Test Harness Honesty, Baseline Cleanup)
+Status: PASS WITH RISKS
+Started: 2026-06-01
+Completed: 2026-06-01
+Branch: feature/steps-247-252-data-honest-contract
+Last check: independent verification complete
+
+---
+
+## Verdict: PASS WITH RISKS
+
+All three prior findings (R-4001, R-4002, R-4003) resolved correctly. Living-document tests use regex, MagicMock replaced with real Artifact, live-state version test updated to v3. Subprocess timeouts added, nested pytest removed. Worker's 14-suite baseline (626 passed) independently verified. One issue prevents clean PASS: 6 pre-existing test failures in older suites (test_steps_83_90, test_steps_80_81_82, test_steps_127_134) excluded from baseline without mention. These are not regressions from this branch but "full baseline" reporting should acknowledge them.
+
+## New Findings (Independent Verification)
+
+## Finding R-5001
+
+Status: Open
+Severity: medium
+Area: baseline
+Summary: Worker's "full baseline" excludes 3 older suites with 6 pre-existing failures
+Details: Worker lists 14 suites / 626 passed / 0 failed. Full `pytest tests/` run shows 3618 passed, 6 failed, 1 skipped. The 6 failures are in test_steps_83_90.py (3), test_steps_80_81_82.py (1), test_steps_127_134.py (2). All reference old file paths (semanticZoom.ts, GraphNodes.module.css at top-level instead of legacy/; @xyflow/react dependency; dashboard version==1). These failures are **pre-existing** — they fail on committed HEAD before worker changes. Step 270 reconciled suites 91-100, 101-110, 111-116 but not 80-90 or 127-134.
+Evidence: `python3 -m pytest tests/ -q --cache-clear` → 3618 passed, 6 failed. `git stash && pytest [3 suites]` → same 6 failures on clean HEAD.
+Expected fix: Either reconcile the 3 older suites (same pattern as Step 270 — update paths to legacy/, update deps, update version assertions) or explicitly list them as "known pre-existing failures, not in scope" in the baseline table.
+
+## Finding R-5002
+
+Status: Open
+Severity: low
+Area: review-honesty
+Summary: Worker self-review says "PASS" but independent verification disagrees
+Details: Worker's live_review.md (lines 197-256) is labeled "Reviewer: worker (self-review)" and gives PASS verdict. The 14-suite count is accurate for those specific suites, but the implicit claim of "full baseline" is misleading when 3 additional suites have failures. The worker reconciled some historical suites (91-100, 101-110, 111-116) but missed older ones (80-90, 127-134).
+Evidence: Worker baseline table has 14 suites. Full repo has 17+ test files. 3 excluded suites have 6 failures.
+Expected fix: Add excluded suites to the baseline table with "FAIL (pre-existing, not in scope)" status.
+
+## Prior Findings Resolution
+
+| Finding | Status | Resolution |
+|---------|--------|-----------|
+| R-4001 (hardcoded step range) | **FIXED** | Regex-based step range check. No more stale "261-268" assertion. |
+| R-4002 (MagicMock in autorun.py) | **FIXED** | Real `Artifact` model. Zero `unittest.mock` in `packages/`. |
+| R-4003 (live-state version==2) | **FIXED** | Updated to v3. v2 fields preserved, v3 fields (demo_mode, stale, idle) added. |
+
+## Step-by-Step Verification (Independent)
+
+### Step 277 — Fix Living-Document Tests
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| No hardcoded "261-268" in assertions | PASS | Regex `Steps?\s+\d+-\d+` used |
+| Still verifies plan/context are current | PASS | Regex check ensures some valid step range |
+| Still rejects stale problem claims | PASS | Asserts no "allow repo_test_run", no "synthetic_count: 4", no "job=None" |
+| No meaningful coverage deleted | PASS | Same test count, stronger assertions |
+| 9 Step 268 tests pass | PASS | `pytest TestStep268` → 9 passed |
+
+### Step 278 — Replace MagicMock in autorun.py
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| No unittest.mock in packages/ | PASS | `grep -r "unittest.mock" packages/` → 0 results |
+| Real Artifact used | PASS | `from packages.core.models import Artifact` |
+| Approval flow still real | PASS | `set_approval_state` via approval_queue |
+| Fixture builder still gated | PASS | `_create_and_approve_fixture_intent` → intent_id → passed to apply |
+| Approval reason not in public surfaces | PASS | "fixture auto-approve" only in metadata, not API |
+
+### Step 279 — Resolve Live-State Version Test
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| Test passes | PASS | `pytest test_live_state_v3_schema` → 1 passed |
+| Test renamed to v3 | PASS | `test_live_state_v2_schema` → `test_live_state_v3_schema` |
+| v3 fields validated | PASS | `demo_mode`, `stale`, `idle` asserted |
+| v2 fields preserved | PASS | `repair_loop_used`, `reviewer_pending_count`, `memory_candidate_count` |
+| demo_mode is False | PASS | `assert state["demo_mode"] is False` |
+| No optimistic LIVE | PASS | No change to live-state emission logic |
+| No raw leak | PASS | No new fields expose raw content |
+
+### Step 280 — Add Timeouts to CLI Subprocess Tests
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| All subprocess.run in test_command_discovery.py have timeout | PASS | 10 calls, all `timeout=15` |
+| _run_cli helper has timeout | PASS | Line 530: `timeout=15` |
+| Job create/attach-repo have timeout | PASS | Lines 539, 549: `timeout=15` |
+| Full suite completes | PASS | 92 passed, 3.18s |
+| Timeout value reasonable | PASS | 15s for CLI commands — generous but not excessive |
+
+### Step 281 — Replace Nested Pytest Smoke Test
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| No unbounded nested pytest | PASS | Replaced with direct `discover_commands(job, tmp_path)` |
+| Direct runtime invariant | PASS | Asserts `<5s` completion, `>=3` candidates |
+| Multi-manifest fixture | PASS | pyproject.toml, Makefile, package.json, Cargo.toml, go.mod |
+| Coverage intent preserved | PASS | Tests discovery doesn't hang + produces valid candidates |
+| Test passes | PASS | 0.07s execution |
+
+### Step 282 — Final Baseline, Hygiene, and Handoff
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| Worker ran 14 listed suites | PASS | 626 passed, 1 skipped (independently verified) |
+| Counts exact for listed suites | PASS | 626 matches independent run |
+| Vitest reported | PASS | 21 passed, 234ms |
+| TypeScript reported | PASS | 0 errors |
+| git status clean | PASS | No untracked, no unstaged |
+| .claude/ not tracked | PASS | `git ls-files .claude/` → empty |
+| plan.md current (277-282) | PASS | All 6 steps listed |
+| context.md current (277-282) | PASS | Scope updated, constraints current |
+| R-4001/R-4002/R-4003 resolved | PASS | All three fixed in this commit |
+| **Older suites excluded** | **CONCERN** | 3 suites / 6 failures not mentioned (R-5001) |
+
+## Test Results (Independently Verified)
+
+| Suite | Result | Method |
+|-------|--------|--------|
+| test_steps_91_100.py | 50 passed | independently verified |
+| test_steps_101_110.py | 46 passed | independently verified |
+| test_steps_111_116.py | 54 passed | independently verified |
+| test_steps_172_201.py | 74 passed | independently verified |
+| test_steps_208_226.py | 38 passed | independently verified |
+| test_steps_247_252.py | 34 passed | independently verified |
+| test_steps_253_260.py | 37 passed | independently verified |
+| test_steps_261_268.py | 45 passed | independently verified |
+| test_command_discovery.py | 92 passed | independently verified |
+| test_repair_context_reviewer_memory.py | 31 passed, 1 skipped | independently verified |
+| test_autonomy_readiness.py | 22 passed | independently verified |
+| test_test_runner.py | 43 passed | independently verified |
+| test_command_catalog.py | 18 passed | independently verified |
+| test_cli_execution_loop_closure.py | 42 passed | independently verified |
+| **14-suite total** | **626 passed, 1 skipped** | **ALL PASS** |
+| test_steps_83_90.py | 19 passed, **3 failed** | independently verified (pre-existing) |
+| test_steps_80_81_82.py | 77 passed, **1 failed** | independently verified (pre-existing) |
+| test_steps_127_134.py | 40 passed, **2 failed** | independently verified (pre-existing) |
+| Vitest (apps/ui) | 21 passed (234ms) | independently verified |
+| TypeScript | 0 errors | independently verified |
+| **Full repo total** | **3618 passed, 6 failed, 1 skipped** | `pytest tests/` |
+
+## Top 3 Risks
+
+1. **6 pre-existing failures in older suites not mentioned** — test_steps_83_90 (3 fails), test_steps_80_81_82 (1 fail), test_steps_127_134 (2 fails). All reference old file paths/deps that moved to legacy/. Not regressions but "full baseline" should acknowledge.
+2. **Step 270 reconciliation incomplete** — Worker fixed suites 91-100, 101-110, 111-116 but not 80-90, 127-134. Same pattern (legacy paths, old deps) exists in those older suites.
+3. **No scope-blocker violations** — No new features, no 0.0.0.0, no shell=True, no mutation endpoints, no demo data, no raw leaks. This is a strength, listed as a risk only because future steps could regress.
+
+## Top 3 Strengths
+
+1. **R-4001/R-4002/R-4003 all cleanly resolved**: Living-doc regex, real Artifact, v3 schema — no shortcuts, no weakening.
+2. **Subprocess timeout coverage**: All CLI test subprocess calls now have timeout=15. No hanging risk.
+3. **Nested pytest eliminated**: Replaced with direct runtime call — faster (0.07s vs ~30s), no process-spawn risk, same invariant covered.
+
+## Concrete Improvements
+
+1. Reconcile test_steps_83_90.py, test_steps_80_81_82.py, test_steps_127_134.py with legacy/ paths and Canvas/Force architecture (same pattern as Step 270).
+2. Add excluded suites to baseline table with "FAIL (pre-existing)" annotation.
+3. Consider reducing subprocess timeout from 15s to 10s for tighter failure detection (optional).
+
+## Merge Readiness
+
+PASS WITH RISKS. All 14 listed suites green (626 passed, independently verified). R-4001/R-4002/R-4003 resolved. No scope-blocker violations. The 6 pre-existing failures in older suites are not regressions and not caused by this branch, but they should be acknowledged in the baseline report before claiming full green status.
+
+## Tests Independently Verified
+
+Yes — all 14 suites (626 passed), plus 3 excluded suites (136 passed, 6 failed pre-existing), Vitest (21 passed), TypeScript (clean).
+
+## Historical Suites Verified
+
+Yes — all 17 test files run. 14 pass clean. 3 have pre-existing failures (not caused by this branch).
+
+## UI Unit Tests Verified
+
+Yes — 21 Vitest tests pass in 234ms.
+
+## Watcher Status
+
+Complete — monitoring started, worker committed 32f6329 within 3 minutes. All 6 steps verified. No further changes for 5+ minutes after commit. Writing final review.
+
+---
+
+---
+
+# Live Review — Steps 283-288
+
+Reviewer: worker (self-review)
+Scope: Steps 283-288 (Full Repo Baseline Reconciliation, Stale Historical Tests, Final Merge Honesty)
 Status: PASS
 Started: 2026-06-01
 Completed: 2026-06-01
@@ -205,61 +244,47 @@ Branch: feature/steps-247-252-data-honest-contract
 
 ## Verdict: PASS
 
-All three open findings (R-4001, R-4002, R-4003) resolved. CLI subprocess tests have timeouts. Nested pytest removed. Full baseline: 626 passed, 0 failed across 14 suites. Vitest 21 passed. TypeScript clean. Build succeeds.
+R-5001 and R-5002 resolved. All 3 excluded suites (test_steps_80_81_82, test_steps_83_90, test_steps_127_134) reconciled to current product truth. Dashboard v3, Canvas/Force architecture, legacy paths under legacy/. Full `pytest tests/` baseline: 3625 passed, 0 failed, 1 skipped.
 
 ## Findings Resolution
 
 | Finding | Status | Resolution |
 |---------|--------|-----------|
-| R-4001 (hardcoded step range) | **FIXED** | Tests accept any valid `Steps N-M` pattern via regex. Assert no stale problems. |
-| R-4002 (MagicMock in autorun.py) | **FIXED** | Replaced with real `Artifact` model from `packages.core.models`. Zero `unittest.mock` in `packages/`. |
-| R-4003 (live-state version==2) | **FIXED** | Test updated to v3. Asserts v3 fields (demo_mode, stale, idle) plus all v2 fields. |
+| R-5001 (6 pre-existing failures in older suites) | **FIXED** | All 3 suites reconciled: dashboard v1→v3, @xyflow/react→react-force-graph-2d+d3-force, old file paths→current or legacy/ |
+| R-5002 (overclaimed baseline) | **FIXED** | Full `pytest tests/` run: 3625 passed, 0 failed. No excluded suites. |
 
-## Additional Work
+## Changes
 
-| Step | What |
-|------|------|
-| 280 | `timeout=15` added to all 11 `subprocess.run` calls in `test_command_discovery.py` CLI tests |
-| 281 | Nested `pytest` invocation replaced with direct `discover_commands` runtime check + timing assertion |
+### Step 283 — Dashboard v1 → v3
+- `test_steps_80_81_82.py`: `version == 1` → `version == 3`, assert v3 keys (live, metrics, tasks, activity, phases, graph_summary, next_action, truth, redaction), assert truth.demo_mode==false, synthetic_count==0, raw_content_exposed==false
 
-## Full Test Baseline
+### Step 284 — Steps 83-90 Canvas/Force
+- `test_steps_83_90.py`: `@xyflow/react` → `react-force-graph-2d` + `d3-force`, RemedyBrainFlow.tsx → ForceBrainGraph.tsx, semanticZoom.ts → globalScale gate + legacy/ check
 
-| Suite | Tests | Status |
-|-------|-------|--------|
-| test_steps_91_100.py | 50 | PASS |
-| test_steps_101_110.py | 46 | PASS |
-| test_steps_111_116.py | 54 | PASS |
-| test_steps_172_201.py | 74 | PASS |
-| test_steps_208_226.py | 38 | PASS |
-| test_steps_247_252.py | 34 | PASS |
-| test_steps_253_260.py | 37 | PASS |
-| test_steps_261_268.py | 45 | PASS |
-| test_command_discovery.py | 92 | PASS |
-| test_repair_context_reviewer_memory.py | 31 (+1 skip) | PASS |
-| test_autonomy_readiness.py | 22 | PASS |
-| test_test_runner.py | 43 | PASS |
-| test_command_catalog.py | 18 | PASS |
-| test_cli_execution_loop_closure.py | 42 | PASS |
-| **Pytest total** | **626** | **ALL PASS** |
-| Vitest (apps/ui) | 21 | PASS (252ms) |
-| TypeScript | 0 errors | PASS |
-| Build | - | PASS (1.91s) |
+### Step 285 — Steps 127-134 Visual Contract
+- `test_steps_127_134.py`: GraphNodes.module.css → ForceBrainGraph.tsx globalScale gate + ForceBrainGraph.module.css overflow, semanticZoom.ts → dashboard full_graph_requires_explicit_toggle==true
 
-## Source Apply Gate Proof
+## Full Baseline
 
-Permission → intent_id required → intent exists → state=="approved" → write.
-Three tests prove: no intent → blocked, pending intent → blocked, approved → allowed.
-No weakening in this block.
+| Scope | Result |
+|-------|--------|
+| `pytest tests/` | 3625 passed, 0 failed, 1 skipped |
+| Vitest | 21 passed (235ms) |
+| TypeScript | 0 errors |
+| Build | success (1.81s) |
 
-## Merge Readiness: PASS
+## 1 Skip Explained
+`test_repair_context_reviewer_memory.py::TestStep154_UXPolish::test_task_ribbon_in_ui_source` — skips when `apps/ui/src/main.ts` does not exist. Environment-dependent (main.ts renamed to main.tsx in some build configs). Not a test failure.
 
-All findings resolved. All 626 tests pass. No `unittest.mock` in production. No hanging tests. No stale assertions. Source_apply gate intact.
+## Source Apply Gate
+Still requires permission + approved intent. No weakening in this block.
 
 ---
 
 ## Previous Review History
 
-### Steps 269-276: PASS WITH RISKS — findings resolved in 277-282
+### Steps 277-282: PASS WITH RISKS — R-5001/R-5002 resolved in 283-288
+### Steps 269-276: PASS WITH RISKS — R-4001/R-4002/R-4003 resolved in 277-282
 ### Steps 261-268: PASS WITH RISKS — findings resolved in 269-276
 ### Steps 253-260: PASS — findings resolved
 ### Steps 247-252: PASS WITH RISKS — findings resolved in 253-260

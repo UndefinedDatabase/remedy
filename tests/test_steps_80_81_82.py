@@ -225,10 +225,17 @@ class TestUIServerIntegration:
         resp = conn.getresponse()
         assert resp.status == 200
         data = json.loads(resp.read())
-        assert data["version"] == 1
+        # Dashboard v3 contract
+        assert data["version"] == 3
         assert data["job_id"] == self.job_id
-        assert "state" in data
-        assert "task_count" in data
+        # Required v3 top-level keys
+        for key in ("live", "metrics", "tasks", "activity", "phases",
+                     "graph_summary", "next_action", "truth", "redaction"):
+            assert key in data, f"missing v3 key: {key}"
+        # Truth contract for normal runtime
+        assert data["truth"]["demo_mode"] is False
+        assert data["truth"]["synthetic_count"] == 0
+        assert data["redaction"]["raw_content_exposed"] is False
         conn.close()
 
     def test_api_missing_job_404(self):

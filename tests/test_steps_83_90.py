@@ -198,7 +198,9 @@ class TestFrontendBuild:
         data = json.loads(pkg.read_text())
         deps = data.get("dependencies", {})
         assert "react" in deps
-        assert "@xyflow/react" in deps
+        # Current graph architecture: Canvas/Force (not React Flow)
+        assert "react-force-graph-2d" in deps
+        assert "d3-force" in deps
 
 
 # ---------------------------------------------------------------------------
@@ -238,18 +240,25 @@ class TestUXAntiRegression:
         content = provider.read_text()
         assert "reducedMotion" in content or "reduced-motion" in content, "Reduced-motion check not found"
 
-    def test_pixi_viewport_in_renderer(self):
-        """Graph component must use @xyflow/react for zoom/pan."""
-        flow = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "RemedyBrainFlow.tsx"
-        content = flow.read_text()
-        assert "@xyflow/react" in content, "@xyflow/react not used in RemedyBrainFlow"
+    def test_current_graph_is_canvas_force(self):
+        """Primary graph component uses Canvas/Force architecture."""
+        graph = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx"
+        content = graph.read_text()
+        assert "react-force-graph-2d" in content, "ForceBrainGraph must use react-force-graph-2d"
+        assert "reducedMotion" in content or "reduced-motion" in content, "Reduced-motion guard missing"
 
-    def test_semantic_zoom_in_renderer(self):
-        """Semantic zoom module must exist with zoom-level function."""
-        sz = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "semanticZoom.ts"
-        assert sz.is_file(), "semanticZoom.ts not found"
-        content = sz.read_text()
-        assert "semanticZoomLevelFromViewportZoom" in content, "Zoom level function not found"
+    def test_semantic_zoom_labels_conditional(self):
+        """Labels only shown at sufficient zoom — not all visible by default."""
+        graph = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx"
+        content = graph.read_text()
+        # Labels gated by globalScale threshold
+        assert "globalScale" in content, "Label visibility must be gated by zoom scale"
+
+    def test_legacy_graph_files_under_legacy(self):
+        """Old React Flow graph files live under legacy/ directory."""
+        legacy = Path(__file__).resolve().parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy"
+        assert (legacy / "RemedyBrainFlow.tsx").is_file(), "Legacy RemedyBrainFlow.tsx not under legacy/"
+        assert (legacy / "semanticZoom.ts").is_file(), "Legacy semanticZoom.ts not under legacy/"
 
     def test_detail_card_not_permanent_rail(self):
         """Detail card must be a compact popover component."""

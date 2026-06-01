@@ -350,18 +350,21 @@ class TestStep131_UXVisualContract:
         assert vm["label_counts_by_zoom"][0] <= 1
 
     def test_renderer_no_all_label_default(self):
-        """Labels controlled by workLabel class with overflow ellipsis (not all visible)."""
-        css = Path("apps/ui/src/components/graph/GraphNodes.module.css").read_text()
-        assert "workLabel" in css
+        """Labels only shown at sufficient zoom — not all visible by default."""
+        graph = Path("apps/ui/src/components/graph/ForceBrainGraph.tsx").read_text()
+        # Labels gated by globalScale > threshold
+        assert "globalScale" in graph, "Label rendering must be gated by zoom scale"
+        # CSS container has overflow: hidden
+        css = Path("apps/ui/src/components/graph/ForceBrainGraph.module.css").read_text()
         assert "overflow" in css
-        assert "ellipsis" in css
 
     def test_renderer_no_full_graph_default(self):
-        """semanticZoom.ts caps at level 4 — full graph not default."""
-        content = Path("apps/ui/src/components/graph/semanticZoom.ts").read_text()
-        assert "return 4" in content
-        # Max zoom level is 4, not unbounded
-        assert content.strip().endswith("return 4;\n}") or "return 4;" in content
+        """Full graph requires explicit toggle — dashboard contract enforces this."""
+        from packages.orchestration.ui_server import _build_dashboard
+        from packages.core.models import Job
+        job = Job(name="test")
+        dashboard = _build_dashboard(job)
+        assert dashboard["graph_summary"]["full_graph_requires_explicit_toggle"] is True
 
     def test_renderer_reduced_motion(self):
         """ReducedMotionProvider respects prefers-reduced-motion."""

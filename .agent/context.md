@@ -4,10 +4,10 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 277-282: Final Merge Close, Test Harness Honesty, Baseline Cleanup.
+Steps 283-288: Full Repo Baseline Reconciliation, Stale Historical Tests, Final Merge Honesty.
 
 ## Current Problems
-- (none — all findings R-4001, R-4002, R-4003 resolved)
+- (none — R-5001 and R-5002 resolved, full baseline green)
 
 ## Constraints
 - No mutation endpoints, no shell=True, no 0.0.0.0
@@ -17,3 +17,8 @@ Steps 277-282: Final Merge Close, Test Harness Honesty, Baseline Cleanup.
 - UI remains read-only
 - source_apply requires job + intent_id (approved) before mutation
 - No unittest.mock in production packages
+- Dashboard is version 3
+- Graph architecture is Canvas/Force (not React Flow)
+
+## Recommended Next Block
+Project Memory integration into Planning/Execution pipeline.
