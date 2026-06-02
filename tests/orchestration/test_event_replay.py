@@ -161,7 +161,7 @@ class TestCheckpoints:
         assert intent_cp.safe_to_resume is False
         assert intent_cp.blocked_reason == "approval_pending"
 
-    def test_tests_failed_checkpoint(self, tmp_path):
+    def test_tests_failed_checkpoint_blocked(self, tmp_path):
         from packages.orchestration.event_replay import replay_job, find_checkpoints
         jid = str(uuid4())
         events = [
@@ -177,7 +177,56 @@ class TestCheckpoints:
         r = replay_job(jid, str(tmp_path))
         cps = find_checkpoints(r)
         fail_cp = next(c for c in cps if c.kind == "tests_failed")
-        assert fail_cp.safe_to_resume is True
+        assert fail_cp.safe_to_resume is False
+        assert fail_cp.blocked_reason == "resume_mode_not_implemented"
+
+    def test_context_ready_inspectable_not_resumable(self, tmp_path):
+        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        jid = str(uuid4())
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "source_context_injected", "metadata": {"file_count": 2}},
+        ]
+        _write_events(tmp_path, jid, events)
+        r = replay_job(jid, str(tmp_path))
+        cps = find_checkpoints(r)
+        ctx_cp = next(c for c in cps if c.kind == "context_ready")
+        assert ctx_cp.safe_to_resume is False
+        assert ctx_cp.status == "inspectable"
+        assert ctx_cp.blocked_reason == "resume_mode_not_implemented"
+
+    def test_approval_recorded_blocked_missing_patch(self, tmp_path):
+        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        jid = str(uuid4())
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "source_context_injected", "metadata": {}},
+            {"event": "builder_patch_parsed", "metadata": {"parse_success": True}},
+            {"event": "builder_bridge_intent_approved", "metadata": {"intent_id": "i-1"}},
+        ]
+        _write_events(tmp_path, jid, events)
+        r = replay_job(jid, str(tmp_path))
+        cps = find_checkpoints(r)
+        approved_cp = next(c for c in cps if c.kind == "approval_recorded")
+        assert approved_cp.safe_to_resume is False
+        assert approved_cp.blocked_reason == "missing_patch_payload"
+
+    def test_source_apply_proven_resumable(self, tmp_path):
+        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        jid = str(uuid4())
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "source_context_injected", "metadata": {}},
+            {"event": "builder_patch_parsed", "metadata": {"parse_success": True}},
+            {"event": "builder_bridge_intent_approved", "metadata": {"intent_id": "i-1"}},
+            {"event": "patch_intent_applied", "metadata": {}},
+        ]
+        _write_events(tmp_path, jid, events)
+        r = replay_job(jid, str(tmp_path))
+        cps = find_checkpoints(r)
+        applied_cp = next(c for c in cps if c.kind == "source_apply_proven")
+        assert applied_cp.safe_to_resume is True
+        assert applied_cp.resume_mode == "from_apply"
 
     def test_next_command_catalog_valid(self, tmp_path):
         from apps.cli.command_catalog import CATALOG
@@ -201,8 +250,44 @@ class TestCheckpoints:
                 assert parts[1] in catalog_groups or parts[1] == "do"
 
 
+class TestR12001Regression:
+    """R-12001: resume must not claim success for no-op behavior."""
+
+    def test_from_approval_not_resumable(self, tmp_path):
+        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        jid = str(uuid4())
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "source_context_injected", "metadata": {}},
+            {"event": "builder_patch_parsed", "metadata": {"parse_success": True}},
+            {"event": "builder_bridge_intent_approved", "metadata": {"intent_id": "i-1"}},
+        ]
+        _write_events(tmp_path, jid, events)
+        r = replay_job(jid, str(tmp_path))
+        cps = find_checkpoints(r)
+        approved = next(c for c in cps if c.kind == "approval_recorded")
+        assert approved.safe_to_resume is False, (
+            "R-12001: from_approval must not be safe_to_resume=True "
+            "unless patch payload is persisted and recoverable"
+        )
+
+    def test_no_resumed_true_for_unimplemented_mode(self, tmp_path):
+        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        jid = str(uuid4())
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "source_context_injected", "metadata": {"file_count": 1}},
+        ]
+        _write_events(tmp_path, jid, events)
+        r = replay_job(jid, str(tmp_path))
+        cps = find_checkpoints(r)
+        for cp in cps:
+            if cp.blocked_reason == "resume_mode_not_implemented":
+                assert cp.safe_to_resume is False
+
+
 class TestResumeDryRun:
-    def test_dry_run_from_approved(self, tmp_path, monkeypatch):
+    def test_dry_run_from_approved_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.event_replay import resume_dry_run
         from packages.core.models import Job, RunState
@@ -216,8 +301,26 @@ class TestResumeDryRun:
         ]
         _write_events(tmp_path, str(jid), events)
         dr = resume_dry_run(job, f"{jid}-approved", str(tmp_path))
+        assert dr.can_resume is False
+        assert dr.blocked_reason == "missing_patch_payload"
+
+    def test_dry_run_from_apply_resumable(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.event_replay import resume_dry_run
+        from packages.core.models import Job, RunState
+        jid = uuid4()
+        job = Job(id=jid, name="test", state=RunState.COMPLETED)
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "source_context_injected", "metadata": {}},
+            {"event": "builder_patch_parsed", "metadata": {"parse_success": True}},
+            {"event": "builder_bridge_intent_approved", "metadata": {"intent_id": "i-1"}},
+            {"event": "patch_intent_applied", "metadata": {}},
+        ]
+        _write_events(tmp_path, str(jid), events)
+        dr = resume_dry_run(job, f"{jid}-applied", str(tmp_path))
         assert dr.can_resume is True
-        assert dr.would_run_stage == "source_apply"
+        assert dr.would_run_stage == "test_run"
 
     def test_dry_run_checkpoint_not_found(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

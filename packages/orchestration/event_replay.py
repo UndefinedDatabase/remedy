@@ -214,75 +214,94 @@ def replay_job(job_id: str | UUID, data_dir: str | Path) -> JobReplayState:
 
 
 def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
-    """Identify resume-safe boundaries from replay state."""
+    """Identify resume boundaries from replay state.
+
+    Only marks safe_to_resume=True when:
+    1. An actual resume implementation exists for this mode, AND
+    2. Required data (intent, patch, permission, repo) is available.
+    """
     checkpoints: list[JobCheckpoint] = []
     jid = replay.job_id
 
     reached_ids = {s.id for s in replay.stages if s.reached}
 
+    # context_ready — inspectable but no builder resume path exists yet
     if "source_context_injected" in reached_ids:
         checkpoints.append(JobCheckpoint(
             id=f"{jid}-ctx", job_id=jid, kind="context_ready",
             label="Source context ready",
-            safe_to_resume=True, resume_mode="from_context",
-            next_command=f"remedy job resume {jid} --checkpoint {jid}-ctx --dry-run --json",
+            status="inspectable",
+            safe_to_resume=False, resume_mode="from_context",
+            blocked_reason="resume_mode_not_implemented",
+            next_command=f"remedy event replay {jid} --json",
         ))
 
+    # patch_intent_created — needs approval first
     if "structured_patch_created" in reached_ids or replay.approval.get("status") == "pending":
         checkpoints.append(JobCheckpoint(
             id=f"{jid}-intent", job_id=jid, kind="patch_intent_created",
             label="Patch intent created",
-            safe_to_resume="approval_recorded" in reached_ids,
+            status="blocked",
+            safe_to_resume=False,
             resume_mode="from_intent",
-            blocked_reason="" if "approval_recorded" in reached_ids else "approval_pending",
-            required_approvals=["patch_intent"] if "approval_recorded" not in reached_ids else [],
+            blocked_reason="approval_pending",
+            required_approvals=["patch_intent"],
             next_command=f"remedy patch show {jid} {replay.approval.get('intent_id', '<intent_id>')}",
         ))
 
+    # approval_recorded — patch approved but StructuredPatch not persisted on job
     if replay.approval.get("status") == "approved":
         checkpoints.append(JobCheckpoint(
             id=f"{jid}-approved", job_id=jid, kind="approval_recorded",
             label="Patch approved",
-            safe_to_resume=True, resume_mode="from_approval",
+            status="blocked",
+            safe_to_resume=False,
+            resume_mode="from_approval",
+            blocked_reason="missing_patch_payload",
             required_capabilities=["repo_generated_write"],
             related_intent_id=replay.approval.get("intent_id", ""),
-            next_command=f"remedy job resume {jid} --checkpoint {jid}-approved --json",
+            next_command=f"remedy event replay {jid} --json",
         ))
 
+    # source_apply_proven — patch already applied, can resume to tests
     if "source_patch_applied" in reached_ids:
         checkpoints.append(JobCheckpoint(
             id=f"{jid}-applied", job_id=jid, kind="source_apply_proven",
-            label="Patch applied",
+            label="Patch applied — resume to tests",
+            status="available",
             safe_to_resume=True, resume_mode="from_apply",
             required_capabilities=["repo_test_run"],
             next_command=f"remedy job resume {jid} --checkpoint {jid}-applied --json",
         ))
 
+    # tests_failed — repair resume not implemented in v1
     if replay.tests.get("status") == "fail":
-        can_repair = replay.repair.get("used", False) and (
-            replay.repair.get("cycle", 0) < replay.repair.get("max_cycles", 0)
-        )
         checkpoints.append(JobCheckpoint(
             id=f"{jid}-testfail", job_id=jid, kind="tests_failed",
             label="Tests failed",
-            safe_to_resume=can_repair, resume_mode="from_test_failure",
-            blocked_reason="" if can_repair else "repair_budget_exhausted",
-            next_command=f"remedy job resume {jid} --checkpoint {jid}-testfail --json" if can_repair else "",
+            status="blocked",
+            safe_to_resume=False, resume_mode="from_test_failure",
+            blocked_reason="resume_mode_not_implemented",
+            next_command=f"remedy job summary {jid} --json",
         ))
 
+    # tests_passed — complete, nothing to resume
     if replay.tests.get("status") == "pass":
         checkpoints.append(JobCheckpoint(
             id=f"{jid}-pass", job_id=jid, kind="tests_passed",
             label="Tests passed",
+            status="complete",
             safe_to_resume=False, resume_mode="complete",
             reason="Job completed successfully",
             next_command=f"remedy job summary {jid} --json",
         ))
 
+    # stopped — not resumable
     if replay.stop_reason and replay.stop_reason not in ("", "test_failed_after_apply"):
         checkpoints.append(JobCheckpoint(
             id=f"{jid}-stopped", job_id=jid, kind="stopped",
             label=f"Stopped: {replay.stop_reason}",
+            status="blocked",
             safe_to_resume=False,
             blocked_reason=replay.stop_reason,
         ))
