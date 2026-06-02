@@ -553,7 +553,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     repair_loop_cycle = loop_cycle_events[-1].get("metadata", {}).get("cycle", 0) if loop_cycle_events else 0
     repair_loop_max = loop_cycle_events[-1].get("metadata", {}).get("max_cycles", 0) if loop_cycle_events else 0
 
-    # Stop reason from latest stop event or parse event
+    # Stop reason from latest stop event, parse failure, or test failure
     stop_events = [e for e in events if e.get("event") in ("repair_loop_stopped", "repair_loop_succeeded")]
     bridge_stop_reason = ""
     if stop_events:
@@ -561,6 +561,10 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     elif bridge_parse_events and not bridge_parse_success:
         last_parse = bridge_parse_events[-1].get("metadata", {})
         bridge_stop_reason = last_parse.get("stop_reason", "") or last_parse.get("error_kind", "")
+    else:
+        test_events = [e for e in events if e.get("event") == "builder_bridge_test_completed"]
+        if test_events and not test_events[-1].get("metadata", {}).get("passed", True):
+            bridge_stop_reason = "test_failed_after_apply"
 
     # Reviewer pending count
     recs = (job.metadata or {}).get("reviewer_recommendations", [])

@@ -60,7 +60,7 @@ def _map_error_kind_to_stop_reason(error_kind: str) -> str:
         "prose_only": "provider_output_prose_only",
         "parse_exception": "provider_output_malformed",
     }
-    return _MAP.get(error_kind, f"structured_patch_parse_failed")
+    return _MAP.get(error_kind, "structured_patch_parse_failed")
 
 
 @dataclass

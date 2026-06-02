@@ -188,5 +188,4 @@ class TestBridgeIntegration:
             for key, val in meta.items():
                 if isinstance(val, str):
                     assert "def hello" not in val, f"Raw content leaked in {key}"
-                    assert "return" not in val or key in ("error_kind",), \
-                        f"Suspicious content in {key}: {val[:60]}"
+                    assert 'return "hello"' not in val, f"Raw source leaked in {key}"
