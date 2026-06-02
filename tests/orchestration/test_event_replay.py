@@ -229,9 +229,10 @@ class TestCheckpoints:
         assert applied_cp.resume_mode == "from_apply"
 
     def test_next_command_catalog_valid(self, tmp_path):
+        import re
         from apps.cli.command_catalog import CATALOG
         from packages.orchestration.event_replay import replay_job, find_checkpoints
-        catalog_groups = {c.group_id for c in CATALOG}
+        catalog_subs = {(c.group_id, c.subcommand) for c in CATALOG}
 
         jid = str(uuid4())
         events = [
@@ -239,15 +240,20 @@ class TestCheckpoints:
             {"event": "source_context_injected", "metadata": {}},
             {"event": "builder_patch_parsed", "metadata": {"parse_success": True}},
             {"event": "builder_bridge_intent_approved", "metadata": {"intent_id": "i-1"}},
+            {"event": "patch_intent_applied", "metadata": {}},
         ]
         _write_events(tmp_path, jid, events)
         r = replay_job(jid, str(tmp_path))
         cps = find_checkpoints(r)
         for cp in cps:
             if cp.next_command:
-                parts = cp.next_command.split()
-                assert parts[0] == "remedy"
-                assert parts[1] in catalog_groups or parts[1] == "do"
+                m = re.match(r"remedy\s+(\w+)\s+(\w[\w-]*)", cp.next_command)
+                assert m, f"Cannot parse command: {cp.next_command}"
+                group, sub = m.group(1), m.group(2)
+                assert (group, sub) in catalog_subs, (
+                    f"Command 'remedy {group} {sub}' not in catalog "
+                    f"(from checkpoint {cp.kind})"
+                )
 
 
 class TestR12001Regression:
