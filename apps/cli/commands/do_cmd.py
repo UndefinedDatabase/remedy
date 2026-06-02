@@ -82,11 +82,21 @@ def _cmd_do(
             "ui_url": result.ui_url,
             "error": result.error,
         }
+        _BOOL_EVENTS = frozenset({
+            "structured_patch_attempted", "parse_success",
+            "source_context_injected", "structured_patch_created",
+            "approval_required", "source_patch_applied", "tests_passed",
+            "repair_context_created", "repair_loop_used",
+        })
         for ev in result.events:
             key = ev.get("event", "")
             val = ev.get("value", "")
-            if key:
+            if not key or key in out:
+                continue
+            if key in _BOOL_EVENTS:
                 out[key] = val == "True"
+            else:
+                out[key] = val
         print(json.dumps(out, indent=2))
     else:
         print(f"Job: {result.job_id}")

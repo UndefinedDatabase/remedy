@@ -108,3 +108,99 @@ class TestDocsExist:
         content = doc.read_text()
         assert "--builder-provider fixture" in content
         assert "--builder-provider ollama" in content
+
+    def test_docs_pipeline_overview(self):
+        from pathlib import Path
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+        assert "Pipeline Overview" in content
+        assert "source_apply" in content
+        assert "approval" in content.lower()
+        assert "proof" in content.lower()
+
+    def test_docs_stop_reasons_complete(self):
+        from pathlib import Path
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+        for reason in (
+            "provider_output_prose_only",
+            "provider_unavailable",
+            "approval_required",
+            "source_apply_failed",
+            "test_failed_after_apply",
+            "repair_budget_exhausted",
+            "unsafe_path",
+            "path_traversal",
+            "validation_failed",
+        ):
+            assert reason in content, f"Missing stop reason in docs: {reason}"
+
+    def test_docs_vram_free_command(self):
+        from pathlib import Path
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+        assert "remedy worker unload" in content
+
+    def test_docs_model_quality_warning(self):
+        from pathlib import Path
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+        assert "not guaranteed" in content.lower()
+        assert "Normal CI does not require Ollama" in content
+
+    def test_docs_patch_inspect_commands(self):
+        from pathlib import Path
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+        assert "remedy patch list" in content
+        assert "remedy patch show" in content
+        assert "remedy patch approve" in content
+        assert "remedy patch reject" in content
+        assert "remedy patch apply" in content
+
+    def test_docs_test_run_command(self):
+        from pathlib import Path
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+        assert "remedy test run" in content
+
+
+class TestDocsCommandContract:
+    def test_docs_remedy_commands_catalog_valid(self):
+        import re
+        from pathlib import Path
+        from apps.cli.command_catalog import CATALOG
+
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+
+        catalog_groups = {c.group_id for c in CATALOG}
+        catalog_ids = {c.command_id for c in CATALOG}
+        catalog_subs = {(c.group_id, c.subcommand) for c in CATALOG}
+
+        # Extract remedy commands from code blocks
+        cmd_pattern = re.compile(r"remedy\s+(\w+)\s+(\w[\w-]*)")
+        for match in cmd_pattern.finditer(content):
+            group = match.group(1)
+            sub = match.group(2)
+            if group == "do":
+                continue  # "remedy do" uses positional goal, handled separately
+            assert group in catalog_groups, f"Unknown group in docs: remedy {group} {sub}"
+            assert (group, sub) in catalog_subs, f"Unknown command in docs: remedy {group} {sub}"
+
+    def test_docs_do_commands_valid(self):
+        import re
+        from pathlib import Path
+        from apps.cli.command_catalog import CATALOG
+
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+
+        do_entry = next(c for c in CATALOG if c.command_id == "do.run")
+        arg_names = {a.name.lstrip("-") for a in do_entry.args if a.is_option}
+
+        # Extract flags from remedy do commands
+        flag_pattern = re.compile(r"remedy do .+?(--[\w-]+)")
+        for match in flag_pattern.finditer(content):
+            flag = match.group(1).lstrip("-")
+            assert flag in arg_names, f"Unknown flag in docs: --{flag}"

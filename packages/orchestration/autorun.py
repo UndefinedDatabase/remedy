@@ -212,8 +212,7 @@ def run_autorun(
             result.provider = "ollama"
             for key in ("structured_patch_attempted", "parse_success",
                         "source_context_injected", "structured_patch_created",
-                        "approval_required", "source_patch_applied", "tests_passed",
-                        "stop_reason"):
+                        "approval_required", "source_patch_applied", "tests_passed"):
                 if key in ollama_result:
                     result.events.append({"event": key, "value": str(ollama_result[key])})
         else:
@@ -645,11 +644,31 @@ def _run_ollama_builder(
     )
 
     # Try to get memory context
+    memory_attached = False
+    memory_error_kind = ""
     try:
-        from packages.memory.format_memory import format_memory_section
-        context.memory_context = format_memory_section()
+        from packages.memory.context_summary import build_memory_context, format_memory_section
+        summary = build_memory_context()
+        context.memory_context = format_memory_section(summary)
+        context.memory_metadata = {
+            "memory_context_attached": bool(summary.items),
+            "memory_item_count": summary.item_count,
+            "memory_context_hash": summary.context_hash,
+            "memory_truncated": summary.truncated,
+        }
+        memory_attached = bool(summary.items)
+    except ImportError:
+        memory_error_kind = "import_error"
+    except OSError:
+        memory_error_kind = "data_dir_missing"
     except Exception:
-        pass
+        memory_error_kind = "memory_build_error"
+
+    if not memory_attached:
+        context.memory_metadata = {
+            "memory_context_attached": False,
+            "memory_error_kind": memory_error_kind,
+        }
 
     # Call OllamaBuilder
     try:
