@@ -8,12 +8,16 @@
 remedy do "fix the add function" --repo /tmp/myrepo --fixture-builder true --autonomy-level 4 --max-cycles 1 --json
 ```
 
-### Real Ollama smoke (opt-in, requires running Ollama)
+### Real Ollama smoke (pytest only, not wired to `remedy do`)
+
+Real Ollama integration is tested via pytest, not the CLI:
 
 ```sh
-REMEDY_REAL_OLLAMA_SMOKE=1 remedy do "add a hello() function" \
-  --repo /tmp/myrepo --autonomy-level 3 --max-cycles 1 --json
+REMEDY_REAL_OLLAMA_SMOKE=1 python3 -m pytest tests/orchestration/test_real_ollama_smoke.py -v
 ```
+
+The `remedy do` command does not yet invoke OllamaBuilder directly.
+That integration is a future step.
 
 ### Free VRAM after testing
 

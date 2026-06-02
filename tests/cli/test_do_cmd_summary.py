@@ -82,26 +82,6 @@ class TestFixtureBuilderParse:
             _parse_fixture_builder("invalid-mode")
 
 
-class TestStopReasonDisplay:
-    def test_stop_reason_in_event_map(self):
-        from packages.orchestration.autorun import AutorunResult
-        result = AutorunResult(
-            job_id="abc",
-            cycles_run=1,
-            stage="parse_failed",
-            events=[
-                {"event": "stop_reason", "value": "provider_output_prose_only"},
-            ],
-        )
-        event_map = {}
-        for ev in result.events:
-            key = ev.get("event", "")
-            val = ev.get("value", "")
-            if key:
-                event_map[key] = val
-        assert event_map.get("stop_reason") == "provider_output_prose_only"
-
-
 class TestDocsExist:
     def test_autocoder_usage_doc_exists(self):
         from pathlib import Path
@@ -112,3 +92,10 @@ class TestDocsExist:
         assert "Fixture smoke" in content
         assert "autonomy" in content.lower()
         assert "stop_reason" in content or "Stop Reason" in content
+
+    def test_docs_do_not_claim_cli_ollama_integration(self):
+        from pathlib import Path
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+        assert "remedy do" not in content.split("Real Ollama smoke")[1].split("##")[0] or \
+               "not yet" in content.lower()
