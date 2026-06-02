@@ -93,9 +93,18 @@ class TestDocsExist:
         assert "autonomy" in content.lower()
         assert "stop_reason" in content or "Stop Reason" in content
 
-    def test_docs_do_not_claim_cli_ollama_integration(self):
+    def test_docs_mention_builder_provider(self):
         from pathlib import Path
         doc = Path("docs/autocoder-usage.md")
         content = doc.read_text()
-        assert "remedy do" not in content.split("Real Ollama smoke")[1].split("##")[0] or \
-               "not yet" in content.lower()
+        assert "--builder-provider" in content
+        assert "ollama" in content.lower()
+        assert "fixture" in content.lower()
+        assert "none" in content.lower()
+
+    def test_docs_commands_use_builder_provider(self):
+        from pathlib import Path
+        doc = Path("docs/autocoder-usage.md")
+        content = doc.read_text()
+        assert "--builder-provider fixture" in content
+        assert "--builder-provider ollama" in content

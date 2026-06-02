@@ -5,25 +5,38 @@
 ### Fixture smoke (CI-safe, no Ollama required)
 
 ```sh
-remedy do "fix the add function" --repo /tmp/myrepo --fixture-builder true --autonomy-level 4 --max-cycles 1 --json
+remedy do "fix the add function" --repo /tmp/myrepo --builder-provider fixture --autonomy-level 4 --max-cycles 1 --json
 ```
 
-### Real Ollama smoke (pytest only, not wired to `remedy do`)
-
-Real Ollama integration is tested via pytest, not the CLI:
+### Real Ollama via `remedy do` (requires running Ollama)
 
 ```sh
-REMEDY_REAL_OLLAMA_SMOKE=1 python3 -m pytest tests/orchestration/test_real_ollama_smoke.py -v
+remedy do "add a hello() function" --repo /tmp/myrepo --builder-provider ollama --autonomy-level 2 --max-cycles 1 --json
 ```
 
-The `remedy do` command does not yet invoke OllamaBuilder directly.
-That integration is a future step.
+### Real Ollama smoke via pytest (opt-in)
+
+```sh
+REMEDY_REAL_OLLAMA_SMOKE=1 python3 -m pytest tests/orchestration/test_real_do_ollama_smoke.py -v
+```
 
 ### Free VRAM after testing
 
 ```sh
 ollama stop <model-name>
 ```
+
+## Builder Providers
+
+| Provider   | What it does                                | When to use                     |
+|------------|---------------------------------------------|---------------------------------|
+| `none`     | No builder runs (default)                   | Inspection, dry run             |
+| `fixture`  | Deterministic fixture, no LLM               | CI, testing, demos              |
+| `ollama`   | Calls real local Ollama model               | Local model experiments         |
+
+Select with `--builder-provider none|fixture|ollama`.
+
+Legacy `--fixture-builder true|repair-loop` still works but `--builder-provider` takes precedence.
 
 ## Autonomy Levels
 
@@ -37,18 +50,20 @@ ollama stop <model-name>
 | 5     | revert   | Revert failed applies                                 |
 | 6     | loop     | Repair loop (re-propose after failure)                |
 
-**Recommended first run:** autonomy level 3 (apply). This creates the patch and applies it, but does not auto-run tests. You can inspect the result before proceeding.
+**Recommended first run:** autonomy level 2 (generate). This runs the builder and creates a patch intent, but stops for approval before any repo writes.
 
 ## Inspecting Results
 
 ### Job summary (JSON output)
 
 ```sh
-remedy do "fix the bug" --repo ./myrepo --fixture-builder true --json
+remedy do "fix the bug" --repo ./myrepo --builder-provider fixture --json
 ```
 
-Output includes:
+Output (version 2) includes:
 - `stage`: current pipeline stage
+- `stop_reason`: why the pipeline stopped (empty on success)
+- `provider`: which builder provider was used
 - `cycles_run`: number of repair cycles executed
 - `structured_patch_created`: whether a structured patch was produced
 - `approval_required`: whether human approval is needed
@@ -58,14 +73,19 @@ Output includes:
 ### Dashboard JSON
 
 ```sh
-# Start with UI:
-remedy do "fix the bug" --repo ./myrepo --fixture-builder true --ui
+remedy do "fix the bug" --repo ./myrepo --builder-provider fixture --ui
 
 # Dashboard shows:
 # - builder_patch_parsed: true/false
 # - stop_reason: explicit reason if pipeline stopped
 # - repair_loop_cycle: current cycle number
 # - repair_loop_max_cycles: configured maximum
+```
+
+### Check status
+
+```sh
+remedy dev status --json
 ```
 
 ## Stop Reasons
@@ -77,8 +97,7 @@ When the pipeline stops, the `stop_reason` field explains why:
 | `provider_output_prose_only`     | Model returned narrative, not code         | Adjust prompt or try different model  |
 | `provider_output_malformed`      | Model output couldn't be parsed            | Check model compatibility             |
 | `unsafe_shell_command`           | Output contained shell commands            | Model tried to run commands           |
-| `unsafe_path` / `path_traversal`| Output targeted dangerous paths            | Model tried to write outside repo     |
-| `validation_failed`              | Patch structure invalid                    | Check model output format             |
+| `validation_failed`              | Patch structure invalid (bad paths, etc.)  | Check model output format             |
 | `approval_required`              | Autonomy too low for auto-apply            | Increase autonomy or approve manually |
 | `source_apply_failed`            | Patch couldn't be applied to repo          | Check file state and patch format     |
 | `test_failed_after_apply`        | Tests failed after patch was applied       | Inspect test output                   |

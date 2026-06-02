@@ -1,17 +1,17 @@
-# Plan — Steps 313-320
+# Plan — Steps 321-328
 
 ## Goal
-Real-repo autocoder hardening, Ollama reliability, operator-visible stop reasons.
+Wire real Ollama into `remedy do`, stop-reason truth, provider-mode hardening.
 
 ## Current Step
 All steps complete. Ready for commit + push.
 
 ## Steps
-- [x] Step 313: Real small-repo smoke fixtures (3 scenarios, 13 tests)
-- [x] Step 314: Ollama structured patch reliability harness (18 mocked tests)
-- [x] Step 315: Source context quality for real builder runs (7 tests)
-- [x] Step 316: Opt-in real Ollama smoke (2 fixture + 3 opt-in, REMEDY_REAL_OLLAMA_SMOKE)
-- [x] Step 317: Builder failure taxonomy and stop reasons (23 canonical reasons, 10 tests)
-- [x] Step 318: Real repair loop hardening (repeated patch/failure detection, 7 tests)
-- [x] Step 319: CLI and docs for real autocoder usage (8 tests, autocoder-usage.md)
-- [x] Step 320: Baseline 3838 passed, 5 skipped. Vitest 21. TypeScript clean. Build OK.
+- [x] Step 321: Verified/closed review gaps from 313-320 (R-9002/R-9004/R-9005 confirmed fixed)
+- [x] Step 322: Added --builder-provider none|fixture|ollama to catalog + CLI
+- [x] Step 323: Wired OllamaBuilder into autorun via bridge pipeline
+- [x] Step 324: stop_reason + provider in AutorunResult, CLI JSON v2, text output
+- [x] Step 325: Real `remedy do` Ollama smoke opt-in (REMEDY_REAL_OLLAMA_SMOKE)
+- [x] Step 326: Improved Ollama prompt (strict constraints), parser handles trailing text
+- [x] Step 327: Updated docs with --builder-provider, command contract tests
+- [x] Step 328: Baseline 3869 passed, 7 skipped. Vitest 21. TypeScript clean. Build OK.

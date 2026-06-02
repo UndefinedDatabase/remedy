@@ -4,45 +4,37 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 313-320: Real-repo autocoder hardening, Ollama reliability, operator-visible stop reasons.
+Steps 321-328: Wire real Ollama into `remedy do`, stop-reason truth, provider-mode hardening.
 
 ## Completed
-- Real small-repo smoke fixtures (missing function, wrong return, repair scenario)
-- Ollama structured patch reliability harness (18 mocked failure modes)
-- Source context quality (selection, budget, redaction, metadata)
-- Opt-in real Ollama smoke (REMEDY_REAL_OLLAMA_SMOKE, graceful skip)
-- Builder failure taxonomy (23 canonical stop reasons)
-- Real repair loop hardening (repeated patch detection, budget exhaustion)
-- CLI stop_reason display + next-command hints
-- autocoder-usage.md documentation
-
-## Current Problems
-None blocking.
+- --builder-provider none|fixture|ollama in command catalog and CLI
+- OllamaBuilder wired to autorun via bridge pipeline
+- AutorunResult extended with stop_reason and provider fields
+- CLI JSON output v2 with stop_reason, provider
+- CLI text output shows stop_reason and provider
+- Real `remedy do` Ollama smoke opt-in test
+- Ollama prompt improved: strict path/shell/format constraints
+- Parser handles trailing text after JSON (common Ollama mistake)
+- Docs updated with --builder-provider, accurate commands
+- All review findings resolved
 
 ## Constraints
 - No mutation endpoints, no shell=True, no 0.0.0.0
-- No fake state, no optimistic LIVE
-- React 19 + TypeScript + MUI + CSS Modules
-- Redaction: no raw content in UI/API surfaces
 - UI remains read-only
 - source_apply requires job + intent_id (approved) before mutation
 - No unittest.mock in production packages
-- Dashboard is version 3
-- Graph architecture is Canvas/Force (not React Flow)
-- Test files use domain directories — no step-numbered files
-- Memory: approved-only, bounded, redacted, no raw leaks
-- BuilderOutput: structured_patch_text parsed, not trusted raw
-- Stop reasons: canonical names in all surfaces
+- Ollama only runs when explicitly requested via --builder-provider ollama
+- Default provider is none (safe, deterministic)
 
 ## Remaining Risks
-- Real Ollama output quality varies by model
-- Structured patch prompt reliability needs iteration
-- Parser strictness tradeoffs (first-block-wins vs reject-multiple)
+- Model quality varies by Ollama model
+- Structured patch prompt may need further iteration
+- Parser strictness: first-block-wins vs reject-multiple (documented)
 
 ## Recommended Next Block
-If real Ollama parse/apply is flaky:
-  Steps 321-328 — Builder Prompt Quality Iteration And Parser Hardening
-If real Ollama is acceptable:
-  Steps 321-328 — Event-Ledger Replay And Checkpoint Resume
-UI block after that:
+If real Ollama outputs are poor:
+  Steps 329-336 — Builder Prompt Quality And Parser Hardening
+If real Ollama path is acceptable:
   Steps 329-336 — Operator Cockpit v2
+Alternative:
+  Steps 329-336 — Event-Ledger Replay And Checkpoint Resume

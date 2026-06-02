@@ -79,7 +79,15 @@ def parse_structured_patch(raw_output: str) -> StructuredPatch:
             if isinstance(data, dict) and ("file_ops" in data or "unified_diffs" in data):
                 return _parse_json_patch(data)
         except (json.JSONDecodeError, KeyError, TypeError):
-            pass
+            # JSON with trailing text — find closing brace
+            json_text = _extract_first_json_object(stripped)
+            if json_text:
+                try:
+                    data = json.loads(json_text)
+                    if isinstance(data, dict) and ("file_ops" in data or "unified_diffs" in data):
+                        return _parse_json_patch(data)
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    pass
 
     # Try unified diff detection
     if _looks_like_diff(raw_output):
@@ -92,6 +100,32 @@ def parse_structured_patch(raw_output: str) -> StructuredPatch:
         applicability="not_applicable",
         requires_approval=True,
     )
+
+
+def _extract_first_json_object(text: str) -> str | None:
+    """Extract first balanced JSON object from text with trailing content."""
+    depth = 0
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text):
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"' and not escape:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[:i + 1]
+    return None
 
 
 def _parse_json_patch(data: dict[str, Any]) -> StructuredPatch:

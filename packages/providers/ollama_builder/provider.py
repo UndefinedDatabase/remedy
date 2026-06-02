@@ -36,18 +36,24 @@ _DEFAULT_HOST = "http://localhost:11434"
 _SYSTEM_PROMPT = """\
 You are a software builder assistant. Given a task execution context, produce a structured result.
 
-Rules:
-- summary: short paragraph describing what was done or planned for this task
-- proposed_changes: list of concrete changes or actions (e.g. "Write function foo in bar.py", "Add test for edge case X")
+Output fields:
+- summary: one short paragraph describing what was done or planned
+- proposed_changes: list of concrete changes (e.g. "Write function foo in bar.py")
 - notes: optional list of assumptions or observations
-- risks: optional list of potential issues or blockers
-- structured_patch_text: when the task involves code changes, include a JSON string \
-containing {"file_ops": [{"path": "relative/path.py", "action": "create"|"modify"|"delete", \
-"content": "full file content"}]}. Omit for planning-only tasks.
-- structured_patch_format: set to "json" when structured_patch_text contains file_ops JSON, \
-or "none" if no patch is provided
+- risks: optional list of potential issues
+- structured_patch_text: for code changes, a JSON string with this exact schema:
+  {"file_ops": [{"path": "relative/path.py", "action": "create"|"modify"|"delete", "content": "full file content"}]}
+- structured_patch_format: "json" when structured_patch_text has file_ops, "none" otherwise
 
-Respond only with valid JSON matching the requested schema. No markdown, no extra text.\
+Strict rules for structured_patch_text:
+- Use relative paths only (no leading / or ..)
+- One JSON object only, no wrapper text around it
+- "content" must be the complete file content, not a diff
+- Do not include shell commands (rm, sudo, curl, wget, chmod)
+- Do not target .env, .pem, .key, or binary files
+- If the task does not require code changes, set structured_patch_text to null
+
+Respond only with valid JSON matching the requested schema. No markdown fencing, no prose outside the JSON.\
 """
 
 

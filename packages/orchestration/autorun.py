@@ -39,6 +39,8 @@ class AutorunResult:
     events: list[dict[str, str]] = field(default_factory=list)
     ui_url: str = ""
     error: str = ""
+    stop_reason: str = ""
+    provider: str = ""
 
 
 def dry_run_autorun(
@@ -122,12 +124,16 @@ def run_autorun(
     max_cycles: int = 3,
     enable_ui: bool = False,
     fixture_builder: bool | str = False,
+    builder_provider: str = "none",
     json_output: bool = False,
 ) -> AutorunResult:
     """Run the autorun loop. Creates job, injects context, runs builder, etc.
 
     ``fixture_builder`` can be True (standard fixture) or "repair-loop"
     (two-cycle repair loop fixture).
+    ``builder_provider`` selects the builder: "none", "fixture", "ollama".
+    When "fixture", behaves like fixture_builder=True.
+    When "ollama", calls OllamaBuilder through the bridge pipeline.
     """
     import sys
 
@@ -137,6 +143,13 @@ def run_autorun(
 
     data_dir = resolve_data_root()
     result = AutorunResult(job_id="", cycles_run=0, stage="init")
+
+    # Resolve provider: --builder-provider takes precedence over --fixture-builder
+    if builder_provider == "fixture":
+        fixture_builder = fixture_builder or True
+    elif builder_provider == "ollama":
+        fixture_builder = False
+        result.provider = "ollama"
 
     # Phase 1: Create job
     from packages.core.models import Job
@@ -189,6 +202,20 @@ def run_autorun(
                         "approval_required", "source_patch_applied", "tests_passed"):
                 if key in fx_result:
                     result.events.append({"event": key, "value": str(fx_result[key])})
+        elif builder_provider == "ollama":
+            ollama_result = _run_ollama_builder(
+                job, goal, repo, data_dir, autonomy_level, max_cycles,
+            )
+            result.stage = ollama_result.get("stage", "builder_complete")
+            result.cycles_run = ollama_result.get("cycles_run", 1)
+            result.stop_reason = ollama_result.get("stop_reason", "")
+            result.provider = "ollama"
+            for key in ("structured_patch_attempted", "parse_success",
+                        "source_context_injected", "structured_patch_created",
+                        "approval_required", "source_patch_applied", "tests_passed",
+                        "stop_reason"):
+                if key in ollama_result:
+                    result.events.append({"event": key, "value": str(ollama_result[key])})
         else:
             result.stage = "builder_skipped_no_worker"
 
@@ -578,6 +605,103 @@ def _run_repair_loop_fixture(
     _save(job)
 
     return fx
+
+
+def _run_ollama_builder(
+    job: Any, goal: str, repo: Path, data_dir: str | Path,
+    autonomy_level: int, max_cycles: int,
+) -> dict[str, Any]:
+    """Real Ollama builder path — calls OllamaBuilder through bridge pipeline.
+
+    Returns dict with safe metadata, stop_reason, stage.
+    No raw provider output leaks.
+    """
+    from packages.orchestration.storage import save_job
+
+    result: dict[str, Any] = {"stage": "builder_complete", "cycles_run": 0}
+    result["structured_patch_attempted"] = True
+
+    # Source context injection
+    try:
+        from packages.orchestration.source_context import inject_source_context
+        ctx = inject_source_context(job, repo, data_dir=str(data_dir))
+        result["source_context_injected"] = True
+        _emit(data_dir, job.id, "source_context_injected", {
+            "file_count": ctx.file_count,
+            "estimated_tokens": ctx.estimated_tokens,
+            "selection_hash": ctx.selection_hash,
+        })
+    except Exception:
+        result["source_context_injected"] = False
+
+    # Build TaskExecutionContext
+    from packages.orchestration.builder_models import TaskExecutionContext
+    context = TaskExecutionContext(
+        job_id=job.id,
+        task_id=uuid4(),
+        job_prompt=goal,
+        task_type="code_change",
+        task_description=goal,
+    )
+
+    # Try to get memory context
+    try:
+        from packages.memory.format_memory import format_memory_section
+        context.memory_context = format_memory_section()
+    except Exception:
+        pass
+
+    # Call OllamaBuilder
+    try:
+        from packages.providers.ollama_builder.provider import OllamaBuilder
+        builder = OllamaBuilder()
+        output = builder.build(context)
+    except ImportError:
+        result["stage"] = "provider_error"
+        result["stop_reason"] = "provider_unavailable"
+        _emit(data_dir, job.id, "autorun_provider_error", {
+            "provider": "ollama",
+            "error_kind": "import_error",
+            "stop_reason": "provider_unavailable",
+        })
+        save_job(job)
+        return result
+    except Exception:
+        result["stage"] = "provider_error"
+        result["stop_reason"] = "provider_unavailable"
+        _emit(data_dir, job.id, "autorun_provider_error", {
+            "provider": "ollama",
+            "error_kind": "provider_error",
+            "stop_reason": "provider_unavailable",
+        })
+        save_job(job)
+        return result
+
+    _emit(data_dir, job.id, "autorun_builder_completed", {
+        "provider": "ollama",
+        "has_structured_patch": bool(output.structured_patch_text),
+    })
+
+    # Run through bridge pipeline
+    from packages.orchestration.builder_bridge import run_builder_bridge
+
+    bridge_result = run_builder_bridge(
+        output, repo,
+        job=job, data_dir=data_dir,
+        autonomy_level=autonomy_level,
+    )
+
+    result["cycles_run"] = 1
+    result["stage"] = bridge_result.stage
+    result["stop_reason"] = bridge_result.stop_reason
+    result["parse_success"] = bridge_result.parse_result.parse_success if bridge_result.parse_result else False
+    result["structured_patch_created"] = bridge_result.parse_result.parse_success if bridge_result.parse_result else False
+    result["approval_required"] = bridge_result.stage == "approval_pending"
+    result["source_patch_applied"] = bridge_result.apply_success
+    result["tests_passed"] = bridge_result.test_passed is True
+
+    save_job(job)
+    return result
 
 
 def _autonomy_label(level: int) -> str:
