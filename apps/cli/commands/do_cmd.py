@@ -74,11 +74,23 @@ def _cmd_do(
         print(f"Job: {result.job_id}")
         print(f"Stage: {result.stage}")
         print(f"Cycles: {result.cycles_run}")
+        # Structured pipeline status
+        event_map = {}
         for ev in result.events:
             key = ev.get("event", "")
             val = ev.get("value", "")
             if key:
+                event_map[key] = val
                 print(f"  {key}: {val}")
+        # Stop reason
+        stop_reason = event_map.get("stop_reason", "")
+        if stop_reason:
+            print(f"Stop reason: {stop_reason}")
+        # Next command hint
+        if result.stage in ("approval_pending",):
+            print(f"\nNext: remedy dev status --job {result.job_id}")
+        elif result.stage == "proof_collected":
+            print(f"\nNext: remedy dev status --job {result.job_id}")
         if result.ui_url:
             print(f"UI: {result.ui_url}")
         if result.error:

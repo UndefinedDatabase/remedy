@@ -4,23 +4,20 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 305-312: Structured builder pipeline, Ollama patch bridge, bounded autocoder E2E.
+Steps 313-320: Real-repo autocoder hardening, Ollama reliability, operator-visible stop reasons.
 
 ## Completed
-- Prompt redaction (raw prompt → [redacted] hash/length in planning artifact)
-- BuilderOutput v2 (structured_patch_text + structured_patch_format fields)
-- BuilderPatchResult model + parse_builder_patch() with safety checks
-- Structured patch parser: plain JSON + fenced JSON + unified diff detection
-- Ollama builder prompt: requests structured patch file_ops JSON
-- Builder bridge: BuilderOutput → parse → intent → approval → source_apply → test → proof
-- Fixture smoke tests for CI, opt-in real Ollama smoke
-- Bounded repair loop: build → bridge → test → repair_context → rebuild (max_cycles)
-- .pyc cache fix (PYTHONDONTWRITEBYTECODE=1) for repair loop test reliability
-- Dashboard: builder_patch_parsed, repair_loop_cycle, repair_loop_max_cycles
-- CLI: events displayed in text output, cycles shown
+- Real small-repo smoke fixtures (missing function, wrong return, repair scenario)
+- Ollama structured patch reliability harness (18 mocked failure modes)
+- Source context quality (selection, budget, redaction, metadata)
+- Opt-in real Ollama smoke (REMEDY_REAL_OLLAMA_SMOKE, graceful skip)
+- Builder failure taxonomy (23 canonical stop reasons)
+- Real repair loop hardening (repeated patch detection, budget exhaustion)
+- CLI stop_reason display + next-command hints
+- autocoder-usage.md documentation
 
 ## Current Problems
-- R-7001: Duplicate imports in 15/24 domain test files (cosmetic)
+None blocking.
 
 ## Constraints
 - No mutation endpoints, no shell=True, no 0.0.0.0
@@ -32,9 +29,20 @@ Steps 305-312: Structured builder pipeline, Ollama patch bridge, bounded autocod
 - No unittest.mock in production packages
 - Dashboard is version 3
 - Graph architecture is Canvas/Force (not React Flow)
-- Test files use domain directories — no step-numbered files or class names
+- Test files use domain directories — no step-numbered files
 - Memory: approved-only, bounded, redacted, no raw leaks
 - BuilderOutput: structured_patch_text parsed, not trusted raw
+- Stop reasons: canonical names in all surfaces
+
+## Remaining Risks
+- Real Ollama output quality varies by model
+- Structured patch prompt reliability needs iteration
+- Parser strictness tradeoffs (first-block-wins vs reject-multiple)
 
 ## Recommended Next Block
-Steps 313-320 — Event-Ledger Replay And Checkpoint Resume
+If real Ollama parse/apply is flaky:
+  Steps 321-328 — Builder Prompt Quality Iteration And Parser Hardening
+If real Ollama is acceptable:
+  Steps 321-328 — Event-Ledger Replay And Checkpoint Resume
+UI block after that:
+  Steps 329-336 — Operator Cockpit v2

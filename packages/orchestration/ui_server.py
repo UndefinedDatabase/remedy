@@ -553,6 +553,15 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     repair_loop_cycle = loop_cycle_events[-1].get("metadata", {}).get("cycle", 0) if loop_cycle_events else 0
     repair_loop_max = loop_cycle_events[-1].get("metadata", {}).get("max_cycles", 0) if loop_cycle_events else 0
 
+    # Stop reason from latest stop event or parse event
+    stop_events = [e for e in events if e.get("event") in ("repair_loop_stopped", "repair_loop_succeeded")]
+    bridge_stop_reason = ""
+    if stop_events:
+        bridge_stop_reason = stop_events[-1].get("metadata", {}).get("reason", "")
+    elif bridge_parse_events and not bridge_parse_success:
+        last_parse = bridge_parse_events[-1].get("metadata", {})
+        bridge_stop_reason = last_parse.get("stop_reason", "") or last_parse.get("error_kind", "")
+
     # Reviewer pending count
     recs = (job.metadata or {}).get("reviewer_recommendations", [])
     reviewer_pending = sum(1 for r in recs if r.get("status") == "pending")
@@ -587,6 +596,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "repair_loop_max_cycles": repair_loop_max,
         "builder_patch_parsed": bridge_parse_success,
         "builder_patch_error": bridge_parse_error,
+        "stop_reason": bridge_stop_reason,
         "reviewer_pending_count": reviewer_pending,
         "memory_candidate_count": memory_candidate_count,
         "memory_used_count": memory_used_count,

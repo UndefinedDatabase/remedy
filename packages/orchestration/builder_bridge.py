@@ -25,10 +25,49 @@ from packages.orchestration.builder_models import (
 )
 
 
+STOP_REASONS = frozenset({
+    "structured_patch_parse_failed",
+    "provider_output_prose_only",
+    "provider_output_malformed",
+    "multiple_patch_blocks",
+    "unsafe_path",
+    "path_traversal",
+    "missing_target_path",
+    "malformed_diff",
+    "stale_diff_context",
+    "approval_required",
+    "permission_denied",
+    "source_apply_failed",
+    "test_failed_after_apply",
+    "repair_budget_exhausted",
+    "repeated_patch_detected",
+    "no_actionable_change",
+    "provider_unavailable",
+    "real_ollama_skipped",
+    "unsafe_shell_command",
+    "no_structured_patch_text",
+    "validation_failed",
+    "test_timeout",
+    "parse_exception",
+})
+
+
+def _map_error_kind_to_stop_reason(error_kind: str) -> str:
+    """Map parser error_kind to a canonical stop reason."""
+    if error_kind in STOP_REASONS:
+        return error_kind
+    _MAP = {
+        "prose_only": "provider_output_prose_only",
+        "parse_exception": "provider_output_malformed",
+    }
+    return _MAP.get(error_kind, f"structured_patch_parse_failed")
+
+
 @dataclass
 class BridgeResult:
     """Result of running the builder bridge pipeline."""
     stage: str = "init"
+    stop_reason: str = ""
     parse_result: BuilderPatchResult | None = None
     intent_id: str = ""
     apply_success: bool = False
@@ -64,9 +103,12 @@ def run_builder_bridge(
     parse_result = parse_builder_patch(output)
     result.parse_result = parse_result
 
+    stop_reason_for_parse = _map_error_kind_to_stop_reason(parse_result.error_kind) if not parse_result.parse_success else ""
+
     _emit(data_dir, job.id, "builder_patch_parsed", {
         "parse_success": parse_result.parse_success,
         "error_kind": parse_result.error_kind,
+        "stop_reason": stop_reason_for_parse,
         "output_hash": parse_result.output_hash,
         "output_length": parse_result.output_length,
         "target_path_count": len(parse_result.target_paths),
@@ -74,6 +116,7 @@ def run_builder_bridge(
 
     if not parse_result.parse_success:
         result.stage = "parse_failed"
+        result.stop_reason = stop_reason_for_parse
         result.error = parse_result.error_kind
         return result
 
@@ -83,6 +126,7 @@ def run_builder_bridge(
     # Stage 2: Create intent + approval gate
     if autonomy_level < 3:
         result.stage = "approval_pending"
+        result.stop_reason = "approval_required"
         return result
 
     intent_id = _create_and_approve_intent(job, parse_result)
@@ -108,6 +152,7 @@ def run_builder_bridge(
 
     if not apply_result.success:
         result.stage = "apply_failed"
+        result.stop_reason = "source_apply_failed"
         result.error = "; ".join(apply_result.errors[:3])
         return result
 
@@ -148,9 +193,12 @@ def run_builder_bridge(
                         "test_passed": True,
                     })
                     result.stage = "proof_collected"
+                else:
+                    result.stop_reason = "test_failed_after_apply"
             except (subprocess.TimeoutExpired, OSError):
                 result.test_passed = False
                 result.stage = "test_timeout"
+                result.stop_reason = "test_timeout"
 
     return result
 
@@ -213,6 +261,7 @@ class LoopResult:
     final_result: BridgeResult | None = None
     repair_contexts: list[dict[str, Any]] = field(default_factory=list)
     success: bool = False
+    stop_reason: str = ""
 
 
 def run_builder_bridge_loop(
@@ -234,11 +283,14 @@ def run_builder_bridge_loop(
       - max_cycles reached
       - Parse or apply fails (no point retrying same output)
     """
+    import hashlib
+
     from packages.orchestration.repair_context import build_repair_context
     from packages.orchestration.timeline import load_run_events
 
     loop_result = LoopResult(max_cycles=max_cycles)
     repair_ctx: dict[str, Any] | None = None
+    seen_patch_hashes: set[str] = set()
 
     for cycle in range(1, max_cycles + 1):
         loop_result.cycles_run = cycle
@@ -246,10 +298,25 @@ def run_builder_bridge_loop(
         # Build
         output = build_fn(repair_ctx)
 
+        # Detect repeated patch
+        patch_text = output.structured_patch_text or ""
+        patch_hash = hashlib.sha256(patch_text.encode()).hexdigest()[:16]
+        if patch_hash in seen_patch_hashes and patch_text:
+            loop_result.stop_reason = "repeated_patch_detected"
+            _emit(data_dir, job.id, "repair_loop_stopped", {
+                "cycle": cycle,
+                "reason": "repeated_patch_detected",
+                "patch_hash": patch_hash,
+            })
+            break
+        if patch_text:
+            seen_patch_hashes.add(patch_hash)
+
         _emit(data_dir, job.id, "repair_loop_cycle_started", {
             "cycle": cycle,
             "max_cycles": max_cycles,
             "has_repair_context": repair_ctx is not None,
+            "patch_hash": patch_hash,
         })
 
         # Run bridge
@@ -262,9 +329,10 @@ def run_builder_bridge_loop(
 
         # Check outcomes
         if bridge_result.stage in ("parse_failed", "apply_failed"):
+            loop_result.stop_reason = bridge_result.stop_reason or bridge_result.stage
             _emit(data_dir, job.id, "repair_loop_stopped", {
                 "cycle": cycle,
-                "reason": bridge_result.stage,
+                "reason": bridge_result.stop_reason or bridge_result.stage,
                 "error": bridge_result.error,
             })
             break
@@ -287,6 +355,10 @@ def run_builder_bridge_loop(
                 "cycle": cycle,
                 "failure_kind": repair_ctx.get("failure_kind", "unknown"),
             })
+
+    # Budget exhaustion
+    if not loop_result.success and not loop_result.stop_reason:
+        loop_result.stop_reason = "repair_budget_exhausted"
 
     return loop_result
 
