@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState } from "./remedyApi";
+import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline } from "./remedyApi";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -201,5 +201,136 @@ describe("empty dashboard honesty", () => {
     const result = normalizeDashboardPayload("abc-123", payload);
     const progress = result.metrics.find(m => m.key === "progress");
     expect(progress?.value).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G. Pipeline normalization
+// ---------------------------------------------------------------------------
+
+describe("normalizePipeline", () => {
+  it("returns null for missing pipeline", () => {
+    expect(normalizePipeline(null)).toBeNull();
+    expect(normalizePipeline(undefined)).toBeNull();
+  });
+
+  it("normalizes empty pipeline", () => {
+    const p = normalizePipeline({ version: 1, provider: null, provider_mode: "none", stale: true });
+    expect(p).not.toBeNull();
+    expect(p!.provider).toBeNull();
+    expect(p!.stale).toBe(true);
+    expect(p!.steps.length).toBeGreaterThan(0);
+  });
+
+  it("normalizes fixture success pipeline", () => {
+    const p = normalizePipeline({
+      version: 1, provider: "fixture", provider_mode: "fixture",
+      source_context: { injected: true, file_count: 3, estimated_tokens: 500 },
+      memory: { used: false, item_count: 0, truncated: false, context_hash: "" },
+      structured_patch_attempted: true, parse_success: true,
+      intent_status: "approved", approval_required: false, approval_status: "approved",
+      source_apply_status: "applied", tests_status: "pass", tests_passed: true,
+      repair_loop: { used: false, cycle_count: 0, max_cycles: 0 },
+      stop_reason: "", stop_reason_label: "", next_command: "",
+      stale: false,
+    });
+    expect(p!.provider).toBe("fixture");
+    expect(p!.tests_passed).toBe(true);
+    const doneSteps = p!.steps.filter(s => s.state === "done");
+    expect(doneSteps.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("normalizes approval required pipeline", () => {
+    const p = normalizePipeline({
+      version: 1, provider: "ollama", provider_mode: "ollama",
+      source_context: { injected: true },
+      memory: { used: true, item_count: 2, truncated: false, context_hash: "abc" },
+      structured_patch_attempted: true, parse_success: true,
+      intent_status: "created", approval_required: true, approval_status: "pending",
+      source_apply_status: "none", tests_status: "none", tests_passed: null,
+      repair_loop: { used: false, cycle_count: 0, max_cycles: 0 },
+      stop_reason: "approval_required", stop_reason_label: "Human approval required",
+      next_command: "remedy patch approve job-1 i-1",
+      stale: false,
+    });
+    expect(p!.approval_required).toBe(true);
+    expect(p!.stop_reason).toBe("approval_required");
+    const approval = p!.steps.find(s => s.id === "approval");
+    expect(approval?.state).toBe("blocked");
+  });
+
+  it("normalizes parse failure pipeline", () => {
+    const p = normalizePipeline({
+      version: 1, provider: "ollama",
+      structured_patch_attempted: true, parse_success: false, parse_error_kind: "prose_only",
+      stop_reason: "provider_output_prose_only",
+      stop_reason_label: "Model returned prose, not a patch",
+      stale: false,
+    });
+    expect(p!.parse_success).toBe(false);
+    const patchStep = p!.steps.find(s => s.id === "patch");
+    expect(patchStep?.state).toBe("failed");
+  });
+
+  it("normalizes repair loop pipeline", () => {
+    const p = normalizePipeline({
+      version: 1, provider: "ollama",
+      structured_patch_attempted: true, parse_success: true,
+      intent_status: "approved", approval_status: "approved",
+      source_apply_status: "applied", tests_status: "fail", tests_passed: false,
+      repair_loop: { used: true, cycle_count: 2, max_cycles: 3 },
+      stop_reason: "test_failed_after_apply",
+      stale: false,
+    });
+    const repairStep = p!.steps.find(s => s.id === "repair");
+    expect(repairStep).toBeDefined();
+    expect(repairStep!.detail).toContain("2/3");
+  });
+
+  it("does not include raw provider output", () => {
+    const p = normalizePipeline({
+      version: 1, provider: "ollama",
+      stop_reason: "provider_output_prose_only",
+      stale: false,
+    });
+    const str = JSON.stringify(p);
+    expect(str).not.toContain("def ");
+    expect(str).not.toContain("import ");
+    expect(str).not.toContain("raw_");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// H. Pipeline in dashboard
+// ---------------------------------------------------------------------------
+
+describe("pipeline in dashboard", () => {
+  it("dashboard without pipeline returns null pipeline", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.pipeline).toBeNull();
+  });
+
+  it("dashboard with pipeline returns normalized pipeline", () => {
+    const payload = makeDashboardPayload({
+      pipeline: {
+        version: 1, provider: "fixture", provider_mode: "fixture",
+        source_context: { injected: true, file_count: 2 },
+        memory: { used: false, item_count: 0, truncated: false, context_hash: "" },
+        structured_patch_attempted: true, parse_success: true,
+        intent_status: "approved", approval_status: "approved",
+        source_apply_status: "applied", tests_status: "pass", tests_passed: true,
+        repair_loop: { used: false, cycle_count: 0, max_cycles: 0 },
+        stop_reason: "", stale: false,
+      },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.pipeline).not.toBeNull();
+    expect(result.pipeline!.provider).toBe("fixture");
+    expect(result.pipeline!.steps.length).toBeGreaterThan(0);
+  });
+
+  it("failure dashboard has null pipeline", () => {
+    const result = normalizeApiFailure("abc-123", ["dashboard"]);
+    expect(result.pipeline).toBeNull();
   });
 });

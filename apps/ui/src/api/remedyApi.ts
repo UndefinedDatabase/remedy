@@ -1,5 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
-import type { RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyState, RemedyTaskItem } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyState, RemedyTaskItem } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -145,6 +145,7 @@ export function normalizeDashboardPayload(
       latestActor: "Builder",
     },
     apiHealth: { degraded: false, failedEndpoints: [] },
+    pipeline: normalizePipeline(dashboard.pipeline),
   };
 }
 
@@ -174,6 +175,7 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
       latestActor: "Builder",
     },
     apiHealth: { degraded: true, failedEndpoints },
+    pipeline: null,
   };
 }
 
@@ -289,6 +291,76 @@ function normalizeGraph(journey: RemedyJourneyItem[], tasks: RemedyTaskItem[]): 
     });
   }
   return { nodes, edges };
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline normalization
+// ---------------------------------------------------------------------------
+
+function pipelineStepState(done: boolean | null, blocked: boolean, failed: boolean, skipped: boolean): PipelineStepState {
+  if (failed) return "failed";
+  if (blocked) return "blocked";
+  if (skipped) return "skipped";
+  if (done === true) return "done";
+  if (done === false) return "waiting";
+  return "unknown";
+}
+
+function buildPipelineSteps(p: any): PipelineStep[] {
+  const steps: PipelineStep[] = [];
+  const hasProvider = p.provider !== null;
+  const hasContext = p.source_context?.injected === true;
+  const hasMemory = p.memory?.used === true;
+  const hasPatch = p.structured_patch_attempted === true;
+  const parsed = p.parse_success === true;
+  const parseFailed = p.parse_success === false;
+  const hasIntent = p.intent_status !== "none" && p.intent_status !== "";
+  const approved = p.approval_status === "approved";
+  const applied = p.source_apply_status === "applied";
+  const tested = p.tests_status !== "none";
+  const testPassed = p.tests_passed === true;
+  const repairUsed = p.repair_loop?.used === true;
+
+  steps.push({ id: "provider", label: hasProvider ? `Provider: ${p.provider}` : "No provider", state: hasProvider ? "done" : "skipped" });
+  steps.push({ id: "context", label: "Source context", state: pipelineStepState(hasContext, false, false, !hasProvider), detail: hasContext ? `${p.source_context.file_count ?? 0} files, ~${p.source_context.estimated_tokens ?? 0} tokens` : undefined });
+  steps.push({ id: "memory", label: "Memory", state: pipelineStepState(hasMemory, false, false, !hasMemory), detail: hasMemory ? `${p.memory.item_count} items` : undefined });
+  steps.push({ id: "patch", label: "Structured patch", state: pipelineStepState(hasPatch && parsed, false, parseFailed, !hasPatch), detail: parseFailed ? p.parse_error_kind || "Parse failed" : undefined });
+  steps.push({ id: "intent", label: "Patch intent", state: pipelineStepState(hasIntent, p.approval_required && !approved, false, !hasIntent) });
+  steps.push({ id: "approval", label: "Approval", state: pipelineStepState(approved, p.approval_required && !approved, false, !p.approval_required && !approved), detail: p.approval_required && !approved ? "Human approval required" : undefined });
+  steps.push({ id: "apply", label: "Apply", state: pipelineStepState(applied, false, p.source_apply_status === "failed", !applied && !approved) });
+  steps.push({ id: "test", label: "Test", state: pipelineStepState(testPassed, false, tested && !testPassed, !tested), detail: tested && !testPassed ? "Tests failed" : undefined });
+  if (repairUsed) {
+    steps.push({ id: "repair", label: "Repair loop", state: pipelineStepState(testPassed, false, !testPassed, false), detail: `Cycle ${p.repair_loop.cycle_count}/${p.repair_loop.max_cycles}` });
+  }
+  return steps;
+}
+
+export function normalizePipeline(raw: any): RemedyPipeline | null {
+  if (!raw || typeof raw !== "object") return null;
+  return {
+    version: raw.version ?? 1,
+    provider: raw.provider ?? null,
+    provider_mode: raw.provider_mode ?? "none",
+    source_context: raw.source_context ?? { injected: false },
+    memory: raw.memory ?? { used: false, item_count: 0, truncated: false, context_hash: "" },
+    structured_patch_attempted: Boolean(raw.structured_patch_attempted),
+    parse_success: raw.parse_success ?? null,
+    parse_error_kind: raw.parse_error_kind ?? "",
+    intent_id: raw.intent_id ?? "",
+    intent_status: raw.intent_status ?? "none",
+    approval_required: Boolean(raw.approval_required),
+    approval_status: raw.approval_status ?? "none",
+    source_apply_status: raw.source_apply_status ?? "none",
+    tests_status: raw.tests_status ?? "none",
+    tests_passed: raw.tests_passed ?? null,
+    repair_loop: raw.repair_loop ?? { used: false, cycle_count: 0, max_cycles: 0 },
+    stop_reason: raw.stop_reason ?? "",
+    stop_reason_label: raw.stop_reason_label ?? "",
+    next_command: raw.next_command ?? "",
+    stale: Boolean(raw.stale),
+    source: raw.source ?? "unknown",
+    steps: buildPipelineSteps(raw),
+  };
 }
 
 const EVENT_LABELS: Record<string, { actor: RemedyActivityItem["actor"]; kind: RemedyActivityItem["kind"]; label: string }> = {

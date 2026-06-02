@@ -13,4 +13,61 @@ export interface RemedyPhase { id: "job" | "planning" | "build" | "test" | "revi
 export interface RemedyLiveState { running: boolean; stage: string; activeTaskLabel: string; latestMessage: string; latestActor: RemedyActivityItem["actor"]; }
 export interface RemedyStory { version: number; jobId: string; headline: string; plainStatus: string; description: string; primaryNextAction: RemedyNextAction; progress: { completed: number; active: number; pending: number; blocked: number; needsReview: number; }; journey: RemedyJourneyItem[]; }
 export interface RemedyApiHealth { degraded: boolean; failedEndpoints: string[]; }
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; }
+
+export type PipelineStepState = "done" | "current" | "blocked" | "failed" | "skipped" | "unknown" | "waiting";
+
+export interface PipelineSourceContext {
+  injected: boolean;
+  file_count?: number;
+  test_file_count?: number;
+  estimated_tokens?: number;
+  truncated?: boolean;
+  selection_hash?: string;
+}
+
+export interface PipelineMemory {
+  used: boolean;
+  item_count: number;
+  truncated: boolean;
+  context_hash: string;
+}
+
+export interface PipelineRepairLoop {
+  used: boolean;
+  cycle_count: number;
+  max_cycles: number;
+}
+
+export interface PipelineStep {
+  id: string;
+  label: string;
+  state: PipelineStepState;
+  detail?: string;
+}
+
+export interface RemedyPipeline {
+  version: number;
+  provider: string | null;
+  provider_mode: string;
+  source_context: PipelineSourceContext;
+  memory: PipelineMemory;
+  structured_patch_attempted: boolean;
+  parse_success: boolean | null;
+  parse_error_kind: string;
+  intent_id: string;
+  intent_status: string;
+  approval_required: boolean;
+  approval_status: string;
+  source_apply_status: string;
+  tests_status: string;
+  tests_passed: boolean | null;
+  repair_loop: PipelineRepairLoop;
+  stop_reason: string;
+  stop_reason_label: string;
+  next_command: string;
+  stale: boolean;
+  source: string;
+  steps: PipelineStep[];
+}
+
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; }

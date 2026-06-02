@@ -3,6 +3,7 @@ import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
 import { BrainGraphStage } from "../graph/BrainGraphStage";
+import { PipelinePanel } from "../pipeline/PipelinePanel";
 import { RightLivePanel } from "../panels/RightLivePanel";
 import { PhaseTimeline } from "../timeline/PhaseTimeline";
 import { DetailPopover } from "../detail/DetailPopover";
@@ -21,6 +22,7 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
           <CommandBar nextAction={dashboard.nextAction} />
           <BrainGraphStage dashboard={dashboard} onSelectNode={onSelectNode} />
           <PhaseTimeline phases={dashboard.phases} />
+          <PipelinePanel pipeline={dashboard.pipeline} />
         </main>
         <RightLivePanel dashboard={dashboard} onSelectNode={onSelectNode} />
       </div>

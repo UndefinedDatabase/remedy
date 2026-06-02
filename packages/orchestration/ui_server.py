@@ -331,6 +331,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "missing_sources": missing_sources,
             "computed_from": "job_model_and_event_ledger",
         },
+        "pipeline": _build_pipeline_section(job, events),
         "redaction": {
             "policy": "safe_summaries_only",
             "raw_content_exposed": False,
@@ -346,6 +347,210 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "lifecycle": lifecycle,
         },
     }
+
+
+def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build structured autocoder pipeline status for dashboard v4.
+
+    All fields derived from real events/job state. Unknown = null.
+    No raw provider output, diffs, test output, or approval reasons.
+    """
+    # Provider
+    started_events = [e for e in events if e.get("event") == "autorun_started"]
+    builder_events = [e for e in events if e.get("event") == "autorun_builder_completed"]
+    provider_error_events = [e for e in events if e.get("event") == "autorun_provider_error"]
+
+    provider = None
+    provider_mode = "none"
+    if builder_events:
+        provider = builder_events[-1].get("metadata", {}).get("provider")
+        provider_mode = provider or "unknown"
+    elif provider_error_events:
+        provider = provider_error_events[-1].get("metadata", {}).get("provider")
+        provider_mode = provider or "unknown"
+
+    # Source context
+    ctx_events = [e for e in events if e.get("event") == "source_context_injected"]
+    source_context_injected = bool(ctx_events)
+    source_context_meta: dict[str, Any] = {}
+    if ctx_events:
+        cm = ctx_events[-1].get("metadata", {})
+        source_context_meta = {
+            "file_count": cm.get("file_count", 0),
+            "test_file_count": cm.get("test_file_count", 0),
+            "estimated_tokens": cm.get("estimated_tokens", 0),
+            "truncated": cm.get("truncated", False),
+            "selection_hash": str(cm.get("selection_hash", ""))[:12],
+        }
+
+    # Memory
+    mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
+    memory_used = bool(mem_events)
+    memory_item_count = mem_events[-1].get("metadata", {}).get("item_count", 0) if mem_events else 0
+    memory_truncated = mem_events[-1].get("metadata", {}).get("truncated", False) if mem_events else False
+    memory_context_hash = str(mem_events[-1].get("metadata", {}).get("context_hash", ""))[:12] if mem_events else ""
+
+    # Parse
+    parse_events = [e for e in events if e.get("event") == "builder_patch_parsed"]
+    structured_patch_attempted = bool(builder_events or parse_events)
+    parse_success = None
+    parse_error_kind = ""
+    if parse_events:
+        pm = parse_events[-1].get("metadata", {})
+        parse_success = pm.get("parse_success", False)
+        if not parse_success:
+            parse_error_kind = pm.get("error_kind", "")
+
+    # Intent / approval
+    intent_events = [e for e in events if e.get("event") in (
+        "structured_patch_intent_created", "builder_bridge_intent_approved")]
+    intent_id = ""
+    intent_status = "none"
+    approval_required = False
+    approval_status = "none"
+    if intent_events:
+        intent_id = intent_events[-1].get("metadata", {}).get("intent_id", "")
+        if any(e.get("event") == "builder_bridge_intent_approved" for e in intent_events):
+            intent_status = "approved"
+            approval_status = "approved"
+        else:
+            intent_status = "created"
+            approval_required = True
+            approval_status = "pending"
+
+    # Check job artifacts for pending approvals
+    for art in job.artifacts:
+        meta = art.metadata or {}
+        explanations = meta.get("patch_intent_explanations", [])
+        for expl in explanations:
+            ast = expl.get("approval_state", "")
+            if ast == "pending":
+                approval_required = True
+                approval_status = "pending"
+            elif ast == "approved" and approval_status == "none":
+                approval_status = "approved"
+
+    # Source apply
+    apply_events = [e for e in events if e.get("event") == "patch_intent_applied"]
+    source_apply_status = "applied" if apply_events else "none"
+
+    # Tests
+    test_events = [e for e in events if e.get("event") in (
+        "test_run_completed", "builder_bridge_test_completed")]
+    tests_status = "none"
+    tests_passed = None
+    if test_events:
+        last_test = test_events[-1].get("metadata", {})
+        tests_passed = last_test.get("passed", last_test.get("exit_code") == 0)
+        tests_status = "pass" if tests_passed else "fail"
+
+    # Repair loop
+    repair_cycle_events = [e for e in events if e.get("event") == "repair_loop_cycle_started"]
+    repair_loop_used = bool(repair_cycle_events) or any(
+        e.get("event") == "repair_context_created" for e in events)
+    repair_cycle_count = repair_cycle_events[-1].get("metadata", {}).get("cycle", 0) if repair_cycle_events else 0
+    repair_max_cycles = repair_cycle_events[-1].get("metadata", {}).get("max_cycles", 0) if repair_cycle_events else 0
+
+    # Stop reason
+    stop_reason = ""
+    stop_events = [e for e in events if e.get("event") in (
+        "repair_loop_stopped", "repair_loop_succeeded")]
+    if stop_events:
+        stop_reason = stop_events[-1].get("metadata", {}).get("reason", "")
+    elif parse_events and not parse_success:
+        pm = parse_events[-1].get("metadata", {})
+        stop_reason = pm.get("stop_reason", "") or pm.get("error_kind", "")
+    elif provider_error_events:
+        stop_reason = provider_error_events[-1].get("metadata", {}).get("stop_reason", "")
+    elif test_events and tests_passed is False:
+        stop_reason = "test_failed_after_apply"
+
+    _STOP_LABELS = {
+        "provider_output_prose_only": "Model returned prose, not a patch",
+        "provider_output_malformed": "Model output could not be parsed",
+        "provider_unavailable": "Provider not reachable",
+        "unsafe_shell_command": "Output contained shell commands",
+        "validation_failed": "Patch structure invalid",
+        "unsafe_path": "Absolute path not allowed",
+        "path_traversal": "Path traversal not allowed",
+        "approval_required": "Human approval required",
+        "source_apply_failed": "Patch could not be applied",
+        "test_failed_after_apply": "Tests failed after apply",
+        "repair_budget_exhausted": "Repair budget exhausted",
+        "repeated_patch_detected": "Same patch produced twice",
+        "no_structured_patch_text": "No patch in builder output",
+        "test_timeout": "Test execution timed out",
+    }
+    stop_reason_label = _STOP_LABELS.get(stop_reason, stop_reason.replace("_", " ").capitalize() if stop_reason else "")
+
+    # Next command
+    next_command = _pipeline_next_command(
+        str(job.id), stop_reason, approval_required, intent_id,
+        source_apply_status, tests_status,
+    )
+
+    # Staleness
+    stale = not bool(events)
+
+    return {
+        "version": 1,
+        "provider": provider,
+        "provider_mode": provider_mode,
+        "source_context": {
+            "injected": source_context_injected,
+            **source_context_meta,
+        },
+        "memory": {
+            "used": memory_used,
+            "item_count": memory_item_count,
+            "truncated": memory_truncated,
+            "context_hash": memory_context_hash,
+        },
+        "structured_patch_attempted": structured_patch_attempted,
+        "parse_success": parse_success,
+        "parse_error_kind": parse_error_kind,
+        "intent_id": intent_id,
+        "intent_status": intent_status,
+        "approval_required": approval_required,
+        "approval_status": approval_status,
+        "source_apply_status": source_apply_status,
+        "tests_status": tests_status,
+        "tests_passed": tests_passed,
+        "repair_loop": {
+            "used": repair_loop_used,
+            "cycle_count": repair_cycle_count,
+            "max_cycles": repair_max_cycles,
+        },
+        "stop_reason": stop_reason,
+        "stop_reason_label": stop_reason_label,
+        "next_command": next_command,
+        "stale": stale,
+        "source": "event_ledger",
+    }
+
+
+def _pipeline_next_command(
+    job_id: str, stop_reason: str, approval_required: bool,
+    intent_id: str, source_apply_status: str, tests_status: str,
+) -> str:
+    """Generate next safe catalog-valid command based on pipeline state."""
+    if stop_reason == "approval_required" and intent_id:
+        return f"remedy patch approve {job_id} {intent_id}"
+    if stop_reason == "provider_unavailable":
+        return "remedy worker resources --json"
+    if stop_reason in ("provider_output_prose_only", "provider_output_malformed"):
+        return f"remedy do \"<goal>\" --repo . --builder-provider fixture --json"
+    if stop_reason == "test_failed_after_apply":
+        return f"remedy job summary {job_id} --json"
+    if stop_reason == "repair_budget_exhausted":
+        return f"remedy job summary {job_id} --json"
+    if approval_required and intent_id:
+        return f"remedy patch show {job_id} {intent_id}"
+    if source_apply_status == "applied" and tests_status == "none":
+        return f"remedy test discover {job_id} --json"
+    if tests_status == "pass":
+        return f"remedy job summary {job_id} --json"
+    return "remedy dev status --json"
 
 
 def _build_brain_json(job: Any) -> dict[str, Any]:

@@ -1,0 +1,140 @@
+.panel {
+  border-radius: clamp(16px, 1.4vw, 22px);
+  padding: clamp(14px, 1.4vw, 20px);
+  background: rgba(255,255,255,.62);
+  border: 1px solid rgba(61,98,164,.13);
+  box-shadow: 0 14px 40px rgba(55,86,138,.1);
+  backdrop-filter: blur(24px);
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  color: var(--remedy-blue-900);
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: .05em;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.empty {
+  font-size: 11px;
+  color: rgba(18,47,106,.55);
+  font-style: italic;
+  padding: 12px 4px;
+  line-height: 1.5;
+}
+
+/* Timeline */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 11px;
+  color: var(--remedy-blue-900);
+}
+
+.stepIcon { display: grid; place-items: center; }
+.stepLabel { font-weight: 700; }
+.stepDetail { font-size: 10px; color: rgba(18,47,106,.6); }
+
+.done .stepIcon { color: #4cc681; }
+.current .stepIcon { color: #4c83ff; }
+.blocked .stepIcon, .failed .stepIcon { color: #e05555; }
+.skipped .stepIcon { color: rgba(18,47,106,.3); }
+.skipped .stepLabel { color: rgba(18,47,106,.4); }
+.unknown .stepIcon, .waiting .stepIcon { color: rgba(18,47,106,.25); }
+.unknown .stepLabel, .waiting .stepLabel { color: rgba(18,47,106,.45); }
+
+/* Stop Reason Card */
+.stopCard {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(224,85,85,.06);
+  border: 1px solid rgba(224,85,85,.15);
+}
+
+.stopHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #c04040;
+  font-size: 12px;
+}
+
+.stopHeader strong { flex: 1; }
+.stopCode { font-size: 10px; color: rgba(18,47,106,.5); background: rgba(18,47,106,.04); padding: 1px 5px; border-radius: 4px; }
+
+.stopExplanation {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: rgba(18,47,106,.7);
+  line-height: 1.4;
+}
+
+.nextCommand {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nextLabel { font-size: 10px; font-weight: 700; color: rgba(18,47,106,.5); }
+
+.commandCode {
+  font-size: 10px;
+  background: rgba(18,47,106,.06);
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--remedy-blue-900);
+  user-select: all;
+}
+
+.commandCode:hover { background: rgba(18,47,106,.1); }
+
+/* Context Card */
+.contextCard {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(76,131,255,.04);
+  border: 1px solid rgba(76,131,255,.1);
+}
+
+.contextRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--remedy-blue-900);
+  padding: 2px 0;
+}
+
+.contextRow strong { min-width: 90px; font-weight: 700; }
+.contextRow span { color: rgba(18,47,106,.6); }
+
+.contextEmpty {
+  font-size: 11px;
+  color: rgba(18,47,106,.4);
+  font-style: italic;
+  padding: 4px 0;
+}
