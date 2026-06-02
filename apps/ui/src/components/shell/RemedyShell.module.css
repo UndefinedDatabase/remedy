@@ -27,11 +27,11 @@
   height: 100%;
   display: grid;
   grid-template-rows:
-    clamp(78px, 9vh, 98px)
-    clamp(52px, 6vh, 64px)
-    minmax(360px, 1fr)
-    clamp(118px, 16vh, 158px);
-  gap: clamp(14px, 1.8vh, 22px);
+    clamp(56px, 7vh, 72px)
+    clamp(40px, 5vh, 50px)
+    minmax(300px, 1fr)
+    clamp(80px, 11vh, 110px);
+  gap: clamp(10px, 1.2vh, 16px);
 }
 
 @media (max-width: 1280px) {

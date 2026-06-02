@@ -334,3 +334,43 @@ describe("pipeline in dashboard", () => {
     expect(result.pipeline).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// I. Token usage metric
+// ---------------------------------------------------------------------------
+
+describe("token usage metric", () => {
+  it("fifth metric is tokens", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.metrics).toHaveLength(5);
+    expect(result.metrics[4].key).toBe("tokens");
+  });
+
+  it("unknown tokens shows dash suffix", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    const tok = result.metrics.find(m => m.key === "tokens");
+    expect(tok!.value).toBe(0);
+    expect(tok!.suffix).toBe(" —");
+  });
+
+  it("known tokens from token_usage", () => {
+    const payload = makeDashboardPayload({
+      token_usage: { known: true, total_tokens: 12500, estimated: true, by_role: { context: 8000, memory: 4500 } },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    const tok = result.metrics.find(m => m.key === "tokens");
+    expect(tok!.value).toBe(12500);
+    expect(tok!.suffix).toBeUndefined();
+    expect(tok!.tooltip).toEqual({ context: 8000, memory: 4500 });
+  });
+
+  it("no raw prompt data in token metric", () => {
+    const payload = makeDashboardPayload({
+      token_usage: { known: true, total_tokens: 500, by_role: { planner: 500 } },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    const str = JSON.stringify(result.metrics);
+    expect(str).not.toContain("raw_");
+    expect(str).not.toContain("prompt");
+  });
+});

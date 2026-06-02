@@ -206,6 +206,43 @@ class TestPipelineNoRawLeaks:
         assert "import " not in p_str
 
 
+class TestTokenUsage:
+    def test_empty_job_unknown_tokens(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.ui_server import _build_token_usage
+        t = _build_token_usage([])
+        assert t["known"] is False
+        assert t["total_tokens"] is None
+        assert t["estimated"] is True
+
+    def test_context_tokens_counted(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.ui_server import _build_token_usage
+        events = [
+            {"event": "source_context_injected", "metadata": {"estimated_tokens": 800}},
+            {"event": "project_memory_recalled", "metadata": {"estimated_tokens": 200}},
+        ]
+        t = _build_token_usage(events)
+        assert t["known"] is True
+        assert t["total_tokens"] == 1000
+        assert t["by_role"]["context"] == 800
+        assert t["by_role"]["memory"] == 200
+
+    def test_no_raw_content_in_token_usage(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.ui_server import _build_token_usage
+        import json
+        events = [
+            {"event": "source_context_injected", "metadata": {
+                "estimated_tokens": 500, "file_content": "SECRET_KEY=abc123",
+            }},
+        ]
+        t = _build_token_usage(events)
+        t_str = json.dumps(t)
+        assert "SECRET_KEY" not in t_str
+        assert "abc123" not in t_str
+
+
 class TestPipelineMemory:
     def test_memory_used(self, tmp_path, monkeypatch):
         job = _make_job()

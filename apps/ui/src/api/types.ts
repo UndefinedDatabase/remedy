@@ -1,8 +1,8 @@
 export type RemedyState = "done" | "current" | "pending" | "blocked" | "suggested";
 export type RemedyTaskKind = "goal" | "task" | "approval" | "apply" | "test" | "review" | "memory" | "proof" | "change";
-export type RemedyMetricKey = "open" | "planned" | "done" | "progress";
+export type RemedyMetricKey = "open" | "planned" | "done" | "progress" | "tokens";
 
-export interface RemedyMetric { key: RemedyMetricKey; label: string; value: number; suffix?: string; }
+export interface RemedyMetric { key: RemedyMetricKey; label: string; value: number; suffix?: string; tooltip?: Record<string, number>; }
 export interface RemedyNextAction { label: string; command: string; risk: "low" | "medium" | "high"; requiresHuman: boolean; }
 export interface RemedyJourneyItem { id: string; kind: RemedyTaskKind; title: string; subtitle: string; state: RemedyState; nodeId: string; visibleFromZoom: number; }
 export interface RemedyTaskItem { id: string; label: string; state: RemedyState; kind: RemedyTaskKind; checked: boolean; muted: boolean; nodeId: string; nextAction?: RemedyNextAction; }

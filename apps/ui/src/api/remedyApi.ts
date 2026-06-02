@@ -72,11 +72,15 @@ export function normalizeDashboardPayload(
 
   // Metrics from dashboard
   const dm = dashboard.metrics || {};
+  const tu = dashboard.token_usage || {};
+  const tokenTotal = tu.known ? (tu.total_tokens ?? 0) : 0;
+  const tokenTooltip = tu.by_role && Object.keys(tu.by_role).length > 0 ? tu.by_role : undefined;
   const metrics: RemedyMetric[] = [
     { key: "open", label: "Open", value: dm.open ?? 0 },
     { key: "planned", label: "Planned", value: dm.planned ?? 0 },
     { key: "done", label: "Done", value: dm.done ?? 0 },
     { key: "progress", label: "Progress", value: dm.progress_percent ?? 0, suffix: "%" },
+    { key: "tokens", label: "Tokens", value: tokenTotal, suffix: tu.known ? undefined : " —", tooltip: tokenTooltip },
   ];
 
   // Phases from dashboard

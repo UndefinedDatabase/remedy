@@ -303,6 +303,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "source_counts": {"tasks": task_count, "events": len(events), "artifacts": artifact_count},
             "computed_from": "job_tasks_and_events",
         },
+        "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,
         "phases": phases,
@@ -346,6 +347,53 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "guidance": guidance_cards,
             "lifecycle": lifecycle,
         },
+    }
+
+
+def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build safe token usage summary from events. Estimated only — no exact billing."""
+    by_role: dict[str, int] = {}
+    total = 0
+    sources_seen: set[str] = set()
+
+    for e in events:
+        meta = e.get("metadata", {})
+        tokens = meta.get("estimated_tokens", 0)
+        if not isinstance(tokens, (int, float)) or tokens <= 0:
+            continue
+        tokens = int(tokens)
+        total += tokens
+
+        ev = e.get("event", "")
+        if ev == "source_context_injected":
+            by_role["context"] = by_role.get("context", 0) + tokens
+            sources_seen.add("source_context")
+        elif ev == "project_memory_recalled":
+            by_role["memory"] = by_role.get("memory", 0) + tokens
+            sources_seen.add("memory")
+        elif ev == "repair_context_created":
+            by_role["repair"] = by_role.get("repair", 0) + tokens
+            sources_seen.add("repair_context")
+        elif ev in ("context_pack_created",):
+            by_role["planner"] = by_role.get("planner", 0) + tokens
+            sources_seen.add("context_pack")
+        else:
+            by_role["other"] = by_role.get("other", 0) + tokens
+
+    known = total > 0
+    missing: list[str] = []
+    if "source_context" not in sources_seen:
+        missing.append("source_context")
+    if "memory" not in sources_seen:
+        missing.append("memory")
+
+    return {
+        "total_tokens": total if known else None,
+        "known": known,
+        "estimated": True,
+        "source": "event_metadata",
+        "by_role": by_role if by_role else {},
+        "missing_sources": missing,
     }
 
 

@@ -4,33 +4,31 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 335-342: Operator Cockpit v2, pipeline visibility, stop-reason UX.
+Steps 343-350: Visual target alignment, token metrics, organic brain graph v2.
 
 ## Completed
-- Pipeline status contract in dashboard v4 (`pipeline` object with provider, context, memory, parse, intent, approval, apply, test, repair, stop_reason, next_command)
-- Pipeline timeline component (PipelineTimeline with 8-10 steps, state-based icons)
-- Stop reason card with human labels, explanations, copy-to-clipboard next command
-- Read-only decision queue (approval visibility via pipeline fields, CLI commands in StopReasonCard)
-- Repair loop visibility (repair_loop object, repair step in timeline with cycle count)
-- Memory and source context visibility (ContextCard with safe metadata only)
-- Pipeline next_command generation (catalog-valid commands based on stop_reason)
-- 9 backend pipeline contract tests, 10 Vitest pipeline normalization tests
+- Token usage metric: backend _build_token_usage() + frontend fifth metric with tooltip
+- Main layout: PipelinePanel moved from main column to right panel, 4-row grid restored
+- Organic brain graph v2: branching tree layout, fewer particles, deterministic from jobId
+- Phase timeline v2: compact rail, smaller icons, quieter proportions
+- Right panel: compact stack with LivePill, AgentNow, Pipeline, Activity, Tasks
+- Top metrics: 5 columns, smaller font/icon sizes, token tooltip on hover/focus
+- Vitest: 35 passed (4 new token tests)
+- Backend: 12 pipeline+token contract tests
 
 ## Constraints
 - UI remains read-only — no POST/PUT/DELETE
 - No browser mutation endpoints
-- No browser approve/apply buttons
 - source_apply requires job + intent_id (approved) before mutation
-- No unittest.mock in production packages
 - No shell=True, no 0.0.0.0
 
 ## Remaining Risks
-- Visual polish not final
-- No browser mutation actions (by design)
-- Updates via 5s polling (no WebSocket/SSE)
-- Pipeline panel placement may need layout tuning
+- No pixel-perfect visual regression system
+- Real browser screenshot/manual visual QA still recommended
+- Token usage is estimated only (from event metadata)
+- Full visual polish later
 
 ## Recommended Next Block
-Steps 343-350 — Event-Ledger Replay And Checkpoint Resume
-Or if UI exposed new gaps:
-Steps 343-350 — UI Interaction Polish And Graph Filtering
+Steps 351-358 — Event-Ledger Replay And Checkpoint Resume
+Or if visual gaps remain:
+Steps 351-358 — UI Interaction Polish And Graph Filtering
