@@ -292,6 +292,131 @@ class TestR12001Regression:
                 assert cp.safe_to_resume is False
 
 
+class TestCheckpointDataContract:
+    def test_from_approval_shows_missing_data(self, tmp_path):
+        from packages.orchestration.event_replay import replay_job, find_checkpoints, export_checkpoints_json
+        jid = str(uuid4())
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "builder_patch_parsed", "metadata": {"parse_success": True}},
+            {"event": "builder_bridge_intent_approved", "metadata": {"intent_id": "i-1"}},
+        ]
+        _write_events(tmp_path, jid, events)
+        r = replay_job(jid, str(tmp_path))
+        cps = find_checkpoints(r)
+        approved = next(c for c in cps if c.kind == "approval_recorded")
+        assert "structured_patch_payload" in approved.missing_data
+        assert approved.resume_mode_supported is False
+        exported = export_checkpoints_json(cps)
+        approved_j = next(c for c in exported if c["kind"] == "approval_recorded")
+        assert "missing_data" in approved_j
+        assert "required_data" in approved_j
+
+    def test_from_apply_shows_requirements(self, tmp_path):
+        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        jid = str(uuid4())
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "patch_intent_applied", "metadata": {}},
+        ]
+        _write_events(tmp_path, jid, events)
+        r = replay_job(jid, str(tmp_path))
+        cps = find_checkpoints(r)
+        applied = next(c for c in cps if c.kind == "source_apply_proven")
+        assert "repo_path" in applied.required_data
+        assert "test_candidate" in applied.required_data
+        assert applied.resume_mode_supported is True
+
+    def test_tests_failed_shows_repair_missing(self, tmp_path):
+        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        jid = str(uuid4())
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "patch_intent_applied", "metadata": {}},
+            {"event": "test_run_completed", "metadata": {"exit_code": 1, "passed": False}},
+        ]
+        _write_events(tmp_path, jid, events)
+        r = replay_job(jid, str(tmp_path))
+        cps = find_checkpoints(r)
+        fail_cp = next(c for c in cps if c.kind == "tests_failed")
+        assert "repair_context" in fail_cp.missing_data
+        assert fail_cp.resume_mode_supported is False
+
+
+class TestDryRunValidation:
+    def test_dry_run_no_permission_blocked(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.event_replay import resume_dry_run
+        from packages.core.models import Job, RunState
+        jid = uuid4()
+        job = Job(id=jid, name="test", state=RunState.COMPLETED, permissions={})
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "patch_intent_applied", "metadata": {}},
+        ]
+        _write_events(tmp_path, str(jid), events)
+        dr = resume_dry_run(job, f"{jid}-applied", str(tmp_path))
+        assert dr.can_resume is False
+        assert dr.blocked_reason == "permission_denied"
+
+    def test_dry_run_no_repo_blocked(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.event_replay import resume_dry_run
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.core.models import Job, RunState
+        jid = uuid4()
+        job = Job(id=jid, name="test", state=RunState.COMPLETED, metadata={})
+        set_permission(job, Capability.repo_test_run, allow=True)
+        events = [
+            {"event": "autorun_started", "metadata": {}},
+            {"event": "patch_intent_applied", "metadata": {}},
+        ]
+        _write_events(tmp_path, str(jid), events)
+        dr = resume_dry_run(job, f"{jid}-applied", str(tmp_path))
+        assert dr.can_resume is False
+        assert dr.blocked_reason == "missing_repo_path"
+
+    def test_dry_run_creates_no_events(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.event_replay import resume_dry_run
+        from packages.orchestration.timeline import load_run_events
+        from packages.core.models import Job, RunState
+        jid = uuid4()
+        job = Job(id=jid, name="test", state=RunState.COMPLETED, permissions={})
+        events = [{"event": "autorun_started", "metadata": {}}]
+        _write_events(tmp_path, str(jid), events)
+        before = load_run_events(tmp_path, str(jid))
+        resume_dry_run(job, f"{jid}-applied", str(tmp_path))
+        after = load_run_events(tmp_path, str(jid))
+        assert len(after) == len(before)
+
+
+class TestDocsExist:
+    def test_resume_docs_exist(self):
+        from pathlib import Path
+        doc = Path("docs/resume.md")
+        assert doc.is_file()
+        content = doc.read_text()
+        assert "from_apply" in content
+        assert "missing_patch_payload" in content
+        assert "dry-run" in content.lower()
+        assert "read-only" in content.lower()
+
+    def test_resume_docs_commands_catalog_valid(self):
+        import re
+        from pathlib import Path
+        from apps.cli.command_catalog import CATALOG
+        catalog_subs = {(c.group_id, c.subcommand) for c in CATALOG}
+
+        doc = Path("docs/resume.md")
+        content = doc.read_text()
+        for m in re.finditer(r"remedy\s+(\w+)\s+(\w[\w-]*)", content):
+            group, sub = m.group(1), m.group(2)
+            if group == "do":
+                continue
+            assert (group, sub) in catalog_subs, f"Unknown command: remedy {group} {sub}"
+
+
 class TestResumeDryRun:
     def test_dry_run_from_approved_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -313,9 +438,17 @@ class TestResumeDryRun:
     def test_dry_run_from_apply_resumable(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.event_replay import resume_dry_run
+        from packages.orchestration.permissions import Capability, set_permission
         from packages.core.models import Job, RunState
         jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED)
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\n")
+        (repo / "tests").mkdir()
+        (repo / "tests" / "test_x.py").write_text("def test_x(): pass\n")
+        job = Job(id=jid, name="test", state=RunState.COMPLETED,
+                  metadata={"target_repo": str(repo)})
+        set_permission(job, Capability.repo_test_run, allow=True)
         events = [
             {"event": "autorun_started", "metadata": {}},
             {"event": "source_context_injected", "metadata": {}},

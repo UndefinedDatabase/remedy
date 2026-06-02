@@ -686,102 +686,28 @@ def _cmd_resume(
         print(f"Error: checkpoint not safe to resume: {cp.blocked_reason}", file=sys.stderr)
         sys.exit(1)
 
-    append_run_event(data_dir, job_id, event="resume_started", metadata={
-        "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
-        "resume_mode": cp.resume_mode,
-    })
-
-    # Resume from_apply: run tests on already-applied repo
+    # Resume from_apply: run tests via Remedy's test_runner
     if cp.resume_mode == "from_apply":
-        from packages.orchestration.permissions import Capability, is_allowed
-        if not is_allowed(job, Capability.repo_test_run):
-            append_run_event(data_dir, job_id, event="resume_blocked", metadata={
-                "checkpoint_id": checkpoint_id, "blocked_reason": "permission_denied",
-            })
-            if json_output:
-                print(_json.dumps({"resumed": False, "blocked_reason": "permission_denied"}))
-            else:
-                print("Resume blocked: repo_test_run permission not granted.")
-            return
-
-        repo_path = (job.metadata or {}).get("target_repo") or (job.metadata or {}).get("repo_path")
-        if not repo_path:
-            append_run_event(data_dir, job_id, event="resume_blocked", metadata={
-                "checkpoint_id": checkpoint_id, "blocked_reason": "missing_repo_path",
-            })
-            if json_output:
-                print(_json.dumps({"resumed": False, "blocked_reason": "missing_repo_path"}))
-            else:
-                print("Resume blocked: no target repo path on job.")
-            return
-
-        from pathlib import Path as _Path
-        import subprocess as _sp
-        repo = _Path(repo_path).resolve()
-        if not repo.is_dir():
-            append_run_event(data_dir, job_id, event="resume_blocked", metadata={
-                "checkpoint_id": checkpoint_id, "blocked_reason": "repo_path_not_found",
-            })
-            if json_output:
-                print(_json.dumps({"resumed": False, "blocked_reason": "repo_path_not_found"}))
-            else:
-                print(f"Resume blocked: repo path not found: {repo}")
-            return
-
-        # Discover test command
-        test_cmd: list[str] | None = None
-        if (repo / "Makefile").is_file():
-            test_cmd = ["make", "test"]
-        elif (repo / "pyproject.toml").is_file() or (repo / "tests").is_dir():
-            test_cmd = [sys.executable, "-m", "pytest", "-x", "-q", "--tb=short", "--no-header"]
-
-        if not test_cmd:
-            append_run_event(data_dir, job_id, event="resume_blocked", metadata={
-                "checkpoint_id": checkpoint_id, "blocked_reason": "missing_test_candidate",
-            })
-            if json_output:
-                print(_json.dumps({"resumed": False, "blocked_reason": "missing_test_candidate"}))
-            else:
-                print("Resume blocked: no test command discovered.")
-            return
-
-        import os as _os
-        env = {**_os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
-        append_run_event(data_dir, job_id, event="resume_test_started", metadata={
-            "checkpoint_id": checkpoint_id,
-        })
-        try:
-            proc = _sp.run(
-                test_cmd, capture_output=True, text=True, timeout=60,
-                cwd=str(repo), env=env,
-            )
-            passed = proc.returncode == 0
-        except (_sp.TimeoutExpired, OSError):
-            passed = False
-
-        append_run_event(data_dir, job_id, event="resume_test_completed", metadata={
-            "checkpoint_id": checkpoint_id, "passed": passed,
-        })
-        append_run_event(data_dir, job_id, event="resume_completed", metadata={
-            "checkpoint_id": checkpoint_id, "stage": "test_run_completed",
-            "tests_passed": passed,
-        })
-
-        stage = "test_run_completed"
-        stop = "" if passed else "test_failed_after_apply"
+        from packages.orchestration.event_replay import (
+            execute_resume_from_apply,
+            export_resume_result_json,
+        )
+        result = execute_resume_from_apply(job, checkpoint_id, data_dir)
         if json_output:
-            print(_json.dumps({
-                "resumed": True, "stage": stage,
-                "tests_passed": passed, "stop_reason": stop,
-                "job_id": str(job_id),
-            }))
+            print(_json.dumps(export_resume_result_json(result), indent=2))
         else:
-            result_str = "passed" if passed else "failed"
-            print(f"Resumed from {cp.kind}. Tests {result_str}.")
+            if result.resumed:
+                status_str = "passed" if result.tests_passed else "failed"
+                print(f"Resumed from {cp.kind}. Tests {status_str}.")
+                if result.test_run_id:
+                    print(f"  Test run: {result.test_run_id}")
+            else:
+                print(f"Resume blocked: {result.blocked_reason}")
         return
 
     # Unimplemented resume mode — do not fake success
-    append_run_event(data_dir, job_id, event="resume_blocked", metadata={
+    from packages.orchestration.timeline import append_run_event as _emit
+    _emit(data_dir, job_id, event="resume_blocked", metadata={
         "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
         "blocked_reason": "resume_mode_not_implemented",
     })

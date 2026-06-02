@@ -66,12 +66,17 @@ class JobCheckpoint:
     status: str = "available"
     safe_to_resume: bool = False
     resume_mode: str = ""
+    resume_mode_supported: bool = False
+    inspectable: bool = True
+    dry_run_available: bool = True
     event_id: str = ""
     event_at: str = ""
     reason: str = ""
     blocked_reason: str = ""
     required_capabilities: list[str] = field(default_factory=list)
     required_approvals: list[str] = field(default_factory=list)
+    required_data: list[str] = field(default_factory=list)
+    missing_data: list[str] = field(default_factory=list)
     related_intent_id: str = ""
     related_task_id: str = ""
     next_command: str = ""
@@ -232,6 +237,7 @@ def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
             label="Source context ready",
             status="inspectable",
             safe_to_resume=False, resume_mode="from_context",
+            resume_mode_supported=False,
             blocked_reason="resume_mode_not_implemented",
             next_command=f"remedy event replay {jid} --json",
         ))
@@ -257,8 +263,11 @@ def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
             status="blocked",
             safe_to_resume=False,
             resume_mode="from_approval",
+            resume_mode_supported=False,
             blocked_reason="missing_patch_payload",
             required_capabilities=["repo_generated_write"],
+            required_data=["structured_patch_payload", "intent_id"],
+            missing_data=["structured_patch_payload"],
             related_intent_id=replay.approval.get("intent_id", ""),
             next_command=f"remedy event replay {jid} --json",
         ))
@@ -270,7 +279,9 @@ def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
             label="Patch applied — resume to tests",
             status="available",
             safe_to_resume=True, resume_mode="from_apply",
+            resume_mode_supported=True,
             required_capabilities=["repo_test_run"],
+            required_data=["repo_path", "test_candidate"],
             next_command=f"remedy job resume {jid} --checkpoint {jid}-applied --json",
         ))
 
@@ -281,7 +292,10 @@ def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
             label="Tests failed",
             status="blocked",
             safe_to_resume=False, resume_mode="from_test_failure",
+            resume_mode_supported=False,
             blocked_reason="resume_mode_not_implemented",
+            required_data=["repair_context"],
+            missing_data=["repair_context"],
             next_command=f"remedy job summary {jid} --json",
         ))
 
@@ -309,12 +323,29 @@ def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
     return checkpoints
 
 
+def _validate_from_apply(job: Any) -> str:
+    """Validate from_apply prerequisites. Returns blocked_reason or empty string."""
+    from packages.orchestration.permissions import Capability, is_allowed
+    if not is_allowed(job, Capability.repo_test_run):
+        return "permission_denied"
+    repo_path = (job.metadata or {}).get("target_repo") or (job.metadata or {}).get("repo_path")
+    if not repo_path:
+        return "missing_repo_path"
+    if not Path(str(repo_path)).resolve().is_dir():
+        return "repo_path_not_found"
+    from packages.orchestration.command_discovery import discover_commands, select_best_test_candidate
+    candidates = discover_commands(job, Path(str(repo_path)).resolve())
+    if not select_best_test_candidate(candidates):
+        return "missing_test_candidate"
+    return ""
+
+
 def resume_dry_run(
     job: Any,
     checkpoint_id: str,
     data_dir: str | Path,
 ) -> ResumeDryRun:
-    """Preview resume without mutation."""
+    """Preview resume without mutation. Validates real capabilities."""
     replay = replay_job(str(job.id), data_dir)
     checkpoints = find_checkpoints(replay)
 
@@ -331,14 +362,24 @@ def resume_dry_run(
             job_id=str(job.id), checkpoint_id=checkpoint_id,
             checkpoint_kind=cp.kind, can_resume=False,
             blocked_reason=cp.blocked_reason or "not_resumable",
+            required_capabilities=cp.required_capabilities,
             safety_summary=f"Checkpoint '{cp.kind}' is not safe to resume: {cp.blocked_reason}",
         )
 
+    # Real validation for from_apply
+    if cp.resume_mode == "from_apply":
+        blocker = _validate_from_apply(job)
+        if blocker:
+            return ResumeDryRun(
+                job_id=str(job.id), checkpoint_id=checkpoint_id,
+                checkpoint_kind=cp.kind, can_resume=False,
+                blocked_reason=blocker,
+                required_capabilities=cp.required_capabilities,
+                safety_summary=f"Cannot resume: {blocker}",
+            )
+
     stage_map = {
-        "from_approval": "source_apply",
         "from_apply": "test_run",
-        "from_test_failure": "repair_loop",
-        "from_context": "builder",
     }
 
     return ResumeDryRun(
@@ -350,6 +391,109 @@ def resume_dry_run(
         next_command=cp.next_command,
         safety_summary=f"Would continue from '{cp.kind}' into {stage_map.get(cp.resume_mode, 'next stage')}.",
     )
+
+
+@dataclass
+class ResumeResult:
+    """Result of executing a resume."""
+    resumed: bool = False
+    blocked_reason: str = ""
+    checkpoint_id: str = ""
+    checkpoint_kind: str = ""
+    resume_mode: str = ""
+    stage: str = ""
+    test_run_id: str = ""
+    tests_passed: bool | None = None
+    stop_reason: str = ""
+    output_truncated: bool = False
+    persisted_output_bytes: int = 0
+
+
+def execute_resume_from_apply(
+    job: Any,
+    checkpoint_id: str,
+    data_dir: str | Path,
+) -> ResumeResult:
+    """Execute from_apply resume using Remedy's test_runner. Returns safe result."""
+    from packages.orchestration.permissions import Capability, is_allowed
+    from packages.orchestration.test_runner import run_tests_local
+    from packages.orchestration.timeline import append_run_event
+
+    result = ResumeResult(checkpoint_id=checkpoint_id, checkpoint_kind="source_apply_proven", resume_mode="from_apply")
+    jid = job.id
+
+    # Validate
+    blocker = _validate_from_apply(job)
+    if blocker:
+        result.blocked_reason = blocker
+        append_run_event(data_dir, jid, event="resume_blocked", metadata={
+            "checkpoint_id": checkpoint_id, "blocked_reason": blocker,
+        })
+        return result
+
+    # Prepare workspace
+    workspace_root = Path(data_dir) / "workspaces" / str(jid)
+    workspace_root.mkdir(parents=True, exist_ok=True)
+
+    append_run_event(data_dir, jid, event="resume_started", metadata={
+        "checkpoint_id": checkpoint_id, "checkpoint_kind": "source_apply_proven",
+        "resume_mode": "from_apply",
+    })
+
+    append_run_event(data_dir, jid, event="resume_test_started", metadata={
+        "checkpoint_id": checkpoint_id,
+    })
+
+    record = run_tests_local(job, workspace_root, timeout_sec=60)
+
+    passed = record.status == "passed"
+    result.resumed = True
+    result.stage = "test_run_completed"
+    result.test_run_id = record.test_run_id
+    result.tests_passed = passed
+    result.stop_reason = "" if passed else "test_failed_after_apply"
+    result.output_truncated = record.output_truncated
+    result.persisted_output_bytes = record.persisted_output_bytes
+
+    append_run_event(data_dir, jid, event="resume_test_completed", metadata={
+        "checkpoint_id": checkpoint_id,
+        "test_run_id": record.test_run_id,
+        "passed": passed,
+        "status": record.status,
+        "exit_code": record.exit_code,
+        "duration_ms": record.duration_ms,
+        "output_truncated": record.output_truncated,
+        "persisted_output_bytes": record.persisted_output_bytes,
+        "command_source_type": record.command_source_type,
+        "command_confidence": record.command_confidence,
+    })
+
+    append_run_event(data_dir, jid, event="resume_completed", metadata={
+        "checkpoint_id": checkpoint_id,
+        "stage": "test_run_completed",
+        "tests_passed": passed,
+        "test_run_id": record.test_run_id,
+    })
+
+    return result
+
+
+def export_resume_result_json(r: ResumeResult) -> dict[str, Any]:
+    """Safe JSON export of resume result."""
+    return {
+        "resumed": r.resumed,
+        "blocked_reason": r.blocked_reason,
+        "checkpoint_id": r.checkpoint_id,
+        "checkpoint_kind": r.checkpoint_kind,
+        "resume_mode": r.resume_mode,
+        "stage": r.stage,
+        "test_run_id": r.test_run_id,
+        "tests_passed": r.tests_passed,
+        "stop_reason": r.stop_reason,
+        "output_truncated": r.output_truncated,
+        "persisted_output_bytes": r.persisted_output_bytes,
+        "redaction": "safe_metadata_only",
+    }
 
 
 def export_replay_json(replay: JobReplayState) -> dict[str, Any]:
@@ -392,9 +536,14 @@ def export_checkpoints_json(checkpoints: list[JobCheckpoint]) -> list[dict[str, 
             "status": c.status,
             "safe_to_resume": c.safe_to_resume,
             "resume_mode": c.resume_mode,
+            "resume_mode_supported": c.resume_mode_supported,
+            "inspectable": c.inspectable,
+            "dry_run_available": c.dry_run_available,
             "blocked_reason": c.blocked_reason,
             "required_capabilities": c.required_capabilities,
             "required_approvals": c.required_approvals,
+            "required_data": c.required_data,
+            "missing_data": c.missing_data,
             "related_intent_id": c.related_intent_id,
             "next_command": c.next_command,
         }

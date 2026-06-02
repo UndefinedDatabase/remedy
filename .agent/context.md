@@ -4,23 +4,17 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 359-366: Resume truth closure, no no-op resume claims.
+Steps 367-374: Resume execution quality, test_runner integration, dry-run truth.
 
 ## Completed
-- R-12001 fixed: from_approval no longer fakes success via run_autorun(none)
-- Checkpoint semantics truthful:
-  - context_ready: inspectable, not resumable (resume_mode_not_implemented)
-  - patch_intent_created: blocked (approval_pending)
-  - approval_recorded: blocked (missing_patch_payload — no persist yet)
-  - source_apply_proven: safe_to_resume=True (real test-runner resume)
-  - tests_failed: blocked (resume_mode_not_implemented)
-  - tests_passed: complete
-  - stopped: blocked
-- from_apply real resume: discovers test command, runs via subprocess, reports pass/fail
-- Dry-run accurate: matches checkpoint safety, never says can_resume for unimplemented
-- CLI: unimplemented modes print "blocked: resume_mode_not_implemented"
-- UI: ResumeCard shows blocked state, no fake "Resume available"
-- R-12001 regression tests: 2 tests prevent no-op resume claims
+- Ad-hoc subprocess resume replaced with execute_resume_from_apply() using run_tests_local
+- Capability-aware dry-run: validates permission, repo path, test candidate before can_resume=True
+- Resume events: resume_started, resume_test_started, resume_test_completed, resume_completed
+- Test metadata: test_run_id, output_truncated, persisted_output_bytes, command_source_type
+- Checkpoint data contract: required_data, missing_data, resume_mode_supported, inspectable, dry_run_available
+- CLI calls orchestration helper, renders safe export_resume_result_json
+- Resume docs (docs/resume.md): what replay/checkpoints are, supported/blocked modes, commands
+- 27 replay/checkpoint tests, 35 Vitest, TypeScript clean, build OK
 
 ## Constraints
 - UI remains read-only
@@ -30,11 +24,9 @@ Steps 359-366: Resume truth closure, no no-op resume claims.
 - source_apply requires permission + approved intent
 
 ## Remaining Risks
-- Only one resume mode implemented (from_apply → tests)
-- Patch persistence needed for from_approval resume
-- Repair resume needs separate implementation
+- from_approval blocked until structured patch payload persistence
+- Repair resume blocked until implementation
 - Background worker not implemented
 
 ## Recommended Next Block
-Steps 367-374 — Builder Prompt Quality And Real-Ollama Hardening
-Or: Steps 367-374 — Resume Expansion And Patch Persistence
+Steps 375-382 — Builder Prompt Quality And Real-Ollama Hardening
