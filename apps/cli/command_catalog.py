@@ -933,6 +933,47 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
 
+    CommandEntry(
+        command_id="event.replay",
+        group_id="event",
+        subcommand="replay",
+        description="Replay job progress from event ledger (safe, redacted).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("event.timeline", "job.checkpoints"),
+    ),
+
+    # ── job (additional) ────────────────────────────────────────────────
+    CommandEntry(
+        command_id="job.checkpoints",
+        group_id="job",
+        subcommand="checkpoints",
+        description="List resume-safe checkpoints for a job.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("event.replay", "job.resume"),
+    ),
+    CommandEntry(
+        command_id="job.resume",
+        group_id="job",
+        subcommand="resume",
+        description="Resume a job from a safe checkpoint.",
+        action_class="apply_write",
+        args=(
+            _JOB_ID,
+            ArgDef("--checkpoint", "Checkpoint ID to resume from", required=True, is_option=True),
+            ArgDef("--dry-run", "Preview resume without executing", required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=True,
+        may_execute_commands=True,
+        requires_permission=True,
+        related=("job.checkpoints", "event.replay"),
+    ),
+
     # ── blocker ─────────────────────────────────────────────────────────
     CommandEntry(
         command_id="blocker.list",

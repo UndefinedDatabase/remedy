@@ -593,6 +593,132 @@ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
         print(f"  Events:  {event_count}")
 
 
+def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+    from packages.orchestration.event_replay import (
+        export_checkpoints_json,
+        find_checkpoints,
+        replay_job,
+    )
+
+    data_dir = resolve_data_root()
+    replay = replay_job(job_id_str, data_dir)
+    cps = find_checkpoints(replay)
+
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "job_id": job_id_str,
+            "checkpoints": export_checkpoints_json(cps),
+        }, indent=2))
+    else:
+        if not cps:
+            print(f"No checkpoints for job {job_id_str[:8]}.")
+            return
+        for cp in cps:
+            safe = "safe" if cp.safe_to_resume else "blocked"
+            reason = f" ({cp.blocked_reason})" if cp.blocked_reason else ""
+            print(f"  [{safe}] {cp.kind}: {cp.label}{reason}")
+            if cp.next_command:
+                print(f"         next: {cp.next_command}")
+
+
+def _cmd_resume(
+    job_id_str: str,
+    *,
+    checkpoint_id: str,
+    dry_run: bool = False,
+    json_output: bool = False,
+) -> None:
+    import json as _json
+    from packages.orchestration.event_replay import (
+        export_dry_run_json,
+        resume_dry_run,
+    )
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    data_dir = resolve_data_root()
+
+    if dry_run:
+        dr = resume_dry_run(job, checkpoint_id, data_dir)
+        if json_output:
+            print(_json.dumps(export_dry_run_json(dr), indent=2))
+        else:
+            status = "can resume" if dr.can_resume else "blocked"
+            print(f"Resume dry-run: {status}")
+            print(f"  Checkpoint: {dr.checkpoint_kind}")
+            if dr.would_run_stage:
+                print(f"  Would run: {dr.would_run_stage}")
+            if dr.blocked_reason:
+                print(f"  Blocked: {dr.blocked_reason}")
+            if dr.next_command:
+                print(f"  Next: {dr.next_command}")
+            print(f"  {dr.safety_summary}")
+        return
+
+    # Real resume — conservative v1
+    from packages.orchestration.event_replay import find_checkpoints, replay_job
+    from packages.orchestration.timeline import append_run_event
+
+    replay = replay_job(job_id_str, data_dir)
+    cps = find_checkpoints(replay)
+    cp = next((c for c in cps if c.id == checkpoint_id), None)
+
+    if not cp:
+        print(f"Error: checkpoint not found: {checkpoint_id}", file=sys.stderr)
+        sys.exit(1)
+
+    if not cp.safe_to_resume:
+        append_run_event(data_dir, job_id, event="resume_blocked", metadata={
+            "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
+            "blocked_reason": cp.blocked_reason,
+        })
+        print(f"Error: checkpoint not safe to resume: {cp.blocked_reason}", file=sys.stderr)
+        sys.exit(1)
+
+    append_run_event(data_dir, job_id, event="resume_started", metadata={
+        "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
+        "resume_mode": cp.resume_mode,
+    })
+
+    # Resume from approval: continue to source_apply
+    if cp.resume_mode == "from_approval":
+        from packages.orchestration.autorun import run_autorun
+        result = run_autorun(
+            job.name, str((job.metadata or {}).get("target_repo", ".")),
+            autonomy_level=3,
+            max_cycles=1,
+            builder_provider="none",
+        )
+        append_run_event(data_dir, job_id, event="resume_completed", metadata={
+            "checkpoint_id": checkpoint_id, "stage": result.stage,
+        })
+        if json_output:
+            print(_json.dumps({"resumed": True, "stage": result.stage, "job_id": str(job_id)}))
+        else:
+            print(f"Resumed from {cp.kind}. Stage: {result.stage}")
+        return
+
+    # Default: report what would happen
+    append_run_event(data_dir, job_id, event="resume_completed", metadata={
+        "checkpoint_id": checkpoint_id, "note": "v1_conservative",
+    })
+    if json_output:
+        print(_json.dumps({"resumed": True, "checkpoint": checkpoint_id, "note": "conservative_v1"}))
+    else:
+        print(f"Resumed from {cp.kind}.")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
@@ -617,6 +743,16 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     ),
     "job.summary": lambda args: _cmd_job_summary(
         args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.checkpoints": lambda args: _cmd_checkpoints(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.resume": lambda args: _cmd_resume(
+        args.job_id,
+        checkpoint_id=getattr(args, "checkpoint", ""),
+        dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
     ),
 }

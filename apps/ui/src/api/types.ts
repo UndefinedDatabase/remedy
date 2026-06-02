@@ -70,4 +70,21 @@ export interface RemedyPipeline {
   steps: PipelineStep[];
 }
 
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; }
+export interface RemedyResumeCheckpoint {
+  id: string;
+  kind: string;
+  label: string;
+  next_command: string;
+}
+
+export interface RemedyResume {
+  replay_available: boolean;
+  replay_degraded: boolean;
+  latest_checkpoint: RemedyResumeCheckpoint | null;
+  checkpoint_count: number;
+  safe_checkpoint_count: number;
+  can_resume: boolean;
+  blocked_reason: string;
+}
+
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; }

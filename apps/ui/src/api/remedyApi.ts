@@ -150,6 +150,7 @@ export function normalizeDashboardPayload(
     },
     apiHealth: { degraded: false, failedEndpoints: [] },
     pipeline: normalizePipeline(dashboard.pipeline),
+    resume: dashboard.resume ?? null,
   };
 }
 
@@ -180,6 +181,7 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     },
     apiHealth: { degraded: true, failedEndpoints },
     pipeline: null,
+    resume: null,
   };
 }
 

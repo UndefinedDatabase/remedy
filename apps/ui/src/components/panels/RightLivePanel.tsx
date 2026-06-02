@@ -11,7 +11,7 @@ export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyD
     <aside className={styles.panel} data-ui="right-live-panel">
       <LiveStatusPill live={dashboard.live.running} />
       <AgentNowCard dashboard={dashboard} />
-      <PipelinePanel pipeline={dashboard.pipeline} />
+      <PipelinePanel pipeline={dashboard.pipeline} resume={dashboard.resume} />
       <ActivityFeedCard activity={dashboard.activity} />
       <TaskChecklistCard tasks={dashboard.tasks} onSelectNode={onSelectNode} />
     </aside>

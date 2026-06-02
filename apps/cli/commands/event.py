@@ -121,6 +121,37 @@ def _cmd_event_timeline(
             print(f"  {e.timestamp[:19]}  {e.event_type}{outcome_str}")
 
 
+def _cmd_event_replay(
+    job_id_str: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.event_replay import (
+        export_replay_json,
+        replay_job,
+    )
+
+    data_dir = resolve_data_root()
+    replay = replay_job(job_id_str, data_dir)
+
+    if json_output:
+        print(_json.dumps(export_replay_json(replay), indent=2))
+    else:
+        print(f"Replay: {replay.job_id[:8]}")
+        print(f"  Events: {replay.event_count}")
+        print(f"  Stage: {replay.current_stage}")
+        if replay.provider:
+            print(f"  Provider: {replay.provider}")
+        if replay.stop_reason:
+            print(f"  Stop reason: {replay.stop_reason}")
+        if replay.degraded:
+            print(f"  Degraded: {replay.degraded_reason}")
+        reached = [s.id for s in replay.stages if s.reached]
+        if reached:
+            print(f"  Reached: {', '.join(reached)}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "event.list": lambda args: _cmd_event_list(
         args.job_id,
@@ -135,6 +166,10 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         json_output=getattr(args, "json", False),
     ),
     "event.timeline": lambda args: _cmd_event_timeline(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "event.replay": lambda args: _cmd_event_replay(
         args.job_id,
         json_output=getattr(args, "json", False),
     ),

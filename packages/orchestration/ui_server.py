@@ -333,6 +333,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "computed_from": "job_model_and_event_ledger",
         },
         "pipeline": _build_pipeline_section(job, events),
+        "resume": _build_resume_section(job, events),
         "redaction": {
             "policy": "safe_summaries_only",
             "raw_content_exposed": False,
@@ -348,6 +349,51 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "lifecycle": lifecycle,
         },
     }
+
+
+def _build_resume_section(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build safe resume/checkpoint visibility for dashboard."""
+    try:
+        from packages.orchestration.event_replay import (
+            find_checkpoints,
+            replay_job,
+        )
+        from packages.orchestration.data_paths import resolve_data_root
+        data_dir = resolve_data_root()
+        replay = replay_job(str(job.id), data_dir)
+        cps = find_checkpoints(replay)
+
+        safe_cps = [c for c in cps if c.safe_to_resume]
+        latest_safe = safe_cps[-1] if safe_cps else None
+
+        return {
+            "replay_available": not replay.degraded,
+            "replay_degraded": replay.degraded,
+            "latest_checkpoint": {
+                "id": latest_safe.id,
+                "kind": latest_safe.kind,
+                "label": latest_safe.label,
+                "next_command": latest_safe.next_command,
+            } if latest_safe else None,
+            "checkpoint_count": len(cps),
+            "safe_checkpoint_count": len(safe_cps),
+            "can_resume": bool(safe_cps),
+            "blocked_reason": "" if safe_cps else (
+                cps[-1].blocked_reason if cps else "no_checkpoints"
+            ),
+            "last_event_at": replay.last_event_at,
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {
+            "replay_available": False,
+            "replay_degraded": True,
+            "latest_checkpoint": None,
+            "checkpoint_count": 0,
+            "safe_checkpoint_count": 0,
+            "can_resume": False,
+            "blocked_reason": "replay_error",
+            "last_event_at": "",
+        }
 
 
 def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
