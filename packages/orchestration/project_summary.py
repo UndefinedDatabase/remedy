@@ -203,6 +203,10 @@ def detect_patterns(
     stop_reasons: dict[str, list[tuple[str, str]]] = {}
     touched_files: dict[str, list[str]] = {}
     parse_failures: dict[str, list[str]] = {}
+    test_failures: list[tuple[str, str]] = []
+    permission_blocks: list[tuple[str, str]] = []
+    provider_issues: list[tuple[str, str]] = []
+    repair_exhaustions: list[tuple[str, str]] = []
 
     for job in jobs:
         jid = str(job.id)
@@ -226,6 +230,19 @@ def detect_patterns(
             if event_name == "builder_patch_parsed" and not meta.get("parse_success"):
                 ek = meta.get("error_kind", "unknown")
                 parse_failures.setdefault(ek, []).append(jid)
+
+            if event_name == "test_run_completed" and meta.get("status") == "failed":
+                test_failures.append((jid, ts))
+
+            if event_name == "stop_reason_recorded" and meta.get("stop_reason") == "permission_denied":
+                permission_blocks.append((jid, ts))
+
+            if event_name in ("autorun_builder_completed", "stop_reason_recorded"):
+                if meta.get("stop_reason") == "provider_unavailable":
+                    provider_issues.append((jid, ts))
+
+            if event_name == "repair_loop_stopped" and meta.get("reason") == "repair_budget_exhausted":
+                repair_exhaustions.append((jid, ts))
 
     pid = 0
     for sr, occurrences in stop_reasons.items():
@@ -273,6 +290,58 @@ def detect_patterns(
                 related_job_ids=unique_jobs[:5],
                 suggested_attention=f"Model may need prompt adjustment for '{ek}' failures",
             ))
+
+    if len(test_failures) >= 2:
+        unique_jobs = list({j for j, _ in test_failures})
+        pid += 1
+        patterns.append(ProjectPattern(
+            pattern_id=f"test_{pid}",
+            kind="repeated_test_failure",
+            count=len(test_failures),
+            severity="medium" if len(test_failures) >= 3 else "low",
+            summary=f"Tests failed {len(test_failures)} times across {len(unique_jobs)} job(s)",
+            related_job_ids=unique_jobs[:5],
+            suggested_attention="Check if test failures share a common root cause",
+        ))
+
+    if len(permission_blocks) >= 2:
+        unique_jobs = list({j for j, _ in permission_blocks})
+        pid += 1
+        patterns.append(ProjectPattern(
+            pattern_id=f"perm_{pid}",
+            kind="repeated_permission_block",
+            count=len(permission_blocks),
+            severity="medium",
+            summary=f"Permission denied {len(permission_blocks)} times across {len(unique_jobs)} job(s)",
+            related_job_ids=unique_jobs[:5],
+            suggested_attention="Grant required permissions or review permission policy",
+        ))
+
+    if len(provider_issues) >= 2:
+        unique_jobs = list({j for j, _ in provider_issues})
+        pid += 1
+        patterns.append(ProjectPattern(
+            pattern_id=f"prov_{pid}",
+            kind="repeated_provider_unavailable",
+            count=len(provider_issues),
+            severity="medium",
+            summary=f"Provider unavailable {len(provider_issues)} times across {len(unique_jobs)} job(s)",
+            related_job_ids=unique_jobs[:5],
+            suggested_attention="Check if local model is running and accessible",
+        ))
+
+    if len(repair_exhaustions) >= 2:
+        unique_jobs = list({j for j, _ in repair_exhaustions})
+        pid += 1
+        patterns.append(ProjectPattern(
+            pattern_id=f"repair_{pid}",
+            kind="repeated_repair_exhaustion",
+            count=len(repair_exhaustions),
+            severity="high" if len(repair_exhaustions) >= 3 else "medium",
+            summary=f"Repair budget exhausted {len(repair_exhaustions)} times across {len(unique_jobs)} job(s)",
+            related_job_ids=unique_jobs[:5],
+            suggested_attention="Model may struggle with this type of task — consider prompt changes",
+        ))
 
     return sorted(patterns, key=lambda p: -p.count)
 

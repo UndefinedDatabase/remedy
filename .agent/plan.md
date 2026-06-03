@@ -1,17 +1,17 @@
-# Plan — Steps 399-406
+# Plan — Steps 407-414
 
 ## Goal
-Project-level brain: cross-job summary, repeated patterns, model quality rollup, memory suggestions.
+Project Brain productization: UI visibility, CLI tests, model quality linkage, stronger patterns, docs.
 
 ## Current Step
 All steps complete.
 
 ## Steps
-- [x] Step 399: Clean handoff truth
-- [x] Step 400: Project brain summary v1 (ProjectBrainSummary with job counts, focus, blockers)
-- [x] Step 401: Repeated pattern detection (stop_reason, file touch, parse failure)
-- [x] Step 402: Model quality rollup (ProjectModelSummary with confidence tiers)
-- [x] Step 403: Safe memory suggestions (require approval, bounded)
-- [x] Step 404: CLI project.summary command (catalog, text, JSON)
-- [x] Step 405: Dashboard project_summary field + TypeScript types
-- [x] Step 406: Guarded baseline (4018 passed, 8 skipped, Vitest 35, TS clean, build OK)
+- [x] Step 407: Clean handoff truth
+- [x] Step 408: CLI project summary contract tests (9 tests)
+- [x] Step 409: UI ProjectSummaryCard in right panel
+- [x] Step 410: Model quality confidence from real events (not hardcoded)
+- [x] Step 411: 5 new pattern types (test failure, permission, provider, repair, one-off guard)
+- [x] Step 412: Full memory suggestion surface (titles in CLI text)
+- [x] Step 413: docs/project-brain.md with plain language
+- [x] Step 414: Guarded baseline (4036 passed, 8 skipped, Vitest 35, TS clean, build OK)

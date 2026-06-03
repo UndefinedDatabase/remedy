@@ -427,6 +427,22 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
         summary = build_project_summary(project, linked_jobs, all_events)
         patterns = detect_patterns(linked_jobs, all_events)
 
+        model_confidence = "low"
+        needs_real_check = True
+        has_builder_events = any(
+            ev.get("event") == "builder_patch_parsed"
+            for evs in all_events.values() for ev in evs
+        )
+        if has_builder_events:
+            real_provider = any(
+                ev.get("metadata", {}).get("provider") not in (None, "", "fixture", "mock")
+                for evs in all_events.values() for ev in evs
+                if ev.get("event") == "autorun_builder_completed"
+            )
+            if real_provider:
+                model_confidence = "medium"
+                needs_real_check = False
+
         return {
             "project_id": summary.project_id,
             "job_count": summary.job_count,
@@ -435,7 +451,8 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
             "current_focus": summary.current_focus,
             "top_blocker": summary.blockers[0] if summary.blockers else "",
             "repeated_pattern_count": len(patterns),
-            "model_quality_confidence": "low",
+            "model_quality_confidence": model_confidence,
+            "needs_real_model_check": needs_real_check,
             "suggested_next_step": summary.suggested_next_step,
             "next_command": summary.next_command,
             "redaction": "safe_metadata_only",

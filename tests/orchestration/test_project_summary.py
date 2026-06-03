@@ -315,3 +315,119 @@ class TestMemorySuggestions:
         for s in data:
             assert "requires_approval" in s
             assert s["requires_approval"] is True
+
+
+# -- Step 411: Stronger pattern detection --
+
+class TestStrongerPatterns:
+    """Extended pattern types: test failure, permission, provider, repair."""
+
+    def test_repeated_test_failure(self):
+        j1 = _FakeJob()
+        j2 = _FakeJob()
+        events = {
+            str(j1.id): [
+                {"event": "test_run_completed", "timestamp": "2026-06-01",
+                 "metadata": {"status": "failed"}},
+            ],
+            str(j2.id): [
+                {"event": "test_run_completed", "timestamp": "2026-06-02",
+                 "metadata": {"status": "failed"}},
+            ],
+        }
+        patterns = detect_patterns([j1, j2], events)
+        test_patterns = [p for p in patterns if p.kind == "repeated_test_failure"]
+        assert len(test_patterns) >= 1
+        assert test_patterns[0].count >= 2
+
+    def test_repeated_permission_block(self):
+        j1 = _FakeJob()
+        j2 = _FakeJob()
+        events = {
+            str(j1.id): [
+                {"event": "stop_reason_recorded", "timestamp": "2026-06-01",
+                 "metadata": {"stop_reason": "permission_denied"}},
+            ],
+            str(j2.id): [
+                {"event": "stop_reason_recorded", "timestamp": "2026-06-02",
+                 "metadata": {"stop_reason": "permission_denied"}},
+            ],
+        }
+        patterns = detect_patterns([j1, j2], events)
+        perm_patterns = [p for p in patterns if p.kind == "repeated_permission_block"]
+        assert len(perm_patterns) >= 1
+
+    def test_repeated_provider_unavailable(self):
+        j1 = _FakeJob()
+        j2 = _FakeJob()
+        events = {
+            str(j1.id): [
+                {"event": "stop_reason_recorded", "timestamp": "2026-06-01",
+                 "metadata": {"stop_reason": "provider_unavailable"}},
+            ],
+            str(j2.id): [
+                {"event": "stop_reason_recorded", "timestamp": "2026-06-02",
+                 "metadata": {"stop_reason": "provider_unavailable"}},
+            ],
+        }
+        patterns = detect_patterns([j1, j2], events)
+        prov_patterns = [p for p in patterns if p.kind == "repeated_provider_unavailable"]
+        assert len(prov_patterns) >= 1
+
+    def test_repeated_repair_exhaustion(self):
+        j1 = _FakeJob()
+        events = {
+            str(j1.id): [
+                {"event": "repair_loop_stopped", "timestamp": "2026-06-01",
+                 "metadata": {"reason": "repair_budget_exhausted"}},
+                {"event": "repair_loop_stopped", "timestamp": "2026-06-02",
+                 "metadata": {"reason": "repair_budget_exhausted"}},
+            ],
+        }
+        patterns = detect_patterns([j1], events)
+        repair_patterns = [p for p in patterns if p.kind == "repeated_repair_exhaustion"]
+        assert len(repair_patterns) >= 1
+
+    def test_one_off_not_over_severity(self):
+        job = _FakeJob()
+        events = {str(job.id): [
+            {"event": "test_run_completed", "timestamp": "2026-06-01",
+             "metadata": {"status": "failed"}},
+        ]}
+        patterns = detect_patterns([job], events)
+        test_patterns = [p for p in patterns if p.kind == "repeated_test_failure"]
+        assert len(test_patterns) == 0
+
+
+# -- Step 413: Docs --
+
+class TestProjectBrainDocs:
+    """Project brain docs exist and are accurate."""
+
+    def test_docs_exist(self):
+        from pathlib import Path
+        docs = Path(__file__).resolve().parents[2] / "docs" / "project-brain.md"
+        assert docs.exists()
+
+    def test_docs_mention_commands(self):
+        from pathlib import Path
+        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
+        assert "remedy project summary" in text
+        assert "remedy project show" in text
+
+    def test_docs_no_auto_memory_claim(self):
+        from pathlib import Path
+        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
+        assert "approval" in text.lower()
+        assert "does not auto-write" in text.lower() or "require" in text.lower()
+
+    def test_docs_commands_catalog_valid(self):
+        from pathlib import Path
+        import re
+        from apps.cli.command_catalog import CATALOG
+
+        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
+        cmds = re.findall(r"remedy (\w+) (\w[\w-]*)", text)
+        catalog_groups = {e.group_id for e in CATALOG}
+        for group, _sub in cmds:
+            assert group in catalog_groups, f"Command group '{group}' not in catalog"

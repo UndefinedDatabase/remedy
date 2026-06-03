@@ -1,5 +1,6 @@
 import type { RemedyDashboard } from "../../api/types";
 import { PipelinePanel } from "../pipeline/PipelinePanel";
+import { ProjectSummaryCard } from "../pipeline/ProjectSummaryCard";
 import { ActivityFeedCard } from "./ActivityFeedCard";
 import { AgentNowCard } from "./AgentNowCard";
 import { LiveStatusPill } from "./LiveStatusPill";
@@ -11,6 +12,7 @@ export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyD
     <aside className={styles.panel} data-ui="right-live-panel">
       <LiveStatusPill live={dashboard.live.running} />
       <AgentNowCard dashboard={dashboard} />
+      <ProjectSummaryCard summary={dashboard.projectSummary} />
       <PipelinePanel pipeline={dashboard.pipeline} resume={dashboard.resume} />
       <ActivityFeedCard activity={dashboard.activity} />
       <TaskChecklistCard tasks={dashboard.tasks} onSelectNode={onSelectNode} />

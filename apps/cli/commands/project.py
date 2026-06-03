@@ -276,7 +276,9 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
             for p in patterns[:3]:
                 print(f"  - [{p.severity}] {p.summary}")
         if suggestions:
-            print(f"Memory suggestions: {len(suggestions)} (require approval)")
+            print(f"Memory suggestions: {len(suggestions)} (approval required)")
+            for s in suggestions[:3]:
+                print(f"  - {s.title}")
         if summary.suggested_next_step:
             print(f"Next step: {summary.suggested_next_step}")
         if summary.next_command:
