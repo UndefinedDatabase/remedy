@@ -4,14 +4,17 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 415-424: Mission Control design fit — complete.
+Steps 425-434: Real local model quality — complete.
 
 ## Completed
-- docs/ui-target.md: written target, proportions, QA checklist
-- Right panel: flexbox compact stack, lighter card styles
-- ProjectSummaryCard v2: chip layout, accessible button, mini card aesthetic
-- UI drift tests: 13 tests preventing design regression
-- Responsive test updated for flexbox panel layout
+- Timeline truth: removed fake 28-dot micro events
+- Explicit model checks: --example flag, --ollama requires REMEDY_REAL_OLLAMA_EVAL=1
+- Task set v2: 8 cases (missing_function, wrong_return, import_fix, test_repair, unsafe_path, stale, no_op, multi_file)
+- Scorecard v2: expected outcome tracking, multi-file case
+- Failure advice: prose/malformed/clean pattern detection
+- Prompt trial: compare_profiles, export_trial_result_json
+- Model profile: confidence tiers, fixture=low
+- CLI report: --example/--ollama/--json with model_profile
 
 ## Resource-Safety Rules (permanent)
 - Never run pytest in background
@@ -20,11 +23,8 @@ Steps 415-424: Mission Control design fit — complete.
 
 ## Constraints
 - UI remains read-only
-- No fake data in UI
-- No major redesign — refinement only
-
-## Note on live_review.md
-R-18001: detailed review history (Steps 321-414) was truncated from working file across sessions. Detailed history preserved in git (67cc20f and earlier commits). This is expected for .data/ (gitignored) files that get recreated each session.
+- No fake timeline events
+- No raw content in reports
 
 ## Recommended Next Block
-Steps 425-432 — Real Ollama Run Set And Prompt Improvement
+Steps 435-444 — Background Worker v1 And Job Lifecycle

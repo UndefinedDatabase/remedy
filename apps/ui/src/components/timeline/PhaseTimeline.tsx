@@ -24,12 +24,6 @@ export function PhaseTimeline({ phases }: { phases: RemedyPhase[] }) {
           );
         })}
       </div>
-      <div className={styles.microLine}>
-        {Array.from({ length: 28 }, (_, i) => <span key={i} className={i % 5 === 0 ? styles.microStrong : ""} />)}
-      </div>
-      <footer className={styles.legend}>
-        <span>LLM Action</span><span>Test</span><span>Review</span>
-      </footer>
     </section>
   );
 }

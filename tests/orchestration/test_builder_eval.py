@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 import pytest
 
@@ -17,15 +18,18 @@ from packages.orchestration.builder_eval import (
     EvalReport,
     ModelProfile,
     PromptRecommendation,
+    PromptTrialResult,
     Scorecard,
     ScorecardEntry,
     TaskCase,
     aggregate_records,
     build_model_profile,
     build_scorecard,
+    compare_profiles,
     export_eval_report_json,
     export_model_profile_json,
     export_scorecard_json,
+    export_trial_result_json,
     recommend_prompt_changes,
     run_fixture_eval,
     run_single_eval,
@@ -515,3 +519,238 @@ class TestModelProfile:
         p1 = build_model_profile(sc1)
         p2 = build_model_profile(sc2)
         assert p1.prompt_profile != p2.prompt_profile
+
+
+# -- Step 427: Task set v2 --
+
+class TestTaskSetV2:
+    """Extended task set with 8 cases."""
+
+    def test_task_set_has_eight_cases(self):
+        tasks = standard_task_set()
+        assert len(tasks) == 8
+
+    def test_multi_file_case_exists(self):
+        tasks = standard_task_set()
+        multi = [t for t in tasks if t.name == "multi_file_change"]
+        assert len(multi) == 1
+        assert multi[0].patch_json is not None
+        assert len(multi[0].patch_json["file_ops"]) == 2
+
+    def test_all_expected_outcomes_present(self):
+        tasks = standard_task_set()
+        outcomes = {t.expected_outcome for t in tasks}
+        assert outcomes == {"accepted", "rejected", "blocked"}
+
+    def test_no_op_case_has_no_patch(self):
+        tasks = standard_task_set()
+        noop = [t for t in tasks if t.name == "no_change_needed"]
+        assert len(noop) == 1
+        assert noop[0].patch_json is None
+        assert noop[0].expected_outcome == "blocked"
+
+
+# -- Step 428: Instruction profiles verified --
+
+class TestInstructionProfiles:
+    """Three instruction profiles are genuinely different."""
+
+    def test_three_profiles_exist(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        assert len(PROMPT_PROFILES) >= 3
+
+    def test_profiles_have_different_text(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        texts = {p.system_text for p in PROMPT_PROFILES.values()}
+        assert len(texts) == len(PROMPT_PROFILES)
+
+    def test_each_profile_forbids_prose(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        for name, p in PROMPT_PROFILES.items():
+            assert "no prose" in p.system_text.lower() or "no markdown" in p.system_text.lower(), \
+                f"{name} must forbid prose"
+
+    def test_each_profile_forbids_shell(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        for name, p in PROMPT_PROFILES.items():
+            assert "shell" in p.system_text.lower() or "rm" in p.system_text.lower(), \
+                f"{name} must mention shell safety"
+
+    def test_metadata_no_raw_prompt(self):
+        from packages.providers.ollama_builder.provider import (
+            PROMPT_PROFILES, get_prompt_profile_metadata,
+        )
+        for p in PROMPT_PROFILES.values():
+            meta = get_prompt_profile_metadata(p)
+            assert p.system_text not in str(vars(meta))
+            assert meta.prompt_hash != ""
+            assert meta.prompt_length > 0
+
+
+# -- Step 429: Scorecard v2 --
+
+class TestScorecardV2:
+    """Scorecard handles 8 tasks with expected outcomes."""
+
+    def _run(self):
+        tasks = standard_task_set()
+        cases = [task_case_to_eval_case(t) for t in tasks]
+        records = [run_single_eval("default", c.builder_output, fixture_name=c.name) for c in cases]
+        return build_scorecard(tasks, records)
+
+    def test_scorecard_eight_entries(self):
+        sc = self._run()
+        assert sc.total_cases == 8
+
+    def test_expected_rejection_counted_correct(self):
+        sc = self._run()
+        unsafe = [e for e in sc.entries if e.expected_outcome == "rejected"]
+        for e in unsafe:
+            assert e.safely_rejected is True
+            assert e.outcome_correct is True
+
+    def test_noop_counted_correct(self):
+        sc = self._run()
+        noop = [e for e in sc.entries if e.expected_outcome == "blocked"]
+        for e in noop:
+            assert e.parse_success is False
+            assert e.outcome_correct is True
+
+    def test_multi_file_counted(self):
+        sc = self._run()
+        multi = [e for e in sc.entries if e.case_name == "multi_file_change"]
+        assert len(multi) == 1
+        assert multi[0].parse_success is True
+
+    def test_export_has_recommendations(self):
+        sc = self._run()
+        data = export_scorecard_json(sc)
+        assert "recommendations" in data
+
+
+# -- Step 430: Failure advice --
+
+class TestFailureAdvice:
+    """Plain failure advice from scorecard patterns."""
+
+    def test_prose_heavy_advice(self):
+        entries = [
+            ScorecardEntry(case_name=f"c{i}", prompt_profile="d", provider="f", model="m",
+                           parse_success=False, safely_rejected=False, expected_outcome="accepted",
+                           outcome_correct=False, stop_reason="provider_output_prose_only",
+                           estimated_tokens=0, latency_ms=0, output_hash="", output_length=0)
+            for i in range(3)
+        ]
+        sc = Scorecard(entries=entries, total_cases=3)
+        recs = recommend_prompt_changes(sc)
+        assert any("prose" in r.pattern or "output" in r.suggestion.lower() for r in recs)
+
+    def test_malformed_heavy_advice(self):
+        entries = [
+            ScorecardEntry(case_name=f"c{i}", prompt_profile="d", provider="f", model="m",
+                           parse_success=False, safely_rejected=False, expected_outcome="accepted",
+                           outcome_correct=False, stop_reason="structured_patch_parse_failed",
+                           estimated_tokens=0, latency_ms=0, output_hash="", output_length=0)
+            for i in range(3)
+        ]
+        sc = Scorecard(entries=entries, total_cases=3)
+        recs = recommend_prompt_changes(sc)
+        assert any("malformed" in r.pattern or "format" in r.suggestion.lower() for r in recs)
+
+    def test_clean_scorecard_no_unnecessary_advice(self):
+        entries = [
+            ScorecardEntry(case_name="ok", prompt_profile="d", provider="f", model="m",
+                           parse_success=True, safely_rejected=False, expected_outcome="accepted",
+                           outcome_correct=True, stop_reason="", estimated_tokens=10,
+                           latency_ms=1, output_hash="x", output_length=50)
+        ]
+        sc = Scorecard(entries=entries, total_cases=1, outcome_accuracy=1.0)
+        recs = recommend_prompt_changes(sc)
+        assert all(r.pattern == "no_issues_detected" for r in recs)
+
+
+# -- Step 431: Prompt trial --
+
+class TestPromptTrial:
+    """Controlled prompt improvement trial."""
+
+    def _run_default(self):
+        tasks = standard_task_set()
+        cases = [task_case_to_eval_case(t) for t in tasks]
+        return tasks, [run_single_eval("default", c.builder_output, fixture_name=c.name) for c in cases]
+
+    def test_compare_same_profile(self):
+        tasks, records = self._run_default()
+        result = compare_profiles(tasks, records, records, before_profile="v1", after_profile="v1")
+        assert "No clear improvement" in result.improvement
+
+    def test_compare_different_profiles(self):
+        tasks, records = self._run_default()
+        result = compare_profiles(tasks, records, records, before_profile="v1", after_profile="v2")
+        assert result.total_tasks == len(tasks)
+        assert result.redaction == "safe_metadata_only"
+
+    def test_trial_export_safe(self):
+        tasks, records = self._run_default()
+        result = compare_profiles(tasks, records, records)
+        data = export_trial_result_json(result)
+        assert data["redaction"] == "safe_metadata_only"
+        assert "before_accuracy" in data
+        assert "after_accuracy" in data
+
+    def test_trial_can_say_no_improvement(self):
+        tasks, records = self._run_default()
+        result = compare_profiles(tasks, records, records)
+        assert "no change" in result.recommendation.lower() or "no clear" in result.improvement.lower()
+
+
+# -- Step 433: CLI report --
+
+class TestCLIReport:
+    """CLI eval script works for example mode."""
+
+    def test_example_flag_works(self):
+        import subprocess
+        result = subprocess.run(
+            ["scripts/remedy_builder_eval.sh", "--example"],
+            capture_output=True, text=True, timeout=15,
+            cwd=str(Path(__file__).resolve().parents[2]),
+        )
+        assert result.returncode == 0
+        assert "example" in result.stdout.lower() or "Provider" in result.stdout
+
+    def test_ollama_without_env_fails(self):
+        import subprocess
+        import os
+        env = {k: v for k, v in os.environ.items() if k != "REMEDY_REAL_OLLAMA_EVAL"}
+        result = subprocess.run(
+            ["scripts/remedy_builder_eval.sh", "--ollama"],
+            capture_output=True, text=True, timeout=15,
+            cwd=str(Path(__file__).resolve().parents[2]),
+            env=env,
+        )
+        assert result.returncode != 0
+        assert "REMEDY_REAL_OLLAMA_EVAL" in result.stderr
+
+    def test_example_json_valid(self):
+        import subprocess
+        result = subprocess.run(
+            ["scripts/remedy_builder_eval.sh", "--example", "--json"],
+            capture_output=True, text=True, timeout=15,
+            cwd=str(Path(__file__).resolve().parents[2]),
+        )
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["redaction"] == "safe_metadata_only"
+        assert data["provider"] == "fixture"
+
+    def test_example_json_has_model_profile(self):
+        import subprocess
+        result = subprocess.run(
+            ["scripts/remedy_builder_eval.sh", "--example", "--json"],
+            capture_output=True, text=True, timeout=15,
+            cwd=str(Path(__file__).resolve().parents[2]),
+        )
+        data = json.loads(result.stdout)
+        assert "model_profile" in data
+        assert data["model_profile"]["confidence"] == "low"

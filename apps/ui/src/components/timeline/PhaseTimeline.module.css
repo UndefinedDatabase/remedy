@@ -63,33 +63,3 @@
 
 .done .phaseIcon { color: var(--remedy-green-500); }
 .pending { opacity: .55; }
-
-.microLine {
-  margin: clamp(6px, 0.8vh, 10px) 40px 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.microLine span {
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: rgba(76,131,255,.2);
-}
-
-.microLine .microStrong {
-  width: 4px;
-  height: 4px;
-  background: rgba(76,131,255,.45);
-}
-
-.legend {
-  margin-top: clamp(4px, 0.6vh, 8px);
-  display: flex;
-  justify-content: center;
-  gap: clamp(20px, 3vw, 40px);
-  color: var(--remedy-muted);
-  font-size: 9px;
-  font-weight: 700;
-}

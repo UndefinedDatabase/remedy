@@ -1,19 +1,19 @@
-# Plan — Steps 415-424
+# Plan — Steps 425-434
 
 ## Goal
-UI design fit: compact right panel, ProjectSummaryCard v2, timeline target, graph dominance, drift tests.
+Real local model quality: timeline truth, explicit model checks, scorecard v2, failure advice, profile records.
 
 ## Current Step
 All steps complete.
 
 ## Steps
-- [x] Step 415: Clean review history and handoff
-- [x] Step 416: UI target doc (docs/ui-target.md)
-- [x] Step 417: Right panel compact stack (flexbox, lighter cards)
-- [x] Step 418: ProjectSummaryCard v2 (chips, accessible button, mini card)
-- [x] Step 419: Timeline already at target spec (checked, 24px icons, slim rail)
-- [x] Step 420: Graph dominance guarded (4-row main, no fifth row tests)
-- [x] Step 421: Metrics already at target (5 columns, token tooltip)
-- [x] Step 422: UI drift tests (13 tests in test_design_drift.py)
-- [x] Step 423: Manual QA checklist (in docs/ui-target.md)
-- [x] Step 424: Guarded baseline (4051 passed, 8 skipped, Vitest 35, TS clean, build OK)
+- [x] Step 425: Handoff + remove fake timeline dots (28-dot row removed)
+- [x] Step 426: Explicit model checks (--example flag, --ollama exits nonzero without env)
+- [x] Step 427: Task set v2 (8 cases including multi-file)
+- [x] Step 428: Three instruction profiles verified different
+- [x] Step 429: Scorecard v2 (8 tasks, expected outcome tracking)
+- [x] Step 430: Plain failure advice (prose/malformed/clean patterns)
+- [x] Step 431: Controlled prompt trial (compare_profiles, export_trial_result_json)
+- [x] Step 432: Model profile record (confidence tiers, needs_real_check)
+- [x] Step 433: CLI report (--example, --ollama, --json, model_profile in output)
+- [x] Step 434: Baseline (4079 passed, 8 skipped, Vitest 35, TS clean, build OK)

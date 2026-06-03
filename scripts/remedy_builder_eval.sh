@@ -1,48 +1,48 @@
 #!/usr/bin/env bash
-# remedy_builder_eval.sh — Run builder prompt quality checks.
+# remedy_builder_eval.sh — Check builder output quality.
 #
-# Simulated answers (always safe, no network):
-#   scripts/remedy_builder_eval.sh --fixture
-#   scripts/remedy_builder_eval.sh --fixture --json
+# Example runs (always safe, no network):
+#   scripts/remedy_builder_eval.sh --example
+#   scripts/remedy_builder_eval.sh --example --json
 #
 # Real local model (only when explicitly enabled):
 #   REMEDY_REAL_OLLAMA_EVAL=1 scripts/remedy_builder_eval.sh --ollama
 #   REMEDY_REAL_OLLAMA_EVAL=1 scripts/remedy_builder_eval.sh --ollama --json
 #
-# Without REMEDY_REAL_OLLAMA_EVAL=1, --ollama shows simulated results
-# and tells you how to enable real model checks.
+# --fixture is an alias for --example.
+# --ollama without REMEDY_REAL_OLLAMA_EVAL=1 exits with error.
 
 set -euo pipefail
 
 PYTHON="${REMEDY_PYTHON:-python3}"
-MODE="fixture"
+MODE="example"
 JSON_FLAG=""
 
 for arg in "$@"; do
     case "$arg" in
-        --fixture) MODE="fixture" ;;
-        --ollama)  MODE="ollama" ;;
-        --json)    JSON_FLAG="yes" ;;
+        --example|--fixture) MODE="example" ;;
+        --ollama) MODE="ollama" ;;
+        --json) JSON_FLAG="yes" ;;
         *) echo "Unknown argument: $arg" >&2; exit 1 ;;
     esac
 done
 
 if [ "$MODE" = "ollama" ] && [ -z "${REMEDY_REAL_OLLAMA_EVAL:-}" ]; then
-    if [ -z "${JSON_FLAG}" ]; then
-        echo "remedy_builder_eval: --ollama requested but REMEDY_REAL_OLLAMA_EVAL is not set."
-        echo "  Showing simulated results below."
-        echo "  To run with a real local model:"
-        echo "    REMEDY_REAL_OLLAMA_EVAL=1 scripts/remedy_builder_eval.sh --ollama"
-        echo ""
-    fi
-    MODE="fixture"
+    echo "ERROR: --ollama requires REMEDY_REAL_OLLAMA_EVAL=1" >&2
+    echo "" >&2
+    echo "  To run with a real local model:" >&2
+    echo "    REMEDY_REAL_OLLAMA_EVAL=1 scripts/remedy_builder_eval.sh --ollama" >&2
+    echo "" >&2
+    echo "  For example runs (no network):" >&2
+    echo "    scripts/remedy_builder_eval.sh --example" >&2
+    exit 1
 fi
 
 if [ -z "${JSON_FLAG}" ]; then
     if [ "$MODE" = "ollama" ]; then
         echo "remedy_builder_eval: running real local model check (Ollama)"
     else
-        echo "remedy_builder_eval: running with simulated answers (no network)"
+        echo "remedy_builder_eval: running example checks (no network)"
     fi
 fi
 
@@ -64,10 +64,11 @@ from packages.orchestration.builder_eval import (
     export_scorecard_json,
     build_model_profile,
     export_model_profile_json,
+    recommend_prompt_changes,
     run_single_eval,
 )
 
-if mode == 'ollama' and os.environ.get('REMEDY_REAL_OLLAMA_EVAL'):
+if mode == 'ollama':
     try:
         from packages.providers.ollama_builder.provider import OllamaBuilder
         from packages.orchestration.builder_models import TaskExecutionContext
@@ -115,42 +116,43 @@ if mode == 'ollama' and os.environ.get('REMEDY_REAL_OLLAMA_EVAL'):
         sc = build_scorecard(tasks, records, provider='ollama', model=builder.model,
                              prompt_profile=builder.prompt_profile_name)
         profile = build_model_profile(sc)
+        recs = recommend_prompt_changes(sc)
         data = export_scorecard_json(sc)
         data['model_profile'] = export_model_profile_json(profile)
     except ImportError:
         print('ERROR: ollama package not installed. pip install ollama', file=sys.stderr)
         sys.exit(1)
     except Exception as exc:
-        print(f'ERROR: Ollama unavailable: {type(exc).__name__}', file=sys.stderr)
+        print(f'ERROR: local model unavailable: {type(exc).__name__}', file=sys.stderr)
         sys.exit(1)
 else:
-    cases = standard_eval_cases()
-    report = run_fixture_eval('default', cases)
-    data = export_eval_report_json(report)
+    tasks = standard_task_set()
+    cases = [task_case_to_eval_case(t) for t in tasks]
+    records = [run_single_eval('default', c.builder_output, fixture_name=c.name) for c in cases]
+    sc = build_scorecard(tasks, records)
+    profile = build_model_profile(sc)
+    recs = recommend_prompt_changes(sc)
+    data = export_scorecard_json(sc)
+    data['model_profile'] = export_model_profile_json(profile)
 
 if json_flag == 'yes':
     print(json.dumps(data, indent=2))
 else:
-    if 'total_cases' in data:
-        print(f'Quality Scorecard (profile={data.get(\"prompt_profile\", \"default\")})')
-        print(f'  Provider: {data[\"provider\"]}')
-        print(f'  Total cases: {data[\"total_cases\"]}')
-        print(f'  Usable patch rate: {data[\"usable_patch_rate\"]:.0%}')
-        print(f'  Safe rejection rate: {data[\"safe_rejection_rate\"]:.0%}')
-        print(f'  Outcome accuracy: {data[\"outcome_accuracy\"]:.0%}')
-        print(f'  Needs real model check: {data[\"needs_real_model_check\"]}')
-        if data.get('recommendations'):
-            print(f'  Recommendations:')
-            for r in data['recommendations']:
-                print(f'    - [{r[\"confidence\"]}] {r[\"suggestion\"]}')
-        print(f'  Redaction: {data[\"redaction\"]}')
-    else:
-        m = data['metrics']
-        print(f'Builder Eval Report (variant={data[\"prompt_variant\"]})')
-        print(f'  Provider: {data[\"provider\"]}')
-        print(f'  Total cases: {m[\"total_cases\"]}')
-        print(f'  Parse success: {m[\"parse_success_count\"]}/{m[\"total_cases\"]} ({m[\"parse_success_rate\"]:.0%})')
-        print(f'  Unsafe rejections: {m[\"unsafe_rejection_count\"]}')
-        print(f'  Recommendation: {data[\"recommendation\"]}')
-        print(f'  Redaction: {data[\"redaction\"]}')
+    print(f'Model Quality Report (profile={data.get(\"prompt_profile\", \"default\")})')
+    print(f'  Provider: {data[\"provider\"]}')
+    print(f'  Total tasks: {data[\"total_cases\"]}')
+    print(f'  Usable patch rate: {data[\"usable_patch_rate\"]:.0%}')
+    print(f'  Safe rejection rate: {data[\"safe_rejection_rate\"]:.0%}')
+    print(f'  Outcome accuracy: {data[\"outcome_accuracy\"]:.0%}')
+    print(f'  Avg tokens: {data[\"average_tokens\"]:.0f}')
+    print(f'  Needs real model check: {data[\"needs_real_model_check\"]}')
+    mp = data.get('model_profile', {})
+    if mp:
+        print(f'  Confidence: {mp.get(\"confidence\", \"low\")}')
+        print(f'  Recommendation: {mp.get(\"recommendation\", \"\")}')
+    if data.get('recommendations'):
+        print(f'  Advice:')
+        for r in data['recommendations']:
+            print(f'    - [{r[\"confidence\"]}] {r[\"suggestion\"]}')
+    print(f'  Redaction: {data[\"redaction\"]}')
 " "${MODE}" "${JSON_FLAG:-}"

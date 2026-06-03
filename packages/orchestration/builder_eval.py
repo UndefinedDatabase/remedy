@@ -361,6 +361,15 @@ def standard_task_set() -> list[TaskCase]:
             expected_stop_reason="no_structured_patch_text",
             patch_json=None,
         ),
+        TaskCase(
+            name="multi_file_change",
+            user_task="Add greet() to app.py and import it in main.py",
+            expected_outcome="accepted",
+            patch_json={"file_ops": [
+                {"path": "app.py", "action": "modify", "content": 'def greet():\n    return "hi"\n'},
+                {"path": "main.py", "action": "modify", "content": "from app import greet\n\nprint(greet())\n"},
+            ]},
+        ),
     ]
 
 
@@ -709,6 +718,78 @@ def export_model_profile_json(profile: ModelProfile) -> dict[str, Any]:
         "recommendation": profile.recommendation,
         "confidence": profile.confidence,
         "redaction": profile.redaction,
+    }
+
+
+# -- Step 431: Controlled prompt trial --
+
+@dataclass
+class PromptTrialResult:
+    """Comparison of two prompt profiles on the same task set."""
+
+    before_profile: str = ""
+    after_profile: str = ""
+    total_tasks: int = 0
+    before_accuracy: float = 0.0
+    after_accuracy: float = 0.0
+    before_usable_rate: float = 0.0
+    after_usable_rate: float = 0.0
+    improvement: str = ""
+    recommendation: str = ""
+    redaction: str = "safe_metadata_only"
+
+
+def compare_profiles(
+    tasks: list[TaskCase],
+    before_records: list[EvalRecord],
+    after_records: list[EvalRecord],
+    *,
+    before_profile: str = "default",
+    after_profile: str = "improved",
+) -> PromptTrialResult:
+    """Compare two prompt profile runs on the same task set."""
+    sc_before = build_scorecard(tasks, before_records, prompt_profile=before_profile)
+    sc_after = build_scorecard(tasks, after_records, prompt_profile=after_profile)
+
+    acc_delta = sc_after.outcome_accuracy - sc_before.outcome_accuracy
+    usable_delta = sc_after.usable_patch_rate - sc_before.usable_patch_rate
+
+    if acc_delta > 0.05:
+        improvement = f"Improved accuracy by {acc_delta:.0%}"
+        recommendation = f"Use '{after_profile}' — better accuracy on these tasks."
+    elif acc_delta < -0.05:
+        improvement = f"Accuracy decreased by {abs(acc_delta):.0%}"
+        recommendation = f"Keep '{before_profile}' — '{after_profile}' is worse on these tasks."
+    else:
+        improvement = "No clear improvement"
+        recommendation = "No change recommended — results are similar."
+
+    return PromptTrialResult(
+        before_profile=before_profile,
+        after_profile=after_profile,
+        total_tasks=len(tasks),
+        before_accuracy=sc_before.outcome_accuracy,
+        after_accuracy=sc_after.outcome_accuracy,
+        before_usable_rate=sc_before.usable_patch_rate,
+        after_usable_rate=sc_after.usable_patch_rate,
+        improvement=improvement,
+        recommendation=recommendation,
+    )
+
+
+def export_trial_result_json(result: PromptTrialResult) -> dict[str, Any]:
+    """Export trial result as safe JSON."""
+    return {
+        "before_profile": result.before_profile,
+        "after_profile": result.after_profile,
+        "total_tasks": result.total_tasks,
+        "before_accuracy": round(result.before_accuracy, 4),
+        "after_accuracy": round(result.after_accuracy, 4),
+        "before_usable_rate": round(result.before_usable_rate, 4),
+        "after_usable_rate": round(result.after_usable_rate, 4),
+        "improvement": result.improvement,
+        "recommendation": result.recommendation,
+        "redaction": result.redaction,
     }
 
 

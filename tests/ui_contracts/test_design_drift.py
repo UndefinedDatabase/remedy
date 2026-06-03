@@ -76,7 +76,7 @@ class TestProjectCardAccessible:
 
 
 class TestTimelineCompact:
-    """Bottom timeline should be slim."""
+    """Bottom timeline should be slim and honest."""
 
     def test_timeline_uses_six_phases(self):
         tsx = (ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
@@ -97,6 +97,10 @@ class TestTimelineCompact:
         size_match = re.search(r"width:\s*(\d+)px", icon_css)
         assert size_match
         assert int(size_match.group(1)) <= 28
+
+    def test_timeline_no_fake_micro_events(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
+        assert "Array.from({ length: 28" not in tsx, "Timeline must not render fake decorative event dots"
 
 
 class TestFiveMetrics:
