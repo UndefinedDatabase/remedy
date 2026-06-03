@@ -1,17 +1,17 @@
-# Plan — Steps 383-390
+# Plan — Steps 391-398
 
 ## Goal
-Fix pytest wrapper exit-code bug, add behavioral tests, build eval harness for builder prompt quality.
+Real model quality loop: prompt profiles, task set, scorecard, failure-pattern guidance, model profiles.
 
 ## Current Step
 All steps complete.
 
 ## Steps
-- [x] Step 383: Fix pytest wrapper exit-code propagation (set +e pattern)
-- [x] Step 384: Wrapper behavior tests (6 tests: pass/fail/nonexistent/timeout/lock)
-- [x] Step 385: Clean handoff truth
-- [x] Step 386: Builder eval harness (EvalRecord, EvalMetrics, EvalReport)
-- [x] Step 387: Prompt variants + structured output metrics (9 standard cases)
-- [x] Step 388: Small-repo eval set, Ollama opt-in (4 fixtures + unsafe scenario)
-- [x] Step 389: Eval CLI script (scripts/remedy_builder_eval.sh)
-- [x] Step 390: Guarded baseline (3968 passed, 8 skipped via fixed wrapper)
+- [x] Step 391: Clean handoff truth (live_review, context, plan)
+- [x] Step 392: Honest builder eval commands (--ollama Path B, env-gated)
+- [x] Step 393: Real prompt profiles (strict_minimal, repair_aware, context_rich)
+- [x] Step 394: Small real-repo task set (7 scenarios with expected outcomes)
+- [x] Step 395: Model quality scorecard (usable_patch_rate, safe_rejection_rate, outcome_accuracy)
+- [x] Step 396: Failure-pattern prompt recommendations (prose, malformed, over/under-rejection)
+- [x] Step 397: Local model profile recommendation (confidence tiers, fixture/real)
+- [x] Step 398: Guarded baseline (3993 passed, 8 skipped via wrapper)

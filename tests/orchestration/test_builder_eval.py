@@ -1,6 +1,6 @@
-"""Tests: builder eval harness, prompt variants, small-repo eval set.
+"""Tests: builder eval harness, prompt variants, scorecard, recommendations.
 
-Fixture mode always runs in CI. Real Ollama mode opt-in via REMEDY_REAL_OLLAMA_EVAL=1.
+Fixture mode always runs in CI. Real Ollama opt-in via REMEDY_REAL_OLLAMA_EVAL=1.
 """
 
 from __future__ import annotations
@@ -15,11 +15,23 @@ from packages.orchestration.builder_eval import (
     EvalMetrics,
     EvalRecord,
     EvalReport,
+    ModelProfile,
+    PromptRecommendation,
+    Scorecard,
+    ScorecardEntry,
+    TaskCase,
     aggregate_records,
+    build_model_profile,
+    build_scorecard,
     export_eval_report_json,
+    export_model_profile_json,
+    export_scorecard_json,
+    recommend_prompt_changes,
     run_fixture_eval,
     run_single_eval,
     standard_eval_cases,
+    standard_task_set,
+    task_case_to_eval_case,
 )
 from packages.orchestration.builder_models import BuilderOutput
 
@@ -266,3 +278,240 @@ class TestRealOllamaEval:
         assert record.redaction == "safe_metadata_only"
         record_str = str(vars(record))
         assert "def hello" not in record_str
+
+
+# -- Step 393: Prompt profiles --
+
+class TestPromptProfiles:
+    """Prompt profiles must be genuinely different and contain safety rules."""
+
+    def test_profiles_exist(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        assert "strict_minimal" in PROMPT_PROFILES
+        assert "repair_aware" in PROMPT_PROFILES
+        assert "context_rich" in PROMPT_PROFILES
+
+    def test_profiles_are_different(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        texts = {p.system_text for p in PROMPT_PROFILES.values()}
+        assert len(texts) == 3, "All three profiles must have different system text"
+
+    def test_all_profiles_forbid_prose(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        for name, profile in PROMPT_PROFILES.items():
+            assert "no prose" in profile.system_text.lower() or "no markdown" in profile.system_text.lower(), \
+                f"Profile {name} must forbid prose"
+
+    def test_all_profiles_forbid_shell(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        for name, profile in PROMPT_PROFILES.items():
+            assert "shell" in profile.system_text.lower() or "rm" in profile.system_text.lower(), \
+                f"Profile {name} must mention shell safety"
+
+    def test_all_profiles_require_relative_paths(self):
+        from packages.providers.ollama_builder.provider import PROMPT_PROFILES
+        for name, profile in PROMPT_PROFILES.items():
+            assert "relative" in profile.system_text.lower() or "no /" in profile.system_text, \
+                f"Profile {name} must require relative paths"
+
+    def test_profile_metadata_no_raw_prompt(self):
+        from packages.providers.ollama_builder.provider import (
+            PROMPT_PROFILES, get_prompt_profile_metadata,
+        )
+        for profile in PROMPT_PROFILES.values():
+            meta = get_prompt_profile_metadata(profile)
+            assert meta.prompt_hash != ""
+            assert meta.prompt_length > 0
+            assert profile.system_text not in str(vars(meta))
+
+    def test_ollama_builder_accepts_profile(self):
+        from packages.providers.ollama_builder.provider import OllamaBuilder
+        builder = OllamaBuilder.__new__(OllamaBuilder)
+        builder.__init__(prompt_profile="strict_minimal")
+        assert builder.prompt_profile_name == "strict_minimal"
+        assert builder.prompt_profile.name == "strict_minimal"
+
+    def test_ollama_builder_default_profile(self):
+        from packages.providers.ollama_builder.provider import OllamaBuilder
+        builder = OllamaBuilder.__new__(OllamaBuilder)
+        builder.__init__()
+        assert builder.prompt_profile_name == "context_rich"
+
+
+# -- Step 394: Small real-repo task set --
+
+class TestTaskSet:
+    """Task set must cover real coding situations."""
+
+    def test_task_set_not_empty(self):
+        tasks = standard_task_set()
+        assert len(tasks) >= 7
+
+    def test_task_set_has_all_outcome_types(self):
+        tasks = standard_task_set()
+        outcomes = {t.expected_outcome for t in tasks}
+        assert "accepted" in outcomes
+        assert "rejected" in outcomes
+        assert "blocked" in outcomes
+
+    def test_task_case_to_eval_case(self):
+        tasks = standard_task_set()
+        for task in tasks:
+            case = task_case_to_eval_case(task)
+            assert case.name == task.name
+            assert case.category == task.expected_outcome
+
+    def test_all_task_definitions_valid(self):
+        tasks = standard_task_set()
+        for task in tasks:
+            assert task.name != ""
+            assert task.user_task != ""
+            assert task.expected_outcome in ("accepted", "rejected", "blocked")
+
+
+# -- Step 395: Scorecard --
+
+class TestScorecard:
+    """Scorecard aggregates task results into quality metrics."""
+
+    def _run_scorecard(self):
+        tasks = standard_task_set()
+        cases = [task_case_to_eval_case(t) for t in tasks]
+        records = [
+            run_single_eval("default", c.builder_output, fixture_name=c.name)
+            for c in cases
+        ]
+        return build_scorecard(tasks, records)
+
+    def test_scorecard_total_cases(self):
+        sc = self._run_scorecard()
+        assert sc.total_cases == len(standard_task_set())
+
+    def test_scorecard_has_rates(self):
+        sc = self._run_scorecard()
+        assert 0.0 <= sc.usable_patch_rate <= 1.0
+        assert 0.0 <= sc.safe_rejection_rate <= 1.0
+        assert 0.0 <= sc.outcome_accuracy <= 1.0
+
+    def test_rejected_cases_counted_correctly(self):
+        sc = self._run_scorecard()
+        rejected_entries = [e for e in sc.entries if e.expected_outcome == "rejected"]
+        assert len(rejected_entries) >= 1
+        for e in rejected_entries:
+            assert e.safely_rejected is True
+            assert e.outcome_correct is True
+
+    def test_scorecard_entries_have_redaction(self):
+        sc = self._run_scorecard()
+        for e in sc.entries:
+            assert e.redaction == "safe_metadata_only"
+
+    def test_scorecard_export_no_raw(self):
+        sc = self._run_scorecard()
+        data = export_scorecard_json(sc)
+        full = json.dumps(data)
+        assert "safe_metadata_only" in full
+        assert data["redaction"] == "safe_metadata_only"
+        assert "needs_real_model_check" in data
+
+    def test_scorecard_fixture_needs_real_check(self):
+        sc = self._run_scorecard()
+        assert sc.needs_real_model_check is True
+
+
+# -- Step 396: Failure-pattern recommendations --
+
+class TestRecommendations:
+    """Recommendations based on scorecard patterns."""
+
+    def test_prose_heavy_recommends_stricter_output(self):
+        entries = [
+            ScorecardEntry(case_name=f"case{i}", prompt_profile="default",
+                           provider="fixture", model="mock",
+                           parse_success=False, safely_rejected=False,
+                           expected_outcome="accepted", outcome_correct=False,
+                           stop_reason="provider_output_prose_only",
+                           estimated_tokens=0, latency_ms=0,
+                           output_hash="", output_length=0)
+            for i in range(3)
+        ]
+        sc = Scorecard(entries=entries, total_cases=3)
+        recs = recommend_prompt_changes(sc)
+        assert any(r.pattern == "frequent_prose" for r in recs)
+
+    def test_clean_scorecard_no_unnecessary_recs(self):
+        entries = [
+            ScorecardEntry(case_name="ok", prompt_profile="default",
+                           provider="fixture", model="mock",
+                           parse_success=True, safely_rejected=False,
+                           expected_outcome="accepted", outcome_correct=True,
+                           stop_reason="", estimated_tokens=10, latency_ms=1,
+                           output_hash="abc", output_length=50)
+        ]
+        sc = Scorecard(entries=entries, total_cases=1, outcome_accuracy=1.0)
+        recs = recommend_prompt_changes(sc)
+        assert all(r.pattern == "no_issues_detected" for r in recs)
+
+    def test_scorecard_export_includes_recommendations(self):
+        tasks = standard_task_set()
+        cases = [task_case_to_eval_case(t) for t in tasks]
+        records = [
+            run_single_eval("default", c.builder_output, fixture_name=c.name)
+            for c in cases
+        ]
+        sc = build_scorecard(tasks, records)
+        data = export_scorecard_json(sc)
+        assert "recommendations" in data
+        assert isinstance(data["recommendations"], list)
+
+
+# -- Step 397: Model profile recommendation --
+
+class TestModelProfile:
+    """Model profile from scorecard data."""
+
+    def test_fixture_profile_low_confidence(self):
+        tasks = standard_task_set()
+        cases = [task_case_to_eval_case(t) for t in tasks]
+        records = [
+            run_single_eval("default", c.builder_output, fixture_name=c.name)
+            for c in cases
+        ]
+        sc = build_scorecard(tasks, records)
+        profile = build_model_profile(sc)
+        assert profile.confidence == "low"
+        assert "fixture" in profile.recommendation.lower() or "real" in profile.recommendation.lower()
+
+    def test_empty_data_profile(self):
+        sc = Scorecard()
+        profile = build_model_profile(sc)
+        assert profile.sample_count == 0
+        assert profile.confidence == "low"
+        assert "no data" in profile.recommendation.lower()
+
+    def test_profile_export_safe(self):
+        tasks = standard_task_set()
+        cases = [task_case_to_eval_case(t) for t in tasks]
+        records = [
+            run_single_eval("default", c.builder_output, fixture_name=c.name)
+            for c in cases
+        ]
+        sc = build_scorecard(tasks, records)
+        profile = build_model_profile(sc)
+        data = export_model_profile_json(profile)
+        assert data["redaction"] == "safe_metadata_only"
+        assert "provider" in data
+        assert "confidence" in data
+
+    def test_two_profiles_comparable(self):
+        tasks = standard_task_set()
+        cases = [task_case_to_eval_case(t) for t in tasks]
+        records = [
+            run_single_eval("default", c.builder_output, fixture_name=c.name)
+            for c in cases
+        ]
+        sc1 = build_scorecard(tasks, records, prompt_profile="strict_minimal")
+        sc2 = build_scorecard(tasks, records, prompt_profile="repair_aware")
+        p1 = build_model_profile(sc1)
+        p2 = build_model_profile(sc2)
+        assert p1.prompt_profile != p2.prompt_profile
