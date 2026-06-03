@@ -27,7 +27,8 @@ done
 
 if [ -z "${JSON_FLAG}" ]; then
     if [ "$MODE" = "ollama" ]; then
-        echo "remedy_builder_eval: running with real Ollama (opt-in)"
+        echo "remedy_builder_eval: REMEDY_REAL_OLLAMA_EVAL=1 exported for pytest"
+        echo "remedy_builder_eval: fixture eval shown below; use pytest for real Ollama tests"
     else
         echo "remedy_builder_eval: running fixture mode (no network)"
     fi
@@ -44,11 +45,11 @@ import sys
 from packages.orchestration.builder_eval import (
     run_fixture_eval,
     export_eval_report_json,
-    EvalCase,
+    standard_eval_cases,
 )
-from tests.orchestration.test_builder_eval import STANDARD_CASES
 
-report = run_fixture_eval('default', STANDARD_CASES)
+cases = standard_eval_cases()
+report = run_fixture_eval('default', cases)
 data = export_eval_report_json(report)
 
 json_flag = sys.argv[1] if len(sys.argv) > 1 else ''

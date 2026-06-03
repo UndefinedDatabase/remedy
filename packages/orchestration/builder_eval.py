@@ -204,6 +204,102 @@ def run_fixture_eval(
     )
 
 
+def standard_eval_cases() -> list[EvalCase]:
+    """Standard eval cases covering all builder response categories.
+
+    Categories: success (valid file_op, valid diff, wrapper text),
+    failure (prose, malformed JSON, no text, empty),
+    rejected (unsafe path, shell command).
+    """
+    import json
+
+    return [
+        EvalCase(
+            name="valid_file_op",
+            category="success",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text=json.dumps(
+                    {"file_ops": [{"path": "app.py", "action": "modify", "content": "x = 1\n"}]}
+                ),
+            ),
+        ),
+        EvalCase(
+            name="valid_unified_diff",
+            category="success",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text=(
+                    "--- a/calc.py\n+++ b/calc.py\n@@ -1,2 +1,2 @@\n"
+                    " def add(a, b):\n-    return a - b\n+    return a + b\n"
+                ),
+            ),
+        ),
+        EvalCase(
+            name="prose_only",
+            category="failure",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text="I think we should modify the add function to return a + b instead.",
+            ),
+        ),
+        EvalCase(
+            name="malformed_json",
+            category="failure",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text='{"file_ops": [{"path": "a.py", "action": "create", "content":',
+            ),
+        ),
+        EvalCase(
+            name="wrapper_text",
+            category="success",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text=(
+                    'Here is the fix:\n```json\n'
+                    + json.dumps({"file_ops": [{"path": "a.py", "action": "create", "content": "x\n"}]})
+                    + '\n```\n'
+                ),
+            ),
+        ),
+        EvalCase(
+            name="unsafe_path",
+            category="rejected",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text=json.dumps(
+                    {"file_ops": [{"path": "/etc/passwd", "action": "modify", "content": "x\n"}]}
+                ),
+            ),
+        ),
+        EvalCase(
+            name="shell_command",
+            category="rejected",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text="rm -rf /tmp/foo",
+            ),
+        ),
+        EvalCase(
+            name="no_patch_text",
+            category="failure",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text=None,
+            ),
+        ),
+        EvalCase(
+            name="empty_string",
+            category="failure",
+            builder_output=BuilderOutput(
+                summary="Test", proposed_changes=["Change"],
+                structured_patch_text="",
+            ),
+        ),
+    ]
+
+
 def export_eval_report_json(report: EvalReport) -> dict[str, Any]:
     """Export eval report as safe JSON dict."""
     return {

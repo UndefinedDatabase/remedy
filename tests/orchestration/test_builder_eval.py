@@ -19,6 +19,7 @@ from packages.orchestration.builder_eval import (
     export_eval_report_json,
     run_fixture_eval,
     run_single_eval,
+    standard_eval_cases,
 )
 from packages.orchestration.builder_models import BuilderOutput
 
@@ -31,70 +32,7 @@ def _make_output(patch_text: str | None = None) -> BuilderOutput:
     )
 
 
-# -- Standard eval cases covering all response categories --
-
-STANDARD_CASES: list[EvalCase] = [
-    EvalCase(
-        name="valid_file_op",
-        category="success",
-        builder_output=_make_output(
-            json.dumps({"file_ops": [{"path": "app.py", "action": "modify", "content": "x = 1\n"}]})
-        ),
-    ),
-    EvalCase(
-        name="valid_unified_diff",
-        category="success",
-        builder_output=_make_output(
-            "--- a/calc.py\n+++ b/calc.py\n@@ -1,2 +1,2 @@\n"
-            " def add(a, b):\n-    return a - b\n+    return a + b\n"
-        ),
-    ),
-    EvalCase(
-        name="prose_only",
-        category="failure",
-        builder_output=_make_output(
-            "I think we should modify the add function to return a + b instead."
-        ),
-    ),
-    EvalCase(
-        name="malformed_json",
-        category="failure",
-        builder_output=_make_output(
-            '{"file_ops": [{"path": "a.py", "action": "create", "content":'
-        ),
-    ),
-    EvalCase(
-        name="wrapper_text",
-        category="success",
-        builder_output=_make_output(
-            'Here is the fix:\n```json\n'
-            + json.dumps({"file_ops": [{"path": "a.py", "action": "create", "content": "x\n"}]})
-            + '\n```\n'
-        ),
-    ),
-    EvalCase(
-        name="unsafe_path",
-        category="rejected",
-        builder_output=_make_output(
-            json.dumps({"file_ops": [{"path": "/etc/passwd", "action": "modify", "content": "x\n"}]})
-        ),
-    ),
-    EvalCase(
-        name="shell_command",
-        category="rejected",
-        builder_output=_make_output("rm -rf /tmp/foo"),
-    ),
-    EvalCase(
-        name="no_patch_text",
-        category="failure",
-        builder_output=_make_output(None),
-    ),
-    EvalCase(
-        name="empty_string",
-        category="failure",
-        builder_output=_make_output(""),
-    ),
-]
+STANDARD_CASES: list[EvalCase] = standard_eval_cases()
 
 
 class TestEvalRecord:
