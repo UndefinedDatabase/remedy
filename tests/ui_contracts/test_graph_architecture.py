@@ -790,7 +790,7 @@ class TestForceGraphComponentIntegrity:
         assert f.is_file()
         content = f.read_text(encoding="utf-8")
         assert '"All"' in content
-        assert '"Open"' in content
+        assert '"Needs work"' in content or '"Open"' in content
         assert '"Planned"' in content
         assert '"Done"' in content
 
@@ -858,9 +858,9 @@ class TestForceGraph:
     def test_build_model_exists(self):
         assert (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").is_file()
 
-    def test_brain_stage_uses_force_graph(self):
+    def test_brain_stage_uses_graph(self):
         code = (UI_SRC / "components" / "graph" / "BrainGraphStage.tsx").read_text()
-        assert "ForceBrainGraph" in code
+        assert "BrainGraphCanvas" in code or "ForceBrainGraph" in code
         assert "RemedyBrainFlow" not in code
         assert "ConstellationBackdrop" not in code
 

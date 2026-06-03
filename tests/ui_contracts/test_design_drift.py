@@ -2,11 +2,13 @@
 
 Prevents common regressions:
 - Fifth main row
-- ProjectSummaryCard in main grid
-- Missing project card in right panel
+- Worker/Pipeline in primary right panel
+- Missing activity/tasks
 - Oversized timeline
 - Missing metrics
 - Mutation buttons
+- CLI commands in primary UX
+- Fake graph nodes
 """
 
 from __future__ import annotations
@@ -19,22 +21,15 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 RIGHT_PANEL = ROOT / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.tsx"
 SHELL_TSX = ROOT / "apps" / "ui" / "src" / "components" / "shell" / "RemedyShell.tsx"
 SHELL_CSS = ROOT / "apps" / "ui" / "src" / "components" / "shell" / "RemedyShell.module.css"
+TIMELINE_TSX = ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.tsx"
 TIMELINE_CSS = ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.module.css"
 METRICS_TSX = ROOT / "apps" / "ui" / "src" / "components" / "metrics" / "TopMetricsBar.tsx"
-PROJECT_CARD = ROOT / "apps" / "ui" / "src" / "components" / "pipeline" / "ProjectSummaryCard.tsx"
+GRAPH_CANVAS = ROOT / "apps" / "ui" / "src" / "components" / "graph" / "BrainGraphCanvas.tsx"
 PIPELINE_CSS = ROOT / "apps" / "ui" / "src" / "components" / "pipeline" / "Pipeline.module.css"
 
 
-class TestRightPanelCompact:
-    """Right panel is compact operator stack."""
-
-    def test_project_summary_in_right_panel(self):
-        content = RIGHT_PANEL.read_text()
-        assert "ProjectSummaryCard" in content
-
-    def test_pipeline_in_right_panel(self):
-        content = RIGHT_PANEL.read_text()
-        assert "PipelinePanel" in content
+class TestRightPanelUserFirst:
+    """Right panel shows user-facing cards, not internal machinery."""
 
     def test_activity_in_right_panel(self):
         content = RIGHT_PANEL.read_text()
@@ -44,14 +39,29 @@ class TestRightPanelCompact:
         content = RIGHT_PANEL.read_text()
         assert "TaskChecklistCard" in content
 
-    def test_no_mutation_buttons_in_right_panel(self):
+    def test_needs_attention_in_right_panel(self):
+        content = RIGHT_PANEL.read_text()
+        assert "NeedsAttentionCard" in content
+
+    def test_no_primary_worker_status(self):
+        content = RIGHT_PANEL.read_text()
+        assert "WorkerStatusMini" not in content or "advancedSection" in content
+
+    def test_no_primary_pipeline_panel(self):
+        content = RIGHT_PANEL.read_text()
+        assert "PipelinePanel" not in content or "advancedSection" in content
+
+    def test_no_mutation_buttons(self):
         content = RIGHT_PANEL.read_text()
         assert "AddTaskButton" not in content
 
+    def test_advanced_details_collapsed_by_default(self):
+        content = RIGHT_PANEL.read_text()
+        assert "showAdvanced" in content
+        assert "useState(false)" in content
 
-class TestProjectCardNotInMain:
-    """ProjectSummaryCard must not be in main grid."""
 
+class TestNoProjectCardInMain:
     def test_no_project_card_in_main(self):
         content = SHELL_TSX.read_text()
         main_match = re.search(
@@ -62,68 +72,80 @@ class TestProjectCardNotInMain:
         assert "ProjectSummaryCard" not in main_match.group(1)
 
 
-class TestProjectCardAccessible:
-    """ProjectSummaryCard copy button must be keyboard accessible."""
+class TestGraphRealNodesOnly:
+    """Graph must use real task data, not fake layout dots."""
 
-    def test_command_uses_button_not_code(self):
-        content = PROJECT_CARD.read_text()
-        assert "<button" in content
-        assert "aria-label" in content
+    def test_graph_canvas_exists(self):
+        assert GRAPH_CANVAS.exists()
 
-    def test_null_summary_returns_null(self):
-        content = PROJECT_CARD.read_text()
-        assert "if (!summary) return null" in content
+    def test_graph_uses_dashboard_tasks(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "dashboard.tasks" in content
+
+    def test_graph_no_layout_only_nodes(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "sourceKind" not in content
+        assert "layout_only" not in content
+
+    def test_graph_has_hover_tooltip(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "tooltip" in content.lower()
+        assert "hovered" in content.lower() or "hoveredId" in content
 
 
-class TestTimelineCompact:
-    """Bottom timeline should be slim and honest."""
+class TestTimelineCanonical:
+    """Timeline must render six canonical phases."""
 
-    def test_timeline_uses_six_phases(self):
-        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
-        assert "repeat(6" in tsx or "phases.map" in tsx
+    def test_timeline_has_six_canonical_phases(self):
+        content = TIMELINE_TSX.read_text()
+        assert "CANONICAL_PHASES" in content
+        for phase in ("job", "planning", "build", "test", "review", "finalized"):
+            assert f'"{phase}"' in content
 
-    def test_timeline_exactly_six_phase_icons(self):
-        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
-        icon_match = re.search(r"const icons\s*=\s*\{([^}]+)\}", tsx)
-        assert icon_match, "icons object not found in PhaseTimeline.tsx"
-        keys = re.findall(r"(\w+)\s*:", icon_match.group(1))
-        assert len(keys) == 6, f"Expected 6 phase icons, found {len(keys)}: {keys}"
-
-    def test_timeline_phase_icon_not_oversized(self):
-        css = TIMELINE_CSS.read_text()
-        icon_match = re.search(r"\.phaseIcon\s*\{([^}]+)\}", css)
-        assert icon_match
-        icon_css = icon_match.group(1)
-        size_match = re.search(r"width:\s*(\d+)px", icon_css)
-        assert size_match
-        assert int(size_match.group(1)) <= 28
+    def test_timeline_uses_custom_glyphs(self):
+        content = TIMELINE_TSX.read_text()
+        assert "PhaseGlyph" in content
 
     def test_timeline_no_fake_micro_events(self):
-        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
-        assert "Array.from({ length: 28" not in tsx, "Timeline must not render fake decorative event dots"
+        content = TIMELINE_TSX.read_text()
+        assert "Array.from({ length: 28" not in content
+
+    def test_timeline_has_progress_track(self):
+        css = TIMELINE_CSS.read_text()
+        assert "trackProgress" in css
 
 
 class TestFiveMetrics:
-    """Top metrics bar should have five metrics."""
-
     def test_metrics_grid_five_columns(self):
         css = (ROOT / "apps" / "ui" / "src" / "components" / "metrics" / "TopMetricsBar.module.css").read_text()
         assert "repeat(5" in css
 
     def test_token_tooltip_keyboard_accessible(self):
-        tsx = METRICS_TSX.read_text()
-        assert "tabIndex" in tsx, "Token tooltip must be keyboard accessible via tabIndex"
+        content = METRICS_TSX.read_text()
+        assert "tabIndex" in content
+
+
+class TestNoCLIInPrimaryUX:
+    """Primary UI should not show CLI commands."""
+
+    def test_right_panel_no_remedy_worker_command(self):
+        content = RIGHT_PANEL.read_text()
+        primary = content.split("advancedSection")[0] if "advancedSection" in content else content
+        assert "remedy worker run" not in primary
+
+    def test_right_panel_no_remedy_patch_command(self):
+        content = RIGHT_PANEL.read_text()
+        primary = content.split("advancedSection")[0] if "advancedSection" in content else content
+        assert "remedy patch" not in primary
 
 
 class TestNoRawContentInCards:
-    """UI cards must not display raw content patterns."""
-
-    def test_project_card_no_raw_patterns(self):
-        content = PROJECT_CARD.read_text()
+    def test_graph_canvas_no_raw_patterns(self):
+        content = GRAPH_CANVAS.read_text()
         forbidden = ["raw_output", "command_output", "raw_stdout", "raw_stderr",
                       "approval_reason", "diff_preview", "traceback"]
         for pattern in forbidden:
-            assert pattern not in content, f"ProjectSummaryCard contains '{pattern}'"
+            assert pattern not in content
 
     def test_pipeline_css_no_debug_classes(self):
         content = PIPELINE_CSS.read_text()

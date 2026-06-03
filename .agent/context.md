@@ -4,27 +4,31 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 460-469: Worker real work closure — complete.
+Steps 470-484: Dashboard product rebuild — complete.
 
 ## Completed
-- Fixture missing job: catches JobNotFoundError → blocked, no crash
-- Ollama missing job: catches JobNotFoundError → blocked, no fake approval
-- Unified provider path: both fixture/ollama use same autorun try/catch
-- Approval truth: waiting_for_approval only with real intent_id
-- No placeholder commands: <intent_id> filtered in both backend and UI
-- WorkerStatusMini: filters commands containing < before rendering
-- 7 regression tests: fixture crash, ollama fake approval, placeholder intent, completed-requires-work
+- Font: --remedy-font-display/ui, no external fonts, antialiased
+- Icons: RemedyGlyphs.tsx with 8 custom SVG components (no MUI in primary)
+- Graph: BrainGraphCanvas — deterministic SVG from dashboard.tasks, no force sim, no fake dots
+- Right panel: user-first (NeedsAttention + Activity + Tasks primary), Worker/Pipeline/Project in collapsed advanced
+- Timeline: 6 canonical phases with progress track, custom PhaseGlyph, no fake dots
+- Filter: "Needs work" instead of "Open"
+- CLI: not in primary UX, only in collapsed advanced details
+- Build: 327KB (down from ~500KB+), no react-force-graph-2d in primary
 
 ## Resource-Safety Rules (permanent)
 - Never run pytest in background
 - Always use scripts/remedy_pytest.sh for pytest execution
-- Worker processes one job at a time
 
 ## Constraints
 - UI remains read-only
-- waiting_for_approval requires real intent_id
-- completed requires real work
-- source_apply requires permission + approved intent
+- No external fonts
+- No fake graph nodes
+- No raw content in UI
+
+## Dashboard Readiness
+Significantly closer to target. Not pixel-perfect — needs manual QA and iteration.
+Graph is deterministic and real. Right panel is user-facing. Timeline has progress.
 
 ## Recommended Next Block
-Steps 470-479 — Real Ollama Trial Round And Prompt Selection
+Steps 485-494 — Real Ollama Trial Round

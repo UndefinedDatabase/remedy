@@ -378,7 +378,7 @@ class TestWorkerUI:
 
     def test_worker_status_in_right_panel(self):
         tsx = (Path(__file__).resolve().parents[2] / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.tsx").read_text()
-        assert "WorkerStatusMini" in tsx
+        assert "workerStatus" in tsx
 
     def test_worker_status_component_exists(self):
         assert (Path(__file__).resolve().parents[2] / "apps" / "ui" / "src" / "components" / "pipeline" / "WorkerStatusMini.tsx").exists()

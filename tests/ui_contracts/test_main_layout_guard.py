@@ -64,7 +64,7 @@ class TestMainColumnStructure:
             f"Main grid should define exactly 4 row sizes, found {len(rows)}: {rows}"
         )
 
-    def test_pipeline_in_right_panel(self):
+    def test_right_panel_has_tasks(self):
         right_panel = ROOT / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.tsx"
         content = right_panel.read_text()
-        assert "PipelinePanel" in content, "PipelinePanel should be in RightLivePanel"
+        assert "TaskChecklistCard" in content, "TaskChecklistCard should be in RightLivePanel"

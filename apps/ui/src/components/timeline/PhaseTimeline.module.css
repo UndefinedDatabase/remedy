@@ -4,22 +4,39 @@
   height: 100%;
   border-radius: clamp(12px, 1vw, 16px);
   padding: clamp(8px, 1vh, 14px) clamp(16px, 2vw, 28px);
-  background: rgba(255,255,255,.42);
-  border: 1px solid rgba(78,111,172,.1);
-  box-shadow: 0 8px 20px rgba(55,86,138,.06);
+  background: var(--remedy-glass-bg, rgba(255,255,255,.54));
+  border: 1px solid var(--remedy-glass-border, rgba(62,95,154,.13));
+  box-shadow: var(--remedy-shadow-soft, 0 10px 30px rgba(55,86,138,.08));
   backdrop-filter: blur(18px);
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-.mainLine {
+.track {
   position: absolute;
-  left: 36px;
-  right: 36px;
+  left: 40px;
+  right: 40px;
   top: 50%;
-  height: 1px;
-  background: rgba(39,77,143,.15);
+  height: 2px;
+  transform: translateY(-1px);
+}
+
+.trackBg {
+  position: absolute;
+  inset: 0;
+  background: rgba(39,77,143,.12);
+  border-radius: 1px;
+}
+
+.trackProgress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--remedy-blue, #4c83ff);
+  border-radius: 1px;
+  transition: width .3s ease;
 }
 
 .phaseRow {
@@ -33,33 +50,51 @@
 .phase {
   display: grid;
   justify-items: center;
-  gap: 3px;
-  color: var(--remedy-blue-900);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .03em;
+  gap: 4px;
 }
 
-.phaseIcon {
+.marker {
   width: 24px;
   height: 24px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255,255,255,.7);
-  color: var(--remedy-blue-700);
-  border: 1px solid rgba(39,77,143,.15);
+  background: rgba(255,255,255,.8);
+  border: 1.5px solid rgba(39,77,143,.15);
+  color: var(--remedy-ink-soft, #6f82a8);
 }
 
-.phaseIcon svg { font-size: 14px; }
+.markerIcon { width: 12px; height: 12px; }
 
-.current .phaseIcon {
+.label {
+  font-family: var(--remedy-font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  color: var(--remedy-ink-soft, #6f82a8);
+}
+
+.current .marker {
   width: 28px;
   height: 28px;
   color: white;
   background: linear-gradient(135deg, #3478ff, #6da0ff);
-  box-shadow: 0 0 0 4px rgba(76,131,255,.08), 0 6px 14px rgba(76,131,255,.15);
+  border-color: transparent;
+  box-shadow: 0 0 0 4px rgba(76,131,255,.1), 0 6px 14px rgba(76,131,255,.18);
 }
 
-.done .phaseIcon { color: var(--remedy-green-500); }
-.pending { opacity: .55; }
+.current .label { color: var(--remedy-ink, #10285f); }
+
+.done .marker {
+  color: var(--remedy-green, #4cc681);
+  border-color: var(--remedy-green, #4cc681);
+  background: rgba(76,198,129,.08);
+}
+
+.done .label { color: var(--remedy-green, #4cc681); }
+
+.pending { opacity: .5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .trackProgress { transition: none; }
+}

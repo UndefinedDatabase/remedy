@@ -1,6 +1,6 @@
 import styles from "./GraphFilterChips.module.css";
 
-const filters = [["all", "All"], ["open", "Open"], ["planned", "Planned"], ["done", "Done"]] as const;
+const filters = [["all", "All"], ["open", "Needs work"], ["planned", "Planned"], ["done", "Done"]] as const;
 export type GraphFilter = (typeof filters)[number][0];
 
 export function GraphFilterChips({ value, onChange }: { value: GraphFilter; onChange: (value: GraphFilter) => void }) {
