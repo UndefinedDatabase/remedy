@@ -335,6 +335,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "project_summary": _build_project_summary_section(job),
+        "worker": _build_worker_section(),
         "redaction": {
             "policy": "safe_summaries_only",
             "raw_content_exposed": False,
@@ -453,6 +454,33 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
             "needs_real_model_check": needs_real_check,
             "suggested_next_step": summary.suggested_next_step,
             "next_command": summary.next_command,
+            "redaction": "safe_metadata_only",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def _build_worker_section() -> dict[str, Any] | None:
+    """Build safe worker status for dashboard."""
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.worker_queue import get_worker_status, list_queued
+
+        data_dir = resolve_data_root()
+        status = get_worker_status(data_dir)
+        queue = list_queued(data_dir)
+        queued_count = sum(1 for e in queue if e.lifecycle_state == "queued")
+
+        return {
+            "worker_available": bool(status.worker_id),
+            "worker_id": status.worker_id,
+            "lifecycle_state": status.lifecycle_state,
+            "current_job_id": status.current_job_id,
+            "queue_count": queued_count,
+            "heartbeat_at": status.heartbeat_at,
+            "stale": status.stale,
+            "why_it_stopped": status.why_it_stopped,
+            "next_command": "remedy worker run --once" if not status.worker_id else "",
             "redaction": "safe_metadata_only",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):

@@ -1,0 +1,520 @@
+"""Local job queue and worker lifecycle.
+
+Safe, single-machine, file-based job queue with lease-based locking.
+No external services, no Docker, no database.
+
+Public API::
+
+    enqueue_job(job_id, data_dir) -> QueueEntry
+    list_queued(data_dir) -> list[QueueEntry]
+    claim_job(job_id, worker_id, data_dir) -> WorkerLease
+    release_lease(job_id, data_dir)
+    get_worker_status(data_dir) -> WorkerStatus
+    run_worker_once(data_dir, ...) -> WorkerResult
+    run_worker_loop(data_dir, ...) -> WorkerResult
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+
+LIFECYCLE_STATES = frozenset({
+    "queued", "claimed", "running", "waiting_for_approval",
+    "blocked", "paused", "cancelling", "cancelled",
+    "completed", "failed", "stale",
+})
+
+VALID_TRANSITIONS: dict[str, frozenset[str]] = {
+    "queued": frozenset({"claimed", "paused", "cancelled"}),
+    "claimed": frozenset({"running", "cancelled", "failed"}),
+    "running": frozenset({"waiting_for_approval", "blocked", "completed", "failed", "cancelling", "paused"}),
+    "waiting_for_approval": frozenset({"running", "paused", "cancelled"}),
+    "blocked": frozenset({"queued", "cancelled", "failed"}),
+    "paused": frozenset({"queued", "cancelled"}),
+    "cancelling": frozenset({"cancelled"}),
+    "cancelled": frozenset(),
+    "completed": frozenset(),
+    "failed": frozenset({"queued"}),
+    "stale": frozenset({"queued", "cancelled"}),
+}
+
+LEASE_TIMEOUT_SEC = 300
+HEARTBEAT_INTERVAL_SEC = 30
+
+
+@dataclass
+class QueueEntry:
+    """A job in the local queue."""
+
+    job_id: str
+    lifecycle_state: str = "queued"
+    queued_at: str = ""
+    claimed_at: str = ""
+    started_at: str = ""
+    updated_at: str = ""
+    completed_at: str = ""
+    worker_id: str = ""
+    lease_id: str = ""
+    lease_expires_at: str = ""
+    heartbeat_at: str = ""
+    pause_requested: bool = False
+    cancel_requested: bool = False
+    blocked_reason: str = ""
+    last_safe_event_id: str = ""
+
+
+@dataclass
+class WorkerLease:
+    """Active claim on a job."""
+
+    job_id: str
+    worker_id: str
+    lease_id: str
+    lease_expires_at: str
+    claimed_at: str
+
+
+@dataclass
+class WorkerStatus:
+    """Safe worker status report."""
+
+    worker_id: str = ""
+    current_job_id: str = ""
+    lifecycle_state: str = "idle"
+    heartbeat_at: str = ""
+    last_action: str = ""
+    why_it_stopped: str = ""
+    processed_job_count: int = 0
+    started_at: str = ""
+    stale: bool = False
+    redaction: str = "safe_metadata_only"
+
+
+@dataclass
+class WorkerResult:
+    """Result from worker run-once or run-loop."""
+
+    worker_id: str = ""
+    jobs_processed: int = 0
+    last_job_id: str = ""
+    last_lifecycle_state: str = ""
+    action_taken: str = "idle"
+    why_it_stopped: str = ""
+    next_command: str = ""
+    duration_ms: int = 0
+    redaction: str = "safe_metadata_only"
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _queue_dir(data_dir: str | Path) -> Path:
+    d = Path(data_dir) / "queue"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _queue_file(data_dir: str | Path, job_id: str) -> Path:
+    return _queue_dir(data_dir) / f"{job_id}.json"
+
+
+def _load_entry(data_dir: str | Path, job_id: str) -> QueueEntry | None:
+    f = _queue_file(data_dir, job_id)
+    if not f.exists():
+        return None
+    data = json.loads(f.read_text())
+    return QueueEntry(**{k: v for k, v in data.items() if k in QueueEntry.__dataclass_fields__})
+
+
+def _save_entry(data_dir: str | Path, entry: QueueEntry) -> None:
+    from dataclasses import asdict
+    f = _queue_file(data_dir, entry.job_id)
+    f.write_text(json.dumps(asdict(entry), indent=2))
+
+
+def is_valid_transition(current: str, target: str) -> bool:
+    return target in VALID_TRANSITIONS.get(current, frozenset())
+
+
+def enqueue_job(job_id: str, data_dir: str | Path) -> QueueEntry:
+    existing = _load_entry(data_dir, job_id)
+    if existing and existing.lifecycle_state in ("queued", "claimed", "running"):
+        return existing
+
+    now = _now_iso()
+    entry = QueueEntry(
+        job_id=job_id,
+        lifecycle_state="queued",
+        queued_at=now,
+        updated_at=now,
+    )
+    _save_entry(data_dir, entry)
+    return entry
+
+
+def list_queued(data_dir: str | Path) -> list[QueueEntry]:
+    entries = []
+    qdir = _queue_dir(data_dir)
+    for f in sorted(qdir.glob("*.json")):
+        try:
+            data = json.loads(f.read_text())
+            entries.append(QueueEntry(**{k: v for k, v in data.items() if k in QueueEntry.__dataclass_fields__}))
+        except (json.JSONDecodeError, TypeError):
+            continue
+    return entries
+
+
+def get_next_job(data_dir: str | Path) -> QueueEntry | None:
+    entries = list_queued(data_dir)
+    for e in entries:
+        if e.lifecycle_state == "queued" and not e.pause_requested and not e.cancel_requested:
+            return e
+    return None
+
+
+def claim_job(
+    job_id: str,
+    worker_id: str,
+    data_dir: str | Path,
+) -> WorkerLease | None:
+    entry = _load_entry(data_dir, job_id)
+    if entry is None:
+        return None
+
+    if entry.lifecycle_state == "stale":
+        pass
+    elif entry.lifecycle_state != "queued":
+        if entry.worker_id and entry.worker_id != worker_id:
+            if entry.lease_expires_at and entry.lease_expires_at > _now_iso():
+                return None
+        elif entry.lifecycle_state not in ("queued", "stale"):
+            return None
+
+    now = _now_iso()
+    lease_id = uuid4().hex[:12]
+    expires = datetime.now(timezone.utc).timestamp() + LEASE_TIMEOUT_SEC
+    expires_iso = datetime.fromtimestamp(expires, tz=timezone.utc).isoformat()
+
+    entry.lifecycle_state = "claimed"
+    entry.worker_id = worker_id
+    entry.lease_id = lease_id
+    entry.lease_expires_at = expires_iso
+    entry.claimed_at = now
+    entry.heartbeat_at = now
+    entry.updated_at = now
+    _save_entry(data_dir, entry)
+
+    return WorkerLease(
+        job_id=job_id,
+        worker_id=worker_id,
+        lease_id=lease_id,
+        lease_expires_at=expires_iso,
+        claimed_at=now,
+    )
+
+
+def update_heartbeat(job_id: str, data_dir: str | Path) -> None:
+    entry = _load_entry(data_dir, job_id)
+    if entry:
+        entry.heartbeat_at = _now_iso()
+        entry.updated_at = _now_iso()
+        _save_entry(data_dir, entry)
+
+
+def transition_state(
+    job_id: str,
+    target_state: str,
+    data_dir: str | Path,
+    *,
+    blocked_reason: str = "",
+    why_stopped: str = "",
+) -> QueueEntry | None:
+    entry = _load_entry(data_dir, job_id)
+    if entry is None:
+        return None
+    if not is_valid_transition(entry.lifecycle_state, target_state):
+        return None
+
+    now = _now_iso()
+    entry.lifecycle_state = target_state
+    entry.updated_at = now
+    if blocked_reason:
+        entry.blocked_reason = blocked_reason
+    if target_state == "completed":
+        entry.completed_at = now
+    if target_state in ("completed", "failed", "cancelled"):
+        entry.worker_id = ""
+        entry.lease_id = ""
+        entry.lease_expires_at = ""
+    _save_entry(data_dir, entry)
+    return entry
+
+
+def release_lease(job_id: str, data_dir: str | Path) -> None:
+    entry = _load_entry(data_dir, job_id)
+    if entry:
+        entry.worker_id = ""
+        entry.lease_id = ""
+        entry.lease_expires_at = ""
+        entry.updated_at = _now_iso()
+        _save_entry(data_dir, entry)
+
+
+def pause_job(job_id: str, data_dir: str | Path) -> QueueEntry | None:
+    entry = _load_entry(data_dir, job_id)
+    if entry is None:
+        return None
+    if entry.lifecycle_state in ("completed", "cancelled", "failed"):
+        return None
+    entry.pause_requested = True
+    if entry.lifecycle_state == "queued":
+        entry.lifecycle_state = "paused"
+    entry.updated_at = _now_iso()
+    _save_entry(data_dir, entry)
+    return entry
+
+
+def cancel_job(job_id: str, data_dir: str | Path) -> QueueEntry | None:
+    entry = _load_entry(data_dir, job_id)
+    if entry is None:
+        return None
+    if entry.lifecycle_state in ("completed", "cancelled"):
+        return None
+    if entry.lifecycle_state in ("running", "claimed"):
+        entry.cancel_requested = True
+        entry.lifecycle_state = "cancelling"
+    else:
+        entry.lifecycle_state = "cancelled"
+    entry.updated_at = _now_iso()
+    _save_entry(data_dir, entry)
+    return entry
+
+
+def resume_queued(job_id: str, data_dir: str | Path) -> QueueEntry | None:
+    entry = _load_entry(data_dir, job_id)
+    if entry is None:
+        return None
+    if entry.lifecycle_state != "paused":
+        return None
+    entry.lifecycle_state = "queued"
+    entry.pause_requested = False
+    entry.updated_at = _now_iso()
+    _save_entry(data_dir, entry)
+    return entry
+
+
+def detect_stale(data_dir: str | Path, timeout_sec: int = LEASE_TIMEOUT_SEC) -> list[QueueEntry]:
+    stale = []
+    now_ts = datetime.now(timezone.utc).timestamp()
+    for entry in list_queued(data_dir):
+        if entry.lifecycle_state in ("claimed", "running") and entry.lease_expires_at:
+            try:
+                expires_ts = datetime.fromisoformat(entry.lease_expires_at).timestamp()
+                if now_ts > expires_ts:
+                    entry.lifecycle_state = "stale"
+                    entry.updated_at = _now_iso()
+                    _save_entry(data_dir, entry)
+                    stale.append(entry)
+            except (ValueError, TypeError):
+                continue
+    return stale
+
+
+def get_worker_status(data_dir: str | Path) -> WorkerStatus:
+    status_file = Path(data_dir) / "worker_status.json"
+    if not status_file.exists():
+        return WorkerStatus()
+    try:
+        data = json.loads(status_file.read_text())
+        return WorkerStatus(**{k: v for k, v in data.items() if k in WorkerStatus.__dataclass_fields__})
+    except (json.JSONDecodeError, TypeError):
+        return WorkerStatus()
+
+
+def _save_worker_status(data_dir: str | Path, status: WorkerStatus) -> None:
+    from dataclasses import asdict
+    status_file = Path(data_dir) / "worker_status.json"
+    status_file.parent.mkdir(parents=True, exist_ok=True)
+    status_file.write_text(json.dumps(asdict(status), indent=2))
+
+
+def run_worker_once(
+    data_dir: str | Path,
+    *,
+    worker_id: str = "",
+    job_id: str = "",
+    provider: str = "none",
+) -> WorkerResult:
+    """Run one safe unit of work. Returns immediately."""
+    if not worker_id:
+        worker_id = f"worker-{uuid4().hex[:8]}"
+
+    start = time.monotonic()
+    result = WorkerResult(worker_id=worker_id)
+
+    if job_id:
+        entry = _load_entry(data_dir, job_id)
+        if entry is None:
+            entry = enqueue_job(job_id, data_dir)
+    else:
+        entry = get_next_job(data_dir)
+
+    if entry is None:
+        result.action_taken = "idle"
+        result.why_it_stopped = "no_queued_jobs"
+        result.next_command = "remedy job enqueue <job_id>"
+        result.duration_ms = int((time.monotonic() - start) * 1000)
+        return result
+
+    lease = claim_job(entry.job_id, worker_id, data_dir)
+    if lease is None:
+        result.action_taken = "idle"
+        result.why_it_stopped = "claim_failed"
+        result.next_command = f"remedy worker status"
+        result.duration_ms = int((time.monotonic() - start) * 1000)
+        return result
+
+    result.last_job_id = entry.job_id
+
+    transition_state(entry.job_id, "running", data_dir)
+
+    entry = _load_entry(data_dir, entry.job_id)
+    if entry and entry.cancel_requested:
+        transition_state(entry.job_id, "cancelled", data_dir)
+        result.last_lifecycle_state = "cancelled"
+        result.action_taken = "cancelled"
+        result.why_it_stopped = "cancel_requested"
+        result.duration_ms = int((time.monotonic() - start) * 1000)
+        return result
+
+    if provider == "none":
+        transition_state(entry.job_id, "completed", data_dir)
+        result.last_lifecycle_state = "completed"
+        result.action_taken = "completed_no_provider"
+        result.why_it_stopped = "builder_skipped_no_worker"
+        result.jobs_processed = 1
+    elif provider == "fixture":
+        transition_state(entry.job_id, "completed", data_dir)
+        result.last_lifecycle_state = "completed"
+        result.action_taken = "completed_fixture"
+        result.why_it_stopped = "fixture_complete"
+        result.jobs_processed = 1
+    elif provider == "ollama":
+        transition_state(
+            entry.job_id, "waiting_for_approval", data_dir,
+            blocked_reason="approval_required",
+        )
+        result.last_lifecycle_state = "waiting_for_approval"
+        result.action_taken = "stopped_for_approval"
+        result.why_it_stopped = "approval_required"
+        result.next_command = f"remedy patch approve {entry.job_id[:8]} <intent_id>"
+    else:
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason="unknown_provider")
+        result.last_lifecycle_state = "blocked"
+        result.action_taken = "blocked"
+        result.why_it_stopped = "unknown_provider"
+
+    result.duration_ms = int((time.monotonic() - start) * 1000)
+
+    status = WorkerStatus(
+        worker_id=worker_id,
+        current_job_id="" if result.last_lifecycle_state in ("completed", "failed", "cancelled") else entry.job_id,
+        lifecycle_state=result.last_lifecycle_state or "idle",
+        heartbeat_at=_now_iso(),
+        last_action=result.action_taken,
+        why_it_stopped=result.why_it_stopped,
+        processed_job_count=result.jobs_processed,
+        started_at=_now_iso(),
+    )
+    _save_worker_status(data_dir, status)
+
+    return result
+
+
+def run_worker_loop(
+    data_dir: str | Path,
+    *,
+    worker_id: str = "",
+    provider: str = "none",
+    max_jobs: int = 1,
+    max_seconds: int = 60,
+    idle_timeout: int = 10,
+) -> WorkerResult:
+    """Run bounded worker loop. Stops on limit, idle, or cancel."""
+    if not worker_id:
+        worker_id = f"worker-{uuid4().hex[:8]}"
+
+    start = time.monotonic()
+    total_processed = 0
+    last_result = WorkerResult(worker_id=worker_id)
+
+    for _ in range(max_jobs):
+        elapsed = time.monotonic() - start
+        if elapsed >= max_seconds:
+            last_result.why_it_stopped = "max_seconds_reached"
+            break
+
+        result = run_worker_once(data_dir, worker_id=worker_id, provider=provider)
+        if result.action_taken == "idle":
+            time.sleep(min(idle_timeout, max(0, max_seconds - elapsed)))
+            last_result.why_it_stopped = "idle_timeout"
+            break
+
+        total_processed += result.jobs_processed
+        last_result = result
+
+    last_result.jobs_processed = total_processed
+    last_result.duration_ms = int((time.monotonic() - start) * 1000)
+    if not last_result.why_it_stopped:
+        last_result.why_it_stopped = "max_jobs_reached"
+    return last_result
+
+
+def export_worker_result_json(result: WorkerResult) -> dict[str, Any]:
+    return {
+        "worker_id": result.worker_id,
+        "jobs_processed": result.jobs_processed,
+        "last_job_id": result.last_job_id,
+        "last_lifecycle_state": result.last_lifecycle_state,
+        "action_taken": result.action_taken,
+        "why_it_stopped": result.why_it_stopped,
+        "next_command": result.next_command,
+        "duration_ms": result.duration_ms,
+        "redaction": result.redaction,
+    }
+
+
+def export_worker_status_json(status: WorkerStatus) -> dict[str, Any]:
+    return {
+        "worker_id": status.worker_id,
+        "current_job_id": status.current_job_id,
+        "lifecycle_state": status.lifecycle_state,
+        "heartbeat_at": status.heartbeat_at,
+        "last_action": status.last_action,
+        "why_it_stopped": status.why_it_stopped,
+        "processed_job_count": status.processed_job_count,
+        "started_at": status.started_at,
+        "stale": status.stale,
+        "redaction": status.redaction,
+    }
+
+
+def export_queue_entry_json(entry: QueueEntry) -> dict[str, Any]:
+    return {
+        "job_id": entry.job_id,
+        "lifecycle_state": entry.lifecycle_state,
+        "queued_at": entry.queued_at,
+        "worker_id": entry.worker_id,
+        "blocked_reason": entry.blocked_reason,
+        "pause_requested": entry.pause_requested,
+        "cancel_requested": entry.cancel_requested,
+    }

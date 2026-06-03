@@ -758,4 +758,36 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
     ),
+    "job.enqueue": lambda args: _cmd_enqueue(args.job_id),
+    "job.pause": lambda args: _cmd_pause(args.job_id),
+    "job.cancel": lambda args: _cmd_cancel(args.job_id),
 }
+
+
+def _cmd_enqueue(job_id_str: str) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.worker_queue import enqueue_job
+    entry = enqueue_job(job_id_str, resolve_data_root())
+    print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
+
+
+def _cmd_pause(job_id_str: str) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.worker_queue import pause_job
+    entry = pause_job(job_id_str, resolve_data_root())
+    if entry:
+        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
+    else:
+        print(f"Cannot pause job {job_id_str[:8]}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _cmd_cancel(job_id_str: str) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.worker_queue import cancel_job
+    entry = cancel_job(job_id_str, resolve_data_root())
+    if entry:
+        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
+    else:
+        print(f"Cannot cancel job {job_id_str[:8]}", file=sys.stderr)
+        sys.exit(1)
