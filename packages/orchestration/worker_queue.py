@@ -347,6 +347,41 @@ def _save_worker_status(data_dir: str | Path, status: WorkerStatus) -> None:
     status_file.write_text(json.dumps(asdict(status), indent=2))
 
 
+ALLOWED_PROVIDERS = frozenset({"none", "fixture", "ollama"})
+
+
+def validate_provider(provider: str) -> str | None:
+    """Return error message if provider invalid, None if valid."""
+    if provider not in ALLOWED_PROVIDERS:
+        return f"Unknown provider '{provider}'. Allowed: {', '.join(sorted(ALLOWED_PROVIDERS))}"
+    return None
+
+
+def _map_result_to_lifecycle(
+    provider: str,
+    autorun_stage: str = "",
+    autorun_stop_reason: str = "",
+) -> tuple[str, str, str]:
+    """Map worker result to (lifecycle_state, action_taken, why_it_stopped)."""
+    if provider == "none":
+        return ("blocked", "no_work_performed", "no_worker_selected")
+
+    if autorun_stop_reason == "approval_required":
+        return ("waiting_for_approval", "stopped_for_approval", "approval_required")
+    if autorun_stop_reason == "provider_unavailable":
+        return ("blocked", "blocked", "provider_unavailable")
+    if autorun_stop_reason in ("structured_patch_parse_failed", "provider_output_prose_only",
+                                "provider_output_malformed", "no_structured_patch_text"):
+        return ("blocked", "blocked", autorun_stop_reason)
+    if autorun_stage == "proof_collected" or autorun_stop_reason == "":
+        if autorun_stage in ("proof_collected", "tested"):
+            return ("completed", "completed", "work_done")
+    if autorun_stage == "fixture_complete":
+        return ("completed", "example_completed", "fixture_complete")
+
+    return ("blocked", "blocked", autorun_stop_reason or "unknown")
+
+
 def run_worker_once(
     data_dir: str | Path,
     *,
@@ -360,6 +395,13 @@ def run_worker_once(
 
     start = time.monotonic()
     result = WorkerResult(worker_id=worker_id)
+
+    err = validate_provider(provider)
+    if err:
+        result.action_taken = "error"
+        result.why_it_stopped = err
+        result.duration_ms = int((time.monotonic() - start) * 1000)
+        return result
 
     if job_id:
         entry = _load_entry(data_dir, job_id)
@@ -379,12 +421,11 @@ def run_worker_once(
     if lease is None:
         result.action_taken = "idle"
         result.why_it_stopped = "claim_failed"
-        result.next_command = f"remedy worker status"
+        result.next_command = "remedy worker status"
         result.duration_ms = int((time.monotonic() - start) * 1000)
         return result
 
     result.last_job_id = entry.job_id
-
     transition_state(entry.job_id, "running", data_dir)
 
     entry = _load_entry(data_dir, entry.job_id)
@@ -397,17 +438,33 @@ def run_worker_once(
         return result
 
     if provider == "none":
-        transition_state(entry.job_id, "completed", data_dir)
-        result.last_lifecycle_state = "completed"
-        result.action_taken = "completed_no_provider"
-        result.why_it_stopped = "builder_skipped_no_worker"
-        result.jobs_processed = 1
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason="no_worker_selected")
+        release_lease(entry.job_id, data_dir)
+        result.last_lifecycle_state = "blocked"
+        result.action_taken = "no_work_performed"
+        result.why_it_stopped = "no_worker_selected"
+        result.next_command = f"remedy worker run --once --provider fixture --job {entry.job_id[:8]}"
     elif provider == "fixture":
-        transition_state(entry.job_id, "completed", data_dir)
-        result.last_lifecycle_state = "completed"
-        result.action_taken = "completed_fixture"
-        result.why_it_stopped = "fixture_complete"
-        result.jobs_processed = 1
+        try:
+            from packages.orchestration.autorun import run_autorun
+            from packages.orchestration.storage import load_job
+            job = load_job(entry.job_id)
+            ar = run_autorun(job, builder_provider="fixture", data_dir=str(data_dir))
+            stage = ar.stage if hasattr(ar, "stage") else ""
+            stop = ar.stop_reason if hasattr(ar, "stop_reason") else ""
+            lc, action, why = _map_result_to_lifecycle("fixture", stage, stop)
+            transition_state(entry.job_id, lc, data_dir, blocked_reason=why if lc == "blocked" else "")
+            result.last_lifecycle_state = lc
+            result.action_taken = action
+            result.why_it_stopped = why
+            if lc == "completed":
+                result.jobs_processed = 1
+        except (ImportError, FileNotFoundError, KeyError, TypeError, ValueError, AttributeError):
+            transition_state(entry.job_id, "blocked", data_dir, blocked_reason="fixture_path_error")
+            result.last_lifecycle_state = "blocked"
+            result.action_taken = "blocked"
+            result.why_it_stopped = "fixture_path_error"
+            result.next_command = f"remedy job show {entry.job_id[:8]}"
     elif provider == "ollama":
         transition_state(
             entry.job_id, "waiting_for_approval", data_dir,
@@ -417,17 +474,12 @@ def run_worker_once(
         result.action_taken = "stopped_for_approval"
         result.why_it_stopped = "approval_required"
         result.next_command = f"remedy patch approve {entry.job_id[:8]} <intent_id>"
-    else:
-        transition_state(entry.job_id, "blocked", data_dir, blocked_reason="unknown_provider")
-        result.last_lifecycle_state = "blocked"
-        result.action_taken = "blocked"
-        result.why_it_stopped = "unknown_provider"
 
     result.duration_ms = int((time.monotonic() - start) * 1000)
 
     status = WorkerStatus(
         worker_id=worker_id,
-        current_job_id="" if result.last_lifecycle_state in ("completed", "failed", "cancelled") else entry.job_id,
+        current_job_id="" if result.last_lifecycle_state in ("completed", "failed", "cancelled", "blocked") else entry.job_id,
         lifecycle_state=result.last_lifecycle_state or "idle",
         heartbeat_at=_now_iso(),
         last_action=result.action_taken,

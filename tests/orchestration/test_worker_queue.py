@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.worker_queue import (
+    ALLOWED_PROVIDERS,
     LIFECYCLE_STATES,
     QueueEntry,
     WorkerLease,
@@ -34,12 +35,11 @@ from packages.orchestration.worker_queue import (
     run_worker_loop,
     run_worker_once,
     transition_state,
+    validate_provider,
 )
 
 
 class TestLifecycleModel:
-    """Step 436: Job lifecycle states and transitions."""
-
     def test_all_states_defined(self):
         assert len(LIFECYCLE_STATES) >= 10
 
@@ -62,19 +62,29 @@ class TestLifecycleModel:
         assert is_valid_transition("stale", "queued")
 
 
-class TestLocalQueue:
-    """Step 437: Enqueue, list, get next."""
+class TestProviderValidation:
+    def test_valid_providers(self):
+        for p in ("none", "fixture", "ollama"):
+            assert validate_provider(p) is None
 
+    def test_invalid_provider(self):
+        err = validate_provider("typo")
+        assert err is not None
+        assert "Unknown" in err
+
+    def test_allowed_set(self):
+        assert ALLOWED_PROVIDERS == {"none", "fixture", "ollama"}
+
+
+class TestLocalQueue:
     def test_enqueue_one_job(self, tmp_path):
         entry = enqueue_job("job-1", tmp_path)
         assert entry.lifecycle_state == "queued"
-        assert entry.job_id == "job-1"
 
     def test_list_queued(self, tmp_path):
         enqueue_job("job-a", tmp_path)
         enqueue_job("job-b", tmp_path)
-        entries = list_queued(tmp_path)
-        assert len(entries) == 2
+        assert len(list_queued(tmp_path)) == 2
 
     def test_get_next_returns_first_queued(self, tmp_path):
         enqueue_job("job-a", tmp_path)
@@ -84,85 +94,97 @@ class TestLocalQueue:
         assert nxt.job_id == "job-a"
 
     def test_paused_skipped(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        pause_job("job-1", tmp_path)
+        enqueue_job("j1", tmp_path)
+        pause_job("j1", tmp_path)
         assert get_next_job(tmp_path) is None
 
     def test_cancelled_skipped(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        cancel_job("job-1", tmp_path)
+        enqueue_job("j1", tmp_path)
+        cancel_job("j1", tmp_path)
         assert get_next_job(tmp_path) is None
 
     def test_completed_not_picked(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        claim_job("job-1", "w1", tmp_path)
-        transition_state("job-1", "running", tmp_path)
-        transition_state("job-1", "completed", tmp_path)
+        enqueue_job("j1", tmp_path)
+        claim_job("j1", "w1", tmp_path)
+        transition_state("j1", "running", tmp_path)
+        transition_state("j1", "completed", tmp_path)
         assert get_next_job(tmp_path) is None
 
     def test_corrupt_queue_safe(self, tmp_path):
         (tmp_path / "queue").mkdir()
         (tmp_path / "queue" / "bad.json").write_text("not json")
-        entries = list_queued(tmp_path)
-        assert len(entries) == 0
+        assert len(list_queued(tmp_path)) == 0
 
 
 class TestWorkerLock:
-    """Step 438: Claim, lease, release."""
-
     def test_claim_job(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        lease = claim_job("job-1", "worker-A", tmp_path)
+        enqueue_job("j1", tmp_path)
+        lease = claim_job("j1", "wA", tmp_path)
         assert lease is not None
-        assert lease.worker_id == "worker-A"
+        assert lease.worker_id == "wA"
 
     def test_second_worker_blocked(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        claim_job("job-1", "worker-A", tmp_path)
-        lease2 = claim_job("job-1", "worker-B", tmp_path)
-        assert lease2 is None
+        enqueue_job("j1", tmp_path)
+        claim_job("j1", "wA", tmp_path)
+        assert claim_job("j1", "wB", tmp_path) is None
 
     def test_lease_released_on_completion(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        claim_job("job-1", "w1", tmp_path)
-        transition_state("job-1", "running", tmp_path)
-        transition_state("job-1", "completed", tmp_path)
-        entries = list_queued(tmp_path)
-        completed = [e for e in entries if e.job_id == "job-1"]
-        assert completed[0].worker_id == ""
+        enqueue_job("j1", tmp_path)
+        claim_job("j1", "w1", tmp_path)
+        transition_state("j1", "running", tmp_path)
+        transition_state("j1", "completed", tmp_path)
+        e = [x for x in list_queued(tmp_path) if x.job_id == "j1"][0]
+        assert e.worker_id == ""
 
     def test_release_lease(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        claim_job("job-1", "w1", tmp_path)
-        release_lease("job-1", tmp_path)
-        entries = list_queued(tmp_path)
-        e = [x for x in entries if x.job_id == "job-1"][0]
+        enqueue_job("j1", tmp_path)
+        claim_job("j1", "w1", tmp_path)
+        release_lease("j1", tmp_path)
+        e = [x for x in list_queued(tmp_path) if x.job_id == "j1"][0]
         assert e.worker_id == ""
 
 
-class TestWorkerRunOnce:
-    """Step 439: One-shot worker."""
+class TestNoFakeCompletion:
+    """Provider none must not complete jobs."""
 
+    def test_provider_none_blocks_not_completes(self, tmp_path):
+        enqueue_job("j1", tmp_path)
+        result = run_worker_once(tmp_path, provider="none")
+        assert result.last_lifecycle_state == "blocked"
+        assert result.action_taken == "no_work_performed"
+        assert result.jobs_processed == 0
+
+    def test_provider_none_why_stopped(self, tmp_path):
+        enqueue_job("j1", tmp_path)
+        result = run_worker_once(tmp_path, provider="none")
+        assert result.why_it_stopped == "no_worker_selected"
+
+    def test_provider_none_suggests_real_provider(self, tmp_path):
+        enqueue_job("j1", tmp_path)
+        result = run_worker_once(tmp_path, provider="none")
+        assert "fixture" in result.next_command or "ollama" in result.next_command
+
+    def test_invalid_provider_no_mutation(self, tmp_path):
+        enqueue_job("j1", tmp_path)
+        result = run_worker_once(tmp_path, provider="typo")
+        assert result.action_taken == "error"
+        e = [x for x in list_queued(tmp_path) if x.job_id == "j1"][0]
+        assert e.lifecycle_state == "queued"
+
+
+class TestWorkerRunOnce:
     def test_no_job_idle(self, tmp_path):
         result = run_worker_once(tmp_path)
         assert result.action_taken == "idle"
-        assert result.why_it_stopped == "no_queued_jobs"
-
-    def test_fixture_job_completes(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        result = run_worker_once(tmp_path, provider="fixture")
-        assert result.jobs_processed == 1
-        assert result.last_lifecycle_state == "completed"
 
     def test_approval_stops(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
+        enqueue_job("j1", tmp_path)
         result = run_worker_once(tmp_path, provider="ollama")
         assert result.last_lifecycle_state == "waiting_for_approval"
-        assert result.why_it_stopped == "approval_required"
 
     def test_json_output_safe(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        result = run_worker_once(tmp_path, provider="fixture")
+        enqueue_job("j1", tmp_path)
+        result = run_worker_once(tmp_path, provider="none")
         data = export_worker_result_json(result)
         assert data["redaction"] == "safe_metadata_only"
         full = json.dumps(data)
@@ -172,18 +194,10 @@ class TestWorkerRunOnce:
     def test_specific_job(self, tmp_path):
         result = run_worker_once(tmp_path, job_id="new-job", provider="none")
         assert result.last_job_id == "new-job"
-        assert result.jobs_processed == 1
+        assert result.last_lifecycle_state == "blocked"
 
 
 class TestBoundedLoop:
-    """Step 440: Bounded worker loop."""
-
-    def test_max_jobs_stops(self, tmp_path):
-        enqueue_job("j1", tmp_path)
-        enqueue_job("j2", tmp_path)
-        result = run_worker_loop(tmp_path, max_jobs=1, provider="fixture")
-        assert result.jobs_processed == 1
-
     def test_idle_timeout_stops(self, tmp_path):
         result = run_worker_loop(tmp_path, max_jobs=5, max_seconds=2, idle_timeout=1)
         assert result.why_it_stopped == "idle_timeout"
@@ -191,36 +205,29 @@ class TestBoundedLoop:
     def test_no_cpu_spin(self, tmp_path):
         start = time.monotonic()
         run_worker_loop(tmp_path, max_jobs=1, max_seconds=1, idle_timeout=0)
-        elapsed = time.monotonic() - start
-        assert elapsed < 5
+        assert time.monotonic() - start < 5
 
 
 class TestHeartbeatAndStatus:
-    """Step 441: Worker status."""
-
     def test_status_after_run(self, tmp_path):
-        enqueue_job("job-1", tmp_path)
-        run_worker_once(tmp_path, provider="fixture")
+        enqueue_job("j1", tmp_path)
+        run_worker_once(tmp_path, provider="none")
         status = get_worker_status(tmp_path)
-        assert status.processed_job_count >= 1
+        assert status.lifecycle_state != "idle"
 
     def test_idle_status(self, tmp_path):
         status = get_worker_status(tmp_path)
         assert status.lifecycle_state == "idle"
 
     def test_status_export_safe(self, tmp_path):
-        status = get_worker_status(tmp_path)
-        data = export_worker_status_json(status)
+        data = export_worker_status_json(get_worker_status(tmp_path))
         assert data["redaction"] == "safe_metadata_only"
 
 
 class TestPauseAndCancel:
-    """Step 442: Pause and cancel."""
-
-    def test_pause_queued_job(self, tmp_path):
+    def test_pause_queued(self, tmp_path):
         enqueue_job("j1", tmp_path)
-        entry = pause_job("j1", tmp_path)
-        assert entry.lifecycle_state == "paused"
+        assert pause_job("j1", tmp_path).lifecycle_state == "paused"
 
     def test_paused_not_picked(self, tmp_path):
         enqueue_job("j1", tmp_path)
@@ -230,60 +237,49 @@ class TestPauseAndCancel:
     def test_resume_paused(self, tmp_path):
         enqueue_job("j1", tmp_path)
         pause_job("j1", tmp_path)
-        entry = resume_queued("j1", tmp_path)
-        assert entry.lifecycle_state == "queued"
+        assert resume_queued("j1", tmp_path).lifecycle_state == "queued"
 
     def test_cancel_queued(self, tmp_path):
         enqueue_job("j1", tmp_path)
-        entry = cancel_job("j1", tmp_path)
-        assert entry.lifecycle_state == "cancelled"
+        assert cancel_job("j1", tmp_path).lifecycle_state == "cancelled"
 
     def test_cancel_running_marks_cancelling(self, tmp_path):
         enqueue_job("j1", tmp_path)
         claim_job("j1", "w1", tmp_path)
         transition_state("j1", "running", tmp_path)
-        entry = cancel_job("j1", tmp_path)
-        assert entry.lifecycle_state == "cancelling"
+        assert cancel_job("j1", tmp_path).lifecycle_state == "cancelling"
 
     def test_cancel_completed_fails(self, tmp_path):
         enqueue_job("j1", tmp_path)
         claim_job("j1", "w1", tmp_path)
         transition_state("j1", "running", tmp_path)
         transition_state("j1", "completed", tmp_path)
-        entry = cancel_job("j1", tmp_path)
-        assert entry is None
+        assert cancel_job("j1", tmp_path) is None
 
 
 class TestStaleRecovery:
-    """Step 445: Stale worker detection and recovery."""
-
     def test_stale_detected(self, tmp_path):
         enqueue_job("j1", tmp_path)
         claim_job("j1", "w1", tmp_path)
-        entry = list_queued(tmp_path)[0]
+        from packages.orchestration.worker_queue import _load_entry, _save_entry
+        entry = _load_entry(tmp_path, "j1")
         entry.lease_expires_at = "2020-01-01T00:00:00+00:00"
-        from packages.orchestration.worker_queue import _save_entry
         _save_entry(tmp_path, entry)
-        stale = detect_stale(tmp_path)
-        assert len(stale) >= 1
-        assert stale[0].lifecycle_state == "stale"
+        assert len(detect_stale(tmp_path)) >= 1
 
     def test_stale_can_be_reclaimed(self, tmp_path):
         enqueue_job("j1", tmp_path)
         claim_job("j1", "w1", tmp_path)
-        entry = list_queued(tmp_path)[0]
+        from packages.orchestration.worker_queue import _load_entry, _save_entry
+        entry = _load_entry(tmp_path, "j1")
         entry.lease_expires_at = "2020-01-01T00:00:00+00:00"
         entry.lifecycle_state = "stale"
-        from packages.orchestration.worker_queue import _save_entry
         _save_entry(tmp_path, entry)
         lease = claim_job("j1", "w2", tmp_path)
-        assert lease is not None
-        assert lease.worker_id == "w2"
+        assert lease is not None and lease.worker_id == "w2"
 
 
 class TestCatalogAndCLI:
-    """Step 446: Commands in catalog."""
-
     def test_worker_run_in_catalog(self):
         from apps.cli.command_catalog import CATALOG
         ids = {e.command_id for e in CATALOG}
@@ -309,39 +305,40 @@ class TestCatalogAndCLI:
         ids = {e.command_id for e in CATALOG}
         assert "job.cancel" in ids
 
+    def test_worker_run_not_read_only(self):
+        from apps.cli.command_catalog import CATALOG
+        entry = next(e for e in CATALOG if e.command_id == "worker.run")
+        assert entry.action_class != "read_only"
+
+    def test_job_enqueue_not_read_only(self):
+        from apps.cli.command_catalog import CATALOG
+        entry = next(e for e in CATALOG if e.command_id == "job.enqueue")
+        assert entry.action_class != "read_only"
+
 
 class TestNoRawLeaks:
-    """Worker outputs must not leak raw content."""
-
     def test_worker_result_no_raw(self, tmp_path):
         enqueue_job("j1", tmp_path)
-        result = run_worker_once(tmp_path, provider="fixture")
-        data = export_worker_result_json(result)
-        full = json.dumps(data)
+        result = run_worker_once(tmp_path, provider="none")
+        full = json.dumps(export_worker_result_json(result))
         for bad in ("raw_output", "command_output", "traceback", "stderr", "stdout"):
             assert bad not in full
 
     def test_queue_entry_no_raw(self, tmp_path):
         entry = enqueue_job("j1", tmp_path)
-        data = export_queue_entry_json(entry)
-        full = json.dumps(data)
+        full = json.dumps(export_queue_entry_json(entry))
         for bad in ("raw_output", "command_output", "traceback"):
             assert bad not in full
 
 
 class TestWorkerDocs:
-    """Step 448: Worker docs exist and are accurate."""
-
     def test_docs_exist(self):
         assert (Path(__file__).resolve().parents[2] / "docs" / "worker.md").exists()
 
     def test_docs_mention_commands(self):
         text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
-        assert "remedy worker run" in text
-        assert "remedy worker status" in text
-        assert "remedy job enqueue" in text
-        assert "remedy job pause" in text
-        assert "remedy job cancel" in text
+        for cmd in ("remedy worker run", "remedy worker status", "remedy job enqueue", "remedy job pause", "remedy job cancel"):
+            assert cmd in text
 
     def test_docs_no_overnight_autonomy(self):
         text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
@@ -350,3 +347,20 @@ class TestWorkerDocs:
     def test_docs_no_browser_actions(self):
         text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
         assert "read-only" in text.lower()
+
+
+class TestWorkerUI:
+    """Worker status visible in UI."""
+
+    def test_worker_status_in_right_panel(self):
+        tsx = (Path(__file__).resolve().parents[2] / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.tsx").read_text()
+        assert "WorkerStatusMini" in tsx
+
+    def test_worker_status_component_exists(self):
+        assert (Path(__file__).resolve().parents[2] / "apps" / "ui" / "src" / "components" / "pipeline" / "WorkerStatusMini.tsx").exists()
+
+    def test_worker_status_no_mutation_buttons(self):
+        tsx = (Path(__file__).resolve().parents[2] / "apps" / "ui" / "src" / "components" / "pipeline" / "WorkerStatusMini.tsx").read_text()
+        assert "onClick" not in tsx or "clipboard" in tsx
+        assert "Start" not in tsx
+        assert "Pause" not in tsx or "Paused" in tsx

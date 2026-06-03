@@ -152,6 +152,7 @@ export function normalizeDashboardPayload(
     pipeline: normalizePipeline(dashboard.pipeline),
     resume: dashboard.resume ?? null,
     projectSummary: dashboard.project_summary ?? null,
+    workerStatus: dashboard.worker ?? null,
   };
 }
 
@@ -184,6 +185,7 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     pipeline: null,
     resume: null,
     projectSummary: null,
+    workerStatus: null,
   };
 }
 
