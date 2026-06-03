@@ -4,23 +4,30 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 367-374: Resume execution quality, test_runner integration, dry-run truth.
+Steps 375-382: Resource-safe pytest harness, reviewer safety protocol, handoff truth.
 
 ## Completed
-- Ad-hoc subprocess resume replaced with execute_resume_from_apply() using run_tests_local
-- Capability-aware dry-run: validates permission, repo path, test candidate before can_resume=True
-- Resume events: resume_started, resume_test_started, resume_test_completed, resume_completed
-- Test metadata: test_run_id, output_truncated, persisted_output_bytes, command_source_type
-- Checkpoint data contract: required_data, missing_data, resume_mode_supported, inspectable, dry_run_available
-- CLI calls orchestration helper, renders safe export_resume_result_json
-- Resume docs (docs/resume.md): what replay/checkpoints are, supported/blocked modes, commands
-- 27 replay/checkpoint tests, 35 Vitest, TypeScript clean, build OK
+- Guarded pytest wrapper: scripts/remedy_pytest.sh (flock -n, timeout, foreground-only)
+- Resource-safety policy: docs/reviewer-safety.md
+- Reviewer protocol: no repeated full pytest, targeted tests during dev, one baseline at handoff
+- Test command matrix: standardized in docs/reviewer-safety.md
+- Emergency cleanup guidance: process inspection + kill instructions
+- Handoff truth: live_review.md Steps 367-374 status corrected to PASS
+- Resource-safety regression tests: 13 tests in tests/regression/test_resource_safety.py
+- tests/README.md updated with wrapper instructions and safety section
+
+## Resource-Safety Rules (permanent)
+- Never run pytest in background (no run_in_background, no &, no nohup)
+- Never run multiple pytest commands in parallel
+- Always use scripts/remedy_pytest.sh for pytest execution
+- Full pytest tests/ at most once per worker block
+- Reviewers must not repeatedly run full baseline in watcher loop
+- The wrapper uses flock -n to fail fast if lock is busy
 
 ## Constraints
 - UI remains read-only
 - Resume only from source_apply_proven (from_apply → tests) in v1
 - No from_approval resume until patch persistence
-- No from_test_failure repair resume until implementation
 - source_apply requires permission + approved intent
 
 ## Remaining Risks
@@ -29,4 +36,4 @@ Steps 367-374: Resume execution quality, test_runner integration, dry-run truth.
 - Background worker not implemented
 
 ## Recommended Next Block
-Steps 375-382 — Builder Prompt Quality And Real-Ollama Hardening
+Steps 383-390 — Builder Prompt Quality And Real-Ollama Hardening

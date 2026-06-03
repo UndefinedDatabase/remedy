@@ -32,13 +32,23 @@ level and are not duplicated.
 
 ## Running Tests
 
-```bash
-# Full suite
-python3 -m pytest tests/
+All pytest execution by agents must use the guarded wrapper:
 
-# Single domain
-python3 -m pytest tests/orchestration/
+```bash
+# Full suite (once only, near final handoff)
+scripts/remedy_pytest.sh tests/ -q --cache-clear
+
+# Single domain (preferred during development)
+scripts/remedy_pytest.sh tests/orchestration/ -q --cache-clear
 
 # Single file
-python3 -m pytest tests/orchestration/test_source_apply.py
+scripts/remedy_pytest.sh tests/orchestration/test_source_apply.py -q
 ```
+
+## Resource Safety
+
+- Never run pytest in background.
+- Never run multiple pytest commands in parallel.
+- Never run full `pytest tests/` more than once per work block.
+- The wrapper uses `flock -n` to prevent parallel runs and `timeout` to prevent runaways.
+- See `docs/reviewer-safety.md` for full policy.
