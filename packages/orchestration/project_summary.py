@@ -237,9 +237,8 @@ def detect_patterns(
             if event_name == "stop_reason_recorded" and meta.get("stop_reason") == "permission_denied":
                 permission_blocks.append((jid, ts))
 
-            if event_name in ("autorun_builder_completed", "stop_reason_recorded"):
-                if meta.get("stop_reason") == "provider_unavailable":
-                    provider_issues.append((jid, ts))
+            if event_name == "stop_reason_recorded" and meta.get("stop_reason") == "provider_unavailable":
+                provider_issues.append((jid, ts))
 
             if event_name == "repair_loop_stopped" and meta.get("reason") == "repair_budget_exhausted":
                 repair_exhaustions.append((jid, ts))

@@ -175,3 +175,26 @@ class TestProjectSummaryOutput:
         data = export_memory_suggestions_json(suggestions)
         assert len(data) == 1
         assert data[0]["requires_approval"] is True
+
+
+class TestProjectSummaryErrorPaths:
+    """CLI handles invalid/missing project IDs safely."""
+
+    def test_invalid_project_id_exits(self):
+        import subprocess
+        result = subprocess.run(
+            ["python3", "-m", "apps.cli.grouped", "project", "summary", "not-a-uuid"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode != 0
+        assert "invalid" in result.stderr.lower() or "error" in result.stderr.lower()
+
+    def test_missing_project_exits(self):
+        import subprocess
+        fake_uuid = "00000000-0000-0000-0000-000000000099"
+        result = subprocess.run(
+            ["python3", "-m", "apps.cli.grouped", "project", "summary", fake_uuid],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode != 0
+        assert "not found" in result.stderr.lower() or "error" in result.stderr.lower()

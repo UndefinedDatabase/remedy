@@ -429,19 +429,17 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
 
         model_confidence = "low"
         needs_real_check = True
-        has_builder_events = any(
-            ev.get("event") == "builder_patch_parsed"
-            for evs in all_events.values() for ev in evs
+        real_builder_count = sum(
+            1 for evs in all_events.values() for ev in evs
+            if ev.get("event") == "autorun_builder_completed"
+            and ev.get("metadata", {}).get("provider") not in (None, "", "fixture", "mock")
         )
-        if has_builder_events:
-            real_provider = any(
-                ev.get("metadata", {}).get("provider") not in (None, "", "fixture", "mock")
-                for evs in all_events.values() for ev in evs
-                if ev.get("event") == "autorun_builder_completed"
-            )
-            if real_provider:
-                model_confidence = "medium"
-                needs_real_check = False
+        if real_builder_count >= 15:
+            model_confidence = "high"
+            needs_real_check = False
+        elif real_builder_count >= 5:
+            model_confidence = "medium"
+            needs_real_check = False
 
         return {
             "project_id": summary.project_id,
