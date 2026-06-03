@@ -41,9 +41,20 @@ function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; 
   return { nodes, edges };
 }
 
-export function BrainGraphCanvas({ dashboard, onSelectNode }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void }) {
+export function BrainGraphCanvas({ dashboard, filter = "all", onSelectNode }: { dashboard: RemedyDashboard; filter?: string; onSelectNode: (nodeId: string | null) => void }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const { nodes, edges } = buildDisplayModel(dashboard);
+  const model = buildDisplayModel(dashboard);
+  const filteredNodes = model.nodes.filter(n => {
+    if (n.kind === "root") return true;
+    if (filter === "all") return true;
+    if (filter === "open") return n.state === "current" || n.state === "blocked";
+    if (filter === "planned") return n.state === "planned";
+    if (filter === "done") return n.state === "done";
+    return true;
+  });
+  const visibleIds = new Set(filteredNodes.map(n => n.id));
+  const nodes = filteredNodes;
+  const edges = model.edges.filter(([s, t]) => visibleIds.has(s) && visibleIds.has(t));
 
   const pad = 40;
   const xs = nodes.map(n => n.x);
