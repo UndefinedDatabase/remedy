@@ -87,4 +87,18 @@ export interface RemedyResume {
   blocked_reason: string;
 }
 
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; }
+export interface RemedyProjectSummary {
+  project_id: string;
+  job_count: number;
+  active_job_count: number;
+  blocked_job_count: number;
+  current_focus: string;
+  top_blocker: string;
+  repeated_pattern_count: number;
+  model_quality_confidence: string;
+  suggested_next_step: string;
+  next_command: string;
+  redaction: string;
+}
+
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; }

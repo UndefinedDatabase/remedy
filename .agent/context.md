@@ -4,18 +4,16 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 391-398: Real model quality loop — complete.
+Steps 399-406: Project-level brain — complete.
 
 ## Completed
-- 3 real prompt profiles: strict_minimal, repair_aware, context_rich (genuinely different text)
-- OllamaBuilder wired to accept prompt_profile parameter
-- 7 task cases: missing_function, wrong_return, import_fix, test_failure_repair, unsafe_path, stale_context, no_change_needed
-- Quality scorecard: usable_patch_rate, safe_rejection_rate, outcome_accuracy, avg_tokens, avg_latency
-- Failure-pattern recommendations: prose, malformed, over-rejection, under-rejection, missing_patch
-- Model profile recommendation: confidence tiers (low/medium/high), fixture vs real distinction
-- Eval CLI: --fixture (simulated), --ollama (real when REMEDY_REAL_OLLAMA_EVAL=1)
-- R-15002 fixed: over-rejection/under-rejection split correctly
-- All exports: safe metadata only, redaction field on every record
+- ProjectBrainSummary: job counts, focus, blockers, touched files, token usage, next step
+- Pattern detection: repeated stop reasons, frequently touched files, repeated parse failures
+- Project model quality: confidence tiers (low/medium/high), fixture vs real distinction
+- Memory suggestions: require approval, bounded to 10, derived from patterns
+- CLI: project.summary command in catalog with text + JSON output
+- Dashboard: project_summary field with compact safe metadata
+- TypeScript: RemedyProjectSummary interface, normalization, null fallback
 
 ## Resource-Safety Rules (permanent)
 - Never run pytest in background
@@ -25,9 +23,8 @@ Steps 391-398: Real model quality loop — complete.
 
 ## Constraints
 - UI remains read-only
-- No real Ollama required for normal CI tests
-- No raw content in eval records, scorecard, or recommendations
+- No auto-write to project memory without approval
 - source_apply requires permission + approved intent
 
 ## Recommended Next Block
-Steps 399-406 — Project-Level Brain And Multi-Run Learning
+Steps 407-414 — Real Ollama Run Set And Prompt Iteration

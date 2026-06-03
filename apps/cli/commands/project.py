@@ -215,6 +215,74 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
         print(summarize_project_brain_aggregate(agg))
 
 
+def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        load_project,
+    )
+    from packages.orchestration.project_summary import (
+        build_project_summary,
+        detect_patterns,
+        export_patterns_json,
+        export_project_summary_json,
+        suggest_memory_updates,
+    )
+    from packages.orchestration.timeline import load_run_events
+
+    try:
+        pid = UUID(project_id_str)
+    except ValueError:
+        print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        project = load_project(pid)
+    except ProjectNotFoundError:
+        print(f"Error: project not found: {project_id_str}", file=sys.stderr)
+        sys.exit(1)
+
+    all_jobs = list_jobs()
+    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+
+    data_dir = resolve_data_root()
+    all_events: dict[str, list[dict]] = {}
+    for job in linked_jobs:
+        jid = str(job.id)
+        all_events[jid] = load_run_events(data_dir, job.id)
+
+    summary = build_project_summary(project, linked_jobs, all_events)
+    patterns = detect_patterns(linked_jobs, all_events)
+    suggestions = suggest_memory_updates(summary, patterns)
+
+    summary.patterns = export_patterns_json(patterns)
+    summary.memory_suggestions = [
+        {"title": s.title, "summary": s.summary, "evidence_count": s.evidence_count,
+         "requires_approval": s.requires_approval}
+        for s in suggestions
+    ]
+
+    if json_output:
+        print(_json.dumps(export_project_summary_json(summary), sort_keys=True))
+    else:
+        print(f"Project: {project.name} ({project_id_str[:8]})")
+        print(f"Jobs: {summary.job_count} (active={summary.active_job_count}, completed={summary.completed_job_count}, blocked={summary.blocked_job_count})")
+        print(f"Focus: {summary.current_focus}")
+        if summary.blockers:
+            print(f"Blockers: {', '.join(summary.blockers[:3])}")
+        if summary.frequently_touched_files:
+            print(f"Frequently touched: {', '.join(summary.frequently_touched_files[:3])}")
+        if patterns:
+            print(f"Patterns: {len(patterns)} detected")
+            for p in patterns[:3]:
+                print(f"  - [{p.severity}] {p.summary}")
+        if suggestions:
+            print(f"Memory suggestions: {len(suggestions)} (require approval)")
+        if summary.suggested_next_step:
+            print(f"Next step: {summary.suggested_next_step}")
+        if summary.next_command:
+            print(f"Command: {summary.next_command}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
     "project.list": lambda args: _cmd_list_projects(),
@@ -223,4 +291,5 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "project.attach-job": lambda args: _cmd_attach_project_job(args.project_id, args.job_id),
     "project.brain": lambda args: _cmd_project_brain(args.project_id, json_output=args.json),
     "project.context": lambda args: _cmd_project_context(args.project_id, json_output=args.json),
+    "project.summary": lambda args: _cmd_project_summary(args.project_id, json_output=args.json),
 }

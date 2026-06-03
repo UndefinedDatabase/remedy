@@ -334,6 +334,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         },
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
+        "project_summary": _build_project_summary_section(job),
         "redaction": {
             "policy": "safe_summaries_only",
             "raw_content_exposed": False,
@@ -394,6 +395,53 @@ def _build_resume_section(job: Any, events: list[dict[str, Any]]) -> dict[str, A
             "blocked_reason": "replay_error",
             "last_event_at": "",
         }
+
+
+def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
+    """Build project-level summary for dashboard. Returns None if no project."""
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.project_registry import load_project
+        from packages.orchestration.project_summary import (
+            build_project_summary,
+            detect_patterns,
+            export_project_summary_json,
+        )
+        from packages.orchestration.storage import list_jobs
+        from packages.orchestration.timeline import load_run_events
+
+        project_id = job.metadata.get("project_id")
+        if not project_id:
+            return None
+
+        from uuid import UUID
+        project = load_project(UUID(project_id))
+        all_jobs = list_jobs()
+        linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+
+        data_dir = resolve_data_root()
+        all_events: dict[str, list[dict]] = {}
+        for j in linked_jobs:
+            all_events[str(j.id)] = load_run_events(data_dir, j.id)
+
+        summary = build_project_summary(project, linked_jobs, all_events)
+        patterns = detect_patterns(linked_jobs, all_events)
+
+        return {
+            "project_id": summary.project_id,
+            "job_count": summary.job_count,
+            "active_job_count": summary.active_job_count,
+            "blocked_job_count": summary.blocked_job_count,
+            "current_focus": summary.current_focus,
+            "top_blocker": summary.blockers[0] if summary.blockers else "",
+            "repeated_pattern_count": len(patterns),
+            "model_quality_confidence": "low",
+            "suggested_next_step": summary.suggested_next_step,
+            "next_command": summary.next_command,
+            "redaction": "safe_metadata_only",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
 
 
 def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:

@@ -1,17 +1,17 @@
-# Plan — Steps 391-398
+# Plan — Steps 399-406
 
 ## Goal
-Real model quality loop: prompt profiles, task set, scorecard, failure-pattern guidance, model profiles.
+Project-level brain: cross-job summary, repeated patterns, model quality rollup, memory suggestions.
 
 ## Current Step
 All steps complete.
 
 ## Steps
-- [x] Step 391: Clean handoff truth (live_review, context, plan)
-- [x] Step 392: Honest builder eval commands (--ollama Path B, env-gated)
-- [x] Step 393: Real prompt profiles (strict_minimal, repair_aware, context_rich)
-- [x] Step 394: Small real-repo task set (7 scenarios with expected outcomes)
-- [x] Step 395: Model quality scorecard (usable_patch_rate, safe_rejection_rate, outcome_accuracy)
-- [x] Step 396: Failure-pattern prompt recommendations (prose, malformed, over/under-rejection)
-- [x] Step 397: Local model profile recommendation (confidence tiers, fixture/real)
-- [x] Step 398: Guarded baseline (3993 passed, 8 skipped via wrapper)
+- [x] Step 399: Clean handoff truth
+- [x] Step 400: Project brain summary v1 (ProjectBrainSummary with job counts, focus, blockers)
+- [x] Step 401: Repeated pattern detection (stop_reason, file touch, parse failure)
+- [x] Step 402: Model quality rollup (ProjectModelSummary with confidence tiers)
+- [x] Step 403: Safe memory suggestions (require approval, bounded)
+- [x] Step 404: CLI project.summary command (catalog, text, JSON)
+- [x] Step 405: Dashboard project_summary field + TypeScript types
+- [x] Step 406: Guarded baseline (4018 passed, 8 skipped, Vitest 35, TS clean, build OK)

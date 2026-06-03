@@ -304,6 +304,17 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("project.show",),
     ),
 
+    CommandEntry(
+        command_id="project.summary",
+        group_id="project",
+        subcommand="summary",
+        description="Show project-level summary with patterns and suggestions.",
+        action_class="read_only",
+        args=(_PROJECT_ID, _JSON_OPT),
+        supports_json=True,
+        related=("project.show", "project.brain"),
+    ),
+
     # ── patch ────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="patch.list",
