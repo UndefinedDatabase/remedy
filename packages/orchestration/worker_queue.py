@@ -446,36 +446,52 @@ def run_worker_once(
         result.action_taken = "no_work_performed"
         result.why_it_stopped = "no_worker_selected"
         result.next_command = f"remedy worker run --once --provider fixture --job {entry.job_id[:8]}"
-    elif provider == "fixture":
+    elif provider in ("fixture", "ollama"):
         try:
             from packages.orchestration.autorun import run_autorun
-            from packages.orchestration.storage import load_job
+            from packages.orchestration.storage import JobNotFoundError, load_job
             job = load_job(entry.job_id)
-            ar = run_autorun(job, builder_provider="fixture", data_dir=str(data_dir))
+            ar = run_autorun(job, builder_provider=provider, data_dir=str(data_dir))
             stage = ar.stage if hasattr(ar, "stage") else ""
             stop = ar.stop_reason if hasattr(ar, "stop_reason") else ""
-            lc, action, why = _map_result_to_lifecycle("fixture", stage, stop)
-            transition_state(entry.job_id, lc, data_dir, blocked_reason=why if lc == "blocked" else "")
-            result.last_lifecycle_state = lc
-            result.action_taken = action
-            result.why_it_stopped = why
-            if lc == "completed":
-                result.jobs_processed = 1
-        except (ImportError, FileNotFoundError):
-            transition_state(entry.job_id, "blocked", data_dir, blocked_reason="fixture_path_error")
+            intent_id = ""
+            if hasattr(ar, "intent_id"):
+                intent_id = ar.intent_id or ""
+
+            if stop == "approval_required" and intent_id:
+                transition_state(
+                    entry.job_id, "waiting_for_approval", data_dir,
+                    blocked_reason="approval_required",
+                )
+                result.last_lifecycle_state = "waiting_for_approval"
+                result.action_taken = "stopped_for_approval"
+                result.why_it_stopped = "approval_required"
+                result.next_command = f"remedy patch approve {entry.job_id[:8]} {intent_id}"
+            elif stop == "approval_required" and not intent_id:
+                transition_state(entry.job_id, "blocked", data_dir, blocked_reason="approval_required_no_intent")
+                result.last_lifecycle_state = "blocked"
+                result.action_taken = "blocked"
+                result.why_it_stopped = "approval_required_no_intent"
+                result.next_command = f"remedy job show {entry.job_id[:8]}"
+            else:
+                lc, action, why = _map_result_to_lifecycle(provider, stage, stop)
+                transition_state(entry.job_id, lc, data_dir, blocked_reason=why if lc == "blocked" else "")
+                result.last_lifecycle_state = lc
+                result.action_taken = action
+                result.why_it_stopped = why
+                if lc == "completed":
+                    result.jobs_processed = 1
+        except JobNotFoundError:
+            transition_state(entry.job_id, "blocked", data_dir, blocked_reason="job_not_found")
             result.last_lifecycle_state = "blocked"
             result.action_taken = "blocked"
-            result.why_it_stopped = "fixture_path_error"
+            result.why_it_stopped = "job_not_found"
             result.next_command = f"remedy job show {entry.job_id[:8]}"
-    elif provider == "ollama":
-        transition_state(
-            entry.job_id, "waiting_for_approval", data_dir,
-            blocked_reason="approval_required",
-        )
-        result.last_lifecycle_state = "waiting_for_approval"
-        result.action_taken = "stopped_for_approval"
-        result.why_it_stopped = "approval_required"
-        result.next_command = f"remedy patch approve {entry.job_id[:8]} <intent_id>"
+        except ImportError:
+            transition_state(entry.job_id, "blocked", data_dir, blocked_reason="missing_dependency")
+            result.last_lifecycle_state = "blocked"
+            result.action_taken = "blocked"
+            result.why_it_stopped = "missing_dependency"
 
     result.duration_ms = int((time.monotonic() - start) * 1000)
 

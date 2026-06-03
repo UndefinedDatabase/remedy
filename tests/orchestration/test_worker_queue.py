@@ -177,10 +177,29 @@ class TestWorkerRunOnce:
         result = run_worker_once(tmp_path)
         assert result.action_taken == "idle"
 
-    def test_approval_stops(self, tmp_path):
+    def test_ollama_missing_job_blocks(self, tmp_path):
         enqueue_job("j1", tmp_path)
         result = run_worker_once(tmp_path, provider="ollama")
-        assert result.last_lifecycle_state == "waiting_for_approval"
+        assert result.last_lifecycle_state == "blocked"
+        assert "job_not_found" in result.why_it_stopped
+
+    def test_ollama_no_placeholder_intent(self, tmp_path):
+        enqueue_job("j1", tmp_path)
+        result = run_worker_once(tmp_path, provider="ollama")
+        assert "<intent_id>" not in (result.next_command or "")
+
+    def test_fixture_missing_job_blocks(self, tmp_path):
+        enqueue_job("j1", tmp_path)
+        result = run_worker_once(tmp_path, provider="fixture")
+        assert result.last_lifecycle_state == "blocked"
+        assert result.why_it_stopped == "job_not_found"
+        assert result.jobs_processed == 0
+
+    def test_fixture_missing_job_no_exception(self, tmp_path):
+        enqueue_job("j1", tmp_path)
+        result = run_worker_once(tmp_path, provider="fixture")
+        data = export_worker_result_json(result)
+        assert "traceback" not in json.dumps(data).lower()
 
     def test_json_output_safe(self, tmp_path):
         enqueue_job("j1", tmp_path)
@@ -369,3 +388,46 @@ class TestWorkerUI:
         assert "onClick" not in tsx or "clipboard" in tsx
         assert "Start" not in tsx
         assert "Pause" not in tsx or "Paused" in tsx
+
+    def test_worker_ui_no_placeholder_commands(self):
+        tsx = (Path(__file__).resolve().parents[2] / "apps" / "ui" / "src" / "components" / "pipeline" / "WorkerStatusMini.tsx").read_text()
+        assert 'includes("<")' in tsx, "UI must filter out placeholder commands with <>"
+
+
+class TestFakeStateRegression:
+    """Prevent fake worker states from returning."""
+
+    def test_fixture_missing_job_does_not_raise(self, tmp_path):
+        enqueue_job("missing-job-xyz", tmp_path)
+        result = run_worker_once(tmp_path, provider="fixture")
+        assert result.last_lifecycle_state == "blocked"
+
+    def test_fixture_missing_job_blocked_reason(self, tmp_path):
+        enqueue_job("missing-job-abc", tmp_path)
+        result = run_worker_once(tmp_path, provider="fixture")
+        assert result.why_it_stopped == "job_not_found"
+
+    def test_ollama_missing_job_no_fake_approval(self, tmp_path):
+        enqueue_job("missing-ollama-job", tmp_path)
+        result = run_worker_once(tmp_path, provider="ollama")
+        assert result.last_lifecycle_state != "waiting_for_approval"
+        assert result.last_lifecycle_state == "blocked"
+
+    def test_ollama_no_placeholder_intent_in_command(self, tmp_path):
+        enqueue_job("ollama-test", tmp_path)
+        result = run_worker_once(tmp_path, provider="ollama")
+        assert "<intent_id>" not in (result.next_command or "")
+
+    def test_completed_requires_real_work(self, tmp_path):
+        enqueue_job("no-work-job", tmp_path)
+        result = run_worker_once(tmp_path, provider="none")
+        assert result.last_lifecycle_state != "completed"
+        assert result.jobs_processed == 0
+
+    def test_waiting_for_approval_requires_intent(self, tmp_path):
+        enqueue_job("no-intent-job", tmp_path)
+        for prov in ("none", "fixture", "ollama"):
+            result = run_worker_once(tmp_path, job_id=f"test-{prov}", provider=prov)
+            if result.last_lifecycle_state == "waiting_for_approval":
+                assert "<intent_id>" not in (result.next_command or ""), \
+                    f"provider={prov} produced waiting_for_approval with placeholder intent"

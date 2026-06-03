@@ -34,7 +34,7 @@ export function WorkerStatusMini({ status }: { status: RemedyWorkerStatus | null
         <div className={styles.projectNextLine}>{status.why_it_stopped.replace(/_/g, " ")}</div>
       )}
 
-      {status.next_command && (
+      {status.next_command && !status.next_command.includes("<") && (
         <button
           type="button"
           className={styles.projectCommandButton}
