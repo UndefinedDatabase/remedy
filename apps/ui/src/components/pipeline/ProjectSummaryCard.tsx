@@ -5,35 +5,20 @@ export function ProjectSummaryCard({ summary }: { summary: RemedyProjectSummary 
   if (!summary) return null;
 
   return (
-    <section className={styles.projectCard} data-testid="project-summary-card">
-      <header className={styles.panelHeader}><h2>Project</h2></header>
-      <div className={styles.projectGrid}>
-        <span className={styles.projectLabel}>Jobs</span>
-        <span>{summary.job_count}</span>
-
+    <section className={styles.projectMiniCard} data-testid="project-summary-card">
+      <header className={styles.projectHeader}><h2>Project</h2></header>
+      <div className={styles.projectChips}>
+        <span className={styles.projectChip}>{summary.job_count} jobs</span>
         {summary.active_job_count > 0 && (
-          <>
-            <span className={styles.projectLabel}>Active</span>
-            <span>{summary.active_job_count}</span>
-          </>
+          <span className={styles.projectChip}>{summary.active_job_count} active</span>
         )}
-
         {summary.blocked_job_count > 0 && (
-          <>
-            <span className={styles.projectLabel}>Blocked</span>
-            <span className={styles.projectBlocked}>{summary.blocked_job_count}</span>
-          </>
+          <span className={styles.projectChipWarning}>{summary.blocked_job_count} blocked</span>
         )}
-
         {summary.repeated_pattern_count > 0 && (
-          <>
-            <span className={styles.projectLabel}>Patterns</span>
-            <span>{summary.repeated_pattern_count} repeated</span>
-          </>
+          <span className={styles.projectChip}>{summary.repeated_pattern_count} patterns</span>
         )}
-
-        <span className={styles.projectLabel}>Model check</span>
-        <span>{summary.model_quality_confidence}</span>
+        <span className={styles.projectChip}>model: {summary.model_quality_confidence}</span>
       </div>
 
       {summary.current_focus && (
@@ -41,21 +26,23 @@ export function ProjectSummaryCard({ summary }: { summary: RemedyProjectSummary 
       )}
 
       {summary.top_blocker && (
-        <div className={styles.projectBlocker}>Blocker: {summary.top_blocker}</div>
+        <div className={styles.projectBlockerLine}>Blocker: {summary.top_blocker}</div>
       )}
 
       {summary.suggested_next_step && (
-        <div className={styles.projectNext}>{summary.suggested_next_step}</div>
+        <div className={styles.projectNextLine}>{summary.suggested_next_step}</div>
       )}
 
       {summary.next_command && (
-        <code
-          className={styles.commandCode}
+        <button
+          type="button"
+          className={styles.projectCommandButton}
           onClick={() => navigator.clipboard?.writeText(summary.next_command)}
-          title="Click to copy"
+          aria-label={`Copy command: ${summary.next_command}`}
+          title="Copy command"
         >
           {summary.next_command}
-        </code>
+        </button>
       )}
     </section>
   );

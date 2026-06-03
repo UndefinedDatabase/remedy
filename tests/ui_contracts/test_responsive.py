@@ -827,9 +827,9 @@ class TestSingleLeftRailNoLayerSwitcher:
 class TestRightPanelResponsiveGrid:
     """Right panel uses responsive grid."""
 
-    def test_panel_css_grid(self):
+    def test_panel_css_layout(self):
         css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
-        assert "grid-template-rows" in css
+        assert "flex-direction: column" in css or "grid-template-rows" in css
 
     def test_task_list_scrolls(self):
         css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()

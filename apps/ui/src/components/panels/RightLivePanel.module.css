@@ -1,14 +1,9 @@
 .panel {
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-rows:
-    clamp(32px, 4vh, 40px)
-    auto
-    auto
-    auto
-    minmax(120px, 1fr);
-  gap: clamp(8px, 1vh, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -37,12 +32,12 @@
 .idleDot { background: var(--remedy-faint); }
 
 .card {
-  border-radius: clamp(16px, 1.4vw, 22px);
-  padding: clamp(14px, 1.4vw, 20px);
-  background: rgba(255,255,255,.62);
-  border: 1px solid rgba(61,98,164,.13);
-  box-shadow: 0 14px 40px rgba(55,86,138,.1);
-  backdrop-filter: blur(24px);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.46);
+  border: 1px solid rgba(61,98,164,.12);
+  box-shadow: 0 4px 12px rgba(55,86,138,.06);
+  backdrop-filter: blur(18px);
 }
 
 .agentCard { min-height: 0; }
