@@ -13,11 +13,13 @@
 # Environment:
 #   REMEDY_PYTEST_TIMEOUT_SEC  — max seconds (default: 600)
 #   REMEDY_PYTEST_LOCK         — lock file path (default: /tmp/remedy-pytest.lock)
+#   REMEDY_PYTHON              — python binary (default: python3)
 
 set -euo pipefail
 
 TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-600}"
 LOCK_FILE="${REMEDY_PYTEST_LOCK:-/tmp/remedy-pytest.lock}"
+PYTHON="${REMEDY_PYTHON:-python3}"
 
 exec 200>"${LOCK_FILE}"
 
@@ -29,17 +31,18 @@ if ! flock -n 200; then
 fi
 
 echo "remedy_pytest: timeout=${TIMEOUT_SEC}s, lock=${LOCK_FILE}"
-PYTHON="${REMEDY_PYTHON:-python3}"
-
 echo "remedy_pytest: ${PYTHON} -m pytest $*"
 
-if ! timeout "${TIMEOUT_SEC}" "${PYTHON}" -m pytest "$@"; then
-    EXIT_CODE=$?
-    if [ "${EXIT_CODE}" -eq 124 ]; then
-        echo "" >&2
-        echo "ERROR: pytest timed out after ${TIMEOUT_SEC} seconds." >&2
-        echo "To increase: REMEDY_PYTEST_TIMEOUT_SEC=900 scripts/remedy_pytest.sh ..." >&2
-        exit 124
-    fi
-    exit "${EXIT_CODE}"
+set +e
+timeout "${TIMEOUT_SEC}" "${PYTHON}" -m pytest "$@"
+EXIT_CODE=$?
+set -e
+
+if [ "${EXIT_CODE}" -eq 124 ]; then
+    echo "" >&2
+    echo "ERROR: pytest timed out after ${TIMEOUT_SEC} seconds." >&2
+    echo "To increase: REMEDY_PYTEST_TIMEOUT_SEC=900 scripts/remedy_pytest.sh ..." >&2
+    exit 124
 fi
+
+exit "${EXIT_CODE}"

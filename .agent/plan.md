@@ -1,17 +1,17 @@
-# Plan — Steps 375-382
+# Plan — Steps 383-390
 
 ## Goal
-Resource-safe pytest harness, reviewer safety protocol, handoff truth cleanup.
+Fix pytest wrapper exit-code bug, add behavioral tests, build eval harness for builder prompt quality.
 
 ## Current Step
-Step 382: Baseline complete, finalizing.
+All steps complete.
 
 ## Steps
-- [x] Step 375: Resource-safety policy docs (docs/reviewer-safety.md, tests/README.md, .agent/context.md)
-- [x] Step 376: Guarded pytest wrapper (scripts/remedy_pytest.sh) with flock + timeout
-- [x] Step 377: Reviewer protocol update (no repeated full pytest, use wrapper)
-- [x] Step 378: Fix handoff truth (live_review.md, plan.md, context.md)
-- [x] Step 379: Standardize test command matrix
-- [x] Step 380: Resource-safety regression tests (13 tests)
-- [x] Step 381: Emergency cleanup guidance
-- [x] Step 382: Guarded baseline (3943 passed, 7 skipped), next plan ready
+- [x] Step 383: Fix pytest wrapper exit-code propagation (set +e pattern)
+- [x] Step 384: Wrapper behavior tests (6 tests: pass/fail/nonexistent/timeout/lock)
+- [x] Step 385: Clean handoff truth
+- [x] Step 386: Builder eval harness (EvalRecord, EvalMetrics, EvalReport)
+- [x] Step 387: Prompt variants + structured output metrics (9 standard cases)
+- [x] Step 388: Small-repo eval set, Ollama opt-in (4 fixtures + unsafe scenario)
+- [x] Step 389: Eval CLI script (scripts/remedy_builder_eval.sh)
+- [x] Step 390: Guarded baseline (3968 passed, 8 skipped via fixed wrapper)

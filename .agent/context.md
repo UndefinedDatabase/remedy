@@ -4,25 +4,26 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 375-382: Resource-safe pytest harness, reviewer safety protocol, handoff truth.
+Steps 383-390: Pytest wrapper exit-code fix, wrapper behavior tests, builder eval harness.
 
 ## Completed
-- Guarded pytest wrapper: scripts/remedy_pytest.sh (flock -n, timeout, foreground-only)
-- Resource-safety policy: docs/reviewer-safety.md
-- Reviewer protocol: no repeated full pytest, targeted tests during dev, one baseline at handoff
-- Test command matrix: standardized in docs/reviewer-safety.md
-- Emergency cleanup guidance: process inspection + kill instructions
-- Handoff truth: live_review.md Steps 367-374 status corrected to PASS
-- Resource-safety regression tests: 13 tests in tests/regression/test_resource_safety.py
-- tests/README.md updated with wrapper instructions and safety section
+- Pytest wrapper exit-code fix: `set +e` / `$?` / `set -e` pattern (was masking failures as success)
+- Wrapper behavior tests: 6 tests (pass/fail/nonexistent/timeout/lock-busy/lock-message)
+- Builder eval harness: packages/orchestration/builder_eval.py
+- Standard eval cases: 9 categories (valid_file_op, valid_diff, prose, malformed, wrapper, unsafe_path, shell, no_text, empty)
+- Prompt variant comparison: run_fixture_eval supports variant labeling
+- Small-repo eval fixtures: missing_function, wrong_return, repair_cycle1/2, unsafe_path
+- Real Ollama eval: opt-in via REMEDY_REAL_OLLAMA_EVAL=1, skips cleanly
+- Eval CLI script: scripts/remedy_builder_eval.sh (--fixture, --ollama, --json)
+- Eval report: safe metadata only, no raw content, redaction field on all records
+- Handoff truth: live_review.md Steps 375-382 status consistent
 
 ## Resource-Safety Rules (permanent)
-- Never run pytest in background (no run_in_background, no &, no nohup)
+- Never run pytest in background
 - Never run multiple pytest commands in parallel
 - Always use scripts/remedy_pytest.sh for pytest execution
 - Full pytest tests/ at most once per worker block
-- Reviewers must not repeatedly run full baseline in watcher loop
-- The wrapper uses flock -n to fail fast if lock is busy
+- Wrapper uses flock -n + timeout, propagates exit codes truthfully
 
 ## Constraints
 - UI remains read-only
@@ -34,6 +35,7 @@ Steps 375-382: Resource-safe pytest harness, reviewer safety protocol, handoff t
 - from_approval blocked until structured patch payload persistence
 - Repair resume blocked until implementation
 - Background worker not implemented
+- Fixture eval shows 33% parse success — reflects that most standard cases are intentional failures
 
 ## Recommended Next Block
-Steps 383-390 — Builder Prompt Quality And Real-Ollama Hardening
+Steps 391-398 — Real-Ollama Prompt Iteration And Model Routing
