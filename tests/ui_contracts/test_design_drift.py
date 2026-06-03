@@ -151,3 +151,88 @@ class TestNoRawContentInCards:
         content = PIPELINE_CSS.read_text()
         assert "debugWall" not in content
         assert "rawOutput" not in content
+
+
+class TestGraphStableViewBox:
+    """Graph must use stable viewBox, not dynamic scaling."""
+
+    def test_stable_viewbox(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "STAGE_W" in content or 'viewBox="' in content
+        assert "Math.min(...xs)" not in content
+
+    def test_root_fixed_radius(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "ROOT_R" in content
+
+    def test_no_dynamic_viewbox_from_nodes(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "minX" not in content or "STAGE_W" in content
+
+
+class TestGraphKeyboardAccess:
+    """Graph nodes must be keyboard accessible."""
+
+    def test_task_nodes_focusable(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "tabIndex" in content
+
+    def test_task_nodes_have_aria_label(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "aria-label" in content
+
+
+class TestGraphTooltipNearNode:
+    """Tooltip should appear near hovered node, not fixed bottom."""
+
+    def test_tooltip_uses_node_position(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "tooltipPos" in content or "hovered.x" in content
+
+
+class TestAgentNowTruth:
+    """Agent card must not claim working when idle."""
+
+    def test_agent_idle_not_working(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "panels" / "AgentNowCard.tsx").read_text()
+        assert '"Builder is working"' not in tsx
+        assert "Idle" in tsx
+
+    def test_agent_no_mui_icons(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "panels" / "AgentNowCard.tsx").read_text()
+        assert "@mui" not in tsx
+
+
+class TestLogoUsesRemedyMark:
+    """Logo must use custom RemedyMark, not NetworkLogoIcon."""
+
+    def test_logo_uses_remedy_mark(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "rail" / "RemedyLogo.tsx").read_text()
+        assert "RemedyMark" in tsx
+        assert "NetworkLogoIcon" not in tsx
+
+
+class TestTokenTooltipLayering:
+    """Token tooltip must not be clipped."""
+
+    def test_metrics_bar_overflow_visible(self):
+        css = (ROOT / "apps" / "ui" / "src" / "components" / "metrics" / "TopMetricsBar.module.css").read_text()
+        bar_match = re.search(r"\.bar\s*\{([^}]+)\}", css)
+        assert bar_match
+        assert "overflow: visible" in bar_match.group(1)
+
+
+class TestDetailPanelOutcome:
+    """Task detail must show outcome, not internal machinery."""
+
+    def test_no_next_safe_action(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx").read_text()
+        assert "Next safe action" not in tsx
+
+    def test_has_outcome_section(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx").read_text()
+        assert "Outcome" in tsx
+
+    def test_no_cli_command_primary(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx").read_text()
+        assert "next.command" not in tsx

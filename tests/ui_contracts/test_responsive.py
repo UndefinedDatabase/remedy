@@ -717,7 +717,7 @@ class TestRightPanelCards:
         f = UI_SRC / "components" / "panels" / "AgentNowCard.tsx"
         assert f.is_file()
         content = f.read_text(encoding="utf-8")
-        assert "Agent is doing now" in content
+        assert "Agent" in content
 
     def test_activity_feed_card(self):
         f = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"

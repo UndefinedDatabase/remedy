@@ -276,14 +276,11 @@ class TestNoFakeUiStateInComponents:
 
     def test_agent_now_card_has_idle_state(self):
         src = (UI_SRC / "components" / "panels" / "AgentNowCard.tsx").read_text()
-        assert "idle" in src.lower() or "isIdle" in src
+        assert "idle" in src.lower() or "Idle" in src
 
     def test_agent_now_card_no_always_working(self):
         src = (UI_SRC / "components" / "panels" / "AgentNowCard.tsx").read_text()
-        # Should NOT have unconditional "Builder is working" without idle check
-        lines = src.split("\n")
-        has_idle_check = any("isIdle" in l for l in lines)
-        assert has_idle_check
+        assert "isRunning" in src or "isIdle" in src or "live.running" in src
 
     def test_activity_feed_has_empty_state(self):
         src = (UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx").read_text()

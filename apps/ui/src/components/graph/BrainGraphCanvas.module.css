@@ -11,55 +11,55 @@
 }
 
 .edge {
-  stroke: rgba(255, 255, 255, .76);
+  fill: none;
+  stroke: rgba(255, 255, 255, .68);
   stroke-width: 1.2;
-  filter: drop-shadow(0 0 7px rgba(76, 131, 255, .35));
+  filter: drop-shadow(0 0 6px rgba(76, 131, 255, .28));
 }
 
 .rootOrb {
-  fill: linear-gradient(135deg, #3478ff, #6da0ff);
   fill: var(--remedy-blue, #4c83ff);
-  filter: drop-shadow(0 0 28px rgba(76, 131, 255, .48));
+  filter: drop-shadow(0 0 32px rgba(76, 131, 255, .44));
 }
 
 .nodeCore {
-  fill: rgba(255, 255, 255, .95);
-  stroke-width: 2;
+  fill: rgba(255, 255, 255, .92);
+  stroke-width: 2.2;
 }
 
 .nodeDone { stroke: var(--remedy-green, #4cc681); }
-.nodePlanned { stroke: var(--remedy-blue, #4c83ff); opacity: .6; }
+.nodePlanned { stroke: var(--remedy-blue, #4c83ff); opacity: .55; }
 .nodeCurrent { stroke: var(--remedy-purple, #a28cff); }
 .nodeBlocked { stroke: #e06050; }
 
 .hoverHalo {
   fill: none;
   stroke: var(--remedy-blue, #4c83ff);
-  stroke-width: 1;
-  opacity: .4;
+  stroke-width: 1.2;
+  opacity: .35;
 }
 
 .tooltip {
   position: absolute;
-  transform: translateX(-50%);
-  padding: 6px 12px;
+  transform: translate(-50%, -100%);
+  padding: 6px 14px;
   border-radius: 10px;
-  background: var(--remedy-glass-bg-strong, rgba(255,255,255,.72));
+  background: var(--remedy-glass-bg-strong, rgba(255,255,255,.78));
   border: 1px solid var(--remedy-glass-border, rgba(62,95,154,.13));
-  box-shadow: var(--remedy-shadow-soft);
+  box-shadow: var(--remedy-shadow-soft, 0 10px 30px rgba(55,86,138,.08));
   backdrop-filter: blur(16px);
   font-size: 11px;
   color: var(--remedy-ink, #10285f);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   pointer-events: none;
   white-space: nowrap;
-  z-index: 10;
+  z-index: 20;
 }
 
 .tooltip strong { font-weight: 800; font-size: 11px; }
-.tooltip span { font-size: 10px; color: var(--remedy-ink-soft, #6f82a8); text-transform: capitalize; }
+.tooltip span { font-size: 10px; color: var(--remedy-ink-soft, #6f82a8); }
 
 @media (prefers-reduced-motion: reduce) {
   .edge, .rootOrb, .nodeCore { transition: none; }

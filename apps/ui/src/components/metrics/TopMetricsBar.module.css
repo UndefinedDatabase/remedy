@@ -9,6 +9,9 @@
   border: 1px solid rgba(58,91,150,.14);
   box-shadow: 0 12px 32px rgba(54,84,134,.08);
   backdrop-filter: blur(24px);
+  overflow: visible;
+  position: relative;
+  z-index: 5;
 }
 
 .metric {

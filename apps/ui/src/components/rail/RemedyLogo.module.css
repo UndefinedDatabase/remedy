@@ -11,10 +11,15 @@
   filter: drop-shadow(0 8px 18px rgba(76,131,255,.22));
 }
 
+.mark {
+  color: var(--remedy-blue, #4c83ff);
+}
+
 .word {
-  font-size: 24px;
+  font-family: var(--remedy-font-display);
+  font-size: 22px;
   line-height: 1;
-  font-weight: 760;
-  letter-spacing: .36em;
-  color: #102f6d;
+  font-weight: 800;
+  letter-spacing: .34em;
+  color: var(--remedy-ink, #10285f);
 }
