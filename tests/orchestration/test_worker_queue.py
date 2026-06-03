@@ -315,6 +315,11 @@ class TestCatalogAndCLI:
         entry = next(e for e in CATALOG if e.command_id == "job.enqueue")
         assert entry.action_class != "read_only"
 
+    def test_job_resume_queue_in_catalog(self):
+        from apps.cli.command_catalog import CATALOG
+        ids = {e.command_id for e in CATALOG}
+        assert "job.resume-queue" in ids
+
 
 class TestNoRawLeaks:
     def test_worker_result_no_raw(self, tmp_path):

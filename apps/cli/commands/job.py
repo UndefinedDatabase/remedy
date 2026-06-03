@@ -761,6 +761,7 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "job.enqueue": lambda args: _cmd_enqueue(args.job_id),
     "job.pause": lambda args: _cmd_pause(args.job_id),
     "job.cancel": lambda args: _cmd_cancel(args.job_id),
+    "job.resume-queue": lambda args: _cmd_resume_queue(args.job_id),
 }
 
 
@@ -790,4 +791,15 @@ def _cmd_cancel(job_id_str: str) -> None:
         print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
     else:
         print(f"Cannot cancel job {job_id_str[:8]}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _cmd_resume_queue(job_id_str: str) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.worker_queue import resume_queued
+    entry = resume_queued(job_id_str, resolve_data_root())
+    if entry:
+        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
+    else:
+        print(f"Cannot resume job {job_id_str[:8]} (not paused)", file=sys.stderr)
         sys.exit(1)

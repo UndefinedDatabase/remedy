@@ -403,6 +403,8 @@ def run_worker_once(
         result.duration_ms = int((time.monotonic() - start) * 1000)
         return result
 
+    detect_stale(data_dir)
+
     if job_id:
         entry = _load_entry(data_dir, job_id)
         if entry is None:
@@ -459,7 +461,7 @@ def run_worker_once(
             result.why_it_stopped = why
             if lc == "completed":
                 result.jobs_processed = 1
-        except (ImportError, FileNotFoundError, KeyError, TypeError, ValueError, AttributeError):
+        except (ImportError, FileNotFoundError):
             transition_state(entry.job_id, "blocked", data_dir, blocked_reason="fixture_path_error")
             result.last_lifecycle_state = "blocked"
             result.action_taken = "blocked"

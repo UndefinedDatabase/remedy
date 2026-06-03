@@ -682,6 +682,16 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("job.pause", "job.enqueue"),
     ),
 
+    CommandEntry(
+        command_id="job.resume-queue",
+        group_id="job",
+        subcommand="resume-queue",
+        description="Resume a paused job back into the queue.",
+        action_class="local_state_change",
+        args=(_JOB_ID,),
+        related=("job.pause", "job.enqueue"),
+    ),
+
     # ── memory ───────────────────────────────────────────────────────────
     CommandEntry(
         command_id="memory.store",
