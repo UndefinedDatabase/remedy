@@ -82,6 +82,13 @@ class TestTimelineCompact:
         tsx = (ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
         assert "repeat(6" in tsx or "phases.map" in tsx
 
+    def test_timeline_exactly_six_phase_icons(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
+        icon_match = re.search(r"const icons\s*=\s*\{([^}]+)\}", tsx)
+        assert icon_match, "icons object not found in PhaseTimeline.tsx"
+        keys = re.findall(r"(\w+)\s*:", icon_match.group(1))
+        assert len(keys) == 6, f"Expected 6 phase icons, found {len(keys)}: {keys}"
+
     def test_timeline_phase_icon_not_oversized(self):
         css = TIMELINE_CSS.read_text()
         icon_match = re.search(r"\.phaseIcon\s*\{([^}]+)\}", css)
@@ -98,6 +105,10 @@ class TestFiveMetrics:
     def test_metrics_grid_five_columns(self):
         css = (ROOT / "apps" / "ui" / "src" / "components" / "metrics" / "TopMetricsBar.module.css").read_text()
         assert "repeat(5" in css
+
+    def test_token_tooltip_keyboard_accessible(self):
+        tsx = METRICS_TSX.read_text()
+        assert "tabIndex" in tsx, "Token tooltip must be keyboard accessible via tabIndex"
 
 
 class TestNoRawContentInCards:
