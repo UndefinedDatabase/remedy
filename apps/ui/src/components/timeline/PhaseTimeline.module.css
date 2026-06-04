@@ -3,24 +3,44 @@
   width: 100%;
   height: 100%;
   border-radius: clamp(16px, 1.2vw, 22px);
-  padding: 22px 36px 18px;
+  padding: 0 clamp(28px, 3vw, 48px);
   background: var(--remedy-glass-bg, rgba(255,255,255,.54));
   border: 1px solid var(--remedy-glass-border, rgba(62,95,154,.13));
   box-shadow: var(--remedy-shadow-soft, 0 10px 30px rgba(55,86,138,.08));
   backdrop-filter: blur(22px);
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  overflow: visible;
+  justify-content: center;
+  gap: 12px;
+  overflow: hidden;
 }
 
-/* Horizontal rail line */
+/* ── Phase row: icons + labels with track through center ── */
+.phaseRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  justify-items: center;
+  padding: 0;
+}
+
+.phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+/* Track line — runs through vertical center of markers */
 .track {
   position: absolute;
-  left: 48px;
-  right: 48px;
-  top: 48px;
+  left: 0;
+  right: 0;
+  top: 50%;
   height: 2px;
+  transform: translateY(-8px); /* offset to marker center, accounting for label below */
+  z-index: 0;
 }
 
 .trackBg {
@@ -40,67 +60,50 @@
   transition: width .4s ease;
 }
 
-/* Phase markers row — sits on top of the line */
-.phaseRow {
-  position: absolute;
-  left: 36px;
-  right: 36px;
-  top: 30px;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  justify-items: center;
-}
-
-.phase {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  z-index: 1;
-}
-
-/* Marker circles */
+/* ── Marker circles ── */
 .marker {
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255,255,255,.92);
-  border: 1.5px solid rgba(39,77,143,.15);
+  background: rgba(255,255,255,.95);
+  border: 1.5px solid rgba(39,77,143,.14);
   color: var(--remedy-ink-soft, #6f82a8);
   transition: all .3s ease;
+  position: relative;
 }
 
-.markerIcon { width: 12px; height: 12px; }
+.markerIcon { width: 14px; height: 14px; }
 
 .label {
   font-family: var(--remedy-font-ui);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  letter-spacing: .03em;
   color: var(--remedy-ink-soft, #6f82a8);
+  white-space: nowrap;
 }
 
-/* Current phase — larger, blue, glowing */
+/* ── Current phase — big, blue, bold ── */
 .current .marker {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   color: white;
   background: linear-gradient(145deg, #3478ff, #6da0ff);
-  border: 2.5px solid rgba(76,131,255,.4);
+  border: 2.5px solid rgba(76,131,255,.35);
   box-shadow:
     0 0 0 5px rgba(76,131,255,.10),
     0 4px 16px rgba(76,131,255,.28);
   animation: pulse-current 2.5s ease-in-out infinite;
 }
 
-.current .markerIcon { width: 16px; height: 16px; }
+.current .markerIcon { width: 18px; height: 18px; }
 
 .current .label {
   color: var(--remedy-ink, #10285f);
   font-weight: 800;
+  font-size: 12px;
 }
 
 @keyframes pulse-current {
@@ -108,21 +111,64 @@
   50% { box-shadow: 0 0 0 7px rgba(76,131,255,.16), 0 6px 20px rgba(76,131,255,.36); }
 }
 
-/* Done phase — green check ring */
+/* ── Done phase — green check ── */
 .done .marker {
   color: var(--remedy-green, #4cc681);
-  border-color: var(--remedy-green, #4cc681);
+  border-color: rgba(76,198,129,.4);
   background: rgba(76,198,129,.06);
 }
 
 .done .label { color: var(--remedy-green, #4cc681); }
 
-/* Pending/future — subtle but visible */
-.pending .marker {
-  opacity: .5;
-  border-color: rgba(39,77,143,.1);
+/* ── Pending — faded ── */
+.pending .marker { opacity: .45; border-color: rgba(39,77,143,.08); }
+.pending .label { opacity: .45; }
+
+/* ── Journey dots row ── */
+.journeyRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding: 0 8px;
 }
-.pending .label { opacity: .5; }
+
+.journeyDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotAction { background: var(--remedy-blue, #4c83ff); }
+.dotTest { background: var(--remedy-green, #4cc681); }
+.dotReview { background: var(--remedy-purple, #a28cff); }
+.dotDone { opacity: .5; }
+
+/* ── Legend row ── */
+.legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--remedy-ink-soft, #6f82a8);
+  letter-spacing: .02em;
+}
+
+.legendDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .trackProgress { transition: none; }

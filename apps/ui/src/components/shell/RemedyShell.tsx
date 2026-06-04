@@ -20,7 +20,7 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
           <TopMetricsBar metrics={dashboard.metrics} />
           <CommandBar nextAction={dashboard.nextAction} />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
-          <PhaseTimeline phases={dashboard.phases} />
+          <PhaseTimeline phases={dashboard.phases} tasks={dashboard.tasks} />
         </main>
         <RightLivePanel dashboard={dashboard} onSelectNode={onSelectNode} />
       </div>
