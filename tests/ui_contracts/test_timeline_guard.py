@@ -62,9 +62,15 @@ class TestNoFakeEventsFromTasks:
             "fallbackEventsFromTasks must be removed — events come only from backend"
         )
 
-    def test_event_rail_conditional_on_real_events(self):
+    def test_event_rail_always_rendered(self):
         content = TIMELINE_TSX.read_text()
-        assert "hasEvents" in content, "Event rail must be conditional on hasEvents"
+        assert "eventRail" in content, "Event rail must exist in JSX"
+        # Event rail must NOT be wrapped in hasEvents conditional
+        # It should be unconditionally rendered; only dots are conditional on real events
+        rail_section = content[content.index("eventRail"):content.index("eventRail") + 500]
+        assert "hasEvents" not in rail_section, (
+            "Event rail must be always rendered, not wrapped in hasEvents conditional"
+        )
 
     def test_no_task_to_event_mapping_in_timeline(self):
         content = TIMELINE_TSX.read_text()
@@ -198,3 +204,91 @@ class TestOrchestratorLoopContract:
         assert "RemedyProposedTask" in content, "RemedyProposedTask type must exist"
         assert "RemedyProposedTaskSource" in content
         assert "RemedyProposedTaskStatus" in content
+
+
+SHELL_CSS = ROOT / "apps" / "ui" / "src" / "components" / "shell" / "RemedyShell.module.css"
+COMMAND_CSS = ROOT / "apps" / "ui" / "src" / "components" / "command" / "CommandBar.module.css"
+FILTER_CSS = ROOT / "apps" / "ui" / "src" / "components" / "graph" / "GraphFilterChips.module.css"
+DOCK_CSS = ROOT / "apps" / "ui" / "src" / "components" / "rail" / "SideIconDock.module.css"
+METRICS_CSS = ROOT / "apps" / "ui" / "src" / "components" / "metrics" / "TopMetricsBar.module.css"
+
+
+class TestVisualRegressionA6:
+    """Tests for the exact visual regression from addendum A6."""
+
+    def test_event_rail_rendered_without_has_events_gate(self):
+        content = TIMELINE_TSX.read_text()
+        # Legend must also be always rendered
+        assert "legend" in content
+        # Neither eventRail nor legend should be inside a hasEvents conditional
+        lines = content.split("\n")
+        in_has_events = False
+        for line in lines:
+            stripped = line.strip()
+            if "hasEvents" in stripped and "&&" in stripped:
+                in_has_events = True
+            if in_has_events and ("eventRail" in stripped or "legend" in stripped):
+                pytest.fail(f"eventRail or legend inside hasEvents block: {stripped}")
+            if in_has_events and stripped.startswith(")"):
+                in_has_events = False
+
+    def test_legend_always_rendered(self):
+        content = TIMELINE_TSX.read_text()
+        assert "styles.legend" in content, "Legend must be in JSX"
+
+    def test_done_phases_use_phase_glyph_in_header(self):
+        content = TIMELINE_TSX.read_text()
+        header_match = re.search(r'(styles\.phaseHeader.*?)(styles\.rail)', content, re.DOTALL)
+        assert header_match
+        header = header_match.group(1)
+        assert "PhaseGlyph" in header
+        assert "TaskDoneGlyph" not in header
+
+    def test_timeline_css_border_radius_28(self):
+        content = TIMELINE_CSS.read_text()
+        timeline_match = re.search(r'\.timeline\s*\{([^}]+)\}', content)
+        assert timeline_match
+        assert "border-radius: 28px" in timeline_match.group(1), "Timeline must have border-radius: 28px"
+
+    def test_shell_timeline_row_height_at_least_150(self):
+        content = SHELL_CSS.read_text()
+        # Check the grid-template-rows has a timeline row with min >= 150
+        match = re.search(r'clamp\((\d+)px.*?(\d+)px\)\s*;', content)
+        # Last clamp in grid-template-rows
+        clamps = re.findall(r'clamp\((\d+)px', content)
+        assert any(int(v) >= 150 for v in clamps), (
+            f"Shell timeline row must have min >= 150px, found clamps: {clamps}"
+        )
+
+    def test_command_buttons_are_circular(self):
+        content = COMMAND_CSS.read_text()
+        assert "border-radius: 50%" in content or "border-radius: 999px" in content, (
+            "Command bar buttons must be circular (50% or 999px)"
+        )
+
+    def test_filter_chips_are_pills(self):
+        content = FILTER_CSS.read_text()
+        assert "border-radius: 999px" in content, "Filter chips must be pill shaped"
+
+    def test_dock_buttons_are_circular(self):
+        content = DOCK_CSS.read_text()
+        assert "border-radius: 50%" in content or "border-radius: 999px" in content, (
+            "Dock buttons must be circular"
+        )
+
+    def test_metric_icon_shell_rounded(self):
+        content = METRICS_CSS.read_text()
+        icon_match = re.search(r'\.iconBox\s*\{([^}]+)\}', content)
+        assert icon_match, "iconBox CSS rule not found"
+        assert "border-radius" in icon_match.group(1)
+        # Must be >= 10px, not 4px or 0
+        radius_match = re.search(r'border-radius:\s*(\d+)px', icon_match.group(1))
+        assert radius_match and int(radius_match.group(1)) >= 10, (
+            "Metric icon shell border-radius must be >= 10px"
+        )
+
+    def test_finalized_gate_checks_unresolved_proposals(self):
+        content = UI_SERVER.read_text()
+        assert "unresolved_proposals" in content, (
+            "Finalized gate must check unresolved proposed tasks"
+        )

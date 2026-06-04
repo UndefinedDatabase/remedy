@@ -1,24 +1,16 @@
-# Plan — Steps 565-579
+# Plan — Visual Addendum A1-A7
 
 ## Goal
-Implement orchestrator task evaluation flow. Review-created tasks become proposed tasks that need evaluation before build. Finalized blocked by unresolved proposals.
+Fix timeline visual regressions: event rail + legend always visible, exact CSS shape, rounded buttons, shell height reserve, regression tests.
 
 ## Current Step
-Complete — all steps done.
+Complete — all addendum steps done.
 
 ## Steps
-- [x] Step 565: Handoff — update context.md, plan.md, live_review.md
-- [x] Step 566: ProposedTask domain model (packages/orchestration/proposed_tasks.py)
-- [x] Step 567: Proposed task store (save/load/list/update in .data/)
-- [x] Step 568: Review findings create proposed tasks (propose_task_from_review_finding)
-- [x] Step 569: Deterministic evaluator rules v1
-- [x] Step 570: Optional LLM evaluator interface (disabled by default)
-- [x] Step 571: Approve/reject/defer state transitions
-- [x] Step 572: Build queue only picks approved tasks
-- [x] Step 573: Review loop creates rework proposals
-- [x] Step 574: Finalized gate includes proposed tasks
-- [x] Step 575: CLI proposed task commands
-- [x] Step 576: Events/audit trail for proposed task lifecycle
-- [x] Step 577: Dashboard backend counts (proposed_task_count, etc.)
-- [x] Step 578: Tests — 4259 passed, 0 failed, Vitest 35, tsc clean
-- [x] Step 579: Handoff report
+- [x] A1: PhaseTimeline JSX — event rail + legend always rendered (not gated by hasEvents)
+- [x] A2: PhaseTimeline CSS — exact shape from spec (border-radius: 28px, 148px min-height)
+- [x] A3: Shell timeline height — clamp(150px, 16vh, 178px)
+- [x] A4: Rounded button contract — metric icon shell 11px, tooltip z-index 9999
+- [x] A5: PhaseGlyph icons verified — briefcase/calendar/code/clipboard-check/person/flag
+- [x] A6: Regression tests — 10 new tests in TestVisualRegressionA6 (34 total in guard)
+- [x] A7: Visual QA report

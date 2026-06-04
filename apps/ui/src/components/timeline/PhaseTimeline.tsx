@@ -76,8 +76,6 @@ export function PhaseTimeline({
     ? (activeIndex / (canonical.length - 1)) * 100
     : 0;
 
-  const hasEvents = timelineEvents.length > 0;
-
   return (
     <section className={styles.timeline} aria-label="Project process timeline" data-ui="phase-timeline">
       <div className={styles.phaseHeader}>
@@ -110,45 +108,42 @@ export function PhaseTimeline({
         ))}
       </div>
 
-      {hasEvents && (
-        <div className={styles.eventRail} aria-label="Real work events">
-          <span className={styles.eventRailLine} />
-          {timelineEvents.map((event, index) => {
-            const left = timelineEvents.length === 1
+      <div className={styles.eventRail} aria-label="Real work event rail">
+        <span className={styles.eventRailLine} />
+        {timelineEvents.map((event, index) => {
+          const left =
+            timelineEvents.length === 1
               ? "0%"
               : `${(index / Math.max(timelineEvents.length - 1, 1)) * 100}%`;
 
-            return (
-              <span
-                key={event.id}
-                className={styles.eventItem}
-                style={{ left }}
-                title={event.title}
-                aria-label={`${event.title}, ${event.kind.replace("_", " ")}`}
-              >
-                <span className={eventClass(event)} />
-              </span>
-            );
-          })}
-        </div>
-      )}
+          return (
+            <span
+              key={event.id}
+              className={styles.eventItem}
+              style={{ left }}
+              title={event.title}
+              aria-label={`${event.title}, ${event.kind.replace("_", " ")}`}
+            >
+              <span className={eventClass(event)} />
+            </span>
+          );
+        })}
+      </div>
 
-      {hasEvents && (
-        <div className={styles.legend} aria-label="Timeline legend">
-          <span className={styles.legendItem}>
-            <span className={[styles.eventDot, styles.eventLlm].join(" ")} />
-            <span>LLM Action</span>
-          </span>
-          <span className={styles.legendItem}>
-            <span className={[styles.eventDot, styles.eventTest].join(" ")} />
-            <span>Test</span>
-          </span>
-          <span className={styles.legendItem}>
-            <span className={[styles.eventDot, styles.eventReview].join(" ")} />
-            <span>Review</span>
-          </span>
-        </div>
-      )}
+      <div className={styles.legend} aria-label="Timeline legend">
+        <span className={styles.legendItem}>
+          <span className={[styles.eventDot, styles.eventLlm].join(" ")} />
+          <span>LLM Action</span>
+        </span>
+        <span className={styles.legendItem}>
+          <span className={[styles.eventDot, styles.eventTest].join(" ")} />
+          <span>Test</span>
+        </span>
+        <span className={styles.legendItem}>
+          <span className={[styles.eventDot, styles.eventReview].join(" ")} />
+          <span>Review</span>
+        </span>
+      </div>
     </section>
   );
 }

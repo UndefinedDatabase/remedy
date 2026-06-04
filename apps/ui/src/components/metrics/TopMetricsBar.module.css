@@ -29,7 +29,7 @@
 .iconBox {
   width: clamp(28px, 2.8vw, 34px);
   height: clamp(28px, 2.8vw, 34px);
-  border-radius: 8px;
+  border-radius: 11px;
   display: grid;
   place-items: center;
   color: #2459d6;
@@ -85,7 +85,7 @@
   top: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
+  z-index: 9999;
   min-width: 140px;
   padding: 8px 10px;
   border-radius: 8px;

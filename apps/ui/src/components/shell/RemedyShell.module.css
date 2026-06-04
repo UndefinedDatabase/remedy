@@ -31,8 +31,8 @@
     clamp(58px, 7vh, 70px)
     clamp(42px, 5vh, 50px)
     minmax(0, 1fr)
-    clamp(136px, 15vh, 166px);
-  gap: clamp(8px, 1vh, 14px);
+    clamp(150px, 16vh, 178px);
+  gap: clamp(10px, 1.05vh, 16px);
 }
 
 @media (max-width: 1280px) {
