@@ -1136,19 +1136,30 @@ def _get_frontend_dist() -> Path | None:
     return None
 
 
-def _auto_build_frontend() -> Path | None:
-    """Attempt to build the React frontend via npm. Returns dist Path or None.
+def _frontend_is_stale() -> bool:
+    """Return True if any source file in apps/ui/src/ is newer than dist/index.html."""
+    ui_root = Path(__file__).resolve().parent.parent.parent / "apps" / "ui"
+    index = ui_root / "dist" / "index.html"
+    if not index.is_file():
+        return True
+    dist_mtime = index.stat().st_mtime
+    src_dir = ui_root / "src"
+    if not src_dir.is_dir():
+        return False
+    for f in src_dir.rglob("*"):
+        if f.is_file() and f.stat().st_mtime > dist_mtime:
+            return True
+    return False
 
-    ONLY runs if REMEDY_UI_AUTO_BUILD=1 is set explicitly.
-    Read-only UI must not mutate by default.
+
+def _auto_build_frontend(reason: str = "missing") -> Path | None:
+    """Build the React frontend via npm. Returns dist Path or None.
+
+    Runs automatically when dist/ is missing or stale (source newer than build).
+    Disable with REMEDY_UI_NO_AUTO_BUILD=1 if you manage builds yourself.
     """
     import subprocess
 
-    # Opt-in only — read-only UI must not mutate the repo by default
-    if os.environ.get("REMEDY_UI_AUTO_BUILD") != "1":
-        return None
-
-    # Legacy backward compat: explicit disable still works
     if os.environ.get("REMEDY_UI_NO_AUTO_BUILD") == "1":
         return None
 
@@ -1156,20 +1167,24 @@ def _auto_build_frontend() -> Path | None:
     if not (ui_root / "package.json").is_file():
         return None
 
-    print("[remedy-ui] dist/ not found — attempting auto-build…", file=sys.stderr)
+    print(f"[remedy-ui] auto-build ({reason})…", file=sys.stderr)
 
-    # npm install
-    try:
-        subprocess.run(
-            ["npm", "install", "--no-audit", "--no-fund"],
-            cwd=str(ui_root),
-            check=True,
-            capture_output=True,
-            timeout=120,
-        )
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        print(f"[remedy-ui] npm install failed: {exc}", file=sys.stderr)
-        return None
+    # npm install (skip if node_modules fresh)
+    node_modules = ui_root / "node_modules"
+    pkg_mtime = (ui_root / "package.json").stat().st_mtime
+    need_install = not node_modules.is_dir() or node_modules.stat().st_mtime < pkg_mtime
+    if need_install:
+        try:
+            subprocess.run(
+                ["npm", "install", "--no-audit", "--no-fund"],
+                cwd=str(ui_root),
+                check=True,
+                capture_output=True,
+                timeout=120,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            print(f"[remedy-ui] npm install failed: {exc}", file=sys.stderr)
+            return None
 
     # npm run build
     try:
@@ -1181,29 +1196,32 @@ def _auto_build_frontend() -> Path | None:
             timeout=120,
         )
     except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        print(f"[remedy-ui] npm run build failed: {exc}", file=sys.stderr)
+        print(f"[remedy-ui] build failed: {exc}", file=sys.stderr)
         return None
 
     dist = _get_frontend_dist()
     if dist is not None:
-        print("[remedy-ui] auto-build succeeded.", file=sys.stderr)
+        print("[remedy-ui] build done.", file=sys.stderr)
     return dist
 
 
 def _load_frontend(job_id: str, token: str) -> str:
-    """Load frontend HTML — React build required. Auto-builds if missing.
+    """Load frontend HTML — auto-builds when dist/ is missing or stale.
 
     Behavior:
-      1. If apps/ui/dist/ exists → serve it.
-      2. If missing → auto-build (npm install + npm run build).
-      3. If auto-build fails → fail loudly (no silent fallback).
-      4. Legacy fallback only if REMEDY_UI_ALLOW_LEGACY_FALLBACK=1.
+      1. If apps/ui/dist/ exists and is fresh → serve it.
+      2. If missing or stale (source newer) → auto-build.
+      3. If auto-build fails → fail loudly.
+      4. Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1.
     """
     dist = _get_frontend_dist()
 
-    # Auto-build if dist missing
+    # Auto-build if missing
     if dist is None:
-        dist = _auto_build_frontend()
+        dist = _auto_build_frontend("dist missing")
+    # Auto-build if stale
+    elif _frontend_is_stale():
+        dist = _auto_build_frontend("source changed")
 
     if dist is not None:
         html = (dist / "index.html").read_text(encoding="utf-8")
@@ -1226,8 +1244,8 @@ def _load_frontend(job_id: str, token: str) -> str:
         "  To fix, run:\n"
         "    cd apps/ui && npm install && npm run build\n"
         "\n"
-        "  Or set REMEDY_UI_AUTO_BUILD=1 to auto-build on startup.\n"
-        "  Or set REMEDY_UI_ALLOW_LEGACY_FALLBACK=1 to use the old UI.\n",
+        "  Or check npm is installed and retry.\n"
+        "  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1\n",
         file=sys.stderr,
     )
     sys.exit(1)

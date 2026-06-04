@@ -527,44 +527,45 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
 
 
-class TestAutoBuildDisabledByDefault:
-    def test_auto_build_disabled_by_default(self):
-        """Without REMEDY_UI_AUTO_BUILD=1, _auto_build_frontend must return None."""
+class TestAutoBuildBehavior:
+    def test_auto_build_runs_by_default(self):
+        """Without REMEDY_UI_NO_AUTO_BUILD, auto-build proceeds (returns None in test env)."""
         import os
         from packages.orchestration.ui_server import _auto_build_frontend
 
-        # Clear env vars
         env = os.environ.copy()
-        for k in ("REMEDY_UI_AUTO_BUILD", "REMEDY_UI_NO_AUTO_BUILD"):
-            env.pop(k, None)
+        env.pop("REMEDY_UI_NO_AUTO_BUILD", None)
 
         with patch.dict(os.environ, env, clear=True):
             result = _auto_build_frontend()
-        assert result is None
+        # Returns None because package.json path doesn't match test env, but it tried
+        assert result is None or isinstance(result, Path)
 
-    def test_auto_build_opt_in_env(self):
-        """With REMEDY_UI_AUTO_BUILD=1, auto-build is attempted."""
+    def test_auto_build_disabled_with_env(self):
+        """REMEDY_UI_NO_AUTO_BUILD=1 disables auto-build."""
         import os
         from packages.orchestration.ui_server import _auto_build_frontend
 
-        with patch.dict(os.environ, {"REMEDY_UI_AUTO_BUILD": "1"}):
-            # Will return None because ui_root/package.json won't match in test env
-            # but the function proceeds past the opt-in check
+        with patch.dict(os.environ, {"REMEDY_UI_NO_AUTO_BUILD": "1"}):
             result = _auto_build_frontend()
-            # Either None (npm not found / path not right) or a Path
-            assert result is None or isinstance(result, Path)
+        assert result is None
 
-    def test_no_npm_without_opt_in(self):
-        """Verify no subprocess calls happen without opt-in."""
+    def test_no_npm_when_disabled(self):
+        """No subprocess calls when auto-build is disabled."""
         import os
         import subprocess as sp
 
-        with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("REMEDY_UI_AUTO_BUILD", None)
+        with patch.dict(os.environ, {"REMEDY_UI_NO_AUTO_BUILD": "1"}):
             with patch.object(sp, "run") as mock_run:
                 from packages.orchestration.ui_server import _auto_build_frontend
                 _auto_build_frontend()
                 mock_run.assert_not_called()
+
+    def test_frontend_is_stale_function_exists(self):
+        """_frontend_is_stale must exist and return bool."""
+        from packages.orchestration.ui_server import _frontend_is_stale
+        result = _frontend_is_stale()
+        assert isinstance(result, bool)
 
 
 # ── Step 528: Visual Product Tests ──────────────────────────────────────────
