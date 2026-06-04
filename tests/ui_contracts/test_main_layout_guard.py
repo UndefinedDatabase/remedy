@@ -59,7 +59,7 @@ class TestMainColumnStructure:
         rows_match = re.search(r"grid-template-rows:\s*([\s\S]*?);", main_css)
         assert rows_match, "Could not find grid-template-rows in .main"
         rows_str = rows_match.group(1)
-        rows = re.findall(r"(?:clamp|minmax)\([^)]+\)", rows_str)
+        rows = re.findall(r"(?:clamp|minmax)\([^)]+\)|\d+fr", rows_str)
         assert len(rows) == 4, (
             f"Main grid should define exactly 4 row sizes, found {len(rows)}: {rows}"
         )

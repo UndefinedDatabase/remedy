@@ -24,12 +24,13 @@
 
 .main {
   min-width: 0;
+  min-height: 0;
   height: 100%;
   display: grid;
   grid-template-rows:
     clamp(56px, 7vh, 68px)
     clamp(40px, 5vh, 48px)
-    minmax(280px, 1fr)
+    1fr
     clamp(124px, 14vh, 154px);
   gap: clamp(8px, 1vh, 14px);
 }
