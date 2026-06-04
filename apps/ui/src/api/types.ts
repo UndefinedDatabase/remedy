@@ -12,6 +12,8 @@ export interface RemedyGraphEdge { id: string; source: string; target: string; m
 export interface RemedyPhase { id: "job" | "planning" | "build" | "test" | "review" | "finalized"; label: string; state: RemedyState; icon: string; }
 export interface RemedyLiveState { running: boolean; stage: string; activeTaskLabel: string; latestMessage: string; latestActor: RemedyActivityItem["actor"]; }
 export interface RemedyStory { version: number; jobId: string; headline: string; plainStatus: string; description: string; primaryNextAction: RemedyNextAction; progress: { completed: number; active: number; pending: number; blocked: number; needsReview: number; }; journey: RemedyJourneyItem[]; }
+export type RemedyTimelineEventKind = "llm_action" | "test" | "review";
+export interface RemedyTimelineEvent { id: string; kind: RemedyTimelineEventKind; phase: string; done: boolean; label?: string; }
 export interface RemedyApiHealth { degraded: boolean; failedEndpoints: string[]; }
 
 export type PipelineStepState = "done" | "current" | "blocked" | "failed" | "skipped" | "unknown" | "waiting";
@@ -114,4 +116,4 @@ export interface RemedyWorkerStatus {
   redaction: string;
 }
 
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; }

@@ -1,24 +1,24 @@
-# Plan — Steps 515-529
+# Plan — Steps 530-544
 
 ## Goal
-Dashboard design foundation, timeline repair, review storage migration.
+Rebuild timeline to match target screenshot. Cycle-aware events, correct icons, proper visual structure.
 
 ## Current Step
 Complete — all steps done.
 
 ## Steps
-- [x] Step 515: Move live_review.md from .data to .agent (durable)
-- [x] Step 516: Dashboard design truth in context
-- [x] Step 517: Layout foundation to match target proportions
-- [x] Step 518: Timeline v4 — real process rail
-- [x] Step 519: Graph engine freeze + professional empty state
-- [x] Step 520: Graph filter UX fix
-- [x] Step 521: Graph container visual polish
-- [x] Step 522: Stronger task outcome backend
-- [x] Step 523: Task outcome panel v2
-- [x] Step 524: Right panel professional compactness
-- [x] Step 525: Command bar reframe
-- [x] Step 526: Logo/icon final sweep
-- [x] Step 527: Typography and spacing pass
-- [x] Step 528: Visual product tests
-- [x] Step 529: Guarded baseline — 4191 passed, 0 failed
+- [x] Step 530: Context/plan update, acknowledge timeline failure
+- [x] Step 531: Add RemedyTimelineEvent type + timelineEvents to RemedyDashboard
+- [x] Step 532: Backend timeline_events in ui_server.py + 6 canonical phases
+- [x] Step 533: PhaseTimeline.tsx rewrite (phaseHeader + rail + eventRail + legend)
+- [x] Step 534: PhaseTimeline.module.css rewrite (rounded icon shell, dashed event line, bordered dots)
+- [x] Step 535: Wire timelineEvents through shell + normalizer
+- [x] Step 536: Timeline loop semantics (Build/Test/Review repeat via cycle-aware events)
+- [x] Step 537: Shell height lock (clamp(128px, 14.5vh, 158px) + minmax(0, 1fr))
+- [x] Step 538: Right panel alignment (no changes needed — already aligned)
+- [x] Step 539: Fix PhaseGlyph icons (build=code, review=person, job=briefcase, test=flask)
+- [x] Step 540: Timeline product tests (12 new tests in test_timeline_guard.py)
+- [x] Step 541: Graph de-emphasis comment
+- [x] Step 542: Task outcome panel — honest "no detailed outcome was recorded"
+- [x] Step 543: Visual QA — TypeScript clean, build 332KB, Vitest 35, pytest 4204/0/8
+- [x] Step 544: Guarded baseline — 4204 passed, 0 failed, 8 skipped

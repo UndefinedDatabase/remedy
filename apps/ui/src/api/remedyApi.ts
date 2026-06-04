@@ -1,5 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyState, RemedyTaskItem } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyState, RemedyTaskItem, RemedyTimelineEvent } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -159,6 +159,7 @@ export function normalizeDashboardPayload(
     resume: dashboard.resume ?? null,
     projectSummary: dashboard.project_summary ?? null,
     workerStatus: dashboard.worker ?? null,
+    timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
   };
 }
 
@@ -307,6 +308,21 @@ function normalizeGraph(journey: RemedyJourneyItem[], tasks: RemedyTaskItem[]): 
     });
   }
   return { nodes, edges };
+}
+
+// ---------------------------------------------------------------------------
+// Timeline event normalization
+// ---------------------------------------------------------------------------
+
+function normalizeTimelineEvents(raw: any): RemedyTimelineEvent[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  return raw.map((e: any, idx: number) => ({
+    id: e.id || `te-${idx}`,
+    kind: (["llm_action", "test", "review"].includes(e.kind) ? e.kind : "llm_action") as RemedyTimelineEvent["kind"],
+    phase: e.phase || "build",
+    done: Boolean(e.done),
+    label: e.label || undefined,
+  }));
 }
 
 // ---------------------------------------------------------------------------

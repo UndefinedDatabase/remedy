@@ -112,7 +112,7 @@ class TestTimelineCanonical:
 
     def test_timeline_has_progress_track(self):
         css = TIMELINE_CSS.read_text()
-        assert "trackProgress" in css
+        assert "railFill" in css or "trackProgress" in css
 
 
 class TestFiveMetrics:

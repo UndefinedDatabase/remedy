@@ -1,3 +1,4 @@
+import React from "react";
 import type { SVGProps } from "react";
 
 type G = SVGProps<SVGSVGElement>;
@@ -163,17 +164,17 @@ export function CopyGlyph(p: G) {
 }
 
 export function PhaseGlyph({ phase, ...p }: G & { phase: string }) {
-  const paths: Record<string, string> = {
-    job: "M4 4h8v8H4z",
-    planning: "M4 3v10h8V3 M6 6h4 M6 9h3",
-    build: "M7 4L4 12h8L9 4",
-    test: "M4 8l3 4 5-8",
-    review: "M4 4h8v3H4z M6 10h4",
-    finalized: "M8 3l2 4h-4z M6 9v3h4V9",
+  const phaseContent: Record<string, React.ReactNode> = {
+    job: <path d="M3 5h10v7H3z M5 5V3h6v2" />,
+    planning: <path d="M4 3v10h8V3 M6 6h4 M6 9h3" />,
+    build: <><polyline points="5 4 2 8 5 12" /><polyline points="11 4 14 8 11 12" /><line x1="9" y1="3" x2="7" y2="13" /></>,
+    test: <><path d="M4 4h8v2H4z" /><path d="M5 6v6h6V6" /><polyline points="6 9 7.5 10.5 10 8" /></>,
+    review: <><circle cx="8" cy="5.5" r="2.5" /><path d="M3 14c0-2.8 2.2-4.5 5-4.5s5 1.7 5 4.5" /></>,
+    finalized: <><path d="M4 3v10l4-2.5L12 13V3" /></>,
   };
   return (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" {...p}>
-      <path d={paths[phase] || paths.job} />
+      {phaseContent[phase] || phaseContent.job}
     </svg>
   );
 }

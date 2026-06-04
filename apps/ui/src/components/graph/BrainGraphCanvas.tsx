@@ -1,3 +1,4 @@
+// Graph engine is intentionally simple until final graph renderer is chosen.
 import { useRef, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import { CodeOrbGlyph } from "../icons/RemedyGlyphs";

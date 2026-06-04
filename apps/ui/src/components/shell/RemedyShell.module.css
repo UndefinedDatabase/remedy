@@ -28,10 +28,10 @@
   height: 100%;
   display: grid;
   grid-template-rows:
-    clamp(56px, 7vh, 68px)
-    clamp(40px, 5vh, 48px)
-    1fr
-    clamp(124px, 14vh, 154px);
+    clamp(58px, 7vh, 70px)
+    clamp(42px, 5vh, 50px)
+    minmax(0, 1fr)
+    clamp(128px, 14.5vh, 158px);
   gap: clamp(8px, 1vh, 14px);
 }
 

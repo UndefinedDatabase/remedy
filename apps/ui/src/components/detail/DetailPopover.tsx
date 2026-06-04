@@ -69,7 +69,7 @@ export function DetailPopover({ dashboard, selectedNode, onClose }: { dashboard:
       <section className={styles.section}>
         <h3>Outcome</h3>
         <p>{outcomeSummary || (
-          isDone ? "Completed successfully."
+          isDone ? "Completed, but no detailed outcome was recorded."
           : isCurrent ? "Work is in progress."
           : isBlocked ? "Blocked — needs attention."
           : "Not started yet."

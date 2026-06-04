@@ -16,38 +16,38 @@
 }
 
 /* ════════════════════════════════════════════════════════
-   Row 1 — Phase bar: icon + label SIDE BY SIDE
+   Row 1 — Phase header: icon + label SIDE BY SIDE
    ════════════════════════════════════════════════════════ */
-.phaseBar {
+.phaseHeader {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   justify-items: center;
   margin-bottom: 8px;
 }
 
-.phase {
+.phaseSlot {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-/* Circle marker — BLUE icons (matching target) */
-.marker {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+/* Icon shell — rounded square, not circle */
+.phaseIconShell {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 8px;
   background: rgba(255,255,255,.96);
   border: 1.5px solid rgba(62,95,154,.16);
   color: var(--remedy-blue, #4c83ff);
   box-shadow: 0 1px 4px rgba(55,86,138,.06);
 }
 
-.markerIcon { width: 14px; height: 14px; }
+.phaseIcon { width: 14px; height: 14px; }
 
-.label {
+.phaseLabel {
   font-family: var(--remedy-font-ui);
   font-size: 12px;
   font-weight: 700;
@@ -55,11 +55,12 @@
   white-space: nowrap;
 }
 
-/* ── Current ── */
-.current .marker {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
+/* ── Current state ── */
+.current .phaseIconShell {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 10px;
   color: white;
   background: linear-gradient(145deg, #3478ff, #6da0ff);
   border: 2px solid rgba(76,131,255,.3);
@@ -68,11 +69,11 @@
     0 3px 12px rgba(76,131,255,.22);
   animation: pulse-phase 2.5s ease-in-out infinite;
 }
-.current .markerIcon { width: 18px; height: 18px; }
-.current .label {
+.current .phaseIcon { width: 17px; height: 17px; }
+.current .phaseLabel {
   color: var(--remedy-ink, #10285f);
   font-weight: 900;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 @keyframes pulse-phase {
@@ -80,31 +81,31 @@
   50% { box-shadow: 0 0 0 6px rgba(76,131,255,.13), 0 5px 18px rgba(76,131,255,.30); }
 }
 
-/* ── Done ── */
-.done .marker {
+/* ── Done state ── */
+.done .phaseIconShell {
   color: var(--remedy-green, #4cc681);
   border-color: rgba(76,198,129,.3);
 }
-.done .label { color: var(--remedy-ink-soft, #6f82a8); }
+.done .phaseLabel { color: var(--remedy-ink-soft, #6f82a8); }
 
-/* ── Pending ── */
-.pending .marker {
+/* ── Pending state ── */
+.pending .phaseIconShell {
   opacity: .35;
   color: rgba(62,95,154,.3);
   border-color: rgba(62,95,154,.08);
 }
-.pending .label { opacity: .35; }
+.pending .phaseLabel { opacity: .35; }
 
 /* ════════════════════════════════════════════════════════
-   Row 2 — Progress track with phase dots
+   Row 2 — Rail: progress track with phase markers
    ════════════════════════════════════════════════════════ */
-.progressTrack {
+.rail {
   position: relative;
   height: 14px;
   margin: 0 4%;
 }
 
-.progressBg {
+.railBase {
   position: absolute;
   left: 0;
   right: 0;
@@ -115,7 +116,7 @@
   border-radius: 1px;
 }
 
-.progressFill {
+.railFill {
   position: absolute;
   left: 0;
   top: 50%;
@@ -126,7 +127,7 @@
   transition: width .4s ease;
 }
 
-.trackDot {
+.phaseMarker {
   position: absolute;
   top: 50%;
   width: 10px;
@@ -138,23 +139,23 @@
   z-index: 1;
 }
 
-.trackDotActive {
+.phaseMarkerActive {
   background: var(--remedy-blue, #4c83ff);
   border-color: var(--remedy-blue, #4c83ff);
   box-shadow: 0 0 0 2px rgba(76,131,255,.12);
 }
 
 /* ════════════════════════════════════════════════════════
-   Row 3 — Journey timeline: DASHED line, dots with BORDERS
+   Row 3 — Event rail: DASHED line, dots with BORDERS
    ════════════════════════════════════════════════════════ */
-.journeyBar {
+.eventRail {
   position: relative;
   height: 20px;
   margin: 6px 4% 4px;
 }
 
 /* DASHED line — not solid */
-.journeyLine {
+.eventLine {
   position: absolute;
   left: 0;
   right: 0;
@@ -165,7 +166,7 @@
 }
 
 /* Items spread across FULL WIDTH */
-.journeyItems {
+.eventItems {
   position: relative;
   display: flex;
   align-items: center;
@@ -174,27 +175,27 @@
   padding: 0 2px;
 }
 
-.journeyItem {
+.eventItem {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-/* Pending = outlined empty circle */
-.journeyPending .jDot {
+/* Pending = outlined empty circle with dashed border */
+.eventPending .eventDot {
   background: transparent;
   border: 1px dashed rgba(62,95,154,.2);
 }
-.journeyPending .jIcon {
+.eventPending .eventDotIcon {
   opacity: .25;
 }
 
-.journeyDone .jDot { opacity: .6; }
-.journeyDone .jIcon { opacity: .6; }
+.eventDone .eventDot { opacity: .6; }
+.eventDone .eventDotIcon { opacity: .6; }
 
-/* Journey dot types — all with BORDERS */
-.jDot {
+/* Event dot types — all with BORDERS */
+.eventDot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -203,23 +204,23 @@
   box-sizing: border-box;
 }
 
-.jIcon {
+.eventDotIcon {
   width: 11px;
   height: 11px;
   display: block;
 }
 
 /* LLM Action = filled blue circle with darker border */
-.jAction {
+.eventDotAction {
   background: var(--remedy-blue, #4c83ff);
   border-color: rgba(52,120,255,.5);
 }
 
 /* Test = green checkmark */
-.jTest { color: var(--remedy-green, #4cc681); }
+.eventDotTest { color: var(--remedy-green, #4cc681); }
 
 /* Review = purple person */
-.jReview { color: var(--remedy-purple, #a28cff); }
+.eventDotReview { color: var(--remedy-purple, #a28cff); }
 
 /* ════════════════════════════════════════════════════════
    Row 4 — Legend with ICONS
@@ -247,17 +248,17 @@
 }
 
 /* Legend dot override — slightly larger */
-.legendEntry .jDot {
+.legendEntry .eventDot {
   width: 8px;
   height: 8px;
 }
 
-.legendEntry .jIcon {
+.legendEntry .eventDotIcon {
   width: 12px;
   height: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .progressFill { transition: none; }
-  .current .marker { animation: none; }
+  .railFill { transition: none; }
+  .current .phaseIconShell { animation: none; }
 }

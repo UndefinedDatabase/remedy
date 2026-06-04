@@ -580,9 +580,9 @@ class TestVisualProductContract:
         assert agent_path.exists(), "live_review.md must exist at .agent/live_review.md"
 
     def test_timeline_container_height(self):
-        """Timeline row must be 124-154px, not the old 80-110px."""
+        """Timeline row must be 124-158px, not the old 80-110px."""
         css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
-        assert "clamp(124px" in css, "Timeline row must use clamp(124px, ...)"
+        assert "clamp(128px" in css or "clamp(124px" in css, "Timeline row must use clamp(124-128px, ...)"
 
     def test_timeline_done_uses_checkmark(self):
         """Done phases must render TaskDoneGlyph, not PhaseGlyph."""

@@ -173,6 +173,42 @@ def _event_backed_actor(events: list[dict]) -> str:
     return _actor_map.get(last_event, "System")
 
 
+def _build_timeline_events(events: list[dict]) -> list[dict[str, Any]]:
+    """Derive cycle-aware timeline events from the event ledger."""
+    _event_to_kind = {
+        "task_created": "llm_action",
+        "patch_intent_created": "llm_action",
+        "patch_intent_approved": "llm_action",
+        "patch_intent_applied": "llm_action",
+        "test_run_completed": "test",
+        "proof_collected": "review",
+        "human_decision_requested": "review",
+    }
+    _event_to_phase = {
+        "task_created": "planning",
+        "patch_intent_created": "build",
+        "patch_intent_approved": "build",
+        "patch_intent_applied": "build",
+        "test_run_completed": "test",
+        "proof_collected": "review",
+        "human_decision_requested": "review",
+    }
+    result: list[dict[str, Any]] = []
+    for idx, e in enumerate(events):
+        ev = e.get("event", "")
+        kind = _event_to_kind.get(ev)
+        if kind is None:
+            continue
+        result.append({
+            "id": f"te-{idx}",
+            "kind": kind,
+            "phase": _event_to_phase.get(ev, "build"),
+            "done": True,
+            "label": ev.replace("_", " ").capitalize(),
+        })
+    return result
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -341,13 +377,19 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "source": "event_ledger",
         })
 
-    # Phases
+    # Phases — full 6-phase canonical set
+    is_finalized = state in ("completed", "done", "finalized")
     phases = [
-        {"id": "planning", "title": "Planning", "status": "done" if has_real_tasks else "current", "rank": 0, "started_at": "", "completed_at": "", "current": not has_real_tasks, "source": "derived"},
-        {"id": "build", "title": "Build", "status": "current" if apply_count > 0 else "pending", "rank": 1, "started_at": "", "completed_at": "", "current": apply_count > 0, "source": "derived"},
-        {"id": "test", "title": "Test", "status": "done" if test_count > 0 else "pending", "rank": 2, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
-        {"id": "review", "title": "Review", "status": "pending", "rank": 3, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+        {"id": "job", "title": "Job", "status": "done", "rank": 0, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+        {"id": "planning", "title": "Planning", "status": "done" if has_real_tasks else "current", "rank": 1, "started_at": "", "completed_at": "", "current": not has_real_tasks, "source": "derived"},
+        {"id": "build", "title": "Build", "status": "done" if is_finalized else ("current" if apply_count > 0 else "pending"), "rank": 2, "started_at": "", "completed_at": "", "current": apply_count > 0 and not is_finalized, "source": "derived"},
+        {"id": "test", "title": "Test", "status": "done" if test_count > 0 else "pending", "rank": 3, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+        {"id": "review", "title": "Review", "status": "done" if proof_count > 0 else "pending", "rank": 4, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+        {"id": "finalized", "title": "Finalized", "status": "done" if is_finalized else "pending", "rank": 5, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
     ]
+
+    # Timeline events — cycle-aware from event ledger
+    timeline_events = _build_timeline_events(events)
 
     # Live state
     running = state in ("active", "running")
@@ -422,6 +464,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "missing_sources": missing_sources,
             "computed_from": "job_model_and_event_ledger",
         },
+        "timeline_events": timeline_events,
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "project_summary": _build_project_summary_section(job),
