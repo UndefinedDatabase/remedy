@@ -85,6 +85,9 @@
 
 .current .label { color: var(--remedy-ink, #10285f); }
 
+.current .marker { animation: pulse-ring 2.5s ease-in-out infinite; }
+@keyframes pulse-ring { 0%, 100% { box-shadow: 0 0 0 4px rgba(76,131,255,.1), 0 6px 14px rgba(76,131,255,.18); } 50% { box-shadow: 0 0 0 6px rgba(76,131,255,.16), 0 6px 14px rgba(76,131,255,.24); } }
+
 .done .marker {
   color: var(--remedy-green, #4cc681);
   border-color: var(--remedy-green, #4cc681);

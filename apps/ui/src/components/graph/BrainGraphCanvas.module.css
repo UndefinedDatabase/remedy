@@ -39,6 +39,14 @@
   opacity: .35;
 }
 
+.selectRing {
+  fill: none;
+  stroke: var(--remedy-blue, #4c83ff);
+  stroke-width: 2;
+  opacity: .6;
+  stroke-dasharray: 4 3;
+}
+
 .tooltip {
   position: absolute;
   transform: translate(-50%, -100%);
@@ -60,6 +68,20 @@
 
 .tooltip strong { font-weight: 800; font-size: 11px; }
 .tooltip span { font-size: 10px; color: var(--remedy-ink-soft, #6f82a8); }
+
+.emptyState {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--remedy-ink-soft, #6f82a8);
+  font-size: 13px;
+  font-weight: 600;
+  opacity: .6;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .edge, .rootOrb, .nodeCore { transition: none; }

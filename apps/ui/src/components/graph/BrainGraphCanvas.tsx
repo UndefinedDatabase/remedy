@@ -21,6 +21,10 @@ const TASK_R = 14;
 const DEG = Math.PI / 180;
 const BRANCH_ANGLES = [-145, -70, -15, 40, 105];
 
+function taskState(st: string): string {
+  return st === "done" ? "done" : st === "current" ? "current" : st === "blocked" ? "blocked" : "planned";
+}
+
 function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; edges: [string, string][] } {
   const tasks = dashboard.tasks.slice(0, 80);
   const nodes: DisplayNode[] = [];
@@ -28,23 +32,34 @@ function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; 
 
   nodes.push({ id: "root", label: dashboard.title || "Job", state: "current", kind: "root", x: 0, y: 20, size: ROOT_R });
 
-  const branchCount = Math.min(5, Math.max(2, Math.ceil(tasks.length / 3) || 2));
-  const angles = BRANCH_ANGLES.slice(0, branchCount);
-
-  tasks.forEach((t, i) => {
-    const branch = i % branchCount;
-    const depth = Math.floor(i / branchCount) + 1;
-    const rad = angles[branch] * DEG;
-    const radius = 110 + depth * 68;
-    const bend = Math.sin(depth * 0.85 + branch * 1.2) * 28;
-    const x = Math.cos(rad) * radius + Math.cos(rad + Math.PI / 2) * bend;
-    const y = Math.sin(rad) * radius + Math.sin(rad + Math.PI / 2) * bend;
-
-    const st = t.state;
-    const state = st === "done" ? "done" : st === "current" ? "current" : st === "blocked" ? "blocked" : "planned";
-    nodes.push({ id: t.id, label: t.label, state, kind: "task", x, y, size: TASK_R });
-    edges.push(["root", t.id]);
-  });
+  if (tasks.length <= 8) {
+    // Small: radial spread around root
+    const radius = tasks.length <= 3 ? 140 : 160;
+    const startAngle = -90;
+    const sweep = tasks.length === 1 ? 0 : 300;
+    tasks.forEach((t, i) => {
+      const angle = (startAngle + (tasks.length === 1 ? 0 : (sweep * i) / (tasks.length - 1) - sweep / 2)) * DEG;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius + 20;
+      nodes.push({ id: t.id, label: t.label, state: taskState(t.state), kind: "task", x, y, size: TASK_R });
+      edges.push(["root", t.id]);
+    });
+  } else {
+    // Medium/large: branch layout
+    const branchCount = Math.min(5, Math.max(2, Math.ceil(tasks.length / 3) || 2));
+    const angles = BRANCH_ANGLES.slice(0, branchCount);
+    tasks.forEach((t, i) => {
+      const branch = i % branchCount;
+      const depth = Math.floor(i / branchCount) + 1;
+      const rad = angles[branch] * DEG;
+      const radius = 110 + depth * 68;
+      const bend = Math.sin(depth * 0.85 + branch * 1.2) * 28;
+      const x = Math.cos(rad) * radius + Math.cos(rad + Math.PI / 2) * bend;
+      const y = Math.sin(rad) * radius + Math.sin(rad + Math.PI / 2) * bend;
+      nodes.push({ id: t.id, label: t.label, state: taskState(t.state), kind: "task", x, y, size: TASK_R });
+      edges.push(["root", t.id]);
+    });
+  }
 
   return { nodes, edges };
 }
@@ -59,7 +74,7 @@ function curvePath(ax: number, ay: number, bx: number, by: number): string {
   return `M${ax},${ay} Q${cx},${cy} ${bx},${by}`;
 }
 
-export function BrainGraphCanvas({ dashboard, filter = "all", onSelectNode }: { dashboard: RemedyDashboard; filter?: string; onSelectNode: (nodeId: string | null) => void }) {
+export function BrainGraphCanvas({ dashboard, filter = "all", selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; filter?: string; selectedNodeId?: string | null; onSelectNode: (nodeId: string | null) => void }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const model = buildDisplayModel(dashboard);
@@ -84,6 +99,17 @@ export function BrainGraphCanvas({ dashboard, filter = "all", onSelectNode }: { 
     const svgY = (hovered.y + STAGE_H / 2) / STAGE_H;
     return { left: svgX * rect.width, top: svgY * rect.height - 28 };
   })() : null;
+
+  if (dashboard.tasks.length === 0) {
+    return (
+      <div className={styles.graphRoot} ref={containerRef}>
+        <div className={styles.emptyState}>
+          <CodeOrbGlyph style={{ width: 40, height: 40, color: "var(--remedy-blue-300, #8fb3ff)" }} />
+          <span>No tasks yet</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.graphRoot} ref={containerRef}>
@@ -119,7 +145,10 @@ export function BrainGraphCanvas({ dashboard, filter = "all", onSelectNode }: { 
                 <circle cx={n.x} cy={n.y} r={n.size}
                   className={`${styles.nodeCore} ${styles[`node${n.state.charAt(0).toUpperCase() + n.state.slice(1)}`]}`}
                 />
-                {hoveredId === n.id && (
+                {selectedNodeId === n.id && (
+                  <circle cx={n.x} cy={n.y} r={n.size + 7} className={styles.selectRing} />
+                )}
+                {hoveredId === n.id && hoveredId !== selectedNodeId && (
                   <circle cx={n.x} cy={n.y} r={n.size + 5} className={styles.hoverHalo} />
                 )}
               </>

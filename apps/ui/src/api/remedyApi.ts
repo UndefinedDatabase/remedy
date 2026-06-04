@@ -67,6 +67,9 @@ export function normalizeDashboardPayload(
       muted: Boolean(state === "pending" || state === "suggested"),
       nodeId: String(t.related_node_id || t.id || `task-${idx}`),
       nextAction: undefined,
+      outcomeSummary: t.outcome_summary || undefined,
+      changedFilesCount: typeof t.changed_files_count === "number" ? t.changed_files_count : undefined,
+      testStatus: t.test_status || undefined,
     };
   });
 

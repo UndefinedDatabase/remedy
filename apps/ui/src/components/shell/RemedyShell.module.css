@@ -15,7 +15,7 @@
   grid-template-columns:
     clamp(220px, 16vw, 292px)
     minmax(680px, 1fr)
-    clamp(320px, 22vw, 390px);
+    clamp(310px, 22vw, 360px);
   grid-template-rows: 1fr;
   gap: clamp(18px, 1.8vw, 28px);
   padding: clamp(18px, 2vw, 30px);

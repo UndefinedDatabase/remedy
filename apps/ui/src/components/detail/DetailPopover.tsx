@@ -17,32 +17,48 @@ function StateIcon({ state }: { state: string }) {
   return <TaskPlannedGlyph style={{ width: 14, height: 14, color: "var(--remedy-ink-soft, #6f82a8)" }} />;
 }
 
+function TestBadge({ status }: { status?: string }) {
+  if (!status || status === "none") return null;
+  const pass = status === "pass";
+  return (
+    <span className={pass ? styles.badgePass : styles.badgeFail}>
+      {pass ? "Tests pass" : "Tests fail"}
+    </span>
+  );
+}
+
 export function DetailPopover({ dashboard, selectedNode, onClose }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; onClose: () => void }) {
   const task = dashboard.tasks.find(i => i.nodeId === selectedNode.nodeId);
   const title = task?.label || selectedNode.label || "Task";
   const state = task?.state || selectedNode.state;
   const stateLabel = STATE_LABELS[state] || state;
 
+  const outcomeSummary = task?.outcomeSummary;
+  const changedFiles = task?.changedFilesCount;
+  const testStatus = task?.testStatus;
+
   return (
     <aside className={`${styles.popover} remedy-detail-compact`} aria-label="Task details" data-ui="detail-popover">
-      <button className={styles.close} type="button" aria-label="Close" onClick={onClose}>×</button>
+      <button className={styles.close} type="button" aria-label="Close" onClick={onClose}>&times;</button>
       <h2 className={styles.title}>{title}</h2>
 
       <div className={styles.statusRow}>
         <StateIcon state={state} />
         <span className={styles.statusLabel}>{stateLabel}</span>
+        <TestBadge status={testStatus} />
       </div>
 
       <section className={styles.section}>
         <h3>Outcome</h3>
-        <p>{state === "done"
-          ? "This task was completed successfully."
-          : state === "current"
-          ? "Work is in progress on this task."
-          : state === "blocked"
-          ? "This task is blocked and needs attention."
-          : "This task has not started yet."
-        }</p>
+        <p>{outcomeSummary || (
+          state === "done" ? "Completed successfully."
+          : state === "current" ? "Work is in progress."
+          : state === "blocked" ? "Blocked and needs attention."
+          : "Not started yet."
+        )}</p>
+        {changedFiles != null && changedFiles > 0 && (
+          <p className={styles.detail}>{changedFiles} file{changedFiles !== 1 ? "s" : ""} changed</p>
+        )}
       </section>
 
       <section className={styles.section}>

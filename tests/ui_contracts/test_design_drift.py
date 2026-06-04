@@ -222,6 +222,82 @@ class TestTokenTooltipLayering:
         assert "overflow: visible" in bar_match.group(1)
 
 
+class TestGraphEmptyState:
+    """Graph must show empty state when no tasks."""
+
+    def test_empty_state_exists(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "emptyState" in content
+
+    def test_empty_state_checks_tasks_length(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "tasks.length === 0" in content
+
+
+class TestGraphSmallLayout:
+    """Graph must handle small task counts well."""
+
+    def test_small_radial_layout(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "tasks.length <= 8" in content or "radial" in content.lower()
+
+
+class TestGraphSelectedNode:
+    """Graph must support selected node highlight."""
+
+    def test_selected_node_prop(self):
+        content = GRAPH_CANVAS.read_text()
+        assert "selectedNodeId" in content
+
+    def test_select_ring_style(self):
+        css = (ROOT / "apps" / "ui" / "src" / "components" / "graph" / "BrainGraphCanvas.module.css").read_text()
+        assert "selectRing" in css
+
+
+class TestNoMuiInPrimaryDashboard:
+    """Primary dashboard components must not import MUI."""
+
+    def test_metrics_no_mui(self):
+        content = METRICS_TSX.read_text()
+        assert "@mui" not in content
+
+    def test_command_bar_no_mui(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "command" / "CommandBar.tsx").read_text()
+        assert "@mui" not in tsx
+
+    def test_activity_feed_no_mui(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "panels" / "ActivityFeedCard.tsx").read_text()
+        assert "@mui" not in tsx
+
+    def test_task_checklist_no_mui(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "panels" / "TaskChecklistCard.tsx").read_text()
+        assert "@mui" not in tsx
+
+    def test_side_icon_dock_no_mui(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "rail" / "SideIconDock.tsx").read_text()
+        assert "@mui" not in tsx
+
+    def test_degraded_banner_no_mui(self):
+        tsx = (ROOT / "apps" / "ui" / "src" / "components" / "shell" / "DegradedBanner.tsx").read_text()
+        assert "@mui" not in tsx
+
+
+class TestTaskOutcomeFields:
+    """Task items must include outcome fields in types."""
+
+    def test_outcome_summary_in_types(self):
+        types = (ROOT / "apps" / "ui" / "src" / "api" / "types.ts").read_text()
+        assert "outcomeSummary" in types
+
+    def test_changed_files_in_types(self):
+        types = (ROOT / "apps" / "ui" / "src" / "api" / "types.ts").read_text()
+        assert "changedFilesCount" in types
+
+    def test_test_status_in_types(self):
+        types = (ROOT / "apps" / "ui" / "src" / "api" / "types.ts").read_text()
+        assert "testStatus" in types
+
+
 class TestDetailPanelOutcome:
     """Task detail must show outcome, not internal machinery."""
 

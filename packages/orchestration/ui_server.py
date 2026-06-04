@@ -75,6 +75,39 @@ def _task_test_status(task_id: str, events: list[dict]) -> str:
     return "pass" if latest.get("metadata", {}).get("exit_code") == 0 else "fail"
 
 
+def _task_outcome_summary(task_id: str, tstat: str, events: list[dict]) -> str:
+    """Derive a human-readable outcome for a task from events and status."""
+    if tstat == "completed":
+        has_proof = any(
+            e.get("event") == "proof_collected"
+            and e.get("metadata", {}).get("task_id") == task_id
+            for e in events
+        )
+        test = _task_test_status(task_id, events)
+        if has_proof and test == "pass":
+            return "Completed and verified"
+        if has_proof:
+            return "Completed with proof"
+        if test == "pass":
+            return "Completed, tests pass"
+        return "Completed"
+    if tstat in ("running", "active"):
+        return "In progress"
+    if tstat in ("blocked", "failed"):
+        return "Blocked"
+    return ""
+
+
+def _task_changed_files_count(task_id: str, events: list[dict]) -> int:
+    """Count files changed for a task from apply events."""
+    applies = [
+        e for e in events
+        if e.get("event") == "patch_intent_applied"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    return sum(e.get("metadata", {}).get("file_count", 1) for e in applies)
+
+
 def _event_backed_actor(events: list[dict]) -> str:
     """Derive current actor from most recent event, not hardcoded."""
     if not events:
@@ -210,21 +243,24 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     task_items: list[dict[str, Any]] = []
     for idx, t in enumerate(job.tasks):
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
+        tid = str(t.id)
         task_items.append({
-            "id": str(t.id),
+            "id": tid,
             "title": t.description[:80] if t.description else f"Task {idx + 1}",
             "status": tstat,
             "verified": tstat == "completed",
             "source": "real",
             "accepted": tstat == "completed",
             "rank": idx,
-            "related_node_id": str(t.id),
+            "related_node_id": tid,
             "short_reason": "",
             "proof_status": "verified" if any(
-                e.get("event") == "proof_collected" and e.get("metadata", {}).get("task_id") == str(t.id)
+                e.get("event") == "proof_collected" and e.get("metadata", {}).get("task_id") == tid
                 for e in events
             ) else "none",
-            "test_status": _task_test_status(str(t.id), events),
+            "test_status": _task_test_status(tid, events),
+            "outcome_summary": _task_outcome_summary(tid, tstat, events),
+            "changed_files_count": _task_changed_files_count(tid, events),
             "is_current": tstat in ("running", "active"),
             "is_future": tstat == "pending",
             "is_reviewer_suggested": False,

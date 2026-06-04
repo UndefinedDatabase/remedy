@@ -65,6 +65,103 @@ export function TaskCurrentGlyph(p: G) {
   );
 }
 
+// Metrics glyphs
+export function ClipboardGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="4" width="10" height="10" rx="1.5" />
+      <path d="M6 4V3a2 2 0 014 0v1" />
+      <line x1="6" y1="7.5" x2="10" y2="7.5" />
+      <line x1="6" y1="10" x2="9" y2="10" />
+    </svg>
+  );
+}
+
+export function CalendarGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="2" y="3" width="12" height="11" rx="1.5" />
+      <line x1="2" y1="6.5" x2="14" y2="6.5" />
+      <line x1="5" y1="2" x2="5" y2="4" />
+      <line x1="11" y1="2" x2="11" y2="4" />
+    </svg>
+  );
+}
+
+export function ChartGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <polyline points="2 12 6 7 9 9 14 4" />
+    </svg>
+  );
+}
+
+export function TokenGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" {...p}>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M6 6.5a2 2 0 014 0c0 1.2-2 1.8-2 3" />
+      <circle cx="8" cy="11.5" r=".5" fill="currentColor" />
+    </svg>
+  );
+}
+
+// Activity glyphs
+export function BuilderGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <polyline points="5 5 3 8 5 11" />
+      <polyline points="11 5 13 8 11 11" />
+      <line x1="9" y1="4" x2="7" y2="12" opacity=".6" />
+    </svg>
+  );
+}
+
+export function ReviewerGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="8" cy="8" r="4" />
+      <path d="M11 11l2.5 2.5" />
+    </svg>
+  );
+}
+
+export function PersonGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="8" cy="5" r="2.5" />
+      <path d="M3 14c0-3 2.5-5 5-5s5 2 5 5" />
+    </svg>
+  );
+}
+
+export function GearGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="8" cy="8" r="2" />
+      <path d="M7 2h2l.3 1.5a4.5 4.5 0 011.5.9L12.3 4l1 1.7-1.2.9a4.5 4.5 0 010 1.8l1.2.9-1 1.7-1.5-.5a4.5 4.5 0 01-1.5.9L9 14H7l-.3-1.5a4.5 4.5 0 01-1.5-.9L3.7 12l-1-1.7 1.2-.9a4.5 4.5 0 010-1.8L2.7 6.7l1-1.7 1.5.5a4.5 4.5 0 011.5-.9z" />
+    </svg>
+  );
+}
+
+export function ArrowSendGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <line x1="3" y1="8" x2="13" y2="8" />
+      <polyline points="9 4 13 8 9 12" />
+    </svg>
+  );
+}
+
+export function CopyGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="5" y="5" width="8" height="8" rx="1" />
+      <path d="M3 11V4a1 1 0 011-1h7" />
+    </svg>
+  );
+}
+
 export function PhaseGlyph({ phase, ...p }: G & { phase: string }) {
   const paths: Record<string, string> = {
     job: "M4 4h8v8H4z",

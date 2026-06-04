@@ -105,6 +105,7 @@
 .suggested { opacity: .6; color: var(--remedy-purple-400); }
 
 .emptyState { font-size: 11px; color: rgba(18,47,106,.55); font-style: italic; padding: 12px 4px; line-height: 1.5; }
+.taskHint { display: block; font-size: 9px; font-weight: 600; color: var(--remedy-ink-soft, #6f82a8); line-height: 1.2; }
 
 .addTask { height: 36px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 12px; background: rgba(255,255,255,.58); color: var(--remedy-blue-700); border: 1px solid rgba(78,111,172,.12); border-radius: 8px; }
 

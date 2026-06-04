@@ -1,18 +1,14 @@
-import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
-import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import DataUsageIcon from "@mui/icons-material/DataUsage";
-import TimelineIcon from "@mui/icons-material/Timeline";
 import { useState } from "react";
 import type { RemedyMetric } from "../../api/types";
+import { ClipboardGlyph, CalendarGlyph, TaskDoneGlyph, ChartGlyph, TokenGlyph } from "../icons/RemedyGlyphs";
 import styles from "./TopMetricsBar.module.css";
 
-const iconByKey: Record<string, typeof TimelineIcon> = {
-  open: AssignmentOutlinedIcon,
-  planned: CalendarMonthOutlinedIcon,
-  done: CheckCircleOutlineIcon,
-  progress: TimelineIcon,
-  tokens: DataUsageIcon,
+const iconByKey: Record<string, typeof ClipboardGlyph> = {
+  open: ClipboardGlyph,
+  planned: CalendarGlyph,
+  done: TaskDoneGlyph,
+  progress: ChartGlyph,
+  tokens: TokenGlyph,
 };
 
 function formatTokens(value: number): string {
@@ -27,9 +23,9 @@ export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
   return (
     <section className={`${styles.bar} remedy-glass-card`} aria-label="Project metrics" data-ui="top-metrics-bar">
       {metrics.map(m => {
-        const Icon = iconByKey[m.key] || TimelineIcon;
+        const Icon = iconByKey[m.key] || ChartGlyph;
         const isTokens = m.key === "tokens";
-        const displayValue = isTokens ? (m.value > 0 ? formatTokens(m.value) : "—") : `${m.value}${m.suffix || ""}`;
+        const displayValue = isTokens ? (m.value > 0 ? formatTokens(m.value) : "\u2014") : `${m.value}${m.suffix || ""}`;
 
         return (
           <article
@@ -42,7 +38,7 @@ export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
             onBlur={() => setTooltipKey(null)}
             aria-label={`${m.label}: ${displayValue}`}
           >
-            <div className={styles.iconBox}><Icon fontSize="small" /></div>
+            <div className={styles.iconBox}><Icon style={{ width: 16, height: 16 }} /></div>
             <div className={styles.metricBody}>
               <div className={styles.label}>{m.label}</div>
               <div className={styles.value}>{displayValue}</div>
