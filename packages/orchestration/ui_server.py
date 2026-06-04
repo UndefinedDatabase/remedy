@@ -394,12 +394,20 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         1 for t in job.tasks
         if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("blocked", "failed")
     )
+    # Proposed task gate
+    try:
+        from packages.orchestration.proposed_tasks import count_unresolved
+        unresolved_proposals = count_unresolved(str(job.id))
+    except ImportError:
+        unresolved_proposals = 0
+
     job_says_done = state in ("completed", "done", "finalized")
     is_finalized = (
         job_says_done
         and pending_task_count == 0
         and blocked_task_count == 0
         and pending_approvals == 0
+        and unresolved_proposals == 0
     )
     phases = [
         {"id": "job", "title": "Job", "status": "done", "rank": 0, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
@@ -487,6 +495,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "computed_from": "job_model_and_event_ledger",
         },
         "timeline_events": timeline_events,
+        "proposed_tasks": _build_proposed_tasks_section(str(job.id)),
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "project_summary": _build_project_summary_section(job),
@@ -506,6 +515,27 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "lifecycle": lifecycle,
         },
     }
+
+
+def _build_proposed_tasks_section(job_id: str) -> dict[str, Any]:
+    """Build proposed task counts for dashboard."""
+    try:
+        from packages.orchestration.proposed_tasks import (
+            load_proposed_tasks,
+            ProposedTaskStatus,
+        )
+        tasks = load_proposed_tasks(job_id)
+        return {
+            "total": len(tasks),
+            "proposed": sum(1 for t in tasks if t.status == ProposedTaskStatus.PROPOSED),
+            "evaluated": sum(1 for t in tasks if t.status == ProposedTaskStatus.EVALUATED),
+            "approved": sum(1 for t in tasks if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD),
+            "rejected": sum(1 for t in tasks if t.status == ProposedTaskStatus.REJECTED),
+            "deferred": sum(1 for t in tasks if t.status == ProposedTaskStatus.DEFERRED),
+            "unresolved": sum(1 for t in tasks if t.status in (ProposedTaskStatus.PROPOSED, ProposedTaskStatus.EVALUATED)),
+        }
+    except (ImportError, OSError, ValueError):
+        return {"total": 0, "proposed": 0, "evaluated": 0, "approved": 0, "rejected": 0, "deferred": 0, "unresolved": 0}
 
 
 def _build_resume_section(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:

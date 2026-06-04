@@ -102,6 +102,7 @@ GROUPS: dict[str, GroupDef] = {
     "ui": GroupDef("ui", "UI", "Localhost UI server — primary interactive experience."),
     "do": GroupDef("do", "Do", "High-level guided autorun — one command to start a Remedy run."),
     "review": GroupDef("review", "Review", "Reviewer recommendations — suggest, accept, reject follow-up tasks."),
+    "propose": GroupDef("propose", "Propose", "Proposed task evaluation — list, evaluate, approve, reject, defer."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
 }
 
@@ -1313,6 +1314,88 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("recommendation_id", "Recommendation ID to reject", required=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+
+    # ── propose ─────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="propose.list",
+        group_id="propose",
+        subcommand="list",
+        description="List proposed tasks for a job.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--status", "Filter by status", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="propose.show",
+        group_id="propose",
+        subcommand="show",
+        description="Show a single proposed task.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("task_id", "Proposed task ID"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="propose.evaluate",
+        group_id="propose",
+        subcommand="evaluate",
+        description="Run deterministic evaluation on proposed tasks.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--task-id", "Evaluate a specific task (default: all)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="propose.approve",
+        group_id="propose",
+        subcommand="approve",
+        description="Approve a proposed task for build.",
+        action_class="approval_gate",
+        args=(
+            _JOB_ID,
+            ArgDef("task_id", "Proposed task ID to approve"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="propose.reject",
+        group_id="propose",
+        subcommand="reject",
+        description="Reject a proposed task.",
+        action_class="approval_gate",
+        args=(
+            _JOB_ID,
+            ArgDef("task_id", "Proposed task ID to reject"),
+            _REASON_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="propose.defer",
+        group_id="propose",
+        subcommand="defer",
+        description="Defer a proposed task.",
+        action_class="approval_gate",
+        args=(
+            _JOB_ID,
+            ArgDef("task_id", "Proposed task ID to defer"),
+            _REASON_OPT,
             _JSON_OPT,
         ),
         supports_json=True,

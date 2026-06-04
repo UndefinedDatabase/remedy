@@ -173,10 +173,21 @@ def list_queued(data_dir: str | Path) -> list[QueueEntry]:
     return entries
 
 
+def _has_unresolved_proposals(job_id: str) -> bool:
+    """Check if a job has unresolved proposed tasks blocking build."""
+    try:
+        from packages.orchestration.proposed_tasks import count_unresolved
+        return count_unresolved(job_id) > 0
+    except ImportError:
+        return False
+
+
 def get_next_job(data_dir: str | Path) -> QueueEntry | None:
     entries = list_queued(data_dir)
     for e in entries:
         if e.lifecycle_state == "queued" and not e.pause_requested and not e.cancel_requested:
+            if _has_unresolved_proposals(e.job_id):
+                continue  # skip jobs with unresolved proposed tasks
             return e
     return None
 

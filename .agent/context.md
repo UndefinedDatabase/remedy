@@ -4,28 +4,35 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 545-564: Timeline exact fix and orchestrator loop semantics.
+Steps 565-579: Orchestrator task evaluation flow.
+UI/timeline work is PAUSED. Backend/orchestration only.
 
 ## Canonical Review File
 `.agent/live_review.md` — NOT `.data/live_review.md`
 
-## Timeline Failure — Steps 530-544 Did Not Produce Acceptable Timeline
-- Done phase icons incorrectly replaced with TaskDoneGlyph checkmarks (icons vanish)
-- Timeline event fallback creates fake dots from tasks (implies events that never happened)
-- RemedyTimelineEvent type too weak (done: boolean, no state/title/cycle)
-- CSS uses overflow: hidden (clips glow effects)
-- CSS uses weak flex-centered layout
-- Finalized gate too loose (marks done on job state alone, ignores pending/blocked tasks)
-- Tests too shallow — allowed wrong visual structure to pass
+## Core Concept
+When a reviewer finds a new issue, Remedy creates a proposed task.
+Proposed tasks must be evaluated before implementation.
+Only approved tasks become buildable.
+Finalized is blocked while unresolved proposed tasks exist.
+
+## Key Patterns
+- Job persistence: `storage.py` save_job/load_job → `.data/jobs/{job_id}.json`
+- Event ledger: `run_log.py` RunLogWriter → `.data/runs/<job_id>/<run_id>.jsonl`
+- CLI commands: `command_catalog.py` CATALOG tuple + GROUPS dict
+- Reviewer: `reviewer.py` ReviewerRecommendation → accept/reject flow
+- Worker queue: `worker_queue.py` get_next_job selects `lifecycle_state == "queued"`
 
 ## What Must Change
-- Phase header: always PhaseGlyph, never replace with TaskDoneGlyph
-- Done/current/pending = visual classes on icon shell + rail markers, not icon replacement
-- Event rail: only real backend events, no task-based fallback
-- RemedyTimelineEvent: state-based with title/cycle/timeLabel
-- Finalized gate: strict (no pending tasks, no open approvals, no blocked tasks)
-- Orchestrator loop: Build/Test/Review repeat, not waterfall
-- Proposed tasks: distinct from planned tasks
+- New ProposedTask domain model (dataclass in proposed_tasks.py)
+- Proposed task store (JSON persistence in .data/)
+- Review → proposal flow (reviewer creates proposed tasks, not direct tasks)
+- Deterministic evaluator (rules-based, no LLM by default)
+- State transitions: proposed → evaluated → approved_for_build | rejected | deferred
+- Build queue gate: only approved tasks enter build
+- Finalized gate: blocked by unresolved proposals
+- CLI commands for propose/evaluate/approve/reject/defer/list
+- Event audit trail via RunLogWriter
 
 ## Resource Safety
 All pytest runs use scripts/remedy_pytest.sh (flock + timeout).

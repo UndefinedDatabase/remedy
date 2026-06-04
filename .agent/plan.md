@@ -1,29 +1,24 @@
-# Plan — Steps 545-564
+# Plan — Steps 565-579
 
 ## Goal
-Fix timeline visual failures from Steps 530-544. Encode orchestrator loop semantics. Remove fake events.
+Implement orchestrator task evaluation flow. Review-created tasks become proposed tasks that need evaluation before build. Finalized blocked by unresolved proposals.
 
 ## Current Step
 Complete — all steps done.
 
 ## Steps
-- [x] Step 545: Handoff, acknowledge timeline failure, update context/plan/live_review
-- [x] Step 546: Replace RemedyTimelineEvent type (state/title/cycle/timeLabel)
-- [x] Step 547: Normalize timeline events safely (no fake events, returns [])
-- [x] Step 548: Backend timeline events with state/title/cycle/time_label
-- [x] Step 549: Finalized gate strict (checks pending/blocked tasks + approvals)
-- [x] Step 550: Replace PhaseTimeline.tsx (PhaseGlyph always in header, TaskDoneGlyph only in rail)
-- [x] Step 551: Replace PhaseTimeline.module.css (no overflow:hidden, state classes)
-- [x] Step 552: Remove fallbackEventsFromTasks (event rail conditional on real events)
-- [x] Step 553: Fix PhaseGlyph icons (strokeWidth=1.45 for visibility)
-- [x] Step 554: Shell timeline height lock (clamp(136px, 15vh, 166px))
-- [x] Step 555: Orchestrator loop contract doc (docs/orchestrator-loop.md)
-- [x] Step 556: Proposed task evaluation model (RemedyProposedTask type)
-- [x] Step 557: Timeline reflects loops (cycle-aware backend events)
-- [x] Step 558: Task list separates proposed from planned (type contract only)
-- [x] Step 559: Product tests (24 tests: icons, no fake events, CSS, types, backend, loop)
-- [x] Step 560: Orchestrator loop tests (in test_timeline_guard.py)
-- [x] Step 561: Visual QA checklist update (docs/ui-target.md)
-- [x] Step 562: Screenshot self-check checklist (in docs/ui-target.md)
-- [x] Step 563: Guarded tests — 4216 passed, 0 failed, Vitest 35, tsc clean, build 332KB
-- [x] Step 564: Handoff report
+- [x] Step 565: Handoff — update context.md, plan.md, live_review.md
+- [x] Step 566: ProposedTask domain model (packages/orchestration/proposed_tasks.py)
+- [x] Step 567: Proposed task store (save/load/list/update in .data/)
+- [x] Step 568: Review findings create proposed tasks (propose_task_from_review_finding)
+- [x] Step 569: Deterministic evaluator rules v1
+- [x] Step 570: Optional LLM evaluator interface (disabled by default)
+- [x] Step 571: Approve/reject/defer state transitions
+- [x] Step 572: Build queue only picks approved tasks
+- [x] Step 573: Review loop creates rework proposals
+- [x] Step 574: Finalized gate includes proposed tasks
+- [x] Step 575: CLI proposed task commands
+- [x] Step 576: Events/audit trail for proposed task lifecycle
+- [x] Step 577: Dashboard backend counts (proposed_task_count, etc.)
+- [x] Step 578: Tests — 4259 passed, 0 failed, Vitest 35, tsc clean
+- [x] Step 579: Handoff report

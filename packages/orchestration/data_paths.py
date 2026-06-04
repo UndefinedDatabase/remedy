@@ -65,3 +65,8 @@ def workspaces_dir(root: Path | None = None) -> Path:
 def viewers_dir(root: Path | None = None) -> Path:
     """Return the brain viewer output directory (<root>/viewers)."""
     return (root if root is not None else resolve_data_root()) / "viewers"
+
+
+def proposed_tasks_dir(root: Path | None = None) -> Path:
+    """Return the proposed tasks storage directory (<root>/proposed_tasks)."""
+    return (root if root is not None else resolve_data_root()) / "proposed_tasks"
