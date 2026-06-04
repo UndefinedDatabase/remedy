@@ -8,29 +8,32 @@ const PHASE_LABELS: Record<string, string> = {
   test: "Test", review: "Review", finalized: "Finalized",
 };
 
-/* Kind → journey dot type */
 const KIND_TYPE: Record<string, "action" | "test" | "review"> = {
   goal: "action", task: "action", apply: "action", change: "action", memory: "action",
   test: "test",
   review: "review", approval: "review", proof: "review",
 };
 
-/* Small inline icons for journey dots + legend */
+/* ── Journey dot components (used in journey row + legend) ── */
+
 function LlmDot({ className }: { className?: string }) {
   return <span className={`${styles.jDot} ${styles.jAction} ${className || ""}`} />;
 }
+
 function TestDot({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 10 10" className={`${styles.jIcon} ${styles.jTest} ${className || ""}`}>
-      <polyline points="2 5.5 4.2 7.5 8 3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 12 12" className={`${styles.jIcon} ${styles.jTest} ${className || ""}`}>
+      <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" strokeWidth=".8" opacity=".4" />
+      <polyline points="3.5 6.2 5.2 8 8.5 4.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
+
 function ReviewDot({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 10 10" className={`${styles.jIcon} ${styles.jReview} ${className || ""}`}>
-      <circle cx="5" cy="3.5" r="1.8" fill="none" stroke="currentColor" strokeWidth="1" />
-      <path d="M1.8 9.5c0-2 1.4-3.2 3.2-3.2s3.2 1.2 3.2 3.2" fill="none" stroke="currentColor" strokeWidth="1" />
+    <svg viewBox="0 0 12 12" className={`${styles.jIcon} ${styles.jReview} ${className || ""}`}>
+      <circle cx="6" cy="4" r="2" fill="none" stroke="currentColor" strokeWidth=".9" />
+      <path d="M2.2 11c0-2.2 1.7-3.6 3.8-3.6s3.8 1.4 3.8 3.6" fill="none" stroke="currentColor" strokeWidth=".9" />
     </svg>
   );
 }
@@ -55,7 +58,6 @@ export function PhaseTimeline({ phases, tasks }: { phases: RemedyPhase[]; tasks?
     ? ((currentIdx + 0.5) / canonicalPhases.length) * 100
     : doneCount === canonicalPhases.length ? 100 : 0;
 
-  /* Journey events from tasks */
   const journeyItems = (tasks || []).map(t => ({
     id: t.id,
     type: KIND_TYPE[t.kind] || ("action" as const),
@@ -66,28 +68,8 @@ export function PhaseTimeline({ phases, tasks }: { phases: RemedyPhase[]; tasks?
   return (
     <section className={styles.timeline} aria-label="Project timeline" data-ui="phase-timeline">
 
-      {/* ── Row 1: Phase markers — icon + label side by side, with progress line ── */}
+      {/* ── Row 1: Phase icons + labels side by side ── */}
       <div className={styles.phaseBar}>
-        {/* Progress line behind everything */}
-        <div className={styles.progressTrack}>
-          <div className={styles.progressBg} />
-          <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
-          {/* Dots on the line at each phase position */}
-          {canonicalPhases.map((phase, i) => {
-            const left = ((i + 0.5) / canonicalPhases.length) * 100;
-            const isDone = phase.state === "done";
-            const isCurrent = phase.state === "current";
-            return (
-              <span
-                key={`dot-${phase.id}`}
-                className={`${styles.trackDot} ${isDone || isCurrent ? styles.trackDotActive : ""}`}
-                style={{ left: `${left}%` }}
-              />
-            );
-          })}
-        </div>
-
-        {/* Phase items */}
         {canonicalPhases.map(phase => (
           <article key={phase.id} className={`${styles.phase} ${styles[phase.state]}`}>
             <div className={styles.marker}>
@@ -101,14 +83,34 @@ export function PhaseTimeline({ phases, tasks }: { phases: RemedyPhase[]; tasks?
         ))}
       </div>
 
-      {/* ── Row 2: Journey timeline — individual event dots/icons ── */}
+      {/* ── Row 2: Progress track with dots at each phase ── */}
+      <div className={styles.progressTrack}>
+        <div className={styles.progressBg} />
+        <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
+        {canonicalPhases.map((phase, i) => {
+          const left = ((i + 0.5) / canonicalPhases.length) * 100;
+          const active = phase.state === "done" || phase.state === "current";
+          return (
+            <span
+              key={`dot-${phase.id}`}
+              className={`${styles.trackDot} ${active ? styles.trackDotActive : ""}`}
+              style={{ left: `${left}%` }}
+            />
+          );
+        })}
+      </div>
+
+      {/* ── Row 3: Journey timeline — DASHED line, dots with BORDERS, full width ── */}
       <div className={styles.journeyBar}>
         <div className={styles.journeyLine} />
         <div className={styles.journeyItems}>
           {journeyItems.map(item => {
             const Comp = DOT_COMPONENT[item.type];
             return (
-              <span key={item.id} className={`${styles.journeyItem} ${item.pending ? styles.journeyPending : ""} ${item.done ? styles.journeyDone : ""}`}>
+              <span
+                key={item.id}
+                className={`${styles.journeyItem} ${item.pending ? styles.journeyPending : ""} ${item.done ? styles.journeyDone : ""}`}
+              >
                 <Comp />
               </span>
             );
@@ -116,7 +118,7 @@ export function PhaseTimeline({ phases, tasks }: { phases: RemedyPhase[]; tasks?
         </div>
       </div>
 
-      {/* ── Row 3: Legend with icons ── */}
+      {/* ── Row 4: Legend with proper icons ── */}
       <div className={styles.legend}>
         <span className={styles.legendEntry}>
           <LlmDot className={styles.legendIcon} />

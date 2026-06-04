@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 0;
   overflow: hidden;
 }
 
@@ -19,21 +19,19 @@
    Row 1 — Phase bar: icon + label SIDE BY SIDE
    ════════════════════════════════════════════════════════ */
 .phaseBar {
-  position: relative;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   justify-items: center;
-  padding-bottom: 16px; /* space for the progress track below */
+  margin-bottom: 8px;
 }
 
 .phase {
   display: flex;
   align-items: center;
   gap: 6px;
-  z-index: 2;
 }
 
-/* Circle marker */
+/* Circle marker — BLUE icons (matching target) */
 .marker {
   width: 32px;
   height: 32px;
@@ -42,14 +40,13 @@
   place-items: center;
   border-radius: 50%;
   background: rgba(255,255,255,.96);
-  border: 1.5px solid rgba(62,95,154,.14);
-  color: var(--remedy-ink-soft, #6f82a8);
+  border: 1.5px solid rgba(62,95,154,.16);
+  color: var(--remedy-blue, #4c83ff);
   box-shadow: 0 1px 4px rgba(55,86,138,.06);
 }
 
 .markerIcon { width: 14px; height: 14px; }
 
-/* Label next to icon */
 .label {
   font-family: var(--remedy-font-ui);
   font-size: 12px;
@@ -87,27 +84,30 @@
 .done .marker {
   color: var(--remedy-green, #4cc681);
   border-color: rgba(76,198,129,.3);
-  background: rgba(255,255,255,.96);
 }
 .done .label { color: var(--remedy-ink-soft, #6f82a8); }
 
 /* ── Pending ── */
-.pending .marker { opacity: .38; }
-.pending .label { opacity: .38; }
+.pending .marker {
+  opacity: .35;
+  color: rgba(62,95,154,.3);
+  border-color: rgba(62,95,154,.08);
+}
+.pending .label { opacity: .35; }
 
-/* ── Progress track: horizontal line with dots at each phase ── */
+/* ════════════════════════════════════════════════════════
+   Row 2 — Progress track with phase dots
+   ════════════════════════════════════════════════════════ */
 .progressTrack {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 12px;
+  position: relative;
+  height: 14px;
+  margin: 0 4%;
 }
 
 .progressBg {
   position: absolute;
-  left: 8%;
-  right: 8%;
+  left: 0;
+  right: 0;
   top: 50%;
   height: 2px;
   transform: translateY(-50%);
@@ -117,60 +117,61 @@
 
 .progressFill {
   position: absolute;
-  left: 8%;
+  left: 0;
   top: 50%;
   height: 2px;
   transform: translateY(-50%);
   background: linear-gradient(90deg, var(--remedy-blue, #4c83ff), var(--remedy-blue-300, #8fb3ff));
   border-radius: 1px;
   transition: width .4s ease;
-  /* width is set proportionally to left: 8% .. right: 8% = 84% range */
-  max-width: 84%;
 }
 
 .trackDot {
   position: absolute;
   top: 50%;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: rgba(62,95,154,.12);
+  border: 2px solid rgba(62,95,154,.12);
+  background: white;
   transform: translate(-50%, -50%);
+  z-index: 1;
 }
 
 .trackDotActive {
   background: var(--remedy-blue, #4c83ff);
-  box-shadow: 0 0 0 2px rgba(76,131,255,.15);
+  border-color: var(--remedy-blue, #4c83ff);
+  box-shadow: 0 0 0 2px rgba(76,131,255,.12);
 }
 
 /* ════════════════════════════════════════════════════════
-   Row 2 — Journey timeline: individual event dots/icons
+   Row 3 — Journey timeline: DASHED line, dots with BORDERS
    ════════════════════════════════════════════════════════ */
 .journeyBar {
   position: relative;
-  height: 18px;
-  margin: 0 2%;
+  height: 20px;
+  margin: 6px 4% 4px;
 }
 
+/* DASHED line — not solid */
 .journeyLine {
   position: absolute;
   left: 0;
   right: 0;
   top: 50%;
-  height: 1px;
-  background: rgba(62,95,154,.06);
+  height: 0;
+  border-top: 1px dashed rgba(62,95,154,.15);
   transform: translateY(-50%);
 }
 
+/* Items spread across FULL WIDTH */
 .journeyItems {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   height: 100%;
-  gap: 3px;
-  flex-wrap: nowrap;
-  overflow: hidden;
+  padding: 0 2px;
 }
 
 .journeyItem {
@@ -180,42 +181,62 @@
   flex-shrink: 0;
 }
 
-.journeyPending { opacity: .3; }
-.journeyDone { opacity: .55; }
+/* Pending = outlined empty circle */
+.journeyPending .jDot {
+  background: transparent;
+  border: 1px dashed rgba(62,95,154,.2);
+}
+.journeyPending .jIcon {
+  opacity: .25;
+}
 
-/* Journey dot types */
+.journeyDone .jDot { opacity: .6; }
+.journeyDone .jIcon { opacity: .6; }
+
+/* Journey dot types — all with BORDERS */
 .jDot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   display: block;
+  border: 1.5px solid transparent;
+  box-sizing: border-box;
 }
 
 .jIcon {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   display: block;
 }
 
-.jAction { background: var(--remedy-blue, #4c83ff); }
+/* LLM Action = filled blue circle with darker border */
+.jAction {
+  background: var(--remedy-blue, #4c83ff);
+  border-color: rgba(52,120,255,.5);
+}
+
+/* Test = green checkmark */
 .jTest { color: var(--remedy-green, #4cc681); }
+
+/* Review = purple person */
 .jReview { color: var(--remedy-purple, #a28cff); }
 
 /* ════════════════════════════════════════════════════════
-   Row 3 — Legend
+   Row 4 — Legend with ICONS
    ════════════════════════════════════════════════════════ */
 .legend {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 22px;
+  margin-top: 2px;
 }
 
 .legendEntry {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--remedy-ink-soft, #6f82a8);
   letter-spacing: .02em;
@@ -223,6 +244,17 @@
 
 .legendIcon {
   flex-shrink: 0;
+}
+
+/* Legend dot override — slightly larger */
+.legendEntry .jDot {
+  width: 8px;
+  height: 8px;
+}
+
+.legendEntry .jIcon {
+  width: 12px;
+  height: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
