@@ -1,24 +1,29 @@
-# Plan — Steps 530-544
+# Plan — Steps 545-564
 
 ## Goal
-Rebuild timeline to match target screenshot. Cycle-aware events, correct icons, proper visual structure.
+Fix timeline visual failures from Steps 530-544. Encode orchestrator loop semantics. Remove fake events.
 
 ## Current Step
 Complete — all steps done.
 
 ## Steps
-- [x] Step 530: Context/plan update, acknowledge timeline failure
-- [x] Step 531: Add RemedyTimelineEvent type + timelineEvents to RemedyDashboard
-- [x] Step 532: Backend timeline_events in ui_server.py + 6 canonical phases
-- [x] Step 533: PhaseTimeline.tsx rewrite (phaseHeader + rail + eventRail + legend)
-- [x] Step 534: PhaseTimeline.module.css rewrite (rounded icon shell, dashed event line, bordered dots)
-- [x] Step 535: Wire timelineEvents through shell + normalizer
-- [x] Step 536: Timeline loop semantics (Build/Test/Review repeat via cycle-aware events)
-- [x] Step 537: Shell height lock (clamp(128px, 14.5vh, 158px) + minmax(0, 1fr))
-- [x] Step 538: Right panel alignment (no changes needed — already aligned)
-- [x] Step 539: Fix PhaseGlyph icons (build=code, review=person, job=briefcase, test=flask)
-- [x] Step 540: Timeline product tests (12 new tests in test_timeline_guard.py)
-- [x] Step 541: Graph de-emphasis comment
-- [x] Step 542: Task outcome panel — honest "no detailed outcome was recorded"
-- [x] Step 543: Visual QA — TypeScript clean, build 332KB, Vitest 35, pytest 4204/0/8
-- [x] Step 544: Guarded baseline — 4204 passed, 0 failed, 8 skipped
+- [x] Step 545: Handoff, acknowledge timeline failure, update context/plan/live_review
+- [x] Step 546: Replace RemedyTimelineEvent type (state/title/cycle/timeLabel)
+- [x] Step 547: Normalize timeline events safely (no fake events, returns [])
+- [x] Step 548: Backend timeline events with state/title/cycle/time_label
+- [x] Step 549: Finalized gate strict (checks pending/blocked tasks + approvals)
+- [x] Step 550: Replace PhaseTimeline.tsx (PhaseGlyph always in header, TaskDoneGlyph only in rail)
+- [x] Step 551: Replace PhaseTimeline.module.css (no overflow:hidden, state classes)
+- [x] Step 552: Remove fallbackEventsFromTasks (event rail conditional on real events)
+- [x] Step 553: Fix PhaseGlyph icons (strokeWidth=1.45 for visibility)
+- [x] Step 554: Shell timeline height lock (clamp(136px, 15vh, 166px))
+- [x] Step 555: Orchestrator loop contract doc (docs/orchestrator-loop.md)
+- [x] Step 556: Proposed task evaluation model (RemedyProposedTask type)
+- [x] Step 557: Timeline reflects loops (cycle-aware backend events)
+- [x] Step 558: Task list separates proposed from planned (type contract only)
+- [x] Step 559: Product tests (24 tests: icons, no fake events, CSS, types, backend, loop)
+- [x] Step 560: Orchestrator loop tests (in test_timeline_guard.py)
+- [x] Step 561: Visual QA checklist update (docs/ui-target.md)
+- [x] Step 562: Screenshot self-check checklist (in docs/ui-target.md)
+- [x] Step 563: Guarded tests — 4216 passed, 0 failed, Vitest 35, tsc clean, build 332KB
+- [x] Step 564: Handoff report

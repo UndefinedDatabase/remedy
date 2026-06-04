@@ -4,21 +4,28 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 530-544: Timeline visual rebuild to match target screenshot.
+Steps 545-564: Timeline exact fix and orchestrator loop semantics.
 
-## Timeline Failure Acknowledgement
-Timeline is still visually wrong after Steps 515-529.
-Current timeline does not match target screenshot.
-Specific failures: wrong icons (build=triangle, review=document), labels not beside icons in all states, journey line missing borders on dots, pending items not dashed-outline, legend uses colored dots instead of proper icons, backend missing job+finalized phases, no cycle semantics.
+## Canonical Review File
+`.agent/live_review.md` — NOT `.data/live_review.md`
 
-## What Is Changing
-- New `RemedyTimelineEvent` type + `timelineEvents` on dashboard
-- Backend `timeline_events` derived from event ledger
-- PhaseTimeline.tsx full rewrite (phaseHeader + rail + eventRail + legend)
-- PhaseTimeline.module.css full rewrite
-- PhaseGlyph icon paths fixed (build=code, review=person)
-- Shell height lock for timeline stability
-- Timeline product tests
+## Timeline Failure — Steps 530-544 Did Not Produce Acceptable Timeline
+- Done phase icons incorrectly replaced with TaskDoneGlyph checkmarks (icons vanish)
+- Timeline event fallback creates fake dots from tasks (implies events that never happened)
+- RemedyTimelineEvent type too weak (done: boolean, no state/title/cycle)
+- CSS uses overflow: hidden (clips glow effects)
+- CSS uses weak flex-centered layout
+- Finalized gate too loose (marks done on job state alone, ignores pending/blocked tasks)
+- Tests too shallow — allowed wrong visual structure to pass
+
+## What Must Change
+- Phase header: always PhaseGlyph, never replace with TaskDoneGlyph
+- Done/current/pending = visual classes on icon shell + rail markers, not icon replacement
+- Event rail: only real backend events, no task-based fallback
+- RemedyTimelineEvent: state-based with title/cycle/timeLabel
+- Finalized gate: strict (no pending tasks, no open approvals, no blocked tasks)
+- Orchestrator loop: Build/Test/Review repeat, not waterfall
+- Proposed tasks: distinct from planned tasks
 
 ## Resource Safety
 All pytest runs use scripts/remedy_pytest.sh (flock + timeout).

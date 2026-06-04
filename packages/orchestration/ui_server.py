@@ -174,37 +174,44 @@ def _event_backed_actor(events: list[dict]) -> str:
 
 
 def _build_timeline_events(events: list[dict]) -> list[dict[str, Any]]:
-    """Derive cycle-aware timeline events from the event ledger."""
-    _event_to_kind = {
-        "task_created": "llm_action",
-        "patch_intent_created": "llm_action",
-        "patch_intent_approved": "llm_action",
-        "patch_intent_applied": "llm_action",
-        "test_run_completed": "test",
-        "proof_collected": "review",
-        "human_decision_requested": "review",
-    }
-    _event_to_phase = {
-        "task_created": "planning",
-        "patch_intent_created": "build",
-        "patch_intent_approved": "build",
-        "patch_intent_applied": "build",
-        "test_run_completed": "test",
-        "proof_collected": "review",
-        "human_decision_requested": "review",
+    """Derive cycle-aware timeline events from the event ledger.
+
+    Only real ledger events. No task fallback. No raw content.
+    Cycle increments each time a build-phase event follows a test/review event.
+    """
+    _event_map: dict[str, tuple[str, str, str]] = {
+        # event_type: (kind, phase, safe_title)
+        "task_created": ("llm_action", "planning", "Task created"),
+        "patch_intent_created": ("llm_action", "build", "Change proposed"),
+        "patch_intent_approved": ("llm_action", "build", "Change approved"),
+        "patch_intent_applied": ("llm_action", "build", "Change applied"),
+        "test_run_completed": ("test", "test", "Tests run"),
+        "proof_collected": ("review", "review", "Proof collected"),
+        "human_decision_requested": ("review", "review", "Decision requested"),
     }
     result: list[dict[str, Any]] = []
+    cycle = 1
+    last_phase = ""
     for idx, e in enumerate(events):
         ev = e.get("event", "")
-        kind = _event_to_kind.get(ev)
-        if kind is None:
+        mapped = _event_map.get(ev)
+        if mapped is None:
             continue
+        kind, phase, safe_title = mapped
+        # Cycle increments when build-phase event follows test/review
+        if phase in ("planning", "build") and last_phase in ("test", "review"):
+            cycle += 1
+        last_phase = phase
+        ts = e.get("timestamp", "")
+        time_label = ts[:16].replace("T", " ") if ts else ""
         result.append({
             "id": f"te-{idx}",
             "kind": kind,
-            "phase": _event_to_phase.get(ev, "build"),
-            "done": True,
-            "label": ev.replace("_", " ").capitalize(),
+            "phase": phase,
+            "title": safe_title,
+            "state": "done",
+            "cycle": cycle,
+            "time_label": time_label if time_label else None,
         })
     return result
 
@@ -378,7 +385,22 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         })
 
     # Phases — full 6-phase canonical set
-    is_finalized = state in ("completed", "done", "finalized")
+    # Finalized gate: strict — only if job state says done AND no blockers remain
+    pending_task_count = sum(
+        1 for t in job.tasks
+        if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("pending", "planned")
+    )
+    blocked_task_count = sum(
+        1 for t in job.tasks
+        if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("blocked", "failed")
+    )
+    job_says_done = state in ("completed", "done", "finalized")
+    is_finalized = (
+        job_says_done
+        and pending_task_count == 0
+        and blocked_task_count == 0
+        and pending_approvals == 0
+    )
     phases = [
         {"id": "job", "title": "Job", "status": "done", "rank": 0, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
         {"id": "planning", "title": "Planning", "status": "done" if has_real_tasks else "current", "rank": 1, "started_at": "", "completed_at": "", "current": not has_real_tasks, "source": "derived"},

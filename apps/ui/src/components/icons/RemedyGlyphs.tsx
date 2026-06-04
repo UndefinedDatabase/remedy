@@ -173,7 +173,7 @@ export function PhaseGlyph({ phase, ...p }: G & { phase: string }) {
     finalized: <><path d="M4 3v10l4-2.5L12 13V3" /></>,
   };
   return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round" {...p}>
       {phaseContent[phase] || phaseContent.job}
     </svg>
   );

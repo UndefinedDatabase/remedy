@@ -580,14 +580,15 @@ class TestVisualProductContract:
         assert agent_path.exists(), "live_review.md must exist at .agent/live_review.md"
 
     def test_timeline_container_height(self):
-        """Timeline row must be 124-158px, not the old 80-110px."""
+        """Timeline row must be 124-166px, not the old 80-110px."""
         css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
-        assert "clamp(128px" in css or "clamp(124px" in css, "Timeline row must use clamp(124-128px, ...)"
+        assert "clamp(136px" in css or "clamp(128px" in css or "clamp(124px" in css, "Timeline row must use clamp(124-136px, ...)"
 
-    def test_timeline_done_uses_checkmark(self):
-        """Done phases must render TaskDoneGlyph, not PhaseGlyph."""
+    def test_timeline_done_uses_checkmark_in_rail(self):
+        """Done phases render TaskDoneGlyph in rail marker, not in phase header."""
         src = (UI_SRC / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
-        assert "TaskDoneGlyph" in src
+        assert "TaskDoneGlyph" in src, "TaskDoneGlyph must be used in rail markers"
+        assert "markerCheck" in src, "TaskDoneGlyph should use markerCheck class"
 
     def test_graph_empty_state_exists(self):
         """Graph must have designed empty state, not lonely root."""

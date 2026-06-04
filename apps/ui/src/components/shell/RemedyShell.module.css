@@ -31,7 +31,7 @@
     clamp(58px, 7vh, 70px)
     clamp(42px, 5vh, 50px)
     minmax(0, 1fr)
-    clamp(128px, 14.5vh, 158px);
+    clamp(136px, 15vh, 166px);
   gap: clamp(8px, 1vh, 14px);
 }
 

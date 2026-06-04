@@ -1,5 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyState, RemedyTaskItem, RemedyTimelineEvent } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -314,14 +314,29 @@ function normalizeGraph(journey: RemedyJourneyItem[], tasks: RemedyTaskItem[]): 
 // Timeline event normalization
 // ---------------------------------------------------------------------------
 
-function normalizeTimelineEvents(raw: any): RemedyTimelineEvent[] | undefined {
-  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+const VALID_TIMELINE_PHASES: RemedyTimelinePhase[] = ["job", "planning", "build", "test", "review", "finalized"];
+const VALID_TIMELINE_KINDS: RemedyTimelineEventKind[] = ["llm_action", "test", "review"];
+
+function normalizeTimelinePhase(raw: unknown): RemedyTimelinePhase {
+  const s = String(raw || "").toLowerCase();
+  return VALID_TIMELINE_PHASES.includes(s as RemedyTimelinePhase) ? (s as RemedyTimelinePhase) : "build";
+}
+
+function normalizeTimelineEventKind(raw: unknown): RemedyTimelineEventKind {
+  const s = String(raw || "").toLowerCase();
+  return VALID_TIMELINE_KINDS.includes(s as RemedyTimelineEventKind) ? (s as RemedyTimelineEventKind) : "llm_action";
+}
+
+function normalizeTimelineEvents(raw: any): RemedyTimelineEvent[] {
+  if (!Array.isArray(raw)) return [];
   return raw.map((e: any, idx: number) => ({
-    id: e.id || `te-${idx}`,
-    kind: (["llm_action", "test", "review"].includes(e.kind) ? e.kind : "llm_action") as RemedyTimelineEvent["kind"],
-    phase: e.phase || "build",
-    done: Boolean(e.done),
-    label: e.label || undefined,
+    id: scrubUiText(e.id || `te-${idx}`, `te-${idx}`),
+    phase: normalizeTimelinePhase(e.phase),
+    kind: normalizeTimelineEventKind(e.kind),
+    title: scrubUiText(e.title || e.label || "Timeline event", "Timeline event"),
+    state: e.state ? normalizeState(e.state) : (e.done ? "done" as const : "pending" as const),
+    cycle: typeof e.cycle === "number" ? e.cycle : undefined,
+    timeLabel: (e.time_label || e.timeLabel) ? scrubUiText(e.time_label || e.timeLabel, "") : undefined,
   }));
 }
 

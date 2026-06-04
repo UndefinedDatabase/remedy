@@ -12,8 +12,28 @@ export interface RemedyGraphEdge { id: string; source: string; target: string; m
 export interface RemedyPhase { id: "job" | "planning" | "build" | "test" | "review" | "finalized"; label: string; state: RemedyState; icon: string; }
 export interface RemedyLiveState { running: boolean; stage: string; activeTaskLabel: string; latestMessage: string; latestActor: RemedyActivityItem["actor"]; }
 export interface RemedyStory { version: number; jobId: string; headline: string; plainStatus: string; description: string; primaryNextAction: RemedyNextAction; progress: { completed: number; active: number; pending: number; blocked: number; needsReview: number; }; journey: RemedyJourneyItem[]; }
+export type RemedyTimelinePhase = "job" | "planning" | "build" | "test" | "review" | "finalized";
 export type RemedyTimelineEventKind = "llm_action" | "test" | "review";
-export interface RemedyTimelineEvent { id: string; kind: RemedyTimelineEventKind; phase: string; done: boolean; label?: string; }
+export interface RemedyTimelineEvent {
+  id: string;
+  phase: RemedyTimelinePhase;
+  kind: RemedyTimelineEventKind;
+  title: string;
+  state: RemedyState;
+  cycle?: number;
+  timeLabel?: string;
+}
+export type RemedyProposedTaskSource = "user" | "reviewer" | "orchestrator" | "model";
+export type RemedyProposedTaskStatus = "proposed" | "evaluated" | "approved_for_build" | "rejected" | "deferred";
+export interface RemedyProposedTask {
+  id: string;
+  title: string;
+  reason: string;
+  source: RemedyProposedTaskSource;
+  risk: "low" | "medium" | "high";
+  evaluationStatus: RemedyProposedTaskStatus;
+  approvalRequired: boolean;
+}
 export interface RemedyApiHealth { degraded: boolean; failedEndpoints: string[]; }
 
 export type PipelineStepState = "done" | "current" | "blocked" | "failed" | "skipped" | "unknown" | "waiting";

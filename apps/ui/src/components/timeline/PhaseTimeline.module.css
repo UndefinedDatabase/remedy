@@ -2,263 +2,317 @@
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: clamp(16px, 1.2vw, 22px);
-  padding: 0 clamp(24px, 2.6vw, 44px);
-  background: var(--remedy-glass-bg, rgba(255,255,255,.54));
-  border: 1px solid var(--remedy-glass-border, rgba(62,95,154,.13));
-  box-shadow: var(--remedy-shadow-soft, 0 10px 30px rgba(55,86,138,.08));
+  min-height: 132px;
+  box-sizing: border-box;
+  border-radius: 24px;
+  padding: 22px 36px 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.64), rgba(255,255,255,.42)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.72), rgba(235,244,255,.34) 74%);
+  border: 1px solid rgba(60, 91, 148, .14);
+  box-shadow:
+    0 22px 54px rgba(56, 86, 135, .12),
+    inset 0 1px 0 rgba(255,255,255,.76);
   backdrop-filter: blur(22px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ════════════════════════════════════════════════════════
    Row 1 — Phase header: icon + label SIDE BY SIDE
    ════════════════════════════════════════════════════════ */
 .phaseHeader {
+  height: 42px;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  justify-items: center;
-  margin-bottom: 8px;
-}
-
-.phaseSlot {
-  display: flex;
   align-items: center;
-  gap: 6px;
 }
 
-/* Icon shell — rounded square, not circle */
+.phaseItem {
+  display: inline-flex;
+  justify-self: center;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: rgba(33, 58, 110, .68);
+}
+
+/* Icon shell — rounded square */
 .phaseIconShell {
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
+  width: 31px;
+  height: 31px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
-  background: rgba(255,255,255,.96);
-  border: 1.5px solid rgba(62,95,154,.16);
-  color: var(--remedy-blue, #4c83ff);
-  box-shadow: 0 1px 4px rgba(55,86,138,.06);
+  border-radius: 10px;
+  color: #315caa;
+  background: rgba(255,255,255,.78);
+  border: 1px solid rgba(60, 91, 148, .18);
+  box-shadow: 0 6px 15px rgba(52, 85, 144, .08);
 }
 
-.phaseIcon { width: 14px; height: 14px; }
+.phaseIcon {
+  width: 18px;
+  height: 18px;
+}
 
 .phaseLabel {
-  font-family: var(--remedy-font-ui);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--remedy-ink-soft, #6f82a8);
+  font-family: var(--remedy-font-ui, "Avenir Next", "Inter", sans-serif);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 760;
+  letter-spacing: .01em;
   white-space: nowrap;
 }
 
-/* ── Current state ── */
-.current .phaseIconShell {
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  border-radius: 10px;
-  color: white;
-  background: linear-gradient(145deg, #3478ff, #6da0ff);
-  border: 2px solid rgba(76,131,255,.3);
-  box-shadow:
-    0 0 0 4px rgba(76,131,255,.08),
-    0 3px 12px rgba(76,131,255,.22);
-  animation: pulse-phase 2.5s ease-in-out infinite;
-}
-.current .phaseIcon { width: 17px; height: 17px; }
-.current .phaseLabel {
+/* ── Current ── */
+.isCurrent {
   color: var(--remedy-ink, #10285f);
+}
+
+.isCurrent .phaseIconShell {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  background:
+    radial-gradient(circle at 48% 43%, rgba(255,255,255,.42), transparent 32%),
+    linear-gradient(145deg, #3576ff, #6ea0ff);
+  border-color: rgba(78, 129, 255, .42);
+  box-shadow:
+    0 0 0 8px rgba(78,129,255,.11),
+    0 13px 30px rgba(78,129,255,.25);
+}
+
+.isCurrent .phaseIcon {
+  width: 22px;
+  height: 22px;
+}
+
+.isCurrent .phaseLabel {
   font-weight: 900;
-  font-size: 13px;
 }
 
-@keyframes pulse-phase {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(76,131,255,.08), 0 3px 12px rgba(76,131,255,.22); }
-  50% { box-shadow: 0 0 0 6px rgba(76,131,255,.13), 0 5px 18px rgba(76,131,255,.30); }
+/* ── Done ── */
+.isDone .phaseIconShell {
+  color: #315caa;
+  border-color: rgba(60, 91, 148, .20);
 }
 
-/* ── Done state ── */
-.done .phaseIconShell {
-  color: var(--remedy-green, #4cc681);
-  border-color: rgba(76,198,129,.3);
+/* ── Pending ── */
+.isPending {
+  color: rgba(79, 96, 132, .42);
 }
-.done .phaseLabel { color: var(--remedy-ink-soft, #6f82a8); }
 
-/* ── Pending state ── */
-.pending .phaseIconShell {
-  opacity: .35;
-  color: rgba(62,95,154,.3);
-  border-color: rgba(62,95,154,.08);
+.isPending .phaseIconShell {
+  color: rgba(79, 96, 132, .36);
+  background: rgba(255,255,255,.52);
+  border-color: rgba(60,91,148,.08);
 }
-.pending .phaseLabel { opacity: .35; }
+
+/* ── Blocked ── */
+.isBlocked .phaseIconShell {
+  color: #c8893d;
+  border-color: rgba(200,137,61,.25);
+}
 
 /* ════════════════════════════════════════════════════════
    Row 2 — Rail: progress track with phase markers
    ════════════════════════════════════════════════════════ */
 .rail {
   position: relative;
-  height: 14px;
-  margin: 0 4%;
+  height: 24px;
+  margin: 7px 6px 0;
 }
 
-.railBase {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 2px;
-  transform: translateY(-50%);
-  background: rgba(62,95,154,.08);
-  border-radius: 1px;
-}
-
+.railBase,
 .railFill {
   position: absolute;
   left: 0;
-  top: 50%;
+  top: 11px;
   height: 2px;
-  transform: translateY(-50%);
-  background: linear-gradient(90deg, var(--remedy-blue, #4c83ff), var(--remedy-blue-300, #8fb3ff));
-  border-radius: 1px;
-  transition: width .4s ease;
+  border-radius: 999px;
+}
+
+.railBase {
+  right: 0;
+  background: rgba(61, 88, 138, .24);
+}
+
+.railFill {
+  width: 0;
+  background: linear-gradient(90deg, #3f7dff 0%, #78a4ff 100%);
+  box-shadow: 0 0 18px rgba(63,125,255,.28);
+  transition: width .28s ease;
 }
 
 .phaseMarker {
   position: absolute;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 2px solid rgba(62,95,154,.12);
-  background: white;
+  top: 11px;
+  width: 13px;
+  height: 13px;
+  display: grid;
+  place-items: center;
   transform: translate(-50%, -50%);
-  z-index: 1;
+  border-radius: 50%;
+  background: rgba(255,255,255,.97);
+  border: 2px solid rgba(61, 88, 138, .24);
+  box-shadow: 0 2px 8px rgba(55, 86, 138, .10);
+  z-index: 2;
 }
 
-.phaseMarkerActive {
-  background: var(--remedy-blue, #4c83ff);
-  border-color: var(--remedy-blue, #4c83ff);
-  box-shadow: 0 0 0 2px rgba(76,131,255,.12);
+.phaseMarker.isDone {
+  border-color: #4c83ff;
+  background: #4c83ff;
+  color: #fff;
+}
+
+.phaseMarker.isCurrent {
+  width: 16px;
+  height: 16px;
+  border-color: #4c83ff;
+  background: #4c83ff;
+  color: #fff;
+  box-shadow:
+    0 0 0 5px rgba(76,131,255,.16),
+    0 0 18px rgba(76,131,255,.42);
+}
+
+.phaseMarker.isPending {
+  border-color: rgba(61, 88, 138, .18);
+  background: rgba(255,255,255,.80);
+}
+
+.phaseMarker.isBlocked {
+  border-color: rgba(200,137,61,.60);
+  background: rgba(255,255,255,.92);
+}
+
+.markerCheck {
+  width: 9px;
+  height: 9px;
 }
 
 /* ════════════════════════════════════════════════════════
    Row 3 — Event rail: DASHED line, dots with BORDERS
+   Only rendered when real events exist (via conditional JSX)
    ════════════════════════════════════════════════════════ */
 .eventRail {
   position: relative;
-  height: 20px;
-  margin: 6px 4% 4px;
+  height: 24px;
+  margin: 8px 54px 0;
 }
 
-/* DASHED line — not solid */
-.eventLine {
+.eventRailLine {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
-  height: 0;
-  border-top: 1px dashed rgba(62,95,154,.15);
-  transform: translateY(-50%);
-}
-
-/* Items spread across FULL WIDTH */
-.eventItems {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 100%;
-  padding: 0 2px;
+  top: 11px;
+  border-top: 1px dashed rgba(61, 88, 138, .20);
 }
 
 .eventItem {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  position: absolute;
+  top: 11px;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
 }
 
-/* Pending = outlined empty circle with dashed border */
-.eventPending .eventDot {
-  background: transparent;
-  border: 1px dashed rgba(62,95,154,.2);
-}
-.eventPending .eventDotIcon {
-  opacity: .25;
-}
-
-.eventDone .eventDot { opacity: .6; }
-.eventDone .eventDotIcon { opacity: .6; }
-
-/* Event dot types — all with BORDERS */
 .eventDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  width: 9px;
+  height: 9px;
   display: block;
-  border: 1.5px solid transparent;
+  border-radius: 50%;
   box-sizing: border-box;
+  background: rgba(255,255,255,.92);
+  border: 1.5px solid rgba(76,131,255,.62);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.70);
 }
 
-.eventDotIcon {
+.eventLlm {
+  background: #4c83ff;
+  border-color: rgba(48, 103, 225, .70);
+}
+
+.eventTest {
+  background: #fff;
+  border-color: rgba(76,198,129,.82);
+}
+
+.eventReview {
+  background: #fff;
+  border-color: rgba(162,140,255,.82);
+}
+
+.eventCurrent {
   width: 11px;
   height: 11px;
-  display: block;
+  box-shadow:
+    0 0 0 3px rgba(76,131,255,.14),
+    0 0 12px rgba(76,131,255,.26);
 }
 
-/* LLM Action = filled blue circle with darker border */
-.eventDotAction {
-  background: var(--remedy-blue, #4c83ff);
-  border-color: rgba(52,120,255,.5);
+.eventPending {
+  opacity: .42;
+  background: rgba(255,255,255,.58);
+  border-style: dashed;
 }
 
-/* Test = green checkmark */
-.eventDotTest { color: var(--remedy-green, #4cc681); }
-
-/* Review = purple person */
-.eventDotReview { color: var(--remedy-purple, #a28cff); }
+.eventBlocked {
+  border-color: rgba(200,137,61,.72);
+}
 
 /* ════════════════════════════════════════════════════════
-   Row 4 — Legend with ICONS
+   Row 4 — Legend with dots
+   Only rendered when real events exist
    ════════════════════════════════════════════════════════ */
 .legend {
+  height: 22px;
+  margin-top: 4px;
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 22px;
-  margin-top: 2px;
-}
-
-.legendEntry {
-  display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--remedy-ink-soft, #6f82a8);
-  letter-spacing: .02em;
+  gap: 28px;
+  font-family: var(--remedy-font-ui, "Avenir Next", "Inter", sans-serif);
+  color: rgba(45, 66, 111, .72);
+  font-size: 12px;
+  font-weight: 760;
 }
 
-.legendIcon {
-  flex-shrink: 0;
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
-/* Legend dot override — slightly larger */
-.legendEntry .eventDot {
-  width: 8px;
-  height: 8px;
+.legendItem .eventDot {
+  width: 10px;
+  height: 10px;
 }
 
-.legendEntry .eventDotIcon {
-  width: 12px;
-  height: 12px;
+/* ════════════════════════════════════════════════════════
+   Responsive + reduced motion
+   ════════════════════════════════════════════════════════ */
+@media (max-height: 780px) {
+  .timeline {
+    padding: 18px 32px 14px;
+    min-height: 124px;
+  }
+
+  .phaseHeader {
+    height: 38px;
+  }
+
+  .phaseIconShell {
+    width: 29px;
+    height: 29px;
+  }
+
+  .isCurrent .phaseIconShell {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .railFill { transition: none; }
-  .current .phaseIconShell { animation: none; }
 }
