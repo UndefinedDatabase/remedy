@@ -1,5 +1,5 @@
 import type { RemedyPhase } from "../../api/types";
-import { PhaseGlyph } from "../icons/RemedyGlyphs";
+import { PhaseGlyph, TaskDoneGlyph } from "../icons/RemedyGlyphs";
 import styles from "./PhaseTimeline.module.css";
 
 const CANONICAL_PHASES = ["job", "planning", "build", "test", "review", "finalized"];
@@ -33,7 +33,10 @@ export function PhaseTimeline({ phases }: { phases: RemedyPhase[] }) {
         {canonicalPhases.map(phase => (
           <article key={phase.id} className={`${styles.phase} ${styles[phase.state]}`}>
             <div className={styles.marker}>
-              <PhaseGlyph phase={phase.id} className={styles.markerIcon} />
+              {phase.state === "done"
+                ? <TaskDoneGlyph className={styles.markerIcon} />
+                : <PhaseGlyph phase={phase.id} className={styles.markerIcon} />
+              }
             </div>
             <span className={styles.label}>{phase.label}</span>
           </article>

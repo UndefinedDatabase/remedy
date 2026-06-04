@@ -2,30 +2,31 @@
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: clamp(12px, 1vw, 16px);
-  padding: clamp(8px, 1vh, 14px) clamp(16px, 2vw, 28px);
+  border-radius: clamp(16px, 1.2vw, 22px);
+  padding: 22px 36px 18px;
   background: var(--remedy-glass-bg, rgba(255,255,255,.54));
   border: 1px solid var(--remedy-glass-border, rgba(62,95,154,.13));
   box-shadow: var(--remedy-shadow-soft, 0 10px 30px rgba(55,86,138,.08));
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(22px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-end;
+  overflow: visible;
 }
 
+/* Horizontal rail line */
 .track {
   position: absolute;
-  left: 40px;
-  right: 40px;
-  top: 50%;
+  left: 48px;
+  right: 48px;
+  top: 48px;
   height: 2px;
-  transform: translateY(-1px);
 }
 
 .trackBg {
   position: absolute;
   inset: 0;
-  background: rgba(39,77,143,.12);
+  background: rgba(39,77,143,.10);
   border-radius: 1px;
 }
 
@@ -34,70 +35,96 @@
   top: 0;
   left: 0;
   height: 100%;
-  background: var(--remedy-blue, #4c83ff);
+  background: linear-gradient(90deg, var(--remedy-blue, #4c83ff), var(--remedy-blue-300, #8fb3ff));
   border-radius: 1px;
-  transition: width .3s ease;
+  transition: width .4s ease;
 }
 
+/* Phase markers row — sits on top of the line */
 .phaseRow {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  left: 36px;
+  right: 36px;
+  top: 30px;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  align-items: center;
+  justify-items: center;
 }
 
 .phase {
-  display: grid;
-  justify-items: center;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
 }
 
+/* Marker circles */
 .marker {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255,255,255,.8);
+  background: rgba(255,255,255,.92);
   border: 1.5px solid rgba(39,77,143,.15);
   color: var(--remedy-ink-soft, #6f82a8);
+  transition: all .3s ease;
 }
 
 .markerIcon { width: 12px; height: 12px; }
 
 .label {
   font-family: var(--remedy-font-ui);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: .03em;
+  letter-spacing: .04em;
+  text-transform: uppercase;
   color: var(--remedy-ink-soft, #6f82a8);
 }
 
+/* Current phase — larger, blue, glowing */
 .current .marker {
-  width: 28px;
-  height: 28px;
+  width: 38px;
+  height: 38px;
   color: white;
-  background: linear-gradient(135deg, #3478ff, #6da0ff);
-  border-color: transparent;
-  box-shadow: 0 0 0 4px rgba(76,131,255,.1), 0 6px 14px rgba(76,131,255,.18);
+  background: linear-gradient(145deg, #3478ff, #6da0ff);
+  border: 2.5px solid rgba(76,131,255,.4);
+  box-shadow:
+    0 0 0 5px rgba(76,131,255,.10),
+    0 4px 16px rgba(76,131,255,.28);
+  animation: pulse-current 2.5s ease-in-out infinite;
 }
 
-.current .label { color: var(--remedy-ink, #10285f); }
+.current .markerIcon { width: 16px; height: 16px; }
 
-.current .marker { animation: pulse-ring 2.5s ease-in-out infinite; }
-@keyframes pulse-ring { 0%, 100% { box-shadow: 0 0 0 4px rgba(76,131,255,.1), 0 6px 14px rgba(76,131,255,.18); } 50% { box-shadow: 0 0 0 6px rgba(76,131,255,.16), 0 6px 14px rgba(76,131,255,.24); } }
+.current .label {
+  color: var(--remedy-ink, #10285f);
+  font-weight: 800;
+}
 
+@keyframes pulse-current {
+  0%, 100% { box-shadow: 0 0 0 5px rgba(76,131,255,.10), 0 4px 16px rgba(76,131,255,.28); }
+  50% { box-shadow: 0 0 0 7px rgba(76,131,255,.16), 0 6px 20px rgba(76,131,255,.36); }
+}
+
+/* Done phase — green check ring */
 .done .marker {
   color: var(--remedy-green, #4cc681);
   border-color: var(--remedy-green, #4cc681);
-  background: rgba(76,198,129,.08);
+  background: rgba(76,198,129,.06);
 }
 
 .done .label { color: var(--remedy-green, #4cc681); }
 
-.pending { opacity: .5; }
+/* Pending/future — subtle but visible */
+.pending .marker {
+  opacity: .5;
+  border-color: rgba(39,77,143,.1);
+}
+.pending .label { opacity: .5; }
 
 @media (prefers-reduced-motion: reduce) {
   .trackProgress { transition: none; }
+  .current .marker { animation: none; }
 }

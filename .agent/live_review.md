@@ -1,3 +1,284 @@
+# Live Review — Steps 515-529
+
+Reviewer: worker self-review
+Scope: Steps 515-529 (Dashboard design foundation, timeline repair, review storage migration)
+Status: COMPLETE
+Started: 2026-06-04
+Commit baseline: 3a5002f (Steps 500-514 final)
+
+## Findings
+
+### Completed
+- 515: git mv `.data/live_review.md` -> `.agent/live_review.md`, all refs updated
+- 516: context.md rewritten with honest dashboard assessment
+- 517: Shell layout proportions: timeline 124-154px, tighter gaps
+- 518: PhaseTimeline v4: blue gradient track, pulse animation, done=checkmark
+- 519-521: Graph empty states (no-tasks + filter-empty), stage polish
+- 522: Backend task outcome fields: changed_files_safe, blocked_reason, completed_at
+- 523: DetailPopover v2: outcome, blocker, changed files, completion time, test badge
+- 524: Right panel tighter cards, glass opacity raised
+- 525: Command bar human placeholder ("Ask Remedy anything or search tasks...")
+- 526: MUI removed from AddTaskButton, primary components MUI-free
+- 527: Softer shadows on metrics bar and command bar
+- 528: 10 visual product tests added, all pass
+- 529: Full suite 4191 passed, 0 failed
+
+### Risks
+- R-529-01: Graph engine still placeholder. Not polished, just has good empty states.
+- R-529-02: MUI remains in LayerSwitcher, PipelineTimeline, StopReasonCard (secondary).
+- R-529-03: Old `.data/live_review.md` ref in one test was stale — fixed in this block.
+
+---
+
+## Migration Note
+
+Canonical review file moved from `.data/live_review.md` to `.agent/live_review.md`.
+`.data/` is disposable runtime data. Review history is now durable in `.agent/`.
+
+---
+
+# Parallel Review — Steps 500-514
+
+Reviewer: parallel watcher (independent)
+Scope: Steps 500-514 (Dashboard visual parity — MUI purge, task outcome data, graph states, layout)
+Status: COMPLETE
+Started: 2026-06-04
+Commit baseline: 47f93bb (Steps 485-499 final)
+Last check: 2026-06-04 final — 49 drift tests pass, no open findings
+
+---
+
+## Parallel Reviewer Baseline
+
+- Commit at block start: 47f93bb
+- Full pytest pre-block: 4167 passed, 8 skipped
+- Vitest: 35, TypeScript clean, build OK (330KB)
+- Prior carry-forwards: NONE
+
+---
+
+## Parallel Reviewer Findings
+
+No blockers or carry-forwards. All step requirements met.
+
+### R-24001 — NOTED (low)
+
+Status: Noted (not blocking)
+Severity: low
+Area: task-detail
+Summary: DetailPopover fallback "Completed successfully." shown when backend has no events for a done task
+Details: When `outcomeSummary` is empty (legacy/broken jobs with no events), the detail panel falls back to "Completed successfully." — generic text. In practice, the backend `_task_outcome_summary()` provides differentiated text ("Completed and verified", "Completed with proof", "Completed, tests pass", "Completed") from events, so this fallback only triggers for truly empty jobs.
+Evidence: DetailPopover.tsx line 54: `state === "done" ? "Completed successfully."`
+Expected: Acceptable degradation for edge case. Could change to "Completed — no details available." for clarity.
+
+### R-24002 — NOTED (low)
+
+Status: Noted (not blocking)
+Severity: low
+Area: icons
+Summary: 13 MUI imports remain in 4 non-primary components (AddTaskButton, LayerSwitcher, PipelineTimeline, StopReasonCard)
+Details: Primary dashboard is MUI-free. Remaining MUI is in collapsed/secondary panels only (pipeline timeline, layer switcher, add-task button). Step 513 explicitly scoped to "primary dashboard."
+Evidence: `grep -rn "@mui" apps/ui/src/components/ --include="*.tsx"` shows 13 imports in 4 files
+Expected: Future block cleans up remaining MUI. Not blocking — these components not visible in primary view.
+
+---
+
+## Parallel Reviewer Step-by-Step Review
+
+### Step 500: Handoff Truth — PASS
+
+- context.md updated to Steps 500-514 ✓
+- plan.md updated with 15 steps ✓
+- Dashboard readiness honest: "~40-45%" in starting context ✓
+- Key gaps documented: MUI imports, empty graph, outcome data, timeline polish ✓
+- live_review.md history preserved (8 prior review sections intact) ✓
+- No overclaim ✓
+
+### Step 501: Font Reality — PASS
+
+- `tokens.css`: system stack `"Avenir Next", "Manrope", "Inter", -apple-system, ...` ✓
+- No `@import url()`, no external CDN/font reference ✓
+- Font tokens centralized in single `:root` block ✓
+- `globals.css` imports only local `./tokens.css` ✓
+
+### Step 502: Visual Layout Lock — PASS
+
+- Shell grid: `clamp(220px, 16vw, 292px)` left, `minmax(680px, 1fr)` center, `clamp(310px, 22vw, 360px)` right ✓
+- Main: 4-row grid (metrics, command, graph, timeline) ✓
+- Timeline: `clamp(80px, 11vh, 110px)` — visible, not cut off ✓
+- Responsive: 1280px collapses left, 980px hides right, 760px mobile ✓
+- No layout overflow ✓
+
+### Step 503: Graph Empty State — PASS
+
+- `dashboard.tasks.length === 0` → `emptyState` div ✓
+- CodeOrbGlyph (40x40) + "No tasks yet" text ✓
+- No fake nodes, no broken SVG ✓
+- `emptyState` CSS: centered, flex column, subdued ✓
+- LIVE: `test_empty_state_exists`, `test_empty_state_checks_tasks_length` pass ✓
+
+### Step 504: Graph Small Task Layout — PASS
+
+- `tasks.length <= 8` → radial spread ✓
+- Radius: 140px (≤3 tasks), 160px (4-8 tasks) ✓
+- Single task → centered above root (angle -90°) ✓
+- Sweep: 300° distributed evenly ✓
+- Root at (0, 20) — centered ✓
+- No default labels (uses task.label) ✓
+- LIVE: `test_small_radial_layout` passes ✓
+
+### Step 505: Graph Medium/Large Layout — PASS
+
+- 9+ tasks → branch layout with 2-5 branches ✓
+- Branch angles: `[-145, -70, -15, 40, 105]` ✓
+- Depth-based radius: `110 + depth * 68` ✓
+- Organic bend via sine ✓
+- Real tasks only (no decorative nodes) ✓
+- Bounded to 80 max ✓
+
+### Step 506: Graph Hover And Selected Node UX — PASS
+
+- `selectedNodeId` prop passed from Shell through Stage to Canvas ✓
+- `selectRing`: dashed stroke, r+7, opacity .6 ✓
+- Hover halo suppressed when node selected ✓
+- tooltipPos near node (28px above) ✓
+- Keyboard: tabIndex, aria-label, Enter key ✓
+- Click → `onSelectNode(n.id)` → detail panel opens ✓
+- LIVE: `test_selected_node_prop`, `test_select_ring_style` pass ✓
+
+### Step 507: Backend Task Outcome Fields — PASS
+
+- `_task_outcome_summary(task_id, tstat, events)` → human text from events ✓
+- Differentiated: "Completed and verified" / "Completed with proof" / "Completed, tests pass" / "Completed" ✓
+- In-progress → "In progress", blocked → "Blocked", else "" ✓
+- `_task_changed_files_count(task_id, events)` → count from `patch_intent_applied` events ✓
+- `_task_test_status(task_id, events)` → "pass"/"fail"/"none" from scoped test events ✓
+- No raw source/model/diff/stdout in any field ✓
+- Old jobs degrade to empty strings (honest) ✓
+
+### Step 508: Frontend Task Types — PASS
+
+- `RemedyTaskItem`: `outcomeSummary?: string`, `changedFilesCount?: number`, `testStatus?: string` ✓
+- Normalization: `t.outcome_summary || undefined`, `t.changed_files_count`, `t.test_status || undefined` ✓
+- `scrubUiText` applied to label/text fields ✓
+- Old payload safe (optional fields → undefined) ✓
+- LIVE: `test_outcome_summary_in_types`, `test_changed_files_in_types`, `test_test_status_in_types` pass ✓
+
+### Step 509: Task Detail Panel — PASS
+
+- Done task: Outcome section with outcomeSummary + changedFilesCount ✓
+- TestBadge: "Tests pass" (green) / "Tests fail" (red) ✓
+- Planned task: "Not started yet." ✓
+- Blocked task: "Blocked and needs attention." ✓
+- Current task: "Work is in progress." ✓
+- Checked section present ✓
+- Action needed section present ✓
+- No "Next safe action" ✓
+- No CLI commands ✓
+- No MUI imports ✓
+- Custom StateIcon glyphs (TaskDoneGlyph, TaskCurrentGlyph, TaskPlannedGlyph) ✓
+- LIVE: `test_no_next_safe_action`, `test_has_outcome_section`, `test_no_cli_command_primary` pass ✓
+
+### Step 510: Task List Outcome Hints — PASS
+
+- `outcomeHint()`: returns outcomeSummary or "Tests failing" for test failures ✓
+- Hint shown as `.taskHint` span inside task row ✓
+- Custom icons per state (iconFor function) ✓
+- stateLabel from humanCopy module ✓
+- Click → `onSelectNode(row.nodeId)` ✓
+- Empty state: "Waiting for the agent to create tasks." ✓
+- No raw content ✓
+
+### Step 511: Timeline Visual Parity v2 — PASS
+
+- 6 canonical phases ✓
+- Progress track with transition animation ✓
+- Current phase: 28px marker, blue gradient, pulse animation ✓
+- Done phase: green border + icon ✓
+- Pending: opacity 0.5 ✓
+- `prefers-reduced-motion: reduce` respected ✓
+- PhaseGlyph custom icons ✓
+- Not cut off (timeline CSS flex layout) ✓
+
+### Step 512: Token Tooltip Layering — PASS (verified existing)
+
+- `overflow: visible` on .bar ✓
+- tabIndex + onFocus/onBlur on metric articles ✓
+- tooltip z-index 20 on graph tooltip ✓
+- LIVE: `test_metrics_bar_overflow_visible` passes ✓
+
+### Step 513: Remove MUI From Primary Dashboard — PASS
+
+- TopMetricsBar: custom glyphs (ClipboardGlyph, CalendarGlyph, etc.) ✓
+- CommandBar: SparkGlyph + CopyGlyph ✓
+- ActivityFeedCard: BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph ✓
+- TaskChecklistCard: TaskDoneGlyph, TaskCurrentGlyph, TaskPlannedGlyph ✓
+- SideIconDock: fully custom with FolderGlyph, HistoryGlyph, DocsGlyph ✓
+- DegradedBanner: custom WarningGlyph ✓
+- DetailPopover: custom StateIcon glyphs ✓
+- Remaining MUI in non-primary only (R-24002 noted) ✓
+- LIVE: 6 TestNoMuiInPrimaryDashboard tests pass ✓
+
+### Step 514: Tests And Baseline — PASS
+
+- 49 drift tests (14 new) ✓
+- New test classes: TestGraphEmptyState (2), TestGraphSmallLayout (1), TestGraphSelectedNode (2), TestNoMuiInPrimaryDashboard (6), TestTaskOutcomeFields (3) ✓
+- Claimed baseline: 4181 passed, 8 skipped ✓
+- Vitest: 35, TypeScript clean, build 327KB ✓
+- All drift tests verified by reviewer: 49/49 pass in 0.04s ✓
+
+---
+
+## Scope Blocker Check
+
+- Worker feature changes: NO ✓
+- Real Ollama trial: NO ✓
+- Mutation endpoints: NO ✓
+- Browser repo writes: NO ✓
+- External fonts/CDN: NO ✓
+- shell=True: NO ✓
+- 0.0.0.0 binding: NO ✓
+- Raw content leaks: NO ✓
+- Docker/MCP/Claude/OpenAI: NO ✓
+
+---
+
+## Parallel Reviewer Final Verdict
+
+**PASS**
+
+**Handoff status:** PASS — context/plan updated, history preserved, no overclaim.
+**Font/brand status:** PASS — system stack in centralized tokens.css, no external fonts.
+**Layout status:** PASS — 3-column grid with responsive breakpoints, graph dominant, timeline visible.
+**Empty graph status:** PASS — intentional empty state with CodeOrbGlyph + "No tasks yet".
+**Small graph status:** PASS — radial layout for ≤8 tasks, centered root, proper spacing.
+**Medium/large graph status:** PASS — branch layout with curved bezier edges, real tasks only.
+**Hover/focus status:** PASS — tooltip near node, selectedNodeId with selectRing, keyboard accessible.
+**Task outcome data status:** PASS — backend derives summary/files/tests from events, frontend normalizes and displays.
+**Task detail status:** PASS — Outcome/Checked/Action sections with real data, TestBadge, no CLI commands.
+**Timeline status:** PASS — 6 phases, progress track, pulse animation, done/pending clear, not cut off.
+**Token tooltip status:** PASS — overflow visible, keyboard focus, not clipped.
+**Icon status:** PASS — 7 primary components converted to custom glyphs, MUI only in non-primary.
+**Raw leak status:** PASS — no raw content in any primary surface, scrubUiText applied.
+**Tests run:** 49 drift tests via wrapper — once, foreground, locked (+14 new).
+**Full pytest:** Not run by reviewer (worker claimed 4181). Drift tests verified.
+**Frontend/TypeScript/build:** Vitest 35, TypeScript clean, build 327KB (per worker claim).
+
+**Dashboard readiness estimate:** ~55-60% — MUI purged from primary view, task outcome data flows end-to-end, graph handles all count states, timeline polished. Remaining: manual QA, remaining MUI in non-primary, visual polish iteration, real Ollama trial.
+
+**Top 5 Remaining UX Gaps:**
+1. Detail panel fallback "Completed successfully." for tasks with no events — generic when outcome data missing (R-24001 low)
+2. 13 MUI imports in 4 non-primary components (LayerSwitcher, PipelineTimeline, StopReasonCard, AddTaskButton) — visual inconsistency in secondary panels (R-24002 low)
+3. Graph truncates at 80 tasks silently — no indicator when more tasks exist
+4. Activity feed "Ask something..." input is read-only/disabled — looks interactive but isn't
+5. No manual QA verification — all testing is structural source checks, not visual rendering
+
+**Merge readiness:** READY — all 15 steps complete, no blockers, no carry-forwards, 49 drift tests pass, scope clean.
+
+**Watcher stopped:** Block complete after file scan + commit verification + drift test cycle.
+
+---
+
 # Parallel Review — Steps 485-499
 
 Reviewer: parallel watcher (independent)

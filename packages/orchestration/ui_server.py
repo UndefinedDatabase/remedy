@@ -108,6 +108,57 @@ def _task_changed_files_count(task_id: str, events: list[dict]) -> int:
     return sum(e.get("metadata", {}).get("file_count", 1) for e in applies)
 
 
+def _task_changed_files_safe(task_id: str, events: list[dict]) -> list[str]:
+    """Return safe filenames changed for a task (no paths with secrets)."""
+    applies = [
+        e for e in events
+        if e.get("event") == "patch_intent_applied"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    names: list[str] = []
+    for e in applies:
+        fnames = e.get("metadata", {}).get("files", [])
+        for f in fnames[:10]:
+            base = str(f).rsplit("/", 1)[-1] if "/" in str(f) else str(f)
+            if base and len(base) < 80:
+                names.append(base)
+    return names[:10]
+
+
+def _task_blocked_reason(task_id: str, tstat: str, events: list[dict]) -> str:
+    """Return human-readable blocked reason if task is blocked."""
+    if tstat not in ("blocked", "failed"):
+        return ""
+    stops = [
+        e for e in events
+        if e.get("event") == "stop_reason_recorded"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    if stops:
+        reason = stops[-1].get("metadata", {}).get("stop_reason", "")
+        return reason.replace("_", " ").capitalize() if reason else "Blocked"
+    return "Blocked"
+
+
+def _task_completed_at(task_id: str, events: list[dict]) -> str:
+    """Return completion timestamp if available."""
+    proofs = [
+        e for e in events
+        if e.get("event") == "proof_collected"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    if proofs:
+        return proofs[-1].get("timestamp", "")
+    applies = [
+        e for e in events
+        if e.get("event") == "patch_intent_applied"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    if applies:
+        return applies[-1].get("timestamp", "")
+    return ""
+
+
 def _event_backed_actor(events: list[dict]) -> str:
     """Derive current actor from most recent event, not hardcoded."""
     if not events:
@@ -261,6 +312,9 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "test_status": _task_test_status(tid, events),
             "outcome_summary": _task_outcome_summary(tid, tstat, events),
             "changed_files_count": _task_changed_files_count(tid, events),
+            "changed_files_safe": _task_changed_files_safe(tid, events),
+            "blocked_reason": _task_blocked_reason(tid, tstat, events),
+            "completed_at": _task_completed_at(tid, events),
             "is_current": tstat in ("running", "active"),
             "is_future": tstat == "pending",
             "is_reviewer_suggested": False,

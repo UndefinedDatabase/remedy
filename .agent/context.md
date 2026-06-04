@@ -4,25 +4,22 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 500-514: Dashboard visual parity and task outcome repair — complete.
+Steps 515-529: Dashboard design foundation, timeline repair, review storage migration.
 
-## Completed
-- MUI removed from 7 primary dashboard components (metrics, activity, tasks, command, side dock, banner, detail)
-- Graph: empty state, radial layout for small counts, selected node ring
-- Backend: outcome_summary, changed_files_count per task from events
-- Frontend: outcomeSummary, changedFilesCount, testStatus on RemedyTaskItem
-- Detail panel: real outcome data, test pass/fail badge, changed files count
-- Task checklist: outcome hints from backend data
-- Timeline: current phase pulse animation
-- Right panel: max 360px width lock
-- 14 new drift tests (49 total), 4181 pytest pass, Vitest 35, TS clean, build 327KB
+## Dashboard Status — After Steps 515-529
+- Review history durably in `.agent/live_review.md`
+- Timeline v4: proper 124-154px process rail with blue gradient, pulse, checkmarks
+- Graph engine frozen: professional empty states for no-tasks and filter-empty
+- Detail popover v2: shows outcome, blocker, changed files, completion time, test status
+- Right panel tighter glass cards, no MUI in primary components
+- Command bar human-friendly placeholder, no CLI patterns
+- Typography softened: lighter shadows, consistent spacing
+- 4191 tests pass, 0 fail
+
+## What Is Still Not Done
+- Graph node engine is placeholder — not final visual
+- Dashboard not yet at target screenshot parity (needs more iterations)
+- MUI still in secondary components (LayerSwitcher, PipelineTimeline, StopReasonCard)
 
 ## Resource Safety
 All pytest runs use scripts/remedy_pytest.sh (flock + timeout).
-
-## Dashboard Readiness
-~55-60% — MUI purged from primary view, task outcome data flows, graph states handled.
-Still needs: manual QA, remaining MUI in pipeline/layers (non-primary), visual polish iteration.
-
-## Recommended Next Block
-Steps 515+ — Real Ollama Trial Round

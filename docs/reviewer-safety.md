@@ -27,7 +27,7 @@ Reviewers must prioritize (in order):
 
 1. Code inspection (read diffs, check logic)
 2. Relevant targeted tests (`scripts/remedy_pytest.sh tests/specific_file.py -q`)
-3. Checking `.data/live_review.md` findings
+3. Checking `.agent/live_review.md` findings
 4. Checking `git status` and `git diff`
 5. Full baseline — only once at final review, only if worker didn't already report one
 

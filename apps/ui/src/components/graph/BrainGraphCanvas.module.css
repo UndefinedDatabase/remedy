@@ -3,6 +3,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
+  border-radius: clamp(16px, 1.2vw, 22px);
 }
 
 .svg {
@@ -19,7 +20,7 @@
 
 .rootOrb {
   fill: var(--remedy-blue, #4c83ff);
-  filter: drop-shadow(0 0 32px rgba(76, 131, 255, .44));
+  filter: drop-shadow(0 0 28px rgba(76, 131, 255, .38));
 }
 
 .nodeCore {
@@ -69,6 +70,7 @@
 .tooltip strong { font-weight: 800; font-size: 11px; }
 .tooltip span { font-size: 10px; color: var(--remedy-ink-soft, #6f82a8); }
 
+/* Empty / filter-empty state */
 .emptyState {
   position: absolute;
   inset: 0;
@@ -76,11 +78,32 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
+}
+
+.emptyOrb {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(76,131,255,.06);
+  border: 1.5px solid rgba(76,131,255,.12);
+  box-shadow: 0 0 40px rgba(76,131,255,.1);
+}
+
+.emptyTitle {
+  font-size: 14px;
+  font-weight: 700;
   color: var(--remedy-ink-soft, #6f82a8);
-  font-size: 13px;
-  font-weight: 600;
-  opacity: .6;
+}
+
+.emptySub {
+  font-size: 11px;
+  color: var(--remedy-faint, #9aa9c5);
+  max-width: 240px;
+  text-align: center;
+  line-height: 1.4;
 }
 
 @media (prefers-reduced-motion: reduce) {

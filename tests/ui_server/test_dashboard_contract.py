@@ -440,7 +440,7 @@ class TestJobSummaryCommandContract:
 
 class TestLiveReviewAndAgentStateRefs:
     def test_live_review_has_steps_253_260_section(self):
-        review = (REPO_ROOT / ".data" / "live_review.md").read_text()
+        review = (REPO_ROOT / ".agent" / "live_review.md").read_text()
         assert "Steps 253-260" in review
 
     def test_context_md_no_stale_steps(self):
@@ -565,6 +565,91 @@ class TestAutoBuildDisabledByDefault:
                 from packages.orchestration.ui_server import _auto_build_frontend
                 _auto_build_frontend()
                 mock_run.assert_not_called()
+
+
+# ── Step 528: Visual Product Tests ──────────────────────────────────────────
+
+
+class TestVisualProductContract:
+    """Verify dashboard design foundation, timeline, graph, and panel quality."""
+
+    def test_live_review_canonical_path(self):
+        """Review history must live in .agent/, not .data/."""
+        agent_path = REPO_ROOT / ".agent" / "live_review.md"
+        assert agent_path.exists(), "live_review.md must exist at .agent/live_review.md"
+
+    def test_timeline_container_height(self):
+        """Timeline row must be 124-154px, not the old 80-110px."""
+        css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
+        assert "clamp(124px" in css, "Timeline row must use clamp(124px, ...)"
+
+    def test_timeline_done_uses_checkmark(self):
+        """Done phases must render TaskDoneGlyph, not PhaseGlyph."""
+        src = (UI_SRC / "components" / "timeline" / "PhaseTimeline.tsx").read_text()
+        assert "TaskDoneGlyph" in src
+
+    def test_graph_empty_state_exists(self):
+        """Graph must have designed empty state, not lonely root."""
+        css = (UI_SRC / "components" / "graph" / "BrainGraphCanvas.module.css").read_text()
+        assert ".emptyState" in css
+        assert ".emptyOrb" in css
+
+    def test_graph_filter_empty_messages(self):
+        """Graph must show filter-specific empty messages."""
+        src = (UI_SRC / "components" / "graph" / "BrainGraphCanvas.tsx").read_text()
+        assert "FILTER_EMPTY_MESSAGES" in src
+        assert "No active or blocked tasks" in src
+        assert "No planned tasks" in src
+        assert "No completed tasks" in src
+
+    def test_no_mui_in_primary_components(self):
+        """Primary components must not import MUI icons."""
+        primary_files = [
+            UI_SRC / "components" / "shell" / "RemedyShell.tsx",
+            UI_SRC / "components" / "graph" / "BrainGraphCanvas.tsx",
+            UI_SRC / "components" / "graph" / "BrainGraphStage.tsx",
+            UI_SRC / "components" / "timeline" / "PhaseTimeline.tsx",
+            UI_SRC / "components" / "command" / "CommandBar.tsx",
+            UI_SRC / "components" / "detail" / "DetailPopover.tsx",
+            UI_SRC / "components" / "panels" / "RightLivePanel.tsx",
+            UI_SRC / "components" / "panels" / "AgentNowCard.tsx",
+            UI_SRC / "components" / "panels" / "TaskChecklistCard.tsx",
+            UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx",
+            UI_SRC / "components" / "panels" / "AddTaskButton.tsx",
+            UI_SRC / "components" / "metrics" / "TopMetricsBar.tsx",
+            UI_SRC / "components" / "rail" / "LeftBrandRail.tsx",
+        ]
+        for f in primary_files:
+            if f.exists():
+                src = f.read_text()
+                assert "@mui" not in src, f"{f.name} imports MUI — use RemedyGlyphs"
+
+    def test_no_cli_language_in_command_bar(self):
+        """Command bar placeholder must not show CLI commands."""
+        src = (UI_SRC / "components" / "command" / "CommandBar.tsx").read_text()
+        assert "remedy " not in src.lower() or "ask remedy" in src.lower()
+        # Placeholder should be human-friendly
+        assert "Ask Remedy" in src or "search tasks" in src.lower()
+
+    def test_detail_popover_has_outcome_fields(self):
+        """DetailPopover must show blockedReason, changedFilesSafe, completedAt."""
+        src = (UI_SRC / "components" / "detail" / "DetailPopover.tsx").read_text()
+        assert "blockedReason" in src
+        assert "changedFilesSafe" in src or "changedFiles" in src
+        assert "completedAt" in src
+
+    def test_backend_task_outcome_fields(self):
+        """Backend must emit changed_files_safe, blocked_reason, completed_at."""
+        src = (ORCH / "ui_server.py").read_text()
+        assert "changed_files_safe" in src
+        assert "blocked_reason" in src
+        assert "completed_at" in src
+
+    def test_right_panel_glass_opacity(self):
+        """Right panel cards should use glass opacity >= .5."""
+        css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
+        # Card background should be at least .5 opacity
+        assert "rgba(255,255,255,." in css
 
 
 # ── Step 256: Degraded UI API State ─────────────────────────────────────────

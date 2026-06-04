@@ -21,6 +21,13 @@ const TASK_R = 14;
 const DEG = Math.PI / 180;
 const BRANCH_ANGLES = [-145, -70, -15, 40, 105];
 
+const FILTER_EMPTY_MESSAGES: Record<string, string> = {
+  open: "No active or blocked tasks",
+  planned: "No planned tasks",
+  done: "No completed tasks yet",
+  all: "No visible tasks",
+};
+
 function taskState(st: string): string {
   return st === "done" ? "done" : st === "current" ? "current" : st === "blocked" ? "blocked" : "planned";
 }
@@ -33,7 +40,6 @@ function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; 
   nodes.push({ id: "root", label: dashboard.title || "Job", state: "current", kind: "root", x: 0, y: 20, size: ROOT_R });
 
   if (tasks.length <= 8) {
-    // Small: radial spread around root
     const radius = tasks.length <= 3 ? 140 : 160;
     const startAngle = -90;
     const sweep = tasks.length === 1 ? 0 : 300;
@@ -45,7 +51,6 @@ function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; 
       edges.push(["root", t.id]);
     });
   } else {
-    // Medium/large: branch layout
     const branchCount = Math.min(5, Math.max(2, Math.ceil(tasks.length / 3) || 2));
     const angles = BRANCH_ANGLES.slice(0, branchCount);
     tasks.forEach((t, i) => {
@@ -74,9 +79,31 @@ function curvePath(ax: number, ay: number, bx: number, by: number): string {
   return `M${ax},${ay} Q${cx},${cy} ${bx},${by}`;
 }
 
+function EmptyState({ message, sub }: { message: string; sub?: string }) {
+  return (
+    <div className={styles.emptyState}>
+      <div className={styles.emptyOrb}>
+        <CodeOrbGlyph style={{ width: 32, height: 32, color: "var(--remedy-blue-300, #8fb3ff)" }} />
+      </div>
+      <span className={styles.emptyTitle}>{message}</span>
+      {sub && <span className={styles.emptySub}>{sub}</span>}
+    </div>
+  );
+}
+
 export function BrainGraphCanvas({ dashboard, filter = "all", selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; filter?: string; selectedNodeId?: string | null; onSelectNode: (nodeId: string | null) => void }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // No tasks at all
+  if (dashboard.tasks.length === 0) {
+    return (
+      <div className={styles.graphRoot} ref={containerRef}>
+        <EmptyState message="No tasks yet" sub="Run a job to build the task map." />
+      </div>
+    );
+  }
+
   const model = buildDisplayModel(dashboard);
 
   const filteredNodes = model.nodes.filter(n => {
@@ -87,6 +114,21 @@ export function BrainGraphCanvas({ dashboard, filter = "all", selectedNodeId, on
     if (filter === "done") return n.state === "done";
     return true;
   });
+
+  const taskNodes = filteredNodes.filter(n => n.kind === "task");
+
+  // Filter produced zero visible task nodes
+  if (taskNodes.length === 0) {
+    return (
+      <div className={styles.graphRoot} ref={containerRef}>
+        <EmptyState
+          message={FILTER_EMPTY_MESSAGES[filter] || "No visible tasks"}
+          sub="Change the filter or run a job to see tasks."
+        />
+      </div>
+    );
+  }
+
   const visibleIds = new Set(filteredNodes.map(n => n.id));
   const nodes = filteredNodes;
   const edges = model.edges.filter(([s, t]) => visibleIds.has(s) && visibleIds.has(t));
@@ -99,17 +141,6 @@ export function BrainGraphCanvas({ dashboard, filter = "all", selectedNodeId, on
     const svgY = (hovered.y + STAGE_H / 2) / STAGE_H;
     return { left: svgX * rect.width, top: svgY * rect.height - 28 };
   })() : null;
-
-  if (dashboard.tasks.length === 0) {
-    return (
-      <div className={styles.graphRoot} ref={containerRef}>
-        <div className={styles.emptyState}>
-          <CodeOrbGlyph style={{ width: 40, height: 40, color: "var(--remedy-blue-300, #8fb3ff)" }} />
-          <span>No tasks yet</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.graphRoot} ref={containerRef}>
@@ -160,7 +191,7 @@ export function BrainGraphCanvas({ dashboard, filter = "all", selectedNodeId, on
       {hovered && tooltipPos && (
         <div className={styles.tooltip} style={{ left: tooltipPos.left, top: tooltipPos.top }}>
           <strong>{hovered.label}</strong>
-          <span>{hovered.state === "done" ? "Completed" : hovered.state === "current" ? "In progress" : hovered.state === "blocked" ? "Blocked" : hovered.kind === "root" ? `${dashboard.tasks.length} tasks` : "Planned"}</span>
+          <span>{hovered.state === "done" ? "Completed" : hovered.state === "current" ? "In progress" : hovered.state === "blocked" ? "Blocked" : hovered.kind === "root" ? `${taskNodes.length} tasks` : "Planned"}</span>
         </div>
       )}
     </div>

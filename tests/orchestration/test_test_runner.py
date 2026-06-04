@@ -723,7 +723,7 @@ class TestNoBroadExceptAndDegradedSignals:
 
     def test_live_review_has_261_268_section(self):
         """live_review.md contains Steps 261-268 section."""
-        content = Path(".data/live_review.md").read_text()
+        content = Path(".agent/live_review.md").read_text()
         assert "Steps 261-268" in content
 
     def test_context_md_updated(self):

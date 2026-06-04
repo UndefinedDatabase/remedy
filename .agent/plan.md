@@ -1,24 +1,24 @@
-# Plan — Steps 500-514
+# Plan — Steps 515-529
 
 ## Goal
-Dashboard visual parity and task outcome repair.
+Dashboard design foundation, timeline repair, review storage migration.
 
 ## Current Step
-All steps complete.
+Complete — all steps done.
 
 ## Steps
-- [x] Step 500: Handoff truth
-- [x] Step 501: Font reality (verified system stack, no CDN)
-- [x] Step 502: Visual layout lock (right panel max 360px)
-- [x] Step 503: Graph empty state (emptyState with CodeOrbGlyph)
-- [x] Step 504: Graph small task layout (radial <=8 tasks)
-- [x] Step 505: Graph medium/large layout (branch layout 9+)
-- [x] Step 506: Graph selected node (selectRing, selectedNodeId prop)
-- [x] Step 507: Backend task outcome fields (outcome_summary, changed_files_count)
-- [x] Step 508: Frontend types (outcomeSummary, changedFilesCount, testStatus)
-- [x] Step 509: Detail panel rewrite (real outcome data, test badge)
-- [x] Step 510: Task list outcome hints (outcomeHint in TaskChecklistCard)
-- [x] Step 511: Timeline visual parity (current phase pulse animation)
-- [x] Step 512: Token tooltip layering (verified existing fix)
-- [x] Step 513: Remove MUI from primary dashboard (7 components converted)
-- [x] Step 514: Tests (49 drift, 4181 total), TS clean, Vitest 35, build 327KB
+- [x] Step 515: Move live_review.md from .data to .agent (durable)
+- [x] Step 516: Dashboard design truth in context
+- [x] Step 517: Layout foundation to match target proportions
+- [x] Step 518: Timeline v4 — real process rail
+- [x] Step 519: Graph engine freeze + professional empty state
+- [x] Step 520: Graph filter UX fix
+- [x] Step 521: Graph container visual polish
+- [x] Step 522: Stronger task outcome backend
+- [x] Step 523: Task outcome panel v2
+- [x] Step 524: Right panel professional compactness
+- [x] Step 525: Command bar reframe
+- [x] Step 526: Logo/icon final sweep
+- [x] Step 527: Typography and spacing pass
+- [x] Step 528: Visual product tests
+- [x] Step 529: Guarded baseline — 4191 passed, 0 failed
