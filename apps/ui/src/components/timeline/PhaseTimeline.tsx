@@ -8,7 +8,6 @@ const PHASE_LABELS: Record<string, string> = {
   test: "Test", review: "Review", finalized: "Finalized",
 };
 
-/* Map task kind to a dot color class for the journey row */
 const KIND_DOT: Record<string, string> = {
   goal: "dotAction", task: "dotAction", apply: "dotAction", change: "dotAction",
   test: "dotTest",
@@ -31,7 +30,6 @@ export function PhaseTimeline({ phases, tasks }: { phases: RemedyPhase[]; tasks?
   const currentIdx = canonicalPhases.findIndex(p => p.state === "current");
   const progressPct = currentIdx >= 0 ? ((currentIdx + 0.5) / canonicalPhases.length) * 100 : 0;
 
-  /* Journey dots from tasks */
   const dots = (tasks || []).map(t => ({
     id: t.id,
     cls: KIND_DOT[t.kind] || "dotAction",
@@ -40,7 +38,7 @@ export function PhaseTimeline({ phases, tasks }: { phases: RemedyPhase[]; tasks?
 
   return (
     <section className={styles.timeline} aria-label="Project timeline" data-ui="phase-timeline">
-      {/* ── Phase row: markers on the track line ── */}
+      {/* Row 1: Phase markers + labels — NO line through them */}
       <div className={styles.phaseRow}>
         {canonicalPhases.map(phase => (
           <article key={phase.id} className={`${styles.phase} ${styles[phase.state]}`}>
@@ -53,26 +51,25 @@ export function PhaseTimeline({ phases, tasks }: { phases: RemedyPhase[]; tasks?
             <span className={styles.label}>{phase.label}</span>
           </article>
         ))}
-        {/* Track line behind markers */}
-        <div className={styles.track} aria-hidden>
-          <div className={styles.trackBg} />
-          <div className={styles.trackProgress} style={{ width: `${progressPct}%` }} />
-        </div>
       </div>
 
-      {/* ── Journey dots row ── */}
-      {dots.length > 0 && (
-        <div className={styles.journeyRow} aria-label="Task progress dots">
-          {dots.map(d => (
-            <span
-              key={d.id}
-              className={`${styles.journeyDot} ${styles[d.cls]} ${d.state === "done" ? styles.dotDone : ""}`}
-            />
-          ))}
-        </div>
-      )}
+      {/* Row 2: Track line with journey dots on it */}
+      <div className={styles.trackRow}>
+        <div className={styles.trackLine} />
+        <div className={styles.trackProgress} style={{ width: `${progressPct}%` }} />
+        {dots.length > 0 && (
+          <div className={styles.journeyDots}>
+            {dots.map(d => (
+              <span
+                key={d.id}
+                className={`${styles.journeyDot} ${styles[d.cls]} ${d.state === "done" ? styles.dotDone : ""}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* ── Legend ── */}
+      {/* Row 3: Legend */}
       <div className={styles.legend}>
         <span className={styles.legendItem}>
           <span className={`${styles.legendDot} ${styles.dotAction}`} />LLM Action

@@ -11,67 +11,35 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 12px;
+  gap: 0;
   overflow: hidden;
 }
 
-/* ── Phase row: icons + labels with track through center ── */
+/* ── Row 1: Phase markers + labels (NO line here) ── */
 .phaseRow {
-  position: relative;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   justify-items: center;
-  padding: 0;
+  margin-bottom: 10px;
 }
 
 .phase {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  z-index: 2;
+  gap: 5px;
 }
 
-/* Track line — runs through vertical center of markers */
-.track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 2px;
-  transform: translateY(-8px); /* offset to marker center, accounting for label below */
-  z-index: 0;
-}
-
-.trackBg {
-  position: absolute;
-  inset: 0;
-  background: rgba(39,77,143,.10);
-  border-radius: 1px;
-}
-
-.trackProgress {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background: linear-gradient(90deg, var(--remedy-blue, #4c83ff), var(--remedy-blue-300, #8fb3ff));
-  border-radius: 1px;
-  transition: width .4s ease;
-}
-
-/* ── Marker circles ── */
 .marker {
   width: 36px;
   height: 36px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255,255,255,.95);
-  border: 1.5px solid rgba(39,77,143,.14);
+  background: rgba(255,255,255,.96);
+  border: 1.5px solid rgba(39,77,143,.12);
   color: var(--remedy-ink-soft, #6f82a8);
-  transition: all .3s ease;
-  position: relative;
+  box-shadow: 0 2px 8px rgba(55,86,138,.06);
 }
 
 .markerIcon { width: 14px; height: 14px; }
@@ -87,14 +55,14 @@
 
 /* ── Current phase — big, blue, bold ── */
 .current .marker {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   color: white;
   background: linear-gradient(145deg, #3478ff, #6da0ff);
-  border: 2.5px solid rgba(76,131,255,.35);
+  border: 2.5px solid rgba(76,131,255,.3);
   box-shadow:
-    0 0 0 5px rgba(76,131,255,.10),
-    0 4px 16px rgba(76,131,255,.28);
+    0 0 0 5px rgba(76,131,255,.08),
+    0 4px 16px rgba(76,131,255,.22);
   animation: pulse-current 2.5s ease-in-out infinite;
 }
 
@@ -107,36 +75,65 @@
 }
 
 @keyframes pulse-current {
-  0%, 100% { box-shadow: 0 0 0 5px rgba(76,131,255,.10), 0 4px 16px rgba(76,131,255,.28); }
-  50% { box-shadow: 0 0 0 7px rgba(76,131,255,.16), 0 6px 20px rgba(76,131,255,.36); }
+  0%, 100% { box-shadow: 0 0 0 5px rgba(76,131,255,.08), 0 4px 16px rgba(76,131,255,.22); }
+  50% { box-shadow: 0 0 0 7px rgba(76,131,255,.14), 0 6px 20px rgba(76,131,255,.30); }
 }
 
-/* ── Done phase — green check ── */
+/* ── Done phase — green ── */
 .done .marker {
   color: var(--remedy-green, #4cc681);
-  border-color: rgba(76,198,129,.4);
-  background: rgba(76,198,129,.06);
+  border-color: rgba(76,198,129,.35);
+  background: rgba(255,255,255,.96);
 }
 
 .done .label { color: var(--remedy-green, #4cc681); }
 
 /* ── Pending — faded ── */
-.pending .marker { opacity: .45; border-color: rgba(39,77,143,.08); }
-.pending .label { opacity: .45; }
+.pending .marker { opacity: .4; border-color: rgba(39,77,143,.08); }
+.pending .label { opacity: .4; }
 
-/* ── Journey dots row ── */
-.journeyRow {
+/* ── Row 2: Track line with journey dots ── */
+.trackRow {
+  position: relative;
+  height: 14px;
+  margin: 0 4px;
+}
+
+.trackLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: rgba(39,77,143,.08);
+  border-radius: 1px;
+  transform: translateY(-50%);
+}
+
+.trackProgress {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, var(--remedy-blue, #4c83ff), var(--remedy-blue-300, #8fb3ff));
+  border-radius: 1px;
+  transform: translateY(-50%);
+  transition: width .4s ease;
+}
+
+.journeyDots {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  flex-wrap: wrap;
-  padding: 0 8px;
+  height: 100%;
+  gap: 4px;
 }
 
 .journeyDot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -144,14 +141,15 @@
 .dotAction { background: var(--remedy-blue, #4c83ff); }
 .dotTest { background: var(--remedy-green, #4cc681); }
 .dotReview { background: var(--remedy-purple, #a28cff); }
-.dotDone { opacity: .5; }
+.dotDone { opacity: .4; }
 
-/* ── Legend row ── */
+/* ── Row 3: Legend ── */
 .legend {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 18px;
+  margin-top: 6px;
 }
 
 .legendItem {
