@@ -13,12 +13,14 @@ from packages.orchestration.proposed_tasks import (
     ProposedTaskStatus,
     add_proposed_task,
 )
-from tests.cli.runtime_helpers import create_test_env, run_grouped_cli, run_json, read_events
+from tests.cli.runtime_helpers import create_test_env, run_grouped_cli, run_json, read_events, assert_no_leftover_locks
 
 
 @pytest.fixture
 def env(tmp_path):
-    return create_test_env(tmp_path)
+    root, jid = create_test_env(tmp_path)
+    yield root, jid
+    assert_no_leftover_locks(root)
 
 
 class TestSubprocessList:

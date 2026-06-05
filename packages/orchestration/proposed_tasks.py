@@ -209,6 +209,10 @@ def _file_lock(job_id: str, root: Path | None = None) -> Iterator[None]:
             fcntl.flock(fd, fcntl.LOCK_UN)
     finally:
         os.close(fd)
+        try:
+            os.unlink(str(lock_file))
+        except OSError:
+            pass
 
 
 def _atomic_write(path: Path, data: str) -> None:
