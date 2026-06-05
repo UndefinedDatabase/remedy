@@ -198,10 +198,14 @@ class TestReviewerCliJsonOutput:
         assert len(data["recommendations"]) >= 1
         assert "id" in data["recommendations"][0]
 
-    def test_review_accept_json(self):
-        """review accept --json returns structured output."""
+    def test_review_accept_json(self, tmp_path, monkeypatch):
+        """review accept --json returns structured output (creates proposed task, not direct task)."""
         from packages.orchestration.reviewer import (
             run_reviewer, store_recommendations, _fixture_reviewer,
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.proposed_tasks._STORE_DIR",
+            tmp_path / "proposed_tasks",
         )
         job = _make_job()
         job.metadata = {}
@@ -221,7 +225,7 @@ class TestReviewerCliJsonOutput:
                 _cmd_review_accept(args)
         data = json.loads(buf.getvalue())
         assert data["accepted"] is True
-        assert data["task_appended"] is True
+        assert data["proposed_task_created"] is True
 
     def test_review_reject_json(self):
         from packages.orchestration.reviewer import (

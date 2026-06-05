@@ -527,9 +527,14 @@ class TestReviewerLoop:
         assert stored[0]["title"] == "Fix bug"
         assert stored[0]["status"] == "pending"
 
-    def test_accept_recommendation(self):
+    def test_accept_recommendation(self, tmp_path, monkeypatch):
         from packages.orchestration.reviewer import (
             run_reviewer, store_recommendations, accept_recommendation,
+        )
+        from packages.orchestration.proposed_tasks import load_proposed_tasks
+        monkeypatch.setattr(
+            "packages.orchestration.proposed_tasks._STORE_DIR",
+            tmp_path / "proposed_tasks",
         )
         job = _make_job_s101(1)
 
@@ -542,8 +547,11 @@ class TestReviewerLoop:
         initial_task_count = len(job.tasks)
         ok = accept_recommendation(job, rec_id)
         assert ok is True
-        assert len(job.tasks) == initial_task_count + 1
+        assert len(job.tasks) == initial_task_count  # No direct task — creates ProposedTask instead
         assert job.metadata["reviewer_recommendations"][0]["status"] == "accepted"
+        proposed = load_proposed_tasks(str(job.id))
+        assert len(proposed) == 1
+        assert proposed[0].title == "Add docs"
 
     def test_reject_recommendation(self):
         from packages.orchestration.reviewer import (

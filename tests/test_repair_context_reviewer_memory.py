@@ -277,12 +277,16 @@ class TestReviewerAcceptRejectRecommendation:
         assert recs[1].title == "Add type hints to calc.py"
         assert all(r.status == "pending" for r in recs)
 
-    def test_accept_recommendation_creates_task(self):
+    def test_accept_recommendation_creates_proposed_task(self, tmp_path, monkeypatch):
         from packages.orchestration.reviewer import (
             run_reviewer, store_recommendations,
             accept_recommendation, _fixture_reviewer,
         )
-        from packages.core.models import RunState
+        from packages.orchestration.proposed_tasks import load_proposed_tasks
+        monkeypatch.setattr(
+            "packages.orchestration.proposed_tasks._STORE_DIR",
+            tmp_path / "proposed_tasks",
+        )
         job = _make_job()
         job.metadata = {}
         recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
@@ -290,11 +294,11 @@ class TestReviewerAcceptRejectRecommendation:
         task_count_before = len(job.tasks)
         ok = accept_recommendation(job, recs[0].id)
         assert ok is True
-        assert len(job.tasks) == task_count_before + 1
-        new_task = job.tasks[-1]
-        assert new_task.status == RunState.PENDING
-        assert new_task.inputs.get("source") == "reviewer"
-        assert new_task.inputs.get("task_type") == "test_improvement"
+        assert len(job.tasks) == task_count_before  # No direct task
+        proposed = load_proposed_tasks(str(job.id))
+        assert len(proposed) == 1
+        assert proposed[0].title == "Add edge case tests"
+        assert proposed[0].source.value == "reviewer"
 
     def test_reject_recommendation_no_task(self):
         from packages.orchestration.reviewer import (

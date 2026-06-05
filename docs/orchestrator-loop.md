@@ -64,10 +64,23 @@ Finalized means ALL of these are true:
 - No blocked tasks
 - No pending/planned tasks
 - No open approvals
-- No unresolved review findings (if tracked)
-- No proposed-but-not-approved tasks (if tracked)
+- No unresolved proposed tasks (proposed or evaluated status)
+- Proposed task store is readable (corrupt store blocks finalization)
 
 If any data is unavailable, be conservative: do not mark finalized.
+
+Centralized check: `can_finalize(job_id)` in `proposed_tasks.py`.
+
+## Reviewer Integration
+
+Reviewer recommendations MUST go through proposed task evaluation:
+
+1. `review.accept` creates a ProposedTask (not a direct Task)
+2. ProposedTask must be evaluated (`propose.evaluate`)
+3. Only `approved_for_build` tasks can be materialized into build Tasks
+4. `review.accept` does NOT directly append to `job.tasks`
+
+This prevents review feedback from bypassing evaluation.
 
 ## Review-Created Tasks
 

@@ -19,6 +19,8 @@ Each file is a JSON array of ProposedTask dicts for that job.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -35,8 +37,6 @@ def _utcnow() -> datetime:
 
 
 class ProposedTaskSource(str, Enum):
-    """Who or what created the proposed task."""
-
     USER = "user"
     REVIEWER = "reviewer"
     ORCHESTRATOR = "orchestrator"
@@ -44,8 +44,6 @@ class ProposedTaskSource(str, Enum):
 
 
 class ProposedTaskStatus(str, Enum):
-    """Lifecycle state of a proposed task."""
-
     PROPOSED = "proposed"
     EVALUATED = "evaluated"
     APPROVED_FOR_BUILD = "approved_for_build"
@@ -53,13 +51,11 @@ class ProposedTaskStatus(str, Enum):
     DEFERRED = "deferred"
 
 
-# Statuses that block finalized gate
 UNRESOLVED_STATUSES = frozenset({
     ProposedTaskStatus.PROPOSED,
     ProposedTaskStatus.EVALUATED,
 })
 
-# Statuses that are terminal (no further transitions)
 TERMINAL_STATUSES = frozenset({
     ProposedTaskStatus.APPROVED_FOR_BUILD,
     ProposedTaskStatus.REJECTED,
@@ -68,8 +64,6 @@ TERMINAL_STATUSES = frozenset({
 
 
 class ProposedTask(BaseModel):
-    """A task suggestion awaiting evaluation before build."""
-
     id: str = Field(default_factory=lambda: uuid4().hex[:12])
     title: str
     reason: str = ""
@@ -80,27 +74,22 @@ class ProposedTask(BaseModel):
     status: ProposedTaskStatus = ProposedTaskStatus.PROPOSED
     approval_required: bool = True
 
-    # Traceability
     job_id: str = ""
     origin_task_id: str = ""
     origin_recommendation_id: str = ""
     task_type: str = "unknown"
 
-    # Evaluation result (filled by evaluator)
     evaluation_notes: str = ""
-    evaluated_by: str = ""  # "deterministic" or "llm" or "user"
+    evaluated_by: str = ""
     evaluated_at: datetime | None = None
 
-    # Timestamps
     created_at: datetime = Field(default_factory=_utcnow)
     resolved_at: datetime | None = None
 
     def is_unresolved(self) -> bool:
-        """True if this task blocks finalized gate."""
         return self.status in UNRESOLVED_STATUSES
 
     def is_terminal(self) -> bool:
-        """True if no further transitions are possible."""
         return self.status in TERMINAL_STATUSES
 
 
@@ -120,7 +109,6 @@ _VALID_TRANSITIONS: dict[ProposedTaskStatus, frozenset[ProposedTaskStatus]] = {
         ProposedTaskStatus.REJECTED,
         ProposedTaskStatus.DEFERRED,
     }),
-    # Terminal states have no outgoing transitions
     ProposedTaskStatus.APPROVED_FOR_BUILD: frozenset(),
     ProposedTaskStatus.REJECTED: frozenset(),
     ProposedTaskStatus.DEFERRED: frozenset(),
@@ -128,8 +116,6 @@ _VALID_TRANSITIONS: dict[ProposedTaskStatus, frozenset[ProposedTaskStatus]] = {
 
 
 class InvalidTransitionError(Exception):
-    """Raised when a proposed task state transition is not allowed."""
-
     def __init__(self, task_id: str, current: ProposedTaskStatus, target: ProposedTaskStatus) -> None:
         super().__init__(f"Cannot transition proposed task {task_id} from {current.value} to {target.value}")
         self.task_id = task_id
@@ -137,12 +123,11 @@ class InvalidTransitionError(Exception):
         self.target = target
 
 
-def transition_status(task: ProposedTask, target: ProposedTaskStatus, *, by: str = "") -> None:
-    """Transition a proposed task to a new status.
+class ProposedTaskStoreError(Exception):
+    """Raised when proposed task storage is corrupt or unreadable."""
 
-    Raises InvalidTransitionError if the transition is not allowed.
-    Mutates the task in place.
-    """
+
+def transition_status(task: ProposedTask, target: ProposedTaskStatus, *, by: str = "") -> None:
     allowed = _VALID_TRANSITIONS.get(task.status, frozenset())
     if target not in allowed:
         raise InvalidTransitionError(task.id, task.status, target)
@@ -160,71 +145,130 @@ def transition_status(task: ProposedTask, target: ProposedTaskStatus, *, by: str
 
 
 # ---------------------------------------------------------------------------
-# Persistence — JSON files per job
+# Persistence — JSON files per job, atomic writes
 # ---------------------------------------------------------------------------
 
+# Legacy compat: monkeypatchable in old tests (deprecated, use root= param)
 _STORE_DIR: Path = proposed_tasks_dir()
 
 
-def _job_path(job_id: str) -> Path:
-    """Return the JSON file path for a job's proposed tasks."""
-    return _STORE_DIR / f"{job_id}.json"
+def _resolve_store_dir(root: Path | None = None) -> Path:
+    if root is not None:
+        return root / "proposed_tasks"
+    return _STORE_DIR
 
 
-def save_proposed_tasks(job_id: str, tasks: list[ProposedTask]) -> None:
-    """Persist all proposed tasks for a job."""
-    _STORE_DIR.mkdir(parents=True, exist_ok=True)
-    path = _job_path(job_id)
+def _job_path(job_id: str, root: Path | None = None) -> Path:
+    return _resolve_store_dir(root) / f"{job_id}.json"
+
+
+def _atomic_write(path: Path, data: str) -> None:
+    """Write data to path atomically via temp file + rename."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    closed = False
+    try:
+        os.write(fd, data.encode("utf-8"))
+        os.fsync(fd)
+        os.close(fd)
+        closed = True
+        os.replace(tmp, str(path))
+    except BaseException:
+        if not closed:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def save_proposed_tasks(job_id: str, tasks: list[ProposedTask], root: Path | None = None) -> None:
+    store = _resolve_store_dir(root)
+    store.mkdir(parents=True, exist_ok=True)
+    path = _job_path(job_id, root)
     data = [t.model_dump(mode="json") for t in tasks]
-    path.write_text(json.dumps(data, indent=2, default=str))
+    _atomic_write(path, json.dumps(data, indent=2, default=str))
 
 
-def load_proposed_tasks(job_id: str) -> list[ProposedTask]:
-    """Load all proposed tasks for a job. Returns [] if none exist."""
-    path = _job_path(job_id)
+def load_proposed_tasks(job_id: str, root: Path | None = None) -> list[ProposedTask]:
+    """Load all proposed tasks for a job.
+
+    Returns [] if file does not exist.
+    Raises ProposedTaskStoreError if file exists but is corrupt.
+    """
+    path = _job_path(job_id, root)
     if not path.exists():
         return []
     try:
-        data = json.loads(path.read_text())
+        raw = path.read_text()
+        data = json.loads(raw)
         return [ProposedTask.model_validate(d) for d in data]
-    except (ValueError, OSError):
-        return []
+    except (json.JSONDecodeError, ValueError, TypeError, KeyError) as exc:
+        raise ProposedTaskStoreError(f"Corrupt proposed task store for job {job_id}: {exc}") from exc
+    except OSError as exc:
+        raise ProposedTaskStoreError(f"Cannot read proposed task store for job {job_id}: {exc}") from exc
 
 
-def add_proposed_task(job_id: str, task: ProposedTask) -> None:
-    """Append a single proposed task for a job."""
-    tasks = load_proposed_tasks(job_id)
+def load_proposed_tasks_safe(job_id: str, root: Path | None = None) -> tuple[list[ProposedTask], bool]:
+    """Load proposed tasks, returning (tasks, degraded).
+
+    If store is corrupt, returns ([], True) instead of raising.
+    Callers that need to distinguish empty from corrupt use this.
+    """
+    try:
+        return (load_proposed_tasks(job_id, root), False)
+    except ProposedTaskStoreError:
+        return ([], True)
+
+
+def add_proposed_task(job_id: str, task: ProposedTask, root: Path | None = None) -> None:
+    tasks = load_proposed_tasks(job_id, root)
     tasks.append(task)
-    save_proposed_tasks(job_id, tasks)
+    save_proposed_tasks(job_id, tasks, root)
 
 
-def get_proposed_task(job_id: str, task_id: str) -> ProposedTask | None:
-    """Find a single proposed task by ID."""
-    for t in load_proposed_tasks(job_id):
+def get_proposed_task(job_id: str, task_id: str, root: Path | None = None) -> ProposedTask | None:
+    for t in load_proposed_tasks(job_id, root):
         if t.id == task_id:
             return t
     return None
 
 
-def update_proposed_task(job_id: str, task: ProposedTask) -> bool:
-    """Update a proposed task in place. Returns True if found and updated."""
-    tasks = load_proposed_tasks(job_id)
+def update_proposed_task(job_id: str, task: ProposedTask, root: Path | None = None) -> bool:
+    tasks = load_proposed_tasks(job_id, root)
     for i, t in enumerate(tasks):
         if t.id == task.id:
             tasks[i] = task
-            save_proposed_tasks(job_id, tasks)
+            save_proposed_tasks(job_id, tasks, root)
             return True
     return False
 
 
-def count_unresolved(job_id: str) -> int:
-    """Count proposed tasks that block finalized gate."""
-    return sum(1 for t in load_proposed_tasks(job_id) if t.is_unresolved())
+def count_unresolved(job_id: str, root: Path | None = None) -> int:
+    """Count proposed tasks that block finalized gate.
+
+    Raises ProposedTaskStoreError if store is corrupt.
+    """
+    return sum(1 for t in load_proposed_tasks(job_id, root) if t.is_unresolved())
 
 
-def list_by_status(job_id: str, status: ProposedTaskStatus) -> list[ProposedTask]:
-    """List proposed tasks filtered by status."""
-    return [t for t in load_proposed_tasks(job_id) if t.status == status]
+def count_unresolved_safe(job_id: str, root: Path | None = None) -> tuple[int, bool]:
+    """Count unresolved, returning (count, degraded).
+
+    If corrupt, returns (-1, True) — callers should treat as blocking.
+    """
+    try:
+        return (count_unresolved(job_id, root), False)
+    except ProposedTaskStoreError:
+        return (-1, True)
+
+
+def list_by_status(job_id: str, status: ProposedTaskStatus, root: Path | None = None) -> list[ProposedTask]:
+    return [t for t in load_proposed_tasks(job_id, root) if t.status == status]
 
 
 # ---------------------------------------------------------------------------
@@ -243,11 +287,8 @@ def propose_task_from_review_finding(
     origin_task_id: str = "",
     origin_recommendation_id: str = "",
     source: ProposedTaskSource = ProposedTaskSource.REVIEWER,
+    root: Path | None = None,
 ) -> ProposedTask:
-    """Create and persist a proposed task from a review finding.
-
-    Returns the created ProposedTask (status=proposed, approval_required=True).
-    """
     task = ProposedTask(
         title=title[:80],
         reason=reason[:200],
@@ -260,22 +301,16 @@ def propose_task_from_review_finding(
         origin_task_id=origin_task_id,
         origin_recommendation_id=origin_recommendation_id,
     )
-    add_proposed_task(job_id, task)
+    add_proposed_task(job_id, task, root)
     return task
 
 
 def propose_from_recommendation(
     job_id: str,
     rec: Any,
+    root: Path | None = None,
 ) -> ProposedTask:
-    """Create a proposed task from a ReviewerRecommendation.
-
-    Accepts either a ReviewerRecommendation dataclass or a dict with the
-    same keys. This replaces the old accept_recommendation() flow where
-    reviewer findings directly became executable tasks.
-    """
     if hasattr(rec, "title"):
-        # Dataclass
         return propose_task_from_review_finding(
             job_id,
             title=rec.title,
@@ -287,8 +322,8 @@ def propose_from_recommendation(
             origin_task_id=getattr(rec, "origin_task_id", ""),
             origin_recommendation_id=rec.id,
             source=ProposedTaskSource.REVIEWER,
+            root=root,
         )
-    # Dict form
     return propose_task_from_review_finding(
         job_id,
         title=str(rec.get("title", "")),
@@ -300,16 +335,15 @@ def propose_from_recommendation(
         origin_task_id=str(rec.get("origin_task_id", "")),
         origin_recommendation_id=str(rec.get("id", "")),
         source=ProposedTaskSource.REVIEWER,
+        root=root,
     )
 
 
 # ---------------------------------------------------------------------------
-# Deterministic evaluator (Step 569)
+# Deterministic evaluator
 # ---------------------------------------------------------------------------
 
 class EvaluationResult:
-    """Result of evaluating a proposed task."""
-
     __slots__ = ("decision", "notes")
 
     def __init__(self, decision: ProposedTaskStatus, notes: str = "") -> None:
@@ -318,14 +352,12 @@ class EvaluationResult:
 
 
 def _evaluate_risk_rule(task: ProposedTask) -> EvaluationResult | None:
-    """High-risk tasks always require human approval."""
     if task.risk == "high":
         return EvaluationResult(ProposedTaskStatus.EVALUATED, "high risk — needs human approval")
     return None
 
 
 def _evaluate_duplicate_rule(task: ProposedTask, existing: list[ProposedTask]) -> EvaluationResult | None:
-    """Reject if an identical title already exists (approved or proposed)."""
     title_lower = task.title.lower().strip()
     for other in existing:
         if other.id == task.id:
@@ -339,7 +371,6 @@ def _evaluate_duplicate_rule(task: ProposedTask, existing: list[ProposedTask]) -
 
 
 def _evaluate_auto_approve_rule(task: ProposedTask) -> EvaluationResult | None:
-    """Low-risk tasks from trusted sources can auto-approve."""
     if task.risk == "low" and not task.approval_required:
         return EvaluationResult(ProposedTaskStatus.APPROVED_FOR_BUILD, "auto-approved: low risk, no approval required")
     return None
@@ -348,13 +379,9 @@ def _evaluate_auto_approve_rule(task: ProposedTask) -> EvaluationResult | None:
 def evaluate_proposed_task(
     job_id: str,
     task_id: str,
+    root: Path | None = None,
 ) -> ProposedTask | None:
-    """Run deterministic evaluation rules on a proposed task.
-
-    Returns the updated task, or None if not found.
-    Mutates and persists the task.
-    """
-    tasks = load_proposed_tasks(job_id)
+    tasks = load_proposed_tasks(job_id, root)
     task = None
     for t in tasks:
         if t.id == task_id:
@@ -364,27 +391,24 @@ def evaluate_proposed_task(
         return None
 
     if task.status != ProposedTaskStatus.PROPOSED:
-        return task  # already evaluated or resolved
+        return task
 
-    # Run rules in priority order
     result = _evaluate_duplicate_rule(task, tasks)
     if result is None:
         result = _evaluate_risk_rule(task)
     if result is None:
         result = _evaluate_auto_approve_rule(task)
     if result is None:
-        # Default: mark as evaluated, needs human decision
         result = EvaluationResult(ProposedTaskStatus.EVALUATED, "awaiting human decision")
 
     transition_status(task, result.decision, by="deterministic")
     task.evaluation_notes = result.notes
-    save_proposed_tasks(job_id, tasks)
+    save_proposed_tasks(job_id, tasks, root)
     return task
 
 
-def evaluate_all_proposed(job_id: str) -> list[ProposedTask]:
-    """Evaluate all proposed (unevaluated) tasks for a job. Returns updated list."""
-    tasks = load_proposed_tasks(job_id)
+def evaluate_all_proposed(job_id: str, root: Path | None = None) -> list[ProposedTask]:
+    tasks = load_proposed_tasks(job_id, root)
     changed = False
     for task in tasks:
         if task.status != ProposedTaskStatus.PROPOSED:
@@ -400,12 +424,12 @@ def evaluate_all_proposed(job_id: str) -> list[ProposedTask]:
         task.evaluation_notes = result.notes
         changed = True
     if changed:
-        save_proposed_tasks(job_id, tasks)
+        save_proposed_tasks(job_id, tasks, root)
     return tasks
 
 
 # ---------------------------------------------------------------------------
-# LLM evaluator interface (Step 570 — disabled by default)
+# LLM evaluator interface (disabled by default)
 # ---------------------------------------------------------------------------
 
 def evaluate_with_llm(
@@ -413,66 +437,62 @@ def evaluate_with_llm(
     task_id: str,
     *,
     llm_fn: Any | None = None,
+    root: Path | None = None,
 ) -> ProposedTask | None:
-    """Optional LLM-based evaluation. Disabled when llm_fn is None.
-
-    The llm_fn signature: (task: ProposedTask) -> EvaluationResult
-    When enabled, overrides deterministic evaluation for a single task.
-    """
     if llm_fn is None:
-        return evaluate_proposed_task(job_id, task_id)
+        return evaluate_proposed_task(job_id, task_id, root)
 
-    task = get_proposed_task(job_id, task_id)
+    task = get_proposed_task(job_id, task_id, root)
     if task is None or task.status != ProposedTaskStatus.PROPOSED:
         return task
 
     result: EvaluationResult = llm_fn(task)
     transition_status(task, result.decision, by="llm")
     task.evaluation_notes = result.notes
-    update_proposed_task(job_id, task)
+    update_proposed_task(job_id, task, root)
     return task
 
 
 # ---------------------------------------------------------------------------
-# Approve / reject / defer (Step 571)
+# Approve / reject / defer
 # ---------------------------------------------------------------------------
 
-def approve_proposed_task(job_id: str, task_id: str) -> ProposedTask | None:
-    """Approve a proposed task for build. Returns updated task or None."""
-    task = get_proposed_task(job_id, task_id)
+_MAX_REASON_LEN = 200
+
+
+def approve_proposed_task(job_id: str, task_id: str, root: Path | None = None) -> ProposedTask | None:
+    task = get_proposed_task(job_id, task_id, root)
     if task is None:
         return None
     transition_status(task, ProposedTaskStatus.APPROVED_FOR_BUILD, by="user")
-    update_proposed_task(job_id, task)
+    update_proposed_task(job_id, task, root)
     return task
 
 
-def reject_proposed_task(job_id: str, task_id: str, *, reason: str = "") -> ProposedTask | None:
-    """Reject a proposed task. Returns updated task or None."""
-    task = get_proposed_task(job_id, task_id)
+def reject_proposed_task(job_id: str, task_id: str, *, reason: str = "", root: Path | None = None) -> ProposedTask | None:
+    task = get_proposed_task(job_id, task_id, root)
     if task is None:
         return None
     if reason:
-        task.evaluation_notes = reason
+        task.evaluation_notes = reason[:_MAX_REASON_LEN]
     transition_status(task, ProposedTaskStatus.REJECTED, by="user")
-    update_proposed_task(job_id, task)
+    update_proposed_task(job_id, task, root)
     return task
 
 
-def defer_proposed_task(job_id: str, task_id: str, *, reason: str = "") -> ProposedTask | None:
-    """Defer a proposed task. Returns updated task or None."""
-    task = get_proposed_task(job_id, task_id)
+def defer_proposed_task(job_id: str, task_id: str, *, reason: str = "", root: Path | None = None) -> ProposedTask | None:
+    task = get_proposed_task(job_id, task_id, root)
     if task is None:
         return None
     if reason:
-        task.evaluation_notes = reason
+        task.evaluation_notes = reason[:_MAX_REASON_LEN]
     transition_status(task, ProposedTaskStatus.DEFERRED, by="user")
-    update_proposed_task(job_id, task)
+    update_proposed_task(job_id, task, root)
     return task
 
 
 # ---------------------------------------------------------------------------
-# Review loop rework proposals (Step 573)
+# Rework proposals
 # ---------------------------------------------------------------------------
 
 def propose_rework(
@@ -482,12 +502,8 @@ def propose_rework(
     title: str,
     reason: str = "",
     risk: str = "medium",
+    root: Path | None = None,
 ) -> ProposedTask:
-    """Create a rework proposal when a build/test cycle fails.
-
-    Called by the orchestrator when a task fails verification and needs
-    rework. The rework proposal goes through the same evaluation flow.
-    """
     return propose_task_from_review_finding(
         job_id,
         title=title[:80],
@@ -497,11 +513,83 @@ def propose_rework(
         task_type="rework",
         origin_task_id=failed_task_id,
         source=ProposedTaskSource.ORCHESTRATOR,
+        root=root,
     )
 
 
 # ---------------------------------------------------------------------------
-# Event audit trail (Step 576)
+# Materialization — approved proposed tasks → build tasks
+# ---------------------------------------------------------------------------
+
+def materialize_approved_task(proposed: ProposedTask) -> dict[str, Any]:
+    """Convert an approved ProposedTask into a Task-compatible dict.
+
+    Returns a dict that can be used with Task.model_validate() to create
+    a real build task. Does NOT persist — caller is responsible for
+    appending to job.tasks and saving the job.
+
+    Raises ValueError if the proposed task is not approved_for_build.
+    """
+    if proposed.status != ProposedTaskStatus.APPROVED_FOR_BUILD:
+        raise ValueError(f"Cannot materialize: status is {proposed.status.value}, not approved_for_build")
+
+    return {
+        "description": proposed.title[:80],
+        "inputs": {
+            "proposed_task_id": proposed.id,
+            "task_type": proposed.task_type,
+            "reason": proposed.reason[:200],
+            "source": proposed.source.value,
+            "risk": proposed.risk,
+            "priority": proposed.priority,
+        },
+        "status": "pending",
+    }
+
+
+def list_approved_not_materialized(
+    job_id: str,
+    materialized_ids: frozenset[str],
+    root: Path | None = None,
+) -> list[ProposedTask]:
+    """List approved tasks that have not yet been materialized into build tasks."""
+    approved = list_by_status(job_id, ProposedTaskStatus.APPROVED_FOR_BUILD, root)
+    return [t for t in approved if t.id not in materialized_ids]
+
+
+# ---------------------------------------------------------------------------
+# Finalized gate helper
+# ---------------------------------------------------------------------------
+
+def can_finalize(
+    job_id: str,
+    *,
+    pending_task_count: int = 0,
+    blocked_task_count: int = 0,
+    pending_approvals: int = 0,
+    root: Path | None = None,
+) -> tuple[bool, str]:
+    """Check whether a job can be finalized.
+
+    Returns (can_finalize, reason).
+    If proposed task store is corrupt, blocks finalization.
+    """
+    unresolved, degraded = count_unresolved_safe(job_id, root)
+    if degraded:
+        return (False, "proposed_task_store_degraded")
+    if pending_task_count > 0:
+        return (False, f"{pending_task_count} pending tasks")
+    if blocked_task_count > 0:
+        return (False, f"{blocked_task_count} blocked tasks")
+    if pending_approvals > 0:
+        return (False, f"{pending_approvals} pending approvals")
+    if unresolved > 0:
+        return (False, f"{unresolved} unresolved proposals")
+    return (True, "ready")
+
+
+# ---------------------------------------------------------------------------
+# Event audit trail
 # ---------------------------------------------------------------------------
 
 def emit_proposed_task_event(
@@ -511,13 +599,6 @@ def emit_proposed_task_event(
     *,
     extra: dict[str, Any] | None = None,
 ) -> None:
-    """Emit an audit event for a proposed task lifecycle change.
-
-    Uses RunLogWriter.log() pattern. Safe if writer is None (no-op).
-
-    Event names: proposed_task_created, proposed_task_evaluated,
-    proposed_task_approved, proposed_task_rejected, proposed_task_deferred
-    """
     if writer is None:
         return
     metadata: dict[str, Any] = {
