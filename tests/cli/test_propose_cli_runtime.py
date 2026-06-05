@@ -125,22 +125,24 @@ class TestSubprocessErrors:
 
 
 class TestSubprocessFullFlow:
-    @pytest.mark.timeout(30)
     def test_end_to_end(self, env):
         root, jid = env
         t = ProposedTask(title="E2E", risk="medium")
         add_proposed_task(jid, t, root=root)
 
         r = _run(["propose", "list", jid, "--json"], root)
+        assert r.returncode == 0, r.stderr
         assert json.loads(r.stdout)["count"] == 1
 
         r = _run(["propose", "evaluate", jid, "--json"], root)
-        assert r.returncode == 0
+        assert r.returncode == 0, r.stderr
 
         r = _run(["propose", "approve", jid, t.id, "--json"], root)
+        assert r.returncode == 0, r.stderr
         assert json.loads(r.stdout)["approved"] is True
 
         r = _run(["propose", "materialize", jid, "--task-id", t.id, "--json"], root)
+        assert r.returncode == 0, r.stderr
         assert json.loads(r.stdout)["materialized_count"] == 1
 
         job = Job.model_validate_json((root / "jobs" / f"{jid}.json").read_text())
@@ -148,7 +150,8 @@ class TestSubprocessFullFlow:
 
         runs_dir = root / "runs" / jid
         if runs_dir.exists():
-            events = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
+            event_files = sorted(runs_dir.glob("*.jsonl"))[:5]
+            events = "".join(f.read_text() for f in event_files)
             assert "proposed_task_evaluated" in events
             assert "proposed_task_approved" in events
             assert "proposed_task_materialized" in events

@@ -1,3 +1,201 @@
+# Parallel Review — Steps 640-654 (Independent Reviewer)
+
+Reviewer: parallel watcher (independent)
+Scope: Steps 640-654 (Backend basis completion — worker executes real Job.tasks)
+Commit: 383bf23
+Status: VERIFIED
+
+## Test Results (independently run)
+- `tests/orchestration/test_worker_execution.py` + `test_task_execution.py` + `test_proposed_tasks.py` + `test_propose_cli_runtime.py`: **143/143 passed** (2.26s)
+- New test file: `test_worker_execution.py` — 15 tests covering worker execution, persistence, events, queue gate, finalize gate, readiness, full E2E loop
+- 1 warning: `PytestUnknownMarkWarning` for `@pytest.mark.timeout(30)` — pytest-timeout not installed
+- Worker claims 4406 full baseline (not independently verified — targeted suites confirm no regressions)
+
+## Prior Findings Resolution
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| R-625-001 (can_retry_task t/task var) | low | **RESOLVED** — `t` → `task` on line 213 |
+| R-625-002 (BudgetGate only checks steps) | low | **RESOLVED** (class-level) — can_execute() now checks max_tokens + max_runtime. **BUT**: worker does not use BudgetGate (see R-640-001) |
+| R-625-003 (execution port not wired) | info | **RESOLVED** — _run_via_task_execution in worker_queue.py uses execute_task() |
+| R-610-001 (queue gate no materialization) | medium | **RESOLVED** — _has_unresolved_proposals now checks approved_not_materialized |
+| R-610-002 (dashboard no reconcile) | low | **OPEN** — ui_server.py unchanged |
+| R-595-003 (no lock timeout test) | low | **OPEN** — still no concurrent/timeout test |
+| R-595-005 (double-load in lock) | low | **OPEN** — same pattern remains |
+
+## Per-Step Checklist
+
+| Step | Check | Verdict |
+|------|-------|---------|
+| 640 | "Basis complete" defined concretely (9 items). Stale risks removed. Current risks listed (6). context/plan/live_review updated | PASS |
+| 641 | 11 subprocess tests pass. subprocess timeout=10 on all. No shell=True. No shared state. No lock held. `@pytest.mark.timeout(30)` added but plugin not installed (R-640-006) | PASS (with note) |
+| 642 | can_retry_task fixed (t→task). BudgetGate can_execute checks tokens/runtime. BUT: no tests for max_tokens_exhausted or max_runtime_exhausted | **PARTIAL** (see R-640-002) |
+| 643 | list_jobs_safe() returns (jobs, degraded, skipped). Not silently skipped. No traceback. BUT: readiness does not use list_jobs_safe | **PARTIAL** (see R-640-003) |
+| 644 | _run_via_task_execution: imports task_execution (provider-neutral), finds pending task, creates TaskExecutionRequest, calls execute_task(), saves Job. No provider-specific imports. No source_apply | PASS |
+| 645 | Executes first pending task, breaks. Remaining>0 → re-queue. Remaining==0 → completed. test_two_tasks_one_per_run proves one per run. Provider none → no_work | PASS |
+| 646 | Task.status=COMPLETED + execution_summary[:200] + artifact_ids + provider persist. Reload tests verify. No raw output stored. No duplication on second run | PASS |
+| 647 | task_execution_completed event via RunLogWriter. proposed_task_id + provider + artifact_count + token_count in metadata. BUT: no blocked execution event test through worker | **PARTIAL** (see R-640-005) |
+| 648 | approved_not_materialized blocks queue (tested). Materialized allows (tested). Corrupt blocks (existing). Rejected/deferred safe | PASS |
+| 649 | can_finalize blocks pending. After worker completion: finalize=True. backend_readiness computes pending from Job.tasks → passes to can_finalize. Blocked/failed blocks. Corrupt blocks | PASS |
+| 650 | storage/build/finalize/overnight separated (from 627). Pending/completed/blocked reflected in finalize_readiness. No fake ready. BUT: no explicit execution_health section | **PARTIAL** (see R-640-004) |
+| 651 | BudgetGate class enforces tokens/runtime. BUT: worker_queue.py has ZERO references to BudgetGate. Worker does not check budget before executing. max_steps=0 does not prevent execution | **FAIL** (see R-640-001) |
+| 652 | test_propose_to_completion: propose→evaluate→approve→materialize→enqueue→worker fixture→completed→finalize→events. Full backend loop proven. No Ollama. No shell=True | PASS |
+| 653 | Worker imports task_execution, not providers. Legacy autorun isolated in _run_via_legacy_autorun. No source_apply. Adding provider: add to _EXECUTORS dict only | PASS |
+| 654 | Worker claims 4406 passed. 143 independently verified. Tests via wrapper. No background pytest. live_review has step log. But "basis complete" while budget gate unused by worker | **PARTIAL** |
+
+## Scope Blockers
+
+| Blocker | Verdict |
+|---------|---------|
+| 0.0.0.0 bind | PASS |
+| shell=True | PASS — not in any new code |
+| External CDN | PASS |
+| Ollama API | PASS — ollama routed to legacy autorun, not task_execution |
+| WebSocket | PASS |
+| POST/PUT/DELETE | PASS — 405 enforced |
+| Outbound HTTP | PASS |
+| Raw content leaks | PASS — safe_summary[:200], blocked_reason[:200], description[:80] |
+| UI redesign | PASS — backend only |
+| Overnight autonomy execution | PASS — overnight_readiness still returns False |
+| Docker/MemPalace | PASS |
+| Provider-specific imports in core | PASS — _run_via_task_execution imports only task_execution + storage + models |
+| Claude/OpenAI provider | PASS |
+| Git commit gate | PASS |
+
+## Findings
+
+### R-640-001
+Status: Open
+Severity: medium
+Area: budget
+Summary: BudgetGate not used by worker — execution has no budget check
+Details: worker_queue._run_via_task_execution() calls execute_task() directly without importing or checking BudgetGate. BudgetGate(max_steps=0) does not prevent execution. BudgetGate(max_steps=1) does not limit worker. The class was updated (R-625-002 fix) to check tokens/runtime, but the worker ignores it entirely. `grep -c "BudgetGate" packages/orchestration/worker_queue.py` returns 0.
+Evidence: worker_queue.py has zero references to BudgetGate. _run_via_task_execution calls execute_task without any budget check.
+Expected fix: Import BudgetGate in _run_via_task_execution. Create gate from request params. Call can_execute() before execute_task(). Call record_step() after.
+
+### R-640-002
+Status: Open
+Severity: low
+Area: budget
+Summary: No tests for BudgetGate max_tokens or max_runtime enforcement
+Details: BudgetGate.can_execute() was updated to check max_tokens and max_runtime_seconds. But TestBudgetGate only has 4 tests — all for max_steps (no_budget, allows, exhausted, has_budget). No test exercises `max_tokens_exhausted` or `max_runtime_exhausted` return values.
+Evidence: `grep -n "max_tokens\|max_runtime\|elapsed" tests/orchestration/test_task_execution.py` returns empty
+Expected fix: Add test_tokens_exhausted and test_runtime_exhausted to TestBudgetGate.
+
+### R-640-003
+Status: Open
+Severity: low
+Area: readiness
+Summary: list_jobs_safe not used by readiness or any consumer
+Details: list_jobs_safe() was added to storage.py (Step 643) and list_jobs() delegates to it. But no readiness function, dashboard, or CLI command calls list_jobs_safe directly. The degraded/skipped information is only available if a caller explicitly uses list_jobs_safe instead of list_jobs. backend_readiness uses load_job_safe (single job), not list_jobs_safe.
+Evidence: `grep -rn "list_jobs_safe" packages/ tests/` shows only storage.py internal usage
+Expected fix: Either expose job store degradation in backend_readiness via list_jobs_safe, or add a CLI command that uses it.
+
+### R-640-004
+Status: Open
+Severity: low
+Area: readiness
+Summary: No execution_health section in readiness
+Details: backend_readiness has 5 sections: storage_health, proposal_health, build_readiness, finalize_readiness, overnight_readiness. No execution_health section reflecting worker execution state (last execution time, provider, pending/completed task counts with execution metadata). finalize_readiness reflects pending/completed/blocked counts but without execution context.
+Evidence: `grep -n "execution_health" packages/orchestration/proposed_tasks.py` returns empty
+Expected fix: Add execution_health section or fold execution state into finalize_readiness with more detail.
+
+### R-640-005
+Status: Open
+Severity: low
+Area: events
+Summary: No test for blocked execution event through worker
+Details: test_fixture_writes_event verifies task_execution_completed event. No test for task_execution_blocked event when execution is blocked (e.g., unavailable provider through task_execution port). The event code exists in _run_via_task_execution (event_name = f"task_execution_{exec_result.status}") but the blocked path is untested through the worker.
+Evidence: `grep -rn "blocked.*event\|event.*blocked\|task_execution_blocked" tests/orchestration/test_worker_execution.py` returns empty
+Expected fix: Add test that forces blocked execution through _run_via_task_execution and verifies event file.
+
+### R-640-006
+Status: Open
+Severity: low
+Area: runtime-cli
+Summary: pytest.mark.timeout(30) not effective — plugin not installed
+Details: `@pytest.mark.timeout(30)` added to TestSubprocessFullFlow.test_end_to_end but pytest-timeout plugin is not installed, producing `PytestUnknownMarkWarning`. The mark is ignored at runtime. Actual protection is subprocess timeout=10 on each _run() call, which is effective.
+Evidence: Warning in test output: "PytestUnknownMarkWarning: Unknown pytest.mark.timeout"
+Expected fix: Either install pytest-timeout or remove the decorator to eliminate the warning.
+
+### R-640-007
+Status: Open
+Severity: low
+Area: worker
+Summary: Overly broad exception catch on job load in _run_via_task_execution
+Details: Line 429 catches `(JobNotFoundError, Exception)` which is equivalent to catching all exceptions. Any error during job load (permission denied, disk full, JSON decode error) becomes "job_not_found" instead of surfacing the real cause. Should distinguish missing from corrupt/unreadable.
+Evidence: worker_queue.py:429 — `except (JobNotFoundError, Exception)`
+Expected fix: Catch JobNotFoundError separately, then catch specific exceptions (ValueError, OSError) with appropriate blocked_reasons.
+
+## Architecture Assessment
+
+**Strengths:**
+- R-625-001, R-625-002 (class-level), R-625-003, R-610-001 all RESOLVED
+- Full backend loop proven: propose→evaluate→approve→materialize→enqueue→worker→completed→finalize→events
+- Worker correctly finds pending Job task, executes through port, saves result, emits event
+- One task per run: clean re-queue pattern for remaining tasks
+- Legacy autorun isolated in separate function — fixture uses modular path
+- No provider-specific imports in core execution path
+- 15 new tests covering all critical worker execution paths
+- Persistence verified: status, summary, artifacts survive reload
+- Queue gate now blocks approved_not_materialized (R-610-001 finally resolved)
+
+**Remaining Risks:**
+1. BudgetGate not used by worker (R-640-001) — mandate violation
+2. Dashboard doesn't detect materialization mismatches (carry-forward R-610-002)
+3. No token/time budget tests (R-640-002)
+4. list_jobs_safe unused by readiness (R-640-003)
+5. Lock timeout/busy path untested (carry-forward R-595-003)
+
+## Final Verdict
+
+**PASS WITH RISKS**
+
+- Runtime CLI stability: **PASS** — 11 tests, unique UUIDs, subprocess timeout=10. Timeout mark cosmetic only (R-640-006)
+- Storage corruption handling: **PASS** — list_jobs_safe added (not consumed by readiness — R-640-003)
+- Task execution correctness: **PASS** — execute_task() through modular port, result mapped to RunState
+- Worker execution status: **PASS** — _run_via_task_execution finds pending task, calls execute_task, saves Job. Fixture provider proven
+- Persistence status: **PASS** — Task.status, execution_summary, artifact_ids, provider all survive reload
+- Execution events status: **PASS** — task_execution_completed event with metadata (blocked path untested — R-640-005)
+- Queue/finalize gate status: **PASS** — queue blocks approved_not_materialized (R-610-001 resolved). Finalize blocks pending tasks. Both tested
+- Readiness status: **PARTIAL** — finalize_readiness reflects task state. No execution_health section (R-640-004). list_jobs_safe not integrated (R-640-003)
+- Budget status: **FAIL** — BudgetGate class works (enforces steps/tokens/time). Worker does not use it (R-640-001). No token/time tests (R-640-002)
+- E2E status: **PASS** — test_propose_to_completion covers full backend loop. Events verified. Job.tasks.status == COMPLETED
+- Modularity status: **PASS** — task_execution imports only. Legacy autorun isolated. Guard tests pass. No provider coupling
+- Raw leak status: **PASS** — safe_summary[:200], blocked_reason[:200], description[:80]. No raw output stored
+- Tests run: 143 (97 proposed_tasks + 20 task_execution + 15 worker_execution + 11 subprocess) — all guarded via scripts/remedy_pytest.sh
+- Full pytest: Worker reports 4406 passed (not independently verified — targeted suites confirm no regressions)
+- Which backend parts are now 100%:
+  - Proposed task lifecycle (propose→evaluate→approve/reject/defer→materialize)
+  - True materialization into Job.tasks
+  - Worker execution through modular port (fixture provider)
+  - Task state persistence (status, summary, artifacts)
+  - Execution events via RunLogWriter
+  - Queue gate (unresolved + approved_not_materialized + corrupt)
+  - Finalize gate (pending/blocked/approved_not_materialized/corrupt)
+  - Runtime CLI subprocess tests
+  - Atomic writes + file locking on proposal store
+  - Storage data-root resolution (REMEDY_DATA_DIR)
+- Which backend parts are NOT 100%:
+  - Budget gate enforcement in worker (class exists, worker ignores — R-640-001)
+  - Readiness execution_health section (R-640-004)
+  - Dashboard mismatch detection (R-610-002)
+  - Token/time budget tests (R-640-002)
+  - Lock timeout/concurrent tests (R-595-003)
+  - Blocked execution event verification (R-640-005)
+  - Overnight readiness (correctly gated as not-ready)
+- Top 5 remaining backend risks:
+  1. BudgetGate not used by worker — execution unbounded (R-640-001)
+  2. Dashboard doesn't detect materialization mismatches (R-610-002)
+  3. No token/time budget tests (R-640-002)
+  4. Lock timeout/busy path untested (R-595-003)
+  5. Broad exception catch masks real job load errors (R-640-007)
+- Answer: **Backend basis loop complete? YES for fixture provider.** propose→evaluate→approve→materialize→enqueue→worker→completed→finalize→events fully proven. Worker executes real Job.tasks through modular port. Persistence verified. BUT budget gate unused by worker — execution is unbounded.
+- Answer: **Close to overnight autonomous builder? NO.** overnight_readiness correctly returns False. BudgetGate not consumed. Missing: rollback, real provider execution, budget enforcement.
+- Merge readiness: **YES** — 4 prior findings resolved, 7 new findings (1 medium, 6 low/info), no scope blockers. Core backend loop is real and tested. Budget gap is significant but non-blocking for merge since overnight gate prevents autonomous execution.
+
+---
+
 # Parallel Review — Steps 625-639 (Independent Reviewer)
 
 Reviewer: parallel watcher (independent)
@@ -809,3 +1007,25 @@ Status: IN PROGRESS
 - Step 649: can_finalize blocks pending_task_count (tests prove before/after worker run).
 - Step 652: TestFullBackendLoop.test_propose_to_completion — full loop proven end-to-end.
 - Step 653: Legacy autorun isolated in _run_via_legacy_autorun. Fixture path uses task_execution only.
+
+---
+
+# Live Review — Steps 655-669
+
+Reviewer: self (backend basis final closure)
+Scope: Runtime stability, budget, start/end events, worker CLI E2E, Baukasten guards
+Status: IN PROGRESS
+
+## Step Log
+- Step 655: Handoff — component status table, 6 risks carried, plan updated.
+- Step 656: Runtime CLI hardened — bounded event file read ([:5]), assertion messages with r.stderr.
+- Step 657: Worker CLI runtime tests — 5 subprocess tests: fixture run, second run, none provider, events, full loop.
+- Step 658: WorkerResult v2 — last_task_id, provider, work_performed, task_status, artifact_ids, blocked_reason, budget_status.
+- Step 659: BudgetGate consumed by _run_via_task_execution — max_steps/tokens/runtime checked before execute_task().
+- Step 660: task_execution_started event emitted before executor call. task_execution_completed/blocked after.
+- Step 661: Narrow exceptions — JobNotFoundError → job_not_found, JobStoreError → job_store_degraded. No broad Exception.
+- Step 662: Blocked fixture → FAILED + blocked_reason persisted + task_execution_blocked event.
+- Step 666: Full backend loop via subprocess: propose→evaluate→approve→materialize→enqueue→worker→completed→events.
+- Step 667: Baukasten v2 — 10 guard tests (no provider imports, no source_apply, autorun isolated).
+- Step 668: Component status table in context.md.
+- Also: Fixed grouped CLI --once/--max-jobs/--max-seconds parsing. Fixed worker handler args.job mapping.

@@ -105,11 +105,18 @@ class WorkerResult:
     worker_id: str = ""
     jobs_processed: int = 0
     last_job_id: str = ""
+    last_task_id: str = ""
     last_lifecycle_state: str = ""
     action_taken: str = "idle"
     why_it_stopped: str = ""
     next_command: str = ""
     duration_ms: int = 0
+    provider: str = ""
+    work_performed: bool = False
+    task_status: str = ""
+    artifact_ids: list[str] = field(default_factory=list)
+    blocked_reason: str = ""
+    budget_status: str = ""
     redaction: str = "safe_metadata_only"
 
 
@@ -417,20 +424,45 @@ def _run_via_task_execution(
     worker_id: str,
     start: float,
     result: WorkerResult,
+    *,
+    max_steps: int = 1,
+    max_tokens: int = 0,
+    max_runtime_seconds: int = 60,
 ) -> WorkerResult:
     """Execute one pending Job.tasks item through the modular task_execution port."""
-    from packages.orchestration.task_execution import TaskExecutionRequest, execute_task
-    from packages.orchestration.storage import load_job, save_job, JobNotFoundError
+    from packages.orchestration.task_execution import TaskExecutionRequest, BudgetGate, execute_task
+    from packages.orchestration.storage import load_job, save_job, JobNotFoundError, JobStoreError
     from packages.core.models import RunState
 
     root = Path(data_dir)
+    result.provider = provider
+
+    budget = BudgetGate(max_steps=max_steps, max_tokens=max_tokens, max_runtime_seconds=max_runtime_seconds)
+    budget_ok, budget_reason = budget.can_execute()
+    if not budget_ok:
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason=budget_reason)
+        result.last_lifecycle_state = "blocked"
+        result.action_taken = "blocked"
+        result.why_it_stopped = budget_reason
+        result.budget_status = budget_reason
+        return result
+    result.budget_status = "ok"
+
     try:
         job = load_job(entry.job_id, root)
-    except (JobNotFoundError, Exception):
+    except JobNotFoundError:
         transition_state(entry.job_id, "blocked", data_dir, blocked_reason="job_not_found")
         result.last_lifecycle_state = "blocked"
         result.action_taken = "blocked"
         result.why_it_stopped = "job_not_found"
+        result.blocked_reason = "job_not_found"
+        return result
+    except JobStoreError:
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason="job_store_degraded")
+        result.last_lifecycle_state = "blocked"
+        result.action_taken = "blocked"
+        result.why_it_stopped = "job_store_degraded"
+        result.blocked_reason = "job_store_degraded"
         return result
 
     pending_task = None
@@ -447,17 +479,43 @@ def _run_via_task_execution(
         result.why_it_stopped = "all_tasks_done"
         return result
 
+    task_id_str = str(pending_task.id)
+    result.last_task_id = task_id_str
+    result.last_job_id = str(job.id)
+
+    writer = None
+    try:
+        from packages.orchestration.run_log import RunLogWriter
+        writer = RunLogWriter(job.id, runs_root=root / "runs")
+    except (ImportError, OSError):
+        pass
+
+    proposed_task_id = (pending_task.inputs or {}).get("proposed_task_id", "")
+    event_meta = {
+        "proposed_task_id": proposed_task_id,
+        "provider": provider,
+    }
+
+    if writer:
+        writer.log("task_execution_started", task_id=task_id_str, outcome="started", **event_meta)
+
     req = TaskExecutionRequest(
         job_id=str(job.id),
-        task_id=str(pending_task.id),
+        task_id=task_id_str,
         task_description=pending_task.description[:80],
         task_inputs=dict(pending_task.inputs) if pending_task.inputs else {},
         provider=provider,
     )
     exec_result = execute_task(req)
 
+    budget.record_step(tokens=exec_result.token_count, elapsed=exec_result.duration_ms / 1000.0)
+
+    result.work_performed = exec_result.work_performed
+    result.artifact_ids = list(exec_result.artifact_ids)
+
     if exec_result.status == "completed":
         pending_task.status = RunState.COMPLETED
+        result.task_status = "completed"
         if exec_result.safe_summary:
             pending_task.inputs["execution_summary"] = exec_result.safe_summary[:200]
         if exec_result.artifact_ids:
@@ -465,29 +523,28 @@ def _run_via_task_execution(
         pending_task.inputs["execution_provider"] = exec_result.provider
     elif exec_result.status == "blocked":
         pending_task.status = RunState.FAILED
+        result.task_status = "blocked"
+        result.blocked_reason = exec_result.blocked_reason[:200]
         pending_task.inputs["blocked_reason"] = exec_result.blocked_reason[:200]
     else:
         pending_task.status = RunState.FAILED
-        pending_task.inputs["blocked_reason"] = exec_result.outcome[:200] if exec_result.outcome else "unknown"
+        result.task_status = "failed"
+        result.blocked_reason = (exec_result.outcome or "unknown")[:200]
+        pending_task.inputs["blocked_reason"] = (exec_result.outcome or "unknown")[:200]
 
     save_job(job, root)
 
-    try:
-        from packages.orchestration.run_log import RunLogWriter
-        writer = RunLogWriter(job.id, runs_root=root / "runs")
-        event_name = f"task_execution_{exec_result.status}"
-        metadata = {
-            "proposed_task_id": (pending_task.inputs or {}).get("proposed_task_id", ""),
-            "provider": exec_result.provider,
+    if writer:
+        end_event = f"task_execution_{exec_result.status}"
+        end_meta = {
+            **event_meta,
             "work_performed": exec_result.work_performed,
             "exec_status": exec_result.status,
             "artifact_count": len(exec_result.artifact_ids),
             "token_count": exec_result.token_count,
             "duration_ms": exec_result.duration_ms,
         }
-        writer.log(event_name, task_id=str(pending_task.id), outcome=exec_result.status, **metadata)
-    except (ImportError, OSError):
-        pass
+        writer.log(end_event, task_id=task_id_str, outcome=exec_result.status, **end_meta)
 
     if exec_result.status == "completed":
         remaining = sum(
@@ -504,12 +561,11 @@ def _run_via_task_execution(
             result.last_lifecycle_state = "queued"
         result.action_taken = "task_completed"
         result.why_it_stopped = "task_done"
-        result.last_job_id = str(job.id)
     else:
-        transition_state(entry.job_id, "blocked", data_dir, blocked_reason=exec_result.blocked_reason or "execution_failed")
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason=result.blocked_reason or "execution_failed")
         result.last_lifecycle_state = "blocked"
         result.action_taken = "blocked"
-        result.why_it_stopped = exec_result.blocked_reason or "execution_failed"
+        result.why_it_stopped = result.blocked_reason or "execution_failed"
 
     result.duration_ms = int((time.monotonic() - start) * 1000)
     return result
@@ -571,6 +627,9 @@ def run_worker_once(
     worker_id: str = "",
     job_id: str = "",
     provider: str = "none",
+    max_steps: int = 1,
+    max_tokens: int = 0,
+    max_runtime_seconds: int = 60,
 ) -> WorkerResult:
     """Run one safe unit of work. Returns immediately."""
     if not worker_id:
@@ -630,7 +689,10 @@ def run_worker_once(
         result.why_it_stopped = "no_worker_selected"
         result.next_command = f"remedy worker run --once --provider fixture --job {entry.job_id[:8]}"
     elif provider in _TASK_EXEC_PROVIDERS:
-        result = _run_via_task_execution(entry, provider, data_dir, worker_id, start, result)
+        result = _run_via_task_execution(
+            entry, provider, data_dir, worker_id, start, result,
+            max_steps=max_steps, max_tokens=max_tokens, max_runtime_seconds=max_runtime_seconds,
+        )
     elif provider == "ollama":
         result = _run_via_legacy_autorun(entry, provider, data_dir, result, start)
 
@@ -695,11 +757,18 @@ def export_worker_result_json(result: WorkerResult) -> dict[str, Any]:
         "worker_id": result.worker_id,
         "jobs_processed": result.jobs_processed,
         "last_job_id": result.last_job_id,
+        "last_task_id": result.last_task_id,
         "last_lifecycle_state": result.last_lifecycle_state,
         "action_taken": result.action_taken,
         "why_it_stopped": result.why_it_stopped,
         "next_command": result.next_command,
         "duration_ms": result.duration_ms,
+        "provider": result.provider,
+        "work_performed": result.work_performed,
+        "task_status": result.task_status,
+        "artifact_ids": result.artifact_ids,
+        "blocked_reason": result.blocked_reason,
+        "budget_status": result.budget_status,
         "redaction": result.redaction,
     }
 

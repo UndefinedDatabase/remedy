@@ -125,6 +125,27 @@ class TestBudgetGate:
         assert BudgetGate(max_steps=5).has_budget is True
         assert BudgetGate().has_budget is False
 
+    def test_tokens_exhausted(self):
+        g = BudgetGate(max_steps=10, max_tokens=100)
+        g.tokens_used = 100
+        ok, reason = g.can_execute()
+        assert ok is False
+        assert reason == "max_tokens_exhausted"
+
+    def test_runtime_exhausted(self):
+        g = BudgetGate(max_steps=10, max_runtime_seconds=60)
+        g.elapsed_seconds = 60.0
+        ok, reason = g.can_execute()
+        assert ok is False
+        assert reason == "max_runtime_exhausted"
+
+    def test_record_step_tracks_all(self):
+        g = BudgetGate(max_steps=5)
+        g.record_step(tokens=50, elapsed=1.5)
+        assert g.steps_used == 1
+        assert g.tokens_used == 50
+        assert g.elapsed_seconds == 1.5
+
 
 class TestCanRetryTask:
     def test_completed_not_retryable(self, tmp_path, monkeypatch):
@@ -183,3 +204,26 @@ class TestModularArchitectureGuards:
         src = Path("packages/orchestration/task_execution.py").read_text()
         assert "source_apply" not in src
         assert "repo_applicator" not in src
+
+    def test_worker_queue_no_source_apply(self):
+        src = Path("packages/orchestration/worker_queue.py").read_text()
+        assert "source_apply" not in src
+
+    def test_task_execution_no_worker_queue_import(self):
+        src = Path("packages/orchestration/task_execution.py").read_text()
+        assert "import worker_queue" not in src
+        assert "from packages.orchestration.worker_queue" not in src
+
+    def test_proposed_tasks_no_worker_queue_import(self):
+        src = Path("packages/orchestration/proposed_tasks.py").read_text()
+        assert "import worker_queue" not in src
+        assert "from packages.orchestration.worker_queue" not in src
+
+    def test_legacy_autorun_isolated(self):
+        src = Path("packages/orchestration/worker_queue.py").read_text()
+        assert "run_autorun" not in src or "_run_via_legacy_autorun" in src
+
+    def test_fixture_path_no_autorun(self):
+        src = Path("packages/orchestration/worker_queue.py").read_text()
+        fixture_func = src[src.index("def _run_via_task_execution"):src.index("def _run_via_legacy_autorun")]
+        assert "autorun" not in fixture_func

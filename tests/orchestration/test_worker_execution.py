@@ -291,4 +291,127 @@ class TestFullBackendLoop:
         runs_dir = root / "runs" / jid
         if runs_dir.exists():
             events = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
+            assert "task_execution_started" in events
             assert "task_execution_completed" in events
+
+
+class TestWorkerBudget:
+    def test_max_steps_zero_blocks(self, tmp_path, monkeypatch):
+        root, jid = _setup(tmp_path, monkeypatch)
+        t = ProposedTask(title="Budget", risk="medium")
+        add_proposed_task(jid, t, root=root)
+        evaluate_proposed_task(jid, t.id, root=root)
+        approve_proposed_task(jid, t.id, root=root)
+        do_materialize(jid, t.id, root=root)
+
+        enqueue_job(jid, root)
+        result = run_worker_once(root, job_id=jid, provider="fixture", max_steps=0)
+        assert result.action_taken == "blocked"
+        assert result.budget_status == "no_budget_set"
+
+    def test_max_steps_one_allows(self, tmp_path, monkeypatch):
+        root, jid = _setup(tmp_path, monkeypatch)
+        t = ProposedTask(title="Budget ok", risk="medium")
+        add_proposed_task(jid, t, root=root)
+        evaluate_proposed_task(jid, t.id, root=root)
+        approve_proposed_task(jid, t.id, root=root)
+        do_materialize(jid, t.id, root=root)
+
+        enqueue_job(jid, root)
+        result = run_worker_once(root, job_id=jid, provider="fixture", max_steps=1)
+        assert result.action_taken == "task_completed"
+        assert result.budget_status == "ok"
+
+
+class TestWorkerResultV2:
+    def test_result_has_task_id(self, tmp_path, monkeypatch):
+        root, jid = _setup(tmp_path, monkeypatch)
+        t = ProposedTask(title="Result v2", risk="medium")
+        add_proposed_task(jid, t, root=root)
+        evaluate_proposed_task(jid, t.id, root=root)
+        approve_proposed_task(jid, t.id, root=root)
+        do_materialize(jid, t.id, root=root)
+
+        enqueue_job(jid, root)
+        result = run_worker_once(root, job_id=jid, provider="fixture")
+        assert result.last_task_id != ""
+        assert result.provider == "fixture"
+        assert result.work_performed is True
+        assert result.task_status == "completed"
+        assert len(result.artifact_ids) > 0
+
+    def test_no_pending_has_no_task_id(self, tmp_path, monkeypatch):
+        root, jid = _setup(tmp_path, monkeypatch)
+        enqueue_job(jid, root)
+        result = run_worker_once(root, job_id=jid, provider="fixture")
+        assert result.last_task_id == ""
+        assert result.action_taken == "no_pending_tasks"
+
+
+class TestBlockedFixturePersistence:
+    def test_blocked_task_persists_failed(self, tmp_path, monkeypatch):
+        root, jid = _setup(tmp_path, monkeypatch)
+        from packages.core.models import Task, RunState
+        job = load_job(UUID(jid), root)
+        task = Task(description="Will block", inputs={"task_type": "blocked_fixture"})
+        job.tasks.append(task)
+        save_job(job, root)
+
+        enqueue_job(jid, root)
+        result = run_worker_once(root, job_id=jid, provider="fixture")
+        assert result.task_status == "blocked"
+        assert result.blocked_reason != ""
+
+        job = load_job(UUID(jid), root)
+        assert job.tasks[0].status == RunState.FAILED
+        assert job.tasks[0].inputs.get("blocked_reason") != ""
+
+    def test_blocked_task_finalize_false(self, tmp_path, monkeypatch):
+        root, jid = _setup(tmp_path, monkeypatch)
+        from packages.core.models import Task
+        job = load_job(UUID(jid), root)
+        task = Task(description="Blocked", inputs={"task_type": "blocked_fixture"})
+        job.tasks.append(task)
+        save_job(job, root)
+
+        enqueue_job(jid, root)
+        run_worker_once(root, job_id=jid, provider="fixture")
+
+        ok, reason = can_finalize(jid, blocked_task_count=1, root=root)
+        assert ok is False
+
+
+class TestStartedCompletedEvents:
+    def test_started_and_completed_events(self, tmp_path, monkeypatch):
+        root, jid = _setup(tmp_path, monkeypatch)
+        t = ProposedTask(title="Events", risk="medium")
+        add_proposed_task(jid, t, root=root)
+        evaluate_proposed_task(jid, t.id, root=root)
+        approve_proposed_task(jid, t.id, root=root)
+        do_materialize(jid, t.id, root=root)
+
+        enqueue_job(jid, root)
+        run_worker_once(root, job_id=jid, provider="fixture")
+
+        runs_dir = root / "runs" / jid
+        assert runs_dir.exists()
+        events = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
+        assert "task_execution_started" in events
+        assert "task_execution_completed" in events
+        assert '"provider":"fixture"' in events or '"provider": "fixture"' in events
+
+    def test_blocked_event_written(self, tmp_path, monkeypatch):
+        root, jid = _setup(tmp_path, monkeypatch)
+        from packages.core.models import Task
+        job = load_job(UUID(jid), root)
+        task = Task(description="Blocked event", inputs={"task_type": "blocked_fixture"})
+        job.tasks.append(task)
+        save_job(job, root)
+
+        enqueue_job(jid, root)
+        run_worker_once(root, job_id=jid, provider="fixture")
+
+        runs_dir = root / "runs" / jid
+        events = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
+        assert "task_execution_started" in events
+        assert "task_execution_blocked" in events

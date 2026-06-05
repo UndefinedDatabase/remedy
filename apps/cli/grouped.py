@@ -115,6 +115,14 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--provider", default=arg.default, help=arg.help)
             elif arg.name == "--model":
                 parser.add_argument("--model", default=None, help=arg.help)
+            elif arg.name == "--once":
+                parser.add_argument("--once", action="store_true", dest="once", help=arg.help)
+            elif arg.name == "--max-jobs":
+                parser.add_argument("--max-jobs", default=arg.default, dest="max_jobs", help=arg.help)
+            elif arg.name == "--max-seconds":
+                parser.add_argument("--max-seconds", default=arg.default, dest="max_seconds", help=arg.help)
+            elif arg.name == "--builder-provider":
+                parser.add_argument("--builder-provider", default=arg.default, dest="builder_provider", help=arg.help)
             elif arg.name == "--all":
                 parser.add_argument("--all", action="store_true", dest="all", help=arg.help)
             elif arg.name == "--no-ui":

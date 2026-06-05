@@ -320,11 +320,11 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     ),
     "worker.run": lambda args: _cmd_worker_run(
         once=getattr(args, "once", False),
-        max_jobs=getattr(args, "max_jobs", 1),
-        max_seconds=getattr(args, "max_seconds", 60),
+        max_jobs=int(getattr(args, "max_jobs", 1) or 1),
+        max_seconds=int(getattr(args, "max_seconds", 60) or 60),
         provider=getattr(args, "provider", None) or "none",
-        job_id=getattr(args, "job_id", "") or "",
-        json_output=args.json,
+        job_id=getattr(args, "job", "") or getattr(args, "job_id", "") or "",
+        json_output=getattr(args, "json", False),
     ),
     "worker.status": lambda args: _cmd_worker_status_live(json_output=args.json),
 }
