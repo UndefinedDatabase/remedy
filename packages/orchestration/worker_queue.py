@@ -441,6 +441,7 @@ def _run_via_task_execution(
     budget_ok, budget_reason = budget.can_execute()
     if not budget_ok:
         transition_state(entry.job_id, "blocked", data_dir, blocked_reason=budget_reason)
+        release_lease(entry.job_id, data_dir)
         result.last_lifecycle_state = "blocked"
         result.action_taken = "blocked"
         result.why_it_stopped = budget_reason

@@ -121,6 +121,12 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--max-jobs", default=arg.default, dest="max_jobs", help=arg.help)
             elif arg.name == "--max-seconds":
                 parser.add_argument("--max-seconds", default=arg.default, dest="max_seconds", help=arg.help)
+            elif arg.name == "--max-steps":
+                parser.add_argument("--max-steps", default=arg.default, dest="max_steps", help=arg.help)
+            elif arg.name == "--max-tokens":
+                parser.add_argument("--max-tokens", default=arg.default, dest="max_tokens", help=arg.help)
+            elif arg.name == "--max-runtime-seconds":
+                parser.add_argument("--max-runtime-seconds", default=arg.default, dest="max_runtime_seconds", help=arg.help)
             elif arg.name == "--builder-provider":
                 parser.add_argument("--builder-provider", default=arg.default, dest="builder_provider", help=arg.help)
             elif arg.name == "--all":

@@ -692,6 +692,38 @@ class TestFileLocking:
             lock = _lock_path(JOB_ID)
             assert lock.exists()
 
+    def test_lock_timeout_on_busy(self, tmp_store):
+        import fcntl, os, time
+        from packages.orchestration.proposed_tasks import _file_lock, _lock_path, _resolve_store_dir, ProposedTaskStoreError
+        store = _resolve_store_dir()
+        store.mkdir(parents=True, exist_ok=True)
+        lock_file = _lock_path(JOB_ID)
+        fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR)
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            import packages.orchestration.proposed_tasks as _pt
+            orig = _pt._LOCK_TIMEOUT_SEC
+            _pt._LOCK_TIMEOUT_SEC = 0.1
+            try:
+                with pytest.raises(ProposedTaskStoreError, match="Could not acquire lock"):
+                    with _file_lock(JOB_ID):
+                        pass
+            finally:
+                _pt._LOCK_TIMEOUT_SEC = orig
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
+
+    def test_lock_released_on_exception(self, tmp_store):
+        from packages.orchestration.proposed_tasks import _file_lock
+        try:
+            with _file_lock(JOB_ID):
+                raise ValueError("test")
+        except ValueError:
+            pass
+        with _file_lock(JOB_ID):
+            pass
+
 
 class TestStoreRootResolution:
     def test_env_data_dir_used(self, tmp_path, monkeypatch):
@@ -791,6 +823,26 @@ class TestBackendReadiness:
         assert report["build_readiness"]["ready"] is True
         assert report["build_readiness"]["pending_tasks"] == 1
         assert report["finalize_readiness"]["ready"] is False
+
+
+    def test_execution_health_section(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        report = backend_readiness(REAL_JOB_UUID)
+        assert "execution_health" in report
+        assert report["execution_health"]["pending_task_count"] == 0
+        assert report["execution_health"]["completed_task_count"] == 0
+
+    def test_corrupt_other_job_degrades_storage(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        corrupt_path = tmp_path / "jobs" / "corrupt-job.json"
+        corrupt_path.write_text("not json")
+        report = backend_readiness(REAL_JOB_UUID)
+        assert report["storage_health"]["job_store_skipped_files"] > 0
+        assert report["storage_health"]["healthy"] is False
 
 
 class TestOvernightReadiness:

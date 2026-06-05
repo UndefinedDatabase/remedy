@@ -1,24 +1,32 @@
-# Plan — Steps 655-669: Backend Basis Final Closure
+# Plan — Steps 670-684: Backend Basis Hardening Final
 
 ## Goal
-Close basis: runtime stability, budget enforcement, start/end events, worker CLI E2E.
+Runtime no-hang, budget CLI, execution_health, lock tests, clean handoff.
 
 ## Current Step
-669 — Final baseline
+684 — Final baseline
 
 ## Steps
-- [x] 655: Handoff — component status, risks, plan
-- [x] 656: Runtime CLI hardened (bounded event read, assertion messages)
-- [x] 657: Worker CLI subprocess E2E — 5 tests (fixture run, no-pending, none, events, full loop)
-- [x] 658: WorkerResult v2 — task_id, artifact_ids, provider, work_performed, task_status, budget_status
-- [x] 659: BudgetGate in worker — max_steps/tokens/runtime checked before execution
-- [x] 660: task_execution_started event emitted before executor call
-- [x] 661: Narrow exceptions — JobNotFoundError and JobStoreError caught separately
-- [x] 662: Blocked fixture → FAILED + blocked_reason persisted + event written
-- [x] 663: (tested in 640-654) Queue re-queues after partial multi-task
-- [x] 664: (tested) Finalize/readiness with blocked tasks
-- [x] 665: list_jobs_safe exists, list_jobs delegates (readiness uses load_job_safe per-job)
-- [x] 666: Full backend loop via worker CLI subprocess (propose→eval→approve→mat→enqueue→worker→completed)
-- [x] 667: Baukasten v2 — 10 guard tests: no provider imports, no source_apply, no circular deps, autorun isolated
-- [x] 668: Component status table in context.md
-- [x] 669: Full baseline: 4427 passed, 0 failed, 8 skipped
+- [x] 670: Handoff — risks, plan
+- [x] 671: Shared subprocess helper (tests/cli/runtime_helpers.py)
+- [x] 672: Propose runtime refactored to use helper
+- [x] 673: Worker runtime refactored to use helper + budget test
+- [x] 674: Performance bounds via timeout in helper
+- [x] 675: Worker CLI budget args (--max-steps, --max-tokens, --max-runtime-seconds)
+- [x] 676: execution_health section in backend_readiness
+- [x] 677: list_jobs_safe consumed by backend_readiness
+- [x] 678: Lock timeout/busy test (test_lock_timeout_on_busy)
+- [x] 679: Double-load-in-lock cleanup — approve/reject/defer single load
+- [x] 680: Worker lease cleanup on budget block (release_lease before return)
+- [x] 681: Worker loop uses max_steps through once path
+- [x] 682: Backend basis smoke script
+- [x] 683: Completion table with freeze rules
+- [x] 684: Full baseline: 4432 passed, 0 failed, 8 skipped
+
+## Review Findings Resolved
+- R-640-003 (list_jobs_safe unused) → backend_readiness calls list_jobs_safe
+- R-640-004 (no execution_health) → added section
+- R-595-003 (no lock timeout test) → test_lock_timeout_on_busy
+- R-595-005 (double-load in lock) → single-load approve/reject/defer
+- R-655-001, R-655-002 → same as above
+- Lock fd double-close bug fixed in _file_lock timeout path

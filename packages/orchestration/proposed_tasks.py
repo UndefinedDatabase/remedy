@@ -199,7 +199,6 @@ def _file_lock(job_id: str, root: Path | None = None) -> Iterator[None]:
                 break
             except (OSError, BlockingIOError):
                 if time.monotonic() >= deadline:
-                    os.close(fd)
                     raise ProposedTaskStoreError(
                         f"Could not acquire lock for job {job_id} within {_LOCK_TIMEOUT_SEC}s"
                     )
@@ -506,49 +505,52 @@ _MAX_REASON_LEN = 200
 
 def approve_proposed_task(job_id: str, task_id: str, root: Path | None = None) -> ProposedTask | None:
     with _file_lock(job_id, root):
-        task = get_proposed_task(job_id, task_id, root)
-        if task is None:
-            return None
-        transition_status(task, ProposedTaskStatus.APPROVED_FOR_BUILD, by="user")
         tasks = load_proposed_tasks(job_id, root)
+        task = None
         for i, t in enumerate(tasks):
-            if t.id == task.id:
+            if t.id == task_id:
+                task = t
+                transition_status(task, ProposedTaskStatus.APPROVED_FOR_BUILD, by="user")
                 tasks[i] = task
                 break
+        if task is None:
+            return None
         save_proposed_tasks(job_id, tasks, root)
     return task
 
 
 def reject_proposed_task(job_id: str, task_id: str, *, reason: str = "", root: Path | None = None) -> ProposedTask | None:
     with _file_lock(job_id, root):
-        task = get_proposed_task(job_id, task_id, root)
-        if task is None:
-            return None
-        if reason:
-            task.evaluation_notes = reason[:_MAX_REASON_LEN]
-        transition_status(task, ProposedTaskStatus.REJECTED, by="user")
         tasks = load_proposed_tasks(job_id, root)
+        task = None
         for i, t in enumerate(tasks):
-            if t.id == task.id:
+            if t.id == task_id:
+                task = t
+                if reason:
+                    task.evaluation_notes = reason[:_MAX_REASON_LEN]
+                transition_status(task, ProposedTaskStatus.REJECTED, by="user")
                 tasks[i] = task
                 break
+        if task is None:
+            return None
         save_proposed_tasks(job_id, tasks, root)
     return task
 
 
 def defer_proposed_task(job_id: str, task_id: str, *, reason: str = "", root: Path | None = None) -> ProposedTask | None:
     with _file_lock(job_id, root):
-        task = get_proposed_task(job_id, task_id, root)
-        if task is None:
-            return None
-        if reason:
-            task.evaluation_notes = reason[:_MAX_REASON_LEN]
-        transition_status(task, ProposedTaskStatus.DEFERRED, by="user")
         tasks = load_proposed_tasks(job_id, root)
+        task = None
         for i, t in enumerate(tasks):
-            if t.id == task.id:
+            if t.id == task_id:
+                task = t
+                if reason:
+                    task.evaluation_notes = reason[:_MAX_REASON_LEN]
+                transition_status(task, ProposedTaskStatus.DEFERRED, by="user")
                 tasks[i] = task
                 break
+        if task is None:
+            return None
         save_proposed_tasks(job_id, tasks, root)
     return task
 
@@ -813,16 +815,17 @@ def _task_status_val(t: Any) -> str:
 
 
 def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
-    """Structured readiness report: storage, build, finalize, overnight sections."""
-    from packages.orchestration.storage import load_job_safe
+    """Structured readiness report: storage, build, finalize, execution, overnight sections."""
+    from packages.orchestration.storage import load_job_safe, list_jobs_safe
 
     job, job_degraded = load_job_safe(UUID(job_id), root)
     proposals, proposals_degraded = load_proposed_tasks_safe(job_id, root)
     recon = reconcile_materialized(job_id, root)
+    _, jobs_degraded, skipped_files = list_jobs_safe(root)
 
     # Storage health
     job_missing = job is None and not job_degraded
-    storage_healthy = not job_degraded and not job_missing and not proposals_degraded and recon["consistent"]
+    storage_healthy = not job_degraded and not job_missing and not proposals_degraded and recon["consistent"] and not jobs_degraded
     storage_blockers: list[str] = []
     if job_degraded:
         storage_blockers.append("job_store_degraded")
@@ -832,6 +835,8 @@ def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
         storage_blockers.append("proposal_store_degraded")
     if not recon["consistent"]:
         storage_blockers.append("materialization_mismatch")
+    if jobs_degraded:
+        storage_blockers.append(f"job_store_has_{len(skipped_files)}_corrupt_files")
 
     # Proposal health
     unresolved = sum(1 for t in proposals if t.is_unresolved()) if not proposals_degraded else -1
@@ -879,11 +884,18 @@ def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
             "job_exists": job is not None and not job_degraded,
             "proposal_store_healthy": not proposals_degraded,
             "materialization_consistent": recon["consistent"],
+            "job_store_skipped_files": len(skipped_files),
         },
         "proposal_health": {
             "unresolved": unresolved,
             "approved_not_materialized": not_mat,
             "degraded": proposals_degraded,
+        },
+        "execution_health": {
+            "pending_task_count": pending_tasks,
+            "completed_task_count": completed_tasks,
+            "blocked_task_count": blocked_tasks,
+            "total_tasks": pending_tasks + completed_tasks + blocked_tasks,
         },
         "build_readiness": {
             "ready": build_ready,

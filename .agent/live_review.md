@@ -1,3 +1,146 @@
+# Parallel Review — Steps 655-669 (Independent Reviewer)
+
+Reviewer: parallel watcher (independent)
+Scope: Steps 655-669 (Backend basis final closure — budget enforcement, events, worker CLI E2E)
+Commit: 1296f66
+Status: VERIFIED
+
+## Test Results (independently run)
+- All targeted suites: **164/164 passed** (4.14s)
+  - `test_proposed_tasks.py`: 47 tests
+  - `test_task_execution.py`: 33 tests (was 28 → +3 budget, +2 guard refine)
+  - `test_worker_execution.py`: 23 tests (was 15 → +2 budget, +2 result v2, +2 blocked fixture, +2 events)
+  - `test_propose_cli_runtime.py`: 11 tests (hardened assertions, bounded event read)
+  - `test_worker_cli_runtime.py`: 5 tests (NEW — subprocess worker E2E via grouped entrypoint)
+- 0 warnings (timeout mark removed)
+- Worker claims 4427 full baseline (not independently verified — targeted suites confirm no regressions)
+
+## Prior Findings Resolution
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| R-640-001 (BudgetGate not used by worker) | medium | **RESOLVED** — BudgetGate imported and enforced in _run_via_task_execution. Tests: max_steps=0 blocks, max_steps=1 allows |
+| R-640-002 (no token/time budget tests) | low | **RESOLVED** — test_tokens_exhausted, test_runtime_exhausted, test_record_step_tracks_all added |
+| R-640-003 (list_jobs_safe unused by readiness) | low | **OPEN** — acknowledged at 90% in context. Readiness uses load_job_safe per-job. |
+| R-640-004 (no execution_health section) | low | **OPEN** — finalize_readiness covers task state, no separate section. |
+| R-640-005 (no blocked event test) | low | **RESOLVED** — test_blocked_event_written verifies task_execution_started + task_execution_blocked |
+| R-640-006 (timeout mark not effective) | low | **RESOLVED** — @pytest.mark.timeout removed, bounded event read added instead |
+| R-640-007 (broad Exception catch) | low | **RESOLVED** — separate JobNotFoundError + JobStoreError catches |
+| R-610-002 (dashboard no reconcile) | low | **OPEN** — ui_server.py unchanged |
+| R-595-003 (no lock timeout test) | low | **OPEN** — still no concurrent/timeout test |
+| R-595-005 (double-load in lock) | low | **OPEN** — same pattern remains |
+
+## Per-Step Checklist
+
+| Step | Check | Verdict |
+|------|-------|---------|
+| 655 | Component status table in context. Stale risks removed. Current risks listed. 100% definition honest (Ollama/rollback/overnight/UI all 0% or paused) | PASS |
+| 656 | 11 propose CLI tests pass. Timeout mark removed. Bounded event read [:5]. Better assertion messages. No shell=True. No lock leftovers | PASS |
+| 657 | 5 worker CLI subprocess tests via `python -m apps.cli.grouped worker run`. Fixture complete, second-run, none, events, full loop. All timeout=10. No Ollama | PASS |
+| 658 | WorkerResult v2: last_task_id, provider, work_performed, task_status, artifact_ids, blocked_reason, budget_status. export_worker_result_json includes all. redaction="safe_metadata_only". Tests verify | PASS |
+| 659 | BudgetGate imported in _run_via_task_execution. can_execute() before execute_task(). record_step() after. max_steps/tokens/runtime flow from run_worker_once params. Tests: zero blocks, one allows | PASS |
+| 660 | task_execution_started before executor call. task_execution_completed/blocked after. Both tested via function + subprocess. Payload: proposed_task_id, provider. Budget-block = no execution, no event (correct: policy, not task) | PASS |
+| 661 | JobNotFoundError → "job_not_found". JobStoreError → "job_store_degraded". No broad `except Exception`. blocked_reason set on result | PASS |
+| 662 | blocked_fixture → RunState.FAILED + blocked_reason persisted. Event: started + blocked. Finalize: False with blocked task. All 3 tests pass | PASS |
+| 663 | Tested in 640-654: test_two_tasks_one_per_run (one per run, re-queue, completed after final). Queue entry transitions correct | PASS |
+| 664 | test_blocked_task_finalize_false. test_finalize_after_task_completed. test_finalize_false_with_pending_task. Failed task blocks finalize | PASS |
+| 665 | list_jobs_safe exists, list_jobs delegates. Readiness uses load_job_safe per-job. Corrupt individual job detected. Context says 90% — honest | PASS (with note) |
+| 666 | test_propose_to_worker_completion via subprocess: propose→eval→approve→mat→enqueue→worker→completed. Events verified: evaluated+approved+materialized+started+completed. timeout=10. No shell=True | PASS |
+| 667 | 10 guard tests: no ollama import (3), no source_apply (2), storage through helpers (1), no circular deps (2), autorun isolated (1), fixture path pure (1) | PASS |
+| 668 | Component table: Ollama 0%, rollback 0%, overnight 0%, UI paused, list_jobs 90%. All "100%" backed by tests. No overclaim | PASS |
+| 669 | 164 independently verified via wrapper. No background pytest. CLI no hang. Worker CLI E2E passes. 0 warnings | PASS |
+
+## Scope Blockers
+
+| Blocker | Verdict |
+|---------|---------|
+| 0.0.0.0 bind | PASS |
+| shell=True | PASS — not in any new code |
+| External CDN | PASS |
+| Ollama API | PASS — legacy autorun only |
+| WebSocket | PASS |
+| POST/PUT/DELETE | PASS — 405 enforced |
+| Outbound HTTP | PASS |
+| Raw content leaks | PASS — safe_summary[:200], blocked_reason[:200], description[:80] |
+| UI redesign | PASS — backend only |
+| Overnight autonomy execution | PASS — overnight_readiness still returns False |
+| Docker/MemPalace | PASS |
+| Provider-specific imports in core | PASS — 10 guard tests enforce |
+| Claude/OpenAI provider | PASS |
+| Git commit gate | PASS |
+
+## Findings
+
+### R-655-001
+Status: Open
+Severity: low
+Area: readiness
+Summary: list_jobs_safe still not consumed by readiness
+Details: list_jobs_safe returns (jobs, degraded, skipped_files) but backend_readiness uses load_job_safe for the specific job. Multi-job listing corruption is invisible to readiness. Context honestly says 90%. Acceptable for single-job readiness context.
+Evidence: `grep -rn "list_jobs_safe" packages/ tests/` — only storage.py internal
+Expected fix: Add list_jobs_safe to a CLI command or readiness section for all-jobs health.
+
+### R-655-002
+Status: Open
+Severity: low
+Area: readiness
+Summary: No execution_health section in backend_readiness
+Details: Readiness has storage_health, proposal_health, build_readiness, finalize_readiness, overnight_readiness. No execution_health reflecting last execution time, provider used, or execution outcomes. finalize_readiness tracks pending/completed/blocked counts which is functionally sufficient.
+Evidence: `grep -n "execution_health" packages/orchestration/proposed_tasks.py` returns empty
+Expected fix: Optional — add execution_health section or note that finalize_readiness covers task state.
+
+## Architecture Assessment
+
+**Strengths:**
+- ALL R-640-xxx findings resolved (5 of 7 fully resolved, 2 acknowledged with honest percentages)
+- BudgetGate fully integrated: imported, checked before execution, recorded after, params flow through
+- Worker CLI E2E via subprocess — not just function tests
+- Started + completed + blocked events all exist and tested
+- Separate exception handling: JobNotFoundError vs JobStoreError
+- WorkerResult v2: caller knows which task ran, what happened, budget status
+- Blocked fixture path fully tested: persistence, events, finalize blocks
+- 10 modularity guard tests: comprehensive boundary enforcement
+- Component status table is maximally honest: 0% where 0%, 90% where 90%
+- Event reads bounded ([:5], [:10]) — no broad glob scans
+- grouped.py CLI arg fixes enable subprocess tests
+
+**Remaining Risks (all low):**
+1. list_jobs_safe not in readiness (R-655-001)
+2. No execution_health section (R-655-002)
+3. Dashboard doesn't detect materialization mismatch (carry-forward R-610-002)
+4. Lock timeout/concurrent test missing (carry-forward R-595-003)
+5. Double-load in lock (carry-forward R-595-005)
+
+## Final Verdict
+
+**PASS**
+
+- Propose runtime CLI status: **PASS** — 11 tests, no hang, bounded event reads, no timeout mark warning
+- Worker CLI runtime status: **PASS** — 5 subprocess tests via grouped entrypoint, full loop proven
+- WorkerResult contract status: **PASS** — task_id, provider, work_performed, task_status, artifact_ids, blocked_reason, budget_status. JSON export safe
+- BudgetGate worker usage status: **PASS** — imported, enforced, tested (zero blocks, one allows). R-640-001 fully resolved
+- Execution events status: **PASS** — started + completed/blocked events. Both tested via function + subprocess. Blocked path verified
+- Exception handling status: **PASS** — separate JobNotFoundError/JobStoreError. No broad catch. R-640-007 resolved
+- Blocked task persistence status: **PASS** — RunState.FAILED + blocked_reason. Finalize blocks. Event written
+- Multi-task queue status: **PASS** — one per run, re-queue, completed after final (640-654 tests)
+- Readiness/finalize status: **PASS** — pending/completed/blocked reflected. Corrupt blocks. No fake ready. list_jobs gap acknowledged at 90%
+- Storage corruption status: **PASS** — list_jobs_safe exists. load_job_safe per-job in readiness. Honest 90% in context
+- Runtime backend E2E status: **PASS** — propose→eval→approve→mat→enqueue→worker→completed via subprocess. Events chain: evaluated+approved+materialized+started+completed
+- Baukasten/modularity status: **PASS** — 10 guard tests. No provider imports in core. Autorun isolated. No circular deps
+- 100% component list accuracy: **PASS** — Ollama 0%, rollback 0%, overnight 0%, UI paused, list_jobs 90%. All "100%" backed by tests
+- Raw leak status: **PASS** — safe_summary[:200], blocked_reason[:200], description[:80], redaction="safe_metadata_only"
+- Tests run: 164 independently verified via scripts/remedy_pytest.sh (47 proposed + 33 task_exec + 23 worker_exec + 11 propose_cli + 5 worker_cli)
+- Full pytest: Worker reports 4427 passed (not independently verified — targeted suites confirm no regressions)
+- Top remaining backend risks:
+  1. list_jobs_safe not consumed by readiness (R-655-001 — low)
+  2. No execution_health section in readiness (R-655-002 — low)
+  3. Dashboard doesn't detect materialization mismatch (R-610-002 — low, carry-forward)
+  4. Lock timeout/concurrent test missing (R-595-003 — low, carry-forward)
+  5. Double-load in lock (R-595-005 — low, carry-forward)
+- Merge readiness: **YES** — all prior medium findings resolved. 2 new low findings. Backend basis loop is proven end-to-end through both function tests and subprocess CLI. Budget enforced. Events complete (started+completed+blocked). Modularity guarded. 100% claims honest.
+
+---
+
 # Parallel Review — Steps 640-654 (Independent Reviewer)
 
 Reviewer: parallel watcher (independent)
@@ -1029,3 +1172,26 @@ Status: IN PROGRESS
 - Step 667: Baukasten v2 — 10 guard tests (no provider imports, no source_apply, autorun isolated).
 - Step 668: Component status table in context.md.
 - Also: Fixed grouped CLI --once/--max-jobs/--max-seconds parsing. Fixed worker handler args.job mapping.
+
+---
+
+# Live Review — Steps 670-684
+
+Reviewer: self (backend basis hardening final)
+Scope: Runtime no-hang, budget CLI, execution_health, lock tests, clean handoff
+Status: IN PROGRESS
+
+## Step Log
+- Step 670: Handoff — 6 risks carried, plan updated.
+- Step 671: Shared subprocess helper (runtime_helpers.py) — run_grouped_cli, run_json, read_events, create_test_env.
+- Step 672: Propose runtime uses helper — cleaner assertions, bounded reads.
+- Step 673: Worker runtime uses helper + budget max_steps=0 test.
+- Step 675: Worker CLI budget args — --max-steps, --max-tokens, --max-runtime-seconds wired through catalog/grouped/handler.
+- Step 676: execution_health section in backend_readiness — pending/completed/blocked/total.
+- Step 677: list_jobs_safe consumed by backend_readiness — skipped_files count, storage degraded.
+- Step 678: Lock timeout test — test_lock_timeout_on_busy, test_lock_released_on_exception.
+- Step 679: Double-load cleanup — approve/reject/defer rewritten to single load-modify-write.
+- Step 680: Worker lease released on budget block.
+- Step 682: Backend basis smoke script (scripts/remedy_backend_basis_smoke.sh).
+- Step 683: Completion table with freeze rules in context.md.
+- Fixes: lock fd double-close in _file_lock timeout path, defer_proposed_task bug (used task.id before assignment).

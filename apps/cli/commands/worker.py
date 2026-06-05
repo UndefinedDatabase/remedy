@@ -262,6 +262,7 @@ def _cmd_worker_unload(
 
 
 def _cmd_worker_run(*, once: bool = False, max_jobs: int = 1, max_seconds: int = 60,
+                    max_steps: int = 1, max_tokens: int = 0, max_runtime_seconds: int = 60,
                     provider: str = "none", job_id: str = "", json_output: bool = False) -> None:
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.worker_queue import (
@@ -271,7 +272,10 @@ def _cmd_worker_run(*, once: bool = False, max_jobs: int = 1, max_seconds: int =
     )
     data_dir = resolve_data_root()
     if once:
-        result = run_worker_once(data_dir, provider=provider, job_id=job_id)
+        result = run_worker_once(
+            data_dir, provider=provider, job_id=job_id,
+            max_steps=max_steps, max_tokens=max_tokens, max_runtime_seconds=max_runtime_seconds,
+        )
     else:
         result = run_worker_loop(data_dir, provider=provider, max_jobs=max_jobs, max_seconds=max_seconds)
     if json_output:
@@ -322,6 +326,9 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         once=getattr(args, "once", False),
         max_jobs=int(getattr(args, "max_jobs", 1) or 1),
         max_seconds=int(getattr(args, "max_seconds", 60) or 60),
+        max_steps=int(getattr(args, "max_steps", 1) or 1),
+        max_tokens=int(getattr(args, "max_tokens", 0) or 0),
+        max_runtime_seconds=int(getattr(args, "max_runtime_seconds", 60) or 60),
         provider=getattr(args, "provider", None) or "none",
         job_id=getattr(args, "job", "") or getattr(args, "job_id", "") or "",
         json_output=getattr(args, "json", False),
