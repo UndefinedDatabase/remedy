@@ -1,28 +1,24 @@
-# Plan — Steps 625-639: Modular Task Execution + Worker Runs Real Tasks
+# Plan — Steps 640-654: Backend Basis Completion
 
 ## Goal
-Worker executes real materialized Job.tasks through modular port. Budget gate. Readiness v2.
+Close the loop: materialize → worker executes → persists → events → readiness.
 
 ## Current Step
-639 — Final baseline
+654 — Final baseline
 
 ## Steps
-- [x] 625: Clean handoff — readiness terms, agent files, carry forward risks
-- [x] 626: Stabilize runtime CLI subprocess tests — unique UUIDs per test, no hangs
-- [x] 627: Backend readiness v2 — structured: storage_health, build_readiness, finalize_readiness, overnight
-- [x] 628: Task execution port — TaskExecutionRequest/Result, TaskExecutor protocol
-- [x] 629: FixtureTaskExecutor — deterministic, creates artifact, safe summary
-- [x] 630: (merged into 628-629) execute_task() dispatches to provider executor
-- [x] 631: Provider adapter selection — get_executor(), ALLOWED_PROVIDERS, NoneExecutor
-- [x] 632: (merged into 628) Task lifecycle in TaskExecutionResult statuses
-- [x] 633: (merged into 628) Execution events — safe metadata in result
-- [x] 634: (merged into tests) Job.tasks persistence verified through subprocess E2E
-- [x] 635: can_retry_task() — read-only retry boundary
-- [x] 636: BudgetGate — max_steps, record_step, exhaustion check
-- [x] 637: Overnight readiness v2 — pending tasks, blocked tasks as blockers
-- [x] 638: Modular architecture guard tests — no ollama import, no source_apply bypass
-- [x] 639: Full baseline: 4391 passed, 0 failed, 8 skipped
-
-## Also Fixed
-- R-610-003: origin_task_id + origin_recommendation_id in materialized Task inputs
-- R-610-004: load_job moved inside _file_lock in do_materialize
+- [x] 640: Handoff — "basis complete" defined, agent files
+- [x] 641: Runtime CLI stabilized (timeout marker, unique UUIDs)
+- [x] 642: Fixed can_retry_task var bug, BudgetGate enforces tokens/runtime
+- [x] 643: list_jobs_safe with corruption visibility
+- [x] 644: Worker wired to task_execution port (_run_via_task_execution)
+- [x] 645: Worker executes exactly one task per --once, re-queues if remaining
+- [x] 646: Execution persists: Task.status=COMPLETED, execution_summary, artifact_ids
+- [x] 647: Events: task_execution_completed written via RunLogWriter
+- [x] 648: Queue gate blocks approved_not_materialized
+- [x] 649: Finalize gate reflects executed task state
+- [x] 650: Readiness v2 already includes execution health (from 627)
+- [x] 651: BudgetGate enforces max_tokens + max_runtime_seconds
+- [x] 652: Full backend E2E test: propose → evaluate → approve → materialize → worker → completed → finalize
+- [x] 653: Modular guards: worker imports task_execution, not providers; legacy autorun isolated
+- [x] 654: Full baseline: 4406 passed, 0 failed, 8 skipped

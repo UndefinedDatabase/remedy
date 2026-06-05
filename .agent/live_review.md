@@ -1,3 +1,144 @@
+# Parallel Review — Steps 625-639 (Independent Reviewer)
+
+Reviewer: parallel watcher (independent)
+Scope: Steps 625-639 (Modular task execution port, fixture executor, readiness v2)
+Commit: af2e021
+Status: VERIFIED
+
+## Test Results (independently run)
+- `tests/orchestration/test_proposed_tasks.py` + `tests/orchestration/test_task_execution.py` + `tests/cli/test_propose_cli_runtime.py`: **128/128 passed** (2.03s)
+- New test file: `test_task_execution.py` — 28 tests covering execution port, fixture/none executors, provider selection, budget gate, retry boundary, modularity guards
+- Refactored: `test_propose_cli_runtime.py` — unique UUID per test via `env` fixture, no shared state
+- New: `test_materialized_pending_task` in readiness tests — verifies build_ready=True with pending tasks
+- Worker claims full baseline (not independently verified — targeted suites confirm no regressions)
+
+## Prior Findings Resolution
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| R-610-001 (queue gate no materialization check) | medium | **OPEN** — worker_queue.py unchanged |
+| R-610-002 (dashboard no reconcile) | low | **OPEN** — ui_server.py unchanged |
+| R-610-003 (origin_task_id missing from Task inputs) | low | **RESOLVED** — conditionally added in materialize_approved_task (proposed_tasks.py:609-612) |
+| R-610-004 (Job load outside file_lock) | low | **RESOLVED** — load_job moved inside _file_lock in do_materialize (proposed_tasks.py:644) |
+| R-595-003 (no lock timeout test) | low | **OPEN** — still no concurrent/timeout test |
+| R-595-005 (double-load in lock) | low | **OPEN** — same pattern remains |
+
+## Per-Step Checklist
+
+| Step | Check | Verdict |
+|------|-------|---------|
+| 625 | context/plan current, readiness terms defined, 6 risks carried, live_review appended | PASS |
+| 626 | Runtime CLI tests: `env` fixture creates unique UUID+Job per test, `_run()` helper with subprocess+REMEDY_DATA_DIR, no shared JOB_UUID. 11 pass reliably | PASS |
+| 627 | backend_readiness v2: structured dict with storage_health, proposal_health, build_readiness, finalize_readiness, overnight_readiness. `_task_status_val` helper. `no_pending_work` blocker. 5 tests including new `test_materialized_pending_task` | PASS |
+| 628 | TaskExecutionRequest: job_id, task_id, description, inputs, provider, mode, max_steps, max_runtime_seconds, max_tokens. TaskExecutionResult: status, outcome, artifact_ids, safe_summary, timestamps. TaskExecutor Protocol. execute_task() dispatches via get_executor() | PASS |
+| 629 | FixtureTaskExecutor: deterministic completion with artifact_id (uuid hex[:12]), blocked path for `blocked_fixture` task_type, safe_summary bounded. No external calls. Tests verify both paths | PASS |
+| 630 | Merged into 628-629. execute_task() dispatches to provider executor. Worker not wired yet — port defined, integration pending | PASS (see R-625-003) |
+| 631 | Provider adapter: _EXECUTORS dict, get_executor() returns class instance. ALLOWED_PROVIDERS frozenset includes "ollama" but returns None (unavailable). NoneExecutor for explicit "none". Unknown → None → blocked result | PASS |
+| 632 | Merged into 628. TaskExecutionResult has status field: no_work, completed, blocked. Lifecycle states in result, not in separate model | PASS |
+| 633 | Merged into 628. safe_summary, started_at, completed_at in result. No separate event emission yet — result carries metadata | PASS |
+| 634 | Merged into tests. Subprocess E2E already verifies Job.tasks persistence. Execution persistence not yet applicable (port not wired) | PASS |
+| 635 | can_retry_task(): read-only, checks job/task existence, status (completed/pending/failed), reconciliation. Returns {ready, blockers, reason, required_human_action}. 3 tests | PASS (see R-625-001) |
+| 636 | BudgetGate: max_steps, record_step, has_budget property, can_execute() → (bool, reason). Tests: no_budget, allows, exhausted, has_budget | PASS (see R-625-002) |
+| 637 | overnight_readiness v2: extends blockers from storage_health + build_readiness sections, adds pending_tasks + blocked_tasks from finalize. Still always returns ready=False | PASS |
+| 638 | 5 modularity guard tests: no ollama import in worker_queue/task_execution/proposed_tasks, no raw open in proposed_tasks, no source_apply in task_execution | PASS |
+| 639 | Committed af2e021. 128 independently verified (targeted suites). No test_steps files. 2 new files, 3 modified Python files | PASS |
+
+## Scope Blockers
+
+| Blocker | Verdict |
+|---------|---------|
+| 0.0.0.0 bind | PASS |
+| shell=True | PASS — not in any new code |
+| External CDN | PASS |
+| Ollama API | PASS — in ALLOWED_PROVIDERS but get_executor returns None (unavailable) |
+| WebSocket | PASS |
+| POST/PUT/DELETE | PASS — 405 enforced |
+| Outbound HTTP | PASS |
+| Raw content leaks | PASS — safe_summary bounded, title[:80], reason[:200] |
+| UI redesign | PASS — backend only |
+| Overnight autonomy execution | PASS — read-only gate only, always False |
+| Docker/MemPalace | PASS |
+| Provider-specific imports in core | PASS — guard tests enforce no ollama/source_apply in core modules |
+
+## Findings
+
+### R-625-001
+Status: Open
+Severity: low
+Area: retry-boundary
+Summary: can_retry_task uses loop variable `t` instead of found `task` at line 210
+Details: After `for t in job.tasks: if str(t.id) == task_id: task = t; break`, line 210 reads `status = t.status.value ...` using `t` (loop var) instead of `task` (found var). Correct due to break — when task is found, t == task. But fragile: if loop is refactored to not use break (e.g., generator), `t` would point to last task.
+Evidence: task_execution.py:202-210
+Expected fix: Change line 210 to `status = task.status.value if hasattr(task.status, "value") else str(task.status)`
+
+### R-625-002
+Status: Open
+Severity: low
+Area: budget-gate
+Summary: BudgetGate.can_execute() only checks max_steps — ignores max_tokens and max_runtime_seconds
+Details: BudgetGate has fields max_tokens and max_runtime_seconds, but can_execute() only checks max_steps. Token and time budgets are tracked (tokens_used incremented by record_step) but never enforced. Partial enforcement — steps gate works, token/time gates are structural placeholders.
+Evidence: task_execution.py:172-177 — only max_steps checked
+Expected fix: Add token/time checks to can_execute() or remove unused fields to avoid false confidence.
+
+### R-625-003
+Status: Open
+Severity: info
+Area: integration
+Summary: Execution port defined but not wired into worker
+Details: task_execution.py defines TaskExecutionRequest/Result, FixtureTaskExecutor, execute_task(), BudgetGate, can_retry_task(). But worker_queue.py has zero changes — the port exists as a standalone module. No worker state changes tied to Job.tasks execution. This is expected for this block (port definition before integration) but means "worker runs real tasks" is not yet proven end-to-end.
+Evidence: `git diff 7cb6b7c..af2e021 -- packages/orchestration/worker_queue.py` returns empty
+Expected: Worker integration in next block (640+).
+
+## Architecture Assessment
+
+**Strengths:**
+- R-610-003 RESOLVED: origin_task_id + origin_recommendation_id conditionally in Task inputs
+- R-610-004 RESOLVED: load_job inside _file_lock — concurrent materialization race eliminated
+- TaskExecutor Protocol + get_executor() is clean provider abstraction — no core imports of providers
+- FixtureTaskExecutor is truly deterministic: uuid-based artifact IDs, bounded summaries, no external calls
+- BudgetGate is simple and testable: can_execute() before each step, record_step() after
+- can_retry_task() is read-only — checks reconciliation before allowing retry
+- Modularity guard tests enforce architecture boundaries at test time
+- backend_readiness v2 structured sections give targeted diagnostics (not just flat blockers list)
+- Runtime CLI tests refactored cleanly — each test isolated with unique UUID
+
+**Remaining Risks:**
+1. Queue gate doesn't enforce materialization (carry-forward R-610-001)
+2. Dashboard doesn't detect materialization mismatches (carry-forward R-610-002)
+3. Execution port not wired into worker (R-625-003)
+4. BudgetGate token/time enforcement missing (R-625-002)
+5. Lock timeout/busy path untested (carry-forward R-595-003)
+
+## Final Verdict
+
+**PASS WITH RISKS**
+
+- Task execution port status: **PASS** — Request/Result models, Protocol interface, dispatch function
+- Fixture executor status: **PASS** — deterministic, bounded, no external calls
+- Provider adapter status: **PASS** — get_executor(), ALLOWED_PROVIDERS, ollama unavailable, NoneExecutor
+- Budget gate status: **PASS** — max_steps enforcement works; token/time structural only (R-625-002)
+- Retry boundary status: **PASS** — read-only, reconciliation-aware (minor t/task var issue R-625-001)
+- Backend readiness v2 status: **PASS** — 5 structured sections, pending_tasks awareness
+- Overnight readiness v2 status: **PASS** — always false, pending/blocked counted from structured readiness
+- Modularity guards status: **PASS** — 5 guard tests enforce no provider imports in core
+- Prior fix R-610-003 status: **RESOLVED** — origin_task_id in Task inputs
+- Prior fix R-610-004 status: **RESOLVED** — Job load inside lock
+- Worker integration status: **NOT YET** — port defined, worker not wired (R-625-003)
+- Runtime CLI tests status: **PASS** — refactored with unique UUID per test, 11 pass
+- Raw leak status: **PASS** — safe_summary bounded, task_description[:60] in fixture
+- Tests run: 128 (97 proposed_tasks + 20 task_execution + 11 subprocess) — all guarded via scripts/remedy_pytest.sh
+- Top 5 remaining risks:
+  1. Execution port not wired into worker (R-625-003)
+  2. Queue gate doesn't enforce materialization (R-610-001)
+  3. BudgetGate only checks max_steps (R-625-002)
+  4. Dashboard doesn't detect materialization mismatch (R-610-002)
+  5. Lock timeout/busy path untested (R-595-003)
+- Answer: **Close to worker executing real tasks? PARTIALLY.** Execution port is defined, fixture executor proves the interface, budget gate exists. But worker_queue.py is unchanged — no Job.tasks item is executed through the port yet. Need worker integration next.
+- Answer: **Close to overnight autonomous builder? NO.** `overnight_readiness()` still correctly returns `ready: False`. Missing: worker execution wiring, rollback, execution proof. Budget gate exists but is not consumed by worker.
+- Merge readiness: **YES** — 2 prior findings resolved, 3 new findings (2 low, 1 info), no blockers, execution port is architecturally sound
+
+---
+
 # Parallel Review — Steps 610-624 (Independent Reviewer)
 
 Reviewer: parallel watcher (independent)
@@ -646,3 +787,25 @@ Status: IN PROGRESS
 - Step 638: Modular guard tests — no ollama import in core, no source_apply in executor, storage through helpers.
 - Fix R-610-003: origin_task_id + origin_recommendation_id in materialize_approved_task inputs.
 - Fix R-610-004: load_job moved inside _file_lock in do_materialize (prevents concurrent job task loss).
+
+---
+
+# Live Review — Steps 640-654
+
+Reviewer: self (backend basis completion)
+Scope: Worker executes real Job.tasks, events, readiness, budget, E2E
+Status: IN PROGRESS
+
+## Step Log
+- Step 640: Handoff — "basis complete" defined, 6 risks carried.
+- Step 641: Runtime CLI test file: pytest.mark.timeout(30) on E2E, unique UUIDs already from 626.
+- Step 642: can_retry_task uses `task` not `t`. BudgetGate enforces max_tokens + max_runtime_seconds.
+- Step 643: list_jobs_safe() returns (jobs, degraded, skipped_files).
+- Step 644: _run_via_task_execution() — loads Job, finds pending task, calls execute_task(), saves Job.
+- Step 645: One task per --once. Remaining > 0 → release lease + re-queue. Remaining == 0 → completed.
+- Step 646: Task.status=COMPLETED, execution_summary, execution_artifact_ids, execution_provider persisted.
+- Step 647: RunLogWriter emits task_execution_completed with proposed_task_id, provider, artifact_count.
+- Step 648: _has_unresolved_proposals blocks approved_not_materialized + unresolved + corrupt.
+- Step 649: can_finalize blocks pending_task_count (tests prove before/after worker run).
+- Step 652: TestFullBackendLoop.test_propose_to_completion — full loop proven end-to-end.
+- Step 653: Legacy autorun isolated in _run_via_legacy_autorun. Fixture path uses task_execution only.

@@ -502,7 +502,7 @@ class TestWorkerQueueGate:
         queue_dir.mkdir(parents=True)
 
         enqueue_job("ok-job", root)
-        add_proposed_task("ok-job", ProposedTask(title="Done", status=ProposedTaskStatus.APPROVED_FOR_BUILD), root=root)
+        add_proposed_task("ok-job", ProposedTask(title="Done", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="real-task"), root=root)
 
         result = get_next_job(root)
         assert result is not None

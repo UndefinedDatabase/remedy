@@ -125,6 +125,7 @@ class TestSubprocessErrors:
 
 
 class TestSubprocessFullFlow:
+    @pytest.mark.timeout(30)
     def test_end_to_end(self, env):
         root, jid = env
         t = ProposedTask(title="E2E", risk="medium")

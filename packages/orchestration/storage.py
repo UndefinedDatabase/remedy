@@ -115,14 +115,23 @@ def list_jobs(root: Path | None = None) -> list[Job]:
     """Return all persisted jobs sorted by created_at descending.
 
     Corrupted or unreadable files are silently skipped.
+    Use list_jobs_safe() to detect skipped files.
     """
+    result, _, _ = list_jobs_safe(root)
+    return result
+
+
+def list_jobs_safe(root: Path | None = None) -> tuple[list[Job], bool, list[str]]:
+    """List jobs with corruption visibility. Returns (jobs, degraded, skipped_files)."""
     jdir = _resolve_jobs_dir(root)
     if not jdir.exists():
-        return []
+        return ([], False, [])
     jobs: list[Job] = []
+    skipped: list[str] = []
     for path in jdir.glob("*.json"):
         try:
             jobs.append(Job.model_validate_json(path.read_text()))
         except (ValueError, OSError):
-            pass
-    return sorted(jobs, key=lambda j: j.created_at, reverse=True)
+            skipped.append(path.name)
+    jobs.sort(key=lambda j: j.created_at, reverse=True)
+    return (jobs, len(skipped) > 0, skipped)

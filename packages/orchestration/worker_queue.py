@@ -35,7 +35,7 @@ LIFECYCLE_STATES = frozenset({
 VALID_TRANSITIONS: dict[str, frozenset[str]] = {
     "queued": frozenset({"claimed", "paused", "cancelled"}),
     "claimed": frozenset({"running", "cancelled", "failed"}),
-    "running": frozenset({"waiting_for_approval", "blocked", "completed", "failed", "cancelling", "paused"}),
+    "running": frozenset({"waiting_for_approval", "blocked", "completed", "failed", "cancelling", "paused", "queued"}),
     "waiting_for_approval": frozenset({"running", "paused", "cancelled"}),
     "blocked": frozenset({"queued", "cancelled", "failed"}),
     "paused": frozenset({"queued", "cancelled"}),
@@ -174,17 +174,25 @@ def list_queued(data_dir: str | Path) -> list[QueueEntry]:
 
 
 def _has_unresolved_proposals(job_id: str, data_dir: str | Path | None = None) -> bool:
-    """Check if a job has unresolved proposed tasks blocking build.
+    """Check if a job has unresolved or un-materialized proposed tasks blocking build.
 
-    Returns True if unresolved proposals exist OR if store is corrupt/degraded.
+    Returns True if: unresolved proposals, approved_not_materialized, or store corrupt.
     """
     try:
-        from packages.orchestration.proposed_tasks import count_unresolved_safe
+        from packages.orchestration.proposed_tasks import (
+            load_proposed_tasks_safe,
+            ProposedTaskStatus,
+        )
         root = Path(data_dir) if data_dir is not None else None
-        count, degraded = count_unresolved_safe(job_id, root)
+        tasks, degraded = load_proposed_tasks_safe(job_id, root)
         if degraded:
             return True
-        return count > 0
+        for t in tasks:
+            if t.is_unresolved():
+                return True
+            if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not t.is_materialized:
+                return True
+        return False
     except ImportError:
         return False
 
@@ -367,6 +375,8 @@ def _save_worker_status(data_dir: str | Path, status: WorkerStatus) -> None:
 
 ALLOWED_PROVIDERS = frozenset({"none", "fixture", "ollama"})
 
+_TASK_EXEC_PROVIDERS = frozenset({"fixture"})
+
 
 def validate_provider(provider: str) -> str | None:
     """Return error message if provider invalid, None if valid."""
@@ -398,6 +408,161 @@ def _map_result_to_lifecycle(
         return ("completed", "example_completed", "fixture_complete")
 
     return ("blocked", "blocked", autorun_stop_reason or "unknown")
+
+
+def _run_via_task_execution(
+    entry: QueueEntry,
+    provider: str,
+    data_dir: str | Path,
+    worker_id: str,
+    start: float,
+    result: WorkerResult,
+) -> WorkerResult:
+    """Execute one pending Job.tasks item through the modular task_execution port."""
+    from packages.orchestration.task_execution import TaskExecutionRequest, execute_task
+    from packages.orchestration.storage import load_job, save_job, JobNotFoundError
+    from packages.core.models import RunState
+
+    root = Path(data_dir)
+    try:
+        job = load_job(entry.job_id, root)
+    except (JobNotFoundError, Exception):
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason="job_not_found")
+        result.last_lifecycle_state = "blocked"
+        result.action_taken = "blocked"
+        result.why_it_stopped = "job_not_found"
+        return result
+
+    pending_task = None
+    for t in job.tasks:
+        s = t.status.value if hasattr(t.status, "value") else str(t.status)
+        if s == "pending":
+            pending_task = t
+            break
+
+    if pending_task is None:
+        transition_state(entry.job_id, "completed", data_dir)
+        result.last_lifecycle_state = "completed"
+        result.action_taken = "no_pending_tasks"
+        result.why_it_stopped = "all_tasks_done"
+        return result
+
+    req = TaskExecutionRequest(
+        job_id=str(job.id),
+        task_id=str(pending_task.id),
+        task_description=pending_task.description[:80],
+        task_inputs=dict(pending_task.inputs) if pending_task.inputs else {},
+        provider=provider,
+    )
+    exec_result = execute_task(req)
+
+    if exec_result.status == "completed":
+        pending_task.status = RunState.COMPLETED
+        if exec_result.safe_summary:
+            pending_task.inputs["execution_summary"] = exec_result.safe_summary[:200]
+        if exec_result.artifact_ids:
+            pending_task.inputs["execution_artifact_ids"] = exec_result.artifact_ids
+        pending_task.inputs["execution_provider"] = exec_result.provider
+    elif exec_result.status == "blocked":
+        pending_task.status = RunState.FAILED
+        pending_task.inputs["blocked_reason"] = exec_result.blocked_reason[:200]
+    else:
+        pending_task.status = RunState.FAILED
+        pending_task.inputs["blocked_reason"] = exec_result.outcome[:200] if exec_result.outcome else "unknown"
+
+    save_job(job, root)
+
+    try:
+        from packages.orchestration.run_log import RunLogWriter
+        writer = RunLogWriter(job.id, runs_root=root / "runs")
+        event_name = f"task_execution_{exec_result.status}"
+        metadata = {
+            "proposed_task_id": (pending_task.inputs or {}).get("proposed_task_id", ""),
+            "provider": exec_result.provider,
+            "work_performed": exec_result.work_performed,
+            "exec_status": exec_result.status,
+            "artifact_count": len(exec_result.artifact_ids),
+            "token_count": exec_result.token_count,
+            "duration_ms": exec_result.duration_ms,
+        }
+        writer.log(event_name, task_id=str(pending_task.id), outcome=exec_result.status, **metadata)
+    except (ImportError, OSError):
+        pass
+
+    if exec_result.status == "completed":
+        remaining = sum(
+            1 for t in job.tasks
+            if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending"
+        )
+        if remaining == 0:
+            transition_state(entry.job_id, "completed", data_dir)
+            result.last_lifecycle_state = "completed"
+            result.jobs_processed = 1
+        else:
+            transition_state(entry.job_id, "queued", data_dir)
+            release_lease(entry.job_id, data_dir)
+            result.last_lifecycle_state = "queued"
+        result.action_taken = "task_completed"
+        result.why_it_stopped = "task_done"
+        result.last_job_id = str(job.id)
+    else:
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason=exec_result.blocked_reason or "execution_failed")
+        result.last_lifecycle_state = "blocked"
+        result.action_taken = "blocked"
+        result.why_it_stopped = exec_result.blocked_reason or "execution_failed"
+
+    result.duration_ms = int((time.monotonic() - start) * 1000)
+    return result
+
+
+def _run_via_legacy_autorun(
+    entry: QueueEntry,
+    provider: str,
+    data_dir: str | Path,
+    result: WorkerResult,
+    start: float,
+) -> WorkerResult:
+    """Legacy autorun path for providers not yet on task_execution port."""
+    try:
+        from packages.orchestration.autorun import run_autorun
+        from packages.orchestration.storage import JobNotFoundError, load_job
+        job = load_job(entry.job_id)
+        ar = run_autorun(job, builder_provider=provider, data_dir=str(data_dir))
+        stage = ar.stage if hasattr(ar, "stage") else ""
+        stop = ar.stop_reason if hasattr(ar, "stop_reason") else ""
+        intent_id = getattr(ar, "intent_id", "") or ""
+
+        if stop == "approval_required" and intent_id:
+            transition_state(entry.job_id, "waiting_for_approval", data_dir, blocked_reason="approval_required")
+            result.last_lifecycle_state = "waiting_for_approval"
+            result.action_taken = "stopped_for_approval"
+            result.why_it_stopped = "approval_required"
+            result.next_command = f"remedy patch approve {entry.job_id[:8]} {intent_id}"
+        elif stop == "approval_required":
+            transition_state(entry.job_id, "blocked", data_dir, blocked_reason="approval_required_no_intent")
+            result.last_lifecycle_state = "blocked"
+            result.action_taken = "blocked"
+            result.why_it_stopped = "approval_required_no_intent"
+        else:
+            lc, action, why = _map_result_to_lifecycle(provider, stage, stop)
+            transition_state(entry.job_id, lc, data_dir, blocked_reason=why if lc == "blocked" else "")
+            result.last_lifecycle_state = lc
+            result.action_taken = action
+            result.why_it_stopped = why
+            if lc == "completed":
+                result.jobs_processed = 1
+    except JobNotFoundError:
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason="job_not_found")
+        result.last_lifecycle_state = "blocked"
+        result.action_taken = "blocked"
+        result.why_it_stopped = "job_not_found"
+    except ImportError:
+        transition_state(entry.job_id, "blocked", data_dir, blocked_reason="missing_dependency")
+        result.last_lifecycle_state = "blocked"
+        result.action_taken = "blocked"
+        result.why_it_stopped = "missing_dependency"
+    result.duration_ms = int((time.monotonic() - start) * 1000)
+    return result
 
 
 def run_worker_once(
@@ -464,52 +629,10 @@ def run_worker_once(
         result.action_taken = "no_work_performed"
         result.why_it_stopped = "no_worker_selected"
         result.next_command = f"remedy worker run --once --provider fixture --job {entry.job_id[:8]}"
-    elif provider in ("fixture", "ollama"):
-        try:
-            from packages.orchestration.autorun import run_autorun
-            from packages.orchestration.storage import JobNotFoundError, load_job
-            job = load_job(entry.job_id)
-            ar = run_autorun(job, builder_provider=provider, data_dir=str(data_dir))
-            stage = ar.stage if hasattr(ar, "stage") else ""
-            stop = ar.stop_reason if hasattr(ar, "stop_reason") else ""
-            intent_id = ""
-            if hasattr(ar, "intent_id"):
-                intent_id = ar.intent_id or ""
-
-            if stop == "approval_required" and intent_id:
-                transition_state(
-                    entry.job_id, "waiting_for_approval", data_dir,
-                    blocked_reason="approval_required",
-                )
-                result.last_lifecycle_state = "waiting_for_approval"
-                result.action_taken = "stopped_for_approval"
-                result.why_it_stopped = "approval_required"
-                result.next_command = f"remedy patch approve {entry.job_id[:8]} {intent_id}"
-            elif stop == "approval_required" and not intent_id:
-                transition_state(entry.job_id, "blocked", data_dir, blocked_reason="approval_required_no_intent")
-                result.last_lifecycle_state = "blocked"
-                result.action_taken = "blocked"
-                result.why_it_stopped = "approval_required_no_intent"
-                result.next_command = f"remedy job show {entry.job_id[:8]}"
-            else:
-                lc, action, why = _map_result_to_lifecycle(provider, stage, stop)
-                transition_state(entry.job_id, lc, data_dir, blocked_reason=why if lc == "blocked" else "")
-                result.last_lifecycle_state = lc
-                result.action_taken = action
-                result.why_it_stopped = why
-                if lc == "completed":
-                    result.jobs_processed = 1
-        except JobNotFoundError:
-            transition_state(entry.job_id, "blocked", data_dir, blocked_reason="job_not_found")
-            result.last_lifecycle_state = "blocked"
-            result.action_taken = "blocked"
-            result.why_it_stopped = "job_not_found"
-            result.next_command = f"remedy job show {entry.job_id[:8]}"
-        except ImportError:
-            transition_state(entry.job_id, "blocked", data_dir, blocked_reason="missing_dependency")
-            result.last_lifecycle_state = "blocked"
-            result.action_taken = "blocked"
-            result.why_it_stopped = "missing_dependency"
+    elif provider in _TASK_EXEC_PROVIDERS:
+        result = _run_via_task_execution(entry, provider, data_dir, worker_id, start, result)
+    elif provider == "ollama":
+        result = _run_via_legacy_autorun(entry, provider, data_dir, result, start)
 
     result.duration_ms = int((time.monotonic() - start) * 1000)
 

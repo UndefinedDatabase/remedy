@@ -164,6 +164,7 @@ class BudgetGate:
     max_runtime_seconds: int = 0
     steps_used: int = 0
     tokens_used: int = 0
+    elapsed_seconds: float = 0.0
 
     @property
     def has_budget(self) -> bool:
@@ -174,11 +175,16 @@ class BudgetGate:
             return (False, "no_budget_set")
         if self.steps_used >= self.max_steps:
             return (False, "max_steps_exhausted")
+        if self.max_tokens > 0 and self.tokens_used >= self.max_tokens:
+            return (False, "max_tokens_exhausted")
+        if self.max_runtime_seconds > 0 and self.elapsed_seconds >= self.max_runtime_seconds:
+            return (False, "max_runtime_exhausted")
         return (True, "ok")
 
-    def record_step(self, tokens: int = 0) -> None:
+    def record_step(self, tokens: int = 0, elapsed: float = 0.0) -> None:
         self.steps_used += 1
         self.tokens_used += tokens
+        self.elapsed_seconds += elapsed
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +213,7 @@ def can_retry_task(job_id: str, task_id: str, root: Path | None = None) -> dict[
     if task is None:
         return {"ready": False, "blockers": ["task_not_found"], "reason": "task not in job"}
 
-    status = t.status.value if hasattr(t.status, "value") else str(t.status)
+    status = task.status.value if hasattr(task.status, "value") else str(task.status)
     if status == "completed":
         return {"ready": False, "blockers": ["already_completed"], "reason": "task already completed"}
     if status == "pending":
