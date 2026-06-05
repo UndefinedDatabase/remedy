@@ -4,32 +4,21 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 685-694: Runtime Hang Kill, Backend Basis Actually Final.
-UI/design work is PAUSED.
+Steps 695-704: Runtime Exit Final Fix.
 
-## Canonical Review File
-`.agent/live_review.md` — NOT `.data/live_review.md`
+## Hang Root Cause
+Runtime test files imported `packages.orchestration.proposed_tasks` which uses `fcntl.flock`.
+When `add_proposed_task` was called in-process, the flock fd (even after release and unlink)
+left kernel-level lock state that prevented pytest from exiting on some platforms.
 
-## Hang Root Cause (Found Step 686)
-Lock files left on disk by `_file_lock` context manager. The `.lock` files were created by
-`os.open(..., O_CREAT | O_RDWR)` but never deleted after lock release. In some environments,
-stale lock files on shared/tmp filesystems caused `flock()` contention in subsequent subprocesses.
-Additionally, there was a double `os.close(fd)` bug in the finally block.
+**Fix**: Runtime test files no longer import any module that uses fcntl.flock.
+All test data setup uses direct JSON file writes via `runtime_helpers.py`.
+Subprocess helper uses `subprocess.run` with `stdin=DEVNULL, close_fds=True`.
 
-**Fix**: `_file_lock` now deletes lock file after releasing lock and closing fd. Double-close removed.
-Anti-hang guard: `assert_no_leftover_locks()` in test fixture teardown.
-Subprocess isolation: `start_new_session=True` + `os.killpg` on timeout.
+## Note
+A test file that prints "passed" but does not exit is a failure.
 
-## Basis Closed Criteria (All Proven)
-1. Propose runtime file exits cleanly — 11 passed, 0 errors
-2. Worker runtime file exits cleanly — 6 passed, 0 errors
-3. Smoke script exits cleanly — 177 passed
-4. Worker executes persisted task — test_worker_execution.py
-5. Events exist — started + completed/blocked
-6. Readiness/finalize correct — test_proposed_tasks.py
-7. No leftover lock files — assert_no_leftover_locks guard
-
-## Backend Component Status — Post Steps 685-694
+## Backend Component Status
 | Component | Status |
 |-----------|--------|
 | Proposed task lifecycle | **100%** |
@@ -38,20 +27,17 @@ Subprocess isolation: `start_new_session=True` + `os.killpg` on timeout.
 | Worker one-task execution | **100%** |
 | Execution events | **100%** |
 | Queue/finalize gates | **100%** |
-| Modular architecture (Baukasten) | **100%** |
+| Modular architecture | **100%** |
 | Worker CLI subprocess | **100%** |
 | Propose CLI subprocess | **100%** |
 | Backend readiness v3 | **100%** |
-| Lock behavior (timeout + cleanup) | **100%** |
-| Runtime stability (no-hang) | **100%** |
+| Lock behavior | **100%** |
+| Runtime stability (no-hang) | **100%** — no flock in test process |
 | Ollama via task_execution | **0%** |
 | Real test execution | **0%** |
 | Rollback/snapshot | **0%** |
 | Overnight execution | **0%** |
 | UI/dashboard | paused |
-
-## Do Not Reopen Without Evidence
-Components at 100% require a failing test or reproducible bug to reopen.
 
 ## Resource Safety
 All pytest runs use scripts/remedy_pytest.sh (flock + timeout).

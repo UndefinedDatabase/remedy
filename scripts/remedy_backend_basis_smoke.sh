@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Backend basis smoke test — targeted tests only, no full suite.
 # Uses scripts/remedy_pytest.sh for flock + timeout safety.
+# Fails if tests hang (REMEDY_PYTEST_TIMEOUT_SEC enforced).
 set -euo pipefail
 
-echo "=== Backend Basis Smoke ==="
+export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-120}"
+
+echo "=== Backend Basis Smoke (timeout=${REMEDY_PYTEST_TIMEOUT_SEC}s) ==="
 
 scripts/remedy_pytest.sh \
   tests/cli/test_propose_cli_runtime.py \

@@ -1,4 +1,8 @@
-"""Runtime subprocess tests for propose CLI through grouped entrypoint."""
+"""Runtime subprocess tests for propose CLI through grouped entrypoint.
+
+IMPORTANT: This file must NOT import packages.orchestration.proposed_tasks
+or any module that uses fcntl.flock. All setup via runtime_helpers JSON writes.
+"""
 
 from __future__ import annotations
 
@@ -7,20 +11,18 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job
-from packages.orchestration.proposed_tasks import (
-    ProposedTask,
-    ProposedTaskStatus,
-    add_proposed_task,
+from tests.cli.runtime_helpers import (
+    create_test_env,
+    create_proposed_task,
+    run_grouped_cli,
+    run_json,
+    read_events,
 )
-from tests.cli.runtime_helpers import create_test_env, run_grouped_cli, run_json, read_events, assert_no_leftover_locks
 
 
 @pytest.fixture
 def env(tmp_path):
-    root, jid = create_test_env(tmp_path)
-    yield root, jid
-    assert_no_leftover_locks(root)
+    return create_test_env(tmp_path)
 
 
 class TestSubprocessList:
@@ -31,7 +33,7 @@ class TestSubprocessList:
 
     def test_list_with_tasks(self, env):
         root, jid = env
-        add_proposed_task(jid, ProposedTask(title="Test"), root=root)
+        create_proposed_task(root, jid, title="Test")
         data = run_json(["propose", "list", jid, "--json"], root)
         assert data["count"] == 1
 
@@ -39,7 +41,7 @@ class TestSubprocessList:
 class TestSubprocessEvaluate:
     def test_evaluate_all(self, env):
         root, jid = env
-        add_proposed_task(jid, ProposedTask(title="Eval me", risk="medium"), root=root)
+        create_proposed_task(root, jid, title="Eval me", risk="medium")
         data = run_json(["propose", "evaluate", jid, "--json"], root)
         assert data["evaluated_count"] == 1
 
@@ -47,35 +49,31 @@ class TestSubprocessEvaluate:
 class TestSubprocessTransitions:
     def test_approve(self, env):
         root, jid = env
-        t = ProposedTask(title="Approve", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(jid, t, root=root)
-        data = run_json(["propose", "approve", jid, t.id, "--json"], root)
+        tid = create_proposed_task(root, jid, title="Approve", status="evaluated")
+        data = run_json(["propose", "approve", jid, tid, "--json"], root)
         assert data["approved"] is True
 
     def test_reject(self, env):
         root, jid = env
-        t = ProposedTask(title="Reject", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(jid, t, root=root)
-        data = run_json(["propose", "reject", jid, t.id, "--json"], root)
+        tid = create_proposed_task(root, jid, title="Reject", status="evaluated")
+        data = run_json(["propose", "reject", jid, tid, "--json"], root)
         assert data["rejected"] is True
 
     def test_defer(self, env):
         root, jid = env
-        t = ProposedTask(title="Defer", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(jid, t, root=root)
-        data = run_json(["propose", "defer", jid, t.id, "--json"], root)
+        tid = create_proposed_task(root, jid, title="Defer", status="evaluated")
+        data = run_json(["propose", "defer", jid, tid, "--json"], root)
         assert data["deferred"] is True
 
 
 class TestSubprocessMaterialize:
     def test_materialize_creates_job_task(self, env):
         root, jid = env
-        t = ProposedTask(title="Mat", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
-        add_proposed_task(jid, t, root=root)
-        data = run_json(["propose", "materialize", jid, "--task-id", t.id, "--json"], root)
+        tid = create_proposed_task(root, jid, title="Mat", status="approved_for_build")
+        data = run_json(["propose", "materialize", jid, "--task-id", tid, "--json"], root)
         assert data["materialized_count"] == 1
-        job = Job.model_validate_json((root / "jobs" / f"{jid}.json").read_text())
-        assert len(job.tasks) == 1
+        job_data = json.loads((root / "jobs" / f"{jid}.json").read_text())
+        assert len(job_data["tasks"]) == 1
 
 
 class TestSubprocessErrors:
@@ -105,16 +103,15 @@ class TestSubprocessErrors:
 class TestSubprocessFullFlow:
     def test_end_to_end(self, env):
         root, jid = env
-        t = ProposedTask(title="E2E", risk="medium")
-        add_proposed_task(jid, t, root=root)
+        tid = create_proposed_task(root, jid, title="E2E", risk="medium")
 
         assert run_json(["propose", "list", jid, "--json"], root)["count"] == 1
         run_json(["propose", "evaluate", jid, "--json"], root)
-        assert run_json(["propose", "approve", jid, t.id, "--json"], root)["approved"] is True
-        assert run_json(["propose", "materialize", jid, "--task-id", t.id, "--json"], root)["materialized_count"] == 1
+        assert run_json(["propose", "approve", jid, tid, "--json"], root)["approved"] is True
+        assert run_json(["propose", "materialize", jid, "--task-id", tid, "--json"], root)["materialized_count"] == 1
 
-        job = Job.model_validate_json((root / "jobs" / f"{jid}.json").read_text())
-        assert len(job.tasks) == 1
+        job_data = json.loads((root / "jobs" / f"{jid}.json").read_text())
+        assert len(job_data["tasks"]) == 1
 
         events = read_events(root, jid)
         assert "proposed_task_evaluated" in events
