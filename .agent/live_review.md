@@ -1,3 +1,150 @@
+# Parallel Review — Steps 610-624 (Independent Reviewer)
+
+Reviewer: parallel watcher (independent)
+Scope: Steps 610-624 (True Job.tasks materialization, runtime CLI, backend readiness)
+Commit: 7cb6b7c
+Status: VERIFIED
+
+## Test Results (independently run)
+- `tests/orchestration/test_proposed_tasks.py` + `tests/cli/test_propose_cli.py`: **120/120 passed** (0.27s)
+- `tests/cli/test_propose_cli_runtime.py`: **11/11 passed** (1.87s) — SUBPROCESS via `python -m apps.cli.grouped`
+- `tests/ui_contracts/` + `tests/ui_server/`: **584 passed** (7.65s)
+- `tests/test_storage.py` + `tests/test_context_coverage.py`: **97 passed** (0.77s)
+- `tests/orchestration/test_approval_queue.py` + reviewer-related: **98 passed, 1 skipped** (2.11s)
+- Total independently verified: **910 tests**, zero failures
+- Worker claims 4365 full baseline (not independently verified — targeted suites confirm no regressions)
+
+## Prior Findings Resolution
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| R-595-001 (CLI tests handler-only) | medium | **RESOLVED** — 11 subprocess tests in test_propose_cli_runtime.py, E2E flow verified |
+| R-595-002 (queue/finalize ignores materialization) | medium | **PARTIALLY RESOLVED** — can_finalize() now blocks approved-not-materialized; queue gate unchanged |
+| R-595-003 (no lock timeout test) | low | **OPEN** — still no concurrent/timeout test |
+| R-595-004 (do_materialize orphans Task dict) | low | **RESOLVED** — do_materialize now creates real Task, appends to Job.tasks, saves Job |
+| R-595-005 (double-load in lock) | low | **OPEN** — same pattern remains |
+
+## Per-Step Checklist
+
+| Step | Check | Verdict |
+|------|-------|---------|
+| 610 | context/plan current, stale risks removed, true risks carried, live_review appended | PASS |
+| 611 | storage.py: `_DATA_DIR=None`, `_resolve_jobs_dir(root)`, `_atomic_write_job`, `JobStoreError`, `load_job_safe`, root= on all funcs | PASS |
+| 612 | `_require_job` gate on evaluate/approve/reject/defer/materialize; list/show read-only, no gate; missing Job → error + exit | PASS |
+| 613 | `do_materialize` loads real Job, creates `Task.model_validate(task_dict)`, appends to Job.tasks, saves Job, then marks ProposedTask. Test verifies Job.tasks has real task | PASS |
+| 614 | `reconcile_materialized` checks both directions: missing_job_task + missing_proposal_marker. Corrupt store safe. 3 tests | PASS |
+| 615 | `can_finalize()` now blocks approved_not_materialized. But worker_queue._has_unresolved_proposals unchanged — queue gate does NOT block | **PARTIAL** (see R-610-001) |
+| 616 | 11 subprocess tests: list, evaluate, approve/reject/defer, materialize, errors, E2E flow. Via `python -m apps.cli.grouped`. No shell=True. Temp REMEDY_DATA_DIR | PASS |
+| 617 | `emit_proposed_task_event` includes materialized_task_id in metadata. Event written after real Job task saved. E2E subprocess test verifies event file | PASS |
+| 618 | Dashboard already has v2 (from 604) with approved_not_materialized/materialized/summaries. Does NOT call reconcile_materialized | **PARTIAL** (see R-610-002) |
+| 619 | `can_finalize()` blocks approved_not_materialized + unresolved + degraded. Test verifies. Finalize passes only when all materialized | PASS |
+| 620 | Same materialize path for all proposal sources. But `origin_task_id` not in materialized Task inputs | **PARTIAL** (see R-610-003) |
+| 621 | `_atomic_write_job` (tempfile+fsync+rename), `JobStoreError` on corrupt, `load_job_safe` returns (None, True) on corrupt. storage test updated | PASS |
+| 622 | `backend_readiness()` checks job store, proposal store, unresolved, approved_not_materialized, materialization consistency. 4 tests | PASS |
+| 623 | `overnight_readiness()` always returns `ready: False`, `max_safe_autonomy_level: 0`. Hard-coded blockers: no_overnight_mode, no_rollback, no_budget. NO execution code | PASS |
+| 624 | Worker claims 4365 passed. 910 independently verified. Subprocess tests included. No test_steps files | PASS |
+
+## Scope Blockers
+
+| Blocker | Verdict |
+|---------|---------|
+| 0.0.0.0 bind | PASS |
+| shell=True | PASS — not in any new code |
+| External CDN | PASS |
+| Ollama API | PASS |
+| WebSocket | PASS |
+| POST/PUT/DELETE | PASS — 405 enforced |
+| Outbound HTTP | PASS |
+| Raw content leaks | PASS — bounded fields everywhere |
+| UI redesign | PASS — backend only |
+| Overnight autonomy execution | PASS — read-only gate only |
+| Docker/MemPalace | PASS |
+
+## Findings
+
+### R-610-001
+Status: Open
+Severity: medium
+Area: queue-gate
+Summary: Worker queue gate does not block on approved-not-materialized
+Details: `can_finalize()` now blocks approved-not-materialized (Step 619 done). But `worker_queue._has_unresolved_proposals()` still only checks PROPOSED+EVALUATED via `count_unresolved_safe`. APPROVED_FOR_BUILD is terminal, not unresolved — the queue can schedule new work while approved proposals have not been materialized into Job.tasks. The finalize gate catches this, so jobs can't complete in this state, but the queue doesn't enforce the materialization step.
+Evidence: `grep -n "materialized\|approved_not" packages/orchestration/worker_queue.py` returns empty. No changes to worker_queue.py in this commit.
+Expected fix: Either add `list_approved_not_materialized` check to `_has_unresolved_proposals`, or document that queue intentionally allows work while awaiting materialization.
+
+### R-610-002
+Status: Open
+Severity: low
+Area: dashboard-contract
+Summary: Dashboard does not detect materialization mismatch
+Details: `_build_proposed_tasks_section` shows approved_not_materialized and materialized counts. But it does NOT call `reconcile_materialized()` to detect mismatches (ProposedTask marked materialized but Job.tasks missing the task). The `backend_readiness()` function does call reconcile, so the mismatch is detectable — just not from the dashboard view.
+Evidence: `grep -n "reconcile" packages/orchestration/ui_server.py` returns empty
+Expected fix: Add `reconcile_materialized()` call to dashboard section, or add a `/readiness` CLI command that exposes backend_readiness.
+
+### R-610-003
+Status: Open
+Severity: low
+Area: reviewer-rework
+Summary: Materialized Task inputs missing origin_task_id
+Details: `materialize_approved_task()` includes proposed_task_id, task_type, reason, source, risk, priority in Task inputs. But `origin_task_id` (which links rework proposals to original Tasks) is not included. Trace chain: Task.inputs.proposed_task_id → ProposedTask.origin_task_id → original Task. Direct link is missing, requiring two lookups.
+Evidence: materialize_approved_task at proposed_tasks.py:603 — inputs dict does not include origin_task_id
+Expected fix: Add `"origin_task_id": proposed.origin_task_id` to Task inputs dict.
+
+### R-610-004
+Status: Open
+Severity: low
+Area: materialization
+Summary: Job loaded outside file_lock in do_materialize — concurrent materialization could lose Job tasks
+Details: `do_materialize()` calls `job = load_job(job_uuid, root)` at line 638, BEFORE `with _file_lock(job_id, root):` at line 640. Two concurrent materializations of different proposals for the same job would both load the same Job state. The second materialization's `save_job(job, root)` would overwrite the first's added Task. The `_file_lock` only protects proposal store, not Job store.
+Evidence: proposed_tasks.py:638 (`job = load_job(...)`) vs line 640 (`with _file_lock(...)`)
+Expected fix: Move `job = load_job(job_uuid, root)` inside the `_file_lock` block. Or add a separate job-level lock.
+
+## Architecture Assessment
+
+**Strengths:**
+- R-595-001 FULLY resolved: 11 subprocess tests through real CLI entrypoint, E2E verified
+- R-595-004 FULLY resolved: `do_materialize` creates real Task, appends to Job.tasks, saves Job
+- storage.py now mirrors proposed_tasks pattern: `_DATA_DIR=None`, `_resolve_jobs_dir(root)`, atomic writes, error types
+- `_require_job` gate prevents mutations on non-existent Jobs
+- Reconciliation detects mismatches in both directions (missing Job task, missing proposal marker)
+- `backend_readiness` is comprehensive: job store, proposal store, unresolved, materialization consistency
+- `overnight_readiness` is maximally honest: always false, explicit blockers, no execution code
+- Subprocess E2E test proves full flow: propose → evaluate → approve → materialize → Job.tasks verified → events verified
+- `can_finalize` now blocks approved-not-materialized — R-595-002 partially resolved
+
+**Remaining Risks:**
+1. Queue gate doesn't enforce materialization (R-610-001)
+2. Dashboard doesn't detect materialization mismatches (R-610-002)
+3. Materialized Task missing origin_task_id trace (R-610-003)
+4. Job load outside file_lock — concurrent race possible (R-610-004)
+5. Lock timeout/busy path untested (carry-forward R-595-003)
+
+## Final Verdict
+
+**PASS WITH RISKS**
+
+- Job storage status: **PASS** — root= param, atomic writes, JobStoreError, load_job_safe
+- Real Job.tasks materialization status: **PASS** — do_materialize creates real Task, appends to Job.tasks, saves Job, verifiable via tests
+- Runtime CLI subprocess status: **PASS** — 11 subprocess tests, E2E flow, no shell=True
+- Audit event status: **PASS** — events include materialized_task_id, verified in subprocess E2E
+- Queue/finalize status: **PARTIAL** — finalize blocks approved-not-materialized; queue gate unchanged (R-610-001)
+- Dashboard backend contract status: **PARTIAL** — materialization counts shown; mismatch detection not wired (R-610-002)
+- Reviewer/rework status: **PARTIAL** — same materialization path, but origin_task_id not in Task inputs (R-610-003)
+- Backend readiness status: **PASS** — comprehensive checks including reconciliation
+- Overnight readiness gate status: **PASS** — always false, no execution, explicit blockers
+- Raw leak status: **PASS** — bounded fields, title[:80], reason[:200], safe summaries
+- Tests run: 120 handler + 11 subprocess + 584 UI + 97 storage/context + 98 reviewer = 910 (all guarded via scripts/remedy_pytest.sh)
+- Full pytest: Worker reports 4365 passed (not independently verified — targeted suites confirm no regressions)
+- Top 5 remaining backend risks:
+  1. Queue gate doesn't enforce materialization (R-610-001)
+  2. Job load outside file_lock — race possible (R-610-004)
+  3. Dashboard doesn't detect materialization mismatch (R-610-002)
+  4. origin_task_id missing from materialized Task (R-610-003)
+  5. Lock timeout/busy path untested (R-595-003)
+- Answer: **Close to overnight autonomous builder? NO.** `overnight_readiness()` correctly returns `ready: False`. Missing: rollback snapshots, token/time budgets, execution proof, overnight mode implementation. Backend stores and gates are production-grade, but autonomous execution is correctly gated as not-ready.
+- Merge readiness: **YES** — 2 prior findings resolved, 4 new findings (1 medium, 3 low), no blockers, materialization is real
+
+---
+
 # Parallel Review — Steps 595-609 (Independent Reviewer)
 
 Reviewer: parallel watcher (independent)
@@ -477,3 +624,25 @@ Status: IN PROGRESS
 - Step 619: Finalize gate v2 — approved_not_materialized blocks.
 - Step 622: backend_readiness() — compact health report: job, proposal store, materialization consistency.
 - Step 623: overnight_readiness() — always not ready, specific blockers listed.
+
+---
+
+# Live Review — Steps 625-639
+
+Reviewer: self (modular task execution + worker runs real tasks)
+Scope: Task execution port, fixture executor, worker runs Job.tasks, budget, readiness v2
+Status: IN PROGRESS
+
+## Step Log
+- Step 625: Clean handoff — readiness terms defined, agent files updated, 6 risks carried.
+- Step 626: Runtime CLI tests stabilized — unique UUID per test via fixture, no shared module-level state, 11 pass reliably.
+- Step 627: backend_readiness v2 — structured: storage_health, proposal_health, build_readiness, finalize_readiness, overnight.
+- Step 628: TaskExecutionRequest/Result models, TaskExecutor protocol, execute_task() dispatch.
+- Step 629: FixtureTaskExecutor — deterministic completion, blocked_fixture type, artifact IDs, safe summaries.
+- Step 631: Provider adapter — get_executor(), NoneExecutor, ALLOWED_PROVIDERS, ollama returns None (unavailable).
+- Step 635: can_retry_task() — read-only, checks completed/pending/failed states, materialization consistency.
+- Step 636: BudgetGate — max_steps, record_step, has_budget, can_execute with exhaustion check.
+- Step 637: overnight_readiness v2 — adds pending_tasks + blocked_tasks as blockers from finalize section.
+- Step 638: Modular guard tests — no ollama import in core, no source_apply in executor, storage through helpers.
+- Fix R-610-003: origin_task_id + origin_recommendation_id in materialize_approved_task inputs.
+- Fix R-610-004: load_job moved inside _file_lock in do_materialize (prevents concurrent job task loss).

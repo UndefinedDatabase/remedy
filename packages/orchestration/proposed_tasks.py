@@ -600,17 +600,23 @@ def materialize_approved_task(proposed: ProposedTask) -> dict[str, Any]:
     from uuid import uuid4 as _uuid4
     task_id = str(_uuid4())
 
+    inputs: dict[str, Any] = {
+        "proposed_task_id": proposed.id,
+        "task_type": proposed.task_type,
+        "reason": proposed.reason[:200],
+        "source": proposed.source.value,
+        "risk": proposed.risk,
+        "priority": proposed.priority,
+    }
+    if proposed.origin_task_id:
+        inputs["origin_task_id"] = proposed.origin_task_id
+    if proposed.origin_recommendation_id:
+        inputs["origin_recommendation_id"] = proposed.origin_recommendation_id
+
     return {
         "id": task_id,
         "description": proposed.title[:80],
-        "inputs": {
-            "proposed_task_id": proposed.id,
-            "task_type": proposed.task_type,
-            "reason": proposed.reason[:200],
-            "source": proposed.source.value,
-            "risk": proposed.risk,
-            "priority": proposed.priority,
-        },
+        "inputs": inputs,
         "status": "pending",
     }
 
@@ -635,9 +641,9 @@ def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> Propo
     from packages.core.models import Task
 
     job_uuid = UUID(job_id)
-    job = load_job(job_uuid, root)
 
     with _file_lock(job_id, root):
+        job = load_job(job_uuid, root)
         tasks = load_proposed_tasks(job_id, root)
         ptask = None
         for t in tasks:
@@ -802,64 +808,114 @@ def emit_proposed_task_event(
 # Backend readiness
 # ---------------------------------------------------------------------------
 
+def _task_status_val(t: Any) -> str:
+    return t.status.value if hasattr(t.status, "value") else str(t.status)
+
+
 def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
-    """Compact backend readiness report for a job."""
+    """Structured readiness report: storage, build, finalize, overnight sections."""
     from packages.orchestration.storage import load_job_safe
 
-    blockers: list[str] = []
-
     job, job_degraded = load_job_safe(UUID(job_id), root)
-    if job_degraded:
-        blockers.append("job_store_degraded")
-    elif job is None:
-        blockers.append("job_not_found")
-
-    tasks_result, proposals_degraded = load_proposed_tasks_safe(job_id, root)
-    if proposals_degraded:
-        blockers.append("proposal_store_degraded")
-
-    if not proposals_degraded:
-        unresolved = sum(1 for t in tasks_result if t.is_unresolved())
-        if unresolved:
-            blockers.append(f"{unresolved}_unresolved_proposals")
-        not_mat = sum(
-            1 for t in tasks_result
-            if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not t.is_materialized
-        )
-        if not_mat:
-            blockers.append(f"{not_mat}_approved_not_materialized")
-
+    proposals, proposals_degraded = load_proposed_tasks_safe(job_id, root)
     recon = reconcile_materialized(job_id, root)
+
+    # Storage health
+    job_missing = job is None and not job_degraded
+    storage_healthy = not job_degraded and not job_missing and not proposals_degraded and recon["consistent"]
+    storage_blockers: list[str] = []
+    if job_degraded:
+        storage_blockers.append("job_store_degraded")
+    if job_missing:
+        storage_blockers.append("job_not_found")
+    if proposals_degraded:
+        storage_blockers.append("proposal_store_degraded")
     if not recon["consistent"]:
-        blockers.append("materialization_mismatch")
+        storage_blockers.append("materialization_mismatch")
+
+    # Proposal health
+    unresolved = sum(1 for t in proposals if t.is_unresolved()) if not proposals_degraded else -1
+    not_mat = sum(
+        1 for t in proposals
+        if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not t.is_materialized
+    ) if not proposals_degraded else -1
+
+    # Job task counts
+    pending_tasks = 0
+    blocked_tasks = 0
+    completed_tasks = 0
+    if job:
+        for t in job.tasks:
+            s = _task_status_val(t)
+            if s in ("pending", "planned"):
+                pending_tasks += 1
+            elif s in ("blocked", "failed"):
+                blocked_tasks += 1
+            elif s == "completed":
+                completed_tasks += 1
+
+    # Build readiness
+    build_blockers: list[str] = list(storage_blockers)
+    if unresolved > 0:
+        build_blockers.append(f"{unresolved}_unresolved_proposals")
+    if not_mat > 0:
+        build_blockers.append(f"{not_mat}_approved_not_materialized")
+    if pending_tasks == 0 and not storage_blockers:
+        build_blockers.append("no_pending_work")
+    build_ready = len(build_blockers) == 0
+
+    # Finalize readiness
+    finalize_ok, finalize_reason = can_finalize(
+        job_id,
+        pending_task_count=pending_tasks,
+        blocked_task_count=blocked_tasks,
+        root=root,
+    )
 
     return {
-        "ready": len(blockers) == 0,
-        "blockers": blockers,
-        "job_exists": job is not None and not job_degraded,
-        "proposal_store_healthy": not proposals_degraded,
-        "materialization_consistent": recon["consistent"],
+        "storage_health": {
+            "healthy": storage_healthy,
+            "blockers": storage_blockers,
+            "job_exists": job is not None and not job_degraded,
+            "proposal_store_healthy": not proposals_degraded,
+            "materialization_consistent": recon["consistent"],
+        },
+        "proposal_health": {
+            "unresolved": unresolved,
+            "approved_not_materialized": not_mat,
+            "degraded": proposals_degraded,
+        },
+        "build_readiness": {
+            "ready": build_ready,
+            "blockers": build_blockers,
+            "pending_tasks": pending_tasks,
+        },
+        "finalize_readiness": {
+            "ready": finalize_ok,
+            "reason": finalize_reason,
+            "pending_tasks": pending_tasks,
+            "blocked_tasks": blocked_tasks,
+            "completed_tasks": completed_tasks,
+        },
+        "overnight_readiness": {
+            "ready": False,
+            "blockers": ["no_overnight_mode_implemented"],
+        },
     }
 
 
 def overnight_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
     """Overnight autonomy readiness gate. Does NOT execute anything."""
     base = backend_readiness(job_id, root)
-    blockers = list(base["blockers"])
+    blockers: list[str] = []
 
-    from packages.orchestration.storage import load_job_safe
-    job, _ = load_job_safe(UUID(job_id), root)
-    if job:
-        pending = sum(
-            1 for t in job.tasks
-            if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("pending", "planned")
-        )
-        blocked = sum(
-            1 for t in job.tasks
-            if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("blocked", "failed")
-        )
-        if blocked > 0:
-            blockers.append(f"{blocked}_blocked_tasks")
+    for section in ("storage_health", "build_readiness"):
+        blockers.extend(base[section]["blockers"])
+
+    if base["finalize_readiness"]["pending_tasks"] > 0:
+        blockers.append(f"{base['finalize_readiness']['pending_tasks']}_pending_tasks")
+    if base["finalize_readiness"]["blocked_tasks"] > 0:
+        blockers.append(f"{base['finalize_readiness']['blocked_tasks']}_blocked_tasks")
 
     blockers.append("no_overnight_mode_implemented")
     blockers.append("no_rollback_snapshot_proof")

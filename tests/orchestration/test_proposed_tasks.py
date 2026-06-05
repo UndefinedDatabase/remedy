@@ -744,13 +744,14 @@ class TestReconciliation:
 
 
 class TestBackendReadiness:
-    def test_healthy_job(self, tmp_path, monkeypatch):
+    def test_healthy_job_no_work(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
         monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
         _create_real_job(tmp_path)
         report = backend_readiness(REAL_JOB_UUID)
-        assert report["ready"] is True
-        assert report["blockers"] == []
+        assert report["storage_health"]["healthy"] is True
+        assert report["build_readiness"]["ready"] is False
+        assert "no_pending_work" in report["build_readiness"]["blockers"]
 
     def test_not_ready_with_unresolved(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
@@ -758,13 +759,13 @@ class TestBackendReadiness:
         _create_real_job(tmp_path)
         add_proposed_task(REAL_JOB_UUID, ProposedTask(title="Pending"))
         report = backend_readiness(REAL_JOB_UUID)
-        assert report["ready"] is False
-        assert any("unresolved" in b for b in report["blockers"])
+        assert report["build_readiness"]["ready"] is False
+        assert any("unresolved" in b for b in report["build_readiness"]["blockers"])
 
     def test_not_ready_missing_job(self, tmp_store):
         report = backend_readiness("00000000-0000-0000-0000-000000000099")
-        assert report["ready"] is False
-        assert "job_not_found" in report["blockers"]
+        assert report["storage_health"]["healthy"] is False
+        assert "job_not_found" in report["storage_health"]["blockers"]
 
     def test_not_ready_corrupt_store(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
@@ -774,8 +775,22 @@ class TestBackendReadiness:
         pt_dir.mkdir(parents=True, exist_ok=True)
         (pt_dir / f"{REAL_JOB_UUID}.json").write_text("corrupt")
         report = backend_readiness(REAL_JOB_UUID)
-        assert report["ready"] is False
-        assert "proposal_store_degraded" in report["blockers"]
+        assert report["storage_health"]["healthy"] is False
+        assert "proposal_store_degraded" in report["storage_health"]["blockers"]
+
+    def test_materialized_pending_task(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        t = propose_task_from_review_finding(REAL_JOB_UUID, title="Work", risk="medium")
+        evaluate_proposed_task(REAL_JOB_UUID, t.id)
+        approve_proposed_task(REAL_JOB_UUID, t.id)
+        do_materialize(REAL_JOB_UUID, t.id)
+        report = backend_readiness(REAL_JOB_UUID)
+        assert report["storage_health"]["healthy"] is True
+        assert report["build_readiness"]["ready"] is True
+        assert report["build_readiness"]["pending_tasks"] == 1
+        assert report["finalize_readiness"]["ready"] is False
 
 
 class TestOvernightReadiness:
