@@ -1,3 +1,152 @@
+# Parallel Review — Steps 595-609 (Independent Reviewer)
+
+Reviewer: parallel watcher (independent)
+Scope: Steps 595-609 (Backend reliability closure — audit trail, locking, materialization, centralized gates)
+Commit: 3cb3f20
+Status: VERIFIED
+
+## Test Results (independently run)
+- `tests/orchestration/test_proposed_tasks.py` + `tests/cli/test_propose_cli.py`: **110/110 passed** (0.25s)
+- `tests/orchestration/test_approval_queue.py` + reviewer-related: **98 passed, 1 skipped** (2.36s)
+- `tests/ui_contracts/`: **397 passed** (2.51s)
+- `tests/ui_server/`: **187 passed** (5.23s)
+- No regressions detected across any targeted suite
+- Worker claims 4344 full baseline (not independently verified — targeted suites confirm no regressions)
+
+## Prior Findings Resolution
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| R-580-001 (CLI audit events dormant) | medium | **RESOLVED** — `_make_writer(job_id)` creates real RunLogWriter. `test_no_dormant_none_writer_in_cli` enforces. |
+| R-580-002 (dashboard finalized duplication) | low | **RESOLVED** — `ui_server.py` now calls `can_finalize()`. Timeline guard test updated. |
+
+## Per-Step Checklist
+
+| Step | Check | Verdict |
+|------|-------|---------|
+| 595 | context/plan current, old blockers removed, true risks carried forward, live_review appended | PASS |
+| 596 | "merged into 608" — no subprocess CLI tests exist; all tests call COMMAND_HANDLERS directly | **PARTIAL** (see R-595-001) |
+| 597 | `_make_writer` creates RunLogWriter from UUID; all 5 transition handlers use real writer; `test_evaluate_writes_event` verifies event file; `test_no_dormant_none_writer_in_cli` guards regression | PASS |
+| 598 | `fcntl.flock` with LOCK_EX\|LOCK_NB + 5s bounded retry; all read-modify-write ops locked; lock released on exception; 4 locking tests | PASS |
+| 599 | `_STORE_DIR = None` default; `_resolve_store_dir` calls `proposed_tasks_dir()` at call time; tests verify REMEDY_DATA_DIR and root= override | PASS |
+| 600 | Dashboard calls `can_finalize()` directly; `is_finalized = job_says_done and finalize_ok`; timeline guard test updated to check `can_finalize` | PASS |
+| 601 | `materialized_task_id`, `materialized_at`, `is_materialized` property on ProposedTask; `do_materialize` sets both under lock; tests cover happy/guard/double-materialize | PASS |
+| 602 | `propose.materialize` in catalog + handler; `--task-id` and `--all` modes; emits audit event; 4 CLI tests | PASS |
+| 603 | "merged into 601/602" — queue gate (worker_queue.py) UNCHANGED; `can_finalize` doesn't check materialization; approved-not-materialized doesn't block | **PARTIAL** (see R-595-002) |
+| 604 | `approved_not_materialized`, `materialized`, `summaries` in dashboard; per-task materialization status; bounded fields; no raw leaks | PASS |
+| 605 | "merged into 597" — reviewer already uses root= param from 580-594; no direct Task bypass; no changes in this commit | PASS (pre-existing) |
+| 606 | "merged into tests" — CLI/queue/finalize/dashboard all handle corruption via ProposedTaskStoreError; existing tests cover all surfaces | PASS |
+| 607 | "merged into tests" — 4 locking tests (sequential adds, update+add, approve+materialize, lock creation); no concurrent/timeout test | **PARTIAL** (see R-595-003) |
+| 608 | "merged into CLI tests" — handler-level integration tests with real store; audit event file verified; but no subprocess entrypoint | **PARTIAL** (see R-595-001) |
+| 609 | Worker claims 4344 passed; targeted suites independently verified (110+98+397+187=792); plan says all done; live_review incomplete | PASS |
+
+## Scope Blockers
+
+| Blocker | Verdict |
+|---------|---------|
+| 0.0.0.0 bind | PASS |
+| shell=True | PASS — not in any new Python code |
+| External CDN | PASS |
+| Ollama API | PASS |
+| WebSocket | PASS |
+| POST/PUT/DELETE | PASS — 405 enforced |
+| Outbound HTTP | PASS |
+| Raw content leaks | PASS — _safe_text, title[:80], bounded summaries |
+| UI redesign | PASS — backend only |
+| Docker/MemPalace | PASS |
+
+## Findings
+
+### R-595-001
+Status: Open
+Severity: medium
+Area: cli-runtime
+Summary: CLI tests call COMMAND_HANDLERS directly, not through subprocess entrypoint
+Details: All CLI tests (including new materialize + audit tests) invoke handlers from `collect_all_handlers()` dict. No test runs `python -m apps.cli.grouped propose ...` via subprocess. Steps 596 and 608 were "merged" but the subprocess coverage gap remains. Handler-level tests ARE integration-level (hitting real store operations, emitting real events), but argument parsing and grouped entrypoint wiring are untested at runtime.
+Evidence: `grep -rn "subprocess\|python -m\|grouped" tests/cli/test_propose_cli.py` returns empty
+Expected fix: Add 1-2 subprocess tests that invoke `python -m apps.cli.grouped propose list --job-id <id> --json` with temp REMEDY_DATA_DIR.
+
+### R-595-002
+Status: Open
+Severity: medium
+Area: queue-semantics
+Summary: Queue gate ignores materialization state; can_finalize doesn't check approved-not-materialized
+Details: `worker_queue._has_unresolved_proposals` only checks PROPOSED+EVALUATED (unresolved). APPROVED_FOR_BUILD is terminal — doesn't block queue or finalization. `can_finalize()` also doesn't check materialization. Dashboard shows `approved_not_materialized` count but no enforcement. Step 603 was "merged into 601/602" but worker_queue.py had zero changes. Design choice may be intentional (approved = decided, materialization is implementation detail), but the gap between dashboard visibility and gate enforcement is notable.
+Evidence: `grep -n "materialized\|approved_not\|approved_for_build" packages/orchestration/worker_queue.py` returns empty
+Expected fix: Either add `approved_not_materialized > 0` check to can_finalize/queue gate, or document that materialization is optional for finalization.
+
+### R-595-003
+Status: Open
+Severity: low
+Area: race-tests
+Summary: No concurrent/timeout test for file locking
+Details: TestFileLocking has 4 sequential tests (adds, update+add, approve+materialize, lock creation). No test exercises the lock timeout path (5s deadline), concurrent access from multiple threads/processes, or what happens when the lock is busy. The lock mechanism works for sequential access but error paths are untested.
+Evidence: `grep -rn "LOCK_TIMEOUT\|concurrent\|threading\|multiprocessing" tests/orchestration/test_proposed_tasks.py` returns empty
+Expected fix: Add 1 test that holds a lock and verifies ProposedTaskStoreError on timeout. Optional: thread-based concurrent add test.
+
+### R-595-004
+Status: Open
+Severity: low
+Area: storage-locking
+Summary: do_materialize generates Task dict but only keeps UUID — standalone materialize_approved_task() is redundant
+Details: `do_materialize()` calls `materialize_approved_task(task)` internally, gets back a full Task dict (id, description, inputs, status), but only stores `task_dict["id"]` on the ProposedTask. The full dict is discarded. `materialize_approved_task()` as a standalone function is now misleading — its only caller discards most of its return. Docstring says "Caller still needs to append the Task to Job and save it" but the caller never sees the dict.
+Evidence: `do_materialize` at proposed_tasks.py:618 — `task_dict = materialize_approved_task(task); task.materialized_task_id = task_dict["id"]`
+Expected fix: Either have `do_materialize` return `(ProposedTask, task_dict)` tuple, or simplify to `task.materialized_task_id = str(uuid4())` and remove `materialize_approved_task`.
+
+### R-595-005
+Status: Open
+Severity: low
+Area: storage-locking
+Summary: approve/reject/defer double-load within lock
+Details: `approve_proposed_task`, `reject_proposed_task`, `defer_proposed_task` each call `get_proposed_task` (loads all tasks + finds one) then `load_proposed_tasks` again for the save loop. Two reads per operation within the same lock. Functionally correct but wasteful.
+Evidence: `approve_proposed_task` at proposed_tasks.py:505 — `task = get_proposed_task(...)` then `tasks = load_proposed_tasks(...)`
+Expected fix: Load once, find task in list, transition, save list. Low priority — no functional impact.
+
+## Architecture Assessment
+
+**Strengths:**
+- R-580-001 fully resolved: `_make_writer` creates real RunLogWriter, `test_no_dormant_none_writer_in_cli` prevents regression
+- R-580-002 fully resolved: dashboard delegates to `can_finalize()`, timeline guard test enforces
+- File locking with `fcntl.flock` + bounded retry is production-appropriate for single-host
+- `_STORE_DIR = None` default eliminates import-time side effects
+- Materialization state on ProposedTask gives `approved_for_build` concrete meaning
+- Dashboard v2 exposes materialization status with bounded safe summaries
+- 16 new tests (110 total for proposed tasks + CLI)
+
+**Remaining Risks:**
+1. No subprocess CLI runtime tests — handler dispatch verified but not entrypoint
+2. Queue gate doesn't enforce materialization — visibility without enforcement
+3. Lock timeout/busy path untested
+4. `do_materialize` orphans the generated Task dict
+5. Lock files (.{job_id}.lock) never cleaned up (accumulate, tiny)
+
+## Final Verdict
+
+**PASS WITH RISKS**
+
+- Audit event status: **PASS** — R-580-001 resolved. Real RunLogWriter from UUID. Regression test enforced.
+- Store locking status: **PASS** — fcntl.flock with bounded retry on all mutations. Sequential tests green.
+- Data-root status: **PASS** — call-time resolution via proposed_tasks_dir(). REMEDY_DATA_DIR tested.
+- Finalized gate status: **PASS** — R-580-002 resolved. Dashboard delegates to can_finalize().
+- Materialization status: **PASS** — ProposedTask tracks materialized state. do_materialize under lock.
+- Queue semantics status: **PARTIAL** — queue gate unchanged, doesn't check materialization (R-595-002)
+- Dashboard contract status: **PASS** — v2 with materialization counts, bounded summaries, no raw leaks
+- Reviewer/rework status: **PASS** — pre-existing, no changes needed
+- Corrupt-store status: **PASS** — all surfaces handle ProposedTaskStoreError consistently
+- Runtime CLI E2E status: **PARTIAL** — handler-level integration yes, subprocess entrypoint no (R-595-001)
+- Raw leak status: **PASS** — _safe_text, title[:80], bounded summaries, scope blockers clean
+- Tests run: 110 proposed+CLI + 98 reviewer + 397 UI contracts + 187 UI server (all guarded via scripts/remedy_pytest.sh)
+- Full pytest: Worker reports 4344 passed (not independently verified — targeted suites confirm no regressions)
+- Top 5 remaining backend risks:
+  1. No subprocess CLI entrypoint tests (R-595-001)
+  2. Queue gate ignores materialization state (R-595-002)
+  3. Lock timeout/busy path untested (R-595-003)
+  4. do_materialize orphans Task dict (R-595-004)
+  5. Lock files never cleaned up
+- Merge readiness: **YES** — all 2 prior findings resolved, new findings are medium/low severity
+
+---
+
 # Parallel Review — Steps 580-594 (Independent Reviewer)
 
 Reviewer: parallel watcher (independent)
@@ -307,3 +456,24 @@ Status: IN PROGRESS
 - Step 601: `ProposedTask` gains `materialized_task_id: str` and `materialized_at: datetime | None`. `is_materialized` property. `do_materialize()` sets both atomically under lock.
 - Step 602: `propose.materialize` command — catalog entry + CLI handler. Supports `--task-id` and `--all`. Emits `proposed_task_materialized` event.
 - Step 604: Dashboard v2 — `approved_not_materialized`, `materialized`, `summaries` with per-task materialization status.
+
+---
+
+# Live Review — Steps 610-624
+
+Reviewer: self (materialization + backend readiness)
+Scope: True Job.tasks materialization, subprocess CLI, readiness gates
+Status: IN PROGRESS
+
+## Step Log
+- Step 610: Backend handoff — context.md, plan.md, live_review.md updated. 7 real risks documented.
+- Step 611: Job storage — root= param, _DATA_DIR=None default, atomic writes, JobStoreError, load_job_safe.
+- Step 612: _require_job() gate on all mutating CLI handlers. Invalid/missing job → safe error, no mutation.
+- Step 613: do_materialize() now loads real Job, creates Task, appends to job.tasks, saves Job, then marks ProposedTask.
+- Step 614: reconcile_materialized() — detects missing Job tasks and missing proposal markers.
+- Step 615: can_finalize() blocks on approved_not_materialized.
+- Step 616: test_propose_cli_runtime.py — 11 subprocess tests via `python -m apps.cli.grouped`.
+- Step 617: Audit events include materialized_task_id. Full flow test verifies events on disk.
+- Step 619: Finalize gate v2 — approved_not_materialized blocks.
+- Step 622: backend_readiness() — compact health report: job, proposal store, materialization consistency.
+- Step 623: overnight_readiness() — always not ready, specific blockers listed.

@@ -27,7 +27,27 @@ def tmp_store(tmp_path, monkeypatch):
     return tmp_path
 
 
+@pytest.fixture
+def tmp_store_with_job(tmp_path, monkeypatch):
+    """Store + real Job for mutating commands."""
+    monkeypatch.setattr(
+        "packages.orchestration.proposed_tasks._STORE_DIR",
+        tmp_path / "proposed_tasks",
+    )
+    monkeypatch.setattr(
+        "packages.orchestration.storage._DATA_DIR",
+        tmp_path / "jobs",
+    )
+    from packages.core.models import Job
+    from packages.orchestration.storage import save_job
+    from uuid import UUID
+    job = Job(id=UUID(REAL_JOB_UUID), name="cli-test")
+    save_job(job)
+    return tmp_path
+
+
 JOB_ID = "cli-test-job"
+REAL_JOB_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 
 class TestCatalogHandlerCoverage:
@@ -102,86 +122,88 @@ class TestProposeShowHandler:
 
 
 class TestProposeEvaluateHandler:
-    def test_evaluate_all(self, tmp_store, capsys):
-        add_proposed_task(JOB_ID, ProposedTask(title="A", risk="medium"))
-        add_proposed_task(JOB_ID, ProposedTask(title="B", risk="medium"))
+    def test_evaluate_all(self, tmp_store_with_job, capsys):
+        add_proposed_task(REAL_JOB_UUID, ProposedTask(title="A", risk="medium"))
+        add_proposed_task(REAL_JOB_UUID, ProposedTask(title="B", risk="medium"))
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=None, json=True)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=None, json=True)
         handlers["propose.evaluate"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["evaluated_count"] == 2
 
-    def test_evaluate_single(self, tmp_store, capsys):
+    def test_evaluate_single(self, tmp_store_with_job, capsys):
         t = ProposedTask(title="One", risk="high")
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, json=True)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=t.id, json=True)
         handlers["propose.evaluate"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["tasks"][0]["status"] == "evaluated"
 
-    def test_evaluate_missing_task(self, tmp_store):
+    def test_evaluate_missing_job(self, tmp_store, capsys):
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", json=False)
+        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", json=True)
         with pytest.raises(SystemExit):
             handlers["propose.evaluate"](args)
+        data = json.loads(capsys.readouterr().out)
+        assert "error" in data
 
 
 class TestProposeApproveHandler:
-    def test_approve(self, tmp_store, capsys):
+    def test_approve(self, tmp_store_with_job, capsys):
         t = ProposedTask(title="Approve me", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, json=True)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=t.id, json=True)
         handlers["propose.approve"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["approved"] is True
 
-    def test_approve_missing(self, tmp_store):
+    def test_approve_missing_job(self, tmp_store):
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", json=False)
+        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", json=True)
         with pytest.raises(SystemExit):
             handlers["propose.approve"](args)
 
-    def test_approve_rejected_fails(self, tmp_store):
+    def test_approve_rejected_fails(self, tmp_store_with_job):
         t = ProposedTask(title="X", status=ProposedTaskStatus.REJECTED)
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, json=False)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=t.id, json=False)
         with pytest.raises(SystemExit):
             handlers["propose.approve"](args)
 
 
 class TestProposeRejectHandler:
-    def test_reject(self, tmp_store, capsys):
+    def test_reject(self, tmp_store_with_job, capsys):
         t = ProposedTask(title="Reject me", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, reason="bad", json=True)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=t.id, reason="bad", json=True)
         handlers["propose.reject"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["rejected"] is True
 
-    def test_reject_missing(self, tmp_store):
+    def test_reject_missing_job(self, tmp_store):
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", reason="", json=False)
+        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", reason="", json=True)
         with pytest.raises(SystemExit):
             handlers["propose.reject"](args)
 
 
 class TestProposeDeferHandler:
-    def test_defer(self, tmp_store, capsys):
+    def test_defer(self, tmp_store_with_job, capsys):
         t = ProposedTask(title="Defer me", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, reason="later", json=True)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=t.id, reason="later", json=True)
         handlers["propose.defer"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["deferred"] is True
 
-    def test_defer_missing(self, tmp_store):
+    def test_defer_missing_job(self, tmp_store):
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", reason="", json=False)
+        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", reason="", json=True)
         with pytest.raises(SystemExit):
             handlers["propose.defer"](args)
 
@@ -231,39 +253,46 @@ class TestNoTraceback:
 
 
 class TestProposeMaterializeHandler:
-    def test_materialize_approved(self, tmp_store, capsys):
-        from packages.orchestration.proposed_tasks import do_materialize as _  # noqa: F401
+    def test_materialize_creates_real_job_task(self, tmp_store_with_job, capsys):
         t = ProposedTask(title="Build it", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, **{"all": False}, json=True)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=t.id, **{"all": False}, json=True)
         handlers["propose.materialize"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["materialized_count"] == 1
         assert data["tasks"][0]["materialized_task_id"] != ""
+        from packages.orchestration.storage import load_job
+        from uuid import UUID
+        job = load_job(UUID(REAL_JOB_UUID))
+        assert len(job.tasks) == 1
 
-    def test_materialize_all(self, tmp_store, capsys):
+    def test_materialize_all(self, tmp_store_with_job, capsys):
         t1 = ProposedTask(title="A", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
         t2 = ProposedTask(title="B", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
-        add_proposed_task(JOB_ID, t1)
-        add_proposed_task(JOB_ID, t2)
+        add_proposed_task(REAL_JOB_UUID, t1)
+        add_proposed_task(REAL_JOB_UUID, t2)
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=None, **{"all": True}, json=True)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=None, **{"all": True}, json=True)
         handlers["propose.materialize"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["materialized_count"] == 2
+        from packages.orchestration.storage import load_job
+        from uuid import UUID
+        job = load_job(UUID(REAL_JOB_UUID))
+        assert len(job.tasks) == 2
 
-    def test_materialize_non_approved_fails(self, tmp_store):
+    def test_materialize_non_approved_fails(self, tmp_store_with_job):
         t = ProposedTask(title="Not ready", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, **{"all": False}, json=False)
+        args = SimpleNamespace(job_id=REAL_JOB_UUID, task_id=t.id, **{"all": False}, json=False)
         with pytest.raises(SystemExit):
             handlers["propose.materialize"](args)
 
-    def test_materialize_missing_args(self, tmp_store):
+    def test_materialize_missing_job(self, tmp_store):
         handlers = collect_all_handlers()
-        args = SimpleNamespace(job_id=JOB_ID, task_id=None, **{"all": False}, json=False)
+        args = SimpleNamespace(job_id=JOB_ID, task_id="nope", **{"all": False}, json=True)
         with pytest.raises(SystemExit):
             handlers["propose.materialize"](args)
 
@@ -274,15 +303,19 @@ class TestAuditEvents:
             "packages.orchestration.proposed_tasks._STORE_DIR",
             tmp_path / "proposed_tasks",
         )
+        monkeypatch.setattr(
+            "packages.orchestration.storage._DATA_DIR",
+            tmp_path / "jobs",
+        )
+        from packages.core.models import Job
+        from packages.orchestration.storage import save_job
         from packages.orchestration.run_log import RunLogWriter
         from uuid import UUID
         job_uuid = "12345678-1234-1234-1234-123456789012"
+        save_job(Job(id=UUID(job_uuid), name="audit-test"))
         t = ProposedTask(title="Test", risk="medium")
         add_proposed_task(job_uuid, t)
 
-        from apps.cli.commands.propose_cmd import _make_writer
-        writer = _make_writer(job_uuid)
-        assert writer is not None
         runs_dir = tmp_path / "runs"
         writer_with_root = RunLogWriter(UUID(job_uuid), runs_root=runs_dir)
         monkeypatch.setattr("apps.cli.commands.propose_cmd._make_writer", lambda jid: writer_with_root)

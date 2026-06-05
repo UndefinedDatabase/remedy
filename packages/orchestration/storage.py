@@ -4,8 +4,9 @@ Job persistence layer.
 Jobs are stored as JSON files under <data_dir>/jobs/<job_id>.json.
 
 Storage location resolution order:
-1. REMEDY_DATA_DIR environment variable, if set.
-2. Repository-local default: <repo_root>/.data/jobs
+1. Explicit root= parameter, if passed.
+2. REMEDY_DATA_DIR environment variable, if set.
+3. Repository-local default: <repo_root>/.data/jobs
 
 Resolution is delegated to packages.orchestration.data_paths — that module
 is the single authoritative reader of REMEDY_DATA_DIR in production Python.
@@ -15,6 +16,9 @@ No database. No external dependencies.
 
 from __future__ import annotations
 
+import json
+import os
+import tempfile
 from pathlib import Path
 from uuid import UUID
 
@@ -30,43 +34,95 @@ class JobNotFoundError(Exception):
         self.job_id = job_id
 
 
-# Evaluated once at import time using the REMEDY_DATA_DIR env var (if set) or
-# the repo-local default.  Tests that need a different jobs directory after
-# import must monkeypatch storage._DATA_DIR directly.
-# monkeypatch.setenv("REMEDY_DATA_DIR", ...) only affects storage if done
-# BEFORE this module is imported.
-_DATA_DIR: Path = jobs_dir()
+class JobStoreError(Exception):
+    """Raised when job storage is corrupt or unreadable."""
 
 
-def save_job(job: Job) -> None:
-    """Persist a Job to disk as JSON."""
-    _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    path = _DATA_DIR / f"{job.id}.json"
-    path.write_text(job.model_dump_json(indent=2))
+# Legacy compat: monkeypatchable in old tests (deprecated, use root= param)
+_DATA_DIR: Path | None = None
 
 
-def load_job(job_id: UUID) -> Job:
+def _resolve_jobs_dir(root: Path | None = None) -> Path:
+    if root is not None:
+        return root / "jobs"
+    if _DATA_DIR is not None:
+        return _DATA_DIR
+    return jobs_dir()
+
+
+def _atomic_write_job(path: Path, data: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    closed = False
+    try:
+        os.write(fd, data.encode("utf-8"))
+        os.fsync(fd)
+        os.close(fd)
+        closed = True
+        os.replace(tmp, str(path))
+    except BaseException:
+        if not closed:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def save_job(job: Job, root: Path | None = None) -> None:
+    """Persist a Job to disk as JSON (atomic write)."""
+    jdir = _resolve_jobs_dir(root)
+    jdir.mkdir(parents=True, exist_ok=True)
+    path = jdir / f"{job.id}.json"
+    _atomic_write_job(path, job.model_dump_json(indent=2))
+
+
+def load_job(job_id: UUID, root: Path | None = None) -> Job:
     """Load a Job from disk by ID.
 
     Raises JobNotFoundError if the job does not exist.
+    Raises JobStoreError if the file exists but is corrupt.
     """
-    path = _DATA_DIR / f"{job_id}.json"
+    path = _resolve_jobs_dir(root) / f"{job_id}.json"
     if not path.exists():
         raise JobNotFoundError(job_id)
-    return Job.model_validate_json(path.read_text())
+    try:
+        return Job.model_validate_json(path.read_text())
+    except (ValueError, TypeError, KeyError) as exc:
+        raise JobStoreError(f"Corrupt job file for {job_id}: {exc}") from exc
+    except OSError as exc:
+        raise JobStoreError(f"Cannot read job file for {job_id}: {exc}") from exc
 
 
-def list_jobs() -> list[Job]:
-    """Return all persisted jobs sorted by created_at descending (newest first).
+def load_job_safe(job_id: UUID, root: Path | None = None) -> tuple[Job | None, bool]:
+    """Load a Job, returning (job, degraded).
+
+    Returns (None, True) if corrupt, (None, False) if not found, (job, False) if ok.
+    """
+    try:
+        return (load_job(job_id, root), False)
+    except JobNotFoundError:
+        return (None, False)
+    except JobStoreError:
+        return (None, True)
+
+
+def list_jobs(root: Path | None = None) -> list[Job]:
+    """Return all persisted jobs sorted by created_at descending.
 
     Corrupted or unreadable files are silently skipped.
     """
-    if not _DATA_DIR.exists():
+    jdir = _resolve_jobs_dir(root)
+    if not jdir.exists():
         return []
     jobs: list[Job] = []
-    for path in _DATA_DIR.glob("*.json"):
+    for path in jdir.glob("*.json"):
         try:
             jobs.append(Job.model_validate_json(path.read_text()))
         except (ValueError, OSError):
-            pass  # skip corrupted files; will be surfaced in a later step
+            pass
     return sorted(jobs, key=lambda j: j.created_at, reverse=True)

@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Iterator
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
@@ -616,30 +616,51 @@ def materialize_approved_task(proposed: ProposedTask) -> dict[str, Any]:
 
 
 def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> ProposedTask | None:
-    """Materialize an approved proposed task: create Task dict and mark materialized.
+    """Materialize an approved proposed task into a real Job Task.
 
-    Returns the updated ProposedTask with materialized_task_id set.
-    Caller still needs to append the Task to Job and save it.
+    1. Loads the Job (requires real persisted Job).
+    2. Creates a Task from the approved ProposedTask.
+    3. Appends Task to Job.tasks and saves the Job.
+    4. Marks ProposedTask.materialized_task_id and saves proposal store.
+
+    Order: Job saved first, then proposal. If proposal save fails after
+    Job save, the Task exists in Job — reconcile_materialized can detect
+    and repair the mismatch.
+
+    Raises:
+        JobNotFoundError: if job_id does not correspond to a persisted Job.
+        ValueError: if task is not approved or already materialized.
     """
+    from packages.orchestration.storage import load_job, save_job, JobNotFoundError
+    from packages.core.models import Task
+
+    job_uuid = UUID(job_id)
+    job = load_job(job_uuid, root)
+
     with _file_lock(job_id, root):
         tasks = load_proposed_tasks(job_id, root)
-        task = None
+        ptask = None
         for t in tasks:
             if t.id == task_id:
-                task = t
+                ptask = t
                 break
-        if task is None:
+        if ptask is None:
             return None
-        if task.status != ProposedTaskStatus.APPROVED_FOR_BUILD:
-            raise ValueError(f"Cannot materialize: status is {task.status.value}, not approved_for_build")
-        if task.is_materialized:
-            raise ValueError(f"Already materialized: {task.id} → {task.materialized_task_id}")
+        if ptask.status != ProposedTaskStatus.APPROVED_FOR_BUILD:
+            raise ValueError(f"Cannot materialize: status is {ptask.status.value}, not approved_for_build")
+        if ptask.is_materialized:
+            raise ValueError(f"Already materialized: {ptask.id} → {ptask.materialized_task_id}")
 
-        task_dict = materialize_approved_task(task)
-        task.materialized_task_id = task_dict["id"]
-        task.materialized_at = _utcnow()
+        task_dict = materialize_approved_task(ptask)
+        real_task = Task.model_validate(task_dict)
+
+        job.tasks.append(real_task)
+        save_job(job, root)
+
+        ptask.materialized_task_id = str(real_task.id)
+        ptask.materialized_at = _utcnow()
         save_proposed_tasks(job_id, tasks, root)
-    return task
+    return ptask
 
 
 def list_approved_not_materialized(
@@ -654,6 +675,60 @@ def list_approved_not_materialized(
 # Finalized gate helper
 # ---------------------------------------------------------------------------
 
+def reconcile_materialized(job_id: str, root: Path | None = None) -> dict[str, Any]:
+    """Check consistency between ProposedTask materialization and Job.tasks.
+
+    Returns a report dict (inspect-only by default).
+    """
+    from packages.orchestration.storage import load_job_safe
+
+    job_uuid = UUID(job_id)
+    job, job_degraded = load_job_safe(job_uuid, root)
+
+    try:
+        proposals = load_proposed_tasks(job_id, root)
+        proposals_degraded = False
+    except ProposedTaskStoreError:
+        proposals_degraded = True
+        proposals = []
+
+    if job_degraded or proposals_degraded:
+        return {
+            "consistent": False,
+            "job_degraded": job_degraded,
+            "proposals_degraded": proposals_degraded,
+            "missing_job_task": [],
+            "missing_proposal_marker": [],
+        }
+
+    job_task_ids = set()
+    proposed_task_id_map: dict[str, str] = {}
+    if job:
+        for t in job.tasks:
+            tid = str(t.id)
+            job_task_ids.add(tid)
+            pt_id = (t.inputs or {}).get("proposed_task_id", "")
+            if pt_id:
+                proposed_task_id_map[pt_id] = tid
+
+    missing_job_task = []
+    missing_proposal_marker = []
+
+    for p in proposals:
+        if p.materialized_task_id and p.materialized_task_id not in job_task_ids:
+            missing_job_task.append(p.id)
+        if not p.materialized_task_id and p.id in proposed_task_id_map:
+            missing_proposal_marker.append(p.id)
+
+    return {
+        "consistent": not missing_job_task and not missing_proposal_marker,
+        "job_degraded": False,
+        "proposals_degraded": False,
+        "missing_job_task": missing_job_task,
+        "missing_proposal_marker": missing_proposal_marker,
+    }
+
+
 def can_finalize(
     job_id: str,
     *,
@@ -665,11 +740,13 @@ def can_finalize(
     """Check whether a job can be finalized.
 
     Returns (can_finalize, reason).
-    If proposed task store is corrupt, blocks finalization.
+    Blocks if: corrupt store, unresolved proposals, approved-not-materialized,
+    pending/blocked tasks, pending approvals.
     """
-    unresolved, degraded = count_unresolved_safe(job_id, root)
+    tasks_result, degraded = load_proposed_tasks_safe(job_id, root)
     if degraded:
         return (False, "proposed_task_store_degraded")
+    unresolved = sum(1 for t in tasks_result if t.is_unresolved())
     if pending_task_count > 0:
         return (False, f"{pending_task_count} pending tasks")
     if blocked_task_count > 0:
@@ -678,6 +755,12 @@ def can_finalize(
         return (False, f"{pending_approvals} pending approvals")
     if unresolved > 0:
         return (False, f"{unresolved} unresolved proposals")
+    not_materialized = sum(
+        1 for t in tasks_result
+        if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not t.is_materialized
+    )
+    if not_materialized > 0:
+        return (False, f"{not_materialized} approved but not materialized")
     return (True, "ready")
 
 
@@ -713,3 +796,79 @@ def emit_proposed_task_event(
     if extra:
         metadata.update(extra)
     writer.log(event_name, task_id=task.origin_task_id or None, outcome=task.status.value, **metadata)
+
+
+# ---------------------------------------------------------------------------
+# Backend readiness
+# ---------------------------------------------------------------------------
+
+def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
+    """Compact backend readiness report for a job."""
+    from packages.orchestration.storage import load_job_safe
+
+    blockers: list[str] = []
+
+    job, job_degraded = load_job_safe(UUID(job_id), root)
+    if job_degraded:
+        blockers.append("job_store_degraded")
+    elif job is None:
+        blockers.append("job_not_found")
+
+    tasks_result, proposals_degraded = load_proposed_tasks_safe(job_id, root)
+    if proposals_degraded:
+        blockers.append("proposal_store_degraded")
+
+    if not proposals_degraded:
+        unresolved = sum(1 for t in tasks_result if t.is_unresolved())
+        if unresolved:
+            blockers.append(f"{unresolved}_unresolved_proposals")
+        not_mat = sum(
+            1 for t in tasks_result
+            if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not t.is_materialized
+        )
+        if not_mat:
+            blockers.append(f"{not_mat}_approved_not_materialized")
+
+    recon = reconcile_materialized(job_id, root)
+    if not recon["consistent"]:
+        blockers.append("materialization_mismatch")
+
+    return {
+        "ready": len(blockers) == 0,
+        "blockers": blockers,
+        "job_exists": job is not None and not job_degraded,
+        "proposal_store_healthy": not proposals_degraded,
+        "materialization_consistent": recon["consistent"],
+    }
+
+
+def overnight_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
+    """Overnight autonomy readiness gate. Does NOT execute anything."""
+    base = backend_readiness(job_id, root)
+    blockers = list(base["blockers"])
+
+    from packages.orchestration.storage import load_job_safe
+    job, _ = load_job_safe(UUID(job_id), root)
+    if job:
+        pending = sum(
+            1 for t in job.tasks
+            if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("pending", "planned")
+        )
+        blocked = sum(
+            1 for t in job.tasks
+            if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("blocked", "failed")
+        )
+        if blocked > 0:
+            blockers.append(f"{blocked}_blocked_tasks")
+
+    blockers.append("no_overnight_mode_implemented")
+    blockers.append("no_rollback_snapshot_proof")
+    blockers.append("no_token_time_budget_set")
+
+    return {
+        "ready": False,
+        "blockers": blockers,
+        "max_safe_autonomy_level": 0,
+        "required_human_actions": ["review and approve proposed tasks", "set token budget", "configure rollback"],
+        "risk_summary": "Overnight autonomy not yet safe — missing rollback, budget, and execution proof.",
+    }

@@ -33,6 +33,32 @@ def _make_writer(job_id: str) -> Any:
         return None
 
 
+def _require_job(job_id: str, args: Any) -> bool:
+    """Validate that a real Job exists for mutating commands.
+
+    Returns True if job exists, False + printed error if not.
+    """
+    try:
+        from packages.orchestration.storage import load_job, JobNotFoundError, JobStoreError
+        uid = UUID(job_id)
+        load_job(uid)
+        return True
+    except (ValueError, TypeError):
+        msg = f"Invalid job ID: {job_id}"
+    except JobNotFoundError:
+        msg = f"Job not found: {job_id}"
+    except JobStoreError:
+        msg = f"Job store is unreadable for: {job_id}"
+    except ImportError:
+        msg = "Job storage module unavailable"
+
+    if getattr(args, "json", False):
+        print(json.dumps({"version": 1, "error": msg}))
+    else:
+        print(msg, file=sys.stderr)
+    return False
+
+
 def _task_to_safe_dict(t: Any) -> dict[str, Any]:
     return {
         "id": t.id,
@@ -143,6 +169,8 @@ def _cmd_propose_show(args: Any) -> None:
 
 
 def _cmd_propose_evaluate(args: Any) -> None:
+    if not _require_job(args.job_id, args):
+        sys.exit(1)
     from packages.orchestration.proposed_tasks import (
         evaluate_proposed_task,
         evaluate_all_proposed,
@@ -194,6 +222,8 @@ def _cmd_propose_evaluate(args: Any) -> None:
 
 
 def _cmd_propose_approve(args: Any) -> None:
+    if not _require_job(args.job_id, args):
+        sys.exit(1)
     from packages.orchestration.proposed_tasks import (
         approve_proposed_task,
         emit_proposed_task_event,
@@ -244,6 +274,8 @@ def _cmd_propose_approve(args: Any) -> None:
 
 
 def _cmd_propose_reject(args: Any) -> None:
+    if not _require_job(args.job_id, args):
+        sys.exit(1)
     from packages.orchestration.proposed_tasks import (
         reject_proposed_task,
         emit_proposed_task_event,
@@ -295,6 +327,8 @@ def _cmd_propose_reject(args: Any) -> None:
 
 
 def _cmd_propose_defer(args: Any) -> None:
+    if not _require_job(args.job_id, args):
+        sys.exit(1)
     from packages.orchestration.proposed_tasks import (
         defer_proposed_task,
         emit_proposed_task_event,
@@ -346,6 +380,8 @@ def _cmd_propose_defer(args: Any) -> None:
 
 
 def _cmd_propose_materialize(args: Any) -> None:
+    if not _require_job(args.job_id, args):
+        sys.exit(1)
     from packages.orchestration.proposed_tasks import (
         do_materialize,
         list_approved_not_materialized,

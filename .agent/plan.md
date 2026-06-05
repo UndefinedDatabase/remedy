@@ -1,24 +1,24 @@
-# Plan — Steps 595-609: Backend Reliability Closure
+# Plan — Steps 610-624: Job Task Materialization + Backend Build Readiness
 
 ## Goal
-Audit trail, store locking, materialization truth, centralized gates.
+Close: ProposedTask → approved → materialized into real Job.tasks → queue sees real work.
 
 ## Current Step
-609 — Final baseline
+624 — Final baseline
 
 ## Steps
-- [x] 595: Clean backend handoff — risks carried forward
-- [x] 596: (merged into 608) Runtime CLI tests via handlers
-- [x] 597: Real audit events — _make_writer(job_id), no more None writers
-- [x] 598: File locking — fcntl.flock with bounded retry
-- [x] 599: Remove import-time _STORE_DIR — resolves at call time via proposed_tasks_dir()
-- [x] 600: Centralize finalized gate — ui_server uses can_finalize()
-- [x] 601: Materialization state — materialized_task_id, materialized_at on ProposedTask
-- [x] 602: propose.materialize command + catalog entry + handler
-- [x] 603: (merged into 601/602) Queue gate — approved-not-materialized explicit
-- [x] 604: Dashboard v2 — approved_not_materialized, materialized, summaries
-- [x] 605: (merged into 597) Reviewer/rework audit — writer passed where available
-- [x] 606: (merged into tests) Corrupt store drill — all surfaces tested
-- [x] 607: (merged into tests) Store race regression — sequential + approve+materialize
-- [x] 608: (merged into CLI tests) Audit + materialize CLI tests
-- [x] 609: Full baseline: 4344 passed, 0 failed, 8 skipped
+- [x] 610: Clean backend handoff — agent files current
+- [x] 611: Job storage data-root correct — root= param, atomic writes, JobStoreError
+- [x] 612: Require real Job for mutating propose commands — _require_job gate
+- [x] 613: True materialization — do_materialize loads Job, appends Task, saves Job
+- [x] 614: Reconciliation helper — reconcile_materialized detects mismatches
+- [x] 615: can_finalize blocks approved_not_materialized
+- [x] 616: Subprocess CLI test suite — 11 tests via python -m apps.cli.grouped
+- [x] 617: Audit events link proposed_task_id and materialized_task_id
+- [x] 618: Dashboard v2 already includes materialization (from 604)
+- [x] 619: Finalize gate v2 — approved_not_materialized blocks
+- [x] 620: Reviewer/rework — same materialization path, trace preserved in Task.inputs
+- [x] 621: Job store — atomic writes, JobStoreError on corrupt, load_job_safe
+- [x] 622: backend_readiness() helper — job/proposal/materialization health
+- [x] 623: overnight_readiness() gate — always returns not ready + specific blockers
+- [x] 624: Full baseline: 4365 passed, 0 failed, 8 skipped

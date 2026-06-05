@@ -1081,12 +1081,12 @@ class TestContextCmdStaleRepo:
     def _run_context(self, job_id_str: str, monkeypatch, capsys, tmp_path):
         import sys
         from apps.cli.main import main
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", job_id_str])
         main()
         return capsys.readouterr()
 
     def test_stale_repo_path_warns_stderr(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent_repo")
         save_job(job)
@@ -1094,16 +1094,17 @@ class TestContextCmdStaleRepo:
         assert "Warning: project constitution unavailable for context coverage." in result.err
 
     def test_stale_repo_exits_0(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent_repo")
         save_job(job)
         import sys
         from apps.cli.main import main
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
         main()  # must not raise SystemExit
 
     def test_file_not_dir_warns_stderr(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         fake_file = tmp_path / "not_a_dir.txt"
         fake_file.write_text("x")
         job = _make_job()
@@ -1113,6 +1114,7 @@ class TestContextCmdStaleRepo:
         assert "Warning: project constitution unavailable for context coverage." in result.err
 
     def test_runtime_error_doesnt_leak_secret(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration import project_constitution as _pc_mod
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path)
@@ -1131,7 +1133,6 @@ class TestContextCmdStaleRepo:
 
         import sys
         from apps.cli.main import main
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job2.id)])
         main()
         result = capsys.readouterr()
@@ -1139,12 +1140,14 @@ class TestContextCmdStaleRepo:
         assert "SECRET_INTERNAL_PATH_DATA" not in result.out
 
     def test_no_target_repo_no_warning(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
         result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
         assert "Warning" not in result.err
 
     def test_valid_repo_no_warning(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         real_dir = tmp_path / "repo"
         real_dir.mkdir()
         job = _make_job()

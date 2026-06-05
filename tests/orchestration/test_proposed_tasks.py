@@ -38,6 +38,9 @@ from packages.orchestration.proposed_tasks import (
     materialize_approved_task,
     do_materialize,
     list_approved_not_materialized,
+    reconcile_materialized,
+    backend_readiness,
+    overnight_readiness,
     EvaluationResult,
 )
 
@@ -53,6 +56,16 @@ def tmp_store(tmp_path, monkeypatch):
 
 
 JOB_ID = "test-job-001"
+REAL_JOB_UUID = "12345678-1234-1234-1234-123456789012"
+
+
+def _create_real_job(root: Path, job_id: str = REAL_JOB_UUID) -> None:
+    """Create a minimal Job file in the given data root."""
+    from packages.core.models import Job
+    from packages.orchestration.storage import save_job
+    from uuid import UUID
+    job = Job(id=UUID(job_id), name="test-job")
+    save_job(job, root)
 
 
 class TestProposedTaskModel:
@@ -416,8 +429,14 @@ class TestCanFinalize:
         assert ok is False
         assert "degraded" in reason
 
-    def test_approved_does_not_block(self, tmp_store):
+    def test_approved_not_materialized_blocks(self, tmp_store):
         add_proposed_task(JOB_ID, ProposedTask(title="A", status=ProposedTaskStatus.APPROVED_FOR_BUILD))
+        ok, reason = can_finalize(JOB_ID)
+        assert ok is False
+        assert "not materialized" in reason
+
+    def test_approved_materialized_does_not_block(self, tmp_store):
+        add_proposed_task(JOB_ID, ProposedTask(title="A", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="real-task-1"))
         ok, _ = can_finalize(JOB_ID)
         assert ok is True
 
@@ -529,24 +548,43 @@ class TestMaterialization:
         assert len(not_materialized) == 1
         assert not_materialized[0].id == t2.id
 
-    def test_do_materialize_sets_task_id(self, tmp_store):
+    def test_do_materialize_creates_real_job_task(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
         t = ProposedTask(title="Materialize me", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
-        add_proposed_task(JOB_ID, t)
-        result = do_materialize(JOB_ID, t.id)
+        add_proposed_task(REAL_JOB_UUID, t)
+        result = do_materialize(REAL_JOB_UUID, t.id)
         assert result is not None
         assert result.materialized_task_id != ""
         assert result.materialized_at is not None
+        from packages.orchestration.storage import load_job
+        from uuid import UUID
+        job = load_job(UUID(REAL_JOB_UUID))
+        assert any(str(task.id) == result.materialized_task_id for task in job.tasks)
 
-    def test_do_materialize_rejects_non_approved(self, tmp_store):
+    def test_do_materialize_rejects_non_approved(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
         t = ProposedTask(title="Not ready", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         with pytest.raises(ValueError, match="not approved_for_build"):
-            do_materialize(JOB_ID, t.id)
+            do_materialize(REAL_JOB_UUID, t.id)
 
-    def test_do_materialize_rejects_already_materialized(self, tmp_store):
+    def test_do_materialize_rejects_already_materialized(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
         t = ProposedTask(title="Done", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="existing")
-        add_proposed_task(JOB_ID, t)
+        add_proposed_task(REAL_JOB_UUID, t)
         with pytest.raises(ValueError, match="Already materialized"):
+            do_materialize(REAL_JOB_UUID, t.id)
+
+    def test_do_materialize_missing_job_fails(self, tmp_store):
+        t = ProposedTask(title="No job", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
+        add_proposed_task(JOB_ID, t)
+        with pytest.raises(Exception):
             do_materialize(JOB_ID, t.id)
 
     def test_materialize_non_approved_raises(self):
@@ -556,23 +594,31 @@ class TestMaterialization:
 
 
 class TestEndToEndFlow:
-    def test_full_proposed_task_lifecycle(self, tmp_store):
-        t = propose_task_from_review_finding(JOB_ID, title="New feature", reason="Reviewer found gap", risk="medium")
-        assert t.status == ProposedTaskStatus.PROPOSED
-        assert count_unresolved(JOB_ID) == 1
+    def test_full_proposed_task_lifecycle(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
 
-        ok, _ = can_finalize(JOB_ID)
+        t = propose_task_from_review_finding(REAL_JOB_UUID, title="New feature", reason="Reviewer found gap", risk="medium")
+        assert t.status == ProposedTaskStatus.PROPOSED
+        assert count_unresolved(REAL_JOB_UUID) == 1
+
+        ok, _ = can_finalize(REAL_JOB_UUID)
         assert ok is False
 
-        evaluated = evaluate_proposed_task(JOB_ID, t.id)
+        evaluated = evaluate_proposed_task(REAL_JOB_UUID, t.id)
         assert evaluated.status == ProposedTaskStatus.EVALUATED
-        assert count_unresolved(JOB_ID) == 1
 
-        approved = approve_proposed_task(JOB_ID, t.id)
+        approved = approve_proposed_task(REAL_JOB_UUID, t.id)
         assert approved.status == ProposedTaskStatus.APPROVED_FOR_BUILD
-        assert count_unresolved(JOB_ID) == 0
+        assert count_unresolved(REAL_JOB_UUID) == 0
 
-        ok, reason = can_finalize(JOB_ID)
+        ok, reason = can_finalize(REAL_JOB_UUID)
+        assert ok is False
+        assert "not materialized" in reason
+
+        do_materialize(REAL_JOB_UUID, t.id)
+        ok, reason = can_finalize(REAL_JOB_UUID)
         assert ok is True
 
     def test_reject_flow(self, tmp_store):
@@ -589,16 +635,24 @@ class TestEndToEndFlow:
         assert deferred.status == ProposedTaskStatus.DEFERRED
         assert count_unresolved(JOB_ID) == 0
 
-    def test_full_lifecycle_with_materialize(self, tmp_store):
-        t = propose_task_from_review_finding(JOB_ID, title="Build it", risk="medium")
-        evaluate_proposed_task(JOB_ID, t.id)
-        approve_proposed_task(JOB_ID, t.id)
-        materialized = do_materialize(JOB_ID, t.id)
+    def test_full_lifecycle_with_materialize(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        t = propose_task_from_review_finding(REAL_JOB_UUID, title="Build it", risk="medium")
+        evaluate_proposed_task(REAL_JOB_UUID, t.id)
+        approve_proposed_task(REAL_JOB_UUID, t.id)
+        materialized = do_materialize(REAL_JOB_UUID, t.id)
         assert materialized.materialized_task_id != ""
         assert materialized.materialized_at is not None
-        assert list_approved_not_materialized(JOB_ID) == []
-        ok, _ = can_finalize(JOB_ID)
+        assert list_approved_not_materialized(REAL_JOB_UUID) == []
+        ok, _ = can_finalize(REAL_JOB_UUID)
         assert ok is True
+        from packages.orchestration.storage import load_job
+        from uuid import UUID
+        job = load_job(UUID(REAL_JOB_UUID))
+        assert len(job.tasks) == 1
+        assert str(job.tasks[0].id) == materialized.materialized_task_id
 
 
 class TestFileLocking:
@@ -620,12 +674,15 @@ class TestFileLocking:
         assert loaded[0].title == "Updated"
         assert loaded[1].title == "New"
 
-    def test_approve_then_materialize_preserves_state(self, tmp_store):
+    def test_approve_then_materialize_preserves_state(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
         t = ProposedTask(title="Build", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(JOB_ID, t)
-        approve_proposed_task(JOB_ID, t.id)
-        do_materialize(JOB_ID, t.id)
-        loaded = load_proposed_tasks(JOB_ID)
+        add_proposed_task(REAL_JOB_UUID, t)
+        approve_proposed_task(REAL_JOB_UUID, t.id)
+        do_materialize(REAL_JOB_UUID, t.id)
+        loaded = load_proposed_tasks(REAL_JOB_UUID)
         assert loaded[0].status == ProposedTaskStatus.APPROVED_FOR_BUILD
         assert loaded[0].materialized_task_id != ""
 
@@ -654,3 +711,79 @@ class TestStoreRootResolution:
         add_proposed_task(JOB_ID, ProposedTask(title="Explicit"), root=explicit_root)
         assert load_proposed_tasks(JOB_ID, root=explicit_root)[0].title == "Explicit"
         assert load_proposed_tasks(JOB_ID) == []
+
+
+class TestReconciliation:
+    def test_consistent(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        report = reconcile_materialized(REAL_JOB_UUID)
+        assert report["consistent"] is True
+
+    def test_missing_job_task(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        t = ProposedTask(title="Ghost", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="nonexistent-task-id")
+        add_proposed_task(REAL_JOB_UUID, t)
+        report = reconcile_materialized(REAL_JOB_UUID)
+        assert report["consistent"] is False
+        assert t.id in report["missing_job_task"]
+
+    def test_corrupt_store(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        pt_dir = tmp_path / "proposed_tasks"
+        pt_dir.mkdir(parents=True, exist_ok=True)
+        (pt_dir / f"{REAL_JOB_UUID}.json").write_text("corrupt")
+        report = reconcile_materialized(REAL_JOB_UUID)
+        assert report["consistent"] is False
+        assert report["proposals_degraded"] is True
+
+
+class TestBackendReadiness:
+    def test_healthy_job(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        report = backend_readiness(REAL_JOB_UUID)
+        assert report["ready"] is True
+        assert report["blockers"] == []
+
+    def test_not_ready_with_unresolved(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        add_proposed_task(REAL_JOB_UUID, ProposedTask(title="Pending"))
+        report = backend_readiness(REAL_JOB_UUID)
+        assert report["ready"] is False
+        assert any("unresolved" in b for b in report["blockers"])
+
+    def test_not_ready_missing_job(self, tmp_store):
+        report = backend_readiness("00000000-0000-0000-0000-000000000099")
+        assert report["ready"] is False
+        assert "job_not_found" in report["blockers"]
+
+    def test_not_ready_corrupt_store(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        pt_dir = tmp_path / "proposed_tasks"
+        pt_dir.mkdir(parents=True, exist_ok=True)
+        (pt_dir / f"{REAL_JOB_UUID}.json").write_text("corrupt")
+        report = backend_readiness(REAL_JOB_UUID)
+        assert report["ready"] is False
+        assert "proposal_store_degraded" in report["blockers"]
+
+
+class TestOvernightReadiness:
+    def test_never_ready_yet(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
+        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        _create_real_job(tmp_path)
+        report = overnight_readiness(REAL_JOB_UUID)
+        assert report["ready"] is False
+        assert "no_overnight_mode_implemented" in report["blockers"]
+        assert report["max_safe_autonomy_level"] == 0

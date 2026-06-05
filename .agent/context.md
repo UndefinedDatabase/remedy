@@ -4,35 +4,29 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 595-609: Backend Reliability Closure — audit trail, store locking, materialization truth.
-UI/design work is PAUSED. Backend stability is priority.
+Steps 610-624: Job Task Materialization, Runtime CLI Truth, Backend Build Readiness.
+UI/design work is PAUSED.
 
 ## Canonical Review File
 `.agent/live_review.md` — NOT `.data/live_review.md`
 
-## What Is Done (Steps 580-594)
-- 6 propose CLI handlers wired and tested
-- root= param on all store functions
-- Atomic writes (tempfile + os.replace)
-- ProposedTaskStoreError on corrupt JSON
-- Worker queue gate passes data_dir, corrupt blocks
-- Finalized gate blocks on degraded
-- accept_recommendation creates ProposedTask (not Task)
-- Dashboard: degraded, blocking_finalized, blocking_build
+## What Is Done
+- 7 propose CLI handlers (list/show/evaluate/approve/reject/defer/materialize)
+- Real audit events via RunLogWriter (no dormant None writers)
+- fcntl.flock on all write operations
+- Call-time data root (no import-time _STORE_DIR dependency)
+- Centralized finalized gate via can_finalize()
+- ProposedTask has materialized_task_id / materialized_at
+- Dashboard v2 with materialization counts and summaries
 
-## Current Risks (Steps 595-609 targets)
-1. CLI audit events dormant — `emit_proposed_task_event(None, ...)` in all CLI handlers
-2. No file locking — atomic replace prevents partial files, not lost read-modify-write
-3. `_STORE_DIR` still resolved at import time (legacy global)
-4. Dashboard finalized logic duplicates can_finalize() inline
-5. Materialization: `materialize_approved_task()` exists but no persistence of materialized state
-6. No `propose materialize` command
-7. Queue gate doesn't distinguish approved-not-materialized from approved-materialized
-
-## Key Patterns
-- Event ledger: `run_log.py` RunLogWriter(job_id: UUID, runs_root=) → `.data/runs/<job_id>/<run_id>.jsonl`
-- CLI handlers: `apps/cli/commands/<group>.py` with `COMMAND_HANDLERS` dict
-- Handler collection: `apps/cli/commands/__init__.py` `collect_all_handlers()`
+## Current Risks
+1. `do_materialize()` marks ProposedTask.materialized_task_id but does NOT append a Task to Job.tasks or save_job()
+2. `storage.py` uses import-time `_DATA_DIR = jobs_dir()` — same issue proposed_tasks had
+3. Mutating propose commands can operate without verifying real Job exists
+4. No subprocess CLI tests through `python -m apps.cli.grouped`
+5. `can_finalize()` does not check approved_not_materialized
+6. No reconciliation for materialization mismatch
+7. No backend readiness or overnight readiness gate
 
 ## Resource Safety
 All pytest runs use scripts/remedy_pytest.sh (flock + timeout).
