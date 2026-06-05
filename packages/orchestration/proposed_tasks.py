@@ -18,18 +18,20 @@ Each file is a JSON array of ProposedTask dicts for that job.
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from packages.orchestration.data_paths import proposed_tasks_dir
+from packages.orchestration.data_paths import proposed_tasks_dir, resolve_data_root
 
 
 def _utcnow() -> datetime:
@@ -86,11 +88,18 @@ class ProposedTask(BaseModel):
     created_at: datetime = Field(default_factory=_utcnow)
     resolved_at: datetime | None = None
 
+    materialized_task_id: str = ""
+    materialized_at: datetime | None = None
+
     def is_unresolved(self) -> bool:
         return self.status in UNRESOLVED_STATUSES
 
     def is_terminal(self) -> bool:
         return self.status in TERMINAL_STATUSES
+
+    @property
+    def is_materialized(self) -> bool:
+        return bool(self.materialized_task_id)
 
 
 # ---------------------------------------------------------------------------
@@ -145,25 +154,65 @@ def transition_status(task: ProposedTask, target: ProposedTaskStatus, *, by: str
 
 
 # ---------------------------------------------------------------------------
-# Persistence — JSON files per job, atomic writes
+# Persistence — JSON files per job, atomic writes, file locking
 # ---------------------------------------------------------------------------
 
 # Legacy compat: monkeypatchable in old tests (deprecated, use root= param)
-_STORE_DIR: Path = proposed_tasks_dir()
+_STORE_DIR: Path | None = None
 
 
 def _resolve_store_dir(root: Path | None = None) -> Path:
     if root is not None:
         return root / "proposed_tasks"
-    return _STORE_DIR
+    if _STORE_DIR is not None:
+        return _STORE_DIR
+    return proposed_tasks_dir()
 
 
 def _job_path(job_id: str, root: Path | None = None) -> Path:
     return _resolve_store_dir(root) / f"{job_id}.json"
 
 
+def _lock_path(job_id: str, root: Path | None = None) -> Path:
+    return _resolve_store_dir(root) / f".{job_id}.lock"
+
+
+_LOCK_TIMEOUT_SEC = 5
+
+
+@contextmanager
+def _file_lock(job_id: str, root: Path | None = None) -> Iterator[None]:
+    """Acquire an advisory file lock for a job's proposed task store.
+
+    Uses fcntl.flock with bounded timeout via alarm-free retry.
+    """
+    store = _resolve_store_dir(root)
+    store.mkdir(parents=True, exist_ok=True)
+    lock_file = _lock_path(job_id, root)
+    fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR)
+    try:
+        import time
+        deadline = time.monotonic() + _LOCK_TIMEOUT_SEC
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except (OSError, BlockingIOError):
+                if time.monotonic() >= deadline:
+                    os.close(fd)
+                    raise ProposedTaskStoreError(
+                        f"Could not acquire lock for job {job_id} within {_LOCK_TIMEOUT_SEC}s"
+                    )
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+
+
 def _atomic_write(path: Path, data: str) -> None:
-    """Write data to path atomically via temp file + rename."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
     closed = False
@@ -217,7 +266,6 @@ def load_proposed_tasks_safe(job_id: str, root: Path | None = None) -> tuple[lis
     """Load proposed tasks, returning (tasks, degraded).
 
     If store is corrupt, returns ([], True) instead of raising.
-    Callers that need to distinguish empty from corrupt use this.
     """
     try:
         return (load_proposed_tasks(job_id, root), False)
@@ -226,9 +274,10 @@ def load_proposed_tasks_safe(job_id: str, root: Path | None = None) -> tuple[lis
 
 
 def add_proposed_task(job_id: str, task: ProposedTask, root: Path | None = None) -> None:
-    tasks = load_proposed_tasks(job_id, root)
-    tasks.append(task)
-    save_proposed_tasks(job_id, tasks, root)
+    with _file_lock(job_id, root):
+        tasks = load_proposed_tasks(job_id, root)
+        tasks.append(task)
+        save_proposed_tasks(job_id, tasks, root)
 
 
 def get_proposed_task(job_id: str, task_id: str, root: Path | None = None) -> ProposedTask | None:
@@ -239,28 +288,21 @@ def get_proposed_task(job_id: str, task_id: str, root: Path | None = None) -> Pr
 
 
 def update_proposed_task(job_id: str, task: ProposedTask, root: Path | None = None) -> bool:
-    tasks = load_proposed_tasks(job_id, root)
-    for i, t in enumerate(tasks):
-        if t.id == task.id:
-            tasks[i] = task
-            save_proposed_tasks(job_id, tasks, root)
-            return True
+    with _file_lock(job_id, root):
+        tasks = load_proposed_tasks(job_id, root)
+        for i, t in enumerate(tasks):
+            if t.id == task.id:
+                tasks[i] = task
+                save_proposed_tasks(job_id, tasks, root)
+                return True
     return False
 
 
 def count_unresolved(job_id: str, root: Path | None = None) -> int:
-    """Count proposed tasks that block finalized gate.
-
-    Raises ProposedTaskStoreError if store is corrupt.
-    """
     return sum(1 for t in load_proposed_tasks(job_id, root) if t.is_unresolved())
 
 
 def count_unresolved_safe(job_id: str, root: Path | None = None) -> tuple[int, bool]:
-    """Count unresolved, returning (count, degraded).
-
-    If corrupt, returns (-1, True) — callers should treat as blocking.
-    """
     try:
         return (count_unresolved(job_id, root), False)
     except ProposedTaskStoreError:
@@ -381,38 +423,19 @@ def evaluate_proposed_task(
     task_id: str,
     root: Path | None = None,
 ) -> ProposedTask | None:
-    tasks = load_proposed_tasks(job_id, root)
-    task = None
-    for t in tasks:
-        if t.id == task_id:
-            task = t
-            break
-    if task is None:
-        return None
+    with _file_lock(job_id, root):
+        tasks = load_proposed_tasks(job_id, root)
+        task = None
+        for t in tasks:
+            if t.id == task_id:
+                task = t
+                break
+        if task is None:
+            return None
 
-    if task.status != ProposedTaskStatus.PROPOSED:
-        return task
-
-    result = _evaluate_duplicate_rule(task, tasks)
-    if result is None:
-        result = _evaluate_risk_rule(task)
-    if result is None:
-        result = _evaluate_auto_approve_rule(task)
-    if result is None:
-        result = EvaluationResult(ProposedTaskStatus.EVALUATED, "awaiting human decision")
-
-    transition_status(task, result.decision, by="deterministic")
-    task.evaluation_notes = result.notes
-    save_proposed_tasks(job_id, tasks, root)
-    return task
-
-
-def evaluate_all_proposed(job_id: str, root: Path | None = None) -> list[ProposedTask]:
-    tasks = load_proposed_tasks(job_id, root)
-    changed = False
-    for task in tasks:
         if task.status != ProposedTaskStatus.PROPOSED:
-            continue
+            return task
+
         result = _evaluate_duplicate_rule(task, tasks)
         if result is None:
             result = _evaluate_risk_rule(task)
@@ -420,11 +443,32 @@ def evaluate_all_proposed(job_id: str, root: Path | None = None) -> list[Propose
             result = _evaluate_auto_approve_rule(task)
         if result is None:
             result = EvaluationResult(ProposedTaskStatus.EVALUATED, "awaiting human decision")
+
         transition_status(task, result.decision, by="deterministic")
         task.evaluation_notes = result.notes
-        changed = True
-    if changed:
         save_proposed_tasks(job_id, tasks, root)
+    return task
+
+
+def evaluate_all_proposed(job_id: str, root: Path | None = None) -> list[ProposedTask]:
+    with _file_lock(job_id, root):
+        tasks = load_proposed_tasks(job_id, root)
+        changed = False
+        for task in tasks:
+            if task.status != ProposedTaskStatus.PROPOSED:
+                continue
+            result = _evaluate_duplicate_rule(task, tasks)
+            if result is None:
+                result = _evaluate_risk_rule(task)
+            if result is None:
+                result = _evaluate_auto_approve_rule(task)
+            if result is None:
+                result = EvaluationResult(ProposedTaskStatus.EVALUATED, "awaiting human decision")
+            transition_status(task, result.decision, by="deterministic")
+            task.evaluation_notes = result.notes
+            changed = True
+        if changed:
+            save_proposed_tasks(job_id, tasks, root)
     return tasks
 
 
@@ -461,33 +505,51 @@ _MAX_REASON_LEN = 200
 
 
 def approve_proposed_task(job_id: str, task_id: str, root: Path | None = None) -> ProposedTask | None:
-    task = get_proposed_task(job_id, task_id, root)
-    if task is None:
-        return None
-    transition_status(task, ProposedTaskStatus.APPROVED_FOR_BUILD, by="user")
-    update_proposed_task(job_id, task, root)
+    with _file_lock(job_id, root):
+        task = get_proposed_task(job_id, task_id, root)
+        if task is None:
+            return None
+        transition_status(task, ProposedTaskStatus.APPROVED_FOR_BUILD, by="user")
+        tasks = load_proposed_tasks(job_id, root)
+        for i, t in enumerate(tasks):
+            if t.id == task.id:
+                tasks[i] = task
+                break
+        save_proposed_tasks(job_id, tasks, root)
     return task
 
 
 def reject_proposed_task(job_id: str, task_id: str, *, reason: str = "", root: Path | None = None) -> ProposedTask | None:
-    task = get_proposed_task(job_id, task_id, root)
-    if task is None:
-        return None
-    if reason:
-        task.evaluation_notes = reason[:_MAX_REASON_LEN]
-    transition_status(task, ProposedTaskStatus.REJECTED, by="user")
-    update_proposed_task(job_id, task, root)
+    with _file_lock(job_id, root):
+        task = get_proposed_task(job_id, task_id, root)
+        if task is None:
+            return None
+        if reason:
+            task.evaluation_notes = reason[:_MAX_REASON_LEN]
+        transition_status(task, ProposedTaskStatus.REJECTED, by="user")
+        tasks = load_proposed_tasks(job_id, root)
+        for i, t in enumerate(tasks):
+            if t.id == task.id:
+                tasks[i] = task
+                break
+        save_proposed_tasks(job_id, tasks, root)
     return task
 
 
 def defer_proposed_task(job_id: str, task_id: str, *, reason: str = "", root: Path | None = None) -> ProposedTask | None:
-    task = get_proposed_task(job_id, task_id, root)
-    if task is None:
-        return None
-    if reason:
-        task.evaluation_notes = reason[:_MAX_REASON_LEN]
-    transition_status(task, ProposedTaskStatus.DEFERRED, by="user")
-    update_proposed_task(job_id, task, root)
+    with _file_lock(job_id, root):
+        task = get_proposed_task(job_id, task_id, root)
+        if task is None:
+            return None
+        if reason:
+            task.evaluation_notes = reason[:_MAX_REASON_LEN]
+        transition_status(task, ProposedTaskStatus.DEFERRED, by="user")
+        tasks = load_proposed_tasks(job_id, root)
+        for i, t in enumerate(tasks):
+            if t.id == task.id:
+                tasks[i] = task
+                break
+        save_proposed_tasks(job_id, tasks, root)
     return task
 
 
@@ -532,8 +594,14 @@ def materialize_approved_task(proposed: ProposedTask) -> dict[str, Any]:
     """
     if proposed.status != ProposedTaskStatus.APPROVED_FOR_BUILD:
         raise ValueError(f"Cannot materialize: status is {proposed.status.value}, not approved_for_build")
+    if proposed.is_materialized:
+        raise ValueError(f"Already materialized: {proposed.id} → {proposed.materialized_task_id}")
+
+    from uuid import uuid4 as _uuid4
+    task_id = str(_uuid4())
 
     return {
+        "id": task_id,
         "description": proposed.title[:80],
         "inputs": {
             "proposed_task_id": proposed.id,
@@ -547,14 +615,39 @@ def materialize_approved_task(proposed: ProposedTask) -> dict[str, Any]:
     }
 
 
+def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> ProposedTask | None:
+    """Materialize an approved proposed task: create Task dict and mark materialized.
+
+    Returns the updated ProposedTask with materialized_task_id set.
+    Caller still needs to append the Task to Job and save it.
+    """
+    with _file_lock(job_id, root):
+        tasks = load_proposed_tasks(job_id, root)
+        task = None
+        for t in tasks:
+            if t.id == task_id:
+                task = t
+                break
+        if task is None:
+            return None
+        if task.status != ProposedTaskStatus.APPROVED_FOR_BUILD:
+            raise ValueError(f"Cannot materialize: status is {task.status.value}, not approved_for_build")
+        if task.is_materialized:
+            raise ValueError(f"Already materialized: {task.id} → {task.materialized_task_id}")
+
+        task_dict = materialize_approved_task(task)
+        task.materialized_task_id = task_dict["id"]
+        task.materialized_at = _utcnow()
+        save_proposed_tasks(job_id, tasks, root)
+    return task
+
+
 def list_approved_not_materialized(
     job_id: str,
-    materialized_ids: frozenset[str],
     root: Path | None = None,
 ) -> list[ProposedTask]:
-    """List approved tasks that have not yet been materialized into build tasks."""
     approved = list_by_status(job_id, ProposedTaskStatus.APPROVED_FOR_BUILD, root)
-    return [t for t in approved if t.id not in materialized_ids]
+    return [t for t in approved if not t.is_materialized]
 
 
 # ---------------------------------------------------------------------------
@@ -615,6 +708,8 @@ def emit_proposed_task_event(
         metadata["evaluated_by"] = task.evaluated_by
     if task.origin_task_id:
         metadata["origin_task_id"] = task.origin_task_id
+    if task.materialized_task_id:
+        metadata["materialized_task_id"] = task.materialized_task_id
     if extra:
         metadata.update(extra)
     writer.log(event_name, task_id=task.origin_task_id or None, outcome=task.status.value, **metadata)

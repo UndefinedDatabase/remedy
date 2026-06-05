@@ -34,13 +34,13 @@ class TestCatalogHandlerCoverage:
     def test_all_propose_commands_have_handlers(self):
         handlers = collect_all_handlers()
         propose_cmds = get_commands_for_group("propose")
-        assert len(propose_cmds) == 6
+        assert len(propose_cmds) == 7
         for cmd in propose_cmds:
             assert cmd.command_id in handlers, f"Missing handler for {cmd.command_id}"
 
     def test_propose_group_exists_in_catalog(self):
         ids = {cmd.command_id for cmd in CATALOG if cmd.group_id == "propose"}
-        expected = {"propose.list", "propose.show", "propose.evaluate", "propose.approve", "propose.reject", "propose.defer"}
+        expected = {"propose.list", "propose.show", "propose.evaluate", "propose.approve", "propose.reject", "propose.defer", "propose.materialize"}
         assert ids == expected
 
 
@@ -228,3 +228,76 @@ class TestNoTraceback:
             handlers["propose.list"](args)
         out = capsys.readouterr().out
         assert "Traceback" not in out
+
+
+class TestProposeMaterializeHandler:
+    def test_materialize_approved(self, tmp_store, capsys):
+        from packages.orchestration.proposed_tasks import do_materialize as _  # noqa: F401
+        t = ProposedTask(title="Build it", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
+        add_proposed_task(JOB_ID, t)
+        handlers = collect_all_handlers()
+        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, **{"all": False}, json=True)
+        handlers["propose.materialize"](args)
+        data = json.loads(capsys.readouterr().out)
+        assert data["materialized_count"] == 1
+        assert data["tasks"][0]["materialized_task_id"] != ""
+
+    def test_materialize_all(self, tmp_store, capsys):
+        t1 = ProposedTask(title="A", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
+        t2 = ProposedTask(title="B", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
+        add_proposed_task(JOB_ID, t1)
+        add_proposed_task(JOB_ID, t2)
+        handlers = collect_all_handlers()
+        args = SimpleNamespace(job_id=JOB_ID, task_id=None, **{"all": True}, json=True)
+        handlers["propose.materialize"](args)
+        data = json.loads(capsys.readouterr().out)
+        assert data["materialized_count"] == 2
+
+    def test_materialize_non_approved_fails(self, tmp_store):
+        t = ProposedTask(title="Not ready", status=ProposedTaskStatus.EVALUATED)
+        add_proposed_task(JOB_ID, t)
+        handlers = collect_all_handlers()
+        args = SimpleNamespace(job_id=JOB_ID, task_id=t.id, **{"all": False}, json=False)
+        with pytest.raises(SystemExit):
+            handlers["propose.materialize"](args)
+
+    def test_materialize_missing_args(self, tmp_store):
+        handlers = collect_all_handlers()
+        args = SimpleNamespace(job_id=JOB_ID, task_id=None, **{"all": False}, json=False)
+        with pytest.raises(SystemExit):
+            handlers["propose.materialize"](args)
+
+
+class TestAuditEvents:
+    def test_evaluate_writes_event(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "packages.orchestration.proposed_tasks._STORE_DIR",
+            tmp_path / "proposed_tasks",
+        )
+        from packages.orchestration.run_log import RunLogWriter
+        from uuid import UUID
+        job_uuid = "12345678-1234-1234-1234-123456789012"
+        t = ProposedTask(title="Test", risk="medium")
+        add_proposed_task(job_uuid, t)
+
+        from apps.cli.commands.propose_cmd import _make_writer
+        writer = _make_writer(job_uuid)
+        assert writer is not None
+        runs_dir = tmp_path / "runs"
+        writer_with_root = RunLogWriter(UUID(job_uuid), runs_root=runs_dir)
+        monkeypatch.setattr("apps.cli.commands.propose_cmd._make_writer", lambda jid: writer_with_root)
+
+        handlers = collect_all_handlers()
+        args = SimpleNamespace(job_id=job_uuid, task_id=t.id, json=True)
+        import io, contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            handlers["propose.evaluate"](args)
+        assert writer_with_root.path.exists()
+        content = writer_with_root.path.read_text()
+        assert "proposed_task_evaluated" in content
+
+    def test_no_dormant_none_writer_in_cli(self):
+        from pathlib import Path
+        cli_src = Path("apps/cli/commands/propose_cmd.py").read_text()
+        assert "emit_proposed_task_event(None" not in cli_src

@@ -289,6 +289,6 @@ class TestVisualRegressionA6:
 
     def test_finalized_gate_checks_unresolved_proposals(self):
         content = UI_SERVER.read_text()
-        assert "unresolved_proposals" in content, (
-            "Finalized gate must check unresolved proposed tasks"
+        assert "can_finalize" in content, (
+            "Finalized gate must use centralized can_finalize helper"
         )

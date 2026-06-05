@@ -36,6 +36,7 @@ from packages.orchestration.proposed_tasks import (
     emit_proposed_task_event,
     can_finalize,
     materialize_approved_task,
+    do_materialize,
     list_approved_not_materialized,
     EvaluationResult,
 )
@@ -518,15 +519,40 @@ class TestMaterialization:
             materialize_approved_task(t)
 
     def test_list_approved_not_materialized(self, tmp_store):
-        t1 = ProposedTask(title="A", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
+        t1 = ProposedTask(title="A", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="real-1")
         t2 = ProposedTask(title="B", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
         t3 = ProposedTask(title="C", status=ProposedTaskStatus.REJECTED)
         add_proposed_task(JOB_ID, t1)
         add_proposed_task(JOB_ID, t2)
         add_proposed_task(JOB_ID, t3)
-        not_materialized = list_approved_not_materialized(JOB_ID, frozenset({t1.id}))
+        not_materialized = list_approved_not_materialized(JOB_ID)
         assert len(not_materialized) == 1
         assert not_materialized[0].id == t2.id
+
+    def test_do_materialize_sets_task_id(self, tmp_store):
+        t = ProposedTask(title="Materialize me", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
+        add_proposed_task(JOB_ID, t)
+        result = do_materialize(JOB_ID, t.id)
+        assert result is not None
+        assert result.materialized_task_id != ""
+        assert result.materialized_at is not None
+
+    def test_do_materialize_rejects_non_approved(self, tmp_store):
+        t = ProposedTask(title="Not ready", status=ProposedTaskStatus.EVALUATED)
+        add_proposed_task(JOB_ID, t)
+        with pytest.raises(ValueError, match="not approved_for_build"):
+            do_materialize(JOB_ID, t.id)
+
+    def test_do_materialize_rejects_already_materialized(self, tmp_store):
+        t = ProposedTask(title="Done", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="existing")
+        add_proposed_task(JOB_ID, t)
+        with pytest.raises(ValueError, match="Already materialized"):
+            do_materialize(JOB_ID, t.id)
+
+    def test_materialize_non_approved_raises(self):
+        t = ProposedTask(title="X", status=ProposedTaskStatus.EVALUATED)
+        with pytest.raises(ValueError, match="not approved_for_build"):
+            materialize_approved_task(t)
 
 
 class TestEndToEndFlow:
@@ -562,3 +588,69 @@ class TestEndToEndFlow:
         deferred = defer_proposed_task(JOB_ID, t.id, reason="Next sprint")
         assert deferred.status == ProposedTaskStatus.DEFERRED
         assert count_unresolved(JOB_ID) == 0
+
+    def test_full_lifecycle_with_materialize(self, tmp_store):
+        t = propose_task_from_review_finding(JOB_ID, title="Build it", risk="medium")
+        evaluate_proposed_task(JOB_ID, t.id)
+        approve_proposed_task(JOB_ID, t.id)
+        materialized = do_materialize(JOB_ID, t.id)
+        assert materialized.materialized_task_id != ""
+        assert materialized.materialized_at is not None
+        assert list_approved_not_materialized(JOB_ID) == []
+        ok, _ = can_finalize(JOB_ID)
+        assert ok is True
+
+
+class TestFileLocking:
+    def test_sequential_adds_preserve_data(self, tmp_store):
+        add_proposed_task(JOB_ID, ProposedTask(title="A"))
+        add_proposed_task(JOB_ID, ProposedTask(title="B"))
+        add_proposed_task(JOB_ID, ProposedTask(title="C"))
+        loaded = load_proposed_tasks(JOB_ID)
+        assert len(loaded) == 3
+
+    def test_update_then_add_preserves_both(self, tmp_store):
+        t = ProposedTask(title="Original")
+        add_proposed_task(JOB_ID, t)
+        t.title = "Updated"
+        update_proposed_task(JOB_ID, t)
+        add_proposed_task(JOB_ID, ProposedTask(title="New"))
+        loaded = load_proposed_tasks(JOB_ID)
+        assert len(loaded) == 2
+        assert loaded[0].title == "Updated"
+        assert loaded[1].title == "New"
+
+    def test_approve_then_materialize_preserves_state(self, tmp_store):
+        t = ProposedTask(title="Build", status=ProposedTaskStatus.EVALUATED)
+        add_proposed_task(JOB_ID, t)
+        approve_proposed_task(JOB_ID, t.id)
+        do_materialize(JOB_ID, t.id)
+        loaded = load_proposed_tasks(JOB_ID)
+        assert loaded[0].status == ProposedTaskStatus.APPROVED_FOR_BUILD
+        assert loaded[0].materialized_task_id != ""
+
+    def test_lock_file_created_and_cleaned(self, tmp_store):
+        from packages.orchestration.proposed_tasks import _file_lock, _lock_path
+        with _file_lock(JOB_ID):
+            lock = _lock_path(JOB_ID)
+            assert lock.exists()
+
+
+class TestStoreRootResolution:
+    def test_env_data_dir_used(self, tmp_path, monkeypatch):
+        data_root = tmp_path / "env_data"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", None)
+        add_proposed_task(JOB_ID, ProposedTask(title="Via env"))
+        loaded = load_proposed_tasks(JOB_ID)
+        assert len(loaded) == 1
+        assert (data_root / "proposed_tasks" / f"{JOB_ID}.json").exists()
+
+    def test_root_param_overrides_env(self, tmp_path, monkeypatch):
+        env_root = tmp_path / "env"
+        explicit_root = tmp_path / "explicit"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(env_root))
+        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", None)
+        add_proposed_task(JOB_ID, ProposedTask(title="Explicit"), root=explicit_root)
+        assert load_proposed_tasks(JOB_ID, root=explicit_root)[0].title == "Explicit"
+        assert load_proposed_tasks(JOB_ID) == []

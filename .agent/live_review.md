@@ -1,3 +1,114 @@
+# Parallel Review — Steps 580-594 (Independent Reviewer)
+
+Reviewer: parallel watcher (independent)
+Scope: Steps 580-594 (Proposed task backend closure — CLI handlers, storage stability, honest gates)
+Commit: 4f8e6dd
+Status: VERIFIED
+
+## Test Results (independently run)
+- `tests/orchestration/test_proposed_tasks.py` + `tests/cli/test_propose_cli.py`: **94/94 passed** (0.20s)
+- `tests/orchestration/test_approval_queue.py` + reviewer-related: **98 passed, 1 skipped** (2.39s)
+- `tests/ui_contracts/`: **397 passed** (2.44s)
+- `tests/ui_server/`: **187 passed** (5.36s)
+- No regressions detected across any targeted suite
+- Worker claims 4328 full baseline (not independently verified — targeted suites confirm no regressions)
+
+## Per-Step Checklist
+
+| Step | Check | Verdict |
+|------|-------|---------|
+| 580 | context/plan current, UI paused, backend blockers listed, live_review used | PASS |
+| 581 | propose_cmd.py with 6 handlers, collect_all_handlers includes it, all catalog commands run | PASS |
+| 582 | 23 CLI contract tests: catalog coverage, list/show/evaluate/approve/reject/defer, corrupt, no-traceback | PASS |
+| 583 | All functions accept root= param. _STORE_DIR kept for legacy but not relied on. Test isolation verified | PASS |
+| 584 | _atomic_write: tempfile.mkstemp + os.fsync + os.replace. Cleanup on exception | PASS |
+| 585 | ProposedTaskStoreError raised on corrupt. load_proposed_tasks_safe returns ([], True). CLI/queue/dashboard handle | PASS |
+| 586 | Terminal states block further transitions. Timestamps set. Reasons bounded to 200 chars | PASS |
+| 587 | CLI calls emit_proposed_task_event — but writer=None → all no-ops | **PARTIAL** (see R-580-001) |
+| 588 | _has_unresolved_proposals takes data_dir. Corrupt → blocks. get_next_job passes data_dir | PASS |
+| 589 | materialize_approved_task returns Task-compatible dict. list_approved_not_materialized filters | PASS |
+| 590 | can_finalize() centralized, degraded blocks. Dashboard uses inline (functionally equivalent) | PASS (see R-580-002) |
+| 591 | accept_recommendation creates ProposedTask, NOT direct Task. Tests updated across 3 files | PASS |
+| 592 | Dashboard: degraded, blocking_finalized, blocking_build fields. Uses load_proposed_tasks_safe | PASS |
+| 593 | E2E tests: full lifecycle, reject flow, defer flow, queue gate, corrupt gate | PASS |
+| 594 | Worker claims 4328 passed. Targeted suites confirmed green. Single commit | PASS |
+
+## Scope Blockers (delegated to agent)
+
+| Blocker | Verdict |
+|---------|---------|
+| 0.0.0.0 bind | PASS |
+| shell=True | PASS |
+| External CDN | PASS |
+| Ollama API | PASS |
+| WebSocket | PASS |
+| POST/PUT/DELETE | PASS — 405 enforced |
+| Outbound HTTP | PASS |
+| Raw content leaks | PASS — _safe_text truncation everywhere |
+
+## Findings
+
+### R-580-001
+Status: Open
+Severity: medium
+Area: audit-events
+Summary: CLI audit events are functionally dormant — writer always None
+Details: All 4 CLI handlers (evaluate, approve, reject, defer) call `emit_proposed_task_event(None, ...)`. Since the function does `if writer is None: return`, no events are recorded from CLI. The calls are structurally present but produce no audit trail. Worker checklist marks this as PASS.
+Evidence: `grep -n "emit_proposed_task_event(None" apps/cli/commands/propose_cmd.py` → lines 153, 158, 217, 267, 317
+Expected fix: Either create a RunLogWriter from job_id in CLI context, or document that CLI transitions are intentionally unaudited (acceptable if orchestrator loop audits them independently).
+
+### R-580-002
+Status: Open
+Severity: low
+Area: finalized-gate
+Summary: Dashboard `is_finalized` duplicates can_finalize() logic inline
+Details: ui_server.py:406 has inline `is_finalized = (job_says_done and pending_task_count == 0 and ...)`. The new `can_finalize()` in proposed_tasks.py covers the same checks (minus `job_says_done`, which is a different concern). Currently equivalent, but drift risk if one is updated without the other.
+Evidence: `grep -n "can_finalize\|is_finalized" packages/orchestration/ui_server.py` — only inline, no import of can_finalize
+Expected fix: Dashboard could call `can_finalize()` for the proposal/task portion and combine with `job_says_done`. Low priority — no functional gap today.
+
+## Architecture Assessment
+
+**Strengths:**
+- Atomic write pattern (tempfile + fsync + rename) is production-grade
+- Corrupt store → error instead of silent empty fixes a real safety gap
+- `_safe` variants return degraded flag — callers can distinguish empty from broken
+- Reviewer integration change removes direct task bypass (was a real risk)
+- Materialization gives approved_for_build concrete meaning
+- Test coverage is thorough (94 targeted tests covering all paths)
+
+**Risks:**
+1. CLI audit trail is dormant (R-580-001)
+2. No file locking — concurrent CLI commands could race on store writes (atomic rename helps but doesn't prevent read-modify-write races)
+3. can_finalize() exists but isn't actually called by ui_server.py
+
+## Final Verdict
+
+**PASS WITH RISKS**
+
+- CLI handler status: **PASS** — all 6 handlers functional, tested
+- CLI contract status: **PASS** — 23 tests, catalog coverage verified
+- Data-dir storage status: **PASS** — root= param throughout, test isolation verified
+- Atomic write/lock status: **PASS** — atomic write yes, file lock no (acceptable for single-user)
+- Corrupt store status: **PASS** — ProposedTaskStoreError, degraded propagated to queue/finalize/dashboard
+- Transition status: **PASS** — terminal blocks, timestamps, bounded notes
+- Audit event status: **PARTIAL** — calls present but writer=None → no-ops from CLI
+- Queue gate status: **PASS** — data_dir correct, corrupt blocks
+- Approved task meaning status: **PASS** — materialize_approved_task() gives real meaning
+- Finalized gate status: **PASS** — degraded blocks, centralized helper exists (dashboard uses inline equivalent)
+- Reviewer/rework status: **PASS** — accept_recommendation creates ProposedTask, not direct Task
+- Dashboard contract status: **PASS** — degraded/blocking fields present, safe output
+- E2E status: **PASS** — full lifecycle, queue gate, finalize gate tested
+- Raw leak status: **PASS** — _safe_text truncation, scope blocker audit clean
+- Tests run: 94 proposed + 98 reviewer + 397 UI contracts + 187 UI server (all guarded via scripts/remedy_pytest.sh)
+- Full pytest: Worker reports 4328 passed (not independently verified as full run — targeted suites confirm no regressions)
+- Top 3 remaining backend risks:
+  1. CLI audit trail is dormant (no writer in CLI context)
+  2. No file locking on proposed task store (concurrent write races possible)
+  3. Dashboard finalized logic duplicates can_finalize() — drift risk
+- Merge readiness: **YES** — functional and safe, findings are medium/low severity
+
+---
+
 # Addendum Review — Timeline + Button Shape (post-565-579)
 
 Reviewer: parallel watcher (independent)
@@ -178,3 +289,21 @@ Status: IN PROGRESS
 
 ## Summary
 PASS — Steps 580-594 complete. Proposed task backend is reliable.
+
+---
+
+# Live Review — Steps 595-609
+
+Reviewer: self (backend reliability closure)
+Scope: Audit trail, store locking, materialization truth, centralized gates
+Status: IN PROGRESS
+
+## Step Log
+- Step 595: Backend handoff — context.md, plan.md, live_review.md updated. Carried forward 7 risks from reviewer findings.
+- Step 597: Real audit events — `_make_writer(job_id)` creates RunLogWriter from UUID. All CLI transitions (evaluate/approve/reject/defer/materialize) use real writer. No `emit_proposed_task_event(None` remains.
+- Step 598: File locking — `fcntl.flock` with 5s bounded retry. Protects add/update/evaluate/approve/reject/defer/materialize.
+- Step 599: `_STORE_DIR` now defaults to `None`. `_resolve_store_dir()` calls `proposed_tasks_dir()` at call time, not import time. Test proves `REMEDY_DATA_DIR` env var works.
+- Step 600: `ui_server.py` finalized gate now calls `can_finalize()` instead of inline logic. Single truth source.
+- Step 601: `ProposedTask` gains `materialized_task_id: str` and `materialized_at: datetime | None`. `is_materialized` property. `do_materialize()` sets both atomically under lock.
+- Step 602: `propose.materialize` command — catalog entry + CLI handler. Supports `--task-id` and `--all`. Emits `proposed_task_materialized` event.
+- Step 604: Dashboard v2 — `approved_not_materialized`, `materialized`, `summaries` with per-task materialization status.

@@ -394,23 +394,21 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         1 for t in job.tasks
         if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("blocked", "failed")
     )
-    # Proposed task gate
-    proposals_degraded = False
+    # Finalized gate — centralized via can_finalize
     try:
-        from packages.orchestration.proposed_tasks import count_unresolved_safe
-        unresolved_proposals, proposals_degraded = count_unresolved_safe(str(job.id))
+        from packages.orchestration.proposed_tasks import can_finalize
+        finalize_ok, finalize_reason = can_finalize(
+            str(job.id),
+            pending_task_count=pending_task_count,
+            blocked_task_count=blocked_task_count,
+            pending_approvals=pending_approvals,
+        )
     except ImportError:
-        unresolved_proposals = 0
+        finalize_ok = (pending_task_count == 0 and blocked_task_count == 0 and pending_approvals == 0)
+        finalize_reason = "ready" if finalize_ok else "pending_work"
 
     job_says_done = state in ("completed", "done", "finalized")
-    is_finalized = (
-        job_says_done
-        and pending_task_count == 0
-        and blocked_task_count == 0
-        and pending_approvals == 0
-        and unresolved_proposals == 0
-        and not proposals_degraded
-    )
+    is_finalized = job_says_done and finalize_ok
     phases = [
         {"id": "job", "title": "Job", "status": "done", "rank": 0, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
         {"id": "planning", "title": "Planning", "status": "done" if has_real_tasks else "current", "rank": 1, "started_at": "", "completed_at": "", "current": not has_real_tasks, "source": "derived"},
@@ -520,8 +518,14 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
 
 
 def _build_proposed_tasks_section(job_id: str) -> dict[str, Any]:
-    """Build proposed task counts for dashboard."""
-    empty = {"total": 0, "proposed": 0, "evaluated": 0, "approved": 0, "rejected": 0, "deferred": 0, "unresolved": 0, "degraded": False, "blocking_finalized": False, "blocking_build": False}
+    """Build proposed task counts for dashboard v2."""
+    empty: dict[str, Any] = {
+        "total": 0, "proposed": 0, "evaluated": 0, "approved": 0,
+        "rejected": 0, "deferred": 0, "unresolved": 0,
+        "approved_not_materialized": 0, "materialized": 0,
+        "degraded": False, "blocking_finalized": False, "blocking_build": False,
+        "summaries": [],
+    }
     try:
         from packages.orchestration.proposed_tasks import (
             load_proposed_tasks_safe,
@@ -531,17 +535,36 @@ def _build_proposed_tasks_section(job_id: str) -> dict[str, Any]:
         if degraded:
             return {**empty, "degraded": True, "blocking_finalized": True, "blocking_build": True}
         unresolved = sum(1 for t in tasks if t.status in (ProposedTaskStatus.PROPOSED, ProposedTaskStatus.EVALUATED))
+        approved = [t for t in tasks if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD]
+        materialized = sum(1 for t in approved if t.materialized_task_id)
+        not_materialized = len(approved) - materialized
+        summaries = [
+            {
+                "id": t.id,
+                "title": t.title[:80],
+                "status": t.status.value,
+                "risk": t.risk,
+                "priority": t.priority,
+                "source": t.source.value,
+                "materialized_task_id": t.materialized_task_id or None,
+                "is_materialized": bool(t.materialized_task_id),
+            }
+            for t in tasks
+        ]
         return {
             "total": len(tasks),
             "proposed": sum(1 for t in tasks if t.status == ProposedTaskStatus.PROPOSED),
             "evaluated": sum(1 for t in tasks if t.status == ProposedTaskStatus.EVALUATED),
-            "approved": sum(1 for t in tasks if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD),
+            "approved": len(approved),
             "rejected": sum(1 for t in tasks if t.status == ProposedTaskStatus.REJECTED),
             "deferred": sum(1 for t in tasks if t.status == ProposedTaskStatus.DEFERRED),
             "unresolved": unresolved,
+            "approved_not_materialized": not_materialized,
+            "materialized": materialized,
             "degraded": False,
             "blocking_finalized": unresolved > 0,
             "blocking_build": unresolved > 0,
+            "summaries": summaries,
         }
     except ImportError:
         return empty

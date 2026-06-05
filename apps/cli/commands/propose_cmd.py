@@ -1,7 +1,7 @@
 """
 CLI handlers for ``remedy propose`` commands — proposed task evaluation lifecycle.
 
-List, show, evaluate, approve, reject, defer proposed tasks.
+List, show, evaluate, approve, reject, defer, materialize proposed tasks.
 All output is safe (no raw source/model/prompt content).
 """
 
@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import sys
 from typing import Any
+from uuid import UUID
 
 
 _MAX_REASON_LEN = 200
@@ -20,6 +21,16 @@ def _safe_text(text: str, limit: int = 80) -> str:
     if not text:
         return ""
     return text[:limit]
+
+
+def _make_writer(job_id: str) -> Any:
+    """Create a RunLogWriter for audit events. Returns None if job_id is not a valid UUID."""
+    try:
+        from packages.orchestration.run_log import RunLogWriter
+        uid = UUID(job_id)
+        return RunLogWriter(uid)
+    except (ValueError, TypeError, ImportError, OSError):
+        return None
 
 
 def _task_to_safe_dict(t: Any) -> dict[str, Any]:
@@ -39,6 +50,8 @@ def _task_to_safe_dict(t: Any) -> dict[str, Any]:
         "resolved_at": str(t.resolved_at) if t.resolved_at else None,
         "origin_task_id": t.origin_task_id,
         "origin_recommendation_id": t.origin_recommendation_id,
+        "materialized_task_id": getattr(t, "materialized_task_id", "") or "",
+        "materialized_at": str(t.materialized_at) if getattr(t, "materialized_at", None) else None,
     }
 
 
@@ -139,6 +152,7 @@ def _cmd_propose_evaluate(args: Any) -> None:
 
     job_id = args.job_id
     task_id = getattr(args, "task_id", None)
+    writer = _make_writer(job_id)
 
     try:
         if task_id:
@@ -150,12 +164,12 @@ def _cmd_propose_evaluate(args: Any) -> None:
                 else:
                     print(msg, file=sys.stderr)
                 sys.exit(1)
-            emit_proposed_task_event(None, "proposed_task_evaluated", result)
+            emit_proposed_task_event(writer, "proposed_task_evaluated", result)
             tasks = [result]
         else:
             tasks = evaluate_all_proposed(job_id)
             for t in tasks:
-                emit_proposed_task_event(None, "proposed_task_evaluated", t)
+                emit_proposed_task_event(writer, "proposed_task_evaluated", t)
     except ProposedTaskStoreError as exc:
         if getattr(args, "json", False):
             print(json.dumps({"version": 1, "error": "Proposed task store is unreadable.", "degraded": True}))
@@ -189,6 +203,7 @@ def _cmd_propose_approve(args: Any) -> None:
 
     job_id = args.job_id
     task_id = args.task_id
+    writer = _make_writer(job_id)
 
     try:
         result = approve_proposed_task(job_id, task_id)
@@ -214,7 +229,7 @@ def _cmd_propose_approve(args: Any) -> None:
             print(msg, file=sys.stderr)
         sys.exit(1)
 
-    emit_proposed_task_event(None, "proposed_task_approved", result)
+    emit_proposed_task_event(writer, "proposed_task_approved", result)
 
     if getattr(args, "json", False):
         print(json.dumps({
@@ -239,6 +254,7 @@ def _cmd_propose_reject(args: Any) -> None:
     job_id = args.job_id
     task_id = args.task_id
     reason = _safe_text(getattr(args, "reason", "") or "", _MAX_REASON_LEN)
+    writer = _make_writer(job_id)
 
     try:
         result = reject_proposed_task(job_id, task_id, reason=reason)
@@ -264,7 +280,7 @@ def _cmd_propose_reject(args: Any) -> None:
             print(msg, file=sys.stderr)
         sys.exit(1)
 
-    emit_proposed_task_event(None, "proposed_task_rejected", result)
+    emit_proposed_task_event(writer, "proposed_task_rejected", result)
 
     if getattr(args, "json", False):
         print(json.dumps({
@@ -289,6 +305,7 @@ def _cmd_propose_defer(args: Any) -> None:
     job_id = args.job_id
     task_id = args.task_id
     reason = _safe_text(getattr(args, "reason", "") or "", _MAX_REASON_LEN)
+    writer = _make_writer(job_id)
 
     try:
         result = defer_proposed_task(job_id, task_id, reason=reason)
@@ -314,7 +331,7 @@ def _cmd_propose_defer(args: Any) -> None:
             print(msg, file=sys.stderr)
         sys.exit(1)
 
-    emit_proposed_task_event(None, "proposed_task_deferred", result)
+    emit_proposed_task_event(writer, "proposed_task_deferred", result)
 
     if getattr(args, "json", False):
         print(json.dumps({
@@ -328,6 +345,75 @@ def _cmd_propose_defer(args: Any) -> None:
         print(f"Deferred: {task_id}")
 
 
+def _cmd_propose_materialize(args: Any) -> None:
+    from packages.orchestration.proposed_tasks import (
+        do_materialize,
+        list_approved_not_materialized,
+        emit_proposed_task_event,
+        ProposedTaskStoreError,
+    )
+
+    job_id = args.job_id
+    task_id = getattr(args, "task_id", None)
+    do_all = getattr(args, "all", False)
+    writer = _make_writer(job_id)
+
+    try:
+        if task_id:
+            result = do_materialize(job_id, task_id)
+            if result is None:
+                msg = f"Proposed task not found: {task_id}"
+                if getattr(args, "json", False):
+                    print(json.dumps({"version": 1, "error": msg}))
+                else:
+                    print(msg, file=sys.stderr)
+                sys.exit(1)
+            emit_proposed_task_event(writer, "proposed_task_materialized", result)
+            results = [result]
+        elif do_all:
+            pending = list_approved_not_materialized(job_id)
+            results = []
+            for pt in pending:
+                r = do_materialize(job_id, pt.id)
+                if r:
+                    emit_proposed_task_event(writer, "proposed_task_materialized", r)
+                    results.append(r)
+        else:
+            msg = "Specify --task-id or --all"
+            if getattr(args, "json", False):
+                print(json.dumps({"version": 1, "error": msg}))
+            else:
+                print(msg, file=sys.stderr)
+            sys.exit(1)
+    except ValueError as exc:
+        msg = str(exc)
+        if getattr(args, "json", False):
+            print(json.dumps({"version": 1, "error": msg}))
+        else:
+            print(msg, file=sys.stderr)
+        sys.exit(1)
+    except ProposedTaskStoreError as exc:
+        if getattr(args, "json", False):
+            print(json.dumps({"version": 1, "error": "Proposed task store is unreadable.", "degraded": True}))
+        else:
+            print(f"Proposed task store is unreadable: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if getattr(args, "json", False):
+        print(json.dumps({
+            "version": 1,
+            "job_id": job_id,
+            "materialized_count": len(results),
+            "tasks": [_task_to_safe_dict(t) for t in results],
+        }, indent=2))
+    else:
+        if not results:
+            print("No tasks to materialize.")
+            return
+        for t in results:
+            print(f"  Materialized: {t.id} → task {t.materialized_task_id}")
+
+
 COMMAND_HANDLERS = {
     "propose.list": lambda args: _cmd_propose_list(args),
     "propose.show": lambda args: _cmd_propose_show(args),
@@ -335,4 +421,5 @@ COMMAND_HANDLERS = {
     "propose.approve": lambda args: _cmd_propose_approve(args),
     "propose.reject": lambda args: _cmd_propose_reject(args),
     "propose.defer": lambda args: _cmd_propose_defer(args),
+    "propose.materialize": lambda args: _cmd_propose_materialize(args),
 }

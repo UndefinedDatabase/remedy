@@ -4,38 +4,33 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 580-594: Proposed Task Backend Closure, CLI Truth, Storage Stability.
+Steps 595-609: Backend Reliability Closure — audit trail, store locking, materialization truth.
 UI/design work is PAUSED. Backend stability is priority.
 
 ## Canonical Review File
 `.agent/live_review.md` — NOT `.data/live_review.md`
 
-## Current Focus
-Make proposed tasks a reliable backend feature:
-- CLI handlers for all 6 propose commands (catalog advertises them, no handlers exist)
-- Data-dir correct storage (no module-level global)
-- Atomic writes + file locking
-- Corrupt store handling (degraded, not empty)
-- Transition hardening
-- Audit events from CLI transitions
-- Worker queue gate uses correct data_dir
-- Approved tasks: explicit materialization or non-materialized status
-- Finalized gate centralized
-- Reviewer/rework integration guard
-- Dashboard proposed task contract
-- End-to-end flow test
+## What Is Done (Steps 580-594)
+- 6 propose CLI handlers wired and tested
+- root= param on all store functions
+- Atomic writes (tempfile + os.replace)
+- ProposedTaskStoreError on corrupt JSON
+- Worker queue gate passes data_dir, corrupt blocks
+- Finalized gate blocks on degraded
+- accept_recommendation creates ProposedTask (not Task)
+- Dashboard: degraded, blocking_finalized, blocking_build
 
-## Known Blockers
-- `propose.list` etc in catalog but `apps/cli/commands/propose_cmd.py` missing
-- `_STORE_DIR` resolved at import time — tests monkeypatch, but callers don't pass data_dir
-- `worker_queue._has_unresolved_proposals` doesn't pass data_dir
-- `load_proposed_tasks` returns [] on corrupt JSON — hides blocking tasks
-- Approved tasks have no materialization path
+## Current Risks (Steps 595-609 targets)
+1. CLI audit events dormant — `emit_proposed_task_event(None, ...)` in all CLI handlers
+2. No file locking — atomic replace prevents partial files, not lost read-modify-write
+3. `_STORE_DIR` still resolved at import time (legacy global)
+4. Dashboard finalized logic duplicates can_finalize() inline
+5. Materialization: `materialize_approved_task()` exists but no persistence of materialized state
+6. No `propose materialize` command
+7. Queue gate doesn't distinguish approved-not-materialized from approved-materialized
 
 ## Key Patterns
-- Job persistence: `storage.py` save_job/load_job → `.data/jobs/{job_id}.json`
-- Event ledger: `run_log.py` RunLogWriter → `.data/runs/<job_id>/<run_id>.jsonl`
-- CLI commands: `command_catalog.py` CATALOG tuple + GROUPS dict
+- Event ledger: `run_log.py` RunLogWriter(job_id: UUID, runs_root=) → `.data/runs/<job_id>/<run_id>.jsonl`
 - CLI handlers: `apps/cli/commands/<group>.py` with `COMMAND_HANDLERS` dict
 - Handler collection: `apps/cli/commands/__init__.py` `collect_all_handlers()`
 

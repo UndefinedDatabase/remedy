@@ -1401,6 +1401,21 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
 
+    CommandEntry(
+        command_id="propose.materialize",
+        group_id="propose",
+        subcommand="materialize",
+        description="Materialize approved proposed tasks into real build tasks.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--task-id", "Specific proposed task ID to materialize", required=False, is_option=True),
+            ArgDef("--all", "Materialize all approved un-materialized tasks", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+
     # ── dev ──────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="dev.agent-loop",
