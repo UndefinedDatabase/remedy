@@ -4,29 +4,28 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 735-744: Combined Pytest Exit Fix, Backend Smoke Must Exit.
+Steps 745-754: Remove Runtime Smoke Duplication, Backend Smoke Must Exit.
 
 ## Prior Step Status
-Steps 725-734: PASS individually (propose 0.71s, worker 0.87s, smoke 2.86s).
-Reviewer reports: combined pytest of runtime files + helper still hangs after "8 passed".
-Backend smoke hangs because it bundles runtime files in one pytest command.
+Steps 735-744: PASS individually. Reviewer reports backend smoke hangs because
+standalone smoke (--mode all) runs first, then wrapper tests call it again.
+Double execution leaves state that prevents second pytest wrapper from exiting.
 
-## Fix Strategy
-1. Remove capture_output=True from thin wrappers → Popen + temp files
-2. Split smoke into separate pytest invocations (runtime files isolated)
-3. Document: "Do not combine runtime wrapper + helper tests in one pytest process"
+## Fix
+Remove `python3 scripts/remedy_runtime_cli_smoke.py --mode all` from backend
+basis smoke. Wrappers already call it internally — no coverage loss.
 
 ## Runtime Test Isolation Rule
-Do NOT combine runtime wrapper tests and runtime helper tests in one pytest
-process. Each must run in its own pytest invocation. The backend smoke script
-enforces this by running separate `scripts/remedy_pytest.sh` calls per file.
+- Do NOT chain standalone runtime smoke before wrapper pytest files in same script
+- Do NOT combine runtime wrapper + helper tests in one pytest process
+- Each runtime file runs in its own pytest invocation
 
 Supported verification path:
-- `scripts/remedy_runtime_cli_smoke.py --mode all` (standalone)
 - `scripts/remedy_pytest.sh tests/cli/test_propose_cli_runtime.py -q`
 - `scripts/remedy_pytest.sh tests/cli/test_worker_cli_runtime.py -q`
 - `scripts/remedy_pytest.sh tests/cli/test_runtime_helpers.py -q`
 - `scripts/remedy_backend_basis_smoke.sh`
+- `python3 scripts/remedy_runtime_cli_smoke.py --mode all` (standalone only)
 
 ## Backend Component Status
 | Component | Status |
@@ -42,7 +41,7 @@ Supported verification path:
 | Propose CLI subprocess | **100%** |
 | Backend readiness v3 | **100%** |
 | Lock behavior | **100%** |
-| Runtime stability (no-hang) | **100%** — isolated invocations + no pipes + standalone smoke |
+| Runtime stability (no-hang) | **100%** — no duplication, isolated invocations, no pipes |
 | Ollama via task_execution | **0%** |
 | Real test execution | **0%** |
 | Rollback/snapshot | **0%** |
