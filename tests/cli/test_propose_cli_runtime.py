@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 
 from tests.cli.runtime_helpers import (
+    assert_no_leftover_locks,
     create_test_env,
     create_proposed_task,
     run_grouped_cli,
@@ -22,7 +23,9 @@ from tests.cli.runtime_helpers import (
 
 @pytest.fixture
 def env(tmp_path):
-    return create_test_env(tmp_path)
+    root, jid = create_test_env(tmp_path)
+    yield root, jid
+    assert_no_leftover_locks(root)
 
 
 class TestSubprocessList:

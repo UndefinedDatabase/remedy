@@ -217,3 +217,5 @@ packages.zip
 
 # Node.js (apps/ui frontend)
 node_modules/
+
+remedy-review-*

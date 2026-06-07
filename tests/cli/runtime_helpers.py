@@ -3,14 +3,23 @@
 IMPORTANT: This module must NOT import modules that use fcntl.flock,
 because flock fds in the test process can prevent pytest exit on some
 platforms. All orchestration state is created via direct JSON writes.
+
+Process isolation strategy:
+- Popen with start_new_session=True (new process group)
+- stdout/stderr redirected to temp files (no pipe inheritance)
+- proc.wait(timeout=...) for bounded wait
+- os.killpg(SIGTERM) then os.killpg(SIGKILL) on timeout
+- Best-effort kill remaining group children after normal exit
 """
 
 from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -82,31 +91,93 @@ def create_proposed_task(
     return task_id
 
 
+def _kill_process_group(pgid: int, sig: int) -> None:
+    """Best-effort kill a process group."""
+    try:
+        os.killpg(pgid, sig)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
 def run_grouped_cli(
     args: list[str],
     root: Path,
     *,
     timeout: int = 10,
 ) -> subprocess.CompletedProcess:
-    """Run python -m apps.cli.grouped with REMEDY_DATA_DIR set."""
+    """Run python -m apps.cli.grouped with REMEDY_DATA_DIR set.
+
+    Uses Popen with temp files for stdout/stderr (no pipe inheritance),
+    start_new_session=True for process group isolation, and killpg for
+    cleanup on timeout or after normal exit.
+    """
     full_env = {**os.environ, "REMEDY_DATA_DIR": str(root)}
+    cmd = [sys.executable, "-m", "apps.cli.grouped"] + args
+
+    stdout_file = tempfile.NamedTemporaryFile(
+        mode="w+", suffix=".stdout", delete=False
+    )
+    stderr_file = tempfile.NamedTemporaryFile(
+        mode="w+", suffix=".stderr", delete=False
+    )
     try:
-        return subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped"] + args,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            env=full_env,
+        proc = subprocess.Popen(
+            cmd,
+            stdout=stdout_file,
+            stderr=stderr_file,
             stdin=subprocess.DEVNULL,
             close_fds=True,
+            start_new_session=True,
+            env=full_env,
         )
-    except subprocess.TimeoutExpired as exc:
-        stdout = (exc.stdout or "")[:200] if isinstance(exc.stdout, str) else ""
-        stderr = (exc.stderr or "")[:200] if isinstance(exc.stderr, str) else ""
+        pgid = os.getpgid(proc.pid)
+
+        timed_out = False
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            # SIGTERM the process group
+            _kill_process_group(pgid, signal.SIGTERM)
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                # SIGKILL if SIGTERM didn't work
+                _kill_process_group(pgid, signal.SIGKILL)
+                proc.wait(timeout=3)
+
+        # Best-effort kill remaining children in the process group
+        _kill_process_group(pgid, signal.SIGTERM)
+
+        # Read bounded output from temp files
+        stdout_file.seek(0)
+        stderr_file.seek(0)
+        stdout_text = stdout_file.read(64 * 1024)  # 64KB cap
+        stderr_text = stderr_file.read(64 * 1024)  # 64KB cap
+    finally:
+        stdout_file.close()
+        stderr_file.close()
+        try:
+            os.unlink(stdout_file.name)
+        except OSError:
+            pass
+        try:
+            os.unlink(stderr_file.name)
+        except OSError:
+            pass
+
+    if timed_out:
         raise AssertionError(
             f"CLI subprocess timed out after {timeout}s: {args}\n"
-            f"stdout: {stdout}\nstderr: {stderr}"
-        ) from exc
+            f"stdout: {stdout_text[:200]}\nstderr: {stderr_text[:200]}"
+        )
+
+    return subprocess.CompletedProcess(
+        args=cmd,
+        returncode=proc.returncode,
+        stdout=stdout_text,
+        stderr=stderr_text,
+    )
 
 
 def run_json(args: list[str], root: Path, *, timeout: int = 10) -> dict:
@@ -116,10 +187,34 @@ def run_json(args: list[str], root: Path, *, timeout: int = 10) -> dict:
     return json.loads(r.stdout)
 
 
-def read_events(root: Path, job_id: str, max_files: int = 5) -> str:
-    """Read bounded event content from runs/<job_id>/*.jsonl."""
+def read_events(root: Path, job_id: str, *, max_files: int = 5, max_bytes: int = 10000) -> str:
+    """Read bounded event content from runs/<job_id>/*.jsonl only.
+
+    - Only reads from runs/<job_id>/ (no broad directory scans)
+    - Caps file count to max_files
+    - Caps bytes per file to max_bytes
+    - Ignores unreadable files
+    """
     runs_dir = root / "runs" / job_id
-    if not runs_dir.exists():
+    if not runs_dir.is_dir():
         return ""
     files = sorted(runs_dir.glob("*.jsonl"))[:max_files]
-    return "".join(f.read_text()[:10000] for f in files)
+    parts = []
+    for f in files:
+        try:
+            parts.append(f.read_text()[:max_bytes])
+        except (OSError, UnicodeDecodeError):
+            continue
+    return "".join(parts)
+
+
+def assert_no_leftover_locks(root: Path) -> None:
+    """Fail if any *.lock files remain under root.
+
+    Uses Path.rglob — no flock imports needed.
+    Reports relative filenames for clarity.
+    """
+    lock_files = list(root.rglob("*.lock"))
+    if lock_files:
+        rel = [str(lf.relative_to(root)) for lf in lock_files]
+        raise AssertionError(f"Leftover lock files found: {rel}")

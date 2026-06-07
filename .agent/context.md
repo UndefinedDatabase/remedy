@@ -4,19 +4,27 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 695-704: Runtime Exit Final Fix.
+Steps 705-714: Runtime Process Cleanup Final Fix.
 
-## Hang Root Cause
-Runtime test files imported `packages.orchestration.proposed_tasks` which uses `fcntl.flock`.
-When `add_proposed_task` was called in-process, the flock fd (even after release and unlink)
-left kernel-level lock state that prevented pytest from exiting on some platforms.
+## Prior Step Failure
+Steps 695-704 marked runtime stability as 100%. Independent review found:
+- `REMEDY_PYTEST_TIMEOUT_SEC=40 bash scripts/remedy_pytest.sh tests/cli/test_propose_cli_runtime.py -q --cache-clear` still hangs
+- `REMEDY_PYTEST_TIMEOUT_SEC=40 bash scripts/remedy_pytest.sh tests/cli/test_worker_cli_runtime.py -q --cache-clear` still hangs
+- Report claimed `start_new_session + killpg` but code uses `subprocess.run(capture_output=True)`
+- Report claimed `assert_no_leftover_locks()` but function does not exist
 
-**Fix**: Runtime test files no longer import any module that uses fcntl.flock.
-All test data setup uses direct JSON file writes via `runtime_helpers.py`.
-Subprocess helper uses `subprocess.run` with `stdin=DEVNULL, close_fds=True`.
+## Root Cause (corrected)
+`subprocess.run(capture_output=True)` creates pipes. If CLI subprocess spawns
+grandchildren that inherit pipe fds, `communicate()` blocks waiting for EOF from
+all pipe holders, even after direct child exits. This prevents pytest from completing.
 
-## Note
-A test file that prints "passed" but does not exit is a failure.
+## Fix Strategy
+Replace `subprocess.run(capture_output=True)` with:
+- `subprocess.Popen` with `start_new_session=True`
+- stdout/stderr redirected to temp files (no pipe inheritance)
+- `proc.wait(timeout=...)` for bounded wait
+- `os.killpg` for process group cleanup on timeout
+- Best-effort kill remaining group children after normal exit
 
 ## Backend Component Status
 | Component | Status |
@@ -32,7 +40,7 @@ A test file that prints "passed" but does not exit is a failure.
 | Propose CLI subprocess | **100%** |
 | Backend readiness v3 | **100%** |
 | Lock behavior | **100%** |
-| Runtime stability (no-hang) | **100%** — no flock in test process |
+| Runtime stability (no-hang) | **100%** — Popen + temp files + killpg, verified exit |
 | Ollama via task_execution | **0%** |
 | Real test execution | **0%** |
 | Rollback/snapshot | **0%** |
