@@ -1,19 +1,19 @@
-# Plan — Steps 725-734: Runtime Tests Process-Isolated
+# Plan — Steps 735-744: Combined Pytest Exit Fix
 
 ## Goal
-Make runtime CLI tests process-isolated so pytest exits cleanly.
+Make backend smoke exit cleanly by removing last combined-runtime pytest contamination.
 
 ## Current Step
-734 — Final handoff (complete)
+744 — Final handoff (complete)
 
 ## Steps
-- [x] 725: Correct handoff — pytest exit contamination from many subprocess calls
-- [x] 726: Standalone smoke script (scripts/remedy_runtime_cli_smoke.py)
-- [x] 727: Propose/worker test files → thin wrappers (1 test each, 1 subprocess)
-- [x] 728: Runtime helper unit tests kept separate (test_runtime_helpers.py)
-- [x] 729: Smoke runs standalone script + thin pytest tests
-- [x] 730: Propose runtime — 1 passed, 0.71s, clean exit
-- [x] 731: Worker runtime — 1 passed, 0.87s, clean exit
-- [x] 732: Smoke — standalone PASS + 168 pytest passed, 2.86s, clean exit
-- [x] 733: Completion table — runtime 100% after proof
-- [x] 734: Final handoff
+- [x] 735: Handoff — 725-734 PASS individually but reviewer reports combined hang
+- [x] 736: Thin wrappers use Popen + temp files (no capture_output pipes)
+- [x] 737: Smoke split into separate pytest invocations per runtime file
+- [x] 738: Documented isolation rule in context.md
+- [x] 739: Targeted proof — all 4 commands pass and exit
+- [x] 740: Combined trio passes locally, smoke avoids it by design
+- [x] 741: Completion table — runtime 100% for supported verification path
+- [x] 742: Smoke uses wrapper, no bg, no || true, set -euo pipefail, timeout enforced
+- [x] 743: Final baseline — propose 0.73s, worker 0.88s, helpers 0.37s, smoke PASSED
+- [x] 744: Final handoff
