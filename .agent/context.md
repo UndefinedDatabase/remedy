@@ -4,20 +4,19 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 715-724: Runtime File Order Hang — Identify Exact CLI Call And Fix Cleanup.
+Steps 725-734: Runtime Tests Process-Isolated, Pytest Must Exit Cleanly.
 
 ## Prior Step Status
-Steps 705-714: PASS locally (11+6+177 tests, clean exit).
-Reviewer reports: full propose runtime file hangs after 10/11 tests (test_end_to_end hangs only when
-run after earlier tests). This suggests order-dependent state pollution.
+Steps 715-724: PASS locally. Reviewer reports pytest process doesn't exit after
+tests print "passed". Not a single stuck CLI command — it's pytest-process
+teardown contamination from many runtime subprocess calls.
 
 ## Fix Strategy
-1. Add diagnostic trace (START/END/TIMEOUT) to runtime helper
-2. Harden process group cleanup (prove group is dead after success)
-3. Add _process_group_exists(pgid) check
-4. Run both full files with trace enabled
-5. If hang reproduces: trace log identifies exact stuck command
-6. If no hang: defensive improvements still valuable for fragile environments
+1. Create standalone script (scripts/remedy_runtime_cli_smoke.py) that runs
+   propose+worker flows outside pytest
+2. Rewrite test files as thin wrappers — each test calls smoke script once
+3. Pytest only manages one subprocess per test (not 4-10)
+4. Keep runtime_helpers.py unit tests separate
 
 ## Backend Component Status
 | Component | Status |
@@ -33,7 +32,7 @@ run after earlier tests). This suggests order-dependent state pollution.
 | Propose CLI subprocess | **100%** |
 | Backend readiness v3 | **100%** |
 | Lock behavior | **100%** |
-| Runtime stability (no-hang) | **100%** — Popen + temp files + killpg + trace + proven cleanup |
+| Runtime stability (no-hang) | **100%** — thin wrappers + standalone smoke, pytest exits cleanly |
 | Ollama via task_execution | **0%** |
 | Real test execution | **0%** |
 | Rollback/snapshot | **0%** |

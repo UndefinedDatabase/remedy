@@ -1,20 +1,19 @@
-# Plan — Steps 715-724: Runtime File Order Hang Fix
+# Plan — Steps 725-734: Runtime Tests Process-Isolated
 
 ## Goal
-Find and fix any remaining environment-specific hang in propose/worker runtime files.
-Add diagnostic trace + hardened cleanup as defense-in-depth.
+Make runtime CLI tests process-isolated so pytest exits cleanly.
 
 ## Current Step
-724 — Final handoff (complete)
+734 — Final handoff (complete)
 
 ## Steps
-- [x] 715: Correct handoff — reviewer reports order-dependent hang, not reproduced locally
-- [x] 716: Added diagnostic trace (START/END/TIMEOUT per command)
-- [x] 717: Ran propose runtime with trace — no hang (11 passed, 2.38s)
-- [x] 718: No hang found — no fix needed
-- [x] 719: Hardened process group cleanup — _ensure_process_group_dead with SIGTERM→wait→SIGKILL
-- [x] 720: Worker runtime — 6 passed, 4.85s, clean exit
-- [x] 721: Anti-regression tests — 6 tests covering timeout kill, trace log, pgid check
-- [x] 722: Smoke updated — includes helper tests (183 total)
-- [x] 723: Final proof — all 3 commands pass and exit cleanly
-- [x] 724: Final handoff
+- [x] 725: Correct handoff — pytest exit contamination from many subprocess calls
+- [x] 726: Standalone smoke script (scripts/remedy_runtime_cli_smoke.py)
+- [x] 727: Propose/worker test files → thin wrappers (1 test each, 1 subprocess)
+- [x] 728: Runtime helper unit tests kept separate (test_runtime_helpers.py)
+- [x] 729: Smoke runs standalone script + thin pytest tests
+- [x] 730: Propose runtime — 1 passed, 0.71s, clean exit
+- [x] 731: Worker runtime — 1 passed, 0.87s, clean exit
+- [x] 732: Smoke — standalone PASS + 168 pytest passed, 2.86s, clean exit
+- [x] 733: Completion table — runtime 100% after proof
+- [x] 734: Final handoff

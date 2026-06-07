@@ -8,6 +8,12 @@ export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-120}"
 
 echo "=== Backend Basis Smoke (timeout=${REMEDY_PYTEST_TIMEOUT_SEC}s) ==="
 
+# Standalone runtime CLI smoke (no pytest — full process isolation)
+echo "--- Runtime CLI smoke (standalone) ---"
+python3 scripts/remedy_runtime_cli_smoke.py --mode all
+
+# Pytest-based tests (thin wrappers + unit tests + orchestration)
+echo "--- Pytest suite ---"
 scripts/remedy_pytest.sh \
   tests/cli/test_propose_cli_runtime.py \
   tests/cli/test_worker_cli_runtime.py \
