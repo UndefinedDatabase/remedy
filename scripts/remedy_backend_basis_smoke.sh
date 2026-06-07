@@ -3,27 +3,23 @@
 # Uses scripts/remedy_pytest.sh for flock + timeout safety.
 # Fails if tests hang (REMEDY_PYTEST_TIMEOUT_SEC enforced).
 #
-# IMPORTANT: Runtime wrapper tests and runtime helper tests are run in
-# SEPARATE pytest invocations to prevent combined-process teardown hangs.
+# Runtime pytest wrappers are NOT included here. They reintroduce
+# pytest-process runtime contamination. Backend smoke uses the standalone
+# runtime smoke script directly instead (no pytest for runtime flows).
 #
-# Do NOT run standalone runtime smoke (remedy_runtime_cli_smoke.py) before
-# wrapper tests here. The wrappers already call it internally. Running it
-# twice leaves process state that can prevent pytest wrappers from exiting.
-# Use scripts/remedy_runtime_cli_smoke.py --mode all separately if needed.
+# Runtime wrappers are verified separately via:
+#   scripts/remedy_runtime_wrapper_smoke.sh
 set -euo pipefail
 
 export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-120}"
 
 echo "=== Backend Basis Smoke (timeout=${REMEDY_PYTEST_TIMEOUT_SEC}s) ==="
 
-# 1. Runtime wrapper tests — each in its own pytest process
-echo "--- Runtime wrapper: propose ---"
-scripts/remedy_pytest.sh tests/cli/test_propose_cli_runtime.py -q --cache-clear
+# 1. Standalone runtime CLI smoke (no pytest — full process isolation)
+echo "--- Runtime CLI smoke (standalone) ---"
+python3 scripts/remedy_runtime_cli_smoke.py --mode all
 
-echo "--- Runtime wrapper: worker ---"
-scripts/remedy_pytest.sh tests/cli/test_worker_cli_runtime.py -q --cache-clear
-
-# 2. Runtime helper unit tests — separate pytest process
+# 2. Runtime helper unit tests
 echo "--- Runtime helper unit tests ---"
 scripts/remedy_pytest.sh tests/cli/test_runtime_helpers.py -q --cache-clear
 

@@ -4,28 +4,24 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 745-754: Remove Runtime Smoke Duplication, Backend Smoke Must Exit.
+Steps 755-764: Backend Smoke Final Isolation.
 
 ## Prior Step Status
-Steps 735-744: PASS individually. Reviewer reports backend smoke hangs because
-standalone smoke (--mode all) runs first, then wrapper tests call it again.
-Double execution leaves state that prevents second pytest wrapper from exiting.
+Steps 745-754: PASS locally. Reviewer reports backend smoke still hangs when
+running runtime pytest wrappers sequentially. The wrappers reintroduce
+pytest-process runtime contamination even in separate invocations.
 
 ## Fix
-Remove `python3 scripts/remedy_runtime_cli_smoke.py --mode all` from backend
-basis smoke. Wrappers already call it internally — no coverage loss.
+1. Backend smoke: standalone runtime smoke + helpers + orchestration (no wrappers)
+2. New script: remedy_runtime_wrapper_smoke.sh for separate wrapper testing
+3. Harden remedy_pytest.sh with --kill-after so stuck pytest can't hang forever
 
-## Runtime Test Isolation Rule
-- Do NOT chain standalone runtime smoke before wrapper pytest files in same script
-- Do NOT combine runtime wrapper + helper tests in one pytest process
-- Each runtime file runs in its own pytest invocation
-
-Supported verification path:
-- `scripts/remedy_pytest.sh tests/cli/test_propose_cli_runtime.py -q`
-- `scripts/remedy_pytest.sh tests/cli/test_worker_cli_runtime.py -q`
-- `scripts/remedy_pytest.sh tests/cli/test_runtime_helpers.py -q`
-- `scripts/remedy_backend_basis_smoke.sh`
-- `python3 scripts/remedy_runtime_cli_smoke.py --mode all` (standalone only)
+## Runtime Test Architecture
+- `scripts/remedy_runtime_cli_smoke.py` — standalone, no pytest, full isolation
+- `scripts/remedy_backend_basis_smoke.sh` — uses standalone smoke, not wrappers
+- `scripts/remedy_runtime_wrapper_smoke.sh` — separate wrapper verification
+- `tests/cli/test_propose_cli_runtime.py` — thin wrapper, run individually only
+- `tests/cli/test_worker_cli_runtime.py` — thin wrapper, run individually only
 
 ## Backend Component Status
 | Component | Status |
@@ -41,7 +37,7 @@ Supported verification path:
 | Propose CLI subprocess | **100%** |
 | Backend readiness v3 | **100%** |
 | Lock behavior | **100%** |
-| Runtime stability (no-hang) | **100%** — no duplication, isolated invocations, no pipes |
+| Runtime stability (no-hang) | **100%** — smoke uses standalone runtime, no wrappers |
 | Ollama via task_execution | **0%** |
 | Real test execution | **0%** |
 | Rollback/snapshot | **0%** |

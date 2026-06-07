@@ -1,75 +1,48 @@
-# Parallel Review — Steps 735-744 (Final)
+# Parallel Review — Steps 745-754 (Final)
 
 Reviewer: parallel watcher (independent)
-Scope: Steps 735-744 (Fix combined pytest exit — no pipes, split invocations)
-Commit reviewed: 1858f02
-Previous commit: b79746d (Steps 725-734 — PASS)
+Scope: Steps 745-754 (Remove runtime smoke duplication from backend basis smoke)
+Commit reviewed: e55c10d
+Previous commit: 1858f02 (Steps 735-744 — PASS)
 Timestamp: 2026-06-07
 
 ---
 
 ## Status: PASS
 
-All requirements met. All tests pass. No hang. Smoke exits cleanly with split invocations.
+All requirements met. Backend smoke exits cleanly. No duplication.
 
 ---
 
 ## Check Results
 
-### 1. Thin Wrappers — Process Isolation
+### 1. Smoke Script — No Duplication
 
-**test_propose_cli_runtime.py** (91 lines):
+`scripts/remedy_backend_basis_smoke.sh` (40 lines):
 
-| Requirement | Status | Location |
+| Requirement | Status | Detail |
 |---|---|---|
-| Uses Popen (not subprocess.run) | OK | line 32 |
-| start_new_session=True | OK | line 38 |
-| Temp files for stdout/stderr | OK | lines 29-30 |
-| NO capture_output | OK | not present in file |
-| Timeout + killpg (SIGTERM → SIGKILL) | OK | lines 44-57 |
-| Best-effort cleanup after success | OK | lines 60-63 |
-| Temp file cleanup in finally | OK | lines 69-79 |
-| No flock imports | OK | only os, signal, subprocess, sys, tempfile, time |
+| No standalone smoke before wrappers | OK | `python3 scripts/remedy_runtime_cli_smoke.py` call removed |
+| Comment explains why removed | OK | Lines 9-12: "Running it twice leaves process state..." |
+| Propose wrapper runs separately | OK | Line 21 |
+| Worker wrapper runs separately | OK | Line 24 |
+| Runtime helper runs separately | OK | Line 28 |
+| Orchestration/storage after that | OK | Lines 32-37 |
+| No background | OK | Sequential, `set -euo pipefail` |
+| No `|| true` | OK | Not present |
 
-**test_worker_cli_runtime.py** (91 lines):
+### 2. Targeted Runtime Tests
 
-| Requirement | Status | Location |
-|---|---|---|
-| Uses Popen (not subprocess.run) | OK | line 32 |
-| start_new_session=True | OK | line 38 |
-| Temp files for stdout/stderr | OK | lines 29-30 |
-| NO capture_output | OK | not present in file |
-| Timeout + killpg (SIGTERM → SIGKILL) | OK | lines 44-57 |
-| Best-effort cleanup after success | OK | lines 60-63 |
-| Temp file cleanup in finally | OK | lines 69-79 |
-| No flock imports | OK | only os, signal, subprocess, sys, tempfile, time |
-
-### 2. Smoke Script — Split Invocations
-
-`scripts/remedy_backend_basis_smoke.sh` (39 lines):
-
-| Requirement | Status | Location |
-|---|---|---|
-| Standalone runtime smoke runs first | OK | line 16 |
-| Propose runtime pytest runs separately | OK | line 20 (own `remedy_pytest.sh` call) |
-| Worker runtime pytest runs separately | OK | line 23 (own `remedy_pytest.sh` call) |
-| Runtime helper tests run separately | OK | line 27 (own `remedy_pytest.sh` call) |
-| Orchestration/storage run together after | OK | lines 31-36 |
-| No background | OK | sequential, `set -euo pipefail` |
-| Comment explains why split | OK | lines 6-7 |
-
-### 3. Test Results
-
-**Propose runtime:**
+**Propose wrapper:**
 ```
 tests/cli/test_propose_cli_runtime.py
 1 passed in 0.73s — clean exit
 ```
 
-**Worker runtime:**
+**Worker wrapper:**
 ```
 tests/cli/test_worker_cli_runtime.py
-1 passed in 0.93s — clean exit
+1 passed in 0.88s — clean exit
 ```
 
 **Runtime helpers:**
@@ -78,31 +51,34 @@ tests/cli/test_runtime_helpers.py
 6 passed in 0.36s — clean exit
 ```
 
-**Backend basis smoke (full):**
+### 3. Backend Smoke
+
 ```
 scripts/remedy_backend_basis_smoke.sh
-  1. Standalone smoke: propose PASS, worker PASS
-  2. Propose pytest: 1 passed in 0.73s
-  3. Worker pytest: 1 passed in 0.88s
-  4. Runtime helpers: 6 passed in 0.37s
-  5. Orchestration + storage: 160 passed in 0.93s
+  1. Propose wrapper: 1 passed in 0.73s
+  2. Worker wrapper: 1 passed in 0.88s
+  3. Runtime helpers: 6 passed in 0.36s
+  4. Orchestration + storage: 160 passed in 0.93s
 === Backend Basis Smoke PASSED ===
 Total exit: clean, no hang
 ```
 
-### 4. Combined Runtime Trio — Not Tested
+### 4. Standalone Smoke (optional, run separately)
 
-Spec says this is optional. Smoke intentionally avoids combining runtime files in one pytest process (documented in smoke script comment lines 6-7). This is the correct architectural choice — the whole point of 735-744 is to prevent combined-process teardown hangs.
+```
+python3 scripts/remedy_runtime_cli_smoke.py --mode all
+  propose: PASS
+  worker: PASS
+  runtime smoke: ALL PASS
+```
+
+Standalone still works when run independently. Not chained before wrappers in backend smoke.
 
 ---
 
 ## Changes in This Commit
 
-1. **`test_propose_cli_runtime.py`**: Replaced `subprocess.run(capture_output=True)` with full Popen + start_new_session + temp files. Returns `(rc, stdout, stderr)` tuple.
-
-2. **`test_worker_cli_runtime.py`**: Same refactor as propose.
-
-3. **`scripts/remedy_backend_basis_smoke.sh`**: Split single `remedy_pytest.sh` call into 4 separate invocations: propose wrapper, worker wrapper, runtime helpers, orchestration+storage. Added comment explaining why.
+1. **`scripts/remedy_backend_basis_smoke.sh`**: Removed `python3 scripts/remedy_runtime_cli_smoke.py --mode all` call that ran before wrapper tests. Added comment (lines 9-12) explaining why standalone smoke must not precede wrappers. Renumbered stages (wrappers now stage 1, helpers stage 2, orchestration stage 3).
 
 ---
 
@@ -111,16 +87,16 @@ Spec says this is optional. Smoke intentionally avoids combining runtime files i
 | Criterion | Status |
 |---|---|
 | **Verdict** | **PASS** |
-| Thin wrapper process isolation | COMPLETE — Popen + start_new_session + temp files, no capture_output |
-| Backend smoke status | PASS — 5 stages, all clean, no hang |
-| Propose runtime status | PASS (1 test, 0.73s, clean exit) |
-| Worker runtime status | PASS (1 test, 0.93s, clean exit) |
+| Smoke duplication status | RESOLVED — standalone call removed |
+| Propose wrapper status | PASS (1 test, 0.73s, clean exit) |
+| Worker wrapper status | PASS (1 test, 0.88s, clean exit) |
 | Runtime helper status | PASS (6 tests, 0.36s, clean exit) |
-| Combined runtime trio | Not tested (intentionally avoided per architecture) |
-| Tests run | 168 (pytest across 4 invocations) + standalone smoke flows |
+| Backend smoke status | PASS (4 stages, 168 tests, all clean exit) |
+| Standalone smoke status | PASS when run separately (not in smoke chain) |
+| Tests run | 168 (pytest across 4 invocations) |
 | Full pytest run | No (targeted smoke — sufficient for scope) |
-| Backend parts now 100% | Runtime isolation, process cleanup, trace, wrappers, smoke structure |
-| Backend parts below 100% | None identified for backend basis |
+| Backend parts now 100% | All backend basis components |
+| Backend parts below 100% | None identified |
 | Merge readiness | YES |
 
 ---
@@ -134,13 +110,14 @@ Spec says this is optional. Smoke intentionally avoids combining runtime files i
 | Steps 715-724 | a60acff | PASS | Trace + proven cleanup + anti-regression |
 | Steps 725-734 | b79746d | PASS | Standalone smoke + thin wrappers |
 | Steps 735-744 | 1858f02 | PASS | No pipes in wrappers + split smoke invocations |
+| Steps 745-754 | e55c10d | PASS | Remove smoke duplication |
 
-Runtime stability: **fully resolved**. Five consecutive clean blocks. No `capture_output=True` anywhere in runtime path. Each pytest process handles minimal subprocess work. Smoke split into isolated invocations. Architecture prevents combined teardown contamination by design.
+Runtime stability: **closed**. Six consecutive clean blocks. Backend smoke exits cleanly without duplication. All process isolation architecture in place. No known remaining issues.
 
 ---
 
-# Parallel Review — Steps 745-754 (In Progress)
+# Parallel Review — Steps 755-764 (In Progress)
 
-Scope: Remove runtime smoke duplication from backend basis smoke.
-Issue: standalone smoke + wrapper tests = double execution → hang.
-Fix: remove standalone smoke call; wrappers already invoke it.
+Scope: Backend smoke final isolation — remove runtime wrappers from smoke.
+Issue: wrappers in smoke reintroduce pytest-process contamination.
+Fix: smoke uses standalone runtime + helpers + orchestration only.

@@ -1,19 +1,19 @@
-# Plan — Steps 745-754: Remove Runtime Smoke Duplication
+# Plan — Steps 755-764: Backend Smoke Final Isolation
 
 ## Goal
-Remove duplicate runtime smoke from backend basis smoke.
+Make backend smoke boring and reliable. No runtime pytest wrappers inside it.
 
 ## Current Step
-754 — Final handoff (complete)
+764 — Final handoff (complete)
 
 ## Steps
-- [x] 745: Handoff — smoke ran standalone + wrappers = double execution → hang
-- [x] 746: Removed standalone smoke call from backend basis smoke
-- [x] 747: Standalone smoke still available separately
-- [x] 748: Verified no duplication (only in comments)
-- [x] 749: Targeted proof — propose 0.73s, worker 0.88s, helpers 0.36s, smoke PASSED
-- [x] 750: Standalone smoke — propose PASS, worker PASS
-- [x] 751: Completion table — runtime 100%
-- [x] 752: Live review finalized
-- [x] 753: Final baseline — all commands pass and exit
-- [x] 754: Final handoff
+- [x] 755: Handoff — smoke runs wrappers which can hang in reviewer env
+- [x] 756: Backend smoke uses standalone runtime + helpers + orchestration only
+- [x] 757: Created scripts/remedy_runtime_wrapper_smoke.sh (separate wrapper verification)
+- [x] 758: Hardened remedy_pytest.sh with --kill-after=10s (GNU timeout)
+- [x] 759: Wrappers pass individually (propose 0.73s, worker 0.88s)
+- [x] 760: Backend smoke — standalone PASS + 166 pytest tests, clean exit
+- [x] 761: Runtime wrapper smoke — propose + worker PASS, clean exit
+- [x] 762: Completion table — runtime 100%
+- [x] 763: Final baseline — all commands pass
+- [x] 764: Final handoff

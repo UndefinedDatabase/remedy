@@ -3,7 +3,7 @@
 #
 # Prevents parallel pytest runs on the same machine.
 # Uses flock -n to fail fast if another run is active.
-# Uses timeout to prevent runaway test processes.
+# Uses timeout with --kill-after to prevent runaway test processes.
 #
 # Usage:
 #   scripts/remedy_pytest.sh tests/ -q --cache-clear
@@ -20,6 +20,7 @@ set -euo pipefail
 TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-600}"
 LOCK_FILE="${REMEDY_PYTEST_LOCK:-/tmp/remedy-pytest.lock}"
 PYTHON="${REMEDY_PYTHON:-python3}"
+KILL_AFTER="10s"
 
 exec 200>"${LOCK_FILE}"
 
@@ -33,14 +34,19 @@ fi
 echo "remedy_pytest: timeout=${TIMEOUT_SEC}s, lock=${LOCK_FILE}"
 echo "remedy_pytest: ${PYTHON} -m pytest $*"
 
+# Use --kill-after if supported (GNU coreutils). Falls back to plain timeout.
 set +e
-timeout "${TIMEOUT_SEC}" "${PYTHON}" -m pytest "$@"
+if timeout --kill-after=1s 0.1s true 2>/dev/null; then
+    timeout --kill-after="${KILL_AFTER}" "${TIMEOUT_SEC}" "${PYTHON}" -m pytest "$@"
+else
+    timeout "${TIMEOUT_SEC}" "${PYTHON}" -m pytest "$@"
+fi
 EXIT_CODE=$?
 set -e
 
-if [ "${EXIT_CODE}" -eq 124 ]; then
+if [ "${EXIT_CODE}" -eq 124 ] || [ "${EXIT_CODE}" -eq 137 ]; then
     echo "" >&2
-    echo "ERROR: pytest timed out after ${TIMEOUT_SEC} seconds." >&2
+    echo "ERROR: pytest timed out after ${TIMEOUT_SEC} seconds (kill-after=${KILL_AFTER})." >&2
     echo "To increase: REMEDY_PYTEST_TIMEOUT_SEC=900 scripts/remedy_pytest.sh ..." >&2
     exit 124
 fi
