@@ -11,6 +11,7 @@ echo "=== Backend Basis Smoke (timeout=${REMEDY_PYTEST_TIMEOUT_SEC}s) ==="
 scripts/remedy_pytest.sh \
   tests/cli/test_propose_cli_runtime.py \
   tests/cli/test_worker_cli_runtime.py \
+  tests/cli/test_runtime_helpers.py \
   tests/orchestration/test_worker_execution.py \
   tests/orchestration/test_task_execution.py \
   tests/orchestration/test_proposed_tasks.py \

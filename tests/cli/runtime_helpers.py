@@ -9,7 +9,8 @@ Process isolation strategy:
 - stdout/stderr redirected to temp files (no pipe inheritance)
 - proc.wait(timeout=...) for bounded wait
 - os.killpg(SIGTERM) then os.killpg(SIGKILL) on timeout
-- Best-effort kill remaining group children after normal exit
+- Proven process group cleanup after normal exit
+- Diagnostic trace log for debugging order-dependent hangs
 """
 
 from __future__ import annotations
@@ -20,9 +21,36 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
+
+# Module-level trace log path, set per test root via enable_trace()
+_trace_path: Path | None = None
+
+
+def enable_trace(root: Path) -> Path:
+    """Enable diagnostic tracing under root. Returns trace file path."""
+    global _trace_path
+    _trace_path = root / ".runtime_trace.log"
+    return _trace_path
+
+
+def _trace(msg: str) -> None:
+    """Append bounded trace line if tracing is enabled."""
+    if _trace_path is None:
+        return
+    ts = datetime.now(timezone.utc).strftime("%H:%M:%S.%f")[:-3]
+    line = f"{ts} {msg}\n"
+    try:
+        with open(_trace_path, "a") as f:
+            # Cap file at 64KB
+            if f.tell() > 64 * 1024:
+                return
+            f.write(line)
+    except OSError:
+        pass
 
 
 def create_test_env(tmp_path: Path) -> tuple[Path, str]:
@@ -43,6 +71,8 @@ def create_test_env(tmp_path: Path) -> tuple[Path, str]:
         "metadata": {},
     }
     (jobs_dir / f"{jid}.json").write_text(json.dumps(job_data, indent=2))
+    # Always enable trace for runtime tests
+    enable_trace(root)
     return root, jid
 
 
@@ -91,12 +121,40 @@ def create_proposed_task(
     return task_id
 
 
+def _process_group_exists(pgid: int) -> bool:
+    """Check if a process group still has live processes."""
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except (ProcessLookupError, PermissionError):
+        return False
+
+
 def _kill_process_group(pgid: int, sig: int) -> None:
     """Best-effort kill a process group."""
     try:
         os.killpg(pgid, sig)
     except (ProcessLookupError, PermissionError):
         pass
+
+
+def _ensure_process_group_dead(pgid: int) -> None:
+    """Prove process group is gone after normal exit. SIGTERM → wait → SIGKILL."""
+    if not _process_group_exists(pgid):
+        return
+    _kill_process_group(pgid, signal.SIGTERM)
+    # Brief bounded wait for SIGTERM
+    for _ in range(10):
+        time.sleep(0.05)
+        if not _process_group_exists(pgid):
+            return
+    # Escalate to SIGKILL
+    _kill_process_group(pgid, signal.SIGKILL)
+    for _ in range(10):
+        time.sleep(0.05)
+        if not _process_group_exists(pgid):
+            return
+    _trace(f"WARN pgid={pgid} still alive after SIGKILL")
 
 
 def run_grouped_cli(
@@ -113,6 +171,9 @@ def run_grouped_cli(
     """
     full_env = {**os.environ, "REMEDY_DATA_DIR": str(root)}
     cmd = [sys.executable, "-m", "apps.cli.grouped"] + args
+    args_str = " ".join(args)
+
+    _trace(f"START {args_str}")
 
     stdout_file = tempfile.NamedTemporaryFile(
         mode="w+", suffix=".stdout", delete=False
@@ -137,17 +198,16 @@ def run_grouped_cli(
             proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             timed_out = True
-            # SIGTERM the process group
+            _trace(f"TIMEOUT {args_str}")
             _kill_process_group(pgid, signal.SIGTERM)
             try:
                 proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
-                # SIGKILL if SIGTERM didn't work
                 _kill_process_group(pgid, signal.SIGKILL)
                 proc.wait(timeout=3)
 
-        # Best-effort kill remaining children in the process group
-        _kill_process_group(pgid, signal.SIGTERM)
+        # Proven cleanup: ensure process group is fully dead
+        _ensure_process_group_dead(pgid)
 
         # Read bounded output from temp files
         stdout_file.seek(0)
@@ -167,10 +227,16 @@ def run_grouped_cli(
             pass
 
     if timed_out:
+        trace_info = ""
+        if _trace_path and _trace_path.exists():
+            trace_info = f"\ntrace: {_trace_path}"
         raise AssertionError(
             f"CLI subprocess timed out after {timeout}s: {args}\n"
             f"stdout: {stdout_text[:200]}\nstderr: {stderr_text[:200]}"
+            f"{trace_info}"
         )
+
+    _trace(f"END rc={proc.returncode} {args_str}")
 
     return subprocess.CompletedProcess(
         args=cmd,
