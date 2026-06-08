@@ -101,6 +101,7 @@ GROUPS: dict[str, GroupDef] = {
     "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions."),
     "ui": GroupDef("ui", "UI", "Localhost UI server — primary interactive experience."),
     "do": GroupDef("do", "Do", "High-level guided autorun — one command to start a Remedy run."),
+    "repair": GroupDef("repair", "Repair", "Test failure repair — structured failure evidence and fix tasks."),
     "review": GroupDef("review", "Review", "Reviewer recommendations — suggest, accept, reject follow-up tasks."),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation — list, evaluate, approve, reject, defer."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
@@ -1297,6 +1298,37 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=False,
+    ),
+
+    # ── repair ──────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="repair.start",
+        group_id="repair",
+        subcommand="start",
+        description="Start repair loop v0 for a test failure.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("failure_artifact_id", "Failure artifact ID"),
+            ArgDef("--fixture-patch-intent", "Create fixture patch intent", required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("repair.failure-show", "job.show"),
+    ),
+    CommandEntry(
+        command_id="repair.failure-show",
+        group_id="repair",
+        subcommand="failure-show",
+        description="Show a test failure artifact.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("failure_artifact_id", "Failure artifact ID"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("repair.start",),
     ),
 
     # ── review ───────────────────────────────────────────────────────────
