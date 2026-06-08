@@ -239,6 +239,82 @@ class TestDoRuntimeText:
 
         assert result.returncode == 0
         assert "Traceback" not in result.stderr
-        # Summary should mention phases and stop reason
         out = result.stdout.lower()
         assert "phase" in out or "stop" in out or "approval" in out
+
+
+# ---------------------------------------------------------------------------
+# Step 934: Runtime CLI contract/truth tests
+# ---------------------------------------------------------------------------
+
+
+class TestDoRuntimeTruth:
+    """Subprocess tests for truth closure fields."""
+
+    def test_autonomy_7_capped_in_json(self, tmp_path):
+        """Real subprocess: --autonomy-level 7 shows capped in JSON."""
+        repo = _create_temp_repo(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        result = _run_grouped_cli(
+            ["do", "safe docs change", "--repo", str(repo),
+             "--autonomy-level", "7", "--json"],
+            env_extra={"REMEDY_DATA_DIR": str(data_dir)},
+        )
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["autonomy_level"] == 3
+        assert data["requested_autonomy_level"] == 7
+        assert data["autonomy_capped"] is True
+
+    def test_run_contract_in_json(self, tmp_path):
+        """Real subprocess: JSON output contains run_contract."""
+        repo = _create_temp_repo(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        result = _run_grouped_cli(
+            ["do", "safe docs change", "--repo", str(repo),
+             "--autonomy-level", "3", "--json"],
+            env_extra={"REMEDY_DATA_DIR": str(data_dir)},
+        )
+
+        data = json.loads(result.stdout)
+        assert "run_contract" in data
+        rc = data["run_contract"]
+        assert rc["stop_before_apply"] is True
+        assert rc["source"] == "do_v1_minimal"
+
+    def test_max_cycles_zero_safe(self, tmp_path):
+        """Real subprocess: --max-cycles 0 exits 0 with invalid_input."""
+        repo = _create_temp_repo(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        result = _run_grouped_cli(
+            ["do", "safe docs change", "--repo", str(repo),
+             "--max-cycles", "0", "--json"],
+            env_extra={"REMEDY_DATA_DIR": str(data_dir)},
+        )
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["stop_reason"]["reason"] == "invalid_input"
+        assert "Traceback" not in result.stderr
+
+    def test_no_raw_content_high_autonomy(self, tmp_path):
+        """Real subprocess: high autonomy still no raw content."""
+        repo = _create_temp_repo(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        result = _run_grouped_cli(
+            ["do", "safe docs change", "--repo", str(repo),
+             "--autonomy-level", "7", "--json"],
+            env_extra={"REMEDY_DATA_DIR": str(data_dir)},
+        )
+
+        assert "supersecret" not in result.stdout
+        assert "API_KEY" not in result.stdout

@@ -1,48 +1,50 @@
-# Live Review — Steps 905-924
+# Live Review — Steps 925-939
 
 Reviewer: parallel reviewer
-Scope: remedy do v1 Cohesive Flow
+Scope: remedy do v1 Truth Closure
 Timestamp: 2026-06-08
 
 ## Verdict
-PENDING — all findings addressed by builder, awaiting reviewer re-check
+PENDING — all findings addressed, awaiting reviewer final pass
 
 ## Prior Block Status
 - Steps 880-894 (Context Inspector Truth Closure): PASS
 - Steps 895-904 (Review Protocol Repair): PASS — PR #47 merged
+- Steps 905-924 (remedy do v1 Cohesive Flow): PASS WITH RISKS — PR #48 open
 
 ## Finding Ledger
 
-### R-0001: Context phase exception overclaims "completed"
+### R-0001: Context exception lets build proceed
 - **Status**: Done: R-0001
-- **Severity**: Medium
-- **Area**: do_run.py:351
-- **Details**: `_run_context_phase` broad `except Exception` returns status="completed" with "skipped" in summary.
-- **Evidence**: Fixed — `do_run.py:351` now `status="skipped"`.
+- **Severity**: Blocker
+- **Fix**: Exception now returns `status="failed"`, flow checks `("blocked", "failed")`. 3 tests in `TestContextFailureStops`.
 
-### R-0002: No grouped CLI subprocess test for `remedy do`
+### R-0002: next_safe_action validates group only, not subcommand
 - **Status**: Done: R-0002
 - **Severity**: High
-- **Area**: tests/cli/test_do_runtime.py
-- **Details**: Needed subprocess test for `remedy do --json`.
-- **Evidence**: Fixed — `test_do_runtime.py` has 10 subprocess tests: exit code, JSON parse, required keys, stop reason, next_safe_action, phases, no traceback, no raw content, no absolute paths, text mode. No shell=True. Timeout=30s.
+- **Fix**: `validate_next_safe_action_command()` parses full `group.subcommand`. 10 tests in `TestNextSafeActionValidation`.
 
-### R-0003: Plan file stale — shows step 905 current
+### R-0003: do.run catalog action_class="apply_write" but v1 never writes to repo
 - **Status**: Done: R-0003
-- **Severity**: Low
-- **Area**: .agent/plan.md
-- **Details**: Plan showed step 905 as current.
-- **Evidence**: Fixed — plan.md updated to step 924 current, all steps marked complete.
+- **Severity**: High
+- **Fix**: `action_class="write_metadata"`, `may_mutate_repo=False`, `may_execute_commands=False`. 3 tests in `TestCatalogMetadataTruth`.
 
-### R-0004: `next_safe_action` commands must exist in catalog
+### R-0004: Autonomy cap silent — no requested vs effective
 - **Status**: Done: R-0004
 - **Severity**: Medium
-- **Area**: do_run.py + test_do_run.py
-- **Details**: `next_safe_action.command` hardcoded strings. Test validates group prefix resolves to catalog entry.
-- **Evidence**: `TestNextSafeActionCatalog::test_next_action_command_is_real` checks all commands (`context.inspect`, `patch.approve`, `job.show`, `do.run`) exist in catalog. Full subcommand matching deferred to v2 (catalog lookup API not yet available).
+- **Fix**: `requested_autonomy_level`, `autonomy_capped`, `cap_reason` in result + JSON. 3 tests + 1 runtime test.
 
-### R-0005: `DoRunContract` duplicates `RunContract`
-- **Status**: Accepted risk
+### R-0005: Run contract not in JSON output
+- **Status**: Done: R-0005
+- **Severity**: Medium
+- **Fix**: `run_contract` section in JSON. 4 tests + 1 runtime test.
+
+### R-0006: DoRunContract duplicates RunContract (carry-forward)
+- **Status**: Done: R-0006 (documented)
 - **Severity**: Low
-- **Area**: do_run.py:96-103
-- **Details**: v1 uses simplified contract. Consolidation deferred to v2 when apply path is wired.
+- **Fix**: `source="do_v1_minimal"` + docstring notes consolidation deferred to v2.
+
+## Test Results
+- 81 targeted tests pass (67 unit + 14 runtime)
+- 4751 full suite pass, 8 skipped, 1 deselected (pre-existing)
+- 0 failures

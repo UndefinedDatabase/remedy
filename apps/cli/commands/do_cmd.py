@@ -77,7 +77,7 @@ def _cmd_do(
         sys.exit(1)
 
     if json_output:
-        print(json.dumps(export_do_run_json(result), indent=2))
+        print(json.dumps(export_do_run_json(result, contract=result._contract), indent=2))
     else:
         print(summarize_do_run(result))
 

@@ -17,6 +17,7 @@ Public API::
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -64,7 +65,30 @@ class DoRunNextAction:
 
 
 # ---------------------------------------------------------------------------
-# Result contract (Step 907)
+# Next safe action validation (Step 926)
+# ---------------------------------------------------------------------------
+
+_REMEDY_CMD_RE = re.compile(r"^remedy\s+(\S+)\s+(\S+)")
+
+
+def validate_next_safe_action_command(command: str) -> bool:
+    """Validate that a next_safe_action command maps to a real catalog entry.
+
+    Parses ``remedy <group> <subcommand> ...`` and verifies
+    ``<group>.<subcommand>`` exists in CATALOG.
+    """
+    m = _REMEDY_CMD_RE.match(command)
+    if not m:
+        return False
+    group, subcommand = m.group(1), m.group(2)
+    command_id = f"{group}.{subcommand}"
+
+    from apps.cli.command_catalog import CATALOG
+    return any(entry.command_id == command_id for entry in CATALOG)
+
+
+# ---------------------------------------------------------------------------
+# Result contract (Step 907 + Step 932 autonomy truth)
 # ---------------------------------------------------------------------------
 
 
@@ -82,24 +106,45 @@ class DoRunResult:
     stop_reason: DoRunStopReason = field(default_factory=lambda: DoRunStopReason(reason="unknown"))
     next_safe_action: DoRunNextAction | None = None
     autonomy_level: int = 2
+    requested_autonomy_level: int = 2
+    autonomy_capped: bool = False
+    cap_reason: str = ""
     repo_path_safe: str = ""
     context_summary: str = ""
     generated_at: str = ""
     error: str = ""
+    _contract: DoRunContract | None = None  # internal, not exported directly
 
 
 # ---------------------------------------------------------------------------
-# Run contract (Step 917)
+# Run contract (Step 917 + Step 930 consolidation)
 # ---------------------------------------------------------------------------
+
+_DO_V1_MAX_AUTONOMY = 3
 
 
 @dataclass(frozen=True)
 class DoRunContract:
-    """Constraints for a do run."""
+    """Constraints for a do run.
+
+    Simplified v1 contract. Derives from the same conceptual model as
+    ``packages.orchestration.run_contract.RunContract`` but is intentionally
+    minimal for the fixture-only v1 flow.
+
+    Source: ``do_v1_minimal`` — consolidation with RunContract deferred to v2
+    when the apply path is wired.
+    """
 
     autonomy_level: int = 2
     stop_before_apply: bool = True
     max_loops: int = 1
+    source: str = "do_v1_minimal"
+    allowed_actions: tuple[str, ...] = (
+        "plan", "build_artifact", "create_patch_intent",
+    )
+    denied_actions: tuple[str, ...] = (
+        "apply_patch", "arbitrary_shell", "network_fetch",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -129,16 +174,42 @@ def run_do(
     from packages.orchestration.storage import save_job
     from packages.orchestration.timeline import append_run_event
 
+    # --- Step 931: max_loops validation ---
+    if max_loops < 1:
+        result = DoRunResult(
+            generated_at=datetime.now(timezone.utc).isoformat(),
+            requested_autonomy_level=autonomy_level,
+            autonomy_level=min(autonomy_level, _DO_V1_MAX_AUTONOMY),
+        )
+        result.stop_reason = DoRunStopReason(
+            reason="invalid_input",
+            detail=f"max_loops must be >= 1, got {max_loops}",
+        )
+        result.phases.append(DoRunPhase(
+            phase="stop", status="stopped",
+            safe_summary=f"Stopped: invalid max_loops ({max_loops})",
+        ))
+        return result
+
+    # --- Step 932: autonomy truth ---
+    effective_autonomy = min(autonomy_level, _DO_V1_MAX_AUTONOMY)
+    capped = autonomy_level > _DO_V1_MAX_AUTONOMY
+    cap_reason = f"v1 cap: requested {autonomy_level}, max {_DO_V1_MAX_AUTONOMY}" if capped else ""
+
     contract = DoRunContract(
-        autonomy_level=min(autonomy_level, 3),
+        autonomy_level=effective_autonomy,
         stop_before_apply=stop_before_apply,
-        max_loops=max_loops,
+        max_loops=min(max_loops, 1),  # v1: single pass
     )
 
     data_dir = resolve_data_root()
     result = DoRunResult(
         autonomy_level=contract.autonomy_level,
+        requested_autonomy_level=autonomy_level,
+        autonomy_capped=capped,
+        cap_reason=cap_reason,
         generated_at=datetime.now(timezone.utc).isoformat(),
+        _contract=contract,
     )
 
     # --- Phase: init (Step 909) ---
@@ -184,25 +255,26 @@ def run_do(
         safe_summary="1 task created (fixture planner)",
     ))
 
-    # --- Phase: context (Step 911) ---
+    # --- Phase: context (Step 911 + Step 928: failure stops run) ---
     context_phase = _run_context_phase(job, repo, data_dir, result)
     result.phases.append(context_phase)
-    if context_phase.status == "blocked":
+    if context_phase.status in ("blocked", "failed"):
+        stop_reason = "context_blocked" if context_phase.status == "blocked" else "context_error"
         result.stop_reason = DoRunStopReason(
-            reason="context_blocked",
-            detail="Context inspection shows blocked readiness",
+            reason=stop_reason,
+            detail=context_phase.safe_summary,
         )
         result.next_safe_action = DoRunNextAction(
             label="Inspect context",
             command=f"remedy context inspect {result.job_id} {result.task_id} --json",
-            reason="Context is blocked. Inspect to see what files are missing.",
+            reason="Context unavailable. Inspect to diagnose.",
         )
         result.phases.append(DoRunPhase(
             phase="stop", status="stopped",
-            safe_summary="Stopped: context blocked",
+            safe_summary=f"Stopped: {stop_reason}",
         ))
         _do_emit(data_dir, job.id, "do_run_stopped", {
-            "reason": "context_blocked",
+            "reason": stop_reason,
         })
         return result
 
@@ -347,9 +419,13 @@ def _run_context_phase(
         )
 
     except Exception as exc:
+        # Step 928: context failure stops run — use "failed", not "skipped"
+        exc_type = type(exc).__name__
+        # Bound type name to avoid leaking internals
+        safe_type = exc_type if len(exc_type) < 60 else "InternalError"
         return DoRunPhase(
-            phase="context", status="skipped",
-            safe_summary=f"Context inspection skipped: {type(exc).__name__}",
+            phase="context", status="failed",
+            safe_summary=f"Context inspection failed: {safe_type}",
         )
 
 
@@ -432,7 +508,7 @@ def _run_proof_phase(job: Any, data_dir: Path, result: DoRunResult) -> DoRunPhas
 # ---------------------------------------------------------------------------
 
 
-def export_do_run_json(result: DoRunResult) -> dict[str, Any]:
+def export_do_run_json(result: DoRunResult, contract: DoRunContract | None = None) -> dict[str, Any]:
     """Export DoRunResult as safe JSON dict."""
     out: dict[str, Any] = {
         "version": result.version,
@@ -455,6 +531,9 @@ def export_do_run_json(result: DoRunResult) -> dict[str, Any]:
         },
         "next_safe_action": None,
         "autonomy_level": result.autonomy_level,
+        "requested_autonomy_level": result.requested_autonomy_level,
+        "autonomy_capped": result.autonomy_capped,
+        "cap_reason": result.cap_reason,
         "repo_path_safe": result.repo_path_safe,
         "context_summary": result.context_summary,
         "generated_at": result.generated_at,
@@ -464,6 +543,15 @@ def export_do_run_json(result: DoRunResult) -> dict[str, Any]:
             "label": result.next_safe_action.label,
             "command": result.next_safe_action.command,
             "reason": result.next_safe_action.reason,
+        }
+    if contract:
+        out["run_contract"] = {
+            "source": contract.source,
+            "autonomy_level": contract.autonomy_level,
+            "stop_before_apply": contract.stop_before_apply,
+            "max_loops": contract.max_loops,
+            "allowed_actions": list(contract.allowed_actions),
+            "denied_actions": list(contract.denied_actions),
         }
     if result.error:
         out["error"] = result.error
