@@ -1,0 +1,80 @@
+"""Tests for project agent tooling configuration."""
+
+from __future__ import annotations
+
+import ast
+import json
+from pathlib import Path
+
+from scripts import remedy_agent_tooling_doctor as doctor
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_agent_tooling_json_files_are_valid():
+    for rel in [
+        ".pi/settings.json",
+        ".claude/settings.json",
+        ".mcp.json",
+        ".vscode/mcp.json",
+    ]:
+        path = ROOT / rel
+        assert path.exists(), rel
+        json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_agent_skills_have_expected_files():
+    for rel in [
+        ".pi/skills/remedy-proof-chain/SKILL.md",
+        ".pi/skills/remedy-review/SKILL.md",
+        ".pi/skills/remedy-test-triage/SKILL.md",
+        ".claude/skills/remedy-proof-chain/SKILL.md",
+        ".claude/skills/remedy-test-triage/SKILL.md",
+        ".claude/skills/remedy-agent-tooling/SKILL.md",
+    ]:
+        path = ROOT / rel
+        text = path.read_text(encoding="utf-8")
+        assert "description:" in text[:1200]
+        assert "AGENTS.md" in text
+
+
+def test_claude_agent_is_read_only_reviewer():
+    text = (ROOT / ".claude/agents/remedy-reviewer.md").read_text(encoding="utf-8")
+    assert "tools: Read, Grep, Glob" in text
+    assert "Reviewer findings beat worker self-report" in text
+
+
+def test_mcp_configs_have_no_active_servers_by_default():
+    claude_mcp = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
+    vscode_mcp = json.loads((ROOT / ".vscode/mcp.json").read_text(encoding="utf-8"))
+    assert claude_mcp == {"mcpServers": {}}
+    assert vscode_mcp == {"servers": {}}
+
+
+def test_no_secrets_in_agent_tooling_configs():
+    findings = doctor.run()
+    errors = [f.message for f in findings if f.level == "ERROR"]
+    assert errors == []
+
+
+def test_doctor_reports_expected_configs(capsys):
+    assert doctor.main() == 0
+    out = capsys.readouterr().out
+    assert ".pi: exists=True" in out
+    assert ".claude: exists=True" in out
+    assert ".mcp.json has no active MCP servers" in out
+    assert ".vscode/mcp.json has no active MCP servers" in out
+
+
+def test_doctor_script_uses_no_shell_true():
+    tree = ast.parse((ROOT / "scripts/remedy_agent_tooling_doctor.py").read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.keyword) and node.arg == "shell":
+            assert not (isinstance(node.value, ast.Constant) and node.value.value is True)
+
+
+def test_gitignore_keeps_local_claude_settings_ignored():
+    ignored = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert ".claude/settings.local.json" in ignored
+    block = ignored.split("# Claude Code project guidance is shareable; local state stays ignored", 1)[1].split("# Node.js", 1)[0]
+    assert not any(line.strip() == ".claude/" for line in block.splitlines())

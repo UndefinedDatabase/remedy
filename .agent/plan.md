@@ -4,26 +4,26 @@
 Stop file provenance from over-associating tests and add verified, safe Pi/Claude/VS Code local agent tooling docs/config.
 
 ## Current Step
-853-854 — inspect actual tooling setup and verify docs/package audit inputs
+863-864 — final state updates, optional fast lane, PR handoff
 
 ## Steps
 - [x] 850: Handoff repair — carry review blocker and scope shift
 - [x] 851: Fix file_provenance linked-test filtering
 - [x] 852: Add file provenance/proof agreement tests
-- [ ] 853: Inspect actual `.pi`, `.claude`, MCP, package setup
-- [ ] 854: Verify Pi/Claude/VS Code/MCP docs and package audit inputs
-- [ ] 855: Add safe Claude project setup
-- [ ] 856: Add safe Pi project setup
-- [ ] 857: Add minimal MCP/VS Code config only if schema verified
-- [ ] 858: Add docs/agent-tooling-audit.md
-- [ ] 859: Add read-only tooling doctor script
-- [ ] 860: Add tooling config/doctor/security tests
-- [ ] 861: Run targeted tests via wrapper
-- [ ] 862: Package audit/version report; no blind upgrades
+- [x] 853: Inspect actual `.pi`, `.claude`, MCP, package setup
+- [x] 854: Verify Pi/Claude/VS Code/MCP docs and package audit inputs
+- [x] 855: Add safe Claude project setup
+- [x] 856: Add safe Pi project setup
+- [x] 857: Add minimal inactive MCP/VS Code config with verified schemas
+- [x] 858: Add docs/agent-tooling-audit.md
+- [x] 859: Add read-only tooling doctor script
+- [x] 860: Add tooling config/doctor/security tests
+- [x] 861: Run targeted tests via wrapper
+- [x] 862: Package audit/version report; no upgrades
 - [ ] 863: Final state updates and PR handoff
 - [ ] 864: Final report
 
 ## Risks
-- Do not commit fake Claude/Pi schemas; document uncertainty instead.
-- `.pi` was absent on disk; `.claude/settings.local.json` exists and must not be overwritten blindly.
-- Full pytest likely out of scope unless targeted suites pass quickly.
+- `.claude/settings.local.json` remains local/ignored and was not committed.
+- No MCP servers are active; future MCP installs must be audited separately.
+- Full pytest not run yet; targeted suite passed.
