@@ -1,6 +1,6 @@
 # Live Review — Steps 840-849
 
-Reviewer: active agent self-review
+Reviewer: active agent + parallel reviewer
 Scope: Proof Chain Evidence Ordering Closure
 Timestamp: 2026-06-08
 
@@ -12,8 +12,11 @@ Steps 825-839: PASS WITH RISKS.
 2. `change_set.py` risked attaching the latest global test run to every change for display surfaces.
 3. `.agent/plan.md` / handoff state was stale after merge and required repair.
 
+## Parallel Review Finding
+Initial ordering helper parsed timestamps but compared original strings. Parallel review showed offset timestamps could falsely order a pre-apply test after apply. Fixed by comparing parsed `datetime` values and adding offset regression coverage.
+
 ## Resolution
-- Added timestamp extraction and safe ISO ordering helpers.
+- Added timestamp extraction and safe parsed ordering helpers.
 - Sole-change generic tests now link only when test timestamp is at or after apply timestamp.
 - Unknown ordering reports `test_order_unknown`; pre-apply tests report `no_test_after_apply`.
 - Change set test display now includes only linked intent/task/not-required or sole-change after-apply evidence.
@@ -21,6 +24,7 @@ Steps 825-839: PASS WITH RISKS.
 
 ## Validation
 Targeted wrapper pytest passed for proof chain, change set, change proof CLI, file provenance coverage, and command catalog truth tests.
+Parallel reviewer targeted suite also passed and the offset-ordering blocker was fixed.
 
 ## Current Status
-Steps 840-848 complete; final handoff pending.
+PASS — final handoff ready.

@@ -855,7 +855,8 @@ job.artifacts, a filtered slice, or any other artifact list. No coupling to Job 
 ## 2026-06-08: Sole-change generic tests require timestamp ordering (Steps 840-849)
 Intent/task-linked tests remain valid without timestamps because their linkage is explicit.
 Generic tests can verify a sole applied change only when both apply and test timestamps parse
-and the test timestamp is at or after apply. Missing/invalid ordering is incomplete, not verified.
+and the parsed test time is at or after parsed apply time. Missing/invalid ordering is incomplete,
+not verified. Parsed datetime comparison is required so timezone offsets cannot create false order.
 
 ## 2026-06-08: Steps 810-839 cherry-picked as Proof Chain dependency (Steps 840-849)
 After merging the open PR, main lacked the Proof Chain v1/truth-closure files referenced by this task.

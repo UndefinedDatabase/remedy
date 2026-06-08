@@ -379,6 +379,12 @@ class TestTestLinking:
         assert _is_after_or_same("2026-01-01T00:00:00Z", "bad") is None
         assert _is_after_or_same("2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z") is True
 
+    def test_timestamp_ordering_uses_parsed_offsets(self):
+        assert _is_after_or_same(
+            "2026-01-01T01:00:00+02:00",
+            "2026-01-01T00:30:00+00:00",
+        ) is False
+
     def test_no_link_multiple_changes(self):
         """Generic test with multiple applied changes → no link"""
         events = [{"event": "test_run_completed", "metadata": {"status": "passed"}}]

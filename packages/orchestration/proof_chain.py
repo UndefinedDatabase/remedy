@@ -230,9 +230,11 @@ def _is_after_or_same(test_ts: str | None, apply_ts: str | None) -> bool | None:
     """Return whether test_ts >= apply_ts, or None when ordering is unknown."""
     if not test_ts or not apply_ts:
         return None
-    if _parse_iso_timestamp(test_ts) is None or _parse_iso_timestamp(apply_ts) is None:
+    test_time = _parse_iso_timestamp(test_ts)
+    apply_time = _parse_iso_timestamp(apply_ts)
+    if test_time is None or apply_time is None:
         return None
-    return test_ts >= apply_ts
+    return test_time >= apply_time
 
 
 def _link_test_to_change(
