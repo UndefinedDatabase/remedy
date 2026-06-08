@@ -46,6 +46,8 @@ class FileProvenance:
     path: str
     found: bool
     chain: tuple[ProvenanceLink, ...]
+    proof_status: str = ""  # verified | failed | incomplete | unverified | unknown | ""
+    proof_error: str = ""   # empty or "unavailable: <reason>"
 
 
 # ---------------------------------------------------------------------------
@@ -160,11 +162,25 @@ def build_file_provenance(
             },
         ))
 
+    # Derive proof status from proof chain
+    proof_status = ""
+    proof_error = ""
+    from packages.orchestration.proof_chain import build_proof_chain
+    try:
+        pc = build_proof_chain(job, events, path=path)
+        if pc.changes:
+            proof_status = pc.changes[0].proof_status
+    except (KeyError, ValueError, TypeError) as exc:
+        proof_error = f"unavailable: {type(exc).__name__}"
+        proof_status = "unknown"
+
     return FileProvenance(
         job_id=job_id_str,
         path=path,
         found=True,
         chain=tuple(chain),
+        proof_status=proof_status,
+        proof_error=proof_error,
     )
 
 
@@ -173,6 +189,11 @@ def summarize_file_provenance(prov: FileProvenance) -> str:
     parts: list[str] = []
     parts.append(f"File Provenance: {prov.path}")
     parts.append(f"Job: {prov.job_id[:8]}")
+
+    if prov.proof_status:
+        parts.append(f"Proof: {prov.proof_status}")
+    if prov.proof_error:
+        parts.append(f"Proof error: {prov.proof_error}")
 
     if not prov.found:
         parts.append("  No patch intents found for this file.")
@@ -196,6 +217,8 @@ def export_file_provenance_json(prov: FileProvenance) -> dict[str, Any]:
         "job_id": prov.job_id,
         "path": prov.path,
         "found": prov.found,
+        "proof_status": prov.proof_status,
+        "proof_error": prov.proof_error,
         "chain": [
             {
                 "step": link.step,

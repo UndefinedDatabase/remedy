@@ -851,3 +851,14 @@ on a name string that could change. The fallback is deliberate and documented.
 ## 2026-05-01: artifact_index helpers accept Sequence[Artifact], not Job (Step 14)
 Accepting a sequence rather than a Job makes the helpers composable: callers can pass
 job.artifacts, a filtered slice, or any other artifact list. No coupling to Job required.
+
+## 2026-06-08: Sole-change generic tests require timestamp ordering (Steps 840-849)
+Intent/task-linked tests remain valid without timestamps because their linkage is explicit.
+Generic tests can verify a sole applied change only when both apply and test timestamps parse
+and the parsed test time is at or after parsed apply time. Missing/invalid ordering is incomplete,
+not verified. Parsed datetime comparison is required so timezone offsets cannot create false order.
+
+## 2026-06-08: Steps 810-839 cherry-picked as Proof Chain dependency (Steps 840-849)
+After merging the open PR, main lacked the Proof Chain v1/truth-closure files referenced by this task.
+The branch cherry-picked Steps 810-824 and 825-839 before applying the ordering closure so the current
+block is reviewable against the expected Proof Chain baseline.

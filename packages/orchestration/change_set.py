@@ -66,6 +66,7 @@ def derive_change_set(
 
     # Index events by intent_id
     apply_events: dict[str, dict] = {}
+    apply_event_records: dict[str, dict] = {}
     proof_events: dict[str, dict] = {}
     test_events: list[dict] = []
     revert_events: dict[str, dict] = {}
@@ -76,10 +77,11 @@ def derive_change_set(
         iid = meta.get("intent_id", "")
         if ename == "patch_intent_applied" and iid:
             apply_events[iid] = meta
+            apply_event_records[iid] = ev
         elif ename == "patch_apply_proof_recorded" and iid:
             proof_events[iid] = meta
         elif ename == "test_run_completed":
-            test_events.append(meta)
+            test_events.append(ev)
         elif ename == "patch_intent_reverted" and iid:
             revert_events[iid] = meta
 
@@ -90,6 +92,8 @@ def derive_change_set(
             k = ev.get("metadata", {}).get("key", "")
             if k:
                 memory_keys.append(k)
+
+    total_applied = len(apply_events)
 
     entries: list[ChangeEntry] = []
     for intent in intents:
@@ -134,14 +138,25 @@ def derive_change_set(
             "bytes_delta": pe.get("bytes_delta", 0),
         }
 
-        # Test info — latest test run
-        test_info: dict[str, Any] = {"ran": False}
-        if test_events:
-            latest = test_events[-1]
+        # Test info — only linked evidence, never the latest unrelated global test.
+        from packages.orchestration.proof_chain import TEST_LINK_NONE, _link_test_to_change
+
+        test_state, test_link, test_meta = _link_test_to_change(
+            intent_id=iid,
+            task_id=str(intent.get("task_id", "") or ""),
+            test_events=test_events,
+            apply_events=apply_event_records,
+            total_applied_changes=total_applied,
+        )
+        if test_link == TEST_LINK_NONE:
+            test_info = {"ran": False, "linked": False}
+        else:
             test_info = {
-                "ran": True,
-                "status": latest.get("status", ""),
-                "exit_code": latest.get("exit_code", -1),
+                "ran": test_state != "not_required",
+                "linked": True,
+                "status": test_state,
+                "link": test_link,
+                "exit_code": test_meta.get("exit_code", -1),
             }
 
         # Revert info

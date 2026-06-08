@@ -928,6 +928,20 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("change.list",),
     ),
+    CommandEntry(
+        command_id="change.proof",
+        group_id="change",
+        subcommand="proof",
+        description="Show proof chain — why changes happened and verification status.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--path", "Filter to a specific file path", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("change.list", "change.show", "file.why"),
+    ),
 
     # ── file ─────────────────────────────────────────────────────────────
     CommandEntry(
