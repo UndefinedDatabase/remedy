@@ -4,7 +4,7 @@
 Stop file provenance from over-associating tests and add verified, safe Pi/Claude/VS Code local agent tooling docs/config.
 
 ## Current Step
-863-864 — final state updates, optional fast lane, PR handoff
+Complete — final report ready
 
 ## Steps
 - [x] 850: Handoff repair — carry review blocker and scope shift
@@ -20,10 +20,10 @@ Stop file provenance from over-associating tests and add verified, safe Pi/Claud
 - [x] 860: Add tooling config/doctor/security tests
 - [x] 861: Run targeted tests via wrapper
 - [x] 862: Package audit/version report; no upgrades
-- [ ] 863: Final state updates and PR handoff
-- [ ] 864: Final report
+- [x] 863: Final state updates and PR handoff
+- [x] 864: Final report
 
 ## Risks
 - `.claude/settings.local.json` remains local/ignored and was not committed.
 - No MCP servers are active; future MCP installs must be audited separately.
-- Full pytest not run yet; targeted suite passed.
+- Full pytest was not run; targeted suite and fast lane passed.
