@@ -1,23 +1,27 @@
 # Context
 
 ## Active Branch
-feature/steps-840-849-proof-chain-ordering
+feature/steps-850-864-tooling-provenance
 
 ## Scope
-Steps 840-849: Proof Chain Evidence Ordering Closure, no pre-apply test verification.
+Steps 850-864: Proof Chain file-provenance hotfix plus Pi/Claude/VS Code tooling modernization.
 
 ## Prior Step Status
-Steps 825-839: PASS WITH RISKS — major false-verified fixes landed, but independent review found remaining trust risks:
-1. Sole-change generic test linking lacks after-apply timing check.
-2. `change_set.py` latest global test association remains unsafe for display surfaces.
-3. Plan handoff was stale after merge and needed repair.
+Steps 840-849: BLOCKED BY REVIEW until file provenance stops showing unrelated/global tests as causal proof. Timestamp ordering and change_set association are otherwise fixed.
 
 ## Current Work
-Make Proof Chain truth final: a test verifies a change only if linked to intent/task, explicitly not-required with intent, or a sole-change generic test demonstrably ran after apply.
+Part A: make `file why` use the same linked-test truth as `change proof --path` and omit unlinked/global tests from proof chain steps.
+Part B: inspect actual on-disk `.pi`, `.claude`, MCP, and package setup; document/configure safe local agent tooling without inventing schemas.
 
-## Out of Scope
-No UI, Context Inspector, Ollama, real test execution, rollback/snapshot, overnight, browser mutation, or git commit gate work.
+## Detected Setup So Far
+- `.pi/`: absent in actual working repo.
+- `.claude/`: present with `.claude/settings.local.json` only.
+- `.mcp.json`: absent.
+- `.vscode/mcp.json`: absent.
+- Root `package.json`: absent.
+- `apps/ui/package.json` and lockfile: present.
 
-## Resource Safety
-All pytest execution uses `scripts/remedy_pytest.sh`.
-No background pytest. No parallel pytest. No `shell=True`.
+## Constraints
+Use `scripts/remedy_pytest.sh`; no direct pytest, no background pytest, no `shell=True`.
+No secrets, `.env`, `.data`, raw artifacts/stdout/diffs/source content in summaries.
+Reviewer findings beat worker self-report.

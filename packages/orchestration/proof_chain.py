@@ -484,7 +484,9 @@ def build_proof_chain(
     if len(goal) > 200:
         goal = goal[:200] + "…"
 
-    changes_raw = derive_change_set(job, events)
+    changes_all = derive_change_set(job, events)
+    total_applied = sum(1 for c in changes_all if c.apply.get("applied"))
+    changes_raw = changes_all
     if path:
         changes_raw = [c for c in changes_raw if c.target_path == path]
 
@@ -516,9 +518,6 @@ def build_proof_chain(
     task_titles: dict[str, str] = {}
     for t in job.tasks:
         task_titles[str(t.id)] = t.description[:100] if t.description else ""
-
-    # Count total applied changes for sole_change linking
-    total_applied = sum(1 for c in changes_raw if c.apply.get("applied"))
 
     proof_changes: list[ProofChange] = []
     for c in changes_raw:

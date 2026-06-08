@@ -1,30 +1,20 @@
-# Live Review — Steps 840-849
+# Live Review — Steps 850-864
 
-Reviewer: active agent + parallel reviewer
-Scope: Proof Chain Evidence Ordering Closure
+Reviewer: active agent + prior parallel finding
+Scope: File provenance hotfix and local agent tooling modernization
 Timestamp: 2026-06-08
 
-## Incoming Verdict
-Steps 825-839: PASS WITH RISKS.
+## Incoming Blocker
+Steps 840-849 remained blocked because `file_provenance.py` appended every global `test_run_completed` event to the file chain even when Proof Chain refused to link the test.
 
-## Risks Carried Forward
-1. `proof_chain.py` sole-change generic test linking accepted tests without proving they ran after apply.
-2. `change_set.py` risked attaching the latest global test run to every change for display surfaces.
-3. `.agent/plan.md` / handoff state was stale after merge and required repair.
+## Resolution So Far
+- `file_provenance.py` now appends `test_run` links only when `_link_test_to_change()` returns linked evidence.
+- Unlinked/global tests are omitted from file causal/proof chain steps.
+- `build_proof_chain(..., path=...)` now counts total applied changes before path filtering so path filtering cannot convert a multi-change generic test into sole-change proof.
+- Added tests for unlinked test omission, linked test inclusion, file/proof status agreement, and path-filter multi-change generic safety.
 
-## Parallel Review Finding
-Initial ordering helper parsed timestamps but compared original strings. Parallel review showed offset timestamps could falsely order a pre-apply test after apply. Fixed by comparing parsed `datetime` values and adding offset regression coverage.
-
-## Resolution
-- Added timestamp extraction and safe parsed ordering helpers.
-- Sole-change generic tests now link only when test timestamp is at or after apply timestamp.
-- Unknown ordering reports `test_order_unknown`; pre-apply tests report `no_test_after_apply`.
-- Change set test display now includes only linked intent/task/not-required or sole-change after-apply evidence.
-- Next-action command validation now uses the actual command catalog lookup.
-
-## Validation
-Targeted wrapper pytest passed for proof chain, change set, change proof CLI, file provenance coverage, and command catalog truth tests.
-Parallel reviewer targeted suite also passed and the offset-ordering blocker was fixed.
+## Validation So Far
+- `scripts/remedy_pytest.sh tests/orchestration/test_proof_chain.py tests/cli/test_change_proof_cli.py` passed.
 
 ## Current Status
-PASS — final handoff ready.
+Proof provenance blocker appears resolved; tooling inspection/config remains pending.

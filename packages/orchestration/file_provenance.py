@@ -76,6 +76,15 @@ def build_file_provenance(
             job_id=job_id_str, path=path, found=False, chain=()
         )
 
+    apply_event_records = {
+        e.get("metadata", {}).get("intent_id", ""): e
+        for e in events
+        if e.get("event") == "patch_intent_applied"
+        and e.get("metadata", {}).get("intent_id")
+    }
+    test_events = [e for e in events if e.get("event") == "test_run_completed"]
+    total_applied = len(apply_event_records)
+
     for intent in matching_intents:
         iid = intent["intent_id"]
 
@@ -144,23 +153,27 @@ def build_file_provenance(
                 },
             ))
 
-    # test_run (any test_run_completed after apply)
-    test_events = [
-        e for e in events
-        if e.get("event") == "test_run_completed"
-    ]
-    for idx, te in enumerate(test_events):
-        tm = te.get("metadata", {})
-        chain.append(ProvenanceLink(
-            step="test_run",
-            node_type="test_run",
-            node_id=f"test_run:{idx}",
-            status=str(tm.get("status", "unknown")),
-            detail={
-                "command": str(tm.get("command", "")),
-                "exit_code": tm.get("exit_code"),
-            },
-        ))
+        # test_run — only linked test evidence from the same proof rules as change proof
+        from packages.orchestration.proof_chain import TEST_LINK_NONE, _link_test_to_change
+
+        test_state, test_link, test_meta = _link_test_to_change(
+            intent_id=iid,
+            task_id=str(intent.get("task_id", "") or ""),
+            test_events=test_events,
+            apply_events=apply_event_records,
+            total_applied_changes=total_applied,
+        )
+        if test_link != TEST_LINK_NONE:
+            chain.append(ProvenanceLink(
+                step="test_run",
+                node_type="test_run",
+                node_id=f"test_run:{iid}",
+                status=test_state,
+                detail={
+                    "test_link": test_link,
+                    "exit_code": test_meta.get("exit_code"),
+                },
+            ))
 
     # Derive proof status from proof chain
     proof_status = ""
