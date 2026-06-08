@@ -1,28 +1,29 @@
-# Plan — Steps 865-879: Context Inspector v1
+# Plan — Steps 880-894: Context Inspector Truth Closure
 
 ## Goal
-Build `remedy context inspect <job_id> [task_id] --json` — safe preflight showing what worker will see.
+Fix 6 identified issues from independent review. No fake visibility, no overclaim.
 
 ## Current Step
 Complete — all steps verified
 
 ## Steps
-- [x] 865: Merge handoff consolidation
-- [x] 866: Define context inspection model (dataclasses)
-- [x] 867: Path policy rules (deny/protect/unsupported)
-- [x] 868: Inclusion reason rules (manifests, targets, tests, config)
-- [x] 869: Token/size estimation (bytes stat, ceil(bytes/4))
-- [x] 870: Policy gates (7 enforced gates)
-- [x] 871: Build inspection from job/task (inspect_context)
-- [x] 872: CLI context inspect command + catalog entry
-- [x] 873: Redaction tests (8 tests)
-- [x] 874: Inclusion tests (13 tests)
-- [x] 875: CLI tests (10 tests)
-- [x] 876: Tooling awareness (5 tests)
-- [x] 877: Docs (docs/context-inspector.md)
-- [x] 878: Targeted tests — 70 targeted + 3011 fast lane passed
-- [x] 879: Final handoff
+- [x] 880: Handoff truth (.agent files update)
+- [x] 881: Harden `.env.*` protected path policy (pattern-based)
+- [x] 882: Fix path traversal to segment-based (`..` as path part)
+- [x] 883: Validate task_id exists in job.tasks
+- [x] 884: Extract event target paths (applied changes, proof chain targets)
+- [x] 885: Align with proof chain path filter (superset verified)
+- [x] 886: Budget truth — renamed to assessed, not enforced
+- [x] 887: Stable sorting/priority with event/proof targets
+- [x] 888: Grouped CLI runtime test
+- [x] 889: JSON contract snapshot test
+- [x] 890: CLI text honesty test
+- [x] 891: Docs update
+- [x] 892: Targeted tests — 98 passed
+- [x] 893: Fast lane — 4660 passed, 8 skipped (1 pre-existing deselected)
+- [x] 894: Final handoff
 
 ## Risks
-- Token estimation is heuristic (ceil(bytes/4)), documented as such.
-- No deep file walk beyond 3 levels / 500 files.
+- Events parameter may not have relevant targets in all scenarios.
+- Budget trimming deferred; wording fix is honest alternative.
+- Pre-existing failure in test_project_brain.py::TestFileProvenanceChain::test_full_chain_order (not related).

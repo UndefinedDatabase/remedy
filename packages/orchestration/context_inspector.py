@@ -33,10 +33,9 @@ _DEFAULT_BUDGET_TOKENS = 4000
 _DEFAULT_MAX_BYTES_PER_FILE = 100_000
 
 # Paths always excluded — never read content
-_PROTECTED_PATTERNS = frozenset({
-    ".env", ".env.local", ".env.production", ".env.development",
-    ".env.staging", ".env.test",
-})
+# Pattern-based: any file named .env or .env.* is protected
+_PROTECTED_EXACT = frozenset({".env"})
+_PROTECTED_PREFIXES = (".env.",)
 
 _PROTECTED_DIRS = frozenset({
     ".git", "node_modules", "__pycache__", ".venv", "venv",
@@ -57,7 +56,6 @@ _UNSUPPORTED_EXTENSIONS = frozenset({
 
 _SECRET_NAMES = frozenset({
     "id_rsa", "id_ed25519", "id_ecdsa",
-    ".env", ".env.local", ".env.production",
     "credentials.json", "service-account.json",
     "secrets.yaml", "secrets.yml",
 })
@@ -183,9 +181,12 @@ class ContextInspection:
 
 def _is_protected(rel_path: Path) -> bool:
     """Check if path is protected/excluded."""
-    if rel_path.name in _PROTECTED_PATTERNS:
+    name = rel_path.name
+    if name in _PROTECTED_EXACT:
         return True
-    if rel_path.name in _SECRET_NAMES:
+    if any(name.startswith(p) for p in _PROTECTED_PREFIXES):
+        return True
+    if name in _SECRET_NAMES:
         return True
     for part in rel_path.parts:
         if part in _PROTECTED_DIRS:
@@ -199,8 +200,10 @@ def _is_unsupported(rel_path: Path) -> bool:
 
 
 def _is_path_traversal(path_str: str) -> bool:
-    """Check for path traversal."""
-    return ".." in path_str or path_str.startswith("/")
+    """Check for path traversal — segment-based, not substring."""
+    if path_str.startswith("/"):
+        return True
+    return ".." in Path(path_str).parts
 
 
 def _classify_path(
@@ -211,6 +214,7 @@ def _classify_path(
     max_bytes: int,
     task_target_paths: frozenset[str],
     intent_target_paths: frozenset[str],
+    event_target_paths: frozenset[str] = frozenset(),
 ) -> ContextPathEntry:
     """Classify a single path for inclusion/exclusion."""
     path_str = str(rel_path)
@@ -262,6 +266,11 @@ def _classify_path(
     if path_str in intent_target_paths:
         return ContextPathEntry(
             path=path_str, included=True, reason="patch_intent_target",
+            category="source", size_bytes=size_bytes, estimated_tokens=estimated_tokens,
+        )
+    if path_str in event_target_paths:
+        return ContextPathEntry(
+            path=path_str, included=True, reason="event_target_path",
             category="source", size_bytes=size_bytes, estimated_tokens=estimated_tokens,
         )
 
@@ -338,9 +347,9 @@ def _build_policy_gates() -> tuple[ContextPolicyGate, ...]:
             reason="Protected paths (.env, .data, .git, secrets) are excluded from context.",
         ),
         ContextPolicyGate(
-            name="token_budget_enforced",
-            status="enforced",
-            reason="Token budget limits context size. Files excluded if over budget.",
+            name="token_budget_assessed",
+            status="assessed",
+            reason="Token budget assessed and reported. No automatic file trimming.",
         ),
         ContextPolicyGate(
             name="raw_content_redaction",
@@ -504,6 +513,19 @@ def _collect_task_target_paths(job: Job, task_id: str | None) -> frozenset[str]:
     return frozenset(paths)
 
 
+def _collect_event_target_paths(events: list[dict[str, Any]]) -> frozenset[str]:
+    """Collect target paths from run events (applied changes, patch intents)."""
+    paths: set[str] = set()
+    for ev in events:
+        meta = ev.get("metadata", {})
+        if not isinstance(meta, dict):
+            continue
+        tp = meta.get("target_path", "")
+        if isinstance(tp, str) and tp and not _is_path_traversal(tp):
+            paths.add(tp)
+    return frozenset(paths)
+
+
 def _collect_intent_target_paths(job: Job) -> frozenset[str]:
     """Collect target paths from patch intents."""
     from packages.orchestration.approval_queue import list_patch_intents
@@ -572,6 +594,7 @@ def inspect_context(
 
     task_targets = _collect_task_target_paths(job, task_id)
     intent_targets = _collect_intent_target_paths(job)
+    event_targets = _collect_event_target_paths(events)
 
     included: list[ContextPathEntry] = []
     excluded: list[ContextPathEntry] = []
@@ -588,6 +611,7 @@ def inspect_context(
                 max_bytes=_DEFAULT_MAX_BYTES_PER_FILE,
                 task_target_paths=task_targets,
                 intent_target_paths=intent_targets,
+                event_target_paths=event_targets,
             )
             if entry.included:
                 included.append(entry)
@@ -598,9 +622,16 @@ def inspect_context(
                 elif entry.category == "unsupported":
                     unsupported.append(entry.path)
 
-    # Sort included by category priority
+    # Sort included: targets first within category, then stable by path
+    _reason_priority = {
+        "task_target_path": 0, "patch_intent_target": 1, "event_target_path": 2,
+    }
     _cat_order = {"manifest": 0, "readme": 1, "source": 2, "test": 3, "config": 4}
-    included.sort(key=lambda e: (_cat_order.get(e.category, 9), e.path))
+    included.sort(key=lambda e: (
+        _cat_order.get(e.category, 9),
+        _reason_priority.get(e.reason, 9),
+        e.path,
+    ))
 
     budget = _compute_budget(included, effective_budget)
 
