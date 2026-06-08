@@ -593,6 +593,135 @@ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
         print(f"  Events:  {event_count}")
 
 
+def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
+    import json as _json
+    from packages.orchestration.event_replay import (
+        export_checkpoints_json,
+        find_checkpoints,
+        replay_job,
+    )
+
+    data_dir = resolve_data_root()
+    replay = replay_job(job_id_str, data_dir)
+    cps = find_checkpoints(replay)
+
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "job_id": job_id_str,
+            "checkpoints": export_checkpoints_json(cps),
+        }, indent=2))
+    else:
+        if not cps:
+            print(f"No checkpoints for job {job_id_str[:8]}.")
+            return
+        for cp in cps:
+            safe = "safe" if cp.safe_to_resume else "blocked"
+            reason = f" ({cp.blocked_reason})" if cp.blocked_reason else ""
+            print(f"  [{safe}] {cp.kind}: {cp.label}{reason}")
+            if cp.next_command:
+                print(f"         next: {cp.next_command}")
+
+
+def _cmd_resume(
+    job_id_str: str,
+    *,
+    checkpoint_id: str,
+    dry_run: bool = False,
+    json_output: bool = False,
+) -> None:
+    import json as _json
+    from packages.orchestration.event_replay import (
+        export_dry_run_json,
+        resume_dry_run,
+    )
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    data_dir = resolve_data_root()
+
+    if dry_run:
+        dr = resume_dry_run(job, checkpoint_id, data_dir)
+        if json_output:
+            print(_json.dumps(export_dry_run_json(dr), indent=2))
+        else:
+            status = "can resume" if dr.can_resume else "blocked"
+            print(f"Resume dry-run: {status}")
+            print(f"  Checkpoint: {dr.checkpoint_kind}")
+            if dr.would_run_stage:
+                print(f"  Would run: {dr.would_run_stage}")
+            if dr.blocked_reason:
+                print(f"  Blocked: {dr.blocked_reason}")
+            if dr.next_command:
+                print(f"  Next: {dr.next_command}")
+            print(f"  {dr.safety_summary}")
+        return
+
+    # Real resume — conservative v1
+    from packages.orchestration.event_replay import find_checkpoints, replay_job
+    from packages.orchestration.timeline import append_run_event
+
+    replay = replay_job(job_id_str, data_dir)
+    cps = find_checkpoints(replay)
+    cp = next((c for c in cps if c.id == checkpoint_id), None)
+
+    if not cp:
+        print(f"Error: checkpoint not found: {checkpoint_id}", file=sys.stderr)
+        sys.exit(1)
+
+    if not cp.safe_to_resume:
+        append_run_event(data_dir, job_id, event="resume_blocked", metadata={
+            "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
+            "blocked_reason": cp.blocked_reason,
+        })
+        print(f"Error: checkpoint not safe to resume: {cp.blocked_reason}", file=sys.stderr)
+        sys.exit(1)
+
+    # Resume from_apply: run tests via Remedy's test_runner
+    if cp.resume_mode == "from_apply":
+        from packages.orchestration.event_replay import (
+            execute_resume_from_apply,
+            export_resume_result_json,
+        )
+        result = execute_resume_from_apply(job, checkpoint_id, data_dir)
+        if json_output:
+            print(_json.dumps(export_resume_result_json(result), indent=2))
+        else:
+            if result.resumed:
+                status_str = "passed" if result.tests_passed else "failed"
+                print(f"Resumed from {cp.kind}. Tests {status_str}.")
+                if result.test_run_id:
+                    print(f"  Test run: {result.test_run_id}")
+            else:
+                print(f"Resume blocked: {result.blocked_reason}")
+        return
+
+    # Unimplemented resume mode — do not fake success
+    from packages.orchestration.timeline import append_run_event as _emit
+    _emit(data_dir, job_id, event="resume_blocked", metadata={
+        "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
+        "blocked_reason": "resume_mode_not_implemented",
+    })
+    if json_output:
+        print(_json.dumps({
+            "resumed": False,
+            "blocked_reason": "resume_mode_not_implemented",
+            "checkpoint_kind": cp.kind,
+            "resume_mode": cp.resume_mode,
+        }))
+    else:
+        print(f"Resume blocked: mode '{cp.resume_mode}' not implemented yet.")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
@@ -619,4 +748,58 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
+    "job.checkpoints": lambda args: _cmd_checkpoints(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.resume": lambda args: _cmd_resume(
+        args.job_id,
+        checkpoint_id=getattr(args, "checkpoint", ""),
+        dry_run=getattr(args, "dry_run", False),
+        json_output=getattr(args, "json", False),
+    ),
+    "job.enqueue": lambda args: _cmd_enqueue(args.job_id),
+    "job.pause": lambda args: _cmd_pause(args.job_id),
+    "job.cancel": lambda args: _cmd_cancel(args.job_id),
+    "job.resume-queue": lambda args: _cmd_resume_queue(args.job_id),
 }
+
+
+def _cmd_enqueue(job_id_str: str) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.worker_queue import enqueue_job
+    entry = enqueue_job(job_id_str, resolve_data_root())
+    print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
+
+
+def _cmd_pause(job_id_str: str) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.worker_queue import pause_job
+    entry = pause_job(job_id_str, resolve_data_root())
+    if entry:
+        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
+    else:
+        print(f"Cannot pause job {job_id_str[:8]}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _cmd_cancel(job_id_str: str) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.worker_queue import cancel_job
+    entry = cancel_job(job_id_str, resolve_data_root())
+    if entry:
+        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
+    else:
+        print(f"Cannot cancel job {job_id_str[:8]}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _cmd_resume_queue(job_id_str: str) -> None:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.worker_queue import resume_queued
+    entry = resume_queued(job_id_str, resolve_data_root())
+    if entry:
+        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
+    else:
+        print(f"Cannot resume job {job_id_str[:8]} (not paused)", file=sys.stderr)
+        sys.exit(1)

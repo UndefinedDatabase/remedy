@@ -44,7 +44,7 @@ def _make_job(*, tasks=None, name="test", metadata=None):
 # Step 147 — Dev status blocker/advisory split
 # =========================================================================
 
-class TestStep147_BlockerAdvisorySplit:
+class TestDevStatusBlockerAdvisorySplit:
     """commit_readiness_ok=false should be advisory, not blocker."""
 
     def test_dev_status_schema_has_advisories(self):
@@ -125,7 +125,7 @@ class TestStep147_BlockerAdvisorySplit:
 # Step 148 — Commit-readiness can return ready=true
 # =========================================================================
 
-class TestStep148_CommitReadinessReady:
+class TestCommitReadinessCanReturnReady:
     """Prove commit-readiness can report ready=true for a valid fixture job."""
 
     def test_fixture_builder_produces_ready_job(self):
@@ -172,7 +172,7 @@ class TestStep148_CommitReadinessReady:
 # Step 149 — Repair context v1
 # =========================================================================
 
-class TestStep149_RepairContext:
+class TestRepairContextSafeSummary:
     """Repair context must produce safe failure summary, no raw stdout."""
 
     def test_build_repair_context_basic(self):
@@ -231,7 +231,7 @@ class TestStep149_RepairContext:
 # Step 150 — Deterministic repair loop E2E
 # =========================================================================
 
-class TestStep150_RepairLoopFixture:
+class TestRepairLoopTwoCycleFixture:
     """--fixture-builder repair-loop must fix a failing test in 2 cycles."""
 
     def test_repair_loop_two_cycles(self):
@@ -263,7 +263,7 @@ class TestStep150_RepairLoopFixture:
 # Step 151 — Reviewer recommendation v1
 # =========================================================================
 
-class TestStep151_ReviewerRecommendation:
+class TestReviewerAcceptRejectRecommendation:
     """Fixture reviewer returns deterministic recommendations; accept/reject works."""
 
     def test_fixture_reviewer_returns_two(self):
@@ -277,12 +277,16 @@ class TestStep151_ReviewerRecommendation:
         assert recs[1].title == "Add type hints to calc.py"
         assert all(r.status == "pending" for r in recs)
 
-    def test_accept_recommendation_creates_task(self):
+    def test_accept_recommendation_creates_proposed_task(self, tmp_path, monkeypatch):
         from packages.orchestration.reviewer import (
             run_reviewer, store_recommendations,
             accept_recommendation, _fixture_reviewer,
         )
-        from packages.core.models import RunState
+        from packages.orchestration.proposed_tasks import load_proposed_tasks
+        monkeypatch.setattr(
+            "packages.orchestration.proposed_tasks._STORE_DIR",
+            tmp_path / "proposed_tasks",
+        )
         job = _make_job()
         job.metadata = {}
         recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
@@ -290,11 +294,11 @@ class TestStep151_ReviewerRecommendation:
         task_count_before = len(job.tasks)
         ok = accept_recommendation(job, recs[0].id)
         assert ok is True
-        assert len(job.tasks) == task_count_before + 1
-        new_task = job.tasks[-1]
-        assert new_task.status == RunState.PENDING
-        assert new_task.inputs.get("source") == "reviewer"
-        assert new_task.inputs.get("task_type") == "test_improvement"
+        assert len(job.tasks) == task_count_before  # No direct task
+        proposed = load_proposed_tasks(str(job.id))
+        assert len(proposed) == 1
+        assert proposed[0].title == "Add edge case tests"
+        assert proposed[0].source.value == "reviewer"
 
     def test_reject_recommendation_no_task(self):
         from packages.orchestration.reviewer import (
@@ -332,7 +336,7 @@ class TestStep151_ReviewerRecommendation:
 # Step 152 — Memory candidate v1
 # =========================================================================
 
-class TestStep152_MemoryCandidate:
+class TestMemoryCandidateHumanApprovalRequired:
     """Memory candidates require human approval; not auto-approved."""
 
     def test_create_candidate(self):
@@ -407,22 +411,27 @@ class TestStep152_MemoryCandidate:
 # Step 153 — Live run UI v2
 # =========================================================================
 
-class TestStep153_LiveStateV2:
+class TestLiveStateRepairReviewerMemoryCounts:
     """Live-state must include repair_loop_used, reviewer/memory counts."""
 
-    def test_live_state_v2_schema(self):
+    def test_live_state_v3_schema(self):
         from packages.orchestration.ui_server import _build_live_state_json
         job = _make_job()
         job.metadata = {}
         with patch("packages.orchestration.ui_server._load_events", return_value=[]):
             state = _build_live_state_json(job)
-        assert state["version"] == 2
+        assert state["version"] == 3
+        # v2 fields still present
         assert "repair_loop_used" in state
         assert "reviewer_pending_count" in state
         assert "memory_candidate_count" in state
         assert isinstance(state["repair_loop_used"], bool)
         assert isinstance(state["reviewer_pending_count"], int)
         assert isinstance(state["memory_candidate_count"], int)
+        # v3 fields
+        assert state["demo_mode"] is False
+        assert isinstance(state["stale"], bool)
+        assert isinstance(state["idle"], bool)
 
     def test_live_state_repair_loop_detected(self):
         from packages.orchestration.ui_server import _build_live_state_json
@@ -470,7 +479,7 @@ class TestStep153_LiveStateV2:
 # Step 154 — UX product polish gate
 # =========================================================================
 
-class TestStep154_UXPolish:
+class TestUXPolishRibbonMotionNextAction:
     """Task ribbon, reduced-motion, next-action, no metadata wall."""
 
     def test_task_ribbon_in_ui_source(self):

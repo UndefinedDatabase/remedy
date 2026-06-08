@@ -1,12 +1,13 @@
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import CodeIcon from "@mui/icons-material/Code";
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
-import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import type { RemedyActivityItem } from "../../api/types";
+import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph, ArrowSendGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
 
-const iconByActor = { Builder: CodeIcon, Reviewer: RateReviewOutlinedIcon, User: PersonOutlineIcon, System: SettingsOutlinedIcon };
+const iconByActor: Record<string, typeof BuilderGlyph> = {
+  Builder: BuilderGlyph,
+  Reviewer: ReviewerGlyph,
+  User: PersonGlyph,
+  System: GearGlyph,
+};
 
 export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] }) {
   const hasActivity = activity.length > 0;
@@ -16,10 +17,10 @@ export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] 
       <header className={styles.cardHeader}><h2>Activity</h2></header>
       <div className={styles.activityList}>
         {hasActivity ? activity.slice(0, 4).map(item => {
-          const Icon = iconByActor[item.actor];
+          const Icon = iconByActor[item.actor] || GearGlyph;
           return (
             <article key={item.id} className={styles.activityItem}>
-              <div className={styles.actorIcon}><Icon fontSize="small" /></div>
+              <div className={styles.actorIcon}><Icon style={{ width: 16, height: 16, color: "white" }} /></div>
               <div>
                 <div className={styles.activityMeta}><strong>{item.actor}</strong><span>{item.timeLabel}</span></div>
                 <p>{item.message}</p>
@@ -32,7 +33,7 @@ export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] 
       </div>
       <div className={styles.askBar}>
         <input readOnly placeholder="Ask something..." aria-label="Ask something" />
-        <button type="button" aria-label="Send disabled" title="Chat input is not enabled yet"><ArrowForwardIcon fontSize="small" /></button>
+        <button type="button" aria-label="Send disabled" title="Chat input is not enabled yet"><ArrowSendGlyph style={{ width: 16, height: 16 }} /></button>
       </div>
     </section>
   );

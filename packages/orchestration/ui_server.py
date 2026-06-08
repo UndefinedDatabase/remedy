@@ -62,6 +62,160 @@ def _load_job(job_id_str: str) -> Any:
     return job, None
 
 
+def _task_test_status(task_id: str, events: list[dict]) -> str:
+    """Return scoped test status for a task: 'pass', 'fail', or 'none'."""
+    task_tests = [
+        e for e in events
+        if e.get("event") == "test_run_completed"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    if not task_tests:
+        return "none"
+    latest = task_tests[-1]
+    return "pass" if latest.get("metadata", {}).get("exit_code") == 0 else "fail"
+
+
+def _task_outcome_summary(task_id: str, tstat: str, events: list[dict]) -> str:
+    """Derive a human-readable outcome for a task from events and status."""
+    if tstat == "completed":
+        has_proof = any(
+            e.get("event") == "proof_collected"
+            and e.get("metadata", {}).get("task_id") == task_id
+            for e in events
+        )
+        test = _task_test_status(task_id, events)
+        if has_proof and test == "pass":
+            return "Completed and verified"
+        if has_proof:
+            return "Completed with proof"
+        if test == "pass":
+            return "Completed, tests pass"
+        return "Completed"
+    if tstat in ("running", "active"):
+        return "In progress"
+    if tstat in ("blocked", "failed"):
+        return "Blocked"
+    return ""
+
+
+def _task_changed_files_count(task_id: str, events: list[dict]) -> int:
+    """Count files changed for a task from apply events."""
+    applies = [
+        e for e in events
+        if e.get("event") == "patch_intent_applied"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    return sum(e.get("metadata", {}).get("file_count", 1) for e in applies)
+
+
+def _task_changed_files_safe(task_id: str, events: list[dict]) -> list[str]:
+    """Return safe filenames changed for a task (no paths with secrets)."""
+    applies = [
+        e for e in events
+        if e.get("event") == "patch_intent_applied"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    names: list[str] = []
+    for e in applies:
+        fnames = e.get("metadata", {}).get("files", [])
+        for f in fnames[:10]:
+            base = str(f).rsplit("/", 1)[-1] if "/" in str(f) else str(f)
+            if base and len(base) < 80:
+                names.append(base)
+    return names[:10]
+
+
+def _task_blocked_reason(task_id: str, tstat: str, events: list[dict]) -> str:
+    """Return human-readable blocked reason if task is blocked."""
+    if tstat not in ("blocked", "failed"):
+        return ""
+    stops = [
+        e for e in events
+        if e.get("event") == "stop_reason_recorded"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    if stops:
+        reason = stops[-1].get("metadata", {}).get("stop_reason", "")
+        return reason.replace("_", " ").capitalize() if reason else "Blocked"
+    return "Blocked"
+
+
+def _task_completed_at(task_id: str, events: list[dict]) -> str:
+    """Return completion timestamp if available."""
+    proofs = [
+        e for e in events
+        if e.get("event") == "proof_collected"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    if proofs:
+        return proofs[-1].get("timestamp", "")
+    applies = [
+        e for e in events
+        if e.get("event") == "patch_intent_applied"
+        and e.get("metadata", {}).get("task_id") == task_id
+    ]
+    if applies:
+        return applies[-1].get("timestamp", "")
+    return ""
+
+
+def _event_backed_actor(events: list[dict]) -> str:
+    """Derive current actor from most recent event, not hardcoded."""
+    if not events:
+        return ""
+    _actor_map = {
+        "task_created": "Builder", "patch_intent_created": "Builder",
+        "patch_intent_approved": "User", "patch_intent_applied": "Builder",
+        "test_run_completed": "Builder", "proof_collected": "Builder",
+        "stop_reason_recorded": "System", "human_decision_requested": "User",
+    }
+    last_event = events[-1].get("event", "")
+    return _actor_map.get(last_event, "System")
+
+
+def _build_timeline_events(events: list[dict]) -> list[dict[str, Any]]:
+    """Derive cycle-aware timeline events from the event ledger.
+
+    Only real ledger events. No task fallback. No raw content.
+    Cycle increments each time a build-phase event follows a test/review event.
+    """
+    _event_map: dict[str, tuple[str, str, str]] = {
+        # event_type: (kind, phase, safe_title)
+        "task_created": ("llm_action", "planning", "Task created"),
+        "patch_intent_created": ("llm_action", "build", "Change proposed"),
+        "patch_intent_approved": ("llm_action", "build", "Change approved"),
+        "patch_intent_applied": ("llm_action", "build", "Change applied"),
+        "test_run_completed": ("test", "test", "Tests run"),
+        "proof_collected": ("review", "review", "Proof collected"),
+        "human_decision_requested": ("review", "review", "Decision requested"),
+    }
+    result: list[dict[str, Any]] = []
+    cycle = 1
+    last_phase = ""
+    for idx, e in enumerate(events):
+        ev = e.get("event", "")
+        mapped = _event_map.get(ev)
+        if mapped is None:
+            continue
+        kind, phase, safe_title = mapped
+        # Cycle increments when build-phase event follows test/review
+        if phase in ("planning", "build") and last_phase in ("test", "review"):
+            cycle += 1
+        last_phase = phase
+        ts = e.get("timestamp", "")
+        time_label = ts[:16].replace("T", " ") if ts else ""
+        result.append({
+            "id": f"te-{idx}",
+            "kind": kind,
+            "phase": phase,
+            "title": safe_title,
+            "state": "done",
+            "cycle": cycle,
+            "time_label": time_label if time_label else None,
+        })
+    return result
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -140,7 +294,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             }
             for c in cards
         ]
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
 
     # Primary next action
@@ -167,47 +321,638 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
                 "latest": matching[-1].get("timestamp", ""),
             })
 
-    # Truth contract — how many fields are placeholders vs real data
+    # Truth contract
     has_real_events = len(events) > 0
     has_real_tasks = task_count > 0
+    # Demo mode only with explicit flag — normal empty jobs are NOT demo
+    demo_mode = os.environ.get("REMEDY_UI_DEMO_MODE") == "1"
     synthetic_count = 0
+    missing_sources: list[str] = []
     if not has_real_events:
-        synthetic_count += 4  # lifecycle, latest_proof, latest_test, token_mode
+        missing_sources.append("events")
     if not has_real_tasks:
-        synthetic_count += 1  # task_count is zero but not "fake"
+        missing_sources.append("tasks")
+
+    # Build tasks list for dashboard
+    task_items: list[dict[str, Any]] = []
+    for idx, t in enumerate(job.tasks):
+        tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
+        tid = str(t.id)
+        task_items.append({
+            "id": tid,
+            "title": t.description[:80] if t.description else f"Task {idx + 1}",
+            "status": tstat,
+            "verified": tstat == "completed",
+            "source": "real",
+            "accepted": tstat == "completed",
+            "rank": idx,
+            "related_node_id": tid,
+            "short_reason": "",
+            "proof_status": "verified" if any(
+                e.get("event") == "proof_collected" and e.get("metadata", {}).get("task_id") == tid
+                for e in events
+            ) else "none",
+            "test_status": _task_test_status(tid, events),
+            "outcome_summary": _task_outcome_summary(tid, tstat, events),
+            "changed_files_count": _task_changed_files_count(tid, events),
+            "changed_files_safe": _task_changed_files_safe(tid, events),
+            "blocked_reason": _task_blocked_reason(tid, tstat, events),
+            "completed_at": _task_completed_at(tid, events),
+            "is_current": tstat in ("running", "active"),
+            "is_future": tstat == "pending",
+            "is_reviewer_suggested": False,
+        })
+
+    # Build activity from events
+    activity_items: list[dict[str, Any]] = []
+    _event_actors = {
+        "task_created": "Builder", "patch_intent_created": "Builder",
+        "patch_intent_approved": "User", "patch_intent_applied": "Builder",
+        "test_run_completed": "Builder", "proof_collected": "Builder",
+        "stop_reason_recorded": "System", "human_decision_requested": "System",
+    }
+    for e in events[-8:]:
+        ev = e.get("event", "")
+        activity_items.append({
+            "id": f"evt-{e.get('timestamp', '')[:19]}",
+            "time": e.get("timestamp", ""),
+            "actor": _event_actors.get(ev, "System"),
+            "event_kind": ev,
+            "summary": ev.replace("_", " ").capitalize(),
+            "related_node_id": "",
+            "severity": "info",
+            "source": "event_ledger",
+        })
+
+    # Phases — full 6-phase canonical set
+    # Finalized gate: strict — only if job state says done AND no blockers remain
+    pending_task_count = sum(
+        1 for t in job.tasks
+        if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("pending", "planned")
+    )
+    blocked_task_count = sum(
+        1 for t in job.tasks
+        if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("blocked", "failed")
+    )
+    # Finalized gate — centralized via can_finalize
+    try:
+        from packages.orchestration.proposed_tasks import can_finalize
+        finalize_ok, finalize_reason = can_finalize(
+            str(job.id),
+            pending_task_count=pending_task_count,
+            blocked_task_count=blocked_task_count,
+            pending_approvals=pending_approvals,
+        )
+    except ImportError:
+        finalize_ok = (pending_task_count == 0 and blocked_task_count == 0 and pending_approvals == 0)
+        finalize_reason = "ready" if finalize_ok else "pending_work"
+
+    job_says_done = state in ("completed", "done", "finalized")
+    is_finalized = job_says_done and finalize_ok
+    phases = [
+        {"id": "job", "title": "Job", "status": "done", "rank": 0, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+        {"id": "planning", "title": "Planning", "status": "done" if has_real_tasks else "current", "rank": 1, "started_at": "", "completed_at": "", "current": not has_real_tasks, "source": "derived"},
+        {"id": "build", "title": "Build", "status": "done" if is_finalized else ("current" if apply_count > 0 else "pending"), "rank": 2, "started_at": "", "completed_at": "", "current": apply_count > 0 and not is_finalized, "source": "derived"},
+        {"id": "test", "title": "Test", "status": "done" if test_count > 0 else "pending", "rank": 3, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+        {"id": "review", "title": "Review", "status": "done" if proof_count > 0 else "pending", "rank": 4, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+        {"id": "finalized", "title": "Finalized", "status": "done" if is_finalized else "pending", "rank": 5, "started_at": "", "completed_at": "", "current": False, "source": "derived"},
+    ]
+
+    # Timeline events — cycle-aware from event ledger
+    timeline_events = _build_timeline_events(events)
+
+    # Live state
+    running = state in ("active", "running")
+    last_event_at = events[-1].get("timestamp", "") if events else ""
+
+    # Graph summary from actual brain data
+    try:
+        from packages.orchestration.project_brain import build_project_brain
+        brain = build_project_brain(job, events)
+        graph_node_count = len(brain.nodes)
+        graph_edge_count = len(brain.edges)
+    except (ImportError, TypeError, ValueError, KeyError, AttributeError):
+        graph_node_count = task_count + artifact_count
+        graph_edge_count = max(0, graph_node_count - 1)
+
+    # Next action
+    na_label = next_action if next_action else "Review project state"
+    na_command = next_action if next_action else "remedy dev status"
+
+    generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return {
-        "version": 2,
+        "version": 3,
         "job_id": str(job.id),
-        "job_name": job.name,
-        "state": state,
-        "task_count": task_count,
-        "artifact_count": artifact_count,
-        "apply_count": apply_count,
-        "proof_count": proof_count,
-        "test_count": test_count,
-        "revert_count": revert_count,
-        "pending_approvals": pending_approvals,
-        "blocker_count": blocker_count,
-        "decision_count": decision_count,
-        "latest_proof": latest_proof,
-        "latest_test": latest_test,
-        "token_mode": token_mode,
-        "next_action": next_action,
-        "guidance": guidance_cards,
-        "lifecycle": lifecycle,
-        # Truth contract fields
-        "demo_mode": not has_real_events,
-        "synthetic_count": synthetic_count,
-        "data_sources": {
-            "events": "real" if has_real_events else "none",
-            "tasks": "real" if has_real_tasks else "none",
-            "guidance": "real" if guidance_cards else "none",
-            "lifecycle": "real" if lifecycle else "none",
-            "latest_proof": "real" if latest_proof else "none",
-            "latest_test": "real" if latest_test else "none",
+        "generated_at": generated_at,
+        "source": "server",
+        "live": {
+            "running": running,
+            "state": state,
+            "current_actor": _event_backed_actor(events) if running else "",
+            "current_action": "",
+            "current_task_id": "",
+            "last_event_at": last_event_at,
+            "stale": not has_real_events,
+            "source": "event_ledger",
+            "confidence": "high" if has_real_events else "none",
+        },
+        "metrics": {
+            "open": blocker_count + decision_count,
+            "planned": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "pending"),
+            "done": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed"),
+            "progress_percent": round((sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed") / max(task_count, 1)) * 100),
+            "source_counts": {"tasks": task_count, "events": len(events), "artifacts": artifact_count},
+            "computed_from": "job_tasks_and_events",
+        },
+        "token_usage": _build_token_usage(events),
+        "tasks": task_items,
+        "activity": activity_items,
+        "phases": phases,
+        "graph_summary": {
+            "node_count": graph_node_count,
+            "edge_count": graph_edge_count,
+            "visible_node_count": graph_node_count,
+            "visible_edge_count": graph_edge_count,
+            "source": "project_brain",
+            "mode": "force_graph",
+            "full_graph_requires_explicit_toggle": True,
+        },
+        "next_action": {
+            "kind": "guidance",
+            "label": na_label,
+            "command": na_command,
+            "reason": "Next recommended step",
+            "requires_user": True,
+            "related_node_id": "",
+        },
+        "truth": {
+            "fallback_count": 0 if has_real_events else 1,
+            "synthetic_count": synthetic_count,
+            "demo_mode": demo_mode,
+            "stale_sources": [] if has_real_events else ["events"],
+            "missing_sources": missing_sources,
+            "computed_from": "job_model_and_event_ledger",
+        },
+        "timeline_events": timeline_events,
+        "proposed_tasks": _build_proposed_tasks_section(str(job.id)),
+        "pipeline": _build_pipeline_section(job, events),
+        "resume": _build_resume_section(job, events),
+        "project_summary": _build_project_summary_section(job),
+        "worker": _build_worker_section(),
+        "redaction": {
+            "policy": "safe_summaries_only",
+            "raw_content_exposed": False,
+            "unsafe_fields_blocked": True,
+        },
+        # Legacy fields — classified under "legacy" key.
+        # Primary truth is in metrics, tasks, phases, truth, live.
+        # Do not use legacy fields as core truth in new consumers.
+        "legacy": {
+            "job_name": job.name,
+            "task_count": task_count,
+            "guidance": guidance_cards,
+            "lifecycle": lifecycle,
         },
     }
+
+
+def _build_proposed_tasks_section(job_id: str) -> dict[str, Any]:
+    """Build proposed task counts for dashboard v2."""
+    empty: dict[str, Any] = {
+        "total": 0, "proposed": 0, "evaluated": 0, "approved": 0,
+        "rejected": 0, "deferred": 0, "unresolved": 0,
+        "approved_not_materialized": 0, "materialized": 0,
+        "degraded": False, "blocking_finalized": False, "blocking_build": False,
+        "summaries": [],
+    }
+    try:
+        from packages.orchestration.proposed_tasks import (
+            load_proposed_tasks_safe,
+            ProposedTaskStatus,
+        )
+        tasks, degraded = load_proposed_tasks_safe(job_id)
+        if degraded:
+            return {**empty, "degraded": True, "blocking_finalized": True, "blocking_build": True}
+        unresolved = sum(1 for t in tasks if t.status in (ProposedTaskStatus.PROPOSED, ProposedTaskStatus.EVALUATED))
+        approved = [t for t in tasks if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD]
+        materialized = sum(1 for t in approved if t.materialized_task_id)
+        not_materialized = len(approved) - materialized
+        summaries = [
+            {
+                "id": t.id,
+                "title": t.title[:80],
+                "status": t.status.value,
+                "risk": t.risk,
+                "priority": t.priority,
+                "source": t.source.value,
+                "materialized_task_id": t.materialized_task_id or None,
+                "is_materialized": bool(t.materialized_task_id),
+            }
+            for t in tasks
+        ]
+        return {
+            "total": len(tasks),
+            "proposed": sum(1 for t in tasks if t.status == ProposedTaskStatus.PROPOSED),
+            "evaluated": sum(1 for t in tasks if t.status == ProposedTaskStatus.EVALUATED),
+            "approved": len(approved),
+            "rejected": sum(1 for t in tasks if t.status == ProposedTaskStatus.REJECTED),
+            "deferred": sum(1 for t in tasks if t.status == ProposedTaskStatus.DEFERRED),
+            "unresolved": unresolved,
+            "approved_not_materialized": not_materialized,
+            "materialized": materialized,
+            "degraded": False,
+            "blocking_finalized": unresolved > 0,
+            "blocking_build": unresolved > 0,
+            "summaries": summaries,
+        }
+    except ImportError:
+        return empty
+
+
+def _build_resume_section(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build safe resume/checkpoint visibility for dashboard."""
+    try:
+        from packages.orchestration.event_replay import (
+            find_checkpoints,
+            replay_job,
+        )
+        from packages.orchestration.data_paths import resolve_data_root
+        data_dir = resolve_data_root()
+        replay = replay_job(str(job.id), data_dir)
+        cps = find_checkpoints(replay)
+
+        safe_cps = [c for c in cps if c.safe_to_resume]
+        latest_safe = safe_cps[-1] if safe_cps else None
+
+        return {
+            "replay_available": not replay.degraded,
+            "replay_degraded": replay.degraded,
+            "latest_checkpoint": {
+                "id": latest_safe.id,
+                "kind": latest_safe.kind,
+                "label": latest_safe.label,
+                "next_command": latest_safe.next_command,
+            } if latest_safe else None,
+            "checkpoint_count": len(cps),
+            "safe_checkpoint_count": len(safe_cps),
+            "can_resume": bool(safe_cps),
+            "blocked_reason": "" if safe_cps else (
+                cps[-1].blocked_reason if cps else "no_checkpoints"
+            ),
+            "last_event_at": replay.last_event_at,
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {
+            "replay_available": False,
+            "replay_degraded": True,
+            "latest_checkpoint": None,
+            "checkpoint_count": 0,
+            "safe_checkpoint_count": 0,
+            "can_resume": False,
+            "blocked_reason": "replay_error",
+            "last_event_at": "",
+        }
+
+
+def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
+    """Build project-level summary for dashboard. Returns None if no project."""
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.project_registry import load_project
+        from packages.orchestration.project_summary import (
+            build_project_summary,
+            detect_patterns,
+            export_project_summary_json,
+        )
+        from packages.orchestration.storage import list_jobs
+        from packages.orchestration.timeline import load_run_events
+
+        project_id = job.metadata.get("project_id")
+        if not project_id:
+            return None
+
+        from uuid import UUID
+        project = load_project(UUID(project_id))
+        all_jobs = list_jobs()
+        linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+
+        data_dir = resolve_data_root()
+        all_events: dict[str, list[dict]] = {}
+        for j in linked_jobs:
+            all_events[str(j.id)] = load_run_events(data_dir, j.id)
+
+        summary = build_project_summary(project, linked_jobs, all_events)
+        patterns = detect_patterns(linked_jobs, all_events)
+
+        model_confidence = "low"
+        needs_real_check = True
+        real_builder_count = sum(
+            1 for evs in all_events.values() for ev in evs
+            if ev.get("event") == "autorun_builder_completed"
+            and ev.get("metadata", {}).get("provider") not in (None, "", "fixture", "mock")
+        )
+        if real_builder_count >= 15:
+            model_confidence = "high"
+            needs_real_check = False
+        elif real_builder_count >= 5:
+            model_confidence = "medium"
+            needs_real_check = False
+
+        return {
+            "project_id": summary.project_id,
+            "job_count": summary.job_count,
+            "active_job_count": summary.active_job_count,
+            "blocked_job_count": summary.blocked_job_count,
+            "current_focus": summary.current_focus,
+            "top_blocker": summary.blockers[0] if summary.blockers else "",
+            "repeated_pattern_count": len(patterns),
+            "model_quality_confidence": model_confidence,
+            "needs_real_model_check": needs_real_check,
+            "suggested_next_step": summary.suggested_next_step,
+            "next_command": summary.next_command,
+            "redaction": "safe_metadata_only",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def _build_worker_section() -> dict[str, Any] | None:
+    """Build safe worker status for dashboard."""
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.worker_queue import get_worker_status, list_queued
+
+        data_dir = resolve_data_root()
+        status = get_worker_status(data_dir)
+        queue = list_queued(data_dir)
+        queued_count = sum(1 for e in queue if e.lifecycle_state == "queued")
+
+        return {
+            "worker_available": bool(status.worker_id),
+            "worker_id": status.worker_id,
+            "lifecycle_state": status.lifecycle_state,
+            "current_job_id": status.current_job_id,
+            "queue_count": queued_count,
+            "heartbeat_at": status.heartbeat_at,
+            "stale": status.stale,
+            "why_it_stopped": status.why_it_stopped,
+            "next_command": "remedy worker run --once" if not status.worker_id else "",
+            "redaction": "safe_metadata_only",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build safe token usage summary from events. Estimated only — no exact billing."""
+    by_role: dict[str, int] = {}
+    total = 0
+    sources_seen: set[str] = set()
+
+    for e in events:
+        meta = e.get("metadata", {})
+        tokens = meta.get("estimated_tokens", 0)
+        if not isinstance(tokens, (int, float)) or tokens <= 0:
+            continue
+        tokens = int(tokens)
+        total += tokens
+
+        ev = e.get("event", "")
+        if ev == "source_context_injected":
+            by_role["context"] = by_role.get("context", 0) + tokens
+            sources_seen.add("source_context")
+        elif ev == "project_memory_recalled":
+            by_role["memory"] = by_role.get("memory", 0) + tokens
+            sources_seen.add("memory")
+        elif ev == "repair_context_created":
+            by_role["repair"] = by_role.get("repair", 0) + tokens
+            sources_seen.add("repair_context")
+        elif ev in ("context_pack_created",):
+            by_role["planner"] = by_role.get("planner", 0) + tokens
+            sources_seen.add("context_pack")
+        else:
+            by_role["other"] = by_role.get("other", 0) + tokens
+
+    known = total > 0
+    missing: list[str] = []
+    if "source_context" not in sources_seen:
+        missing.append("source_context")
+    if "memory" not in sources_seen:
+        missing.append("memory")
+
+    return {
+        "total_tokens": total if known else None,
+        "known": known,
+        "estimated": True,
+        "source": "event_metadata",
+        "by_role": by_role if by_role else {},
+        "missing_sources": missing,
+    }
+
+
+def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build structured autocoder pipeline status for dashboard v4.
+
+    All fields derived from real events/job state. Unknown = null.
+    No raw provider output, diffs, test output, or approval reasons.
+    """
+    # Provider
+    started_events = [e for e in events if e.get("event") == "autorun_started"]
+    builder_events = [e for e in events if e.get("event") == "autorun_builder_completed"]
+    provider_error_events = [e for e in events if e.get("event") == "autorun_provider_error"]
+
+    provider = None
+    provider_mode = "none"
+    if builder_events:
+        provider = builder_events[-1].get("metadata", {}).get("provider")
+        provider_mode = provider or "unknown"
+    elif provider_error_events:
+        provider = provider_error_events[-1].get("metadata", {}).get("provider")
+        provider_mode = provider or "unknown"
+
+    # Source context
+    ctx_events = [e for e in events if e.get("event") == "source_context_injected"]
+    source_context_injected = bool(ctx_events)
+    source_context_meta: dict[str, Any] = {}
+    if ctx_events:
+        cm = ctx_events[-1].get("metadata", {})
+        source_context_meta = {
+            "file_count": cm.get("file_count", 0),
+            "test_file_count": cm.get("test_file_count", 0),
+            "estimated_tokens": cm.get("estimated_tokens", 0),
+            "truncated": cm.get("truncated", False),
+            "selection_hash": str(cm.get("selection_hash", ""))[:12],
+        }
+
+    # Memory
+    mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
+    memory_used = bool(mem_events)
+    memory_item_count = mem_events[-1].get("metadata", {}).get("item_count", 0) if mem_events else 0
+    memory_truncated = mem_events[-1].get("metadata", {}).get("truncated", False) if mem_events else False
+    memory_context_hash = str(mem_events[-1].get("metadata", {}).get("context_hash", ""))[:12] if mem_events else ""
+
+    # Parse
+    parse_events = [e for e in events if e.get("event") == "builder_patch_parsed"]
+    structured_patch_attempted = bool(builder_events or parse_events)
+    parse_success = None
+    parse_error_kind = ""
+    if parse_events:
+        pm = parse_events[-1].get("metadata", {})
+        parse_success = pm.get("parse_success", False)
+        if not parse_success:
+            parse_error_kind = pm.get("error_kind", "")
+
+    # Intent / approval
+    intent_events = [e for e in events if e.get("event") in (
+        "structured_patch_intent_created", "builder_bridge_intent_approved")]
+    intent_id = ""
+    intent_status = "none"
+    approval_required = False
+    approval_status = "none"
+    if intent_events:
+        intent_id = intent_events[-1].get("metadata", {}).get("intent_id", "")
+        if any(e.get("event") == "builder_bridge_intent_approved" for e in intent_events):
+            intent_status = "approved"
+            approval_status = "approved"
+        else:
+            intent_status = "created"
+            approval_required = True
+            approval_status = "pending"
+
+    # Check job artifacts for pending approvals
+    for art in job.artifacts:
+        meta = art.metadata or {}
+        explanations = meta.get("patch_intent_explanations", [])
+        for expl in explanations:
+            ast = expl.get("approval_state", "")
+            if ast == "pending":
+                approval_required = True
+                approval_status = "pending"
+            elif ast == "approved" and approval_status == "none":
+                approval_status = "approved"
+
+    # Source apply
+    apply_events = [e for e in events if e.get("event") == "patch_intent_applied"]
+    source_apply_status = "applied" if apply_events else "none"
+
+    # Tests
+    test_events = [e for e in events if e.get("event") in (
+        "test_run_completed", "builder_bridge_test_completed")]
+    tests_status = "none"
+    tests_passed = None
+    if test_events:
+        last_test = test_events[-1].get("metadata", {})
+        tests_passed = last_test.get("passed", last_test.get("exit_code") == 0)
+        tests_status = "pass" if tests_passed else "fail"
+
+    # Repair loop
+    repair_cycle_events = [e for e in events if e.get("event") == "repair_loop_cycle_started"]
+    repair_loop_used = bool(repair_cycle_events) or any(
+        e.get("event") == "repair_context_created" for e in events)
+    repair_cycle_count = repair_cycle_events[-1].get("metadata", {}).get("cycle", 0) if repair_cycle_events else 0
+    repair_max_cycles = repair_cycle_events[-1].get("metadata", {}).get("max_cycles", 0) if repair_cycle_events else 0
+
+    # Stop reason
+    stop_reason = ""
+    stop_events = [e for e in events if e.get("event") in (
+        "repair_loop_stopped", "repair_loop_succeeded")]
+    if stop_events:
+        stop_reason = stop_events[-1].get("metadata", {}).get("reason", "")
+    elif parse_events and not parse_success:
+        pm = parse_events[-1].get("metadata", {})
+        stop_reason = pm.get("stop_reason", "") or pm.get("error_kind", "")
+    elif provider_error_events:
+        stop_reason = provider_error_events[-1].get("metadata", {}).get("stop_reason", "")
+    elif test_events and tests_passed is False:
+        stop_reason = "test_failed_after_apply"
+
+    _STOP_LABELS = {
+        "provider_output_prose_only": "Model returned prose, not a patch",
+        "provider_output_malformed": "Model output could not be parsed",
+        "provider_unavailable": "Provider not reachable",
+        "unsafe_shell_command": "Output contained shell commands",
+        "validation_failed": "Patch structure invalid",
+        "unsafe_path": "Absolute path not allowed",
+        "path_traversal": "Path traversal not allowed",
+        "approval_required": "Human approval required",
+        "source_apply_failed": "Patch could not be applied",
+        "test_failed_after_apply": "Tests failed after apply",
+        "repair_budget_exhausted": "Repair budget exhausted",
+        "repeated_patch_detected": "Same patch produced twice",
+        "no_structured_patch_text": "No patch in builder output",
+        "test_timeout": "Test execution timed out",
+    }
+    stop_reason_label = _STOP_LABELS.get(stop_reason, stop_reason.replace("_", " ").capitalize() if stop_reason else "")
+
+    # Next command
+    next_command = _pipeline_next_command(
+        str(job.id), stop_reason, approval_required, intent_id,
+        source_apply_status, tests_status,
+    )
+
+    # Staleness
+    stale = not bool(events)
+
+    return {
+        "version": 1,
+        "provider": provider,
+        "provider_mode": provider_mode,
+        "source_context": {
+            "injected": source_context_injected,
+            **source_context_meta,
+        },
+        "memory": {
+            "used": memory_used,
+            "item_count": memory_item_count,
+            "truncated": memory_truncated,
+            "context_hash": memory_context_hash,
+        },
+        "structured_patch_attempted": structured_patch_attempted,
+        "parse_success": parse_success,
+        "parse_error_kind": parse_error_kind,
+        "intent_id": intent_id,
+        "intent_status": intent_status,
+        "approval_required": approval_required,
+        "approval_status": approval_status,
+        "source_apply_status": source_apply_status,
+        "tests_status": tests_status,
+        "tests_passed": tests_passed,
+        "repair_loop": {
+            "used": repair_loop_used,
+            "cycle_count": repair_cycle_count,
+            "max_cycles": repair_max_cycles,
+        },
+        "stop_reason": stop_reason,
+        "stop_reason_label": stop_reason_label,
+        "next_command": next_command,
+        "stale": stale,
+        "source": "event_ledger",
+    }
+
+
+def _pipeline_next_command(
+    job_id: str, stop_reason: str, approval_required: bool,
+    intent_id: str, source_apply_status: str, tests_status: str,
+) -> str:
+    """Generate next safe catalog-valid command based on pipeline state."""
+    if stop_reason == "approval_required" and intent_id:
+        return f"remedy patch approve {job_id} {intent_id}"
+    if stop_reason == "provider_unavailable":
+        return "remedy worker resources --json"
+    if stop_reason in ("provider_output_prose_only", "provider_output_malformed"):
+        return f"remedy do \"<goal>\" --repo . --builder-provider fixture --json"
+    if stop_reason == "test_failed_after_apply":
+        return f"remedy job summary {job_id} --json"
+    if stop_reason == "repair_budget_exhausted":
+        return f"remedy job summary {job_id} --json"
+    if approval_required and intent_id:
+        return f"remedy patch show {job_id} {intent_id}"
+    if source_apply_status == "applied" and tests_status == "none":
+        return f"remedy test discover {job_id} --json"
+    if tests_status == "pass":
+        return f"remedy job summary {job_id} --json"
+    return "remedy dev status --json"
 
 
 def _build_brain_json(job: Any) -> dict[str, Any]:
@@ -255,15 +1000,18 @@ def _build_events_json(job: Any) -> dict[str, Any]:
 
 
 def _build_readiness_json(job: Any) -> dict[str, Any]:
-    """Build safe readiness payload."""
+    """Build safe readiness payload from autonomy_readiness module."""
     try:
-        from packages.orchestration.readiness import assess_readiness, export_readiness_json
+        from packages.orchestration.autonomy_readiness import (
+            assess_job_readiness,
+            export_readiness_json,
+        )
 
         events = _load_events(job)
-        result = assess_readiness(job, events, scope="job")
-        return export_readiness_json(result)
-    except Exception:
-        return {"version": 1, "error": "readiness unavailable"}
+        report = assess_job_readiness(job, events)
+        return export_readiness_json(report)
+    except (ImportError, OSError, ValueError) as exc:
+        return {"version": 2, "error": f"readiness unavailable: {type(exc).__name__}"}
 
 
 def _build_guide_json(job: Any) -> dict[str, Any]:
@@ -277,8 +1025,12 @@ def _build_guide_json(job: Any) -> dict[str, Any]:
         events = _load_events(job)
         cards = build_guidance_cards(job, events)
         return export_guidance_json(job, cards)
-    except Exception:
-        return {"version": 1, "cards": [], "error": "guidance unavailable"}
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {
+            "version": 1, "cards": [],
+            "error": "guidance unavailable",
+            "degraded": True, "error_kind": "guidance_build_failed", "source": "server",
+        }
 
 
 def _build_brain_view_model_json(job: Any) -> dict[str, Any]:
@@ -361,6 +1113,12 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
             "test_run_completed": "testing",
             "proof_collected": "proving",
             "stop_reason_recorded": "stopped",
+            "builder_patch_parsed": "parsing",
+            "builder_bridge_intent_approved": "approved",
+            "builder_bridge_test_completed": "testing",
+            "repair_loop_cycle_started": "repairing",
+            "repair_loop_succeeded": "proving",
+            "repair_loop_stopped": "stopped",
         }
         stage = stage_map.get(last_event, "active")
 
@@ -393,6 +1151,28 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         e.get("event") == "repair_context_created" for e in events
     )
 
+    # Builder bridge pipeline visibility
+    bridge_parse_events = [e for e in events if e.get("event") == "builder_patch_parsed"]
+    bridge_parse_success = bridge_parse_events[-1].get("metadata", {}).get("parse_success", False) if bridge_parse_events else None
+    bridge_parse_error = bridge_parse_events[-1].get("metadata", {}).get("error_kind", "") if bridge_parse_events and not bridge_parse_success else ""
+
+    loop_cycle_events = [e for e in events if e.get("event") == "repair_loop_cycle_started"]
+    repair_loop_cycle = loop_cycle_events[-1].get("metadata", {}).get("cycle", 0) if loop_cycle_events else 0
+    repair_loop_max = loop_cycle_events[-1].get("metadata", {}).get("max_cycles", 0) if loop_cycle_events else 0
+
+    # Stop reason from latest stop event, parse failure, or test failure
+    stop_events = [e for e in events if e.get("event") in ("repair_loop_stopped", "repair_loop_succeeded")]
+    bridge_stop_reason = ""
+    if stop_events:
+        bridge_stop_reason = stop_events[-1].get("metadata", {}).get("reason", "")
+    elif bridge_parse_events and not bridge_parse_success:
+        last_parse = bridge_parse_events[-1].get("metadata", {})
+        bridge_stop_reason = last_parse.get("stop_reason", "") or last_parse.get("error_kind", "")
+    else:
+        test_events = [e for e in events if e.get("event") == "builder_bridge_test_completed"]
+        if test_events and not test_events[-1].get("metadata", {}).get("passed", True):
+            bridge_stop_reason = "test_failed_after_apply"
+
     # Reviewer pending count
     recs = (job.metadata or {}).get("reviewer_recommendations", [])
     reviewer_pending = sum(1 for r in recs if r.get("status") == "pending")
@@ -400,6 +1180,10 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     # Memory candidate count
     candidates = (job.metadata or {}).get("memory_candidates", [])
     memory_candidate_count = len(candidates)
+
+    # Approved memory usage from events
+    mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
+    memory_used_count = mem_events[-1].get("metadata", {}).get("item_count", 0) if mem_events else 0
 
     has_real_events = len(events) > 0
 
@@ -419,10 +1203,16 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "token_mode": "compact",
         "view_model_hash": vm_hash,
         "repair_loop_used": repair_loop_used,
+        "repair_loop_cycle": repair_loop_cycle,
+        "repair_loop_max_cycles": repair_loop_max,
+        "builder_patch_parsed": bridge_parse_success,
+        "builder_patch_error": bridge_parse_error,
+        "stop_reason": bridge_stop_reason,
         "reviewer_pending_count": reviewer_pending,
         "memory_candidate_count": memory_candidate_count,
+        "memory_used_count": memory_used_count,
         # Truth contract
-        "demo_mode": not has_real_events,
+        "demo_mode": os.environ.get("REMEDY_UI_DEMO_MODE") == "1",
         "idle": not has_real_events or stage == "idle",
         "stale": not has_real_events,
     }
@@ -473,8 +1263,28 @@ def _get_frontend_dist() -> Path | None:
     return None
 
 
-def _auto_build_frontend() -> Path | None:
-    """Attempt to build the React frontend via npm. Returns dist Path or None."""
+def _frontend_is_stale() -> bool:
+    """Return True if any source file in apps/ui/src/ is newer than dist/index.html."""
+    ui_root = Path(__file__).resolve().parent.parent.parent / "apps" / "ui"
+    index = ui_root / "dist" / "index.html"
+    if not index.is_file():
+        return True
+    dist_mtime = index.stat().st_mtime
+    src_dir = ui_root / "src"
+    if not src_dir.is_dir():
+        return False
+    for f in src_dir.rglob("*"):
+        if f.is_file() and f.stat().st_mtime > dist_mtime:
+            return True
+    return False
+
+
+def _auto_build_frontend(reason: str = "missing") -> Path | None:
+    """Build the React frontend via npm. Returns dist Path or None.
+
+    Runs automatically when dist/ is missing or stale (source newer than build).
+    Disable with REMEDY_UI_NO_AUTO_BUILD=1 if you manage builds yourself.
+    """
     import subprocess
 
     if os.environ.get("REMEDY_UI_NO_AUTO_BUILD") == "1":
@@ -484,20 +1294,24 @@ def _auto_build_frontend() -> Path | None:
     if not (ui_root / "package.json").is_file():
         return None
 
-    print("[remedy-ui] dist/ not found — attempting auto-build…", file=sys.stderr)
+    print(f"[remedy-ui] auto-build ({reason})…", file=sys.stderr)
 
-    # npm install
-    try:
-        subprocess.run(
-            ["npm", "install", "--no-audit", "--no-fund"],
-            cwd=str(ui_root),
-            check=True,
-            capture_output=True,
-            timeout=120,
-        )
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        print(f"[remedy-ui] npm install failed: {exc}", file=sys.stderr)
-        return None
+    # npm install (skip if node_modules fresh)
+    node_modules = ui_root / "node_modules"
+    pkg_mtime = (ui_root / "package.json").stat().st_mtime
+    need_install = not node_modules.is_dir() or node_modules.stat().st_mtime < pkg_mtime
+    if need_install:
+        try:
+            subprocess.run(
+                ["npm", "install", "--no-audit", "--no-fund"],
+                cwd=str(ui_root),
+                check=True,
+                capture_output=True,
+                timeout=120,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            print(f"[remedy-ui] npm install failed: {exc}", file=sys.stderr)
+            return None
 
     # npm run build
     try:
@@ -509,29 +1323,32 @@ def _auto_build_frontend() -> Path | None:
             timeout=120,
         )
     except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        print(f"[remedy-ui] npm run build failed: {exc}", file=sys.stderr)
+        print(f"[remedy-ui] build failed: {exc}", file=sys.stderr)
         return None
 
     dist = _get_frontend_dist()
     if dist is not None:
-        print("[remedy-ui] auto-build succeeded.", file=sys.stderr)
+        print("[remedy-ui] build done.", file=sys.stderr)
     return dist
 
 
 def _load_frontend(job_id: str, token: str) -> str:
-    """Load frontend HTML — React build required. Auto-builds if missing.
+    """Load frontend HTML — auto-builds when dist/ is missing or stale.
 
     Behavior:
-      1. If apps/ui/dist/ exists → serve it.
-      2. If missing → auto-build (npm install + npm run build).
-      3. If auto-build fails → fail loudly (no silent fallback).
-      4. Legacy fallback only if REMEDY_UI_ALLOW_LEGACY_FALLBACK=1.
+      1. If apps/ui/dist/ exists and is fresh → serve it.
+      2. If missing or stale (source newer) → auto-build.
+      3. If auto-build fails → fail loudly.
+      4. Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1.
     """
     dist = _get_frontend_dist()
 
-    # Auto-build if dist missing
+    # Auto-build if missing
     if dist is None:
-        dist = _auto_build_frontend()
+        dist = _auto_build_frontend("dist missing")
+    # Auto-build if stale
+    elif _frontend_is_stale():
+        dist = _auto_build_frontend("source changed")
 
     if dist is not None:
         html = (dist / "index.html").read_text(encoding="utf-8")
@@ -549,13 +1366,13 @@ def _load_frontend(job_id: str, token: str) -> str:
     # Fail loudly
     print(
         "\n"
-        "ERROR: React UI not built and auto-build failed.\n"
+        "ERROR: React UI not built.\n"
         "\n"
         "  To fix, run:\n"
         "    cd apps/ui && npm install && npm run build\n"
         "\n"
-        "  Or set REMEDY_UI_ALLOW_LEGACY_FALLBACK=1 to use the old UI.\n"
-        "  Or set REMEDY_UI_NO_AUTO_BUILD=1 to skip auto-build.\n",
+        "  Or check npm is installed and retry.\n"
+        "  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1\n",
         file=sys.stderr,
     )
     sys.exit(1)
@@ -573,8 +1390,12 @@ def _build_context_budget_json(job: Any) -> dict[str, Any]:
         for s in data.get("sections", []):
             s.pop("content", None)
         return data
-    except Exception:
-        return {"version": 1, "error": "context budget unavailable"}
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {
+            "version": 1,
+            "error": "context budget unavailable",
+            "degraded": True, "error_kind": "context_budget_build_failed", "source": "server",
+        }
 
 
 # ---------------------------------------------------------------------------

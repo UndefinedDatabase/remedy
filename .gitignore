@@ -212,5 +212,10 @@ packages.zip
 
 .brain/
 
+# Claude Code local state
+.claude/
+
 # Node.js (apps/ui frontend)
 node_modules/
+
+remedy-review-*

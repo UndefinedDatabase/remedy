@@ -133,3 +133,46 @@ def test_invalid_num_predict_raises_with_var_name(monkeypatch):
     from packages.providers.ollama_builder.provider import OllamaBuilder
     with pytest.raises(ValueError, match="REMEDY_OLLAMA_BUILDER_NUM_PREDICT"):
         OllamaBuilder()
+
+
+# ---------------------------------------------------------------------------
+# Structured patch prompt and memory context (Step 307)
+# ---------------------------------------------------------------------------
+
+def test_system_prompt_mentions_structured_patch():
+    from packages.providers.ollama_builder.provider import _SYSTEM_PROMPT
+    assert "structured_patch_text" in _SYSTEM_PROMPT
+    assert "file_ops" in _SYSTEM_PROMPT
+    assert "structured_patch_format" in _SYSTEM_PROMPT
+
+
+def test_user_message_includes_memory_context():
+    from uuid import uuid4
+    from packages.orchestration.builder_models import TaskExecutionContext
+    from packages.providers.ollama_builder.provider import _build_user_message
+    ctx = TaskExecutionContext(
+        job_id=uuid4(),
+        task_id=uuid4(),
+        job_prompt="Fix calc",
+        task_type="code_change",
+        task_description="Fix addition",
+        memory_context="## Project Memory\n- Use pytest for tests",
+    )
+    msg = _build_user_message(ctx)
+    assert "Project Memory" in msg
+    assert "Use pytest for tests" in msg
+
+
+def test_user_message_omits_memory_when_none():
+    from uuid import uuid4
+    from packages.orchestration.builder_models import TaskExecutionContext
+    from packages.providers.ollama_builder.provider import _build_user_message
+    ctx = TaskExecutionContext(
+        job_id=uuid4(),
+        task_id=uuid4(),
+        job_prompt="Fix calc",
+        task_type="code_change",
+        task_description="Fix addition",
+    )
+    msg = _build_user_message(ctx)
+    assert "Project Memory" not in msg

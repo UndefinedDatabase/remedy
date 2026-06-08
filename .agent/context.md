@@ -4,43 +4,42 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 247-252: Data-Honest Mission Control Contract.
+Steps 785-794: Final Smoke Decoupling.
 
-Core principle: "truth before beauty" — no fake tasks, no synthetic live state, no invented metrics.
+## Prior Step Status
+Steps 775-784: PASS — Python supervisors replace Bash chaining. But backend
+smoke still mixes standalone runtime smoke with runtime helper self-tests in
+same supervisor chain. Helper tests are toxic when chained with runtime smoke.
 
-## Key Changes
+## Current Work
+Test suite triage: markers, fast/integration/provider commands, README.
 
-### Step 247: Repo + handoff truth hygiene
-- Fix stale .agent/context.md (was referencing Steps 91-100)
-- Update .agent/plan.md for new step range
+## Smoke Surfaces (closed)
+1. Backend basis: standalone runtime + orchestration/storage
+2. Runtime wrapper: propose + worker wrappers
+3. Process isolation: helper tests + smoke contract tests + runner tests
 
-### Step 248: Dashboard truth contract v1
-- Add `source_kind` (real | derived | placeholder) to dashboard fields
-- Add `synthetic_count` to dashboard response
-- Add `demo_mode` flag
-- Honest defaults when data missing
+## Backend Component Status
+| Component | Status |
+|-----------|--------|
+| Proposed task lifecycle | **100%** |
+| Materialization into Job.tasks | **100%** |
+| Fixture task execution | **100%** |
+| Worker one-task execution | **100%** |
+| Execution events | **100%** |
+| Queue/finalize gates | **100%** |
+| Modular architecture | **100%** |
+| Worker CLI subprocess | **100%** |
+| Propose CLI subprocess | **100%** |
+| Backend readiness v3 | **100%** |
+| Lock behavior | **100%** |
+| Runtime stability (no-hang) | **100%** — three separate smoke surfaces, all exit clean |
+| Ollama via task_execution | **0%** |
+| Real test execution | **0%** |
+| Rollback/snapshot | **0%** |
+| Overnight execution | **0%** |
+| UI/dashboard | paused |
 
-### Step 249: No-fake UI state pass
-- Remove DISPLAY_ROWS fake tasks from TaskChecklistCard.tsx
-- Show honest empty state when no real tasks
-- Fix optimistic live state in AgentNowCard
-
-### Step 250: Real graph source contract
-- Add `source_kind` to ForceBrainNode (real_brain | layout_only | demo_fixture)
-- Particle nodes explicitly marked layout_only
-- Graph model distinguishes real vs synthetic
-
-### Step 251: Event ledger → live activity
-- Derive activity feed from real run-log events
-- Honest idle/stale states instead of fake "Builder is working"
-
-### Step 252: Operator summary + smoke alignment
-- `remedy job summary` CLI command
-- Smoke assertions for truth contract fields
-- Test coverage for data-honesty invariants
-
-## Constraints
-- No backend mutation endpoints
-- No CDN/external deps
-- No shell=True, no 0.0.0.0
-- React 19 + TypeScript + MUI + CSS Modules
+## Resource Safety
+All pytest execution uses `scripts/remedy_pytest.sh` (flock + timeout).
+No background pytest. No parallel pytest. See `docs/reviewer-safety.md`.

@@ -1,5 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
-import type { RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyState, RemedyTaskItem } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -40,35 +40,213 @@ function nextAction(label = "Review project state", command = "remedy dev status
   return { label, command, risk: "low", requiresHuman: true };
 }
 
-function buildMetrics(tasks: RemedyTaskItem[]): RemedyMetric[] {
-  const done = tasks.filter(t => t.state === "done").length;
-  const open = tasks.filter(t => t.state === "current" || t.state === "blocked").length;
-  const planned = tasks.filter(t => t.state === "pending" || t.state === "suggested").length;
-  const progress = Math.round((done / Math.max(tasks.length, 1)) * 100);
-  return [
-    { key: "open", label: "Open", value: open },
-    { key: "planned", label: "Planned", value: planned },
-    { key: "done", label: "Done", value: done },
-    { key: "progress", label: "Progress", value: progress, suffix: "%" },
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+// ---------------------------------------------------------------------------
+// Dashboard-first normalization (exported for testing)
+// ---------------------------------------------------------------------------
+
+/** Normalize a successful /dashboard payload into RemedyDashboard. */
+export function normalizeDashboardPayload(
+  jobId: string,
+  dashboard: any,
+  brainDetail?: any,
+): RemedyDashboard {
+  // Tasks from dashboard
+  const tasks: RemedyTaskItem[] = (dashboard.tasks || []).map((t: any, idx: number) => {
+    const state = normalizeState(t.status || t.state);
+    const kind = (t.kind || "task") as RemedyTaskItem["kind"];
+    const rawLabel = scrubUiText(t.title || t.description || humanLabel(kind), humanLabel(kind));
+    const label = isWeakLabel(rawLabel) ? humanFallbackFor(kind, idx) : rawLabel;
+    return {
+      id: scrubUiText(t.id || `task-${idx}`, `task-${idx}`),
+      label,
+      state,
+      kind,
+      checked: Boolean(t.verified ?? t.accepted ?? state === "done"),
+      muted: Boolean(state === "pending" || state === "suggested"),
+      nodeId: String(t.related_node_id || t.id || `task-${idx}`),
+      nextAction: undefined,
+      outcomeSummary: t.outcome_summary || undefined,
+      changedFilesCount: typeof t.changed_files_count === "number" ? t.changed_files_count : undefined,
+      changedFilesSafe: Array.isArray(t.changed_files_safe) ? t.changed_files_safe : undefined,
+      testStatus: t.test_status || undefined,
+      blockedReason: t.blocked_reason || undefined,
+      completedAt: t.completed_at || undefined,
+    };
+  });
+
+  // Metrics from dashboard
+  const dm = dashboard.metrics || {};
+  const tu = dashboard.token_usage || {};
+  const tokenTotal = tu.known ? (tu.total_tokens ?? 0) : 0;
+  const tokenTooltip = tu.by_role && Object.keys(tu.by_role).length > 0 ? tu.by_role : undefined;
+  const metrics: RemedyMetric[] = [
+    { key: "open", label: "Open", value: dm.open ?? 0 },
+    { key: "planned", label: "Planned", value: dm.planned ?? 0 },
+    { key: "done", label: "Done", value: dm.done ?? 0 },
+    { key: "progress", label: "Progress", value: dm.progress_percent ?? 0, suffix: "%" },
+    { key: "tokens", label: "Tokens", value: tokenTotal, suffix: tu.known ? undefined : " —", tooltip: tokenTooltip },
   ];
+
+  // Phases from dashboard
+  const phases: RemedyPhase[] = (dashboard.phases || []).map((p: any) => ({
+    id: p.id || "planning",
+    label: p.title || p.label || p.id,
+    state: normalizeState(p.status || p.state),
+    icon: p.icon || "code",
+  }));
+
+  // Activity from dashboard
+  const activity: RemedyActivityItem[] = (dashboard.activity || []).map((a: any, idx: number) => {
+    const meta = EVENT_LABELS[a.event_kind] || { actor: (a.actor || "System") as any, kind: "system" as const, label: a.summary || a.event_kind || "" };
+    return {
+      id: a.id || `event-${idx}`,
+      actor: meta.actor,
+      message: scrubUiText(meta.label || a.summary, ""),
+      timeLabel: a.time ? formatEventTime(a.time) : "",
+      kind: meta.kind,
+    };
+  });
+
+  // Live state from dashboard
+  const live = dashboard.live || {};
+  const running = Boolean(live.running ?? false);
+
+  // Graph from brain-view-model detail (secondary) or dashboard graph_summary
+  const graph = brainDetail
+    ? normalizeGraphFromBrain(brainDetail, tasks)
+    : buildMinimalGraph(tasks);
+
+  // Next action from dashboard
+  const na = dashboard.next_action;
+  const nextAct: RemedyNextAction = na
+    ? {
+        label: scrubUiText(na.label, "Review project state"),
+        command: scrubUiText(na.command || na.label, "remedy dev status"),
+        risk: na.risk || "low",
+        requiresHuman: Boolean(na.requires_user ?? true),
+      }
+    : nextAction();
+
+  // Title/description
+  const title = scrubUiText(dashboard.legacy?.job_name || brainDetail?.title || brainDetail?.job_title, "Growing Brain Overview");
+  const description = scrubUiText(
+    brainDetail?.description || "An AI agent working through a verified project plan.",
+    "An AI agent working through a verified project plan.",
+  );
+
+  return {
+    jobId,
+    title,
+    description,
+    conceptLabel: "Concept 01 of 10",
+    metrics,
+    phases: phases.length > 0 ? phases : buildDefaultPhases(tasks),
+    tasks,
+    activity,
+    graph,
+    nextAction: nextAct,
+    live: {
+      running,
+      stage: scrubUiText(live.state || live.stage, "unknown"),
+      activeTaskLabel: tasks.find(t => t.state === "current")?.label || "Waiting for next safe action",
+      latestMessage: scrubUiText(live.latest_message || "", ""),
+      latestActor: "Builder",
+    },
+    apiHealth: { degraded: false, failedEndpoints: [] },
+    pipeline: normalizePipeline(dashboard.pipeline),
+    resume: dashboard.resume ?? null,
+    projectSummary: dashboard.project_summary ?? null,
+    workerStatus: dashboard.worker ?? null,
+    timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
+  };
 }
 
-function buildPhases(tasks: RemedyTaskItem[]): RemedyPhase[] {
-  const hasTests = tasks.some(t => t.kind === "test");
-  const hasReview = tasks.some(t => t.kind === "review" || t.state === "suggested");
+/** Normalize API failure into degraded RemedyDashboard. */
+export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): RemedyDashboard {
+  return {
+    jobId,
+    title: "Mission Control",
+    description: "",
+    conceptLabel: "",
+    metrics: [
+      { key: "open", label: "Open", value: 0 },
+      { key: "planned", label: "Planned", value: 0 },
+      { key: "done", label: "Done", value: 0 },
+      { key: "progress", label: "Progress", value: 0, suffix: "%" },
+    ],
+    phases: [],
+    tasks: [],
+    activity: [],
+    graph: { nodes: [], edges: [] },
+    nextAction: nextAction(),
+    live: {
+      running: false,
+      stage: "unknown",
+      activeTaskLabel: "Waiting for next safe action",
+      latestMessage: "",
+      latestActor: "Builder",
+    },
+    apiHealth: { degraded: true, failedEndpoints },
+    pipeline: null,
+    resume: null,
+    projectSummary: null,
+    workerStatus: null,
+  };
+}
+
+/** Normalize live-state data: missing = not running. */
+export function normalizeLiveState(liveData: any): { running: boolean; stage: string } {
+  return {
+    running: Boolean(liveData?.running ?? false),
+    stage: String(liveData?.stage || liveData?.state || "unknown"),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Graph helpers
+// ---------------------------------------------------------------------------
+
+function normalizeGraphFromBrain(brainDetail: any, tasks: RemedyTaskItem[]): { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[] } {
+  // Use story + brain data to build journey, then graph
+  const journey = normalizeJourney(brainDetail?.story || brainDetail, brainDetail);
+  return normalizeGraph(journey, tasks);
+}
+
+function buildMinimalGraph(tasks: RemedyTaskItem[]): { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[] } {
+  const nodes: RemedyGraphNode[] = tasks.slice(0, 20).map((t, idx) => ({
+    id: t.nodeId, label: t.label, kind: t.kind, state: t.state, nodeId: t.nodeId,
+    group: t.state === "done" ? "done" : t.state === "current" ? "open" : "planned",
+    visibleFromZoom: Math.min(idx, 3), showLabelFromZoom: idx <= 1 ? 0 : 2,
+  }));
+  const edges: RemedyGraphEdge[] = [];
+  for (let i = 0; i < nodes.length - 1; i++) {
+    edges.push({
+      id: `edge-${nodes[i].id}-${nodes[i + 1].id}`,
+      source: nodes[i].id, target: nodes[i + 1].id,
+      meaning: "leads to", state: nodes[i + 1].state,
+    });
+  }
+  return { nodes, edges };
+}
+
+function buildDefaultPhases(tasks: RemedyTaskItem[]): RemedyPhase[] {
   const doneCount = tasks.filter(t => t.state === "done").length;
-  const currentId = hasReview ? "review" : hasTests ? "test" : doneCount > 0 ? "build" : "planning";
   return [
     { id: "job", label: "Job", state: "done", icon: "briefcase" },
     { id: "planning", label: "Planning", state: doneCount > 0 ? "done" : "current", icon: "calendar" },
-    { id: "build", label: "Build", state: currentId === "build" ? "current" : doneCount > 0 ? "done" : "pending", icon: "code" },
-    { id: "test", label: "Test", state: currentId === "test" ? "current" : hasTests ? "done" : "pending", icon: "check" },
-    { id: "review", label: "Review", state: currentId === "review" ? "current" : hasReview ? "done" : "pending", icon: "person" },
-    { id: "finalized", label: "Finalized", state: tasks.length > 0 && tasks.every(t => t.state === "done") ? "done" : "pending", icon: "flag" },
+    { id: "build", label: "Build", state: "pending", icon: "code" },
+    { id: "test", label: "Test", state: "pending", icon: "check" },
+    { id: "review", label: "Review", state: "pending", icon: "person" },
+    { id: "finalized", label: "Finalized", state: "pending", icon: "flag" },
   ];
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// ---------------------------------------------------------------------------
+// Legacy helpers (used only for brain-view-model graph building)
+// ---------------------------------------------------------------------------
+
 function normalizeJourney(story: any, brain: any): RemedyJourneyItem[] {
   const src = story?.journey || [];
   if (Array.isArray(src) && src.length) {
@@ -106,34 +284,6 @@ function normalizeJourney(story: any, brain: any): RemedyJourneyItem[] {
   return journey;
 }
 
-function normalizeTasks(progress: any, journey: RemedyJourneyItem[]): RemedyTaskItem[] {
-  const src = progress?.items || progress?.checklist || progress?.tasks || [];
-  const tasks = src.map((i: any, idx: number) => {
-    const kind = (i.kind || i.type || "task") as RemedyTaskItem["kind"];
-    const state = normalizeState(i.state || i.status || (i.checked ? "done" : "pending"));
-    return {
-      id: scrubUiText(i.id || `task-${idx}`, `task-${idx}`),
-      label: (() => { const raw = scrubUiText(i.label || i.title || i.short_reason || humanLabel(kind), humanLabel(kind)); return isWeakLabel(raw) ? humanFallbackFor(kind, idx) : raw; })(),
-      state, kind,
-      checked: Boolean(i.checked ?? i.verified ?? state === "done"),
-      muted: Boolean(i.muted ?? (state === "pending" || state === "suggested")),
-      nodeId: String(i.node_id || i.related_node_id || i.nodeId || i.id || `task-${idx}`),
-      nextAction: i.next_action ? {
-        label: scrubUiText(i.next_action.label, "Review next action"),
-        command: scrubUiText(i.next_action.command, "remedy dev status"),
-        risk: i.next_action.risk || "low",
-        requiresHuman: Boolean(i.next_action.requires_human ?? true),
-      } : undefined,
-    };
-  });
-  if (tasks.length) return tasks;
-  return journey.map(i => ({
-    id: i.id, label: i.title, state: i.state, kind: i.kind,
-    checked: i.state === "done", muted: i.state === "pending" || i.state === "suggested",
-    nodeId: i.nodeId, nextAction: nextAction(),
-  }));
-}
-
 function normalizeGraph(journey: RemedyJourneyItem[], tasks: RemedyTaskItem[]): { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[] } {
   const nodes: RemedyGraphNode[] = [];
   journey.forEach((i, idx) => nodes.push({
@@ -160,6 +310,106 @@ function normalizeGraph(journey: RemedyJourneyItem[], tasks: RemedyTaskItem[]): 
   return { nodes, edges };
 }
 
+// ---------------------------------------------------------------------------
+// Timeline event normalization
+// ---------------------------------------------------------------------------
+
+const VALID_TIMELINE_PHASES: RemedyTimelinePhase[] = ["job", "planning", "build", "test", "review", "finalized"];
+const VALID_TIMELINE_KINDS: RemedyTimelineEventKind[] = ["llm_action", "test", "review"];
+
+function normalizeTimelinePhase(raw: unknown): RemedyTimelinePhase {
+  const s = String(raw || "").toLowerCase();
+  return VALID_TIMELINE_PHASES.includes(s as RemedyTimelinePhase) ? (s as RemedyTimelinePhase) : "build";
+}
+
+function normalizeTimelineEventKind(raw: unknown): RemedyTimelineEventKind {
+  const s = String(raw || "").toLowerCase();
+  return VALID_TIMELINE_KINDS.includes(s as RemedyTimelineEventKind) ? (s as RemedyTimelineEventKind) : "llm_action";
+}
+
+function normalizeTimelineEvents(raw: any): RemedyTimelineEvent[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((e: any, idx: number) => ({
+    id: scrubUiText(e.id || `te-${idx}`, `te-${idx}`),
+    phase: normalizeTimelinePhase(e.phase),
+    kind: normalizeTimelineEventKind(e.kind),
+    title: scrubUiText(e.title || e.label || "Timeline event", "Timeline event"),
+    state: e.state ? normalizeState(e.state) : (e.done ? "done" as const : "pending" as const),
+    cycle: typeof e.cycle === "number" ? e.cycle : undefined,
+    timeLabel: (e.time_label || e.timeLabel) ? scrubUiText(e.time_label || e.timeLabel, "") : undefined,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline normalization
+// ---------------------------------------------------------------------------
+
+function pipelineStepState(done: boolean | null, blocked: boolean, failed: boolean, skipped: boolean): PipelineStepState {
+  if (failed) return "failed";
+  if (blocked) return "blocked";
+  if (skipped) return "skipped";
+  if (done === true) return "done";
+  if (done === false) return "waiting";
+  return "unknown";
+}
+
+function buildPipelineSteps(p: any): PipelineStep[] {
+  const steps: PipelineStep[] = [];
+  const hasProvider = p.provider !== null;
+  const hasContext = p.source_context?.injected === true;
+  const hasMemory = p.memory?.used === true;
+  const hasPatch = p.structured_patch_attempted === true;
+  const parsed = p.parse_success === true;
+  const parseFailed = p.parse_success === false;
+  const hasIntent = p.intent_status !== "none" && p.intent_status !== "";
+  const approved = p.approval_status === "approved";
+  const applied = p.source_apply_status === "applied";
+  const tested = p.tests_status !== "none";
+  const testPassed = p.tests_passed === true;
+  const repairUsed = p.repair_loop?.used === true;
+
+  steps.push({ id: "provider", label: hasProvider ? `Provider: ${p.provider}` : "No provider", state: hasProvider ? "done" : "skipped" });
+  steps.push({ id: "context", label: "Source context", state: pipelineStepState(hasContext, false, false, !hasProvider), detail: hasContext ? `${p.source_context.file_count ?? 0} files, ~${p.source_context.estimated_tokens ?? 0} tokens` : undefined });
+  steps.push({ id: "memory", label: "Memory", state: pipelineStepState(hasMemory, false, false, !hasMemory), detail: hasMemory ? `${p.memory.item_count} items` : undefined });
+  steps.push({ id: "patch", label: "Structured patch", state: pipelineStepState(hasPatch && parsed, false, parseFailed, !hasPatch), detail: parseFailed ? p.parse_error_kind || "Parse failed" : undefined });
+  steps.push({ id: "intent", label: "Patch intent", state: pipelineStepState(hasIntent, p.approval_required && !approved, false, !hasIntent) });
+  steps.push({ id: "approval", label: "Approval", state: pipelineStepState(approved, p.approval_required && !approved, false, !p.approval_required && !approved), detail: p.approval_required && !approved ? "Human approval required" : undefined });
+  steps.push({ id: "apply", label: "Apply", state: pipelineStepState(applied, false, p.source_apply_status === "failed", !applied && !approved) });
+  steps.push({ id: "test", label: "Test", state: pipelineStepState(testPassed, false, tested && !testPassed, !tested), detail: tested && !testPassed ? "Tests failed" : undefined });
+  if (repairUsed) {
+    steps.push({ id: "repair", label: "Repair loop", state: pipelineStepState(testPassed, false, !testPassed, false), detail: `Cycle ${p.repair_loop.cycle_count}/${p.repair_loop.max_cycles}` });
+  }
+  return steps;
+}
+
+export function normalizePipeline(raw: any): RemedyPipeline | null {
+  if (!raw || typeof raw !== "object") return null;
+  return {
+    version: raw.version ?? 1,
+    provider: raw.provider ?? null,
+    provider_mode: raw.provider_mode ?? "none",
+    source_context: raw.source_context ?? { injected: false },
+    memory: raw.memory ?? { used: false, item_count: 0, truncated: false, context_hash: "" },
+    structured_patch_attempted: Boolean(raw.structured_patch_attempted),
+    parse_success: raw.parse_success ?? null,
+    parse_error_kind: raw.parse_error_kind ?? "",
+    intent_id: raw.intent_id ?? "",
+    intent_status: raw.intent_status ?? "none",
+    approval_required: Boolean(raw.approval_required),
+    approval_status: raw.approval_status ?? "none",
+    source_apply_status: raw.source_apply_status ?? "none",
+    tests_status: raw.tests_status ?? "none",
+    tests_passed: raw.tests_passed ?? null,
+    repair_loop: raw.repair_loop ?? { used: false, cycle_count: 0, max_cycles: 0 },
+    stop_reason: raw.stop_reason ?? "",
+    stop_reason_label: raw.stop_reason_label ?? "",
+    next_command: raw.next_command ?? "",
+    stale: Boolean(raw.stale),
+    source: raw.source ?? "unknown",
+    steps: buildPipelineSteps(raw),
+  };
+}
+
 const EVENT_LABELS: Record<string, { actor: RemedyActivityItem["actor"]; kind: RemedyActivityItem["kind"]; label: string }> = {
   task_created: { actor: "Builder", kind: "build", label: "Task created" },
   patch_intent_created: { actor: "Builder", kind: "build", label: "Change proposed" },
@@ -170,39 +420,6 @@ const EVENT_LABELS: Record<string, { actor: RemedyActivityItem["actor"]; kind: R
   review_recommendation: { actor: "Reviewer", kind: "review", label: "Review suggestion" },
   stop_reason_recorded: { actor: "System", kind: "system", label: "Stopped" },
 };
-
-function normalizeActivity(live: any, tasks: RemedyTaskItem[], events?: any): RemedyActivityItem[] {
-  // Derive from real event ledger if available
-  const eventList = Array.isArray(events?.events) ? events.events : [];
-  if (eventList.length > 0) {
-    return eventList.slice(-4).reverse().map((e: any, idx: number) => {
-      const meta = EVENT_LABELS[e.event] || { actor: "System" as const, kind: "system" as const, label: e.event };
-      return {
-        id: `event-${idx}`,
-        actor: meta.actor,
-        message: meta.label,
-        timeLabel: e.timestamp ? formatEventTime(e.timestamp) : "",
-        kind: meta.kind,
-      };
-    });
-  }
-
-  // Fallback: derive from live state
-  const isIdle = !live?.running && !live?.latest_message && !live?.latestMessage;
-  if (isIdle) return [];
-
-  const items: RemedyActivityItem[] = [];
-  const msg = live?.latestMessage || live?.latest_message;
-  if (msg) {
-    items.push({ id: "now", actor: "Builder", message: scrubUiText(msg, "Working."), timeLabel: "Just now", kind: "build" });
-  } else {
-    const active = tasks.find(t => t.state === "current");
-    if (active) {
-      items.push({ id: "now", actor: "Builder", message: `Working on ${active.label}`, timeLabel: "Just now", kind: "build" });
-    }
-  }
-  return items;
-}
 
 function formatEventTime(ts: string): string {
   try {
@@ -217,48 +434,46 @@ function formatEventTime(ts: string): string {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+// ---------------------------------------------------------------------------
+// Main loader: dashboard-first
+// ---------------------------------------------------------------------------
+
 export async function loadRemedyDashboard(o: ApiClientOptions): Promise<RemedyDashboard> {
   const base = o.baseUrl || "";
   const q = `token=${encodeURIComponent(o.token)}`;
-  const [brain, progress, live, story, eventsSince] = await Promise.allSettled([
-    fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/brain-view-model?${q}`),
-    fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/task-progress?${q}`),
-    fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/live-state?${q}`),
-    fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/story?${q}`),
-    fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/events-since?cursor=0&${q}`),
-  ]);
-  const brainData: Record<string, unknown> = brain.status === "fulfilled" ? brain.value : {};
-  const progressData: Record<string, unknown> = progress.status === "fulfilled" ? progress.value : {};
-  const liveData: Record<string, unknown> = live.status === "fulfilled" ? live.value : {};
-  const storyData: Record<string, unknown> = story.status === "fulfilled" ? story.value : (brainData?.story as Record<string, unknown>) || {};
-  const eventsData: Record<string, unknown> = eventsSince.status === "fulfilled" ? eventsSince.value : {};
-  const journey = normalizeJourney(storyData, brainData);
-  const tasks = normalizeTasks(progressData, journey);
-  const graph = normalizeGraph(journey, tasks);
-  return {
-    jobId: o.jobId,
-    title: scrubUiText(storyData?.headline || brainData?.title || brainData?.job_title, "Growing Brain Overview"),
-    description: scrubUiText(storyData?.description || brainData?.description || "An AI agent working through a verified project plan.", "An AI agent working through a verified project plan."),
-    conceptLabel: "Concept 01 of 10",
-    metrics: buildMetrics(tasks),
-    phases: buildPhases(tasks),
-    tasks,
-    activity: normalizeActivity(liveData, tasks, eventsData),
-    graph,
-    nextAction: (storyData?.primary_next_action as Record<string, unknown>)
-      ? {
-          label: scrubUiText((storyData.primary_next_action as Record<string, unknown>).label, "Review project state"),
-          command: scrubUiText((storyData.primary_next_action as Record<string, unknown>).command, "remedy dev status"),
-          risk: ((storyData.primary_next_action as Record<string, unknown>).risk as RemedyDashboard["nextAction"]["risk"]) || "low",
-          requiresHuman: Boolean((storyData.primary_next_action as Record<string, unknown>).requires_human ?? true),
-        }
-      : nextAction(),
-    live: {
-      running: Boolean(liveData?.running ?? true),
-      stage: scrubUiText(liveData?.stage, "live"),
-      activeTaskLabel: tasks.find(t => t.state === "current")?.label || "Waiting for next safe action",
-      latestMessage: scrubUiText(liveData?.latest_message || liveData?.latestMessage, "Project state updated."),
-      latestActor: "Builder",
-    },
-  };
+
+  // Primary: fetch /dashboard
+  let dashboardData: Record<string, unknown> | null = null;
+  const failedEndpoints: string[] = [];
+
+  try {
+    dashboardData = await fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/dashboard?${q}`);
+  } catch {
+    failedEndpoints.push("dashboard");
+  }
+
+  // If dashboard failed, return degraded state
+  if (!dashboardData) {
+    return normalizeApiFailure(o.jobId, failedEndpoints);
+  }
+
+  // Secondary: brain-view-model for graph rendering detail (optional)
+  let brainData: Record<string, unknown> | undefined;
+  try {
+    brainData = await fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/brain-view-model?${q}`);
+  } catch {
+    failedEndpoints.push("brain-view-model");
+  }
+
+  const result = normalizeDashboardPayload(o.jobId, dashboardData, brainData);
+
+  // Propagate any secondary endpoint failures
+  if (failedEndpoints.length > 0) {
+    result.apiHealth = {
+      degraded: failedEndpoints.includes("dashboard"),
+      failedEndpoints,
+    };
+  }
+
+  return result;
 }

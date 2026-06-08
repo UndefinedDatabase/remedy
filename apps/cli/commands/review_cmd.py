@@ -87,7 +87,7 @@ def _cmd_review_list(args: Any) -> None:
 
 
 def _cmd_review_accept(args: Any) -> None:
-    """Accept a reviewer recommendation."""
+    """Accept a reviewer recommendation — creates a proposed task for evaluation."""
     from packages.orchestration.reviewer import accept_recommendation
     from packages.orchestration.storage import load_job, save_job
 
@@ -101,10 +101,10 @@ def _cmd_review_accept(args: Any) -> None:
                 "job_id": str(job.id),
                 "recommendation_id": args.recommendation_id,
                 "accepted": True,
-                "task_appended": True,
+                "proposed_task_created": True,
             }, indent=2))
         else:
-            print(f"Accepted: {args.recommendation_id}")
+            print(f"Accepted: {args.recommendation_id} (proposed task created — evaluate before build)")
     else:
         if getattr(args, "json", False):
             print(json.dumps({
@@ -112,7 +112,7 @@ def _cmd_review_accept(args: Any) -> None:
                 "job_id": str(job.id),
                 "recommendation_id": args.recommendation_id,
                 "accepted": False,
-                "task_appended": False,
+                "proposed_task_created": False,
                 "error": "not found or already resolved",
             }, indent=2))
         else:

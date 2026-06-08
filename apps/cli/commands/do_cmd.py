@@ -10,6 +10,21 @@ if TYPE_CHECKING:
     import argparse
 
 
+_VALID_PROVIDERS = frozenset({"none", "fixture", "ollama"})
+
+
+def _parse_builder_provider(val: object) -> str:
+    s = str(val).lower().strip()
+    if s in _VALID_PROVIDERS:
+        return s
+    print(
+        f"Error: invalid --builder-provider: {val!r}. "
+        f"Allowed: none, fixture, ollama.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+
 def _cmd_do(
     goal: str,
     *,
@@ -21,6 +36,7 @@ def _cmd_do(
     dry_run: bool = False,
     json_output: bool = False,
     fixture_builder: bool | str = False,
+    builder_provider: str = "none",
 ) -> None:
     if dry_run:
         from packages.orchestration.autorun import dry_run_autorun
@@ -51,28 +67,50 @@ def _cmd_do(
         max_cycles=max_cycles,
         enable_ui=enable_ui,
         fixture_builder=fixture_builder,
+        builder_provider=builder_provider,
         json_output=json_output,
     )
 
     if json_output:
         out: dict = {
-            "version": 1,
+            "version": 2,
             "job_id": result.job_id,
             "stage": result.stage,
             "cycles_run": result.cycles_run,
+            "stop_reason": result.stop_reason,
+            "provider": result.provider,
             "ui_url": result.ui_url,
             "error": result.error,
         }
-        # Merge fixture/E2E event flags (Step 116)
+        _BOOL_EVENTS = frozenset({
+            "structured_patch_attempted", "parse_success",
+            "source_context_injected", "structured_patch_created",
+            "approval_required", "source_patch_applied", "tests_passed",
+            "repair_context_created", "repair_loop_used",
+        })
         for ev in result.events:
             key = ev.get("event", "")
             val = ev.get("value", "")
-            if key:
+            if not key or key in out:
+                continue
+            if key in _BOOL_EVENTS:
                 out[key] = val == "True"
+            else:
+                out[key] = val
         print(json.dumps(out, indent=2))
     else:
         print(f"Job: {result.job_id}")
         print(f"Stage: {result.stage}")
+        print(f"Cycles: {result.cycles_run}")
+        if result.provider:
+            print(f"Provider: {result.provider}")
+        for ev in result.events:
+            key = ev.get("event", "")
+            val = ev.get("value", "")
+            if key:
+                print(f"  {key}: {val}")
+        if result.stop_reason:
+            print(f"Stop reason: {result.stop_reason}")
         if result.ui_url:
             print(f"UI: {result.ui_url}")
         if result.error:
@@ -117,5 +155,6 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
         fixture_builder=_parse_fixture_builder(getattr(args, "fixture_builder", "false")),
+        builder_provider=_parse_builder_provider(getattr(args, "builder_provider", "none")),
     ),
 }

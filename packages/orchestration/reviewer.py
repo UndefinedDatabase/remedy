@@ -111,25 +111,18 @@ def run_reviewer(
 
 
 def accept_recommendation(job: Any, recommendation_id: str) -> bool:
-    """Accept a recommendation — append it as a pending task to the job."""
-    from packages.core.models import Task, RunState
+    """Accept a recommendation — create a proposed task for evaluation.
+
+    Does NOT directly append a Task to job.tasks. The proposed task must
+    go through evaluation (evaluate → approve) before it becomes buildable.
+    """
+    from packages.orchestration.proposed_tasks import propose_from_recommendation
 
     recs = _get_recommendations(job)
     for rec in recs:
         if rec.get("id") == recommendation_id and rec.get("status") == "pending":
             rec["status"] = "accepted"
-            # Create task from recommendation
-            task = Task(
-                description=rec.get("title", "Reviewer recommendation"),
-                inputs={
-                    "task_type": rec.get("task_type", "unknown"),
-                    "source": "reviewer",
-                    "reviewer_recommendation_id": recommendation_id,
-                    "origin_task_id": rec.get("origin_task_id", ""),
-                },
-                status=RunState.PENDING,
-            )
-            job.tasks.append(task)
+            propose_from_recommendation(str(job.id), rec)
             _save_recommendations(job, recs)
             return True
     return False

@@ -696,7 +696,7 @@ def build_next_action(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     elif has_failed_test:
         primary = {
             "label": "Inspect test failure",
-            "command": f"remedy test list {job_id} --json",
+            "command": f"remedy test discover {job_id} --json",
             "risk": "low",
             "requires_human": True,
         }

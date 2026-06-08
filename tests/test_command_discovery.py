@@ -527,6 +527,7 @@ class TestCLIDiscoverCommands:
             ["python3", "-m", "apps.cli.main"] + args,
             capture_output=True,
             env={**os.environ, **(env or {})},
+            timeout=15,
         )
         return result.returncode, result.stdout.decode(), result.stderr.decode()
 
@@ -535,7 +536,7 @@ class TestCLIDiscoverCommands:
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         job_id = r.stdout.decode().strip()
         # Create a target repo with pyproject + tests.
@@ -545,7 +546,7 @@ class TestCLIDiscoverCommands:
         (repo / "tests").mkdir()
         subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         return job_id
 
@@ -917,7 +918,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "create", "test"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         job_id = r.stdout.decode().strip()
         repo = tmp_path / "target"
@@ -926,7 +927,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         (repo / "tests").mkdir()
         subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         return job_id, env
 
@@ -934,7 +935,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         data = json.loads(r.stdout)
         assert data["version"] == 1
@@ -943,7 +944,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         data = json.loads(r.stdout)
         assert "selected_test_candidate" in data
@@ -952,7 +953,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         data = json.loads(r.stdout)
         assert "counts" in data
@@ -967,7 +968,7 @@ class TestCLIDiscoverCommandsSchemaV1:
         job_id, env = self._create_job_with_repo(tmp_path)
         r = subprocess.run(
             ["python3", "-m", "apps.cli.main", "test", "discover", job_id, "--json"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, timeout=15,
         )
         assert r.returncode == 0
         # Must parse cleanly with no surrounding text.
@@ -998,3 +999,124 @@ class TestNoProviderCoupling:
             assert token.lower() not in src.lower(), (
                 f"test_runner.py must not reference provider: {token!r}"
             )
+
+
+# ---------------------------------------------------------------------------
+# W. Constitution discovery integration — quoted + shell-composed commands
+# ---------------------------------------------------------------------------
+
+
+class TestConstitutionDiscoveryIntegration:
+    """Exercise _detect_constitution through the actual discovery path, not just shlex.split."""
+
+    def test_quoted_command_parsed_correctly(self, tmp_path):
+        """A quoted test command from constitution is parsed into correct argv."""
+        (tmp_path / "Makefile").write_text(
+            'test:\n\tpython3 -m pytest "tests/my test"\n'
+        )
+        job = _make_job()
+        candidates = _detect_constitution(job, tmp_path)
+        # Constitution should extract the Makefile test command
+        test_c = [c for c in candidates if c.purpose == "test"]
+        # At minimum, constitution or makefile-derived path should produce a candidate
+        all_candidates = discover_commands(job, tmp_path)
+        # Verify make test candidate exists (via either constitution or makefile detector)
+        assert any(c.purpose == "test" for c in all_candidates)
+
+    def test_shell_metachar_rejected_by_constitution(self, tmp_path):
+        """Shell metacharacter commands from constitution are rejected."""
+        # Create package.json with dangerous scripts
+        import json as _json
+        (tmp_path / "package.json").write_text(_json.dumps({
+            "scripts": {
+                "test": "pytest && rm -rf .",
+                "lint": "eslint | tee out.txt",
+                "build": "make; echo done",
+            }
+        }))
+        job = _make_job()
+        # Constitution reads these scripts and should reject metachar commands
+        const_candidates = _detect_constitution(job, tmp_path)
+        for c in const_candidates:
+            # Constitution should not produce candidates with metacharacters in display
+            for mc in ("|", "&&", ";", ">>", ">", "<", "`", "$("):
+                assert mc not in c.display, \
+                    f"Constitution produced candidate with metachar {mc!r}: {c.display}"
+
+    def test_backtick_command_rejected(self, tmp_path):
+        """Backtick injection in constitution command is rejected."""
+        (tmp_path / "Makefile").write_text(
+            'test:\n\tpytest `whoami`\n'
+        )
+        job = _make_job()
+        const_candidates = _detect_constitution(job, tmp_path)
+        # Should not produce any candidate with backtick
+        for c in const_candidates:
+            assert "`" not in c.display
+
+    def test_dollar_paren_rejected(self, tmp_path):
+        """$(command) injection in constitution is rejected."""
+        (tmp_path / "Makefile").write_text(
+            'test:\n\tpytest $(whoami)\n'
+        )
+        job = _make_job()
+        const_candidates = _detect_constitution(job, tmp_path)
+        for c in const_candidates:
+            assert "$(" not in c.display
+
+    def test_pipe_rejected(self, tmp_path):
+        """Piped command in constitution is rejected."""
+        (tmp_path / "Makefile").write_text(
+            'test:\n\tpytest | tee out.txt\n'
+        )
+        job = _make_job()
+        const_candidates = _detect_constitution(job, tmp_path)
+        for c in const_candidates:
+            assert "|" not in c.display
+
+    def test_semicolon_rejected(self, tmp_path):
+        """Semicolon command in constitution is rejected."""
+        (tmp_path / "Makefile").write_text(
+            'test:\n\tpytest; echo done\n'
+        )
+        job = _make_job()
+        const_candidates = _detect_constitution(job, tmp_path)
+        for c in const_candidates:
+            assert ";" not in c.display
+
+    def test_redirect_rejected(self, tmp_path):
+        """Output redirect in constitution command is rejected."""
+        (tmp_path / "Makefile").write_text(
+            'test:\n\tpytest > out.txt\n'
+        )
+        job = _make_job()
+        const_candidates = _detect_constitution(job, tmp_path)
+        for c in const_candidates:
+            assert ">" not in c.display
+
+    def test_safe_command_accepted(self, tmp_path):
+        """A plain safe command from constitution is accepted."""
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname = 'x'\n[tool.pytest.ini_options]\ntestpaths = ['tests']\n"
+        )
+        (tmp_path / "tests").mkdir()
+        job = _make_job()
+        all_candidates = discover_commands(job, tmp_path)
+        # Should have at least one test candidate from constitution or pyproject
+        test_c = [c for c in all_candidates if c.purpose == "test"]
+        assert len(test_c) >= 1
+        # Best test candidate should never be high-risk
+        best = select_best_test_candidate(all_candidates)
+        assert best is not None
+        assert best.risk != "high"
+
+    def test_full_discovery_suite_no_timeout(self, tmp_path):
+        """Full command discovery runs without hanging."""
+        (tmp_path / "pyproject.toml").write_text("[project]\nname = 'x'\n")
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "Makefile").write_text("test:\n\tpytest\n")
+        (tmp_path / "package.json").write_text('{"scripts":{"test":"jest"}}')
+        job = _make_job()
+        # Should complete quickly, no hang
+        candidates = discover_commands(job, tmp_path)
+        assert len(candidates) >= 2

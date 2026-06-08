@@ -27,6 +27,7 @@ or:
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 
@@ -36,14 +37,136 @@ _DEFAULT_HOST = "http://localhost:11434"
 _SYSTEM_PROMPT = """\
 You are a software builder assistant. Given a task execution context, produce a structured result.
 
-Rules:
-- summary: short paragraph describing what was done or planned for this task
-- proposed_changes: list of concrete changes or actions (e.g. "Write function foo in bar.py", "Add test for edge case X")
+Output fields:
+- summary: one short paragraph describing what was done or planned
+- proposed_changes: list of concrete changes (e.g. "Write function foo in bar.py")
 - notes: optional list of assumptions or observations
-- risks: optional list of potential issues or blockers
+- risks: optional list of potential issues
+- structured_patch_text: for code changes, a JSON string with this exact schema:
+  {"file_ops": [{"path": "relative/path.py", "action": "create"|"modify"|"delete", "content": "full file content"}]}
+- structured_patch_format: "json" when structured_patch_text has file_ops, "none" otherwise
 
-Respond only with valid JSON matching the requested schema. No markdown, no extra text.\
+Strict rules for structured_patch_text:
+- Use relative paths only (no leading / or ..)
+- One JSON object only, no wrapper text around it
+- "content" must be the complete file content, not a diff
+- Do not include shell commands (rm, sudo, curl, wget, chmod)
+- Do not target .env, .pem, .key, or binary files
+- If the task does not require code changes, set structured_patch_text to null
+
+Respond only with valid JSON matching the requested schema. No markdown fencing, no prose outside the JSON.\
 """
+
+
+@dataclass
+class PromptProfile:
+    """A named set of builder instructions.
+
+    Each profile produces different system prompt text for the same task,
+    allowing controlled comparison of model behavior.
+    """
+
+    name: str
+    purpose: str
+    system_text: str
+    safety_rules: list[str]
+
+
+@dataclass
+class PromptProfileMetadata:
+    """Safe metadata about which profile was used. No raw prompt content."""
+
+    name: str
+    purpose: str
+    prompt_hash: str
+    prompt_length: int
+
+
+def _hash_text(text: str) -> str:
+    import hashlib
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
+PROMPT_PROFILES: dict[str, PromptProfile] = {
+    "strict_minimal": PromptProfile(
+        name="strict_minimal",
+        purpose="Shortest strict patch instruction — minimal context, maximum constraint",
+        system_text=(
+            "You are a code builder. Output valid JSON only.\n\n"
+            "Schema: {\"file_ops\": [{\"path\": \"relative/file.py\", "
+            "\"action\": \"create\"|\"modify\"|\"delete\", \"content\": \"full file content\"}]}\n\n"
+            "Rules:\n"
+            "- Relative paths only, no / or .. prefix\n"
+            "- Complete file content, not diffs\n"
+            "- No shell commands, no .env/.pem/.key files\n"
+            "- No markdown, no prose, no explanation outside JSON\n"
+            "- If no code change needed, set structured_patch_text to null\n"
+        ),
+        safety_rules=[
+            "relative paths only",
+            "no shell commands",
+            "no secret files",
+            "no prose outside JSON",
+        ],
+    ),
+    "repair_aware": PromptProfile(
+        name="repair_aware",
+        purpose="Includes test failure and repair guidance for iterative fixing",
+        system_text=(
+            "You are a code builder that fixes failing tests.\n\n"
+            "Schema: {\"file_ops\": [{\"path\": \"relative/file.py\", "
+            "\"action\": \"create\"|\"modify\"|\"delete\", \"content\": \"full file content\"}]}\n\n"
+            "Rules:\n"
+            "- Relative paths only, no / or .. prefix\n"
+            "- Complete file content, not diffs\n"
+            "- No shell commands, no .env/.pem/.key files\n"
+            "- No markdown, no prose, no explanation outside JSON\n"
+            "- If no code change needed, set structured_patch_text to null\n\n"
+            "Repair guidance:\n"
+            "- Read the test expectations carefully\n"
+            "- Fix the root cause, not just the symptom\n"
+            "- If tests import a missing function, add that function\n"
+            "- If a return value is wrong, fix the return statement\n"
+            "- Do not change test files unless the task says to\n"
+        ),
+        safety_rules=[
+            "relative paths only",
+            "no shell commands",
+            "no secret files",
+            "no prose outside JSON",
+            "fix root cause",
+            "do not change test files",
+        ],
+    ),
+    "context_rich": PromptProfile(
+        name="context_rich",
+        purpose="Full context with file summary, test summary, and detailed output rules",
+        system_text=_SYSTEM_PROMPT,
+        safety_rules=[
+            "relative paths only",
+            "no shell commands",
+            "no secret files",
+            "no prose outside JSON",
+            "one JSON object only",
+            "complete file content not diff",
+        ],
+    ),
+}
+
+
+def get_prompt_profile(name: str) -> PromptProfile:
+    """Get a prompt profile by name. Falls back to context_rich."""
+    return PROMPT_PROFILES.get(name, PROMPT_PROFILES["context_rich"])
+
+
+def get_prompt_profile_metadata(profile: PromptProfile) -> PromptProfileMetadata:
+    """Extract safe metadata from a profile. No raw prompt text."""
+    return PromptProfileMetadata(
+        name=profile.name,
+        purpose=profile.purpose,
+        prompt_hash=_hash_text(profile.system_text),
+        prompt_length=len(profile.system_text),
+    )
 
 
 def _resolve_model(override: str | None) -> str:
@@ -109,6 +232,10 @@ def _build_user_message(context: TaskExecutionContext) -> str:
         for summary in context.prior_task_summaries:
             parts.append(f"  - {summary}")
 
+    if context.memory_context:
+        parts.append("")
+        parts.append(context.memory_context)
+
     return "\n".join(parts)
 
 
@@ -128,9 +255,12 @@ class OllamaBuilder:
         host: str | None = None,
         temperature: float | None = None,
         num_predict: int | None = None,
+        prompt_profile: str | None = None,
     ) -> None:
         self.model = _resolve_model(model)
         self.host = host or os.environ.get("REMEDY_OLLAMA_HOST", _DEFAULT_HOST)
+        self.prompt_profile_name = prompt_profile or "context_rich"
+        self.prompt_profile = get_prompt_profile(self.prompt_profile_name)
 
         self.temperature: float | None = (
             temperature if temperature is not None
@@ -171,7 +301,7 @@ class OllamaBuilder:
         response = client.chat(
             model=self.model,
             messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": self.prompt_profile.system_text},
                 {"role": "user", "content": _build_user_message(context)},
             ],
             format=schema,

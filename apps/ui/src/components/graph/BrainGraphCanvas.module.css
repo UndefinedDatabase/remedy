@@ -1,0 +1,111 @@
+.graphRoot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: clamp(16px, 1.2vw, 22px);
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+}
+
+.edge {
+  fill: none;
+  stroke: rgba(255, 255, 255, .68);
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 6px rgba(76, 131, 255, .28));
+}
+
+.rootOrb {
+  fill: var(--remedy-blue, #4c83ff);
+  filter: drop-shadow(0 0 28px rgba(76, 131, 255, .38));
+}
+
+.nodeCore {
+  fill: rgba(255, 255, 255, .92);
+  stroke-width: 2.2;
+}
+
+.nodeDone { stroke: var(--remedy-green, #4cc681); }
+.nodePlanned { stroke: var(--remedy-blue, #4c83ff); opacity: .55; }
+.nodeCurrent { stroke: var(--remedy-purple, #a28cff); }
+.nodeBlocked { stroke: #e06050; }
+
+.hoverHalo {
+  fill: none;
+  stroke: var(--remedy-blue, #4c83ff);
+  stroke-width: 1.2;
+  opacity: .35;
+}
+
+.selectRing {
+  fill: none;
+  stroke: var(--remedy-blue, #4c83ff);
+  stroke-width: 2;
+  opacity: .6;
+  stroke-dasharray: 4 3;
+}
+
+.tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: var(--remedy-glass-bg-strong, rgba(255,255,255,.78));
+  border: 1px solid var(--remedy-glass-border, rgba(62,95,154,.13));
+  box-shadow: var(--remedy-shadow-soft, 0 10px 30px rgba(55,86,138,.08));
+  backdrop-filter: blur(16px);
+  font-size: 11px;
+  color: var(--remedy-ink, #10285f);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+.tooltip strong { font-weight: 800; font-size: 11px; }
+.tooltip span { font-size: 10px; color: var(--remedy-ink-soft, #6f82a8); }
+
+/* Empty / filter-empty state */
+.emptyState {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.emptyOrb {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(76,131,255,.06);
+  border: 1.5px solid rgba(76,131,255,.12);
+  box-shadow: 0 0 40px rgba(76,131,255,.1);
+}
+
+.emptyTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--remedy-ink-soft, #6f82a8);
+}
+
+.emptySub {
+  font-size: 11px;
+  color: var(--remedy-faint, #9aa9c5);
+  max-width: 240px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge, .rootOrb, .nodeCore { transition: none; }
+}

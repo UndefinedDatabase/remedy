@@ -136,10 +136,47 @@ def apply_structured_patch(
     *,
     data_dir: str | None = None,
     job_id: UUID | None = None,
+    job: Any,
+    intent_id: str | None = None,
 ) -> ApplyResult:
-    """Apply a structured patch to the repo. Snapshot before each change."""
+    """Apply a structured patch to the repo. Snapshot before each change.
+
+    Requires:
+      - job parameter (mandatory — no bypass)
+      - job must have repo_generated_write permission
+      - intent_id must reference an approved patch intent
+
+    No mutation occurs without permission + approval.
+    """
     apply_id = uuid4().hex[:12]
     result = ApplyResult(apply_id=apply_id, success=True, files_modified=0, files_created=0)
+
+    # Permission boundary: always enforced
+    from packages.orchestration.permissions import Capability, is_allowed
+    if not is_allowed(job, Capability.repo_generated_write):
+        result.success = False
+        result.errors.append("permission denied: repo_generated_write not granted")
+        return result
+
+    # Approval gate: intent_id required, must be approved
+    if intent_id is None:
+        result.success = False
+        result.errors.append("approval required: intent_id not provided")
+        return result
+
+    from packages.orchestration.approval_queue import get_patch_intent, APPROVAL_APPROVED
+    intent = get_patch_intent(job, intent_id)
+    if intent is None:
+        result.success = False
+        result.errors.append(f"approval required: intent {intent_id!r} not found")
+        return result
+    if intent["state"] != APPROVAL_APPROVED:
+        result.success = False
+        result.errors.append(
+            f"approval required: intent {intent_id!r} state is "
+            f"{intent['state']!r}, not 'approved'"
+        )
+        return result
 
     # Validate first
     issues = validate_structured_patch(patch)
@@ -154,12 +191,19 @@ def apply_structured_patch(
         result.errors.append(f"repo path not found: {repo_root}")
         return result
 
+    # Transactional apply: snapshot all first, apply all, rollback on any failure
     if patch.intent_kind == "file_ops":
         for op in patch.file_ops:
             _apply_file_op(op, repo_root, result)
+            if not result.success:
+                _rollback(result.snapshots, repo_root, result)
+                break
     elif patch.intent_kind == "unified_diff":
         for diff in patch.unified_diffs:
             _apply_unified_diff(diff, repo_root, result)
+            if not result.success:
+                _rollback(result.snapshots, repo_root, result)
+                break
     else:
         result.errors.append(f"non-applicable intent kind: {patch.intent_kind}")
         result.success = False
@@ -176,6 +220,29 @@ def apply_structured_patch(
         })
 
     return result
+
+
+def _rollback(snapshots: list[FileSnapshot], repo_root: Path, result: ApplyResult) -> None:
+    """Rollback all applied changes using snapshots (all-or-nothing).
+
+    Rollback errors are appended to result.errors so they are observable.
+    result.success remains False (the original failure is preserved).
+    """
+    rollback_failures: list[str] = []
+    for snap in reversed(snapshots):
+        full = repo_root / snap.path
+        try:
+            if snap.existed:
+                full.write_text(snap.content, encoding="utf-8")
+            elif full.exists():
+                full.unlink()
+        except OSError as exc:
+            rollback_failures.append(f"rollback failed for {snap.path}: {type(exc).__name__}")
+    if rollback_failures:
+        result.errors.append(
+            f"rollback incomplete ({len(rollback_failures)} file(s)): "
+            + "; ".join(rollback_failures)
+        )
 
 
 def _apply_file_op(op: FileOp, repo_root: Path, result: ApplyResult) -> None:
@@ -258,14 +325,17 @@ def _apply_unified_diff(diff: UnifiedDiff, repo_root: Path, result: ApplyResult)
 
 
 def _apply_hunks(original: str, diff_text: str) -> str | None:
-    """Apply unified diff hunks to original text. Returns None if fails."""
+    """Apply unified diff hunks to original text.
+
+    Validates context and removal lines against actual file content.
+    Returns None if any hunk fails to apply.
+    """
     import re
 
     lines = original.split("\n")
     result_lines = list(lines)
     offset = 0
 
-    # Parse hunks
     hunk_re = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
     diff_lines = diff_text.split("\n")
@@ -289,11 +359,23 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
             if line.startswith("@@") or line.startswith("diff ") or line.startswith("---") or line.startswith("+++"):
                 break
             if line.startswith("-"):
+                # Validate removal line matches actual content
+                actual_idx = pos
+                if actual_idx < 0 or actual_idx >= len(lines):
+                    return None  # out of range
+                if lines[actual_idx] != line[1:]:
+                    return None  # removal line mismatch
                 removals.append(pos + offset)
                 pos += 1
             elif line.startswith("+"):
                 additions.append((pos + offset, line[1:]))
             elif line.startswith(" "):
+                # Validate context line matches actual content
+                actual_idx = pos
+                if actual_idx < 0 or actual_idx >= len(lines):
+                    return None  # context out of range
+                if lines[actual_idx] != line[1:]:
+                    return None  # context line mismatch
                 pos += 1
             else:
                 pos += 1
@@ -314,15 +396,11 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
 
 
 def revert_apply(snapshots: list[FileSnapshot], repo_path: Path) -> bool:
-    """Revert files to their snapshot state."""
-    success = True
-    for snap in snapshots:
-        full = repo_path / snap.path
-        try:
-            if snap.existed:
-                full.write_text(snap.content, encoding="utf-8")
-            elif full.exists():
-                full.unlink()
-        except OSError:
-            success = False
-    return success
+    """Revert files to their snapshot state.
+
+    Returns True if all reverts succeeded, False if any failed.
+    Uses the same rollback logic as transactional apply.
+    """
+    dummy = ApplyResult(apply_id="revert", success=True, files_modified=0, files_created=0)
+    _rollback(snapshots, repo_path, dummy)
+    return len(dummy.errors) == 0

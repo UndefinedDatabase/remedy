@@ -2,91 +2,301 @@
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: clamp(16px, 1.4vw, 22px);
-  padding: clamp(16px, 2vh, 24px) clamp(24px, 2.5vw, 36px) clamp(12px, 1.5vh, 18px);
-  background: rgba(255,255,255,.5);
-  border: 1px solid rgba(78,111,172,.12);
-  box-shadow: 0 12px 30px rgba(55,86,138,.09);
-  backdrop-filter: blur(20px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  min-height: 148px;
+  box-sizing: border-box;
+  border-radius: 28px;
+  padding: 26px 36px 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.66), rgba(255,255,255,.44)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.78), rgba(233,243,255,.34) 76%);
+  border: 1px solid rgba(61, 91, 148, .14);
+  box-shadow:
+    0 24px 58px rgba(56, 86, 135, .12),
+    inset 0 1px 0 rgba(255,255,255,.78);
+  backdrop-filter: blur(24px);
+  overflow: visible;
 }
 
-.mainLine {
-  position: absolute;
-  left: 48px;
-  right: 48px;
-  top: 50%;
-  height: 2px;
-  background: rgba(39,77,143,.2);
-}
-
-.phaseRow {
-  position: relative;
-  z-index: 1;
+.phaseHeader {
+  height: 46px;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  align-items: start;
-}
-
-.phase {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  color: var(--remedy-blue-900);
-  font-size: clamp(10px, 1vw, 13px);
-  font-weight: 700;
-}
-
-.phaseIcon {
-  width: clamp(32px, 3.5vw, 40px);
-  height: clamp(32px, 3.5vw, 40px);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(255,255,255,.8);
-  color: var(--remedy-blue-700);
-  border: 1px solid rgba(39,77,143,.2);
-}
-
-.current .phaseIcon {
-  width: clamp(38px, 4.2vw, 48px);
-  height: clamp(38px, 4.2vw, 48px);
-  color: white;
-  background: linear-gradient(135deg, #3478ff, #6da0ff);
-  box-shadow: 0 0 0 6px rgba(76,131,255,.1), 0 10px 22px rgba(76,131,255,.2);
-}
-
-.done .phaseIcon { color: var(--remedy-green-500); }
-.pending { opacity: .65; }
-
-.microLine {
-  margin: clamp(10px, 1.4vh, 16px) 60px 0;
-  display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
-.microLine span {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: rgba(76,131,255,.28);
+.phaseItem {
+  display: inline-flex;
+  justify-self: center;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  color: rgba(28, 54, 107, .72);
 }
 
-.microLine .microStrong {
-  width: 6px;
-  height: 6px;
-  background: rgba(76,131,255,.6);
+.phaseIconShell {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: #294f9d;
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(61, 91, 148, .20);
+  box-shadow:
+    0 7px 16px rgba(52, 85, 144, .09),
+    inset 0 1px 0 rgba(255,255,255,.84);
+}
+
+.phaseIcon {
+  width: 19px;
+  height: 19px;
+}
+
+.phaseLabel {
+  font-family: var(--remedy-font-ui, "Avenir Next", "Inter", sans-serif);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 760;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+
+.isCurrent {
+  color: var(--remedy-ink, #10285f);
+}
+
+.isCurrent .phaseIconShell {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 48% 43%, rgba(255,255,255,.42), transparent 32%),
+    linear-gradient(145deg, #3576ff, #6ea0ff);
+  border-color: rgba(78, 129, 255, .46);
+  box-shadow:
+    0 0 0 8px rgba(78,129,255,.12),
+    0 15px 32px rgba(78,129,255,.27);
+}
+
+.isCurrent .phaseIcon {
+  width: 23px;
+  height: 23px;
+}
+
+.isCurrent .phaseLabel {
+  font-weight: 900;
+}
+
+.isDone .phaseIconShell {
+  color: #294f9d;
+  background: rgba(255,255,255,.86);
+  border-color: rgba(61, 91, 148, .20);
+}
+
+.isPending {
+  color: rgba(78, 96, 135, .42);
+}
+
+.isPending .phaseIconShell {
+  color: rgba(78, 96, 135, .34);
+  background: rgba(255,255,255,.52);
+  border-color: rgba(61,91,148,.08);
+  box-shadow: none;
+}
+
+.isBlocked .phaseIconShell {
+  color: #c8893d;
+  border-color: rgba(200,137,61,.28);
+}
+
+.rail {
+  position: relative;
+  height: 24px;
+  margin: 9px 7px 0;
+}
+
+.railBase,
+.railFill {
+  position: absolute;
+  left: 0;
+  top: 11px;
+  height: 2px;
+  border-radius: 999px;
+}
+
+.railBase {
+  right: 0;
+  background: rgba(61, 88, 138, .24);
+}
+
+.railFill {
+  width: 0;
+  background: linear-gradient(90deg, #3f7dff 0%, #7ca6ff 100%);
+  box-shadow: 0 0 18px rgba(63,125,255,.30);
+  transition: width .28s ease;
+}
+
+.phaseMarker {
+  position: absolute;
+  top: 11px;
+  width: 13px;
+  height: 13px;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(255,255,255,.97);
+  border: 2px solid rgba(61, 88, 138, .24);
+  box-shadow: 0 2px 8px rgba(55, 86, 138, .10);
+  z-index: 2;
+}
+
+.phaseMarker.isDone {
+  border-color: #4c83ff;
+  background: #4c83ff;
+  color: #fff;
+}
+
+.phaseMarker.isCurrent {
+  width: 16px;
+  height: 16px;
+  border-color: #4c83ff;
+  background: #4c83ff;
+  color: #fff;
+  box-shadow:
+    0 0 0 5px rgba(76,131,255,.16),
+    0 0 18px rgba(76,131,255,.42);
+}
+
+.phaseMarker.isPending {
+  border-color: rgba(61, 88, 138, .18);
+  background: rgba(255,255,255,.82);
+}
+
+.phaseMarker.isBlocked {
+  border-color: rgba(200,137,61,.60);
+  background: rgba(255,255,255,.92);
+}
+
+.markerCheck {
+  width: 9px;
+  height: 9px;
+}
+
+.eventRail {
+  position: relative;
+  height: 25px;
+  margin: 8px 56px 0;
+}
+
+.eventRailLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 12px;
+  border-top: 1px dashed rgba(61, 88, 138, .22);
+}
+
+.eventItem {
+  position: absolute;
+  top: 12px;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+}
+
+.eventDot {
+  width: 9px;
+  height: 9px;
+  display: block;
+  border-radius: 999px;
+  box-sizing: border-box;
+  background: rgba(255,255,255,.92);
+  border: 1.5px solid rgba(76,131,255,.62);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.70);
+}
+
+.eventLlm {
+  background: #4c83ff;
+  border-color: rgba(48, 103, 225, .70);
+}
+
+.eventTest {
+  background: #fff;
+  border-color: rgba(76,198,129,.82);
+}
+
+.eventReview {
+  background: #fff;
+  border-color: rgba(162,140,255,.82);
+}
+
+.eventCurrent {
+  width: 11px;
+  height: 11px;
+  box-shadow:
+    0 0 0 3px rgba(76,131,255,.14),
+    0 0 12px rgba(76,131,255,.26);
+}
+
+.eventPending {
+  opacity: .42;
+  background: rgba(255,255,255,.58);
+  border-style: dashed;
+}
+
+.eventBlocked {
+  border-color: rgba(200,137,61,.72);
 }
 
 .legend {
-  margin-top: clamp(8px, 1vh, 14px);
+  height: 24px;
+  margin-top: 4px;
   display: flex;
   justify-content: center;
-  gap: clamp(28px, 4vw, 54px);
-  color: var(--remedy-muted);
-  font-size: 11px;
-  font-weight: 700;
+  align-items: center;
+  gap: 30px;
+  font-family: var(--remedy-font-ui, "Avenir Next", "Inter", sans-serif);
+  color: rgba(45, 66, 111, .74);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legendItem .eventDot {
+  width: 10px;
+  height: 10px;
+}
+
+@media (max-height: 780px) {
+  .timeline {
+    min-height: 136px;
+    padding: 22px 34px 16px;
+  }
+
+  .phaseHeader {
+    height: 42px;
+  }
+
+  .phaseIconShell {
+    width: 32px;
+    height: 32px;
+  }
+
+  .isCurrent .phaseIconShell {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .railFill {
+    transition: none;
+  }
 }
