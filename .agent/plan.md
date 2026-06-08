@@ -1,19 +1,24 @@
-# Plan — Steps 785-794: Final Smoke Decoupling
+# Plan — Steps 795-809: Test Suite Triage
 
 ## Goal
-Remove runtime helper tests from backend smoke. Three separate smoke surfaces.
+Make test suite understandable and fast. Clear categories. Fast/integration/provider commands.
 
 ## Current Step
-794 — Final handoff (complete)
+805-809 — Proof and handoff
 
 ## Steps
-- [x] 785: Handoff — helper tests toxic when chained with runtime smoke
-- [x] 786: Removed helper tests from backend smoke (2 phases: standalone + orch)
-- [x] 787: Created process isolation smoke (helpers + smoke contracts + runner)
-- [x] 788: Confirmed wrapper smoke separate (propose + worker only)
-- [x] 789: Updated contract tests (11 tests, +3 new)
-- [x] 790: All three smokes pass and exit clean
-- [x] 791: Direct sanity proof — all individual commands pass
-- [x] 792: Completion table — runtime 100%
-- [x] 793: No full pytest (targeted sufficient)
-- [x] 794: Final handoff
+- [x] 795: Handoff — backend basis closed, focus on test triage
+- [x] 796: 9 pytest markers in pyproject.toml
+- [x] 797: Auto-marking via tests/conftest.py (no per-file decorators)
+- [x] 798: remedy_test_fast.sh — excludes subprocess/ollama/ui/smoke (~2820 tests, ~34s)
+- [x] 799: remedy_test_integration.sh — smokes + full minus ollama/slow
+- [x] 800: remedy_test_real_providers.sh — opt-in via REMEDY_RUN_REAL_OLLAMA=1
+- [x] 801: test_test_categories.py — 10 enforcement tests
+- [x] 802: test_autorun.py checked — no subprocess, no split needed
+- [x] 803: tests/README.md rewritten with commands and marker table
+- [ ] 804: Context update
+- [ ] 805: Run fast command
+- [ ] 806: Run integration command
+- [ ] 807: Optional full pytest
+- [ ] 808: Next block recommendation
+- [ ] 809: Final handoff

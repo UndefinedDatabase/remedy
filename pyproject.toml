@@ -20,3 +20,14 @@ packages = ["packages", "apps"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+markers = [
+    "unit: Pure logic tests, no I/O, no subprocess, no network",
+    "integration: Tests with temp files, storage, orchestration state",
+    "subprocess: Tests that spawn child processes (CLI, runtime)",
+    "smoke: Smoke contract tests for scripts and infrastructure",
+    "slow: Tests that take >5s individually",
+    "real_ollama: Requires running Ollama server (opt-in via env)",
+    "ui_contract: Python-verifiable frontend/UI contracts",
+    "safety: Resource safety and process isolation guards",
+    "architecture: Structural guards (no step files, imports, namespaces)",
+]

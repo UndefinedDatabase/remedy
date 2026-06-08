@@ -11,18 +11,59 @@ tests/
                      project_brain
   ui_server/         HTTP API: dashboard contract, live state, brain view model,
                      auth/redaction
-  cli/               CLI surface: command catalog, job commands
+  cli/               CLI surface: command catalog, job commands, runtime wrappers
   ui_contracts/      Python-verifiable frontend contracts: graph architecture,
                      UX quality gates, responsive layout
   storage/           Persistence, hygiene, artifacts
   regression/        Named bug regressions (not step ranges)
 ```
 
-## Existing Domain Tests (root level)
+## Test Categories (pytest markers)
 
-Files like `test_storage.py`, `test_command_discovery.py`, `test_patch_apply.py`
-etc. in `tests/` predate the domain directory structure. They remain at root
-level and are not duplicated.
+| Marker | Meaning | Count |
+|--------|---------|-------|
+| `unit` | Pure logic, no I/O, no subprocess | (default) |
+| `integration` | Temp files, storage, orchestration state | ~800 |
+| `subprocess` | Spawns child processes (CLI, runtime) | ~1100 |
+| `smoke` | Smoke contract tests for scripts | ~20 |
+| `real_ollama` | Requires running Ollama server | ~80 |
+| `ui_contract` | Python-verifiable UI contracts | ~400 |
+| `safety` | Resource safety and process isolation | ~20 |
+| `architecture` | Structural guards (imports, namespaces) | ~20 |
+| `slow` | Tests >5s individually | (none yet) |
+
+Markers are auto-assigned via `tests/conftest.py` based on file patterns.
+
+## Recommended Commands
+
+### Daily development (fast, ~30-60s)
+```bash
+scripts/remedy_test_fast.sh
+```
+Excludes subprocess, real_ollama, ui_contract, smoke, slow.
+
+### Before merge (integration, ~2-3 min)
+```bash
+scripts/remedy_test_integration.sh
+```
+Runs smoke surfaces + full pytest minus real_ollama/slow.
+
+### Smoke (targeted, ~15s each)
+```bash
+scripts/remedy_backend_basis_smoke.sh
+scripts/remedy_runtime_wrapper_smoke.sh
+scripts/remedy_process_isolation_smoke.sh
+```
+
+### Real providers (opt-in)
+```bash
+REMEDY_RUN_REAL_OLLAMA=1 scripts/remedy_test_real_providers.sh
+```
+
+### Full suite (once per handoff)
+```bash
+scripts/remedy_pytest.sh tests/ -q --cache-clear
+```
 
 ## Naming Convention
 
@@ -30,25 +71,10 @@ level and are not duplicated.
 - Test classes named by invariant, not step number
 - No `test_steps_*.py` or `test_step_*.py` files (guard test enforces this)
 
-## Running Tests
-
-All pytest execution by agents must use the guarded wrapper:
-
-```bash
-# Full suite (once only, near final handoff)
-scripts/remedy_pytest.sh tests/ -q --cache-clear
-
-# Single domain (preferred during development)
-scripts/remedy_pytest.sh tests/orchestration/ -q --cache-clear
-
-# Single file
-scripts/remedy_pytest.sh tests/orchestration/test_source_apply.py -q
-```
-
 ## Resource Safety
 
+- All pytest execution uses `scripts/remedy_pytest.sh` (flock + timeout).
 - Never run pytest in background.
 - Never run multiple pytest commands in parallel.
 - Never run full `pytest tests/` more than once per work block.
-- The wrapper uses `flock -n` to prevent parallel runs and `timeout` to prevent runaways.
 - See `docs/reviewer-safety.md` for full policy.

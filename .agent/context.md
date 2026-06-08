@@ -11,8 +11,10 @@ Steps 775-784: PASS — Python supervisors replace Bash chaining. But backend
 smoke still mixes standalone runtime smoke with runtime helper self-tests in
 same supervisor chain. Helper tests are toxic when chained with runtime smoke.
 
-## Fix
-Remove helper tests from backend smoke. Three separate smoke surfaces:
+## Current Work
+Test suite triage: markers, fast/integration/provider commands, README.
+
+## Smoke Surfaces (closed)
 1. Backend basis: standalone runtime + orchestration/storage
 2. Runtime wrapper: propose + worker wrappers
 3. Process isolation: helper tests + smoke contract tests + runner tests
@@ -37,3 +39,7 @@ Remove helper tests from backend smoke. Three separate smoke surfaces:
 | Rollback/snapshot | **0%** |
 | Overnight execution | **0%** |
 | UI/dashboard | paused |
+
+## Resource Safety
+All pytest execution uses `scripts/remedy_pytest.sh` (flock + timeout).
+No background pytest. No parallel pytest. See `docs/reviewer-safety.md`.

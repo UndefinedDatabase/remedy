@@ -1,70 +1,45 @@
-# Parallel Review — Steps 775-784 (Final)
+# Parallel Review — Steps 785-794 (Final)
 
 Reviewer: parallel watcher (independent)
-Scope: Steps 775-784 (Python smoke supervisors — no Bash shell chaining)
-Commit reviewed: d4f9c26
-Previous commit: 9ecba41 (Steps 765-774 — PASS)
+Scope: Steps 785-794 (Final smoke decoupling — three separate smoke surfaces)
+Commit reviewed: eac78e3
+Previous commit: d4f9c26 (Steps 775-784 — PASS)
 Timestamp: 2026-06-08
 
 ---
 
 ## Status: PASS
 
-Python smoke supervisors replace all Bash chaining. Full process isolation per phase. All tests clean.
+Three clean smoke surfaces. Backend smoke no longer mixes helper tests with runtime. All exit cleanly.
 
 ---
 
 ## Check Results
 
-### 1. Smoke Runner — `scripts/smoke_runner.py`
+### 1. Backend Smoke Composition — `scripts/remedy_backend_basis_smoke.py`
 
 | Requirement | Status | Detail |
 |---|---|---|
-| Uses `Popen` | OK | Line 69 |
-| `start_new_session=True` | OK | Line 75 |
-| Temp files for stdout/stderr | OK | Lines 61-66: `NamedTemporaryFile` |
-| `stdin=subprocess.DEVNULL` | OK | Line 73 |
-| `close_fds=True` | OK | Line 74 |
-| `killpg` on timeout | OK | Lines 85, 89 |
-| `_ensure_pg_dead` after exit | OK | Line 95 |
-| No `shell=True` | OK | Confirmed absent |
-| Bounded output (512KB) | OK | Line 16 |
-| Timeout returns 124 | OK | Line 126 |
-| Temp file cleanup in finally | OK | Lines 101-111 |
+| Runs standalone runtime smoke | OK | Phase 1: `remedy_runtime_cli_smoke.py --mode all` |
+| Runs orchestration/storage tests | OK | Phase 2: 4 test files |
+| Does NOT run `test_runtime_helpers.py` | OK | Removed (was Phase 2 in prior) |
+| Does NOT run runtime wrappers | OK | Confirmed absent |
+| Comment explains exclusion | OK | Lines 7-8 |
+| Uses `smoke_runner.run_phase` | OK | Lines 37, 46 |
 
-### 2. Backend Smoke Supervisor — `scripts/remedy_backend_basis_smoke.py`
+### 2. Process Isolation Smoke — `scripts/remedy_process_isolation_smoke.py` (NEW)
 
 | Requirement | Status | Detail |
 |---|---|---|
-| Exists | OK | 77 lines |
-| Uses `smoke_runner.run_phase` | OK | Lines 36, 45, 55 |
-| No `shell=True` | OK | Confirmed absent |
-| Phase 1: standalone runtime smoke | OK | Line 38 |
-| Phase 2: runtime helper tests | OK | Line 47 |
-| Phase 3: orchestration + storage | OK | Lines 57-63 |
-| Each phase isolated (Popen) | OK | Via smoke_runner |
+| Exists | OK | 68 lines |
+| Phase 1: runtime helper tests | OK | Line 35 |
+| Phase 2: smoke script contracts | OK | Line 45 |
+| Phase 3: pytest runner contracts | OK | Line 55 |
+| Uses `smoke_runner.run_phase` | OK | All three phases |
+| Shell wrapper exists | OK | `remedy_process_isolation_smoke.sh` |
+| Shell wrapper uses `exec` | OK | Line 8 |
 
-### 3. Shell Wrapper — `scripts/remedy_backend_basis_smoke.sh`
-
-| Requirement | Status | Detail |
-|---|---|---|
-| Delegates to Python supervisor | OK | Line 11: `exec python3 ... remedy_backend_basis_smoke.py` |
-| No direct phase chaining | OK | Single `exec` |
-| No `python3 -m pytest` | OK | Confirmed absent |
-
-### 4. Runtime Wrapper Smoke — `scripts/remedy_runtime_wrapper_smoke.py`
-
-| Requirement | Status | Detail |
-|---|---|---|
-| Exists | OK | 52 lines |
-| Uses `smoke_runner.run_phase` | OK | Lines 28, 37 |
-| No `shell=True` | OK | Confirmed absent |
-| Phase 1: propose wrapper | OK | Line 30 |
-| Phase 2: worker wrapper | OK | Line 39 |
-
-Shell wrapper: `exec python3 ... remedy_runtime_wrapper_smoke.py` — single `exec`, no chaining.
-
-### 5. Contract Tests — `tests/cli/test_smoke_scripts.py`
+### 3. Contract Tests — `tests/cli/test_smoke_scripts.py`
 
 | Test | Status |
 |---|---|
@@ -75,16 +50,18 @@ Shell wrapper: `exec python3 ... remedy_runtime_wrapper_smoke.py` — single `ex
 | `test_smoke_runner_no_shell_true` | PASS |
 | `test_smoke_runner_uses_start_new_session` | PASS |
 | `test_smoke_runner_uses_temp_files` | PASS |
-| `test_no_or_true_in_smoke_scripts` | PASS |
-All 8 passed in 0.01s.
+| `test_process_isolation_smoke_sh_delegates_to_python` | PASS (NEW) |
+| `test_process_isolation_smoke_py_uses_smoke_runner` | PASS (NEW) |
+| `test_backend_smoke_no_helper_tests` | PASS (NEW) |
+| `test_no_or_true_in_smoke_scripts` | PASS (updated) |
+All 11 passed in 0.01s.
 
-### 6. Test Results
+### 4. Smoke Results
 
 **Backend basis smoke (REMEDY_PYTEST_TIMEOUT_SEC=60):**
 ```
 1. Standalone runtime smoke: propose PASS, worker PASS
-2. Runtime helpers: 6 passed in 0.36s
-3. Orchestration + storage: 160 passed in 0.93s
+2. Orchestration + storage: 160 passed in 0.93s
 === Backend Basis Smoke PASSED ===
 Exit: clean
 ```
@@ -97,28 +74,34 @@ Exit: clean
 Exit: clean
 ```
 
-**Direct targeted proofs (REMEDY_PYTEST_TIMEOUT_SEC=60):**
+**Process isolation smoke (REMEDY_PYTEST_TIMEOUT_SEC=60):**
 ```
-test_runtime_helpers.py: 6 passed in 0.36s — clean exit
-test_smoke_scripts.py: 8 passed in 0.01s — clean exit
-orchestration + storage: 160 passed in 0.97s — clean exit
+1. Runtime helpers: 6 passed in 0.36s
+2. Smoke contracts: 11 passed in 0.01s
+3. Pytest runner contracts: 8 passed in 2.38s
+=== Process Isolation Smoke PASSED ===
+Exit: clean
+```
+
+### 5. Direct Sanity Proofs
+
+```
+python3 scripts/remedy_runtime_cli_smoke.py --mode all  → propose PASS, worker PASS
+test_runtime_helpers.py: 6 passed in 0.36s
+orchestration + storage: 160 passed in 0.91s
 ```
 
 ---
 
 ## Changes in This Commit
 
-1. **`scripts/smoke_runner.py`** (NEW): Shared isolated phase runner. Popen + start_new_session + temp files + killpg. Used by both smoke supervisors.
+1. **`scripts/remedy_backend_basis_smoke.py`**: Removed `test_runtime_helpers.py` phase. Now two phases: standalone runtime + orchestration/storage.
 
-2. **`scripts/remedy_backend_basis_smoke.py`** (NEW): Python supervisor. Three phases via `run_phase`. No Bash chaining.
+2. **`scripts/remedy_process_isolation_smoke.py`** (NEW): Python supervisor for helper/contract tests. Three phases: runtime helpers, smoke contracts, pytest runner contracts.
 
-3. **`scripts/remedy_runtime_wrapper_smoke.py`** (NEW): Python supervisor. Two phases via `run_phase`.
+3. **`scripts/remedy_process_isolation_smoke.sh`** (NEW): Thin shell wrapper with `exec`.
 
-4. **`scripts/remedy_backend_basis_smoke.sh`**: Now thin shell wrapper — `exec` to Python supervisor.
-
-5. **`scripts/remedy_runtime_wrapper_smoke.sh`**: Now thin shell wrapper — `exec` to Python supervisor.
-
-6. **`tests/cli/test_smoke_scripts.py`** (NEW): 8 contract tests for smoke delegation and isolation patterns.
+4. **`tests/cli/test_smoke_scripts.py`**: Three new contract tests for process isolation smoke.
 
 ---
 
@@ -127,14 +110,13 @@ orchestration + storage: 160 passed in 0.97s — clean exit
 | Criterion | Status |
 |---|---|
 | **Verdict** | **PASS** |
-| Backend smoke supervisor | COMPLETE — Python supervisor with `smoke_runner.run_phase` |
-| Shell wrapper status | CORRECT — `exec` delegates, no chaining |
-| Runtime wrapper smoke status | CORRECT — Python supervisor, isolated phases |
-| Backend smoke result | PASS (166 tests + standalone, clean exit) |
+| Backend smoke composition | CORRECT — standalone runtime + orchestration only, no helper/wrapper tests |
+| Backend smoke result | PASS (160 pytest + standalone, clean exit) |
 | Runtime wrapper smoke result | PASS (2 wrappers, clean exit) |
-| Direct targeted proof | PASS (174 tests, clean exit) |
-| Tests run | 166 (backend) + 2 (wrapper) + 6 (helpers) + 160 (orch/storage) + 8 (smoke contracts) = 176 unique |
-| Full pytest run | No (targeted smoke — sufficient for scope) |
+| Process isolation smoke result | PASS (25 tests across 3 phases, clean exit) |
+| Direct sanity proof | PASS (all commands clean) |
+| Tests run | 160 (backend) + 2 (wrapper) + 25 (isolation) + 6 + 160 (direct) = 187 unique |
+| Full pytest run | No (three targeted smoke surfaces — sufficient for scope) |
 | Backend parts now 100% | All backend basis components |
 | Backend parts below 100% | None identified |
 | Merge readiness | YES |
@@ -154,13 +136,12 @@ orchestration + storage: 160 passed in 0.97s — clean exit
 | Steps 755-764 | 18b136c | PASS | No pytest wrappers in backend smoke + hard-kill timeout |
 | Steps 765-774 | 9ecba41 | PASS | Pipe-safe pytest runner — full process isolation |
 | Steps 775-784 | d4f9c26 | PASS | Python smoke supervisors — no Bash shell chaining |
+| Steps 785-794 | eac78e3 | PASS | Final smoke decoupling — three separate surfaces |
 
-Runtime stability: **final**. Nine consecutive clean blocks.
-
----
-
-# Parallel Review — Steps 785-794 (In Progress)
-
-Scope: Final smoke decoupling — remove helper tests from backend smoke.
-Issue: Helper self-tests toxic when chained with runtime smoke in same supervisor.
-Fix: Three separate smoke surfaces.
+Runtime stability: **final**. Ten consecutive clean blocks. Full architecture:
+- Backend smoke = standalone runtime + orchestration/storage (2 phases)
+- Wrapper smoke = propose + worker wrappers (2 phases)
+- Process isolation smoke = helpers + smoke contracts + runner contracts (3 phases)
+- All phases via `smoke_runner.run_phase` (Popen/session/temp/killpg)
+- Shell wrappers = thin `exec` delegation only
+- No Bash chaining, no pipe inheritance, no helper-runtime mixing
