@@ -1280,6 +1280,8 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="run",
         description="Start a controlled autorun for a goal.",
         action_class="apply_write",
+        supports_json=True,
+        related=("job.show", "context.inspect", "change.proof"),
         args=(
             ArgDef("goal", "The goal to accomplish", required=True),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
