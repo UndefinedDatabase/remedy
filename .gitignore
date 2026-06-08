@@ -212,8 +212,10 @@ packages.zip
 
 .brain/
 
-# Claude Code local state
-.claude/
+# Claude Code project guidance is shareable; local state stays ignored
+.claude/settings.local.json
+.claude/**/node_modules/
+.claude/**/*.local.*
 
 # Node.js (apps/ui frontend)
 node_modules/
