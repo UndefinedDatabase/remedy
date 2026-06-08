@@ -1,24 +1,19 @@
 # Context
 
 ## Active Branch
-feature/steps-905-924-remedy-do-v1
+feature/steps-940-959-test-failure-repair-loop
 
 ## Scope
-Steps 925-939: remedy do v1 Truth Closure
+Steps 940-959: Test Failure Artifact v1 + Repair Loop v0
 
 ## Prior Step Status
-Steps 865-879: PASS — Context Inspector v1.
-Steps 880-894: PASS — Context Inspector Truth Closure.
 Steps 895-904: PASS — Review Protocol Repair. PR #47 merged.
-Steps 905-924: PASS WITH RISKS — remedy do v1 Cohesive Flow. PR #48 open.
+Steps 905-924: PASS WITH RISKS — remedy do v1 Cohesive Flow.
+Steps 925-939: PASS — remedy do v1 Truth Closure. PR #48 open.
 
-## Carried Risks
-1. next_safe_action validates group only, not full command_id → Step 926-927
-2. DoRunContract duplicates RunContract → Step 930
-3. Context exception skipped, flow continues to build → Step 928
-4. do.run catalog: may_mutate_repo=True, may_execute_commands=True overclaim → Step 929
-5. max_loops stored but not enforced → Step 931
-6. Autonomy cap not transparent in output → Step 932
+## Current Work
+Build TestFailureArtifact + fix task creation + repair loop v0.
+First "Remedy keeps working" moment — structured failure evidence, not raw output.
 
 ## Builder/Reviewer Handoff Rules
 - Before final handoff, builder MUST read `.agent/live_review.md`.

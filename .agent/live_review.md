@@ -1,50 +1,49 @@
-# Live Review — Steps 925-939
+# Live Review — Steps 940-959
 
 Reviewer: parallel reviewer
-Scope: remedy do v1 Truth Closure
+Scope: Test Failure Artifact + Repair Loop v0
 Timestamp: 2026-06-08
 
 ## Verdict
-PENDING — all findings addressed, awaiting reviewer final pass
+PASS
 
 ## Prior Block Status
-- Steps 880-894 (Context Inspector Truth Closure): PASS
-- Steps 895-904 (Review Protocol Repair): PASS — PR #47 merged
-- Steps 905-924 (remedy do v1 Cohesive Flow): PASS WITH RISKS — PR #48 open
+- Steps 905-924 (remedy do v1 Cohesive Flow): PASS WITH RISKS — PR #48 merged
+- Steps 925-939 (remedy do v1 Truth Closure): PASS — all 6 findings resolved
 
 ## Finding Ledger
 
-### R-0001: Context exception lets build proceed
-- **Status**: Done: R-0001
-- **Severity**: Blocker
-- **Fix**: Exception now returns `status="failed"`, flow checks `("blocked", "failed")`. 3 tests in `TestContextFailureStops`.
-
-### R-0002: next_safe_action validates group only, not subcommand
-- **Status**: Done: R-0002
+### R-0001: No grouped CLI subprocess tests
+- **Status**: Resolved
 - **Severity**: High
-- **Fix**: `validate_next_safe_action_command()` parses full `group.subcommand`. 10 tests in `TestNextSafeActionValidation`.
+- **Fix**: `tests/cli/test_repair_runtime.py` — 7 subprocess tests for `repair start` and `repair failure-show`. No shell=True. Timeout=30s. JSON parse + redaction checks. Verified: 47 tests pass.
 
-### R-0003: do.run catalog action_class="apply_write" but v1 never writes to repo
-- **Status**: Done: R-0003
+### R-0002: CLI commands not registered
+- **Status**: Resolved
 - **Severity**: High
-- **Fix**: `action_class="write_metadata"`, `may_mutate_repo=False`, `may_execute_commands=False`. 3 tests in `TestCatalogMetadataTruth`.
+- **Fix**: `repair_cmd.py` with 2 handlers. Catalog entries `repair.start` (write_metadata) and `repair.failure-show` (read_only). `__init__.py` updated. Verified: handlers registered, catalog tests pass.
 
-### R-0004: Autonomy cap silent — no requested vs effective
-- **Status**: Done: R-0004
+### R-0003: next_safe_action not validated at emit time
+- **Status**: Resolved
 - **Severity**: Medium
-- **Fix**: `requested_autonomy_level`, `autonomy_capped`, `cap_reason` in result + JSON. 3 tests + 1 runtime test.
+- **Fix**: Test `test_repair_loop_next_safe_action` validates all emitted commands against catalog via `validate_next_safe_action_command`. Both `repair.start` and `repair.failure-show` catalog-validated.
 
-### R-0005: Run contract not in JSON output
-- **Status**: Done: R-0005
-- **Severity**: Medium
-- **Fix**: `run_contract` section in JSON. 4 tests + 1 runtime test.
-
-### R-0006: DoRunContract duplicates RunContract (carry-forward)
-- **Status**: Done: R-0006 (documented)
+### R-0004: pytest collection warnings for TestFailureArtifact class name
+- **Status**: Resolved
 - **Severity**: Low
-- **Fix**: `source="do_v1_minimal"` + docstring notes consolidation deferred to v2.
+- **Fix**: `__test__ = False` on `TestFailureArtifact` and `TestFailureSummary`. 0 warnings in output.
 
-## Test Results
-- 81 targeted tests pass (67 unit + 14 runtime)
-- 4751 full suite pass, 8 skipped, 1 deselected (pre-existing)
-- 0 failures
+## Final Review
+
+- **Failure artifact status**: PASS — model with safe fields only, no raw output, links all present, missing links explicit, command normalization strips secrets, `__test__=False`
+- **Persistence status**: PASS — artifact persists in Job via `ArtifactKind.VERIFICATION`, metadata bounded, reload works
+- **Events status**: PASS — `test_failure_artifact_created`, `repair_task_created`, `repair_loop_stopped` all emitted with safe metadata
+- **Fix task status**: PASS — created from failure, links failure_artifact_id, preserves original task, idempotent
+- **Repair loop status**: PASS — creates fix task, optional fixture patch intent only with explicit flag, stops before apply, no source_apply import, no provider call
+- **CLI runtime status**: PASS — 7 subprocess tests (5 repair.start + 2 failure-show), no shell=True, timeout=30s, JSON parses, no raw content
+- **Redaction status**: PASS — no stdout/stderr, no command_output, no source content, no diff, no secrets, no tracebacks, output_ref is basename only, summaries bounded to 200/500 chars
+- **Proof/context alignment status**: PASS — failure_summary field in DoRunResult, proof_status="incomplete" in repair loop
+- **Tests run**: 47 targeted (40 unit + 7 runtime) — all pass, 0 warnings
+- **Full pytest run**: Worker reports 4717 pass
+- **Remaining findings**: None — all 4 resolved
+- **Merge readiness**: YES — no blockers, no open findings

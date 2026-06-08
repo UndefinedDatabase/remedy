@@ -1,25 +1,29 @@
-# Plan — Steps 925-939: remedy do v1 Truth Closure
+# Plan — Steps 940-959: Test Failure Artifact v1 + Repair Loop v0
 
 ## Goal
-Make `remedy do v1` truthful enough to be the foundation for Test Failure Artifact + Repair Loop v0.
+When a test fails, Remedy creates a safe structured failure artifact and fix task.
+First "Remedy keeps working" moment. No raw output in UI/CLI/events.
 
 ## Current Step
-939 — Final handoff
+959 — Final handoff
 
 ## Steps
-- [x] 925: Handoff setup
-- [x] 926: Full next_safe_action catalog validation helper
-- [x] 927: Replace group-only test with full validation
-- [x] 928: Context failure stops run (not skipped)
-- [x] 929: Command catalog metadata truth (do.run flags)
-- [x] 930: Consolidate contract truth with RunContract
-- [x] 931: Enforce max_loops honestly
-- [x] 932: Autonomy level truth (requested vs effective)
-- [x] 933: Approval gate regression tests
-- [x] 934: Runtime CLI contract tests
-- [x] 935: Docs update
-- [x] 936-937: Review + targeted tests (81 targeted, 4751 full suite)
-- [x] 938-939: Final handoff
+- [x] 940: Handoff setup
+- [x] 941: TestFailureArtifact model
+- [x] 942: Build failure artifact from test result
+- [x] 943: Persist failure artifact in Job
+- [x] 944: Failure events
+- [x] 945: Fix task creation
+- [x] 946: Repair loop v0 orchestrator
+- [x] 947: CLI: repair start
+- [x] 948: CLI: failure show
+- [x] 949: Integrate with remedy do result (failure_summary field)
+- [x] 950-951: Redaction + linking tests (40 tests)
+- [x] 952: Repair loop tests (9 tests)
+- [x] 953: Runtime CLI tests (6 tests)
+- [x] 954-955: Proof chain + context inspector awareness (structural)
+- [x] 956: Docs (docs/repair-loop-v0.md)
+- [x] 957-959: Targeted tests + review + final handoff
 
 ## Pre-existing Issue
 `test_project_brain.py::TestFileProvenanceChain::test_full_chain_order` fails on main.
