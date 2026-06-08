@@ -1,24 +1,25 @@
-# Plan — Steps 895-904: Parallel Review Protocol Repair
+# Plan — Steps 925-939: remedy do v1 Truth Closure
 
 ## Goal
-Restore live-review finding ledger workflow. Add grouped CLI runtime tests. Document risks honestly.
+Make `remedy do v1` truthful enough to be the foundation for Test Failure Artifact + Repair Loop v0.
 
 ## Current Step
-Complete — awaiting reviewer verdict
+939 — Final handoff
 
 ## Steps
-- [x] 895: Define live review protocol (`.agent/review_protocol.md`)
-- [x] 896: Repair live review section (finding ledger format)
-- [x] 897: Builder/reviewer checklist in `.agent/context.md`
-- [x] 898: Grouped CLI runtime test (5 subprocess tests)
-- [x] 899: Runtime missing task test (2 tests)
-- [x] 900: Runtime event target test (3 tests)
-- [x] 901: Fast lane risk entry (documented in context.md)
-- [x] 902: Targeted tests — 108 passed + 4670 fast lane
-- [x] 903: Final review section (verdict PENDING, not claiming PASS)
-- [x] 904: Final handoff
+- [x] 925: Handoff setup
+- [x] 926: Full next_safe_action catalog validation helper
+- [x] 927: Replace group-only test with full validation
+- [x] 928: Context failure stops run (not skipped)
+- [x] 929: Command catalog metadata truth (do.run flags)
+- [x] 930: Consolidate contract truth with RunContract
+- [x] 931: Enforce max_loops honestly
+- [x] 932: Autonomy level truth (requested vs effective)
+- [x] 933: Approval gate regression tests
+- [x] 934: Runtime CLI contract tests
+- [x] 935: Docs update
+- [x] 936-937: Review + targeted tests (81 targeted, 4751 full suite)
+- [x] 938-939: Final handoff
 
-## Risks
-- Pre-existing failure `test_full_chain_order` deselected (documented as known risk)
-- Budget trimming deferred; wording fix is honest alternative
-- R-0003 open — reviewer must verify before merge-ready
+## Pre-existing Issue
+`test_project_brain.py::TestFileProvenanceChain::test_full_chain_order` fails on main.

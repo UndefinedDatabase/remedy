@@ -190,7 +190,7 @@ class TestRemedyDo:
         from apps.cli.command_catalog import get_command
         cmd = get_command("do.run")
         assert cmd.group_id == "do"
-        assert cmd.may_mutate_repo is True
+        assert cmd.may_mutate_repo is False  # v1: fixture only, no repo mutation
 
 
 # ---------------------------------------------------------------------------

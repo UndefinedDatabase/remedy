@@ -1279,7 +1279,9 @@ CATALOG: tuple[CommandEntry, ...] = (
         group_id="do",
         subcommand="run",
         description="Start a controlled autorun for a goal.",
-        action_class="apply_write",
+        action_class="write_metadata",
+        supports_json=True,
+        related=("job.show", "context.inspect", "change.proof"),
         args=(
             ArgDef("goal", "The goal to accomplish", required=True),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
@@ -1293,8 +1295,8 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--builder-provider", "Builder provider: none, fixture, ollama (default: none)", required=False, is_option=True, default="none"),
             ArgDef("--no-ui", "Suppress UI server even if --ui is set", required=False, is_option=True, default="false"),
         ),
-        may_mutate_repo=True,
-        may_execute_commands=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
     ),
 
     # ── review ───────────────────────────────────────────────────────────
