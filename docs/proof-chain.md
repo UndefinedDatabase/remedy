@@ -44,11 +44,12 @@ Tests are linked to changes by priority:
 
 1. **intent_linked** — test event has `intent_id` matching the change
 2. **task_linked** — test event has `task_id` matching the change's task
-3. **sole_change** — job has exactly one applied change, generic test ran
+3. **sole_change** — job has exactly one applied change, and a generic test is demonstrably at or after the apply timestamp
 4. **explicit_not_required** — event with `test_not_required: true` for this intent
 5. **none** — no linkage possible
 
 A generic test in a multi-change job does **not** verify any individual change.
+A generic sole-change test with missing, invalid, or pre-apply timestamps does **not** verify the change.
 
 ## Missing Links
 
@@ -58,8 +59,9 @@ The proof chain reports what's missing:
 - `not_applied` — approved but not applied
 - `no_apply_event` — marked applied but no apply event found
 - `no_apply_proof` — applied but no proof hash recorded
-- `no_linked_test` — applied with proof but no test evidence
-- `test_not_linked_to_change` — test ran but not linked to this specific change
+- `no_linked_test` — applied with proof but no linked test evidence
+- `test_order_unknown` — generic sole-change test exists, but timestamp ordering is missing or invalid
+- `no_test_after_apply` — generic sole-change test exists, but it happened before apply
 
 ## File Provenance
 

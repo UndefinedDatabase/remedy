@@ -69,7 +69,7 @@ def _make_test_job(*, approved=True, with_apply=False, with_test=False):
     job.artifacts = [art]
     events = []
     if with_apply:
-        events.append({"event": "patch_intent_applied", "metadata": {"intent_id": intent_id, "outcome": "applied", "bytes_written": 100, "line_count": 10}})
+        events.append({"event": "patch_intent_applied", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"intent_id": intent_id, "outcome": "applied", "bytes_written": 100, "line_count": 10}})
         events.append({"event": "patch_apply_proof_recorded", "metadata": {"intent_id": intent_id, "before_sha256": "abc", "after_sha256": "def", "bytes_delta": 50}})
     if with_test:
         events.append({"event": "test_run_completed", "metadata": {"intent_id": intent_id, "status": "passed", "exit_code": 0}})
@@ -122,6 +122,75 @@ def test_handler_json_output(capsys):
     assert "overall_status" in data
     assert "changes" in data
     assert "next_safe_action_obj" in data
+
+
+def test_handler_json_incomplete_when_test_order_unknown(capsys):
+    from apps.cli.commands.change import _cmd_change_proof
+    job, _iid, events = _make_test_job(with_apply=True)
+    events.append({"event": "test_run_completed", "metadata": {"status": "passed", "exit_code": 0}})
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.change.load_job", return_value=job), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=events):
+        _cmd_change_proof(job_id, json_output=True)
+
+    data = json.loads(capsys.readouterr().out)
+    assert data["overall_status"] == "incomplete"
+    assert "test_order_unknown" in data["missing_links"]
+
+
+def test_handler_text_incomplete_when_test_order_unknown(capsys):
+    from apps.cli.commands.change import _cmd_change_proof
+    job, _iid, events = _make_test_job(with_apply=True)
+    events.append({"event": "test_run_completed", "metadata": {"status": "passed", "exit_code": 0}})
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.change.load_job", return_value=job), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=events):
+        _cmd_change_proof(job_id)
+
+    out = capsys.readouterr().out.lower()
+    assert "overall: incomplete" in out
+    assert "test_order_unknown" in out
+
+
+def test_change_show_does_not_display_unrelated_latest_global_test(capsys):
+    from apps.cli.commands.change import _cmd_change_show
+    job, iid, events = _make_test_job(with_apply=True)
+    events.append({"event": "test_run_completed", "metadata": {"status": "passed", "exit_code": 0}})
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.change.load_job", return_value=job), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=events):
+        _cmd_change_show(job_id, iid)
+
+    out = capsys.readouterr().out
+    assert "Test: not yet" in out
+    assert "Test: ran" not in out
+
+
+def test_file_why_proof_status_agrees_with_change_proof_path(capsys):
+    from apps.cli.commands.change import _cmd_change_proof
+    from apps.cli.commands.file import _cmd_file_why
+    job, _iid, events = _make_test_job(with_apply=True, with_test=True)
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.change.load_job", return_value=job), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=events):
+        _cmd_change_proof(job_id, path="src/auth.py", json_output=True)
+    proof_data = json.loads(capsys.readouterr().out)
+
+    with patch("apps.cli.commands.file.load_job", return_value=job), \
+         patch("apps.cli.commands.file.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=events):
+        _cmd_file_why(job_id, "src/auth.py", json_output=True)
+    why_data = json.loads(capsys.readouterr().out)
+
+    assert why_data["proof_status"] == proof_data["changes"][0]["proof_status"]
 
 
 def test_handler_json_structured_next_action(capsys):

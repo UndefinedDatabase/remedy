@@ -171,6 +171,7 @@ def _derive_missing_links(
     test_link: str,
     has_proof: bool,
     has_apply_event: bool,
+    test_missing_reason: str = "",
 ) -> list[str]:
     """List what's missing from the proof chain."""
     missing: list[str] = []
@@ -182,16 +183,56 @@ def _derive_missing_links(
         missing.append("no_apply_event")
     if apply_state == "applied" and not has_proof:
         missing.append("no_apply_proof")
-    if apply_state == "applied" and test_state == "not_tested":
-        missing.append("no_linked_test")
-    if apply_state == "applied" and test_state in ("passed", "failed") and test_link == TEST_LINK_NONE:
-        missing.append("test_not_linked_to_change")
+    if apply_state == "applied" and test_link == TEST_LINK_NONE:
+        if test_missing_reason in ("test_order_unknown", "no_test_after_apply"):
+            missing.append(test_missing_reason)
+        elif test_state in ("not_tested", "passed", "failed"):
+            missing.append("no_linked_test")
     return missing
 
 
 # ---------------------------------------------------------------------------
 # Test linking
 # ---------------------------------------------------------------------------
+
+
+_TIMESTAMP_KEYS = ("timestamp", "created_at", "completed_at", "applied_at")
+
+
+def _parse_iso_timestamp(value: str) -> datetime | None:
+    """Parse a timestamp only for ordering; never expose raw values."""
+    try:
+        normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
+        parsed = datetime.fromisoformat(normalized)
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _event_timestamp(event_or_meta: dict[str, Any]) -> str | None:
+    """Return a supported timestamp string from an event or metadata dict, or None."""
+    for key in _TIMESTAMP_KEYS:
+        value = event_or_meta.get(key)
+        if isinstance(value, str) and _parse_iso_timestamp(value) is not None:
+            return value
+    meta = event_or_meta.get("metadata")
+    if isinstance(meta, dict):
+        for key in _TIMESTAMP_KEYS:
+            value = meta.get(key)
+            if isinstance(value, str) and _parse_iso_timestamp(value) is not None:
+                return value
+    return None
+
+
+def _is_after_or_same(test_ts: str | None, apply_ts: str | None) -> bool | None:
+    """Return whether test_ts >= apply_ts, or None when ordering is unknown."""
+    if not test_ts or not apply_ts:
+        return None
+    if _parse_iso_timestamp(test_ts) is None or _parse_iso_timestamp(apply_ts) is None:
+        return None
+    return test_ts >= apply_ts
 
 
 def _link_test_to_change(
@@ -231,14 +272,31 @@ def _link_test_to_change(
                 status = "passed" if meta.get("status") == "passed" else "failed"
                 return status, TEST_LINK_TASK, meta
 
-    # 3. Sole change — only if exactly one applied change in job
+    # 3. Sole change — only if exactly one applied change and test is after apply
+    saw_generic = False
+    saw_unknown_order = False
+    saw_before_apply = False
     if total_applied_changes == 1 and intent_id in apply_events:
+        apply_event = apply_events[intent_id]
+        apply_ts = _event_timestamp(apply_event)
         for te in test_events:
             meta = te.get("metadata", {})
-            # Generic test (no intent_id/task_id) after apply
+            # Generic test (no intent_id/task_id) must be demonstrably after apply
             if not meta.get("intent_id") and not meta.get("task_id"):
-                status = "passed" if meta.get("status") == "passed" else "failed"
-                return status, TEST_LINK_SOLE_CHANGE, meta
+                saw_generic = True
+                ordering = _is_after_or_same(_event_timestamp(te), apply_ts)
+                if ordering is True:
+                    status = "passed" if meta.get("status") == "passed" else "failed"
+                    return status, TEST_LINK_SOLE_CHANGE, meta
+                if ordering is None:
+                    saw_unknown_order = True
+                else:
+                    saw_before_apply = True
+
+    if saw_generic and saw_unknown_order:
+        return "not_tested", TEST_LINK_NONE, {"missing_link": "test_order_unknown"}
+    if saw_generic and saw_before_apply:
+        return "not_tested", TEST_LINK_NONE, {"missing_link": "no_test_after_apply"}
 
     return "not_tested", TEST_LINK_NONE, {}
 
@@ -247,12 +305,15 @@ def _link_test_to_change(
 # Next safe action (structured)
 # ---------------------------------------------------------------------------
 
-# Valid catalog commands referenced by next actions
-_CATALOG_COMMANDS = frozenset({
-    "patch.approve", "patch.reject", "patch.apply",
-    "change.proof", "change.list", "change.show",
-    "file.why", "test.run",
-})
+def _catalog_command_ids() -> frozenset[str]:
+    """Return command ids from the actual CLI command catalog."""
+    from apps.cli.command_catalog import CATALOG
+
+    return frozenset(cmd.command_id for cmd in CATALOG)
+
+
+# Backward-compatible constant for tests and callers; derived from actual catalog.
+_CATALOG_COMMANDS = _catalog_command_ids()
 
 
 def _make_next_action(
@@ -272,7 +333,7 @@ def _make_next_action(
             catalog_id = parts[0]
         else:
             catalog_id = ""
-        if catalog_id not in _CATALOG_COMMANDS:
+        if catalog_id not in _catalog_command_ids():
             command = ""
             available = False
     return NextSafeAction(label=label, command=command, reason=reason, available=available)
@@ -441,7 +502,7 @@ def build_proof_chain(
         elif ename == "test_run_completed":
             all_test_events.append(ev)
         elif ename == "patch_intent_applied" and iid:
-            apply_event_map[iid] = meta
+            apply_event_map[iid] = ev
 
     # Build intent → task/artifact mapping
     intents = list_patch_intents(job)
@@ -474,7 +535,7 @@ def build_proof_chain(
         has_apply_event = c.intent_id in apply_event_map
 
         # Link test to this specific change
-        test_state, test_link, _test_meta = _link_test_to_change(
+        test_state, test_link, test_meta = _link_test_to_change(
             intent_id=c.intent_id,
             task_id=task_id,
             test_events=all_test_events,
@@ -504,6 +565,7 @@ def build_proof_chain(
             test_link=test_link,
             has_proof=has_proof,
             has_apply_event=has_apply_event,
+            test_missing_reason=str(test_meta.get("missing_link", "")),
         )
 
         # Safe summary

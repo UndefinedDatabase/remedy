@@ -44,6 +44,8 @@ from packages.orchestration.proof_chain import (
     ProofChange,
     _classify_proof_status,
     _derive_missing_links,
+    _event_timestamp,
+    _is_after_or_same,
     _link_test_to_change,
     build_proof_chain,
     derive_next_safe_action,
@@ -118,9 +120,9 @@ def _make_full_chain_job(*, test_linked=True):
 
     events = [
         {"event": "task_execution_completed", "metadata": {"task_id": str(task_id), "exec_status": "completed"}},
-        {"event": "patch_intent_applied", "metadata": {"intent_id": intent_id, "outcome": "applied", "bytes_written": 100, "line_count": 10}},
+        {"event": "patch_intent_applied", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"intent_id": intent_id, "outcome": "applied", "bytes_written": 100, "line_count": 10}},
         {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": intent_id, "before_sha256": "abc123", "after_sha256": "def456", "bytes_delta": 50}},
-        {"event": "test_run_completed", "metadata": test_meta},
+        {"event": "test_run_completed", "timestamp": "2026-01-01T00:01:00Z", "metadata": test_meta},
     ]
     return job, events, intent_id
 
@@ -301,7 +303,7 @@ class TestMissingLinks:
             test_state="passed", test_link=TEST_LINK_NONE,
             has_proof=True, has_apply_event=True,
         )
-        assert "test_not_linked_to_change" in missing
+        assert "no_linked_test" in missing
 
     def test_complete_chain_no_missing(self):
         missing = _derive_missing_links(
@@ -339,15 +341,43 @@ class TestTestLinking:
         assert state == "failed"
         assert link == TEST_LINK_TASK
 
-    def test_sole_change(self):
-        events = [{"event": "test_run_completed", "metadata": {"status": "passed"}}]
+    def test_sole_change_after_apply(self):
+        events = [{"event": "test_run_completed", "timestamp": "2026-01-01T00:01:00Z", "metadata": {"status": "passed"}}]
         state, link, _ = _link_test_to_change(
             intent_id="abc-0", task_id="t1",
-            test_events=events, apply_events={"abc-0": {}},
+            test_events=events, apply_events={"abc-0": {"timestamp": "2026-01-01T00:00:00Z"}},
             total_applied_changes=1,
         )
         assert state == "passed"
         assert link == TEST_LINK_SOLE_CHANGE
+
+    def test_sole_change_before_apply_not_linked(self):
+        events = [{"event": "test_run_completed", "timestamp": "2025-12-31T23:59:00Z", "metadata": {"status": "passed"}}]
+        state, link, meta = _link_test_to_change(
+            intent_id="abc-0", task_id="t1",
+            test_events=events, apply_events={"abc-0": {"timestamp": "2026-01-01T00:00:00Z"}},
+            total_applied_changes=1,
+        )
+        assert state == "not_tested"
+        assert link == TEST_LINK_NONE
+        assert meta["missing_link"] == "no_test_after_apply"
+
+    def test_sole_change_missing_timestamps_not_linked(self):
+        events = [{"event": "test_run_completed", "metadata": {"status": "passed"}}]
+        state, link, meta = _link_test_to_change(
+            intent_id="abc-0", task_id="t1",
+            test_events=events, apply_events={"abc-0": {}},
+            total_applied_changes=1,
+        )
+        assert state == "not_tested"
+        assert link == TEST_LINK_NONE
+        assert meta["missing_link"] == "test_order_unknown"
+
+    def test_timestamp_helpers_unknown_for_missing_or_invalid(self):
+        assert _event_timestamp({"timestamp": "not-a-time"}) is None
+        assert _is_after_or_same("", "2026-01-01T00:00:00Z") is None
+        assert _is_after_or_same("2026-01-01T00:00:00Z", "bad") is None
+        assert _is_after_or_same("2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z") is True
 
     def test_no_link_multiple_changes(self):
         """Generic test with multiple applied changes → no link"""
@@ -733,6 +763,67 @@ class TestIncompleteChains:
         assert c.proof_status == PROOF_VERIFIED
         assert c.test_state == "not_required"
         assert c.test_link == TEST_LINK_NOT_REQUIRED
+
+    def test_generic_before_apply_sole_change_does_not_verify(self):
+        job, iid = self._make_intent_only_job("approved")
+        events = [
+            {"event": "patch_intent_applied", "timestamp": "2026-01-01T00:01:00Z", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
+            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
+            {"event": "test_run_completed", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"status": "passed", "exit_code": 0}},
+        ]
+        c = build_proof_chain(job, events).changes[0]
+        assert c.proof_status == PROOF_INCOMPLETE
+        assert c.test_link == TEST_LINK_NONE
+        assert "no_test_after_apply" in c.missing_links
+
+    def test_generic_after_apply_sole_change_verifies(self):
+        job, iid = self._make_intent_only_job("approved")
+        events = [
+            {"event": "patch_intent_applied", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
+            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
+            {"event": "test_run_completed", "timestamp": "2026-01-01T00:01:00Z", "metadata": {"status": "passed", "exit_code": 0}},
+        ]
+        c = build_proof_chain(job, events).changes[0]
+        assert c.proof_status == PROOF_VERIFIED
+        assert c.test_link == TEST_LINK_SOLE_CHANGE
+
+    def test_generic_missing_timestamp_sole_change_does_not_verify(self):
+        job, iid = self._make_intent_only_job("approved")
+        events = [
+            {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
+            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
+            {"event": "test_run_completed", "metadata": {"status": "passed", "exit_code": 0}},
+        ]
+        c = build_proof_chain(job, events).changes[0]
+        assert c.proof_status == PROOF_INCOMPLETE
+        assert c.test_link == TEST_LINK_NONE
+        assert "test_order_unknown" in c.missing_links
+
+    def test_intent_linked_missing_timestamp_can_verify(self):
+        job, iid = self._make_intent_only_job("approved")
+        events = [
+            {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
+            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
+            {"event": "test_run_completed", "metadata": {"intent_id": iid, "status": "passed", "exit_code": 0}},
+        ]
+        c = build_proof_chain(job, events).changes[0]
+        assert c.proof_status == PROOF_VERIFIED
+        assert c.test_link == TEST_LINK_INTENT
+
+    def test_task_linked_missing_timestamp_can_verify(self):
+        task = Task(description="Task")
+        art = _make_artifact_with_intents(task.id, [_explanation_record("src/file.py")])
+        iid = make_intent_id(art.id, 0)
+        art.metadata["patch_intent_approvals"] = {iid: {"state": "approved", "decided_at": "", "decided_by": ""}}
+        job = _make_job(tasks=[task], artifacts=[art])
+        events = [
+            {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
+            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
+            {"event": "test_run_completed", "metadata": {"task_id": str(task.id), "status": "passed", "exit_code": 0}},
+        ]
+        c = build_proof_chain(job, events).changes[0]
+        assert c.proof_status == PROOF_VERIFIED
+        assert c.test_link == TEST_LINK_TASK
 
     def test_task_execution_blocked_linked(self):
         """task_execution_blocked for linked task → FAILED"""
