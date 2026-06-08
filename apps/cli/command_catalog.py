@@ -893,6 +893,21 @@ CATALOG: tuple[CommandEntry, ...] = (
 
     # ── context ──────────────────────────────────────────────────────────
     CommandEntry(
+        command_id="context.inspect",
+        group_id="context",
+        subcommand="inspect",
+        description="Inspect what a worker will see — paths, budget, policy gates.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("task_id", "Task UUID (optional, narrows inspection)", required=False, default=None),
+            ArgDef("--budget", "Token budget (default: 4000)", required=False, is_option=True, default="4000"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("context.pack", "context.explain"),
+    ),
+    CommandEntry(
         command_id="context.pack",
         group_id="context",
         subcommand="pack",

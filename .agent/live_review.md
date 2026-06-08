@@ -1,52 +1,50 @@
-# Live Review — Steps 825-849
+# Live Review — Steps 865-879
 
 Reviewer: parallel reviewer
-Scope: Proof Chain Truth Closure + Timing Closure
-Timestamp: 2026-06-08T14:30:00+02:00
+Scope: Context Inspector v1
+Timestamp: 2026-06-08
 
 ## Verdict
 PASS
 
-## False Verified Fix Status
-PASS. `_classify_proof_status()` requires `has_apply_event=True`, `test_link != TEST_LINK_NONE`, and `test_state in ("passed", "not_required")` for verified. `not_tested` with proof returns INCOMPLETE. Unlinked passed test returns INCOMPLETE. 14 truth rule tests enforce this.
+## Prior Block Status
+- Steps 825-849 (Proof Chain Truth Closure): PASS
+- Steps 850-864 (File Provenance + Tooling): PASS WITH RISKS
 
-## Linked Test Evidence Status
-PASS. `_link_test_to_change()` links by priority: intent_id, task_id, sole_change (after-apply only), explicit not_required. Generic test in multi-change job → no link. Generic sole-change test with missing/pre-apply timestamps → no link. 12 test linking tests enforce this.
+## Handoff Consolidation
+DONE. `.agent/context.md` and `.agent/plan.md` updated for Steps 865-879. Dashboard contract test updated.
 
-## After-Apply Timing Status
-PASS. `_is_after_or_same()` uses parsed ISO timestamps with timezone. Missing/invalid timestamps return None. Sole-change linking requires `ordering is True`. Tests cover before-apply, after-apply, missing-timestamp, and timezone offset cases.
+## Context Model Status
+PASS. `ContextInspection` dataclass with included/excluded paths, budget, policy gates, tooling, readiness. All fields documented.
 
-## Change Set Test Association Status
-PASS. `change_set.py` uses `_link_test_to_change()` — no global latest test. `test_info = {"ran": False, "linked": False}` for unlinked. 4 change_set tests verify: multi-change no global, intent-linked only to match, sole-change after-apply, sole-change before-apply rejected.
+## Path Policy Status
+PASS. Protected paths (.env, .data, .git, secrets), unsupported extensions (binary, images, keys), symlinks, large files, path traversal all excluded. 22 path classification tests.
 
-## Next Safe Action Status
-PASS. `NextSafeAction` dataclass with label/command/reason/available. `_make_next_action()` validates command against `_catalog_command_ids()` from actual `apps.cli.command_catalog.CATALOG`. Invalid commands get `command=""`, `available=False`. 3 catalog truth tests verify.
+## Token/Budget Status
+PASS. Heuristic `ceil(bytes/4)` from file stat only. Budget statuses: within/near/over/unknown. 5 budget tests.
 
-## File Provenance Error Handling Status
-PASS. Catches `(KeyError, ValueError, TypeError)` — not broad `Exception`. Sets `proof_status="unknown"`, `proof_error="unavailable: <ExcType>"`. Tests confirm `proof_error==""` on success, `proof_status` matches change proof.
+## Policy Gates Status
+PASS. 7 enforced gates covering protected paths, token budget, content redaction, no shell=True, no mutation, approval requirement, MCP inactive. 2 policy gate tests.
+
+## CLI Status
+PASS. `context.inspect` in command catalog with job_id, task_id, --budget, --json args. Handler validates IDs, dispatches to inspect_context. 10 CLI tests.
 
 ## Redaction Status
-PASS. 8 tests verify no raw diff, content, stdout/stderr, traceback, approval_reason, command_output in JSON. Summary bounded <10k chars. Many-change summary also bounded.
+PASS. No raw source content, file bodies, MCP config content, stdout/stderr, diff keys, traceback keys, or absolute paths in JSON output. 8 redaction tests.
 
-## CLI No-Overclaim Status
-PASS. `test_handler_text_does_not_overclaim_verified` — applied with proof but no test shows "incomplete", not "verified". `test_handler_text_incomplete_when_test_order_unknown` — generic test with missing timestamps shows "incomplete" and "test_order_unknown". `test_change_show_does_not_display_unrelated_latest_global_test` — `change show` says "Test: not yet" for unlinked global test.
+## Tooling Awareness Status
+PASS. Detects .pi, .claude, .mcp.json, .vscode/mcp.json presence. Counts active MCP servers. Never dumps config content. 5 tooling tests.
 
 ## Tests Run
-- `tests/orchestration/test_proof_chain.py tests/orchestration/test_change_set.py tests/cli/test_change_proof_cli.py tests/cli/test_command_catalog.py tests/test_command_catalog.py` — **144 passed** in 0.41s
-- Fast lane (`-m "not subprocess and not real_ollama and not ui_contract and not smoke and not slow"`) — **2941 passed** in 56.68s
+- Targeted: **70 passed** in 0.17s
+- Fast lane: **3011 passed** in 32.96s
 - Full pytest: not run (fast lane sufficient)
 
-## Proof Chain Readiness
-100% for v2 truth guarantees. All identified blockers resolved:
-- False verified when not tested: FIXED
-- Global latest test for all changes: FIXED
-- Broad exception swallow: FIXED
-- Vague next action: FIXED
-- Pre-apply test verification: FIXED
-- Missing timestamp verification: FIXED
+## Context Inspector Readiness
+100% for v1. All features implemented and tested.
 
 ## Next Recommended Block
-Context Inspector v1
+`remedy do` v1 cohesive flow
 
 ## Merge Readiness
-Merge-ready. All truth blockers resolved, all tests passing.
+Merge-ready. All tests passing, no regressions.

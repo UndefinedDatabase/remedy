@@ -1,37 +1,28 @@
-# Plan — Steps 825-849: Proof Chain Truth Closure
+# Plan — Steps 865-879: Context Inspector v1
 
 ## Goal
-Make Proof Chain trustworthy: no false verified status, linked test evidence only, structured next actions, safe error handling.
+Build `remedy context inspect <job_id> [task_id] --json` — safe preflight showing what worker will see.
 
 ## Current Step
 Complete — all steps verified
 
 ## Steps
-- [x] 825: Handoff repair — carry review blockers from 810-824
-- [x] 826: Add explicit test evidence model (test_state, test_link, TEST_LINK_* constants)
-- [x] 827: Fix proof status truth rules (verified requires full chain + linked test)
-- [x] 828: Link tests to changes correctly (intent/task/sole_change/not_required/none)
-- [x] 829: Apply proof timing/event link (has_apply_event check, apply_event_map)
-- [x] 830: Next safe action object (NextSafeAction dataclass, catalog validation)
-- [x] 831: File provenance no broad swallow (catches specific exceptions)
-- [x] 832: Redaction hardening tests (8 tests)
-- [x] 833: Truth rule tests (14 tests in TestProofStatusTruthRules)
-- [x] 834: CLI contract tests (17 tests in test_change_proof_cli.py)
-- [x] 835: File why alignment tests (7 tests in TestFileProvenanceAlignment)
-- [x] 836: Command catalog truth test (3 tests in TestCommandCatalogTruth)
-- [x] 837: Docs update (docs/proof-chain.md)
-- [x] 838: Targeted tests — 144 passed
-- [x] 839: Final handoff
-- [x] 840: Handoff repair for timing closure
-- [x] 841: Event time helpers (_event_timestamp, _is_after_or_same)
-- [x] 842: Require after-apply for sole-change generic tests
-- [x] 843: Missing links for timing (test_order_unknown, no_test_after_apply)
-- [x] 844: Fix change_set test association (uses _link_test_to_change)
-- [x] 845: Truth tests for timing (before/after/missing timestamp)
-- [x] 846: CLI/text output does not overclaim
-- [x] 847: Command catalog truth cleanup (uses _catalog_command_ids() from actual catalog)
-- [x] 848: Targeted tests — 144 targeted + 2941 fast lane passed
-- [x] 849: Final handoff
+- [x] 865: Merge handoff consolidation
+- [x] 866: Define context inspection model (dataclasses)
+- [x] 867: Path policy rules (deny/protect/unsupported)
+- [x] 868: Inclusion reason rules (manifests, targets, tests, config)
+- [x] 869: Token/size estimation (bytes stat, ceil(bytes/4))
+- [x] 870: Policy gates (7 enforced gates)
+- [x] 871: Build inspection from job/task (inspect_context)
+- [x] 872: CLI context inspect command + catalog entry
+- [x] 873: Redaction tests (8 tests)
+- [x] 874: Inclusion tests (13 tests)
+- [x] 875: CLI tests (10 tests)
+- [x] 876: Tooling awareness (5 tests)
+- [x] 877: Docs (docs/context-inspector.md)
+- [x] 878: Targeted tests — 70 targeted + 3011 fast lane passed
+- [x] 879: Final handoff
 
 ## Risks
-None remaining for Proof Chain truth. All blockers resolved.
+- Token estimation is heuristic (ceil(bytes/4)), documented as such.
+- No deep file walk beyond 3 levels / 500 files.
