@@ -1,56 +1,61 @@
-# Parallel Review — Steps 755-764 (Final)
+# Parallel Review — Steps 765-774 (Final)
 
 Reviewer: parallel watcher (independent)
-Scope: Steps 755-764 (Backend smoke final isolation — no pytest wrappers in smoke)
-Commit reviewed: 18b136c
-Previous commit: e55c10d (Steps 745-754 — PASS)
-Timestamp: 2026-06-07
+Scope: Steps 765-774 (Pipe-safe pytest runner — no inherited stdout/stderr pipes)
+Commit reviewed: 9ecba41
+Previous commit: 18b136c (Steps 755-764 — PASS)
+Timestamp: 2026-06-08
 
 ---
 
 ## Status: PASS
 
-All requirements met. Backend smoke clean. Wrapper smoke clean. Hard-kill timeout added.
+Pytest runner fully process-isolated. All smoke tests exit cleanly. No hangs.
 
 ---
 
 ## Check Results
 
-### 1. Backend Smoke Structure — `scripts/remedy_backend_basis_smoke.sh`
+### 1. Pytest Runner — `scripts/remedy_pytest_runner.py`
 
 | Requirement | Status | Detail |
 |---|---|---|
-| Runs standalone runtime smoke | OK | Line 20: `python3 scripts/remedy_runtime_cli_smoke.py --mode all` |
-| Does NOT run `test_propose_cli_runtime.py` | OK | Not present |
-| Does NOT run `test_worker_cli_runtime.py` | OK | Not present |
-| Runs runtime helper tests separately | OK | Line 24 |
-| Runs orchestration/storage tests | OK | Lines 28-33 |
-| No background | OK | Sequential |
-| No `|| true` | OK | Not present |
-| Comment explains wrapper exclusion | OK | Lines 6-11 |
+| File exists | OK | 149 lines |
+| Uses `Popen` | OK | Line 72 |
+| `start_new_session=True` | OK | Line 78 |
+| Temp files for stdout/stderr | OK | Lines 64-69: `NamedTemporaryFile` |
+| `stdin=subprocess.DEVNULL` | OK | Line 76 |
+| `close_fds=True` | OK | Line 77 |
+| `killpg` on timeout | OK | Lines 87, 91 |
+| `_ensure_pg_dead` on success path | OK | Line 98 |
+| No `shell=True` | OK | Confirmed absent |
+| Bounded output (512KB) | OK | Line 26: `MAX_OUTPUT_BYTES = 512 * 1024` |
+| Returns pytest exit code | OK | Line 136 |
+| Timeout returns 124 | OK | Line 134 |
+| Temp file cleanup in finally | OK | Lines 105-115 |
 
-### 2. Runtime Wrapper Smoke — `scripts/remedy_runtime_wrapper_smoke.sh`
-
-| Requirement | Status | Detail |
-|---|---|---|
-| File exists | OK | 24 lines |
-| Runs propose wrapper separately | OK | Line 18 |
-| Runs worker wrapper separately | OK | Line 21 |
-| Uses `scripts/remedy_pytest.sh` | OK | Both calls |
-| Default timeout 60s | OK | Line 13 |
-| No background | OK | Sequential |
-
-### 3. Pytest Wrapper Timeout — `scripts/remedy_pytest.sh`
+### 2. remedy_pytest.sh
 
 | Requirement | Status | Detail |
 |---|---|---|
-| Uses `--kill-after` if available | OK | Line 40 |
-| Probes GNU coreutils support | OK | Line 39: `timeout --kill-after=1s 0.1s true` |
-| Falls back to plain timeout | OK | Line 42 |
-| KILL_AFTER = 10s | OK | Line 23 |
-| Handles exit 124 (SIGTERM timeout) | OK | Line 47 |
-| Handles exit 137 (SIGKILL) | OK | Line 47 |
-| Timeout failure exits nonzero | OK | Line 51: `exit 124` |
+| Keeps flock lock | OK | Lines 28-35 |
+| Calls pytest runner | OK | Line 42: `"${PYTHON}" "${RUNNER}" -- "$@"` |
+| No direct `timeout ... python3 -m pytest` | OK | Removed — uses runner |
+| Exports timeout env | OK | Line 22 |
+
+### 3. Contract Tests — `tests/cli/test_pytest_runner.py`
+
+| Test | Status |
+|---|---|
+| `test_runner_exists` | PASS |
+| `test_runner_no_shell_true` | PASS |
+| `test_runner_uses_start_new_session` | PASS |
+| `test_runner_uses_temp_files` | PASS |
+| `test_runner_uses_devnull` | PASS |
+| `test_runner_passing_pytest` | PASS |
+| `test_runner_failing_pytest` | PASS |
+| `test_runner_timeout_returns_124` | PASS |
+All 8 passed in 2.36s.
 
 ### 4. Test Results
 
@@ -58,7 +63,7 @@ All requirements met. Backend smoke clean. Wrapper smoke clean. Hard-kill timeou
 ```
 1. Standalone runtime smoke: propose PASS, worker PASS
 2. Runtime helpers: 6 passed in 0.36s
-3. Orchestration + storage: 160 passed in 0.91s
+3. Orchestration + storage: 160 passed in 0.92s
 === Backend Basis Smoke PASSED ===
 Exit: clean
 ```
@@ -71,21 +76,22 @@ Exit: clean
 Exit: clean
 ```
 
-**Individual wrappers (REMEDY_PYTEST_TIMEOUT_SEC=60):**
+**Direct wrapper proofs (REMEDY_PYTEST_TIMEOUT_SEC=60):**
 ```
-test_propose_cli_runtime.py: 1 passed in 0.73s — clean exit
-test_worker_cli_runtime.py: 1 passed in 0.88s — clean exit
+test_runtime_helpers.py: 6 passed in 0.36s — clean exit
+orchestration + storage: 160 passed in 0.96s — clean exit
+test_pytest_runner.py: 8 passed in 2.36s — clean exit
 ```
 
 ---
 
 ## Changes in This Commit
 
-1. **`scripts/remedy_backend_basis_smoke.sh`**: Removed runtime pytest wrapper calls (propose + worker). Re-added standalone `python3 scripts/remedy_runtime_cli_smoke.py --mode all` as stage 1. Comment explains wrapper exclusion rationale.
+1. **`scripts/remedy_pytest_runner.py`** (NEW): Pipe-safe pytest runner. Popen + start_new_session + temp files + killpg. Bounded output (512KB). Returns pytest exit code. Timeout returns 124.
 
-2. **`scripts/remedy_runtime_wrapper_smoke.sh`** (NEW): Separate smoke script for pytest wrappers only. Runs propose and worker wrappers in separate `remedy_pytest.sh` invocations.
+2. **`scripts/remedy_pytest.sh`**: Now delegates to `remedy_pytest_runner.py`. Keeps flock lock. Removed direct `timeout ... python3 -m pytest` invocation.
 
-3. **`scripts/remedy_pytest.sh`**: Added `--kill-after=10s` with GNU coreutils probe + fallback. Added exit code 137 handling for SIGKILL.
+3. **`tests/cli/test_pytest_runner.py`** (NEW): 8 contract tests verifying runner isolation patterns and behavior.
 
 ---
 
@@ -94,13 +100,12 @@ test_worker_cli_runtime.py: 1 passed in 0.88s — clean exit
 | Criterion | Status |
 |---|---|
 | **Verdict** | **PASS** |
-| Backend smoke structure | CORRECT — standalone runtime + helpers + orchestration, no pytest wrappers |
-| Backend smoke result | PASS (166 pytest tests + standalone flows, clean exit) |
-| Runtime wrapper smoke result | PASS (2 wrappers, clean exit) |
-| Propose wrapper result | PASS (1 test, 0.73s) |
-| Worker wrapper result | PASS (1 test, 0.88s) |
-| Pytest timeout hard-kill | COMPLETE — `--kill-after=10s` with fallback |
-| Tests run | 166 (backend smoke) + 2 (wrapper smoke) |
+| Pytest runner status | COMPLETE — Popen + start_new_session + temp files + killpg + bounded output |
+| remedy_pytest.sh status | CORRECT — delegates to runner, keeps flock |
+| Backend smoke status | PASS (166 tests + standalone, clean exit) |
+| Runtime wrapper smoke status | PASS (2 wrappers, clean exit) |
+| Direct wrapper proof status | PASS (174 tests, clean exit) |
+| Tests run | 166 (backend) + 2 (wrapper) + 6 (helpers) + 160 (orch/storage) + 8 (runner) = 176 unique |
 | Full pytest run | No (targeted smoke — sufficient for scope) |
 | Backend parts now 100% | All backend basis components |
 | Backend parts below 100% | None identified |
@@ -119,16 +124,18 @@ test_worker_cli_runtime.py: 1 passed in 0.88s — clean exit
 | Steps 735-744 | 1858f02 | PASS | No pipes in wrappers + split smoke invocations |
 | Steps 745-754 | e55c10d | PASS | Remove smoke duplication |
 | Steps 755-764 | 18b136c | PASS | No pytest wrappers in backend smoke + hard-kill timeout |
+| Steps 765-774 | 9ecba41 | PASS | Pipe-safe pytest runner — full process isolation |
 
-Runtime stability: **final**. Seven consecutive clean blocks. Architecture:
+Runtime stability: **final**. Eight consecutive clean blocks. Full architecture:
 - Backend smoke = standalone runtime + helpers + orchestration (no pytest wrappers)
 - Wrapper smoke = separate script for pytest integration
-- Pytest wrapper = `--kill-after` prevents indefinite hangs
+- Pytest runner = Popen + start_new_session + temp files + killpg (no pipe inheritance)
+- remedy_pytest.sh = flock + delegates to runner
 
 ---
 
-# Parallel Review — Steps 765-774 (In Progress)
+# Parallel Review — Steps 775-784 (In Progress)
 
-Scope: Pytest wrapper process isolation — pipe-safe runner.
-Issue: `remedy_pytest.sh` inherits pipes from caller, child processes keep them open.
-Fix: `remedy_pytest_runner.py` with Popen + start_new_session + temp files + killpg.
+Scope: Backend smoke Python supervisor — replace Bash chaining.
+Issue: Bash smoke chains phases in one shell process, inherited fds leak between phases.
+Fix: Python supervisor with isolated Popen per phase.

@@ -1,35 +1,11 @@
 #!/usr/bin/env bash
-# Backend basis smoke test — targeted tests only, no full suite.
-# Uses scripts/remedy_pytest.sh for flock + timeout safety.
-# Fails if tests hang (REMEDY_PYTEST_TIMEOUT_SEC enforced).
+# Backend basis smoke — thin wrapper for Python supervisor.
 #
-# Runtime pytest wrappers are NOT included here. They reintroduce
-# pytest-process runtime contamination. Backend smoke uses the standalone
-# runtime smoke script directly instead (no pytest for runtime flows).
-#
-# Runtime wrappers are verified separately via:
-#   scripts/remedy_runtime_wrapper_smoke.sh
+# The Python supervisor (remedy_backend_basis_smoke.py) runs each phase
+# in full process isolation (Popen + start_new_session + temp files + killpg).
+# This shell script only sets the timeout and delegates.
 set -euo pipefail
 
 export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-120}"
 
-echo "=== Backend Basis Smoke (timeout=${REMEDY_PYTEST_TIMEOUT_SEC}s) ==="
-
-# 1. Standalone runtime CLI smoke (no pytest — full process isolation)
-echo "--- Runtime CLI smoke (standalone) ---"
-python3 scripts/remedy_runtime_cli_smoke.py --mode all
-
-# 2. Runtime helper unit tests
-echo "--- Runtime helper unit tests ---"
-scripts/remedy_pytest.sh tests/cli/test_runtime_helpers.py -q --cache-clear
-
-# 3. Orchestration and storage tests
-echo "--- Orchestration + storage ---"
-scripts/remedy_pytest.sh \
-  tests/orchestration/test_worker_execution.py \
-  tests/orchestration/test_task_execution.py \
-  tests/orchestration/test_proposed_tasks.py \
-  tests/test_storage.py \
-  -q --cache-clear
-
-echo "=== Backend Basis Smoke PASSED ==="
+exec python3 "$(dirname "$0")/remedy_backend_basis_smoke.py"
