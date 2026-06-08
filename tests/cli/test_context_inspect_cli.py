@@ -169,3 +169,56 @@ def test_handler_output_bounded(capsys):
 def test_context_inspect_in_handlers():
     from apps.cli.commands.context import COMMAND_HANDLERS
     assert "context.inspect" in COMMAND_HANDLERS
+
+
+# ---------------------------------------------------------------------------
+# Truth closure tests (Steps 883, 888, 890)
+# ---------------------------------------------------------------------------
+
+
+def test_handler_task_not_in_job():
+    """Step 883: task_id that's valid UUID but not in job.tasks exits 1."""
+    from apps.cli.commands.context import _cmd_context_inspect
+    job, _ = _make_test_job()
+    job_id = str(job.id)
+    fake_task_id = str(uuid4())  # valid UUID, not in job
+
+    with patch("apps.cli.commands.context.load_job", return_value=job), \
+         pytest.raises(SystemExit) as exc_info:
+        _cmd_context_inspect(job_id, task_id=fake_task_id)
+    assert exc_info.value.code == 1
+
+
+def test_handler_task_in_job_passes(capsys):
+    """Step 883: task_id that exists in job.tasks succeeds."""
+    from apps.cli.commands.context import _cmd_context_inspect
+    job, task = _make_test_job()
+    job_id = str(job.id)
+    task_id = str(task.id)
+
+    with patch("apps.cli.commands.context.load_job", return_value=job), \
+         patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
+         patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=[]):
+        _cmd_context_inspect(job_id, task_id=task_id, json_output=True)
+
+    data = json.loads(capsys.readouterr().out)
+    assert data["task_id"] == task_id
+
+
+def test_handler_json_budget_gate_assessed(capsys):
+    """Step 890: JSON output shows budget gate as assessed, not enforced."""
+    from apps.cli.commands.context import _cmd_context_inspect
+    job, _ = _make_test_job()
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.context.load_job", return_value=job), \
+         patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
+         patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=[]):
+        _cmd_context_inspect(job_id, json_output=True)
+
+    data = json.loads(capsys.readouterr().out)
+    gates = {g["name"]: g for g in data["policy_gates"]}
+    assert "token_budget_assessed" in gates
+    assert gates["token_budget_assessed"]["status"] == "assessed"

@@ -1,27 +1,33 @@
 # Context
 
 ## Active Branch
-feature/steps-865-879-context-inspector
+feature/steps-880-894-context-truth
 
 ## Scope
-Steps 865-879: Context Inspector v1 — "What will the worker see?"
+Steps 895-904: Parallel Review Protocol Repair + Context Inspector Verification
 
 ## Prior Step Status
 Steps 810-824: PASS — Proof Chain v1 shipped.
 Steps 825-839: PASS — False verified fix, structured NextSafeAction, redaction hardening.
 Steps 840-849: PASS — After-apply timing enforcement, change_set safe association.
 Steps 850-864: PASS WITH RISKS — File provenance linked-test filtering, Pi/Claude/MCP tooling config (MCP inactive).
+Steps 865-879: PASS — Context Inspector v1 shipped.
+Steps 880-894: PASS — Context Inspector Truth Closure (6 fixes verified).
 
-## Proof Chain / File Provenance
-Accepted for current evidence model. No false verified, linked test evidence only.
+## Builder/Reviewer Handoff Rules
 
-## Agent Tooling
-Configured and documented. `.pi`, `.claude`, `.mcp.json`, `.vscode/mcp.json` present. MCP inactive by default.
+- Before final handoff, builder MUST read `.agent/live_review.md`.
+- If latest verdict is PENDING or FAIL, builder must NOT claim merge-ready PASS.
+- Every open finding must have `Done: R-XXXX` marker or be listed as remaining risk.
+- See `.agent/review_protocol.md` for full finding format and resolution rules.
 
-## Current Work
-Context Inspector v1: `remedy context inspect <job_id> [task_id] --json`
-Shows file-level included/excluded paths, reasons, token estimates, policy gates, tooling awareness.
-No raw source content, file bodies, secrets, prompts, MCP config content.
+## Known Risks
+
+### Pre-existing test failure
+`tests/orchestration/test_project_brain.py::TestFileProvenanceChain::test_full_chain_order`
+fails on `main` with chain order mismatch (missing `test_run` step).
+Unrelated to context inspector. Deselected in fast lane runs.
+Must be fixed in a future block — not this scope.
 
 ## Resource Safety
 Use `scripts/remedy_pytest.sh`; no direct pytest, no background pytest, no `shell=True`.
@@ -34,4 +40,4 @@ No secrets, `.env`, `.data`, raw artifacts/stdout/diffs/source content in output
 - `context_coverage.py` — signal-based coverage snapshot
 - `project_constitution.py` — protected_paths, risky_paths, conventions
 - `token_policy.py` — routing constraints, zero-token steps
-- CLI: context.pack, context.explain, context.optimize
+- CLI: context.pack, context.explain, context.optimize, context.inspect

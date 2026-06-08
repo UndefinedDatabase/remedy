@@ -40,9 +40,11 @@ from packages.orchestration.context_inspector import (
     ContextReadiness,
     ContextToolingPresence,
     _classify_path,
+    _collect_event_target_paths,
     _compute_budget,
     _count_active_mcp_servers,
     _detect_tooling,
+    _is_path_traversal,
     _is_protected,
     _is_unsupported,
     export_context_inspection_json,
@@ -293,18 +295,19 @@ class TestBudgetEstimation:
 
 class TestPolicyGates:
 
-    def test_all_gates_enforced(self):
+    def test_all_gates_have_status(self):
         from packages.orchestration.context_inspector import _build_policy_gates
         gates = _build_policy_gates()
         assert len(gates) >= 5
-        assert all(g.status == "enforced" for g in gates)
+        for g in gates:
+            assert g.status in ("enforced", "assessed")
 
     def test_expected_gates_present(self):
         from packages.orchestration.context_inspector import _build_policy_gates
         gates = _build_policy_gates()
         names = {g.name for g in gates}
         assert "protected_paths_enforced" in names
-        assert "token_budget_enforced" in names
+        assert "token_budget_assessed" in names
         assert "raw_content_redaction" in names
         assert "no_shell_true" in names
         assert "no_mutation_from_inspect" in names
@@ -678,3 +681,205 @@ class TestSummary:
         inspection = inspect_context(job, [])
         text = summarize_context_inspection(inspection)
         assert "blocked" in text.lower() or "no_included_files" in text
+
+
+# ---------------------------------------------------------------------------
+# Truth closure tests (Steps 881-890)
+# ---------------------------------------------------------------------------
+
+
+class TestEnvProtectionHardened:
+    """Step 881: .env.* generic protection."""
+
+    def test_env_exact(self):
+        assert _is_protected(Path(".env")) is True
+
+    def test_env_local(self):
+        assert _is_protected(Path(".env.local")) is True
+
+    def test_env_custom_suffix(self):
+        """Any .env.* pattern is protected, not just named ones."""
+        assert _is_protected(Path(".env.custom")) is True
+        assert _is_protected(Path(".env.myapp")) is True
+        assert _is_protected(Path(".env.ci")) is True
+
+    def test_env_in_subdirectory(self):
+        assert _is_protected(Path("config/.env.staging")) is True
+
+    def test_env_not_false_positive(self):
+        """Files that start with .env but aren't dotenv files."""
+        assert _is_protected(Path("environment.py")) is False
+        assert _is_protected(Path(".envrc")) is False
+
+
+class TestPathTraversalFixed:
+    """Step 882: Segment-based traversal, no false positives."""
+
+    def test_actual_traversal(self):
+        assert _is_path_traversal("../etc/passwd") is True
+
+    def test_traversal_mid_path(self):
+        assert _is_path_traversal("src/../../etc/passwd") is True
+
+    def test_absolute_path(self):
+        assert _is_path_traversal("/etc/passwd") is True
+
+    def test_no_false_positive_dotdot_in_name(self):
+        """Filenames containing '..' are NOT traversal."""
+        assert _is_path_traversal("src/file..bak.py") is False
+        assert _is_path_traversal("lib/v2..3/main.py") is False
+
+    def test_normal_path_safe(self):
+        assert _is_path_traversal("src/main.py") is False
+
+
+class TestEventTargetPaths:
+    """Step 884: Extract target paths from events."""
+
+    def test_extracts_target_path_from_event(self):
+        events = [
+            {"event": "patch_intent_created", "metadata": {"target_path": "src/auth.py"}},
+        ]
+        paths = _collect_event_target_paths(events)
+        assert "src/auth.py" in paths
+
+    def test_skips_traversal_in_events(self):
+        events = [
+            {"event": "x", "metadata": {"target_path": "../etc/passwd"}},
+        ]
+        paths = _collect_event_target_paths(events)
+        assert len(paths) == 0
+
+    def test_empty_events(self):
+        assert _collect_event_target_paths([]) == frozenset()
+
+    def test_event_without_metadata(self):
+        events = [{"event": "something"}]
+        paths = _collect_event_target_paths(events)
+        assert len(paths) == 0
+
+    def test_event_target_classified(self, tmp_path):
+        """Event targets appear as included with reason event_target_path."""
+        repo = _make_repo(tmp_path, {
+            "pyproject.toml": "x",
+            "src/changed.py": "# changed",
+        })
+        events = [{"event": "patch_applied", "metadata": {"target_path": "src/changed.py"}}]
+        job = _make_job()
+        inspection = inspect_context(job, events, repo_root=repo)
+        included = {p.path: p for p in inspection.included_paths}
+        assert "src/changed.py" in included
+        assert included["src/changed.py"].reason == "event_target_path"
+
+
+class TestBudgetTruth:
+    """Step 886: Budget gate is assessed, not enforced."""
+
+    def test_budget_gate_is_assessed(self):
+        from packages.orchestration.context_inspector import _build_policy_gates
+        gates = {g.name: g for g in _build_policy_gates()}
+        bg = gates["token_budget_assessed"]
+        assert bg.status == "assessed"
+        assert "trimming" not in bg.reason.lower() or "no" in bg.reason.lower()
+
+    def test_over_budget_no_automatic_exclusion(self, tmp_path):
+        """Over-budget files still included — budget is reported, not enforced."""
+        repo = _make_repo(tmp_path, {
+            "pyproject.toml": "x",
+            "src/big.py": "y" * 80000,
+        })
+        job = _make_job()
+        inspection = inspect_context(job, [], repo_root=repo, budget_tokens=100)
+        assert inspection.budget.status == BUDGET_OVER
+        included_paths = {p.path for p in inspection.included_paths}
+        assert "src/big.py" in included_paths
+
+
+class TestStableSorting:
+    """Step 887: Deterministic sort with target priority."""
+
+    def test_targets_before_generic_source(self, tmp_path):
+        repo = _make_repo(tmp_path, {
+            "pyproject.toml": "x",
+            "src/alpha.py": "a = 1",
+            "src/target.py": "t = 1",
+            "src/zebra.py": "z = 1",
+        })
+        task = Task(description="Fix", inputs={"target_path": "src/target.py"})
+        job = _make_job(tasks=[task])
+        inspection = inspect_context(job, [], repo_root=repo)
+        source_paths = [p for p in inspection.included_paths if p.category == "source"]
+        source_order = [p.path for p in source_paths]
+        # Target should come before generic source files
+        assert source_order.index("src/target.py") < source_order.index("src/alpha.py")
+
+    def test_sort_is_deterministic(self, tmp_path):
+        repo = _make_repo(tmp_path)
+        job = _make_job()
+        i1 = inspect_context(job, [], repo_root=repo)
+        i2 = inspect_context(job, [], repo_root=repo)
+        assert [p.path for p in i1.included_paths] == [p.path for p in i2.included_paths]
+
+
+class TestJsonContractSnapshot:
+    """Step 889: JSON output has stable schema."""
+
+    def test_json_top_level_keys(self, tmp_path):
+        repo = _make_repo(tmp_path)
+        job = _make_job()
+        inspection = inspect_context(job, [], repo_root=repo)
+        data = export_context_inspection_json(inspection)
+        expected_keys = {
+            "version", "job_id", "task_id", "repo_root_safe",
+            "included_paths", "excluded_paths", "protected_paths",
+            "unsupported_paths", "budget", "policy_gates", "tooling",
+            "readiness", "missing_context", "generated_at",
+        }
+        assert set(data.keys()) == expected_keys
+
+    def test_json_budget_keys(self, tmp_path):
+        repo = _make_repo(tmp_path)
+        job = _make_job()
+        inspection = inspect_context(job, [], repo_root=repo)
+        data = export_context_inspection_json(inspection)
+        budget_keys = {"limit_tokens", "estimated_total_tokens", "estimated_total_bytes", "status", "file_count"}
+        assert set(data["budget"].keys()) == budget_keys
+
+    def test_json_path_entry_keys(self, tmp_path):
+        repo = _make_repo(tmp_path)
+        job = _make_job()
+        inspection = inspect_context(job, [], repo_root=repo)
+        data = export_context_inspection_json(inspection)
+        for p in data["included_paths"]:
+            assert "path" in p
+            assert "included" in p
+            assert "reason" in p
+            assert "category" in p
+
+    def test_json_tooling_keys(self, tmp_path):
+        repo = _make_repo(tmp_path)
+        job = _make_job()
+        inspection = inspect_context(job, [], repo_root=repo)
+        data = export_context_inspection_json(inspection)
+        tooling_keys = {"pi_exists", "claude_exists", "mcp_exists", "mcp_active_servers", "vscode_mcp_exists", "vscode_mcp_active_servers"}
+        assert set(data["tooling"].keys()) == tooling_keys
+
+
+class TestCliTextHonesty:
+    """Step 890: Summary text doesn't overclaim."""
+
+    def test_no_enforced_budget_claim(self, tmp_path):
+        repo = _make_repo(tmp_path)
+        job = _make_job()
+        inspection = inspect_context(job, [], repo_root=repo)
+        text = summarize_context_inspection(inspection)
+        # Budget gate should show "assessed" not "enforced"
+        assert "[assessed] token_budget_assessed" in text
+
+    def test_summary_has_budget_status(self, tmp_path):
+        repo = _make_repo(tmp_path)
+        job = _make_job()
+        inspection = inspect_context(job, [], repo_root=repo)
+        text = summarize_context_inspection(inspection)
+        assert "Budget:" in text
+        assert "tokens" in text

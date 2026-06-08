@@ -179,6 +179,10 @@ def _cmd_context_inspect(
         except ValueError:
             print(f"Error: invalid task ID: {task_id!r}", file=sys.stderr)
             sys.exit(1)
+        task_ids = {str(t.id) for t in job.tasks}
+        if task_id not in task_ids:
+            print(f"Error: task {task_id!r} not found in job", file=sys.stderr)
+            sys.exit(1)
 
     from packages.orchestration.context_inspector import (
         export_context_inspection_json,

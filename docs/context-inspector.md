@@ -38,6 +38,7 @@ Files are included by reason:
 - **documentation_file** — `README.md`, `AGENTS.md`, `CLAUDE.md`
 - **task_target_path** — file referenced in task inputs
 - **patch_intent_target** — file targeted by a patch intent
+- **event_target_path** — file referenced in run events (applied changes)
 - **related_test_file** — test files by naming convention
 - **source_file** — `.py`, `.ts`, `.js`, etc.
 - **config_file** — `.yaml`, `.json`, `.toml`, etc.
@@ -50,7 +51,7 @@ Files are excluded by reason:
 - **symlink_excluded** — symlinks excluded by default
 - **over_size_limit** — file exceeds 100KB
 - **empty_file** — zero-byte file
-- **path_traversal** — path contains `..` or starts with `/`
+- **path_traversal** — path segment is `..` or path starts with `/`
 - **unknown_file_type** — unrecognized extension
 
 ## Safety
@@ -65,14 +66,14 @@ Context Inspector output contains **path metadata only**:
 
 ## Policy Gates
 
-All gates are enforced by default:
-- `protected_paths_enforced` — secrets/protected dirs excluded
-- `token_budget_enforced` — budget limits context size
-- `raw_content_redaction` — output is metadata only
-- `no_shell_true` — no shell execution
-- `no_mutation_from_inspect` — inspection is read-only
-- `source_apply_requires_approval` — changes require approval
-- `mcp_inactive_by_default` — MCP servers inactive
+Gates are either **enforced** (active restriction) or **assessed** (reported only):
+- `protected_paths_enforced` — secrets/protected dirs excluded (enforced)
+- `token_budget_assessed` — budget reported, no automatic trimming (assessed)
+- `raw_content_redaction` — output is metadata only (enforced)
+- `no_shell_true` — no shell execution (enforced)
+- `no_mutation_from_inspect` — inspection is read-only (enforced)
+- `source_apply_requires_approval` — changes require approval (enforced)
+- `mcp_inactive_by_default` — MCP servers inactive (enforced)
 
 ## Tooling Awareness
 
