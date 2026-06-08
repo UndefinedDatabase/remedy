@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# remedy_pytest.sh — Lock-protected, timeout-bound pytest wrapper.
+# remedy_pytest.sh — Lock-protected, pipe-safe pytest wrapper.
 #
-# Prevents parallel pytest runs on the same machine.
-# Uses flock -n to fail fast if another run is active.
-# Uses timeout with --kill-after to prevent runaway test processes.
+# Prevents parallel pytest runs on the same machine (flock).
+# Delegates to remedy_pytest_runner.py for process group isolation:
+# - Popen with start_new_session=True
+# - stdout/stderr to temp files (no pipe inheritance)
+# - killpg cleanup on timeout and after normal exit
 #
 # Usage:
 #   scripts/remedy_pytest.sh tests/ -q --cache-clear
@@ -17,10 +19,11 @@
 
 set -euo pipefail
 
-TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-600}"
+export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-600}"
 LOCK_FILE="${REMEDY_PYTEST_LOCK:-/tmp/remedy-pytest.lock}"
 PYTHON="${REMEDY_PYTHON:-python3}"
-KILL_AFTER="10s"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+RUNNER="${SCRIPT_DIR}/remedy_pytest_runner.py"
 
 exec 200>"${LOCK_FILE}"
 
@@ -31,24 +34,19 @@ if ! flock -n 200; then
     exit 1
 fi
 
-echo "remedy_pytest: timeout=${TIMEOUT_SEC}s, lock=${LOCK_FILE}"
+echo "remedy_pytest: timeout=${REMEDY_PYTEST_TIMEOUT_SEC}s, lock=${LOCK_FILE}"
 echo "remedy_pytest: ${PYTHON} -m pytest $*"
 
-# Use --kill-after if supported (GNU coreutils). Falls back to plain timeout.
+# Use pipe-safe Python runner (Popen + temp files + killpg)
 set +e
-if timeout --kill-after=1s 0.1s true 2>/dev/null; then
-    timeout --kill-after="${KILL_AFTER}" "${TIMEOUT_SEC}" "${PYTHON}" -m pytest "$@"
-else
-    timeout "${TIMEOUT_SEC}" "${PYTHON}" -m pytest "$@"
-fi
+"${PYTHON}" "${RUNNER}" -- "$@"
 EXIT_CODE=$?
 set -e
 
-if [ "${EXIT_CODE}" -eq 124 ] || [ "${EXIT_CODE}" -eq 137 ]; then
+if [ "${EXIT_CODE}" -eq 124 ]; then
     echo "" >&2
-    echo "ERROR: pytest timed out after ${TIMEOUT_SEC} seconds (kill-after=${KILL_AFTER})." >&2
+    echo "ERROR: pytest timed out after ${REMEDY_PYTEST_TIMEOUT_SEC} seconds." >&2
     echo "To increase: REMEDY_PYTEST_TIMEOUT_SEC=900 scripts/remedy_pytest.sh ..." >&2
-    exit 124
 fi
 
 exit "${EXIT_CODE}"

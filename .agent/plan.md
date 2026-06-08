@@ -1,19 +1,19 @@
-# Plan — Steps 755-764: Backend Smoke Final Isolation
+# Plan — Steps 765-774: Pytest Wrapper Process Isolation
 
 ## Goal
-Make backend smoke boring and reliable. No runtime pytest wrappers inside it.
+Make remedy_pytest.sh pipe-safe so backend smoke exits cleanly everywhere.
 
 ## Current Step
-764 — Final handoff (complete)
+774 — Final handoff (complete)
 
 ## Steps
-- [x] 755: Handoff — smoke runs wrappers which can hang in reviewer env
-- [x] 756: Backend smoke uses standalone runtime + helpers + orchestration only
-- [x] 757: Created scripts/remedy_runtime_wrapper_smoke.sh (separate wrapper verification)
-- [x] 758: Hardened remedy_pytest.sh with --kill-after=10s (GNU timeout)
-- [x] 759: Wrappers pass individually (propose 0.73s, worker 0.88s)
-- [x] 760: Backend smoke — standalone PASS + 166 pytest tests, clean exit
-- [x] 761: Runtime wrapper smoke — propose + worker PASS, clean exit
-- [x] 762: Completion table — runtime 100%
-- [x] 763: Final baseline — all commands pass
-- [x] 764: Final handoff
+- [x] 765: Handoff — smoke hangs because remedy_pytest.sh inherits pipes
+- [x] 766: Created scripts/remedy_pytest_runner.py (Popen + temp files + killpg)
+- [x] 767: Wired remedy_pytest.sh to call runner instead of direct timeout pytest
+- [x] 768: Runner contract tests — 8 passed (existence, patterns, pass/fail/timeout)
+- [x] 769: Backend smoke — standalone PASS + 166 pytest, clean exit
+- [x] 770: Runtime wrapper smoke — propose + worker PASS, clean exit
+- [x] 771: Direct wrapper proof — helpers 6 pass, orch+storage 160 pass
+- [x] 772: Completion table — runtime 100%
+- [x] 773: Final baseline — all commands pass
+- [x] 774: Final handoff

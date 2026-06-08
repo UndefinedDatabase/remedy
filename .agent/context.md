@@ -4,24 +4,25 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 755-764: Backend Smoke Final Isolation.
+Steps 765-774: Pytest Wrapper Process Isolation.
 
 ## Prior Step Status
-Steps 745-754: PASS locally. Reviewer reports backend smoke still hangs when
-running runtime pytest wrappers sequentially. The wrappers reintroduce
-pytest-process runtime contamination even in separate invocations.
+Steps 755-764: PASS locally. Reviewer reports backend smoke still hangs during
+orchestration/storage pytest stage. Root cause: `remedy_pytest.sh` runs
+`timeout python3 -m pytest` with inherited stdout/stderr. Child/grandchild
+processes keep pipes open, caller waits for EOF indefinitely.
 
 ## Fix
-1. Backend smoke: standalone runtime smoke + helpers + orchestration (no wrappers)
-2. New script: remedy_runtime_wrapper_smoke.sh for separate wrapper testing
-3. Harden remedy_pytest.sh with --kill-after so stuck pytest can't hang forever
+Create `scripts/remedy_pytest_runner.py` — Python runner using Popen with
+start_new_session=True, temp files for stdout/stderr, killpg cleanup.
+Wire `remedy_pytest.sh` to call runner instead of direct `timeout pytest`.
 
 ## Runtime Test Architecture
-- `scripts/remedy_runtime_cli_smoke.py` — standalone, no pytest, full isolation
-- `scripts/remedy_backend_basis_smoke.sh` — uses standalone smoke, not wrappers
+- `scripts/remedy_pytest_runner.py` — pipe-safe pytest execution
+- `scripts/remedy_pytest.sh` — flock + calls runner
+- `scripts/remedy_runtime_cli_smoke.py` — standalone, no pytest
+- `scripts/remedy_backend_basis_smoke.sh` — standalone smoke + helpers + orchestration
 - `scripts/remedy_runtime_wrapper_smoke.sh` — separate wrapper verification
-- `tests/cli/test_propose_cli_runtime.py` — thin wrapper, run individually only
-- `tests/cli/test_worker_cli_runtime.py` — thin wrapper, run individually only
 
 ## Backend Component Status
 | Component | Status |
@@ -37,7 +38,7 @@ pytest-process runtime contamination even in separate invocations.
 | Propose CLI subprocess | **100%** |
 | Backend readiness v3 | **100%** |
 | Lock behavior | **100%** |
-| Runtime stability (no-hang) | **100%** — smoke uses standalone runtime, no wrappers |
+| Runtime stability (no-hang) | **100%** — pipe-safe runner, all smoke exits clean |
 | Ollama via task_execution | **0%** |
 | Real test execution | **0%** |
 | Rollback/snapshot | **0%** |
