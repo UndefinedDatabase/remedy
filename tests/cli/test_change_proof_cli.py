@@ -4,7 +4,9 @@ Tests:
 - Command catalog entry exists with correct args
 - Handler dispatches to proof chain builder
 - Path traversal rejection
-- JSON output mode
+- JSON output mode with structured next action
+- No overclaim of verified status
+- Output bounded, no traceback
 """
 
 from __future__ import annotations
@@ -50,7 +52,7 @@ def test_change_proof_related_commands():
 # ---------------------------------------------------------------------------
 
 
-def _make_test_job():
+def _make_test_job(*, approved=True, with_apply=False, with_test=False):
     task = Task(description="Fix auth bug")
     explanations = [{"file": "src/auth.py", "action": "modify", "risk": "medium", "reason": "", "summary": ""}]
     art = Artifact(
@@ -59,17 +61,24 @@ def _make_test_job():
         metadata={"patch_intent_explanations": explanations, "patch_intent_approvals": {}},
     )
     intent_id = make_intent_id(art.id, 0)
-    approvals = {intent_id: {"state": "approved", "decided_at": "", "decided_by": ""}}
-    art.metadata["patch_intent_approvals"] = approvals
+    if approved:
+        approvals = {intent_id: {"state": "approved", "decided_at": "", "decided_by": ""}}
+        art.metadata["patch_intent_approvals"] = approvals
     job = Job(name="test-job", user_prompt="Fix the bug")
     job.tasks = [task]
     job.artifacts = [art]
-    return job, intent_id
+    events = []
+    if with_apply:
+        events.append({"event": "patch_intent_applied", "metadata": {"intent_id": intent_id, "outcome": "applied", "bytes_written": 100, "line_count": 10}})
+        events.append({"event": "patch_apply_proof_recorded", "metadata": {"intent_id": intent_id, "before_sha256": "abc", "after_sha256": "def", "bytes_delta": 50}})
+    if with_test:
+        events.append({"event": "test_run_completed", "metadata": {"intent_id": intent_id, "status": "passed", "exit_code": 0}})
+    return job, intent_id, events
 
 
 def test_handler_text_output(capsys):
     from apps.cli.commands.change import _cmd_change_proof
-    job, _ = _make_test_job()
+    job, _, _ = _make_test_job()
     job_id = str(job.id)
 
     with patch("apps.cli.commands.change.load_job", return_value=job), \
@@ -82,9 +91,24 @@ def test_handler_text_output(capsys):
     assert "incomplete" in out.lower()
 
 
+def test_handler_text_does_not_overclaim_verified(capsys):
+    """Text output does not say verified when tests not linked"""
+    from apps.cli.commands.change import _cmd_change_proof
+    job, iid, events = _make_test_job(with_apply=True)  # no test
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.change.load_job", return_value=job), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=events):
+        _cmd_change_proof(job_id)
+
+    out = capsys.readouterr().out
+    assert "Overall: verified" not in out.lower()
+
+
 def test_handler_json_output(capsys):
     from apps.cli.commands.change import _cmd_change_proof
-    job, _ = _make_test_job()
+    job, _, _ = _make_test_job()
     job_id = str(job.id)
 
     with patch("apps.cli.commands.change.load_job", return_value=job), \
@@ -94,14 +118,34 @@ def test_handler_json_output(capsys):
 
     out = capsys.readouterr().out
     data = json.loads(out)
-    assert data["version"] == 1
+    assert data["version"] == 2
     assert "overall_status" in data
     assert "changes" in data
+    assert "next_safe_action_obj" in data
+
+
+def test_handler_json_structured_next_action(capsys):
+    from apps.cli.commands.change import _cmd_change_proof
+    job, _, _ = _make_test_job()
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.change.load_job", return_value=job), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=[]):
+        _cmd_change_proof(job_id, json_output=True)
+
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    nsa = data["next_safe_action_obj"]
+    assert "label" in nsa
+    assert "command" in nsa
+    assert "reason" in nsa
+    assert "available" in nsa
 
 
 def test_handler_path_filter(capsys):
     from apps.cli.commands.change import _cmd_change_proof
-    job, _ = _make_test_job()
+    job, _, _ = _make_test_job()
     job_id = str(job.id)
 
     with patch("apps.cli.commands.change.load_job", return_value=job), \
@@ -145,8 +189,38 @@ def test_handler_invalid_job_id():
     assert exc_info.value.code == 1
 
 
+def test_handler_no_traceback(capsys):
+    """Output never contains traceback"""
+    from apps.cli.commands.change import _cmd_change_proof
+    job, _, _ = _make_test_job()
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.change.load_job", return_value=job), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=[]):
+        _cmd_change_proof(job_id)
+
+    out = capsys.readouterr()
+    assert "Traceback" not in out.out
+    assert "Traceback" not in out.err
+
+
+def test_handler_output_bounded(capsys):
+    from apps.cli.commands.change import _cmd_change_proof
+    job, _, _ = _make_test_job()
+    job_id = str(job.id)
+
+    with patch("apps.cli.commands.change.load_job", return_value=job), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=[]):
+        _cmd_change_proof(job_id)
+
+    out = capsys.readouterr().out
+    assert len(out) < 10000
+
+
 # ---------------------------------------------------------------------------
-# Handler dispatch in COMMAND_HANDLERS
+# Handler dispatch
 # ---------------------------------------------------------------------------
 
 
