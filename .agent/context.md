@@ -4,17 +4,18 @@
 feature/steps-247-252-data-honest-contract
 
 ## Scope
-Steps 775-784: Backend Smoke Python Supervisor.
+Steps 785-794: Final Smoke Decoupling.
 
 ## Prior Step Status
-Steps 765-774: PASS — pipe-safe pytest runner created. But backend smoke
-still hangs in reviewer env because Bash script chains process-heavy phases
-in one shell process. Inherited fds/process state from one phase leak into next.
+Steps 775-784: PASS — Python supervisors replace Bash chaining. But backend
+smoke still mixes standalone runtime smoke with runtime helper self-tests in
+same supervisor chain. Helper tests are toxic when chained with runtime smoke.
 
 ## Fix
-Replace Bash chaining with Python supervisor. Each phase runs via isolated
-Popen (start_new_session + temp files + killpg). Shell script becomes thin
-wrapper that calls Python supervisor.
+Remove helper tests from backend smoke. Three separate smoke surfaces:
+1. Backend basis: standalone runtime + orchestration/storage
+2. Runtime wrapper: propose + worker wrappers
+3. Process isolation: helper tests + smoke contract tests + runner tests
 
 ## Backend Component Status
 | Component | Status |
@@ -30,7 +31,7 @@ wrapper that calls Python supervisor.
 | Propose CLI subprocess | **100%** |
 | Backend readiness v3 | **100%** |
 | Lock behavior | **100%** |
-| Runtime stability (no-hang) | **100%** — Python supervisor, all smoke exits clean |
+| Runtime stability (no-hang) | **100%** — three separate smoke surfaces, all exit clean |
 | Ollama via task_execution | **0%** |
 | Real test execution | **0%** |
 | Rollback/snapshot | **0%** |

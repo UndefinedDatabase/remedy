@@ -4,6 +4,9 @@
 Runs each smoke phase in full process isolation (Popen + start_new_session +
 temp files + killpg). No Bash chaining. No pipe inheritance between phases.
 
+Runtime helper self-tests are intentionally NOT chained with runtime smoke.
+Use remedy_process_isolation_smoke.sh for helper/process-isolation contracts.
+
 Usage:
     python3 scripts/remedy_backend_basis_smoke.py
 
@@ -17,12 +20,10 @@ import os
 import sys
 from pathlib import Path
 
-# Ensure scripts/ is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from smoke_runner import run_phase  # noqa: E402
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPTS_DIR.parent
 PYTEST_SH = str(SCRIPTS_DIR / "remedy_pytest.sh")
 RUNTIME_SMOKE = str(SCRIPTS_DIR / "remedy_runtime_cli_smoke.py")
 
@@ -41,17 +42,7 @@ def main() -> int:
     if rc != 0:
         return rc
 
-    # Phase 2: Runtime helper unit tests
-    rc = run_phase(
-        "Runtime helper unit tests",
-        ["bash", PYTEST_SH, "tests/cli/test_runtime_helpers.py", "-q", "--cache-clear"],
-        timeout=timeout,
-        env={"REMEDY_PYTEST_TIMEOUT_SEC": str(timeout)},
-    )
-    if rc != 0:
-        return rc
-
-    # Phase 3: Orchestration and storage tests
+    # Phase 2: Orchestration and storage tests
     rc = run_phase(
         "Orchestration + storage",
         [
