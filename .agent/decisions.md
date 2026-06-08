@@ -862,3 +862,14 @@ not verified. Parsed datetime comparison is required so timezone offsets cannot 
 After merging the open PR, main lacked the Proof Chain v1/truth-closure files referenced by this task.
 The branch cherry-picked Steps 810-824 and 825-839 before applying the ordering closure so the current
 block is reviewable against the expected Proof Chain baseline.
+
+## 2026-06-08: Reviewer findings beat worker self-report (Steps 850-864)
+GPT5.5 Medium handled narrow Proof Chain ordering logic well, but overclaimed final PASS while
+`.agent/live_review.md` still contained a blocking file-provenance finding. Future agents must
+read `.agent/live_review.md` before final handoff and treat reviewer findings as authoritative
+until resolved in code and tests.
+
+## 2026-06-08: MCP remains inactive by default (Steps 850-864)
+Claude Code and VS Code MCP config files were added with empty server maps only. No MCP server is
+installed or active. Pi MCP is documented as extension/package-driven; `pi-mcp-adapter` and
+`mcporter` were audited by package metadata but not installed.

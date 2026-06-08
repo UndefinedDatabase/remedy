@@ -913,6 +913,56 @@ class TestFileProvenanceAlignment:
         if chain.changes:
             assert prov.proof_status == chain.changes[0].proof_status
 
+    def test_provenance_omits_unlinked_global_test(self):
+        """file.why must not show a generic test as proof when ordering is unknown."""
+        from packages.orchestration.file_provenance import build_file_provenance
+        task = Task(description="Task")
+        art = _make_artifact_with_intents(task.id, [_explanation_record("src/file.py")])
+        iid = make_intent_id(art.id, 0)
+        art.metadata["patch_intent_approvals"] = {iid: {"state": "approved", "decided_at": "", "decided_by": ""}}
+        job = _make_job(tasks=[task], artifacts=[art])
+        events = [
+            {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
+            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
+            {"event": "test_run_completed", "metadata": {"status": "passed", "exit_code": 0, "command": "pytest"}},
+        ]
+        prov = build_file_provenance(job, events, "src/file.py")
+        chain = build_proof_chain(job, events, path="src/file.py")
+        assert prov.proof_status == chain.changes[0].proof_status == PROOF_INCOMPLETE
+        assert all(link.step != "test_run" for link in prov.chain)
+
+    def test_provenance_includes_intent_linked_test(self):
+        """Linked test evidence may appear in file provenance."""
+        from packages.orchestration.file_provenance import build_file_provenance
+        job, events, _ = _make_full_chain_job(test_linked=True)
+        prov = build_file_provenance(job, events, "src/auth.py")
+        test_links = [link for link in prov.chain if link.step == "test_run"]
+        assert len(test_links) == 1
+        assert test_links[0].status == "passed"
+        assert test_links[0].detail["test_link"] == TEST_LINK_INTENT
+
+    def test_change_proof_path_does_not_turn_multichange_generic_test_into_sole_change(self):
+        """Path filtering must not make a multi-change generic test look like sole-change proof."""
+        task = Task(description="Multi-file fix")
+        art = _make_artifact_with_intents(task.id, [_explanation_record("src/a.py"), _explanation_record("src/b.py")])
+        iid_a = make_intent_id(art.id, 0)
+        iid_b = make_intent_id(art.id, 1)
+        art.metadata["patch_intent_approvals"] = {
+            iid_a: {"state": "approved", "decided_at": "", "decided_by": ""},
+            iid_b: {"state": "approved", "decided_at": "", "decided_by": ""},
+        }
+        job = _make_job(tasks=[task], artifacts=[art])
+        events = [
+            {"event": "patch_intent_applied", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"intent_id": iid_a, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
+            {"event": "patch_intent_applied", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"intent_id": iid_b, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
+            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid_a, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
+            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid_b, "before_sha256": "c", "after_sha256": "d", "bytes_delta": 10}},
+            {"event": "test_run_completed", "timestamp": "2026-01-01T00:01:00Z", "metadata": {"status": "passed", "exit_code": 0}},
+        ]
+        chain = build_proof_chain(job, events, path="src/a.py")
+        assert chain.changes[0].proof_status == PROOF_INCOMPLETE
+        assert chain.changes[0].test_link == TEST_LINK_NONE
+
 
 # ---------------------------------------------------------------------------
 # Command catalog truth (Step 836)
