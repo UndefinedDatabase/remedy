@@ -37,10 +37,27 @@ remedy repair failure-show <job_id> <failure_artifact_id> [--json]
 
 3. **Events** — `test_failure_artifact_created` and `repair_task_created`
 
+## Optional fixture patch intent
+
+When `--fixture-patch-intent` is passed, the repair loop creates a real approval-queue-visible
+patch intent on the repair artifact. The intent is discoverable via:
+
+```bash
+remedy patch list <job_id>
+remedy patch show <job_id> <intent_id>
+remedy patch approve <job_id> <intent_id>
+```
+
+The intent metadata includes `patch_intent_explanations` (with file, action, risk, reason, summary)
+and `patch_intent_approvals` (initially empty → pending state). The next_safe_action command is only
+emitted after entity verification — if the intent cannot be resolved via `get_patch_intent()`,
+the command falls back to `remedy job show`.
+
 ## Stop reasons
 
 - `fix_task_created` — fix task created, no patch intent requested
-- `approval_required` — fixture patch intent awaiting approval
+- `approval_required` — fixture patch intent awaiting approval (verified entity)
+- `intent_not_verified` — intent created but not verifiable (falls back to job show)
 - `job_not_found` / `failure_artifact_not_found` — error cases
 
 ## Safety
@@ -51,3 +68,7 @@ remedy repair failure-show <job_id> <failure_artifact_id> [--json]
 - Summaries bounded to 200-500 chars
 - Repair loop stops before any risky action (no apply, no test execution)
 - Next safe action commands validated against catalog
+- Entity verification: next_safe_action never references non-existent intents
+- Event idempotency: `test_failure_artifact_created` emitted once per failure artifact
+- CLI error handling: specific exceptions only, no broad `except Exception`
+- proof_status remains "incomplete" until repair is actually proven

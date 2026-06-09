@@ -529,3 +529,333 @@ class TestDoRunIntegration:
         result = DoRunResult()
         data = export_do_run_json(result)
         assert "failure_summary" not in data
+
+
+# ---------------------------------------------------------------------------
+# Step 961: Regression test for fake repair intent (must pass after fix)
+# ---------------------------------------------------------------------------
+
+
+class TestRepairIntentTruth:
+    """Repair patch intent must be real — visible via approval queue."""
+
+    def _setup_failure(self, tmp_path):
+        job, task, data_dir, old = _make_job(tmp_path)
+        failure = TestFailureArtifact(
+            artifact_id="temp",
+            job_id=str(job.id),
+            task_id=str(task.id),
+            failure_kind="test_failed",
+            safe_summary="3 tests failed",
+        )
+        art = persist_failure_artifact(job, failure)
+        return job, str(art.id), data_dir, old
+
+    def test_repair_intent_visible_in_approval_queue(self, tmp_path):
+        """repair_patch_intent_id must be findable via get_patch_intent."""
+        from packages.orchestration.approval_queue import get_patch_intent, list_patch_intents
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+        from packages.orchestration.storage import load_job
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            assert result.repair_patch_intent_id, "Should have repair_patch_intent_id"
+
+            reloaded = load_job(str(job.id))
+            intent = get_patch_intent(reloaded, result.repair_patch_intent_id)
+            assert intent is not None, (
+                f"get_patch_intent returned None for {result.repair_patch_intent_id}"
+            )
+        finally:
+            _cleanup_env(old)
+
+    def test_repair_intent_in_list(self, tmp_path):
+        """repair_patch_intent_id must appear in list_patch_intents."""
+        from packages.orchestration.approval_queue import list_patch_intents
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+        from packages.orchestration.storage import load_job
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            reloaded = load_job(str(job.id))
+            intents = list_patch_intents(reloaded)
+            intent_ids = [i["intent_id"] for i in intents]
+            assert result.repair_patch_intent_id in intent_ids
+        finally:
+            _cleanup_env(old)
+
+    def test_repair_intent_next_action_points_to_real_intent(self, tmp_path):
+        """next_safe_action must reference intent that actually exists."""
+        from packages.orchestration.approval_queue import get_patch_intent
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+        from packages.orchestration.do_run import validate_next_safe_action_command
+        from packages.orchestration.storage import load_job
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            assert result.next_safe_action is not None
+            assert validate_next_safe_action_command(result.next_safe_action.command)
+            # Command references intent_id that exists
+            assert result.repair_patch_intent_id in result.next_safe_action.command
+            reloaded = load_job(str(job.id))
+            assert get_patch_intent(reloaded, result.repair_patch_intent_id) is not None
+        finally:
+            _cleanup_env(old)
+
+    def test_repair_intent_approval_state_pending(self, tmp_path):
+        """Repair intent should be in pending state."""
+        from packages.orchestration.approval_queue import get_patch_intent
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+        from packages.orchestration.storage import load_job
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            reloaded = load_job(str(job.id))
+            intent = get_patch_intent(reloaded, result.repair_patch_intent_id)
+            assert intent["state"] == "pending"
+        finally:
+            _cleanup_env(old)
+
+    def test_repair_intent_has_safe_metadata(self, tmp_path):
+        """Repair intent metadata must have safe fields, no raw output."""
+        from packages.orchestration.approval_queue import get_patch_intent
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+        from packages.orchestration.storage import load_job
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            reloaded = load_job(str(job.id))
+            intent = get_patch_intent(reloaded, result.repair_patch_intent_id)
+            assert intent["target_path"]
+            assert intent["action"]
+            assert intent["risk"]
+            assert intent["summary"]
+            text = json.dumps(intent)
+            assert "Traceback" not in text
+            assert "stderr" not in text
+        finally:
+            _cleanup_env(old)
+
+    def test_no_fake_intent_without_create_flag(self, tmp_path):
+        """Without create_patch_intent, no intent ID should be set."""
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=False)
+            assert result.repair_patch_intent_id == ""
+            assert result.stop_reason == "fix_task_created"
+        finally:
+            _cleanup_env(old)
+
+    def test_related_files_safe(self, tmp_path):
+        """related_files must be safe relative paths."""
+        f = TestFailureArtifact(
+            related_files=["tests/test_example.py", "src/main.py"],
+        )
+        for path in f.related_files:
+            assert not path.startswith("/")
+            assert ".." not in path
+
+    def test_event_idempotency(self, tmp_path):
+        """Repeated repair_loop_v0 should not duplicate failure creation events."""
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+        from packages.orchestration.timeline import load_run_events
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            start_repair_loop_v0(str(job.id), fail_art_id)
+            start_repair_loop_v0(str(job.id), fail_art_id)
+            events = load_run_events(data_dir, job.id)
+            creation_events = [e for e in events if e.get("event") == "test_failure_artifact_created"]
+            assert len(creation_events) == 1, f"Expected 1 creation event, got {len(creation_events)}"
+        finally:
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Step 968: Runtime CLI tests for optional intent
+# ---------------------------------------------------------------------------
+
+
+class TestRepairCLIHandlers:
+    """CLI handler integration tests (no subprocess, calls handler directly)."""
+
+    def _setup_failure(self, tmp_path):
+        job, task, data_dir, old = _make_job(tmp_path)
+        failure = TestFailureArtifact(
+            artifact_id="temp",
+            job_id=str(job.id),
+            task_id=str(task.id),
+            failure_kind="test_failed",
+            safe_summary="2 tests failed",
+        )
+        art = persist_failure_artifact(job, failure)
+        return job, str(art.id), data_dir, old
+
+    def test_repair_start_handler_no_intent(self, tmp_path, capsys):
+        from apps.cli.commands.repair_cmd import _cmd_repair_start
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            ns = type("NS", (), {
+                "job_id": str(job.id),
+                "failure_artifact_id": fail_art_id,
+                "fixture_patch_intent": "false",
+                "json": False,
+            })()
+            _cmd_repair_start(ns)
+            out = capsys.readouterr().out
+            assert "Repair Loop" in out
+            assert "fix_task_created" in out
+        finally:
+            _cleanup_env(old)
+
+    def test_repair_start_handler_with_intent(self, tmp_path, capsys):
+        from apps.cli.commands.repair_cmd import _cmd_repair_start
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            ns = type("NS", (), {
+                "job_id": str(job.id),
+                "failure_artifact_id": fail_art_id,
+                "fixture_patch_intent": "true",
+                "json": False,
+            })()
+            _cmd_repair_start(ns)
+            out = capsys.readouterr().out
+            assert "approval_required" in out
+            assert "Approve repair patch" in out
+        finally:
+            _cleanup_env(old)
+
+    def test_repair_start_handler_json_output(self, tmp_path, capsys):
+        from apps.cli.commands.repair_cmd import _cmd_repair_start
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            ns = type("NS", (), {
+                "job_id": str(job.id),
+                "failure_artifact_id": fail_art_id,
+                "fixture_patch_intent": "true",
+                "json": True,
+            })()
+            _cmd_repair_start(ns)
+            out = capsys.readouterr().out
+            data = json.loads(out)
+            assert data["repair_patch_intent_id"]
+            assert data["stop_reason"] == "approval_required"
+            assert data["next_safe_action"] is not None
+        finally:
+            _cleanup_env(old)
+
+    def test_failure_show_handler(self, tmp_path, capsys):
+        from apps.cli.commands.repair_cmd import _cmd_failure_show
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            ns = type("NS", (), {
+                "job_id": str(job.id),
+                "failure_artifact_id": fail_art_id,
+                "json": False,
+            })()
+            _cmd_failure_show(ns)
+            out = capsys.readouterr().out
+            assert "test_failed" in out
+        finally:
+            _cleanup_env(old)
+
+    def test_failure_show_handler_json(self, tmp_path, capsys):
+        from apps.cli.commands.repair_cmd import _cmd_failure_show
+
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            ns = type("NS", (), {
+                "job_id": str(job.id),
+                "failure_artifact_id": fail_art_id,
+                "json": True,
+            })()
+            _cmd_failure_show(ns)
+            out = capsys.readouterr().out
+            data = json.loads(out)
+            assert data["failure_kind"] == "test_failed"
+            text = json.dumps(data)
+            assert "Traceback" not in text
+        finally:
+            _cleanup_env(old)
+
+    def test_repair_start_job_not_found(self, tmp_path):
+        from apps.cli.commands.repair_cmd import _cmd_repair_start
+
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            ns = type("NS", (), {
+                "job_id": "00000000-0000-0000-0000-000000000000",
+                "failure_artifact_id": "fake",
+                "fixture_patch_intent": "false",
+                "json": False,
+            })()
+            # Handler should not raise — result has stop_reason=job_not_found
+            _cmd_repair_start(ns)
+        finally:
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Step 969: Proof/change alignment
+# ---------------------------------------------------------------------------
+
+
+class TestProofAlignment:
+    """proof_status must be incomplete when repair intent is pending."""
+
+    def _setup_failure(self, tmp_path):
+        job, task, data_dir, old = _make_job(tmp_path)
+        failure = TestFailureArtifact(
+            artifact_id="temp",
+            job_id=str(job.id),
+            task_id=str(task.id),
+            failure_kind="test_failed",
+            safe_summary="2 tests failed",
+        )
+        art = persist_failure_artifact(job, failure)
+        return job, str(art.id), data_dir, old
+
+    def test_proof_status_incomplete_with_intent(self, tmp_path):
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            assert result.proof_status == "incomplete"
+        finally:
+            _cleanup_env(old)
+
+    def test_proof_status_incomplete_without_intent(self, tmp_path):
+        from packages.orchestration.repair_loop import start_repair_loop_v0
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=False)
+            assert result.proof_status == "incomplete"
+        finally:
+            _cleanup_env(old)
+
+    def test_proof_status_in_json_export(self, tmp_path):
+        from packages.orchestration.repair_loop import (
+            export_repair_loop_json,
+            start_repair_loop_v0,
+        )
+        job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
+        try:
+            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            data = export_repair_loop_json(result)
+            assert data["proof_status"] == "incomplete"
+        finally:
+            _cleanup_env(old)

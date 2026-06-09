@@ -22,13 +22,18 @@ def _cmd_repair_start(args: Any) -> None:
         "true", "1", "yes",
     )
 
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError
+
     try:
         result = start_repair_loop_v0(
             args.job_id,
             args.failure_artifact_id,
             create_patch_intent=create_intent,
         )
-    except Exception as exc:
+    except (JobNotFoundError, JobStoreError) as exc:
+        print(f"Error: {type(exc).__name__}: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
@@ -40,7 +45,7 @@ def _cmd_repair_start(args: Any) -> None:
 
 def _cmd_failure_show(args: Any) -> None:
     """Show a test failure artifact."""
-    from packages.orchestration.storage import load_job
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job
     from packages.orchestration.test_failure_artifact import (
         TestFailureArtifact,
         export_failure_artifact_json,
@@ -49,7 +54,7 @@ def _cmd_failure_show(args: Any) -> None:
 
     try:
         job = load_job(args.job_id)
-    except Exception:
+    except (JobNotFoundError, JobStoreError):
         print(f"Error: job {args.job_id[:8]} not found", file=sys.stderr)
         sys.exit(1)
 

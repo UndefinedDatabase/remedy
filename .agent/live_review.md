@@ -1,49 +1,60 @@
-# Live Review — Steps 940-959
+# Live Review — Steps 960-974
 
 Reviewer: parallel reviewer
-Scope: Test Failure Artifact + Repair Loop v0
-Timestamp: 2026-06-08
+Scope: Repair Loop Truth Closure — No Fake Patch Intent
+Timestamp: 2026-06-09
 
 ## Verdict
-PASS
+PASS — all findings resolved
 
 ## Prior Block Status
 - Steps 905-924 (remedy do v1 Cohesive Flow): PASS WITH RISKS — PR #48 merged
-- Steps 925-939 (remedy do v1 Truth Closure): PASS — all 6 findings resolved
+- Steps 925-939 (remedy do v1 Truth Closure): PASS — all findings resolved
+- Steps 940-959 (Test Failure Artifact + Repair Loop v0): PASS WITH BLOCKER — fake repair patch intent
+
+## Carry-Forward Blocker
+RESOLVED: Optional repair patch intent now includes `patch_intent_explanations` in metadata.
+`get_patch_intent(job, result.repair_patch_intent_id)` returns valid intent.
+`list_patch_intents(job)` contains it.
+next_safe_action verified against actual entity before emission.
 
 ## Finding Ledger
 
-### R-0001: No grouped CLI subprocess tests
-- **Status**: Resolved
-- **Severity**: High
-- **Fix**: `tests/cli/test_repair_runtime.py` — 7 subprocess tests for `repair start` and `repair failure-show`. No shell=True. Timeout=30s. JSON parse + redaction checks. Verified: 47 tests pass.
+R-0001: Fake repair patch intent — repair artifact metadata missing `patch_intent_explanations`
+  Severity: BLOCKER
+  Fix: Added `patch_intent_explanations` + `patch_intent_approvals` to repair artifact metadata
+  Done: R-0001
 
-### R-0002: CLI commands not registered
-- **Status**: Resolved
-- **Severity**: High
-- **Fix**: `repair_cmd.py` with 2 handlers. Catalog entries `repair.start` (write_metadata) and `repair.failure-show` (read_only). `__init__.py` updated. Verified: handlers registered, catalog tests pass.
+R-0002: next_safe_action points to non-existent intent
+  Severity: HIGH
+  Fix: Entity verification — reload job and `get_patch_intent()` before emitting approve command
+  Done: R-0002
 
-### R-0003: next_safe_action not validated at emit time
-- **Status**: Resolved
-- **Severity**: Medium
-- **Fix**: Test `test_repair_loop_next_safe_action` validates all emitted commands against catalog via `validate_next_safe_action_command`. Both `repair.start` and `repair.failure-show` catalog-validated.
+R-0003: Event duplication — `emit_failure_events` called every repair loop run
+  Severity: MEDIUM
+  Fix: Idempotency guard — check existing events before emitting `test_failure_artifact_created`
+  Done: R-0003
 
-### R-0004: pytest collection warnings for TestFailureArtifact class name
-- **Status**: Resolved
-- **Severity**: Low
-- **Fix**: `__test__ = False` on `TestFailureArtifact` and `TestFailureSummary`. 0 warnings in output.
+R-0004: CLI broad `except Exception` catches all errors, prints raw `str(exc)`
+  Severity: MEDIUM
+  Fix: Replaced with specific `JobNotFoundError`, `JobStoreError`, `ValueError` catches
+  Done: R-0004
 
-## Final Review
+R-0005: proof_status alignment — must be "incomplete" when intent is pending
+  Severity: LOW
+  Fix: Verified default is "incomplete", added tests confirming invariant
+  Done: R-0005
 
-- **Failure artifact status**: PASS — model with safe fields only, no raw output, links all present, missing links explicit, command normalization strips secrets, `__test__=False`
-- **Persistence status**: PASS — artifact persists in Job via `ArtifactKind.VERIFICATION`, metadata bounded, reload works
-- **Events status**: PASS — `test_failure_artifact_created`, `repair_task_created`, `repair_loop_stopped` all emitted with safe metadata
-- **Fix task status**: PASS — created from failure, links failure_artifact_id, preserves original task, idempotent
-- **Repair loop status**: PASS — creates fix task, optional fixture patch intent only with explicit flag, stops before apply, no source_apply import, no provider call
-- **CLI runtime status**: PASS — 7 subprocess tests (5 repair.start + 2 failure-show), no shell=True, timeout=30s, JSON parses, no raw content
-- **Redaction status**: PASS — no stdout/stderr, no command_output, no source content, no diff, no secrets, no tracebacks, output_ref is basename only, summaries bounded to 200/500 chars
-- **Proof/context alignment status**: PASS — failure_summary field in DoRunResult, proof_status="incomplete" in repair loop
-- **Tests run**: 47 targeted (40 unit + 7 runtime) — all pass, 0 warnings
-- **Full pytest run**: Worker reports 4717 pass
-- **Remaining findings**: None — all 4 resolved
-- **Merge readiness**: YES — no blockers, no open findings
+## Test Results (working tree)
+57 tests pass — 0 failures
+- TestFailureArtifactModel: 5 pass
+- TestBuildFailureArtifact: 3 pass
+- TestRedaction: 9 pass
+- TestLinking: 4 pass
+- TestFailureEvents: 1 pass
+- TestRepairLoopV0: 9 pass
+- TestRepairCatalog: 6 pass
+- TestDoRunIntegration: 3 pass
+- TestRepairIntentTruth: 8 pass (NEW — regression tests for fake intent blocker)
+- TestRepairCLIHandlers: 6 pass (NEW — CLI handler integration tests)
+- TestProofAlignment: 3 pass (NEW — proof status invariant tests)

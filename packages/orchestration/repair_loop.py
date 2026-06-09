@@ -67,7 +67,6 @@ def start_repair_loop_v0(
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.storage import load_job, save_job
     from packages.orchestration.test_failure_artifact import (
-        SuggestedRepairAction,
         TestFailureArtifact,
         create_fix_task_from_failure,
         emit_failure_events,
@@ -163,6 +162,16 @@ def start_repair_loop_v0(
                 "repair": True,
                 "failure_artifact_id": failure_artifact_id,
                 "safe_summary": f"Fixture repair for {failure.failure_kind}",
+                "patch_intent_explanations": [
+                    {
+                        "file": "docs/REPAIR.md",
+                        "action": "create",
+                        "risk": "low",
+                        "reason": f"Fixture repair proposal for {failure.failure_kind}",
+                        "summary": f"Fixture repair for: {failure.safe_summary[:100]}",
+                    },
+                ],
+                "patch_intent_approvals": {},
             },
         )
         job.artifacts.append(repair_art)
@@ -178,8 +187,16 @@ def start_repair_loop_v0(
         result.phases.append({"phase": "repair_intent", "status": "skipped",
                               "safe_summary": "No patch intent requested"})
 
-    # --- Phase: emit events ---
-    emit_failure_events(data_dir, UUID(job_id), failure, fix_task_id=str(fix_task.id))
+    # --- Phase: emit events (idempotent — skip if already emitted for this failure) ---
+    from packages.orchestration.timeline import load_run_events
+    existing_events = load_run_events(data_dir, UUID(job_id))
+    already_emitted = any(
+        e.get("event") == "test_failure_artifact_created"
+        and e.get("artifact_id") == failure_artifact_id
+        for e in existing_events
+    )
+    if not already_emitted:
+        emit_failure_events(data_dir, UUID(job_id), failure, fix_task_id=str(fix_task.id))
 
     append_run_event(data_dir, UUID(job_id), event="repair_loop_stopped", metadata={
         "job_id": job_id,
@@ -192,13 +209,26 @@ def start_repair_loop_v0(
 
     # --- Stop ---
     if create_patch_intent and result.repair_patch_intent_id:
-        result.stop_reason = "approval_required"
-        result.stop_detail = "Repair patch intent awaiting approval"
-        result.next_safe_action = DoRunNextAction(
-            label="Approve repair patch",
-            command=f"remedy patch approve {job_id} {result.repair_patch_intent_id}",
-            reason="Review and approve the repair patch intent.",
-        )
+        from packages.orchestration.approval_queue import get_patch_intent
+        reloaded = load_job(job_id)
+        verified_intent = get_patch_intent(reloaded, result.repair_patch_intent_id)
+        if verified_intent is not None:
+            result.stop_reason = "approval_required"
+            result.stop_detail = "Repair patch intent awaiting approval"
+            result.next_safe_action = DoRunNextAction(
+                label="Approve repair patch",
+                command=f"remedy patch approve {job_id} {result.repair_patch_intent_id}",
+                reason="Review and approve the repair patch intent.",
+            )
+        else:
+            result.stop_reason = "intent_not_verified"
+            result.stop_detail = "Repair intent created but not verifiable — skipping next_safe_action"
+            result.repair_patch_intent_id = ""
+            result.next_safe_action = DoRunNextAction(
+                label="Show job",
+                command=f"remedy job show {job_id} --json",
+                reason="Review the fix task and failure artifact.",
+            )
     else:
         result.stop_reason = "fix_task_created"
         result.stop_detail = "Fix task created from failure evidence"
