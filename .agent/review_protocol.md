@@ -49,3 +49,46 @@ Only the reviewer may mark a finding Resolved.
 4. Every open finding must have either a `Done: R-XXXX` marker or be listed as remaining risk.
 5. Reviewer findings beat builder self-report on disputed facts.
 6. Builder final handoff must reference the latest review verdict.
+
+## Final Handoff: Changed Files Table
+
+Every implementer final report MUST include a changed files table:
+
+| File | What changed | Why |
+|---|---|---|
+| `path/to/file.py` | Added X | Needed for Y |
+
+This table is required for merge readiness. Omitting it blocks the handoff.
+
+## Progress Ledger
+
+After long runs, agents should generate/check:
+- `remedy progress checklist --agent --json`
+- `remedy feature plan --agent --json`
+
+The progress ledger unifies plan.md, live_review.md, and known risks into a structured checklist.
+
+## Integrity Gate
+
+Before claiming PASS, run:
+- `remedy integrity check --json`
+
+PASS not allowed if:
+- integrity check fails
+- latest live_review verdict is PENDING/FAIL
+- relevant untracked files exist
+- review zip import check fails (if review zip generated)
+
+Final handoff must include:
+- `remedy integrity check --json` status or explain why not run
+- review zip generated with `scripts/make_review_zip.sh`
+- changed files table
+- latest live_review verdict
+- open findings count
+- known risks
+
+## Review Bundle
+
+Reviewers may request `remedy review bundle <job_id>` for a safe state package.
+The bundle contains only safe summaries — no raw content, no secrets, no caches.
+The bundle does NOT replace the live_review ledger. Findings still go to `.agent/live_review.md`.

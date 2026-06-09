@@ -1,29 +1,21 @@
 # Context
 
 ## Active Branch
-feature/steps-940-959-test-failure-repair-loop
+feature/steps-975-994-review-bundle-v1
 
 ## Scope
-Steps 960-974: Repair Loop Truth Closure — No Fake Patch Intent
+Steps 1030-1044: Integrity Gate + Review Zip Closure — COMPLETE
 
 ## Prior Step Status
-Steps 905-924: PASS WITH RISKS — remedy do v1 Cohesive Flow. PR #48 merged.
-Steps 925-939: PASS — remedy do v1 Truth Closure.
-Steps 940-959: PASS WITH BLOCKER — optional repair patch intent produces non-resolvable intent ID.
+- Steps 940-974: PASS — Repair Loop v0 + Truth Closure.
+- Steps 975-994: PASS — Review Bundle v1 + R-0006 closure.
+- Steps 995-1009: PASS — Review Bundle Safety Closure.
+- Steps 1010-1029: PASS WITH RISKS — Progress Ledger + Feature Planner done, R-0013/R-0014 resolved.
+- Steps 1030-1044: PASS WITH RISKS — Integrity Gate + Review Zip Closure done. R-0017 medium open (known risk).
 
-## Current Work
-Fix fake repair patch intent blocker. Make repair loop v0 truthful:
-- Either create real approval-queue-visible patch intent (Option A)
-- Or disable/report unavailable (Option B)
-Chosen: Option A — make fixture repair intent real.
-
-## Builder/Reviewer Handoff Rules
-- Before final handoff, builder MUST read `.agent/live_review.md`.
-- Every open finding must have `Done: R-XXXX` marker or be listed as remaining risk.
-- See `.agent/review_protocol.md` for full finding format and resolution rules.
-
-## Pre-existing Issue
-`tests/orchestration/test_project_brain.py::TestFileProvenanceChain::test_full_chain_order` fails on main.
+## Known Risks
+- `test_project_brain.py::TestFileProvenanceChain::test_full_chain_order` fails on main.
+- R-0017: ctx_says_complete heuristic too loose — matches "done" in text, causing false positives.
 
 ## Resource Safety
 Use `scripts/remedy_pytest.sh`. No direct pytest, no background pytest, no `shell=True`.

@@ -1,60 +1,42 @@
-# Live Review — Steps 960-974
+# Live Review — Steps 1030-1044
 
 Reviewer: parallel reviewer
-Scope: Repair Loop Truth Closure — No Fake Patch Intent
+Scope: Integrity Gate + Review Zip Closure
 Timestamp: 2026-06-09
 
 ## Verdict
-PASS — all findings resolved
+PASS WITH RISKS — R-0017 Medium open (known risk)
 
 ## Prior Block Status
-- Steps 905-924 (remedy do v1 Cohesive Flow): PASS WITH RISKS — PR #48 merged
-- Steps 925-939 (remedy do v1 Truth Closure): PASS — all findings resolved
-- Steps 940-959 (Test Failure Artifact + Repair Loop v0): PASS WITH BLOCKER — fake repair patch intent
-
-## Carry-Forward Blocker
-RESOLVED: Optional repair patch intent now includes `patch_intent_explanations` in metadata.
-`get_patch_intent(job, result.repair_patch_intent_id)` returns valid intent.
-`list_patch_intents(job)` contains it.
-next_safe_action verified against actual entity before emission.
+- Steps 940-974: PASS
+- Steps 975-994: PASS
+- Steps 995-1009: PASS
+- Steps 1010-1029: PASS WITH RISKS (R-0013, R-0014 low/open; 10 files untracked)
 
 ## Finding Ledger
 
-R-0001: Fake repair patch intent — repair artifact metadata missing `patch_intent_explanations`
-  Severity: BLOCKER
-  Fix: Added `patch_intent_explanations` + `patch_intent_approvals` to repair artifact metadata
-  Done: R-0001
+### R-0015: integrity_cmd not registered in collect_all_handlers
 
-R-0002: next_safe_action points to non-existent intent
-  Severity: HIGH
-  Fix: Entity verification — reload job and `get_patch_intent()` before emitting approve command
-  Done: R-0002
+- **Status**: Resolved
+- **Severity**: Blocker
+- **Area**: imports
+- **Details**: `apps/cli/commands/__init__.py` did not import `integrity_cmd`.
+- **Evidence**: Verified fix: `__init__.py` line 27 now imports `integrity_cmd`, line 30 loop includes it.
 
-R-0003: Event duplication — `emit_failure_events` called every repair loop run
-  Severity: MEDIUM
-  Fix: Idempotency guard — check existing events before emitting `test_failure_artifact_created`
-  Done: R-0003
+### R-0016: --collect-only wired as string, always truthy
 
-R-0004: CLI broad `except Exception` catches all errors, prints raw `str(exc)`
-  Severity: MEDIUM
-  Fix: Replaced with specific `JobNotFoundError`, `JobStoreError`, `ValueError` catches
-  Done: R-0004
+- **Status**: Resolved
+- **Severity**: High
+- **Area**: integrity-gate
+- **Details**: `--collect-only` fell through to grouped.py else branch as string arg.
+- **Evidence**: Verified fix: grouped.py lines 142-143 now have explicit `--collect-only` handler with `action="store_true"`.
 
-R-0005: proof_status alignment — must be "incomplete" when intent is pending
-  Severity: LOW
-  Fix: Verified default is "incomplete", added tests confirming invariant
-  Done: R-0005
+### R-0017: ctx_says_complete heuristic too loose
 
-## Test Results (working tree)
-57 tests pass — 0 failures
-- TestFailureArtifactModel: 5 pass
-- TestBuildFailureArtifact: 3 pass
-- TestRedaction: 9 pass
-- TestLinking: 4 pass
-- TestFailureEvents: 1 pass
-- TestRepairLoopV0: 9 pass
-- TestRepairCatalog: 6 pass
-- TestDoRunIntegration: 3 pass
-- TestRepairIntentTruth: 8 pass (NEW — regression tests for fake intent blocker)
-- TestRepairCLIHandlers: 6 pass (NEW — CLI handler integration tests)
-- TestProofAlignment: 3 pass (NEW — proof status invariant tests)
+- **Status**: Open
+- **Severity**: Medium
+- **Area**: integrity-gate
+- **Details**: `_check_live_review_verdict` and `_check_plan_consistency` use `"complete" in ctx_text or "done" in ctx_text` full-text search. Matches "done" in prior step status descriptions, causing false positives.
+- **Evidence**: `remedy integrity check --json` shows "Context says complete but verdict is PENDING" — triggered by "done" in prior block status text.
+- **Expected fix**: Tighten heuristic — only check "## Current Step" line for "COMPLETE", not full-text search.
+

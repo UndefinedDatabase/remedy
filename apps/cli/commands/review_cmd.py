@@ -154,7 +154,38 @@ def _cmd_review_reject(args: Any) -> None:
         sys.exit(1)
 
 
+def _cmd_review_bundle(args: Any) -> None:
+    """Generate a safe review bundle zip for a job."""
+    from packages.orchestration.review_bundle import (
+        build_review_bundle,
+        export_review_bundle_json,
+        summarize_review_bundle,
+    )
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError
+
+    output = getattr(args, "output", None)
+
+    try:
+        result = build_review_bundle(args.job_id, output_path=output)
+    except (JobNotFoundError, JobStoreError) as exc:
+        print(f"Error: {type(exc).__name__}: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if result.error:
+        print(f"Error: {result.error}", file=sys.stderr)
+        sys.exit(1)
+
+    if getattr(args, "json", False):
+        print(json.dumps(export_review_bundle_json(result), indent=2))
+    else:
+        print(summarize_review_bundle(result))
+
+
 COMMAND_HANDLERS = {
+    "review.bundle": lambda args: _cmd_review_bundle(args),
     "review.run": lambda args: _cmd_review_run(args),
     "review.list": lambda args: _cmd_review_list(args),
     "review.accept": lambda args: _cmd_review_accept(args),
