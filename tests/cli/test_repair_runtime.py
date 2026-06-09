@@ -133,6 +133,71 @@ class TestRepairStartRuntime:
         assert "Fix task" in result.stdout
 
 
+class TestRepairStartWithIntentRuntime:
+    """Step 976: Close R-0006 — subprocess test for --fixture-patch-intent."""
+
+    def test_exit_zero_with_intent(self, tmp_path):
+        job_id, fail_id, data_dir = _setup_job_with_failure(tmp_path)
+        result = _run_grouped_cli(
+            ["repair", "start", job_id, fail_id, "--fixture-patch-intent", "true", "--json"],
+            env_extra={"REMEDY_DATA_DIR": data_dir},
+        )
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+
+    def test_json_parses_with_intent(self, tmp_path):
+        job_id, fail_id, data_dir = _setup_job_with_failure(tmp_path)
+        result = _run_grouped_cli(
+            ["repair", "start", job_id, fail_id, "--fixture-patch-intent", "true", "--json"],
+            env_extra={"REMEDY_DATA_DIR": data_dir},
+        )
+        data = json.loads(result.stdout)
+        assert data["repair_patch_intent_id"], "repair_patch_intent_id must be non-empty"
+        assert data["stop_reason"] == "approval_required"
+
+    def test_next_action_references_real_intent(self, tmp_path):
+        job_id, fail_id, data_dir = _setup_job_with_failure(tmp_path)
+        result = _run_grouped_cli(
+            ["repair", "start", job_id, fail_id, "--fixture-patch-intent", "true", "--json"],
+            env_extra={"REMEDY_DATA_DIR": data_dir},
+        )
+        data = json.loads(result.stdout)
+        intent_id = data["repair_patch_intent_id"]
+        assert intent_id in data["next_safe_action"]["command"]
+
+    def test_intent_resolvable_via_approval_queue(self, tmp_path):
+        job_id, fail_id, data_dir = _setup_job_with_failure(tmp_path)
+        result = _run_grouped_cli(
+            ["repair", "start", job_id, fail_id, "--fixture-patch-intent", "true", "--json"],
+            env_extra={"REMEDY_DATA_DIR": data_dir},
+        )
+        data = json.loads(result.stdout)
+        intent_id = data["repair_patch_intent_id"]
+
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = data_dir
+        try:
+            from packages.orchestration.approval_queue import get_patch_intent
+            from packages.orchestration.storage import load_job
+            job = load_job(job_id)
+            intent = get_patch_intent(job, intent_id)
+            assert intent is not None, f"get_patch_intent returned None for {intent_id}"
+            assert intent["state"] == "pending"
+        finally:
+            if old:
+                os.environ["REMEDY_DATA_DIR"] = old
+            else:
+                os.environ.pop("REMEDY_DATA_DIR", None)
+
+    def test_no_raw_content_with_intent(self, tmp_path):
+        job_id, fail_id, data_dir = _setup_job_with_failure(tmp_path)
+        result = _run_grouped_cli(
+            ["repair", "start", job_id, fail_id, "--fixture-patch-intent", "true", "--json"],
+            env_extra={"REMEDY_DATA_DIR": data_dir},
+        )
+        assert "Traceback" not in result.stdout
+        assert "Traceback" not in result.stderr
+
+
 class TestRepairFailureShowRuntime:
 
     def test_exit_zero_json(self, tmp_path):

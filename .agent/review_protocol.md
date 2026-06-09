@@ -49,3 +49,9 @@ Only the reviewer may mark a finding Resolved.
 4. Every open finding must have either a `Done: R-XXXX` marker or be listed as remaining risk.
 5. Reviewer findings beat builder self-report on disputed facts.
 6. Builder final handoff must reference the latest review verdict.
+
+## Review Bundle
+
+Reviewers may request `remedy review bundle <job_id>` for a safe state package.
+The bundle contains only safe summaries — no raw content, no secrets, no caches.
+The bundle does NOT replace the live_review ledger. Findings still go to `.agent/live_review.md`.

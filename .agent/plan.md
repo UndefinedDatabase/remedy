@@ -1,31 +1,32 @@
-# Plan — Steps 960-974: Repair Loop Truth Closure
+# Plan — Steps 975-994: Review Bundle v1
 
 ## Goal
-Fix fake repair patch intent blocker from Steps 940-959.
-Make Repair Loop v0 truthful — no fake intent IDs, no fake next_safe_actions.
-
-## Design Choice
-Option A: Make fixture repair patch intent real via `patch_intent_explanations`.
+Build safe review bundle command. Close R-0006 repair runtime gap.
 
 ## Current Step
-974 — Final handoff
+994 — Final handoff
 
 ## Steps
-- [x] 960: Handoff truth — update agent files
-- [x] 961: Regression test for fake repair intent (confirmed failing)
-- [x] 962: Fix repair_loop.py — real patch_intent_explanations
-- [x] 963: Validate next_safe_action against actual entity
-- [x] 964: Repair artifact metadata truth (approval queue visible)
-- [x] 965: Event semantics cleanup (idempotent creation events)
-- [x] 966: Related files safety (tested — no abs paths, no traversal)
-- [x] 967: CLI error handling (specific exceptions, no broad Exception)
-- [x] 968: Runtime CLI tests for optional intent
-- [x] 969: Proof/change alignment (proof_status invariant tests)
-- [x] 970: Live review protocol — all findings with Done: R-XXXX markers
-- [x] 971: Targeted tests — 57 pass, 0 fail
-- [x] 972: Docs updated — repair-loop-v0.md
-- [ ] 973: Review bundle check
-- [ ] 974: Final handoff
+- [x] 975: Handoff setup — agent files updated
+- [x] 976: Close R-0006 — 5 subprocess tests for --fixture-patch-intent
+- [x] 977: Review bundle model — dataclasses (ReviewBundleResult, etc.)
+- [x] 978: Build safe bundle sections
+- [x] 979: Event summary section
+- [x] 980: Changed files safe section
+- [x] 981: Repair summary section
+- [x] 982: Context inspection section
+- [x] 983: Trust report section
+- [x] 984: CLI command — review.bundle in catalog + handler
+- [x] 985: Review zip script hygiene — 3 contract tests
+- [x] 986: Bundle safety tests — 8 tests
+- [x] 987: CLI runtime tests — 8 subprocess tests
+- [x] 988: Bundle determinism tests — 4 tests
+- [x] 989: Docs — review-bundle-v1.md
+- [x] 990: Agent tooling — review_protocol.md updated
+- [x] 991: Review protocol integration
+- [x] 992: Targeted tests — 147 pass, 0 fail
+- [ ] 993: Live review protocol
+- [ ] 994: Final handoff
 
 ## Pre-existing Issue
 `test_project_brain.py::TestFileProvenanceChain::test_full_chain_order` fails on main.

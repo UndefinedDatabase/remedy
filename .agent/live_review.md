@@ -1,60 +1,35 @@
-# Live Review — Steps 960-974
+# Live Review — Steps 975-994
 
 Reviewer: parallel reviewer
-Scope: Repair Loop Truth Closure — No Fake Patch Intent
+Scope: R-0006 closure + Review Bundle v1
 Timestamp: 2026-06-09
 
 ## Verdict
-PASS — all findings resolved
+PENDING — worker has not started
 
 ## Prior Block Status
 - Steps 905-924 (remedy do v1 Cohesive Flow): PASS WITH RISKS — PR #48 merged
 - Steps 925-939 (remedy do v1 Truth Closure): PASS — all findings resolved
 - Steps 940-959 (Test Failure Artifact + Repair Loop v0): PASS WITH BLOCKER — fake repair patch intent
+- Steps 960-974 (Repair Loop Truth Closure): PASS — all findings resolved, R-0006 carry-forward
 
-## Carry-Forward Blocker
-RESOLVED: Optional repair patch intent now includes `patch_intent_explanations` in metadata.
-`get_patch_intent(job, result.repair_patch_intent_id)` returns valid intent.
-`list_patch_intents(job)` contains it.
-next_safe_action verified against actual entity before emission.
+## Carry-Forward Finding
+
+### R-0006: CLI runtime tests don't cover `--fixture-patch-intent` subprocess path
+
+- **Status**: Open (carry-forward from Steps 960-974)
+- **Severity**: Low → promoted to High for this block (primary goal #1)
+- **Area**: repair-runtime
+- **Details**: `test_repair_runtime.py` (7 subprocess tests) only exercises default path. No subprocess test for `--fixture-patch-intent true`.
+- **Expected fix**: Add subprocess test in `test_repair_runtime.py` calling `repair start <job> <fail> --fixture-patch-intent true --json` and verifying `repair_patch_intent_id` is non-empty and resolvable.
 
 ## Finding Ledger
+(Findings will be added during review)
 
-R-0001: Fake repair patch intent — repair artifact metadata missing `patch_intent_explanations`
-  Severity: BLOCKER
-  Fix: Added `patch_intent_explanations` + `patch_intent_approvals` to repair artifact metadata
-  Done: R-0001
-
-R-0002: next_safe_action points to non-existent intent
-  Severity: HIGH
-  Fix: Entity verification — reload job and `get_patch_intent()` before emitting approve command
-  Done: R-0002
-
-R-0003: Event duplication — `emit_failure_events` called every repair loop run
-  Severity: MEDIUM
-  Fix: Idempotency guard — check existing events before emitting `test_failure_artifact_created`
-  Done: R-0003
-
-R-0004: CLI broad `except Exception` catches all errors, prints raw `str(exc)`
-  Severity: MEDIUM
-  Fix: Replaced with specific `JobNotFoundError`, `JobStoreError`, `ValueError` catches
-  Done: R-0004
-
-R-0005: proof_status alignment — must be "incomplete" when intent is pending
-  Severity: LOW
-  Fix: Verified default is "incomplete", added tests confirming invariant
-  Done: R-0005
+## Baseline State (pre-work)
+- No review bundle code exists (no model, no CLI handler, no catalog entry)
+- `make_review_zip.sh` exists — ad-hoc script, excludes pycache/secrets/data
+- 64 targeted tests pass (57 unit + 7 subprocess)
 
 ## Test Results (working tree)
-57 tests pass — 0 failures
-- TestFailureArtifactModel: 5 pass
-- TestBuildFailureArtifact: 3 pass
-- TestRedaction: 9 pass
-- TestLinking: 4 pass
-- TestFailureEvents: 1 pass
-- TestRepairLoopV0: 9 pass
-- TestRepairCatalog: 6 pass
-- TestDoRunIntegration: 3 pass
-- TestRepairIntentTruth: 8 pass (NEW — regression tests for fake intent blocker)
-- TestRepairCLIHandlers: 6 pass (NEW — CLI handler integration tests)
-- TestProofAlignment: 3 pass (NEW — proof status invariant tests)
+(Will be updated after tests run)

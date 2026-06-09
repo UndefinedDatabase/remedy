@@ -1333,6 +1333,20 @@ CATALOG: tuple[CommandEntry, ...] = (
 
     # ── review ───────────────────────────────────────────────────────────
     CommandEntry(
+        command_id="review.bundle",
+        group_id="review",
+        subcommand="bundle",
+        description="Generate a safe review bundle zip for a job.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--output", "Output zip path (default: .data/review_bundles/)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("review.run", "job.summary"),
+    ),
+    CommandEntry(
         command_id="review.run",
         group_id="review",
         subcommand="run",
