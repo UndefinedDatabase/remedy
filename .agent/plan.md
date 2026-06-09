@@ -1,25 +1,31 @@
-# Plan — Steps 925-939: remedy do v1 Truth Closure
+# Plan — Steps 960-974: Repair Loop Truth Closure
 
 ## Goal
-Make `remedy do v1` truthful enough to be the foundation for Test Failure Artifact + Repair Loop v0.
+Fix fake repair patch intent blocker from Steps 940-959.
+Make Repair Loop v0 truthful — no fake intent IDs, no fake next_safe_actions.
+
+## Design Choice
+Option A: Make fixture repair patch intent real via `patch_intent_explanations`.
 
 ## Current Step
-939 — Final handoff
+974 — Final handoff
 
 ## Steps
-- [x] 925: Handoff setup
-- [x] 926: Full next_safe_action catalog validation helper
-- [x] 927: Replace group-only test with full validation
-- [x] 928: Context failure stops run (not skipped)
-- [x] 929: Command catalog metadata truth (do.run flags)
-- [x] 930: Consolidate contract truth with RunContract
-- [x] 931: Enforce max_loops honestly
-- [x] 932: Autonomy level truth (requested vs effective)
-- [x] 933: Approval gate regression tests
-- [x] 934: Runtime CLI contract tests
-- [x] 935: Docs update
-- [x] 936-937: Review + targeted tests (81 targeted, 4751 full suite)
-- [x] 938-939: Final handoff
+- [x] 960: Handoff truth — update agent files
+- [x] 961: Regression test for fake repair intent (confirmed failing)
+- [x] 962: Fix repair_loop.py — real patch_intent_explanations
+- [x] 963: Validate next_safe_action against actual entity
+- [x] 964: Repair artifact metadata truth (approval queue visible)
+- [x] 965: Event semantics cleanup (idempotent creation events)
+- [x] 966: Related files safety (tested — no abs paths, no traversal)
+- [x] 967: CLI error handling (specific exceptions, no broad Exception)
+- [x] 968: Runtime CLI tests for optional intent
+- [x] 969: Proof/change alignment (proof_status invariant tests)
+- [x] 970: Live review protocol — all findings with Done: R-XXXX markers
+- [x] 971: Targeted tests — 57 pass, 0 fail
+- [x] 972: Docs updated — repair-loop-v0.md
+- [ ] 973: Review bundle check
+- [ ] 974: Final handoff
 
 ## Pre-existing Issue
 `test_project_brain.py::TestFileProvenanceChain::test_full_chain_order` fails on main.

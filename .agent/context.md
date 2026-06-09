@@ -1,24 +1,21 @@
 # Context
 
 ## Active Branch
-feature/steps-905-924-remedy-do-v1
+feature/steps-940-959-test-failure-repair-loop
 
 ## Scope
-Steps 925-939: remedy do v1 Truth Closure
+Steps 960-974: Repair Loop Truth Closure — No Fake Patch Intent
 
 ## Prior Step Status
-Steps 865-879: PASS — Context Inspector v1.
-Steps 880-894: PASS — Context Inspector Truth Closure.
-Steps 895-904: PASS — Review Protocol Repair. PR #47 merged.
-Steps 905-924: PASS WITH RISKS — remedy do v1 Cohesive Flow. PR #48 open.
+Steps 905-924: PASS WITH RISKS — remedy do v1 Cohesive Flow. PR #48 merged.
+Steps 925-939: PASS — remedy do v1 Truth Closure.
+Steps 940-959: PASS WITH BLOCKER — optional repair patch intent produces non-resolvable intent ID.
 
-## Carried Risks
-1. next_safe_action validates group only, not full command_id → Step 926-927
-2. DoRunContract duplicates RunContract → Step 930
-3. Context exception skipped, flow continues to build → Step 928
-4. do.run catalog: may_mutate_repo=True, may_execute_commands=True overclaim → Step 929
-5. max_loops stored but not enforced → Step 931
-6. Autonomy cap not transparent in output → Step 932
+## Current Work
+Fix fake repair patch intent blocker. Make repair loop v0 truthful:
+- Either create real approval-queue-visible patch intent (Option A)
+- Or disable/report unavailable (Option B)
+Chosen: Option A — make fixture repair intent real.
 
 ## Builder/Reviewer Handoff Rules
 - Before final handoff, builder MUST read `.agent/live_review.md`.

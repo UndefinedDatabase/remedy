@@ -112,6 +112,7 @@ class DoRunResult:
     repo_path_safe: str = ""
     context_summary: str = ""
     generated_at: str = ""
+    failure_summary: dict[str, str] | None = None  # TestFailureSummary if repair available
     error: str = ""
     _contract: DoRunContract | None = None  # internal, not exported directly
 
@@ -553,6 +554,8 @@ def export_do_run_json(result: DoRunResult, contract: DoRunContract | None = Non
             "allowed_actions": list(contract.allowed_actions),
             "denied_actions": list(contract.denied_actions),
         }
+    if result.failure_summary:
+        out["failure_summary"] = result.failure_summary
     if result.error:
         out["error"] = result.error
     return out
