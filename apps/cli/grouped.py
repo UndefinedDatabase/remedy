@@ -133,6 +133,14 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--all", action="store_true", dest="all", help=arg.help)
             elif arg.name == "--no-ui":
                 parser.add_argument("--no-ui", action="store_true", dest="no_ui", help=arg.help)
+            elif arg.name == "--agent":
+                parser.add_argument("--agent", action="store_true", dest="agent", help=arg.help)
+            elif arg.name == "--output":
+                parser.add_argument("--output", default=None, help=arg.help)
+            elif arg.name == "--fixture-patch-intent":
+                parser.add_argument("--fixture-patch-intent", nargs="?", const="true", default="false", dest="fixture_patch_intent", help=arg.help)
+            elif arg.name == "--collect-only":
+                parser.add_argument("--collect-only", action="store_true", dest="collect_only", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

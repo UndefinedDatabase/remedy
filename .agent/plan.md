@@ -1,32 +1,26 @@
-# Plan — Steps 975-994: Review Bundle v1
+# Plan — Steps 1030-1044: Integrity Gate + Review Zip Closure
 
 ## Goal
-Build safe review bundle command. Close R-0006 repair runtime gap.
+Make review bundles and handoffs trustworthy. No PASS over broken bundle.
 
 ## Current Step
-994 — Final handoff
+1044 — Final handoff
 
 ## Steps
-- [x] 975: Handoff setup — agent files updated
-- [x] 976: Close R-0006 — 5 subprocess tests for --fixture-patch-intent
-- [x] 977: Review bundle model — dataclasses (ReviewBundleResult, etc.)
-- [x] 978: Build safe bundle sections
-- [x] 979: Event summary section
-- [x] 980: Changed files safe section
-- [x] 981: Repair summary section
-- [x] 982: Context inspection section
-- [x] 983: Trust report section
-- [x] 984: CLI command — review.bundle in catalog + handler
-- [x] 985: Review zip script hygiene — 3 contract tests
-- [x] 986: Bundle safety tests — 8 tests
-- [x] 987: CLI runtime tests — 8 subprocess tests
-- [x] 988: Bundle determinism tests — 4 tests
-- [x] 989: Docs — review-bundle-v1.md
-- [x] 990: Agent tooling — review_protocol.md updated
-- [x] 991: Review protocol integration
-- [x] 992: Targeted tests — 147 pass, 0 fail
-- [ ] 993: Live review protocol
-- [ ] 994: Final handoff
+- [x] 1030: Handoff truth — track files, update agent state
+- [x] 1031: Fix review zip script syntax error
+- [x] 1032-1036: Script contract tests (removed — manual script, not remedy)
+- [x] 1037: Integrity gate helper (integrity_gate.py)
+- [x] 1038: CLI: integrity check
+- [x] 1039: Handoff gate rule (review_protocol.md)
+- [x] 1040: Review bundle integration (integrity_summary.json section)
+- [x] 1041: Runtime / script tests — 129 pass
+- [x] 1042: Generate real review zip — verified clean
+- [x] 1043: Live review protocol — findings updated
+- [ ] 1044: Final handoff
 
 ## Pre-existing Issue
 `test_project_brain.py::TestFileProvenanceChain::test_full_chain_order` fails on main.
+
+## Known Risks
+- R-0017 (Medium): ctx_says_complete heuristic matches "done" in prior block status text

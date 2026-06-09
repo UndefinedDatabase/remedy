@@ -143,3 +143,109 @@ class TestReviewBundleRuntime:
         )
         data = json.loads(result.stdout)
         assert data["safety"]["is_safe"] is True
+
+
+# ---------------------------------------------------------------------------
+# Step 1002: Runtime safety — secret prompt + protected path
+# ---------------------------------------------------------------------------
+
+
+def _setup_secret_job(tmp_path: Path) -> tuple[str, str]:
+    """Create job with secret prompt and .env.secret patch target."""
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    old = os.environ.get("REMEDY_DATA_DIR")
+    os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+    try:
+        from packages.core.models import Artifact, ArtifactKind, Job, Task
+        from packages.orchestration.storage import save_job
+
+        job = Job(
+            name="secret-runtime",
+            user_prompt="Deploy with key sk-live-abc123def456 to prod",
+        )
+        task = Task(description="deploy")
+        job.tasks = [task]
+        art = Artifact(
+            name="deploy-patch",
+            content="patch",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=task.id,
+            metadata={
+                "patch_intent_explanations": [
+                    {
+                        "file": ".env.secret",
+                        "action": "modify",
+                        "risk": "high",
+                        "reason": "update api key",
+                        "summary": "update secret env",
+                    },
+                    {
+                        "file": "src/deploy.py",
+                        "action": "modify",
+                        "risk": "low",
+                        "reason": "fix deploy",
+                        "summary": "fix deploy script",
+                    },
+                ],
+                "patch_intent_approvals": {},
+            },
+        )
+        job.artifacts.append(art)
+        save_job(job)
+        return str(job.id), str(data_dir)
+    finally:
+        if old:
+            os.environ["REMEDY_DATA_DIR"] = old
+        else:
+            os.environ.pop("REMEDY_DATA_DIR", None)
+
+
+class TestRuntimeSafety:
+
+    def test_secret_prompt_not_in_zip(self, tmp_path):
+        import zipfile
+
+        job_id, data_dir = _setup_secret_job(tmp_path)
+        result = _run_grouped_cli(
+            ["review", "bundle", job_id, "--json"],
+            env_extra={"REMEDY_DATA_DIR": data_dir},
+        )
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+        zip_path = data["output_path"]
+        with zipfile.ZipFile(zip_path) as zf:
+            for name in zf.namelist():
+                content = zf.read(name).decode("utf-8", errors="replace")
+                assert "sk-live-abc123def456" not in content, f"Secret leaked in {name}"
+
+    def test_env_secret_not_in_zip(self, tmp_path):
+        import zipfile
+
+        job_id, data_dir = _setup_secret_job(tmp_path)
+        result = _run_grouped_cli(
+            ["review", "bundle", job_id, "--json"],
+            env_extra={"REMEDY_DATA_DIR": data_dir},
+        )
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+        zip_path = data["output_path"]
+        with zipfile.ZipFile(zip_path) as zf:
+            for name in zf.namelist():
+                content = zf.read(name).decode("utf-8", errors="replace")
+                assert ".env.secret" not in content, f".env.secret leaked in {name}"
+
+    def test_safe_path_still_in_bundle(self, tmp_path):
+        import zipfile
+
+        job_id, data_dir = _setup_secret_job(tmp_path)
+        result = _run_grouped_cli(
+            ["review", "bundle", job_id, "--json"],
+            env_extra={"REMEDY_DATA_DIR": data_dir},
+        )
+        data = json.loads(result.stdout)
+        zip_path = data["output_path"]
+        with zipfile.ZipFile(zip_path) as zf:
+            cf = json.loads(zf.read("changed_files_safe.json"))
+            paths = [f["path"] for f in cf["files"]]
+            assert "src/deploy.py" in paths

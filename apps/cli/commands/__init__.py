@@ -12,11 +12,21 @@ if TYPE_CHECKING:
     import argparse
 
 
+def read_agent_file(name: str) -> str:
+    """Read an .agent/ file if it exists. Shared by progress/feature commands."""
+    from pathlib import Path
+
+    p = Path(".agent") / name
+    if p.exists():
+        return p.read_text(encoding="utf-8", errors="replace")
+    return ""
+
+
 def collect_all_handlers() -> dict[str, Callable[["argparse.Namespace"], None]]:
     """Collect COMMAND_HANDLERS from every group module."""
-    from apps.cli.commands import blocker, brain, change, context, dashboard_cmd, decision, dev, do_cmd, event, file, guide, job, memory, patch, policy, project, propose_cmd, readiness, repair_cmd, repo, review_cmd, test_cmds, ui, worker
+    from apps.cli.commands import blocker, brain, change, context, dashboard_cmd, decision, dev, do_cmd, event, feature_cmd, file, guide, integrity_cmd, job, memory, patch, policy, progress_cmd, project, propose_cmd, readiness, repair_cmd, repo, review_cmd, test_cmds, ui, worker
 
     table: dict[str, Callable[["argparse.Namespace"], None]] = {}
-    for mod in (job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, review_cmd, propose_cmd, dev):
+    for mod in (job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, review_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd):
         table.update(mod.COMMAND_HANDLERS)
     return table

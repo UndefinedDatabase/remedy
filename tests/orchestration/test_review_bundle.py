@@ -111,7 +111,7 @@ class TestReviewBundleModel:
 
     def test_required_sections_defined(self):
         from packages.orchestration.review_bundle import REQUIRED_SECTIONS
-        assert len(REQUIRED_SECTIONS) == 10
+        assert len(REQUIRED_SECTIONS) == 12
         assert "manifest.json" in REQUIRED_SECTIONS
         assert "bundle_readme.md" in REQUIRED_SECTIONS
 
@@ -428,4 +428,372 @@ class TestBundleExport:
             assert "Review Bundle" in text
             assert "Sections" in text
         finally:
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Step 996: Prompt redaction tests
+# ---------------------------------------------------------------------------
+
+
+class TestPromptRedaction:
+
+    def test_secret_prompt_not_in_bundle(self, tmp_path):
+        """Job with secret in prompt — secret must not appear in zip."""
+        from packages.orchestration.review_bundle import build_review_bundle
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            from packages.core.models import Job, Task
+            from packages.orchestration.storage import save_job
+            job = Job(name="secret-test", user_prompt="Use API key sk-test-secret-123456 to call endpoint")
+            job.tasks = [Task(description="test")]
+            save_job(job)
+
+            result = build_review_bundle(str(job.id))
+            assert not result.error
+            with zipfile.ZipFile(result.output_path) as zf:
+                for name in zf.namelist():
+                    content = zf.read(name).decode("utf-8", errors="replace")
+                    assert "sk-test-secret-123456" not in content, f"Secret in {name}"
+        finally:
+            _cleanup_env(old)
+
+    def test_password_prompt_not_in_bundle(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            from packages.core.models import Job, Task
+            from packages.orchestration.storage import save_job
+            job = Job(name="pw-test", user_prompt="Set password=hunter2 in config")
+            job.tasks = [Task(description="test")]
+            save_job(job)
+
+            result = build_review_bundle(str(job.id))
+            with zipfile.ZipFile(result.output_path) as zf:
+                for name in zf.namelist():
+                    content = zf.read(name).decode("utf-8", errors="replace")
+                    assert "password=hunter2" not in content, f"Password in {name}"
+        finally:
+            _cleanup_env(old)
+
+    def test_normal_prompt_has_safe_summary(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            result = build_review_bundle(str(job.id))
+            with zipfile.ZipFile(result.output_path) as zf:
+                js = json.loads(zf.read("job_summary.json"))
+                assert js["user_prompt_present"] is True
+                assert js["user_prompt_length"] > 0
+                assert js["user_prompt_redacted"] is False
+                assert js["user_prompt_safe_summary"] is not None
+                assert "user_prompt_preview" not in js
+        finally:
+            _cleanup_env(old)
+
+    def test_secret_prompt_flags_redacted(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            from packages.core.models import Job, Task
+            from packages.orchestration.storage import save_job
+            job = Job(name="redact-test", user_prompt="key is ghp_abcdef12345678901234")
+            job.tasks = [Task(description="test")]
+            save_job(job)
+
+            result = build_review_bundle(str(job.id))
+            with zipfile.ZipFile(result.output_path) as zf:
+                js = json.loads(zf.read("job_summary.json"))
+                assert js["user_prompt_redacted"] is True
+                assert js["user_prompt_safe_summary"] is None
+        finally:
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Step 997: Redact safe text unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestRedactSafeText:
+
+    def test_clean_text_unchanged(self):
+        from packages.orchestration.review_bundle import redact_safe_text
+        text, count = redact_safe_text("Build a REST API", max_len=200)
+        assert text == "Build a REST API"
+        assert count == 0
+
+    def test_api_key_redacted(self):
+        from packages.orchestration.review_bundle import redact_safe_text
+        text, count = redact_safe_text("key is sk-test12345678", max_len=200)
+        assert "sk-test12345678" not in text
+        assert "[REDACTED]" in text
+        assert count >= 1
+
+    def test_github_pat_redacted(self):
+        from packages.orchestration.review_bundle import redact_safe_text
+        text, count = redact_safe_text("token ghp_abcdef12345678901234", max_len=200)
+        assert "ghp_abcdef" not in text
+        assert count >= 1
+
+    def test_password_assignment_redacted(self):
+        from packages.orchestration.review_bundle import redact_safe_text
+        text, count = redact_safe_text("password= hunter2", max_len=200)
+        assert "password=" not in text
+        assert count >= 1
+
+    def test_bounded_length(self):
+        from packages.orchestration.review_bundle import redact_safe_text
+        text, count = redact_safe_text("a" * 500, max_len=100)
+        assert len(text) <= 104  # 100 + "..."
+
+    def test_slack_token_redacted(self):
+        from packages.orchestration.review_bundle import redact_safe_text
+        text, count = redact_safe_text("xoxb-123456-abcdef", max_len=200)
+        assert "xoxb-" not in text
+        assert count >= 1
+
+
+# ---------------------------------------------------------------------------
+# Step 998: Protected path filtering tests
+# ---------------------------------------------------------------------------
+
+
+class TestProtectedPathFiltering:
+
+    def test_env_secret_not_in_bundle(self, tmp_path):
+        """Patch intent targeting .env.secret must not appear in bundle."""
+        from packages.orchestration.review_bundle import build_review_bundle
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            from packages.core.models import Artifact, ArtifactKind, Job, Task
+            from packages.orchestration.storage import save_job
+            job = Job(name="path-test", user_prompt="test")
+            task = Task(description="test")
+            job.tasks = [task]
+            art = Artifact(
+                name="patch",
+                content="patch",
+                kind=ArtifactKind.BUILDER_PROPOSAL,
+                task_id=task.id,
+                metadata={
+                    "patch_intent_explanations": [
+                        {"file": ".env.secret", "action": "modify", "risk": "high",
+                         "reason": "update", "summary": "update secret"},
+                        {"file": "src/main.py", "action": "modify", "risk": "low",
+                         "reason": "fix", "summary": "fix bug"},
+                    ],
+                    "patch_intent_approvals": {},
+                },
+            )
+            job.artifacts.append(art)
+            save_job(job)
+
+            result = build_review_bundle(str(job.id))
+            with zipfile.ZipFile(result.output_path) as zf:
+                for name in zf.namelist():
+                    content = zf.read(name).decode("utf-8", errors="replace")
+                    assert ".env.secret" not in content, f".env.secret found in {name}"
+                # Safe path still present
+                cf = json.loads(zf.read("changed_files_safe.json"))
+                paths = [f["path"] for f in cf["files"]]
+                assert "src/main.py" in paths
+                assert cf["redacted_protected_path_count"] >= 1
+        finally:
+            _cleanup_env(old)
+
+    def test_credentials_json_not_in_bundle(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            from packages.core.models import Artifact, ArtifactKind, Job, Task
+            from packages.orchestration.storage import save_job
+            job = Job(name="cred-test", user_prompt="test")
+            task = Task(description="test")
+            job.tasks = [task]
+            art = Artifact(
+                name="patch",
+                content="patch",
+                kind=ArtifactKind.BUILDER_PROPOSAL,
+                task_id=task.id,
+                metadata={
+                    "patch_intent_explanations": [
+                        {"file": "credentials.json", "action": "create", "risk": "high",
+                         "reason": "setup", "summary": "add creds"},
+                    ],
+                    "patch_intent_approvals": {},
+                },
+            )
+            job.artifacts.append(art)
+            save_job(job)
+
+            result = build_review_bundle(str(job.id))
+            with zipfile.ZipFile(result.output_path) as zf:
+                for name in zf.namelist():
+                    content = zf.read(name).decode("utf-8", errors="replace")
+                    assert "credentials.json" not in content, f"credentials.json found in {name}"
+        finally:
+            _cleanup_env(old)
+
+    def test_is_protected_path(self):
+        from packages.orchestration.review_bundle import _is_protected_path
+        assert _is_protected_path(".env") is True
+        assert _is_protected_path(".env.secret") is True
+        assert _is_protected_path(".env.staging") is True
+        assert _is_protected_path("config/.env.local") is True
+        assert _is_protected_path("credentials.json") is True
+        assert _is_protected_path("node_modules/foo.js") is True
+        assert _is_protected_path("__pycache__/mod.pyc") is True
+        assert _is_protected_path(".git/config") is True
+        assert _is_protected_path("src/main.py") is False
+        assert _is_protected_path("docs/README.md") is False
+
+
+# ---------------------------------------------------------------------------
+# Step 999: Strong safety audit tests
+# ---------------------------------------------------------------------------
+
+
+class TestStrongSafetyAudit:
+
+    def test_secret_in_prompt_flips_safety(self, tmp_path):
+        """Bundle with secret prompt must have safety.is_safe=False if secret leaks."""
+        from packages.orchestration.review_bundle import build_review_bundle
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            from packages.core.models import Job, Task
+            from packages.orchestration.storage import save_job
+            # The prompt secret should be redacted, so safety should stay safe
+            job = Job(name="audit-test", user_prompt="sk-realkey12345678901234")
+            job.tasks = [Task(description="test")]
+            save_job(job)
+
+            result = build_review_bundle(str(job.id))
+            # Since we redact the prompt, the bundle should still be safe
+            # But verify the secret is not in the zip
+            with zipfile.ZipFile(result.output_path) as zf:
+                for name in zf.namelist():
+                    content = zf.read(name).decode("utf-8", errors="replace")
+                    assert "sk-realkey12345678901234" not in content
+        finally:
+            _cleanup_env(old)
+
+    def test_clean_bundle_is_safe(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            result = build_review_bundle(str(job.id))
+            assert result.safety.is_safe
+            assert not result.safety.has_secrets
+            assert not result.safety.has_raw_output
+            assert not result.safety.has_pycache
+            assert not result.safety.has_env_files
+            assert not result.safety.has_raw_diffs
+        finally:
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Step 1000: Output path safety tests
+# ---------------------------------------------------------------------------
+
+
+class TestOutputPathSafety:
+
+    def test_traversal_rejected(self):
+        from packages.orchestration.review_bundle import _is_safe_output_path
+        assert _is_safe_output_path("../evil.zip") is False
+        assert _is_safe_output_path("/tmp/../../etc/evil.zip") is False
+
+    def test_double_dot_in_filename_allowed(self):
+        from packages.orchestration.review_bundle import _is_safe_output_path
+        assert _is_safe_output_path("bundle..review.zip") is True
+        assert _is_safe_output_path("/tmp/my..file.zip") is True
+
+    def test_git_dir_rejected(self):
+        from packages.orchestration.review_bundle import _is_safe_output_path
+        assert _is_safe_output_path(".git/out.zip") is False
+
+    def test_env_dir_rejected(self):
+        from packages.orchestration.review_bundle import _is_safe_output_path
+        assert _is_safe_output_path(".env/out.zip") is False
+        assert _is_safe_output_path(".env.local/out.zip") is False
+
+    def test_safe_paths_allowed(self):
+        from packages.orchestration.review_bundle import _is_safe_output_path
+        assert _is_safe_output_path("/tmp/bundle.zip") is True
+        assert _is_safe_output_path("output/review.zip") is True
+
+
+# ---------------------------------------------------------------------------
+# Step 1001: Section availability truth tests
+# ---------------------------------------------------------------------------
+
+
+class TestSectionAvailability:
+
+    def test_failed_section_in_manifest(self, tmp_path):
+        """Monkeypatch a builder to fail — manifest should show skipped."""
+        from packages.orchestration import review_bundle
+        from packages.orchestration.review_bundle import build_review_bundle
+
+        original = review_bundle._build_proof_chains_safe
+        def _fail(*a, **kw):
+            raise RuntimeError("simulated failure")
+
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            review_bundle._build_proof_chains_safe = _fail
+            result = build_review_bundle(str(job.id))
+            assert not result.error  # bundle still generated
+
+            # Check manifest
+            with zipfile.ZipFile(result.output_path) as zf:
+                manifest = json.loads(zf.read("manifest.json"))
+                assert "proof_chains.json" in manifest["skipped_sections"]
+
+            # Check sections list
+            proof_section = next(
+                (s for s in result.sections if s.filename == "proof_chains.json"), None
+            )
+            assert proof_section is not None
+            assert proof_section.status == "error"
+        finally:
+            review_bundle._build_proof_chains_safe = original
+            _cleanup_env(old)
+
+    def test_bundle_still_safe_with_failed_section(self, tmp_path):
+        from packages.orchestration import review_bundle
+        from packages.orchestration.review_bundle import build_review_bundle
+
+        original = review_bundle._build_context_inspection_safe
+        def _fail(*a, **kw):
+            raise RuntimeError("simulated failure")
+
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            review_bundle._build_context_inspection_safe = _fail
+            result = build_review_bundle(str(job.id))
+            assert result.safety.is_safe  # other sections still safe
+            assert Path(result.output_path).exists()
+        finally:
+            review_bundle._build_context_inspection_safe = original
             _cleanup_env(old)

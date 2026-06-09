@@ -50,9 +50,9 @@ FORBIDDEN_SECRET_PATTERNS: tuple[str, ...] = (
 # Compiled regex for secret patterns — matches value-carrying patterns only
 _SECRET_RE = re.compile(
     r"(?i)"
-    r"(?:sk-[a-zA-Z0-9]{8,})"       # OpenAI-style
+    r"(?:sk-[a-zA-Z0-9_-]{8,})"     # OpenAI-style (keys contain hyphens/underscores)
     r"|(?:ghp_[a-zA-Z0-9]{8,})"     # GitHub PAT
-    r"|(?:xoxb-[a-zA-Z0-9-]+)"      # Slack bot token
+    r"|(?:xoxb-[a-zA-Z0-9_-]+)"     # Slack bot token
     r"|BEGIN\s+PRIVATE\s+KEY"        # PEM headers
     r"|(?:password|api_key|secret|token|credential)\s*="  # key=value leaks
 )

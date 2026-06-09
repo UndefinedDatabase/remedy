@@ -24,6 +24,7 @@ Default output: `.data/review_bundles/<job_id>-review-bundle.zip`
 | `changed_files_safe.json` | Changed file paths, status, proof status (no file content) |
 | `repair_summary.json` | Failure/fix/intent counts, pending intents |
 | `command_summary.json` | Available CLI commands for this job |
+| `progress_ledger.json` | Structured checklist: done/open/blocked/risk counts, items |
 | `bundle_readme.md` | How to review the bundle |
 
 ## What's excluded
@@ -40,12 +41,22 @@ Default output: `.data/review_bundles/<job_id>-review-bundle.zip`
 
 ## Safety
 
-The bundle builder runs a post-build safety audit checking for:
-- Raw output references (tracebacks)
-- Cache file references (__pycache__, .pyc)
-- Secret patterns
+The bundle builder redacts sensitive content before writing:
+- **Prompt redaction**: User prompts go through `redact_safe_text()` — API keys (`sk-`, `ghp_`, `xoxb-`), passwords, tokens, and protected path names are replaced with `[REDACTED]` or `[PROTECTED_PATH]`
+- **Protected path filtering**: `.env*`, `credentials.json`, `service-account.json`, SSH keys, and paths through protected directories (`.git`, `node_modules`, `__pycache__`, etc.) are excluded from `changed_files_safe.json` and `proof_chains.json`
+- **Proof chain scrubbing**: Raw diffs, content, goal text, and protected path entries are filtered
 
-Missing optional data produces safe empty sections, not crashes.
+Post-build safety audit scans all section bytes for:
+- Secret patterns (`_SECRET_RE`: `sk-`, `ghp_`, `xoxb-`, `password=`, `api_key=`, `secret=`, `token=`, `credential=`, PEM headers)
+- Traceback/exception patterns
+- Raw output field names (`command_output`, `raw_stdout`, `raw_stderr`)
+- Cache references (`__pycache__`, `.pyc`)
+- `.env` file references
+- Raw diff markers (`--- a/`, `+++ b/`)
+
+Safety report flags: `has_secrets`, `has_raw_output`, `has_pycache`, `has_env_files`, `has_raw_diffs`, `has_raw_artifacts`. `is_safe` is `false` if any flag is `true`.
+
+Missing optional data produces safe empty sections, not crashes. Failed section builders appear in `manifest.skipped_sections`.
 
 ## Relation to make_review_zip.sh
 

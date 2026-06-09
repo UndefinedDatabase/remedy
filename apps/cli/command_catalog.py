@@ -105,6 +105,9 @@ GROUPS: dict[str, GroupDef] = {
     "review": GroupDef("review", "Review", "Reviewer recommendations — suggest, accept, reject follow-up tasks."),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation — list, evaluate, approve, reject, defer."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
+    "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks."),
+    "progress": GroupDef("progress", "Progress", "Progress ledger — structured checklist and evidence."),
+    "feature": GroupDef("feature", "Feature", "Feature planner — deterministic suggestions and acceptance."),
 }
 
 
@@ -1522,6 +1525,63 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--json", "Output JSON", required=False, is_option=True),
         ),
+    ),
+
+    # ── progress ────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="progress.checklist",
+        group_id="progress",
+        subcommand="checklist",
+        description="Show structured progress checklist with evidence.",
+        action_class="read_only",
+        args=(
+            ArgDef("job_id", "Job UUID (omit for agent mode)", required=False, default=""),
+            ArgDef("--agent", "Use .agent/ files instead of job", required=False, is_option=True, default="false"),
+            ArgDef("--json", "Output as JSON", required=False, is_option=True),
+        ),
+        supports_json=True,
+    ),
+
+    # ── feature ─────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="feature.plan",
+        group_id="feature",
+        subcommand="plan",
+        description="Show deterministic feature suggestions.",
+        action_class="read_only",
+        args=(
+            ArgDef("job_id", "Job UUID (omit for agent mode)", required=False, default=""),
+            ArgDef("--agent", "Use .agent/ files instead of job", required=False, is_option=True, default="false"),
+            ArgDef("--json", "Output as JSON", required=False, is_option=True),
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="feature.accept",
+        group_id="feature",
+        subcommand="accept",
+        description="Accept a feature suggestion — creates ProposedTask.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("suggestion_id", "Suggestion ID to accept"),
+            ArgDef("--json", "Output as JSON", required=False, is_option=True),
+        ),
+        supports_json=True,
+    ),
+
+    # ── integrity ───────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="integrity.check",
+        group_id="integrity",
+        subcommand="check",
+        description="Run pre-handoff integrity checks.",
+        action_class="read_only",
+        args=(
+            ArgDef("--json", "Output as JSON", required=False, is_option=True),
+            ArgDef("--collect-only", "Also run pytest collect-only", required=False, is_option=True, default="false"),
+        ),
+        supports_json=True,
     ),
 )
 

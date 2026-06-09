@@ -19,6 +19,7 @@ Public API::
 from __future__ import annotations
 
 import json
+import re
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -39,6 +40,8 @@ REQUIRED_SECTIONS = (
     "changed_files_safe.json",
     "repair_summary.json",
     "command_summary.json",
+    "progress_ledger.json",
+    "integrity_summary.json",
     "bundle_readme.md",
 )
 
@@ -46,6 +49,11 @@ _UNSAFE_PATTERNS = frozenset({
     "__pycache__", ".pyc", ".pyo", ".env", ".data",
     "node_modules", "dist", "build", ".cache", ".git",
     "secrets", "credentials", "token",
+})
+
+_PROTECTED_OUTPUT_DIRS = frozenset({
+    ".git", ".env", "node_modules", "__pycache__",
+    ".venv", "venv", "dist", "build", ".cache",
 })
 
 
@@ -129,17 +137,92 @@ class ReviewBundleResult:
 
 
 # ---------------------------------------------------------------------------
-# Path safety
+# Text redaction (Step 997)
+# ---------------------------------------------------------------------------
+
+
+_PROTECTED_PATH_RE = re.compile(
+    r"(?:^|[\s\"'/,;:(\[{])"
+    r"("
+    r"(?:[a-zA-Z0-9_./-]*/)?"                       # optional directory prefix
+    r"(?:\.env(?:\.[a-zA-Z0-9_.-]+)?)"               # .env, .env.secret, .env.local, etc.
+    r"|(?:[a-zA-Z0-9_./-]*/)?credentials\.json"      # credentials.json
+    r"|(?:[a-zA-Z0-9_./-]*/)?service-account\.json"  # service-account.json
+    r"|(?:[a-zA-Z0-9_./-]*/)?secrets\.ya?ml"         # secrets.yaml/yml
+    r"|(?:[a-zA-Z0-9_./-]*/)?id_(?:rsa|ed25519|ecdsa)" # SSH keys
+    r")"
+)
+
+
+def redact_safe_text(text: str, max_len: int = 200) -> tuple[str, int]:
+    """Redact secrets and protected paths from text and bound length.
+
+    Returns (redacted_text, redaction_count).
+    """
+    from packages.orchestration.redaction_patterns import _SECRET_RE
+
+    redaction_count = 0
+
+    def _replace(m: "re.Match[str]") -> str:
+        nonlocal redaction_count
+        redaction_count += 1
+        return "[REDACTED]"
+
+    result = _SECRET_RE.sub(_replace, text)
+
+    def _replace_path(m: "re.Match[str]") -> str:
+        nonlocal redaction_count
+        full = m.group(0)
+        path_part = m.group(1)
+        prefix = full[: full.index(path_part[0])] if path_part else ""
+        redaction_count += 1
+        return prefix + "[PROTECTED_PATH]"
+
+    result = _PROTECTED_PATH_RE.sub(_replace_path, result)
+
+    if len(result) > max_len:
+        result = result[:max_len] + "..."
+        redaction_count += 1
+
+    return result, redaction_count
+
+
+def _is_protected_path(path: str) -> bool:
+    """Check if path is protected — reuses context inspector policy."""
+    from packages.orchestration.context_inspector import (
+        _PROTECTED_EXACT,
+        _PROTECTED_PREFIXES,
+        _PROTECTED_DIRS,
+        _SECRET_NAMES,
+    )
+    p = Path(path)
+    name = p.name
+    if name in _PROTECTED_EXACT:
+        return True
+    if any(name.startswith(pf) for pf in _PROTECTED_PREFIXES):
+        return True
+    if name in _SECRET_NAMES:
+        return True
+    for part in p.parts:
+        if part in _PROTECTED_DIRS:
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Path safety (Step 1000)
 # ---------------------------------------------------------------------------
 
 
 def _is_safe_output_path(path: str) -> bool:
-    """Reject traversal and protected paths."""
-    if ".." in path:
-        return False
+    """Reject traversal and protected output destinations. Segment-based."""
     p = Path(path)
     for part in p.parts:
-        if part.startswith(".env") or part in (".git", ".data"):
+        if part == "..":
+            return False
+        if part in _PROTECTED_OUTPUT_DIRS:
+            return False
+        if part.startswith(".env"):
             return False
     return True
 
@@ -157,32 +240,40 @@ def _default_output_path(job_id: str, data_dir: Path) -> Path:
 
 
 def _build_job_summary(job: Any) -> dict:
-    """Safe job summary — no raw content."""
+    """Safe job summary — no raw content, no raw prompt."""
     tasks_summary = []
     for t in job.tasks:
+        safe_desc, _ = redact_safe_text(t.description, max_len=100)
         tasks_summary.append({
             "task_id": str(t.id)[:8],
-            "description": t.description[:100],
+            "description": safe_desc,
             "status": t.status.value,
             "task_type": t.inputs.get("task_type", "unknown"),
         })
 
     artifacts_summary = []
     for a in job.artifacts:
+        safe_name, _ = redact_safe_text(a.name, max_len=60)
         artifacts_summary.append({
             "artifact_id": str(a.id)[:8],
-            "name": a.name[:60],
+            "name": safe_name,
             "kind": a.kind.value if hasattr(a.kind, "value") else str(a.kind),
             "has_patch_intent": bool(a.metadata.get("patch_intent_explanations")),
             "is_test_failure": bool(a.metadata.get("test_failure")),
             "is_repair": bool(a.metadata.get("repair")),
         })
 
+    prompt = job.user_prompt or ""
+    safe_prompt, prompt_redactions = redact_safe_text(prompt, max_len=200)
+
     return {
         "job_id": str(job.id),
         "name": job.name[:60],
         "state": job.state.value,
-        "user_prompt_preview": (job.user_prompt[:200] + "...") if len(job.user_prompt) > 200 else job.user_prompt,
+        "user_prompt_present": bool(prompt),
+        "user_prompt_length": len(prompt),
+        "user_prompt_safe_summary": safe_prompt if prompt_redactions == 0 else None,
+        "user_prompt_redacted": prompt_redactions > 0,
         "task_count": len(job.tasks),
         "artifact_count": len(job.artifacts),
         "tasks": tasks_summary,
@@ -217,22 +308,27 @@ def _build_event_summary(events: list[dict]) -> dict:
     }
 
 
-def _build_changed_files_safe(job: Any, events: list[dict]) -> list[dict]:
-    """Safe changed file list from available sources."""
+def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
+    """Safe changed file list from available sources. Protected paths excluded."""
     files: dict[str, ChangedFileSafe] = {}
+    redacted_count = 0
 
     for a in job.artifacts:
         explanations = a.metadata.get("patch_intent_explanations", [])
         for exp in explanations:
             path = exp.get("file", "")
-            if path and not path.startswith("/") and ".." not in path:
-                if path not in files:
-                    files[path] = ChangedFileSafe(path=path)
-                files[path].status = exp.get("action", "unknown")
-                if a.task_id:
-                    files[path].related_task_id = str(a.task_id)[:8]
-                from packages.orchestration.approval_queue import make_intent_id
-                files[path].related_intent_id = make_intent_id(a.id, 0)
+            if not path or path.startswith("/") or ".." in Path(path).parts:
+                continue
+            if _is_protected_path(path):
+                redacted_count += 1
+                continue
+            if path not in files:
+                files[path] = ChangedFileSafe(path=path)
+            files[path].status = exp.get("action", "unknown")
+            if a.task_id:
+                files[path].related_task_id = str(a.task_id)[:8]
+            from packages.orchestration.approval_queue import make_intent_id
+            files[path].related_intent_id = make_intent_id(a.id, 0)
 
     for ev in events:
         if ev.get("event") == "test_completed" or ev.get("event") == "test_passed":
@@ -240,18 +336,21 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> list[dict]:
             if tested_path in files:
                 files[tested_path].tested_after_change = True
 
-    return [
-        {
-            "path": f.path,
-            "status": f.status,
-            "proof_status": f.proof_status,
-            "related_task_id": f.related_task_id,
-            "related_intent_id": f.related_intent_id,
-            "tested_after_change": f.tested_after_change,
-            "safety_flags": f.safety_flags,
-        }
-        for f in files.values()
-    ]
+    return {
+        "files": [
+            {
+                "path": f.path,
+                "status": f.status,
+                "proof_status": f.proof_status,
+                "related_task_id": f.related_task_id,
+                "related_intent_id": f.related_intent_id,
+                "tested_after_change": f.tested_after_change,
+                "safety_flags": f.safety_flags,
+            }
+            for f in files.values()
+        ],
+        "redacted_protected_path_count": redacted_count,
+    }
 
 
 def _build_repair_summary(job: Any, events: list[dict]) -> dict:
@@ -327,31 +426,46 @@ def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
 
 
 def _build_trust_report_safe(job: Any, events: list[dict], data_dir: Path) -> dict:
-    """Safe trust report — text summary only, no raw output."""
+    """Safe trust report — redacted text summary only."""
     try:
         from packages.orchestration.trust_report import summarize_trust_report
         text = summarize_trust_report(job, events, data_dir=data_dir)
-        if len(text) > 5000:
-            text = text[:5000] + "\n... (truncated)"
+        safe_text, redactions = redact_safe_text(text, max_len=5000)
         return {
             "status": "available",
-            "summary_text": text,
-            "summary_length": len(text),
+            "summary_text": safe_text,
+            "summary_length": len(safe_text),
+            "redaction_count": redactions,
         }
     except Exception:
         return {"status": "section_unavailable", "reason": "trust report not available"}
 
 
 def _build_proof_chains_safe(job: Any, events: list[dict]) -> dict:
-    """Safe proof chains — no raw diffs."""
+    """Safe proof chains — no raw diffs, no raw goal text."""
     try:
         from packages.orchestration.proof_chain import build_proof_chain, export_proof_chain_json
         chain = build_proof_chain(job, events)
         exported = export_proof_chain_json(chain)
+        if "goal" in exported:
+            safe_goal, _ = redact_safe_text(str(exported["goal"]), max_len=200)
+            exported["goal"] = safe_goal
+        safe_changes = []
+        redacted_path_count = 0
         for change in exported.get("changes", []):
+            path = change.get("target_path", change.get("path", change.get("file", "")))
+            if _is_protected_path(path):
+                redacted_path_count += 1
+                continue
             change.pop("diff_preview", None)
             change.pop("content", None)
             change.pop("raw_diff", None)
+            for field in ("reason", "summary", "description"):
+                if field in change:
+                    change[field], _ = redact_safe_text(str(change[field]), max_len=300)
+            safe_changes.append(change)
+        exported["changes"] = safe_changes
+        exported["redacted_protected_path_count"] = redacted_path_count
         return exported
     except Exception:
         return {"status": "section_unavailable", "reason": "proof chains not available"}
@@ -371,6 +485,64 @@ def _build_command_summary(job: Any) -> dict:
                 "supports_json": cmd.supports_json,
             })
     return {"available_commands": commands, "command_count": len(commands)}
+
+
+def _build_progress_ledger_safe(job: Any, events: list[dict]) -> dict:
+    """Safe progress ledger section — no raw content."""
+    try:
+        from packages.orchestration.progress_ledger import (
+            build_progress_ledger,
+            export_progress_ledger_json,
+        )
+        plan_text = ""
+        live_review_text = ""
+        context_text = ""
+        agent_dir = Path(".agent")
+        if agent_dir.exists():
+            for name, target_ref in [("plan.md", "plan"), ("live_review.md", "review"), ("context.md", "ctx")]:
+                p = agent_dir / name
+                if p.exists():
+                    text = p.read_text(encoding="utf-8", errors="replace")
+                    if target_ref == "plan":
+                        plan_text = text
+                    elif target_ref == "review":
+                        live_review_text = text
+                    else:
+                        context_text = text
+
+        ledger = build_progress_ledger(
+            plan_text=plan_text,
+            live_review_text=live_review_text,
+            context_text=context_text,
+            job=job,
+            events=events,
+        )
+        exported = export_progress_ledger_json(ledger)
+        for item in exported.get("items", []):
+            if item.get("safe_summary"):
+                item["safe_summary"], _ = redact_safe_text(item["safe_summary"], max_len=200)
+        return exported
+    except Exception:
+        return {"status": "section_unavailable", "reason": "progress ledger not available"}
+
+
+def _build_integrity_summary() -> dict:
+    """Safe integrity summary — no raw command output."""
+    try:
+        from packages.orchestration.integrity_gate import (
+            export_integrity_json,
+            run_integrity_checks,
+        )
+        result = run_integrity_checks(collect_only=False)
+        exported = export_integrity_json(result)
+        # Strip any message content that might leak paths/secrets
+        for check in exported.get("checks", []):
+            msg = check.get("message", "")
+            safe_msg, _ = redact_safe_text(msg, max_len=200)
+            check["message"] = safe_msg
+        return exported
+    except Exception:
+        return {"status": "section_unavailable", "reason": "integrity gate not available"}
 
 
 def _build_bundle_readme(job_id: str, sections: list[str]) -> str:
@@ -522,6 +694,24 @@ def build_review_bundle(
     except Exception:
         result.sections.append(ReviewBundleSection("command_summary.json", status="error", error="build failed"))
 
+    # progress_ledger.json
+    try:
+        pl = _build_progress_ledger_safe(job, events)
+        content = json.dumps(pl, indent=2).encode()
+        section_data["progress_ledger.json"] = content
+        result.sections.append(ReviewBundleSection("progress_ledger.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("progress_ledger.json", status="error", error="build failed"))
+
+    # integrity_summary.json
+    try:
+        ig = _build_integrity_summary()
+        content = json.dumps(ig, indent=2).encode()
+        section_data["integrity_summary.json"] = content
+        result.sections.append(ReviewBundleSection("integrity_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("integrity_summary.json", status="error", error="build failed"))
+
     # manifest.json (built from above)
     included = [s.filename for s in result.sections if s.status == "included"]
     skipped = [s.filename for s in result.sections if s.status != "included"]
@@ -565,16 +755,51 @@ def build_review_bundle(
 
 
 def _audit_bundle_safety(result: ReviewBundleResult, section_data: dict[str, bytes]) -> None:
-    """Post-build safety audit."""
+    """Post-build safety audit — scans all sections for forbidden content."""
+    from packages.orchestration.redaction_patterns import (
+        find_forbidden_surface_tokens,
+        _SECRET_RE,
+    )
+
+    _SAFE_MENTION_FILES = {"bundle_readme.md", "manifest.json"}
+
     for name, data in section_data.items():
-        text = data.decode("utf-8", errors="replace").lower()
-        if "traceback" in text and name != "trust_report.json":
+        text = data.decode("utf-8", errors="replace")
+        text_lower = text.lower()
+
+        # Secret pattern detection
+        if _SECRET_RE.search(text):
+            result.safety.has_secrets = True
+            result.safety.warnings.append(f"Secret-like pattern in {name}")
+
+        # Traceback detection
+        if "traceback (most recent" in text_lower and name not in _SAFE_MENTION_FILES:
             result.safety.has_raw_output = True
-            result.safety.warnings.append(f"Possible raw output in {name}")
-        if "__pycache__" in text or ".pyc" in text:
-            if name not in ("bundle_readme.md", "manifest.json"):
+            result.safety.warnings.append(f"Traceback in {name}")
+
+        # Raw output field names
+        for field in ("command_output", "raw_stdout", "raw_stderr"):
+            if f'"{field}"' in text_lower:
+                result.safety.has_raw_output = True
+                result.safety.warnings.append(f"Raw output field '{field}' in {name}")
+
+        # __pycache__ / .pyc detection
+        if name not in _SAFE_MENTION_FILES:
+            if "__pycache__" in text or ".pyc" in text_lower:
                 result.safety.has_pycache = True
-                result.safety.warnings.append(f"Possible __pycache__ reference in {name}")
+                result.safety.warnings.append(f"Cache reference in {name}")
+
+        # .env file reference detection (not category word "environment")
+        if name not in _SAFE_MENTION_FILES:
+            if '".env"' in text_lower or '".env.' in text_lower or "/.env" in text_lower:
+                result.safety.has_env_files = True
+                result.safety.warnings.append(f".env reference in {name}")
+
+        # Raw diff markers
+        if name not in _SAFE_MENTION_FILES:
+            if "\n--- a/" in text or "\n+++ b/" in text:
+                result.safety.has_raw_diffs = True
+                result.safety.warnings.append(f"Raw diff markers in {name}")
 
 
 # ---------------------------------------------------------------------------
