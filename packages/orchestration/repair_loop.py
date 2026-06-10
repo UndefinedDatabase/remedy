@@ -81,6 +81,44 @@ def start_repair_loop_v0(
 
     data_dir = resolve_data_root()
 
+    # --- Contract enforcement (Step 1051) ---
+    from packages.orchestration.run_contract import RunContract, evaluate_run_action
+
+    repair_contract = RunContract(
+        version=1,
+        job_id=job_id,
+        source="repair_v0_default",
+        allowed_actions=(
+            "write_metadata", "create_fix_task",
+            "create_patch_intent",
+        ),
+        denied_actions=(
+            "apply", "source_apply", "arbitrary_shell",
+            "network_fetch", "cloud_provider",
+        ),
+        stop_before_apply=True,
+        max_loops=1,
+    )
+
+    # Check create_fix_task
+    fix_decision = evaluate_run_action(repair_contract, "create_fix_task")
+    if not fix_decision.allowed:
+        result.stop_reason = "contract_blocked"
+        result.stop_detail = fix_decision.reason
+        result.phases.append({"phase": "contract", "status": "blocked", "safe_summary": fix_decision.reason})
+        return result
+
+    # Check create_patch_intent if requested
+    if create_patch_intent:
+        pi_decision = evaluate_run_action(repair_contract, "create_patch_intent")
+        if not pi_decision.allowed:
+            result.stop_reason = "contract_blocked"
+            result.stop_detail = pi_decision.reason
+            result.phases.append({"phase": "contract", "status": "blocked", "safe_summary": pi_decision.reason})
+            return result
+
+    result.phases.append({"phase": "contract", "status": "completed", "safe_summary": "Contract checks passed"})
+
     # --- Phase: load ---
     try:
         job = load_job(job_id)

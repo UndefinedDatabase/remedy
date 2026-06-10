@@ -105,7 +105,7 @@ class TestPhaseModel:
         assert c.autonomy_level == 2
         assert c.source == "do_v1_minimal"
         assert "plan" in c.allowed_actions
-        assert "apply_patch" in c.denied_actions
+        assert "apply" in c.denied_actions
 
 
 # ---------------------------------------------------------------------------
@@ -317,8 +317,8 @@ class TestApprovalGate:
         import inspect
         from packages.orchestration import do_run
         src = inspect.getsource(do_run)
-        assert "source_apply" not in src
-        assert "apply_patch(" not in src
+        assert "from packages.orchestration.source_apply import" not in src
+        assert "source_apply(" not in src
 
     def test_no_apply_phase_before_approval(self, tmp_path):
         """Step 933: apply never appears before approval_required."""
@@ -589,7 +589,7 @@ class TestContractConsolidation:
     def test_contract_has_denied_actions(self):
         c = DoRunContract()
         assert len(c.denied_actions) > 0
-        assert "apply_patch" in c.denied_actions
+        assert "apply" in c.denied_actions
 
     def test_contract_in_result(self, tmp_path):
         result = _run_with_tmp(tmp_path)

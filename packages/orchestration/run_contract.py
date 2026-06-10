@@ -1,5 +1,5 @@
 """
-Run Contract v0 — deterministic execution-boundary definition for a Remedy job.
+Run Contract v1 — deterministic execution-boundary definition for a Remedy job.
 
 A RunContract describes what a run is allowed and not allowed to do.
 It is an execution boundary, not a capability promise.
@@ -10,20 +10,23 @@ no external processes.  Pure data contract only.
 Public API::
 
     build_default_run_contract(job) -> RunContract
+    evaluate_run_action(contract, action, ...) -> RunActionDecision
     export_run_contract_json(contract) -> dict[str, Any]
     summarize_run_contract(contract) -> str
 """
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from packages.core.models import Job
 
 
 # ---------------------------------------------------------------------------
-# Data model
+# Data model (Step 1048)
 # ---------------------------------------------------------------------------
 
 
@@ -34,21 +37,47 @@ class RunContract:
     Fields are deterministic and JSON-serializable.  No external calls.
     """
 
-    version: int
-    job_id: str
-    scope: str
-    autonomy_level: int
-    allowed_actions: tuple[str, ...]
-    denied_actions: tuple[str, ...]
-    max_loops: int
-    max_tokens: int
-    max_cost_cents: int
-    model_policy: str
-    command_policy: str
-    stop_conditions: tuple[str, ...]
-    requires_approval_for: tuple[str, ...]
-    source: str
-    notes: str
+    version: int = 1
+    contract_id: str = ""
+    job_id: str = ""
+    scope: str = "job"
+    autonomy_level: int = 1
+    allowed_actions: tuple[str, ...] = ()
+    denied_actions: tuple[str, ...] = ()
+    max_loops: int = 10
+    max_test_runs: int = 0
+    max_runtime_seconds: int = 600
+    max_tokens: int = 200_000
+    max_cost_cents: int = 500
+    allowed_paths: tuple[str, ...] = ()
+    denied_paths: tuple[str, ...] = ()
+    stop_before_apply: bool = True
+    stop_on_unknown_risk: bool = True
+    stop_on_medium_risk: bool = False
+    prefer_local: bool = True
+    no_cloud: bool = True
+    model_policy: str = "local_first"
+    command_policy: str = "allowlist_only"
+    stop_conditions: tuple[str, ...] = ()
+    requires_approval_for: tuple[str, ...] = ()
+    source: str = ""
+    created_at: str = ""
+    notes: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Action decision result (Step 1049)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RunActionDecision:
+    """Result of evaluating an action against the contract."""
+
+    allowed: bool
+    status: str  # allowed, blocked, exhausted, unknown
+    reason: str
+    next_safe_action: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -57,19 +86,32 @@ class RunContract:
 
 _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     "plan",
+    "context",
     "build_artifact",
     "create_patch_intent",
-    "apply_approved_markdown_patch",
-    "run_tests_local",
     "discover_commands",
+    "write_metadata",
 )
 
 _DEFAULT_DENIED_ACTIONS: tuple[str, ...] = (
+    "apply",
+    "source_apply",
     "arbitrary_shell",
     "apply_patch_without_approval",
     "modify_permissions_autonomously",
     "network_fetch",
     "install_packages",
+    "cloud_provider",
+)
+
+_DEFAULT_DENIED_PATHS: tuple[str, ...] = (
+    ".env",
+    ".env.secret",
+    ".env.local",
+    "credentials.json",
+    "secrets.yaml",
+    "node_modules/",
+    ".git/",
 )
 
 _DEFAULT_STOP_CONDITIONS: tuple[str, ...] = (
@@ -85,6 +127,9 @@ _DEFAULT_REQUIRES_APPROVAL: tuple[str, ...] = (
     "high_risk_command_execution",
 )
 
+_APPLY_ACTIONS = frozenset({"apply", "source_apply", "patch_apply"})
+_CLOUD_ACTIONS = frozenset({"cloud_provider", "network_fetch", "install_packages"})
+
 
 def build_default_run_contract(job: Job) -> RunContract:
     """Build a sensible default RunContract for a job.
@@ -94,21 +139,185 @@ def build_default_run_contract(job: Job) -> RunContract:
     """
     return RunContract(
         version=1,
+        contract_id=f"rc-{str(job.id)[:8]}",
         job_id=str(job.id),
         scope="job",
         autonomy_level=1,
         allowed_actions=_DEFAULT_ALLOWED_ACTIONS,
         denied_actions=_DEFAULT_DENIED_ACTIONS,
         max_loops=10,
+        max_test_runs=0,
+        max_runtime_seconds=600,
         max_tokens=200_000,
         max_cost_cents=500,
+        allowed_paths=(),
+        denied_paths=_DEFAULT_DENIED_PATHS,
+        stop_before_apply=True,
+        stop_on_unknown_risk=True,
+        stop_on_medium_risk=False,
+        prefer_local=True,
+        no_cloud=True,
         model_policy="local_first",
         command_policy="allowlist_only",
         stop_conditions=_DEFAULT_STOP_CONDITIONS,
         requires_approval_for=_DEFAULT_REQUIRES_APPROVAL,
         source="default_v1",
+        created_at=datetime.now(timezone.utc).isoformat(),
         notes="Auto-generated execution boundary. Not yet user-configurable.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Contract decision helper (Step 1049)
+# ---------------------------------------------------------------------------
+
+
+def evaluate_run_action(
+    contract: RunContract,
+    action: str,
+    *,
+    path: str | None = None,
+    risk: str | None = None,
+    loop_index: int | None = None,
+    test_run_count: int | None = None,
+) -> RunActionDecision:
+    """Evaluate whether an action is allowed under the contract.
+
+    Returns a RunActionDecision with allowed, status, reason, next_safe_action.
+    """
+    # 1. Denied actions
+    if action in contract.denied_actions:
+        return RunActionDecision(
+            allowed=False,
+            status="blocked",
+            reason=f"Action '{action}' is in denied_actions",
+            next_safe_action="remedy contract inspect <job_id> --json",
+        )
+
+    # 2. Not in allowed actions
+    if contract.allowed_actions and action not in contract.allowed_actions:
+        return RunActionDecision(
+            allowed=False,
+            status="blocked",
+            reason=f"Action '{action}' not in allowed_actions",
+            next_safe_action="remedy contract inspect <job_id> --json",
+        )
+
+    # 3. stop_before_apply blocks apply-type actions
+    if contract.stop_before_apply and action in _APPLY_ACTIONS:
+        return RunActionDecision(
+            allowed=False,
+            status="blocked",
+            reason="stop_before_apply blocks apply actions",
+            next_safe_action="remedy patch approve <job_id> <intent_id>",
+        )
+
+    # 4. no_cloud blocks cloud actions
+    if contract.no_cloud and action in _CLOUD_ACTIONS:
+        return RunActionDecision(
+            allowed=False,
+            status="blocked",
+            reason="no_cloud blocks cloud/provider actions",
+            next_safe_action="remedy contract inspect <job_id> --json",
+        )
+
+    # 5. Loop budget
+    if loop_index is not None and loop_index >= contract.max_loops:
+        return RunActionDecision(
+            allowed=False,
+            status="exhausted",
+            reason=f"Loop index {loop_index} >= max_loops {contract.max_loops}",
+            next_safe_action="remedy job show <job_id> --json",
+        )
+
+    # 6. Test run budget
+    if test_run_count is not None and test_run_count >= contract.max_test_runs:
+        return RunActionDecision(
+            allowed=False,
+            status="exhausted",
+            reason=f"Test runs {test_run_count} >= max_test_runs {contract.max_test_runs}",
+            next_safe_action="remedy job show <job_id> --json",
+        )
+
+    # 7. Path policy
+    if path is not None:
+        path_decision = _check_path_policy(contract, path)
+        if path_decision is not None:
+            return path_decision
+
+    # 8. Risk policy
+    if risk is not None:
+        risk_lower = risk.lower()
+        if risk_lower == "unknown" and contract.stop_on_unknown_risk:
+            return RunActionDecision(
+                allowed=False,
+                status="blocked",
+                reason="stop_on_unknown_risk blocks unknown-risk actions",
+                next_safe_action="remedy contract inspect <job_id> --json",
+            )
+        if risk_lower in ("medium", "high") and contract.stop_on_medium_risk:
+            return RunActionDecision(
+                allowed=False,
+                status="blocked",
+                reason=f"stop_on_medium_risk blocks {risk_lower}-risk actions",
+                next_safe_action="remedy contract inspect <job_id> --json",
+            )
+
+    return RunActionDecision(
+        allowed=True,
+        status="allowed",
+        reason=f"Action '{action}' permitted by contract",
+    )
+
+
+def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | None:
+    """Check path against allowed/denied path policies. Returns decision if blocked."""
+    normalized = os.path.normpath(path)
+
+    # Block absolute paths
+    if os.path.isabs(normalized):
+        return RunActionDecision(
+            allowed=False,
+            status="blocked",
+            reason=f"Absolute path '{normalized}' blocked by policy",
+            next_safe_action="remedy contract inspect <job_id> --json",
+        )
+
+    # Block traversal
+    if ".." in normalized.split(os.sep):
+        return RunActionDecision(
+            allowed=False,
+            status="blocked",
+            reason=f"Path traversal in '{normalized}' blocked by policy",
+            next_safe_action="remedy contract inspect <job_id> --json",
+        )
+
+    # Denied paths win over allowed paths
+    for denied in contract.denied_paths:
+        if normalized == denied or normalized.startswith(denied.rstrip("/") + "/") or normalized.startswith(denied):
+            return RunActionDecision(
+                allowed=False,
+                status="blocked",
+                reason=f"Path '{normalized}' matches denied path '{denied}'",
+                next_safe_action="remedy contract inspect <job_id> --json",
+            )
+
+    # If allowed_paths specified, path must match
+    if contract.allowed_paths:
+        matched = False
+        for allowed in contract.allowed_paths:
+            if normalized == allowed or normalized.startswith(allowed.rstrip("/") + "/"):
+                matched = True
+                break
+        if not matched:
+            return RunActionDecision(
+                allowed=False,
+                status="blocked",
+                reason=f"Path '{normalized}' not in allowed_paths",
+                next_safe_action="remedy contract inspect <job_id> --json",
+            )
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -120,20 +329,41 @@ def export_run_contract_json(contract: RunContract) -> dict[str, Any]:
     """Export a RunContract as a JSON-serializable dict."""
     return {
         "version":               contract.version,
+        "contract_id":           contract.contract_id,
         "job_id":                contract.job_id,
         "scope":                 contract.scope,
         "autonomy_level":        contract.autonomy_level,
         "allowed_actions":       list(contract.allowed_actions),
         "denied_actions":        list(contract.denied_actions),
         "max_loops":             contract.max_loops,
+        "max_test_runs":         contract.max_test_runs,
+        "max_runtime_seconds":   contract.max_runtime_seconds,
         "max_tokens":            contract.max_tokens,
         "max_cost_cents":        contract.max_cost_cents,
+        "allowed_paths":         list(contract.allowed_paths),
+        "denied_paths":          list(contract.denied_paths),
+        "stop_before_apply":     contract.stop_before_apply,
+        "stop_on_unknown_risk":  contract.stop_on_unknown_risk,
+        "stop_on_medium_risk":   contract.stop_on_medium_risk,
+        "prefer_local":          contract.prefer_local,
+        "no_cloud":              contract.no_cloud,
         "model_policy":          contract.model_policy,
         "command_policy":        contract.command_policy,
         "stop_conditions":       list(contract.stop_conditions),
         "requires_approval_for": list(contract.requires_approval_for),
         "source":                contract.source,
+        "created_at":            contract.created_at,
         "notes":                 contract.notes,
+    }
+
+
+def export_run_action_decision_json(decision: RunActionDecision) -> dict[str, Any]:
+    """Export action decision as JSON dict."""
+    return {
+        "allowed": decision.allowed,
+        "status": decision.status,
+        "reason": decision.reason,
+        "next_safe_action": decision.next_safe_action,
     }
 
 
@@ -142,14 +372,22 @@ def summarize_run_contract(contract: RunContract) -> str:
     lines: list[str] = []
     lines.append("Run Contract")
     lines.append(f"  Version:         {contract.version}")
+    lines.append(f"  Contract ID:     {contract.contract_id}")
     lines.append(f"  Job:             {contract.job_id[:8]}")
     lines.append(f"  Scope:           {contract.scope}")
     lines.append(f"  Autonomy:        {contract.autonomy_level}")
     lines.append(f"  Model policy:    {contract.model_policy}")
     lines.append(f"  Command policy:  {contract.command_policy}")
     lines.append(f"  Max loops:       {contract.max_loops}")
+    lines.append(f"  Max test runs:   {contract.max_test_runs}")
+    lines.append(f"  Max runtime:     {contract.max_runtime_seconds}s")
     lines.append(f"  Max tokens:      {contract.max_tokens:,}")
     lines.append(f"  Max cost:        {contract.max_cost_cents} cents")
+    lines.append(f"  Stop before apply: {contract.stop_before_apply}")
+    lines.append(f"  Stop on unknown risk: {contract.stop_on_unknown_risk}")
+    lines.append(f"  Stop on medium risk:  {contract.stop_on_medium_risk}")
+    lines.append(f"  Prefer local:    {contract.prefer_local}")
+    lines.append(f"  No cloud:        {contract.no_cloud}")
     lines.append(f"  Source:          {contract.source}")
 
     lines.append("  Allowed actions:")
@@ -159,6 +397,16 @@ def summarize_run_contract(contract: RunContract) -> str:
     lines.append("  Denied actions:")
     for d in contract.denied_actions:
         lines.append(f"    - {d}")
+
+    if contract.allowed_paths:
+        lines.append("  Allowed paths:")
+        for p in contract.allowed_paths:
+            lines.append(f"    + {p}")
+
+    if contract.denied_paths:
+        lines.append("  Denied paths:")
+        for p in contract.denied_paths:
+            lines.append(f"    - {p}")
 
     lines.append("  Stop conditions:")
     for s in contract.stop_conditions:

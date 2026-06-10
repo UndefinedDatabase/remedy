@@ -126,14 +126,10 @@ _DO_V1_MAX_AUTONOMY = 3
 
 @dataclass(frozen=True)
 class DoRunContract:
-    """Constraints for a do run.
+    """Thin view over the central RunContract for the do_run flow.
 
-    Simplified v1 contract. Derives from the same conceptual model as
-    ``packages.orchestration.run_contract.RunContract`` but is intentionally
-    minimal for the fixture-only v1 flow.
-
-    Source: ``do_v1_minimal`` — consolidation with RunContract deferred to v2
-    when the apply path is wired.
+    Keeps backward compatibility. Fields mirror the central RunContract
+    but scoped to do_run's v1 needs.
     """
 
     autonomy_level: int = 2
@@ -141,11 +137,37 @@ class DoRunContract:
     max_loops: int = 1
     source: str = "do_v1_minimal"
     allowed_actions: tuple[str, ...] = (
-        "plan", "build_artifact", "create_patch_intent",
+        "plan", "context", "build_artifact", "create_patch_intent",
     )
     denied_actions: tuple[str, ...] = (
-        "apply_patch", "arbitrary_shell", "network_fetch",
+        "apply", "source_apply", "arbitrary_shell", "network_fetch",
     )
+
+
+def _check_do_contract(contract: DoRunContract, action: str) -> DoRunPhase | None:
+    """Check if action is allowed by contract. Returns stop phase if blocked."""
+    from packages.orchestration.run_contract import (
+        RunContract,
+        evaluate_run_action,
+    )
+
+    rc = RunContract(
+        version=1,
+        job_id="",
+        allowed_actions=contract.allowed_actions,
+        denied_actions=contract.denied_actions,
+        stop_before_apply=contract.stop_before_apply,
+        max_loops=contract.max_loops,
+        source=contract.source,
+    )
+    decision = evaluate_run_action(rc, action)
+    if not decision.allowed:
+        return DoRunPhase(
+            phase=action, status="blocked",
+            safe_summary=f"Contract blocked: {decision.reason}",
+            next_safe_action=decision.next_safe_action,
+        )
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +262,15 @@ def run_do(
         safe_summary=f"Job {str(job.id)[:8]} created",
     ))
 
-    # --- Phase: plan (Step 910) ---
+    # --- Phase: plan (Step 910) — contract check ---
+    plan_block = _check_do_contract(contract, "plan")
+    if plan_block:
+        result.phases.append(plan_block)
+        result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=plan_block.safe_summary)
+        result.phases.append(DoRunPhase(phase="stop", status="stopped", safe_summary="Stopped: contract"))
+        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "contract_blocked_plan"})
+        return result
+
     task = Task(description=f"Implement: {goal[:200]}")
     job.tasks = [task]
     save_job(job)
@@ -256,7 +286,15 @@ def run_do(
         safe_summary="1 task created (fixture planner)",
     ))
 
-    # --- Phase: context (Step 911 + Step 928: failure stops run) ---
+    # --- Phase: context (Step 911) — contract check ---
+    ctx_block = _check_do_contract(contract, "context")
+    if ctx_block:
+        result.phases.append(ctx_block)
+        result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=ctx_block.safe_summary)
+        result.phases.append(DoRunPhase(phase="stop", status="stopped", safe_summary="Stopped: contract"))
+        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "contract_blocked_context"})
+        return result
+
     context_phase = _run_context_phase(job, repo, data_dir, result)
     result.phases.append(context_phase)
     if context_phase.status in ("blocked", "failed"):
@@ -279,7 +317,15 @@ def run_do(
         })
         return result
 
-    # --- Phase: build (Step 912) ---
+    # --- Phase: build (Step 912) — contract check ---
+    build_block = _check_do_contract(contract, "build_artifact")
+    if build_block:
+        result.phases.append(build_block)
+        result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=build_block.safe_summary)
+        result.phases.append(DoRunPhase(phase="stop", status="stopped", safe_summary="Stopped: contract"))
+        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "contract_blocked_build"})
+        return result
+
     if contract.autonomy_level < 2:
         result.phases.append(DoRunPhase(
             phase="build", status="skipped",
@@ -312,7 +358,15 @@ def run_do(
         safe_summary="Fixture builder created safe artifact",
     ))
 
-    # --- Phase: patch_intent (Step 913) ---
+    # --- Phase: patch_intent (Step 913) — contract check ---
+    pi_block = _check_do_contract(contract, "create_patch_intent")
+    if pi_block:
+        result.phases.append(pi_block)
+        result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=pi_block.safe_summary)
+        result.phases.append(DoRunPhase(phase="stop", status="stopped", safe_summary="Stopped: contract"))
+        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "contract_blocked_patch_intent"})
+        return result
+
     intent_id = _run_patch_intent_phase(job, build_artifact, data_dir)
     if intent_id:
         result.patch_intent_id = intent_id
@@ -545,14 +599,15 @@ def export_do_run_json(result: DoRunResult, contract: DoRunContract | None = Non
             "command": result.next_safe_action.command,
             "reason": result.next_safe_action.reason,
         }
-    if contract:
+    effective_contract = contract or result._contract
+    if effective_contract:
         out["run_contract"] = {
-            "source": contract.source,
-            "autonomy_level": contract.autonomy_level,
-            "stop_before_apply": contract.stop_before_apply,
-            "max_loops": contract.max_loops,
-            "allowed_actions": list(contract.allowed_actions),
-            "denied_actions": list(contract.denied_actions),
+            "source": effective_contract.source,
+            "autonomy_level": effective_contract.autonomy_level,
+            "stop_before_apply": effective_contract.stop_before_apply,
+            "max_loops": effective_contract.max_loops,
+            "allowed_actions": list(effective_contract.allowed_actions),
+            "denied_actions": list(effective_contract.denied_actions),
         }
     if result.failure_summary:
         out["failure_summary"] = result.failure_summary
