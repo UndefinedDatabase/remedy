@@ -16,6 +16,7 @@ Public API::
     save_contract(job, contract) -> None
     load_contract(job) -> RunContract | None
     ensure_contract(job) -> RunContract
+    validate_run_contract(contract) -> list[str]
 """
 
 from __future__ import annotations
@@ -26,6 +27,49 @@ from datetime import datetime, timezone
 from typing import Any
 
 from packages.core.models import Job
+
+
+# ---------------------------------------------------------------------------
+# Canonical action vocabulary (Step 1068)
+# ---------------------------------------------------------------------------
+
+
+class ContractAction:
+    """Canonical action names used in RunContract allowed/denied lists.
+
+    Not an enum — plain string constants for easy JSON serialization.
+    """
+
+    # Safe read/write actions
+    PLAN = "plan"
+    CONTEXT = "context"
+    BUILD_ARTIFACT = "build_artifact"
+    CREATE_PATCH_INTENT = "create_patch_intent"
+    DISCOVER_COMMANDS = "discover_commands"
+    WRITE_METADATA = "write_metadata"
+    CREATE_FIX_TASK = "create_fix_task"
+
+    # Apply actions (gated by stop_before_apply)
+    APPLY = "apply"
+    SOURCE_APPLY = "source_apply"
+    PATCH_APPLY = "patch_apply"
+
+    # Dangerous actions (denied by default)
+    ARBITRARY_SHELL = "arbitrary_shell"
+    APPLY_PATCH_WITHOUT_APPROVAL = "apply_patch_without_approval"
+    MODIFY_PERMISSIONS = "modify_permissions_autonomously"
+    NETWORK_FETCH = "network_fetch"
+    INSTALL_PACKAGES = "install_packages"
+    CLOUD_PROVIDER = "cloud_provider"
+
+    # Test actions
+    RUN_TEST = "run_test"
+
+
+ALL_KNOWN_ACTIONS: frozenset[str] = frozenset({
+    v for k, v in vars(ContractAction).items()
+    if not k.startswith("_") and isinstance(v, str)
+})
 
 
 # ---------------------------------------------------------------------------
@@ -88,23 +132,23 @@ class RunActionDecision:
 # ---------------------------------------------------------------------------
 
 _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
-    "plan",
-    "context",
-    "build_artifact",
-    "create_patch_intent",
-    "discover_commands",
-    "write_metadata",
+    ContractAction.PLAN,
+    ContractAction.CONTEXT,
+    ContractAction.BUILD_ARTIFACT,
+    ContractAction.CREATE_PATCH_INTENT,
+    ContractAction.DISCOVER_COMMANDS,
+    ContractAction.WRITE_METADATA,
 )
 
 _DEFAULT_DENIED_ACTIONS: tuple[str, ...] = (
-    "apply",
-    "source_apply",
-    "arbitrary_shell",
-    "apply_patch_without_approval",
-    "modify_permissions_autonomously",
-    "network_fetch",
-    "install_packages",
-    "cloud_provider",
+    ContractAction.APPLY,
+    ContractAction.SOURCE_APPLY,
+    ContractAction.ARBITRARY_SHELL,
+    ContractAction.APPLY_PATCH_WITHOUT_APPROVAL,
+    ContractAction.MODIFY_PERMISSIONS,
+    ContractAction.NETWORK_FETCH,
+    ContractAction.INSTALL_PACKAGES,
+    ContractAction.CLOUD_PROVIDER,
 )
 
 _DEFAULT_DENIED_PATHS: tuple[str, ...] = (
@@ -126,12 +170,17 @@ _DEFAULT_STOP_CONDITIONS: tuple[str, ...] = (
 )
 
 _DEFAULT_REQUIRES_APPROVAL: tuple[str, ...] = (
-    "patch_apply",
+    ContractAction.PATCH_APPLY,
     "high_risk_command_execution",
 )
 
-_APPLY_ACTIONS = frozenset({"apply", "source_apply", "patch_apply"})
-_CLOUD_ACTIONS = frozenset({"cloud_provider", "network_fetch", "install_packages"})
+_APPLY_ACTIONS = frozenset({
+    ContractAction.APPLY, ContractAction.SOURCE_APPLY, ContractAction.PATCH_APPLY,
+})
+_CLOUD_ACTIONS = frozenset({
+    ContractAction.CLOUD_PROVIDER, ContractAction.NETWORK_FETCH,
+    ContractAction.INSTALL_PACKAGES,
+})
 
 
 def build_default_run_contract(job: Job) -> RunContract:
@@ -230,6 +279,59 @@ def migrate_contract(job: Job) -> RunContract:
     Caller must persist the job after calling this.
     """
     return ensure_contract(job)
+
+
+# ---------------------------------------------------------------------------
+# Contract validation (Step 1069)
+# ---------------------------------------------------------------------------
+
+
+def validate_run_contract(contract: RunContract) -> list[str]:
+    """Validate a RunContract. Returns list of error strings (empty = valid)."""
+    errors: list[str] = []
+
+    if contract.version < 1:
+        errors.append(f"version must be >= 1, got {contract.version}")
+
+    if not contract.contract_id:
+        errors.append("contract_id is empty")
+
+    if contract.max_loops < 0:
+        errors.append(f"max_loops must be >= 0, got {contract.max_loops}")
+
+    if contract.max_test_runs < 0:
+        errors.append(f"max_test_runs must be >= 0, got {contract.max_test_runs}")
+
+    if contract.max_runtime_seconds < 0:
+        errors.append(f"max_runtime_seconds must be >= 0, got {contract.max_runtime_seconds}")
+
+    if contract.max_tokens < 0:
+        errors.append(f"max_tokens must be >= 0, got {contract.max_tokens}")
+
+    if contract.max_cost_cents < 0:
+        errors.append(f"max_cost_cents must be >= 0, got {contract.max_cost_cents}")
+
+    # Check for actions in both allowed and denied
+    overlap = set(contract.allowed_actions) & set(contract.denied_actions)
+    if overlap:
+        errors.append(f"actions in both allowed and denied: {sorted(overlap)}")
+
+    # Warn about unknown actions (not an error, but included)
+    all_actions = set(contract.allowed_actions) | set(contract.denied_actions)
+    unknown = all_actions - ALL_KNOWN_ACTIONS
+    if unknown:
+        errors.append(f"unknown actions (may be intentional): {sorted(unknown)}")
+
+    # Check denied paths for absolute paths
+    for p in contract.denied_paths:
+        if os.path.isabs(p):
+            errors.append(f"denied_paths contains absolute path: {p}")
+
+    for p in contract.allowed_paths:
+        if os.path.isabs(p):
+            errors.append(f"allowed_paths contains absolute path: {p}")
+
+    return errors
 
 
 # ---------------------------------------------------------------------------

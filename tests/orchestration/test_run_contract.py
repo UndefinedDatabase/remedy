@@ -7,6 +7,8 @@ import json
 import pytest
 
 from packages.orchestration.run_contract import (
+    ALL_KNOWN_ACTIONS,
+    ContractAction,
     RunActionDecision,
     RunContract,
     evaluate_run_action,
@@ -18,6 +20,7 @@ from packages.orchestration.run_contract import (
     needs_contract_migration,
     save_contract,
     summarize_run_contract,
+    validate_run_contract,
 )
 
 
@@ -382,3 +385,72 @@ class TestContractMigration:
         job.metadata["some_other_key"] = "preserved"
         migrate_contract(job)
         assert job.metadata["some_other_key"] == "preserved"
+
+
+# ---------------------------------------------------------------------------
+# Step 1068: Canonical action vocabulary tests
+# ---------------------------------------------------------------------------
+
+
+class TestCanonicalActions:
+    def test_all_known_actions_non_empty(self):
+        assert len(ALL_KNOWN_ACTIONS) >= 16
+
+    def test_contract_action_constants_are_strings(self):
+        assert ContractAction.PLAN == "plan"
+        assert ContractAction.APPLY == "apply"
+        assert ContractAction.ARBITRARY_SHELL == "arbitrary_shell"
+
+    def test_default_contract_uses_canonical_actions(self):
+        job = _make_job()
+        c = ensure_contract(job)
+        for a in c.allowed_actions:
+            assert a in ALL_KNOWN_ACTIONS, f"{a} not in ALL_KNOWN_ACTIONS"
+        for a in c.denied_actions:
+            assert a in ALL_KNOWN_ACTIONS, f"{a} not in ALL_KNOWN_ACTIONS"
+
+
+# ---------------------------------------------------------------------------
+# Step 1069: Contract validation tests
+# ---------------------------------------------------------------------------
+
+
+class TestContractValidation:
+    def test_valid_contract_no_errors(self):
+        c = _contract()
+        errors = validate_run_contract(c)
+        assert errors == []
+
+    def test_default_contract_valid(self):
+        job = _make_job()
+        c = ensure_contract(job)
+        errors = validate_run_contract(c)
+        assert errors == []
+
+    def test_negative_max_loops_error(self):
+        c = _contract(max_loops=-1)
+        errors = validate_run_contract(c)
+        assert any("max_loops" in e for e in errors)
+
+    def test_empty_contract_id_error(self):
+        c = _contract(contract_id="")
+        errors = validate_run_contract(c)
+        assert any("contract_id" in e for e in errors)
+
+    def test_overlap_allowed_denied_error(self):
+        c = _contract(
+            allowed_actions=("plan", "apply"),
+            denied_actions=("apply",),
+        )
+        errors = validate_run_contract(c)
+        assert any("both allowed and denied" in e for e in errors)
+
+    def test_absolute_denied_path_error(self):
+        c = _contract(denied_paths=("/etc/passwd",))
+        errors = validate_run_contract(c)
+        assert any("absolute path" in e for e in errors)
+
+    def test_unknown_action_warning(self):
+        c = _contract(allowed_actions=("totally_made_up_action",), denied_actions=())
+        errors = validate_run_contract(c)
+        assert any("unknown actions" in e for e in errors)

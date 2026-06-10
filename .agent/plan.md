@@ -4,14 +4,14 @@
 Make one persisted RunContract per job the single authority. Add usage ledger with budget enforcement. Fix path policy precision.
 
 ## Current Step
-1068 — Canonical action vocabulary
+1070 — Replace DoRunContract as authority in do_run
 
 ## Steps
 - [x] 1065: Reconcile handoff state — update .agent/ files, confirm previous block committed
 - [x] 1066: Persist one RunContract per job (load/save/ensure APIs) — 38 tests pass
 - [x] 1067: Contract migration for old jobs — lazy via ensure_contract, 43 tests pass
-- [ ] 1068: Canonical action vocabulary (enum/constants)
-- [ ] 1069: Contract validation (validate_run_contract)
+- [x] 1068: Canonical action vocabulary — ContractAction class, ALL_KNOWN_ACTIONS, 53 tests
+- [x] 1069: Contract validation — validate_run_contract(), 53 tests
 - [ ] 1070: Replace DoRunContract as authority in do_run
 - [ ] 1071: Use same contract in repair_loop (no private contracts)
 - [ ] 1072: CLI uses persisted contract
