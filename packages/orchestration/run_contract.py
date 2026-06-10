@@ -17,12 +17,15 @@ Public API::
     load_contract(job) -> RunContract | None
     ensure_contract(job) -> RunContract
     validate_run_contract(contract) -> list[str]
+    save_usage(job, usage) -> None
+    load_usage(job) -> RunUsage
+    check_budget(contract, usage) -> RunBudgetStatus
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -283,6 +286,112 @@ def migrate_contract(job: Job) -> RunContract:
 
 
 # ---------------------------------------------------------------------------
+# Usage ledger (Step 1075)
+# ---------------------------------------------------------------------------
+
+_USAGE_META_KEY = "run_usage"
+
+
+@dataclass
+class RunUsage:
+    """Tracks resource consumption against contract budgets."""
+
+    loops_used: int = 0
+    test_runs_used: int = 0
+    runtime_seconds_used: float = 0.0
+    tokens_used: int = 0
+    cost_cents_used: float = 0.0
+
+
+@dataclass(frozen=True)
+class RunBudgetStatus:
+    """Result of checking usage against contract budgets."""
+
+    within_budget: bool
+    exhausted_budgets: tuple[str, ...] = ()
+    remaining: dict[str, Any] = field(default_factory=dict)
+
+
+def _usage_to_dict(usage: RunUsage) -> dict[str, Any]:
+    return {
+        "loops_used": usage.loops_used,
+        "test_runs_used": usage.test_runs_used,
+        "runtime_seconds_used": usage.runtime_seconds_used,
+        "tokens_used": usage.tokens_used,
+        "cost_cents_used": usage.cost_cents_used,
+    }
+
+
+def save_usage(job: Job, usage: RunUsage) -> None:
+    """Store usage in job.metadata. Caller must persist the job."""
+    job.metadata[_USAGE_META_KEY] = _usage_to_dict(usage)
+
+
+def load_usage(job: Job) -> RunUsage:
+    """Load usage from job.metadata. Returns zero usage if absent."""
+    data = job.metadata.get(_USAGE_META_KEY)
+    if not isinstance(data, dict):
+        return RunUsage()
+    return RunUsage(
+        loops_used=data.get("loops_used", 0),
+        test_runs_used=data.get("test_runs_used", 0),
+        runtime_seconds_used=data.get("runtime_seconds_used", 0.0),
+        tokens_used=data.get("tokens_used", 0),
+        cost_cents_used=data.get("cost_cents_used", 0.0),
+    )
+
+
+def check_budget(contract: RunContract, usage: RunUsage) -> RunBudgetStatus:
+    """Check usage against contract budgets. Returns budget status."""
+    exhausted: list[str] = []
+    remaining: dict[str, Any] = {}
+
+    if usage.loops_used >= contract.max_loops:
+        exhausted.append("max_loops")
+    remaining["loops"] = max(0, contract.max_loops - usage.loops_used)
+
+    if usage.test_runs_used >= contract.max_test_runs:
+        exhausted.append("max_test_runs")
+    remaining["test_runs"] = max(0, contract.max_test_runs - usage.test_runs_used)
+
+    # runtime/tokens/cost: only check if budget > 0 (0 = unlimited for v1)
+    if contract.max_runtime_seconds > 0 and usage.runtime_seconds_used >= contract.max_runtime_seconds:
+        exhausted.append("max_runtime_seconds")
+    if contract.max_runtime_seconds > 0:
+        remaining["runtime_seconds"] = max(0.0, contract.max_runtime_seconds - usage.runtime_seconds_used)
+
+    if contract.max_tokens > 0 and usage.tokens_used >= contract.max_tokens:
+        exhausted.append("max_tokens")
+    if contract.max_tokens > 0:
+        remaining["tokens"] = max(0, contract.max_tokens - usage.tokens_used)
+
+    if contract.max_cost_cents > 0 and usage.cost_cents_used >= contract.max_cost_cents:
+        exhausted.append("max_cost_cents")
+    if contract.max_cost_cents > 0:
+        remaining["cost_cents"] = max(0.0, contract.max_cost_cents - usage.cost_cents_used)
+
+    return RunBudgetStatus(
+        within_budget=len(exhausted) == 0,
+        exhausted_budgets=tuple(exhausted),
+        remaining=remaining,
+    )
+
+
+def export_usage_json(usage: RunUsage) -> dict[str, Any]:
+    """Export usage as JSON-serializable dict."""
+    return _usage_to_dict(usage)
+
+
+def export_budget_status_json(status: RunBudgetStatus) -> dict[str, Any]:
+    """Export budget status as JSON-serializable dict."""
+    return {
+        "within_budget": status.within_budget,
+        "exhausted_budgets": list(status.exhausted_budgets),
+        "remaining": status.remaining,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Contract validation (Step 1069)
 # ---------------------------------------------------------------------------
 
@@ -348,6 +457,7 @@ def evaluate_run_action(
     risk: str | None = None,
     loop_index: int | None = None,
     test_run_count: int | None = None,
+    usage: RunUsage | None = None,
 ) -> RunActionDecision:
     """Evaluate whether an action is allowed under the contract.
 
@@ -389,23 +499,36 @@ def evaluate_run_action(
             next_safe_action="remedy contract inspect <job_id> --json",
         )
 
-    # 5. Loop budget
-    if loop_index is not None and loop_index >= contract.max_loops:
+    # 5. Loop budget (from explicit param or usage)
+    effective_loops = loop_index if loop_index is not None else (usage.loops_used if usage else None)
+    if effective_loops is not None and effective_loops >= contract.max_loops:
         return RunActionDecision(
             allowed=False,
             status="exhausted",
-            reason=f"Loop index {loop_index} >= max_loops {contract.max_loops}",
+            reason=f"Loop usage {effective_loops} >= max_loops {contract.max_loops}",
             next_safe_action="remedy job show <job_id> --json",
         )
 
-    # 6. Test run budget
-    if test_run_count is not None and test_run_count >= contract.max_test_runs:
+    # 6. Test run budget (from explicit param or usage)
+    effective_tests = test_run_count if test_run_count is not None else (usage.test_runs_used if usage else None)
+    if effective_tests is not None and effective_tests >= contract.max_test_runs:
         return RunActionDecision(
             allowed=False,
             status="exhausted",
-            reason=f"Test runs {test_run_count} >= max_test_runs {contract.max_test_runs}",
+            reason=f"Test runs {effective_tests} >= max_test_runs {contract.max_test_runs}",
             next_safe_action="remedy job show <job_id> --json",
         )
+
+    # 6b. Runtime/token/cost budgets from usage
+    if usage is not None:
+        budget_status = check_budget(contract, usage)
+        if not budget_status.within_budget:
+            return RunActionDecision(
+                allowed=False,
+                status="exhausted",
+                reason=f"Budget exhausted: {', '.join(budget_status.exhausted_budgets)}",
+                next_safe_action="remedy job show <job_id> --json",
+            )
 
     # 7. Path policy
     if path is not None:

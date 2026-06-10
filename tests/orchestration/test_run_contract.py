@@ -10,15 +10,22 @@ from packages.orchestration.run_contract import (
     ALL_KNOWN_ACTIONS,
     ContractAction,
     RunActionDecision,
+    RunBudgetStatus,
     RunContract,
+    RunUsage,
+    check_budget,
     evaluate_run_action,
     export_run_action_decision_json,
     export_run_contract_json,
+    export_budget_status_json,
+    export_usage_json,
     ensure_contract,
     load_contract,
+    load_usage,
     migrate_contract,
     needs_contract_migration,
     save_contract,
+    save_usage,
     summarize_run_contract,
     validate_run_contract,
 )
@@ -475,3 +482,101 @@ class TestContractValidation:
         c = _contract(allowed_actions=("totally_made_up_action",), denied_actions=())
         errors = validate_run_contract(c)
         assert any("unknown actions" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Step 1075: Usage ledger tests
+# ---------------------------------------------------------------------------
+
+
+class TestUsageLedger:
+    def test_default_usage_is_zero(self):
+        u = RunUsage()
+        assert u.loops_used == 0
+        assert u.test_runs_used == 0
+        assert u.runtime_seconds_used == 0.0
+
+    def test_save_and_load_usage(self):
+        job = _make_job()
+        u = RunUsage(loops_used=3, test_runs_used=1, runtime_seconds_used=42.5)
+        save_usage(job, u)
+        loaded = load_usage(job)
+        assert loaded.loops_used == 3
+        assert loaded.test_runs_used == 1
+        assert loaded.runtime_seconds_used == 42.5
+
+    def test_load_usage_absent_returns_zero(self):
+        job = _make_job()
+        u = load_usage(job)
+        assert u.loops_used == 0
+
+    def test_usage_survives_json_roundtrip(self):
+        job = _make_job()
+        u = RunUsage(loops_used=5, tokens_used=1000)
+        save_usage(job, u)
+        json_str = job.model_dump_json()
+        from packages.core.models import Job
+        restored = Job.model_validate_json(json_str)
+        loaded = load_usage(restored)
+        assert loaded.loops_used == 5
+        assert loaded.tokens_used == 1000
+
+    def test_export_usage_json(self):
+        u = RunUsage(loops_used=2, cost_cents_used=3.5)
+        d = export_usage_json(u)
+        assert d["loops_used"] == 2
+        assert d["cost_cents_used"] == 3.5
+
+
+# ---------------------------------------------------------------------------
+# Step 1076: Budget enforcement tests
+# ---------------------------------------------------------------------------
+
+
+class TestBudgetEnforcement:
+    def test_within_budget(self):
+        c = _contract(max_loops=10, max_test_runs=5)
+        u = RunUsage(loops_used=3, test_runs_used=2)
+        status = check_budget(c, u)
+        assert status.within_budget
+        assert status.remaining["loops"] == 7
+        assert status.remaining["test_runs"] == 3
+
+    def test_loops_exhausted(self):
+        c = _contract(max_loops=3)
+        u = RunUsage(loops_used=3)
+        status = check_budget(c, u)
+        assert not status.within_budget
+        assert "max_loops" in status.exhausted_budgets
+
+    def test_runtime_exhausted(self):
+        c = _contract(max_loops=10)
+        c2 = RunContract(**{**{f: getattr(c, f) for f in ["version", "contract_id", "job_id", "scope",
+            "autonomy_level", "allowed_actions", "denied_actions", "max_loops", "max_test_runs",
+            "max_runtime_seconds", "max_tokens", "max_cost_cents", "allowed_paths", "denied_paths",
+            "stop_before_apply", "stop_on_unknown_risk", "stop_on_medium_risk", "prefer_local",
+            "no_cloud", "model_policy", "command_policy", "stop_conditions", "requires_approval_for",
+            "source", "created_at", "notes"]}, "max_runtime_seconds": 60})
+        u = RunUsage(runtime_seconds_used=61.0)
+        status = check_budget(c2, u)
+        assert not status.within_budget
+        assert "max_runtime_seconds" in status.exhausted_budgets
+
+    def test_evaluate_with_usage_blocks(self):
+        c = _contract(max_loops=3)
+        u = RunUsage(loops_used=3)
+        d = evaluate_run_action(c, "plan", usage=u)
+        assert not d.allowed
+        assert d.status == "exhausted"
+
+    def test_evaluate_with_usage_allows(self):
+        c = _contract(max_loops=3)
+        u = RunUsage(loops_used=2)
+        d = evaluate_run_action(c, "plan", usage=u)
+        assert d.allowed
+
+    def test_export_budget_status(self):
+        status = RunBudgetStatus(within_budget=False, exhausted_budgets=("max_loops",), remaining={"loops": 0})
+        d = export_budget_status_json(status)
+        assert d["within_budget"] is False
+        assert "max_loops" in d["exhausted_budgets"]
