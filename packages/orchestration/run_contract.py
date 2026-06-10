@@ -136,6 +136,7 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.CONTEXT,
     ContractAction.BUILD_ARTIFACT,
     ContractAction.CREATE_PATCH_INTENT,
+    ContractAction.CREATE_FIX_TASK,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
 )

@@ -114,53 +114,25 @@ class DoRunResult:
     generated_at: str = ""
     failure_summary: dict[str, str] | None = None  # TestFailureSummary if repair available
     error: str = ""
-    _contract: DoRunContract | None = None  # internal, not exported directly
+    _contract: Any = None  # RunContract, internal, not exported directly
 
 
 # ---------------------------------------------------------------------------
-# Run contract (Step 917 + Step 930 consolidation)
+# Run contract (Step 917 + Step 930 + Step 1070 central authority)
 # ---------------------------------------------------------------------------
 
 _DO_V1_MAX_AUTONOMY = 3
 
 
-@dataclass(frozen=True)
-class DoRunContract:
-    """Thin view over the central RunContract for the do_run flow.
-
-    Keeps backward compatibility. Fields mirror the central RunContract
-    but scoped to do_run's v1 needs.
-    """
-
-    autonomy_level: int = 2
-    stop_before_apply: bool = True
-    max_loops: int = 1
-    source: str = "do_v1_minimal"
-    allowed_actions: tuple[str, ...] = (
-        "plan", "context", "build_artifact", "create_patch_intent",
-    )
-    denied_actions: tuple[str, ...] = (
-        "apply", "source_apply", "arbitrary_shell", "network_fetch",
-    )
+# Legacy alias kept for test backward compat — do not use in new code.
+DoRunContract = None  # type: ignore[assignment]
 
 
-def _check_do_contract(contract: DoRunContract, action: str) -> DoRunPhase | None:
-    """Check if action is allowed by contract. Returns stop phase if blocked."""
-    from packages.orchestration.run_contract import (
-        RunContract,
-        evaluate_run_action,
-    )
+def _check_contract(contract: Any, action: str) -> DoRunPhase | None:
+    """Check if action is allowed by the central RunContract."""
+    from packages.orchestration.run_contract import evaluate_run_action
 
-    rc = RunContract(
-        version=1,
-        job_id="",
-        allowed_actions=contract.allowed_actions,
-        denied_actions=contract.denied_actions,
-        stop_before_apply=contract.stop_before_apply,
-        max_loops=contract.max_loops,
-        source=contract.source,
-    )
-    decision = evaluate_run_action(rc, action)
+    decision = evaluate_run_action(contract, action)
     if not decision.allowed:
         return DoRunPhase(
             phase=action, status="blocked",
@@ -214,25 +186,26 @@ def run_do(
         ))
         return result
 
+    from packages.orchestration.run_contract import (
+        RunContract,
+        build_default_run_contract,
+        ensure_contract,
+        evaluate_run_action,
+        save_contract,
+    )
+
     # --- Step 932: autonomy truth ---
     effective_autonomy = min(autonomy_level, _DO_V1_MAX_AUTONOMY)
     capped = autonomy_level > _DO_V1_MAX_AUTONOMY
     cap_reason = f"v1 cap: requested {autonomy_level}, max {_DO_V1_MAX_AUTONOMY}" if capped else ""
 
-    contract = DoRunContract(
-        autonomy_level=effective_autonomy,
-        stop_before_apply=stop_before_apply,
-        max_loops=min(max_loops, 1),  # v1: single pass
-    )
-
     data_dir = resolve_data_root()
     result = DoRunResult(
-        autonomy_level=contract.autonomy_level,
+        autonomy_level=effective_autonomy,
         requested_autonomy_level=autonomy_level,
         autonomy_capped=capped,
         cap_reason=cap_reason,
         generated_at=datetime.now(timezone.utc).isoformat(),
-        _contract=contract,
     )
 
     # --- Phase: init (Step 909) ---
@@ -248,6 +221,23 @@ def run_do(
             metadata={"repo_path": str(repo)},
         )
         job.artifacts = [art]
+
+    # Step 1070: Central contract — persisted, single authority
+    contract = ensure_contract(job)
+    # Override with caller params if they differ from defaults
+    if stop_before_apply != contract.stop_before_apply or effective_autonomy != contract.autonomy_level:
+        from dataclasses import fields as dc_fields
+        base = {f.name: getattr(contract, f.name) for f in dc_fields(contract)}
+        base.update(
+            stop_before_apply=stop_before_apply,
+            autonomy_level=effective_autonomy,
+            max_loops=min(max_loops, 1),
+            source="do_v1_caller_override",
+        )
+        contract = RunContract(**base)
+        save_contract(job, contract)
+    result._contract = contract
+
     save_job(job)
     result.job_id = str(job.id)
 
@@ -263,7 +253,7 @@ def run_do(
     ))
 
     # --- Phase: plan (Step 910) — contract check ---
-    plan_block = _check_do_contract(contract, "plan")
+    plan_block = _check_contract(contract, "plan")
     if plan_block:
         result.phases.append(plan_block)
         result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=plan_block.safe_summary)
@@ -287,7 +277,7 @@ def run_do(
     ))
 
     # --- Phase: context (Step 911) — contract check ---
-    ctx_block = _check_do_contract(contract, "context")
+    ctx_block = _check_contract(contract, "context")
     if ctx_block:
         result.phases.append(ctx_block)
         result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=ctx_block.safe_summary)
@@ -318,7 +308,7 @@ def run_do(
         return result
 
     # --- Phase: build (Step 912) — contract check ---
-    build_block = _check_do_contract(contract, "build_artifact")
+    build_block = _check_contract(contract, "build_artifact")
     if build_block:
         result.phases.append(build_block)
         result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=build_block.safe_summary)
@@ -359,7 +349,7 @@ def run_do(
     ))
 
     # --- Phase: patch_intent (Step 913) — contract check ---
-    pi_block = _check_do_contract(contract, "create_patch_intent")
+    pi_block = _check_contract(contract, "create_patch_intent")
     if pi_block:
         result.phases.append(pi_block)
         result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=pi_block.safe_summary)
@@ -563,8 +553,10 @@ def _run_proof_phase(job: Any, data_dir: Path, result: DoRunResult) -> DoRunPhas
 # ---------------------------------------------------------------------------
 
 
-def export_do_run_json(result: DoRunResult, contract: DoRunContract | None = None) -> dict[str, Any]:
+def export_do_run_json(result: DoRunResult, contract: Any = None) -> dict[str, Any]:
     """Export DoRunResult as safe JSON dict."""
+    from packages.orchestration.run_contract import export_run_contract_json
+
     out: dict[str, Any] = {
         "version": result.version,
         "job_id": result.job_id,
@@ -601,14 +593,7 @@ def export_do_run_json(result: DoRunResult, contract: DoRunContract | None = Non
         }
     effective_contract = contract or result._contract
     if effective_contract:
-        out["run_contract"] = {
-            "source": effective_contract.source,
-            "autonomy_level": effective_contract.autonomy_level,
-            "stop_before_apply": effective_contract.stop_before_apply,
-            "max_loops": effective_contract.max_loops,
-            "allowed_actions": list(effective_contract.allowed_actions),
-            "denied_actions": list(effective_contract.denied_actions),
-        }
+        out["run_contract"] = export_run_contract_json(effective_contract)
     if result.failure_summary:
         out["failure_summary"] = result.failure_summary
     if result.error:
