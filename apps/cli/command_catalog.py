@@ -1615,6 +1615,21 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("contract.inspect",),
     ),
+    CommandEntry(
+        command_id="contract.set",
+        group_id="contract",
+        subcommand="set",
+        description="Set a contract field on a job.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("field", "Field to set (e.g. max_loops, stop_before_apply)"),
+            ArgDef("value", "New value"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("contract.inspect",),
+    ),
 )
 
 
