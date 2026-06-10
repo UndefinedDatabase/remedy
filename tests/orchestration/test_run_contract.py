@@ -14,6 +14,8 @@ from packages.orchestration.run_contract import (
     export_run_contract_json,
     ensure_contract,
     load_contract,
+    migrate_contract,
+    needs_contract_migration,
     save_contract,
     summarize_run_contract,
 )
@@ -345,3 +347,38 @@ class TestContractPersistence:
         assert loaded.contract_id == c.contract_id
         assert loaded.created_at == c.created_at
         assert loaded.denied_paths == c.denied_paths
+
+
+# ---------------------------------------------------------------------------
+# Step 1067: Contract migration tests
+# ---------------------------------------------------------------------------
+
+
+class TestContractMigration:
+    def test_old_job_needs_migration(self):
+        job = _make_job()
+        assert needs_contract_migration(job)
+
+    def test_new_job_does_not_need_migration(self):
+        job = _make_job()
+        ensure_contract(job)
+        assert not needs_contract_migration(job)
+
+    def test_migrate_creates_contract(self):
+        job = _make_job()
+        c = migrate_contract(job)
+        assert c.contract_id.startswith("rc-")
+        assert not needs_contract_migration(job)
+
+    def test_migrate_is_idempotent(self):
+        job = _make_job()
+        c1 = migrate_contract(job)
+        c2 = migrate_contract(job)
+        assert c1.contract_id == c2.contract_id
+        assert c1.created_at == c2.created_at
+
+    def test_migrate_preserves_existing_metadata(self):
+        job = _make_job()
+        job.metadata["some_other_key"] = "preserved"
+        migrate_contract(job)
+        assert job.metadata["some_other_key"] == "preserved"

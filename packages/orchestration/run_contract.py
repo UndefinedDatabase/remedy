@@ -218,6 +218,20 @@ def ensure_contract(job: Job) -> RunContract:
     return contract
 
 
+def needs_contract_migration(job: Job) -> bool:
+    """Check if a job needs contract migration (no persisted contract)."""
+    return not isinstance(job.metadata.get(_CONTRACT_META_KEY), dict)
+
+
+def migrate_contract(job: Job) -> RunContract:
+    """Migrate an old job to have a persisted contract.
+
+    Idempotent — returns existing contract if already present.
+    Caller must persist the job after calling this.
+    """
+    return ensure_contract(job)
+
+
 # ---------------------------------------------------------------------------
 # Contract decision helper (Step 1049)
 # ---------------------------------------------------------------------------
