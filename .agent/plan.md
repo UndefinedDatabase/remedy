@@ -1,32 +1,33 @@
-# Plan — Steps 1045-1064: Run Contract Enforcement v1
+# Plan — Steps 1065-1084: Run Contract SSOT + Budget Ledger
 
 ## Goal
-Fix R-0017 integrity heuristic. Implement central Run Contract with enforcement in do_run and repair_loop. CLI, tests, integrations.
+Make one persisted RunContract per job the single authority. Add usage ledger with budget enforcement. Fix path policy precision.
 
 ## Current Step
-1064 — Final handoff
+1066 — Persist one RunContract per job
 
 ## Steps
-- [x] 1045: Handoff setup — update context.md, plan.md, live_review.md
-- [x] 1046: Fix R-0017 integrity heuristic (parse explicit scope status only)
-- [x] 1047: Add integrity gate tests
-- [x] 1048: Define central RunContract model (consolidate with DoRunContract)
-- [x] 1049: Contract decision helper (evaluate_run_action)
-- [x] 1050: Integrate contract with do_run
-- [x] 1051: Integrate contract with repair loop
-- [x] 1052: Contract CLI (contract inspect, contract check)
-- [x] 1053: Command catalog updates
-- [x] 1054: Approval gate regression tests
-- [x] 1055: Allowed action tests
-- [x] 1056: Path policy tests
-- [x] 1057: Loop/test budget tests
-- [x] 1058: Runtime CLI tests
-- [x] 1059: Progress ledger integration
-- [x] 1060: Feature planner integration
-- [x] 1061: Review bundle integration
-- [x] 1062: Docs — run-contract-v1.md
-- [x] 1063: Targeted tests — 5041 passed, 1 pre-existing fail
-- [ ] 1064: Final handoff
+- [x] 1065: Reconcile handoff state — update .agent/ files, confirm previous block committed
+- [ ] 1066: Persist one RunContract per job (load/save/ensure APIs)
+- [ ] 1067: Contract migration for old jobs
+- [ ] 1068: Canonical action vocabulary (enum/constants)
+- [ ] 1069: Contract validation (validate_run_contract)
+- [ ] 1070: Replace DoRunContract as authority in do_run
+- [ ] 1071: Use same contract in repair_loop (no private contracts)
+- [ ] 1072: CLI uses persisted contract
+- [ ] 1073: Add `contract set` CLI command
+- [ ] 1074: Precise path policy (fix `.env` vs `.environment.py`)
+- [ ] 1075: Run Usage Ledger (RunUsage, RunBudgetStatus)
+- [ ] 1076: Enforce all budgets via usage ledger
+- [ ] 1077: Record usage in do_run and repair_loop
+- [ ] 1078: Contract decision events
+- [ ] 1079: Progress ledger auto-integration from events
+- [ ] 1080: Feature planner auto-integration from blockers
+- [ ] 1081: Review bundle uses active persisted contract
+- [ ] 1082: Runtime CLI tests
+- [ ] 1083: Tests and docs update
+- [ ] 1084: Final handoff with changed files table
 
 ## Known Risks
-- R-0017: RESOLVED — replaced full-text search with explicit ## Scope/## Current Step parsing
+- R-0017: RESOLVED
+- Path policy `.env` false positive: Fix target Step 1074
