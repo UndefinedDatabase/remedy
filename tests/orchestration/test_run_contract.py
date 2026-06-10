@@ -186,6 +186,27 @@ class TestPathPolicy:
         d = evaluate_run_action(c, "write_metadata", path="some/file.py")
         assert d.allowed
 
+    def test_env_does_not_block_environment_py(self):
+        """R-0021: .env denied path must not block .environment.py"""
+        c = _contract(denied_paths=(".env",))
+        d = evaluate_run_action(c, "write_metadata", path=".environment.py")
+        assert d.allowed, f"Expected allowed, got: {d.reason}"
+
+    def test_env_blocks_env_exactly(self):
+        c = _contract(denied_paths=(".env",))
+        d = evaluate_run_action(c, "write_metadata", path=".env")
+        assert not d.allowed
+
+    def test_env_blocks_env_subdirectory(self):
+        c = _contract(denied_paths=(".env",))
+        d = evaluate_run_action(c, "write_metadata", path=".env/foo")
+        assert not d.allowed
+
+    def test_node_modules_does_not_block_node_modules_backup(self):
+        c = _contract(denied_paths=("node_modules/",))
+        d = evaluate_run_action(c, "write_metadata", path="node_modules_backup/file.js")
+        assert d.allowed
+
 
 # ---------------------------------------------------------------------------
 # Step 1057: Loop/test budget tests

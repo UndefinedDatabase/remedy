@@ -438,6 +438,16 @@ def evaluate_run_action(
     )
 
 
+def _path_matches(normalized: str, pattern: str) -> bool:
+    """Segment-aware path matching: exact match or directory prefix only.
+
+    .env matches .env and .env/foo but NOT .environment.py
+    node_modules/ matches node_modules/foo but NOT node_modules_backup/
+    """
+    clean = pattern.rstrip("/")
+    return normalized == clean or normalized.startswith(clean + "/")
+
+
 def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | None:
     """Check path against allowed/denied path policies. Returns decision if blocked."""
     normalized = os.path.normpath(path)
@@ -460,9 +470,9 @@ def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | 
             next_safe_action="remedy contract inspect <job_id> --json",
         )
 
-    # Denied paths win over allowed paths
+    # Denied paths win over allowed paths (segment-aware)
     for denied in contract.denied_paths:
-        if normalized == denied or normalized.startswith(denied.rstrip("/") + "/") or normalized.startswith(denied):
+        if _path_matches(normalized, denied):
             return RunActionDecision(
                 allowed=False,
                 status="blocked",
@@ -470,11 +480,11 @@ def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | 
                 next_safe_action="remedy contract inspect <job_id> --json",
             )
 
-    # If allowed_paths specified, path must match
+    # If allowed_paths specified, path must match (segment-aware)
     if contract.allowed_paths:
         matched = False
         for allowed in contract.allowed_paths:
-            if normalized == allowed or normalized.startswith(allowed.rstrip("/") + "/"):
+            if _path_matches(normalized, allowed):
                 matched = True
                 break
         if not matched:

@@ -4,7 +4,7 @@
 Make one persisted RunContract per job the single authority. Add usage ledger with budget enforcement. Fix path policy precision.
 
 ## Current Step
-1074 — Precise path policy
+1075 — Run Usage Ledger
 
 ## Steps
 - [x] 1065: Reconcile handoff state — update .agent/ files, confirm previous block committed
@@ -16,7 +16,7 @@ Make one persisted RunContract per job the single authority. Add usage ledger wi
 - [x] 1071: repair_loop uses central contract via ensure_contract, 127 tests pass
 - [x] 1072: CLI uses persisted contract via ensure_contract
 - [x] 1073: `contract set` CLI command + catalog entry
-- [ ] 1074: Precise path policy (fix `.env` vs `.environment.py`)
+- [x] 1074: Precise path policy — segment-aware matching, R-0021 fixed, 57 tests
 - [ ] 1075: Run Usage Ledger (RunUsage, RunBudgetStatus)
 - [ ] 1076: Enforce all budgets via usage ledger
 - [ ] 1077: Record usage in do_run and repair_loop
