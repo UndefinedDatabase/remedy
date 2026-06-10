@@ -188,10 +188,13 @@ def run_do(
 
     from packages.orchestration.run_contract import (
         RunContract,
+        RunUsage,
         build_default_run_contract,
         ensure_contract,
         evaluate_run_action,
+        load_usage,
         save_contract,
+        save_usage,
     )
 
     # --- Step 932: autonomy truth ---
@@ -410,6 +413,18 @@ def run_do(
     ))
     _do_emit(data_dir, job.id, "do_run_stopped", {
         "reason": result.stop_reason.reason,
+    })
+
+    # Step 1077: Record usage
+    usage = load_usage(job)
+    usage.loops_used += 1
+    save_usage(job, usage)
+
+    # Emit contract decision event
+    _do_emit(data_dir, job.id, "contract_decision", {
+        "action": "do_run_complete",
+        "loops_used": usage.loops_used,
+        "contract_id": contract.contract_id,
     })
 
     save_job(job)

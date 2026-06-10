@@ -94,7 +94,12 @@ def start_repair_loop_v0(
     result.phases.append({"phase": "load", "status": "completed", "safe_summary": f"Job {job_id[:8]} loaded"})
 
     # --- Contract enforcement (Step 1071: central contract) ---
-    from packages.orchestration.run_contract import ensure_contract, evaluate_run_action
+    from packages.orchestration.run_contract import (
+        ensure_contract,
+        evaluate_run_action,
+        load_usage,
+        save_usage,
+    )
 
     repair_contract = ensure_contract(job)
     save_job(job)  # persist contract if newly created
@@ -229,6 +234,19 @@ def start_repair_loop_v0(
     })
 
     result.phases.append({"phase": "events", "status": "completed", "safe_summary": "Events emitted"})
+
+    # Step 1077: Record usage
+    usage = load_usage(job)
+    usage.loops_used += 1
+    save_usage(job, usage)
+
+    append_run_event(data_dir, UUID(job_id), event="contract_decision", metadata={
+        "action": "repair_loop_complete",
+        "loops_used": usage.loops_used,
+        "contract_id": repair_contract.contract_id,
+    })
+
+    save_job(job)
 
     # --- Stop ---
     if create_patch_intent and result.repair_patch_intent_id:

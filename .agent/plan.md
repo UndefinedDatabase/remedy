@@ -4,7 +4,7 @@
 Make one persisted RunContract per job the single authority. Add usage ledger with budget enforcement. Fix path policy precision.
 
 ## Current Step
-1077 — Record usage in do_run and repair_loop
+1079 — Progress ledger auto-integration
 
 ## Steps
 - [x] 1065: Reconcile handoff state — update .agent/ files, confirm previous block committed
@@ -19,8 +19,8 @@ Make one persisted RunContract per job the single authority. Add usage ledger wi
 - [x] 1074: Precise path policy — segment-aware matching, R-0021 fixed, 57 tests
 - [x] 1075: Run Usage Ledger — RunUsage, RunBudgetStatus, save/load/check, 68 tests
 - [x] 1076: Budget enforcement via usage in evaluate_run_action
-- [ ] 1077: Record usage in do_run and repair_loop
-- [ ] 1078: Contract decision events
+- [x] 1077: Record usage in do_run and repair_loop — loops_used incremented
+- [x] 1078: Contract decision events — emitted as timeline events
 - [ ] 1079: Progress ledger auto-integration from events
 - [ ] 1080: Feature planner auto-integration from blockers
 - [ ] 1081: Review bundle uses active persisted contract
