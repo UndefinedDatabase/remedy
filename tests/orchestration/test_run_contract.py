@@ -12,6 +12,9 @@ from packages.orchestration.run_contract import (
     evaluate_run_action,
     export_run_action_decision_json,
     export_run_contract_json,
+    ensure_contract,
+    load_contract,
+    save_contract,
     summarize_run_contract,
 )
 
@@ -268,3 +271,77 @@ class TestExportSafety:
         assert "Run Contract" in s
         assert "Max loops" in s
         assert "Stop before apply" in s
+
+
+# ---------------------------------------------------------------------------
+# Step 1066: Contract persistence tests
+# ---------------------------------------------------------------------------
+
+
+def _make_job(**kwargs):
+    """Create a minimal Job for testing."""
+    from packages.core.models import Job
+    defaults = dict(name="test-job")
+    defaults.update(kwargs)
+    return Job(**defaults)
+
+
+class TestContractPersistence:
+    def test_save_and_load_roundtrip(self):
+        job = _make_job()
+        c = _contract(job_id=str(job.id))
+        save_contract(job, c)
+        loaded = load_contract(job)
+        assert loaded is not None
+        assert loaded.contract_id == c.contract_id
+        assert loaded.job_id == c.job_id
+        assert loaded.allowed_actions == c.allowed_actions
+        assert loaded.denied_actions == c.denied_actions
+        assert loaded.denied_paths == c.denied_paths
+        assert loaded.max_loops == c.max_loops
+        assert loaded.max_test_runs == c.max_test_runs
+
+    def test_load_returns_none_when_absent(self):
+        job = _make_job()
+        assert load_contract(job) is None
+
+    def test_load_returns_none_for_non_dict(self):
+        job = _make_job()
+        job.metadata["run_contract"] = "not-a-dict"
+        assert load_contract(job) is None
+
+    def test_ensure_creates_contract_on_first_call(self):
+        job = _make_job()
+        c = ensure_contract(job)
+        assert c.contract_id.startswith("rc-")
+        assert c.job_id == str(job.id)
+        assert c.source == "default_v1"
+
+    def test_ensure_returns_same_contract_on_second_call(self):
+        job = _make_job()
+        c1 = ensure_contract(job)
+        c2 = ensure_contract(job)
+        assert c1.contract_id == c2.contract_id
+        assert c1.created_at == c2.created_at
+
+    def test_ensure_preserves_custom_contract(self):
+        job = _make_job()
+        custom = _contract(contract_id="custom-id", source="user_override")
+        save_contract(job, custom)
+        loaded = ensure_contract(job)
+        assert loaded.contract_id == "custom-id"
+        assert loaded.source == "user_override"
+
+    def test_saved_contract_survives_json_roundtrip(self):
+        """Contract survives Job JSON serialization (as in storage.py)."""
+        job = _make_job()
+        c = ensure_contract(job)
+        # Simulate save_job / load_job roundtrip
+        json_str = job.model_dump_json()
+        from packages.core.models import Job
+        restored = Job.model_validate_json(json_str)
+        loaded = load_contract(restored)
+        assert loaded is not None
+        assert loaded.contract_id == c.contract_id
+        assert loaded.created_at == c.created_at
+        assert loaded.denied_paths == c.denied_paths

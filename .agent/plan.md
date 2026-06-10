@@ -4,11 +4,11 @@
 Make one persisted RunContract per job the single authority. Add usage ledger with budget enforcement. Fix path policy precision.
 
 ## Current Step
-1066 — Persist one RunContract per job
+1067 — Contract migration for old jobs
 
 ## Steps
 - [x] 1065: Reconcile handoff state — update .agent/ files, confirm previous block committed
-- [ ] 1066: Persist one RunContract per job (load/save/ensure APIs)
+- [x] 1066: Persist one RunContract per job (load/save/ensure APIs) — 38 tests pass
 - [ ] 1067: Contract migration for old jobs
 - [ ] 1068: Canonical action vocabulary (enum/constants)
 - [ ] 1069: Contract validation (validate_run_contract)

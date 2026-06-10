@@ -13,6 +13,9 @@ Public API::
     evaluate_run_action(contract, action, ...) -> RunActionDecision
     export_run_contract_json(contract) -> dict[str, Any]
     summarize_run_contract(contract) -> str
+    save_contract(job, contract) -> None
+    load_contract(job) -> RunContract | None
+    ensure_contract(job) -> RunContract
 """
 
 from __future__ import annotations
@@ -165,6 +168,54 @@ def build_default_run_contract(job: Job) -> RunContract:
         created_at=datetime.now(timezone.utc).isoformat(),
         notes="Auto-generated execution boundary. Not yet user-configurable.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Contract persistence (Step 1066)
+# ---------------------------------------------------------------------------
+
+_CONTRACT_META_KEY = "run_contract"
+
+
+def _contract_from_dict(data: dict[str, Any]) -> RunContract:
+    """Reconstruct a RunContract from a metadata dict."""
+    # Convert list fields back to tuples
+    tuple_fields = (
+        "allowed_actions", "denied_actions", "allowed_paths", "denied_paths",
+        "stop_conditions", "requires_approval_for",
+    )
+    cleaned = dict(data)
+    for field in tuple_fields:
+        if field in cleaned and isinstance(cleaned[field], list):
+            cleaned[field] = tuple(cleaned[field])
+    return RunContract(**cleaned)
+
+
+def save_contract(job: Job, contract: RunContract) -> None:
+    """Store a RunContract in job.metadata. Caller must persist the job."""
+    job.metadata[_CONTRACT_META_KEY] = export_run_contract_json(contract)
+
+
+def load_contract(job: Job) -> RunContract | None:
+    """Load the persisted RunContract from job.metadata, or None if absent."""
+    data = job.metadata.get(_CONTRACT_META_KEY)
+    if not isinstance(data, dict):
+        return None
+    return _contract_from_dict(data)
+
+
+def ensure_contract(job: Job) -> RunContract:
+    """Return the persisted contract, creating and saving one if absent.
+
+    Guarantees stable contract_id and created_at across reloads.
+    Caller must persist the job if this function creates a new contract.
+    """
+    existing = load_contract(job)
+    if existing is not None:
+        return existing
+    contract = build_default_run_contract(job)
+    save_contract(job, contract)
+    return contract
 
 
 # ---------------------------------------------------------------------------
