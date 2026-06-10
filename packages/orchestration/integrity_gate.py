@@ -13,6 +13,7 @@ Public API::
 
 from __future__ import annotations
 
+import re
 import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
@@ -50,6 +51,41 @@ class IntegrityGateResult:
     @property
     def fail_count(self) -> int:
         return sum(1 for c in self.checks if c.status == IntegrityStatus.FAIL)
+
+
+# ---------------------------------------------------------------------------
+# R-0017 fix: explicit scope status parsing
+# ---------------------------------------------------------------------------
+
+_COMPLETE_WORDS_RE = re.compile(r"\b(COMPLETE|DONE)\b", re.IGNORECASE)
+_FINAL_WORDS_RE = re.compile(r"\b(COMPLETE|FINAL|DONE)\b", re.IGNORECASE)
+
+
+def _ctx_says_complete(ctx_text: str) -> bool:
+    """Check if context explicitly declares current scope complete.
+
+    Checks the ``## Scope`` heading line AND the line immediately after it
+    for COMPLETE or DONE.  Also checks ``## Current Step`` heading + next line
+    for COMPLETE, FINAL, or DONE.
+
+    Does NOT do full-text search — prior block status text must not trigger this.
+    """
+    lines = ctx_text.splitlines()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # Check ## Scope heading and its content line
+        if re.match(r"^##\s+Scope\b", stripped):
+            if _COMPLETE_WORDS_RE.search(stripped):
+                return True
+            if i + 1 < len(lines) and _COMPLETE_WORDS_RE.search(lines[i + 1]):
+                return True
+        # Check ## Current Step heading and its content line
+        if re.match(r"^##\s+Current\s+Step\b", stripped):
+            if _FINAL_WORDS_RE.search(stripped):
+                return True
+            if i + 1 < len(lines) and _FINAL_WORDS_RE.search(lines[i + 1]):
+                return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -99,17 +135,17 @@ def _check_live_review_verdict() -> IntegrityCheck:
 
     verdict_lower = verdict.lower()
 
-    # Check if context says complete
+    # Check if context explicitly declares current scope complete (R-0017 fix)
     ctx_text = ""
     if context.exists():
-        ctx_text = context.read_text(encoding="utf-8", errors="replace").lower()
+        ctx_text = context.read_text(encoding="utf-8", errors="replace")
 
-    ctx_says_complete = "complete" in ctx_text or "done" in ctx_text
+    ctx_complete = _ctx_says_complete(ctx_text)
 
-    if ctx_says_complete and "pending" in verdict_lower:
+    if ctx_complete and "pending" in verdict_lower:
         return IntegrityCheck("live_review_verdict", IntegrityStatus.FAIL,
                               f"Context says complete but verdict is PENDING: {verdict[:100]}")
-    if ctx_says_complete and "fail" in verdict_lower and "pass" not in verdict_lower:
+    if ctx_complete and "fail" in verdict_lower and "pass" not in verdict_lower:
         return IntegrityCheck("live_review_verdict", IntegrityStatus.FAIL,
                               f"Context says complete but verdict is FAIL: {verdict[:100]}")
 
@@ -128,9 +164,9 @@ def _check_plan_consistency() -> IntegrityCheck:
     plan_text = plan.read_text(encoding="utf-8", errors="replace")
     ctx_text = ""
     if context.exists():
-        ctx_text = context.read_text(encoding="utf-8", errors="replace").lower()
+        ctx_text = context.read_text(encoding="utf-8", errors="replace")
 
-    ctx_says_complete = "complete" in ctx_text or "done" in ctx_text
+    ctx_complete = _ctx_says_complete(ctx_text)
 
     unchecked = []
     for line in plan_text.splitlines():
@@ -138,12 +174,12 @@ def _check_plan_consistency() -> IntegrityCheck:
         if stripped.startswith("- [ ]"):
             unchecked.append(stripped[:80])
 
-    if ctx_says_complete and unchecked:
+    if ctx_complete and unchecked:
         return IntegrityCheck("plan_consistency", IntegrityStatus.FAIL,
                               f"Context says complete but {len(unchecked)} unchecked steps remain")
 
     return IntegrityCheck("plan_consistency", IntegrityStatus.PASS,
-                          f"unchecked={len(unchecked)}, context_complete={ctx_says_complete}")
+                          f"unchecked={len(unchecked)}, context_complete={ctx_complete}")
 
 
 def _check_relevant_untracked() -> IntegrityCheck:
@@ -184,7 +220,6 @@ def _check_high_blockers_open() -> IntegrityCheck:
     if not live_review.exists():
         return IntegrityCheck("high_blockers_open", IntegrityStatus.SKIP, "no live_review.md")
 
-    import re
     text = live_review.read_text(encoding="utf-8", errors="replace")
 
     finding_re = re.compile(r"^###\s+(R-\d+):", re.MULTILINE)

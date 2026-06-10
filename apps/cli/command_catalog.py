@@ -106,6 +106,7 @@ GROUPS: dict[str, GroupDef] = {
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation — list, evaluate, approve, reject, defer."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks."),
+    "contract": GroupDef("contract", "Contract", "Run contract inspection and action checks."),
     "progress": GroupDef("progress", "Progress", "Progress ledger — structured checklist and evidence."),
     "feature": GroupDef("feature", "Feature", "Feature planner — deterministic suggestions and acceptance."),
 }
@@ -1582,6 +1583,37 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--collect-only", "Also run pytest collect-only", required=False, is_option=True, default="false"),
         ),
         supports_json=True,
+    ),
+
+    # ── contract ───────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="contract.inspect",
+        group_id="contract",
+        subcommand="inspect",
+        description="Show the run contract for a job.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("contract.check", "policy.contract"),
+    ),
+    CommandEntry(
+        command_id="contract.check",
+        group_id="contract",
+        subcommand="check",
+        description="Check whether an action is allowed by the run contract.",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("action", "Action to check (e.g. apply, plan, build_artifact)"),
+            ArgDef("--path", "File path to check against path policy", required=False, is_option=True),
+            ArgDef("--risk", "Risk level to check (unknown, medium, high)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("contract.inspect",),
     ),
 )
 

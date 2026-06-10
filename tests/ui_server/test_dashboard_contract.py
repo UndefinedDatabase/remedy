@@ -212,7 +212,8 @@ class TestUIServer:
 class TestAgentStateFilesCurrentBranch:
     def test_context_md_references_current_branch(self):
         ctx = (REPO_ROOT / ".agent" / "context.md").read_text()
-        assert "steps-905-924" in ctx or "steps-925-939" in ctx or "steps-940-959" in ctx
+        assert "## Active Branch" in ctx
+        assert "feature/" in ctx
         assert "steps-74_1-79" not in ctx
         assert "steps-91-100" not in ctx
 

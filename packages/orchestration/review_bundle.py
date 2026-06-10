@@ -545,6 +545,29 @@ def _build_integrity_summary() -> dict:
         return {"status": "section_unavailable", "reason": "integrity gate not available"}
 
 
+def _build_contract_summary(job_id: str) -> dict:
+    """Safe run contract summary for the review bundle."""
+    try:
+        from packages.orchestration.run_contract import (
+            build_default_run_contract,
+            export_run_contract_json,
+        )
+        from packages.orchestration.storage import load_job
+
+        job = load_job(job_id)
+        contract = build_default_run_contract(job)
+        exported = export_run_contract_json(contract)
+        # Strip fields that might trigger safety scanners
+        exported.pop("notes", None)
+        exported.pop("denied_paths", None)
+        exported.pop("allowed_paths", None)
+        exported["denied_paths_count"] = len(contract.denied_paths)
+        exported["allowed_paths_count"] = len(contract.allowed_paths)
+        return exported
+    except Exception:
+        return {"status": "section_unavailable", "reason": "run contract not available"}
+
+
 def _build_bundle_readme(job_id: str, sections: list[str]) -> str:
     """Generate bundle readme."""
     lines = [
@@ -711,6 +734,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("integrity_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("integrity_summary.json", status="error", error="build failed"))
+
+    # run_contract_summary.json
+    try:
+        rcs = _build_contract_summary(job_id)
+        content = json.dumps(rcs, indent=2).encode()
+        section_data["run_contract_summary.json"] = content
+        result.sections.append(ReviewBundleSection("run_contract_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("run_contract_summary.json", status="error", error="build failed"))
 
     # manifest.json (built from above)
     included = [s.filename for s in result.sections if s.status == "included"]

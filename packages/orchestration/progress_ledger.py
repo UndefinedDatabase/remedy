@@ -43,6 +43,7 @@ class ProgressSource(str, Enum):
     PROOF_GAP = "proof_gap"
     KNOWN_RISK = "known_risk"
     FEATURE_SUGGESTION = "feature_suggestion"
+    RUN_CONTRACT_BLOCKER = "run_contract_blocker"
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +389,36 @@ def merge_job_risks(ledger: ProgressLedger, job: Any, events: list[dict] | None 
 
 
 # ---------------------------------------------------------------------------
+# Step 1059: Merge contract blockers
+# ---------------------------------------------------------------------------
+
+
+def merge_contract_blockers(
+    ledger: ProgressLedger, contract_decisions: list[dict] | None = None,
+) -> None:
+    """Merge run contract blockers into ledger."""
+    if not contract_decisions:
+        return
+
+    idx = 0
+    for dec in contract_decisions:
+        if dec.get("allowed"):
+            continue
+        idx += 1
+        severity = "High" if dec.get("status") == "blocked" else "Medium"
+        item = ProgressItem(
+            item_id=f"contract-blocker-{idx}",
+            title=f"Contract: {dec.get('reason', 'blocked')}"[:200],
+            status=ProgressStatus.BLOCKED,
+            source_type=ProgressSource.RUN_CONTRACT_BLOCKER,
+            source_ref="run_contract",
+            severity=severity,
+            safe_summary=f"Contract {dec.get('status', 'blocked')}: {dec.get('reason', '')}"[:200],
+        )
+        ledger.items.append(item)
+
+
+# ---------------------------------------------------------------------------
 # Unified builder
 # ---------------------------------------------------------------------------
 
@@ -399,6 +430,7 @@ def build_progress_ledger(
     context_text: str | None = None,
     job: Any = None,
     events: list[dict] | None = None,
+    contract_decisions: list[dict] | None = None,
 ) -> ProgressLedger:
     """Build a unified progress ledger from available sources."""
     if plan_text:
@@ -414,6 +446,9 @@ def build_progress_ledger(
 
     if job:
         merge_job_risks(ledger, job, events)
+
+    if contract_decisions:
+        merge_contract_blockers(ledger, contract_decisions)
 
     return ledger
 
