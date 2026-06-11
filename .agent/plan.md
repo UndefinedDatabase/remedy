@@ -4,12 +4,12 @@
 Central, contract-gated Test Execution Service. Permission + contract + budget + lease + process isolation + failure artifact + linkage.
 
 ## Current Step
-1087 — Default test policy
+1088 — Create test_execution_service.py models
 
 ## Steps
 - [x] 1085: Reconcile previous handoff — agent files, R-0027/R-0028 status
 - [x] 1086: Fix R-0027 (high_risk_command_execution), confirm R-0028 resolved, tests
-- [ ] 1087: Default test policy — run_test in allowed, max_test_runs=0, dual-gate tests
+- [x] 1087: Default test policy — run_test in allowed, max_test_runs=0, dual-gate tests
 - [ ] 1088: Create test_execution_service.py — models only
 - [ ] 1089: Centralize all gates — execute_test_run() gate order
 - [ ] 1090: Production process isolation — Popen, start_new_session, SIGTERM/SIGKILL

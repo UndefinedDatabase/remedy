@@ -5,7 +5,7 @@ Scope: Real Test Execution — contract-gated, resource-safe, evidence-linked
 Timestamp: 2026-06-11
 
 ## Verdict
-PENDING — baseline scan complete, 3 blockers + 4 high identified, worker has not started this block yet
+PENDING — worker active on Step 1086+. R-0027 resolved. 3 blockers + 4 high remain (R-0029 through R-0036).
 
 ## Prior Block Status
 - Steps 940-974: PASS
@@ -88,12 +88,11 @@ PENDING — baseline scan complete, 3 blockers + 4 high identified, worker has n
 
 ### R-0036: max_test_runs=0 makes tests permanently impossible without documented escape
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: Medium
 - **Area**: run-contract
-- **Details**: Default contract: `max_test_runs=0`, `run_test` not in `_DEFAULT_ALLOWED_ACTIONS`. User cannot enable tests through `contract set` alone since `allowed_actions` is not a settable field.
-- **Evidence**: `run_contract.py:205` — `max_test_runs=0`. `run_contract.py:137-145` — no `run_test`.
-- **Expected fix**: Document explicit steps to enable: `contract set max_test_runs N`, plus add a safe enable path for `run_test` in allowed_actions.
+- **Details**: Default contract had `max_test_runs=0` and `run_test` not in `_DEFAULT_ALLOWED_ACTIONS`.
+- **Resolution**: Step 1087 adds `run_test` to `_DEFAULT_ALLOWED_ACTIONS`. Zero-budget check in `evaluate_run_action` blocks `run_test` when `max_test_runs==0`. Dual gate: (1) permission `repo_test_run allow`, (2) `contract set max_test_runs N`. 7 new tests confirm dual-gate invariant.
 
 ### R-0037: Step 1084 handoff not committed — context.md lists resolved gaps as current
 

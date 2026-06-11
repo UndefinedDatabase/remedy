@@ -510,6 +510,57 @@ class TestContractValidation:
 
 
 # ---------------------------------------------------------------------------
+# Step 1087: Default test policy tests
+# ---------------------------------------------------------------------------
+
+
+class TestDefaultTestPolicy:
+    def test_run_test_in_default_allowed_actions(self):
+        job = _make_job()
+        c = ensure_contract(job)
+        assert ContractAction.RUN_TEST in c.allowed_actions
+
+    def test_max_test_runs_zero_by_default(self):
+        job = _make_job()
+        c = ensure_contract(job)
+        assert c.max_test_runs == 0
+
+    def test_run_test_blocked_by_zero_budget(self):
+        job = _make_job()
+        c = ensure_contract(job)
+        d = evaluate_run_action(c, ContractAction.RUN_TEST)
+        assert not d.allowed
+        assert d.status == "exhausted"
+        assert "max_test_runs" in d.reason
+
+    def test_permission_alone_insufficient(self):
+        # Even with max_test_runs=1, contract gate is separate from permission
+        c = _contract(allowed_actions=(ContractAction.RUN_TEST,), max_test_runs=0)
+        d = evaluate_run_action(c, ContractAction.RUN_TEST)
+        assert not d.allowed
+
+    def test_contract_budget_alone_insufficient_to_block_without_permission(self):
+        # With max_test_runs>0, contract gate allows — but permission gate is external
+        c = _contract(allowed_actions=(ContractAction.RUN_TEST,), max_test_runs=2)
+        usage = RunUsage(test_runs_used=0)
+        d = evaluate_run_action(c, ContractAction.RUN_TEST, usage=usage)
+        assert d.allowed  # contract budget gate passes; permission is external
+
+    def test_both_gates_set_allows_contract_level(self):
+        c = _contract(allowed_actions=(ContractAction.RUN_TEST,), max_test_runs=3)
+        usage = RunUsage(test_runs_used=1)
+        d = evaluate_run_action(c, ContractAction.RUN_TEST, usage=usage)
+        assert d.allowed
+
+    def test_exhausted_budget_blocks_run_test(self):
+        c = _contract(allowed_actions=(ContractAction.RUN_TEST,), max_test_runs=1)
+        usage = RunUsage(test_runs_used=1)
+        d = evaluate_run_action(c, ContractAction.RUN_TEST, usage=usage)
+        assert not d.allowed
+        assert d.status == "exhausted"
+
+
+# ---------------------------------------------------------------------------
 # Step 1075: Usage ledger tests
 # ---------------------------------------------------------------------------
 

@@ -142,6 +142,7 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.CREATE_FIX_TASK,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
+    ContractAction.RUN_TEST,
 )
 
 _DEFAULT_DENIED_ACTIONS: tuple[str, ...] = (
@@ -485,7 +486,16 @@ def evaluate_run_action(
             next_safe_action="remedy contract inspect <job_id> --json",
         )
 
-    # 3. stop_before_apply blocks apply-type actions
+    # 3. Test run zero-budget block — run_test requires explicit max_test_runs > 0
+    if action == ContractAction.RUN_TEST and contract.max_test_runs == 0:
+        return RunActionDecision(
+            allowed=False,
+            status="exhausted",
+            reason="max_test_runs is 0 — set it above 0 to enable test execution",
+            next_safe_action="remedy contract set <job_id> max_test_runs <n>",
+        )
+
+    # 4. stop_before_apply blocks apply-type actions
     if contract.stop_before_apply and action in _APPLY_ACTIONS:
         return RunActionDecision(
             allowed=False,
@@ -494,7 +504,7 @@ def evaluate_run_action(
             next_safe_action="remedy patch approve <job_id> <intent_id>",
         )
 
-    # 4. no_cloud blocks cloud actions
+    # 5. no_cloud blocks cloud actions
     if contract.no_cloud and action in _CLOUD_ACTIONS:
         return RunActionDecision(
             allowed=False,
@@ -503,7 +513,7 @@ def evaluate_run_action(
             next_safe_action="remedy contract inspect <job_id> --json",
         )
 
-    # 5. Loop budget (from explicit param or usage)
+    # 6. Loop budget (from explicit param or usage)
     effective_loops = loop_index if loop_index is not None else (usage.loops_used if usage else None)
     if effective_loops is not None and effective_loops >= contract.max_loops:
         return RunActionDecision(
@@ -513,7 +523,7 @@ def evaluate_run_action(
             next_safe_action="remedy job show <job_id> --json",
         )
 
-    # 6. Test run budget (from explicit param or usage)
+    # 7. Test run budget (from explicit param or usage)
     effective_tests = test_run_count if test_run_count is not None else (usage.test_runs_used if usage else None)
     if effective_tests is not None and effective_tests >= contract.max_test_runs:
         return RunActionDecision(
@@ -523,7 +533,7 @@ def evaluate_run_action(
             next_safe_action="remedy job show <job_id> --json",
         )
 
-    # 6b. Runtime/token/cost budgets from usage
+    # 8. Runtime/token/cost budgets from usage
     if usage is not None:
         budget_status = check_budget(contract, usage)
         if not budget_status.within_budget:
@@ -534,13 +544,13 @@ def evaluate_run_action(
                 next_safe_action="remedy job show <job_id> --json",
             )
 
-    # 7. Path policy
+    # 9. Path policy
     if path is not None:
         path_decision = _check_path_policy(contract, path)
         if path_decision is not None:
             return path_decision
 
-    # 8. Risk policy
+    # 10. Risk policy
     if risk is not None:
         risk_lower = risk.lower()
         if risk_lower == "unknown" and contract.stop_on_unknown_risk:
