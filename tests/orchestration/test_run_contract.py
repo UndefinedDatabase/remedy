@@ -436,6 +436,19 @@ class TestCanonicalActions:
             assert a in ALL_KNOWN_ACTIONS, f"{a} not in ALL_KNOWN_ACTIONS"
         for a in c.denied_actions:
             assert a in ALL_KNOWN_ACTIONS, f"{a} not in ALL_KNOWN_ACTIONS"
+        for a in c.requires_approval_for:
+            assert a in ALL_KNOWN_ACTIONS, f"requires_approval_for {a!r} not canonical"
+
+    def test_high_risk_command_execution_not_canonical(self):
+        assert "high_risk_command_execution" not in ALL_KNOWN_ACTIONS
+
+    def test_arbitrary_shell_is_canonical(self):
+        assert ContractAction.ARBITRARY_SHELL in ALL_KNOWN_ACTIONS
+
+    def test_default_requires_approval_canonical(self):
+        from packages.orchestration.run_contract import _DEFAULT_REQUIRES_APPROVAL
+        for a in _DEFAULT_REQUIRES_APPROVAL:
+            assert a in ALL_KNOWN_ACTIONS, f"_DEFAULT_REQUIRES_APPROVAL {a!r} not canonical"
 
 
 # ---------------------------------------------------------------------------
@@ -478,10 +491,22 @@ class TestContractValidation:
         errors = validate_run_contract(c)
         assert any("absolute path" in e for e in errors)
 
-    def test_unknown_action_warning(self):
+    def test_unknown_action_is_error(self):
         c = _contract(allowed_actions=("totally_made_up_action",), denied_actions=())
         errors = validate_run_contract(c)
         assert any("unknown actions" in e for e in errors)
+
+    def test_unknown_requires_approval_action_is_error(self):
+        c = _contract(requires_approval_for=("high_risk_command_execution",))
+        errors = validate_run_contract(c)
+        assert any("unknown actions" in e for e in errors)
+
+    def test_default_contract_validates_zero_errors(self):
+        from packages.orchestration.run_contract import build_default_run_contract
+        job = _make_job()
+        c = build_default_run_contract(job)
+        errors = validate_run_contract(c)
+        assert errors == [], f"default contract has errors: {errors}"
 
 
 # ---------------------------------------------------------------------------

@@ -175,7 +175,7 @@ _DEFAULT_STOP_CONDITIONS: tuple[str, ...] = (
 
 _DEFAULT_REQUIRES_APPROVAL: tuple[str, ...] = (
     ContractAction.PATCH_APPLY,
-    "high_risk_command_execution",
+    ContractAction.ARBITRARY_SHELL,
 )
 
 _APPLY_ACTIONS = frozenset({
@@ -426,11 +426,15 @@ def validate_run_contract(contract: RunContract) -> list[str]:
     if overlap:
         errors.append(f"actions in both allowed and denied: {sorted(overlap)}")
 
-    # Warn about unknown actions (not an error, but included)
-    all_actions = set(contract.allowed_actions) | set(contract.denied_actions)
+    # Unknown actions are errors — all action strings must be canonical
+    all_actions = (
+        set(contract.allowed_actions)
+        | set(contract.denied_actions)
+        | set(contract.requires_approval_for)
+    )
     unknown = all_actions - ALL_KNOWN_ACTIONS
     if unknown:
-        errors.append(f"unknown actions (may be intentional): {sorted(unknown)}")
+        errors.append(f"unknown actions: {sorted(unknown)}")
 
     # Check denied paths for absolute paths
     for p in contract.denied_paths:

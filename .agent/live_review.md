@@ -20,11 +20,11 @@ PENDING — baseline scan complete, 3 blockers + 4 high identified, worker has n
 
 ### R-0027: high_risk_command_execution not in canonical action vocabulary
 
-- **Status**: Open (carry forward)
+- **Status**: Resolved
 - **Severity**: Low
 - **Area**: canonical-actions
-- **Details**: `_DEFAULT_REQUIRES_APPROVAL` at `run_contract.py:178` has `"high_risk_command_execution"` not in `ALL_KNOWN_ACTIONS`.
-- **Expected fix**: Add to ContractAction or replace with canonical name.
+- **Details**: `_DEFAULT_REQUIRES_APPROVAL` had `"high_risk_command_execution"` not in `ALL_KNOWN_ACTIONS`.
+- **Resolution**: Step 1086 replaced with `ContractAction.ARBITRARY_SHELL`. `validate_run_contract()` now checks `requires_approval_for` for unknown actions. Default contract validates with zero errors. 4 new tests confirm canonical invariant.
 
 ### R-0029: test_runner.py uses capture_output=True (pipe-based)
 
