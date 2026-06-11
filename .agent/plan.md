@@ -4,22 +4,22 @@
 Central, contract-gated Test Execution Service. Permission + contract + budget + lease + process isolation + failure artifact + linkage.
 
 ## Current Step
-1088 — Create test_execution_service.py models
+1098 — Link tests to changes
 
 ## Steps
 - [x] 1085: Reconcile previous handoff — agent files, R-0027/R-0028 status
 - [x] 1086: Fix R-0027 (high_risk_command_execution), confirm R-0028 resolved, tests
 - [x] 1087: Default test policy — run_test in allowed, max_test_runs=0, dual-gate tests
-- [ ] 1088: Create test_execution_service.py — models only
-- [ ] 1089: Centralize all gates — execute_test_run() gate order
-- [ ] 1090: Production process isolation — Popen, start_new_session, SIGTERM/SIGKILL
-- [ ] 1091: Safe environment policy — strip secrets, preserve PATH
-- [ ] 1092: Test execution lease — concurrent-run guard
-- [ ] 1093: Derive timeout from contract remaining runtime
-- [ ] 1094: Persist usage correctly — test_runs_used, runtime_seconds_used
-- [ ] 1095: Persist safe test records — TestRunRecord v2 with contract_id + linkage
-- [ ] 1096: Emit safe lifecycle events
-- [ ] 1097: Automatic TestFailureArtifact on fail/timeout
+- [x] 1088: Create test_execution_service.py — models only
+- [x] 1089: Centralize all gates — execute_test_run() gate order
+- [x] 1090: Production process isolation — Popen, start_new_session, SIGTERM/SIGKILL
+- [x] 1091: Safe environment policy — strip secrets, preserve PATH
+- [x] 1092: Test execution lease — concurrent-run guard
+- [x] 1093: Derive timeout from contract remaining runtime
+- [x] 1094: Persist usage correctly — test_runs_used, runtime_seconds_used
+- [x] 1095: Persist safe test records — TestRunRecord v2 with contract_id + linkage
+- [x] 1096: Emit safe lifecycle events
+- [x] 1097: Automatic TestFailureArtifact on fail/timeout
 - [ ] 1098: Link tests to changes — task/intent/apply validation
 - [ ] 1099: Update remedy test run CLI — route through service
 - [ ] 1100: Contract guidance — next safe action per block reason
