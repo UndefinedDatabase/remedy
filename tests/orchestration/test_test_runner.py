@@ -168,12 +168,14 @@ class TestHeadlessSmokeNosBrowserLaunch:
 
 class TestPermitGuidanceArgOrder:
     def test_permit_guidance_has_correct_arg_order(self):
-        """test_cmds.py must show: remedy job permit <id> repo_test_run allow"""
-        src = Path("apps/cli/commands/test_cmds.py").read_text()
-        # Must contain correct order
-        assert "repo_test_run allow" in src
-        # Must NOT contain wrong order
-        assert "allow repo_test_run" not in src
+        """Permission guidance must show: remedy job permit <id> repo_test_run allow"""
+        # Since Steps 1099+ CLI delegates to test_execution_service, check service
+        svc_src = Path("packages/orchestration/test_execution_service.py").read_text()
+        assert "repo_test_run allow" in svc_src
+        assert "allow repo_test_run" not in svc_src
+        # CLI wrapper must not reverse the order either
+        cli_src = Path("apps/cli/commands/test_cmds.py").read_text()
+        assert "allow repo_test_run" not in cli_src
 
     def test_no_bad_permit_order_in_production(self):
         """No production .py file should have 'allow repo_test_run' as guidance."""

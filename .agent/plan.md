@@ -4,7 +4,7 @@
 Central, contract-gated Test Execution Service. Permission + contract + budget + lease + process isolation + failure artifact + linkage.
 
 ## Current Step
-1098 — Link tests to changes
+1101 — Proof Chain alignment
 
 ## Steps
 - [x] 1085: Reconcile previous handoff — agent files, R-0027/R-0028 status
@@ -20,9 +20,9 @@ Central, contract-gated Test Execution Service. Permission + contract + budget +
 - [x] 1095: Persist safe test records — TestRunRecord v2 with contract_id + linkage
 - [x] 1096: Emit safe lifecycle events
 - [x] 1097: Automatic TestFailureArtifact on fail/timeout
-- [ ] 1098: Link tests to changes — task/intent/apply validation
-- [ ] 1099: Update remedy test run CLI — route through service
-- [ ] 1100: Contract guidance — next safe action per block reason
+- [x] 1098: Link tests to changes — task/intent/apply validation
+- [x] 1099: Update remedy test run CLI — route through service
+- [x] 1100: Contract guidance — next safe action per block reason
 - [ ] 1101: Proof Chain alignment — pass/fail/timeout/unlinked rules
 - [ ] 1102: Progress, Feature Planner, Review Bundle integration
 - [ ] 1103: Resource and redaction tests
