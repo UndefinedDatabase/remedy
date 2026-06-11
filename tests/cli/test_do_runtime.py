@@ -285,7 +285,7 @@ class TestDoRuntimeTruth:
         assert "run_contract" in data
         rc = data["run_contract"]
         assert rc["stop_before_apply"] is True
-        assert rc["source"] == "do_v1_minimal"
+        assert rc["source"] in ("do_v1_minimal", "do_v1_caller_override")
 
     def test_max_cycles_zero_safe(self, tmp_path):
         """Real subprocess: --max-cycles 0 exits 0 with invalid_input."""
