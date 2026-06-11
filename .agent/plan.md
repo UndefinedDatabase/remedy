@@ -1,33 +1,38 @@
-# Plan — Steps 1065-1084: Run Contract SSOT + Budget Ledger
+# Plan — Steps 1085-1109: Real Test Execution v1
 
 ## Goal
-Make one persisted RunContract per job the single authority. Add usage ledger with budget enforcement. Fix path policy precision.
+Central, contract-gated Test Execution Service. Permission + contract + budget + lease + process isolation + failure artifact + linkage.
 
 ## Current Step
-1084 — Final handoff
+1086 — Close canonical action and documentation risks
 
 ## Steps
-- [x] 1065: Reconcile handoff state — update .agent/ files, confirm previous block committed
-- [x] 1066: Persist one RunContract per job (load/save/ensure APIs) — 38 tests pass
-- [x] 1067: Contract migration for old jobs — lazy via ensure_contract, 43 tests pass
-- [x] 1068: Canonical action vocabulary — ContractAction class, ALL_KNOWN_ACTIONS, 53 tests
-- [x] 1069: Contract validation — validate_run_contract(), 53 tests
-- [x] 1070: Replace DoRunContract — do_run uses central RunContract, 120 tests pass
-- [x] 1071: repair_loop uses central contract via ensure_contract, 127 tests pass
-- [x] 1072: CLI uses persisted contract via ensure_contract
-- [x] 1073: `contract set` CLI command + catalog entry
-- [x] 1074: Precise path policy — segment-aware matching, R-0021 fixed, 57 tests
-- [x] 1075: Run Usage Ledger — RunUsage, RunBudgetStatus, save/load/check, 68 tests
-- [x] 1076: Budget enforcement via usage in evaluate_run_action
-- [x] 1077: Record usage in do_run and repair_loop — loops_used incremented
-- [x] 1078: Contract decision events — emitted as timeline events
-- [x] 1079: Progress ledger — auto-extract contract decisions from events
-- [x] 1080: Feature planner — blockers flow through existing rules
-- [x] 1081: Review bundle uses active persisted contract
-- [x] 1082: Runtime CLI tests
-- [x] 1083: Tests and docs update
-- [x] 1084: Final handoff with changed files table
+- [x] 1085: Reconcile previous handoff — agent files, R-0027/R-0028 status
+- [ ] 1086: Fix R-0027 (high_risk_command_execution), confirm R-0028 resolved, tests
+- [ ] 1087: Default test policy — run_test in allowed, max_test_runs=0, dual-gate tests
+- [ ] 1088: Create test_execution_service.py — models only
+- [ ] 1089: Centralize all gates — execute_test_run() gate order
+- [ ] 1090: Production process isolation — Popen, start_new_session, SIGTERM/SIGKILL
+- [ ] 1091: Safe environment policy — strip secrets, preserve PATH
+- [ ] 1092: Test execution lease — concurrent-run guard
+- [ ] 1093: Derive timeout from contract remaining runtime
+- [ ] 1094: Persist usage correctly — test_runs_used, runtime_seconds_used
+- [ ] 1095: Persist safe test records — TestRunRecord v2 with contract_id + linkage
+- [ ] 1096: Emit safe lifecycle events
+- [ ] 1097: Automatic TestFailureArtifact on fail/timeout
+- [ ] 1098: Link tests to changes — task/intent/apply validation
+- [ ] 1099: Update remedy test run CLI — route through service
+- [ ] 1100: Contract guidance — next safe action per block reason
+- [ ] 1101: Proof Chain alignment — pass/fail/timeout/unlinked rules
+- [ ] 1102: Progress, Feature Planner, Review Bundle integration
+- [ ] 1103: Resource and redaction tests
+- [ ] 1104: Runtime CLI tests — subprocess tests only
+- [ ] 1105: Command discovery truth — safety and risk guardrails
+- [ ] 1106: Architecture guards — service not CLI-only
+- [ ] 1107: Documentation — real-test-execution-v1.md
+- [ ] 1108: Tests and live review
+- [ ] 1109: Final handoff
 
 ## Known Risks
-- R-0017: RESOLVED
-- Path policy `.env` false positive: Fix target Step 1074
+- R-0027: high_risk_command_execution not canonical — fix in 1086
+- pre-existing: test_project_brain.py::test_full_chain_order fails on main

@@ -1,123 +1,122 @@
-# Live Review — Steps 1065-1084
+# Live Review — Steps 1085-1109
 
 Reviewer: parallel reviewer
-Scope: Run Contract — Persisted, Enforceable Source of Truth
+Scope: Real Test Execution — contract-gated, resource-safe, evidence-linked
 Timestamp: 2026-06-11
 
 ## Verdict
-PASS WITH RISKS — all blockers/high resolved, 2 low findings remain
+PENDING — baseline scan complete, 3 blockers + 4 high identified, worker has not started this block yet
 
 ## Prior Block Status
 - Steps 940-974: PASS
 - Steps 975-994: PASS
 - Steps 995-1009: PASS
 - Steps 1010-1029: PASS WITH RISKS
-- Steps 1030-1044: PASS WITH RISKS (R-0017 resolved in 1045-1064)
-- Steps 1045-1064: PASS — R-0017/R-0018/R-0019/R-0020 all resolved. 126 tests pass.
+- Steps 1030-1044: PASS WITH RISKS
+- Steps 1045-1064: PASS
+- Steps 1065-1084: PASS WITH RISKS (R-0027 low carry-forward)
 
 ## Finding Ledger
 
-### R-0021: .environment.py blocked by .env denied path rule
-
-- **Status**: Resolved
-- **Severity**: Blocker
-- **Area**: path-policy
-- **Details**: `_check_path_policy` used `normalized.startswith(denied)` causing `.environment.py` to match `.env`.
-- **Resolution**: Step 1074 introduced `_path_matches()` at `run_contract.py:564-571` with segment-aware exact+directory-prefix matching. Test at `test_run_contract.py:196-200` confirms `.environment.py` allowed, `.env` blocked, `.env/foo` blocked, `node_modules_backup/` not blocked by `node_modules/`.
-
-### R-0022: Contract not persisted — rebuilt fresh on every access
-
-- **Status**: Resolved
-- **Severity**: Blocker
-- **Area**: contract-storage
-- **Details**: No contract saved to job or disk.
-- **Resolution**: Step 1066 added `save_contract()`, `load_contract()`, `ensure_contract()` at `run_contract.py:247-271`. Contract stored in `job.metadata["run_contract"]`. Tests at `test_run_contract.py:322-381` confirm roundtrip, stable contract_id/created_at, JSON survival.
-
-### R-0023: do_run uses private DoRunContract instead of central RunContract
-
-- **Status**: Resolved
-- **Severity**: Blocker
-- **Area**: do-flow
-- **Details**: `do_run.py` created its own `DoRunContract` with different action lists.
-- **Resolution**: Step 1070 replaced `DoRunContract` with `ensure_contract(job)` at `do_run.py:229`. `DoRunContract = None` at line 128 (removed class). `_check_contract()` now takes central RunContract directly.
-
-### R-0024: repair_loop constructs independent private contract
-
-- **Status**: Resolved
-- **Severity**: High
-- **Area**: repair-loop
-- **Details**: `repair_loop.py` created inline `RunContract` with hardcoded actions.
-- **Resolution**: Step 1071 replaced inline contract with `ensure_contract(job)` at `repair_loop.py:104`. Same persisted contract as do_run and CLI.
-
-### R-0025: No usage ledger — budget enforcement from caller-supplied values only
-
-- **Status**: Resolved
-- **Severity**: High
-- **Area**: usage-ledger
-- **Details**: No usage persistence. Budget values lost after reload.
-- **Resolution**: Step 1075 added `RunUsage` dataclass, `save_usage()`/`load_usage()`, `check_budget()` at `run_contract.py:292-391`. Both `do_run.py:419-421` and `repair_loop.py:239-241` record usage. `evaluate_run_action()` accepts `usage` param and checks budgets. Tests at `test_run_contract.py:492-582` confirm persistence, roundtrip, enforcement.
-
-### R-0026: empty allowed_paths permits all path writes
-
-- **Status**: Resolved
-- **Severity**: High
-- **Area**: path-policy
-- **Details**: Empty `allowed_paths` means no path restriction — could be surprising.
-- **Resolution**: Documented explicitly at `docs/run-contract-v1.md:35`. Test at `test_run_contract.py:190-194` confirms behavior. Denied paths still enforced. This is intentional for v1.
-
 ### R-0027: high_risk_command_execution not in canonical action vocabulary
 
-- **Status**: Open
+- **Status**: Open (carry forward)
 - **Severity**: Low
 - **Area**: canonical-actions
-- **Details**: `_DEFAULT_REQUIRES_APPROVAL` at `run_contract.py:178` contains `"high_risk_command_execution"` which is not a `ContractAction` constant and not in `ALL_KNOWN_ACTIONS`. `validate_run_contract()` would flag it as unknown on a default contract. Not breaking — `requires_approval_for` is not checked by `validate_run_contract()` currently. But inconsistent with canonical vocabulary goal.
-- **Evidence**: `python3 -c "from packages.orchestration.run_contract import ALL_KNOWN_ACTIONS; print('high_risk_command_execution' in ALL_KNOWN_ACTIONS)"` returns `False`.
-- **Expected fix**: Either add `HIGH_RISK_COMMAND = "high_risk_command_execution"` to `ContractAction`, or replace with a canonical name.
+- **Details**: `_DEFAULT_REQUIRES_APPROVAL` at `run_contract.py:178` has `"high_risk_command_execution"` not in `ALL_KNOWN_ACTIONS`.
+- **Expected fix**: Add to ContractAction or replace with canonical name.
 
-### R-0028: docs/run-contract-v1.md stale after Steps 1065-1080
+### R-0029: test_runner.py uses capture_output=True (pipe-based)
+
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: process-isolation
+- **Details**: `test_runner.py:202-206` uses `subprocess.run(argv, capture_output=True, timeout=...)`. Buffers all stdout/stderr in memory via pipes. For large test suites: OOM risk, pipe deadlock risk. Block spec requires file-backed output.
+- **Evidence**: `test_runner.py:202` — `proc = subprocess.run(argv, cwd=str(repo_root), capture_output=True, timeout=timeout_sec)`.
+- **Expected fix**: Use `Popen` with file descriptors writing to temp files. Read file after process exits.
+
+### R-0030: No process-group cleanup on timeout
+
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: process-isolation
+- **Details**: No `start_new_session=True`. No `os.killpg()`. `subprocess.run` timeout kills direct child only — descendants survive. No SIGTERM-then-SIGKILL sequence. No `stdin=DEVNULL`. No `close_fds=True`.
+- **Evidence**: `test_runner.py:202` — plain subprocess.run, no session or group handling. `TimeoutExpired` at line 212 does not kill process group.
+- **Expected fix**: `Popen` with `start_new_session=True`, `stdin=DEVNULL`, `close_fds=True`. On timeout: `os.killpg(proc.pid, SIGTERM)`, brief wait, `os.killpg(proc.pid, SIGKILL)`, `proc.wait()`.
+
+### R-0031: No contract enforcement in test_runner.py
+
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: run-contract
+- **Details**: `run_tests_local()` does not check RunContract. No `evaluate_run_action(contract, "run_test")`. No `max_test_runs` check. No `test_runs_used` increment. CLI is the only enforcement point — bypass is trivial.
+- **Evidence**: `test_runner.py:136-138` docstring: "Does NOT check the repo_test_run permission — the caller (CLI) is responsible for that gate."
+- **Expected fix**: Create central Test Execution Service that enforces contract + usage + permission, or add gates to `run_tests_local` directly.
+
+### R-0032: No secret/environment stripping before subprocess
+
+- **Status**: Open
+- **Severity**: High
+- **Area**: environment
+- **Details**: `subprocess.run` at line 202 inherits full `os.environ`. Secret-like env vars (API_KEY, SECRET, TOKEN, PASSWORD, AWS_*, OPENAI_*, etc.) visible to child test process.
+- **Evidence**: Docstring line 26: "inherits os.environ (no extra vars, no .env reading)" — confirms no stripping.
+- **Expected fix**: Build filtered env dict stripping keys matching secret patterns before passing to Popen.
+
+### R-0033: No concurrency guard for same job/repo
+
+- **Status**: Open
+- **Severity**: High
+- **Area**: concurrency
+- **Details**: No lease or lock prevents two simultaneous test runs for same job or repo. Could cause filesystem contention, test interference, usage double-counting.
+- **Expected fix**: File-based lease per job_id in workspace, released on completion/error/timeout.
+
+### R-0034: No TestFailureArtifact created on failed/timeout runs
+
+- **Status**: Open
+- **Severity**: High
+- **Area**: failure-artifact
+- **Details**: `run_tests_local()` returns `TestRunRecord` with status "failed"/"timeout" but does not create `TestFailureArtifact`. Repair loop requires these to create fix tasks.
+- **Expected fix**: On failed/timeout, create `TestFailureArtifact` with safe fields linking to test run.
+
+### R-0035: test_runs_used not incremented by test_runner
+
+- **Status**: Open
+- **Severity**: High
+- **Area**: usage-ledger
+- **Details**: `run_tests_local()` does not call `save_usage()` to increment `test_runs_used`. Usage tracking exists in `run_contract.py` but test_runner doesn't use it. Blocked-before-start must NOT consume budget.
+- **Expected fix**: Increment `test_runs_used` on actual process start only. Record measured runtime in `runtime_seconds_used`.
+
+### R-0036: max_test_runs=0 makes tests permanently impossible without documented escape
+
+- **Status**: Open
+- **Severity**: Medium
+- **Area**: run-contract
+- **Details**: Default contract: `max_test_runs=0`, `run_test` not in `_DEFAULT_ALLOWED_ACTIONS`. User cannot enable tests through `contract set` alone since `allowed_actions` is not a settable field.
+- **Evidence**: `run_contract.py:205` — `max_test_runs=0`. `run_contract.py:137-145` — no `run_test`.
+- **Expected fix**: Document explicit steps to enable: `contract set max_test_runs N`, plus add a safe enable path for `run_test` in allowed_actions.
+
+### R-0037: Step 1084 handoff not committed — context.md lists resolved gaps as current
 
 - **Status**: Resolved
-- **Severity**: Low
+- **Severity**: Medium
 - **Area**: handoff
-- **Details**: Three stale claims: DoRunContract reference, "no user-configurable", "no budget enforcement".
-- **Resolution**: Commit `ee39c3a` updated both `docs/run-contract-v1.md` and `docs/do-run-v1.md`. Zero `DoRunContract` references remain. Persistence, contract set, and budget enforcement documented.
+- **Details**: context.md "Truth Gaps" 1-7 all resolved but still listed as current. plan.md Step 1084 unchecked.
+- **Resolution**: Step 1085 commit `016d715` closes Step 1084, updates context.md (truth gaps removed), marks plan.md complete. PR #52 merged to main.
 
-## Review Cycle Checks
+## Baseline Checks (Pre-Worker)
 
-| # | Check | Status | Evidence |
-|---|-------|--------|----------|
-| 1 | Handoff reconciliation | PASS | context.md, plan.md, live_review match branch feature/steps-1065-1084-run-contract-ssot |
-| 2 | Contract persistence | PASS | save/load/ensure roundtrip verified. contract_id stable. created_at stable. JSON survives. |
-| 3 | Canonical actions | PASS (low risk) | ALL_KNOWN_ACTIONS=17. Default contract uses only canonical. R-0027 low. |
-| 4 | Central enforcement | PASS | do_run, repair_loop, contract CLI, review_bundle all use ensure_contract(). |
-| 5 | Path policy | PASS | Segment-aware _path_matches(). .environment.py safe. Traversal/absolute blocked. |
-| 6 | Usage ledger | PASS | RunUsage persisted. Loops/tests enforced from usage. Budget check in evaluate_run_action. |
-| 7 | Budget enforcement | PASS | check_budget() covers loops, test_runs, runtime, tokens, cost. Exhausted blocks actions. |
-| 8 | Contract config CLI | PASS | contract set is metadata-only, validates, limited SETTABLE_FIELDS, no repo mutation. |
-| 9 | CLI runtime | PASS | subprocess, timeout=30, no shell=True, JSON parses, missing job safe. |
-| 10 | Progress/feature/review | PASS | extract_contract_decisions_from_events. review_bundle uses ensure_contract + load_usage. |
-| 11 | Redaction | PASS | No raw source/diff/artifact/stdout/stderr/secrets in new code. |
-| 12 | Approval gate | PASS | source_apply not imported in do_run or repair_loop. stop_before_apply enforced. |
-
-## Test Status
-- CONFIRMED: 4996 passed, 8 skipped, 1 pre-existing fail (test_project_brain.py::test_full_chain_order — not caused by this block).
-- Full suite run on 2026-06-11 post-commit ee39c3a.
-
-## Final Review
-
-| Area | Status |
-|------|--------|
-| Handoff | PASS |
-| Contract persistence | PASS |
-| Canonical actions | PASS (R-0027 low) |
-| Validation | PASS |
-| Central enforcement | PASS |
-| Path policy | PASS |
-| Usage ledger | PASS |
-| Budget enforcement | PASS |
-| CLI config/runtime | PASS |
-| Progress/feature/review | PASS |
-| Redaction | PASS |
-| Tests | PASS — 4996 passed, 1 pre-existing fail |
-| Remaining findings | 1 (R-0027 low) |
-| Merge readiness | PASS WITH RISKS — 1 low naming item (R-0027), carry to next block |
+| Check | Status | Notes |
+|-------|--------|-------|
+| Previous block closure | PASS | Step 1084 committed, PR #52 merged, context.md updated |
+| Central test service | ABSENT | test_runner.py exists but no service with gates |
+| Permission/contract | FAIL | No contract check in test_runner |
+| Process isolation | FAIL | capture_output=True, no session, no group cleanup |
+| Environment | FAIL | No secret stripping |
+| Lease/concurrency | ABSENT | No guard |
+| Timeout cleanup | FAIL | Kills child only, descendants survive |
+| Usage ledger | FAIL | test_runs_used not incremented |
+| Failure artifact | ABSENT | No TestFailureArtifact on failure |
+| Proof linkage | ABSENT | No proof integration yet |
+| CLI runtime | PASS (prior) | Existing tests adequate |
+| Redaction | PASS (partial) | TestRunRecord safe; raw output in workspace file |
+| Progress/feature/review | PASS (prior) | Need test events wired |
