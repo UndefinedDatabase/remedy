@@ -504,7 +504,21 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
         result.next_safe_action = "remedy job list"
         return result
 
-    # ── Gate 2: Validate target repository ──────────────────────────────────
+    # ── Gate 2: repo_test_run permission ────────────────────────────────────
+    if not is_allowed(job, Capability.repo_test_run):
+        result.status = "blocked"
+        result.stop_reason = "permission_denied"
+        result.safe_summary = "Permission repo_test_run not granted."
+        result.next_safe_action = f"remedy job permit {job.id} repo_test_run allow"
+        result.contract_guidance = f"remedy job permit {job.id} repo_test_run allow"
+        _emit(data_dir, job_id_parsed, "test_run_blocked", {
+            "test_run_id": test_run_id,
+            "reason": "permission_denied",
+            "next_safe_action": result.next_safe_action,
+        })
+        return result
+
+    # ── Gate 3: Validate target repository ──────────────────────────────────
     target_repo_str: str | None = job.metadata.get("target_repo")
     if not target_repo_str:
         result.status = "blocked"
@@ -519,20 +533,6 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
         result.stop_reason = "target_repo_not_a_directory"
         result.safe_summary = "Target repository path does not exist."
         result.next_safe_action = f"remedy job attach-repo {job.id} <repo_path>"
-        return result
-
-    # ── Gate 3: repo_test_run permission ────────────────────────────────────
-    if not is_allowed(job, Capability.repo_test_run):
-        result.status = "blocked"
-        result.stop_reason = "permission_denied"
-        result.safe_summary = "Permission repo_test_run not granted."
-        result.next_safe_action = f"remedy job permit {job.id} repo_test_run allow"
-        result.contract_guidance = f"remedy job permit {job.id} repo_test_run allow"
-        _emit(data_dir, job_id_parsed, "test_run_blocked", {
-            "test_run_id": test_run_id,
-            "reason": "permission_denied",
-            "next_safe_action": result.next_safe_action,
-        })
         return result
 
     # ── Gate 4: Load and validate contract ──────────────────────────────────

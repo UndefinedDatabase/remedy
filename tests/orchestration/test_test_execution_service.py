@@ -401,7 +401,7 @@ class TestExecuteTestRunGates:
                    return_value=tmp_path):
             with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
                 job = self._make_job_with_repo(tmp_path)
-                job.metadata = {}  # no target_repo
+                job.metadata = {"permissions": {"repo_test_run": "allow"}}  # no target_repo
                 mock_load.return_value = job
                 req = TestExecutionRequest(job_id=str(job.id))
                 result = execute_test_run(req)

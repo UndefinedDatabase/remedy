@@ -176,7 +176,7 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         task_id=getattr(args, "task_id", "") or "",
         intent_id=getattr(args, "intent_id", "") or "",
         apply_id=getattr(args, "apply_id", "") or "",
-        timeout_seconds=getattr(args, "timeout_seconds", None),
+        timeout_seconds=float(ts) if (ts := (getattr(args, "timeout_seconds", None) or "")) else None,
         as_json=getattr(args, "json", False),
     ),
 }
