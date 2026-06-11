@@ -393,6 +393,59 @@ def merge_job_risks(ledger: ProgressLedger, job: Any, events: list[dict] | None 
 # ---------------------------------------------------------------------------
 
 
+def extract_test_results_from_events(events: list[dict] | None) -> list[ProgressItem]:
+    """Extract test run results from timeline events as ProgressItems."""
+    if not events:
+        return []
+    items: list[ProgressItem] = []
+    budget_exhausted_added = False
+    for ev in events:
+        ename = ev.get("event", "")
+        meta = ev.get("metadata", ev)
+        if ename in ("test_run_completed", "test_run_timed_out"):
+            status_val = meta.get("status", "")
+            run_id = meta.get("test_run_id", "")
+            if status_val == "passed":
+                items.append(ProgressItem(
+                    item_id=f"test-pass-{run_id}",
+                    title="Test run passed",
+                    status=ProgressStatus.DONE,
+                    source_type=ProgressSource.TEST_RESULT,
+                    source_ref=run_id,
+                    safe_summary=f"test_run_id={run_id} passed",
+                ))
+            elif status_val in ("failed", "timeout"):
+                items.append(ProgressItem(
+                    item_id=f"test-fail-{run_id}",
+                    title=f"Test run {status_val}",
+                    status=ProgressStatus.BLOCKED,
+                    source_type=ProgressSource.TEST_RESULT,
+                    severity="High",
+                    source_ref=run_id,
+                    safe_summary=f"test_run_id={run_id} {status_val} — check failure artifact",
+                ))
+        elif ename == "test_run_blocked" and not budget_exhausted_added:
+            reason = meta.get("reason", "")
+            if "budget" in reason or "max_test_runs" in reason or "exhausted" in reason:
+                budget_exhausted_added = True
+                items.append(ProgressItem(
+                    item_id="test-budget-exhausted",
+                    title="Test budget exhausted",
+                    status=ProgressStatus.BLOCKED,
+                    source_type=ProgressSource.RUN_CONTRACT_BLOCKER,
+                    severity="High",
+                    safe_summary="Test run budget exhausted — set max_test_runs higher",
+                    next_action="remedy contract set <job_id> max_test_runs <n>",
+                ))
+    return items
+
+
+def merge_test_results(ledger: ProgressLedger, events: list[dict] | None) -> None:
+    """Merge test run items from events into the ledger."""
+    items = extract_test_results_from_events(events)
+    ledger.items.extend(items)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -465,6 +518,10 @@ def build_progress_ledger(
         effective_decisions = extract_contract_decisions_from_events(events)
     if effective_decisions:
         merge_contract_blockers(ledger, effective_decisions)
+
+    # Auto-extract test results from events
+    if events:
+        merge_test_results(ledger, events)
 
     return ledger
 

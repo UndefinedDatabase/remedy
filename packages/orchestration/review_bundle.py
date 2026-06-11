@@ -571,6 +571,57 @@ def _build_contract_summary(job_id: str) -> dict:
         return {"status": "section_unavailable", "reason": "run contract not available"}
 
 
+def _build_test_execution_summary(job: Any, events: list[dict]) -> dict:
+    """Safe test execution summary for the review bundle. No raw output."""
+    try:
+        from packages.orchestration.run_contract import load_usage, export_usage_json
+
+        # Collect test run records from job metadata
+        test_runs = job.metadata.get("test_runs") or []
+        safe_runs = []
+        for r in test_runs[-20:]:  # last 20 only
+            safe_runs.append({
+                "test_run_id": r.get("test_run_id", ""),
+                "contract_id": r.get("contract_id", ""),
+                "status": r.get("status", ""),
+                "exit_code": r.get("exit_code"),
+                "duration_ms": r.get("duration_ms", 0),
+                "command_safe": r.get("command_safe", ""),
+                "linked_intent_id": r.get("linked_intent_id", ""),
+                "linked_task_id": r.get("linked_task_id", ""),
+                "linked_apply_id": r.get("linked_apply_id", ""),
+                "created_at": r.get("created_at", ""),
+            })
+
+        # Count results from events
+        passed = sum(1 for e in events if e.get("event") == "test_run_completed"
+                     and e.get("metadata", {}).get("status") == "passed")
+        failed = sum(1 for e in events if e.get("event") in ("test_run_completed", "test_run_timed_out")
+                     and e.get("metadata", {}).get("status") in ("failed", "timeout"))
+
+        # Find failure artifact IDs
+        artifact_ids = [
+            e.get("metadata", {}).get("failure_artifact_id", "")
+            for e in events
+            if e.get("event") == "test_failure_artifact_created"
+            and e.get("metadata", {}).get("failure_artifact_id")
+        ]
+
+        usage = load_usage(job)
+
+        return {
+            "version": 1,
+            "run_count": len(safe_runs),
+            "passed_count": passed,
+            "failed_count": failed,
+            "failure_artifact_ids": artifact_ids,
+            "usage": export_usage_json(usage),
+            "recent_runs": safe_runs,
+        }
+    except Exception:
+        return {"status": "section_unavailable", "reason": "test execution data not available"}
+
+
 def _build_bundle_readme(job_id: str, sections: list[str]) -> str:
     """Generate bundle readme."""
     lines = [
@@ -746,6 +797,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("run_contract_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("run_contract_summary.json", status="error", error="build failed"))
+
+    # test_execution_summary.json
+    try:
+        tes = _build_test_execution_summary(job, events)
+        content = json.dumps(tes, indent=2).encode()
+        section_data["test_execution_summary.json"] = content
+        result.sections.append(ReviewBundleSection("test_execution_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("test_execution_summary.json", status="error", error="build failed"))
 
     # manifest.json (built from above)
     included = [s.filename for s in result.sections if s.status == "included"]

@@ -503,7 +503,7 @@ def build_proof_chain(
         if ename in ("task_execution_completed", "task_execution_blocked", "task_execution_failed"):
             if tid:
                 task_exec_events[tid] = {"event": ename, "meta": meta}
-        elif ename == "test_run_completed":
+        elif ename in ("test_run_completed", "test_run_timed_out"):
             all_test_events.append(ev)
         elif ename == "patch_intent_applied" and iid:
             apply_event_map[iid] = ev

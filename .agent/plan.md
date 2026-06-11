@@ -4,7 +4,7 @@
 Central, contract-gated Test Execution Service. Permission + contract + budget + lease + process isolation + failure artifact + linkage.
 
 ## Current Step
-1101 — Proof Chain alignment
+1103 — Resource and redaction tests
 
 ## Steps
 - [x] 1085: Reconcile previous handoff — agent files, R-0027/R-0028 status
@@ -23,8 +23,8 @@ Central, contract-gated Test Execution Service. Permission + contract + budget +
 - [x] 1098: Link tests to changes — task/intent/apply validation
 - [x] 1099: Update remedy test run CLI — route through service
 - [x] 1100: Contract guidance — next safe action per block reason
-- [ ] 1101: Proof Chain alignment — pass/fail/timeout/unlinked rules
-- [ ] 1102: Progress, Feature Planner, Review Bundle integration
+- [x] 1101: Proof Chain alignment — pass/fail/timeout/unlinked rules
+- [x] 1102: Progress, Feature Planner, Review Bundle integration
 - [ ] 1103: Resource and redaction tests
 - [ ] 1104: Runtime CLI tests — subprocess tests only
 - [ ] 1105: Command discovery truth — safety and risk guardrails
