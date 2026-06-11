@@ -50,7 +50,7 @@ points to `remedy context inspect` for diagnosis.
 
 ## Run Contract
 
-Source: `do_v1_minimal` (simplified, consolidation with `RunContract` in v2).
+`do_run` loads the persisted contract via `ensure_contract(job)` (source `default_v1` on first call). If the caller passes `autonomy_level` or `stop_before_apply` values that differ from the stored contract, a modified copy is saved back with source `do_v1_caller_override`.
 
 | Field | Default | Notes |
 |-------|---------|-------|
@@ -60,7 +60,7 @@ Source: `do_v1_minimal` (simplified, consolidation with `RunContract` in v2).
 | `allowed_actions` | plan, build_artifact, create_patch_intent | |
 | `denied_actions` | apply_patch, arbitrary_shell, network_fetch | |
 
-The run contract is visible in `--json` output under the `run_contract` key.
+The run contract and usage summary are visible in `--json` output under the `run_contract` key.
 
 ## Autonomy Truth
 

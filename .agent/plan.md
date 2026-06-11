@@ -4,7 +4,7 @@
 Make one persisted RunContract per job the single authority. Add usage ledger with budget enforcement. Fix path policy precision.
 
 ## Current Step
-1081 — Review bundle uses active contract
+1084 — Final handoff
 
 ## Steps
 - [x] 1065: Reconcile handoff state — update .agent/ files, confirm previous block committed
@@ -23,9 +23,9 @@ Make one persisted RunContract per job the single authority. Add usage ledger wi
 - [x] 1078: Contract decision events — emitted as timeline events
 - [x] 1079: Progress ledger — auto-extract contract decisions from events
 - [x] 1080: Feature planner — blockers flow through existing rules
-- [ ] 1081: Review bundle uses active persisted contract
-- [ ] 1082: Runtime CLI tests
-- [ ] 1083: Tests and docs update
+- [x] 1081: Review bundle uses active persisted contract
+- [x] 1082: Runtime CLI tests
+- [x] 1083: Tests and docs update
 - [ ] 1084: Final handoff with changed files table
 
 ## Known Risks
