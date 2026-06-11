@@ -26,7 +26,7 @@ Make one persisted RunContract per job the single authority. Add usage ledger wi
 - [x] 1081: Review bundle uses active persisted contract
 - [x] 1082: Runtime CLI tests
 - [x] 1083: Tests and docs update
-- [ ] 1084: Final handoff with changed files table
+- [x] 1084: Final handoff with changed files table
 
 ## Known Risks
 - R-0017: RESOLVED
