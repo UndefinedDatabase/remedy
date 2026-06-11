@@ -13,16 +13,66 @@ Public API::
     evaluate_run_action(contract, action, ...) -> RunActionDecision
     export_run_contract_json(contract) -> dict[str, Any]
     summarize_run_contract(contract) -> str
+    save_contract(job, contract) -> None
+    load_contract(job) -> RunContract | None
+    ensure_contract(job) -> RunContract
+    validate_run_contract(contract) -> list[str]
+    save_usage(job, usage) -> None
+    load_usage(job) -> RunUsage
+    check_budget(contract, usage) -> RunBudgetStatus
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
 from packages.core.models import Job
+
+
+# ---------------------------------------------------------------------------
+# Canonical action vocabulary (Step 1068)
+# ---------------------------------------------------------------------------
+
+
+class ContractAction:
+    """Canonical action names used in RunContract allowed/denied lists.
+
+    Not an enum — plain string constants for easy JSON serialization.
+    """
+
+    # Safe read/write actions
+    PLAN = "plan"
+    CONTEXT = "context"
+    BUILD_ARTIFACT = "build_artifact"
+    CREATE_PATCH_INTENT = "create_patch_intent"
+    DISCOVER_COMMANDS = "discover_commands"
+    WRITE_METADATA = "write_metadata"
+    CREATE_FIX_TASK = "create_fix_task"
+
+    # Apply actions (gated by stop_before_apply)
+    APPLY = "apply"
+    SOURCE_APPLY = "source_apply"
+    PATCH_APPLY = "patch_apply"
+
+    # Dangerous actions (denied by default)
+    ARBITRARY_SHELL = "arbitrary_shell"
+    APPLY_PATCH_WITHOUT_APPROVAL = "apply_patch_without_approval"
+    MODIFY_PERMISSIONS = "modify_permissions_autonomously"
+    NETWORK_FETCH = "network_fetch"
+    INSTALL_PACKAGES = "install_packages"
+    CLOUD_PROVIDER = "cloud_provider"
+
+    # Test actions
+    RUN_TEST = "run_test"
+
+
+ALL_KNOWN_ACTIONS: frozenset[str] = frozenset({
+    v for k, v in vars(ContractAction).items()
+    if not k.startswith("_") and isinstance(v, str)
+})
 
 
 # ---------------------------------------------------------------------------
@@ -85,23 +135,24 @@ class RunActionDecision:
 # ---------------------------------------------------------------------------
 
 _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
-    "plan",
-    "context",
-    "build_artifact",
-    "create_patch_intent",
-    "discover_commands",
-    "write_metadata",
+    ContractAction.PLAN,
+    ContractAction.CONTEXT,
+    ContractAction.BUILD_ARTIFACT,
+    ContractAction.CREATE_PATCH_INTENT,
+    ContractAction.CREATE_FIX_TASK,
+    ContractAction.DISCOVER_COMMANDS,
+    ContractAction.WRITE_METADATA,
 )
 
 _DEFAULT_DENIED_ACTIONS: tuple[str, ...] = (
-    "apply",
-    "source_apply",
-    "arbitrary_shell",
-    "apply_patch_without_approval",
-    "modify_permissions_autonomously",
-    "network_fetch",
-    "install_packages",
-    "cloud_provider",
+    ContractAction.APPLY,
+    ContractAction.SOURCE_APPLY,
+    ContractAction.ARBITRARY_SHELL,
+    ContractAction.APPLY_PATCH_WITHOUT_APPROVAL,
+    ContractAction.MODIFY_PERMISSIONS,
+    ContractAction.NETWORK_FETCH,
+    ContractAction.INSTALL_PACKAGES,
+    ContractAction.CLOUD_PROVIDER,
 )
 
 _DEFAULT_DENIED_PATHS: tuple[str, ...] = (
@@ -123,12 +174,17 @@ _DEFAULT_STOP_CONDITIONS: tuple[str, ...] = (
 )
 
 _DEFAULT_REQUIRES_APPROVAL: tuple[str, ...] = (
-    "patch_apply",
+    ContractAction.PATCH_APPLY,
     "high_risk_command_execution",
 )
 
-_APPLY_ACTIONS = frozenset({"apply", "source_apply", "patch_apply"})
-_CLOUD_ACTIONS = frozenset({"cloud_provider", "network_fetch", "install_packages"})
+_APPLY_ACTIONS = frozenset({
+    ContractAction.APPLY, ContractAction.SOURCE_APPLY, ContractAction.PATCH_APPLY,
+})
+_CLOUD_ACTIONS = frozenset({
+    ContractAction.CLOUD_PROVIDER, ContractAction.NETWORK_FETCH,
+    ContractAction.INSTALL_PACKAGES,
+})
 
 
 def build_default_run_contract(job: Job) -> RunContract:
@@ -168,6 +224,227 @@ def build_default_run_contract(job: Job) -> RunContract:
 
 
 # ---------------------------------------------------------------------------
+# Contract persistence (Step 1066)
+# ---------------------------------------------------------------------------
+
+_CONTRACT_META_KEY = "run_contract"
+
+
+def _contract_from_dict(data: dict[str, Any]) -> RunContract:
+    """Reconstruct a RunContract from a metadata dict."""
+    # Convert list fields back to tuples
+    tuple_fields = (
+        "allowed_actions", "denied_actions", "allowed_paths", "denied_paths",
+        "stop_conditions", "requires_approval_for",
+    )
+    cleaned = dict(data)
+    for field in tuple_fields:
+        if field in cleaned and isinstance(cleaned[field], list):
+            cleaned[field] = tuple(cleaned[field])
+    return RunContract(**cleaned)
+
+
+def save_contract(job: Job, contract: RunContract) -> None:
+    """Store a RunContract in job.metadata. Caller must persist the job."""
+    job.metadata[_CONTRACT_META_KEY] = export_run_contract_json(contract)
+
+
+def load_contract(job: Job) -> RunContract | None:
+    """Load the persisted RunContract from job.metadata, or None if absent."""
+    data = job.metadata.get(_CONTRACT_META_KEY)
+    if not isinstance(data, dict):
+        return None
+    return _contract_from_dict(data)
+
+
+def ensure_contract(job: Job) -> RunContract:
+    """Return the persisted contract, creating and saving one if absent.
+
+    Guarantees stable contract_id and created_at across reloads.
+    Caller must persist the job if this function creates a new contract.
+    """
+    existing = load_contract(job)
+    if existing is not None:
+        return existing
+    contract = build_default_run_contract(job)
+    save_contract(job, contract)
+    return contract
+
+
+def needs_contract_migration(job: Job) -> bool:
+    """Check if a job needs contract migration (no persisted contract)."""
+    return not isinstance(job.metadata.get(_CONTRACT_META_KEY), dict)
+
+
+def migrate_contract(job: Job) -> RunContract:
+    """Migrate an old job to have a persisted contract.
+
+    Idempotent — returns existing contract if already present.
+    Caller must persist the job after calling this.
+    """
+    return ensure_contract(job)
+
+
+# ---------------------------------------------------------------------------
+# Usage ledger (Step 1075)
+# ---------------------------------------------------------------------------
+
+_USAGE_META_KEY = "run_usage"
+
+
+@dataclass
+class RunUsage:
+    """Tracks resource consumption against contract budgets."""
+
+    loops_used: int = 0
+    test_runs_used: int = 0
+    runtime_seconds_used: float = 0.0
+    tokens_used: int = 0
+    cost_cents_used: float = 0.0
+
+
+@dataclass(frozen=True)
+class RunBudgetStatus:
+    """Result of checking usage against contract budgets."""
+
+    within_budget: bool
+    exhausted_budgets: tuple[str, ...] = ()
+    remaining: dict[str, Any] = field(default_factory=dict)
+
+
+def _usage_to_dict(usage: RunUsage) -> dict[str, Any]:
+    return {
+        "loops_used": usage.loops_used,
+        "test_runs_used": usage.test_runs_used,
+        "runtime_seconds_used": usage.runtime_seconds_used,
+        "tokens_used": usage.tokens_used,
+        "cost_cents_used": usage.cost_cents_used,
+    }
+
+
+def save_usage(job: Job, usage: RunUsage) -> None:
+    """Store usage in job.metadata. Caller must persist the job."""
+    job.metadata[_USAGE_META_KEY] = _usage_to_dict(usage)
+
+
+def load_usage(job: Job) -> RunUsage:
+    """Load usage from job.metadata. Returns zero usage if absent."""
+    data = job.metadata.get(_USAGE_META_KEY)
+    if not isinstance(data, dict):
+        return RunUsage()
+    return RunUsage(
+        loops_used=data.get("loops_used", 0),
+        test_runs_used=data.get("test_runs_used", 0),
+        runtime_seconds_used=data.get("runtime_seconds_used", 0.0),
+        tokens_used=data.get("tokens_used", 0),
+        cost_cents_used=data.get("cost_cents_used", 0.0),
+    )
+
+
+def check_budget(contract: RunContract, usage: RunUsage) -> RunBudgetStatus:
+    """Check usage against contract budgets. Returns budget status."""
+    exhausted: list[str] = []
+    remaining: dict[str, Any] = {}
+
+    if usage.loops_used >= contract.max_loops:
+        exhausted.append("max_loops")
+    remaining["loops"] = max(0, contract.max_loops - usage.loops_used)
+
+    if usage.test_runs_used >= contract.max_test_runs:
+        exhausted.append("max_test_runs")
+    remaining["test_runs"] = max(0, contract.max_test_runs - usage.test_runs_used)
+
+    # runtime/tokens/cost: only check if budget > 0 (0 = unlimited for v1)
+    if contract.max_runtime_seconds > 0 and usage.runtime_seconds_used >= contract.max_runtime_seconds:
+        exhausted.append("max_runtime_seconds")
+    if contract.max_runtime_seconds > 0:
+        remaining["runtime_seconds"] = max(0.0, contract.max_runtime_seconds - usage.runtime_seconds_used)
+
+    if contract.max_tokens > 0 and usage.tokens_used >= contract.max_tokens:
+        exhausted.append("max_tokens")
+    if contract.max_tokens > 0:
+        remaining["tokens"] = max(0, contract.max_tokens - usage.tokens_used)
+
+    if contract.max_cost_cents > 0 and usage.cost_cents_used >= contract.max_cost_cents:
+        exhausted.append("max_cost_cents")
+    if contract.max_cost_cents > 0:
+        remaining["cost_cents"] = max(0.0, contract.max_cost_cents - usage.cost_cents_used)
+
+    return RunBudgetStatus(
+        within_budget=len(exhausted) == 0,
+        exhausted_budgets=tuple(exhausted),
+        remaining=remaining,
+    )
+
+
+def export_usage_json(usage: RunUsage) -> dict[str, Any]:
+    """Export usage as JSON-serializable dict."""
+    return _usage_to_dict(usage)
+
+
+def export_budget_status_json(status: RunBudgetStatus) -> dict[str, Any]:
+    """Export budget status as JSON-serializable dict."""
+    return {
+        "within_budget": status.within_budget,
+        "exhausted_budgets": list(status.exhausted_budgets),
+        "remaining": status.remaining,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Contract validation (Step 1069)
+# ---------------------------------------------------------------------------
+
+
+def validate_run_contract(contract: RunContract) -> list[str]:
+    """Validate a RunContract. Returns list of error strings (empty = valid)."""
+    errors: list[str] = []
+
+    if contract.version < 1:
+        errors.append(f"version must be >= 1, got {contract.version}")
+
+    if not contract.contract_id:
+        errors.append("contract_id is empty")
+
+    if contract.max_loops < 0:
+        errors.append(f"max_loops must be >= 0, got {contract.max_loops}")
+
+    if contract.max_test_runs < 0:
+        errors.append(f"max_test_runs must be >= 0, got {contract.max_test_runs}")
+
+    if contract.max_runtime_seconds < 0:
+        errors.append(f"max_runtime_seconds must be >= 0, got {contract.max_runtime_seconds}")
+
+    if contract.max_tokens < 0:
+        errors.append(f"max_tokens must be >= 0, got {contract.max_tokens}")
+
+    if contract.max_cost_cents < 0:
+        errors.append(f"max_cost_cents must be >= 0, got {contract.max_cost_cents}")
+
+    # Check for actions in both allowed and denied
+    overlap = set(contract.allowed_actions) & set(contract.denied_actions)
+    if overlap:
+        errors.append(f"actions in both allowed and denied: {sorted(overlap)}")
+
+    # Warn about unknown actions (not an error, but included)
+    all_actions = set(contract.allowed_actions) | set(contract.denied_actions)
+    unknown = all_actions - ALL_KNOWN_ACTIONS
+    if unknown:
+        errors.append(f"unknown actions (may be intentional): {sorted(unknown)}")
+
+    # Check denied paths for absolute paths
+    for p in contract.denied_paths:
+        if os.path.isabs(p):
+            errors.append(f"denied_paths contains absolute path: {p}")
+
+    for p in contract.allowed_paths:
+        if os.path.isabs(p):
+            errors.append(f"allowed_paths contains absolute path: {p}")
+
+    return errors
+
+
+# ---------------------------------------------------------------------------
 # Contract decision helper (Step 1049)
 # ---------------------------------------------------------------------------
 
@@ -180,6 +457,7 @@ def evaluate_run_action(
     risk: str | None = None,
     loop_index: int | None = None,
     test_run_count: int | None = None,
+    usage: RunUsage | None = None,
 ) -> RunActionDecision:
     """Evaluate whether an action is allowed under the contract.
 
@@ -221,23 +499,36 @@ def evaluate_run_action(
             next_safe_action="remedy contract inspect <job_id> --json",
         )
 
-    # 5. Loop budget
-    if loop_index is not None and loop_index >= contract.max_loops:
+    # 5. Loop budget (from explicit param or usage)
+    effective_loops = loop_index if loop_index is not None else (usage.loops_used if usage else None)
+    if effective_loops is not None and effective_loops >= contract.max_loops:
         return RunActionDecision(
             allowed=False,
             status="exhausted",
-            reason=f"Loop index {loop_index} >= max_loops {contract.max_loops}",
+            reason=f"Loop usage {effective_loops} >= max_loops {contract.max_loops}",
             next_safe_action="remedy job show <job_id> --json",
         )
 
-    # 6. Test run budget
-    if test_run_count is not None and test_run_count >= contract.max_test_runs:
+    # 6. Test run budget (from explicit param or usage)
+    effective_tests = test_run_count if test_run_count is not None else (usage.test_runs_used if usage else None)
+    if effective_tests is not None and effective_tests >= contract.max_test_runs:
         return RunActionDecision(
             allowed=False,
             status="exhausted",
-            reason=f"Test runs {test_run_count} >= max_test_runs {contract.max_test_runs}",
+            reason=f"Test runs {effective_tests} >= max_test_runs {contract.max_test_runs}",
             next_safe_action="remedy job show <job_id> --json",
         )
+
+    # 6b. Runtime/token/cost budgets from usage
+    if usage is not None:
+        budget_status = check_budget(contract, usage)
+        if not budget_status.within_budget:
+            return RunActionDecision(
+                allowed=False,
+                status="exhausted",
+                reason=f"Budget exhausted: {', '.join(budget_status.exhausted_budgets)}",
+                next_safe_action="remedy job show <job_id> --json",
+            )
 
     # 7. Path policy
     if path is not None:
@@ -270,6 +561,16 @@ def evaluate_run_action(
     )
 
 
+def _path_matches(normalized: str, pattern: str) -> bool:
+    """Segment-aware path matching: exact match or directory prefix only.
+
+    .env matches .env and .env/foo but NOT .environment.py
+    node_modules/ matches node_modules/foo but NOT node_modules_backup/
+    """
+    clean = pattern.rstrip("/")
+    return normalized == clean or normalized.startswith(clean + "/")
+
+
 def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | None:
     """Check path against allowed/denied path policies. Returns decision if blocked."""
     normalized = os.path.normpath(path)
@@ -292,9 +593,9 @@ def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | 
             next_safe_action="remedy contract inspect <job_id> --json",
         )
 
-    # Denied paths win over allowed paths
+    # Denied paths win over allowed paths (segment-aware)
     for denied in contract.denied_paths:
-        if normalized == denied or normalized.startswith(denied.rstrip("/") + "/") or normalized.startswith(denied):
+        if _path_matches(normalized, denied):
             return RunActionDecision(
                 allowed=False,
                 status="blocked",
@@ -302,11 +603,11 @@ def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | 
                 next_safe_action="remedy contract inspect <job_id> --json",
             )
 
-    # If allowed_paths specified, path must match
+    # If allowed_paths specified, path must match (segment-aware)
     if contract.allowed_paths:
         matched = False
         for allowed in contract.allowed_paths:
-            if normalized == allowed or normalized.startswith(allowed.rstrip("/") + "/"):
+            if _path_matches(normalized, allowed):
                 matched = True
                 break
         if not matched:

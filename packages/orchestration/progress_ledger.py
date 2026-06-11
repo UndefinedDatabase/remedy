@@ -393,6 +393,18 @@ def merge_job_risks(ledger: ProgressLedger, job: Any, events: list[dict] | None 
 # ---------------------------------------------------------------------------
 
 
+def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
+    """Extract contract decision metadata from timeline events."""
+    if not events:
+        return []
+    decisions: list[dict] = []
+    for ev in events:
+        if ev.get("event") == "contract_decision":
+            meta = ev.get("metadata", ev)
+            decisions.append(meta)
+    return decisions
+
+
 def merge_contract_blockers(
     ledger: ProgressLedger, contract_decisions: list[dict] | None = None,
 ) -> None:
@@ -447,8 +459,12 @@ def build_progress_ledger(
     if job:
         merge_job_risks(ledger, job, events)
 
-    if contract_decisions:
-        merge_contract_blockers(ledger, contract_decisions)
+    # Auto-extract contract decisions from events if not explicitly provided
+    effective_decisions = contract_decisions
+    if not effective_decisions and events:
+        effective_decisions = extract_contract_decisions_from_events(events)
+    if effective_decisions:
+        merge_contract_blockers(ledger, effective_decisions)
 
     return ledger
 

@@ -36,26 +36,29 @@ By default, a v1 contract:
 
 ## What v1 does not do
 
-- No user-configurable contracts (hardcoded defaults only)
-- No runtime contract mutation
-- No token/cost budget enforcement (fields exist, not yet wired)
-- No real test execution budget (max_test_runs=0)
 - No overnight mode
 - No automatic apply
+
+## Persistence
+
+One contract is persisted per job in `job.metadata["run_contract"]`. `ensure_contract(job)` loads it or creates+saves a default. `contract_id` and `created_at` are stable across calls. Usage is tracked separately in `job.metadata["run_usage"]`.
+
+## Contract mutation
+
+Use `remedy contract set <job_id> <field> <value>` to update safe fields: `max_loops`, `max_test_runs`, `max_runtime_seconds`, `stop_before_apply`, `stop_on_unknown_risk`, `stop_on_medium_risk`, `no_cloud`, `notes`. Mutation re-validates and re-persists.
 
 ## CLI
 
 ```
 remedy contract inspect <job_id> --json
 remedy contract check <job_id> <action> [--path <path>] [--risk <risk>] --json
+remedy contract set <job_id> <field> <value>
 ```
-
-Both commands are read-only. No repo mutation. No external command execution.
 
 ## Integration
 
-- **do_run**: Creates DoRunContract, checks contract before plan/context/build/patch_intent phases
-- **repair_loop**: Creates internal repair contract, checks before create_fix_task and create_patch_intent
-- **progress_ledger**: Contract blockers appear as `run_contract_blocker` items
+- **do_run**: Loads persisted contract via `ensure_contract(job)`, checks before each phase, records usage
+- **repair_loop**: Loads same persisted contract via `ensure_contract(job)`, checks before create_fix_task and create_patch_intent, records usage
+- **progress_ledger**: Auto-extracts contract decisions from timeline events; blockers appear as `run_contract_blocker` items
 - **feature_planner**: Blocked contract items trigger high-priority suggestions via existing rules
-- **review_bundle**: `run_contract_summary.json` included in bundles
+- **review_bundle**: `run_contract_summary.json` uses persisted contract + usage summary

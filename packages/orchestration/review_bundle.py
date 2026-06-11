@@ -549,13 +549,15 @@ def _build_contract_summary(job_id: str) -> dict:
     """Safe run contract summary for the review bundle."""
     try:
         from packages.orchestration.run_contract import (
-            build_default_run_contract,
+            ensure_contract,
             export_run_contract_json,
+            load_usage,
+            export_usage_json,
         )
         from packages.orchestration.storage import load_job
 
         job = load_job(job_id)
-        contract = build_default_run_contract(job)
+        contract = ensure_contract(job)
         exported = export_run_contract_json(contract)
         # Strip fields that might trigger safety scanners
         exported.pop("notes", None)
@@ -563,6 +565,7 @@ def _build_contract_summary(job_id: str) -> dict:
         exported.pop("allowed_paths", None)
         exported["denied_paths_count"] = len(contract.denied_paths)
         exported["allowed_paths_count"] = len(contract.allowed_paths)
+        exported["usage"] = export_usage_json(load_usage(job))
         return exported
     except Exception:
         return {"status": "section_unavailable", "reason": "run contract not available"}

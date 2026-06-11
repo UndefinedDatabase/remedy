@@ -29,7 +29,6 @@ import pytest
 from packages.core.models import Job, Task
 from packages.orchestration.do_run import (
     DO_PHASES,
-    DoRunContract,
     DoRunNextAction,
     DoRunPhase,
     DoRunResult,
@@ -39,6 +38,7 @@ from packages.orchestration.do_run import (
     summarize_do_run,
     validate_next_safe_action_command,
 )
+from packages.orchestration.run_contract import RunContract
 
 
 # ---------------------------------------------------------------------------
@@ -99,11 +99,14 @@ class TestPhaseModel:
         assert "remedy" in na.command
 
     def test_contract_defaults(self):
-        c = DoRunContract()
+        from packages.orchestration.run_contract import build_default_run_contract
+        from packages.core.models import Job
+        job = Job(name="test")
+        c = build_default_run_contract(job)
         assert c.stop_before_apply is True
-        assert c.max_loops == 1
-        assert c.autonomy_level == 2
-        assert c.source == "do_v1_minimal"
+        assert c.max_loops == 10
+        assert c.autonomy_level == 1
+        assert c.source == "default_v1"
         assert "plan" in c.allowed_actions
         assert "apply" in c.denied_actions
 
@@ -226,11 +229,11 @@ class TestDoRunExport:
         data = export_do_run_json(result, contract=result._contract)
         assert "run_contract" in data
         rc = data["run_contract"]
-        assert rc["source"] == "do_v1_minimal"
         assert rc["stop_before_apply"] is True
         assert rc["max_loops"] == 1
         assert "allowed_actions" in rc
         assert "denied_actions" in rc
+        assert rc["source"] in ("default_v1", "do_v1_caller_override")
 
     def test_json_autonomy_truth_fields(self, tmp_path):
         """Step 932: JSON has requested vs effective autonomy."""
@@ -275,8 +278,11 @@ class TestDoRunSafety:
     def test_env_not_in_context(self, tmp_path):
         result = _run_with_tmp(tmp_path)
         data = export_do_run_json(result)
-        text = json.dumps(data)
-        assert ".env.secret" not in text or "excluded" in text.lower() or "protected" in text.lower()
+        # .env.secret may appear in run_contract.denied_paths (policy, not leaked content)
+        # Check it doesn't appear in phases or context_summary
+        for phase in data["phases"]:
+            assert ".env.secret" not in phase["safe_summary"]
+        assert ".env.secret" not in (data.get("context_summary") or "")
 
     def test_invalid_repo_safe(self, tmp_path):
         data_dir = tmp_path / "data"
@@ -578,23 +584,29 @@ class TestCatalogMetadataTruth:
 class TestContractConsolidation:
 
     def test_contract_has_source(self):
-        c = DoRunContract()
-        assert c.source == "do_v1_minimal"
+        from packages.orchestration.run_contract import build_default_run_contract
+        from packages.core.models import Job
+        c = build_default_run_contract(Job(name="test"))
+        assert c.source == "default_v1"
 
     def test_contract_has_allowed_actions(self):
-        c = DoRunContract()
+        from packages.orchestration.run_contract import build_default_run_contract
+        from packages.core.models import Job
+        c = build_default_run_contract(Job(name="test"))
         assert len(c.allowed_actions) > 0
         assert "plan" in c.allowed_actions
 
     def test_contract_has_denied_actions(self):
-        c = DoRunContract()
+        from packages.orchestration.run_contract import build_default_run_contract
+        from packages.core.models import Job
+        c = build_default_run_contract(Job(name="test"))
         assert len(c.denied_actions) > 0
         assert "apply" in c.denied_actions
 
     def test_contract_in_result(self, tmp_path):
         result = _run_with_tmp(tmp_path)
         assert result._contract is not None
-        assert result._contract.source == "do_v1_minimal"
+        assert result._contract.source in ("default_v1", "do_v1_caller_override")
 
 
 # ---------------------------------------------------------------------------

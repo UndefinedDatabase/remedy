@@ -1,73 +1,123 @@
-# Live Review — Steps 1045-1064
+# Live Review — Steps 1065-1084
 
 Reviewer: parallel reviewer
-Scope: Integrity Gate Truth Closure + Run Contract Enforcement v1
-Timestamp: 2026-06-10
+Scope: Run Contract — Persisted, Enforceable Source of Truth
+Timestamp: 2026-06-11
 
 ## Verdict
-PENDING — 3 blockers open, 1 high open
+PASS WITH RISKS — all blockers/high resolved, 2 low findings remain
 
 ## Prior Block Status
 - Steps 940-974: PASS
 - Steps 975-994: PASS
 - Steps 995-1009: PASS
-- Steps 1010-1029: PASS WITH RISKS (R-0013, R-0014 low/open; 10 files untracked)
-- Steps 1030-1044: PASS WITH RISKS (R-0017 medium open)
+- Steps 1010-1029: PASS WITH RISKS
+- Steps 1030-1044: PASS WITH RISKS (R-0017 resolved in 1045-1064)
+- Steps 1045-1064: PASS — R-0017/R-0018/R-0019/R-0020 all resolved. 126 tests pass.
 
 ## Finding Ledger
 
-### R-0017: ctx_says_complete regex does not match multi-line scope declarations
+### R-0021: .environment.py blocked by .env denied path rule
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: Blocker
-- **Area**: integrity-gate
-- **Details**: R-0017 fix introduced `_SCOPE_COMPLETE_RE` and `_CURRENT_STEP_COMPLETE_RE` regex patterns, but they only match COMPLETE/DONE on the SAME line as the `## Scope` heading. In practice (and in the new tests), the keyword appears on the NEXT line after the heading. The regex `^##\s+Scope\b.*?\b(COMPLETE|DONE)\b` with `re.MULTILINE` treats `.` as non-newline, so it cannot cross to the next line.
-- **Evidence**: 5 test failures in `tests/orchestration/test_integrity_gate.py`:
-  - `test_explicit_scope_complete_triggers` — `_ctx_says_complete("## Scope\nSteps 1045-1064: ... — COMPLETE\n")` returns `False`
-  - `test_explicit_scope_done_triggers` — same pattern
-  - `test_current_step_complete_triggers` — same pattern
-  - `test_pending_live_review_with_explicit_complete_fails` — integrity check does not FAIL as expected
-  - `test_unchecked_with_scope_complete_fails` — plan check does not FAIL as expected
-- **Expected fix**: Either (a) use `re.DOTALL` so `.` crosses newlines, or (b) change regex to match COMPLETE/DONE on the line FOLLOWING the `## Scope` heading (e.g., read lines, find heading, check next line). Option (b) is safer to avoid over-matching.
+- **Area**: path-policy
+- **Details**: `_check_path_policy` used `normalized.startswith(denied)` causing `.environment.py` to match `.env`.
+- **Resolution**: Step 1074 introduced `_path_matches()` at `run_contract.py:564-571` with segment-aware exact+directory-prefix matching. Test at `test_run_contract.py:196-200` confirms `.environment.py` allowed, `.env` blocked, `.env/foo` blocked, `node_modules_backup/` not blocked by `node_modules/`.
 
-### R-0018: No evaluate_action helper — allowed/denied actions not enforced at runtime
+### R-0022: Contract not persisted — rebuilt fresh on every access
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: Blocker
-- **Area**: run-contract
-- **Details**: `DoRunContract` declares `allowed_actions` and `denied_actions` tuples, but no code checks these before executing phases. There is no `evaluate_action()`, `is_action_allowed()`, or similar helper anywhere in the orchestration package. The actions are only exported to JSON — never enforced.
-- **Evidence**: `grep -r "evaluate_action\|check_action\|is_action_allowed\|action_allowed" packages/orchestration/` returns no matches. `do_run.py` never references `contract.allowed_actions` or `contract.denied_actions` except in the export function at line 554-555.
-- **Expected fix**: Add `evaluate_action(action: str, contract: DoRunContract) -> bool` that checks allowed/denied lists. Call it before each phase in `run_do()`. If action is in `denied_actions`, block. If `allowed_actions` is non-empty and action not in it, block.
+- **Area**: contract-storage
+- **Details**: No contract saved to job or disk.
+- **Resolution**: Step 1066 added `save_contract()`, `load_contract()`, `ensure_contract()` at `run_contract.py:247-271`. Contract stored in `job.metadata["run_contract"]`. Tests at `test_run_contract.py:322-381` confirm roundtrip, stable contract_id/created_at, JSON survival.
 
-### R-0019: repair_loop has no contract enforcement
+### R-0023: do_run uses private DoRunContract instead of central RunContract
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: Blocker
-- **Area**: repair-loop
-- **Details**: `start_repair_loop_v0()` does not create, receive, or check any RunContract or DoRunContract. No max_loops budget, no denied_actions check, no allowed_actions check. The repair loop is completely unguarded by the contract system.
-- **Evidence**: `grep -r "contract\|max_loops\|max_test_runs" packages/orchestration/repair_loop.py` returns no matches. The function signature has no contract parameter.
-- **Expected fix**: Either (a) accept a contract parameter and check it before creating fix tasks / patch intents, or (b) build a default repair contract internally and enforce it. At minimum, denied actions like `apply_patch` should be checked before `create_patch_intent`.
-
-### R-0020: do_run does not check contract before phases
-
-- **Status**: Open
-- **Severity**: High
 - **Area**: do-flow
-- **Details**: `run_do()` creates a `DoRunContract` at line 200 but only uses it for `stop_before_apply` (line 333) and `autonomy_level` (line 283). The `allowed_actions` and `denied_actions` fields are never consulted before running plan/context/build/patch_intent phases. If someone sets `denied_actions=("plan",)`, the plan phase still runs.
-- **Evidence**: No call to any action-checking function between contract creation (line 200) and phase execution (lines 238-370). Only `contract.stop_before_apply` and `contract.autonomy_level` are read.
-- **Expected fix**: Before each phase, check `evaluate_action(phase_action, contract)`. Block if denied. This ties R-0018 + R-0020 together.
+- **Details**: `do_run.py` created its own `DoRunContract` with different action lists.
+- **Resolution**: Step 1070 replaced `DoRunContract` with `ensure_contract(job)` at `do_run.py:229`. `DoRunContract = None` at line 128 (removed class). `_check_contract()` now takes central RunContract directly.
 
-## Checks Passed
+### R-0024: repair_loop constructs independent private contract
 
-- **source_apply**: Not imported in `do_run.py` or `repair_loop.py`. Approval gate intact.
-- **shell=True**: Not found in any production orchestration code. Multiple test contracts verify.
-- **stop_before_apply**: Enforced at `do_run.py:333`. Default `True`. CLI enforces True.
-- **Redaction**: `review_bundle.py` strips raw fields. `redaction_patterns.py` has FORBIDDEN_RAW_FIELD_NAMES. Memory layer has `_FORBIDDEN_KEYS`. No raw source/diff/stdout/stderr/secrets in output paths.
-- **max_loops validation**: `do_run.py:179` rejects `< 1`. But v1 caps to single pass (`min(max_loops, 1)`).
-- **RunContract model**: Exists, frozen dataclass, JSON-serializable, all fields present. Tests pass (18/18).
-- **do_run tests**: 38/38 pass (contract, autonomy, approval, phases).
-- **repair_loop_hardened tests**: 7/7 pass (deterministic cycles, approval gate, no raw leaks).
+- **Status**: Resolved
+- **Severity**: High
+- **Area**: repair-loop
+- **Details**: `repair_loop.py` created inline `RunContract` with hardcoded actions.
+- **Resolution**: Step 1071 replaced inline contract with `ensure_contract(job)` at `repair_loop.py:104`. Same persisted contract as do_run and CLI.
 
-## Test Summary
+### R-0025: No usage ledger — budget enforcement from caller-supplied values only
 
-107 passed, 5 failed (all integrity gate R-0017 regex).
+- **Status**: Resolved
+- **Severity**: High
+- **Area**: usage-ledger
+- **Details**: No usage persistence. Budget values lost after reload.
+- **Resolution**: Step 1075 added `RunUsage` dataclass, `save_usage()`/`load_usage()`, `check_budget()` at `run_contract.py:292-391`. Both `do_run.py:419-421` and `repair_loop.py:239-241` record usage. `evaluate_run_action()` accepts `usage` param and checks budgets. Tests at `test_run_contract.py:492-582` confirm persistence, roundtrip, enforcement.
+
+### R-0026: empty allowed_paths permits all path writes
+
+- **Status**: Resolved
+- **Severity**: High
+- **Area**: path-policy
+- **Details**: Empty `allowed_paths` means no path restriction — could be surprising.
+- **Resolution**: Documented explicitly at `docs/run-contract-v1.md:35`. Test at `test_run_contract.py:190-194` confirms behavior. Denied paths still enforced. This is intentional for v1.
+
+### R-0027: high_risk_command_execution not in canonical action vocabulary
+
+- **Status**: Open
+- **Severity**: Low
+- **Area**: canonical-actions
+- **Details**: `_DEFAULT_REQUIRES_APPROVAL` at `run_contract.py:178` contains `"high_risk_command_execution"` which is not a `ContractAction` constant and not in `ALL_KNOWN_ACTIONS`. `validate_run_contract()` would flag it as unknown on a default contract. Not breaking — `requires_approval_for` is not checked by `validate_run_contract()` currently. But inconsistent with canonical vocabulary goal.
+- **Evidence**: `python3 -c "from packages.orchestration.run_contract import ALL_KNOWN_ACTIONS; print('high_risk_command_execution' in ALL_KNOWN_ACTIONS)"` returns `False`.
+- **Expected fix**: Either add `HIGH_RISK_COMMAND = "high_risk_command_execution"` to `ContractAction`, or replace with a canonical name.
+
+### R-0028: docs/run-contract-v1.md stale after Steps 1065-1080
+
+- **Status**: Resolved
+- **Severity**: Low
+- **Area**: handoff
+- **Details**: Three stale claims: DoRunContract reference, "no user-configurable", "no budget enforcement".
+- **Resolution**: Commit `ee39c3a` updated both `docs/run-contract-v1.md` and `docs/do-run-v1.md`. Zero `DoRunContract` references remain. Persistence, contract set, and budget enforcement documented.
+
+## Review Cycle Checks
+
+| # | Check | Status | Evidence |
+|---|-------|--------|----------|
+| 1 | Handoff reconciliation | PASS | context.md, plan.md, live_review match branch feature/steps-1065-1084-run-contract-ssot |
+| 2 | Contract persistence | PASS | save/load/ensure roundtrip verified. contract_id stable. created_at stable. JSON survives. |
+| 3 | Canonical actions | PASS (low risk) | ALL_KNOWN_ACTIONS=17. Default contract uses only canonical. R-0027 low. |
+| 4 | Central enforcement | PASS | do_run, repair_loop, contract CLI, review_bundle all use ensure_contract(). |
+| 5 | Path policy | PASS | Segment-aware _path_matches(). .environment.py safe. Traversal/absolute blocked. |
+| 6 | Usage ledger | PASS | RunUsage persisted. Loops/tests enforced from usage. Budget check in evaluate_run_action. |
+| 7 | Budget enforcement | PASS | check_budget() covers loops, test_runs, runtime, tokens, cost. Exhausted blocks actions. |
+| 8 | Contract config CLI | PASS | contract set is metadata-only, validates, limited SETTABLE_FIELDS, no repo mutation. |
+| 9 | CLI runtime | PASS | subprocess, timeout=30, no shell=True, JSON parses, missing job safe. |
+| 10 | Progress/feature/review | PASS | extract_contract_decisions_from_events. review_bundle uses ensure_contract + load_usage. |
+| 11 | Redaction | PASS | No raw source/diff/artifact/stdout/stderr/secrets in new code. |
+| 12 | Approval gate | PASS | source_apply not imported in do_run or repair_loop. stop_before_apply enforced. |
+
+## Test Status
+- CONFIRMED: 4996 passed, 8 skipped, 1 pre-existing fail (test_project_brain.py::test_full_chain_order — not caused by this block).
+- Full suite run on 2026-06-11 post-commit ee39c3a.
+
+## Final Review
+
+| Area | Status |
+|------|--------|
+| Handoff | PASS |
+| Contract persistence | PASS |
+| Canonical actions | PASS (R-0027 low) |
+| Validation | PASS |
+| Central enforcement | PASS |
+| Path policy | PASS |
+| Usage ledger | PASS |
+| Budget enforcement | PASS |
+| CLI config/runtime | PASS |
+| Progress/feature/review | PASS |
+| Redaction | PASS |
+| Tests | PASS — 4996 passed, 1 pre-existing fail |
+| Remaining findings | 1 (R-0027 low) |
+| Merge readiness | PASS WITH RISKS — 1 low naming item (R-0027), carry to next block |
