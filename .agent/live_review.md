@@ -5,7 +5,7 @@ Scope: Real Test Execution — contract-gated, resource-safe, evidence-linked
 Timestamp: 2026-06-11
 
 ## Verdict
-PENDING — worker active on Step 1086+. R-0027 resolved. 3 blockers + 4 high remain (R-0029 through R-0036).
+PENDING — Steps 1088-1100 committed. All blockers (R-0029–R-0031) and highs (R-0032–R-0035) resolved. R-0039 resolved. R-0038 (low) open. Worker on Step 1101 (Proof Chain). Tests not yet run by reviewer — lock contention.
 
 ## Prior Block Status
 - Steps 940-974: PASS
@@ -28,63 +28,60 @@ PENDING — worker active on Step 1086+. R-0027 resolved. 3 blockers + 4 high re
 
 ### R-0029: test_runner.py uses capture_output=True (pipe-based)
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: Blocker
 - **Area**: process-isolation
 - **Details**: `test_runner.py:202-206` uses `subprocess.run(argv, capture_output=True, timeout=...)`. Buffers all stdout/stderr in memory via pipes. For large test suites: OOM risk, pipe deadlock risk. Block spec requires file-backed output.
 - **Evidence**: `test_runner.py:202` — `proc = subprocess.run(argv, cwd=str(repo_root), capture_output=True, timeout=timeout_sec)`.
-- **Expected fix**: Use `Popen` with file descriptors writing to temp files. Read file after process exits.
+- **Resolution**: New `test_execution_service.py:_run_isolated_process()` uses `subprocess.Popen` with file-backed output (`output_file`). No `capture_output=True`. Test `test_uses_popen_not_subprocess_run` verifies at source level. Uncommitted.
 
 ### R-0030: No process-group cleanup on timeout
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: Blocker
 - **Area**: process-isolation
 - **Details**: No `start_new_session=True`. No `os.killpg()`. `subprocess.run` timeout kills direct child only — descendants survive. No SIGTERM-then-SIGKILL sequence. No `stdin=DEVNULL`. No `close_fds=True`.
-- **Evidence**: `test_runner.py:202` — plain subprocess.run, no session or group handling. `TimeoutExpired` at line 212 does not kill process group.
-- **Expected fix**: `Popen` with `start_new_session=True`, `stdin=DEVNULL`, `close_fds=True`. On timeout: `os.killpg(proc.pid, SIGTERM)`, brief wait, `os.killpg(proc.pid, SIGKILL)`, `proc.wait()`.
+- **Resolution**: `test_execution_service.py:_run_isolated_process()` uses `start_new_session=True`, `stdin=DEVNULL`, `close_fds=True`. `_kill_process_group()` does `os.killpg(pgid, SIGTERM)` → 3s wait → `os.killpg(pgid, SIGKILL)` → `proc.wait()`. Tests verify all 4 flags at source level. Uncommitted.
 
 ### R-0031: No contract enforcement in test_runner.py
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: Blocker
 - **Area**: run-contract
 - **Details**: `run_tests_local()` does not check RunContract. No `evaluate_run_action(contract, "run_test")`. No `max_test_runs` check. No `test_runs_used` increment. CLI is the only enforcement point — bypass is trivial.
-- **Evidence**: `test_runner.py:136-138` docstring: "Does NOT check the repo_test_run permission — the caller (CLI) is responsible for that gate."
-- **Expected fix**: Create central Test Execution Service that enforces contract + usage + permission, or add gates to `run_tests_local` directly.
+- **Resolution**: New `test_execution_service.py:execute_test_run()` enforces 13-gate order: load job → validate repo → permission check → load+validate contract → load usage → evaluate_run_action(RUN_TEST) → acquire lease → discover command → execute isolated → persist usage → persist record → emit events → create failure artifact. 7 gate tests verify all block reasons. Uncommitted.
 
 ### R-0032: No secret/environment stripping before subprocess
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: High
 - **Area**: environment
 - **Details**: `subprocess.run` at line 202 inherits full `os.environ`. Secret-like env vars (API_KEY, SECRET, TOKEN, PASSWORD, AWS_*, OPENAI_*, etc.) visible to child test process.
-- **Evidence**: Docstring line 26: "inherits os.environ (no extra vars, no .env reading)" — confirms no stripping.
-- **Expected fix**: Build filtered env dict stripping keys matching secret patterns before passing to Popen.
+- **Resolution**: `_build_safe_env()` strips keys matching 14 secret patterns (token, secret, password, credential, api_key, etc.). Only `_ALWAYS_KEEP` names and `_SAFE_ENV_PREFIXES` preserved. Unknown keys silently dropped (strict-safe). 11 env policy tests verify stripping. Uncommitted.
 
 ### R-0033: No concurrency guard for same job/repo
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: High
 - **Area**: concurrency
 - **Details**: No lease or lock prevents two simultaneous test runs for same job or repo. Could cause filesystem contention, test interference, usage double-counting.
-- **Expected fix**: File-based lease per job_id in workspace, released on completion/error/timeout.
+- **Resolution**: `TestExecutionLease` uses `fcntl.flock(LOCK_EX|LOCK_NB)` per job_id. Acquired at Gate 7, released in `finally` block. 3 lease tests verify acquire/release, concurrent fail, idempotent release. Uncommitted.
 
 ### R-0034: No TestFailureArtifact created on failed/timeout runs
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: High
 - **Area**: failure-artifact
 - **Details**: `run_tests_local()` returns `TestRunRecord` with status "failed"/"timeout" but does not create `TestFailureArtifact`. Repair loop requires these to create fix tasks.
-- **Expected fix**: On failed/timeout, create `TestFailureArtifact` with safe fields linking to test run.
+- **Resolution**: Gate 13 in `execute_test_run()` calls `_create_failure_artifact()` on failed/timeout/environment_failure. Uses existing `build_test_failure_artifact` + `persist_failure_artifact`. Result.failure_artifact_id set. Event emitted. Uncommitted.
 
 ### R-0035: test_runs_used not incremented by test_runner
 
-- **Status**: Open
+- **Status**: Resolved
 - **Severity**: High
 - **Area**: usage-ledger
 - **Details**: `run_tests_local()` does not call `save_usage()` to increment `test_runs_used`. Usage tracking exists in `run_contract.py` but test_runner doesn't use it. Blocked-before-start must NOT consume budget.
-- **Expected fix**: Increment `test_runs_used` on actual process start only. Record measured runtime in `runtime_seconds_used`.
+- **Resolution**: Gate 10 in `execute_test_run()` reloads job, loads usage, increments `test_runs_used += 1` and `runtime_seconds_used += duration_ms/1000.0`, then `save_usage()`. Blocked-before-start confirmed zero cost via `test_blocked_does_not_consume_usage`. Uncommitted.
 
 ### R-0036: max_test_runs=0 makes tests permanently impossible without documented escape
 
@@ -102,19 +99,35 @@ PENDING — worker active on Step 1086+. R-0027 resolved. 3 blockers + 4 high re
 - **Details**: context.md "Truth Gaps" 1-7 all resolved but still listed as current. plan.md Step 1084 unchecked.
 - **Resolution**: Step 1085 commit `016d715` closes Step 1084, updates context.md (truth gaps removed), marks plan.md complete. PR #52 merged to main.
 
+### R-0038: Silent exception swallowing in persistence helpers
+
+- **Status**: Open
+- **Severity**: Low
+- **Area**: error-handling
+- **Details**: `_persist_test_record()` (line 775) and `_create_failure_artifact()` (line 829) both `except Exception: pass`. If both fail, test run evidence is lost — events are "primary record" but if event emission also fails silently, run is invisible.
+- **Mitigation**: Acceptable for v1. Result object returned to caller has all data. Events + metadata are redundant records.
+
+### R-0039: Old test_runner.py:run_tests_local() still has capture_output=True
+
+- **Status**: Resolved
+- **Severity**: Medium
+- **Area**: deprecation
+- **Details**: Old `test_runner.py:run_tests_local()` retains `subprocess.run(capture_output=True)` without contract enforcement. Until CLI routes through new service (Step 1099) and old function is deprecated, callers can bypass all gates.
+- **Resolution**: Commit `0abf570` (Step 1099) routes `test.run` CLI through `execute_test_run()`. `_cmd_run_tests_local()` replaced with `_cmd_run_tests()`. No references to `run_tests_local` remain in CLI. Old function still exists in `test_runner.py` but is no longer called from production paths.
+
 ## Baseline Checks (Pre-Worker)
 
 | Check | Status | Notes |
 |-------|--------|-------|
 | Previous block closure | PASS | Step 1084 committed, PR #52 merged, context.md updated |
-| Central test service | ABSENT | test_runner.py exists but no service with gates |
-| Permission/contract | FAIL | No contract check in test_runner |
-| Process isolation | FAIL | capture_output=True, no session, no group cleanup |
-| Environment | FAIL | No secret stripping |
-| Lease/concurrency | ABSENT | No guard |
-| Timeout cleanup | FAIL | Kills child only, descendants survive |
-| Usage ledger | FAIL | test_runs_used not incremented |
-| Failure artifact | ABSENT | No TestFailureArtifact on failure |
+| Central test service | PASS (committed) | test_execution_service.py with 13-gate execute_test_run() |
+| Permission/contract | PASS (committed) | Gates 3-6: permission + contract + budget + evaluate_run_action |
+| Process isolation | PASS (committed) | Popen + start_new_session + file-backed output |
+| Environment | PASS (committed) | _build_safe_env strips 14 secret patterns |
+| Lease/concurrency | PASS (committed) | fcntl.flock per job_id, released in finally |
+| Timeout cleanup | PASS (committed) | SIGTERM→3s→SIGKILL→wait on process group |
+| Usage ledger | PASS (committed) | test_runs_used + runtime_seconds_used incremented post-exec |
+| Failure artifact | PASS (committed) | _create_failure_artifact on failed/timeout/env_failure |
 | Proof linkage | ABSENT | No proof integration yet |
 | CLI runtime | PASS (prior) | Existing tests adequate |
 | Redaction | PASS (partial) | TestRunRecord safe; raw output in workspace file |

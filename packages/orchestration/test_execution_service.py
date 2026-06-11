@@ -688,8 +688,15 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
         result.usage_after = export_usage_json(usage)
 
         # ── Gate 11: Persist safe test record ───────────────────────────────
-        _truncate_output_file(output_file)
-        _persist_test_record(job_id_parsed, result, candidate, test_run_id, created_at)
+        original_output_bytes, output_truncated, persisted_output_bytes = (
+            _truncate_output_file(output_file)
+        )
+        _persist_test_record(
+            job_id_parsed, result, candidate, test_run_id, created_at,
+            output_truncated=output_truncated,
+            original_output_bytes=original_output_bytes,
+            persisted_output_bytes=persisted_output_bytes,
+        )
 
         # ── Gate 12: Emit lifecycle events ───────────────────────────────────
         if status in ("passed", "failed", "timeout"):
@@ -744,6 +751,10 @@ def _persist_test_record(
     candidate: Any,
     test_run_id: str,
     created_at: str,
+    *,
+    output_truncated: bool = False,
+    original_output_bytes: int = 0,
+    persisted_output_bytes: int = 0,
 ) -> None:
     """Store a safe test record in job metadata. No raw output."""
     try:
@@ -758,6 +769,9 @@ def _persist_test_record(
             "exit_code": result.exit_code,
             "duration_ms": result.duration_ms,
             "output_ref": result.output_ref,
+            "output_truncated": output_truncated,
+            "original_output_bytes": original_output_bytes,
+            "persisted_output_bytes": persisted_output_bytes,
             "command_source_type": candidate.source_type if candidate else "",
             "command_source_path": candidate.source_path if candidate else "",
             "command_confidence": candidate.confidence if candidate else "",
