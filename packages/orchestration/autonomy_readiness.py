@@ -27,6 +27,7 @@ Public API::
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from packages.core.models import Job, RunState
@@ -78,6 +79,12 @@ class ReadinessReport:
 # ---------------------------------------------------------------------------
 # Signal helpers
 # ---------------------------------------------------------------------------
+
+def _resolve_readiness_data_dir() -> Path:
+    """Resolve the data root used for durable snapshot-truth checks."""
+    from packages.orchestration.data_paths import resolve_data_root
+    return resolve_data_root()
+
 
 def _has_attached_repo(job: Job) -> bool:
     return bool(job.metadata.get("target_repo"))
@@ -145,16 +152,43 @@ def _has_revert_snapshot(events: list[dict[str, Any]]) -> bool:
     return any(e.get("event") == "patch_intent_reverted" for e in events)
 
 
-def _has_verified_snapshot(job: Job, events: list[dict[str, Any]]) -> bool:
-    """True if any applied intent has snapshot_verified=True (Step 1150).
+def _has_verified_snapshot(job: Job, data_dir: Path) -> bool:
+    """True only if the job has a durably verified, revert-capable snapshot.
 
-    Checks artifact metadata (authoritative) then falls back to event signal.
+    Authoritative durable check via build_snapshot_truth (Step 1159). A generic
+    `snapshot_create_completed` event, or artifact metadata alone, is NOT proof —
+    those fallbacks are removed. Readiness requires, for at least one applied
+    intent:
+      - a loadable DurableApplyRecord (valid apply linkage)
+      - a loadable RepositorySnapshot
+      - current successful verification (manifest + blobs verify now)
+      - recovery material available
+      - evidence_status complete (no unresolved evidence failure)
+      - no partial/failed revert
+      - the apply is still active (not already reverted)
     """
+    from packages.orchestration.repository_snapshot import build_snapshot_truth
+
+    job_id = str(job.id)
+    # Candidate intents come from artifact apply-record keys; the truth itself is
+    # loaded from durable storage, never from the metadata values.
+    intent_ids: set[str] = set()
     for art in getattr(job, "artifacts", []):
-        for rec in (getattr(art, "metadata", {}) or {}).get("patch_intent_apply_records", {}).values():
-            if rec.get("snapshot_verified", False):
-                return True
-    return any(e.get("event") == "snapshot_create_completed" for e in events)
+        recs = (getattr(art, "metadata", {}) or {}).get("patch_intent_apply_records", {})
+        intent_ids.update(recs.keys())
+
+    candidates = list(intent_ids) or [None]  # None → job-wide latest apply scan
+    for iid in candidates:
+        truth = build_snapshot_truth(job_id, intent_id=iid, data_dir=data_dir)
+        if (
+            truth.apply_state == "applied"
+            and truth.snapshot_verified_now
+            and truth.recovery_material_available
+            and truth.evidence_status == "complete"
+            and truth.revert_state not in ("partial_revert", "revert_failed")
+        ):
+            return True
+    return False
 
 
 def _has_git_status(events: list[dict[str, Any]]) -> bool:
@@ -194,8 +228,11 @@ def _has_no_open_decisions(job: Job, events: list[dict[str, Any]]) -> bool:
         return True  # If module unavailable, don't block
 
 
-def _collect_signals(job: Job, events: list[dict[str, Any]]) -> dict[str, bool]:
+def _collect_signals(
+    job: Job, events: list[dict[str, Any]], data_dir: Path | None = None
+) -> dict[str, bool]:
     """Collect all readiness signals into a flat dict."""
+    data_dir = data_dir if data_dir is not None else _resolve_readiness_data_dir()
     return {
         "attached_repo": _has_attached_repo(job),
         "project_link": bool(job.metadata.get("project_id")),
@@ -213,7 +250,7 @@ def _collect_signals(job: Job, events: list[dict[str, Any]]) -> dict[str, bool]:
         "run_contract": _has_run_contract(events),
         "agent_loop": _has_agent_loop(events),
         "revert_snapshot": _has_revert_snapshot(events),
-        "verified_snapshot": _has_verified_snapshot(job, events),
+        "verified_snapshot": _has_verified_snapshot(job, data_dir),
         "no_pending_approvals": not _has_pending_approvals(events),
         "git_status": _has_git_status(events),
         "no_open_decisions": _has_no_open_decisions(job, events),
@@ -315,9 +352,15 @@ def _assess_level(
 def assess_job_readiness(
     job: Job,
     events: list[dict[str, Any]],
+    data_dir: Path | None = None,
 ) -> ReadinessReport:
-    """Assess autonomy readiness for a single job."""
-    signals = _collect_signals(job, events)
+    """Assess autonomy readiness for a single job.
+
+    data_dir is used for authoritative durable snapshot-truth checks (Step 1159);
+    defaults to the resolved data root when omitted.
+    """
+    data_dir = data_dir if data_dir is not None else _resolve_readiness_data_dir()
+    signals = _collect_signals(job, events, data_dir)
     assessments = tuple(_assess_level(ld, job, events, signals) for ld in LEVELS)
     highest = -1
     for a in assessments:
@@ -347,8 +390,10 @@ def assess_project_readiness(
     project_id: str,
     jobs: list[Job],
     all_events: dict[str, list[dict[str, Any]]],
+    data_dir: Path | None = None,
 ) -> ReadinessReport:
     """Assess autonomy readiness across all linked jobs in a project."""
+    data_dir = data_dir if data_dir is not None else _resolve_readiness_data_dir()
     if not jobs:
         empty_levels = tuple(
             LevelAssessment(
@@ -371,7 +416,7 @@ def assess_project_readiness(
     agg_signals: dict[str, bool] = {}
     job_signals_list = []
     for j in jobs:
-        js = _collect_signals(j, all_events.get(str(j.id), []))
+        js = _collect_signals(j, all_events.get(str(j.id), []), data_dir)
         job_signals_list.append(js)
         for k, v in js.items():
             agg_signals[k] = agg_signals.get(k, False) or v

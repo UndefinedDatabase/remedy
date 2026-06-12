@@ -34,7 +34,7 @@ def _cmd_readiness_job(job_id_str: str, *, json_output: bool = False) -> None:
 
     data_dir = resolve_data_root()
     events = load_run_events(data_dir, job.id)
-    report = assess_job_readiness(job, events)
+    report = assess_job_readiness(job, events, data_dir=data_dir)
 
     if json_output:
         print(_json.dumps(export_readiness_json(report), sort_keys=True))
@@ -77,7 +77,7 @@ def _cmd_readiness_project(project_id_str: str, *, json_output: bool = False) ->
         except Exception:
             continue
 
-    report = assess_project_readiness(str(project.id), jobs, all_events)
+    report = assess_project_readiness(str(project.id), jobs, all_events, data_dir=data_dir)
 
     if json_output:
         print(_json.dumps(export_readiness_json(report), sort_keys=True))
