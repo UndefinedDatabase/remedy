@@ -1049,7 +1049,7 @@ def build_snapshot_truth(
     Shared source for Proof Chain, File Provenance, Readiness, Review Bundle,
     and `do --continue`. No raw paths or blob refs are exposed.
     """
-    data_dir = data_dir or resolve_data_root()
+    data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
 
     record, ambiguous = _find_apply_record(job_id, apply_id, intent_id, data_dir)
     blockers: list[str] = []

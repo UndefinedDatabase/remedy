@@ -103,7 +103,9 @@ def _cmd_change_proof(job_id_str: str, *, path: str | None = None, json_output: 
 
     data_dir = resolve_data_root()
     events = load_run_events(data_dir, job_id)
-    chain = build_proof_chain(job, events, path=path)
+    # Pass data_dir so proof uses authoritative snapshot truth, not stale
+    # artifact metadata or event presence (Step 1158).
+    chain = build_proof_chain(job, events, path=path, data_dir=data_dir)
 
     if json_output:
         print(_json.dumps(export_proof_chain_json(chain), sort_keys=True))

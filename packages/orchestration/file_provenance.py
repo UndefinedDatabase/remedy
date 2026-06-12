@@ -199,7 +199,7 @@ def build_file_provenance(
     proof_error = ""
     from packages.orchestration.proof_chain import build_proof_chain
     try:
-        pc = build_proof_chain(job, events, path=path)
+        pc = build_proof_chain(job, events, path=path, data_dir=data_dir)
         if pc.changes:
             proof_status = pc.changes[0].proof_status
     except (KeyError, ValueError, TypeError) as exc:

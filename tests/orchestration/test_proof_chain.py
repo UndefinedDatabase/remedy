@@ -1032,3 +1032,112 @@ class TestCommandCatalogTruth:
         assert obj is not None
         assert obj.command != ""
         assert obj.available is True
+
+
+# ---------------------------------------------------------------------------
+# Durable snapshot truth in proof chain (Step 1158)
+# ---------------------------------------------------------------------------
+
+
+class TestProofChainDurableTruth:
+    """build_proof_chain(data_dir=...) uses authoritative snapshot truth.
+
+    Artifact metadata / events are never authoritative for the snapshot fact.
+    """
+
+    def _durable(self, data_dir, repo_root, job_id, intent_id, *,
+                 state="applied", snapshot_id=None, make_snapshot=True):
+        import hashlib
+        from packages.orchestration.repository_snapshot import (
+            create_snapshot, verify_snapshot, save_durable_apply_record,
+            DurableApplyRecord,
+        )
+        sid = snapshot_id
+        if make_snapshot:
+            (repo_root / "src").mkdir(parents=True, exist_ok=True)
+            (repo_root / "src" / "auth.py").write_text("before\n")
+            snap = create_snapshot(job_id, intent_id, ["src/auth.py"], repo_root, data_dir)
+            verify_snapshot(snap.snapshot_id, job_id, data_dir)
+            sid = snap.snapshot_id
+        rec = DurableApplyRecord(
+            apply_id=intent_id, job_id=job_id, intent_id=intent_id,
+            snapshot_id=sid or "missing-snap", state=state,
+            target_paths=["src/auth.py"], applied_at="2026-01-01T00:00:00Z",
+            before_proof={}, after_proof={}, snapshot_verified=make_snapshot,
+        )
+        save_durable_apply_record(rec, job_id, data_dir)
+        return sid
+
+    def test_durable_snapshot_verifies(self, tmp_path):
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        self._durable(data_dir, repo, str(job.id), iid)
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].proof_status == PROOF_VERIFIED
+
+    def test_stale_metadata_but_snapshot_missing(self, tmp_path):
+        """Artifact says snapshot_verified=True but durable snapshot is gone → NOT verified."""
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        # Apply record references a snapshot that does not exist on disk.
+        self._durable(data_dir, repo, str(job.id), iid, make_snapshot=False)
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].proof_status != PROOF_VERIFIED
+        assert "no_snapshot_proof" in chain.changes[0].missing_links
+
+    def test_reverted_apply_not_currently_applied(self, tmp_path):
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        self._durable(data_dir, repo, str(job.id), iid, state="reverted")
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].apply_state == "reverted"
+        assert chain.changes[0].proof_status != PROOF_VERIFIED
+
+    def test_drift_blocked_revert_leaves_apply_active(self, tmp_path):
+        from packages.orchestration.repository_snapshot import (
+            _update_snapshot_state, load_durable_apply_record,
+            save_durable_apply_record,
+        )
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        sid = self._durable(data_dir, repo, str(job.id), iid, state="applied")
+        # Simulate a drift-blocked revert: snapshot flagged blocked_drift,
+        # apply record stays applied with revert_state drifted.
+        _update_snapshot_state(sid, str(job.id), "blocked_drift", data_dir)
+        rec = load_durable_apply_record(iid, str(job.id), data_dir)
+        import dataclasses
+        save_durable_apply_record(
+            dataclasses.replace(rec, revert_state="drifted"), str(job.id), data_dir
+        )
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        # Drift block leaves the apply active and provable.
+        assert chain.changes[0].apply_state == "applied"
+        assert chain.changes[0].proof_status == PROOF_VERIFIED
+
+    def test_missing_recovery_blob_blocks_verified(self, tmp_path):
+        from packages.orchestration.repository_snapshot import _snapshot_dir
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        sid = self._durable(data_dir, repo, str(job.id), iid)
+        for blob in _snapshot_dir(str(job.id), sid, data_dir).glob("blob_*.bin"):
+            blob.unlink()
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].proof_status != PROOF_VERIFIED
+
+    def test_tampered_manifest_blocks_verified(self, tmp_path):
+        from packages.orchestration.repository_snapshot import _snapshot_dir
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        sid = self._durable(data_dir, repo, str(job.id), iid)
+        manifest = _snapshot_dir(str(job.id), sid, data_dir) / "manifest.json"
+        data = json.loads(manifest.read_text())
+        data["path_count"] = 999
+        manifest.write_text(json.dumps(data, indent=2, sort_keys=True))
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].proof_status != PROOF_VERIFIED

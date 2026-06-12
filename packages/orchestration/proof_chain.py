@@ -476,10 +476,19 @@ def build_proof_chain(
     job: Job,
     events: list[dict[str, Any]],
     path: str | None = None,
+    data_dir: "Path | None" = None,
 ) -> ProofChain:
     """Build proof chain from job and events.
 
-    Deterministic, read-only. No LLM, no network, no filesystem.
+    Deterministic, read-only. No LLM, no network.
+
+    When *data_dir* is provided, apply/revert state and snapshot verification are
+    taken from the authoritative snapshot-truth builder (build_snapshot_truth)
+    rather than artifact metadata or events (Step 1158). Artifact metadata is a
+    compatibility fallback only; event presence is never authoritative for the
+    snapshot fact. A reverted apply is not "currently applied"; a drift-blocked
+    revert leaves the apply active and provable; a partial/failed revert blocks
+    the verified state.
     """
     from packages.orchestration.approval_queue import list_patch_intents
     from packages.orchestration.change_set import derive_change_set
@@ -554,7 +563,27 @@ def build_proof_chain(
         task_blocked = task_ev.get("event") == "task_execution_blocked"
         task_failed = task_ev.get("event") == "task_execution_failed"
 
+        # Snapshot fact: artifact metadata is the fallback; the durable
+        # snapshot-truth builder is authoritative when data_dir is available.
         _snap_ver = c.proof.get("snapshot_verified", False)
+        if data_dir is not None:
+            from packages.orchestration.repository_snapshot import build_snapshot_truth
+            truth = build_snapshot_truth(job_id_str, intent_id=c.intent_id, data_dir=data_dir)
+            if truth.apply_state != "unknown":
+                # Reverted apply is not currently applied.
+                if truth.apply_state == "reverted":
+                    apply_state = "reverted"
+                elif truth.apply_state == "applied":
+                    apply_state = "applied"
+                # Verified snapshot fact comes from live manifest/blob check.
+                _snap_ver = truth.snapshot_verified_now
+                # Partial/failed revert can never back a verified state.
+                if truth.revert_state in ("partial_revert", "revert_failed"):
+                    _snap_ver = False
+                # Degraded recovery evidence cannot back a verified state.
+                if truth.evidence_status == "degraded":
+                    _snap_ver = False
+
         proof_status = _classify_proof_status(
             approval_state=approval_state,
             apply_state=apply_state,
