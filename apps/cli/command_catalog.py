@@ -1329,6 +1329,23 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    CommandEntry(
+        command_id="do.continue",
+        group_id="do",
+        subcommand="continue",
+        description="Run one controlled continuation cycle for an approved intent.",
+        action_class="apply_write",
+        supports_json=True,
+        related=("change.proof", "repair.start", "snapshot.inspect"),
+        args=(
+            _JOB_ID,
+            ArgDef("--intent-id", "Approved intent ID (required when several are approved)",
+                   required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=True,
+        may_execute_commands=True,
+    ),
 
     # ── repair ──────────────────────────────────────────────────────────
     CommandEntry(

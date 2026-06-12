@@ -20,7 +20,7 @@ Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/
 - [x] 1163: Canonical update_apply_record_state() (legal transitions, idempotent, atomic)
 - [x] 1164: do_continue.py models (ContinueRequest/Result/Phase/Checkpoint/StopReason)
 - [x] 1165: evaluate_continue_eligibility(job_id)
-- [ ] 1166: CLI remedy do --continue <job_id> [--intent-id] [--json]
+- [x] 1166: CLI remedy do continue <job_id> [--intent-id] [--json]
 - [x] 1167: Continuation lease (deterministic, released on exit, stale-recoverable)
 - [x] 1168: Durable phase checkpoints (idempotent resume)
 - [x] 1169: Snapshot phase (central path, verify before mutation)
