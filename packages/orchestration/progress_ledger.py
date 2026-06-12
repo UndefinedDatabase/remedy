@@ -371,6 +371,20 @@ def merge_job_risks(ledger: ProgressLedger, job: Any, events: list[dict] | None 
                 safe_summary=f"Test failure artifact ({kind})"[:200],
             )
             ledger.items.append(item)
+        # Snapshot integration (Step 1147): flag applies without verified snapshot
+        for iid, rec in (meta.get("patch_intent_apply_records") or {}).items():
+            if rec.get("state") == "applied" and not rec.get("snapshot_verified", False):
+                risk_idx += 1
+                item = ProgressItem(
+                    item_id=f"risk-snap-{risk_idx}",
+                    title=f"Apply without verified snapshot: {iid[:16]}"[:200],
+                    status=ProgressStatus.RISK,
+                    source_type=ProgressSource.PROOF_GAP,
+                    source_ref=iid[:16],
+                    severity="High",
+                    safe_summary=f"Intent {iid[:16]} applied without snapshot_verified=True"[:200],
+                )
+                ledger.items.append(item)
 
     if events:
         for ev in events:

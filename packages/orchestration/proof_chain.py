@@ -116,11 +116,12 @@ def _classify_proof_status(
     has_apply_event: bool,
     task_blocked: bool,
     task_failed: bool,
+    snapshot_verified: bool = False,
 ) -> str:
     """Classify proof status from chain state.
 
     Truth rules (strict):
-    - verified: approved + applied + apply_event + proof + (linked test passed OR explicit not_required)
+    - verified: approved + applied + apply_event + proof + snapshot_verified + (linked test passed OR explicit not_required)
     - failed: applied + (linked test failed OR task blocked/failed)
     - incomplete: intent exists but chain not complete
     - unverified: change exists but required linkage cannot be established
@@ -135,12 +136,13 @@ def _classify_proof_status(
     if apply_state == "applied" and test_state == "failed" and test_link != TEST_LINK_NONE:
         return PROOF_FAILED
 
-    # Verified requires full chain with linked evidence
+    # Verified requires full chain with linked evidence and verified snapshot (Step 1145)
     if (
         approval_state == "approved"
         and apply_state == "applied"
         and has_apply_event
         and has_proof
+        and snapshot_verified
         and test_state in ("passed", "not_required")
         and test_link != TEST_LINK_NONE
     ):
@@ -172,6 +174,7 @@ def _derive_missing_links(
     has_proof: bool,
     has_apply_event: bool,
     test_missing_reason: str = "",
+    snapshot_verified: bool = False,
 ) -> list[str]:
     """List what's missing from the proof chain."""
     missing: list[str] = []
@@ -183,6 +186,8 @@ def _derive_missing_links(
         missing.append("no_apply_event")
     if apply_state == "applied" and not has_proof:
         missing.append("no_apply_proof")
+    if apply_state == "applied" and not snapshot_verified:
+        missing.append("no_snapshot_proof")
     if apply_state == "applied" and test_link == TEST_LINK_NONE:
         if test_missing_reason in ("test_order_unknown", "no_test_after_apply"):
             missing.append(test_missing_reason)
@@ -549,6 +554,7 @@ def build_proof_chain(
         task_blocked = task_ev.get("event") == "task_execution_blocked"
         task_failed = task_ev.get("event") == "task_execution_failed"
 
+        _snap_ver = c.proof.get("snapshot_verified", False)
         proof_status = _classify_proof_status(
             approval_state=approval_state,
             apply_state=apply_state,
@@ -558,6 +564,7 @@ def build_proof_chain(
             has_apply_event=has_apply_event,
             task_blocked=task_blocked,
             task_failed=task_failed,
+            snapshot_verified=_snap_ver,
         )
         missing = _derive_missing_links(
             approval_state=approval_state,
@@ -567,6 +574,7 @@ def build_proof_chain(
             has_proof=has_proof,
             has_apply_event=has_apply_event,
             test_missing_reason=str(test_meta.get("missing_link", "")),
+            snapshot_verified=_snap_ver,
         )
 
         # Safe summary

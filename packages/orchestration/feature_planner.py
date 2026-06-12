@@ -188,22 +188,31 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
                 next_action=f"Investigate {item.item_id}",
             ))
 
-    # Rule 3: Proof gaps
+    # Rule 3: Proof gaps — snapshot-unverified applies get HIGH priority (no revert capability)
     for item in ledger.items:
         if item.source_type == ProgressSource.PROOF_GAP:
             sug_id = _make_suggestion_id("gap", item.title)
             if sug_id in seen_ids:
                 continue
             seen_ids.add(sug_id)
+            is_snapshot_gap = "snapshot" in item.title.lower() or "snapshot" in item.safe_summary.lower()
             plan.suggestions.append(FeatureSuggestion(
                 suggestion_id=sug_id,
                 title=f"Close proof gap: {item.title}"[:200],
-                rationale="Proof chain incomplete — close gap for verification.",
-                priority=FeaturePlanPriority.MEDIUM,
+                rationale=(
+                    "Apply without verified snapshot — revert capability unavailable."
+                    if is_snapshot_gap else
+                    "Proof chain incomplete — close gap for verification."
+                ),
+                priority=FeaturePlanPriority.HIGH if is_snapshot_gap else FeaturePlanPriority.MEDIUM,
                 source_type=FeaturePlanSource.PROOF_GAP,
                 source_refs=[item.item_id],
-                estimated_risk="low",
-                next_action="File Provenance expansion",
+                estimated_risk="high" if is_snapshot_gap else "low",
+                next_action=(
+                    "Re-apply with snapshot or run remedy snapshot inspect"
+                    if is_snapshot_gap else
+                    "File Provenance expansion"
+                ),
             ))
 
     # Rule 4: Stale handoff (inconsistencies in ledger)

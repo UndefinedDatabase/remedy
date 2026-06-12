@@ -60,7 +60,7 @@ class TestReadinessBasic:
         job = _make_job()
         report = assess_job_readiness(job, [])
         assert report.levels[5].eligible is False
-        assert "revert_snapshot" in report.levels[5].missing_signals
+        assert "verified_snapshot" in report.levels[5].missing_signals
 
     def test_level_6_blocked(self):
         job = _make_job()
@@ -231,3 +231,51 @@ class TestReadinessBrainNode:
         assert "missing_count" in meta
         for forbidden in ("stdout", "stderr", "raw_output", "value"):
             assert forbidden not in meta
+
+
+class TestVerifiedSnapshotSignal:
+    """_has_verified_snapshot uses artifact metadata as authoritative source (Step 1150)."""
+
+    def test_verified_snapshot_from_artifact_metadata(self):
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        from packages.orchestration.approval_queue import make_intent_id
+
+        art = Artifact(name="p", content="", kind=ArtifactKind.PATCH_INTENT)
+        iid = make_intent_id(art.id, 0)
+        art.metadata["patch_intent_apply_records"] = {iid: {"snapshot_verified": True}}
+        job = _make_job()
+        job.artifacts.append(art)
+        assert _has_verified_snapshot(job, []) is True
+
+    def test_no_verified_snapshot_without_apply_records(self):
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        job = _make_job()
+        assert _has_verified_snapshot(job, []) is False
+
+    def test_verified_snapshot_from_event_fallback(self):
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        job = _make_job()
+        events = [{"event": "snapshot_create_completed", "metadata": {}}]
+        assert _has_verified_snapshot(job, events) is True
+
+    def test_level5_eligible_with_verified_snapshot(self):
+        """Level 5 (revert_capable) eligible when verified snapshot present (Step 1150)."""
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.approval_queue import make_intent_id
+
+        job = _make_job(
+            target_repo="/tmp/test",
+            permissions={"repo_generated_write": "allow", "repo_test_run": "allow"},
+        )
+        art = Artifact(name="p", content="", kind=ArtifactKind.PATCH_INTENT)
+        iid = make_intent_id(art.id, 0)
+        art.metadata["patch_intent_apply_records"] = {iid: {"snapshot_verified": True}}
+        job.artifacts.append(art)
+
+        events = [
+            {"event": "patch_apply_proof_recorded", "metadata": {}},
+            {"event": "test_run_completed", "metadata": {}},
+        ]
+        report = assess_job_readiness(job, events)
+        assert "verified_snapshot" in report.levels[5].present_signals

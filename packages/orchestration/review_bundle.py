@@ -107,6 +107,7 @@ class ChangedFileSafe:
     related_intent_id: str = ""
     tested_after_change: bool = False
     safety_flags: list[str] = field(default_factory=list)
+    snapshot_verified: bool = False
 
 
 @dataclass
@@ -315,6 +316,7 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
 
     for a in job.artifacts:
         explanations = a.metadata.get("patch_intent_explanations", [])
+        apply_records = a.metadata.get("patch_intent_apply_records", {})
         for exp in explanations:
             path = exp.get("file", "")
             if not path or path.startswith("/") or ".." in Path(path).parts:
@@ -328,7 +330,12 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
             if a.task_id:
                 files[path].related_task_id = str(a.task_id)[:8]
             from packages.orchestration.approval_queue import make_intent_id
-            files[path].related_intent_id = make_intent_id(a.id, 0)
+            iid = make_intent_id(a.id, 0)
+            files[path].related_intent_id = iid
+            # Snapshot verification status (Step 1149) — safe bool only, no blob content
+            rec = apply_records.get(iid, {})
+            if rec.get("snapshot_verified", False):
+                files[path].snapshot_verified = True
 
     for ev in events:
         if ev.get("event") == "test_completed" or ev.get("event") == "test_passed":
@@ -346,6 +353,7 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
                 "related_intent_id": f.related_intent_id,
                 "tested_after_change": f.tested_after_change,
                 "safety_flags": f.safety_flags,
+                "snapshot_verified": f.snapshot_verified,
             }
             for f in files.values()
         ],

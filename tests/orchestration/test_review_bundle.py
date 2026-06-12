@@ -102,6 +102,13 @@ class TestReviewBundleModel:
         f = ChangedFileSafe(path="src/main.py", status="modified")
         assert f.path == "src/main.py"
         assert f.tested_after_change is False
+        assert f.snapshot_verified is False
+
+    def test_changed_file_safe_snapshot_verified_field(self):
+        """snapshot_verified is safe bool only — no blob content (Step 1149)."""
+        from packages.orchestration.review_bundle import ChangedFileSafe
+        f = ChangedFileSafe(path="src/main.py", status="modified", snapshot_verified=True)
+        assert f.snapshot_verified is True
 
     def test_manifest_defaults(self):
         from packages.orchestration.review_bundle import ReviewBundleManifest
@@ -796,4 +803,101 @@ class TestSectionAvailability:
             assert Path(result.output_path).exists()
         finally:
             review_bundle._build_context_inspection_safe = original
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Step 1149: Snapshot integration in changed_files_safe
+# ---------------------------------------------------------------------------
+
+
+class TestSnapshotIntegration:
+    """Review bundle surfaces snapshot_verified in changed_files_safe (Step 1149)."""
+
+    def test_snapshot_verified_in_changed_files(self, tmp_path):
+        """snapshot_verified=True from apply record appears in changed_files output."""
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.approval_queue import make_intent_id
+        from packages.orchestration.review_bundle import _build_changed_files_safe
+
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            from packages.core.models import Job, Task
+            from packages.orchestration.storage import save_job
+            art = Artifact(
+                name="patch", content="", kind=ArtifactKind.PATCH_INTENT, task_id=task.id,
+                metadata={
+                    "patch_intent_explanations": [
+                        {"file": "src/main.py", "action": "modify", "risk": "low",
+                         "reason": "", "summary": ""}
+                    ],
+                    "patch_intent_approvals": {},
+                },
+            )
+            iid = make_intent_id(art.id, 0)
+            art.metadata["patch_intent_apply_records"] = {
+                iid: {"state": "applied", "snapshot_verified": True}
+            }
+            job.artifacts.append(art)
+            result = _build_changed_files_safe(job, [])
+            file_entry = next((f for f in result["files"] if f["path"] == "src/main.py"), None)
+            assert file_entry is not None
+            assert file_entry["snapshot_verified"] is True
+        finally:
+            _cleanup_env(old)
+
+    def test_unverified_snapshot_in_changed_files(self, tmp_path):
+        """snapshot_verified=False when no apply record exists."""
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.review_bundle import _build_changed_files_safe
+
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            art = Artifact(
+                name="patch", content="", kind=ArtifactKind.PATCH_INTENT, task_id=task.id,
+                metadata={
+                    "patch_intent_explanations": [
+                        {"file": "src/lib.py", "action": "modify", "risk": "low",
+                         "reason": "", "summary": ""}
+                    ],
+                    "patch_intent_approvals": {},
+                },
+            )
+            job.artifacts.append(art)
+            result = _build_changed_files_safe(job, [])
+            file_entry = next((f for f in result["files"] if f["path"] == "src/lib.py"), None)
+            assert file_entry is not None
+            assert file_entry["snapshot_verified"] is False
+        finally:
+            _cleanup_env(old)
+
+    def test_no_blob_content_in_changed_files(self, tmp_path):
+        """changed_files_safe output contains only safe metadata, no blob content (Step 1149)."""
+        import json
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.approval_queue import make_intent_id
+        from packages.orchestration.review_bundle import _build_changed_files_safe
+
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            art = Artifact(
+                name="patch", content="", kind=ArtifactKind.PATCH_INTENT, task_id=task.id,
+                metadata={
+                    "patch_intent_explanations": [
+                        {"file": "src/safe.py", "action": "create", "risk": "low",
+                         "reason": "", "summary": ""}
+                    ],
+                    "patch_intent_approvals": {},
+                },
+            )
+            iid = make_intent_id(art.id, 0)
+            art.metadata["patch_intent_apply_records"] = {
+                iid: {"state": "applied", "snapshot_verified": True}
+            }
+            job.artifacts.append(art)
+            result = _build_changed_files_safe(job, [])
+            raw = json.dumps(result)
+            for forbidden in ("blob_", "bin", "recovery", "traceback", "Traceback", "diff --git"):
+                assert forbidden not in raw, f"Forbidden term in changed_files: {forbidden}"
+        finally:
             _cleanup_env(old)

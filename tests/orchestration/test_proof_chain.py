@@ -110,6 +110,9 @@ def _make_full_chain_job(*, test_linked=True):
         }
     }
     art.metadata["patch_intent_approvals"] = approvals
+    art.metadata["patch_intent_apply_records"] = {
+        intent_id: {"snapshot_verified": True}
+    }
 
     job = _make_job(tasks=[task], artifacts=[art])
 
@@ -135,22 +138,34 @@ def _make_full_chain_job(*, test_linked=True):
 class TestProofStatusTruthRules:
 
     def test_verified_full_chain(self):
-        """approved + applied + apply_event + proof + linked passed test → verified"""
+        """approved + applied + apply_event + proof + snapshot_verified + linked passed test → verified"""
         assert _classify_proof_status(
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_INTENT,
             has_proof=True, has_apply_event=True,
             task_blocked=False, task_failed=False,
+            snapshot_verified=True,
         ) == PROOF_VERIFIED
 
     def test_verified_not_required(self):
-        """approved + applied + proof + explicit not_required → verified"""
+        """approved + applied + proof + snapshot_verified + explicit not_required → verified"""
         assert _classify_proof_status(
             approval_state="approved", apply_state="applied",
             test_state="not_required", test_link=TEST_LINK_NOT_REQUIRED,
             has_proof=True, has_apply_event=True,
             task_blocked=False, task_failed=False,
+            snapshot_verified=True,
         ) == PROOF_VERIFIED
+
+    def test_verified_requires_snapshot_verified(self):
+        """CRITICAL: full chain without snapshot_verified → UNVERIFIED, never verified"""
+        assert _classify_proof_status(
+            approval_state="approved", apply_state="applied",
+            test_state="passed", test_link=TEST_LINK_INTENT,
+            has_proof=True, has_apply_event=True,
+            task_blocked=False, task_failed=False,
+            snapshot_verified=False,
+        ) == PROOF_UNVERIFIED
 
     def test_not_tested_is_NOT_verified(self):
         """CRITICAL: approved + applied + proof + not_tested → INCOMPLETE, never verified"""
@@ -242,6 +257,7 @@ class TestProofStatusTruthRules:
             test_state="passed", test_link=TEST_LINK_TASK,
             has_proof=True, has_apply_event=True,
             task_blocked=False, task_failed=False,
+            snapshot_verified=True,
         ) == PROOF_VERIFIED
 
     def test_sole_change_test_verified(self):
@@ -251,6 +267,7 @@ class TestProofStatusTruthRules:
             test_state="passed", test_link=TEST_LINK_SOLE_CHANGE,
             has_proof=True, has_apply_event=True,
             task_blocked=False, task_failed=False,
+            snapshot_verified=True,
         ) == PROOF_VERIFIED
 
 
@@ -310,8 +327,19 @@ class TestMissingLinks:
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_INTENT,
             has_proof=True, has_apply_event=True,
+            snapshot_verified=True,
         )
         assert missing == []
+
+    def test_no_snapshot_proof(self):
+        """applied without verified snapshot → no_snapshot_proof in missing"""
+        missing = _derive_missing_links(
+            approval_state="approved", apply_state="applied",
+            test_state="passed", test_link=TEST_LINK_INTENT,
+            has_proof=True, has_apply_event=True,
+            snapshot_verified=False,
+        )
+        assert "no_snapshot_proof" in missing
 
 
 # ---------------------------------------------------------------------------
@@ -660,7 +688,7 @@ class TestNextSafeAction:
 
 class TestIncompleteChains:
 
-    def _make_intent_only_job(self, state="pending"):
+    def _make_intent_only_job(self, state="pending", *, snapshot_verified: bool = False):
         task = Task(description="Task")
         explanations = [_explanation_record("src/file.py")]
         art = _make_artifact_with_intents(task.id, explanations)
@@ -669,6 +697,10 @@ class TestIncompleteChains:
         if state != "pending":
             approvals[intent_id] = {"state": state, "decided_at": "", "decided_by": ""}
         art.metadata["patch_intent_approvals"] = approvals
+        if snapshot_verified:
+            art.metadata["patch_intent_apply_records"] = {
+                intent_id: {"snapshot_verified": True}
+            }
         return _make_job(tasks=[task], artifacts=[art]), intent_id
 
     def test_pending_approval(self):
@@ -758,7 +790,7 @@ class TestIncompleteChains:
 
     def test_explicit_not_required_verifies(self):
         """Explicit test_not_required event → verified"""
-        job, iid = self._make_intent_only_job("approved")
+        job, iid = self._make_intent_only_job("approved", snapshot_verified=True)
         events = [
             {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
@@ -783,7 +815,7 @@ class TestIncompleteChains:
         assert "no_test_after_apply" in c.missing_links
 
     def test_generic_after_apply_sole_change_verifies(self):
-        job, iid = self._make_intent_only_job("approved")
+        job, iid = self._make_intent_only_job("approved", snapshot_verified=True)
         events = [
             {"event": "patch_intent_applied", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
@@ -806,7 +838,7 @@ class TestIncompleteChains:
         assert "test_order_unknown" in c.missing_links
 
     def test_intent_linked_missing_timestamp_can_verify(self):
-        job, iid = self._make_intent_only_job("approved")
+        job, iid = self._make_intent_only_job("approved", snapshot_verified=True)
         events = [
             {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
@@ -821,6 +853,7 @@ class TestIncompleteChains:
         art = _make_artifact_with_intents(task.id, [_explanation_record("src/file.py")])
         iid = make_intent_id(art.id, 0)
         art.metadata["patch_intent_approvals"] = {iid: {"state": "approved", "decided_at": "", "decided_by": ""}}
+        art.metadata["patch_intent_apply_records"] = {iid: {"snapshot_verified": True}}
         job = _make_job(tasks=[task], artifacts=[art])
         events = [
             {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},

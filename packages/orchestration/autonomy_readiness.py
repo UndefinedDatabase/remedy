@@ -145,6 +145,18 @@ def _has_revert_snapshot(events: list[dict[str, Any]]) -> bool:
     return any(e.get("event") == "patch_intent_reverted" for e in events)
 
 
+def _has_verified_snapshot(job: Job, events: list[dict[str, Any]]) -> bool:
+    """True if any applied intent has snapshot_verified=True (Step 1150).
+
+    Checks artifact metadata (authoritative) then falls back to event signal.
+    """
+    for art in getattr(job, "artifacts", []):
+        for rec in (getattr(art, "metadata", {}) or {}).get("patch_intent_apply_records", {}).values():
+            if rec.get("snapshot_verified", False):
+                return True
+    return any(e.get("event") == "snapshot_create_completed" for e in events)
+
+
 def _has_git_status(events: list[dict[str, Any]]) -> bool:
     return any(e.get("event") == "git_status_read" for e in events)
 
@@ -201,6 +213,7 @@ def _collect_signals(job: Job, events: list[dict[str, Any]]) -> dict[str, bool]:
         "run_contract": _has_run_contract(events),
         "agent_loop": _has_agent_loop(events),
         "revert_snapshot": _has_revert_snapshot(events),
+        "verified_snapshot": _has_verified_snapshot(job, events),
         "no_pending_approvals": not _has_pending_approvals(events),
         "git_status": _has_git_status(events),
         "no_open_decisions": _has_no_open_decisions(job, events),
@@ -270,9 +283,9 @@ def _assess_level(
         _check("no_open_decisions", "remedy decision list <job_id>")
 
     elif lvl == 5:
-        # revert_capable: need apply proof + revert snapshot + test proof
+        # revert_capable: need apply proof + verified snapshot + test proof (Step 1150)
         _check("apply_proof")
-        _check("revert_snapshot")
+        _check("verified_snapshot")
         _check("test_proof")
         _check("approved_memory")
 

@@ -16,6 +16,7 @@ Public API::
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from packages.core.models import Job
@@ -59,10 +60,12 @@ def build_file_provenance(
     job: Job,
     events: list[dict[str, Any]],
     path: str,
+    data_dir: Path | None = None,
 ) -> FileProvenance:
     """Build provenance chain for *path* within *job*.
 
     Deterministic, read-only, no repo access.
+    data_dir: if provided, loads DurableApplyRecord for authoritative revert state (Step 1146).
     """
     job_id_str = str(job.id)
     chain: list[ProvenanceLink] = []
@@ -115,16 +118,22 @@ def build_file_provenance(
                 },
             ))
 
-        # patch_apply (from artifact metadata)
+        # patch_apply (from artifact metadata, authoritative state from DurableApplyRecord if available)
         for artifact in job.artifacts:
             records = artifact.metadata.get("patch_intent_apply_records", {})
             if iid in records:
                 rec = records[iid]
+                apply_state = rec.get("state", "unknown")
+                if data_dir is not None:
+                    from packages.orchestration.repository_snapshot import load_durable_apply_record
+                    _durable = load_durable_apply_record(iid, job_id_str, data_dir)
+                    if _durable is not None and _durable.state:
+                        apply_state = _durable.state
                 chain.append(ProvenanceLink(
                     step="patch_apply",
                     node_type="patch_apply",
                     node_id=f"apply:{iid}",
-                    status=rec.get("state", "unknown"),
+                    status=apply_state,
                     detail={
                         "bytes_written": rec.get("bytes_written", 0),
                         "line_count": rec.get("line_count", 0),

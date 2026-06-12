@@ -1,6 +1,6 @@
 # Snapshot / Rollback Proof v1
 
-**Scope:** Steps 1118-1133, 1136-1141  
+**Scope:** Steps 1118-1133, 1136-1154  
 **Status:** Production
 
 ---
@@ -184,6 +184,13 @@ remedy snapshot list-applies <job_id> [--json]
 | `permissions.py` | `Capability.repo_revert` — default deny, actively enforced by `revert_repository_apply()` (Step 1138). |
 | `repository_snapshot.py` | `revert_repository_apply()` loads Job from storage, enforces `repo_revert` capability and `REVERT` contract action internally. No caller-supplied permission booleans (Step 1137). |
 | `command_catalog.py` | `snapshot` group. `snapshot.inspect` + `snapshot.list-applies` commands. `patch.revert` gains `--apply-id` opt. |
+| `proof_chain.py` | `_classify_proof_status()` + `_derive_missing_links()` require `snapshot_verified=True` for `PROOF_VERIFIED`. Missing snapshot surfaces as `"no_snapshot_proof"` in missing links (Step 1145). |
+| `change_set.py` | `derive_change_set()` reads `snapshot_verified` from `artifact.metadata["patch_intent_apply_records"]` and includes it in `proof_info` (Step 1145). |
+| `file_provenance.py` | `build_file_provenance()` accepts `data_dir` param; loads `DurableApplyRecord` for authoritative revert state — overrides stale artifact metadata (Step 1146). |
+| `progress_ledger.py` | `merge_job_risks()` surfaces RISK item for applies without `snapshot_verified=True` (Step 1147). |
+| `feature_planner.py` | Snapshot-gap proof items get HIGH priority + "revert capability unavailable" rationale (Step 1148). |
+| `review_bundle.py` | `ChangedFileSafe.snapshot_verified` field; `changed_files_safe.json` includes `snapshot_verified` per file. No blob content exposed (Step 1149). |
+| `autonomy_readiness.py` | `_has_verified_snapshot()` reads artifact metadata as authoritative source. Level 5 `revert_capable` gates on `verified_snapshot` signal (Step 1150). |
 
 ---
 

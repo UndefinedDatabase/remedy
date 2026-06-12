@@ -95,6 +95,9 @@ def derive_change_set(
 
     total_applied = len(apply_events)
 
+    # Artifact index for snapshot_verified lookup (Step 1145)
+    artifact_map = {str(art.id): art for art in job.artifacts}
+
     entries: list[ChangeEntry] = []
     for intent in intents:
         iid = intent["intent_id"]
@@ -131,11 +134,17 @@ def derive_change_set(
 
         # Proof info (safe only)
         pe = proof_events.get(iid, {})
+        _art = artifact_map.get(intent.get("artifact_id", ""))
+        _snap_verified: bool = (
+            _art.metadata.get("patch_intent_apply_records", {}).get(iid, {}).get("snapshot_verified", False)
+            if _art is not None else False
+        )
         proof_info = {
             "recorded": bool(pe),
             "before_sha256": pe.get("before_sha256", ""),
             "after_sha256": pe.get("after_sha256", ""),
             "bytes_delta": pe.get("bytes_delta", 0),
+            "snapshot_verified": _snap_verified,
         }
 
         # Test info — only linked evidence, never the latest unrelated global test.
