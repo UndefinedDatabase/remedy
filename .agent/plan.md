@@ -6,11 +6,11 @@ approved intent → contract/permission checks → verified snapshot → apply �
 Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/idempotent.
 
 ## Current Step
-1155 — Reconcile handoff truth (in progress)
+1157 — Fix public File Provenance CLI (in progress)
 
 ## Steps
 - [x] 1155: Reconcile .agent/context.md, plan.md, live_review.md
-- [ ] 1156: build_snapshot_truth() authoritative shared helper
+- [x] 1156: build_snapshot_truth() authoritative shared helper (+ read-only integrity, ambiguity-aware)
 - [ ] 1157: Fix public File Provenance CLI (pass data_dir) + tests
 - [ ] 1158: Proof Chain uses durable snapshot truth + tests
 - [ ] 1159: Remove readiness event-only fallback + tests

@@ -733,3 +733,136 @@ class TestSnapshotEvents:
         _, data_dir = tmp_env
         # Should not raise
         _emit_snapshot_event(data_dir, JOB_ID, "unknown_event_type_xyz", {})
+
+
+# ---------------------------------------------------------------------------
+# Authoritative snapshot truth (Step 1156)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildSnapshotTruth:
+    """build_snapshot_truth() — single authoritative source over events/metadata."""
+
+    def _setup_applied(self, tmp_env, *, apply_id=APPLY_ID, intent_id=INTENT_ID):
+        """Create verified snapshot + applied DurableApplyRecord. Returns snapshot_id."""
+        import hashlib
+        repo_root, data_dir = tmp_env
+        _save_revert_job(data_dir)
+        f = repo_root / "target.py"
+        f.write_text("before\n")
+        snap = create_snapshot(JOB_ID, intent_id, ["target.py"], repo_root, data_dir)
+        assert snap.success
+        verify_snapshot(snap.snapshot_id, JOB_ID, data_dir)
+        raw_before = b"before\n"
+        before_sha = hashlib.sha256(raw_before).hexdigest()
+        f.write_text("after\n")
+        after_sha = hashlib.sha256(b"after\n").hexdigest()
+        rec = DurableApplyRecord(
+            apply_id=apply_id, job_id=JOB_ID, intent_id=intent_id,
+            snapshot_id=snap.snapshot_id, state="applied",
+            target_paths=["target.py"], applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={"target.py": {"sha256": before_sha, "bytes": len(raw_before), "existed": True}},
+            after_proof={"target.py": {"sha256": after_sha, "bytes": 6, "existed": True}},
+            snapshot_verified=True,
+        )
+        save_durable_apply_record(rec, JOB_ID, data_dir)
+        return repo_root, data_dir, snap.snapshot_id
+
+    def test_no_apply_record_is_unknown(self, tmp_env):
+        from packages.orchestration.repository_snapshot import build_snapshot_truth
+        _, data_dir = tmp_env
+        truth = build_snapshot_truth(JOB_ID, data_dir=data_dir)
+        assert truth.apply_state == "unknown"
+        assert truth.revert_state == "unknown"
+        assert truth.evidence_status == "unknown"
+        assert "no_apply_record" in truth.blockers
+        assert truth.snapshot_verified_now is False
+
+    def test_verified_applied_snapshot_is_complete(self, tmp_env):
+        from packages.orchestration.repository_snapshot import build_snapshot_truth
+        repo_root, data_dir, snap_id = self._setup_applied(tmp_env)
+        truth = build_snapshot_truth(JOB_ID, apply_id=APPLY_ID, data_dir=data_dir)
+        assert truth.snapshot_id == snap_id
+        assert truth.apply_id == APPLY_ID
+        assert truth.snapshot_exists is True
+        assert truth.manifest_exists is True
+        assert truth.recovery_material_available is True
+        assert truth.snapshot_verified_now is True
+        assert truth.apply_state == "applied"
+        assert truth.drift_blocked is False
+        assert truth.evidence_status == "complete"
+        assert truth.blockers == []
+
+    def test_lookup_by_intent_id(self, tmp_env):
+        from packages.orchestration.repository_snapshot import build_snapshot_truth
+        repo_root, data_dir, snap_id = self._setup_applied(tmp_env)
+        truth = build_snapshot_truth(JOB_ID, intent_id=INTENT_ID, data_dir=data_dir)
+        assert truth.apply_id == APPLY_ID
+        assert truth.snapshot_id == snap_id
+
+    def test_reverted_apply(self, tmp_env):
+        from packages.orchestration.repository_snapshot import build_snapshot_truth
+        repo_root, data_dir, snap_id = self._setup_applied(tmp_env)
+        # Bring repo back to after-state matching after_proof so drift check passes,
+        # then revert through the central service.
+        result = revert_repository_apply(JOB_ID, APPLY_ID, repo_root, data_dir)
+        assert result.success, result
+        truth = build_snapshot_truth(JOB_ID, apply_id=APPLY_ID, data_dir=data_dir)
+        assert truth.revert_state == "reverted"
+        assert truth.restore_verified is True
+        assert truth.drift_blocked is False
+        # Reverted apply is not "currently applied"
+        assert truth.apply_state == "reverted"
+        assert truth.evidence_status == "complete"
+
+    def test_tampered_manifest_not_verified(self, tmp_env):
+        from packages.orchestration.repository_snapshot import (
+            build_snapshot_truth, _snapshot_dir,
+        )
+        repo_root, data_dir, snap_id = self._setup_applied(tmp_env)
+        manifest = _snapshot_dir(JOB_ID, snap_id, data_dir) / "manifest.json"
+        data = json.loads(manifest.read_text())
+        data["path_count"] = 999  # tamper without recomputing hash
+        manifest.write_text(json.dumps(data, indent=2, sort_keys=True))
+        truth = build_snapshot_truth(JOB_ID, apply_id=APPLY_ID, data_dir=data_dir)
+        assert truth.snapshot_verified_now is False
+        assert "manifest_tampered" in truth.blockers
+        assert truth.evidence_status == "degraded"
+
+    def test_missing_recovery_blob_degraded(self, tmp_env):
+        from packages.orchestration.repository_snapshot import (
+            build_snapshot_truth, _snapshot_dir,
+        )
+        repo_root, data_dir, snap_id = self._setup_applied(tmp_env)
+        snap_dir = _snapshot_dir(JOB_ID, snap_id, data_dir)
+        for blob in snap_dir.glob("blob_*.bin"):
+            blob.unlink()
+        truth = build_snapshot_truth(JOB_ID, apply_id=APPLY_ID, data_dir=data_dir)
+        assert truth.recovery_material_available is False
+        assert "recovery_material_missing" in truth.blockers
+        assert truth.snapshot_verified_now is False
+        assert truth.evidence_status == "degraded"
+
+    def test_missing_snapshot_blocks(self, tmp_env):
+        from packages.orchestration.repository_snapshot import build_snapshot_truth
+        repo_root, data_dir = tmp_env
+        _save_revert_job(data_dir)
+        rec = DurableApplyRecord(
+            apply_id=APPLY_ID, job_id=JOB_ID, intent_id=INTENT_ID,
+            snapshot_id="nonexistent-snap", state="applied",
+            target_paths=["target.py"], applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={}, after_proof={}, snapshot_verified=False,
+        )
+        save_durable_apply_record(rec, JOB_ID, data_dir)
+        truth = build_snapshot_truth(JOB_ID, apply_id=APPLY_ID, data_dir=data_dir)
+        assert truth.snapshot_exists is False
+        assert "no_snapshot" in truth.blockers
+        assert truth.evidence_status == "degraded"
+
+    def test_no_raw_paths_in_truth(self, tmp_env):
+        from packages.orchestration.repository_snapshot import build_snapshot_truth
+        repo_root, data_dir, snap_id = self._setup_applied(tmp_env)
+        truth = build_snapshot_truth(JOB_ID, apply_id=APPLY_ID, data_dir=data_dir)
+        s = str(dataclasses.asdict(truth))
+        assert str(data_dir) not in s
+        assert "blob_" not in s

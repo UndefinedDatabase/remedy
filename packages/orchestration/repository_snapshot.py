@@ -150,6 +150,34 @@ class DurableApplyRecord:
 
 
 @dataclass
+class SnapshotTruth:
+    """Authoritative, read-only snapshot/apply truth (Step 1156).
+
+    Single shared source for Proof Chain, File Provenance, Readiness,
+    Review Bundle, and `do --continue`. Loaded from durable RepositorySnapshot
+    + DurableApplyRecord and verified against current manifest/blobs.
+
+    Never trusts events or artifact metadata as authority. Unknown is explicit:
+    apply_state / revert_state are "unknown" when no durable record exists.
+    No raw paths, blob refs, source, or diff content.
+    """
+    job_id: str
+    snapshot_id: str
+    apply_id: str
+    intent_id: str
+    snapshot_exists: bool
+    manifest_exists: bool
+    recovery_material_available: bool
+    snapshot_verified_now: bool
+    apply_state: str            # DurableApplyRecord.state or "unknown"
+    revert_state: str           # "" | clean | drifted | reverted | partial_revert | revert_failed | unknown
+    restore_verified: bool
+    drift_blocked: bool
+    evidence_status: str        # "complete" | "degraded" | "unknown"
+    blockers: list[str] = field(default_factory=list)
+
+
+@dataclass
 class RepositoryRevertResult:
     """Result of revert_repository_apply(). Safe metadata only."""
     success: bool
@@ -814,6 +842,12 @@ def _update_snapshot_state(
     try:
         manifest = json.loads(manifest_path.read_bytes())
         manifest["state"] = new_state
+        # Recompute manifest_hash so the manifest stays internally consistent
+        # and tamper-evident across legitimate state transitions (Step 1156).
+        without_hash = {k: v for k, v in manifest.items() if k != "manifest_hash"}
+        manifest["manifest_hash"] = _bytes_sha256(
+            json.dumps(without_hash, indent=2, sort_keys=True).encode("utf-8")
+        )
         _write_private(manifest_path, json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8"))
     except (OSError, json.JSONDecodeError):
         pass
@@ -878,6 +912,270 @@ def load_durable_apply_record(
         )
     except (OSError, json.JSONDecodeError, KeyError):
         return None
+
+
+# ---------------------------------------------------------------------------
+# Authoritative snapshot truth (Step 1156)
+# ---------------------------------------------------------------------------
+
+
+def _check_snapshot_integrity(snap_dir: Path) -> dict[str, Any]:
+    """Read-only integrity check of a snapshot directory.
+
+    Does NOT mutate the manifest (unlike verify_snapshot, which rewrites state).
+    Safe to call against reverted/blocked snapshots without corrupting state.
+
+    Returns a dict with: manifest_exists, manifest_ok, blobs_expected,
+    blobs_present, blobs_missing, hash_mismatches, recovery_available, verified.
+    """
+    manifest_path = snap_dir / "manifest.json"
+    result: dict[str, Any] = {
+        "manifest_exists": False,
+        "manifest_ok": False,
+        "blobs_expected": 0,
+        "blobs_present": 0,
+        "blobs_missing": 0,
+        "hash_mismatches": 0,
+        "recovery_available": False,
+        "verified": False,
+    }
+    if not manifest_path.exists():
+        return result
+    result["manifest_exists"] = True
+
+    try:
+        manifest_bytes = manifest_path.read_bytes()
+        manifest = json.loads(manifest_bytes)
+    except (OSError, json.JSONDecodeError):
+        return result
+
+    stored_hash = manifest.get("manifest_hash", "")
+    without_hash = {k: v for k, v in manifest.items() if k != "manifest_hash"}
+    recomputed = _bytes_sha256(
+        json.dumps(without_hash, indent=2, sort_keys=True).encode("utf-8")
+    )
+    result["manifest_ok"] = bool(stored_hash) and stored_hash == recomputed
+
+    entries = manifest.get("entries", [])
+    for entry in entries:
+        blob_ref = entry.get("recovery_blob_ref", "")
+        if not blob_ref:
+            continue
+        result["blobs_expected"] += 1
+        blob_path = snap_dir / blob_ref
+        if not blob_path.exists():
+            result["blobs_missing"] += 1
+            continue
+        try:
+            actual = _file_sha256(blob_path)
+        except OSError:
+            result["blobs_missing"] += 1
+            continue
+        if actual != entry.get("before_sha256", ""):
+            result["hash_mismatches"] += 1
+        else:
+            result["blobs_present"] += 1
+
+    result["recovery_available"] = (
+        result["blobs_missing"] == 0 and result["hash_mismatches"] == 0
+    )
+    result["verified"] = (
+        result["manifest_ok"]
+        and result["blobs_missing"] == 0
+        and result["hash_mismatches"] == 0
+    )
+    return result
+
+
+def _find_apply_record(
+    job_id: str,
+    apply_id: str | None,
+    intent_id: str | None,
+    data_dir: Path,
+) -> tuple[DurableApplyRecord | None, bool]:
+    """Locate the durable apply record for a snapshot-truth query.
+
+    Resolution order:
+      1. exact apply_id, if given (never ambiguous)
+      2. records matching an explicit intent_id (ambiguous if >1 match)
+      3. latest applied_at across all records for the job (job-wide default —
+         the most recent apply is the canonical "current" one, not ambiguous)
+
+    Returns (record, ambiguous). ambiguous=True only when an explicit intent_id
+    resolves to more than one apply — the caller must surface that rather than
+    silently pick a winner (R-0065). Returns (None, False) when no record exists.
+    """
+    if apply_id:
+        return load_durable_apply_record(apply_id, job_id, data_dir), False
+
+    records_dir = _apply_record_dir(job_id, data_dir)
+    if not records_dir.exists():
+        return None, False
+
+    candidates: list[DurableApplyRecord] = []
+    try:
+        files = sorted(records_dir.glob("*.json"))
+    except OSError:
+        return None, False
+    for rec_path in files:
+        rec = load_durable_apply_record(rec_path.stem, job_id, data_dir)
+        if rec is None:
+            continue
+        if intent_id and rec.intent_id != intent_id:
+            continue
+        candidates.append(rec)
+
+    if not candidates:
+        return None, False
+    # Latest by applied_at (ISO timestamps sort lexically); fall back to apply_id.
+    candidates.sort(key=lambda r: (r.applied_at or "", r.apply_id))
+    # Explicit intent with multiple matching applies is genuinely ambiguous.
+    ambiguous = bool(intent_id) and len(candidates) > 1
+    return candidates[-1], ambiguous
+
+
+def build_snapshot_truth(
+    job_id: str,
+    apply_id: str | None = None,
+    intent_id: str | None = None,
+    data_dir: Path | None = None,
+) -> SnapshotTruth:
+    """Build the authoritative snapshot/apply truth (Step 1156).
+
+    Loads the DurableApplyRecord and RepositorySnapshot, verifies the current
+    manifest and recovery blobs (read-only), and returns a single safe truth
+    object. Never relies on events or artifact metadata as authority.
+
+    Shared source for Proof Chain, File Provenance, Readiness, Review Bundle,
+    and `do --continue`. No raw paths or blob refs are exposed.
+    """
+    data_dir = data_dir or resolve_data_root()
+
+    record, ambiguous = _find_apply_record(job_id, apply_id, intent_id, data_dir)
+    blockers: list[str] = []
+
+    if record is None:
+        # No durable linkage — everything unknown, explicitly.
+        return SnapshotTruth(
+            job_id=job_id,
+            snapshot_id="",
+            apply_id=apply_id or "",
+            intent_id=intent_id or "",
+            snapshot_exists=False,
+            manifest_exists=False,
+            recovery_material_available=False,
+            snapshot_verified_now=False,
+            apply_state="unknown",
+            revert_state="unknown",
+            restore_verified=False,
+            drift_blocked=False,
+            evidence_status="unknown",
+            blockers=["no_apply_record"],
+        )
+
+    resolved_apply_id = record.apply_id
+    resolved_intent_id = record.intent_id or (intent_id or "")
+    snapshot_id = record.snapshot_id
+
+    snapshot = load_snapshot(snapshot_id, job_id, data_dir) if snapshot_id else None
+    snap_dir = _snapshot_dir(job_id, snapshot_id, data_dir) if snapshot_id else None
+    snapshot_dir_exists = bool(snap_dir and snap_dir.exists())
+
+    if snapshot is None:
+        blockers.append("no_snapshot")
+        return SnapshotTruth(
+            job_id=job_id,
+            snapshot_id=snapshot_id,
+            apply_id=resolved_apply_id,
+            intent_id=resolved_intent_id,
+            snapshot_exists=snapshot_dir_exists,
+            manifest_exists=False,
+            recovery_material_available=False,
+            snapshot_verified_now=False,
+            apply_state=record.state or "unknown",
+            revert_state=record.revert_state or "unknown",
+            restore_verified=False,
+            drift_blocked=record.revert_state == "drifted",
+            evidence_status="degraded",
+            blockers=blockers,
+        )
+
+    integrity = _check_snapshot_integrity(snap_dir)  # type: ignore[arg-type]
+    manifest_exists = bool(integrity["manifest_exists"])
+    recovery_material_available = bool(integrity["recovery_available"])
+    snapshot_verified_now = bool(integrity["verified"])
+
+    if not manifest_exists:
+        blockers.append("manifest_missing")
+    elif not integrity["manifest_ok"]:
+        blockers.append("manifest_tampered")
+    if integrity["blobs_missing"] > 0:
+        blockers.append("recovery_material_missing")
+    if integrity["hash_mismatches"] > 0:
+        blockers.append("recovery_material_corrupt")
+
+    # Derive revert/drift/restore truth from durable state (authoritative).
+    snap_state = snapshot.state or ""
+    apply_state = record.state or "unknown"
+    revert_state = record.revert_state or ""
+    if not revert_state:
+        if snap_state in ("reverted", "partial_revert", "revert_failed"):
+            revert_state = snap_state
+        elif snap_state == "blocked_drift":
+            revert_state = "drifted"
+
+    drift_blocked = revert_state == "drifted" or snap_state == "blocked_drift"
+    restore_verified = (
+        snap_state == "reverted" or record.state == "reverted"
+    ) and revert_state in ("reverted", "clean", "")
+
+    if revert_state == "partial_revert" or snap_state == "partial_revert":
+        blockers.append("partial_revert")
+    if revert_state == "revert_failed" or snap_state == "revert_failed":
+        blockers.append("revert_failed")
+    if drift_blocked:
+        blockers.append("post_apply_drift")
+    if not snapshot_verified_now and revert_state not in (
+        "reverted",
+        "partial_revert",
+        "revert_failed",
+    ):
+        # Active apply must have a verifiable snapshot; reverted ones legitimately
+        # change state, so missing live verification there is not a fresh blocker.
+        blockers.append("snapshot_not_verified")
+    if ambiguous:
+        # Explicit intent resolved to >1 apply — surface, never silently pick (R-0065).
+        blockers.append("ambiguous_intent_apply")
+
+    # Evidence status reflects durable-material consistency only — independent of
+    # advisory blockers (drift, ambiguity). Complete when the manifest is intact,
+    # all recovery blobs verify, and any revert that occurred fully succeeded.
+    material_ok = (
+        bool(integrity["manifest_ok"])
+        and integrity["blobs_missing"] == 0
+        and integrity["hash_mismatches"] == 0
+    )
+    if not material_ok or revert_state in ("partial_revert", "revert_failed"):
+        evidence_status = "degraded"
+    else:
+        evidence_status = "complete"
+
+    return SnapshotTruth(
+        job_id=job_id,
+        snapshot_id=snapshot_id,
+        apply_id=resolved_apply_id,
+        intent_id=resolved_intent_id,
+        snapshot_exists=snapshot_dir_exists,
+        manifest_exists=manifest_exists,
+        recovery_material_available=recovery_material_available,
+        snapshot_verified_now=snapshot_verified_now,
+        apply_state=apply_state,
+        revert_state=revert_state or ("clean" if apply_state == "applied" else ""),
+        restore_verified=restore_verified,
+        drift_blocked=drift_blocked,
+        evidence_status=evidence_status,
+        blockers=blockers,
+    )
 
 
 # ---------------------------------------------------------------------------
