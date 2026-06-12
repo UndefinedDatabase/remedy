@@ -18,11 +18,11 @@ Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/
 - [x] 1161: Close silent ApplyRecord persistence failure (structured result)
 - [x] 1162: Event durability closure (EventPersistenceResult) — R-0051/R-0057
 - [x] 1163: Canonical update_apply_record_state() (legal transitions, idempotent, atomic)
-- [ ] 1164: do_continue.py models (ContinueRequest/Result/Phase/Checkpoint/StopReason)
-- [ ] 1165: evaluate_continue_eligibility(job_id)
+- [x] 1164: do_continue.py models (ContinueRequest/Result/Phase/Checkpoint/StopReason)
+- [x] 1165: evaluate_continue_eligibility(job_id)
 - [ ] 1166: CLI remedy do --continue <job_id> [--intent-id] [--json]
-- [ ] 1167: Continuation lease (deterministic, released on exit, stale-recoverable)
-- [ ] 1168: Durable phase checkpoints (idempotent resume)
+- [x] 1167: Continuation lease (deterministic, released on exit, stale-recoverable)
+- [x] 1168: Durable phase checkpoints (idempotent resume)
 - [ ] 1169: Snapshot phase (central path, verify before mutation)
 - [ ] 1170: Apply phase (one ApplyRecord/apply_id, no double apply)
 - [ ] 1171: Test phase (central Test Execution Service, usage once)
