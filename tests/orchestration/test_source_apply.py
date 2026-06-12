@@ -128,6 +128,21 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
     )
     set_approval_state(job, intent_id, APPROVAL_APPROVED)
     set_permission(job, Capability.repo_generated_write, allow=True)
+    set_permission(job, Capability.repo_revert, allow=True)
+
+    # Persist a contract that allows REVERT (Step 1137)
+    import dataclasses
+    from packages.orchestration.run_contract import (
+        build_default_run_contract, save_contract, ContractAction,
+    )
+    contract = build_default_run_contract(job)
+    contract = dataclasses.replace(
+        contract,
+        allowed_actions=(*contract.allowed_actions, ContractAction.REVERT),
+        denied_actions=tuple(a for a in contract.denied_actions if a != ContractAction.REVERT),
+    )
+    save_contract(job, contract)
+
     save_job(job)
     return job, intent_id, repo
 
@@ -138,9 +153,12 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
 
 
 def _make_permitted_job():
-    """Create a job with repo_generated_write permission granted."""
+    """Create a job with repo_generated_write and repo_revert permissions granted."""
     job = _make_job()
-    job.metadata["permissions"] = {"repo_generated_write": "allow"}
+    job.metadata["permissions"] = {
+        "repo_generated_write": "allow",
+        "repo_revert": "allow",
+    }
     return job
 
 
@@ -236,6 +254,10 @@ class TestPatchRevert:
         set_permission(job, Capability.repo_generated_write, allow=True)
         save_job(job)
 
+        # Explicit legacy snapshot (Step 1141: apply_patch_intent no longer writes legacy snapshot)
+        from packages.orchestration.patch_revert import store_pre_apply_snapshot
+        store_pre_apply_snapshot(job, intent_id, "new_file.md", "create", repo, data_dir=tmp_path)
+
         from packages.orchestration.patch_apply import apply_patch_intent
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         assert (repo / "new_file.md").exists()
@@ -249,6 +271,10 @@ class TestPatchRevert:
 
     def test_second_revert_noop(self, tmp_path, monkeypatch):
         job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
+
+        # Explicit legacy snapshot (Step 1141)
+        from packages.orchestration.patch_revert import store_pre_apply_snapshot
+        store_pre_apply_snapshot(job, intent_id, "notes.md", "modify", repo, data_dir=tmp_path)
 
         from packages.orchestration.patch_apply import apply_patch_intent
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
@@ -275,6 +301,10 @@ class TestPatchRevert:
     def test_run_log_exact_schema(self, tmp_path, monkeypatch):
         job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
 
+        # Explicit legacy snapshot (Step 1141)
+        from packages.orchestration.patch_revert import store_pre_apply_snapshot
+        store_pre_apply_snapshot(job, intent_id, "notes.md", "modify", repo, data_dir=tmp_path)
+
         from packages.orchestration.patch_apply import apply_patch_intent
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
 
@@ -298,6 +328,10 @@ class TestPatchRevert:
     def test_brain_has_patch_revert_node(self, tmp_path, monkeypatch):
         job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
 
+        # Explicit legacy snapshot (Step 1141)
+        from packages.orchestration.patch_revert import store_pre_apply_snapshot
+        store_pre_apply_snapshot(job, intent_id, "notes.md", "modify", repo, data_dir=tmp_path)
+
         from packages.orchestration.patch_apply import apply_patch_intent
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
 
@@ -316,6 +350,10 @@ class TestPatchRevert:
 
     def test_no_raw_content_in_revert_event(self, tmp_path, monkeypatch):
         job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
+
+        # Explicit legacy snapshot (Step 1141)
+        from packages.orchestration.patch_revert import store_pre_apply_snapshot
+        store_pre_apply_snapshot(job, intent_id, "notes.md", "modify", repo, data_dir=tmp_path)
 
         from packages.orchestration.patch_apply import apply_patch_intent
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
@@ -603,14 +641,54 @@ class TestSourceApply:
         assert any("traversal" in e for e in result.errors)
 
     def test_snapshot_and_revert(self, tmp_path):
+        import dataclasses
+        from uuid import uuid4 as _uuid4
         from packages.orchestration.source_apply import apply_structured_patch, revert_apply
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
+        from packages.core.models import Job, RunState
+        from packages.orchestration.storage import save_job
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.run_contract import (
+            build_default_run_contract, save_contract, ContractAction,
+        )
 
         repo = tmp_path / "repo"
         repo.mkdir()
         data_dir = tmp_path / "data"
         data_dir.mkdir()
-        job, intent_id = _make_approved_job()
+
+        # Real job saved to storage with repo_revert=allow + contract allowing REVERT (Step 1137)
+        from packages.orchestration.approval_queue import make_intent_id, set_approval_state, APPROVAL_APPROVED
+        art_id = _uuid4()
+        intent_id = make_intent_id(art_id, 0)
+        artifact = Artifact(
+            id=art_id,
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            name="snap-revert-patch",
+            content="Summary:\nTest\nProposed Changes:\n  - Modified orig.py\nNotes:\nNone",
+            metadata={
+                "patch_intent_explanations": [{
+                    "file": "orig.py", "action": "modify",
+                    "risk": "low", "reason": "test", "summary": "test",
+                }],
+            },
+        )
+        job = Job(
+            id=_uuid4(), name="snap-revert-test", user_prompt="test",
+            state=RunState.RUNNING, tasks=[], artifacts=[artifact], metadata={},
+        )
+        set_approval_state(job, intent_id, APPROVAL_APPROVED)
+        set_permission(job, Capability.repo_generated_write, allow=True)
+        set_permission(job, Capability.repo_revert, allow=True)
+        contract = build_default_run_contract(job)
+        contract = dataclasses.replace(
+            contract,
+            allowed_actions=(*contract.allowed_actions, ContractAction.REVERT),
+            denied_actions=tuple(a for a in contract.denied_actions if a != ContractAction.REVERT),
+        )
+        save_contract(job, contract)
+        save_job(job, root=data_dir)
+
         (repo / "orig.py").write_text("original")
         patch = StructuredPatch(
             intent_kind="file_ops",
@@ -623,11 +701,11 @@ class TestSourceApply:
         assert result.snapshot_id
         assert result.snapshot_verified
 
-        # Revert via durable snapshot
-        success = revert_apply(
+        # Revert via durable snapshot — returns RepositoryRevertResult (Step 1140)
+        revert_result = revert_apply(
             result.apply_id, repo, job_id=str(job.id), data_dir=data_dir
         )
-        assert success
+        assert revert_result.success, f"Revert failed: {revert_result.block_reason}"
         assert (repo / "orig.py").read_text() == "original"
 
     def test_apply_blocks_binary(self, tmp_path):

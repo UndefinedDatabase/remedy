@@ -890,9 +890,6 @@ def revert_repository_apply(
     apply_id: str,
     repo_root: Path,
     data_dir: Path | None = None,
-    *,
-    permitted: bool = True,
-    contract_allows_revert: bool = True,
 ) -> RepositoryRevertResult:
     """Revert a repository apply by restoring pre-apply snapshot state.
 
@@ -901,7 +898,9 @@ def revert_repository_apply(
     Gates (in order):
     1. Load apply record
     2. Load snapshot
-    3. Validate permission + contract
+    3a. Load job from storage (job_not_found → permission_denied)
+    3b. Verify Capability.repo_revert is allowed for the job
+    3c. Load persisted RunContract and evaluate ContractAction.REVERT
     4. Verify snapshot integrity again
     5. Check post-apply drift (Step 1126)
     6. Restore files from private blobs
@@ -910,7 +909,20 @@ def revert_repository_apply(
 
     No Git reset/checkout/clean. No symlink traversal.
     No revert if files changed after apply (drift detection).
+    No caller-supplied permission booleans (Step 1137).
     """
+    from uuid import UUID as _UUID
+    from packages.orchestration.storage import (
+        load_job as _load_job, JobNotFoundError as _JobNotFoundError,
+    )
+    from packages.orchestration.permissions import (
+        is_allowed as _is_allowed, Capability as _Capability,
+    )
+    from packages.orchestration.run_contract import (
+        ensure_contract as _ensure_contract, evaluate_run_action as _evaluate_run_action,
+        ContractAction as _ContractAction,
+    )
+
     data_dir = data_dir or resolve_data_root()
     repo_root = repo_root.resolve()
 
@@ -938,15 +950,40 @@ def revert_repository_apply(
             safe_summary="No snapshot found — cannot revert.",
         )
 
-    # Gate 3: Permission + contract
-    if not permitted:
+    # Gate 3a: Load job from storage — no bypass booleans (Step 1137)
+    try:
+        _job_uuid = _UUID(job_id)
+        _job = _load_job(_job_uuid, data_dir)
+    except (ValueError, _JobNotFoundError):
+        _emit_snapshot_event(data_dir, job_id, "revert_blocked", {
+            "apply_id": apply_id, "block_reason": "permission_denied",
+        })
         return RepositoryRevertResult(
             success=False, apply_id=apply_id, snapshot_id=record.snapshot_id,
             state="blocked", paths_restored=0, paths_deleted=0, paths_failed=0,
             block_reason="permission_denied",
-            safe_summary="Permission denied for repository revert.",
+            safe_summary="Job not found — cannot verify revert permission.",
         )
-    if not contract_allows_revert:
+
+    # Gate 3b: Permission check — Capability.repo_revert must be allowed
+    if not _is_allowed(_job, _Capability.repo_revert):
+        _emit_snapshot_event(data_dir, job_id, "revert_blocked", {
+            "apply_id": apply_id, "block_reason": "permission_denied",
+        })
+        return RepositoryRevertResult(
+            success=False, apply_id=apply_id, snapshot_id=record.snapshot_id,
+            state="blocked", paths_restored=0, paths_deleted=0, paths_failed=0,
+            block_reason="permission_denied",
+            safe_summary="Permission denied: repo_revert capability not granted for this job.",
+        )
+
+    # Gate 3c: Contract check — ContractAction.REVERT must be allowed
+    _contract = _ensure_contract(_job)
+    _decision = _evaluate_run_action(_contract, _ContractAction.REVERT)
+    if not _decision.allowed:
+        _emit_snapshot_event(data_dir, job_id, "revert_blocked", {
+            "apply_id": apply_id, "block_reason": "contract_denied",
+        })
         return RepositoryRevertResult(
             success=False, apply_id=apply_id, snapshot_id=record.snapshot_id,
             state="blocked", paths_restored=0, paths_deleted=0, paths_failed=0,

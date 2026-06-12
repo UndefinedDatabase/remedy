@@ -159,6 +159,37 @@ class TestIsReserved:
     def test_repo_generated_write_is_not_reserved(self):
         assert is_reserved(Capability.repo_generated_write) is False
 
+    def test_repo_revert_is_not_reserved(self):
+        """repo_revert is actively enforced at runtime (Step 1138)."""
+        assert is_reserved(Capability.repo_revert) is False
+
+
+# ---------------------------------------------------------------------------
+# repo_revert (Step 1138)
+# ---------------------------------------------------------------------------
+
+
+class TestRepoRevert:
+    def test_repo_revert_denied_by_default(self):
+        job = _make_job()
+        assert is_allowed(job, Capability.repo_revert) is False
+
+    def test_repo_revert_can_be_granted(self):
+        job = _make_job()
+        set_permission(job, Capability.repo_revert, allow=True)
+        assert is_allowed(job, Capability.repo_revert) is True
+
+    def test_repo_revert_can_be_denied_explicitly(self):
+        job = _make_job(permissions={"repo_revert": "allow"})
+        set_permission(job, Capability.repo_revert, allow=False)
+        assert is_allowed(job, Capability.repo_revert) is False
+
+    def test_repo_revert_is_active_not_reserved(self):
+        rows = effective_permissions(_make_job())
+        row = next(r for r in rows if r["capability"] == "repo_revert")
+        assert row["status"] == "active"
+        assert row["effective"] == "deny"
+
 
 # ---------------------------------------------------------------------------
 # effective_permissions
@@ -176,6 +207,7 @@ class TestEffectivePermissions:
             "repo_test_run",
             "repo_overwrite",
             "shell_exec",
+            "repo_revert",
         }
 
     def test_default_effective_state(self):
@@ -185,6 +217,7 @@ class TestEffectivePermissions:
         assert by_cap["repo_generated_write"]["effective"] == "deny"
         assert by_cap["repo_overwrite"]["effective"] == "deny"
         assert by_cap["shell_exec"]["effective"] == "deny"
+        assert by_cap["repo_revert"]["effective"] == "deny"
 
     def test_reserved_capabilities_have_reserved_status(self):
         job = _make_job()
@@ -197,6 +230,7 @@ class TestEffectivePermissions:
         by_cap = {r["capability"]: r for r in effective_permissions(job)}
         assert by_cap["workspace_write"]["status"] == "active"
         assert by_cap["repo_generated_write"]["status"] == "active"
+        assert by_cap["repo_revert"]["status"] == "active"
 
     def test_explicit_allow_reflected_in_effective(self):
         job = _make_job()
@@ -233,4 +267,5 @@ class TestCapabilityEnum:
             "repo_test_run",
             "repo_overwrite",
             "shell_exec",
+            "repo_revert",
         }

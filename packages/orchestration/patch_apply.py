@@ -201,13 +201,6 @@ def apply_patch_intent(
         return _blocked(f"snapshot_verify_failed:{_snap_verif.failure_reason}", target_path, action)
     _snapshot_id = _snap_result.snapshot_id
 
-    # ── 8c. Legacy snapshot (best-effort, for patch_revert.py compat) ─────
-    try:
-        from packages.orchestration.patch_revert import store_pre_apply_snapshot
-        store_pre_apply_snapshot(job, intent_id, target_path, action, repo_root, data_dir=data_dir)
-    except (ImportError, OSError, ValueError, KeyError, AttributeError, TypeError):
-        pass
-
     # ── 9a. Owning artifact ───────────────────────────────────────────────
     artifact = next(
         (a for a in job.artifacts if str(a.id) == intent["artifact_id"]), None

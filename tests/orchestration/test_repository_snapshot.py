@@ -15,10 +15,12 @@ Coverage:
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import tempfile
 from pathlib import Path
+from uuid import UUID
 from unittest.mock import MagicMock
 
 import pytest
@@ -62,6 +64,57 @@ def tmp_env(tmp_path: Path):
 JOB_ID = "aabbccdd-1234-5678-90ab-cdef01234567"
 INTENT_ID = "intent-abc"
 APPLY_ID = "applyabc"
+
+
+# ---------------------------------------------------------------------------
+# Job storage helpers (Step 1137 — revert gates load job from storage)
+# ---------------------------------------------------------------------------
+
+
+def _save_revert_job(
+    data_dir: Path,
+    *,
+    allow_perm: bool = True,
+    allow_contract: bool = True,
+) -> None:
+    """Create and persist a Job for revert tests.
+
+    allow_perm=True  → Capability.repo_revert granted
+    allow_contract=True → ContractAction.REVERT allowed (removed from denied_actions)
+    """
+    from packages.core.models import Job, Task, RunState
+    from packages.orchestration.storage import save_job
+    from packages.orchestration.permissions import Capability, set_permission
+    from packages.orchestration.run_contract import (
+        build_default_run_contract, save_contract, ContractAction,
+    )
+
+    job = Job(
+        id=UUID(JOB_ID),
+        name="revert-test-job",
+        user_prompt="test",
+        state=RunState.RUNNING,
+        tasks=[],
+        artifacts=[],
+        metadata={},
+    )
+    set_permission(job, Capability.repo_revert, allow=allow_perm)
+
+    contract = build_default_run_contract(job)
+    if allow_contract:
+        contract = dataclasses.replace(
+            contract,
+            allowed_actions=(*contract.allowed_actions, ContractAction.REVERT),
+            denied_actions=tuple(a for a in contract.denied_actions if a != ContractAction.REVERT),
+        )
+    else:
+        if ContractAction.REVERT not in contract.denied_actions:
+            contract = dataclasses.replace(
+                contract,
+                denied_actions=(*contract.denied_actions, ContractAction.REVERT),
+            )
+    save_contract(job, contract)
+    save_job(job, root=data_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -396,9 +449,18 @@ class TestDurableApplyRecord:
 
 
 class TestRevertRepositoryApply:
-    def _setup_apply(self, tmp_env, content_before: str = "before", apply_id: str = APPLY_ID):
-        """Create a snapshot + apply record for a file with known content."""
+    def _setup_apply(
+        self,
+        tmp_env,
+        content_before: str = "before",
+        apply_id: str = APPLY_ID,
+        *,
+        allow_perm: bool = True,
+        allow_contract: bool = True,
+    ):
+        """Create a snapshot + apply record + stored job for a file with known content."""
         repo_root, data_dir = tmp_env
+        _save_revert_job(data_dir, allow_perm=allow_perm, allow_contract=allow_contract)
         file_path = repo_root / "target.py"
         file_path.write_text(content_before)
         snap_result = create_snapshot(JOB_ID, INTENT_ID, ["target.py"], repo_root, data_dir)
@@ -445,16 +507,43 @@ class TestRevertRepositoryApply:
         assert result.block_reason == "no_apply_record"
 
     def test_revert_permission_denied(self, tmp_env):
-        repo_root, data_dir = self._setup_apply(tmp_env)
-        result = revert_repository_apply(JOB_ID, APPLY_ID, repo_root, data_dir, permitted=False)
+        """repo_revert permission denied → block_reason permission_denied."""
+        repo_root, data_dir = self._setup_apply(tmp_env, allow_perm=False, allow_contract=True)
+        result = revert_repository_apply(JOB_ID, APPLY_ID, repo_root, data_dir)
         assert not result.success
         assert result.block_reason == "permission_denied"
 
     def test_revert_contract_denied(self, tmp_env):
-        repo_root, data_dir = self._setup_apply(tmp_env)
-        result = revert_repository_apply(JOB_ID, APPLY_ID, repo_root, data_dir, contract_allows_revert=False)
+        """Contract denies REVERT action → block_reason contract_denied."""
+        repo_root, data_dir = self._setup_apply(tmp_env, allow_perm=True, allow_contract=False)
+        result = revert_repository_apply(JOB_ID, APPLY_ID, repo_root, data_dir)
         assert not result.success
         assert result.block_reason == "contract_denied"
+
+    def test_revert_job_not_found(self, tmp_env):
+        """Missing job in storage → permission_denied (cannot verify permissions)."""
+        repo_root, data_dir = tmp_env
+        # Set up apply record but deliberately do NOT save job
+        file_path = repo_root / "target.py"
+        file_path.write_text("original\n")
+        snap_result = create_snapshot(JOB_ID, INTENT_ID, ["target.py"], repo_root, data_dir)
+        verify_snapshot(snap_result.snapshot_id, JOB_ID, data_dir)
+        import hashlib
+        raw = file_path.read_bytes()
+        file_path.write_text("modified\n")
+        raw_after = file_path.read_bytes()
+        rec = DurableApplyRecord(
+            apply_id=APPLY_ID, job_id=JOB_ID, intent_id=INTENT_ID,
+            snapshot_id=snap_result.snapshot_id, state="applied",
+            target_paths=["target.py"], applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={"target.py": {"sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw), "existed": True}},
+            after_proof={"target.py": {"sha256": hashlib.sha256(raw_after).hexdigest(), "bytes": len(raw_after), "existed": True}},
+            snapshot_verified=True,
+        )
+        save_durable_apply_record(rec, JOB_ID, data_dir)
+        result = revert_repository_apply(JOB_ID, APPLY_ID, repo_root, data_dir)
+        assert not result.success
+        assert result.block_reason == "permission_denied"
 
     def test_revert_blocked_when_drift_detected(self, tmp_env):
         """Files changed after apply — revert must be blocked."""
@@ -477,6 +566,7 @@ class TestRevertRepositoryApply:
     def test_revert_deletes_created_files(self, tmp_env):
         """Files that were created by apply (existed_before=False) get deleted on revert."""
         repo_root, data_dir = tmp_env
+        _save_revert_job(data_dir)
         file_path = repo_root / "new_file.py"
         # File doesn't exist before apply
         snap_result = create_snapshot(JOB_ID, INTENT_ID, ["new_file.py"], repo_root, data_dir)
@@ -595,6 +685,7 @@ class TestNoRawContentLeaks:
     def test_revert_result_no_content(self, tmp_env):
         """RepositoryRevertResult contains no raw file content."""
         repo_root, data_dir = tmp_env
+        _save_revert_job(data_dir)
         (repo_root / "f.py").write_text("PRIVATE=xyz")
         snap_result = create_snapshot(JOB_ID, INTENT_ID, ["f.py"], repo_root, data_dir)
         verify_snapshot(snap_result.snapshot_id, JOB_ID, data_dir)

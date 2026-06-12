@@ -450,6 +450,66 @@ class TestCanonicalActions:
         for a in _DEFAULT_REQUIRES_APPROVAL:
             assert a in ALL_KNOWN_ACTIONS, f"_DEFAULT_REQUIRES_APPROVAL {a!r} not canonical"
 
+    def test_revert_action_is_canonical(self):
+        """ContractAction.REVERT exists in ALL_KNOWN_ACTIONS (Step 1136)."""
+        assert ContractAction.REVERT == "revert"
+        assert ContractAction.REVERT in ALL_KNOWN_ACTIONS
+
+    def test_revert_action_denied_by_default(self):
+        """REVERT is in default denied actions — must be explicitly granted (Step 1136)."""
+        from packages.orchestration.run_contract import _DEFAULT_DENIED_ACTIONS
+        assert ContractAction.REVERT in _DEFAULT_DENIED_ACTIONS
+
+    def test_revert_not_in_default_allowed(self):
+        """REVERT must not appear in default allowed actions."""
+        from packages.orchestration.run_contract import _DEFAULT_ALLOWED_ACTIONS
+        assert ContractAction.REVERT not in _DEFAULT_ALLOWED_ACTIONS
+
+    def test_revert_in_requires_approval(self):
+        """REVERT must be in requires_approval_for by default."""
+        from packages.orchestration.run_contract import _DEFAULT_REQUIRES_APPROVAL
+        assert ContractAction.REVERT in _DEFAULT_REQUIRES_APPROVAL
+
+    def test_revert_blocked_by_default_contract(self):
+        """evaluate_run_action blocks REVERT on default contract (Step 1136)."""
+        job = _make_job()
+        c = ensure_contract(job)
+        d = evaluate_run_action(c, ContractAction.REVERT)
+        assert not d.allowed
+        assert d.status == "blocked"
+
+    def test_revert_alias_not_canonical(self):
+        """Unknown aliases for revert are not in ALL_KNOWN_ACTIONS."""
+        assert "revert_apply" not in ALL_KNOWN_ACTIONS
+        assert "do_revert" not in ALL_KNOWN_ACTIONS
+        assert "undo" not in ALL_KNOWN_ACTIONS
+
+    def test_contract_can_explicitly_allow_revert(self):
+        """When REVERT is removed from denied_actions and added to allowed_actions, it is allowed."""
+        import dataclasses
+        job = _make_job()
+        base = ensure_contract(job)
+        granted = dataclasses.replace(
+            base,
+            allowed_actions=(*base.allowed_actions, ContractAction.REVERT),
+            denied_actions=tuple(a for a in base.denied_actions if a != ContractAction.REVERT),
+        )
+        d = evaluate_run_action(granted, ContractAction.REVERT)
+        assert d.allowed
+
+    def test_contract_explicit_deny_blocks_revert(self):
+        """When REVERT is in denied_actions, evaluate_run_action blocks it."""
+        import dataclasses
+        job = _make_job()
+        base = ensure_contract(job)
+        denied = dataclasses.replace(
+            base,
+            denied_actions=(*base.denied_actions, ContractAction.REVERT),
+        )
+        d = evaluate_run_action(denied, ContractAction.REVERT)
+        assert not d.allowed
+        assert d.status == "blocked"
+
 
 # ---------------------------------------------------------------------------
 # Step 1069: Contract validation tests

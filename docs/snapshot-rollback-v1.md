@@ -1,7 +1,6 @@
 # Snapshot / Rollback Proof v1
 
-**Scope:** Steps 1118-1133  
-**Commit:** 4572764  
+**Scope:** Steps 1118-1133, 1136-1141  
 **Status:** Production
 
 ---
@@ -114,12 +113,13 @@ result: RepositoryRevertResult = revert_repository_apply(
     apply_id,
     repo_root,
     data_dir,
-    permitted=True,              # permission gate
-    contract_allows_revert=True, # run contract gate
 )
 # result.success True only on full verified revert
 # result.block_reason set if blocked
 # result.safe_summary is caller-safe
+# No caller-supplied permission booleans (Step 1137).
+# Service loads Job from storage and enforces Capability.repo_revert
+# and ContractAction.REVERT internally.
 ```
 
 ---
@@ -128,13 +128,17 @@ result: RepositoryRevertResult = revert_repository_apply(
 
 1. Load apply record — `block_reason: no_apply_record`
 2. Load snapshot — `block_reason: no_snapshot`
-3. Permission gate — `block_reason: permission_denied`
-4. Contract gate — `block_reason: contract_denied`
-5. Re-verify snapshot — `block_reason: verify_failed`
-6. Post-apply drift check — `block_reason: post_apply_drift`
-7. File restore from private blobs
-8. Verify restored state (hash check per path)
-9. Update snapshot + apply record state
+3a. Load Job from storage — `block_reason: permission_denied` (job not found)
+3b. `is_allowed(job, Capability.repo_revert)` — `block_reason: permission_denied`
+3c. `evaluate_run_action(contract, ContractAction.REVERT)` — `block_reason: contract_denied`
+4. Re-verify snapshot integrity — `block_reason: verify_failed`
+5. Post-apply drift check — `block_reason: post_apply_drift`
+6. File restore from private blobs
+7. Verify restored state (hash check per path)
+8. Update snapshot + apply record state
+
+No caller-supplied `permitted=` or `contract_allows_revert=` booleans (Step 1137).
+Both `Capability.repo_revert` and `ContractAction.REVERT` are denied by default.
 
 ---
 
@@ -173,9 +177,13 @@ remedy snapshot list-applies <job_id> [--json]
 
 | Module | Change |
 |--------|--------|
-| `source_apply.py` | Mandatory snapshot before any mutation. Transactional rollback uses durable blobs. `FileSnapshot.content` removed. `ApplyResult.snapshot_id` + `.snapshot_verified` added. |
-| `patch_apply.py` | Mandatory snapshot replaces best-effort `store_pre_apply_snapshot()`. `DurableApplyRecord` saved after apply. `snapshot_id` + `snapshot_verified` in artifact apply record. Legacy `patch_revert.py` snapshot still called (best-effort) for backward compat. |
-| `command_catalog.py` | `snapshot` group. `snapshot.inspect` + `snapshot.list-applies` commands. |
+| `source_apply.py` | Mandatory snapshot before any mutation. Transactional rollback uses durable blobs. `FileSnapshot.content` removed. `ApplyResult.snapshot_id` + `.snapshot_verified` added. `revert_apply()` returns `RepositoryRevertResult` (Step 1140). |
+| `patch_apply.py` | Mandatory snapshot replaces `store_pre_apply_snapshot()`. `DurableApplyRecord` saved after apply. `snapshot_id` + `snapshot_verified` in artifact apply record. Legacy snapshot call removed (Step 1141). |
+| `apps/cli/commands/patch.py` | `patch.revert` routes through `revert_repository_apply()` (Step 1139). `apply_id` canonical; `intent_id` resolves via apply records. `--apply-id` opt added to catalog. |
+| `run_contract.py` | `ContractAction.REVERT = "revert"` — default denied, requires explicit contract grant + approval (Step 1136). |
+| `permissions.py` | `Capability.repo_revert` — default deny, actively enforced by `revert_repository_apply()` (Step 1138). |
+| `repository_snapshot.py` | `revert_repository_apply()` loads Job from storage, enforces `repo_revert` capability and `REVERT` contract action internally. No caller-supplied permission booleans (Step 1137). |
+| `command_catalog.py` | `snapshot` group. `snapshot.inspect` + `snapshot.list-applies` commands. `patch.revert` gains `--apply-id` opt. |
 
 ---
 

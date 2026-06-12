@@ -68,6 +68,9 @@ class ContractAction:
     # Test actions
     RUN_TEST = "run_test"
 
+    # Revert actions (Step 1136) — denied by default, require explicit permission + contract grant
+    REVERT = "revert"
+
 
 ALL_KNOWN_ACTIONS: frozenset[str] = frozenset({
     v for k, v in vars(ContractAction).items()
@@ -154,6 +157,7 @@ _DEFAULT_DENIED_ACTIONS: tuple[str, ...] = (
     ContractAction.NETWORK_FETCH,
     ContractAction.INSTALL_PACKAGES,
     ContractAction.CLOUD_PROVIDER,
+    ContractAction.REVERT,
 )
 
 _DEFAULT_DENIED_PATHS: tuple[str, ...] = (
@@ -177,6 +181,7 @@ _DEFAULT_STOP_CONDITIONS: tuple[str, ...] = (
 _DEFAULT_REQUIRES_APPROVAL: tuple[str, ...] = (
     ContractAction.PATCH_APPLY,
     ContractAction.ARBITRARY_SHELL,
+    ContractAction.REVERT,
 )
 
 _APPLY_ACTIONS = frozenset({

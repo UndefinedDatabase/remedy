@@ -16,7 +16,7 @@ v2 changes from v1:
 Public API::
 
     apply_structured_patch(patch, repo_path, *, data_dir, job_id, job, intent_id) -> ApplyResult
-    revert_apply(apply_id, repo_path, *, job_id, data_dir=None) -> bool
+    revert_apply(apply_id, repo_path, *, job_id, data_dir=None) -> RepositoryRevertResult
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ from packages.orchestration.structured_patch import (
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.repository_snapshot import (
     DurableApplyRecord,
+    RepositoryRevertResult,
     SnapshotEntry,
     build_snapshot_path_set,
     create_snapshot,
@@ -485,21 +486,16 @@ def revert_apply(
     *,
     job_id: str,
     data_dir: Path | None = None,
-    permitted: bool = True,
-    contract_allows_revert: bool = True,
-) -> bool:
+) -> RepositoryRevertResult:
     """Revert files to their pre-apply state using the durable snapshot.
 
     Delegates to revert_repository_apply() in repository_snapshot.py.
-    Returns True if revert fully succeeded.
+    Returns the full RepositoryRevertResult (Step 1140).
     """
     data_dir = data_dir or resolve_data_root()
-    revert_result = revert_repository_apply(
+    return revert_repository_apply(
         job_id,
         apply_id,
         repo_path,
         data_dir,
-        permitted=permitted,
-        contract_allows_revert=contract_allows_revert,
     )
-    return revert_result.success

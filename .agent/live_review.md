@@ -1,12 +1,12 @@
-# Live Review — Steps 1110-1134
+# Live Review — Steps 1135-1154
 
 Reviewer: parallel reviewer
-Scope: Test Evidence Durability + Snapshot / Rollback Proof v1
+Scope: Canonical Revert + Proof/Provenance/Readiness Integration
 Timestamp: 2026-06-12
-Last check: 2026-06-12 — Reviewed commit 4572764 (Steps 1118-1133)
+Last check: 2026-06-12 — Baseline assessment complete, auto-review loop starting
 
 ## Verdict
-PASS WITH RISKS — All 19 block-if conditions resolved or not-found. 5106 tests pass. 1 pre-existing failure (test_full_chain_order, on main). R-0051 (LOW) carry-forward. R-0052 (MEDIUM) new finding on legacy compat path.
+PENDING — Baseline assessment complete. 9 blockers identified. Worker has not started (no new branch).
 
 ## Prior Block Status
 - Steps 940-974: PASS
@@ -15,140 +15,144 @@ PASS WITH RISKS — All 19 block-if conditions resolved or not-found. 5106 tests
 - Steps 1010-1029: PASS WITH RISKS
 - Steps 1030-1044: PASS WITH RISKS
 - Steps 1045-1064: PASS
-- Steps 1065-1084: PASS WITH RISKS (R-0027 carry-forward, resolved in 1086)
-- Steps 1085-1109: PASS WITH RISKS (R-0038/R-0041/R-0042/R-0043 carry-forward, resolved in 1111-1117)
-- Steps 1110-1134: PASS WITH RISKS (R-0051 carry-forward, R-0052 new)
+- Steps 1065-1084: PASS WITH RISKS
+- Steps 1085-1109: PASS WITH RISKS
+- Steps 1110-1134: PASS WITH RISKS (R-0051/R-0052 carry-forward, Steps 1130-1132 deferred)
 
 ## Block-If Condition Tracker
 
 | # | Block-If Condition | Status | Finding | Fix Step |
 |---|---|---|---|---|
-| 1 | test.status command absent from catalog | RESOLVED (38ae52f) | R-0041 | 1111 |
-| 2 | same repo concurrent tests across jobs | RESOLVED (38ae52f) | R-0042 | 1112 |
-| 3 | evidence failure silently reported as complete | RESOLVED (38ae52f) | R-0043 | 1114-1116 |
-| 4 | persistence helpers use broad silent except | RESOLVED (38ae52f) | R-0038 | 1115-1116 |
-| 5 | no test_run_started event for actual process | RESOLVED (38ae52f) | R-0050 | 1113 |
-| 6 | failure artifact persistence failure hidden | RESOLVED (38ae52f) | R-0038 | 1115-1116 |
-| 7 | apply proceeds when snapshot fails | RESOLVED (4572764) | R-0044 | 1121-1123 |
-| 8 | structured source snapshots memory-only | RESOLVED (4572764) | R-0045 | 1118-1122 |
-| 9 | markdown apply keeps snapshot best-effort | RESOLVED (4572764) | R-0044 | 1123 |
-| 10 | snapshot path set incomplete | RESOLVED (4572764) | R-0046 | 1120 |
-| 11 | recovery blobs exposed publicly | RESOLVED (4572764) | R-0049 | 1118-1119 |
-| 12 | revert uses git reset/checkout/clean | NOT FOUND | — | — |
-| 13 | revert overwrites files changed after apply | RESOLVED (4572764) | R-0047 | 1126 |
-| 14 | restore hashes/existence not verified | RESOLVED (4572764) | R-0048 | 1127 |
-| 15 | generic snapshot_created alone satisfies readiness | NOT FOUND | — | Steps 1130-1132 not started (out of scope) |
-| 16 | permission/approval/contract gates weakened | NOT FOUND | — | — |
-| 17 | raw source/diff/snapshot/output/secrets leak | NOT FOUND | — | — |
-| 18 | final handoff lacks changed files table | RESOLVED (4572764 + this file) | — | 1134 |
-| 19 | latest review verdict PENDING while merge-ready claimed | RESOLVED | — | 1134 |
+| 1 | .agent state claims deferred steps completed | NOT YET TESTABLE | — | 1135 |
+| 2 | patch.revert routes through legacy patch_revert | OPEN | R-0053 | — |
+| 3 | central revert trusts caller-supplied permitted=True | OPEN | R-0054 | — |
+| 4 | permission or contract not enforced inside revert service | OPEN | R-0054 | — |
+| 5 | revert action absent from canonical RunContract vocabulary | OPEN | R-0055 | — |
+| 6 | permission alone or contract alone sufficient | OPEN | R-0054 | — |
+| 7 | patch_apply writes duplicate legacy snapshots | OPEN | R-0056 | — |
+| 8 | legacy snapshots silently reverted through weaker behavior | OPEN | R-0053 | — |
+| 9 | event persistence failure silently ignored | OPEN | R-0057 | — |
+| 10 | failed/partial revert marks apply as successfully reverted | NOT FOUND | — | — |
+| 11 | Proof Chain verifies apply without verified snapshot proof | OPEN | R-0058 | — |
+| 12 | reverted files appear currently applied in File Provenance | OPEN | R-0059 | — |
+| 13 | readiness accepts events without verifying manifest/blobs/linkage | OPEN | R-0060 | — |
+| 14 | Review Bundle exposes recovery blobs/private paths | NOT YET TESTABLE | — | — |
+| 15 | drift protection or restore verification weakened | NOT FOUND | — | — |
+| 16 | force revert or destructive Git command introduced | NOT FOUND | — | — |
+| 17 | raw source/diff/snapshot/output/secrets/tracebacks leak | NOT FOUND | — | — |
+| 18 | final handoff lacks changed files table | NOT YET TESTABLE | — | 1154 |
+| 19 | latest review verdict PENDING while merge-ready claimed | NOT YET TESTABLE | — | 1154 |
 
 ## Finding Ledger
 
-### Carry-forward from Steps 1085-1109
-
-All resolved. See prior block sections.
+### Carry-forward from Steps 1110-1134
 
 ### R-0051: _emit() still uses except Exception: pass for non-finalization events (LOW)
 
 - **Status**: Open (low priority, carry-forward)
 - **Severity**: Low
-- **Area**: error-handling
-- **Details**: `_emit()` helper at line 494 of `test_execution_service.py` wraps `append_run_event` with `except Exception: pass`. Called for `test_run_blocked`, `test_run_started`, and lifecycle events outside `finalize_test_outcome`. Event loss is non-critical.
-
-### New Findings — Steps 1118-1134
+- **Area**: event-durability
+- **Details**: `_emit()` helper in `test_execution_service.py:494` wraps `append_run_event` with `except Exception: pass`. Event loss non-critical but silent.
 
 ### R-0052: Legacy patch_revert.py compatibility exception is broad (MEDIUM)
 
-- **Status**: Open
+- **Status**: Open (carry-forward)
 - **Severity**: Medium
-- **Area**: error-handling
-- **Details**: `patch_apply.py:8c` calls `store_pre_apply_snapshot()` with `except (ImportError, OSError, ValueError, KeyError, AttributeError, TypeError): pass`. This is broad but necessary for backward compat. The legacy path is intentionally best-effort. The NEW mandatory snapshot (8b) gates the apply correctly.
-- **Impact**: If a future bug in `store_pre_apply_snapshot()` raises a RuntimeError or similar not in the tuple, it will propagate and block the apply. However, blocking is the safe behavior.
-- **Mitigation**: The new mandatory snapshot (8b) means `patch_revert.py` tests can be migrated to the new revert service at any time, removing this compat path.
+- **Area**: legacy-migration
+- **Details**: `patch_apply.py:8c` calls `store_pre_apply_snapshot()` with broad except. Mandatory gate precedes it so apply cannot bypass, but dual snapshot writes are wasteful and confusing.
 
-## Changed Files Table (Steps 1118-1134, commit 4572764)
+### New Findings — Steps 1135-1154 Baseline
 
-| File | Change | Type |
-|------|--------|------|
-| `packages/orchestration/repository_snapshot.py` | NEW — unified snapshot service | New |
-| `packages/orchestration/source_apply.py` | Mandatory durable snapshot; FileSnapshot.content removed; revert_apply() new API | Modified |
-| `packages/orchestration/patch_apply.py` | Mandatory snapshot + DurableApplyRecord; legacy compat call | Modified |
-| `apps/cli/command_catalog.py` | snapshot group + inspect + list-applies entries | Modified |
-| `apps/cli/commands/__init__.py` | Register snapshot_cmds handlers | Modified |
-| `apps/cli/commands/snapshot_cmds.py` | NEW — snapshot.inspect + snapshot.list-applies handlers | New |
-| `tests/orchestration/test_repository_snapshot.py` | NEW — 48 tests for snapshot service | New |
-| `tests/orchestration/test_source_apply.py` | Updated revert tests for new API | Modified |
-| `tests/orchestration/test_source_apply_transaction.py` | Updated for removed FileSnapshot/_rollback | Modified |
-| `tests/test_patch_apply.py` | allowed_keys includes snapshot_id/snapshot_verified | Modified |
-| `docs/snapshot-rollback-v1.md` | NEW — design docs | New |
+### R-0053: patch.revert CLI routes through legacy revert_patch_intent() (BLOCKER)
 
-## Test Results (commit 4572764)
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: patch-revert
+- **Details**: `apps/cli/commands/patch.py:174-176` calls `revert_patch_intent()` from `patch_revert.py`. Does NOT use `revert_repository_apply()` from `repository_snapshot.py`. Legacy path lacks drift detection, restore verification, and does not read DurableApplyRecord. New applies create both new-style and legacy snapshots; revert goes through legacy path only.
+- **Evidence**: `patch.py:174`: `from packages.orchestration.patch_revert import format_revert_result, revert_patch_intent`
+- **Block-if**: "public `patch.revert` still routes new applies through legacy patch_revert" + "legacy snapshots are silently reverted through weaker behavior"
 
-- 5106 passed, 8 skipped, 1 deselected (pre-existing test_full_chain_order failure on main)
-- 48 new snapshot tests in test_repository_snapshot.py — all pass
-- All execution service tests (60), CLI runtime tests (23), patch apply tests, source apply tests pass
+### R-0054: revert_repository_apply() uses bypass booleans instead of loading real permissions/contract (BLOCKER)
 
-## Steps 1130-1132 Status
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: permission / run-contract
+- **Details**: `repository_snapshot.py:894-895` takes `permitted: bool = True` and `contract_allows_revert: bool = True` with permissive defaults. The service does NOT load the Job, does NOT check `is_allowed(job, Capability)`, does NOT load/evaluate the persisted RunContract. Any caller can bypass both gates by omitting the arguments.
+- **Evidence**: `repository_snapshot.py:894`: `permitted: bool = True`, line 895: `contract_allows_revert: bool = True`
+- **Block-if**: "central revert trusts caller-supplied `permitted=True` or `contract_allows_revert=True`" + "permission or persisted RunContract is not enforced inside the central revert service" + "permission alone or contract alone is sufficient"
 
-Not started in this block (explicitly out of scope per spec). These require:
-- Step 1130: Proof Chain + File Provenance integration
-- Step 1131: Progress Ledger + Feature Planner + Review Bundle
-- Step 1132: Readiness integration (require verified snapshot + linked apply record)
+### R-0055: ContractAction.REVERT does not exist in canonical vocabulary (BLOCKER)
 
-Block-if #15 ("generic snapshot_created alone satisfies readiness") is deferred to the next block when Steps 1130-1132 are implemented.
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: run-contract
+- **Details**: `run_contract.py:ContractAction` has PLAN, CONTEXT, BUILD_ARTIFACT, CREATE_PATCH_INTENT, CREATE_FIX_TASK, DISCOVER_COMMANDS, WRITE_METADATA, RUN_TEST, APPLY, SOURCE_APPLY, ARBITRARY_SHELL, APPLY_PATCH_WITHOUT_APPROVAL, MODIFY_PERMISSIONS, NETWORK_FETCH, INSTALL_PACKAGES, CLOUD_PROVIDER, PATCH_APPLY — but NO REVERT. Cannot enforce revert through `evaluate_run_action()`.
+- **Evidence**: `grep -n "REVERT" run_contract.py` returns empty.
+- **Block-if**: "revert action is absent from canonical RunContract vocabulary"
 
-## Resolved Findings (Steps 1085-1109)
+### R-0056: patch_apply.py still writes duplicate legacy snapshots for new applies (BLOCKER)
 
-<details>
-<summary>Click to expand resolved findings from prior block</summary>
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: legacy-migration
+- **Details**: `patch_apply.py:206-207` calls `store_pre_apply_snapshot()` from `patch_revert.py` after the mandatory new-style snapshot. Creates two separate snapshot stores for every markdown apply. Wastes disk, confuses state model, enables legacy revert path.
+- **Evidence**: `patch_apply.py:206`: `store_pre_apply_snapshot(job, intent_id, target_path, action, repo_root, data_dir=data_dir)`
+- **Block-if**: "patch_apply still writes duplicate legacy snapshots for new applies"
 
-### R-0027: high_risk_command_execution not in canonical action vocabulary
-- **Status**: Resolved — Step 1086
-- **Severity**: Low
+### R-0057: Snapshot event persistence failures silently ignored (BLOCKER)
 
-### R-0029: test_runner.py uses capture_output=True (pipe-based)
-- **Status**: Resolved — test_execution_service.py:_run_isolated_process()
-- **Severity**: Blocker → Resolved
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: event-durability
+- **Details**: `repository_snapshot.py:305-306` — `_emit_snapshot_event()` has `except Exception: pass`. All 10 snapshot event types (create_started, create_completed, verified, revert_started, etc.) can fail silently. Operation truth remains accurate but event history can be incomplete without any signal.
+- **Evidence**: `repository_snapshot.py:305`: `except Exception: pass`
+- **Block-if**: "event persistence failure is silently ignored"
 
-### R-0030: No process-group cleanup on timeout
-- **Status**: Resolved — _kill_process_group() with SIGTERM→SIGKILL
-- **Severity**: Blocker → Resolved
+### R-0058: Proof Chain has no verified snapshot requirement for trusted apply (BLOCKER)
 
-### R-0031: No contract enforcement in test_runner.py
-- **Status**: Resolved — 13-gate execute_test_run()
-- **Severity**: Blocker → Resolved
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: proof
+- **Details**: `proof_chain.py` has zero references to `snapshot`, `verified_snapshot`, `snapshot_verified`, `DurableApplyRecord`, or `RepositorySnapshot`. A `source_patch_applied` or `patch_intent_applied` event can satisfy the Proof Chain without any verified snapshot proof.
+- **Evidence**: `grep -rn "snapshot" proof_chain.py` returns empty.
+- **Block-if**: "Proof Chain can verify an apply without verified snapshot proof"
 
-### R-0032: No secret/environment stripping before subprocess
-- **Status**: Resolved — _build_safe_env() strips 14 patterns
-- **Severity**: High → Resolved
+### R-0059: File Provenance does not track revert state from RepositorySnapshot (BLOCKER)
 
-### R-0033: No concurrency guard for same job/repo
-- **Status**: Resolved — TestExecutionLease with fcntl.flock
-- **Severity**: High → Resolved
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: provenance
+- **Details**: `file_provenance.py` reads `patch_intent_apply_records` from artifact metadata (old legacy format). Does not check `DurableApplyRecord` from `repository_snapshot.py`. Reverted files using the new system would still appear as currently applied.
+- **Evidence**: `file_provenance.py:120`: `records = artifact.metadata.get("patch_intent_apply_records", {})`
+- **Block-if**: "reverted files still appear currently applied in File Provenance"
 
-### R-0034: No TestFailureArtifact created on failed/timeout runs
-- **Status**: Resolved — Gate 13 _create_failure_artifact()
-- **Severity**: High → Resolved
+### R-0060: Readiness has no snapshot/apply_record verification (BLOCKER)
 
-### R-0035: test_runs_used not incremented by test_runner
-- **Status**: Resolved — Gate 10 save_usage()
-- **Severity**: High → Resolved
+- **Status**: Open
+- **Severity**: Blocker
+- **Area**: readiness
+- **Details**: `readiness.py` has zero references to `RepositorySnapshot`, `DurableApplyRecord`, `snapshot_verified`, manifest, or blob verification. A generic `snapshot_created` event alone could satisfy readiness without verifying manifest integrity, recovery blob presence, or apply linkage.
+- **Evidence**: `grep -rn "snapshot" readiness.py` returns empty.
+- **Block-if**: "readiness accepts snapshot events without verifying manifest, recovery data, and apply linkage"
 
-### R-0036: max_test_runs=0 makes tests permanently impossible
-- **Status**: Resolved — run_test in _DEFAULT_ALLOWED_ACTIONS
-- **Severity**: Medium → Resolved
+## Baseline Check Matrix (Steps 1135-1154)
 
-### R-0037: Step 1084 handoff not committed
-- **Status**: Resolved — Commit 016d715
-- **Severity**: Medium → Resolved
+| Category | Status | Gap Count | Findings |
+|---|---|---|---|
+| Handoff truth | NOT YET TESTABLE | — | Worker hasn't started |
+| Canonical revert | BLOCKER | R-0054, R-0055 | No REVERT action, bypass booleans |
+| Public CLI | BLOCKER | R-0053 | Legacy routing |
+| Source apply | OK | — | v2 working correctly |
+| Legacy behavior | BLOCKER | R-0056 | Duplicate legacy snapshots |
+| Event durability | BLOCKER | R-0057 | Silent exception in _emit_snapshot_event |
+| State model | OK | — | applied/reverted states correct |
+| Proof/Provenance | BLOCKER | R-0058, R-0059 | No snapshot integration |
+| Progress/Feature/Review | NOT YET TESTABLE | — | — |
+| Readiness | BLOCKER | R-0060 | No snapshot verification |
+| CLI runtime | NOT YET TESTABLE | — | — |
+| Tests | PENDING | — | After worker commits |
 
-### R-0039: Old test_runner.py:run_tests_local() still has capture_output=True
-- **Status**: Resolved — CLI routes through execute_test_run()
-- **Severity**: Medium → Resolved
-
-### R-0040: 2 old CLI tests fail — gate order + message format mismatch
-- **Status**: Resolved — Gates reordered, tests updated
-- **Severity**: Medium → Resolved
-
-</details>
+## Test Results
+Last full run (Steps 1110-1134): 5227 passed, 0 failed, 8 skipped
+Pre-existing failure: test_project_brain.py::test_full_chain_order (on main)
+Next run: After worker commits Steps 1135+

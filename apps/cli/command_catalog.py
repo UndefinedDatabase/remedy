@@ -122,6 +122,7 @@ _PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
 _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
 _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
 _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
+_APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
 
 
 # ---------------------------------------------------------------------------
@@ -378,10 +379,11 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="revert",
         description="Revert a previously applied patch intent using stored snapshot.",
         action_class="apply_write",
-        args=(_JOB_ID, _INTENT_ID, _JSON_OPT),
+        args=(_JOB_ID, _INTENT_ID, _APPLY_ID_OPT, _JSON_OPT),
         supports_json=True,
         may_mutate_repo=True,
-        related=("patch.apply",),
+        requires_permission=True,
+        related=("patch.apply", "snapshot.list-applies"),
     ),
 
     # ── test ─────────────────────────────────────────────────────────────
