@@ -23,13 +23,13 @@ Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/
 - [ ] 1166: CLI remedy do --continue <job_id> [--intent-id] [--json]
 - [x] 1167: Continuation lease (deterministic, released on exit, stale-recoverable)
 - [x] 1168: Durable phase checkpoints (idempotent resume)
-- [ ] 1169: Snapshot phase (central path, verify before mutation)
-- [ ] 1170: Apply phase (one ApplyRecord/apply_id, no double apply)
-- [ ] 1171: Test phase (central Test Execution Service, usage once)
-- [ ] 1172: Successful completion (completed_verified, Proof Chain rebuild)
-- [ ] 1173: Failure completion (TestFailureArtifact + Fix Task, repair available)
-- [ ] 1174: Apply succeeds but evidence degrades → evidence_incomplete
-- [ ] 1175: do_continue_* events
+- [x] 1169: Snapshot phase (central path, verify before mutation)
+- [x] 1170: Apply phase (one ApplyRecord/apply_id, no double apply)
+- [x] 1171: Test phase (central Test Execution Service, usage once)
+- [x] 1172: Successful completion (completed_verified, Proof Chain rebuild)
+- [x] 1173: Failure completion (TestFailureArtifact + Fix Task, repair available)
+- [x] 1174: Apply succeeds but evidence degrades → evidence_incomplete
+- [x] 1175: do_continue_* events
 - [ ] 1176: Progress Ledger + Feature Planner items
 - [ ] 1177: continuation_summary.json in Review Bundle
 - [ ] 1178: Runtime + idempotency tests (tiny temp repos)

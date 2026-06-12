@@ -186,3 +186,161 @@ class TestEligibility:
         job, iid = make_continue_job(data_dir, repo, approve=False)
         e = self._elig(job, data_dir)
         assert e.next_safe_action
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator runtime + idempotency (Steps 1169-1178)
+# ---------------------------------------------------------------------------
+
+
+def _fake_test(data_dir, *, status="passed", evidence="complete", fa_id=""):
+    """Build a fake execute_test_run that emits a linked test event."""
+    from uuid import UUID as _UUID
+    from packages.orchestration.timeline import append_run_event
+    from packages.orchestration.test_execution_service import TestExecutionResult
+    calls = {"n": 0}
+
+    def _fn(request):
+        calls["n"] += 1
+        append_run_event(data_dir, _UUID(request.job_id), event="test_run_completed",
+                         metadata={"intent_id": request.intent_id, "status": status,
+                                   "exit_code": 0 if status == "passed" else 1,
+                                   "timestamp": "2030-01-01T00:00:00+00:00"})
+        return TestExecutionResult(
+            job_id=request.job_id, status=status, test_run_id="tr-1",
+            evidence_status=evidence, failure_artifact_id=fa_id,
+        )
+    return _fn, calls
+
+
+class TestRunDoContinue:
+    def _run(self, data_dir, job, monkeypatch, *, status="passed", evidence="complete", fa_id=""):
+        from packages.orchestration import do_continue as dc
+        import packages.orchestration.test_execution_service as tes
+        fn, calls = _fake_test(data_dir, status=status, evidence=evidence, fa_id=fa_id)
+        monkeypatch.setattr(tes, "execute_test_run", fn)
+        result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+        return result, calls
+
+    def test_passing_test_completed_verified(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        result, calls = self._run(data_dir, job, monkeypatch)
+        from packages.orchestration.do_continue import ContinueStopReason
+        assert result.stop_reason == ContinueStopReason.COMPLETED_VERIFIED
+        assert result.proof_status == "verified"
+        assert result.evidence_status == "complete"
+        assert result.apply_id == iid
+        assert result.snapshot_id
+        assert calls["n"] == 1
+
+    def test_failing_test_repair_available(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        result, calls = self._run(data_dir, job, monkeypatch, status="failed", fa_id="fa-1")
+        from packages.orchestration.do_continue import ContinueStopReason
+        assert result.stop_reason == ContinueStopReason.TEST_FAILED_REPAIR_AVAILABLE
+        assert "repair start" in result.next_safe_action
+        assert "fa-1" in result.next_safe_action
+
+    def test_timeout_repair_available(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        result, calls = self._run(data_dir, job, monkeypatch, status="timeout", fa_id="fa-2")
+        from packages.orchestration.do_continue import ContinueStopReason
+        assert result.stop_reason == ContinueStopReason.TEST_FAILED_REPAIR_AVAILABLE
+
+    def test_ineligible_blocks(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo, approve=False)
+        result, calls = self._run(data_dir, job, monkeypatch)
+        from packages.orchestration.do_continue import ContinueStopReason
+        assert result.stop_reason == ContinueStopReason.BLOCKED_INELIGIBLE
+        assert calls["n"] == 0  # never ran a test
+
+    def test_evidence_degraded_not_verified(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        result, calls = self._run(data_dir, job, monkeypatch, evidence="failed")
+        from packages.orchestration.do_continue import ContinueStopReason
+        assert result.stop_reason == ContinueStopReason.EVIDENCE_INCOMPLETE
+        assert result.evidence_status == "degraded"
+        assert result.stop_reason != ContinueStopReason.COMPLETED_VERIFIED
+
+    def test_retry_no_double_apply_or_test(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        from packages.orchestration import do_continue as dc
+        import packages.orchestration.test_execution_service as tes
+        import packages.orchestration.patch_apply as pa
+        fn, tcalls = _fake_test(data_dir, status="passed")
+        monkeypatch.setattr(tes, "execute_test_run", fn)
+        acalls = {"n": 0}
+        orig_apply = pa.apply_patch_intent
+        def _counting_apply(job_, iid_, **kw):
+            acalls["n"] += 1
+            return orig_apply(job_, iid_, **kw)
+        monkeypatch.setattr(pa, "apply_patch_intent", _counting_apply)
+
+        r1 = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+        r2 = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+        # Apply ran once; second cycle resumed. Test budget consumed once.
+        assert acalls["n"] == 1
+        assert tcalls["n"] == 1
+        assert r1.stop_reason == r2.stop_reason == "completed_verified"
+
+    def test_retry_after_apply_runs_test_once(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        # Apply manually (simulate crash after apply, before test).
+        from packages.orchestration.patch_apply import apply_patch_intent
+        from packages.orchestration.storage import load_job
+        from uuid import UUID
+        apply_patch_intent(load_job(UUID(str(job.id)), data_dir), iid, data_dir=data_dir)
+        # Now continue — should resume apply, run test exactly once.
+        result, calls = self._run(data_dir, job, monkeypatch)
+        assert calls["n"] == 1
+        # Apply phase should be 'resumed', not re-applied.
+        apply_phase = next(p for p in result.phases if p.phase == "apply")
+        assert apply_phase.status == "resumed"
+
+    def test_active_lease_blocks(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        from packages.orchestration.do_continue import (
+            ContinuationLease, _continue_dir, _repo_key, ContinueStopReason,
+        )
+        lease = ContinuationLease(
+            job_id=str(job.id), repo_key=_repo_key(job), intent_id=iid,
+            lease_dir=_continue_dir(str(job.id), data_dir) / "leases",
+        )
+        assert lease.acquire()
+        try:
+            result, calls = self._run(data_dir, job, monkeypatch)
+            assert result.stop_reason == ContinueStopReason.BLOCKED_INELIGIBLE
+            assert calls["n"] == 0
+        finally:
+            lease.release()
+
+    def test_no_traceback_or_raw_content(self, env, monkeypatch):
+        import json as _json
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        result, _ = self._run(data_dir, job, monkeypatch)
+        from packages.orchestration.do_continue import export_continue_result_json
+        blob = _json.dumps(export_continue_result_json(result))
+        assert "Traceback" not in blob
+        assert str(repo.resolve()) not in blob
+        assert str(data_dir) not in blob
+        assert "blob_" not in blob
+
+    def test_json_export_keys(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        result, _ = self._run(data_dir, job, monkeypatch)
+        from packages.orchestration.do_continue import export_continue_result_json
+        d = export_continue_result_json(result)
+        for k in ("job_id", "intent_id", "apply_id", "snapshot_id", "test_run_id",
+                  "stop_reason", "proof_status", "evidence_status", "phases",
+                  "usage_before", "usage_after", "next_safe_action"):
+            assert k in d

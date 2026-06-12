@@ -469,3 +469,374 @@ def evaluate_continue_eligibility(
     elig.safe_summary = f"Eligible: intent {iid} ready for one continuation cycle."
     elig.next_safe_action = f"remedy do --continue {job_id} --json"
     return elig
+
+
+# ---------------------------------------------------------------------------
+# Continue events (Step 1175)
+# ---------------------------------------------------------------------------
+
+CONTINUE_EVENTS = frozenset({
+    "do_continue_requested",
+    "do_continue_started",
+    "do_continue_snapshot_verified",
+    "do_continue_applied",
+    "do_continue_test_started",
+    "do_continue_test_completed",
+    "do_continue_proof_built",
+    "do_continue_stopped",
+})
+
+
+def _emit_continue(data_dir: Path, job_id: str, event: str, metadata: dict) -> str:
+    """Emit a continuation event, returning its persistence status ('complete'
+    | 'partial' | 'failed'). Safe IDs/status only — no raw content."""
+    from packages.orchestration.event_persistence import emit_important_event
+    r = emit_important_event(data_dir, job_id, event, metadata, eligible=CONTINUE_EVENTS)
+    return r.status
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator (Steps 1169-1175)
+# ---------------------------------------------------------------------------
+
+
+def _record(result: ContinueResult, phase: str, status: str, summary: str) -> None:
+    result.phases.append(ContinuePhaseResult(phase=phase, status=status, safe_summary=summary))
+    result.current_phase = phase
+
+
+def run_do_continue(
+    request: ContinueRequest,
+    data_dir: Path | None = None,
+) -> ContinueResult:
+    """Perform exactly one controlled continuation cycle (Steps 1169-1175).
+
+    eligibility → verified snapshot → apply → real test → proof → safe stop.
+    Crash-safe and idempotent: resumes from durable truth, never double-applies
+    or double-consumes test budget, never duplicates a Failure Artifact.
+    """
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.storage import load_job
+    from packages.orchestration.run_contract import ensure_contract, load_usage, export_usage_json
+    from packages.orchestration.repository_snapshot import (
+        build_snapshot_truth, load_durable_apply_record, update_apply_record_state,
+    )
+    from packages.orchestration.approval_queue import get_patch_intent
+
+    data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
+    result = ContinueResult(
+        job_id=request.job_id,
+        intent_id=request.intent_id,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+    # ── Phase: eligibility ──────────────────────────────────────────────
+    elig = evaluate_continue_eligibility(request.job_id, request.intent_id or None, data_dir)
+    if not elig.eligible:
+        _record(result, ContinuePhase.ELIGIBILITY, "blocked", elig.safe_summary)
+        result.stop_reason = ContinueStopReason.BLOCKED_INELIGIBLE
+        result.next_safe_action = elig.next_safe_action
+        result.evidence_status = "unknown"
+        result.safe_summary = elig.safe_summary
+        _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
+            "stop_reason": result.stop_reason, "blockers": elig.blockers,
+        })
+        return result
+    _record(result, ContinuePhase.ELIGIBILITY, "completed", "Eligible for one cycle.")
+
+    iid = elig.intent_id
+    result.intent_id = iid
+    result.apply_id = iid
+
+    job = load_job(UUID(request.job_id), data_dir)
+    contract = ensure_contract(job)
+    result.contract_id = contract.contract_id
+    intent = get_patch_intent(job, iid) or {}
+    task_id = str(intent.get("task_id") or "")
+    result.task_id = task_id
+    result.usage_before = export_usage_json(load_usage(job))
+
+    _emit_continue(data_dir, request.job_id, "do_continue_requested", {"intent_id": iid})
+
+    # ── Continuation lease (held across snapshot/apply/test/proof) ──────
+    lease = ContinuationLease(
+        job_id=request.job_id, repo_key=_repo_key(job), intent_id=iid,
+        lease_dir=_continue_dir(request.job_id, data_dir) / "leases",
+    )
+    if not lease.acquire(timeout_seconds=2.0):
+        _record(result, ContinuePhase.ELIGIBILITY, "blocked", "Continuation already active.")
+        result.stop_reason = ContinueStopReason.LEASE_UNAVAILABLE
+        result.next_safe_action = f"remedy change proof {request.job_id} --json"
+        result.evidence_status = "unknown"
+        _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
+            "stop_reason": result.stop_reason,
+        })
+        return result
+
+    evidence_warnings: list[str] = []
+    try:
+        _emit_continue(data_dir, request.job_id, "do_continue_started", {"intent_id": iid})
+        checkpoints = load_checkpoints(request.job_id, data_dir)
+
+        # ── Phase: snapshot + apply (idempotent) ────────────────────────
+        pre = build_snapshot_truth(request.job_id, intent_id=iid, data_dir=data_dir)
+        _APPLIED_STATES = (
+            "applied", "test_pending", "tested_passed", "tested_failed",
+            "revert_blocked", "reverted", "partial_revert", "revert_failed",
+        )
+        apply_done = pre.apply_state in _APPLIED_STATES or _phase_completed(checkpoints, ContinuePhase.APPLY)
+
+        if apply_done:
+            # Resume — do not apply again, do not create a new snapshot.
+            result.snapshot_id = pre.snapshot_id
+            result.apply_id = pre.apply_id or iid
+            _record(result, ContinuePhase.SNAPSHOT, "resumed", "Snapshot already verified.")
+            _record(result, ContinuePhase.APPLY, "resumed", "Apply already completed (idempotent).")
+        else:
+            from packages.orchestration.patch_apply import apply_patch_intent
+            apply_res = apply_patch_intent(job, iid, data_dir=data_dir)
+            if apply_res.state == "blocked":
+                blocked = apply_res.blocked_reason or apply_res.outcome
+                if blocked.startswith("snapshot"):
+                    _record(result, ContinuePhase.SNAPSHOT, "failed", f"Snapshot blocked: {blocked}")
+                    result.stop_reason = ContinueStopReason.SNAPSHOT_FAILED
+                else:
+                    _record(result, ContinuePhase.SNAPSHOT, "completed", "Snapshot verified.")
+                    _record(result, ContinuePhase.APPLY, "blocked", f"Apply blocked: {blocked}")
+                    result.stop_reason = ContinueStopReason.APPLY_FAILED
+                result.next_safe_action = f"remedy change proof {request.job_id} --json"
+                result.evidence_status = "unknown"
+                _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
+                    "stop_reason": result.stop_reason, "reason": blocked,
+                })
+                return result
+            result.snapshot_id = apply_res.snapshot_id
+            result.apply_id = apply_res.intent_id
+            save_checkpoint(request.job_id, data_dir, ContinueCheckpoint(
+                phase=ContinuePhase.SNAPSHOT, status="completed",
+                at=datetime.now(timezone.utc).isoformat(),
+                ids={"snapshot_id": apply_res.snapshot_id},
+            ))
+            save_checkpoint(request.job_id, data_dir, ContinueCheckpoint(
+                phase=ContinuePhase.APPLY, status="completed",
+                at=datetime.now(timezone.utc).isoformat(),
+                ids={"apply_id": apply_res.intent_id, "snapshot_id": apply_res.snapshot_id},
+            ))
+            _record(result, ContinuePhase.SNAPSHOT, "completed", "Snapshot created and verified.")
+            _record(result, ContinuePhase.APPLY, "completed", "Patch applied.")
+            _emit_continue(data_dir, request.job_id, "do_continue_snapshot_verified", {
+                "snapshot_id": apply_res.snapshot_id,
+            })
+            _emit_continue(data_dir, request.job_id, "do_continue_applied", {
+                "apply_id": apply_res.intent_id,
+            })
+
+        # Authoritative post-apply snapshot truth.
+        post = build_snapshot_truth(request.job_id, apply_id=result.apply_id, data_dir=data_dir)
+        result.snapshot_id = post.snapshot_id or result.snapshot_id
+        if not post.snapshot_verified_now or post.evidence_status == "degraded":
+            evidence_warnings.append("snapshot_evidence_degraded")
+
+        # Reload job after apply mutated metadata.
+        job = load_job(UUID(request.job_id), data_dir)
+
+        # ── Phase: test (idempotent — no double budget) ─────────────────
+        test_cp = latest_checkpoint(checkpoints, ContinuePhase.TEST)
+        rec_now = load_durable_apply_record(result.apply_id, request.job_id, data_dir)
+        already_tested = (test_cp is not None and test_cp.status == "completed") or (
+            rec_now is not None and (rec_now.state in ("tested_passed", "tested_failed") or rec_now.test_run_id)
+        )
+
+        if already_tested:
+            ids = test_cp.ids if test_cp else {}
+            test_status = ids.get("test_status") or (
+                "passed" if rec_now and rec_now.state == "tested_passed" else "failed"
+            )
+            result.test_run_id = ids.get("test_run_id", rec_now.test_run_id if rec_now else "")
+            result.failure_artifact_id = ids.get("failure_artifact_id", "")
+            test_evidence = ids.get("evidence_status", "complete")
+            _record(result, ContinuePhase.TEST, "resumed", f"Test already executed: {test_status}.")
+        else:
+            from packages.orchestration.test_execution_service import (
+                execute_test_run, TestExecutionRequest,
+            )
+            update_apply_record_state(request.job_id, result.apply_id, "test_pending", data_dir)
+            _emit_continue(data_dir, request.job_id, "do_continue_test_started", {
+                "apply_id": result.apply_id,
+            })
+            test_res = execute_test_run(TestExecutionRequest(
+                job_id=request.job_id, source="do_continue_v1",
+                task_id=task_id, intent_id=iid, apply_id=result.apply_id,
+            ))
+            test_status = test_res.status
+            result.test_run_id = test_res.test_run_id
+            result.failure_artifact_id = test_res.failure_artifact_id
+            test_evidence = test_res.evidence_status
+            new_state = (
+                "tested_passed" if test_status == "passed"
+                else "tested_failed" if test_status in ("failed", "timeout")
+                else None
+            )
+            if new_state:
+                if not update_apply_record_state(
+                    request.job_id, result.apply_id, new_state, data_dir,
+                    test_run_id=test_res.test_run_id,
+                ):
+                    evidence_warnings.append("apply_state_persist_failed")
+            save_checkpoint(request.job_id, data_dir, ContinueCheckpoint(
+                phase=ContinuePhase.TEST, status="completed",
+                at=datetime.now(timezone.utc).isoformat(),
+                evidence_status=test_evidence,
+                ids={
+                    "test_run_id": test_res.test_run_id,
+                    "test_status": test_status,
+                    "failure_artifact_id": test_res.failure_artifact_id,
+                    "evidence_status": test_evidence,
+                },
+            ))
+            _record(result, ContinuePhase.TEST, "completed", f"Test executed: {test_status}.")
+            _emit_continue(data_dir, request.job_id, "do_continue_test_completed", {
+                "test_run_id": test_res.test_run_id, "status": test_status,
+            })
+
+        if test_evidence != "complete":
+            evidence_warnings.append("test_evidence_degraded")
+
+        # Test blocked (could not run) — safe stop, no false success.
+        if test_status in ("blocked", "environment_failure"):
+            result.stop_reason = ContinueStopReason.TEST_BLOCKED
+            result.next_safe_action = f"remedy test discover {request.job_id} --json"
+            result.evidence_status = "unknown"
+            result.proof_status = "incomplete"
+            _record(result, ContinuePhase.FINAL_STOP, "stopped", "Test could not run.")
+            _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
+                "stop_reason": result.stop_reason,
+            })
+            result.usage_after = export_usage_json(load_usage(load_job(UUID(request.job_id), data_dir)))
+            return result
+
+        # ── Phase: proof ────────────────────────────────────────────────
+        from packages.orchestration.proof_chain import build_proof_chain
+        from packages.orchestration.timeline import load_run_events
+        job = load_job(UUID(request.job_id), data_dir)
+        events = load_run_events(data_dir, UUID(request.job_id))
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        target_change = next((c for c in chain.changes if c.intent_id == iid), None)
+        result.proof_status = target_change.proof_status if target_change else chain.overall_status
+        _record(result, ContinuePhase.PROOF, "completed", f"Proof: {result.proof_status}")
+        proof_status = _emit_continue(data_dir, request.job_id, "do_continue_proof_built", {
+            "proof_status": result.proof_status,
+        })
+        if proof_status != "complete":
+            evidence_warnings.append("proof_event_degraded")
+
+        # ── Evidence + final stop (Steps 1172-1174) ─────────────────────
+        result.usage_after = export_usage_json(load_usage(load_job(UUID(request.job_id), data_dir)))
+        evidence_complete = not evidence_warnings
+        result.evidence_status = "complete" if evidence_complete else "degraded"
+
+        if not evidence_complete:
+            # Step 1174 — apply may have succeeded but evidence degraded.
+            result.stop_reason = ContinueStopReason.EVIDENCE_INCOMPLETE
+            result.next_safe_action = f"remedy change proof {request.job_id} --json"
+            result.safe_summary = "Evidence incomplete — durable record/event persistence degraded."
+            _finalize_evidence_incomplete(request.job_id, data_dir, evidence_warnings)
+        elif test_status == "passed" and result.proof_status == "verified":
+            # Step 1172 — verified completion.
+            result.stop_reason = ContinueStopReason.COMPLETED_VERIFIED
+            result.next_safe_action = ""
+            result.safe_summary = "Completed: change applied, tested, and proven."
+        elif test_status in ("failed", "timeout"):
+            # Step 1173 — failure, repair available (no auto-repair/revert).
+            result.stop_reason = ContinueStopReason.TEST_FAILED_REPAIR_AVAILABLE
+            fa = result.failure_artifact_id or "<failure_artifact_id>"
+            result.next_safe_action = f"remedy repair start {request.job_id} {fa} --json"
+            result.safe_summary = "Test failed — repair available."
+        else:
+            # Passed but proof not verified → evidence incomplete (not a false pass).
+            result.stop_reason = ContinueStopReason.EVIDENCE_INCOMPLETE
+            result.next_safe_action = f"remedy change proof {request.job_id} --json"
+            result.safe_summary = f"Test passed but proof is {result.proof_status}."
+
+        _record(result, ContinuePhase.FINAL_STOP, "stopped", result.stop_reason)
+        save_checkpoint(request.job_id, data_dir, ContinueCheckpoint(
+            phase=ContinuePhase.FINAL_STOP, status="completed",
+            at=datetime.now(timezone.utc).isoformat(),
+            evidence_status=result.evidence_status,
+            ids={"stop_reason": result.stop_reason},
+        ))
+        _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
+            "stop_reason": result.stop_reason,
+            "evidence_status": result.evidence_status,
+        })
+        return result
+    finally:
+        lease.release()
+
+
+def _finalize_evidence_incomplete(job_id: str, data_dir: Path, warnings: list[str]) -> None:
+    """Record a Progress Ledger blocker for degraded continuation evidence.
+
+    Best-effort and safe — does not raise, exposes no raw content (Step 1174).
+    """
+    try:
+        from packages.orchestration.event_persistence import emit_important_event
+        emit_important_event(
+            data_dir, job_id, "do_continue_stopped",
+            {"stop_reason": "evidence_incomplete", "warnings": warnings[:8]},
+            eligible=CONTINUE_EVENTS,
+        )
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Export / summary (Step 1166 surfaces)
+# ---------------------------------------------------------------------------
+
+
+def export_continue_result_json(result: ContinueResult) -> dict[str, Any]:
+    """Export ContinueResult as safe JSON. No raw content."""
+    return {
+        "version": result.version,
+        "job_id": result.job_id,
+        "task_id": result.task_id,
+        "intent_id": result.intent_id,
+        "apply_id": result.apply_id,
+        "snapshot_id": result.snapshot_id,
+        "test_run_id": result.test_run_id,
+        "failure_artifact_id": result.failure_artifact_id,
+        "contract_id": result.contract_id,
+        "current_phase": result.current_phase,
+        "stop_reason": result.stop_reason,
+        "next_safe_action": result.next_safe_action,
+        "proof_status": result.proof_status,
+        "evidence_status": result.evidence_status,
+        "usage_before": result.usage_before,
+        "usage_after": result.usage_after,
+        "generated_at": result.generated_at,
+        "safe_summary": result.safe_summary,
+        "phases": [
+            {"phase": p.phase, "status": p.status, "safe_summary": p.safe_summary}
+            for p in result.phases
+        ],
+    }
+
+
+def summarize_continue_result(result: ContinueResult) -> str:
+    """Human-readable continuation summary. No raw content."""
+    lines = [
+        f"remedy do --continue: {result.job_id[:8]}",
+        f"Intent: {result.intent_id}  Apply: {result.apply_id}",
+    ]
+    lines.append("")
+    lines.append("Phases:")
+    for p in result.phases:
+        lines.append(f"  [{p.status}] {p.phase}: {p.safe_summary}")
+    lines.append("")
+    lines.append(f"Stop: {result.stop_reason}")
+    lines.append(f"Proof: {result.proof_status or 'n/a'}")
+    lines.append(f"Evidence: {result.evidence_status}")
+    if result.next_safe_action:
+        lines.append(f"Next: $ {result.next_safe_action}")
+    return "\n".join(lines)
