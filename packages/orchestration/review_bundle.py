@@ -38,6 +38,7 @@ REQUIRED_SECTIONS = (
     "trust_report.json",
     "context_inspection.json",
     "changed_files_safe.json",
+    "snapshot_summary.json",
     "repair_summary.json",
     "command_summary.json",
     "progress_ledger.json",
@@ -359,6 +360,85 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
         ],
         "redacted_protected_path_count": redacted_count,
     }
+
+
+def _build_snapshot_summary(job_id: str, data_dir: Path) -> dict:
+    """Safe snapshot/apply-record aggregate summary (Step 1160).
+
+    Sourced from the authoritative snapshot-truth builder. Contains safe counts
+    and non-path identifiers only — no recovery blob references, no source
+    content, no raw/absolute/protected paths.
+    """
+    try:
+        from packages.orchestration.repository_snapshot import (
+            build_snapshot_truth, list_durable_apply_ids,
+        )
+
+        apply_ids = list_durable_apply_ids(job_id, data_dir)
+        snapshot_ids: set[str] = set()
+        snapshot_count = 0
+        verified_count = 0
+        verification_failed_count = 0
+        active_apply_count = 0
+        reverted_count = 0
+        drift_blocked_count = 0
+        partial_revert_count = 0
+        revert_failed_count = 0
+        missing_recovery_count = 0
+        evidence_degraded_count = 0
+        applies: list[dict] = []
+
+        for aid in apply_ids:
+            truth = build_snapshot_truth(job_id, apply_id=aid, data_dir=data_dir)
+            if truth.snapshot_id and truth.snapshot_exists:
+                if truth.snapshot_id not in snapshot_ids:
+                    snapshot_ids.add(truth.snapshot_id)
+                    snapshot_count += 1
+                if truth.snapshot_verified_now:
+                    verified_count += 1
+                else:
+                    verification_failed_count += 1
+                if not truth.recovery_material_available:
+                    missing_recovery_count += 1
+            if truth.apply_state == "applied":
+                active_apply_count += 1
+            if truth.apply_state == "reverted" or truth.revert_state == "reverted":
+                reverted_count += 1
+            if truth.drift_blocked:
+                drift_blocked_count += 1
+            if truth.revert_state == "partial_revert":
+                partial_revert_count += 1
+            if truth.revert_state == "revert_failed":
+                revert_failed_count += 1
+            if truth.evidence_status == "degraded":
+                evidence_degraded_count += 1
+            applies.append({
+                "apply_id": truth.apply_id,
+                "snapshot_id": truth.snapshot_id,
+                "apply_state": truth.apply_state,
+                "revert_state": truth.revert_state,
+                "snapshot_verified": truth.snapshot_verified_now,
+                "recovery_material_available": truth.recovery_material_available,
+                "drift_blocked": truth.drift_blocked,
+                "evidence_status": truth.evidence_status,
+            })
+
+        return {
+            "version": 1,
+            "snapshot_count": snapshot_count,
+            "verified_count": verified_count,
+            "verification_failed_count": verification_failed_count,
+            "active_apply_count": active_apply_count,
+            "reverted_count": reverted_count,
+            "drift_blocked_count": drift_blocked_count,
+            "partial_revert_count": partial_revert_count,
+            "revert_failed_count": revert_failed_count,
+            "missing_recovery_count": missing_recovery_count,
+            "evidence_degraded_count": evidence_degraded_count,
+            "applies": applies,
+        }
+    except Exception:
+        return {"status": "section_unavailable", "reason": "snapshot summary not available"}
 
 
 def _build_repair_summary(job: Any, events: list[dict]) -> dict:
@@ -760,6 +840,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("changed_files_safe.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("changed_files_safe.json", status="error", error="build failed"))
+
+    # snapshot_summary.json (Step 1160)
+    try:
+        ss = _build_snapshot_summary(job_id, data_dir)
+        content = json.dumps(ss, indent=2).encode()
+        section_data["snapshot_summary.json"] = content
+        result.sections.append(ReviewBundleSection("snapshot_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("snapshot_summary.json", status="error", error="build failed"))
 
     # repair_summary.json
     try:

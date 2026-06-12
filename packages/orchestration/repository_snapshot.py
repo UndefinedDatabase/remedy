@@ -884,6 +884,21 @@ def save_durable_apply_record(
         return False
 
 
+def list_durable_apply_ids(
+    job_id: str,
+    data_dir: Path | None = None,
+) -> list[str]:
+    """List apply_ids that have a durable apply record for *job_id*. Sorted."""
+    data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
+    records_dir = _apply_record_dir(job_id, data_dir)
+    if not records_dir.exists():
+        return []
+    try:
+        return sorted(p.stem for p in records_dir.glob("*.json"))
+    except OSError:
+        return []
+
+
 def load_durable_apply_record(
     apply_id: str,
     job_id: str,

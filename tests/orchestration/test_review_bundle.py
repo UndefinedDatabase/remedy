@@ -118,8 +118,9 @@ class TestReviewBundleModel:
 
     def test_required_sections_defined(self):
         from packages.orchestration.review_bundle import REQUIRED_SECTIONS
-        assert len(REQUIRED_SECTIONS) == 12
+        assert len(REQUIRED_SECTIONS) == 13
         assert "manifest.json" in REQUIRED_SECTIONS
+        assert "snapshot_summary.json" in REQUIRED_SECTIONS
         assert "bundle_readme.md" in REQUIRED_SECTIONS
 
 
@@ -899,5 +900,95 @@ class TestSnapshotIntegration:
             raw = json.dumps(result)
             for forbidden in ("blob_", "bin", "recovery", "traceback", "Traceback", "diff --git"):
                 assert forbidden not in raw, f"Forbidden term in changed_files: {forbidden}"
+        finally:
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Snapshot summary section (Step 1160)
+# ---------------------------------------------------------------------------
+
+
+class TestSnapshotSummarySection:
+    """snapshot_summary.json — safe aggregate counts, no blobs/paths."""
+
+    def _add_durable_snapshot(self, data_dir, job_id, *, state="applied"):
+        import hashlib
+        from pathlib import Path
+        from packages.orchestration.repository_snapshot import (
+            create_snapshot, verify_snapshot, save_durable_apply_record,
+            DurableApplyRecord,
+        )
+        repo = data_dir.parent / "repo"
+        repo.mkdir(exist_ok=True)
+        (repo / "f.py").write_text("before\n")
+        snap = create_snapshot(job_id, "intent-1", ["f.py"], repo, data_dir)
+        verify_snapshot(snap.snapshot_id, job_id, data_dir)
+        rec = DurableApplyRecord(
+            apply_id="apply-1", job_id=job_id, intent_id="intent-1",
+            snapshot_id=snap.snapshot_id, state=state, target_paths=["f.py"],
+            applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={}, after_proof={}, snapshot_verified=True,
+        )
+        save_durable_apply_record(rec, job_id, data_dir)
+        return snap.snapshot_id
+
+    def _read_section(self, zip_path, name):
+        import zipfile, json as _json
+        with zipfile.ZipFile(zip_path) as zf:
+            return _json.loads(zf.read(name))
+
+    def test_snapshot_summary_present_and_counted(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            self._add_durable_snapshot(data_dir, str(job.id))
+            result = build_review_bundle(str(job.id))
+            assert any(s.filename == "snapshot_summary.json" and s.status == "included"
+                       for s in result.sections)
+            summary = self._read_section(result.output_path, "snapshot_summary.json")
+            assert summary["snapshot_count"] == 1
+            assert summary["verified_count"] == 1
+            assert summary["active_apply_count"] == 1
+            assert summary["reverted_count"] == 0
+        finally:
+            _cleanup_env(old)
+
+    def test_snapshot_summary_reverted(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            self._add_durable_snapshot(data_dir, str(job.id), state="reverted")
+            result = build_review_bundle(str(job.id))
+            summary = self._read_section(result.output_path, "snapshot_summary.json")
+            assert summary["reverted_count"] == 1
+            assert summary["active_apply_count"] == 0
+        finally:
+            _cleanup_env(old)
+
+    def test_snapshot_summary_no_blob_or_path_leak(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            self._add_durable_snapshot(data_dir, str(job.id))
+            result = build_review_bundle(str(job.id))
+            import zipfile
+            with zipfile.ZipFile(result.output_path) as zf:
+                raw = zf.read("snapshot_summary.json").decode()
+            assert "blob_" not in raw
+            assert str(data_dir) not in raw
+            assert "manifest.json" not in raw
+            assert result.safety.is_safe
+        finally:
+            _cleanup_env(old)
+
+    def test_snapshot_summary_empty_job(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            result = build_review_bundle(str(job.id))
+            summary = self._read_section(result.output_path, "snapshot_summary.json")
+            assert summary["snapshot_count"] == 0
+            assert summary["applies"] == []
         finally:
             _cleanup_env(old)

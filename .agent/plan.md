@@ -6,7 +6,7 @@ approved intent → contract/permission checks → verified snapshot → apply �
 Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/idempotent.
 
 ## Current Step
-1160 — snapshot_summary.json in Review Bundle (in progress)
+1161 — Close silent ApplyRecord persistence failure (in progress)
 
 ## Steps
 - [x] 1155: Reconcile .agent/context.md, plan.md, live_review.md
@@ -14,7 +14,7 @@ Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/
 - [x] 1157: Fix public File Provenance CLI (pass data_dir) + tests
 - [x] 1158: Proof Chain uses durable snapshot truth + tests
 - [x] 1159: Remove readiness event-only fallback + tests
-- [ ] 1160: snapshot_summary.json in Review Bundle
+- [x] 1160: snapshot_summary.json in Review Bundle
 - [ ] 1161: Close silent ApplyRecord persistence failure (structured result)
 - [ ] 1162: Event durability closure (EventPersistenceResult) — R-0051/R-0057
 - [ ] 1163: Canonical update_apply_record_state() (legal transitions, idempotent, atomic)
