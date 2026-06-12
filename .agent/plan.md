@@ -32,7 +32,7 @@ Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/
 - [x] 1175: do_continue_* events
 - [x] 1176: Progress Ledger + Feature Planner items
 - [x] 1177: continuation_summary.json in Review Bundle
-- [ ] 1178: Runtime + idempotency tests (tiny temp repos)
+- [x] 1178: Runtime + idempotency tests (tiny temp repos)
 - [ ] 1179: Docs + targeted/full pytest + live review + final handoff
 
 ## Carry-forward Risks

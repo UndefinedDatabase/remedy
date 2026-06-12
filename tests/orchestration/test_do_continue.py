@@ -408,3 +408,37 @@ class TestContinuationIntegrations:
         assert str(repo.resolve()) not in raw
         assert "blob_" not in raw
         assert result.safety.is_safe
+
+
+# ---------------------------------------------------------------------------
+# Architecture guards (Step 1178)
+# ---------------------------------------------------------------------------
+
+
+class TestContinuationArchitecture:
+    def _src(self):
+        from pathlib import Path
+        import packages.orchestration.do_continue as m
+        return Path(m.__file__).read_text()
+
+    def test_no_shell_true(self):
+        assert "shell=True" not in self._src()
+
+    def test_no_background_pytest_or_git_reset(self):
+        src = self._src()
+        assert "git reset" not in src
+        assert "git checkout" not in src
+        assert "git clean" not in src
+
+    def test_uses_central_services(self):
+        src = self._src()
+        # Apply, test, snapshot truth, and proof all go through central services.
+        assert "apply_patch_intent" in src
+        assert "execute_test_run" in src
+        assert "build_snapshot_truth" in src
+        assert "build_proof_chain" in src
+
+    def test_no_auto_repair_or_revert(self):
+        src = self._src()
+        assert "revert_repository_apply" not in src   # no automatic revert
+        assert "start_repair_loop" not in src          # no automatic repair
