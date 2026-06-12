@@ -37,6 +37,7 @@ Public API::
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import os
 import signal
 import subprocess
@@ -110,6 +111,14 @@ class TestExecutionResult:
     stop_reason: str = ""
     next_safe_action: str = ""
     contract_guidance: str = ""
+    # Evidence durability fields (Step 1114)
+    evidence_status: str = "complete"   # complete | partial | failed
+    test_record_persisted: bool = False
+    usage_persisted: bool = False
+    completion_event_persisted: bool = False
+    failure_artifact_persisted: bool = False
+    evidence_warnings: list[str] = field(default_factory=list)
+    recovery_action: str = ""
 
 
 @dataclass
@@ -165,6 +174,56 @@ class TestExecutionLease:
                 self.lease_path.unlink(missing_ok=True)
             except OSError:
                 pass
+
+
+def _repo_lease_name(repo_root: Path) -> str:
+    """Return a stable, non-reversible 32-char hex name for a repository lease file.
+
+    Input is the canonical resolved absolute path.  The hash is never exposed publicly.
+    """
+    digest = hashlib.sha256(str(repo_root).encode("utf-8")).hexdigest()
+    return digest[:32]
+
+
+@dataclass
+class DualTestExecutionLease:
+    """File-backed leases for both job_id and repository path.
+
+    Prevents:
+    - same job running twice (per-job lease)
+    - two different jobs testing the same repository simultaneously (per-repo lease)
+
+    Acquire order: job lease first, then repo lease (deterministic — no deadlock).
+    Release order: repo first, then job (reverse acquire).
+    Both leases released on every exit path.
+    """
+
+    __test__ = False
+
+    job_lease: TestExecutionLease
+    repo_lease: TestExecutionLease
+    _repo_acquired: bool = field(default=False, repr=False, compare=False)
+
+    def acquire(self, *, timeout_seconds: float = 2.0) -> tuple[bool, str]:
+        """Acquire both leases. Returns (success, block_reason).
+
+        block_reason is empty on success.
+        """
+        if not self.job_lease.acquire(timeout_seconds=timeout_seconds):
+            return False, "test_run_already_active"
+        # Job lease acquired; now try repo lease
+        if not self.repo_lease.acquire(timeout_seconds=timeout_seconds):
+            self.job_lease.release()
+            return False, "test_run_already_active_same_repo"
+        self._repo_acquired = True
+        return True, ""
+
+    def release(self) -> None:
+        """Release both leases (safe to call multiple times)."""
+        if self._repo_acquired:
+            self.repo_lease.release()
+            self._repo_acquired = False
+        self.job_lease.release()
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +287,7 @@ def _build_safe_env(base_env: dict[str, str] | None = None) -> dict[str, str]:
 _MAX_SYSTEM_TIMEOUT_SECONDS: float = 600.0
 _MIN_PRACTICAL_TIMEOUT_SECONDS: float = 5.0
 _SIGTERM_WAIT_SECONDS: float = 3.0
+_LEASE_TIMEOUT_STATUS_SECONDS: float = 5.0  # exported for test.status command
 
 
 def _run_isolated_process(
@@ -237,9 +297,12 @@ def _run_isolated_process(
     env: dict[str, str],
     output_file: Path,
     timeout_seconds: float,
-) -> tuple[str, int | None, int]:
-    """Run argv in an isolated process group. Returns (status, exit_code, duration_ms).
+) -> tuple[str, int | None, int, bool]:
+    """Run argv in an isolated process group.
 
+    Returns (status, exit_code, duration_ms, process_started).
+
+    process_started is True only when Popen succeeded (child created).
     Output written to output_file. No capture_output=True.
     SIGTERM then SIGKILL on timeout. Process group killed.
     """
@@ -262,12 +325,13 @@ def _run_isolated_process(
         except FileNotFoundError:
             duration_ms = int((time.monotonic() - start) * 1000)
             out_fh.write(b"[remedy: command not found]\n")
-            return "environment_failure", None, duration_ms
+            return "environment_failure", None, duration_ms, False
         except OSError as exc:
             duration_ms = int((time.monotonic() - start) * 1000)
             out_fh.write(f"[remedy: OS error launching process: {exc}]\n".encode())
-            return "environment_failure", None, duration_ms
+            return "environment_failure", None, duration_ms, False
 
+        # Process was created — test_run_started should be emitted by caller
         try:
             proc.wait(timeout=timeout_seconds)
             exit_code = proc.returncode
@@ -283,7 +347,7 @@ def _run_isolated_process(
     if status == "timeout":
         with open(output_file, "ab") as out_fh:
             out_fh.write(b"\n[remedy: test run timed out]\n")
-    return status, exit_code, duration_ms
+    return status, exit_code, duration_ms, True
 
 
 def _kill_process_group(proc: subprocess.Popen) -> None:  # type: ignore[type-arg]
@@ -587,20 +651,35 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
         result.next_safe_action = linkage_error.next_safe_action
         return result
 
-    # ── Gate 7: Acquire lease ────────────────────────────────────────────────
+    # ── Gate 7: Acquire lease (job + repository) ────────────────────────────
     workspace_root = data_dir / "workspaces" / str(job_id_parsed)
     workspace_root.mkdir(parents=True, exist_ok=True)
-    lease_path = workspace_root / "test_execution.lock"
-    lease = TestExecutionLease(job_id=str(job_id_parsed), lease_path=lease_path)
+    job_lease_path = workspace_root / "test_execution.lock"
 
-    if not lease.acquire(timeout_seconds=2.0):
+    # Repository-scoped lease prevents concurrent tests on the same repo across jobs.
+    # Lease filename is a non-reversible hash of the canonical repo path.
+    repo_lease_dir = data_dir / "workspaces" / "_repo_leases"
+    repo_lease_dir.mkdir(parents=True, exist_ok=True)
+    repo_lease_name = _repo_lease_name(repo_root)
+    repo_lease_path = repo_lease_dir / f"{repo_lease_name}.lock"
+
+    dual_lease = DualTestExecutionLease(
+        job_lease=TestExecutionLease(job_id=str(job_id_parsed), lease_path=job_lease_path),
+        repo_lease=TestExecutionLease(job_id=f"repo:{repo_lease_name}", lease_path=repo_lease_path),
+    )
+
+    acquired, block_reason = dual_lease.acquire(timeout_seconds=2.0)
+    if not acquired:
         result.status = "blocked"
-        result.stop_reason = "test_run_already_active"
-        result.safe_summary = "Another test run is already active for this job."
+        result.stop_reason = block_reason
+        if block_reason == "test_run_already_active_same_repo":
+            result.safe_summary = "Another test run is already active for this repository."
+        else:
+            result.safe_summary = "Another test run is already active for this job."
         result.next_safe_action = f"remedy test status {job.id}"
         _emit(data_dir, job_id_parsed, "test_run_blocked", {
             "test_run_id": test_run_id,
-            "reason": "test_run_already_active",
+            "reason": block_reason,
         })
         return result
 
@@ -664,7 +743,7 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
             "source": request.source,
         })
 
-        status, exit_code, duration_ms = _run_isolated_process(
+        status, exit_code, duration_ms, process_started = _run_isolated_process(
             argv,
             cwd=str(repo_root),
             env=safe_env,
@@ -672,57 +751,45 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
             timeout_seconds=timeout,
         )
 
+        # Emit test_run_started only after Popen succeeded (child created).
+        # command-not-found and blocked-before-start do NOT emit this event.
+        if process_started:
+            _emit(data_dir, job_id_parsed, "test_run_started", {
+                "test_run_id": test_run_id,
+                "contract_id": contract.contract_id,
+                "command_source_type": candidate.source_type,
+                "linked_task_id": request.task_id,
+                "linked_intent_id": request.intent_id,
+                "linked_apply_id": request.apply_id,
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                # No PID, no argv, no environment
+            })
+
         result.status = status
         result.exit_code = exit_code
         result.duration_ms = duration_ms
         result.output_ref = output_file.name
 
-        # ── Gate 10: Persist usage ───────────────────────────────────────────
-        # Reload job to avoid stale state, then update usage
-        job = load_job(job_id_parsed)
-        usage = load_usage(job)
-        usage.test_runs_used += 1
-        usage.runtime_seconds_used += duration_ms / 1000.0
-        save_usage(job, usage)
-        save_job(job)
-        result.usage_after = export_usage_json(usage)
-
-        # ── Gate 11: Persist safe test record ───────────────────────────────
+        # Truncate output before finalization
         original_output_bytes, output_truncated, persisted_output_bytes = (
             _truncate_output_file(output_file)
         )
-        _persist_test_record(
-            job_id_parsed, result, candidate, test_run_id, created_at,
+
+        # ── Gates 10-13: Atomic finalization ─────────────────────────────────
+        finalize_test_outcome(
+            job_id=job_id_parsed,
+            result=result,
+            candidate=candidate,
+            test_run_id=test_run_id,
+            created_at=created_at,
             output_truncated=output_truncated,
             original_output_bytes=original_output_bytes,
             persisted_output_bytes=persisted_output_bytes,
+            data_dir=data_dir,
+            contract=contract,
+            intent_id=request.intent_id,
+            apply_id=request.apply_id,
         )
-
-        # ── Gate 12: Emit lifecycle events ───────────────────────────────────
-        if status in ("passed", "failed", "timeout"):
-            event_name = "test_run_timed_out" if status == "timeout" else "test_run_completed"
-            _emit(data_dir, job_id_parsed, event_name, _safe_event_meta(result))
-            _emit(data_dir, job_id_parsed, "run_usage_recorded", result.usage_after)
-            _emit(data_dir, job_id_parsed, "contract_decision", {
-                "action": ContractAction.RUN_TEST,
-                "allowed": True,
-                "status": "allowed",
-                "contract_id": contract.contract_id,
-                "test_run_id": test_run_id,
-            })
-        else:
-            _emit(data_dir, job_id_parsed, "test_run_blocked", {
-                "test_run_id": test_run_id,
-                "reason": "environment_failure",
-            })
-
-        # ── Gate 13: Create failure artifact ────────────────────────────────
-        if status in ("failed", "timeout", "environment_failure"):
-            _create_failure_artifact(
-                job_id_parsed, result, data_dir,
-                intent_id=request.intent_id,
-                apply_id=request.apply_id,
-            )
 
         # ── Guidance ─────────────────────────────────────────────────────────
         if status in ("failed", "timeout"):
@@ -737,11 +804,11 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
         return result
 
     finally:
-        lease.release()
+        dual_lease.release()
 
 
 # ---------------------------------------------------------------------------
-# Persistence helpers
+# Persistence helpers — structured returns (Steps 1115-1117)
 # ---------------------------------------------------------------------------
 
 
@@ -755,12 +822,20 @@ def _persist_test_record(
     output_truncated: bool = False,
     original_output_bytes: int = 0,
     persisted_output_bytes: int = 0,
-) -> None:
-    """Store a safe test record in job metadata. No raw output."""
+) -> bool:
+    """Store a safe test record in job metadata. Returns True on success.
+
+    Narrow exception handling — only expected I/O failures are swallowed.
+    Idempotent: no-op if test_run_id already present.
+    """
     try:
         job = load_job(job_id)
         if "test_runs" not in job.metadata:
             job.metadata["test_runs"] = []
+        # Idempotency: skip if already recorded (Step 1117)
+        existing_ids = {r.get("test_run_id") for r in job.metadata["test_runs"]}
+        if test_run_id in existing_ids:
+            return True
         job.metadata["test_runs"].append({
             "test_run_id": test_run_id,
             "contract_id": result.contract_id,
@@ -781,8 +856,11 @@ def _persist_test_record(
             "created_at": created_at,
         })
         save_job(job)
+        return True
+    except (OSError, ValueError, KeyError):
+        return False
     except Exception:
-        pass  # non-fatal — events are primary record
+        return False  # unexpected — caller surfaces as evidence warning
 
 
 def _create_failure_artifact(
@@ -792,8 +870,12 @@ def _create_failure_artifact(
     *,
     intent_id: str = "",
     apply_id: str = "",
-) -> None:
-    """Create and persist a TestFailureArtifact. Sets result.failure_artifact_id."""
+) -> bool:
+    """Create and persist a TestFailureArtifact. Sets result.failure_artifact_id.
+
+    Idempotent: returns existing artifact_id if already created for this test_run_id.
+    Returns True on success (including idempotent). No raw exception in result.
+    """
     try:
         from packages.orchestration.test_failure_artifact import (
             build_test_failure_artifact,
@@ -802,7 +884,13 @@ def _create_failure_artifact(
         from packages.orchestration.test_runner import TestRunRecord
         job = load_job(job_id)
 
-        # Build a minimal TestRunRecord for the artifact builder
+        # Idempotency: check for existing artifact for this test_run_id (Step 1117)
+        for art in (job.artifacts or []):
+            if hasattr(art, "metadata"):
+                if art.metadata.get("test_run_id") == result.test_run_id:
+                    result.failure_artifact_id = str(art.id)
+                    return True
+
         record = TestRunRecord(
             test_run_id=result.test_run_id,
             command=result.command_safe,
@@ -825,7 +913,7 @@ def _create_failure_artifact(
             related_intent_id=intent_id,
             related_apply_id=apply_id,
         )
-        artifact_obj = persist_failure_artifact(job, artifact)
+        persist_failure_artifact(job, artifact)
         save_job(job)
 
         result.failure_artifact_id = artifact.artifact_id
@@ -834,5 +922,114 @@ def _create_failure_artifact(
             "failure_artifact_id": artifact.artifact_id,
             "status": result.status,
         })
+        return True
+    except (OSError, ValueError, AttributeError):
+        return False
     except Exception:
-        pass  # non-fatal — result still returned
+        return False  # unexpected — caller surfaces as evidence warning
+
+
+def finalize_test_outcome(
+    *,
+    job_id: UUID,
+    result: TestExecutionResult,
+    candidate: Any,
+    test_run_id: str,
+    created_at: str,
+    output_truncated: bool,
+    original_output_bytes: int,
+    persisted_output_bytes: int,
+    data_dir: Path,
+    contract: Any,
+    intent_id: str = "",
+    apply_id: str = "",
+) -> None:
+    """Atomic-as-possible finalization of a completed test run.
+
+    Persists usage + test record in one reload, then emits events, then
+    creates failure artifact. Each step's outcome is recorded in result
+    evidence fields. No silent swallowing — warnings surface to caller.
+
+    Idempotent: safe to retry. Duplicate test_run_id records not created.
+    """
+    warnings: list[str] = []
+
+    # ── Step 1: Persist usage + test record atomically ───────────────────
+    usage_ok = False
+    record_ok = False
+    try:
+        job = load_job(job_id)
+        usage = load_usage(job)
+        # Idempotency: don't double-count if test_run_id already recorded
+        existing_ids = {r.get("test_run_id") for r in job.metadata.get("test_runs", [])}
+        if test_run_id not in existing_ids:
+            usage.test_runs_used += 1
+            usage.runtime_seconds_used += result.duration_ms / 1000.0
+        save_usage(job, usage)
+        result.usage_after = export_usage_json(usage)
+        save_job(job)
+        usage_ok = True
+    except (OSError, ValueError):
+        warnings.append("usage_persist_failed")
+    except Exception:
+        warnings.append("usage_persist_unexpected_failure")
+
+    record_ok = _persist_test_record(
+        job_id, result, candidate, test_run_id, created_at,
+        output_truncated=output_truncated,
+        original_output_bytes=original_output_bytes,
+        persisted_output_bytes=persisted_output_bytes,
+    )
+    if not record_ok:
+        warnings.append("test_record_persist_failed")
+
+    # ── Step 2: Emit lifecycle events (after durable save) ───────────────
+    event_ok = False
+    status = result.status
+    try:
+        if status in ("passed", "failed", "timeout"):
+            event_name = "test_run_timed_out" if status == "timeout" else "test_run_completed"
+            _emit(data_dir, job_id, event_name, _safe_event_meta(result))
+            _emit(data_dir, job_id, "run_usage_recorded", result.usage_after)
+            _emit(data_dir, job_id, "contract_decision", {
+                "action": ContractAction.RUN_TEST,
+                "allowed": True,
+                "status": "allowed",
+                "contract_id": contract.contract_id,
+                "test_run_id": test_run_id,
+            })
+        else:
+            _emit(data_dir, job_id, "test_run_blocked", {
+                "test_run_id": test_run_id,
+                "reason": "environment_failure",
+            })
+        event_ok = True
+    except Exception:
+        warnings.append("completion_event_failed")
+
+    # ── Step 3: Create failure artifact ──────────────────────────────────
+    artifact_ok = True
+    if status in ("failed", "timeout", "environment_failure"):
+        artifact_ok = _create_failure_artifact(
+            job_id, result, data_dir,
+            intent_id=intent_id,
+            apply_id=apply_id,
+        )
+        if not artifact_ok:
+            warnings.append("failure_artifact_persist_failed")
+
+    # ── Evidence status ───────────────────────────────────────────────────
+    result.test_record_persisted = record_ok
+    result.usage_persisted = usage_ok
+    result.completion_event_persisted = event_ok
+    result.failure_artifact_persisted = artifact_ok if status in ("failed", "timeout", "environment_failure") else True
+
+    if not warnings:
+        result.evidence_status = "complete"
+    elif usage_ok and record_ok:
+        result.evidence_status = "partial"
+    else:
+        result.evidence_status = "failed"
+        result.recovery_action = f"remedy job show {job_id} --json"
+
+    result.evidence_warnings = warnings

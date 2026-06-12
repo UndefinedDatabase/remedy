@@ -216,7 +216,7 @@ class TestDeriveTimeout:
 class TestRunIsolatedProcess:
     def test_passing_process(self, tmp_path):
         output = tmp_path / "out.txt"
-        status, exit_code, dur = _run_isolated_process(
+        status, exit_code, dur, _started = _run_isolated_process(
             [sys.executable, "-c", "import sys; sys.exit(0)"],
             cwd=str(tmp_path),
             env=_build_safe_env({"PATH": os.environ.get("PATH", "/usr/bin")}),
@@ -229,7 +229,7 @@ class TestRunIsolatedProcess:
 
     def test_failing_process(self, tmp_path):
         output = tmp_path / "out.txt"
-        status, exit_code, dur = _run_isolated_process(
+        status, exit_code, dur, _started = _run_isolated_process(
             [sys.executable, "-c", "import sys; sys.exit(1)"],
             cwd=str(tmp_path),
             env=_build_safe_env({"PATH": os.environ.get("PATH", "/usr/bin")}),
@@ -241,7 +241,7 @@ class TestRunIsolatedProcess:
 
     def test_timeout_kills_process(self, tmp_path):
         output = tmp_path / "out.txt"
-        status, exit_code, dur = _run_isolated_process(
+        status, exit_code, dur, _started = _run_isolated_process(
             [sys.executable, "-c", "import time; time.sleep(60)"],
             cwd=str(tmp_path),
             env=_build_safe_env({"PATH": os.environ.get("PATH", "/usr/bin")}),
@@ -253,7 +253,7 @@ class TestRunIsolatedProcess:
 
     def test_missing_executable(self, tmp_path):
         output = tmp_path / "out.txt"
-        status, exit_code, dur = _run_isolated_process(
+        status, exit_code, dur, _started = _run_isolated_process(
             ["/nonexistent/executable_xyz", "--test"],
             cwd=str(tmp_path),
             env=_build_safe_env({"PATH": os.environ.get("PATH", "/usr/bin")}),
@@ -310,7 +310,7 @@ class TestRunIsolatedProcess:
         })
         assert "MY_SECRET_TOKEN" not in safe_env
         # Further: even if someone injected it, process would not see it
-        status, _, _ = _run_isolated_process(
+        status, _, _, _ = _run_isolated_process(
             [sys.executable, "-c",
              "import os, sys; "
              "val = os.environ.get('MY_SECRET_TOKEN', ''); "
@@ -358,6 +358,116 @@ class TestExecutionLeaseTests:
         lease.acquire(timeout_seconds=2.0)
         lease.release()
         lease.release()  # should not raise
+
+
+class TestDualLeaseTests:
+    """Step 1112 — repository-scoped dual lease tests."""
+
+    def test_same_job_blocked(self, tmp_path):
+        from packages.orchestration.test_execution_service import DualTestExecutionLease
+        job_path = tmp_path / "job.lock"
+        repo_path = tmp_path / "repo.lock"
+        l1 = DualTestExecutionLease(
+            job_lease=TestExecutionLease("j1", job_path),
+            repo_lease=TestExecutionLease("r1", repo_path),
+        )
+        l2 = DualTestExecutionLease(
+            job_lease=TestExecutionLease("j1", job_path),
+            repo_lease=TestExecutionLease("r1", repo_path),
+        )
+        ok, reason = l1.acquire(timeout_seconds=0.2)
+        assert ok
+        try:
+            ok2, reason2 = l2.acquire(timeout_seconds=0.1)
+            assert not ok2
+            assert reason2 == "test_run_already_active"
+        finally:
+            l1.release()
+
+    def test_different_jobs_same_repo_blocked(self, tmp_path):
+        from packages.orchestration.test_execution_service import DualTestExecutionLease
+        job1_path = tmp_path / "job1.lock"
+        job2_path = tmp_path / "job2.lock"
+        repo_path = tmp_path / "repo.lock"  # same repo lease
+        l1 = DualTestExecutionLease(
+            job_lease=TestExecutionLease("j1", job1_path),
+            repo_lease=TestExecutionLease("r1", repo_path),
+        )
+        l2 = DualTestExecutionLease(
+            job_lease=TestExecutionLease("j2", job2_path),
+            repo_lease=TestExecutionLease("r1", repo_path),
+        )
+        ok, reason = l1.acquire(timeout_seconds=0.2)
+        assert ok
+        try:
+            ok2, reason2 = l2.acquire(timeout_seconds=0.1)
+            assert not ok2
+            assert reason2 == "test_run_already_active_same_repo"
+        finally:
+            l1.release()
+
+    def test_different_repos_allowed(self, tmp_path):
+        from packages.orchestration.test_execution_service import DualTestExecutionLease
+        l1 = DualTestExecutionLease(
+            job_lease=TestExecutionLease("j1", tmp_path / "job1.lock"),
+            repo_lease=TestExecutionLease("r1", tmp_path / "repo1.lock"),
+        )
+        l2 = DualTestExecutionLease(
+            job_lease=TestExecutionLease("j2", tmp_path / "job2.lock"),
+            repo_lease=TestExecutionLease("r2", tmp_path / "repo2.lock"),
+        )
+        ok1, _ = l1.acquire(timeout_seconds=0.2)
+        ok2, _ = l2.acquire(timeout_seconds=0.2)
+        assert ok1
+        assert ok2
+        l1.release()
+        l2.release()
+
+    def test_release_on_pass_fail_timeout(self, tmp_path):
+        from packages.orchestration.test_execution_service import DualTestExecutionLease
+        job_path = tmp_path / "job.lock"
+        repo_path = tmp_path / "repo.lock"
+        lease = DualTestExecutionLease(
+            job_lease=TestExecutionLease("j1", job_path),
+            repo_lease=TestExecutionLease("r1", repo_path),
+        )
+        ok, _ = lease.acquire(timeout_seconds=0.2)
+        assert ok
+        lease.release()
+        # After release, both lock files gone
+        assert not job_path.exists()
+        assert not repo_path.exists()
+
+    def test_stale_lock_recoverable(self, tmp_path):
+        """A stale lock file without an active flock is acquirable."""
+        from packages.orchestration.test_execution_service import DualTestExecutionLease
+        job_path = tmp_path / "job.lock"
+        repo_path = tmp_path / "repo.lock"
+        # Write stale lock files without holding the flock
+        job_path.write_text("stale\n")
+        repo_path.write_text("stale\n")
+        lease = DualTestExecutionLease(
+            job_lease=TestExecutionLease("j1", job_path),
+            repo_lease=TestExecutionLease("r1", repo_path),
+        )
+        ok, _ = lease.acquire(timeout_seconds=0.5)
+        assert ok, "Stale lock files should be acquirable"
+        lease.release()
+
+    def test_repo_lease_name_stable(self, tmp_path):
+        from packages.orchestration.test_execution_service import _repo_lease_name
+        repo = tmp_path / "myrepo"
+        name1 = _repo_lease_name(repo)
+        name2 = _repo_lease_name(repo)
+        assert name1 == name2
+        assert len(name1) == 32
+        assert name1.isalnum()
+
+    def test_repo_lease_name_different_paths(self, tmp_path):
+        from packages.orchestration.test_execution_service import _repo_lease_name
+        repo_a = tmp_path / "repo_a"
+        repo_b = tmp_path / "repo_b"
+        assert _repo_lease_name(repo_a) != _repo_lease_name(repo_b)
 
 
 # ---------------------------------------------------------------------------
@@ -659,3 +769,89 @@ class TestArchitectureGuards:
         src = inspect.getsource(svc.execute_test_run)
         assert "subprocess.run(" not in src
         assert "_run_isolated_process(" in src
+
+
+class TestCatalogValidation:
+    """All next_safe_action strings emitted by execute_test_run must be catalog-backed."""
+
+    def _all_catalog_command_ids(self) -> frozenset[str]:
+        from apps.cli.command_catalog import CATALOG as COMMAND_CATALOG
+        return frozenset(e.command_id for e in COMMAND_CATALOG)
+
+    def test_test_status_in_catalog(self):
+        """test.status must exist since execute_test_run emits it as next_safe_action."""
+        ids = self._all_catalog_command_ids()
+        assert "test.status" in ids, "test.status missing from command catalog (R-0041)"
+
+    def test_lease_blocked_next_action_references_catalog_command(self, tmp_path):
+        """When lease is active, next_safe_action must point to a catalog-backed command."""
+        from uuid import uuid4
+        from unittest.mock import patch
+        from packages.orchestration.test_execution_service import (
+            execute_test_run, TestExecutionRequest,
+        )
+        from packages.orchestration.run_contract import RunUsage
+
+        def _make_contract(max_test_runs=5):
+            from packages.orchestration.run_contract import RunContract, ContractAction
+            return RunContract(
+                contract_id="test-contract",
+                job_id="test",
+                allowed_actions=[ContractAction.RUN_TEST],
+                max_test_runs=max_test_runs,
+            )
+
+        from packages.core.models import Job
+        job = Job(name="catalog-test", user_prompt="")
+        job.metadata = {
+            "target_repo": str(tmp_path),
+            "permissions": {"repo_test_run": "allow"},
+        }
+        job_id = uuid4()
+        job.id = job_id
+
+        ws = tmp_path / "workspaces" / str(job_id)
+        ws.mkdir(parents=True)
+        lock_path = ws / "test_execution.lock"
+
+        import fcntl
+        fh = open(lock_path, "w")
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            with patch("packages.orchestration.test_execution_service.resolve_data_root",
+                       return_value=tmp_path), \
+                 patch("packages.orchestration.test_execution_service.load_job",
+                       return_value=job), \
+                 patch("packages.orchestration.test_execution_service.is_allowed",
+                       return_value=True), \
+                 patch("packages.orchestration.test_execution_service.ensure_contract",
+                       return_value=_make_contract()), \
+                 patch("packages.orchestration.test_execution_service.validate_run_contract",
+                       return_value=[]), \
+                 patch("packages.orchestration.test_execution_service.load_usage",
+                       return_value=RunUsage()):
+                result = execute_test_run(TestExecutionRequest(job_id=str(job_id)))
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+            fh.close()
+            lock_path.unlink(missing_ok=True)
+
+        assert result.stop_reason == "test_run_already_active"
+        # next_safe_action must be a valid catalog command
+        action = result.next_safe_action
+        catalog_ids = self._all_catalog_command_ids()
+        # Extract first word sequence that looks like a command (e.g. "remedy test status <job_id>")
+        parts = action.split()
+        if len(parts) >= 3:
+            cmd_group = parts[1]  # "test"
+            cmd_sub = parts[2]    # "status"
+            cmd_id = f"{cmd_group}.{cmd_sub}"
+            assert cmd_id in catalog_ids, (
+                f"next_safe_action {action!r} references non-catalog command {cmd_id!r}"
+            )
+
+    def test_test_status_command_has_handler(self):
+        """test.status must have a registered handler."""
+        from apps.cli.commands import collect_all_handlers
+        handlers = collect_all_handlers()
+        assert "test.status" in handlers, "test.status has no handler registered"

@@ -169,6 +169,94 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
         )
 
 
+def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
+    """Show lease state, latest test run, and usage for a job. Read-only."""
+    from packages.orchestration.test_execution_service import (
+        TestExecutionLease,
+        _LEASE_TIMEOUT_STATUS_SECONDS,
+    )
+    from packages.orchestration.run_contract import ensure_contract, load_usage, export_usage_json
+    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.data_paths import resolve_data_root
+    from pathlib import Path as _Path
+    import json as _json
+    from uuid import UUID
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        if as_json:
+            print(_json.dumps({"error": "invalid_job_id", "job_id": job_id_str}))
+        else:
+            print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        if as_json:
+            print(_json.dumps({"error": "job_not_found", "job_id": job_id_str}))
+        else:
+            print(f"Error: job {job_id_str!r} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    data_dir = resolve_data_root()
+    workspace = data_dir / "workspaces" / str(job_id)
+    lease_path = workspace / "test_execution.lock"
+
+    # Check lease without acquiring it (non-blocking probe)
+    lease_active = False
+    if lease_path.exists():
+        import fcntl
+        try:
+            with open(lease_path, "r") as lf:
+                fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(lf, fcntl.LOCK_UN)
+        except OSError:
+            lease_active = True
+
+    contract = ensure_contract(job)
+    usage = load_usage(job)
+    usage_dict = export_usage_json(usage)
+
+    # Latest test run (safe fields only, no raw output)
+    test_runs: list[dict] = job.metadata.get("test_runs", [])
+    latest = test_runs[-1] if test_runs else None
+    latest_safe: dict = {}
+    if latest:
+        latest_safe = {
+            "test_run_id": latest.get("test_run_id", ""),
+            "status": latest.get("status", ""),
+            "exit_code": latest.get("exit_code"),
+            "duration_ms": latest.get("duration_ms", 0),
+            "command_safe": latest.get("command_safe", ""),
+            "created_at": latest.get("created_at", ""),
+            "output_truncated": latest.get("output_truncated", False),
+        }
+
+    out_dict = {
+        "job_id": str(job_id),
+        "lease_active": lease_active,
+        "lease_scope": "job",
+        "contract_id": contract.contract_id,
+        "usage": usage_dict,
+        "run_count": len(test_runs),
+        "latest_run": latest_safe,
+    }
+
+    if as_json:
+        print(_json.dumps(out_dict))
+        return
+
+    print(f"Test status for job {job_id_str}")
+    print(f"  lease_active:  {lease_active}")
+    print(f"  contract_id:   {contract.contract_id}")
+    print(f"  runs_used:     {usage_dict.get('test_runs_used', 0)} / {contract.max_test_runs}")
+    print(f"  runtime_used:  {usage_dict.get('runtime_seconds_used', 0.0):.1f}s")
+    if latest_safe:
+        print(f"  latest_run:    {latest_safe['test_run_id']}  status={latest_safe['status']}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "test.discover": lambda args: _cmd_discover_commands(args.job_id, as_json=args.json),
     "test.run": lambda args: _cmd_run_tests(
@@ -179,4 +267,5 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
         timeout_seconds=float(ts) if (ts := (getattr(args, "timeout_seconds", None) or "")) else None,
         as_json=getattr(args, "json", False),
     ),
+    "test.status": lambda args: _cmd_test_status(args.job_id, as_json=getattr(args, "json", False)),
 }

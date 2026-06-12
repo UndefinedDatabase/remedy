@@ -418,6 +418,17 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("test.discover",),
     ),
 
+    CommandEntry(
+        command_id="test.status",
+        group_id="test",
+        subcommand="status",
+        description="Show current test run status for a job (lease state, latest run, usage).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("test.run", "test.discover"),
+    ),
+
     # ── brain ────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="brain.graph",
