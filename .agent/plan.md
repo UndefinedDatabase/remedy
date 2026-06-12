@@ -4,7 +4,7 @@
 Central, contract-gated Test Execution Service. Permission + contract + budget + lease + process isolation + failure artifact + linkage.
 
 ## Current Step
-1103 — Resource and redaction tests
+COMPLETE
 
 ## Steps
 - [x] 1085: Reconcile previous handoff — agent files, R-0027/R-0028 status
@@ -25,13 +25,13 @@ Central, contract-gated Test Execution Service. Permission + contract + budget +
 - [x] 1100: Contract guidance — next safe action per block reason
 - [x] 1101: Proof Chain alignment — pass/fail/timeout/unlinked rules
 - [x] 1102: Progress, Feature Planner, Review Bundle integration
-- [ ] 1103: Resource and redaction tests
-- [ ] 1104: Runtime CLI tests — subprocess tests only
-- [ ] 1105: Command discovery truth — safety and risk guardrails
-- [ ] 1106: Architecture guards — service not CLI-only
-- [ ] 1107: Documentation — real-test-execution-v1.md
-- [ ] 1108: Tests and live review
-- [ ] 1109: Final handoff
+- [x] 1103: Resource and redaction tests
+- [x] 1104: Runtime CLI tests — subprocess tests only
+- [x] 1105: Command discovery truth — safety and risk guardrails (covered in 1106)
+- [x] 1106: Architecture guards — service not CLI-only
+- [x] 1107: Documentation — real-test-execution-v1.md
+- [x] 1108: Tests and live review
+- [x] 1109: Final handoff
 
 ## Known Risks
 - R-0027: high_risk_command_execution not canonical — fix in 1086

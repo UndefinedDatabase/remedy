@@ -5,7 +5,7 @@ Scope: Real Test Execution — contract-gated, resource-safe, evidence-linked
 Timestamp: 2026-06-11
 
 ## Verdict
-PENDING — Steps 1088-1100 committed. All blockers (R-0029–R-0031) and highs (R-0032–R-0035) resolved. R-0039 resolved. R-0038 (low) open. Worker on Step 1101 (Proof Chain). Tests not yet run by reviewer — lock contention.
+PASS — Steps 1085-1109 complete (7 commits). All blockers resolved. Final suite: 5163 passed, 1 pre-existing fail (test_project_brain), 8 skipped. R-0038 (low, acceptable) only open finding. R-0040 resolved.
 
 ## Prior Block Status
 - Steps 940-974: PASS
@@ -115,6 +115,16 @@ PENDING — Steps 1088-1100 committed. All blockers (R-0029–R-0031) and highs 
 - **Details**: Old `test_runner.py:run_tests_local()` retains `subprocess.run(capture_output=True)` without contract enforcement. Until CLI routes through new service (Step 1099) and old function is deprecated, callers can bypass all gates.
 - **Resolution**: Commit `0abf570` (Step 1099) routes `test.run` CLI through `execute_test_run()`. `_cmd_run_tests_local()` replaced with `_cmd_run_tests()`. No references to `run_tests_local` remain in CLI. Old function still exists in `test_runner.py` but is no longer called from production paths.
 
+### R-0040: 2 old CLI tests fail — gate order + message format mismatch
+
+- **Status**: Resolved
+- **Severity**: Medium
+- **Area**: test-compatibility
+- **Details**: 2 tests in `tests/test_test_runner.py::TestCliRunTestsLocal` failed after service routing:
+  1. `test_permission_missing_exits_1`: permission gate now fires before target_repo gate (security-correct order).
+  2. `test_no_target_repo_exits_1`: message text "No target repository" vs old literal "target_repo".
+- **Resolution**: Step 1104-1106 commit: swapped gates 2/3 (permission before target_repo), updated old test assertion. 5163 passed, 1 pre-existing fail, 8 skipped.
+
 ## Baseline Checks (Pre-Worker)
 
 | Check | Status | Notes |
@@ -128,7 +138,7 @@ PENDING — Steps 1088-1100 committed. All blockers (R-0029–R-0031) and highs 
 | Timeout cleanup | PASS (committed) | SIGTERM→3s→SIGKILL→wait on process group |
 | Usage ledger | PASS (committed) | test_runs_used + runtime_seconds_used incremented post-exec |
 | Failure artifact | PASS (committed) | _create_failure_artifact on failed/timeout/env_failure |
-| Proof linkage | ABSENT | No proof integration yet |
-| CLI runtime | PASS (prior) | Existing tests adequate |
-| Redaction | PASS (partial) | TestRunRecord safe; raw output in workspace file |
-| Progress/feature/review | PASS (prior) | Need test events wired |
+| Proof linkage | PASS (committed) | test_run_timed_out collected in proof chain |
+| CLI runtime | PASS | 5163 passed, 23 new runtime tests, R-0040 resolved |
+| Redaction | PASS (committed) | No raw output in Result, events, metadata, review bundle |
+| Progress/feature/review | PASS (committed) | Test results → ProgressItem, test_execution_summary in bundle |
