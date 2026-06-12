@@ -143,6 +143,59 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
     plan = FeaturePlan()
     seen_ids: set[str] = set()
 
+    # Rule 0: Continuation outcomes (Step 1176) — tailored next actions, no
+    # automatic action or policy relaxation. Claims the relevant ledger item so
+    # the generic rules below do not also emit a duplicate suggestion.
+    _CONT_RULES = {
+        "cont-test-fail": (
+            "Start repair for failed continuation test",
+            "Continuation test failed — repair available (no auto-repair).",
+            FeaturePlanSource.FAILED_TEST,
+            "remedy repair start <job_id> <failure_artifact_id> --json",
+        ),
+        "cont-evidence-incomplete": (
+            "Repair continuation evidence",
+            "Apply may have succeeded but evidence degraded — manual review.",
+            FeaturePlanSource.PROOF_GAP,
+            "remedy change proof <job_id> --json",
+        ),
+        "cont-snapshot-failed": (
+            "Investigate continuation snapshot failure",
+            "Snapshot could not be created or verified — investigate before retry.",
+            FeaturePlanSource.PROOF_GAP,
+            "remedy snapshot inspect <job_id> --json",
+        ),
+        "test-budget-exhausted": (
+            "Review run contract test budget",
+            "Test budget blocked the continuation — review the contract (no auto-raise).",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy contract inspect <job_id> --json",
+        ),
+    }
+    for item in ledger.items:
+        rule = _CONT_RULES.get(item.item_id)
+        if rule is None:
+            continue
+        title, rationale, source, next_action = rule
+        sug_id = _make_suggestion_id("continuation", item.item_id)
+        if sug_id in seen_ids:
+            continue
+        seen_ids.add(sug_id)
+        # Suppress the generic finding/gap suggestions for this same item.
+        seen_ids.add(_make_suggestion_id("finding", item.title))
+        seen_ids.add(_make_suggestion_id("gap", item.title))
+        plan.suggestions.append(FeatureSuggestion(
+            suggestion_id=sug_id,
+            title=title,
+            rationale=rationale,
+            priority=FeaturePlanPriority.HIGH,
+            source_type=source,
+            source_refs=[item.item_id],
+            estimated_risk="medium",
+            default_selected=True,
+            next_action=next_action,
+        ))
+
     # Rule 1: Open blocker/high findings -> high priority suggestions
     for item in ledger.items:
         if item.status == ProgressStatus.BLOCKED:

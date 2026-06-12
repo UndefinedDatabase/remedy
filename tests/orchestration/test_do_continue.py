@@ -344,3 +344,67 @@ class TestRunDoContinue:
                   "stop_reason", "proof_status", "evidence_status", "phases",
                   "usage_before", "usage_after", "next_safe_action"):
             assert k in d
+
+
+# ---------------------------------------------------------------------------
+# Continuation integrations: Progress / Feature / Review (Steps 1176-1177)
+# ---------------------------------------------------------------------------
+
+
+class TestContinuationIntegrations:
+    def _run(self, data_dir, job, monkeypatch, *, status="passed", fa_id=""):
+        from packages.orchestration import do_continue as dc
+        import packages.orchestration.test_execution_service as tes
+        fn, _ = _fake_test(data_dir, status=status, fa_id=fa_id)
+        monkeypatch.setattr(tes, "execute_test_run", fn)
+        return dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+
+    def test_progress_ledger_has_continuation_items(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        self._run(data_dir, job, monkeypatch)
+        from packages.orchestration.storage import load_job
+        from packages.orchestration.timeline import load_run_events
+        from packages.orchestration.progress_ledger import build_progress_ledger
+        from uuid import UUID
+        job = load_job(UUID(str(job.id)), data_dir)
+        events = load_run_events(data_dir, UUID(str(job.id)))
+        ledger = build_progress_ledger(job=job, events=events)
+        ids = [i.item_id for i in ledger.items]
+        assert any(i.startswith("cont-") for i in ids)
+        assert "cont-test-pass" in ids
+        assert "cont-proof" in ids
+
+    def test_feature_planner_failed_continuation_repair(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        self._run(data_dir, job, monkeypatch, status="failed", fa_id="fa-1")
+        from packages.orchestration.storage import load_job
+        from packages.orchestration.timeline import load_run_events
+        from packages.orchestration.progress_ledger import build_progress_ledger
+        from packages.orchestration.feature_planner import build_feature_plan
+        from uuid import UUID
+        job = load_job(UUID(str(job.id)), data_dir)
+        events = load_run_events(data_dir, UUID(str(job.id)))
+        ledger = build_progress_ledger(job=job, events=events)
+        plan = build_feature_plan(ledger)
+        repair = [s for s in plan.suggestions if "repair start" in s.next_action]
+        assert repair, "expected a repair-continuation suggestion"
+        assert repair[0].priority.value == "high"
+
+    def test_review_bundle_continuation_summary(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        self._run(data_dir, job, monkeypatch)
+        from packages.orchestration.review_bundle import build_review_bundle
+        import zipfile, json as _json
+        result = build_review_bundle(str(job.id))
+        with zipfile.ZipFile(result.output_path) as zf:
+            raw = zf.read("continuation_summary.json").decode()
+        summary = _json.loads(raw)
+        assert summary["present"] is True
+        assert summary["stop_reason"] == "completed_verified"
+        assert summary["apply_status"] == "completed"
+        assert str(repo.resolve()) not in raw
+        assert "blob_" not in raw
+        assert result.safety.is_safe

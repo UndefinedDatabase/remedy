@@ -118,9 +118,10 @@ class TestReviewBundleModel:
 
     def test_required_sections_defined(self):
         from packages.orchestration.review_bundle import REQUIRED_SECTIONS
-        assert len(REQUIRED_SECTIONS) == 13
+        assert len(REQUIRED_SECTIONS) == 14
         assert "manifest.json" in REQUIRED_SECTIONS
         assert "snapshot_summary.json" in REQUIRED_SECTIONS
+        assert "continuation_summary.json" in REQUIRED_SECTIONS
         assert "bundle_readme.md" in REQUIRED_SECTIONS
 
 

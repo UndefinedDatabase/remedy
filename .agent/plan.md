@@ -30,8 +30,8 @@ Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/
 - [x] 1173: Failure completion (TestFailureArtifact + Fix Task, repair available)
 - [x] 1174: Apply succeeds but evidence degrades → evidence_incomplete
 - [x] 1175: do_continue_* events
-- [ ] 1176: Progress Ledger + Feature Planner items
-- [ ] 1177: continuation_summary.json in Review Bundle
+- [x] 1176: Progress Ledger + Feature Planner items
+- [x] 1177: continuation_summary.json in Review Bundle
 - [ ] 1178: Runtime + idempotency tests (tiny temp repos)
 - [ ] 1179: Docs + targeted/full pytest + live review + final handoff
 

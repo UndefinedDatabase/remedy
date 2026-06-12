@@ -460,6 +460,93 @@ def merge_test_results(ledger: ProgressLedger, events: list[dict] | None) -> Non
     ledger.items.extend(items)
 
 
+def extract_continuation_items_from_events(events: list[dict] | None) -> list[ProgressItem]:
+    """Extract `remedy do --continue` progress items from events (Step 1176).
+
+    Produces: continuation eligible, snapshot verified, apply completed, test
+    passed/failed, proof verified, evidence incomplete. No automatic action.
+    """
+    if not events:
+        return []
+    items: list[ProgressItem] = []
+    for ev in events:
+        ename = ev.get("event", "")
+        meta = ev.get("metadata", ev)
+        if ename == "do_continue_started":
+            items.append(ProgressItem(
+                item_id="cont-eligible", title="Continuation eligible",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                source_ref=str(meta.get("intent_id", "")),
+                safe_summary="Continuation cycle started for an approved intent.",
+            ))
+        elif ename == "do_continue_snapshot_verified":
+            items.append(ProgressItem(
+                item_id="cont-snapshot", title="Snapshot verified",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                source_ref=str(meta.get("snapshot_id", "")),
+                safe_summary="Verified snapshot created before apply.",
+            ))
+        elif ename == "do_continue_applied":
+            items.append(ProgressItem(
+                item_id="cont-apply", title="Apply completed",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                source_ref=str(meta.get("apply_id", "")),
+                safe_summary="Patch applied during continuation.",
+            ))
+        elif ename == "do_continue_test_completed":
+            status_val = meta.get("status", "")
+            if status_val == "passed":
+                items.append(ProgressItem(
+                    item_id="cont-test-pass", title="Continuation test passed",
+                    status=ProgressStatus.DONE, source_type=ProgressSource.TEST_RESULT,
+                    source_ref=str(meta.get("test_run_id", "")),
+                    safe_summary="Linked test passed during continuation.",
+                ))
+            elif status_val in ("failed", "timeout"):
+                items.append(ProgressItem(
+                    item_id="cont-test-fail", title=f"Continuation test {status_val}",
+                    status=ProgressStatus.BLOCKED, source_type=ProgressSource.TEST_RESULT,
+                    severity="High", source_ref=str(meta.get("test_run_id", "")),
+                    safe_summary="Continuation test failed — repair available.",
+                    next_action="remedy repair start <job_id> <failure_artifact_id> --json",
+                ))
+        elif ename == "do_continue_proof_built":
+            if meta.get("proof_status") == "verified":
+                items.append(ProgressItem(
+                    item_id="cont-proof", title="Proof verified",
+                    status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                    safe_summary="Change proof verified after continuation.",
+                ))
+        elif ename == "do_continue_stopped":
+            reason = meta.get("stop_reason", "")
+            if reason == "evidence_incomplete":
+                items.append(ProgressItem(
+                    item_id="cont-evidence-incomplete", title="Continuation evidence incomplete",
+                    status=ProgressStatus.BLOCKED, source_type=ProgressSource.PROOF_GAP,
+                    severity="High",
+                    safe_summary="Apply may have succeeded but evidence degraded — manual review.",
+                    next_action="remedy change proof <job_id> --json",
+                ))
+            elif reason == "snapshot_failed":
+                items.append(ProgressItem(
+                    item_id="cont-snapshot-failed", title="Continuation snapshot failed",
+                    status=ProgressStatus.BLOCKED, source_type=ProgressSource.PROOF_GAP,
+                    severity="High",
+                    safe_summary="Snapshot could not be created/verified — investigate.",
+                    next_action="remedy snapshot inspect <job_id> --json",
+                ))
+    return items
+
+
+def merge_continuation_items(ledger: ProgressLedger, events: list[dict] | None) -> None:
+    """Merge continuation progress items, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_continuation_items_from_events(events):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -536,6 +623,7 @@ def build_progress_ledger(
     # Auto-extract test results from events
     if events:
         merge_test_results(ledger, events)
+        merge_continuation_items(ledger, events)
 
     return ledger
 

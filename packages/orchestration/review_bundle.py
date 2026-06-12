@@ -39,6 +39,7 @@ REQUIRED_SECTIONS = (
     "context_inspection.json",
     "changed_files_safe.json",
     "snapshot_summary.json",
+    "continuation_summary.json",
     "repair_summary.json",
     "command_summary.json",
     "progress_ledger.json",
@@ -439,6 +440,73 @@ def _build_snapshot_summary(job_id: str, data_dir: Path) -> dict:
         }
     except Exception:
         return {"status": "section_unavailable", "reason": "snapshot summary not available"}
+
+
+def _build_continuation_summary(job_id: str, data_dir: Path, events: list[dict]) -> dict:
+    """Safe `remedy do --continue` summary (Step 1177).
+
+    Current phase, durable checkpoints, apply/test/proof/evidence status, stop
+    reason, next-action availability, and safe IDs. No raw prompt, patch, source,
+    output, blobs, paths, or secrets.
+    """
+    try:
+        from packages.orchestration.do_continue import (
+            load_checkpoints, latest_checkpoint, CONTINUE_PHASES,
+        )
+        cps = load_checkpoints(job_id, data_dir)
+        if not cps:
+            return {"version": 1, "present": False}
+
+        stop_reason = ""
+        evidence_status = ""
+        proof_status = ""
+        test_status = ""
+        for ev in events:
+            ename = ev.get("event", "")
+            m = ev.get("metadata", {}) if isinstance(ev.get("metadata"), dict) else {}
+            if ename == "do_continue_stopped":
+                stop_reason = m.get("stop_reason", stop_reason)
+                evidence_status = m.get("evidence_status", evidence_status)
+            elif ename == "do_continue_proof_built":
+                proof_status = m.get("proof_status", proof_status)
+            elif ename == "do_continue_test_completed":
+                test_status = m.get("status", test_status)
+
+        ids: dict[str, str] = {}
+        for c in cps:
+            ids.update(c.ids or {})
+
+        def _phase_status(p: str) -> str:
+            cp = latest_checkpoint(cps, p)
+            return cp.status if cp else "pending"
+
+        _NEXT_AVAILABLE = {
+            "test_failed_repair_available", "evidence_incomplete", "test_blocked",
+            "snapshot_failed", "apply_failed", "blocked_ineligible",
+        }
+        return {
+            "version": 1,
+            "present": True,
+            "current_phase": cps[-1].phase,
+            "phase_status": {p: _phase_status(p) for p in CONTINUE_PHASES},
+            "checkpoints": [
+                {"phase": c.phase, "status": c.status, "at": c.at,
+                 "evidence_status": c.evidence_status}
+                for c in cps
+            ],
+            "apply_status": _phase_status("apply"),
+            "test_status": test_status or ids.get("test_status", ""),
+            "proof_status": proof_status,
+            "evidence_status": evidence_status or cps[-1].evidence_status,
+            "stop_reason": stop_reason or ids.get("stop_reason", ""),
+            "next_action_available": (stop_reason or ids.get("stop_reason", "")) in _NEXT_AVAILABLE,
+            "snapshot_id": ids.get("snapshot_id", ""),
+            "apply_id": ids.get("apply_id", ""),
+            "test_run_id": ids.get("test_run_id", ""),
+            "failure_artifact_id": ids.get("failure_artifact_id", ""),
+        }
+    except Exception:
+        return {"status": "section_unavailable", "reason": "continuation summary not available"}
 
 
 def _build_repair_summary(job: Any, events: list[dict]) -> dict:
@@ -849,6 +917,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("snapshot_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("snapshot_summary.json", status="error", error="build failed"))
+
+    # continuation_summary.json (Step 1177)
+    try:
+        cont = _build_continuation_summary(job_id, data_dir, events)
+        content = json.dumps(cont, indent=2).encode()
+        section_data["continuation_summary.json"] = content
+        result.sections.append(ReviewBundleSection("continuation_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("continuation_summary.json", status="error", error="build failed"))
 
     # repair_summary.json
     try:
