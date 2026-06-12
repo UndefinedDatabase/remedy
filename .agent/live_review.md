@@ -1,11 +1,11 @@
-# Live Review — Steps 1085-1109
+# Live Review — Steps 1110-1134
 
 Reviewer: parallel reviewer
-Scope: Real Test Execution — contract-gated, resource-safe, evidence-linked
-Timestamp: 2026-06-11
+Scope: Test Evidence Durability + Snapshot / Rollback Proof v1
+Timestamp: 2026-06-12
 
 ## Verdict
-PASS — Steps 1085-1109 complete (7 commits). All blockers resolved. Final suite: 5163 passed, 1 pre-existing fail (test_project_brain), 8 skipped. R-0038 (low, acceptable) only open finding. R-0040 resolved.
+IN PROGRESS — Step 1110 (reconcile) complete. Steps 1111-1134 pending.
 
 ## Prior Block Status
 - Steps 940-974: PASS
@@ -14,7 +14,8 @@ PASS — Steps 1085-1109 complete (7 commits). All blockers resolved. Final suit
 - Steps 1010-1029: PASS WITH RISKS
 - Steps 1030-1044: PASS WITH RISKS
 - Steps 1045-1064: PASS
-- Steps 1065-1084: PASS WITH RISKS (R-0027 low carry-forward)
+- Steps 1065-1084: PASS WITH RISKS (R-0027 carry-forward, resolved in 1086)
+- Steps 1085-1109: PASS WITH RISKS (R-0038/R-0041/R-0042/R-0043 carry-forward)
 
 ## Finding Ledger
 
@@ -101,11 +102,31 @@ PASS — Steps 1085-1109 complete (7 commits). All blockers resolved. Final suit
 
 ### R-0038: Silent exception swallowing in persistence helpers
 
-- **Status**: Open
-- **Severity**: Low
+- **Status**: Open → Fix in Steps 1115-1116
+- **Severity**: Medium (raised from Low — budget consumed silently on evidence loss)
 - **Area**: error-handling
-- **Details**: `_persist_test_record()` (line 775) and `_create_failure_artifact()` (line 829) both `except Exception: pass`. If both fail, test run evidence is lost — events are "primary record" but if event emission also fails silently, run is invisible.
-- **Mitigation**: Acceptable for v1. Result object returned to caller has all data. Events + metadata are redundant records.
+- **Details**: `_persist_test_record()` (line 775) and `_create_failure_artifact()` (line 829) both `except Exception: pass`. Budget consumed, no durable record.
+
+### R-0041: Fake test.status next_safe_action
+
+- **Status**: Open → Fix in Step 1111
+- **Severity**: Medium
+- **Area**: command-catalog
+- **Details**: `execute_test_run()` emits `"remedy test status {job.id}"` when lease is held (line ~600). `test.status` does not exist in command catalog. Emitting nonexistent commands violates catalog truth invariant.
+
+### R-0042: Test lease is job-scoped only — concurrent repo tests possible
+
+- **Status**: Open → Fix in Step 1112
+- **Severity**: Medium
+- **Area**: concurrency
+- **Details**: `TestExecutionLease` key = job_id only. Two different jobs targeting the same repository can run tests simultaneously, causing filesystem contention and test interference.
+
+### R-0043: Partial evidence persistence — usage consumed without durable record
+
+- **Status**: Open → Fix in Steps 1114-1116
+- **Severity**: High
+- **Area**: evidence-durability
+- **Details**: Usage, test record, events, and failure artifact are finalized in separate saves. Crash after usage increment but before record persist = budget consumed + invisible run. No atomic finalization path. No evidence_status field on result to signal partial persistence.
 
 ### R-0039: Old test_runner.py:run_tests_local() still has capture_output=True
 

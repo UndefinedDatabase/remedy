@@ -1,38 +1,44 @@
-# Plan — Steps 1085-1109: Real Test Execution v1
+# Plan — Steps 1110-1134: Test Evidence Durability + Snapshot / Rollback Proof v1
 
 ## Goal
-Central, contract-gated Test Execution Service. Permission + contract + budget + lease + process isolation + failure artifact + linkage.
+Close evidence durability gaps from Real Test Execution v1.
+Create one mandatory, verified Snapshot / Rollback system for repository mutations.
+No successful mutation without a verified path back.
+No real test without clearly reported evidence persistence outcome.
 
 ## Current Step
-COMPLETE
+1110 — Reconcile previous handoff
 
 ## Steps
-- [x] 1085: Reconcile previous handoff — agent files, R-0027/R-0028 status
-- [x] 1086: Fix R-0027 (high_risk_command_execution), confirm R-0028 resolved, tests
-- [x] 1087: Default test policy — run_test in allowed, max_test_runs=0, dual-gate tests
-- [x] 1088: Create test_execution_service.py — models only
-- [x] 1089: Centralize all gates — execute_test_run() gate order
-- [x] 1090: Production process isolation — Popen, start_new_session, SIGTERM/SIGKILL
-- [x] 1091: Safe environment policy — strip secrets, preserve PATH
-- [x] 1092: Test execution lease — concurrent-run guard
-- [x] 1093: Derive timeout from contract remaining runtime
-- [x] 1094: Persist usage correctly — test_runs_used, runtime_seconds_used
-- [x] 1095: Persist safe test records — TestRunRecord v2 with contract_id + linkage
-- [x] 1096: Emit safe lifecycle events
-- [x] 1097: Automatic TestFailureArtifact on fail/timeout
-- [x] 1098: Link tests to changes — task/intent/apply validation
-- [x] 1099: Update remedy test run CLI — route through service
-- [x] 1100: Contract guidance — next safe action per block reason
-- [x] 1101: Proof Chain alignment — pass/fail/timeout/unlinked rules
-- [x] 1102: Progress, Feature Planner, Review Bundle integration
-- [x] 1103: Resource and redaction tests
-- [x] 1104: Runtime CLI tests — subprocess tests only
-- [x] 1105: Command discovery truth — safety and risk guardrails (covered in 1106)
-- [x] 1106: Architecture guards — service not CLI-only
-- [x] 1107: Documentation — real-test-execution-v1.md
-- [x] 1108: Tests and live review
-- [x] 1109: Final handoff
+- [x] 1110: Reconcile previous handoff — context.md, plan.md, live_review.md
+- [ ] 1111: Close fake test.status action — add test.status command or replace with catalog command
+- [ ] 1112: Repository-scoped test lease — prevent concurrent tests on same repo across jobs
+- [ ] 1113: Explicit test_run_started event after Popen success
+- [ ] 1114: TestExecutionResult evidence_status fields
+- [ ] 1115: Remove silent persistence failure — narrow exception handling, structured outcomes
+- [ ] 1116: Atomic job outcome finalization — finalize_test_outcome()
+- [ ] 1117: Failure artifact idempotency by test_run_id
+- [ ] 1118: RepositorySnapshot model — repository_snapshot.py
+- [ ] 1119: Private snapshot storage — .data/workspaces/<job_id>/repository_snapshots/<snapshot_id>/
+- [ ] 1120: Snapshot path set from structured patch
+- [ ] 1121: Snapshot verification before apply — block apply if snapshot fails
+- [ ] 1122: Integrate structured source_apply.py
+- [ ] 1123: Integrate markdown patch_apply.py
+- [ ] 1124: Durable apply record
+- [ ] 1125: Explicit revert service — revert_repository_apply()
+- [ ] 1126: Post-apply drift protection
+- [ ] 1127: Revert verification
+- [ ] 1128: Snapshot and revert events
+- [ ] 1129: Snapshot CLI — remedy snapshot inspect, remedy patch revert
+- [ ] 1130: Proof Chain and File Provenance
+- [ ] 1131: Progress, Feature Planner, Review Bundle
+- [ ] 1132: Readiness integration
+- [ ] 1133: Tests and documentation
+- [ ] 1134: Final handoff
 
 ## Known Risks
-- R-0027: high_risk_command_execution not canonical — fix in 1086
-- pre-existing: test_project_brain.py::test_full_chain_order fails on main
+- R-0038: Silent persistence swallowing (Steps 1115-1116)
+- R-0041: Fake test.status next_safe_action (Step 1111)
+- R-0042: Job-only test lease (Step 1112)
+- R-0043: Partial evidence persistence (Steps 1114-1116)
+- Pre-existing: test_project_brain.py::test_full_chain_order fails on main
