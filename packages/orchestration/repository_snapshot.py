@@ -191,6 +191,11 @@ class RepositoryRevertResult:
     drift_path_count: int = 0
     verification_failures: int = 0
     safe_summary: str = ""
+    # Evidence durability (Step 1161) — no silent persistence loss.
+    apply_record_persisted: bool = True
+    snapshot_state_persisted: bool = True
+    event_evidence_status: str = "complete"   # "complete" | "partial" | "failed"
+    evidence_warnings: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -318,20 +323,17 @@ def _emit_snapshot_event(
     job_id: str,
     event_type: str,
     metadata: dict,
-) -> None:
-    """Emit a snapshot lifecycle event. Silent on failure — events are secondary."""
-    if event_type not in _SNAPSHOT_EVENTS:
-        return
-    try:
-        from uuid import UUID
-        from packages.orchestration.timeline import append_run_event
-        try:
-            jid = UUID(job_id)
-        except ValueError:
-            return
-        append_run_event(str(data_dir), jid, event=event_type, metadata=metadata)
-    except Exception:
-        pass
+) -> "EventPersistenceResult":
+    """Emit a snapshot lifecycle event, returning a structured persistence result.
+
+    Failures are no longer swallowed silently (R-0057, Step 1162). Callers that
+    care about evidence (revert, do --continue) surface the returned status; no
+    raw exception text is exposed.
+    """
+    from packages.orchestration.event_persistence import emit_important_event
+    return emit_important_event(
+        data_dir, job_id, event_type, metadata, eligible=_SNAPSHOT_EVENTS
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -835,8 +837,12 @@ def _update_snapshot_state(
     job_id: str,
     new_state: str,
     data_dir: Path,
-) -> None:
-    """Update the state field in the manifest. Best-effort."""
+) -> bool:
+    """Update the state field in the manifest. Returns True if persisted.
+
+    Failure is reported (not silently swallowed) so callers can surface degraded
+    evidence (Step 1161). No raw exception text is propagated.
+    """
     snap_dir = _snapshot_dir(job_id, snapshot_id, data_dir)
     manifest_path = snap_dir / "manifest.json"
     try:
@@ -849,8 +855,9 @@ def _update_snapshot_state(
             json.dumps(without_hash, indent=2, sort_keys=True).encode("utf-8")
         )
         _write_private(manifest_path, json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8"))
+        return True
     except (OSError, json.JSONDecodeError):
-        pass
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -927,6 +934,133 @@ def load_durable_apply_record(
         )
     except (OSError, json.JSONDecodeError, KeyError):
         return None
+
+
+# ---------------------------------------------------------------------------
+# Canonical apply-record state machine (Step 1163)
+# ---------------------------------------------------------------------------
+
+# All legal DurableApplyRecord states.
+APPLY_STATES: frozenset[str] = frozenset({
+    "pending",
+    "applied",
+    "test_pending",
+    "tested_passed",
+    "tested_failed",
+    "revert_blocked",
+    "reverted",
+    "partial_revert",
+    "revert_failed",
+    "evidence_degraded",
+})
+
+# Legal forward transitions. Self-transition is always allowed (idempotent).
+# "evidence_degraded" is reachable from any active state and recoverable to any.
+_LEGAL_TRANSITIONS: dict[str, frozenset[str]] = {
+    "pending": frozenset({"applied", "evidence_degraded"}),
+    "applied": frozenset({
+        "test_pending", "tested_passed", "tested_failed",
+        "revert_blocked", "reverted", "partial_revert", "revert_failed",
+        "evidence_degraded",
+    }),
+    "test_pending": frozenset({"tested_passed", "tested_failed", "evidence_degraded"}),
+    "tested_passed": frozenset({
+        "revert_blocked", "reverted", "partial_revert", "revert_failed",
+        "evidence_degraded",
+    }),
+    "tested_failed": frozenset({
+        "test_pending", "revert_blocked", "reverted", "partial_revert",
+        "revert_failed", "evidence_degraded",
+    }),
+    "revert_blocked": frozenset({
+        "applied", "reverted", "partial_revert", "revert_failed", "evidence_degraded",
+    }),
+    "reverted": frozenset(),  # terminal
+    "partial_revert": frozenset({"reverted", "revert_failed", "evidence_degraded"}),
+    "revert_failed": frozenset({"reverted", "partial_revert", "evidence_degraded"}),
+    # Degraded evidence can be re-derived back to any active/terminal state.
+    "evidence_degraded": frozenset(APPLY_STATES),
+}
+
+
+def is_legal_apply_transition(current: str, new: str) -> bool:
+    """True if current → new is a legal apply-record state transition."""
+    if new not in APPLY_STATES:
+        return False
+    if new == current:
+        return True  # idempotent
+    return new in _LEGAL_TRANSITIONS.get(current, frozenset())
+
+
+def update_apply_record_state(
+    job_id: str,
+    apply_id: str,
+    new_state: str,
+    data_dir: Path | None = None,
+    *,
+    revert_state: str | None = None,
+    test_run_id: str | None = None,
+) -> bool:
+    """Canonically update a DurableApplyRecord's state (Step 1163).
+
+    - Atomic write (temp file + os.replace) — no torn records.
+    - Legal transitions only; impossible transitions are rejected without
+      mutating the record. Repeated transitions are idempotent.
+    - State history is recorded as safe (state, timestamp) codes — no content.
+
+    Returns True if the record now reflects *new_state* (including idempotent
+    no-ops); False if the record is missing/unreadable or the transition is
+    illegal. No raw exception text is exposed.
+    """
+    data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
+    if new_state not in APPLY_STATES:
+        return False
+
+    record_path = _apply_record_dir(job_id, data_dir) / f"{apply_id}.json"
+    if not record_path.exists():
+        return False
+    try:
+        data = json.loads(record_path.read_bytes())
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    current = data.get("state", "pending")
+    if not is_legal_apply_transition(current, new_state):
+        return False
+
+    data["state"] = new_state
+    if revert_state is not None:
+        data["revert_state"] = revert_state
+    if test_run_id is not None:
+        data["test_run_id"] = test_run_id
+
+    history = data.get("state_history")
+    if not isinstance(history, list):
+        history = []
+    if current != new_state or not history:
+        history.append({
+            "state": new_state,
+            "at": datetime.now(timezone.utc).isoformat(),
+        })
+    data["state_history"] = history[-50:]  # bounded
+
+    tmp_path = record_path.with_suffix(".json.tmp")
+    try:
+        tmp_path.write_bytes(
+            json.dumps(data, indent=2, sort_keys=True).encode("utf-8")
+        )
+        try:
+            os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
+        except OSError:
+            pass
+        os.replace(tmp_path, record_path)
+        return True
+    except OSError:
+        try:
+            tmp_path.unlink()
+        except OSError:
+            pass
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -1428,20 +1562,23 @@ def revert_repository_apply(
         final_state = "reverted"
         success = True
 
-    _update_snapshot_state(record.snapshot_id, job_id, final_state, data_dir)
+    # Persist durable state — failures are reported, never silently swallowed
+    # (Step 1161). The actual file-restore outcome above remains truthful.
+    evidence_warnings: list[str] = []
+    snapshot_state_persisted = _update_snapshot_state(
+        record.snapshot_id, job_id, final_state, data_dir
+    )
+    if not snapshot_state_persisted:
+        evidence_warnings.append("snapshot_state_persist_failed")
 
-    # Update apply record revert state
-    try:
-        record_path = _apply_record_dir(job_id, data_dir) / f"{apply_id}.json"
-        apply_data = json.loads(record_path.read_bytes())
-        apply_data["revert_state"] = final_state
-        apply_data["state"] = "reverted" if success else apply_data.get("state", "applied")
-        _write_private(record_path, json.dumps(apply_data, indent=2, sort_keys=True).encode("utf-8"))
-    except (OSError, json.JSONDecodeError):
-        pass
+    apply_record_persisted = _persist_apply_record_revert_state(
+        job_id, apply_id, final_state, success, data_dir
+    )
+    if not apply_record_persisted:
+        evidence_warnings.append("apply_record_persist_failed")
 
     revert_event = "revert_completed" if success else "revert_failed"
-    _emit_snapshot_event(data_dir, job_id, revert_event, {
+    event_result = _emit_snapshot_event(data_dir, job_id, revert_event, {
         "apply_id": apply_id,
         "snapshot_id": record.snapshot_id,
         "state": final_state,
@@ -1449,7 +1586,27 @@ def revert_repository_apply(
         "paths_deleted": paths_deleted,
         "paths_failed": paths_failed,
         "verification_failures": verification_failures,
+        "evidence_degraded": bool(evidence_warnings),
     })
+    if event_result.status != "complete":
+        evidence_warnings.append(f"event_{event_result.status}")
+
+    # Evidence status: even when file restore succeeded, a durable-record write
+    # failure degrades evidence so readiness/proof cannot claim fully verified.
+    if not apply_record_persisted or not snapshot_state_persisted:
+        event_evidence_status = "failed"
+    elif event_result.status != "complete":
+        event_evidence_status = "partial"
+    else:
+        event_evidence_status = "complete"
+
+    summary = (
+        f"Revert {'complete' if success else 'incomplete'}: "
+        f"{paths_restored} restored, {paths_deleted} deleted, {paths_failed} failed, "
+        f"{verification_failures} verification failures."
+    )
+    if evidence_warnings:
+        summary += " Evidence degraded — durable record/event persistence incomplete."
 
     return RepositoryRevertResult(
         success=success,
@@ -1460,9 +1617,27 @@ def revert_repository_apply(
         paths_deleted=paths_deleted,
         paths_failed=paths_failed,
         verification_failures=verification_failures,
-        safe_summary=(
-            f"Revert {'complete' if success else 'incomplete'}: "
-            f"{paths_restored} restored, {paths_deleted} deleted, {paths_failed} failed, "
-            f"{verification_failures} verification failures."
-        ),
+        safe_summary=summary,
+        apply_record_persisted=apply_record_persisted,
+        snapshot_state_persisted=snapshot_state_persisted,
+        event_evidence_status=event_evidence_status,
+        evidence_warnings=evidence_warnings,
+    )
+
+
+def _persist_apply_record_revert_state(
+    job_id: str,
+    apply_id: str,
+    final_state: str,
+    success: bool,
+    data_dir: Path,
+) -> bool:
+    """Persist the post-revert apply-record state. Returns True if written.
+
+    Reports failure to the caller (no silent `except: pass`, Step 1161). No raw
+    exception text is exposed. Routes through the canonical state updater.
+    """
+    new_apply_state = "reverted" if success else final_state
+    return update_apply_record_state(
+        job_id, apply_id, new_apply_state, data_dir, revert_state=final_state
     )

@@ -866,3 +866,102 @@ class TestBuildSnapshotTruth:
         s = str(dataclasses.asdict(truth))
         assert str(data_dir) not in s
         assert "blob_" not in s
+
+
+# ---------------------------------------------------------------------------
+# Canonical apply-record state machine (Step 1163)
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateApplyRecordState:
+    def _seed(self, data_dir, *, state="applied"):
+        rec = DurableApplyRecord(
+            apply_id=APPLY_ID, job_id=JOB_ID, intent_id=INTENT_ID,
+            snapshot_id="s1", state=state, target_paths=["f.py"],
+            applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={}, after_proof={}, snapshot_verified=True,
+        )
+        save_durable_apply_record(rec, JOB_ID, data_dir)
+
+    def test_legal_transition(self, tmp_env):
+        from packages.orchestration.repository_snapshot import (
+            update_apply_record_state, load_durable_apply_record,
+        )
+        _, data_dir = tmp_env
+        self._seed(data_dir, state="applied")
+        assert update_apply_record_state(JOB_ID, APPLY_ID, "tested_passed", data_dir) is True
+        rec = load_durable_apply_record(APPLY_ID, JOB_ID, data_dir)
+        assert rec.state == "tested_passed"
+
+    def test_illegal_transition_rejected(self, tmp_env):
+        from packages.orchestration.repository_snapshot import (
+            update_apply_record_state, load_durable_apply_record,
+        )
+        _, data_dir = tmp_env
+        self._seed(data_dir, state="reverted")  # terminal
+        assert update_apply_record_state(JOB_ID, APPLY_ID, "applied", data_dir) is False
+        rec = load_durable_apply_record(APPLY_ID, JOB_ID, data_dir)
+        assert rec.state == "reverted"  # unchanged
+
+    def test_idempotent_self_transition(self, tmp_env):
+        from packages.orchestration.repository_snapshot import update_apply_record_state
+        _, data_dir = tmp_env
+        self._seed(data_dir, state="applied")
+        assert update_apply_record_state(JOB_ID, APPLY_ID, "applied", data_dir) is True
+        assert update_apply_record_state(JOB_ID, APPLY_ID, "applied", data_dir) is True
+
+    def test_missing_record(self, tmp_env):
+        from packages.orchestration.repository_snapshot import update_apply_record_state
+        _, data_dir = tmp_env
+        assert update_apply_record_state(JOB_ID, "nope", "applied", data_dir) is False
+
+    def test_invalid_state_rejected(self, tmp_env):
+        from packages.orchestration.repository_snapshot import update_apply_record_state
+        _, data_dir = tmp_env
+        self._seed(data_dir, state="applied")
+        assert update_apply_record_state(JOB_ID, APPLY_ID, "bogus_state", data_dir) is False
+
+    def test_history_recorded(self, tmp_env):
+        import json as _json
+        from packages.orchestration.repository_snapshot import (
+            update_apply_record_state, _apply_record_dir,
+        )
+        _, data_dir = tmp_env
+        self._seed(data_dir, state="applied")
+        update_apply_record_state(JOB_ID, APPLY_ID, "test_pending", data_dir)
+        update_apply_record_state(JOB_ID, APPLY_ID, "tested_passed", data_dir)
+        raw = _json.loads((_apply_record_dir(JOB_ID, data_dir) / f"{APPLY_ID}.json").read_text())
+        states = [h["state"] for h in raw["state_history"]]
+        assert states[-2:] == ["test_pending", "tested_passed"]
+
+
+class TestRevertEvidenceStatus:
+    """Step 1161 — revert reports structured evidence durability."""
+
+    def test_successful_revert_evidence_complete(self, tmp_env):
+        repo_root, data_dir = tmp_env
+        # Reuse the revert success setup from TestRevert.
+        _save_revert_job(data_dir)
+        f = repo_root / "target.py"
+        f.write_text("before content\n")
+        snap = create_snapshot(JOB_ID, INTENT_ID, ["target.py"], repo_root, data_dir)
+        verify_snapshot(snap.snapshot_id, JOB_ID, data_dir)
+        import hashlib
+        before_sha = hashlib.sha256(b"before content\n").hexdigest()
+        f.write_text("after\n")
+        after_sha = hashlib.sha256(b"after\n").hexdigest()
+        rec = DurableApplyRecord(
+            apply_id=APPLY_ID, job_id=JOB_ID, intent_id=INTENT_ID,
+            snapshot_id=snap.snapshot_id, state="applied", target_paths=["target.py"],
+            applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={"target.py": {"sha256": before_sha, "bytes": 15, "existed": True}},
+            after_proof={"target.py": {"sha256": after_sha, "bytes": 6, "existed": True}},
+            snapshot_verified=True,
+        )
+        save_durable_apply_record(rec, JOB_ID, data_dir)
+        result = revert_repository_apply(JOB_ID, APPLY_ID, repo_root, data_dir)
+        assert result.success
+        assert result.apply_record_persisted is True
+        assert result.snapshot_state_persisted is True
+        assert result.event_evidence_status == "complete"
+        assert result.evidence_warnings == []

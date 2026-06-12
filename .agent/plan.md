@@ -6,7 +6,7 @@ approved intent → contract/permission checks → verified snapshot → apply �
 Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/idempotent.
 
 ## Current Step
-1161 — Close silent ApplyRecord persistence failure (in progress)
+1164 — do_continue models (in progress)
 
 ## Steps
 - [x] 1155: Reconcile .agent/context.md, plan.md, live_review.md
@@ -15,9 +15,9 @@ Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/
 - [x] 1158: Proof Chain uses durable snapshot truth + tests
 - [x] 1159: Remove readiness event-only fallback + tests
 - [x] 1160: snapshot_summary.json in Review Bundle
-- [ ] 1161: Close silent ApplyRecord persistence failure (structured result)
-- [ ] 1162: Event durability closure (EventPersistenceResult) — R-0051/R-0057
-- [ ] 1163: Canonical update_apply_record_state() (legal transitions, idempotent, atomic)
+- [x] 1161: Close silent ApplyRecord persistence failure (structured result)
+- [x] 1162: Event durability closure (EventPersistenceResult) — R-0051/R-0057
+- [x] 1163: Canonical update_apply_record_state() (legal transitions, idempotent, atomic)
 - [ ] 1164: do_continue.py models (ContinueRequest/Result/Phase/Checkpoint/StopReason)
 - [ ] 1165: evaluate_continue_eligibility(job_id)
 - [ ] 1166: CLI remedy do --continue <job_id> [--intent-id] [--json]

@@ -487,12 +487,14 @@ def _validate_linkage(
 # ---------------------------------------------------------------------------
 
 
-def _emit(data_dir: Path, job_id: UUID, event: str, metadata: dict[str, Any]) -> None:
-    from packages.orchestration.timeline import append_run_event
-    try:
-        append_run_event(data_dir, job_id, event=event, metadata=metadata)
-    except Exception:
-        pass  # non-fatal
+def _emit(data_dir: Path, job_id: UUID, event: str, metadata: dict[str, Any]):
+    """Emit a lifecycle event, returning a structured EventPersistenceResult.
+
+    Failures are surfaced via the returned status instead of being swallowed
+    silently (R-0051, Step 1162). No raw exception text is exposed.
+    """
+    from packages.orchestration.event_persistence import emit_important_event
+    return emit_important_event(data_dir, str(job_id), event, metadata)
 
 
 def _safe_event_meta(
@@ -984,28 +986,28 @@ def finalize_test_outcome(
         warnings.append("test_record_persist_failed")
 
     # ── Step 2: Emit lifecycle events (after durable save) ───────────────
-    event_ok = False
+    # The important completion/timeout event drives event_ok; persistence
+    # failure is reported (R-0051), never silently treated as success.
     status = result.status
-    try:
-        if status in ("passed", "failed", "timeout"):
-            event_name = "test_run_timed_out" if status == "timeout" else "test_run_completed"
-            _emit(data_dir, job_id, event_name, _safe_event_meta(result))
-            _emit(data_dir, job_id, "run_usage_recorded", result.usage_after)
-            _emit(data_dir, job_id, "contract_decision", {
-                "action": ContractAction.RUN_TEST,
-                "allowed": True,
-                "status": "allowed",
-                "contract_id": contract.contract_id,
-                "test_run_id": test_run_id,
-            })
-        else:
-            _emit(data_dir, job_id, "test_run_blocked", {
-                "test_run_id": test_run_id,
-                "reason": "environment_failure",
-            })
-        event_ok = True
-    except Exception:
-        warnings.append("completion_event_failed")
+    if status in ("passed", "failed", "timeout"):
+        event_name = "test_run_timed_out" if status == "timeout" else "test_run_completed"
+        completion_event = _emit(data_dir, job_id, event_name, _safe_event_meta(result))
+        _emit(data_dir, job_id, "run_usage_recorded", result.usage_after)
+        _emit(data_dir, job_id, "contract_decision", {
+            "action": ContractAction.RUN_TEST,
+            "allowed": True,
+            "status": "allowed",
+            "contract_id": contract.contract_id,
+            "test_run_id": test_run_id,
+        })
+    else:
+        completion_event = _emit(data_dir, job_id, "test_run_blocked", {
+            "test_run_id": test_run_id,
+            "reason": "environment_failure",
+        })
+    event_ok = completion_event.persisted
+    if not event_ok:
+        warnings.append("completion_event_persist_failed")
 
     # ── Step 3: Create failure artifact ──────────────────────────────────
     artifact_ok = True
