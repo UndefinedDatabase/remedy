@@ -36,7 +36,9 @@ def _cmd_file_why(job_id_str: str, path: str, *, json_output: bool = False) -> N
     data_dir = resolve_data_root()
     events = load_run_events(data_dir, job_id)
 
-    prov = build_file_provenance(job, events, path)
+    # Pass data_dir so provenance uses the authoritative DurableApplyRecord /
+    # snapshot truth, not stale artifact metadata (Step 1157).
+    prov = build_file_provenance(job, events, path, data_dir=data_dir)
 
     if json_output:
         print(_json.dumps(export_file_provenance_json(prov), sort_keys=True))

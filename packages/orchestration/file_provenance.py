@@ -65,7 +65,9 @@ def build_file_provenance(
     """Build provenance chain for *path* within *job*.
 
     Deterministic, read-only, no repo access.
-    data_dir: if provided, loads DurableApplyRecord for authoritative revert state (Step 1146).
+    data_dir: if provided, consults the authoritative snapshot-truth builder
+    (build_snapshot_truth) for apply/revert state instead of stale artifact
+    metadata (Steps 1146, 1157).
     """
     job_id_str = str(job.id)
     chain: list[ProvenanceLink] = []
@@ -124,20 +126,28 @@ def build_file_provenance(
             if iid in records:
                 rec = records[iid]
                 apply_state = rec.get("state", "unknown")
+                detail: dict[str, Any] = {
+                    "bytes_written": rec.get("bytes_written", 0),
+                    "line_count": rec.get("line_count", 0),
+                }
+                # Authoritative apply/revert state from the shared snapshot-truth
+                # builder (Step 1157). Reverted applies are not "currently applied";
+                # drift-blocked applies remain active; partial/failed revert visible.
                 if data_dir is not None:
-                    from packages.orchestration.repository_snapshot import load_durable_apply_record
-                    _durable = load_durable_apply_record(iid, job_id_str, data_dir)
-                    if _durable is not None and _durable.state:
-                        apply_state = _durable.state
+                    from packages.orchestration.repository_snapshot import build_snapshot_truth
+                    truth = build_snapshot_truth(job_id_str, intent_id=iid, data_dir=data_dir)
+                    if truth.apply_state != "unknown":
+                        apply_state = truth.apply_state
+                        detail["revert_state"] = truth.revert_state
+                        detail["drift_blocked"] = truth.drift_blocked
+                        detail["snapshot_verified"] = truth.snapshot_verified_now
+                        detail["evidence_status"] = truth.evidence_status
                 chain.append(ProvenanceLink(
                     step="patch_apply",
                     node_type="patch_apply",
                     node_id=f"apply:{iid}",
                     status=apply_state,
-                    detail={
-                        "bytes_written": rec.get("bytes_written", 0),
-                        "line_count": rec.get("line_count", 0),
-                    },
+                    detail=detail,
                 ))
 
         # patch_apply_proof (from events)
