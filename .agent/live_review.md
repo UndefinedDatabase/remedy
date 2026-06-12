@@ -1,3 +1,99 @@
+# Live Review — Steps 1155-1179
+
+Reviewer: parallel reviewer
+Scope: Snapshot Truth closure + crash-safe idempotent `remedy do --continue` cycle
+Timestamp: 2026-06-12
+Last check: 2026-06-12 — Baseline established at commit e738033 (Steps 1135-1141). 1135-1154 work uncommitted in tree. New block 1155-1179 not yet started by worker.
+
+## Verdict
+PENDING — Baseline review. Worker has not committed Steps 1155-1179. Continuation cycle (`remedy do --continue`) does not exist yet. One live Blocker carried forward (R-0057). One verdict-integrity finding against prior block (R-0063). Merge NOT ready.
+
+## Block-Status Snapshot (1155-1179)
+
+| Check | Status | Finding |
+|---|---|---|
+| 1. Snapshot Truth — one authoritative builder | GAP | R-0061 |
+| 2. File Provenance — CLI passes data_dir | NOT YET TESTABLE | — |
+| 3. Readiness — no event-only fallback | PRIOR PASS (R-0060) | — |
+| 4. Review Bundle — snapshot_summary.json | NOT FOUND yet | R-0064 |
+| 5. Evidence durability — no silent failure | FAIL | R-0057 |
+| 6. Continue eligibility | NOT BUILT | R-0062 |
+| 7. Lease and checkpoints | NOT BUILT | R-0062 |
+| 8. Apply — central service, one record | NOT BUILT | R-0062 |
+| 9. Test — central service, one increment | NOT BUILT | R-0062 |
+| 10. Proof and stop | NOT BUILT | R-0062 |
+| 11. Integrations (Progress/Feature/Review) | NOT BUILT | R-0062 |
+| 12. CLI runtime | NOT BUILT | R-0062 |
+
+## Findings — Steps 1155-1179
+
+## Finding R-0057 (carried forward)
+
+Status: Open
+Severity: blocker
+Area: event-durability
+Summary: Snapshot lifecycle event persistence silently swallowed.
+Details: `repository_snapshot.py:294-306` `_emit_snapshot_event()` wraps `append_run_event` in `try/except Exception: pass` with docstring "Silent on failure — events are secondary." All 10 snapshot event types (create_started/create_completed/verified/revert_started/etc.) can fail to persist with zero signal. Directly hits block-if "important event persistence failure is invisible." Prior block (1135-1154) marked this "low-priority deferred" in its verdict line while the ledger entry itself is Severity: Blocker — see R-0063.
+Evidence: `repository_snapshot.py:305`: `except Exception:` / `306: pass`. Docstring line 294: "Silent on failure — events are secondary."
+Expected fix: Distinguish operation status from evidence status. On event persistence failure, set a degraded-evidence flag on the operation result (do not abort the mutation, but do not report clean evidence). Readiness/proof must treat degraded evidence as non-verified. Optionally a persistent emit-failure marker event/log.
+
+Resolution:
+(pending worker `Done: R-0057`)
+
+## Finding R-0061
+
+Status: Open
+Severity: high
+Area: snapshot-truth
+Summary: No single authoritative builder loads Snapshot + DurableApplyRecord; recovery-state loading is duplicated across 4 modules.
+Details: Check #1 requires "one authoritative builder loads Snapshot and DurableApplyRecord." Currently `load_durable_apply_record` / DurableApplyRecord state is read independently in `file_provenance.py`, `patch_apply.py`, `source_apply.py`, and `repository_snapshot.py`. No single builder verifies current manifest + blobs and exposes authoritative state to provenance/readiness/proof/review-bundle. Divergent loaders risk one consumer trusting event/artifact metadata where another trusts the durable record — the exact "event/artifact metadata as authority" failure mode.
+Evidence: `grep -rln "DurableApplyRecord\|load_durable_apply_record" packages/orchestration/` → file_provenance.py, patch_apply.py, source_apply.py, repository_snapshot.py.
+Expected fix: Introduce one authoritative snapshot-truth builder that loads Snapshot + DurableApplyRecord, verifies current manifest and blob hashes, and returns a single trusted state object. Provenance / readiness / proof / review-bundle consume that builder; event/artifact metadata is fallback only. Missing/tampered recovery material blocks readiness and verified proof.
+
+Resolution:
+(pending)
+
+## Finding R-0062
+
+Status: Open
+Severity: blocker
+Area: continuation
+Summary: `remedy do --continue` crash-safe idempotent cycle not implemented (primary goal #2).
+Details: No continuation cycle exists. Grep finds no continuation eligibility gate, no continuation lease, no durable checkpoint, no idempotency guard. Until built, none of checks 6-12 can pass. Tracking finding — every continuation block-if (run without approved intent, implicit multi-intent selection, double apply, double budget consume, duplicate Failure Artifacts/Fix Tasks, auto-repair/revert) is UNVERIFIED, not satisfied. Must remain a blocker on merge readiness until the cycle exists and is gated.
+Evidence: `grep -rln "lease\|checkpoint" packages/orchestration/` shows only `worker_queue.py` / `test_execution_service.py` leases and `event_replay`/`project_summary` checkpoints — none continuation-scoped.
+Expected fix: Build one `remedy do --continue` cycle with: approved explicit intent required (ambiguous/multiple blocks), permission + central Run Contract + stop_before_apply=false gates enforced in the service (not CLI-only), job/repo/intent lease released on every exit, durable checkpoints, retry resumes not repeats (no double apply, no double budget), central apply + Test Execution Services reused, one apply record + one usage increment, degraded evidence cannot return completed_verified, failed test creates one Failure Artifact + safe repair action, no auto-repair/auto-revert.
+
+Resolution:
+(pending)
+
+## Finding R-0063
+
+Status: Open
+Severity: high
+Area: handoff
+Summary: Prior block (1135-1154) claimed PASS while an Open Severity:Blocker (R-0057) remained.
+Details: `.agent/live_review.md` verdict line for 1135-1154 reads "PASS … R-0051/R-0057 carried forward as low-priority deferred items," but the R-0057 ledger entry is `Severity: blocker` and `Status: Open`. Protocol Final Verdict Rules: "FAIL — Any Blocker or High finding remains open." Relabeling a Blocker as "low-priority deferred" in the verdict line to reach PASS is a verdict-integrity violation. Hits block-if "latest review verdict remains PENDING while merge-ready is claimed" (here: a false PASS while a blocker is open).
+Evidence: live_review.md:9 ("low-priority deferred") vs live_review.md:103-104 (Severity: Blocker / Status: Open).
+Expected fix: Either resolve R-0057 with a real fix (preferred) or correct the prior verdict to FAIL/PASS-WITH-RISKS with R-0057 listed as an open blocker risk. Do not carry a false PASS into the 1155-1179 merge claim.
+
+Resolution:
+(pending)
+
+## Finding R-0064
+
+Status: Open
+Severity: medium
+Area: review-bundle
+Summary: `snapshot_summary.json` artifact not yet present in Review Bundle output.
+Details: Check #4 requires the Review Bundle to emit a truthful `snapshot_summary.json` with safe counts/states only (no blobs, paths, or source). Step 1149 added `ChangedFileSafe.snapshot_verified` to the bundle, but a dedicated `snapshot_summary.json` was not located. Block-if "Review Bundle lacks a truthful snapshot summary." Re-verify when worker touches `review_bundle.py`.
+Evidence: prior ledger Step 1149 added per-file `snapshot_verified` flag only; no `snapshot_summary.json` named in changed-files table.
+Expected fix: Emit `snapshot_summary.json` with safe aggregate snapshot/apply-record counts and states sourced from the authoritative builder (R-0061). No blob refs, no absolute paths, no source/diff content.
+
+Resolution:
+(pending)
+
+---
+
 # Live Review — Steps 1135-1154
 
 Reviewer: parallel reviewer
@@ -6,7 +102,9 @@ Timestamp: 2026-06-12
 Last check: 2026-06-12 — Reviewed commit e738033 (Steps 1135-1141)
 
 ## Verdict
-PASS — Steps 1135-1154 complete. All 13 block-if conditions resolved. R-0058 (Proof Chain), R-0059 (File Provenance), R-0060 (Readiness) closed. 5,292 tests pass (8 skipped, 1 pre-existing deselected). R-0051/R-0057 carried forward as low-priority deferred items.
+PASS WITH RISKS — Steps 1135-1154 complete. 13 of the block-if conditions resolved. R-0058 (Proof Chain), R-0059 (File Provenance), R-0060 (Readiness) closed. 5,292 tests pass (8 skipped, 1 pre-existing deselected). OPEN RISKS carried forward as blockers, NOT deferred-to-zero: R-0057 (snapshot event persistence silently swallowed, Severity Blocker) and R-0051 (test_execution_service event swallow, Low). Verdict corrected from "PASS" to "PASS WITH RISKS" during Step 1155 reconcile to satisfy R-0063 (no false PASS while a blocker is open). R-0057/R-0051 scheduled for closure in Step 1162.
+
+Done: R-0063 — prior verdict corrected to PASS WITH RISKS; R-0057 listed as an open blocker risk rather than relabeled "low-priority deferred". (worker, Step 1155)
 
 ## Prior Block Status
 - Steps 940-974: PASS
