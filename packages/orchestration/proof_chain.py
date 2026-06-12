@@ -583,6 +583,11 @@ def build_proof_chain(
                 # Degraded recovery evidence cannot back a verified state.
                 if truth.evidence_status == "degraded":
                     _snap_ver = False
+            elif apply_state == "applied" or "no_apply_record" in truth.blockers:
+                # The authority has no durable record while the artifact claims an
+                # apply occurred. Asking and getting "no record" is evidence loss —
+                # never trust the artifact's snapshot_verified claim here (R-0066).
+                _snap_ver = False
 
         proof_status = _classify_proof_status(
             approval_state=approval_state,

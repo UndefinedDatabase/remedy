@@ -166,3 +166,7 @@ Text output (non-JSON) is written to stderr for blocked/failed runs, stdout for 
 - No automatic repair triggered by test failures (requires `remedy repair start ...`)
 - No snapshot/rollback implementation
 - No overnight/unattended mode
+
+## See also
+
+- [do-continue-v1](do-continue-v1.md) — drives one budget-gated test run as part of a single continuation cycle.

@@ -27,18 +27,18 @@ Steps 1155-1179: Snapshot Truth Final Closure + `remedy do --continue` v1.
   double-consume test budget, nor duplicate Failure Artifact / Fix Task.
 - `do --continue` performs exactly ONE controlled cycle. No autonomous loops.
 
-## Known Risks (Carry-forward into 1155-1179)
-- R-0051: `_emit()` in test_execution_service swallows events with `except Exception: pass`
-  → closed by Step 1162 (EventPersistenceResult).
-- R-0057: `_emit_snapshot_event()` in repository_snapshot.py swallows events
-  → closed by Step 1162.
-- File Provenance CLI (`apps/cli/commands/file.py`) does not pass `data_dir` to
-  `build_file_provenance()` → not using authoritative DurableApplyRecord → Step 1157.
-- Readiness `_has_verified_snapshot()` falls back to `snapshot_create_completed` event
-  → generic event is not rollback proof → Step 1159.
-- Review Bundle lacks `snapshot_summary.json` → Step 1160.
-- Silent ApplyRecord persistence failure in revert service
-  (`except (OSError, json.JSONDecodeError): pass`) → Step 1161.
+## Known Risks (Carry-forward into 1155-1179) — ALL CLOSED
+- R-0051: `_emit()` in test_execution_service swallowed events → CLOSED Step 1162.
+- R-0057: `_emit_snapshot_event()` swallowed events → CLOSED Step 1162
+  (EventPersistenceResult; emitters return structured status).
+- File Provenance CLI did not pass `data_dir` → CLOSED Step 1157 (uses snapshot truth).
+- Readiness event-only fallback → CLOSED Step 1159 (durable truth required).
+- Review Bundle lacked `snapshot_summary.json` → CLOSED Step 1160.
+- Silent ApplyRecord persistence failure in revert → CLOSED Step 1161
+  (structured evidence status; degraded evidence blocks verified).
+- R-0061 (no single snapshot-truth builder) → CLOSED Step 1156 + wired into
+  proof/provenance/readiness/review/do-continue.
+- R-0062 (no continuation cycle) → CLOSED Steps 1164-1178 (`remedy do continue`).
 
 ## Resolved (Steps 1135-1154) — removed from current risks
 - R-0052/R-0053/R-0054/R-0055/R-0056: canonical revert action, gate, capability, CLI

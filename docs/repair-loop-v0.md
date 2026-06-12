@@ -72,3 +72,7 @@ the command falls back to `remedy job show`.
 - Event idempotency: `test_failure_artifact_created` emitted once per failure artifact
 - CLI error handling: specific exceptions only, no broad `except Exception`
 - proof_status remains "incomplete" until repair is actually proven
+
+## See also
+
+- [do-continue-v1](do-continue-v1.md) — exposes this repair path (no auto-repair) when a continuation test fails.

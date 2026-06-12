@@ -6,7 +6,7 @@ approved intent → contract/permission checks → verified snapshot → apply �
 Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/idempotent.
 
 ## Current Step
-1164 — do_continue models (in progress)
+1179 — Docs + full pytest + final handoff (complete; awaiting reviewer final verdict)
 
 ## Steps
 - [x] 1155: Reconcile .agent/context.md, plan.md, live_review.md
@@ -33,14 +33,16 @@ Proof Chain → safe stop. No auto-repair, no auto-revert, no loops. Crash-safe/
 - [x] 1176: Progress Ledger + Feature Planner items
 - [x] 1177: continuation_summary.json in Review Bundle
 - [x] 1178: Runtime + idempotency tests (tiny temp repos)
-- [ ] 1179: Docs + targeted/full pytest + live review + final handoff
+- [x] 1179: Docs (do-continue-v1 + cross-links) + full pytest + final handoff
 
-## Carry-forward Risks
-- R-0051/R-0057 event durability → Step 1162.
-- File Provenance CLI missing data_dir → Step 1157.
-- Readiness event fallback → Step 1159.
-- Missing snapshot_summary.json → Step 1160.
-- Silent ApplyRecord persistence failure → Step 1161.
+## Carry-forward Risks — all closed this block
+- R-0051/R-0057 event durability → closed Step 1162 (EventPersistenceResult).
+- File Provenance CLI missing data_dir → closed Step 1157.
+- Readiness event fallback → closed Step 1159.
+- Missing snapshot_summary.json → closed Step 1160.
+- Silent ApplyRecord persistence failure → closed Step 1161.
+- R-0061 snapshot truth builder → closed Step 1156 + wired Steps 1157-1160, 1169-1172.
+- R-0062 continuation cycle → closed Steps 1164-1178.
 
 ## Next Block
 Repair Loop v1 or bounded Overnight Mode preparation.

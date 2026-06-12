@@ -3,7 +3,7 @@ Event persistence result (Steps 1162) — close R-0051 / R-0057.
 
 Important lifecycle events must never be lost silently. Emitters return an
 EventPersistenceResult so callers can surface evidence status instead of
-swallowing failures with `except Exception: pass`.
+swallowing failures and discarding them.
 
 Status values:
   - "complete": the event was durably appended

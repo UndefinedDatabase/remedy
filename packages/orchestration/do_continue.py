@@ -640,15 +640,19 @@ def run_do_continue(
         # Reload job after apply mutated metadata.
         job = load_job(UUID(request.job_id), data_dir)
 
-        # ── Phase: test (idempotent — no double budget) ─────────────────
+        # ── Phase: test (crash-atomic, no double budget) ────────────────
         test_cp = latest_checkpoint(checkpoints, ContinuePhase.TEST)
         rec_now = load_durable_apply_record(result.apply_id, request.job_id, data_dir)
-        already_tested = (test_cp is not None and test_cp.status == "completed") or (
+        completed_tested = (test_cp is not None and test_cp.status == "completed") or (
             rec_now is not None and (rec_now.state in ("tested_passed", "tested_failed") or rec_now.test_run_id)
         )
+        # A test was started but its completion was never confirmed (crash window).
+        in_flight = (
+            test_cp is not None and test_cp.status == "in_flight" and not completed_tested
+        )
 
-        if already_tested:
-            ids = test_cp.ids if test_cp else {}
+        if completed_tested:
+            ids = test_cp.ids if (test_cp and test_cp.status == "completed") else {}
             test_status = ids.get("test_status") or (
                 "passed" if rec_now and rec_now.state == "tested_passed" else "failed"
             )
@@ -656,10 +660,36 @@ def run_do_continue(
             result.failure_artifact_id = ids.get("failure_artifact_id", "")
             test_evidence = ids.get("evidence_status", "complete")
             _record(result, ContinuePhase.TEST, "resumed", f"Test already executed: {test_status}.")
+        elif in_flight:
+            # Crash-safety (R-0068): a prior test run was started but never
+            # confirmed complete. We cannot prove whether budget was consumed or
+            # a Failure Artifact was created, so we NEVER re-run (no double
+            # budget, no duplicate artifact) and NEVER claim success.
+            result.test_run_id = (test_cp.ids or {}).get("test_run_id", "")
+            result.stop_reason = ContinueStopReason.EVIDENCE_INCOMPLETE
+            result.evidence_status = "degraded"
+            result.proof_status = "incomplete"
+            result.next_safe_action = f"remedy change proof {request.job_id} --json"
+            result.safe_summary = "Prior test outcome unconfirmed after interruption — manual review."
+            _record(result, ContinuePhase.TEST, "blocked", "Test outcome unconfirmed (crash window).")
+            _record(result, ContinuePhase.FINAL_STOP, "stopped", result.stop_reason)
+            _finalize_evidence_incomplete(request.job_id, data_dir, ["test_outcome_unconfirmed"])
+            _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
+                "stop_reason": result.stop_reason, "evidence_status": result.evidence_status,
+            })
+            result.usage_after = export_usage_json(load_usage(load_job(UUID(request.job_id), data_dir)))
+            return result
         else:
             from packages.orchestration.test_execution_service import (
                 execute_test_run, TestExecutionRequest,
             )
+            # Persist an in-flight marker BEFORE consuming test budget so a crash
+            # in the test window is detected on resume (R-0068).
+            save_checkpoint(request.job_id, data_dir, ContinueCheckpoint(
+                phase=ContinuePhase.TEST, status="in_flight",
+                at=datetime.now(timezone.utc).isoformat(),
+                ids={"apply_id": result.apply_id},
+            ))
             update_apply_record_state(request.job_id, result.apply_id, "test_pending", data_dir)
             _emit_continue(data_dir, request.job_id, "do_continue_test_started", {
                 "apply_id": result.apply_id,
@@ -775,19 +805,17 @@ def run_do_continue(
 
 
 def _finalize_evidence_incomplete(job_id: str, data_dir: Path, warnings: list[str]) -> None:
-    """Record a Progress Ledger blocker for degraded continuation evidence.
+    """Emit the evidence-incomplete marker for degraded continuation evidence.
 
-    Best-effort and safe — does not raise, exposes no raw content (Step 1174).
+    Safe and non-raising — emit_important_event reports failure via its return
+    status rather than raising, and exposes no raw content (Step 1174).
     """
-    try:
-        from packages.orchestration.event_persistence import emit_important_event
-        emit_important_event(
-            data_dir, job_id, "do_continue_stopped",
-            {"stop_reason": "evidence_incomplete", "warnings": warnings[:8]},
-            eligible=CONTINUE_EVENTS,
-        )
-    except Exception:
-        pass
+    from packages.orchestration.event_persistence import emit_important_event
+    emit_important_event(
+        data_dir, job_id, "do_continue_stopped",
+        {"stop_reason": "evidence_incomplete", "warnings": warnings[:8]},
+        eligible=CONTINUE_EVENTS,
+    )
 
 
 # ---------------------------------------------------------------------------

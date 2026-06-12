@@ -326,9 +326,16 @@ def _emit_snapshot_event(
 ) -> "EventPersistenceResult":
     """Emit a snapshot lifecycle event, returning a structured persistence result.
 
-    Failures are no longer swallowed silently (R-0057, Step 1162). Callers that
-    care about evidence (revert, do --continue) surface the returned status; no
-    raw exception text is exposed.
+    Failures are no longer swallowed silently (R-0057, Step 1162): the returned
+    EventPersistenceResult carries a status code instead of raising or discarding.
+
+    Authority note (R-0067): snapshot/apply truth is derived from on-disk
+    manifest, blobs, and the DurableApplyRecord (see build_snapshot_truth), NOT
+    from these events. The create/verify/apply_record_saved emit sites therefore
+    treat events as non-authoritative best-effort history and intentionally do
+    not gate evidence on the return value — losing a lifecycle event cannot
+    corrupt authoritative state. The revert path, where event evidence is
+    surfaced to callers, does capture and propagate the status.
     """
     from packages.orchestration.event_persistence import emit_important_event
     return emit_important_event(

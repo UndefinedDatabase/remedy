@@ -201,3 +201,7 @@ remedy snapshot list-applies <job_id> [--json]
 - No automatic snapshot expiry or cleanup.
 - Post-apply drift check requires `after_proof` to be populated in `DurableApplyRecord`; unchecked paths are not drift-detected.
 - `source_apply.py` `revert_apply()` signature changed — old `(snapshots, repo_path)` replaced by `(apply_id, repo_path, *, job_id, data_dir=None)`. Callers must update.
+
+## See also
+
+- [do-continue-v1](do-continue-v1.md) — the continuation cycle that consumes this snapshot truth for apply/test/proof.

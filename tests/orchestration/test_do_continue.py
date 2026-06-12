@@ -442,3 +442,31 @@ class TestContinuationArchitecture:
         src = self._src()
         assert "revert_repository_apply" not in src   # no automatic revert
         assert "start_repair_loop" not in src          # no automatic repair
+
+
+class TestCrashAtomicTestPhase:
+    """R-0068: a crash between test start and confirmation must not re-run."""
+
+    def test_in_flight_test_does_not_rerun(self, env, monkeypatch):
+        data_dir, repo = env
+        job, iid = make_continue_job(data_dir, repo)
+        # Apply first so the test phase is the one in flight.
+        from packages.orchestration.patch_apply import apply_patch_intent
+        from packages.orchestration.storage import load_job
+        from uuid import UUID
+        apply_patch_intent(load_job(UUID(str(job.id)), data_dir), iid, data_dir=data_dir)
+        # Simulate a crash mid-test: an in_flight TEST checkpoint with no completion.
+        from packages.orchestration import do_continue as dc
+        dc.save_checkpoint(str(job.id), data_dir, dc.ContinueCheckpoint(
+            phase=dc.ContinuePhase.TEST, status="in_flight",
+            at="2030-01-01T00:00:00+00:00", ids={"apply_id": iid},
+        ))
+        import packages.orchestration.test_execution_service as tes
+        fn, calls = _fake_test(data_dir, status="passed")
+        monkeypatch.setattr(tes, "execute_test_run", fn)
+        result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+        # Never re-ran the test; never claimed success.
+        assert calls["n"] == 0
+        assert result.stop_reason == dc.ContinueStopReason.EVIDENCE_INCOMPLETE
+        assert result.evidence_status == "degraded"
+        assert result.stop_reason != "completed_verified"
