@@ -109,6 +109,7 @@ GROUPS: dict[str, GroupDef] = {
     "contract": GroupDef("contract", "Contract", "Run contract inspection and action checks."),
     "progress": GroupDef("progress", "Progress", "Progress ledger — structured checklist and evidence."),
     "feature": GroupDef("feature", "Feature", "Feature planner — deterministic suggestions and acceptance."),
+    "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback — pre-apply proof and recovery metadata."),
 }
 
 
@@ -1652,6 +1653,33 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("contract.inspect",),
+    ),
+
+    # ── snapshot ─────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="snapshot.inspect",
+        group_id="snapshot",
+        subcommand="inspect",
+        description="Show snapshot metadata for a specific snapshot (safe fields only, no recovery content).",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("snapshot_id", "Snapshot ID to inspect"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("snapshot.list-applies",),
+    ),
+
+    CommandEntry(
+        command_id="snapshot.list-applies",
+        group_id="snapshot",
+        subcommand="list-applies",
+        description="List durable apply records for a job.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("snapshot.inspect",),
     ),
 )
 

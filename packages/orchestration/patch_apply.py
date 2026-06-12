@@ -89,6 +89,7 @@ class PatchApplyResult:
     bytes_written: int
     line_count: int
     blocked_reason: str | None  # set when state == "blocked"
+    snapshot_id: str = ""       # populated on "applied" state
 
 
 # ---------------------------------------------------------------------------
@@ -181,12 +182,31 @@ def apply_patch_intent(
     if not is_allowed(job, Capability.repo_generated_write):
         return _blocked("permission_denied", target_path, action)
 
-    # ── 8b. Store pre-apply snapshot ──────────────────────────────────────
+    # ── 8b. Mandatory pre-apply snapshot ─────────────────────────────────
+    from packages.orchestration.repository_snapshot import (
+        create_snapshot as _create_snapshot,
+        verify_snapshot as _verify_snapshot,
+        save_durable_apply_record as _save_durable_apply_record,
+        DurableApplyRecord as _DurableApplyRecord,
+        load_snapshot as _load_snapshot,
+    )
+    from packages.orchestration.data_paths import resolve_data_root as _resolve_data_root
+    _data_dir_path = data_dir or _resolve_data_root()
+    _job_id_str = str(job.id)
+    _snap_result = _create_snapshot(_job_id_str, intent_id, [target_path], repo_root, _data_dir_path)
+    if not _snap_result.success:
+        return _blocked(f"snapshot_blocked:{_snap_result.safe_error_kind}", target_path, action)
+    _snap_verif = _verify_snapshot(_snap_result.snapshot_id, _job_id_str, _data_dir_path)
+    if not _snap_verif.verified:
+        return _blocked(f"snapshot_verify_failed:{_snap_verif.failure_reason}", target_path, action)
+    _snapshot_id = _snap_result.snapshot_id
+
+    # ── 8c. Legacy snapshot (best-effort, for patch_revert.py compat) ─────
     try:
         from packages.orchestration.patch_revert import store_pre_apply_snapshot
         store_pre_apply_snapshot(job, intent_id, target_path, action, repo_root, data_dir=data_dir)
-    except (ImportError, OSError, ValueError):
-        pass  # Snapshot is best-effort; apply must not be blocked by snapshot failure.
+    except (ImportError, OSError, ValueError, KeyError, AttributeError, TypeError):
+        pass
 
     # ── 9a. Owning artifact ───────────────────────────────────────────────
     artifact = next(
@@ -265,10 +285,46 @@ def apply_patch_intent(
         "line_count": line_count,
         "reason": "applied",
         "proof": proof,
+        "snapshot_id": _snapshot_id,
+        "snapshot_verified": True,
     }
 
     # ── 11. Save job ──────────────────────────────────────────────────────
     save_job(job)
+
+    # ── 11b. Durable apply record (Step 1124) ─────────────────────────────
+    _snap_meta = _load_snapshot(_snapshot_id, _job_id_str, _data_dir_path)
+    _before_proof: dict = {}
+    _after_proof: dict = {}
+    if _snap_meta:
+        for _e in _snap_meta.entries:
+            _before_proof[_e.rel_path] = {
+                "sha256": _e.before_sha256, "bytes": _e.before_bytes, "existed": _e.existed_before,
+            }
+        _cur = (repo_root / target_path)
+        if _cur.exists():
+            _raw = _cur.read_bytes()
+            _after_proof[target_path] = {
+                "sha256": hashlib.sha256(_raw).hexdigest(), "bytes": len(_raw), "existed": True,
+            }
+        else:
+            _after_proof[target_path] = {"sha256": "", "bytes": 0, "existed": False}
+    _save_durable_apply_record(
+        _DurableApplyRecord(
+            apply_id=intent_id,
+            job_id=_job_id_str,
+            intent_id=intent_id,
+            snapshot_id=_snapshot_id,
+            state="applied",
+            target_paths=[target_path],
+            applied_at=applied_at,
+            before_proof=_before_proof,
+            after_proof=_after_proof,
+            snapshot_verified=True,
+        ),
+        _job_id_str,
+        _data_dir_path,
+    )
 
     result = PatchApplyResult(
         state="applied",
@@ -279,6 +335,7 @@ def apply_patch_intent(
         bytes_written=bytes_written,
         line_count=line_count,
         blocked_reason=None,
+        snapshot_id=_snapshot_id,
     )
 
     # ── 12. Run-log events ────────────────────────────────────────────────

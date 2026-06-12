@@ -184,9 +184,13 @@ class TestPatchRevert:
         from packages.orchestration.patch_apply import apply_patch_intent
         result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
         assert result.state == "applied", f"blocked: {result.blocked_reason}"
+        assert result.snapshot_id, "snapshot_id must be set on applied result"
 
-        snap_dir = tmp_path / "workspaces" / str(job.id) / "patch_snapshots" / intent_id
-        assert (snap_dir / "metadata.json").exists()
+        # New snapshot storage path (unified Repository Snapshot service)
+        snap_root = tmp_path / "workspaces" / str(job.id) / "repository_snapshots"
+        assert any(snap_root.iterdir()), "snapshot directory must contain at least one entry"
+        snap_dir = snap_root / result.snapshot_id
+        assert (snap_dir / "manifest.json").exists(), "manifest.json must exist"
 
     def test_revert_restores_modified_file(self, tmp_path, monkeypatch):
         job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
@@ -197,12 +201,10 @@ class TestPatchRevert:
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         assert target.read_text() != original
 
-        from packages.orchestration.patch_revert import revert_patch_intent
-        # Reload job since apply_patch_intent saved it
-        from packages.orchestration.storage import load_job
-        job = load_job(job.id)
-        result = revert_patch_intent(job, intent_id, data_dir=tmp_path)
-        assert result.state == "reverted"
+        # Revert via unified Repository Snapshot service
+        from packages.orchestration.repository_snapshot import revert_repository_apply
+        result = revert_repository_apply(str(job.id), intent_id, repo, tmp_path)
+        assert result.success, f"Revert failed: {result.block_reason} — {result.safe_summary}"
         assert target.read_text() == original
 
     def test_revert_deletes_created_file(self, tmp_path, monkeypatch):
@@ -604,21 +606,29 @@ class TestSourceApply:
         from packages.orchestration.source_apply import apply_structured_patch, revert_apply
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
         job, intent_id = _make_approved_job()
-        (tmp_path / "orig.py").write_text("original")
+        (repo / "orig.py").write_text("original")
         patch = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path="orig.py", action="modify", content="modified"),),
             target_paths=("orig.py",),
         )
-        result = apply_structured_patch(patch, tmp_path, job=job, intent_id=intent_id)
+        result = apply_structured_patch(patch, repo, data_dir=str(data_dir), job=job, intent_id=intent_id)
         assert result.success
-        assert (tmp_path / "orig.py").read_text() == "modified"
+        assert (repo / "orig.py").read_text() == "modified"
+        assert result.snapshot_id
+        assert result.snapshot_verified
 
-        # Revert
-        success = revert_apply(result.snapshots, tmp_path)
+        # Revert via durable snapshot
+        success = revert_apply(
+            result.apply_id, repo, job_id=str(job.id), data_dir=data_dir
+        )
         assert success
-        assert (tmp_path / "orig.py").read_text() == "original"
+        assert (repo / "orig.py").read_text() == "original"
 
     def test_apply_blocks_binary(self, tmp_path):
         from packages.orchestration.source_apply import apply_structured_patch

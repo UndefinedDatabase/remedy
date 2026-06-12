@@ -831,7 +831,8 @@ class TestApplyRecord:
         record = self._get_record(job, intent_id)
         # record should only have schema-defined keys (proof is a nested dict, not raw content)
         allowed_keys = {"state", "applied_at", "target_path", "action",
-                        "bytes_written", "line_count", "reason", "proof"}
+                        "bytes_written", "line_count", "reason", "proof",
+                        "snapshot_id", "snapshot_verified"}
         unexpected = set(record.keys()) - allowed_keys
         assert not unexpected, f"unexpected keys in record: {unexpected}"
         # proof must not contain raw file content, only structural hashes and counts
