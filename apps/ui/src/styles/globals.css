@@ -2,19 +2,39 @@
 
 * { box-sizing: border-box; }
 html, body, #root { width: 100%; height: 100%; margin: 0; }
+
 body {
   font-family: var(--remedy-font-ui);
   color: var(--remedy-text);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
   background:
-    radial-gradient(circle at 46% 34%, rgba(255,255,255,.9), transparent 24%),
-    radial-gradient(circle at 58% 44%, rgba(124,170,255,.18), transparent 35%),
-    linear-gradient(135deg, #f8fbff 0%, #edf3fb 45%, #e6eef8 100%);
+    radial-gradient(ellipse 60% 50% at 47% 38%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 52% 45%, rgba(140, 180, 255, 0.22), transparent 75%),
+    linear-gradient(150deg, #f7faff 0%, #ecf2fb 48%, #e4edf8 100%);
   overflow: hidden;
 }
-button, input { font: inherit; }
-button { cursor: pointer; }
+
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; padding: 0; }
+input { outline: none; }
+
+.remedy-glass-card {
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-lg);
+  box-shadow: var(--remedy-shadow-soft);
+  backdrop-filter: blur(14px);
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(110, 127, 163, 0.28); border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+  *, *::before, *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

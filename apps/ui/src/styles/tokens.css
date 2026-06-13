@@ -1,13 +1,15 @@
 :root {
   --remedy-font-display: "Avenir Next", "Manrope", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --remedy-font-ui: "Avenir Next", "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --remedy-font-mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
 
   --remedy-ink: #10285f;
-  --remedy-ink-strong: #071b49;
+  --remedy-ink-strong: #0a1c48;
   --remedy-ink-soft: #6f82a8;
 
-  --remedy-bg: #edf3fb;
+  --remedy-bg: #ecf2fb;
   --remedy-bg-2: #f8fbff;
+
   --remedy-blue-950: #071b49;
   --remedy-blue-900: #122f6a;
   --remedy-blue-800: #173f8f;
@@ -15,39 +17,55 @@
   --remedy-blue-500: #4c83ff;
   --remedy-blue-300: #8fb3ff;
   --remedy-blue-100: #dce8ff;
+  --remedy-blue-50:  #eef4ff;
   --remedy-blue: #4c83ff;
   --remedy-blue-strong: #2f6fff;
   --remedy-blue-soft: #8fb3ff;
-  --remedy-cyan-400: #53d6df;
-  --remedy-green-500: #4cc681;
-  --remedy-green: #4cc681;
-  --remedy-purple-400: #a28cff;
-  --remedy-purple: #a28cff;
-  --remedy-orange-400: #f5a34e;
-  --remedy-line: rgba(44, 82, 150, 0.16);
-  --remedy-line-strong: rgba(44, 82, 150, 0.28);
 
-  --remedy-glass-bg: rgba(255, 255, 255, 0.54);
-  --remedy-glass-bg-strong: rgba(255, 255, 255, 0.72);
-  --remedy-glass-border: rgba(62, 95, 154, 0.13);
-  --remedy-card: rgba(255, 255, 255, 0.68);
-  --remedy-card-strong: rgba(255, 255, 255, 0.86);
-  --remedy-card-soft: rgba(255, 255, 255, 0.48);
+  --remedy-cyan-400: #53d6df;
+  --remedy-green-500: #34c27e;
+  --remedy-green: #34c27e;
+  --remedy-green-50: #e7f8ef;
+  --remedy-purple-400: #a78bfa;
+  --remedy-purple: #a78bfa;
+  --remedy-orange-400: #f5a34e;
+  --remedy-red-500: #ef6363;
+
+  --remedy-line: rgba(44, 82, 150, 0.14);
+  --remedy-line-strong: rgba(44, 82, 150, 0.26);
+
+  --remedy-glass-bg: rgba(255, 255, 255, 0.58);
+  --remedy-glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --remedy-glass-border: rgba(62, 95, 154, 0.12);
+  --remedy-card: rgba(255, 255, 255, 0.72);
+  --remedy-card-strong: rgba(255, 255, 255, 0.9);
+  --remedy-card-soft: rgba(255, 255, 255, 0.5);
 
   --remedy-text: #14254b;
   --remedy-muted: #6e7fa3;
   --remedy-faint: #9aa9c5;
 
-  --remedy-radius-xl: 28px;
-  --remedy-radius-lg: 22px;
-  --remedy-radius-md: 16px;
-  --remedy-shadow-card: 0 18px 48px rgba(55, 86, 138, 0.10);
-  --remedy-shadow-soft: 0 10px 30px rgba(55, 86, 138, 0.08);
-  --remedy-shadow: 0 24px 70px rgba(55, 86, 138, 0.16);
-  --remedy-glow: 0 0 44px rgba(76, 131, 255, 0.38);
-  --remedy-glow-strong: 0 0 90px rgba(76, 131, 255, 0.56);
+  --remedy-radius-xl: 26px;
+  --remedy-radius-lg: 20px;
+  --remedy-radius-md: 14px;
+  --remedy-radius-sm: 10px;
 
-  --remedy-left-width: 292px;
-  --remedy-right-width: 404px;
+  --remedy-shadow-card: 0 14px 40px rgba(55, 86, 138, 0.10);
+  --remedy-shadow-soft: 0 8px 24px rgba(55, 86, 138, 0.08);
+  --remedy-shadow: 0 24px 70px rgba(55, 86, 138, 0.14);
+  --remedy-glow: 0 0 44px rgba(76, 131, 255, 0.36);
+  --remedy-glow-strong: 0 0 90px rgba(76, 131, 255, 0.55);
+
+  --remedy-left-width: 280px;
+  --remedy-right-width: 372px;
+
+  /* Status-Palette für Graph + Checklisten — einzige Wahrheitsquelle für Farben */
+  --remedy-state-done: #34c27e;
+  --remedy-state-current: #4c83ff;
+  --remedy-state-open: #a78bfa;
+  --remedy-state-planned: #ffffff;
+  --remedy-state-planned-ring: #9db9ee;
+  --remedy-state-blocked: #ef6363;
+
   color-scheme: light;
 }
