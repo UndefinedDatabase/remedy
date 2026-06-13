@@ -15,81 +15,98 @@ function sizeClass(w: number): "small" | "medium" | "large" {
   return "large";
 }
 
+// Status palette — mirrors tokens.css status palette (single source of truth).
+// Keys are the real BrainNodeState values: planned == reference "pending",
+// suggested == reference "open".
+const STATE_FILL: Record<string, string> = {
+  done: "#34c27e",
+  current: "#4c83ff",
+  planned: "#ffffff",
+  suggested: "#a78bfa",
+  blocked: "#ef6363",
+  idle: "#ffffff",
+};
+const STATE_RING: Record<string, string> = {
+  done: "rgba(52,194,126,.35)",
+  current: "rgba(76,131,255,.4)",
+  planned: "#9db9ee",
+  suggested: "rgba(167,139,250,.4)",
+  blocked: "rgba(239,99,99,.4)",
+  idle: "#9db9ee",
+};
+
 function renderBrainNode(node: object, ctx: CanvasRenderingContext2D, globalScale: number) {
   const n = node as ForceBrainNode;
   const x = n.x ?? 0;
   const y = n.y ?? 0;
-  ctx.save();
-  ctx.globalAlpha = n.alpha;
 
   if (n.kind === "root") {
-    // Large glowing blue orb
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, 22);
-    grad.addColorStop(0, "#ffffff");
-    grad.addColorStop(0.3, "#6da0ff");
-    grad.addColorStop(1, "#3478ff");
-    ctx.shadowBlur = 44;
-    ctx.shadowColor = "#4c83ff";
-    ctx.beginPath();
-    ctx.arc(x, y, 18, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.fill();
-    // Code icon — two chevrons
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x - 6, y - 5); ctx.lineTo(x - 10, y); ctx.lineTo(x - 6, y + 5);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x + 6, y - 5); ctx.lineTo(x + 10, y); ctx.lineTo(x + 6, y + 5);
-    ctx.stroke();
-  } else if (n.kind === "cluster") {
-    // Glowing ring
-    ctx.shadowBlur = 28;
-    ctx.shadowColor = n.color;
-    ctx.beginPath();
-    ctx.arc(x, y, 10, 0, Math.PI * 2);
-    ctx.strokeStyle = n.color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = n.color;
-    ctx.fill();
-  } else if (n.kind === "particle") {
-    // Tiny dot
-    const r = 1.2 + n.value * 0.3;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = n.color;
-    ctx.fill();
-  } else {
-    // Semantic node — white core + colored stroke + glow
-    const r = 4 + n.value * 0.5;
-    ctx.shadowBlur = 16;
-    ctx.shadowColor = n.color;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
+    // Glow halo
+    const halo = ctx.createRadialGradient(x, y, 6, x, y, 64);
+    halo.addColorStop(0, "rgba(76,131,255,0.55)");
+    halo.addColorStop(0.5, "rgba(76,131,255,0.18)");
+    halo.addColorStop(1, "rgba(76,131,255,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(x, y, 64, 0, Math.PI * 2); ctx.fill();
+    // Core sphere with gradient
+    const core = ctx.createRadialGradient(x - 6, y - 8, 4, x, y, 26);
+    core.addColorStop(0, "#7ea6ff");
+    core.addColorStop(1, "#2f6fff");
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 2; ctx.stroke();
+    // </> glyph
     ctx.fillStyle = "#ffffff";
-    ctx.fill();
-    ctx.strokeStyle = n.color;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    ctx.font = `600 ${15}px ui-monospace, Menlo, monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("</>", x, y + 1);
+    return;
   }
 
-  // Label only for root or selected semantic nodes at reasonable zoom
-  if (n.visibleLabel && n.label && globalScale > 1.2) {
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 0.9;
-    ctx.font = `${Math.max(10, 11 / globalScale)}px Inter, system-ui, sans-serif`;
-    ctx.fillStyle = "#1a3a6e";
-    ctx.textAlign = "center";
-    ctx.fillText(n.label, x, y + (n.kind === "root" ? 28 : 14));
+  if (n.sourceKind === "layout_only") {
+    // Decorative dots: tiny, pale, NEVER interactive, NEVER counted.
+    ctx.fillStyle = "rgba(170, 196, 238, 0.55)";
+    ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI * 2); ctx.fill();
+    return;
   }
 
+  // Real entities (Task/Intent/Apply/Test/Proof/Finding)
+  ctx.save();
+  ctx.globalAlpha = n.alpha;
+  const r = n.value >= 8 ? 7 : 5.5;
+  const fill = STATE_FILL[n.state] ?? "#ffffff";
+  const ring = STATE_RING[n.state] ?? "#9db9ee";
+  // soft outer ring
+  ctx.fillStyle = ring;
+  ctx.beginPath(); ctx.arc(x, y, r + 2.5, 0, Math.PI * 2); ctx.fill();
+  // glossy sphere
+  const g = ctx.createRadialGradient(x - r * 0.4, y - r * 0.5, r * 0.2, x, y, r);
+  g.addColorStop(0, "rgba(255,255,255,0.9)");
+  g.addColorStop(0.35, fill);
+  g.addColorStop(1, fill);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  if (n.state === "planned") { ctx.strokeStyle = "#9db9ee"; ctx.lineWidth = 1.2; ctx.stroke(); }
+
+  if (n.visibleLabel && n.label && globalScale > 1.4) {
+    ctx.fillStyle = "#3a4f7e";
+    ctx.font = `500 ${11 / globalScale}px -apple-system, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(n.label, x, y + r + 4);
+  }
   ctx.restore();
+}
+
+// Pointer hit-area: only real entities are hoverable/clickable; decorative
+// layout_only dots paint no hit area, so they can never be selected or counted.
+function pointerAreaPaint(node: object, color: string, ctx: CanvasRenderingContext2D) {
+  const n = node as ForceBrainNode;
+  if (n.sourceKind === "layout_only") return;
+  const x = n.x ?? 0;
+  const y = n.y ?? 0;
+  const r = n.kind === "root" ? 26 : 8;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
 }
 
 function renderBrainLink(link: object, ctx: CanvasRenderingContext2D, _globalScale: number) {
@@ -100,14 +117,14 @@ function renderBrainLink(link: object, ctx: CanvasRenderingContext2D, _globalSca
   const sx = source.x, sy = source.y ?? 0;
   const tx = target.x, ty = target.y ?? 0;
 
+  const isReal = target.sourceKind === "real_brain" || source.sourceKind === "real_brain";
+
   ctx.save();
   ctx.globalAlpha = l.alpha;
-  ctx.strokeStyle = source.color || "#91b8ff";
-  ctx.lineWidth = l.width;
-  ctx.shadowBlur = 6;
-  ctx.shadowColor = source.color || "#4c83ff";
+  ctx.strokeStyle = "rgba(190, 212, 248, 0.8)";
+  ctx.lineWidth = isReal ? 1.6 : 0.9;
 
-  // Quadratic bezier curve
+  // Quadratic bezier curve (no glow, no directional particles → no flicker)
   const mx = (sx + tx) / 2;
   const my = (sy + ty) / 2;
   const dx = tx - sx;
@@ -188,8 +205,10 @@ export function ForceBrainGraph({ dashboard, filter, onSelectNode }: {
           onBackgroundClick={() => onSelectNode(null)}
           nodeCanvasObject={renderBrainNode}
           nodeCanvasObjectMode={() => "replace"}
+          nodePointerAreaPaint={pointerAreaPaint}
           linkCanvasObject={renderBrainLink}
           linkCanvasObjectMode={() => "replace"}
+          linkDirectionalParticles={0}
           onEngineStop={() => { /* simulation settled */ }}
         />
       )}

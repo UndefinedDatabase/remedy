@@ -17,6 +17,7 @@ declare module "react-force-graph-2d" {
     nodeColor?: string | ((node: object) => string);
     nodeCanvasObject?: (node: object, ctx: CanvasRenderingContext2D, globalScale: number) => void;
     nodeCanvasObjectMode?: string | ((node: object) => string);
+    nodePointerAreaPaint?: (node: object, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => void;
     linkSource?: string;
     linkTarget?: string;
     linkColor?: string | ((link: object) => string);

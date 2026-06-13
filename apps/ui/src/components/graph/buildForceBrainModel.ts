@@ -95,11 +95,15 @@ export function buildForceBrainModel(
     });
   });
 
-  // Ambient particles — sparse, along branches
+  // Ambient particles — sparse, along branches.
+  // Hard cap: total decorative (layout_only) nodes must never exceed 90; they
+  // are purely visual, never interactive, never counted in any UI total.
+  const LAYOUT_ONLY_CAP = 90;
   const pCount = particleCount(size);
   branchIds.forEach((bid) => {
     const anchor = nodes.find(n => n.id === bid)!;
     for (let p = 0; p < pCount; p++) {
+      if (nodes.filter(n => n.sourceKind === "layout_only").length >= LAYOUT_ONLY_CAP) break;
       const angle = rng() * Math.PI * 2;
       const dist = 10 + rng() * 50;
       const pid = `${bid}-p${p}`;
