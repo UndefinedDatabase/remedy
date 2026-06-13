@@ -103,12 +103,17 @@ def _cmd_repair_propose(args: Any) -> None:
     from packages.orchestration.storage import JobNotFoundError, JobStoreError
 
     fixture = str(getattr(args, "fixture_builder", "false")).lower() in ("true", "1", "yes")
+    source_fixture = str(getattr(args, "fixture_source_builder", "false")).lower() in ("true", "1", "yes")
+    # Source fixture builder implies the fixture builder path.
+    if source_fixture:
+        fixture = True
 
     try:
         result = run_repair_attempt(
             args.job_id,
             args.failure_artifact_id,
             fixture_builder=fixture,
+            source_fixture_builder=source_fixture,
         )
     except (JobNotFoundError, JobStoreError) as exc:
         print(f"Error: {type(exc).__name__}", file=sys.stderr)
@@ -150,6 +155,9 @@ def _cmd_repair_status(args: Any) -> None:
             "status": attempt.status,
             "stop_reason": attempt.stop_reason,
             "approval_state": approval_state,
+            "repair_kind": attempt.repair_kind,
+            "expected_effect": attempt.expected_effect,
+            "resolved_failure": attempt.resolved_failure,
             "updated_at": attempt.updated_at,
         })
 

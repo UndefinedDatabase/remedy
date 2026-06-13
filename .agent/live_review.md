@@ -1,3 +1,89 @@
+# Live Review — Steps 1220-1244
+
+Reviewer: parallel reviewer
+Scope: Approved Repair Apply Cycle — approved repair intents flow through the SAME safe continuation path as normal approved intents: approval → snapshot → apply → test → proof → safe stop. No auto-approve, no auto-apply, no bypass.
+Timestamp: 2026-06-13
+
+## Verdict
+PENDING — block in progress. HEAD fe246fa (Step 1220 handoff). Check #1 PASS: 1193-1219 reconciled, branch drift RESOLVED (clean main, PR #53), no false merge-ready. Apply-cycle core reviewed (9b79baa, Steps 1221-1226,1233): CLEAN — no block-if, zero findings. do_continue REUSES the same central apply/snapshot/test path (no bypass — reconcile is POST-apply, only records truth); repair_loop new code calls NO source_apply/patch_apply/apply/test-exec/provider/ollama. `resolve_failure_if_repaired` resolves only on source_fix + verified snapshot + linked passing test + complete evidence + verified proof (docs-only/unknown never); failed/timeout → new failure, stays open; idempotent per test_run_id. Source-fixture opt-in with validated repo-relative target. Checks 1-6,9 PASS; Checks 7,8,10,11,12 pending (integrations in progress; tests/CLI-subprocess owed). No PASS until those land + Blocker/High resolved + builder proves targeted + full pytest green (count + wrapper) + changed-files table.
+
+## Check Matrix (1-12) — running
+| Check | Status | Note |
+|---|---|---|
+| 1. Handoff (1193-1219 reconciled) | PASS | fe246fa: new branch from clean main (PR #53 merged 1085-1219 → branch drift RESOLVED); plan/context reset to 1220-1244; residuals carried (docs-only fixture, provider-repair future, deselected test, UI lint); 1193-1219 = PASS WITH RISKS; no false merge-ready. Plan internalizes block-ifs (apply only via existing continue/apply service; docs-only ≠ source fix; resolve only on proven pass). |
+| 2. Repair intent truth | PASS | 9b79baa: RepairAttempt/artifact carry repair_kind (docs_fixture/source_fixture/provider) + expected_effect (documentation_only/source_fix/unknown) + original_* IDs. get_patch_intent resolution retained from v1. Opt-in source-fixture only with validated `_safe_rel_target` (rejects abs/`~`/`..`). |
+| 3. Eligibility/approval | PASS | Apply routed through existing `do continue` (run_do_continue) central path → requires approved intent via existing eligibility; reconcile is POST-apply only. No ambiguous selection. Pending/rejected/unapproved never reach apply. |
+| 4. Apply/snapshot | PASS | do_continue reuses SAME central apply/snapshot path (comment: "apply already happened through the central path above"); no bypass. DurableApplyRecord apply_id linked into attempt.repair_apply_id. Snapshot required by existing gate before mutation. |
+| 5. Test-linking | PASS | reconcile records post_repair_test_run_id = continue cycle's test_run_id (linked to repair apply). Usage counted once by do continue (R-0068 in_flight). Idempotent per test_run_id — no rerun of completed linked test. |
+| 6. Failure-resolution | PASS | `resolve_failure_if_repaired` resolves ONLY when expected_effect==source_fix AND test_run_id present AND snapshot_verified AND evidence_status==complete AND proof_status==verified AND not already-resolved (idempotent). docs-only/unknown NEVER resolve. failed/timeout → TESTED_FAILED + links new failure (no auto-loop), failure stays open. |
+| 7. Proof/Provenance | PENDING | Worker editing integrations. |
+| 8. Progress/Feature/Review/Cockpit | IN PROGRESS | Worker editing feature_planner/progress_ledger/review_bundle (uncommitted). |
+| 9. Idempotency | PASS | reconcile idempotent per test_run_id (cached TESTED_PASSED/FAILED); do continue in_flight crash-atomic (no double-apply/double-budget); no duplicate attempts (find_attempt_by_repair_intent). |
+| 10. CLI runtime | PENDING | --fixture-source-builder flag added; subprocess tests TBD. |
+| 11. Redaction | PENDING | do_continue JSON adds is_repair/repair_status/repair_attempt_id/repair_resolved_failure — safe enums/bools/IDs; deeper scan with tests. |
+| 12. Tests | PENDING | Smoke + targeted(67) + catalog(43) per commit; no test files in 9b79baa diff — owed. |
+
+## Findings — Steps 1220-1244
+(none — zero findings as of the builder final handoff.)
+
+## Builder Final Handoff (Steps 1220-1244)
+
+- **Tests run**: targeted across repair/do_continue/contract/progress/feature/
+  review/proof/test-exec/project-brain/ui_server = 724 passed. **Full pytest** via
+  `scripts/remedy_pytest.sh tests/ -q -k "not test_full_chain_order"` →
+  **5432 passed, 8 skipped, 1 deselected** (exit 0, ~123s). Deselected =
+  pre-existing `test_full_chain_order` (fails on main).
+- **1193-1219 reconciliation**: PASS WITH RISKS, merged in PR #53; new branch from
+  clean main — branch drift resolved.
+- **Repair intent classification**: DONE — repair_kind + expected_effect +
+  original_* IDs on attempt/artifact; opt-in source-fixture via validated target.
+- **Continue eligibility for repair intents**: DONE — reuses existing eligibility
+  (approved repair intent eligible; pending/rejected/fake/unlinked blocked).
+- **Repair apply**: DONE — through existing `do continue`/`apply_patch_intent`
+  (no bypass); mandatory verified snapshot; DurableApplyRecord linked.
+- **Post-repair test linking**: DONE — Test Execution Service only; usage once
+  (crash-atomic); post_repair_test_run_id recorded.
+- **Failure resolution**: DONE — `resolve_failure_if_repaired` resolves ONLY with
+  source_fix + verified snapshot + linked passing test + complete evidence +
+  verified proof; docs-only/unknown never overclaim.
+- **Proof/Provenance**: pending repair intent not applied/verified (tested).
+- **Progress/Feature/Review/Cockpit**: DONE — apply-cycle items, follow-ups,
+  repair_summary cycle counts, read-only cockpit counts.
+- **Idempotency/crash resume**: DONE — re-run resumes, no double apply/test/
+  resolve; single attempt.
+- **Redaction**: DONE — no raw output/source/diff/secrets/tracebacks/paths in
+  ContinueResult/RepairAttempt/CLI/events/metadata.
+- **Git**: branch `feature/steps-1220-1244-approved-repair-apply`, 5 commits, on
+  clean main lineage (PR #53 merged). No drift.
+- **Approved Repair Apply Cycle readiness**: ~95% (docs-only fixture by design;
+  provider/source repair builder is future).
+- **PR recommendation**: small focused PR for THIS branch (1220-1244) into main;
+  title "Approved Repair Apply Cycle v1". Create only on user OK; merge per
+  standing directive (one PR, merge first).
+- **Next block**: Bounded Overnight Preparation v0 OR Provider-backed Repair Builder.
+- **Merge readiness**: code-complete + full suite green; awaiting reviewer verdict.
+- **Completeness gate** (none triggered): repair never applied without approval;
+  repair loop never applies code; retry no double-apply/double-budget; unrelated
+  passing test does not resolve; pending repair never verified; docs-only not
+  claimed a source fix; no raw leaks.
+
+## Changed Files (Steps 1220-1244)
+
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/repair_loop.py` | Apply-cycle states + classification (repair_kind/expected_effect/original_* IDs, source-fixture opt-in); `find_attempt_by_repair_intent`, `resolve_failure_if_repaired`, `reconcile_repair_after_continue`, apply events | Record repair truth after the central apply/test cycle; resolve only on proof (1221/1225/1226) |
+| `packages/orchestration/do_continue.py` | Reconcile repair after final stop (no bypass); ContinueResult is_repair/repair_attempt_id/repair_status/repair_resolved_failure + JSON | Apply approved repair intents through the same safe path (1223/1224) |
+| `packages/orchestration/progress_ledger.py` | Repair apply-cycle progress items (applied/tested passed/failed/resolved/evidence-incomplete) | Surface apply-cycle truth, de-duped (1229) |
+| `packages/orchestration/feature_planner.py` | Repair apply follow-ups (test failed→propose; evidence incomplete→inspect) | Evidence-backed next steps, no auto-loop (1230) |
+| `packages/orchestration/review_bundle.py` | repair_summary applied/tested/resolved/unresolved/evidence counts | Repair cycle summary, safe statuses (1231) |
+| `packages/orchestration/ui_server.py` | Cockpit repair section applied/tested/resolved counts | Read-only repair-apply visibility (1232) |
+| `apps/cli/command_catalog.py`, `apps/cli/grouped.py`, `apps/cli/commands/repair_cmd.py` | `--fixture-source-builder` flag; status rows show classification + resolved_failure | Opt-in source fixture + repair status truth (1233/1202) |
+| `docs/repair-loop-v1.md`, `docs/do-continue-v1.md` | Approved Repair Apply Cycle + product readiness; do-continue repair note | Document apply phase + resolution rules (1238/1243) |
+| `tests/orchestration/test_repair_apply_cycle.py` | NEW — full cycle via real do_continue: source_fix resolves, docs-only no overclaim, fail keeps open, proof, idempotency, redaction, guards (10) | Prove the apply cycle (1223-1227/1234/1236/1237) |
+| `tests/cli/test_repair_v1_cli.py` | docs-only vs source-fixture classification via CLI status | CLI E2E classification (1235) |
+
+---
+
 # Live Review — Steps 1193-1219
 
 Reviewer: parallel reviewer

@@ -597,8 +597,46 @@ def extract_repair_items_from_events(events: list[dict] | None) -> list[Progress
                 safe_summary="Repair could not proceed — review the blocker.",
                 next_action="remedy repair status <job_id> --json",
             ))
-    # "Repair builder unavailable" is derived from a stopped attempt; surface it
-    # from a fix-task-created attempt with no approval-required follow-up.
+        # Approved Repair Apply Cycle items (Step 1229).
+        elif ename == "repair_apply_reconciled":
+            rstatus = str(meta.get("status", ""))
+            if rstatus == "tested_passed":
+                items.append(ProgressItem(
+                    item_id="repair-apply-tested-passed", title="Repair applied and tested (passed)",
+                    status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+                    source_ref=str(meta.get("repair_attempt_id", "")),
+                    safe_summary="Repair applied through do continue; linked test passed.",
+                ))
+            elif rstatus == "evidence_incomplete":
+                items.append(ProgressItem(
+                    item_id="repair-apply-evidence-incomplete", title="Repair evidence incomplete",
+                    status=ProgressStatus.BLOCKED, source_type=ProgressSource.PROOF_GAP,
+                    severity="High", source_ref=str(meta.get("repair_attempt_id", "")),
+                    safe_summary="Repair applied but evidence degraded — inspect evidence.",
+                    next_action="remedy change proof <job_id> --json",
+                ))
+            elif rstatus == "applied":
+                items.append(ProgressItem(
+                    item_id="repair-applied", title="Repair applied",
+                    status=ProgressStatus.IN_PROGRESS, source_type=ProgressSource.REPAIR_ARTIFACT,
+                    source_ref=str(meta.get("repair_attempt_id", "")),
+                    safe_summary="Repair intent applied through do continue.",
+                ))
+        elif ename == "repair_tested_failed":
+            items.append(ProgressItem(
+                item_id="repair-apply-tested-failed", title="Repair applied but test failed",
+                status=ProgressStatus.BLOCKED, source_type=ProgressSource.TEST_RESULT,
+                severity="High", source_ref=str(meta.get("repair_attempt_id", "")),
+                safe_summary="Repair applied; linked test failed — failure stays open, no auto-loop.",
+                next_action="remedy repair status <job_id> --json",
+            ))
+        elif ename == "repair_failure_resolved":
+            items.append(ProgressItem(
+                item_id="repair-failure-resolved", title="Failure resolved by repair",
+                status=ProgressStatus.RESOLVED, source_type=ProgressSource.REPAIR_ARTIFACT,
+                source_ref=str(meta.get("failure_artifact_id", "")),
+                safe_summary="Original failure resolved: snapshot + linked passing test + proof.",
+            ))
     return items
 
 

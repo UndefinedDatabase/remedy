@@ -1,54 +1,52 @@
-# Plan — Steps 1193-1219: Repair Loop v1 (Failure → Fix Patch Intent → Approval)
+# Plan — Steps 1220-1244: Approved Repair Apply Cycle v1
 
 ## Goal
-Turn a real TestFailureArtifact into a bounded, safe repair PROPOSAL:
-TestFailureArtifact → Repair Context → Fix Task → Repair Artifact → Fix Patch
-Intent → approval_required → safe stop. No auto-apply, no auto-repair execution
-beyond the proposal, no auto-contract-relax, no auto-revert.
+Apply an APPROVED repair patch intent through the existing `do continue` path:
+approval → snapshot → apply → linked test → proof → truthful stop. On pass:
+mark failure repaired + attempt tested_passed (only with snapshot + linked passing
+test + proof). On fail: link a new failure, no auto-loop. No bypass apply.
 
 ## Current Step
-1219 — Final handoff (complete; full suite green 5420; awaiting reviewer verdict)
+1244 — Final handoff (complete; full suite 5432 green; awaiting reviewer verdict)
 
 ## Steps
-- [x] 1193: Handoff reconciliation (1180-1192 full-suite proof; scope→1193-1219)
-- [x] 1194: Repair Loop v1 models
-- [x] 1195: build_repair_context safe summary
-- [x] 1196: evaluate_repair_eligibility
-- [x] 1197: RepairAttempt persistence (idempotent)
-- [x] 1198: Fix Task creation (idempotent, linked)
-- [x] 1199: Fixture Repair Builder v1 (deterministic; else unavailable)
-- [x] 1200: Repair Patch Intent (real, resolvable, pending)
-- [x] 1201: CLI repair propose
-- [x] 1202: CLI repair status (read-only)
-- [x] 1203: repair start v0 retained + documented (propose = canonical v1)
-- [x] 1204: Run Contract repair actions
-- [x] 1205: Event emission (safe, degradation visible)
-- [x] 1206: Progress Ledger integration
-- [x] 1207: Feature Planner integration
-- [x] 1208: Review Bundle repair_summary.json v1 counts
-- [x] 1209: Proof / Provenance alignment (tested)
-- [x] 1210: Operator Cockpit read-only repair section
-- [x] 1211: Idempotency tests
-- [x] 1212: CLI runtime tests
-- [x] 1213: Redaction tests
-- [x] 1214: Architecture guards
-- [x] 1215: Docs (repair-loop-v1 + cross-links)
-- [x] 1216: Targeted + full pytest once (5420 passed)
-- [x] 1217: Review protocol (handoff posted; reviewer verdict pending)
-- [x] 1218: PR prep (below; no PR without user OK)
-- [x] 1219: Final handoff
+- [x] 1220: Handoff reconciliation (1193-1219 merged PR #53; scope→1220-1244; new branch)
+- [x] 1221: Repair intent classification (repair_kind/expected_effect/original_* IDs)
+- [x] 1222: Continue eligibility accepts approved repair intent (verify + tests)
+- [x] 1223: Apply repair via existing continue/apply service (no bypass); carry repair IDs
+- [x] 1224: Link test run to repair apply (no duplicate usage on retry)
+- [x] 1225: RepairAttempt state machine (proposed..tested_passed/failed/superseded)
+- [x] 1226: resolve_failure_if_repaired (snapshot+linked passing test+proof only)
+- [x] 1227: Proof Chain repair awareness
+- [x] 1228: File Provenance repair awareness
+- [x] 1229: Progress Ledger repair-apply items
+- [x] 1230: Feature Planner repair follow-up
+- [x] 1231: Review Bundle repair_cycle_summary
+- [x] 1232: Operator Cockpit read-only repair-apply counts (or defer + document)
+- [x] 1233: Optional deterministic source fixture repair (only if safe; else docs-only + proof test)
+- [x] 1234: Idempotency + crash resume tests
+- [x] 1235: CLI runtime E2E (tiny repos)
+- [x] 1236: Redaction tests
+- [x] 1237: Architecture guards
+- [x] 1238: Docs (repair-loop-v1, do-continue-v1, snapshot-rollback-v1)
+- [x] 1239: Targeted tests + full pytest once
+- [x] 1240: PR strategy draft (whole branch; title reflects full line)
+- [x] 1241: Live review (findings/Done/verdict)
+- [x] 1242: Merge gate
+- [x] 1243: Product readiness update
+- [x] 1244: Final handoff
 
 ## Hard rules
-- No shell=True. No background pytest. scripts/remedy_pytest.sh, targeted first,
-  full suite at most ONCE after targeted pass.
-- Repair Loop creates Patch Intent ONLY. No source_apply, no apply, no test exec,
-  no provider/Ollama import, no auto-revert, no auto-contract-relax/budget-raise.
-- No raw stdout/stderr/source/diff/artifact-body/secrets/tracebacks/abs paths in
-  events, CLI, Progress, Proof, Review Bundle, or UI payload.
-- All next_safe_action commands must exist in command catalog.
-- Repair intent IDs real + resolvable; idempotent (no dup task/artifact/intent);
-  pending repair never marked verified.
+- No shell=True. No background pytest. scripts/remedy_pytest.sh; full suite once at end.
+- Apply ONLY through existing approved continue/apply service. Snapshot mandatory.
+  Test Execution Service is the only test path.
+- Repair Loop never imports/calls source_apply/patch_apply/test_execution/provider.
+- No auto-approve, no auto-revert, no auto repair loop, no multi-cycle.
+- No raw stdout/stderr/source/diff/artifact-body/secrets/tracebacks/abs paths anywhere.
+- Repair status never "verified" unless linked test passes after repair apply.
+- Idempotent: retry no double-apply / no double test budget / no duplicate failure /
+  no double-resolve. All next_safe_action commands exist in catalog.
+- docs-only repair must NOT be claimed a source fix without test+proof truth.
 
 ## Next block
-Approved Repair Apply Cycle (`remedy do continue <job> --intent-id <repair_intent>`)
-or bounded Overnight preparation.
+Bounded Overnight Preparation v0 OR Provider-backed Repair Builder.

@@ -79,8 +79,66 @@ blocks with a catalog-backed next action (`remedy contract inspect …`).
 as the v0 command for backward compatibility and is unchanged. New callers should
 use `repair propose`.
 
+## Approved Repair Apply Cycle (v1)
+
+Once a repair patch intent is **approved** (`remedy patch approve <job> <intent>`),
+apply it through the SAME safe continuation path — there is no repair apply bypass:
+
+    remedy do continue <job_id> --intent-id <repair_intent_id> --json
+
+`do continue` runs one cycle: eligibility → verified snapshot → apply (central
+`apply_patch_intent`) → linked test (Test Execution Service) → proof → truthful
+stop. After the cycle, repair truth is reconciled:
+
+- **passed** → repair attempt `tested_passed`. The original failure is resolved
+  **only** when the repair's `expected_effect == source_fix` AND the snapshot is
+  verified AND the linked post-repair test passed AND proof is verified AND
+  evidence is complete. A `documentation_only` / `unknown` repair is **never**
+  claimed as a source fix, even if a test passes.
+- **failed/timeout** → repair attempt `tested_failed`; the original failure stays
+  open; a new failure artifact is linked to the repair attempt + prior failure.
+  No automatic second repair loop.
+- **degraded evidence** → `evidence_incomplete`; never resolved.
+
+Classification (`repair_kind` / `expected_effect`) distinguishes docs-only,
+source-fixture, and (future) provider repairs. `repair status` shows the
+classification, apply state, and `resolved_failure`.
+
+### Idempotency
+Re-running `do continue` on a completed repair resumes from durable truth: no
+second apply, no second test budget, no duplicate failure, no double resolve.
+
+### Guarantees
+- Repair Loop never applies code or runs tests itself (no `source_apply` /
+  `patch_apply` / `test_execution` / provider imports). Apply only via the
+  approved continue/apply service. Snapshot mandatory. No auto-approve, no
+  auto-revert, no auto repair loop.
+- A repair is never `verified` / `resolved` unless a linked test passes after the
+  repair apply with a verified snapshot and supporting proof.
+
+## Product readiness (after this block)
+
+End-to-end, with human approval at the gate, Remedy can now:
+- run one controlled cycle (`do run` → propose), and on a failing test produce a
+  real, bounded repair **proposal**;
+- after the user approves the repair intent, apply it through `do continue`,
+  re-test it, update proof, and resolve the original failure **only** with
+  verified evidence.
+
+Still requires a human:
+- approving every patch/repair intent (`remedy patch approve`);
+- enabling apply (contract `stop_before_apply=false`, apply permitted).
+
+Still cannot happen automatically:
+- applying without approval; auto-revert; an automatic repair loop / multi-cycle
+  overnight run; provider/Ollama execution; contract relaxation; budget increase.
+
+Future provider work:
+- a gated, no-cloud-by-default provider repair builder for real source fixes
+  (current fixture builder is docs-only unless an explicit safe source target is
+  supplied).
+
 ## Future
 
 A provider-backed repair builder (gated, no-cloud by default) will replace the
-fixture builder for real source repairs. The approved-apply cycle is the next
-block.
+fixture builder for real source repairs.

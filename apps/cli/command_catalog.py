@@ -1388,6 +1388,8 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("failure_artifact_id", "Failure artifact ID"),
             ArgDef("--fixture-builder", "Use the deterministic fixture repair builder",
                    required=False, is_option=True, default="false"),
+            ArgDef("--fixture-source-builder", "Opt-in deterministic SOURCE fixture repair (needs a safe target)",
+                   required=False, is_option=True, default="false"),
             _JSON_OPT,
         ),
         supports_json=True,
