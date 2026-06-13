@@ -141,6 +141,29 @@ class TestReadinessTruth:
         ovr = next(c for c in rep.capabilities if c.name == "can_run_overnight")
         assert ovr.status == "blocked"
 
+    def test_exhausted_budget_blocks(self, env):
+        # R-0079: an exhausted test/loop budget must block readiness.
+        import dataclasses
+        from packages.orchestration.run_contract import (
+            build_default_run_contract, save_contract, load_usage, save_usage,
+        )
+        job = _job(env)
+        c = build_default_run_contract(job)
+        c = dataclasses.replace(c, max_test_runs=1, max_loops=1)
+        save_contract(job, c)
+        u = load_usage(job); u.test_runs_used = 1; u.loops_used = 1; save_usage(job, u)
+        save_job(job, root=env)
+        rep = OV.build_overnight_readiness(str(job.id), env)
+        assert "budget_exhausted" in rep.blockers
+        assert any(r.id == "budget_exhausted" and r.severity == "blocker" for r in rep.risks)
+        assert rep.can_run_unattended is False
+
+    def test_review_findings_dimension_explicit_unknown(self, env):
+        # R-0080: open-review-findings dimension must be explicit, not omitted.
+        job = _job(env)
+        rep = OV.build_overnight_readiness(str(job.id), env)
+        assert any(r.id == "review_findings_unknown" for r in rep.risks)
+
     def test_next_actions_catalog_backed(self, env):
         from packages.orchestration.do_run import validate_next_safe_action_command
         job = _job(env)

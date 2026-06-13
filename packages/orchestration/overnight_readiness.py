@@ -466,6 +466,13 @@ def _build_risks(inp: _Inputs) -> list[OvernightRisk]:
     elif integ == "unknown":
         risks.append(OvernightRisk(id="integrity_unknown", severity="low",
                                    summary="Integrity status unknown.", source="integrity_gate"))
+    # Open blocker/high review findings (Step 1254 / R-0080). No per-job
+    # programmatic findings source exists in v0 — report the dimension as an
+    # explicit unknown rather than silently omitting it (truthful-unknown).
+    risks.append(OvernightRisk(
+        id="review_findings_unknown", severity="low",
+        summary="Open review findings status is unknown (no per-job findings source in v0).",
+        source="review"))
     return risks
 
 
@@ -644,6 +651,15 @@ def build_overnight_readiness(
     report.evidence_summary = _build_evidence_summary(inp)
     report.capabilities = _build_capabilities(inp, job_id)
     report.risks = _build_risks(inp)
+    # Exhausted budgets block readiness (Step 1253 / R-0079): an exhausted
+    # loop/test budget is a blocker, surfaced as a blocker-severity risk too.
+    _budget_exhausted = bool(report.budget_summary.get("loops_exhausted")
+                             or report.budget_summary.get("test_runs_exhausted"))
+    if _budget_exhausted:
+        report.risks.append(OvernightRisk(
+            id="budget_exhausted", severity="blocker",
+            summary="A run-contract budget (loops/test runs) is exhausted.",
+            source="run_contract+run_usage"))
     report.checklist = _build_checklist(inp, job_id)
     report.next_action = select_overnight_next_action(inp, job_id)
     report.stop_reasons = _build_stop_reasons(inp, report.budget_summary, report.risks)
@@ -655,6 +671,8 @@ def build_overnight_readiness(
         report.blockers.append("unresolved_failures")
     if inp.pending_repair_intents:
         report.blockers.append("repair_pending_approval")
+    if _budget_exhausted:
+        report.blockers.append("budget_exhausted")
     if any(r.severity == "blocker" for r in report.risks):
         report.blockers.append("blocker_risk")
 
