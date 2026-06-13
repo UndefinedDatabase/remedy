@@ -551,6 +551,12 @@ def _build_repair_summary(job: Any, events: list[dict]) -> dict:
     pending_approval_count = 0
     blocked_count = 0
     unavailable_count = 0
+    # Approved Repair Apply Cycle counts (Step 1231).
+    applied_count = 0
+    tested_passed_count = 0
+    tested_failed_count = 0
+    resolved_failure_count = 0
+    evidence_incomplete_count = 0
     attempts = (job.metadata or {}).get("repair_attempts_v1", {})
     if isinstance(attempts, dict):
         for v in attempts.values():
@@ -567,6 +573,16 @@ def _build_repair_summary(job: Any, events: list[dict]) -> dict:
                 blocked_count += 1
             if stop_reason == "repair_builder_unavailable":
                 unavailable_count += 1
+            if status in ("applied", "tested_passed", "tested_failed"):
+                applied_count += 1
+            if status == "tested_passed":
+                tested_passed_count += 1
+            if status == "tested_failed":
+                tested_failed_count += 1
+            if status == "evidence_incomplete":
+                evidence_incomplete_count += 1
+            if v.get("resolved_failure"):
+                resolved_failure_count += 1
 
     return {
         "failure_artifact_count": failure_count,
@@ -578,6 +594,13 @@ def _build_repair_summary(job: Any, events: list[dict]) -> dict:
         "pending_approval_count": pending_approval_count,
         "blocked_count": blocked_count,
         "unavailable_count": unavailable_count,
+        # Approved Repair Apply Cycle (Step 1231).
+        "applied_count": applied_count,
+        "tested_passed_count": tested_passed_count,
+        "tested_failed_count": tested_failed_count,
+        "resolved_failure_count": resolved_failure_count,
+        "unresolved_failure_count": max(0, failure_count - resolved_failure_count),
+        "evidence_incomplete_count": evidence_incomplete_count,
         "latest_failure_kind": latest_failure_kind,
         "next_safe_action": next_safe_action,
     }

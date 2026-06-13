@@ -217,6 +217,19 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.KNOWN_RISK,
             "remedy repair status <job_id> --json",
         ),
+        "repair-apply-tested-failed": (
+            "Propose a new repair attempt",
+            "The applied repair did not pass its test — propose another repair "
+            "(no automatic loop). Provider/source repair may be needed.",
+            FeaturePlanSource.FAILED_TEST,
+            "remedy repair propose <job_id> <failure_artifact_id> --json",
+        ),
+        "repair-apply-evidence-incomplete": (
+            "Inspect repair evidence",
+            "Repair applied but evidence is incomplete — inspect before trusting it.",
+            FeaturePlanSource.PROOF_GAP,
+            "remedy change proof <job_id> --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)

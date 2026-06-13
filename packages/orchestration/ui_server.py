@@ -433,22 +433,39 @@ def _build_repair_section(job: Any) -> dict[str, Any]:
     attempts = (job.metadata or {}).get("repair_attempts_v1", {})
     attempt_count = 0
     pending_approval = 0
+    applied_count = 0
+    tested_passed_count = 0
+    tested_failed_count = 0
+    resolved_failure_count = 0
     pending_intent_id = ""
     if isinstance(attempts, dict):
         for v in attempts.values():
             if not isinstance(v, dict):
                 continue
             attempt_count += 1
-            if v.get("status") == "approval_required":
+            status = v.get("status")
+            if status == "approval_required":
                 pending_approval += 1
                 if not pending_intent_id and v.get("repair_intent_id"):
                     pending_intent_id = str(v.get("repair_intent_id"))
+            if status in ("applied", "tested_passed", "tested_failed"):
+                applied_count += 1
+            if status == "tested_passed":
+                tested_passed_count += 1
+            if status == "tested_failed":
+                tested_failed_count += 1
+            if v.get("resolved_failure"):
+                resolved_failure_count += 1
     next_action = ""
     if pending_intent_id:
         next_action = f"remedy patch approve {job.id} {pending_intent_id}"
     return {
         "attempt_count": attempt_count,
         "pending_approval_count": pending_approval,
+        "applied_count": applied_count,
+        "tested_passed_count": tested_passed_count,
+        "tested_failed_count": tested_failed_count,
+        "resolved_failure_count": resolved_failure_count,
         "next_safe_action": next_action,
         "source": "repair_attempts_v1",
     }
