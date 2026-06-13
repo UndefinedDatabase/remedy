@@ -216,9 +216,148 @@ def _build_timeline_events(events: list[dict]) -> list[dict[str, Any]]:
     return result
 
 
+def _resolve_dashboard_data_dir() -> Path | None:
+    """Resolve the data root for authoritative truth, or None if unavailable.
+
+    None means snapshot/proof/continuation truth must be reported as "unknown"
+    rather than faked as zero.
+    """
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        root = resolve_data_root()
+        return Path(root) if root is not None else None
+    except (ImportError, OSError, ValueError, TypeError):
+        return None
+
+
+def _build_metrics_tests(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Safe test counters from the event ledger. Counts only, no output."""
+    test_events = [e for e in events if e.get("event") == "test_run_completed"]
+    runs = len(test_events)
+    passed = sum(1 for e in test_events if e.get("metadata", {}).get("exit_code") == 0)
+    failed = runs - passed
+    if runs == 0:
+        latest_state = "none"
+    else:
+        latest_state = "pass" if test_events[-1].get("metadata", {}).get("exit_code") == 0 else "fail"
+    return {"runs": runs, "passed": passed, "failed": failed, "latest_state": latest_state}
+
+
+def _build_metrics_proof(job: Any, events: list[dict[str, Any]], data_dir: Path | None) -> dict[str, Any]:
+    """Safe proof counters from the authoritative proof-chain builder.
+
+    Counts only (total changes vs verified). No raw source/diff/proof content.
+    Returns "unknown" values when the data root or the builder is unavailable.
+    """
+    unknown = {"total_changes": "unknown", "verified": "unknown", "state": "unknown"}
+    if data_dir is None:
+        return unknown
+    try:
+        from packages.orchestration.proof_chain import build_proof_chain, PROOF_VERIFIED
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        total = len(chain.changes)
+        verified = sum(1 for c in chain.changes if c.proof_status == PROOF_VERIFIED)
+        if total == 0:
+            state = "none"
+        elif verified == total:
+            state = "verified"
+        elif verified > 0:
+            state = "partial"
+        else:
+            state = "none"
+        return {"total_changes": total, "verified": verified, "state": state}
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return unknown
+
+
+def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
+    """Safe snapshot/apply-record summary from the authoritative builder.
+
+    Aggregate counts and bools only — no snapshot blobs, paths, hashes, or IDs.
+    Returns "unknown" values when the data root or durable records are unavailable.
+    """
+    unknown = {
+        "apply_records": "unknown", "verified": "unknown",
+        "reverted": "unknown", "drift_detected": "unknown",
+        "source": "unavailable",
+    }
+    if data_dir is None:
+        return unknown
+    try:
+        from packages.orchestration.repository_snapshot import (
+            build_snapshot_truth, list_durable_apply_ids,
+        )
+        apply_ids = list_durable_apply_ids(str(job.id), data_dir)
+        verified = 0
+        reverted = 0
+        drift = False
+        for aid in apply_ids:
+            truth = build_snapshot_truth(str(job.id), apply_id=aid, data_dir=data_dir)
+            if (truth.apply_state == "applied"
+                    and truth.snapshot_verified_now
+                    and truth.recovery_material_available
+                    and truth.evidence_status == "complete"):
+                verified += 1
+            if truth.revert_state in ("reverted",):
+                reverted += 1
+            if truth.drift_blocked:
+                drift = True
+        return {
+            "apply_records": len(apply_ids),
+            "verified": verified,
+            "reverted": reverted,
+            "drift_detected": drift,
+            "source": "durable_apply_records",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return unknown
+
+
+def _build_continuation_section(
+    job: Any, events: list[dict[str, Any]], data_dir: Path | None,
+) -> dict[str, Any]:
+    """Safe continuation summary from do_continue events + approved intents.
+
+    available: eligibility-light — at least one approved patch intent exists.
+    last_result / last_stop_reason: from the most recent do_continue_stopped
+    event metadata (safe enum labels only — no raw content).
+    """
+    unknown = {"available": "unknown", "last_result": "unknown", "last_stop_reason": "unknown"}
+    if data_dir is None:
+        return unknown
+    # available — light approved-intent check (not the full eligibility gate)
+    available = False
+    try:
+        from packages.orchestration.approval_queue import (
+            list_patch_intents, APPROVAL_APPROVED,
+        )
+        intents = list_patch_intents(job)
+        available = any(i.get("state") == APPROVAL_APPROVED for i in intents)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        available = False
+
+    # last result — most recent do_continue_stopped event
+    _RESULT_REASONS = {
+        "completed_verified", "test_failed_repair_available", "evidence_incomplete",
+    }
+    last_result = "none"
+    last_stop_reason = "none"
+    stopped = [e for e in events if e.get("event") == "do_continue_stopped"]
+    if stopped:
+        reason = str(stopped[-1].get("metadata", {}).get("stop_reason", ""))
+        last_stop_reason = reason or "none"
+        last_result = reason if reason in _RESULT_REASONS else "none"
+    return {
+        "available": available,
+        "last_result": last_result,
+        "last_stop_reason": last_stop_reason,
+    }
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
+    truth_data_dir = _resolve_dashboard_data_dir()
 
     # Status
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
@@ -464,7 +603,11 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "progress_percent": round((sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed") / max(task_count, 1)) * 100),
             "source_counts": {"tasks": task_count, "events": len(events), "artifacts": artifact_count},
             "computed_from": "job_tasks_and_events",
+            "tests": _build_metrics_tests(events),
+            "proof": _build_metrics_proof(job, events, truth_data_dir),
         },
+        "snapshot": _build_snapshot_section(job, truth_data_dir),
+        "continuation": _build_continuation_section(job, events, truth_data_dir),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,
