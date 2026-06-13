@@ -112,5 +112,8 @@ continuations for the same job, repository, or intent.
 - [do-run-v1](do-run-v1.md) — the pre-apply `remedy do run` flow this continues.
 - [repair-loop-v0](repair-loop-v0.md) — the legacy repair path.
 - [repair-loop-v1](repair-loop-v1.md) — the bounded, approval-gated repair
-  proposal offered when a continuation test fails. The next block applies an
-  approved repair intent via `remedy do continue <job_id> --intent-id <id>`.
+  proposal offered when a continuation test fails. An **approved repair intent**
+  is applied through THIS same path: `remedy do continue <job_id> --intent-id
+  <repair_intent_id>`. No repair apply bypass; after the cycle the repair attempt
+  is reconciled (tested_passed/tested_failed) and the original failure is resolved
+  only with a verified snapshot + linked passing test + proof (source_fix only).
