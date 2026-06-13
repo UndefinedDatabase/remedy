@@ -1,4 +1,5 @@
 import type { RemedyDashboard } from "../../api/types";
+import { CopyGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
 
 interface AttentionItem {
@@ -28,11 +29,22 @@ export function NeedsAttentionCard({ dashboard }: { dashboard: RemedyDashboard }
   const item = deriveAttentionItem(dashboard);
   if (!item) return null;
 
+  const command = dashboard.nextAction.command;
+
   return (
     <section className={styles.card} data-ui="needs-attention-card">
-      <header className={styles.cardHeader}><h2>Needs attention</h2></header>
+      <header className={styles.cardHeader}><h2>Needs your decision</h2></header>
       <strong className={styles.attentionTitle}>{item.title}</strong>
       <p className={styles.attentionDesc}>{item.description}</p>
+      <button
+        type="button"
+        className={styles.attentionAction}
+        title={`Copy: ${command}`}
+        onClick={() => navigator.clipboard?.writeText(command)}
+      >
+        <CopyGlyph style={{ width: 14, height: 14 }} />
+        Copy next safe command
+      </button>
     </section>
   );
 }

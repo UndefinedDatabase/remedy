@@ -25,7 +25,7 @@ export function AgentNowCard({ dashboard }: { dashboard: RemedyDashboard }) {
   return (
     <section className={styles.card}>
       <header className={styles.cardHeader}>
-        <h2>Agent</h2>
+        <h2>Agent is doing now</h2>
         {isRunning && <span className={styles.liveSmall}><span /> Live</span>}
       </header>
       <div className={styles.agentNow}>

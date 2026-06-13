@@ -16,7 +16,7 @@ export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyD
       <AgentNowCard dashboard={dashboard} />
       <NeedsAttentionCard dashboard={dashboard} />
       <ActivityFeedCard activity={dashboard.activity} />
-      <TaskChecklistCard tasks={dashboard.tasks} onSelectNode={onSelectNode} />
+      <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
       <button
         type="button"
         className={styles.advancedToggle}

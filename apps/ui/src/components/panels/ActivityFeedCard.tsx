@@ -1,5 +1,5 @@
 import type { RemedyActivityItem } from "../../api/types";
-import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph, ArrowSendGlyph } from "../icons/RemedyGlyphs";
+import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
 
 const iconByActor: Record<string, typeof BuilderGlyph> = {
@@ -16,7 +16,7 @@ export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] 
     <section className={styles.card}>
       <header className={styles.cardHeader}><h2>Activity</h2></header>
       <div className={styles.activityList}>
-        {hasActivity ? activity.slice(0, 4).map(item => {
+        {hasActivity ? activity.slice(0, 5).map(item => {
           const Icon = iconByActor[item.actor] || GearGlyph;
           return (
             <article key={item.id} className={styles.activityItem}>
@@ -30,10 +30,6 @@ export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] 
         }) : (
           <p className={styles.emptyState}>No activity yet. Events will appear here as the agent works.</p>
         )}
-      </div>
-      <div className={styles.askBar}>
-        <input readOnly placeholder="Ask something..." aria-label="Ask something" />
-        <button type="button" aria-label="Send disabled" title="Chat input is not enabled yet"><ArrowSendGlyph style={{ width: 16, height: 16 }} /></button>
       </div>
     </section>
   );
