@@ -185,6 +185,8 @@ class TestDashboardShape:
         assert "snapshot" in dash
         assert "continuation" in dash
         assert "repair" in dash
+        for key in ("runs", "passed", "failed", "latest_state"):
+            assert key in dash["metrics"]["tests"]
 
     def test_repair_section_safe_shape(self):
         job = Job(name="t")
@@ -193,8 +195,6 @@ class TestDashboardShape:
         assert repair["pending_approval_count"] == 0
         assert repair["next_safe_action"] == ""  # no approve affordance without evidence
         assert repair["source"] == "repair_attempts_v1"
-        for key in ("runs", "passed", "failed", "latest_state"):
-            assert key in dash["metrics"]["tests"]
 
     def test_unknown_when_data_dir_unavailable(self, monkeypatch):
         monkeypatch.setattr(ui_server, "_resolve_dashboard_data_dir", lambda: None)
