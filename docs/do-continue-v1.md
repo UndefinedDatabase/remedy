@@ -111,6 +111,8 @@ continuations for the same job, repository, or intent.
 - [run-contract-v1](run-contract-v1.md) — apply/test gates and budgets.
 - [do-run-v1](do-run-v1.md) — the pre-apply `remedy do run` flow this continues.
 - [repair-loop-v0](repair-loop-v0.md) — the legacy repair path.
+- [bounded-overnight-prep-v0](bounded-overnight-prep-v0.md) — read-only readiness/
+  report layer; a future executor reuses this one-cycle path under a bounded policy.
 - [repair-loop-v1](repair-loop-v1.md) — the bounded, approval-gated repair
   proposal offered when a continuation test fails. An **approved repair intent**
   is applied through THIS same path: `remedy do continue <job_id> --intent-id

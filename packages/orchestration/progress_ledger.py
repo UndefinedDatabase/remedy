@@ -649,6 +649,68 @@ def merge_repair_items(ledger: ProgressLedger, events: list[dict] | None) -> Non
             seen.add(item.item_id)
 
 
+def extract_overnight_items(report: dict | None) -> list[ProgressItem]:
+    """Extract Bounded Overnight Prep progress items from an overnight readiness
+    report dict (Step 1259). Read-only; no duplicates. Empty when no report."""
+    if not report:
+        return []
+    items: list[ProgressItem] = []
+    blockers = report.get("blockers", []) or []
+    ev = report.get("evidence_summary", {}) or {}
+    budget = report.get("budget_summary", {}) or {}
+
+    if report.get("can_run_unattended"):
+        items.append(ProgressItem(
+            item_id="overnight-ready", title="Overnight ready (policy-permitting)",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Job assessed ready for a bounded unattended run."))
+    elif blockers:
+        items.append(ProgressItem(
+            item_id="overnight-blocked", title="Overnight blocked",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Medium", safe_summary="Job not safe to run unattended.",
+            next_action="remedy overnight readiness <job_id> --json"))
+
+    if ev.get("pending_intents") or ev.get("pending_repair_intents"):
+        items.append(ProgressItem(
+            item_id="overnight-human-decision", title="Human decision required",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Medium", safe_summary="Approvals pending before any unattended run.",
+            next_action="remedy overnight readiness <job_id> --json"))
+    if ev.get("pending_repair_intents"):
+        items.append(ProgressItem(
+            item_id="overnight-repair-pending", title="Repair pending approval",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.REPAIR_ARTIFACT,
+            severity="Medium", safe_summary="A repair patch intent awaits approval."))
+    if budget.get("loops_exhausted") or budget.get("test_runs_exhausted"):
+        items.append(ProgressItem(
+            item_id="overnight-budget-exhausted", title="Budget exhausted",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.RUN_CONTRACT_BLOCKER,
+            severity="Medium", safe_summary="A run-contract budget is exhausted.",
+            next_action="remedy contract inspect <job_id> --json"))
+    if ev.get("proof_status") == "verified":
+        items.append(ProgressItem(
+            item_id="overnight-proof-ready", title="Proof verified",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Change proof is verified."))
+    if "evidence_incomplete" in report.get("stop_reasons", []):
+        items.append(ProgressItem(
+            item_id="overnight-evidence-incomplete", title="Evidence incomplete",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.PROOF_GAP,
+            severity="High", safe_summary="Evidence incomplete — inspect before any run.",
+            next_action="remedy change proof <job_id> --json"))
+    return items
+
+
+def merge_overnight_items(ledger: ProgressLedger, report: dict | None) -> None:
+    """Merge overnight prep items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_overnight_items(report):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:

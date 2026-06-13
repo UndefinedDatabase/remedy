@@ -230,6 +230,37 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.PROOF_GAP,
             "remedy change proof <job_id> --json",
         ),
+        # Bounded Overnight Prep follow-ups (Step 1260).
+        "overnight-blocked": (
+            "Review overnight readiness",
+            "Job is not safe to run unattended — review readiness blockers.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy overnight readiness <job_id> --json",
+        ),
+        "overnight-human-decision": (
+            "Approve or reject pending intents",
+            "Unattended run is blocked on pending approvals — decide first.",
+            FeaturePlanSource.OPEN_FINDING,
+            "remedy overnight readiness <job_id> --json",
+        ),
+        "overnight-repair-pending": (
+            "Approve or reject the repair",
+            "A repair patch intent is pending approval before any unattended run.",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy repair status <job_id> --json",
+        ),
+        "overnight-budget-exhausted": (
+            "Review the run-contract budget",
+            "A run-contract budget is exhausted — review it (no automatic raise).",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy contract inspect <job_id> --json",
+        ),
+        "overnight-evidence-incomplete": (
+            "Inspect incomplete evidence",
+            "Evidence is incomplete — inspect before any unattended run.",
+            FeaturePlanSource.PROOF_GAP,
+            "remedy change proof <job_id> --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)

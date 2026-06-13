@@ -196,6 +196,16 @@ class TestDashboardShape:
         assert repair["next_safe_action"] == ""  # no approve affordance without evidence
         assert repair["source"] == "repair_attempts_v1"
 
+    def test_overnight_section_present(self):
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "overnight" in dash
+        ov = dash["overnight"]
+        assert "readiness_level" in ov
+        assert "can_run_unattended" in ov
+        # No fabricated "ready" overnight state without evidence/policy.
+        assert ov["can_run_unattended"] in (False, "unknown")
+
     def test_unknown_when_data_dir_unavailable(self, monkeypatch):
         monkeypatch.setattr(ui_server, "_resolve_dashboard_data_dir", lambda: None)
         job = Job(name="t")

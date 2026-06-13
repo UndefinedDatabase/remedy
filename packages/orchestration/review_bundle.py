@@ -41,6 +41,7 @@ REQUIRED_SECTIONS = (
     "snapshot_summary.json",
     "continuation_summary.json",
     "repair_summary.json",
+    "overnight_readiness_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -606,6 +607,45 @@ def _build_repair_summary(job: Any, events: list[dict]) -> dict:
     }
 
 
+def _build_overnight_readiness_summary(job: Any, data_dir: Path) -> dict:
+    """Safe Bounded Overnight Prep summary (Step 1261). Counts/labels only."""
+    try:
+        from packages.orchestration.overnight_readiness import (
+            build_overnight_readiness, export_readiness_json,
+        )
+        report = build_overnight_readiness(str(job.id), data_dir)
+        d = export_readiness_json(report)
+        caps = d.get("capabilities", [])
+        checklist = d.get("checklist", [])
+        na = d.get("next_action")
+        return {
+            "ready": d.get("ready"),
+            "can_run_unattended": d.get("can_run_unattended"),
+            "readiness_level": d.get("readiness_level"),
+            "recommended_mode": d.get("recommended_mode"),
+            "blocker_count": len(d.get("blockers", [])),
+            "risk_count": len(d.get("risks", [])),
+            "capability_counts": {
+                "available": sum(1 for c in caps if c["status"] == "available"),
+                "blocked": sum(1 for c in caps if c["status"] == "blocked"),
+                "unknown": sum(1 for c in caps if c["status"] == "unknown"),
+                "not_supported": sum(1 for c in caps if c["status"] == "not_supported"),
+            },
+            "checklist_counts": {
+                "done": sum(1 for i in checklist if i["status"] == "done"),
+                "pending": sum(1 for i in checklist if i["status"] == "pending"),
+                "blocked": sum(1 for i in checklist if i["status"] == "blocked"),
+            },
+            "next_action_label": na["label"] if na else "",
+            "next_action_command": na["command"] if na else "",
+            "budget_summary": d.get("budget_summary", {}),
+            "evidence_summary": d.get("evidence_summary", {}),
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"ready": False, "can_run_unattended": False, "readiness_level": "unknown",
+                "blocker_count": 0, "risk_count": 0, "error": "overnight_readiness_unavailable"}
+
+
 def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
     """Safe context inspection summary — no file bodies."""
     try:
@@ -986,6 +1026,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("repair_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("repair_summary.json", status="error", error="build failed"))
+
+    # overnight_readiness_summary.json (Step 1261)
+    try:
+        ov = _build_overnight_readiness_summary(job, data_dir)
+        content = json.dumps(ov, indent=2).encode()
+        section_data["overnight_readiness_summary.json"] = content
+        result.sections.append(ReviewBundleSection("overnight_readiness_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("overnight_readiness_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

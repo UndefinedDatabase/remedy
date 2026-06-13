@@ -1,3 +1,93 @@
+# Live Review — Steps 1245-1274
+
+Reviewer: parallel reviewer
+Scope: Bounded Overnight Preparation v0 — TRUTHFUL READ-ONLY readiness/report layer. Must NOT become an executor: no apply/test/repair/continue/provider, no background/scheduler, no mutation, no subprocess in readiness path.
+Timestamp: 2026-06-13
+
+## Verdict
+PENDING — zero open findings; all 13 checks PASS. HEAD 53d89fd. The READ-ONLY thesis HOLDS — Bounded Overnight Prep v0 is a truthful read-only readiness/report layer, NOT an executor: Architecture PASS (no apply/test/repair/provider/subprocess/background imports — guard tests enforce), Policy PASS (execution_enabled default False, no enable path → can_run_unattended provably always False), Readiness authoritative (not event-only; test_event_only_does_not_make_unattended), next_safe_action catalog+entity-backed requires_human, capabilities distinct/honest, stop-reason taxonomy canonical, checklist evidence-backed, redaction clean, CLI read-only no-mutation, cockpit read-only. R-0079 (HIGH, budget-exhaustion-not-blocking) + R-0080 (MEDIUM, review-findings-unknown) RESOLVED + re-verified in committed code (53d89fd) with tests. Remaining before merge (steps 1269-1274): builder full repo pytest green with count via scripts/remedy_pytest.sh + changed-files table for 1245-1274 (block-if if missing). On both → PASS / PASS WITH RISKS.
+
+## Check Matrix (1-13) — running
+| Check | Status | Note |
+|---|---|---|
+| 1. Handoff/mainline | PASS | 2a472e5: new branch feature/steps-1245-1274-overnight-prep off clean main; PR #54 recorded (5432 passed); plan/context reset to read-only overnight prep with hard rules ("No executor"); residuals carried (docs-only fixture, provider future, deselected test); 1220-1244 = PASS WITH RISKS; no drift; no false merge-ready. |
+| 2. Readiness model | PASS w/ gaps | ready vs can_run_unattended distinct; uses authoritative build_snapshot_truth + build_proof_chain (line 199 "never event-only proof"); unresolved failures counted as blocker; unknown preserved. GAPS: R-0079 (budget) + R-0080 (review findings) not in blockers/risks. |
+| 3. Policy | PASS | default_overnight_policy: allow_provider/allow_repair_apply/execution_enabled all False; can_run_unattended requires execution_enabled → ALWAYS False by default, no enable path in v0. No silent enabling. |
+| 4. Capability matrix | PASS | distinct statuses (AVAILABLE/BLOCKED/UNKNOWN/NOT_SUPPORTED); can_provider_build=NOT_SUPPORTED (honest, provider deferred); apply gated on contract+permission with reason. No fake green. |
+| 5. Stop reasons | PASS | canonical OvernightStopReason taxonomy (BUDGET_EXHAUSTED/REPAIR_PENDING_APPROVAL/REVIEW_FINDINGS_OPEN/PROVIDER_UNAVAILABLE/UNSUPPORTED_STATE...), consumable by future executor. |
+| 6. Next safe action | PASS | `select_overnight_next_action`: ONE best, priority-ordered, real catalog commands (patch approve / do continue / repair propose / job show), entity-backed (iid/fa from real intents/artifacts), requires_human=True (suggestion not execution); no policy relaxation. |
+| 7. Morning checklist | PASS | `_build_checklist` items carry evidence_kind/evidence_id (e.g. job_initialized→job/job_id); done items evidence-backed; pending/blocked/risk/unknown statuses honest; safe labels, no raw content. |
+| 8. Budget/risk | PASS | R-0079 RESOLVED (53d89fd): budget_exhausted → blocker + blocker-severity risk → gates readiness. RunUsage/RunContract reflected; token/cost never invented; review_findings_unknown explicit (R-0080). Test test_exhausted_budget_blocks. |
+| 9. CLI runtime | PASS | overnight_cmd.py readiness/plan/report read_only: json.dumps + print only, no subprocess/shell/save_job/write/mutate; plan clearly "dry-run / would_run (default policy report-only)"; missing job handled by builder (no traceback). render_overnight_report_markdown safe. test_overnight_cli.py. |
+| 10. Integrations | PASS | 96b1ca9: cockpit `_build_overnight_section` read-only (readiness/counts/next-action label, "no mutation, no buttons, no fabricated ready", unknown-safe); progress/feature/review_bundle evidence-based from readiness report. |
+| 11. Redaction | PASS | test_no_raw_leak; readiness/report surfaces safe labels/counts/IDs/evidence refs only — no raw source/diff/output/blobs/secrets/tracebacks/abs paths. |
+| 12. Architecture | PASS | overnight_readiness.py imports read-only/authoritative only; NO apply/patch_apply/test-exec/do_continue/run_repair/provider/ollama/subprocess/threading. Guard tests: imports-no-apply/test-exec, no run_repair_attempt, test_read_only_no_save_job. |
+| 13. Tests | TARGETED PASS | 27 overnight (test_overnight_readiness.py) + CLI (test_overnight_cli.py): default-never-unattended, event-only-not-unattended, unresolved-failure/repair-pending blocks, exhausted-budget blocks, review-findings-unknown, no-raw-leak, read-only-no-save, architecture guards. Full pytest + changed-files table OWED (steps 1269-1274). Reviewer ran none. |
+
+## Findings — Steps 1245-1274
+
+## Builder Final Handoff (Steps 1245-1274)
+
+- **Tests**: targeted overnight (orchestration 22 + CLI 7) + progress/feature/
+  review/do_continue/repair/ui_server = 392; catalog 43. **Full pytest** (post
+  R-0079/R-0080 fix) → **5470 passed, 8 skipped, 1 deselected** (exit 0).
+- **Mainline reconciliation**: PR #54 merged; new branch from clean main; no drift.
+- **Readiness model / bounded policy / capability matrix / stop taxonomy / next
+  action selector / morning checklist / budget / risk / CLI / Progress / Feature /
+  Review / Cockpit / Integrity**: DONE.
+- **Findings**: R-0079 (budget exhaustion blocks readiness) + R-0080 (review-
+  findings dimension explicit unknown) — Resolved + Done-marked.
+- **Readiness rule**: default BoundedOvernightPolicy is report-only;
+  `can_run_unattended` always False this block; durable truth only (no event-only).
+- **Git**: branch feature/steps-1245-1274-overnight-prep, clean tree.
+- **Readiness %**: ~95% (executor deliberately not built; provider deferred).
+- **PR recommendation (Step 1274)**: MERGE this block alone — small, focused,
+  read-only, fully tested. Do not stack into Executor v0 (executor's enable path
+  needs its own review).
+- **Next block**: Bounded Overnight Executor v0 OR Provider-backed Repair Builder v0.
+- **Completeness gate** (none triggered): readiness never true from event-only
+  proof; commands do not mutate; next actions catalog-backed + entity-gated; no raw
+  leaks; no provider/repair/apply/test execution; budget exhaustion blocks.
+
+## Changed Files (Steps 1245-1274)
+
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/overnight_readiness.py` | NEW — models, BoundedOvernightPolicy (report-only default), durable readiness inputs, capability matrix, stop taxonomy, next-action selector, morning checklist, budget/risk, readiness/plan/report builders + JSON/markdown | Read-only overnight prep (1246-1257) |
+| `apps/cli/commands/overnight_cmd.py` | NEW — readiness/plan/report handlers (read-only) | CLI (1255-1257) |
+| `apps/cli/command_catalog.py`, `grouped.py`, `commands/__init__.py` | overnight group + 3 read_only entries; `--markdown`; handler registration | Wire commands (1258) |
+| `packages/orchestration/progress_ledger.py` | extract/merge_overnight_items | Overnight signals (1259) |
+| `packages/orchestration/feature_planner.py` | overnight follow-up suggestions | Next steps (1260) |
+| `packages/orchestration/review_bundle.py` | overnight_readiness_summary.json (sections 14→15) | Bundle summary (1261) |
+| `packages/orchestration/ui_server.py` | read-only overnight dashboard section | Cockpit (1262) |
+| `docs/bounded-overnight-prep-v0.md` + cross-links | NEW doc + do-continue/repair-loop/cockpit links | Docs (1268) |
+| `tests/orchestration/test_overnight_readiness.py`, `tests/cli/test_overnight_cli.py` | NEW — readiness truth (no event-only), budget-blocks, review-unknown, redaction, guards, CLI runtime | Cover prep (1264-1267) |
+| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | section count 15; cockpit overnight test | Integration coverage |
+
+## Finding R-0079
+Status: Resolved
+Severity: high
+Area: budget
+Summary: Exhausted budgets do not block readiness — `loops_exhausted`/`test_runs_exhausted` add no blocker and no risk, so `ready`/`can_run_unattended`/`blockers` ignore budget exhaustion.
+Details: `_build_budget_summary` (overnight_readiness.py ~285) computes `remaining_loops`/`loops_exhausted` and `remaining_test_runs`/`test_runs_exhausted` from RunUsage/RunContract. But `build_overnight_readiness` blocker assembly (~650-657) only appends blockers for no_tasks / unresolved_failures / pending_repair_intents / blocker-severity risk; it never consults the budget flags. `_build_risks` (~437-469) emits no budget risk either (only failures/repair/intents/snapshot/proof/integrity). Result: a job with tasks, no unresolved failures, and an EXHAUSTED budget reports `ready=True`, `readiness_level=plan_only`, `0 blockers` — untruthful. Check 8 requires "exhausted budgets block readiness"; block-if "unattended readiness ignores exhausted budgets." Mitigation: `can_run_unattended` additionally requires `policy.execution_enabled` (default False, no enable path in v0), so unattended cannot actually become True now — but the readiness MODEL (the block's deliverable) still omits budget exhaustion from blockers/ready, which a consumer/display trusts.
+Evidence: `packages/orchestration/overnight_readiness.py` `_build_budget_summary` (`loops_exhausted`/`test_runs_exhausted` computed) vs blocker assembly (~650-657, no budget check) and `_build_risks` (~437-469, no budget item).
+Expected fix: When `budget_summary.loops_exhausted` or `test_runs_exhausted` is True, append a blocker (e.g. "budget_exhausted") and/or a `severity="blocker"` risk so `ready`/`can_run_unattended` reflect it. Keep stop_reason BUDGET_EXHAUSTED consistent.
+Done: R-0079 — exhausted loop/test budget now appends a `budget_exhausted` blocker + a blocker-severity risk in build_overnight_readiness; can_run_unattended reflects it. Test test_exhausted_budget_blocks. (worker)
+RESOLVED (reviewer, 53d89fd): verified — `_budget_exhausted = loops_exhausted or test_runs_exhausted`; blocker-severity risk (line ~658-660) + `report.blockers.append("budget_exhausted")` (line 675) within blocker region BEFORE ready/can_run_unattended computation. Now gates readiness. Test test_exhausted_budget_blocks present.
+
+## Finding R-0080
+Status: Resolved
+Severity: medium
+Area: risk
+Summary: Open blocker/high review findings are not reflected in readiness — only the integrity gate is consulted; no open-review-findings source feeds risks/blockers.
+Details: `_build_risks` (~437-469) covers unresolved_failures, pending repair/intents, apply-without-verified-snapshot, proof_incomplete, and a lightweight integrity gate — but nothing reflects OPEN blocker/high review findings (e.g. from the live_review ledger / review bundle). Block-if "unattended readiness ignores open blocker/high review findings" + Check 8 "review/integrity risks reflected." If a programmatic open-findings source exists (review_bundle / findings store), readiness must consume it and surface blocker/high findings as a blocker; if no such source exists in v0, the readiness must mark this dimension explicitly `unknown` rather than silently omitting it (truthful-unknown discipline). Mitigation as R-0079: execution_enabled default False bounds the live impact, but the readiness model's risk/blocker truth is incomplete.
+Evidence: `_build_risks` has no review-findings branch; only `_integrity_status()` (integrity_gate). No review_bundle/live_review findings import in overnight_readiness.py.
+Expected fix: Add a review-findings risk: if open blocker/high review findings are programmatically available, surface them (blocker severity → readiness blocker); otherwise emit a `severity` unknown/low risk item explicitly stating review-findings status is unknown. Do not leave the dimension silently absent.
+Done: R-0080 — _build_risks now always appends a `review_findings_unknown` low risk (no per-job findings source in v0) — dimension explicit, not omitted. Test test_review_findings_dimension_explicit_unknown. (worker)
+RESOLVED (reviewer, 53d89fd): verified — `_build_risks` appends `review_findings_unknown` severity=low risk (explicit truthful-unknown; no per-job findings source in v0). Dimension no longer silently absent. Test test_review_findings_dimension_explicit_unknown present. Acceptable v0 disposition.
+
+---
+
 # Live Review — Steps 1220-1244
 
 Reviewer: parallel reviewer
@@ -5,7 +95,30 @@ Scope: Approved Repair Apply Cycle — approved repair intents flow through the 
 Timestamp: 2026-06-13
 
 ## Verdict
-PENDING — block in progress. HEAD fe246fa (Step 1220 handoff). Check #1 PASS: 1193-1219 reconciled, branch drift RESOLVED (clean main, PR #53), no false merge-ready. Apply-cycle core reviewed (9b79baa, Steps 1221-1226,1233): CLEAN — no block-if, zero findings. do_continue REUSES the same central apply/snapshot/test path (no bypass — reconcile is POST-apply, only records truth); repair_loop new code calls NO source_apply/patch_apply/apply/test-exec/provider/ollama. `resolve_failure_if_repaired` resolves only on source_fix + verified snapshot + linked passing test + complete evidence + verified proof (docs-only/unknown never); failed/timeout → new failure, stays open; idempotent per test_run_id. Source-fixture opt-in with validated repo-relative target. Checks 1-6,9 PASS; Checks 7,8,10,11,12 pending (integrations in progress; tests/CLI-subprocess owed). No PASS until those land + Blocker/High resolved + builder proves targeted + full pytest green (count + wrapper) + changed-files table.
+**PASS WITH RISKS** — Approved Repair Apply Cycle complete (HEAD ea071d4, Steps 1220-1244). ZERO findings; all 12 checks PASS. Primary goal MET: approved repair intents flow through the SAME safe continuation path (do continue: approval → snapshot → apply → linked test → proof → safe stop). Every block-if cleared: NO repair apply without approval (routed via existing do continue eligibility); NO snapshot bypass (reuses central path — reconcile is POST-apply); DurableApplyRecord linked (repair_apply_id); post-repair test linked (post_repair_test_run_id); ONLY linked passing source-fix test resolves failure (gated on snapshot_verified + complete evidence + verified proof); docs-only/unknown NEVER claimed as source fix; failed/timeout → new failure, stays open, no auto-loop; idempotent (no double-apply/double-budget — in_flight crash-atomic + cached per test_run_id); pending/rejected never marked verified/applied; progress/feature/review/cockpit evidence-based (no overclaim, no auto-approve/contract/provider); redaction clean (asserted); next_safe_action commands real; repair_loop calls NO source_apply/patch_apply/apply/test-exec/provider (architecture-guard tests). Handoff honest.
+
+MERGE GATES SATISFIED: (1) full suite **5432 passed / 8 skipped / 1 deselected** (exit 0, ~123s, `scripts/remedy_pytest.sh`; deselected = pre-existing `test_full_chain_order`) + targeted 724; (2) Changed Files (Steps 1220-1244) table verified vs `git diff fe246fa^..ea071d4` — all 13 production/test/docs files covered.
+
+RESIDUAL RISKS (keep this PASS WITH RISKS): (1) Reviewer ran NO full pytest — relied on builder 5432 count per protocol. (2) Apply-cycle tests monkeypatch test execution (per do_continue's own pattern) — the real test-runner integration is exercised by the already-proven do continue path, not re-E2E'd here. (3) Carried: source repair via fixture is opt-in + deterministic; provider-backed repair is documented FUTURE; (4) pre-existing `test_full_chain_order` fails on main (deselected). No PR/push without documented user OK.
+
+## Final Review — Steps 1220-1244 (Approved Repair Apply Cycle)
+- **Verdict**: PASS WITH RISKS
+- **Handoff status**: PASS — 1193-1219 reconciled (PASS WITH RISKS), branch drift resolved (clean main), residuals carried, 1220-1244 changed-files table complete, no false merge-ready.
+- **Repair intent status**: PASS — repair_kind/expected_effect/original_* metadata; get_patch_intent resolution; source-fixture opt-in with validated repo-relative target; pending/rejected/fake safe.
+- **Eligibility/approval status**: PASS — apply via existing do continue (approved intent required); reconcile post-apply only; no ambiguous selection; pending/rejected/unapproved never apply.
+- **Apply/snapshot status**: PASS — same central apply/snapshot path, no bypass, verified snapshot before mutation, DurableApplyRecord linked to repair attempt.
+- **Test-linking status**: PASS — post_repair_test_run_id linked; usage counted once (in_flight); retry no rerun of completed linked test.
+- **Failure-resolution status**: PASS — resolves ONLY on source_fix + verified snapshot + linked passing test + complete evidence + verified proof; docs-only/unknown never; failed/timeout keeps open + links new failure.
+- **Proof/Provenance status**: PASS — untouched; repair apply represented via normal DurableApplyRecord→proof; pending repair not a current change; verified requires snapshot+test proof.
+- **Progress/Feature/Review status**: PASS — evidence-based (applied=IN_PROGRESS, failed=BLOCKED, only proven=RESOLVED); safe counts; no auto-approve/contract/provider.
+- **Cockpit status**: PASS — read-only repair-apply counts, no mutation/overclaim.
+- **Idempotency status**: PASS — retry safe after apply/test/pass/fail; no duplicate artifacts/tasks/intents/failures; stable status; double-apply/double-budget prevented.
+- **CLI runtime status**: PASS — grouped subprocess E2E (propose/status, docs-only vs source-fixture classification); JSON parses; no traceback; no shell=True; timeout.
+- **Redaction status**: PASS — no raw stdout/stderr/source/diff/artifact-body/secrets/tracebacks/abs-paths; assert-based redaction test.
+- **Tests run**: Reviewer ran NONE (static review). Builder: 35 repair targeted + 724 combined + full suite.
+- **Full pytest run**: Builder YES — 5432 passed / 8 skipped / 1 deselected (exit 0). Reviewer NO.
+- **Remaining findings**: NONE. Zero findings filed (R-0079+ unused).
+- **Merge readiness**: READY (PASS WITH RISKS) — code-complete, full suite green, changed-files table verified, residuals documented. Pending only user OK for PR/push.
 
 ## Check Matrix (1-12) — running
 | Check | Status | Note |
@@ -16,12 +129,12 @@ PENDING — block in progress. HEAD fe246fa (Step 1220 handoff). Check #1 PASS: 
 | 4. Apply/snapshot | PASS | do_continue reuses SAME central apply/snapshot path (comment: "apply already happened through the central path above"); no bypass. DurableApplyRecord apply_id linked into attempt.repair_apply_id. Snapshot required by existing gate before mutation. |
 | 5. Test-linking | PASS | reconcile records post_repair_test_run_id = continue cycle's test_run_id (linked to repair apply). Usage counted once by do continue (R-0068 in_flight). Idempotent per test_run_id — no rerun of completed linked test. |
 | 6. Failure-resolution | PASS | `resolve_failure_if_repaired` resolves ONLY when expected_effect==source_fix AND test_run_id present AND snapshot_verified AND evidence_status==complete AND proof_status==verified AND not already-resolved (idempotent). docs-only/unknown NEVER resolve. failed/timeout → TESTED_FAILED + links new failure (no auto-loop), failure stays open. |
-| 7. Proof/Provenance | PENDING | Worker editing integrations. |
-| 8. Progress/Feature/Review/Cockpit | IN PROGRESS | Worker editing feature_planner/progress_ledger/review_bundle (uncommitted). |
+| 7. Proof/Provenance | PASS | proof_chain/file_provenance untouched — no repair overclaim path. Repair apply flows through normal do continue → DurableApplyRecord → proof represents it authoritatively. Pending repair = approval-queue intent, not a current file change. |
+| 8. Progress/Feature/Review/Cockpit | PASS | 7277c8b: progress applied→IN_PROGRESS, evidence_incomplete→BLOCKED, tested_failed→BLOCKED ("failure stays open, no auto-loop"), only proven resolve→RESOLVED ("snapshot + linked passing test + proof"). No overclaim. feature manual "propose another repair" (no auto-loop/approve/contract/provider). review_bundle + cockpit safe counts. Real next_actions. |
 | 9. Idempotency | PASS | reconcile idempotent per test_run_id (cached TESTED_PASSED/FAILED); do continue in_flight crash-atomic (no double-apply/double-budget); no duplicate attempts (find_attempt_by_repair_intent). |
-| 10. CLI runtime | PENDING | --fixture-source-builder flag added; subprocess tests TBD. |
-| 11. Redaction | PENDING | do_continue JSON adds is_repair/repair_status/repair_attempt_id/repair_resolved_failure — safe enums/bools/IDs; deeper scan with tests. |
-| 12. Tests | PENDING | Smoke + targeted(67) + catalog(43) per commit; no test files in 9b79baa diff — owed. |
+| 10. CLI runtime | PASS | c521d80: `run_grouped_cli` SUBPROCESS tests for repair propose/status incl --fixture-builder + --fixture-source-builder classification + resolved_failure; prior v1 CLI covered missing/no-traceback/timeout/no-shell. |
+| 11. Redaction | PASS | `TestRedaction::test_no_raw_leak_in_continue_result` asserts no "Traceback"/"/home/"/"diff --git"/"BEGIN " in continue result; do_continue repair JSON = safe enums/bools/IDs only. |
+| 12. Tests | PASS | 35 repair tests: test_repair_apply_cycle.py (10 — source-fix-resolves, docs-only-not-overclaim, failing-keeps-open, pending-not-verified, retry-no-double, normal-no-op, proof, redaction, guards) + CLI subprocess (test_repair_v1_cli.py). Architecture guards (no bypass / no apply-test-provider imports / no shell=True / real next_actions). Builder targeted 724 + full suite **5432 passed / 8 skipped / 1 deselected, exit 0** (wrapper). Changed-files table verified (all 13 files). Reviewer ran none. |
 
 ## Findings — Steps 1220-1244
 (none — zero findings as of the builder final handoff.)
