@@ -1,10 +1,20 @@
 # Context
 
 ## Active Branch
-feature/steps-1155-1179-do-continue-v1
+feature/steps-1155-1179-do-continue-v1 (continues with block 1180-1192;
+branch name drift to be surfaced at PR time — unmerged feature line carries 1110-1192)
 
 ## Scope
-Steps 1155-1179: Snapshot Truth Final Closure + `remedy do --continue` v1.
+Steps 1180-1192: Merge Closure (R-0070) + Operator Cockpit v1 (read-only UI).
+Prior: Steps 1155-1179 Snapshot Truth Closure + `remedy do continue` v1 (PASS WITH RISKS).
+
+## Cockpit constraints (block 1180-1192)
+- UI strictly READ-ONLY: do_POST/PUT/DELETE stay 405; no mutation endpoints/buttons.
+- No raw data in payload/UI: no diffs/stdout/tracebacks/abs paths/recovery blobs/secrets/raw prompts.
+- No demo/synthetic data; no element asserting unproven state (no fake LIVE, no idle spam).
+- No new frontend deps, no Tailwind/CDN/external fonts. React 19 + TS + CSS Modules.
+- Dashboard truth derived only from authoritative sources (build_snapshot_truth /
+  DurableApplyRecords / proof-chain / events); unresolvable data_dir → "unknown", never faked 0.
 
 ## Prior Step Status
 - Steps 1045-1064: PASS — Run Contract Enforcement v1. PR #51 merged.

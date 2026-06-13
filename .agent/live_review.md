@@ -3,55 +3,75 @@
 Reviewer: parallel reviewer
 Scope: Snapshot Truth closure + crash-safe idempotent `remedy do --continue` cycle
 Timestamp: 2026-06-12
-Last check: 2026-06-12 — Step 1179 (uncommitted): docs (new do-continue-v1.md) + minor polish (removed redundant except:pass in _finalize_evidence_incomplete). R-0066/R-0068 STILL unfixed. Only real Done = R-0063. Worker finalizing.
+Last check: 2026-06-12 — Final handoff committed (27e83f7). All 10 code findings RESOLVED (re-checked, no regressions: R-0066 elif + R-0068 in_flight intact). NEW R-0070 (medium): handoff lacks Steps 1155-1179 changed-files table (block-if). Code verdict PASS WITH RISKS; merge NOT ready until R-0070 table added + worker confirms pytest green.
 
 ## Verdict
-FAIL (interim) — Functional build is far along: Snapshot Truth builder + all 4 consumers wired, evidence-durability, canonical apply-record state machine, full `do --continue` cycle (eligibility/lease/checkpoints/apply/test/proof/stop) with idempotent resume + safe final stop, Check 11 integration, CLI, runtime tests. BUT two HIGH correctness findings remain unfixed (R-0066 proof fail-open on missing record; R-0068 test crash window → double budget/duplicate artifact), and the code-complete findings R-0057/R-0061/R-0064/R-0065 lack the required `Done: R-XXXX` markers. Per protocol any open High ⇒ FAIL. Merge NOT ready.
+PASS WITH RISKS — All 10 findings dispositioned and re-checked in committed code. Snapshot Truth (single `build_snapshot_truth`, all 4 consumers wired, manifest/blob verified, events fallback-only); evidence durability (revert path surfaces evidence status, R-0057 closed); canonical atomic apply-record state machine; full `remedy do continue` cycle (eligibility/lease/checkpoints/apply/test/proof/safe-stop) with crash-atomic idempotency (R-0068 in_flight marker) and degraded-evidence→EVIDENCE_INCOMPLETE (goal #3); proof fail-closed on missing record (R-0066); Progress/Feature/Review integration; CLI; runtime + crash-window tests. No open Blocker/High. RESIDUAL RISKS (below) keep this PASS WITH RISKS, not clean PASS. Reviewer ran NO pytest — worker must confirm full suite green before merge.
 
-## Final Review Summary (interim — re-issued each poll)
+## Final Review Summary
 
-- **Verdict**: FAIL (open Highs R-0066, R-0068; open Blocker R-0062 cycle complete-in-code but no Done marker + R-0068 inside it; R-0057 code-complete no marker)
+- **Verdict**: PASS WITH RISKS
 - **Snapshot Truth**: PASS — single `build_snapshot_truth`, all 4 consumers wired, manifest/blob verified, events fallback-only.
 - **File Provenance**: PASS — CLI passes data_dir; applied/reverted/drift/partial accurate; redaction clean.
 - **Readiness**: PASS — durable-only, event+artifact fallbacks removed, fail-closed, evidence degradation blocks.
 - **Review Bundle**: PASS — snapshot_summary.json + continuation summary, safe counts/IDs only, no blobs/paths/source.
-- **Evidence durability**: PASS (revert path) / RISK (R-0067 create/verify emit sites discard result).
+- **Evidence durability**: PASS — revert surfaces evidence status; create/verify emit best-effort by documented design (R-0067 accepted).
 - **Eligibility**: PASS — explicit approved intent, multiple→blocked, all gates in service.
 - **Lease/checkpoint**: PASS — flock job→repo→intent, released every exit, atomic checkpoints.
-- **Idempotency**: RISK — happy resume correct + tested; R-0068 crash window (test re-run) unfixed/untested.
+- **Idempotency**: PASS — resume no-double-apply; crash-atomic test phase (in_flight marker → no double budget / no duplicate artifact); tested.
 - **Apply**: PASS — central apply_patch_intent, mandatory snapshot, one record, resume no double-apply.
-- **Test**: RISK — central execute_test_run, one increment on clean path; R-0068 crash-window double-consume.
-- **Proof/failure**: RISK — degraded→EVIDENCE_INCOMPLETE (goal #3 ok); failure→repair action only, no auto-repair/revert; BUT R-0066 proof fail-open on missing record.
+- **Test**: PASS — central execute_test_run, one increment; crash window closed (R-0068).
+- **Proof/failure**: PASS — degraded→EVIDENCE_INCOMPLETE (goal #3); failure→repair action only, no auto-repair/revert; fail-closed on missing record (R-0066).
 - **Progress/Feature/Review**: PASS — event-derived continuation items, no auto-action, redaction clean.
-- **CLI runtime**: PASS — cmd wired, no traceback leak, safe JSON, no shell=True; runtime tests present (R-0069 residual crash-window case).
+- **CLI runtime**: PASS — cmd wired, no traceback leak, safe JSON, no shell=True; runtime + crash-window tests.
 - **Redaction**: PASS — no raw source/diff/snapshot/output/secrets/tracebacks observed.
 - **Tests run**: NONE by reviewer (static review only; per instructions no pytest run).
-- **Full pytest run**: NO.
-- **Remaining findings**: BLOCKER R-0057 (code-complete, no marker), R-0062 (cycle built, no marker, contains R-0068); HIGH R-0061/R-0065 (code-complete, no markers), R-0066 (unfixed), R-0068 (unfixed); MEDIUM R-0064 (no marker), R-0067, R-0069 (residual). RESOLVED: R-0063.
-- **Merge readiness**: NOT READY — fix R-0066 + R-0068, add R-0068 crash-window test, write Done markers for R-0057/R-0061/R-0064/R-0065, include final changed-files table.
+- **Full pytest run**: NO (reviewer). Worker MUST confirm full suite green before merge.
+- **Remaining findings**: R-0070 OPEN (medium, handoff) — final handoff lacks a Steps 1155-1179 changed-files table (block-if). RESOLVED: R-0057, R-0061, R-0062, R-0063, R-0064, R-0065, R-0066, R-0067, R-0068, R-0069.
+- **Residual risks**: (1) R-0067 — create/verify/apply_record_saved emit failures best-effort/invisible by design (accepted: truth is disk-derived). (2) R-0066 fix correct by inspection but has NO dedicated regression test (R-0068 has one). (3) Reviewer did not run pytest — suite-green unverified by reviewer.
+- **Merge readiness**: NOT READY — R-0070 changed-files table missing (block-if) + worker must confirm full pytest green. Code verdict PASS WITH RISKS; once R-0070 table added and suite confirmed green, mergeable.
 
 ## Block-Status Snapshot (1155-1179)
 
 | Check | Status | Finding |
 |---|---|---|
-| 1. Snapshot Truth — one authoritative builder | BUILT, 4/4 WIRED (uncommitted) | R-0061, R-0065, R-0066 |
-| 2. File Provenance — CLI passes data_dir | NOT YET TESTABLE | — |
-| 3. Readiness — no event-only fallback | PRIOR PASS (R-0060) | — |
-| 4. Review Bundle — snapshot_summary.json | NOT FOUND yet | R-0064 |
-| 5. Evidence durability — no silent failure | IMPROVED (revert path) | R-0057, R-0067 |
-| 6. Continue eligibility | BUILT (241b383), 12 tests | R-0062 |
-| 7. Lease and checkpoints | BUILT (241b383) | R-0062 |
-| 8. Apply — central service, one record | NOT BUILT (run_do_continue absent) | R-0062 |
-| 9. Test — central service, one increment | NOT BUILT | R-0062 |
-| 10. Proof and stop | NOT BUILT | R-0062 |
-| 11. Integrations (Progress/Feature/Review) | BUILT + tested (1176-1177) | — |
-| 12. CLI runtime | CMD WIRED + runtime tests added | R-0069 (crash-window residual) |
+| 1. Snapshot Truth — one authoritative builder | PASS (4/4 wired, committed) | R-0061, R-0065, R-0066 (resolved) |
+| 2. File Provenance — CLI passes data_dir | PASS | — |
+| 3. Readiness — no event-only fallback | PASS | R-0060 |
+| 4. Review Bundle — snapshot_summary.json | PASS | R-0064 (resolved) |
+| 5. Evidence durability — no silent failure | PASS (R-0067 accepted) | R-0057, R-0067 (resolved) |
+| 6. Continue eligibility | PASS, 12 tests | R-0062 (resolved) |
+| 7. Lease and checkpoints | PASS | R-0062 (resolved) |
+| 8. Apply — central service, one record | PASS | R-0062 (resolved) |
+| 9. Test — central service, one increment | PASS (crash-atomic) | R-0062, R-0068 (resolved) |
+| 10. Proof and stop | PASS | R-0066 (resolved) |
+| 11. Integrations (Progress/Feature/Review) | PASS + tested | — |
+| 12. CLI runtime | PASS + runtime/crash tests | R-0069 (resolved) |
 
 ## Findings — Steps 1155-1179
 
-## Finding R-0057 (carried forward)
+## Finding R-0070
 
 Status: Open
+Severity: medium
+Area: handoff
+Summary: Final handoff (commit 27e83f7 "Final handoff") lacks a changed-files table for Steps 1155-1179.
+Details: Protocol "Final Handoff: Changed Files Table" + block-if "final handoff lacks changed files table" require the implementer's final report to include a `| File | What changed | Why |` table for THIS block. `.agent/live_review.md` only contains a "Changed Files (Steps 1145-1154)" table (line ~392); no 1155-1179 equivalent exists, and `docs/do-continue-v1.md` has feature tables but not a changed-files table. The block touched many production files (do_continue.py [new], event_persistence.py [new], repository_snapshot.py, proof_chain.py, file_provenance.py, autonomy_readiness.py, review_bundle.py, progress_ledger.py, feature_planner.py, apps/cli/commands/do_cmd.py + file.py + change.py, plus tests) — none enumerated in a handoff table. Code verdict is unaffected (PASS WITH RISKS), but per protocol this gap blocks merge-readiness until corrected.
+Evidence: `grep "Changed Files (Steps 11" .agent/live_review.md` → only "(Steps 1145-1154)"; commit 27e83f7 changed only live_review.md (Done markers), added no changed-files table.
+Expected fix: Add a "Changed Files (Steps 1155-1179)" table (File | What changed | Why) covering all production + test files in this block to the final handoff (live_review.md or the handoff doc).
+
+Resolution:
+Done: R-0070 — changed-files table for Steps 1155-1179 added below
+("## Changed Files (Steps 1155-1179)"). Covers all production + test +
+docs files in the block (do_continue.py [new], event_persistence.py [new],
+repository_snapshot.py, proof_chain.py, file_provenance.py,
+autonomy_readiness.py, review_bundle.py, progress_ledger.py,
+feature_planner.py, test_execution_service.py, CLI files, tests,
+docs/do-continue-v1.md). (worker, Step 1180)
+
+## Finding R-0057 (carried forward)
+
+Status: Resolved
 Severity: blocker
 Area: event-durability
 Summary: Snapshot lifecycle event persistence silently swallowed.
@@ -71,7 +91,7 @@ R-0067). (worker, Steps 1161-1162/1179)
 
 ## Finding R-0061
 
-Status: Open
+Status: Resolved
 Severity: high
 Area: snapshot-truth
 Summary: No single authoritative builder loads Snapshot + DurableApplyRecord; recovery-state loading is duplicated across 4 modules.
@@ -93,7 +113,7 @@ no-record, matching the fail-closed readiness/review-bundle pattern. (worker, St
 
 ## Finding R-0062
 
-Status: Open
+Status: Resolved
 Severity: blocker
 Area: continuation
 Summary: `remedy do --continue` crash-safe idempotent cycle not implemented (primary goal #2).
@@ -127,7 +147,7 @@ PROGRESS (Step 1155, f51d04e) — prior 1135-1154 verdict corrected from "PASS" 
 
 ## Finding R-0065
 
-Status: Open
+Status: Resolved
 Severity: high
 Area: eligibility
 Summary: `_find_apply_record` silently selects latest apply record when multiple match — no ambiguity signal.
@@ -144,7 +164,7 @@ refuses multiple, so it never relies on the unflagged latest-wins path. (worker,
 
 ## Finding R-0069
 
-Status: Open
+Status: Resolved
 Severity: medium
 Area: tests
 Summary: Continuation execution + idempotency lack runtime test coverage — the retry/double-apply/double-budget/lease-contention cases (incl. R-0068) are untested.
@@ -161,7 +181,7 @@ evidence_incomplete, never completed_verified. (worker, Step 1179)
 
 ## Finding R-0068
 
-Status: Open
+Status: Resolved
 Severity: high
 Area: idempotency
 Summary: Continuation test phase not crash-safe — a crash between `execute_test_run` and the durable record/checkpoint write allows a retry to re-run the test (double budget + duplicate Failure Artifact).
@@ -179,7 +199,7 @@ duplicate Failure Artifact) and never claims success. Covered by
 
 ## Finding R-0067
 
-Status: Open
+Status: Resolved
 Severity: medium
 Area: event-durability
 Summary: 7 of 8 `_emit_snapshot_event` call sites discard the `EventPersistenceResult` — create/verify/apply_record_saved emit failures still invisible.
@@ -198,7 +218,7 @@ surfaces event status. (worker, Step 1179)
 
 ## Finding R-0066
 
-Status: Open
+Status: Resolved
 Severity: high
 Area: proof
 Summary: Proof Chain falls back to artifact-claimed `snapshot_verified` when the durable apply record is MISSING — can report verified on the strongest evidence-loss case.
@@ -214,9 +234,40 @@ claims an apply, `snapshot_verified` is forced False. Proof can no longer report
 verified on the strongest evidence-loss case — fail-closed, matching readiness
 and review-bundle. (worker, Step 1179, commit 1aef5eb)
 
+## Changed Files (Steps 1155-1179)
+
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/repository_snapshot.py` | Added `SnapshotTruth` dataclass + `build_snapshot_truth()` authoritative read-only builder; `_check_snapshot_integrity` (read-only); `_find_apply_record` returns `(record, ambiguous)`; canonical `update_apply_record_state` + legal transitions; `list_durable_apply_ids`; revert result surfaces evidence status; `_emit_snapshot_event` routes through `event_persistence` | Single authoritative snapshot/apply-record truth (R-0061); ambiguity signal (R-0065); atomic apply-record state machine; evidence durability (R-0057/R-0067) |
+| `packages/orchestration/event_persistence.py` | NEW — `EventPersistenceResult` + `emit_important_event()` (never raises, safe reason codes) | Make important-event persistence failures observable, not swallowed (R-0057) |
+| `packages/orchestration/do_continue.py` | NEW — full `remedy do continue` cycle: phases/stop-reasons/models, `evaluate_continue_eligibility`, `ContinuationLease`, durable checkpoints, `run_do_continue` orchestrator, crash-atomic test phase, export/summarize | Primary goal #2 — one crash-safe idempotent continuation cycle (R-0062/R-0068) |
+| `packages/orchestration/proof_chain.py` | `build_proof_chain(data_dir=...)` consults `build_snapshot_truth`; fail-closed when durable record missing/unknown | Proof must not report verified on degraded/missing evidence (R-0066) |
+| `packages/orchestration/file_provenance.py` | `build_file_provenance` uses `build_snapshot_truth` for authoritative apply/revert/drift state | Public `file why` must use durable truth, not artifact metadata (R-0061) |
+| `packages/orchestration/autonomy_readiness.py` | `_has_verified_snapshot` durable-only (removed event + artifact fallbacks); `data_dir` threaded through signal collection | Readiness fail-closed on unverified/missing recovery material (R-0061) |
+| `packages/orchestration/review_bundle.py` | `_build_snapshot_summary` + `_build_continuation_summary`; `snapshot_summary.json` + `continuation_summary.json` in REQUIRED_SECTIONS | Truthful snapshot/continuation summaries, safe counts/IDs only (R-0064) |
+| `packages/orchestration/progress_ledger.py` | `extract_continuation_items_from_events` + `merge_continuation_items` | Surface continuation outcomes in progress checklist |
+| `packages/orchestration/feature_planner.py` | Rule 0 continuation mapping (test-fail→repair, evidence-incomplete→manual, snapshot-failed→investigation) | Continuation outcomes drive next safe feature items |
+| `packages/orchestration/test_execution_service.py` | `_emit` returns `EventPersistenceResult`; finalize uses `event_ok = completion_event.persisted` | Event durability for test completion (R-0051) |
+| `apps/cli/command_catalog.py` | `do.continue` entry + `--intent-id` ArgDef | CLI surface for continuation |
+| `apps/cli/grouped.py` | `--intent-id` → `dest="intent_id"` | Arg parsing for continuation |
+| `apps/cli/commands/do_cmd.py` | `_cmd_do_continue` + `do.continue` handler | Wire `remedy do continue <job_id>` |
+| `apps/cli/commands/file.py` | `_cmd_file_why` passes `data_dir` | File Provenance uses authoritative truth (R-0061) |
+| `apps/cli/commands/change.py` | `change proof` passes `data_dir` | Proof Chain uses authoritative truth (R-0066) |
+| `apps/cli/commands/readiness.py` | readiness CLI passes `data_dir` | Readiness durable-only (R-0061) |
+| `docs/do-continue-v1.md` | NEW — `remedy do continue` v1 scope/safety/data sources | Document the continuation feature |
+| `docs/do-run-v1.md`, `docs/real-test-execution-v1.md`, `docs/repair-loop-v0.md`, `docs/snapshot-rollback-v1.md` | "See also" cross-links | Connect docs to continuation flow |
+| `tests/orchestration/test_do_continue.py` | NEW — eligibility, run-cycle, integrations, architecture guards, crash-atomic test phase | Cover continuation cycle + idempotency (R-0069) |
+| `tests/cli/test_do_continue_cli.py` | NEW — CLI gate/parse tests | CLI runtime coverage |
+| `tests/cli/test_file_provenance_cli.py` | NEW — provenance CLI uses data_dir | Verify R-0061 CLI wiring |
+| `tests/orchestration/test_event_persistence.py` | NEW — EventPersistenceResult behavior | Cover event durability (R-0057) |
+| `tests/orchestration/test_repository_snapshot.py` | `TestBuildSnapshotTruth`, `TestUpdateApplyRecordState`, `TestRevertEvidenceStatus` | Cover snapshot truth + state machine |
+| `tests/orchestration/test_proof_chain.py` | `TestProofChainDurableTruth` | Cover fail-closed proof (R-0066) |
+| `tests/orchestration/test_review_bundle.py` | `TestSnapshotSummarySection` + continuation summary | Cover new bundle sections (R-0064) |
+| `tests/test_autonomy_readiness.py` | Rewrote `TestVerifiedSnapshotSignal` | Cover durable-only readiness |
+
 ## Finding R-0064
 
-Status: Open
+Status: Resolved
 Severity: medium
 Area: review-bundle
 Summary: `snapshot_summary.json` artifact not yet present in Review Bundle output.
