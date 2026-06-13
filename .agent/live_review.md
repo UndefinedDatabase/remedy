@@ -5,7 +5,7 @@ Scope: Bounded Overnight Preparation v0 — TRUTHFUL READ-ONLY readiness/report 
 Timestamp: 2026-06-13
 
 ## Verdict
-FAIL — 1 open HIGH (R-0079). HEAD 96b1ca9 (Steps 1259-1263). Core reviewed (2ec0321, Steps 1246-1258): the READ-ONLY thesis HOLDS — Architecture PASS (no apply/test/repair/provider/subprocess/background imports; all sources authoritative read-only), Policy PASS (execution_enabled default False, no enable path → can_run_unattended provably always False in v0), Readiness uses authoritative snapshot/proof (not event-only), next_safe_action catalog+entity-backed requires_human, capabilities distinct/honest, stop-reason taxonomy canonical. NOT an executor. BUT truthful-readiness gaps: R-0079 (HIGH) exhausted budgets do not block readiness (computed but never a blocker — violates Check 8); R-0080 (MEDIUM) open blocker/high review findings not reflected (only integrity). v0 mitigation: can_run_unattended always False bounds live impact, but the readiness MODEL (blockers/ready/level) is the deliverable and must be truthful. Checks 7,9,10,11,13 pending. No PASS until R-0079 resolved + R-0080 dispositioned + Blocker/High resolved + builder proves targeted + full pytest green (count + wrapper) + changed-files table. Builder must NOT claim PASS while FAIL.
+PENDING — zero open findings; all 13 checks PASS. HEAD 53d89fd. The READ-ONLY thesis HOLDS — Bounded Overnight Prep v0 is a truthful read-only readiness/report layer, NOT an executor: Architecture PASS (no apply/test/repair/provider/subprocess/background imports — guard tests enforce), Policy PASS (execution_enabled default False, no enable path → can_run_unattended provably always False), Readiness authoritative (not event-only; test_event_only_does_not_make_unattended), next_safe_action catalog+entity-backed requires_human, capabilities distinct/honest, stop-reason taxonomy canonical, checklist evidence-backed, redaction clean, CLI read-only no-mutation, cockpit read-only. R-0079 (HIGH, budget-exhaustion-not-blocking) + R-0080 (MEDIUM, review-findings-unknown) RESOLVED + re-verified in committed code (53d89fd) with tests. Remaining before merge (steps 1269-1274): builder full repo pytest green with count via scripts/remedy_pytest.sh + changed-files table for 1245-1274 (block-if if missing). On both → PASS / PASS WITH RISKS.
 
 ## Check Matrix (1-13) — running
 | Check | Status | Note |
@@ -16,18 +16,56 @@ FAIL — 1 open HIGH (R-0079). HEAD 96b1ca9 (Steps 1259-1263). Core reviewed (2e
 | 4. Capability matrix | PASS | distinct statuses (AVAILABLE/BLOCKED/UNKNOWN/NOT_SUPPORTED); can_provider_build=NOT_SUPPORTED (honest, provider deferred); apply gated on contract+permission with reason. No fake green. |
 | 5. Stop reasons | PASS | canonical OvernightStopReason taxonomy (BUDGET_EXHAUSTED/REPAIR_PENDING_APPROVAL/REVIEW_FINDINGS_OPEN/PROVIDER_UNAVAILABLE/UNSUPPORTED_STATE...), consumable by future executor. |
 | 6. Next safe action | PASS | `select_overnight_next_action`: ONE best, priority-ordered, real catalog commands (patch approve / do continue / repair propose / job show), entity-backed (iid/fa from real intents/artifacts), requires_human=True (suggestion not execution); no policy relaxation. |
-| 7. Morning checklist | PENDING | `_build_checklist` — verify every done item evidence-backed, no raw content. |
-| 8. Budget/risk | FAIL | R-0079 (HIGH): exhausted budgets (loops/test_runs) computed in budget_summary but NOT a blocker/risk → readiness ignores them (Check 8 "exhausted budgets block readiness"). RunUsage/RunContract reflected in summary; token/cost not invented. |
-| 9. CLI runtime | PENDING | overnight_cmd.py (readiness/plan/report, read_only) — verify JSON/markdown safe, missing job, no traceback/shell/mutation. |
-| 10. Integrations | IN PROGRESS | 96b1ca9 (Progress/Feature/Review/Cockpit/Integrity) — review pending. |
-| 11. Redaction | PENDING | safe summaries by design; deeper scan + injected-string test pending. |
-| 12. Architecture | PASS | overnight_readiness.py imports read-only/authoritative only (build_snapshot_truth, build_proof_chain, load_usage, load_repair_attempts [read], integrity, permissions); NO apply/patch_apply/test-exec/do_continue/run_repair/provider/ollama/subprocess/threading. |
-| 13. Tests | PENDING | Catalog tests (43) per commit; targeted/full owed. |
+| 7. Morning checklist | PASS | `_build_checklist` items carry evidence_kind/evidence_id (e.g. job_initialized→job/job_id); done items evidence-backed; pending/blocked/risk/unknown statuses honest; safe labels, no raw content. |
+| 8. Budget/risk | PASS | R-0079 RESOLVED (53d89fd): budget_exhausted → blocker + blocker-severity risk → gates readiness. RunUsage/RunContract reflected; token/cost never invented; review_findings_unknown explicit (R-0080). Test test_exhausted_budget_blocks. |
+| 9. CLI runtime | PASS | overnight_cmd.py readiness/plan/report read_only: json.dumps + print only, no subprocess/shell/save_job/write/mutate; plan clearly "dry-run / would_run (default policy report-only)"; missing job handled by builder (no traceback). render_overnight_report_markdown safe. test_overnight_cli.py. |
+| 10. Integrations | PASS | 96b1ca9: cockpit `_build_overnight_section` read-only (readiness/counts/next-action label, "no mutation, no buttons, no fabricated ready", unknown-safe); progress/feature/review_bundle evidence-based from readiness report. |
+| 11. Redaction | PASS | test_no_raw_leak; readiness/report surfaces safe labels/counts/IDs/evidence refs only — no raw source/diff/output/blobs/secrets/tracebacks/abs paths. |
+| 12. Architecture | PASS | overnight_readiness.py imports read-only/authoritative only; NO apply/patch_apply/test-exec/do_continue/run_repair/provider/ollama/subprocess/threading. Guard tests: imports-no-apply/test-exec, no run_repair_attempt, test_read_only_no_save_job. |
+| 13. Tests | TARGETED PASS | 27 overnight (test_overnight_readiness.py) + CLI (test_overnight_cli.py): default-never-unattended, event-only-not-unattended, unresolved-failure/repair-pending blocks, exhausted-budget blocks, review-findings-unknown, no-raw-leak, read-only-no-save, architecture guards. Full pytest + changed-files table OWED (steps 1269-1274). Reviewer ran none. |
 
 ## Findings — Steps 1245-1274
 
+## Builder Final Handoff (Steps 1245-1274)
+
+- **Tests**: targeted overnight (orchestration 22 + CLI 7) + progress/feature/
+  review/do_continue/repair/ui_server = 392; catalog 43. **Full pytest** (post
+  R-0079/R-0080 fix) → **5470 passed, 8 skipped, 1 deselected** (exit 0).
+- **Mainline reconciliation**: PR #54 merged; new branch from clean main; no drift.
+- **Readiness model / bounded policy / capability matrix / stop taxonomy / next
+  action selector / morning checklist / budget / risk / CLI / Progress / Feature /
+  Review / Cockpit / Integrity**: DONE.
+- **Findings**: R-0079 (budget exhaustion blocks readiness) + R-0080 (review-
+  findings dimension explicit unknown) — Resolved + Done-marked.
+- **Readiness rule**: default BoundedOvernightPolicy is report-only;
+  `can_run_unattended` always False this block; durable truth only (no event-only).
+- **Git**: branch feature/steps-1245-1274-overnight-prep, clean tree.
+- **Readiness %**: ~95% (executor deliberately not built; provider deferred).
+- **PR recommendation (Step 1274)**: MERGE this block alone — small, focused,
+  read-only, fully tested. Do not stack into Executor v0 (executor's enable path
+  needs its own review).
+- **Next block**: Bounded Overnight Executor v0 OR Provider-backed Repair Builder v0.
+- **Completeness gate** (none triggered): readiness never true from event-only
+  proof; commands do not mutate; next actions catalog-backed + entity-gated; no raw
+  leaks; no provider/repair/apply/test execution; budget exhaustion blocks.
+
+## Changed Files (Steps 1245-1274)
+
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/overnight_readiness.py` | NEW — models, BoundedOvernightPolicy (report-only default), durable readiness inputs, capability matrix, stop taxonomy, next-action selector, morning checklist, budget/risk, readiness/plan/report builders + JSON/markdown | Read-only overnight prep (1246-1257) |
+| `apps/cli/commands/overnight_cmd.py` | NEW — readiness/plan/report handlers (read-only) | CLI (1255-1257) |
+| `apps/cli/command_catalog.py`, `grouped.py`, `commands/__init__.py` | overnight group + 3 read_only entries; `--markdown`; handler registration | Wire commands (1258) |
+| `packages/orchestration/progress_ledger.py` | extract/merge_overnight_items | Overnight signals (1259) |
+| `packages/orchestration/feature_planner.py` | overnight follow-up suggestions | Next steps (1260) |
+| `packages/orchestration/review_bundle.py` | overnight_readiness_summary.json (sections 14→15) | Bundle summary (1261) |
+| `packages/orchestration/ui_server.py` | read-only overnight dashboard section | Cockpit (1262) |
+| `docs/bounded-overnight-prep-v0.md` + cross-links | NEW doc + do-continue/repair-loop/cockpit links | Docs (1268) |
+| `tests/orchestration/test_overnight_readiness.py`, `tests/cli/test_overnight_cli.py` | NEW — readiness truth (no event-only), budget-blocks, review-unknown, redaction, guards, CLI runtime | Cover prep (1264-1267) |
+| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | section count 15; cockpit overnight test | Integration coverage |
+
 ## Finding R-0079
-Status: Open
+Status: Resolved
 Severity: high
 Area: budget
 Summary: Exhausted budgets do not block readiness — `loops_exhausted`/`test_runs_exhausted` add no blocker and no risk, so `ready`/`can_run_unattended`/`blockers` ignore budget exhaustion.
@@ -35,9 +73,10 @@ Details: `_build_budget_summary` (overnight_readiness.py ~285) computes `remaini
 Evidence: `packages/orchestration/overnight_readiness.py` `_build_budget_summary` (`loops_exhausted`/`test_runs_exhausted` computed) vs blocker assembly (~650-657, no budget check) and `_build_risks` (~437-469, no budget item).
 Expected fix: When `budget_summary.loops_exhausted` or `test_runs_exhausted` is True, append a blocker (e.g. "budget_exhausted") and/or a `severity="blocker"` risk so `ready`/`can_run_unattended` reflect it. Keep stop_reason BUDGET_EXHAUSTED consistent.
 Done: R-0079 — exhausted loop/test budget now appends a `budget_exhausted` blocker + a blocker-severity risk in build_overnight_readiness; can_run_unattended reflects it. Test test_exhausted_budget_blocks. (worker)
+RESOLVED (reviewer, 53d89fd): verified — `_budget_exhausted = loops_exhausted or test_runs_exhausted`; blocker-severity risk (line ~658-660) + `report.blockers.append("budget_exhausted")` (line 675) within blocker region BEFORE ready/can_run_unattended computation. Now gates readiness. Test test_exhausted_budget_blocks present.
 
 ## Finding R-0080
-Status: Open
+Status: Resolved
 Severity: medium
 Area: risk
 Summary: Open blocker/high review findings are not reflected in readiness — only the integrity gate is consulted; no open-review-findings source feeds risks/blockers.
@@ -45,6 +84,7 @@ Details: `_build_risks` (~437-469) covers unresolved_failures, pending repair/in
 Evidence: `_build_risks` has no review-findings branch; only `_integrity_status()` (integrity_gate). No review_bundle/live_review findings import in overnight_readiness.py.
 Expected fix: Add a review-findings risk: if open blocker/high review findings are programmatically available, surface them (blocker severity → readiness blocker); otherwise emit a `severity` unknown/low risk item explicitly stating review-findings status is unknown. Do not leave the dimension silently absent.
 Done: R-0080 — _build_risks now always appends a `review_findings_unknown` low risk (no per-job findings source in v0) — dimension explicit, not omitted. Test test_review_findings_dimension_explicit_unknown. (worker)
+RESOLVED (reviewer, 53d89fd): verified — `_build_risks` appends `review_findings_unknown` severity=low risk (explicit truthful-unknown; no per-job findings source in v0). Dimension no longer silently absent. Test test_review_findings_dimension_explicit_unknown present. Acceptable v0 disposition.
 
 ---
 
