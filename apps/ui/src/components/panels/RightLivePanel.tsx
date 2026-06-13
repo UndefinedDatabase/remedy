@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
+import { liveIsActive } from "../../cockpitLogic";
 import { NeedsAttentionCard } from "./NeedsAttentionCard";
 import { ActivityFeedCard } from "./ActivityFeedCard";
 import { AgentNowCard } from "./AgentNowCard";
@@ -12,7 +13,7 @@ export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyD
 
   return (
     <aside className={styles.panel} data-ui="right-live-panel">
-      <LiveStatusPill live={dashboard.live.running} />
+      <LiveStatusPill live={liveIsActive(dashboard)} />
       <AgentNowCard dashboard={dashboard} />
       <NeedsAttentionCard dashboard={dashboard} />
       <ActivityFeedCard activity={dashboard.activity} />

@@ -1,4 +1,5 @@
 import type { RemedyTaskItem } from "../../api/types";
+import { selectChecklistRows } from "../../cockpitLogic";
 import { TaskDoneGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
 
@@ -26,8 +27,7 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
   jobId: string;
   onSelectNode: (nodeId: string | null) => void;
 }) {
-  const realRows = tasks.slice(0, 16);
-  const completed = realRows.filter(r => r.checked).length;
+  const { rows: realRows, completed } = selectChecklistRows(tasks);
   const proposeCommand = `remedy task propose --job ${jobId}`;
 
   if (realRows.length === 0) {
