@@ -1377,6 +1377,37 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("repair.start",),
     ),
+    CommandEntry(
+        command_id="repair.propose",
+        group_id="repair",
+        subcommand="propose",
+        description="Propose a bounded, approval-gated repair for a test failure (v1).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("failure_artifact_id", "Failure artifact ID"),
+            ArgDef("--fixture-builder", "Use the deterministic fixture repair builder",
+                   required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("repair.status", "repair.failure-show", "patch.approve"),
+    ),
+    CommandEntry(
+        command_id="repair.status",
+        group_id="repair",
+        subcommand="status",
+        description="Show repair attempts and their approval state (read-only).",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--failure-artifact-id", "Filter to one failure artifact",
+                   required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("repair.propose", "repair.failure-show"),
+    ),
 
     # ── review ───────────────────────────────────────────────────────────
     CommandEntry(
