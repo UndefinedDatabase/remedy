@@ -255,18 +255,31 @@ def _build_metrics_tests(events: list[dict[str, Any]]) -> dict[str, Any]:
     return {"runs": runs, "passed": passed, "failed": failed, "latest_state": latest_state}
 
 
-def _build_metrics_proof(job: Any, events: list[dict[str, Any]], data_dir: Path | None) -> dict[str, Any]:
-    """Safe proof counters from the authoritative proof-chain builder.
+def _safe_build_proof_chain(job: Any, events: list[dict[str, Any]], data_dir: Path | None) -> Any:
+    """Build the authoritative proof chain, or None when unavailable.
 
-    Counts only (total changes vs verified). No raw source/diff/proof content.
-    Returns "unknown" values when the data root or the builder is unavailable.
+    The proof chain consults `build_snapshot_truth` (durable apply records +
+    verified manifest/blobs) when *data_dir* is provided, so proof/apply state is
+    authoritative — never derived from event presence. None means "unknown".
     """
-    unknown = {"total_changes": "unknown", "verified": "unknown", "state": "unknown"}
     if data_dir is None:
-        return unknown
+        return None
     try:
-        from packages.orchestration.proof_chain import build_proof_chain, PROOF_VERIFIED
-        chain = build_proof_chain(job, events, data_dir=data_dir)
+        from packages.orchestration.proof_chain import build_proof_chain
+        return build_proof_chain(job, events, data_dir=data_dir)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def _metrics_proof_from_chain(chain: Any) -> dict[str, Any]:
+    """Safe proof counters from a prebuilt authoritative proof chain.
+
+    Counts only (total changes vs verified). "unknown" when the chain is None.
+    """
+    if chain is None:
+        return {"total_changes": "unknown", "verified": "unknown", "state": "unknown"}
+    try:
+        from packages.orchestration.proof_chain import PROOF_VERIFIED
         total = len(chain.changes)
         verified = sum(1 for c in chain.changes if c.proof_status == PROOF_VERIFIED)
         if total == 0:
@@ -278,8 +291,52 @@ def _build_metrics_proof(job: Any, events: list[dict[str, Any]], data_dir: Path 
         else:
             state = "none"
         return {"total_changes": total, "verified": verified, "state": state}
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return unknown
+    except (ImportError, AttributeError, TypeError):
+        return {"total_changes": "unknown", "verified": "unknown", "state": "unknown"}
+
+
+def _task_truth_maps(chain: Any) -> tuple[dict[str, str], dict[str, str]]:
+    """Authoritative per-task proof + apply labels from the proof chain.
+
+    Returns (proof_by_task, apply_by_task). A task is "verified" only when every
+    applicable change for that task is verified (fail-closed). Apply state comes
+    from the durable apply record, never inferred from changed-file counts. When
+    the chain is None both maps are empty (caller reports "unknown").
+    """
+    proof_by_task: dict[str, str] = {}
+    apply_by_task: dict[str, str] = {}
+    if chain is None:
+        return proof_by_task, apply_by_task
+    try:
+        from packages.orchestration.proof_chain import PROOF_VERIFIED, PROOF_FAILED, PROOF_NOT_APPLICABLE
+        grouped: dict[str, list[Any]] = {}
+        for c in chain.changes:
+            tid = getattr(c, "task_id", "") or ""
+            if not tid:
+                continue
+            grouped.setdefault(tid, []).append(c)
+        for tid, changes in grouped.items():
+            proofs = [c.proof_status for c in changes]
+            if any(p == PROOF_FAILED for p in proofs):
+                proof_by_task[tid] = "failed"
+            else:
+                applicable = [p for p in proofs if p != PROOF_NOT_APPLICABLE]
+                if applicable and all(p == PROOF_VERIFIED for p in applicable):
+                    proof_by_task[tid] = "verified"
+                elif not applicable:
+                    proof_by_task[tid] = "not_applicable"
+                else:
+                    proof_by_task[tid] = "incomplete"
+            apply_states = [getattr(c, "apply_state", "") for c in changes]
+            if "applied" in apply_states:
+                apply_by_task[tid] = "applied"
+            elif "reverted" in apply_states:
+                apply_by_task[tid] = "reverted"
+            else:
+                apply_by_task[tid] = "not_applied"
+    except (ImportError, AttributeError, TypeError):
+        return {}, {}
+    return proof_by_task, apply_by_task
 
 
 def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
@@ -370,6 +427,10 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
     truth_data_dir = _resolve_dashboard_data_dir()
+    # Authoritative proof chain (durable snapshot truth) — built once, reused for
+    # metrics.proof and per-task proof/apply truth. Never event-presence-derived.
+    proof_chain = _safe_build_proof_chain(job, events, truth_data_dir)
+    task_proof_map, task_apply_map = _task_truth_maps(proof_chain)
 
     # Status
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
@@ -499,10 +560,11 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "rank": idx,
             "related_node_id": tid,
             "short_reason": "",
-            "proof_status": "verified" if any(
-                e.get("event") == "proof_collected" and e.get("metadata", {}).get("task_id") == tid
-                for e in events
-            ) else "none",
+            # Authoritative proof/apply truth from the proof chain (durable
+            # snapshot truth), never from proof_collected event presence. When the
+            # data root is unavailable the value is "unknown", never "verified".
+            "proof_status": task_proof_map.get(tid, "unknown" if proof_chain is None else "none"),
+            "apply_status": task_apply_map.get(tid, "unknown" if proof_chain is None else "not_applied"),
             "test_status": _task_test_status(tid, events),
             "outcome_summary": _task_outcome_summary(tid, tstat, events),
             "changed_files_count": _task_changed_files_count(tid, events),
@@ -616,7 +678,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "source_counts": {"tasks": task_count, "events": len(events), "artifacts": artifact_count},
             "computed_from": "job_tasks_and_events",
             "tests": _build_metrics_tests(events),
-            "proof": _build_metrics_proof(job, events, truth_data_dir),
+            "proof": _metrics_proof_from_chain(proof_chain),
         },
         "snapshot": _build_snapshot_section(job, truth_data_dir),
         "continuation": _build_continuation_section(job, events, truth_data_dir),

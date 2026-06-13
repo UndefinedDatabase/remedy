@@ -29,10 +29,12 @@ function formatTime(iso?: string): string | null {
 }
 
 // Per-task status fields. Every field falls back to "Unknown" when there is no
-// evidence — never omitted, never invented.
+// evidence — never omitted, never invented. Apply/Proof come from authoritative
+// backend truth (durable apply record + proof chain), not inferred from counts.
 function applyStatus(task?: RemedyTaskItem): string {
-  if (!task) return UNKNOWN;
-  if ((task.changedFilesCount ?? 0) > 0) return "Applied";
+  if (task?.applyStatus === "applied") return "Applied";
+  if (task?.applyStatus === "reverted") return "Reverted";
+  if (task?.applyStatus === "not_applied") return "Not applied";
   return UNKNOWN;
 }
 function testStatusLabel(task?: RemedyTaskItem): string {

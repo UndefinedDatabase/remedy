@@ -15,9 +15,9 @@ from packages.orchestration import ui_server
 from packages.orchestration.ui_server import (
     _build_continuation_section,
     _build_dashboard,
-    _build_metrics_proof,
     _build_metrics_tests,
     _build_snapshot_section,
+    _metrics_proof_from_chain,
 )
 
 
@@ -59,8 +59,8 @@ class TestMetricsTests:
 
 class TestUnknownWhenNoDataDir:
     def test_proof_unknown(self):
-        job = Job(name="t")
-        m = _build_metrics_proof(job, [], None)
+        # None chain (data root unavailable) -> explicit unknown, never verified.
+        m = _metrics_proof_from_chain(None)
         assert m == {"total_changes": "unknown", "verified": "unknown", "state": "unknown"}
 
     def test_snapshot_unknown(self):
@@ -80,6 +80,71 @@ class TestUnknownWhenNoDataDir:
             "last_result": "unknown",
             "last_stop_reason": "unknown",
         }
+
+
+class TestTaskTruthMaps:
+    """Per-task proof/apply truth is authoritative, never event/count-derived."""
+
+    def _change(self, task_id, apply_state, proof_status):
+        from packages.orchestration.proof_chain import ProofChange
+        return ProofChange(
+            target_path="a.py", intent_id="i", task_id=task_id, task_title="t",
+            artifact_id="art", patch_intent_id="pi", approval_state="approved",
+            apply_state=apply_state, test_state="passed", test_link="task_linked",
+            proof_status=proof_status, safe_summary="", next_safe_action="",
+        )
+
+    def _chain(self, changes):
+        from types import SimpleNamespace
+        return SimpleNamespace(changes=changes)
+
+    def test_none_chain_empty_maps(self):
+        from packages.orchestration.ui_server import _task_truth_maps
+        assert _task_truth_maps(None) == ({}, {})
+
+    def test_verified_only_when_all_verified(self):
+        from packages.orchestration.ui_server import _task_truth_maps
+        chain = self._chain([
+            self._change("t1", "applied", "verified"),
+            self._change("t1", "applied", "verified"),
+            self._change("t2", "applied", "incomplete"),
+        ])
+        proof, apply = _task_truth_maps(chain)
+        assert proof["t1"] == "verified"
+        assert proof["t2"] == "incomplete"
+        assert apply["t1"] == "applied"
+
+    def test_failed_change_makes_task_failed(self):
+        from packages.orchestration.ui_server import _task_truth_maps
+        chain = self._chain([
+            self._change("t1", "applied", "verified"),
+            self._change("t1", "applied", "failed"),
+        ])
+        proof, _ = _task_truth_maps(chain)
+        assert proof["t1"] == "failed"
+
+    def test_reverted_apply_state(self):
+        from packages.orchestration.ui_server import _task_truth_maps
+        chain = self._chain([self._change("t1", "reverted", "incomplete")])
+        _, apply = _task_truth_maps(chain)
+        assert apply["t1"] == "reverted"
+
+    def test_proof_not_verified_from_event_presence(self):
+        # A proof_collected event must NOT make a task "verified" — only the
+        # authoritative chain does (R-0076). With no data root the per-task proof
+        # is "unknown", never "verified".
+        job = Job(name="t", tasks=[__import__("packages.core.models", fromlist=["Task"]).Task(description="x")])
+        import packages.orchestration.ui_server as us
+        # Force the unknown path (no data root): proof chain is None.
+        orig = us._resolve_dashboard_data_dir
+        us._resolve_dashboard_data_dir = lambda: None
+        try:
+            dash = us._build_dashboard(job)
+        finally:
+            us._resolve_dashboard_data_dir = orig
+        for t in dash["tasks"]:
+            assert t["proof_status"] != "verified"
+            assert t["apply_status"] != "applied"
 
 
 class TestContinuationLastResult:

@@ -72,6 +72,7 @@ export function normalizeDashboardPayload(
       changedFilesSafe: Array.isArray(t.changed_files_safe) ? t.changed_files_safe : undefined,
       testStatus: t.test_status || undefined,
       proofStatus: t.proof_status || undefined,
+      applyStatus: t.apply_status || undefined,
       blockedReason: t.blocked_reason || undefined,
       completedAt: t.completed_at || undefined,
     };
