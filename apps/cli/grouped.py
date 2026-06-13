@@ -143,6 +143,9 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--collect-only", action="store_true", dest="collect_only", help=arg.help)
             elif arg.name == "--intent-id":
                 parser.add_argument("--intent-id", default=None, dest="intent_id", help=arg.help)
+            elif arg.name == "--fixture-source-builder":
+                parser.add_argument("--fixture-source-builder", nargs="?", const="true",
+                                    default="false", dest="fixture_source_builder", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

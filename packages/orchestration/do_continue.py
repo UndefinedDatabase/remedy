@@ -143,6 +143,12 @@ class ContinueResult:
     usage_after: dict[str, Any] = field(default_factory=dict)
     generated_at: str = ""
     safe_summary: str = ""
+    # Approved Repair Apply Cycle linkage (Step 1223-1226). Set only when the
+    # applied intent is a repair intent; a normal intent leaves these empty/false.
+    is_repair: bool = False
+    repair_attempt_id: str = ""
+    repair_status: str = ""
+    repair_resolved_failure: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -788,6 +794,30 @@ def run_do_continue(
             result.next_safe_action = f"remedy change proof {request.job_id} --json"
             result.safe_summary = f"Test passed but proof is {result.proof_status}."
 
+        # ── Repair reconciliation (Steps 1223-1226) ─────────────────────
+        # If the applied intent is a repair intent, record repair truth (apply/
+        # test/resolve) AFTER the same safe cycle. No bypass: apply already
+        # happened through the central path above. No-op for normal intents.
+        try:
+            from packages.orchestration.repair_loop import reconcile_repair_after_continue
+            rr = reconcile_repair_after_continue(
+                request.job_id, iid,
+                apply_id=result.apply_id, test_status=test_status,
+                test_run_id=result.test_run_id,
+                failure_artifact_id=result.failure_artifact_id,
+                snapshot_verified=post.snapshot_verified_now,
+                evidence_status=result.evidence_status,
+                proof_status=result.proof_status,
+                data_dir=data_dir,
+            )
+            if rr.is_repair:
+                result.is_repair = True
+                result.repair_attempt_id = rr.repair_attempt_id
+                result.repair_status = rr.status
+                result.repair_resolved_failure = rr.resolved_failure
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
         _record(result, ContinuePhase.FINAL_STOP, "stopped", result.stop_reason)
         save_checkpoint(request.job_id, data_dir, ContinueCheckpoint(
             phase=ContinuePhase.FINAL_STOP, status="completed",
@@ -844,6 +874,10 @@ def export_continue_result_json(result: ContinueResult) -> dict[str, Any]:
         "usage_after": result.usage_after,
         "generated_at": result.generated_at,
         "safe_summary": result.safe_summary,
+        "is_repair": result.is_repair,
+        "repair_attempt_id": result.repair_attempt_id,
+        "repair_status": result.repair_status,
+        "repair_resolved_failure": result.repair_resolved_failure,
         "phases": [
             {"phase": p.phase, "status": p.status, "safe_summary": p.safe_summary}
             for p in result.phases

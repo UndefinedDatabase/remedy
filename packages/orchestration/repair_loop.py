@@ -352,7 +352,7 @@ def summarize_repair_loop(result: RepairLoopResult) -> str:
 
 
 class RepairStatus:
-    """Repair attempt lifecycle status (1194)."""
+    """Repair attempt lifecycle status (1194; apply states added 1225)."""
 
     BLOCKED = "blocked"
     CONTEXT_READY = "context_ready"
@@ -360,6 +360,13 @@ class RepairStatus:
     REPAIR_ARTIFACT_CREATED = "repair_artifact_created"
     PATCH_INTENT_CREATED = "patch_intent_created"
     APPROVAL_REQUIRED = "approval_required"
+    # Approved Repair Apply Cycle states (Step 1225).
+    APPROVED = "approved"
+    APPLYING = "applying"
+    APPLIED = "applied"
+    TESTED_PASSED = "tested_passed"
+    TESTED_FAILED = "tested_failed"
+    SUPERSEDED = "superseded"
     FAILED = "failed"
     EVIDENCE_INCOMPLETE = "evidence_incomplete"
 
@@ -367,7 +374,9 @@ class RepairStatus:
 _REPAIR_STATUSES = frozenset({
     RepairStatus.BLOCKED, RepairStatus.CONTEXT_READY, RepairStatus.FIX_TASK_CREATED,
     RepairStatus.REPAIR_ARTIFACT_CREATED, RepairStatus.PATCH_INTENT_CREATED,
-    RepairStatus.APPROVAL_REQUIRED, RepairStatus.FAILED, RepairStatus.EVIDENCE_INCOMPLETE,
+    RepairStatus.APPROVAL_REQUIRED, RepairStatus.APPROVED, RepairStatus.APPLYING,
+    RepairStatus.APPLIED, RepairStatus.TESTED_PASSED, RepairStatus.TESTED_FAILED,
+    RepairStatus.SUPERSEDED, RepairStatus.FAILED, RepairStatus.EVIDENCE_INCOMPLETE,
 })
 
 # Resumable (non-terminal-error) states: a repeated propose returns the existing
@@ -377,6 +386,14 @@ _RESUMABLE_STATUSES = frozenset({
     RepairStatus.PATCH_INTENT_CREATED, RepairStatus.APPROVAL_REQUIRED,
     RepairStatus.CONTEXT_READY,
 })
+
+# Repair kind / expected effect classification (Step 1221).
+REPAIR_KIND_DOCS_FIXTURE = "docs_fixture"
+REPAIR_KIND_SOURCE_FIXTURE = "source_fixture"
+REPAIR_KIND_PROVIDER = "provider"  # future
+EXPECT_DOCUMENTATION_ONLY = "documentation_only"
+EXPECT_SOURCE_FIX = "source_fix"
+EXPECT_UNKNOWN = "unknown"
 
 
 class RepairStopReason:
@@ -419,6 +436,11 @@ class RepairContextSummary:
     snapshot_status: str = "unknown"
     hints: list[str] = field(default_factory=list)
     fixture_supported: bool = False
+    # Optional opt-in deterministic source-fixture descriptor (Step 1233): a safe
+    # repo-relative target path supplied on the failure artifact metadata
+    # (`repair_fixture_target`). When present and the source-fixture builder is
+    # requested, a `source_fix` repair intent is proposed instead of docs-only.
+    source_fixture_target: str = ""
 
 
 @dataclass
@@ -456,6 +478,14 @@ class RepairAttempt:
     stop_reason: str = ""
     evidence_status: str = "complete"
     source: str = "cli_v1"
+    # Classification (Step 1221). repair_kind: docs_fixture | source_fixture |
+    # provider. expected_effect: documentation_only | source_fix | unknown.
+    repair_kind: str = ""
+    expected_effect: str = ""
+    # Apply-cycle linkage (Step 1223-1225) — repair apply / post-repair test.
+    repair_apply_id: str = ""
+    post_repair_test_run_id: str = ""
+    resolved_failure: bool = False
     created_at: str = ""
     updated_at: str = ""
 
@@ -470,6 +500,10 @@ class RepairAttempt:
             "repair_intent_id": self.repair_intent_id,
             "status": self.status, "stop_reason": self.stop_reason,
             "evidence_status": self.evidence_status, "source": self.source,
+            "repair_kind": self.repair_kind, "expected_effect": self.expected_effect,
+            "repair_apply_id": self.repair_apply_id,
+            "post_repair_test_run_id": self.post_repair_test_run_id,
+            "resolved_failure": self.resolved_failure,
             "created_at": self.created_at, "updated_at": self.updated_at,
         }
 
@@ -488,6 +522,8 @@ class RepairPatchIntentResult:
     risk: str = ""
     target_paths: list[str] = field(default_factory=list)
     resolvable: bool = False
+    repair_kind: str = ""
+    expected_effect: str = ""
 
 
 @dataclass
@@ -542,6 +578,20 @@ def _safe_changed_files(meta: dict[str, Any]) -> list[str]:
     return out
 
 
+def _safe_rel_target(value: Any) -> str:
+    """Validate an opt-in source-fixture target: a safe repo-relative path.
+
+    Rejects absolute paths, parent traversal, and over-long values. Returns ""
+    when unsafe or absent.
+    """
+    p = str(value or "").strip()
+    if not p or len(p) > 200:
+        return ""
+    if p.startswith("/") or p.startswith("~") or ".." in p.split("/"):
+        return ""
+    return p
+
+
 def build_repair_context(
     job_id: str,
     failure_artifact_id: str,
@@ -593,6 +643,7 @@ def build_repair_context(
     ctx.safe_summary = str(meta.get("safe_summary", "") or "")[:200]
     ctx.changed_files_safe = _safe_changed_files(meta)
     ctx.fixture_supported = ctx.failure_kind in _SUPPORTED_FIXTURE_KINDS
+    ctx.source_fixture_target = _safe_rel_target(meta.get("repair_fixture_target", ""))
 
     # Authoritative proof + snapshot status (best-effort, never raw).
     try:
@@ -878,14 +929,19 @@ def _find_repair_artifact(job: Any, attempt_id: str) -> Any:
     return None
 
 
-def build_fixture_repair(job: Any, ctx: RepairContextSummary, fix_task: Any, attempt_id: str) -> RepairPatchIntentResult | None:
-    """Deterministic fixture repair builder v1 (Steps 1199-1200).
+def build_fixture_repair(
+    job: Any, ctx: RepairContextSummary, fix_task: Any, attempt_id: str,
+    *, source_fixture: bool = False,
+) -> RepairPatchIntentResult | None:
+    """Deterministic fixture repair builder v1 (Steps 1199-1200; classified 1221/1233).
 
     Produces a real, safe Repair Artifact that yields a pending Patch Intent for
-    supported deterministic failure kinds. The proposed change is a docs-only
-    repair note (create) — it never touches source, never applies, never runs a
-    command, and contains no raw output. Unsupported failures return None
-    (caller reports repair_builder_unavailable).
+    supported deterministic failure kinds. By default the proposed change is a
+    docs-only repair note (`expected_effect=documentation_only`) — it never
+    touches source. When `source_fixture` is requested AND the failure carries a
+    safe opt-in `repair_fixture_target`, a `source_fix` intent targeting that
+    repo-relative path is proposed instead (Step 1233). Either way: never applies,
+    never runs a command, no raw output. Unsupported failures return None.
     """
     if not ctx.fixture_supported:
         return None
@@ -899,17 +955,33 @@ def build_fixture_repair(job: Any, ctx: RepairContextSummary, fix_task: Any, att
         intent_id = make_intent_id(existing.id, 0)
         intent = get_patch_intent(job, intent_id)
         if intent is not None:
+            em = existing.metadata or {}
             return RepairPatchIntentResult(
                 repair_artifact_id=str(existing.id), repair_intent_id=intent_id,
                 approval_state=intent.get("state", "pending"), risk=intent.get("risk", "low"),
                 target_paths=[intent.get("target_path", "")], resolvable=True,
+                repair_kind=em.get("repair_kind", REPAIR_KIND_DOCS_FIXTURE),
+                expected_effect=em.get("expected_effect", EXPECT_DOCUMENTATION_ONLY),
             )
 
     fa_short = ctx.failure_artifact_id[:8]
-    target = f"docs/repairs/{fa_short}.md"
+    # Classification: opt-in source fixture only when a safe target is supplied.
+    if source_fixture and ctx.source_fixture_target:
+        repair_kind = REPAIR_KIND_SOURCE_FIXTURE
+        expected_effect = EXPECT_SOURCE_FIX
+        target = ctx.source_fixture_target
+        action = "modify"
+        reason = f"Apply the deterministic source fixture repair for failure {fa_short}."
+    else:
+        repair_kind = REPAIR_KIND_DOCS_FIXTURE
+        expected_effect = EXPECT_DOCUMENTATION_ONLY
+        target = f"docs/repairs/{fa_short}.md"
+        action = "create"
+        reason = f"Document the repair plan for failure {fa_short} ({ctx.failure_kind})."
+
     repair_art = Artifact(
         name=f"repair-v1-{fa_short}",
-        content=f"Repair proposal note for failure {fa_short} ({ctx.failure_kind}).",
+        content=f"Repair proposal for failure {fa_short} ({ctx.failure_kind}).",
         kind=ArtifactKind.BUILDER_PROPOSAL,
         task_id=fix_task.id,
         metadata={
@@ -917,14 +989,21 @@ def build_fixture_repair(job: Any, ctx: RepairContextSummary, fix_task: Any, att
             "fixture": True,
             "repair_attempt_id": attempt_id,
             "failure_artifact_id": ctx.failure_artifact_id,
-            "safe_summary": f"Fixture repair note for {ctx.failure_kind}",
+            "repair_kind": repair_kind,
+            "expected_effect": expected_effect,
+            # Classification linkage (Step 1221) — original failure context IDs.
+            "original_test_run_id": ctx.test_run_id,
+            "original_apply_id": ctx.apply_id,
+            "original_intent_id": ctx.intent_id,
+            "original_task_id": ctx.task_id,
+            "safe_summary": f"Fixture repair ({expected_effect}) for {ctx.failure_kind}",
             "patch_intent_explanations": [
                 {
                     "file": target,
-                    "action": "create",
+                    "action": action,
                     "risk": "low",
-                    "reason": f"Document the repair plan for failure {fa_short} ({ctx.failure_kind}).",
-                    "summary": f"Repair note for: {ctx.safe_summary[:100]}",
+                    "reason": reason,
+                    "summary": f"Repair for: {ctx.safe_summary[:100]}",
                 },
             ],
             "patch_intent_approvals": {},
@@ -943,6 +1022,7 @@ def build_fixture_repair(job: Any, ctx: RepairContextSummary, fix_task: Any, att
         approval_state=reloaded_intent.get("state", "pending"),
         risk=reloaded_intent.get("risk", "low"),
         target_paths=[target], resolvable=True,
+        repair_kind=repair_kind, expected_effect=expected_effect,
     )
 
 
@@ -979,6 +1059,7 @@ def run_repair_attempt(
     failure_artifact_id: str,
     *,
     fixture_builder: bool = False,
+    source_fixture_builder: bool = False,
     data_dir: "Path | None" = None,
     source: str = "cli_v1",
 ) -> RepairAttemptResult:
@@ -1089,10 +1170,15 @@ def run_repair_attempt(
                                                "RunContract denies repair patch intent."),
                                         summary="Blocked: contract denies repair patch intent.")
 
-        intent_result = build_fixture_repair(job, ctx, fix_task, attempt.attempt_id)
+        intent_result = build_fixture_repair(
+            job, ctx, fix_task, attempt.attempt_id,
+            source_fixture=source_fixture_builder,
+        )
         if intent_result is not None and intent_result.resolvable:
             attempt.repair_artifact_id = intent_result.repair_artifact_id
             attempt.repair_intent_id = intent_result.repair_intent_id
+            attempt.repair_kind = intent_result.repair_kind
+            attempt.expected_effect = intent_result.expected_effect
             attempt.status = RepairStatus.APPROVAL_REQUIRED
             attempt.stop_reason = RepairStopReason.APPROVAL_REQUIRED
             save_repair_attempt(job, attempt)
@@ -1196,3 +1282,185 @@ def export_repair_context_json(ctx: RepairContextSummary) -> dict[str, Any]:
         "snapshot_status": ctx.snapshot_status, "hints": ctx.hints,
         "fixture_supported": ctx.fixture_supported,
     }
+
+
+# ===========================================================================
+# Approved Repair Apply Cycle (Steps 1221-1226) — reconcile a repair intent
+# AFTER it flows through the existing `do continue` apply/test/proof path.
+# This module never applies code itself; it only records repair truth.
+# ===========================================================================
+
+
+REPAIR_APPLY_EVENTS = frozenset({
+    "repair_apply_reconciled",
+    "repair_failure_resolved",
+    "repair_tested_failed",
+})
+
+
+@dataclass
+class RepairReconcileResult:
+    """Outcome of reconciling a repair intent after a continue cycle (1225)."""
+
+    is_repair: bool = False
+    repair_attempt_id: str = ""
+    failure_artifact_id: str = ""
+    repair_intent_id: str = ""
+    status: str = ""
+    resolved_failure: bool = False
+    new_failure_artifact_id: str = ""
+    expected_effect: str = ""
+
+
+def find_attempt_by_repair_intent(job: Any, intent_id: str) -> RepairAttempt | None:
+    """Classify a patch intent as a repair intent (Step 1221). None if normal."""
+    if not intent_id:
+        return None
+    for attempt in load_repair_attempts(job).values():
+        if attempt.repair_intent_id == intent_id:
+            return attempt
+    return None
+
+
+def resolve_failure_if_repaired(
+    job: Any,
+    failure_artifact_id: str,
+    repair_attempt_id: str,
+    test_run_id: str,
+    *,
+    expected_effect: str,
+    snapshot_verified: bool,
+    proof_status: str,
+    evidence_status: str,
+) -> bool:
+    """Mark the original failure resolved ONLY with full proven evidence (1226).
+
+    Requires: a verified snapshot, a linked post-repair test that PASSED
+    (test_run_id present), complete evidence, proof verified, and a repair whose
+    expected_effect is a source fix. A documentation_only / unknown repair never
+    resolves a source failure (no overclaim). Mutates + saves the job. Returns
+    True only when the failure was newly resolved.
+    """
+    from packages.orchestration.storage import save_job
+
+    if expected_effect != EXPECT_SOURCE_FIX:
+        return False
+    if not test_run_id or not snapshot_verified:
+        return False
+    if evidence_status != "complete" or proof_status != "verified":
+        return False
+
+    target = None
+    for art in job.artifacts:
+        if str(art.id) == failure_artifact_id and (art.metadata or {}).get("test_failure"):
+            target = art
+            break
+    if target is None:
+        return False
+    if (target.metadata or {}).get("failure_resolved"):
+        return False  # already resolved — idempotent
+
+    target.metadata["failure_resolved"] = True
+    target.metadata["resolved_by_repair_attempt_id"] = repair_attempt_id
+    target.metadata["resolved_by_test_run_id"] = test_run_id
+    target.metadata["resolved_at"] = _now()
+    save_job(job)
+    return True
+
+
+def _link_new_failure(job: Any, new_failure_artifact_id: str, attempt: RepairAttempt) -> None:
+    """Link a post-repair failure to its repair attempt + the prior failure."""
+    from packages.orchestration.storage import save_job
+    for art in job.artifacts:
+        if str(art.id) == new_failure_artifact_id and (art.metadata or {}).get("test_failure"):
+            art.metadata["repair_attempt_id"] = attempt.attempt_id
+            art.metadata["supersedes_failure_artifact_id"] = attempt.failure_artifact_id
+            save_job(job)
+            return
+
+
+def reconcile_repair_after_continue(
+    job_id: str,
+    intent_id: str,
+    *,
+    apply_id: str,
+    test_status: str,
+    test_run_id: str,
+    failure_artifact_id: str,
+    snapshot_verified: bool,
+    evidence_status: str,
+    proof_status: str,
+    data_dir: "Path | None" = None,
+) -> RepairReconcileResult:
+    """Record repair truth after `do continue` applied + tested a repair intent.
+
+    Idempotent: re-running for the same test_run_id does not re-resolve or
+    duplicate. Returns is_repair=False for normal (non-repair) intents — a no-op.
+    Never applies code, never runs tests; it only reflects the outcome.
+    """
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.storage import load_job, JobNotFoundError
+
+    ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
+    out = RepairReconcileResult()
+    try:
+        job = load_job(UUID(job_id), ddir)
+    except (ValueError, JobNotFoundError):
+        return out
+
+    attempt = find_attempt_by_repair_intent(job, intent_id)
+    if attempt is None:
+        return out  # not a repair intent — no-op
+
+    out.is_repair = True
+    out.repair_attempt_id = attempt.attempt_id
+    out.failure_artifact_id = attempt.failure_artifact_id
+    out.repair_intent_id = attempt.repair_intent_id
+    out.expected_effect = attempt.expected_effect
+
+    # Idempotency: already reconciled for this test run.
+    if attempt.post_repair_test_run_id == test_run_id and attempt.status in (
+        RepairStatus.TESTED_PASSED, RepairStatus.TESTED_FAILED
+    ):
+        out.status = attempt.status
+        out.resolved_failure = attempt.resolved_failure
+        return out
+
+    attempt.repair_apply_id = apply_id
+    attempt.post_repair_test_run_id = test_run_id
+
+    if test_status == "passed":
+        attempt.status = RepairStatus.TESTED_PASSED
+        resolved = resolve_failure_if_repaired(
+            job, attempt.failure_artifact_id, attempt.attempt_id, test_run_id,
+            expected_effect=attempt.expected_effect, snapshot_verified=snapshot_verified,
+            proof_status=proof_status, evidence_status=evidence_status,
+        )
+        attempt.resolved_failure = resolved
+        out.resolved_failure = resolved
+        if resolved:
+            _emit_repair(ddir, job_id, "repair_failure_resolved", {
+                "failure_artifact_id": attempt.failure_artifact_id,
+                "repair_attempt_id": attempt.attempt_id, "test_run_id": test_run_id,
+            })
+    elif test_status in ("failed", "timeout"):
+        attempt.status = RepairStatus.TESTED_FAILED
+        if failure_artifact_id and failure_artifact_id != attempt.failure_artifact_id:
+            _link_new_failure(job, failure_artifact_id, attempt)
+            out.new_failure_artifact_id = failure_artifact_id
+        _emit_repair(ddir, job_id, "repair_tested_failed", {
+            "repair_attempt_id": attempt.attempt_id,
+            "new_failure_artifact_id": out.new_failure_artifact_id,
+        })
+    elif evidence_status not in ("complete",):
+        attempt.status = RepairStatus.EVIDENCE_INCOMPLETE
+    else:
+        attempt.status = RepairStatus.APPLIED
+
+    out.status = attempt.status
+    save_repair_attempt(job, attempt)
+    _emit_repair(ddir, job_id, "repair_apply_reconciled", {
+        "repair_attempt_id": attempt.attempt_id, "status": attempt.status,
+        "resolved_failure": out.resolved_failure,
+    })
+    return out
