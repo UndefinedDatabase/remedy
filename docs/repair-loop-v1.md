@@ -142,3 +142,7 @@ Future provider work:
 
 A provider-backed repair builder (gated, no-cloud by default) will replace the
 fixture builder for real source repairs.
+
+## See also
+
+- [bounded-overnight-prep-v0.md](bounded-overnight-prep-v0.md) — read-only readiness/report layer that surfaces repair attempts in its checklist + capability matrix.

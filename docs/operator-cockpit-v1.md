@@ -37,6 +37,7 @@ derives the cockpit truth sections from authoritative sources:
 | `snapshot` | `build_snapshot_truth` over `list_durable_apply_ids` | apply_records/verified/reverted/drift_detected; `source = durable_apply_records` |
 | `continuation` | `do_continue_stopped` events + approved intents | available (approved-intent light check) + last_result/last_stop_reason (safe enums) |
 | `repair` | `repair_attempts_v1` job metadata | attempt_count + pending_approval_count + a copyable `remedy patch approve` next action — never an Approve button |
+| `overnight` | `build_overnight_readiness` (read-only) | readiness_level + ready/can_run_unattended + blocker_count + next-action label + checklist counts; `unknown` when data root unavailable; never a button |
 
 When the data root cannot be resolved, every derived value is reported as the
 explicit string `"unknown"` (and the frontend renders `—`). Zeros are never
@@ -69,3 +70,5 @@ faked to stand in for unknown data.
   truth behind the `snapshot` section.
 - [repair-loop-v1.md](repair-loop-v1.md) — the repair attempts surfaced (read-only)
   in the `repair` section.
+- [bounded-overnight-prep-v0.md](bounded-overnight-prep-v0.md) — the read-only
+  `overnight` readiness section (level/blockers/next action/checklist counts).
