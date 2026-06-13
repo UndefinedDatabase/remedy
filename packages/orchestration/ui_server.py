@@ -471,6 +471,39 @@ def _build_repair_section(job: Any) -> dict[str, Any]:
     }
 
 
+def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
+    """Safe read-only Bounded Overnight Prep summary for the cockpit (Step 1262).
+
+    Readiness state + counts + next-action label only — no mutation, no buttons,
+    no fabricated "ready". "unknown" when the data root or builder is unavailable.
+    """
+    unknown = {"readiness_level": "unknown", "ready": "unknown",
+               "can_run_unattended": "unknown", "blocker_count": "unknown",
+               "next_action_label": "", "checklist_done": "unknown",
+               "checklist_total": "unknown", "source": "unavailable"}
+    if data_dir is None:
+        return unknown
+    try:
+        from packages.orchestration.overnight_readiness import (
+            build_overnight_readiness, export_readiness_json,
+        )
+        d = export_readiness_json(build_overnight_readiness(str(job.id), data_dir))
+        checklist = d.get("checklist", [])
+        na = d.get("next_action")
+        return {
+            "readiness_level": d.get("readiness_level"),
+            "ready": d.get("ready"),
+            "can_run_unattended": d.get("can_run_unattended"),
+            "blocker_count": len(d.get("blockers", [])),
+            "next_action_label": na["label"] if na else "",
+            "checklist_done": sum(1 for i in checklist if i["status"] == "done"),
+            "checklist_total": len(checklist),
+            "source": "overnight_readiness",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return unknown
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -731,6 +764,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "snapshot": _build_snapshot_section(job, truth_data_dir),
         "continuation": _build_continuation_section(job, events, truth_data_dir),
         "repair": _build_repair_section(job),
+        "overnight": _build_overnight_section(job, truth_data_dir),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,
