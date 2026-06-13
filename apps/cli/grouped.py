@@ -146,6 +146,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
             elif arg.name == "--fixture-source-builder":
                 parser.add_argument("--fixture-source-builder", nargs="?", const="true",
                                     default="false", dest="fixture_source_builder", help=arg.help)
+            elif arg.name == "--markdown":
+                parser.add_argument("--markdown", action="store_true", dest="markdown", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:
