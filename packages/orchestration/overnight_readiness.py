@@ -238,11 +238,13 @@ def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
 
     apply_ids = list_durable_apply_ids(job_id, data_dir)
     verified = applied = tested_passed = 0
+    # "applied" durable states persist after the post-apply test runs.
+    _APPLIED_STATES = ("applied", "test_pending", "tested_passed", "tested_failed")
     for aid in apply_ids:
         truth = build_snapshot_truth(job_id, apply_id=aid, data_dir=data_dir)
-        if truth.apply_state == "applied":
+        if truth.apply_state in _APPLIED_STATES:
             applied += 1
-        if (truth.apply_state == "applied" and truth.snapshot_verified_now
+        if (truth.apply_state in _APPLIED_STATES and truth.snapshot_verified_now
                 and truth.recovery_material_available and truth.evidence_status == "complete"):
             verified += 1
 
