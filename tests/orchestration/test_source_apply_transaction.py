@@ -1,4 +1,8 @@
-"""Tests for source_apply transactionality and diff hunk validation."""
+"""Tests for source_apply transactionality and diff hunk validation.
+
+v2: FileSnapshot and _rollback removed (durable snapshot replaces in-memory rollback).
+Transactional tests use apply_structured_patch public API.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,14 +14,12 @@ from packages.core.models import Job
 from packages.orchestration.source_apply import (
     ApplyResult,
     _apply_hunks,
-    _rollback,
-    FileSnapshot,
     apply_structured_patch,
 )
 
 
 class TestTransactionRollback:
-    """All-or-nothing: if op N fails, ops 1..N-1 are rolled back."""
+    """All-or-nothing: if op N fails, ops 1..N-1 are rolled back via durable snapshot."""
 
     def _make_approved_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -45,52 +47,8 @@ class TestTransactionRollback:
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
         return job, intent_id
 
-    def test_rollback_restores_modified_file(self, tmp_path):
-        f = tmp_path / "a.py"
-        f.write_text("original")
-        snap = FileSnapshot(path="a.py", existed=True, content_hash="x", content="original")
-        f.write_text("modified")
-        result = ApplyResult(apply_id="t", success=False, files_modified=0, files_created=0)
-        _rollback([snap], tmp_path, result)
-        assert f.read_text() == "original"
-        assert len(result.errors) == 0  # rollback succeeded
-
-    def test_rollback_removes_created_file(self, tmp_path):
-        f = tmp_path / "new.py"
-        snap = FileSnapshot(path="new.py", existed=False, content_hash="", content="")
-        f.write_text("created")
-        result = ApplyResult(apply_id="t", success=False, files_modified=0, files_created=0)
-        _rollback([snap], tmp_path, result)
-        assert not f.exists()
-        assert len(result.errors) == 0
-
-    def test_rollback_failure_surfaces_in_errors(self, tmp_path):
-        """If rollback cannot restore a file, error is reported, not swallowed."""
-        snap = FileSnapshot(path="readonly.py", existed=True, content_hash="x", content="orig")
-        # Create a directory where the file should be — write_text will fail
-        d = tmp_path / "readonly.py"
-        d.mkdir()
-        result = ApplyResult(apply_id="t", success=False, files_modified=0, files_created=0,
-                             errors=["original failure"])
-        _rollback([snap], tmp_path, result)
-        # Original error preserved
-        assert "original failure" in result.errors[0]
-        # Rollback failure appended
-        assert any("rollback" in e for e in result.errors)
-
-    def test_rollback_preserves_original_failure(self, tmp_path):
-        """result.success stays False regardless of rollback outcome."""
-        f = tmp_path / "a.py"
-        f.write_text("modified")
-        snap = FileSnapshot(path="a.py", existed=True, content_hash="x", content="original")
-        result = ApplyResult(apply_id="t", success=False, files_modified=1, files_created=0,
-                             errors=["b.py: file not found (modify)"])
-        _rollback([snap], tmp_path, result)
-        assert not result.success
-        assert "b.py" in result.errors[0]
-
     def test_file_ops_rollback_on_second_failure(self, tmp_path, monkeypatch):
-        """If second file_op fails, first file_op is rolled back."""
+        """If second file_op fails, first file_op is rolled back via durable snapshot."""
         from packages.orchestration.structured_patch import StructuredPatch, FileOp
 
         repo = tmp_path / "repo"
@@ -110,11 +68,11 @@ class TestTransactionRollback:
         result = apply_structured_patch(patch, repo, job=job, intent_id=intent_id)
         assert not result.success
         assert "b.py" in result.errors[-1]
-        # a.py should be rolled back to original
+        # a.py should be rolled back to original via durable snapshot
         assert (repo / "a.py").read_text() == "original-a"
 
     def test_unified_diff_rollback_on_second_failure(self, tmp_path, monkeypatch):
-        """If second unified diff fails, first is rolled back."""
+        """If second unified diff fails, first is rolled back via durable snapshot."""
         from packages.orchestration.structured_patch import StructuredPatch, UnifiedDiff
 
         repo = tmp_path / "repo"
@@ -135,6 +93,46 @@ class TestTransactionRollback:
         assert not result.success
         # a.py should be rolled back
         assert (repo / "a.py").read_text() == "line1\nline2\n"
+
+    def test_apply_result_has_snapshot_id_on_success(self, tmp_path, monkeypatch):
+        """Successful apply populates snapshot_id + snapshot_verified on ApplyResult."""
+        from packages.orchestration.structured_patch import StructuredPatch, FileOp
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "a.py").write_text("original")
+
+        job, intent_id = self._make_approved_job(tmp_path, monkeypatch)
+
+        patch = StructuredPatch(
+            intent_kind="file_ops",
+            file_ops=[FileOp(path="a.py", action="modify", content="updated")],
+        )
+
+        result = apply_structured_patch(patch, repo, job=job, intent_id=intent_id)
+        assert result.success
+        assert result.snapshot_id
+        assert result.snapshot_verified
+
+    def test_apply_result_no_content_field(self, tmp_path, monkeypatch):
+        """ApplyResult must not expose raw content."""
+        from packages.orchestration.structured_patch import StructuredPatch, FileOp
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "a.py").write_text("SECRET_VALUE")
+
+        job, intent_id = self._make_approved_job(tmp_path, monkeypatch)
+
+        patch = StructuredPatch(
+            intent_kind="file_ops",
+            file_ops=[FileOp(path="a.py", action="modify", content="new content")],
+        )
+
+        result = apply_structured_patch(patch, repo, job=job, intent_id=intent_id)
+        assert not hasattr(result, "snapshots")
+        result_str = str(result)
+        assert "SECRET_VALUE" not in result_str
 
 
 class TestHunkValidation:

@@ -1,5 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -71,6 +71,8 @@ export function normalizeDashboardPayload(
       changedFilesCount: typeof t.changed_files_count === "number" ? t.changed_files_count : undefined,
       changedFilesSafe: Array.isArray(t.changed_files_safe) ? t.changed_files_safe : undefined,
       testStatus: t.test_status || undefined,
+      proofStatus: t.proof_status || undefined,
+      applyStatus: t.apply_status || undefined,
       blockedReason: t.blocked_reason || undefined,
       completedAt: t.completed_at || undefined,
     };
@@ -80,13 +82,16 @@ export function normalizeDashboardPayload(
   const dm = dashboard.metrics || {};
   const tu = dashboard.token_usage || {};
   const tokenTotal = tu.known ? (tu.total_tokens ?? 0) : 0;
+  const tokenKnown = Boolean(tu.known) && tokenTotal > 0;
   const tokenTooltip = tu.by_role && Object.keys(tu.by_role).length > 0 ? tu.by_role : undefined;
   const metrics: RemedyMetric[] = [
     { key: "open", label: "Open", value: dm.open ?? 0 },
     { key: "planned", label: "Planned", value: dm.planned ?? 0 },
     { key: "done", label: "Done", value: dm.done ?? 0 },
     { key: "progress", label: "Progress", value: dm.progress_percent ?? 0, suffix: "%" },
-    { key: "tokens", label: "Tokens", value: tokenTotal, suffix: tu.known ? undefined : " —", tooltip: tokenTooltip },
+    metricTests(dm.tests),
+    metricProof(dm.proof),
+    { key: "tokens", label: "Tokens", value: tokenKnown ? tokenTotal : "—", tooltip: tokenTooltip, unknown: !tokenKnown },
   ];
 
   // Phases from dashboard
@@ -160,6 +165,50 @@ export function normalizeDashboardPayload(
     projectSummary: dashboard.project_summary ?? null,
     workerStatus: dashboard.worker ?? null,
     timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
+    snapshot: normalizeSnapshotSummary(dashboard.snapshot),
+    continuation: normalizeContinuationSummary(dashboard.continuation),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Cockpit metric + summary helpers (Step 1182)
+// ---------------------------------------------------------------------------
+
+/** Tests metric: value = passed runs, dot = latest outcome. Always derivable. */
+function metricTests(raw: any): RemedyMetric {
+  const t = raw || {};
+  const state = (["pass", "fail", "none"].includes(t.latest_state) ? t.latest_state : "none") as RemedyMetric["state"];
+  return { key: "tests", label: "Tests", value: typeof t.passed === "number" ? t.passed : 0, state };
+}
+
+/** Proof metric: value = verified, suffix = /total. "—" when not derivable. */
+function metricProof(raw: any): RemedyMetric {
+  const p = raw || {};
+  const unknown = p.state === "unknown" || typeof p.verified !== "number" || typeof p.total_changes !== "number";
+  if (unknown) return { key: "proof", label: "Proof", value: "—", unknown: true };
+  return { key: "proof", label: "Proof", value: p.verified, suffix: `/${p.total_changes}` };
+}
+
+/** Snapshot summary: pass through with explicit unknown markers, never faked. */
+function normalizeSnapshotSummary(raw: any): RemedySnapshotSummary | null {
+  if (!raw || typeof raw !== "object") return null;
+  const num = (v: any): number | "unknown" => (typeof v === "number" ? v : "unknown");
+  return {
+    applyRecords: num(raw.apply_records),
+    verified: num(raw.verified),
+    reverted: num(raw.reverted),
+    driftDetected: typeof raw.drift_detected === "boolean" ? raw.drift_detected : "unknown",
+    source: String(raw.source || "unavailable"),
+  };
+}
+
+/** Continuation summary: pass through with explicit unknown markers. */
+function normalizeContinuationSummary(raw: any): RemedyContinuationSummary | null {
+  if (!raw || typeof raw !== "object") return null;
+  return {
+    available: typeof raw.available === "boolean" ? raw.available : "unknown",
+    lastResult: String(raw.last_result || "none"),
+    lastStopReason: String(raw.last_stop_reason || "none"),
   };
 }
 
@@ -193,6 +242,8 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     resume: null,
     projectSummary: null,
     workerStatus: null,
+    snapshot: null,
+    continuation: null,
   };
 }
 

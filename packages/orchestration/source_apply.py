@@ -1,14 +1,22 @@
 """
-Source Patch Apply v1 — safe application of structured code patches.
+Source Patch Apply v2 — safe application of structured code patches.
 
 Applies file_ops and unified diffs after approval.
 Safety: no binary, no symlink escape, no path traversal, no .env/secrets,
-no absolute paths, snapshot before apply, revert support.
+no absolute paths, mandatory durable snapshot before apply, revert support.
+
+v2 changes from v1:
+  - FileSnapshot removed — no raw content in public models.
+  - Durable snapshot created and verified before any mutation.
+  - Apply BLOCKED if snapshot creation or verification fails.
+  - Transactional rollback reads from private snapshot blobs (not memory).
+  - DurableApplyRecord saved after successful apply for post-apply revert.
+  - revert_apply() delegates to revert_repository_apply().
 
 Public API::
 
-    apply_structured_patch(patch, repo_path, *, data_dir, job_id) -> ApplyResult
-    revert_apply(apply_id, repo_path, *, data_dir) -> bool
+    apply_structured_patch(patch, repo_path, *, data_dir, job_id, job, intent_id) -> ApplyResult
+    revert_apply(apply_id, repo_path, *, job_id, data_dir=None) -> RepositoryRevertResult
 """
 
 from __future__ import annotations
@@ -16,8 +24,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
-import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +35,19 @@ from packages.orchestration.structured_patch import (
     StructuredPatch,
     UnifiedDiff,
     validate_structured_patch,
+)
+from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.repository_snapshot import (
+    DurableApplyRecord,
+    RepositoryRevertResult,
+    SnapshotEntry,
+    build_snapshot_path_set,
+    create_snapshot,
+    load_snapshot,
+    revert_repository_apply,
+    save_durable_apply_record,
+    verify_snapshot,
+    _snapshot_dir,
 )
 
 # ---------------------------------------------------------------------------
@@ -51,23 +70,15 @@ _MAX_FILE_SIZE = 500_000  # 500KB
 
 
 @dataclass
-class FileSnapshot:
-    """Snapshot of a file before modification."""
-    path: str
-    existed: bool
-    content_hash: str
-    content: str  # Only stored for revert
-
-
-@dataclass
 class ApplyResult:
-    """Result of applying a structured patch."""
+    """Result of applying a structured patch. No raw content."""
     apply_id: str
     success: bool
     files_modified: int
     files_created: int
     errors: list[str] = field(default_factory=list)
-    snapshots: list[FileSnapshot] = field(default_factory=list)
+    snapshot_id: str = ""
+    snapshot_verified: bool = False
 
 
 def _is_safe_path(path: str, repo_root: Path) -> tuple[bool, str]:
@@ -79,18 +90,15 @@ def _is_safe_path(path: str, repo_root: Path) -> tuple[bool, str]:
     if ".." in path.split(os.sep):
         return False, "path traversal not allowed"
 
-    # Check resolved path is within repo
     resolved = (repo_root / path).resolve()
     try:
         resolved.relative_to(repo_root.resolve())
     except ValueError:
         return False, "path escapes repo root"
 
-    # Check symlink
     if resolved.is_symlink():
         return False, "symlink target not allowed"
 
-    # Check deny list
     lower = path.lower()
     for ext in _DENY_EXTENSIONS:
         if lower.endswith(ext):
@@ -111,23 +119,65 @@ def _hash_content(content: str) -> str:
     return hashlib.sha256(content.encode()).hexdigest()[:16]
 
 
-def _snapshot_file(repo_root: Path, rel_path: str) -> FileSnapshot:
-    """Create a snapshot of a file for revert."""
-    full = repo_root / rel_path
-    if full.is_file():
-        content = full.read_text(encoding="utf-8", errors="replace")
-        return FileSnapshot(
-            path=rel_path,
-            existed=True,
-            content_hash=_hash_content(content),
-            content=content,
+def _rollback_from_snapshot(
+    snapshot_id: str,
+    job_id_str: str,
+    data_dir: Path,
+    repo_root: Path,
+    result: ApplyResult,
+) -> None:
+    """Restore files from durable snapshot blobs after mid-apply failure."""
+    snap = load_snapshot(snapshot_id, job_id_str, data_dir)
+    if snap is None:
+        result.errors.append("rollback_failed:snapshot_not_found")
+        return
+
+    failures: list[str] = []
+    snap_dir = _snapshot_dir(job_id_str, snapshot_id, data_dir)
+
+    for entry in reversed(snap.entries):
+        target = repo_root / entry.rel_path
+        if not entry.existed_before:
+            if target.exists():
+                try:
+                    target.unlink()
+                except OSError:
+                    failures.append(entry.rel_path)
+        else:
+            blob_path = snap_dir / entry.recovery_blob_ref
+            try:
+                raw = blob_path.read_bytes()
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(raw)
+            except OSError:
+                failures.append(entry.rel_path)
+
+    if failures:
+        result.errors.append(
+            f"rollback_incomplete ({len(failures)} file(s)): " + "; ".join(failures)
         )
-    return FileSnapshot(
-        path=rel_path,
-        existed=False,
-        content_hash="",
-        content="",
-    )
+
+
+def _collect_after_proof(
+    entries: list[SnapshotEntry], repo_root: Path
+) -> dict[str, Any]:
+    """Collect post-apply file state. No raw content — hashes only."""
+    proof: dict[str, Any] = {}
+    for entry in entries:
+        full = repo_root / entry.rel_path
+        if full.exists() and not full.is_symlink():
+            try:
+                raw = full.read_bytes()
+                proof[entry.rel_path] = {
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "bytes": len(raw),
+                    "existed": True,
+                }
+            except OSError:
+                proof[entry.rel_path] = {"sha256": "", "bytes": 0, "existed": True}
+        else:
+            proof[entry.rel_path] = {"sha256": "", "bytes": 0, "existed": False}
+    return proof
 
 
 def apply_structured_patch(
@@ -139,14 +189,18 @@ def apply_structured_patch(
     job: Any,
     intent_id: str | None = None,
 ) -> ApplyResult:
-    """Apply a structured patch to the repo. Snapshot before each change.
+    """Apply a structured patch to the repo.
+
+    Mandatory durable snapshot created and verified before any mutation.
+    Apply BLOCKED if snapshot creation or verification fails.
 
     Requires:
       - job parameter (mandatory — no bypass)
       - job must have repo_generated_write permission
       - intent_id must reference an approved patch intent
 
-    No mutation occurs without permission + approval.
+    No mutation occurs without permission + approval + verified snapshot.
+    No raw content in ApplyResult.
     """
     apply_id = uuid4().hex[:12]
     result = ApplyResult(apply_id=apply_id, success=True, files_modified=0, files_created=0)
@@ -191,58 +245,102 @@ def apply_structured_patch(
         result.errors.append(f"repo path not found: {repo_root}")
         return result
 
-    # Transactional apply: snapshot all first, apply all, rollback on any failure
+    data_dir_path = Path(data_dir) if data_dir else resolve_data_root()
+    job_id_str = str(getattr(job, "id", None) or job_id or "unknown")
+
+    # Mandatory snapshot: derive path set, create, verify — block if any step fails
+    path_set = build_snapshot_path_set(patch)
+    if path_set:
+        snap_result = create_snapshot(
+            job_id_str,
+            intent_id or apply_id,
+            path_set,
+            repo_root,
+            data_dir_path,
+            apply_id=apply_id,
+        )
+        if not snap_result.success:
+            result.success = False
+            result.errors.append(f"snapshot_blocked:{snap_result.safe_error_kind}")
+            return result
+
+        snap_verif = verify_snapshot(snap_result.snapshot_id, job_id_str, data_dir_path)
+        if not snap_verif.verified:
+            result.success = False
+            result.errors.append(f"snapshot_verify_failed:{snap_verif.failure_reason}")
+            return result
+
+        result.snapshot_id = snap_result.snapshot_id
+        result.snapshot_verified = True
+    else:
+        # No target paths — apply trivially no-ops (validate_structured_patch already passed)
+        result.snapshot_id = ""
+        result.snapshot_verified = False
+
+    # Transactional apply: apply all ops; rollback from snapshot on any failure
     if patch.intent_kind == "file_ops":
         for op in patch.file_ops:
             _apply_file_op(op, repo_root, result)
             if not result.success:
-                _rollback(result.snapshots, repo_root, result)
+                if result.snapshot_id:
+                    _rollback_from_snapshot(result.snapshot_id, job_id_str, data_dir_path, repo_root, result)
                 break
     elif patch.intent_kind == "unified_diff":
         for diff in patch.unified_diffs:
             _apply_unified_diff(diff, repo_root, result)
             if not result.success:
-                _rollback(result.snapshots, repo_root, result)
+                if result.snapshot_id:
+                    _rollback_from_snapshot(result.snapshot_id, job_id_str, data_dir_path, repo_root, result)
                 break
     else:
         result.errors.append(f"non-applicable intent kind: {patch.intent_kind}")
         result.success = False
 
+    # Save durable apply record on success
+    if result.success and result.snapshot_id:
+        snap = load_snapshot(result.snapshot_id, job_id_str, data_dir_path)
+        before_proof: dict[str, Any] = {}
+        after_proof: dict[str, Any] = {}
+        if snap:
+            for entry in snap.entries:
+                before_proof[entry.rel_path] = {
+                    "sha256": entry.before_sha256,
+                    "bytes": entry.before_bytes,
+                    "existed": entry.existed_before,
+                }
+            after_proof = _collect_after_proof(snap.entries, repo_root)
+
+        apply_record = DurableApplyRecord(
+            apply_id=apply_id,
+            job_id=job_id_str,
+            intent_id=intent_id or "",
+            snapshot_id=result.snapshot_id,
+            state="applied",
+            target_paths=path_set,
+            applied_at=datetime.now(timezone.utc).isoformat(),
+            before_proof=before_proof,
+            after_proof=after_proof,
+            snapshot_verified=True,
+        )
+        save_durable_apply_record(apply_record, job_id_str, data_dir_path)
+
     # Record event
     if data_dir and job_id:
-        from packages.orchestration.timeline import append_run_event
-        append_run_event(data_dir, job_id, event="source_patch_applied", metadata={
-            "apply_id": apply_id,
-            "success": result.success,
-            "files_modified": result.files_modified,
-            "files_created": result.files_created,
-            "error_count": len(result.errors),
-        })
+        try:
+            from packages.orchestration.timeline import append_run_event
+            append_run_event(data_dir, job_id, event="source_patch_applied", metadata={
+                "apply_id": apply_id,
+                "snapshot_id": result.snapshot_id,
+                "snapshot_verified": result.snapshot_verified,
+                "success": result.success,
+                "files_modified": result.files_modified,
+                "files_created": result.files_created,
+                "error_count": len(result.errors),
+            })
+        except Exception:
+            pass
 
     return result
-
-
-def _rollback(snapshots: list[FileSnapshot], repo_root: Path, result: ApplyResult) -> None:
-    """Rollback all applied changes using snapshots (all-or-nothing).
-
-    Rollback errors are appended to result.errors so they are observable.
-    result.success remains False (the original failure is preserved).
-    """
-    rollback_failures: list[str] = []
-    for snap in reversed(snapshots):
-        full = repo_root / snap.path
-        try:
-            if snap.existed:
-                full.write_text(snap.content, encoding="utf-8")
-            elif full.exists():
-                full.unlink()
-        except OSError as exc:
-            rollback_failures.append(f"rollback failed for {snap.path}: {type(exc).__name__}")
-    if rollback_failures:
-        result.errors.append(
-            f"rollback incomplete ({len(rollback_failures)} file(s)): "
-            + "; ".join(rollback_failures)
-        )
 
 
 def _apply_file_op(op: FileOp, repo_root: Path, result: ApplyResult) -> None:
@@ -264,10 +362,6 @@ def _apply_file_op(op: FileOp, repo_root: Path, result: ApplyResult) -> None:
         return
 
     full = repo_root / op.path
-
-    # Snapshot
-    snapshot = _snapshot_file(repo_root, op.path)
-    result.snapshots.append(snapshot)
 
     if op.action == "create":
         if full.exists():
@@ -305,11 +399,6 @@ def _apply_unified_diff(diff: UnifiedDiff, repo_root: Path, result: ApplyResult)
         result.success = False
         return
 
-    # Snapshot
-    snapshot = _snapshot_file(repo_root, diff.path)
-    result.snapshots.append(snapshot)
-
-    # Apply diff using simple hunk application
     try:
         original = full.read_text(encoding="utf-8")
         patched = _apply_hunks(original, diff.diff)
@@ -320,7 +409,7 @@ def _apply_unified_diff(diff: UnifiedDiff, repo_root: Path, result: ApplyResult)
         full.write_text(patched, encoding="utf-8")
         result.files_modified += 1
     except (OSError, UnicodeDecodeError) as e:
-        result.errors.append(f"{diff.path}: {e}")
+        result.errors.append(f"{diff.path}: {type(e).__name__}")
         result.success = False
 
 
@@ -349,7 +438,6 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
         orig_start = int(m.group(1)) - 1  # 0-indexed
         i += 1
 
-        # Collect hunk lines
         removals: list[int] = []
         additions: list[tuple[int, str]] = []
         pos = orig_start
@@ -359,29 +447,26 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
             if line.startswith("@@") or line.startswith("diff ") or line.startswith("---") or line.startswith("+++"):
                 break
             if line.startswith("-"):
-                # Validate removal line matches actual content
                 actual_idx = pos
                 if actual_idx < 0 or actual_idx >= len(lines):
-                    return None  # out of range
+                    return None
                 if lines[actual_idx] != line[1:]:
-                    return None  # removal line mismatch
+                    return None
                 removals.append(pos + offset)
                 pos += 1
             elif line.startswith("+"):
                 additions.append((pos + offset, line[1:]))
             elif line.startswith(" "):
-                # Validate context line matches actual content
                 actual_idx = pos
                 if actual_idx < 0 or actual_idx >= len(lines):
-                    return None  # context out of range
+                    return None
                 if lines[actual_idx] != line[1:]:
-                    return None  # context line mismatch
+                    return None
                 pos += 1
             else:
                 pos += 1
             i += 1
 
-        # Apply: remove then insert
         for idx in sorted(removals, reverse=True):
             if 0 <= idx < len(result_lines):
                 result_lines.pop(idx)
@@ -395,12 +480,22 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
     return "\n".join(result_lines)
 
 
-def revert_apply(snapshots: list[FileSnapshot], repo_path: Path) -> bool:
-    """Revert files to their snapshot state.
+def revert_apply(
+    apply_id: str,
+    repo_path: Path,
+    *,
+    job_id: str,
+    data_dir: Path | None = None,
+) -> RepositoryRevertResult:
+    """Revert files to their pre-apply state using the durable snapshot.
 
-    Returns True if all reverts succeeded, False if any failed.
-    Uses the same rollback logic as transactional apply.
+    Delegates to revert_repository_apply() in repository_snapshot.py.
+    Returns the full RepositoryRevertResult (Step 1140).
     """
-    dummy = ApplyResult(apply_id="revert", success=True, files_modified=0, files_created=0)
-    _rollback(snapshots, repo_path, dummy)
-    return len(dummy.errors) == 0
+    data_dir = data_dir or resolve_data_root()
+    return revert_repository_apply(
+        job_id,
+        apply_id,
+        repo_path,
+        data_dir,
+    )

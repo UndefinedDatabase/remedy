@@ -28,10 +28,14 @@
   stroke-width: 2.2;
 }
 
-.nodeDone { stroke: var(--remedy-green, #4cc681); }
-.nodePlanned { stroke: var(--remedy-blue, #4c83ff); opacity: .55; }
-.nodeCurrent { stroke: var(--remedy-purple, #a28cff); }
-.nodeBlocked { stroke: #e06050; }
+/* Status palette — single source of truth in tokens.css.
+   current = blue, done = green, suggested(open) = purple,
+   planned = white with blue ring, blocked = red. */
+.nodeDone { fill: var(--remedy-state-done); stroke: var(--remedy-state-done); }
+.nodeCurrent { fill: var(--remedy-state-current); stroke: var(--remedy-state-current); }
+.nodeSuggested { fill: var(--remedy-state-open); stroke: var(--remedy-state-open); }
+.nodePlanned { fill: #fff; stroke: var(--remedy-state-planned-ring); }
+.nodeBlocked { fill: var(--remedy-state-blocked); stroke: var(--remedy-state-blocked); }
 
 .hoverHalo {
   fill: none;

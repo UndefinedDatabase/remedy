@@ -24,6 +24,10 @@ Defined capabilities:
   shell_exec           — execute arbitrary shell commands. Denied by default.
                          RESERVED: configurable but not yet enforced at runtime.
                          Setting it has no effect in this version.
+  repo_revert          — revert an applied repository mutation using a verified
+                         pre-apply snapshot. Denied by default (opt-in).
+                         ACTIVE: enforced by revert_repository_apply() in
+                         repository_snapshot.py (Step 1138).
 
 Usage:
   from packages.orchestration.permissions import (
@@ -64,6 +68,7 @@ class Capability(str, Enum):
     repo_test_run = "repo_test_run"
     repo_overwrite = "repo_overwrite"
     shell_exec = "shell_exec"
+    repo_revert = "repo_revert"
 
 
 # Conservative defaults: only workspace_write is allowed without an explicit grant.
@@ -73,6 +78,7 @@ _DEFAULTS: dict[str, bool] = {
     "repo_test_run": False,
     "repo_overwrite": False,
     "shell_exec": False,
+    "repo_revert": False,
 }
 
 # Capabilities that are configurable today but not yet enforced at runtime.

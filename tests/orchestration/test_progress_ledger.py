@@ -258,6 +258,40 @@ class TestBuildProgressLedger:
         assert len(ledger.items) == 0
         assert ledger.verdict == ""
 
+    def test_unverified_snapshot_surfaces_risk(self):
+        """Apply without snapshot_verified=True → RISK item in ledger (Step 1147)."""
+        from unittest.mock import MagicMock
+        art = MagicMock()
+        art.metadata = {
+            "patch_intent_apply_records": {
+                "abc12345-0": {"state": "applied", "snapshot_verified": False}
+            }
+        }
+        art.id = "art-001"
+        job = MagicMock()
+        job.artifacts = [art]
+        ledger = build_progress_ledger(job=job)
+        titles = [i.title for i in ledger.items]
+        assert any("without verified snapshot" in t for t in titles)
+        risk_items = [i for i in ledger.items if i.status == ProgressStatus.RISK]
+        assert len(risk_items) >= 1
+
+    def test_verified_snapshot_no_risk(self):
+        """Apply with snapshot_verified=True → no snapshot risk item (Step 1147)."""
+        from unittest.mock import MagicMock
+        art = MagicMock()
+        art.metadata = {
+            "patch_intent_apply_records": {
+                "abc12345-0": {"state": "applied", "snapshot_verified": True}
+            }
+        }
+        art.id = "art-001"
+        job = MagicMock()
+        job.artifacts = [art]
+        ledger = build_progress_ledger(job=job)
+        titles = [i.title for i in ledger.items]
+        assert not any("without verified snapshot" in t for t in titles)
+
 
 # ---------------------------------------------------------------------------
 # Export tests

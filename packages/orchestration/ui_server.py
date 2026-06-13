@@ -216,9 +216,252 @@ def _build_timeline_events(events: list[dict]) -> list[dict[str, Any]]:
     return result
 
 
+def _resolve_dashboard_data_dir() -> Path | None:
+    """Resolve the data root for authoritative truth, or None if unavailable.
+
+    None means snapshot/proof/continuation truth must be reported as "unknown"
+    rather than faked as zero.
+    """
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        root = resolve_data_root()
+        return Path(root) if root is not None else None
+    except (ImportError, OSError, ValueError, TypeError):
+        return None
+
+
+def _test_exit_state(meta: dict[str, Any]) -> str:
+    """Classify a test_run_completed event: 'pass' | 'fail' | 'none'.
+
+    A missing or non-integer exit_code is 'none' (uncounted) — never folded into
+    failures, so a real pass is never mislabeled.
+    """
+    code = meta.get("exit_code")
+    if code == 0:
+        return "pass"
+    if isinstance(code, int):
+        return "fail"
+    return "none"
+
+
+def _build_metrics_tests(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Safe test counters from the event ledger. Counts only, no output."""
+    test_events = [e for e in events if e.get("event") == "test_run_completed"]
+    runs = len(test_events)
+    states = [_test_exit_state(e.get("metadata", {})) for e in test_events]
+    passed = sum(1 for s in states if s == "pass")
+    failed = sum(1 for s in states if s == "fail")
+    latest_state = states[-1] if states else "none"
+    return {"runs": runs, "passed": passed, "failed": failed, "latest_state": latest_state}
+
+
+def _safe_build_proof_chain(job: Any, events: list[dict[str, Any]], data_dir: Path | None) -> Any:
+    """Build the authoritative proof chain, or None when unavailable.
+
+    The proof chain consults `build_snapshot_truth` (durable apply records +
+    verified manifest/blobs) when *data_dir* is provided, so proof/apply state is
+    authoritative — never derived from event presence. None means "unknown".
+    """
+    if data_dir is None:
+        return None
+    try:
+        from packages.orchestration.proof_chain import build_proof_chain
+        return build_proof_chain(job, events, data_dir=data_dir)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def _metrics_proof_from_chain(chain: Any) -> dict[str, Any]:
+    """Safe proof counters from a prebuilt authoritative proof chain.
+
+    Counts only (total changes vs verified). "unknown" when the chain is None.
+    """
+    if chain is None:
+        return {"total_changes": "unknown", "verified": "unknown", "state": "unknown"}
+    try:
+        from packages.orchestration.proof_chain import PROOF_VERIFIED
+        total = len(chain.changes)
+        verified = sum(1 for c in chain.changes if c.proof_status == PROOF_VERIFIED)
+        if total == 0:
+            state = "none"
+        elif verified == total:
+            state = "verified"
+        elif verified > 0:
+            state = "partial"
+        else:
+            state = "none"
+        return {"total_changes": total, "verified": verified, "state": state}
+    except (ImportError, AttributeError, TypeError):
+        return {"total_changes": "unknown", "verified": "unknown", "state": "unknown"}
+
+
+def _task_truth_maps(chain: Any) -> tuple[dict[str, str], dict[str, str]]:
+    """Authoritative per-task proof + apply labels from the proof chain.
+
+    Returns (proof_by_task, apply_by_task). A task is "verified" only when every
+    applicable change for that task is verified (fail-closed). Apply state comes
+    from the durable apply record, never inferred from changed-file counts. When
+    the chain is None both maps are empty (caller reports "unknown").
+    """
+    proof_by_task: dict[str, str] = {}
+    apply_by_task: dict[str, str] = {}
+    if chain is None:
+        return proof_by_task, apply_by_task
+    try:
+        from packages.orchestration.proof_chain import PROOF_VERIFIED, PROOF_FAILED, PROOF_NOT_APPLICABLE
+        grouped: dict[str, list[Any]] = {}
+        for c in chain.changes:
+            tid = getattr(c, "task_id", "") or ""
+            if not tid:
+                continue
+            grouped.setdefault(tid, []).append(c)
+        for tid, changes in grouped.items():
+            proofs = [c.proof_status for c in changes]
+            if any(p == PROOF_FAILED for p in proofs):
+                proof_by_task[tid] = "failed"
+            else:
+                applicable = [p for p in proofs if p != PROOF_NOT_APPLICABLE]
+                if applicable and all(p == PROOF_VERIFIED for p in applicable):
+                    proof_by_task[tid] = "verified"
+                elif not applicable:
+                    proof_by_task[tid] = "not_applicable"
+                else:
+                    proof_by_task[tid] = "incomplete"
+            apply_states = [getattr(c, "apply_state", "") for c in changes]
+            if "applied" in apply_states:
+                apply_by_task[tid] = "applied"
+            elif "reverted" in apply_states:
+                apply_by_task[tid] = "reverted"
+            else:
+                apply_by_task[tid] = "not_applied"
+    except (ImportError, AttributeError, TypeError):
+        return {}, {}
+    return proof_by_task, apply_by_task
+
+
+def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
+    """Safe snapshot/apply-record summary from the authoritative builder.
+
+    Aggregate counts and bools only — no snapshot blobs, paths, hashes, or IDs.
+    Returns "unknown" values when the data root or durable records are unavailable.
+    """
+    unknown = {
+        "apply_records": "unknown", "verified": "unknown",
+        "reverted": "unknown", "drift_detected": "unknown",
+        "source": "unavailable",
+    }
+    if data_dir is None:
+        return unknown
+    try:
+        from packages.orchestration.repository_snapshot import (
+            build_snapshot_truth, list_durable_apply_ids,
+        )
+        apply_ids = list_durable_apply_ids(str(job.id), data_dir)
+        verified = 0
+        reverted = 0
+        drift = False
+        for aid in apply_ids:
+            truth = build_snapshot_truth(str(job.id), apply_id=aid, data_dir=data_dir)
+            if (truth.apply_state == "applied"
+                    and truth.snapshot_verified_now
+                    and truth.recovery_material_available
+                    and truth.evidence_status == "complete"):
+                verified += 1
+            if truth.revert_state in ("reverted",):
+                reverted += 1
+            if truth.drift_blocked:
+                drift = True
+        return {
+            "apply_records": len(apply_ids),
+            "verified": verified,
+            "reverted": reverted,
+            "drift_detected": drift,
+            "source": "durable_apply_records",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return unknown
+
+
+def _build_continuation_section(
+    job: Any, events: list[dict[str, Any]], data_dir: Path | None,
+) -> dict[str, Any]:
+    """Safe continuation summary from do_continue events + approved intents.
+
+    available: eligibility-light — at least one approved patch intent exists.
+    last_result / last_stop_reason: from the most recent do_continue_stopped
+    event metadata (safe enum labels only — no raw content).
+    """
+    unknown = {"available": "unknown", "last_result": "unknown", "last_stop_reason": "unknown"}
+    if data_dir is None:
+        return unknown
+    # available — light approved-intent check (not the full eligibility gate)
+    available = False
+    try:
+        from packages.orchestration.approval_queue import (
+            list_patch_intents, APPROVAL_APPROVED,
+        )
+        intents = list_patch_intents(job)
+        available = any(i.get("state") == APPROVAL_APPROVED for i in intents)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        available = False
+
+    # last result — most recent do_continue_stopped event
+    _RESULT_REASONS = {
+        "completed_verified", "test_failed_repair_available", "evidence_incomplete",
+    }
+    last_result = "none"
+    last_stop_reason = "none"
+    stopped = [e for e in events if e.get("event") == "do_continue_stopped"]
+    if stopped:
+        reason = str(stopped[-1].get("metadata", {}).get("stop_reason", ""))
+        last_stop_reason = reason or "none"
+        last_result = reason if reason in _RESULT_REASONS else "none"
+    return {
+        "available": available,
+        "last_result": last_result,
+        "last_stop_reason": last_stop_reason,
+    }
+
+
+def _build_repair_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Repair Loop v1 summary for the cockpit (Step 1210).
+
+    Counts + safe statuses only — no failure output, no patch body, no source.
+    No mutation affordance: a pending approval surfaces a copyable CLI command,
+    never an Approve button.
+    """
+    attempts = (job.metadata or {}).get("repair_attempts_v1", {})
+    attempt_count = 0
+    pending_approval = 0
+    pending_intent_id = ""
+    if isinstance(attempts, dict):
+        for v in attempts.values():
+            if not isinstance(v, dict):
+                continue
+            attempt_count += 1
+            if v.get("status") == "approval_required":
+                pending_approval += 1
+                if not pending_intent_id and v.get("repair_intent_id"):
+                    pending_intent_id = str(v.get("repair_intent_id"))
+    next_action = ""
+    if pending_intent_id:
+        next_action = f"remedy patch approve {job.id} {pending_intent_id}"
+    return {
+        "attempt_count": attempt_count,
+        "pending_approval_count": pending_approval,
+        "next_safe_action": next_action,
+        "source": "repair_attempts_v1",
+    }
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
+    truth_data_dir = _resolve_dashboard_data_dir()
+    # Authoritative proof chain (durable snapshot truth) — built once, reused for
+    # metrics.proof and per-task proof/apply truth. Never event-presence-derived.
+    proof_chain = _safe_build_proof_chain(job, events, truth_data_dir)
+    task_proof_map, task_apply_map = _task_truth_maps(proof_chain)
 
     # Status
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
@@ -348,10 +591,11 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "rank": idx,
             "related_node_id": tid,
             "short_reason": "",
-            "proof_status": "verified" if any(
-                e.get("event") == "proof_collected" and e.get("metadata", {}).get("task_id") == tid
-                for e in events
-            ) else "none",
+            # Authoritative proof/apply truth from the proof chain (durable
+            # snapshot truth), never from proof_collected event presence. When the
+            # data root is unavailable the value is "unknown", never "verified".
+            "proof_status": task_proof_map.get(tid, "unknown" if proof_chain is None else "none"),
+            "apply_status": task_apply_map.get(tid, "unknown" if proof_chain is None else "not_applied"),
             "test_status": _task_test_status(tid, events),
             "outcome_summary": _task_outcome_summary(tid, tstat, events),
             "changed_files_count": _task_changed_files_count(tid, events),
@@ -464,7 +708,12 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "progress_percent": round((sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed") / max(task_count, 1)) * 100),
             "source_counts": {"tasks": task_count, "events": len(events), "artifacts": artifact_count},
             "computed_from": "job_tasks_and_events",
+            "tests": _build_metrics_tests(events),
+            "proof": _metrics_proof_from_chain(proof_chain),
         },
+        "snapshot": _build_snapshot_section(job, truth_data_dir),
+        "continuation": _build_continuation_section(job, events, truth_data_dir),
+        "repair": _build_repair_section(job),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,

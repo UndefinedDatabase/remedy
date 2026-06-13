@@ -38,6 +38,8 @@ REQUIRED_SECTIONS = (
     "trust_report.json",
     "context_inspection.json",
     "changed_files_safe.json",
+    "snapshot_summary.json",
+    "continuation_summary.json",
     "repair_summary.json",
     "command_summary.json",
     "progress_ledger.json",
@@ -107,6 +109,7 @@ class ChangedFileSafe:
     related_intent_id: str = ""
     tested_after_change: bool = False
     safety_flags: list[str] = field(default_factory=list)
+    snapshot_verified: bool = False
 
 
 @dataclass
@@ -315,6 +318,7 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
 
     for a in job.artifacts:
         explanations = a.metadata.get("patch_intent_explanations", [])
+        apply_records = a.metadata.get("patch_intent_apply_records", {})
         for exp in explanations:
             path = exp.get("file", "")
             if not path or path.startswith("/") or ".." in Path(path).parts:
@@ -328,7 +332,12 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
             if a.task_id:
                 files[path].related_task_id = str(a.task_id)[:8]
             from packages.orchestration.approval_queue import make_intent_id
-            files[path].related_intent_id = make_intent_id(a.id, 0)
+            iid = make_intent_id(a.id, 0)
+            files[path].related_intent_id = iid
+            # Snapshot verification status (Step 1149) — safe bool only, no blob content
+            rec = apply_records.get(iid, {})
+            if rec.get("snapshot_verified", False):
+                files[path].snapshot_verified = True
 
     for ev in events:
         if ev.get("event") == "test_completed" or ev.get("event") == "test_passed":
@@ -346,11 +355,158 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
                 "related_intent_id": f.related_intent_id,
                 "tested_after_change": f.tested_after_change,
                 "safety_flags": f.safety_flags,
+                "snapshot_verified": f.snapshot_verified,
             }
             for f in files.values()
         ],
         "redacted_protected_path_count": redacted_count,
     }
+
+
+def _build_snapshot_summary(job_id: str, data_dir: Path) -> dict:
+    """Safe snapshot/apply-record aggregate summary (Step 1160).
+
+    Sourced from the authoritative snapshot-truth builder. Contains safe counts
+    and non-path identifiers only — no recovery blob references, no source
+    content, no raw/absolute/protected paths.
+    """
+    try:
+        from packages.orchestration.repository_snapshot import (
+            build_snapshot_truth, list_durable_apply_ids,
+        )
+
+        apply_ids = list_durable_apply_ids(job_id, data_dir)
+        snapshot_ids: set[str] = set()
+        snapshot_count = 0
+        verified_count = 0
+        verification_failed_count = 0
+        active_apply_count = 0
+        reverted_count = 0
+        drift_blocked_count = 0
+        partial_revert_count = 0
+        revert_failed_count = 0
+        missing_recovery_count = 0
+        evidence_degraded_count = 0
+        applies: list[dict] = []
+
+        for aid in apply_ids:
+            truth = build_snapshot_truth(job_id, apply_id=aid, data_dir=data_dir)
+            if truth.snapshot_id and truth.snapshot_exists:
+                if truth.snapshot_id not in snapshot_ids:
+                    snapshot_ids.add(truth.snapshot_id)
+                    snapshot_count += 1
+                if truth.snapshot_verified_now:
+                    verified_count += 1
+                else:
+                    verification_failed_count += 1
+                if not truth.recovery_material_available:
+                    missing_recovery_count += 1
+            if truth.apply_state == "applied":
+                active_apply_count += 1
+            if truth.apply_state == "reverted" or truth.revert_state == "reverted":
+                reverted_count += 1
+            if truth.drift_blocked:
+                drift_blocked_count += 1
+            if truth.revert_state == "partial_revert":
+                partial_revert_count += 1
+            if truth.revert_state == "revert_failed":
+                revert_failed_count += 1
+            if truth.evidence_status == "degraded":
+                evidence_degraded_count += 1
+            applies.append({
+                "apply_id": truth.apply_id,
+                "snapshot_id": truth.snapshot_id,
+                "apply_state": truth.apply_state,
+                "revert_state": truth.revert_state,
+                "snapshot_verified": truth.snapshot_verified_now,
+                "recovery_material_available": truth.recovery_material_available,
+                "drift_blocked": truth.drift_blocked,
+                "evidence_status": truth.evidence_status,
+            })
+
+        return {
+            "version": 1,
+            "snapshot_count": snapshot_count,
+            "verified_count": verified_count,
+            "verification_failed_count": verification_failed_count,
+            "active_apply_count": active_apply_count,
+            "reverted_count": reverted_count,
+            "drift_blocked_count": drift_blocked_count,
+            "partial_revert_count": partial_revert_count,
+            "revert_failed_count": revert_failed_count,
+            "missing_recovery_count": missing_recovery_count,
+            "evidence_degraded_count": evidence_degraded_count,
+            "applies": applies,
+        }
+    except Exception:
+        return {"status": "section_unavailable", "reason": "snapshot summary not available"}
+
+
+def _build_continuation_summary(job_id: str, data_dir: Path, events: list[dict]) -> dict:
+    """Safe `remedy do --continue` summary (Step 1177).
+
+    Current phase, durable checkpoints, apply/test/proof/evidence status, stop
+    reason, next-action availability, and safe IDs. No raw prompt, patch, source,
+    output, blobs, paths, or secrets.
+    """
+    try:
+        from packages.orchestration.do_continue import (
+            load_checkpoints, latest_checkpoint, CONTINUE_PHASES,
+        )
+        cps = load_checkpoints(job_id, data_dir)
+        if not cps:
+            return {"version": 1, "present": False}
+
+        stop_reason = ""
+        evidence_status = ""
+        proof_status = ""
+        test_status = ""
+        for ev in events:
+            ename = ev.get("event", "")
+            m = ev.get("metadata", {}) if isinstance(ev.get("metadata"), dict) else {}
+            if ename == "do_continue_stopped":
+                stop_reason = m.get("stop_reason", stop_reason)
+                evidence_status = m.get("evidence_status", evidence_status)
+            elif ename == "do_continue_proof_built":
+                proof_status = m.get("proof_status", proof_status)
+            elif ename == "do_continue_test_completed":
+                test_status = m.get("status", test_status)
+
+        ids: dict[str, str] = {}
+        for c in cps:
+            ids.update(c.ids or {})
+
+        def _phase_status(p: str) -> str:
+            cp = latest_checkpoint(cps, p)
+            return cp.status if cp else "pending"
+
+        _NEXT_AVAILABLE = {
+            "test_failed_repair_available", "evidence_incomplete", "test_blocked",
+            "snapshot_failed", "apply_failed", "blocked_ineligible",
+        }
+        return {
+            "version": 1,
+            "present": True,
+            "current_phase": cps[-1].phase,
+            "phase_status": {p: _phase_status(p) for p in CONTINUE_PHASES},
+            "checkpoints": [
+                {"phase": c.phase, "status": c.status, "at": c.at,
+                 "evidence_status": c.evidence_status}
+                for c in cps
+            ],
+            "apply_status": _phase_status("apply"),
+            "test_status": test_status or ids.get("test_status", ""),
+            "proof_status": proof_status,
+            "evidence_status": evidence_status or cps[-1].evidence_status,
+            "stop_reason": stop_reason or ids.get("stop_reason", ""),
+            "next_action_available": (stop_reason or ids.get("stop_reason", "")) in _NEXT_AVAILABLE,
+            "snapshot_id": ids.get("snapshot_id", ""),
+            "apply_id": ids.get("apply_id", ""),
+            "test_run_id": ids.get("test_run_id", ""),
+            "failure_artifact_id": ids.get("failure_artifact_id", ""),
+        }
+    except Exception:
+        return {"status": "section_unavailable", "reason": "continuation summary not available"}
 
 
 def _build_repair_summary(job: Any, events: list[dict]) -> dict:
@@ -389,11 +545,39 @@ def _build_repair_summary(job: Any, events: list[dict]) -> dict:
             if meta.get("stop_reason") == "awaiting_approval":
                 next_safe_action = f"remedy patch approve {str(job.id)} {meta.get('fix_task_id', '?')[:8]}"
 
+    # Repair Loop v1 attempt counts (Step 1208) — safe statuses only, no body.
+    repair_attempt_count = 0
+    v1_intent_count = 0
+    pending_approval_count = 0
+    blocked_count = 0
+    unavailable_count = 0
+    attempts = (job.metadata or {}).get("repair_attempts_v1", {})
+    if isinstance(attempts, dict):
+        for v in attempts.values():
+            if not isinstance(v, dict):
+                continue
+            repair_attempt_count += 1
+            status = v.get("status", "")
+            stop_reason = v.get("stop_reason", "")
+            if v.get("repair_intent_id"):
+                v1_intent_count += 1
+            if status == "approval_required":
+                pending_approval_count += 1
+            if status == "blocked":
+                blocked_count += 1
+            if stop_reason == "repair_builder_unavailable":
+                unavailable_count += 1
+
     return {
         "failure_artifact_count": failure_count,
+        "repair_attempt_count": repair_attempt_count,
         "fix_task_count": fix_task_count,
-        "repair_patch_intent_count": repair_intent_count,
+        "repair_patch_intent_count": repair_intent_count + v1_intent_count,
+        "repair_intent_count": v1_intent_count,
         "pending_repair_intents": pending_intents,
+        "pending_approval_count": pending_approval_count,
+        "blocked_count": blocked_count,
+        "unavailable_count": unavailable_count,
         "latest_failure_kind": latest_failure_kind,
         "next_safe_action": next_safe_action,
     }
@@ -571,6 +755,57 @@ def _build_contract_summary(job_id: str) -> dict:
         return {"status": "section_unavailable", "reason": "run contract not available"}
 
 
+def _build_test_execution_summary(job: Any, events: list[dict]) -> dict:
+    """Safe test execution summary for the review bundle. No raw output."""
+    try:
+        from packages.orchestration.run_contract import load_usage, export_usage_json
+
+        # Collect test run records from job metadata
+        test_runs = job.metadata.get("test_runs") or []
+        safe_runs = []
+        for r in test_runs[-20:]:  # last 20 only
+            safe_runs.append({
+                "test_run_id": r.get("test_run_id", ""),
+                "contract_id": r.get("contract_id", ""),
+                "status": r.get("status", ""),
+                "exit_code": r.get("exit_code"),
+                "duration_ms": r.get("duration_ms", 0),
+                "command_safe": r.get("command_safe", ""),
+                "linked_intent_id": r.get("linked_intent_id", ""),
+                "linked_task_id": r.get("linked_task_id", ""),
+                "linked_apply_id": r.get("linked_apply_id", ""),
+                "created_at": r.get("created_at", ""),
+            })
+
+        # Count results from events
+        passed = sum(1 for e in events if e.get("event") == "test_run_completed"
+                     and e.get("metadata", {}).get("status") == "passed")
+        failed = sum(1 for e in events if e.get("event") in ("test_run_completed", "test_run_timed_out")
+                     and e.get("metadata", {}).get("status") in ("failed", "timeout"))
+
+        # Find failure artifact IDs
+        artifact_ids = [
+            e.get("metadata", {}).get("failure_artifact_id", "")
+            for e in events
+            if e.get("event") == "test_failure_artifact_created"
+            and e.get("metadata", {}).get("failure_artifact_id")
+        ]
+
+        usage = load_usage(job)
+
+        return {
+            "version": 1,
+            "run_count": len(safe_runs),
+            "passed_count": passed,
+            "failed_count": failed,
+            "failure_artifact_ids": artifact_ids,
+            "usage": export_usage_json(usage),
+            "recent_runs": safe_runs,
+        }
+    except Exception:
+        return {"status": "section_unavailable", "reason": "test execution data not available"}
+
+
 def _build_bundle_readme(job_id: str, sections: list[str]) -> str:
     """Generate bundle readme."""
     lines = [
@@ -702,6 +937,24 @@ def build_review_bundle(
     except Exception:
         result.sections.append(ReviewBundleSection("changed_files_safe.json", status="error", error="build failed"))
 
+    # snapshot_summary.json (Step 1160)
+    try:
+        ss = _build_snapshot_summary(job_id, data_dir)
+        content = json.dumps(ss, indent=2).encode()
+        section_data["snapshot_summary.json"] = content
+        result.sections.append(ReviewBundleSection("snapshot_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("snapshot_summary.json", status="error", error="build failed"))
+
+    # continuation_summary.json (Step 1177)
+    try:
+        cont = _build_continuation_summary(job_id, data_dir, events)
+        content = json.dumps(cont, indent=2).encode()
+        section_data["continuation_summary.json"] = content
+        result.sections.append(ReviewBundleSection("continuation_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("continuation_summary.json", status="error", error="build failed"))
+
     # repair_summary.json
     try:
         rs = _build_repair_summary(job, events)
@@ -746,6 +999,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("run_contract_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("run_contract_summary.json", status="error", error="build failed"))
+
+    # test_execution_summary.json
+    try:
+        tes = _build_test_execution_summary(job, events)
+        content = json.dumps(tes, indent=2).encode()
+        section_data["test_execution_summary.json"] = content
+        result.sections.append(ReviewBundleSection("test_execution_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("test_execution_summary.json", status="error", error="build failed"))
 
     # manifest.json (built from above)
     included = [s.filename for s in result.sections if s.status == "included"]

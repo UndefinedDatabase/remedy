@@ -1,5 +1,14 @@
 # Decisions
 
+## 2026-06-13: UI `npm run lint` is pre-existing broken; rely on typecheck/vitest/build (Block 1180-1192)
+`apps/ui/eslint.config.js` (unchanged since the Steps 172-201 UI rebuild) registers no
+TypeScript parser, so eslint parses every `.ts/.tsx` with espree and fails with parse errors
+on ALL files — including untouched legacy ones. `@typescript-eslint` is not installed.
+This block forbids new dependencies, so the proper fix (add the TS parser/plugin) is out of
+scope. Quality gates used instead: `npm run typecheck` (tsc), `npm run test:unit` (vitest),
+`npm run build` (vite). Lint remains a pre-existing repo blocker, documented for a future
+dedicated branch.
+
 ## 2026-05-05: Project Constitution v1 is read-only extraction, not enforcement (Step 21)
 Constitution extracts policy signals from known project files using purely lexical matching.
 No subprocess, no eval, no recursive scan, no secrets. It is not consulted by task execution

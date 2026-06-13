@@ -8,10 +8,10 @@ export function BrainGraphStage({ dashboard, selectedNodeId, onSelectNode }: { d
   const [filter, setFilter] = useState<GraphFilter>("all");
   return (
     <section className={styles.stage} aria-label="Task brain graph" data-ui="brain-graph-stage">
-      <div className={styles.haloA} aria-hidden="true" />
-      <div className={styles.haloB} aria-hidden="true" />
       <BrainGraphCanvas dashboard={dashboard} filter={filter} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
-      <GraphFilterChips value={filter} onChange={setFilter} />
+      <div className={styles.chipsDock}>
+        <GraphFilterChips value={filter} onChange={setFilter} />
+      </div>
     </section>
   );
 }

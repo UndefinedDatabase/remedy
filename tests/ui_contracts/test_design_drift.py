@@ -103,8 +103,11 @@ class TestTimelineCanonical:
             assert f'"{phase}"' in content
 
     def test_timeline_uses_custom_glyphs(self):
+        # New design pack: event chips use custom code/flask/person glyphs.
         content = TIMELINE_TSX.read_text()
-        assert "PhaseGlyph" in content
+        assert "CodeOrbGlyph" in content
+        assert "FlaskGlyph" in content
+        assert "PersonGlyph" in content
 
     def test_timeline_no_fake_micro_events(self):
         content = TIMELINE_TSX.read_text()
@@ -116,9 +119,14 @@ class TestTimelineCanonical:
 
 
 class TestFiveMetrics:
-    def test_metrics_grid_five_columns(self):
+    def test_metrics_bar_is_flex_row(self):
+        # New design pack: metric bar is a flex row of 7 metrics
+        # (open/planned/done/progress/tests/proof/tokens), not a 5-column grid.
         css = (ROOT / "apps" / "ui" / "src" / "components" / "metrics" / "TopMetricsBar.module.css").read_text()
-        assert "repeat(5" in css
+        bar_match = re.search(r"\.bar\s*\{([^}]+)\}", css)
+        assert bar_match and "display: flex" in bar_match.group(1)
+        tsx = METRICS_TSX.read_text()
+        assert "tests:" in tsx and "proof:" in tsx  # icon map covers new metrics
 
     def test_token_tooltip_keyboard_accessible(self):
         content = METRICS_TSX.read_text()
@@ -194,9 +202,11 @@ class TestAgentNowTruth:
     """Agent card must not claim working when idle."""
 
     def test_agent_idle_not_working(self):
+        # Agent status logic now lives in the pure cockpitLogic module.
         tsx = (ROOT / "apps" / "ui" / "src" / "components" / "panels" / "AgentNowCard.tsx").read_text()
-        assert '"Builder is working"' not in tsx
-        assert "Idle" in tsx
+        logic = (ROOT / "apps" / "ui" / "src" / "cockpitLogic.ts").read_text()
+        assert '"Builder is working"' not in tsx and '"Builder is working"' not in logic
+        assert "Idle" in logic
 
     def test_agent_no_mui_icons(self):
         tsx = (ROOT / "apps" / "ui" / "src" / "components" / "panels" / "AgentNowCard.tsx").read_text()
@@ -306,8 +316,9 @@ class TestDetailPanelOutcome:
         assert "Next safe action" not in tsx
 
     def test_has_outcome_section(self):
+        # New design pack: the outcome section is labeled "Result".
         tsx = (ROOT / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx").read_text()
-        assert "Outcome" in tsx
+        assert "Result" in tsx
 
     def test_no_cli_command_primary(self):
         tsx = (ROOT / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx").read_text()

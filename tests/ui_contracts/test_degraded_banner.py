@@ -38,7 +38,7 @@ class TestCommandBarCopiesCommand:
     def test_command_bar_has_copy_button(self):
         f = REPO_ROOT / "apps" / "ui" / "src" / "components" / "command" / "CommandBar.tsx"
         content = f.read_text()
-        assert 'aria-label="Copy suggested command"' in content
+        assert 'aria-label="Copy next safe command"' in content
 
     def test_api_types_has_command_field(self):
         f = REPO_ROOT / "apps" / "ui" / "src" / "api" / "types.ts"

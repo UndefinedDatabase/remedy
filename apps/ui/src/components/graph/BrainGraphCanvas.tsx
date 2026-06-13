@@ -30,7 +30,11 @@ const FILTER_EMPTY_MESSAGES: Record<string, string> = {
 };
 
 function taskState(st: string): string {
-  return st === "done" ? "done" : st === "current" ? "current" : st === "blocked" ? "blocked" : "planned";
+  return st === "done" ? "done"
+    : st === "current" ? "current"
+    : st === "blocked" ? "blocked"
+    : st === "suggested" ? "suggested"
+    : "planned";
 }
 
 function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; edges: [string, string][] } {

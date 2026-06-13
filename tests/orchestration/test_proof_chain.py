@@ -110,6 +110,9 @@ def _make_full_chain_job(*, test_linked=True):
         }
     }
     art.metadata["patch_intent_approvals"] = approvals
+    art.metadata["patch_intent_apply_records"] = {
+        intent_id: {"snapshot_verified": True}
+    }
 
     job = _make_job(tasks=[task], artifacts=[art])
 
@@ -135,22 +138,34 @@ def _make_full_chain_job(*, test_linked=True):
 class TestProofStatusTruthRules:
 
     def test_verified_full_chain(self):
-        """approved + applied + apply_event + proof + linked passed test → verified"""
+        """approved + applied + apply_event + proof + snapshot_verified + linked passed test → verified"""
         assert _classify_proof_status(
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_INTENT,
             has_proof=True, has_apply_event=True,
             task_blocked=False, task_failed=False,
+            snapshot_verified=True,
         ) == PROOF_VERIFIED
 
     def test_verified_not_required(self):
-        """approved + applied + proof + explicit not_required → verified"""
+        """approved + applied + proof + snapshot_verified + explicit not_required → verified"""
         assert _classify_proof_status(
             approval_state="approved", apply_state="applied",
             test_state="not_required", test_link=TEST_LINK_NOT_REQUIRED,
             has_proof=True, has_apply_event=True,
             task_blocked=False, task_failed=False,
+            snapshot_verified=True,
         ) == PROOF_VERIFIED
+
+    def test_verified_requires_snapshot_verified(self):
+        """CRITICAL: full chain without snapshot_verified → UNVERIFIED, never verified"""
+        assert _classify_proof_status(
+            approval_state="approved", apply_state="applied",
+            test_state="passed", test_link=TEST_LINK_INTENT,
+            has_proof=True, has_apply_event=True,
+            task_blocked=False, task_failed=False,
+            snapshot_verified=False,
+        ) == PROOF_UNVERIFIED
 
     def test_not_tested_is_NOT_verified(self):
         """CRITICAL: approved + applied + proof + not_tested → INCOMPLETE, never verified"""
@@ -242,6 +257,7 @@ class TestProofStatusTruthRules:
             test_state="passed", test_link=TEST_LINK_TASK,
             has_proof=True, has_apply_event=True,
             task_blocked=False, task_failed=False,
+            snapshot_verified=True,
         ) == PROOF_VERIFIED
 
     def test_sole_change_test_verified(self):
@@ -251,6 +267,7 @@ class TestProofStatusTruthRules:
             test_state="passed", test_link=TEST_LINK_SOLE_CHANGE,
             has_proof=True, has_apply_event=True,
             task_blocked=False, task_failed=False,
+            snapshot_verified=True,
         ) == PROOF_VERIFIED
 
 
@@ -310,8 +327,19 @@ class TestMissingLinks:
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_INTENT,
             has_proof=True, has_apply_event=True,
+            snapshot_verified=True,
         )
         assert missing == []
+
+    def test_no_snapshot_proof(self):
+        """applied without verified snapshot → no_snapshot_proof in missing"""
+        missing = _derive_missing_links(
+            approval_state="approved", apply_state="applied",
+            test_state="passed", test_link=TEST_LINK_INTENT,
+            has_proof=True, has_apply_event=True,
+            snapshot_verified=False,
+        )
+        assert "no_snapshot_proof" in missing
 
 
 # ---------------------------------------------------------------------------
@@ -660,7 +688,7 @@ class TestNextSafeAction:
 
 class TestIncompleteChains:
 
-    def _make_intent_only_job(self, state="pending"):
+    def _make_intent_only_job(self, state="pending", *, snapshot_verified: bool = False):
         task = Task(description="Task")
         explanations = [_explanation_record("src/file.py")]
         art = _make_artifact_with_intents(task.id, explanations)
@@ -669,6 +697,10 @@ class TestIncompleteChains:
         if state != "pending":
             approvals[intent_id] = {"state": state, "decided_at": "", "decided_by": ""}
         art.metadata["patch_intent_approvals"] = approvals
+        if snapshot_verified:
+            art.metadata["patch_intent_apply_records"] = {
+                intent_id: {"snapshot_verified": True}
+            }
         return _make_job(tasks=[task], artifacts=[art]), intent_id
 
     def test_pending_approval(self):
@@ -758,7 +790,7 @@ class TestIncompleteChains:
 
     def test_explicit_not_required_verifies(self):
         """Explicit test_not_required event → verified"""
-        job, iid = self._make_intent_only_job("approved")
+        job, iid = self._make_intent_only_job("approved", snapshot_verified=True)
         events = [
             {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
@@ -783,7 +815,7 @@ class TestIncompleteChains:
         assert "no_test_after_apply" in c.missing_links
 
     def test_generic_after_apply_sole_change_verifies(self):
-        job, iid = self._make_intent_only_job("approved")
+        job, iid = self._make_intent_only_job("approved", snapshot_verified=True)
         events = [
             {"event": "patch_intent_applied", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
@@ -806,7 +838,7 @@ class TestIncompleteChains:
         assert "test_order_unknown" in c.missing_links
 
     def test_intent_linked_missing_timestamp_can_verify(self):
-        job, iid = self._make_intent_only_job("approved")
+        job, iid = self._make_intent_only_job("approved", snapshot_verified=True)
         events = [
             {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
@@ -821,6 +853,7 @@ class TestIncompleteChains:
         art = _make_artifact_with_intents(task.id, [_explanation_record("src/file.py")])
         iid = make_intent_id(art.id, 0)
         art.metadata["patch_intent_approvals"] = {iid: {"state": "approved", "decided_at": "", "decided_by": ""}}
+        art.metadata["patch_intent_apply_records"] = {iid: {"snapshot_verified": True}}
         job = _make_job(tasks=[task], artifacts=[art])
         events = [
             {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
@@ -999,3 +1032,112 @@ class TestCommandCatalogTruth:
         assert obj is not None
         assert obj.command != ""
         assert obj.available is True
+
+
+# ---------------------------------------------------------------------------
+# Durable snapshot truth in proof chain (Step 1158)
+# ---------------------------------------------------------------------------
+
+
+class TestProofChainDurableTruth:
+    """build_proof_chain(data_dir=...) uses authoritative snapshot truth.
+
+    Artifact metadata / events are never authoritative for the snapshot fact.
+    """
+
+    def _durable(self, data_dir, repo_root, job_id, intent_id, *,
+                 state="applied", snapshot_id=None, make_snapshot=True):
+        import hashlib
+        from packages.orchestration.repository_snapshot import (
+            create_snapshot, verify_snapshot, save_durable_apply_record,
+            DurableApplyRecord,
+        )
+        sid = snapshot_id
+        if make_snapshot:
+            (repo_root / "src").mkdir(parents=True, exist_ok=True)
+            (repo_root / "src" / "auth.py").write_text("before\n")
+            snap = create_snapshot(job_id, intent_id, ["src/auth.py"], repo_root, data_dir)
+            verify_snapshot(snap.snapshot_id, job_id, data_dir)
+            sid = snap.snapshot_id
+        rec = DurableApplyRecord(
+            apply_id=intent_id, job_id=job_id, intent_id=intent_id,
+            snapshot_id=sid or "missing-snap", state=state,
+            target_paths=["src/auth.py"], applied_at="2026-01-01T00:00:00Z",
+            before_proof={}, after_proof={}, snapshot_verified=make_snapshot,
+        )
+        save_durable_apply_record(rec, job_id, data_dir)
+        return sid
+
+    def test_durable_snapshot_verifies(self, tmp_path):
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        self._durable(data_dir, repo, str(job.id), iid)
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].proof_status == PROOF_VERIFIED
+
+    def test_stale_metadata_but_snapshot_missing(self, tmp_path):
+        """Artifact says snapshot_verified=True but durable snapshot is gone → NOT verified."""
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        # Apply record references a snapshot that does not exist on disk.
+        self._durable(data_dir, repo, str(job.id), iid, make_snapshot=False)
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].proof_status != PROOF_VERIFIED
+        assert "no_snapshot_proof" in chain.changes[0].missing_links
+
+    def test_reverted_apply_not_currently_applied(self, tmp_path):
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        self._durable(data_dir, repo, str(job.id), iid, state="reverted")
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].apply_state == "reverted"
+        assert chain.changes[0].proof_status != PROOF_VERIFIED
+
+    def test_drift_blocked_revert_leaves_apply_active(self, tmp_path):
+        from packages.orchestration.repository_snapshot import (
+            _update_snapshot_state, load_durable_apply_record,
+            save_durable_apply_record,
+        )
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        sid = self._durable(data_dir, repo, str(job.id), iid, state="applied")
+        # Simulate a drift-blocked revert: snapshot flagged blocked_drift,
+        # apply record stays applied with revert_state drifted.
+        _update_snapshot_state(sid, str(job.id), "blocked_drift", data_dir)
+        rec = load_durable_apply_record(iid, str(job.id), data_dir)
+        import dataclasses
+        save_durable_apply_record(
+            dataclasses.replace(rec, revert_state="drifted"), str(job.id), data_dir
+        )
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        # Drift block leaves the apply active and provable.
+        assert chain.changes[0].apply_state == "applied"
+        assert chain.changes[0].proof_status == PROOF_VERIFIED
+
+    def test_missing_recovery_blob_blocks_verified(self, tmp_path):
+        from packages.orchestration.repository_snapshot import _snapshot_dir
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        sid = self._durable(data_dir, repo, str(job.id), iid)
+        for blob in _snapshot_dir(str(job.id), sid, data_dir).glob("blob_*.bin"):
+            blob.unlink()
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].proof_status != PROOF_VERIFIED
+
+    def test_tampered_manifest_blocks_verified(self, tmp_path):
+        from packages.orchestration.repository_snapshot import _snapshot_dir
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job, events, iid = _make_full_chain_job()
+        sid = self._durable(data_dir, repo, str(job.id), iid)
+        manifest = _snapshot_dir(str(job.id), sid, data_dir) / "manifest.json"
+        data = json.loads(manifest.read_text())
+        data["path_count"] = 999
+        manifest.write_text(json.dumps(data, indent=2, sort_keys=True))
+        chain = build_proof_chain(job, events, data_dir=data_dir)
+        assert chain.changes[0].proof_status != PROOF_VERIFIED

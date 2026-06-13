@@ -1,4 +1,4 @@
-"""Test group command handlers."""
+"""Test group command handlers — Steps 1099-1100."""
 
 from __future__ import annotations
 
@@ -7,119 +7,89 @@ import sys
 from typing import TYPE_CHECKING, Callable
 from uuid import UUID
 
-from packages.core.models import RunState
-from packages.orchestration.data_paths import resolve_data_root
-from packages.orchestration.storage import JobNotFoundError, load_job, save_job
-
 if TYPE_CHECKING:
     import argparse
 
 
-def _cmd_run_tests_local(job_id_str: str) -> None:
-    from pathlib import Path
-
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.permissions import Capability
-    from packages.orchestration.permissions import is_allowed as _perm_allowed
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.test_runner import run_tests_local
-
-    if not _perm_allowed(job, Capability.repo_test_run):
-        print(
-            "Error: permission repo_test_run is required.\n"
-            f"Grant it with: remedy job permit {job.id} repo_test_run allow",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    target_repo_str = job.metadata.get("target_repo")
-    if not target_repo_str:
-        print(
-            "Error: no target_repo attached to this job.\n"
-            f"Attach one with: remedy job attach-repo {job.id} <repo_path>",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    data_dir = resolve_data_root()
-    workspace_root = data_dir / "workspaces" / str(job_id)
-    record = run_tests_local(job, workspace_root)
-
-    log = RunLogWriter(job_id=job.id)
-
-    if record.status == "blocked":
-        log.log("test_run_completed", **{
-            "test_run_id": record.test_run_id, "command": record.command,
-            "status": record.status, "exit_code": record.exit_code,
-            "duration_ms": record.duration_ms, "output_line_count": record.output_line_count,
-            "output_bytes": record.output_bytes, "command_source_type": record.command_source_type,
-            "command_source_path": record.command_source_path,
-            "command_purpose": record.command_purpose,
-            "command_confidence": record.command_confidence,
-            "output_truncated": record.output_truncated,
-            "original_output_bytes": record.original_output_bytes,
-            "persisted_output_bytes": record.persisted_output_bytes,
-        })
-        print(f"Error: test run blocked — {record.blocked_reason}", file=sys.stderr)
-        sys.exit(1)
-
-    log.log("test_run_completed", **{
-        "test_run_id": record.test_run_id, "command": record.command,
-        "status": record.status, "exit_code": record.exit_code,
-        "duration_ms": record.duration_ms, "output_line_count": record.output_line_count,
-        "output_bytes": record.output_bytes, "command_source_type": record.command_source_type,
-        "command_source_path": record.command_source_path,
-        "command_purpose": record.command_purpose,
-        "command_confidence": record.command_confidence,
-        "output_truncated": record.output_truncated,
-        "original_output_bytes": record.original_output_bytes,
-        "persisted_output_bytes": record.persisted_output_bytes,
-    })
-
-    if "test_runs" not in job.metadata:
-        job.metadata["test_runs"] = []
-    job.metadata["test_runs"].append({
-        "test_run_id": record.test_run_id, "command": record.command,
-        "status": record.status, "exit_code": record.exit_code,
-        "duration_ms": record.duration_ms, "output_path": record.output_path,
-        "output_line_count": record.output_line_count, "output_bytes": record.output_bytes,
-        "created_at": record.created_at,
-        "output_truncated": record.output_truncated,
-        "original_output_bytes": record.original_output_bytes,
-        "persisted_output_bytes": record.persisted_output_bytes,
-    })
-    save_job(job)
-
-    status_sym = "PASSED" if record.status == "passed" else (
-        "FAILED" if record.status == "failed" else record.status.upper()
+def _cmd_run_tests(
+    job_id_str: str,
+    *,
+    task_id: str = "",
+    intent_id: str = "",
+    apply_id: str = "",
+    timeout_seconds: float | None = None,
+    as_json: bool = False,
+) -> None:
+    """Route remedy test run through the central Test Execution Service."""
+    from packages.orchestration.test_execution_service import (
+        TestExecutionRequest,
+        execute_test_run,
     )
-    output_info = f"output={record.output_path}" if record.output_path else "no output file"
-    print(
-        f"Job {job.id} | test_run_id={record.test_run_id}"
-        f"  status={record.status}  cmd={record.command}"
-        f"  exit={record.exit_code}  dur={record.duration_ms}ms"
-        f"  {output_info}  log={log.path}"
-    )
-    print(f"Test run: {status_sym}")
-    if record.output_truncated:
-        print(
-            f"Warning: output truncated ({record.original_output_bytes}"
-            f" -> {record.persisted_output_bytes} bytes)"
-        )
-    print("Note: raw stdout/stderr are in the workspace test_runs/ directory only.")
 
-    if record.status not in ("passed",):
+    request = TestExecutionRequest(
+        job_id=job_id_str,
+        source="cli_v1",
+        task_id=task_id or "",
+        intent_id=intent_id or "",
+        apply_id=apply_id or "",
+        requested_timeout_seconds=timeout_seconds,
+    )
+    result = execute_test_run(request)
+
+    if as_json:
+        from dataclasses import asdict
+        print(_json.dumps(asdict(result)))
+        if result.status not in ("passed",):
+            sys.exit(1)
+        return
+
+    # Text output — no raw output printed
+    out = sys.stdout if result.status == "passed" else sys.stderr
+    _print_result_text(result, out=out)
+    if result.status not in ("passed",):
         sys.exit(1)
+
+
+def _print_result_text(result: object, *, out=None) -> None:
+    """Print human-readable result. No raw output."""
+    import sys as _sys
+    from packages.orchestration.test_execution_service import TestExecutionResult
+    r: TestExecutionResult = result  # type: ignore[assignment]
+    if out is None:
+        out = _sys.stdout
+
+    status_sym = {
+        "passed": "PASSED",
+        "failed": "FAILED",
+        "timeout": "TIMEOUT",
+        "blocked": "BLOCKED",
+        "environment_failure": "ENVIRONMENT FAILURE",
+    }.get(r.status, r.status.upper())
+
+    print(f"Test run: {status_sym}", file=out)
+    if r.test_run_id:
+        print(f"  run_id:   {r.test_run_id}", file=out)
+    if r.command_safe:
+        print(f"  command:  {r.command_safe}", file=out)
+    if r.duration_ms:
+        print(f"  duration: {r.duration_ms}ms", file=out)
+    if r.exit_code is not None:
+        print(f"  exit:     {r.exit_code}", file=out)
+    if r.safe_summary:
+        print(f"  summary:  {r.safe_summary}", file=out)
+    if r.usage_after:
+        u = r.usage_after
+        print(
+            f"  usage:    test_runs={u.get('test_runs_used', '?')}  "
+            f"runtime={u.get('runtime_seconds_used', '?'):.1f}s",
+            file=out,
+        )
+    if r.failure_artifact_id:
+        print(f"  failure_artifact: {r.failure_artifact_id}", file=out)
+    if r.next_safe_action:
+        print(f"  next: {r.next_safe_action}", file=out)
+    if r.status == "blocked" and r.contract_guidance:
+        print(f"  grant:  {r.contract_guidance}", file=out)
 
 
 def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
@@ -129,8 +99,9 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
+        from packages.orchestration.storage import load_job, JobNotFoundError
         job = load_job(job_id)
-    except JobNotFoundError as exc:
+    except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
@@ -198,7 +169,103 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
         )
 
 
+def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
+    """Show lease state, latest test run, and usage for a job. Read-only."""
+    from packages.orchestration.test_execution_service import (
+        TestExecutionLease,
+        _LEASE_TIMEOUT_STATUS_SECONDS,
+    )
+    from packages.orchestration.run_contract import ensure_contract, load_usage, export_usage_json
+    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.data_paths import resolve_data_root
+    from pathlib import Path as _Path
+    import json as _json
+    from uuid import UUID
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        if as_json:
+            print(_json.dumps({"error": "invalid_job_id", "job_id": job_id_str}))
+        else:
+            print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        if as_json:
+            print(_json.dumps({"error": "job_not_found", "job_id": job_id_str}))
+        else:
+            print(f"Error: job {job_id_str!r} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    data_dir = resolve_data_root()
+    workspace = data_dir / "workspaces" / str(job_id)
+    lease_path = workspace / "test_execution.lock"
+
+    # Check lease without acquiring it (non-blocking probe)
+    lease_active = False
+    if lease_path.exists():
+        import fcntl
+        try:
+            with open(lease_path, "r") as lf:
+                fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(lf, fcntl.LOCK_UN)
+        except OSError:
+            lease_active = True
+
+    contract = ensure_contract(job)
+    usage = load_usage(job)
+    usage_dict = export_usage_json(usage)
+
+    # Latest test run (safe fields only, no raw output)
+    test_runs: list[dict] = job.metadata.get("test_runs", [])
+    latest = test_runs[-1] if test_runs else None
+    latest_safe: dict = {}
+    if latest:
+        latest_safe = {
+            "test_run_id": latest.get("test_run_id", ""),
+            "status": latest.get("status", ""),
+            "exit_code": latest.get("exit_code"),
+            "duration_ms": latest.get("duration_ms", 0),
+            "command_safe": latest.get("command_safe", ""),
+            "created_at": latest.get("created_at", ""),
+            "output_truncated": latest.get("output_truncated", False),
+        }
+
+    out_dict = {
+        "job_id": str(job_id),
+        "lease_active": lease_active,
+        "lease_scope": "job",
+        "contract_id": contract.contract_id,
+        "usage": usage_dict,
+        "run_count": len(test_runs),
+        "latest_run": latest_safe,
+    }
+
+    if as_json:
+        print(_json.dumps(out_dict))
+        return
+
+    print(f"Test status for job {job_id_str}")
+    print(f"  lease_active:  {lease_active}")
+    print(f"  contract_id:   {contract.contract_id}")
+    print(f"  runs_used:     {usage_dict.get('test_runs_used', 0)} / {contract.max_test_runs}")
+    print(f"  runtime_used:  {usage_dict.get('runtime_seconds_used', 0.0):.1f}s")
+    if latest_safe:
+        print(f"  latest_run:    {latest_safe['test_run_id']}  status={latest_safe['status']}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "test.discover": lambda args: _cmd_discover_commands(args.job_id, as_json=args.json),
-    "test.run": lambda args: _cmd_run_tests_local(args.job_id),
+    "test.run": lambda args: _cmd_run_tests(
+        args.job_id,
+        task_id=getattr(args, "task_id", "") or "",
+        intent_id=getattr(args, "intent_id", "") or "",
+        apply_id=getattr(args, "apply_id", "") or "",
+        timeout_seconds=float(ts) if (ts := (getattr(args, "timeout_seconds", None) or "")) else None,
+        as_json=getattr(args, "json", False),
+    ),
+    "test.status": lambda args: _cmd_test_status(args.job_id, as_json=getattr(args, "json", False)),
 }

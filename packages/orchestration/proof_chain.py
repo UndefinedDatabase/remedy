@@ -116,11 +116,12 @@ def _classify_proof_status(
     has_apply_event: bool,
     task_blocked: bool,
     task_failed: bool,
+    snapshot_verified: bool = False,
 ) -> str:
     """Classify proof status from chain state.
 
     Truth rules (strict):
-    - verified: approved + applied + apply_event + proof + (linked test passed OR explicit not_required)
+    - verified: approved + applied + apply_event + proof + snapshot_verified + (linked test passed OR explicit not_required)
     - failed: applied + (linked test failed OR task blocked/failed)
     - incomplete: intent exists but chain not complete
     - unverified: change exists but required linkage cannot be established
@@ -135,12 +136,13 @@ def _classify_proof_status(
     if apply_state == "applied" and test_state == "failed" and test_link != TEST_LINK_NONE:
         return PROOF_FAILED
 
-    # Verified requires full chain with linked evidence
+    # Verified requires full chain with linked evidence and verified snapshot (Step 1145)
     if (
         approval_state == "approved"
         and apply_state == "applied"
         and has_apply_event
         and has_proof
+        and snapshot_verified
         and test_state in ("passed", "not_required")
         and test_link != TEST_LINK_NONE
     ):
@@ -172,6 +174,7 @@ def _derive_missing_links(
     has_proof: bool,
     has_apply_event: bool,
     test_missing_reason: str = "",
+    snapshot_verified: bool = False,
 ) -> list[str]:
     """List what's missing from the proof chain."""
     missing: list[str] = []
@@ -183,6 +186,8 @@ def _derive_missing_links(
         missing.append("no_apply_event")
     if apply_state == "applied" and not has_proof:
         missing.append("no_apply_proof")
+    if apply_state == "applied" and not snapshot_verified:
+        missing.append("no_snapshot_proof")
     if apply_state == "applied" and test_link == TEST_LINK_NONE:
         if test_missing_reason in ("test_order_unknown", "no_test_after_apply"):
             missing.append(test_missing_reason)
@@ -471,10 +476,19 @@ def build_proof_chain(
     job: Job,
     events: list[dict[str, Any]],
     path: str | None = None,
+    data_dir: "Path | None" = None,
 ) -> ProofChain:
     """Build proof chain from job and events.
 
-    Deterministic, read-only. No LLM, no network, no filesystem.
+    Deterministic, read-only. No LLM, no network.
+
+    When *data_dir* is provided, apply/revert state and snapshot verification are
+    taken from the authoritative snapshot-truth builder (build_snapshot_truth)
+    rather than artifact metadata or events (Step 1158). Artifact metadata is a
+    compatibility fallback only; event presence is never authoritative for the
+    snapshot fact. A reverted apply is not "currently applied"; a drift-blocked
+    revert leaves the apply active and provable; a partial/failed revert blocks
+    the verified state.
     """
     from packages.orchestration.approval_queue import list_patch_intents
     from packages.orchestration.change_set import derive_change_set
@@ -503,7 +517,7 @@ def build_proof_chain(
         if ename in ("task_execution_completed", "task_execution_blocked", "task_execution_failed"):
             if tid:
                 task_exec_events[tid] = {"event": ename, "meta": meta}
-        elif ename == "test_run_completed":
+        elif ename in ("test_run_completed", "test_run_timed_out"):
             all_test_events.append(ev)
         elif ename == "patch_intent_applied" and iid:
             apply_event_map[iid] = ev
@@ -549,6 +563,32 @@ def build_proof_chain(
         task_blocked = task_ev.get("event") == "task_execution_blocked"
         task_failed = task_ev.get("event") == "task_execution_failed"
 
+        # Snapshot fact: artifact metadata is the fallback; the durable
+        # snapshot-truth builder is authoritative when data_dir is available.
+        _snap_ver = c.proof.get("snapshot_verified", False)
+        if data_dir is not None:
+            from packages.orchestration.repository_snapshot import build_snapshot_truth
+            truth = build_snapshot_truth(job_id_str, intent_id=c.intent_id, data_dir=data_dir)
+            if truth.apply_state != "unknown":
+                # Reverted apply is not currently applied.
+                if truth.apply_state == "reverted":
+                    apply_state = "reverted"
+                elif truth.apply_state == "applied":
+                    apply_state = "applied"
+                # Verified snapshot fact comes from live manifest/blob check.
+                _snap_ver = truth.snapshot_verified_now
+                # Partial/failed revert can never back a verified state.
+                if truth.revert_state in ("partial_revert", "revert_failed"):
+                    _snap_ver = False
+                # Degraded recovery evidence cannot back a verified state.
+                if truth.evidence_status == "degraded":
+                    _snap_ver = False
+            elif apply_state == "applied" or "no_apply_record" in truth.blockers:
+                # The authority has no durable record while the artifact claims an
+                # apply occurred. Asking and getting "no record" is evidence loss —
+                # never trust the artifact's snapshot_verified claim here (R-0066).
+                _snap_ver = False
+
         proof_status = _classify_proof_status(
             approval_state=approval_state,
             apply_state=apply_state,
@@ -558,6 +598,7 @@ def build_proof_chain(
             has_apply_event=has_apply_event,
             task_blocked=task_blocked,
             task_failed=task_failed,
+            snapshot_verified=_snap_ver,
         )
         missing = _derive_missing_links(
             approval_state=approval_state,
@@ -567,6 +608,7 @@ def build_proof_chain(
             has_proof=has_proof,
             has_apply_event=has_apply_event,
             test_missing_reason=str(test_meta.get("missing_link", "")),
+            snapshot_verified=_snap_ver,
         )
 
         # Safe summary

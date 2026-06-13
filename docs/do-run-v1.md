@@ -126,3 +126,7 @@ command to run next:
 - `apps/cli/commands/do_cmd.py` — CLI wiring
 - `tests/orchestration/test_do_run.py` — 67 unit tests
 - `tests/cli/test_do_runtime.py` — 14 subprocess tests
+
+## See also
+
+- [do-continue-v1](do-continue-v1.md) — `remedy do continue` runs one apply+test+proof cycle after approval.

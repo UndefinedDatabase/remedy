@@ -1,5 +1,37 @@
-.chips { position: absolute; left: 36px; bottom: 34px; z-index: 5; display: flex; align-items: center; gap: 16px; padding: 11px 14px; border-radius: 22px; background: rgba(255,255,255,.68); border: 1px solid rgba(78,111,172,.14); box-shadow: var(--remedy-shadow-soft); backdrop-filter: blur(18px); }
-.chip, .active { min-width: 64px; height: 34px; border: 0; border-radius: 999px; padding: 0 16px; background: transparent; color: var(--remedy-blue-900); font-weight: 700; display: inline-flex; gap: 8px; align-items: center; justify-content: center; }
-.active { color: white; background: linear-gradient(135deg, #3478ff, #5d8dff); box-shadow: 0 12px 26px rgba(76,131,255,.22); }
-.open, .planned, .done { width: 10px; height: 10px; border-radius: 50%; }
-.open { background: var(--remedy-purple-400); } .planned { background: var(--remedy-blue-500); } .done { background: var(--remedy-green-500); }
+.chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  box-shadow: var(--remedy-shadow-soft);
+  backdrop-filter: blur(12px);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--remedy-ink);
+  transition: background 140ms ease;
+}
+.chip:hover { background: rgba(76, 131, 255, 0.08); }
+
+.chipActive {
+  background: var(--remedy-blue-strong);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(47, 111, 255, 0.35);
+}
+.chipActive:hover { background: var(--remedy-blue-strong); }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dotOpen { background: var(--remedy-state-open); }
+.dotPlanned { background: #fff; border: 1.5px solid var(--remedy-state-planned-ring); }
+.dotDone { background: var(--remedy-state-done); }

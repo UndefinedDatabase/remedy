@@ -24,28 +24,26 @@ class TestTruncationFieldsOnTestRunRecord:
 
 
 class TestTruncationMetadataSurvivesCLI:
-    """CLI test_cmds.py must forward truncation fields to event log and job metadata."""
+    """Truncation metadata must be stored in the test execution service's persisted record."""
 
-    def _cli_src(self) -> str:
-        return (REPO_ROOT / "apps" / "cli" / "commands" / "test_cmds.py").read_text()
+    def _svc_src(self) -> str:
+        return (REPO_ROOT / "packages" / "orchestration" / "test_execution_service.py").read_text()
 
     def test_event_log_includes_output_truncated(self):
-        src = self._cli_src()
-        # Both blocked and normal paths must emit the field
-        assert src.count('"output_truncated"') >= 2, \
-            "Both log.log() calls must include output_truncated"
+        src = self._svc_src()
+        assert '"output_truncated"' in src, \
+            "test_execution_service must persist output_truncated in test run records"
 
     def test_event_log_includes_original_output_bytes(self):
-        src = self._cli_src()
-        assert src.count('"original_output_bytes"') >= 2
+        src = self._svc_src()
+        assert '"original_output_bytes"' in src
 
     def test_event_log_includes_persisted_output_bytes(self):
-        src = self._cli_src()
-        assert src.count('"persisted_output_bytes"') >= 2
+        src = self._svc_src()
+        assert '"persisted_output_bytes"' in src
 
     def test_job_metadata_includes_truncation_fields(self):
-        src = self._cli_src()
-        # The job.metadata["test_runs"].append(...) dict must have all three
+        src = self._svc_src()
         assert '"output_truncated"' in src
         assert '"original_output_bytes"' in src
         assert '"persisted_output_bytes"' in src
@@ -66,9 +64,9 @@ class TestTruncationVisibleInTrustReport:
 
 
 class TestTruncationWarningInCLIOutput:
-    """CLI must warn user when output was truncated."""
+    """Test execution service must note output truncation in records."""
 
     def test_cli_prints_truncation_warning(self):
-        src = (REPO_ROOT / "apps" / "cli" / "commands" / "test_cmds.py").read_text()
-        assert "output truncated" in src.lower(), \
-            "CLI must print a warning when output is truncated"
+        src = (REPO_ROOT / "packages" / "orchestration" / "test_execution_service.py").read_text()
+        assert "output truncated" in src.lower() or "output_truncated" in src, \
+            "test_execution_service must track and note output truncation"

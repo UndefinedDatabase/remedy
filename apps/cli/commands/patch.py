@@ -159,35 +159,117 @@ def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: boo
         print(format_apply_result(result))
 
 
-def _cmd_revert_patch_intent(job_id_str: str, intent_id: str, *, json_output: bool = False) -> None:
+def _cmd_revert_patch_intent(
+    job_id_str: str,
+    intent_id: str,
+    *,
+    apply_id: str | None = None,
+    json_output: bool = False,
+) -> None:
+    """Revert a patch apply via the durable Repository Snapshot service.
+
+    apply_id is canonical. intent_id is used as apply_id fallback (patch_apply.py
+    stores apply_id == intent_id for markdown applies).
+    """
     try:
         job_id = UUID(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        load_job(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.patch_revert import format_revert_result, revert_patch_intent
+    from pathlib import Path as _Path
+    from packages.orchestration.repository_snapshot import (
+        revert_repository_apply, load_durable_apply_record,
+    )
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.storage import load_job as _load_job
 
-    result = revert_patch_intent(job, intent_id)
-    if result.state == "blocked":
-        print(f"Error: {result.blocked_reason}", file=sys.stderr)
+    data_dir = resolve_data_root()
+    job = _load_job(job_id)
+
+    # Resolve apply_id: explicit arg → intent_id-as-apply_id fallback
+    resolved_apply_id = apply_id or intent_id
+
+    # Validate apply record exists; if not and apply_id not given, report clearly
+    rec = load_durable_apply_record(resolved_apply_id, job_id_str, data_dir)
+    if rec is None and not apply_id:
+        # intent_id may not match apply_id — check by scanning records
+        records_dir = data_dir / "workspaces" / job_id_str / "apply_records"
+        matches = []
+        if records_dir.exists():
+            for p in records_dir.glob("*.json"):
+                candidate = load_durable_apply_record(p.stem, job_id_str, data_dir)
+                if candidate and candidate.intent_id == intent_id:
+                    matches.append(candidate)
+        if len(matches) == 1:
+            resolved_apply_id = matches[0].apply_id
+        elif len(matches) > 1:
+            if json_output:
+                print(_json.dumps({
+                    "error": "ambiguous_intent_id",
+                    "intent_id": intent_id,
+                    "apply_ids": [m.apply_id for m in matches],
+                }))
+            else:
+                print(
+                    f"Error: intent {intent_id!r} matches {len(matches)} apply records. "
+                    "Use --apply-id to specify one.",
+                    file=sys.stderr,
+                )
+            sys.exit(1)
+        else:
+            if json_output:
+                print(_json.dumps({"error": "no_apply_record", "intent_id": intent_id}))
+            else:
+                print(
+                    f"Error: no durable apply record found for intent {intent_id!r}. "
+                    "Use 'remedy snapshot list-applies <job_id>' to inspect.",
+                    file=sys.stderr,
+                )
+            sys.exit(1)
+
+    # repo_root from job metadata
+    target_repo_str: str = job.metadata.get("target_repo", "") or ""
+    if not target_repo_str:
+        if json_output:
+            print(_json.dumps({"error": "no_target_repo", "job_id": job_id_str}))
+        else:
+            print(f"Error: job {job_id_str!r} has no target_repo in metadata.", file=sys.stderr)
         sys.exit(1)
+    repo_root = _Path(target_repo_str)
+
+    result = revert_repository_apply(job_id_str, resolved_apply_id, repo_root, data_dir)
 
     if json_output:
         print(_json.dumps({
-            "state": result.state, "intent_id": result.intent_id,
-            "target_path": result.target_path, "action": result.action,
-            "outcome": result.outcome, "existed_before": result.existed_before,
-            "bytes_written": result.bytes_written, "line_count": result.line_count,
-            "before_sha256": result.before_sha256, "after_sha256": result.after_sha256,
+            "success": result.success,
+            "apply_id": result.apply_id,
+            "snapshot_id": result.snapshot_id,
+            "state": result.state,
+            "paths_restored": result.paths_restored,
+            "paths_deleted": result.paths_deleted,
+            "paths_failed": result.paths_failed,
+            "block_reason": result.block_reason,
+            "drift_path_count": result.drift_path_count,
+            "verification_failures": result.verification_failures,
+            "safe_summary": result.safe_summary,
         }, sort_keys=True))
-    else:
-        print(format_revert_result(result))
+        if not result.success:
+            sys.exit(1)
+        return
+
+    if not result.success:
+        print(f"Error: revert blocked — {result.block_reason}", file=sys.stderr)
+        print(f"  {result.safe_summary}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Reverted: {result.apply_id}")
+    print(f"  {result.safe_summary}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
@@ -196,5 +278,9 @@ COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "patch.approve": lambda args: _cmd_approve_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
     "patch.reject": lambda args: _cmd_reject_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
     "patch.apply": lambda args: _cmd_apply_patch_intent(args.job_id, args.intent_id, json_output=getattr(args, "json", False)),
-    "patch.revert": lambda args: _cmd_revert_patch_intent(args.job_id, args.intent_id, json_output=getattr(args, "json", False)),
+    "patch.revert": lambda args: _cmd_revert_patch_intent(
+        args.job_id, args.intent_id,
+        apply_id=getattr(args, "apply_id", None),
+        json_output=getattr(args, "json", False),
+    ),
 }

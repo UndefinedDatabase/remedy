@@ -340,17 +340,27 @@ describe("pipeline in dashboard", () => {
 // ---------------------------------------------------------------------------
 
 describe("token usage metric", () => {
-  it("fifth metric is tokens", () => {
+  it("tokens is the last metric, order is open/planned/done/progress/tests/proof/tokens", () => {
     const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
-    expect(result.metrics).toHaveLength(5);
-    expect(result.metrics[4].key).toBe("tokens");
+    expect(result.metrics).toHaveLength(7);
+    expect(result.metrics.map(m => m.key)).toEqual([
+      "open", "planned", "done", "progress", "tests", "proof", "tokens",
+    ]);
   });
 
-  it("unknown tokens shows dash suffix", () => {
+  it("unknown tokens shows em dash value", () => {
     const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
     const tok = result.metrics.find(m => m.key === "tokens");
-    expect(tok!.value).toBe(0);
-    expect(tok!.suffix).toBe(" —");
+    expect(tok!.value).toBe("—");
+    expect(tok!.unknown).toBe(true);
+  });
+
+  it("zero tokens shows em dash value", () => {
+    const payload = makeDashboardPayload({ token_usage: { known: true, total_tokens: 0 } });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    const tok = result.metrics.find(m => m.key === "tokens");
+    expect(tok!.value).toBe("—");
+    expect(tok!.unknown).toBe(true);
   });
 
   it("known tokens from token_usage", () => {
@@ -372,5 +382,108 @@ describe("token usage metric", () => {
     const str = JSON.stringify(result.metrics);
     expect(str).not.toContain("raw_");
     expect(str).not.toContain("prompt");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// J. Cockpit metrics: tests + proof
+// ---------------------------------------------------------------------------
+
+describe("tests + proof metrics", () => {
+  it("tests metric maps passed count and latest_state dot", () => {
+    const payload = makeDashboardPayload({
+      metrics: { open: 0, planned: 0, done: 0, progress_percent: 0,
+        tests: { runs: 4, passed: 3, failed: 1, latest_state: "fail" } },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    const tests = result.metrics.find(m => m.key === "tests");
+    expect(tests!.value).toBe(3);
+    expect(tests!.state).toBe("fail");
+  });
+
+  it("missing tests metric defaults to 0 / none", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    const tests = result.metrics.find(m => m.key === "tests");
+    expect(tests!.value).toBe(0);
+    expect(tests!.state).toBe("none");
+  });
+
+  it("proof metric maps verified/total", () => {
+    const payload = makeDashboardPayload({
+      metrics: { open: 0, planned: 0, done: 0, progress_percent: 0,
+        proof: { total_changes: 4, verified: 3, state: "partial" } },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    const proof = result.metrics.find(m => m.key === "proof");
+    expect(proof!.value).toBe(3);
+    expect(proof!.suffix).toBe("/4");
+    expect(proof!.unknown).toBeUndefined();
+  });
+
+  it("unknown proof shows em dash", () => {
+    const payload = makeDashboardPayload({
+      metrics: { open: 0, planned: 0, done: 0, progress_percent: 0,
+        proof: { total_changes: "unknown", verified: "unknown", state: "unknown" } },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    const proof = result.metrics.find(m => m.key === "proof");
+    expect(proof!.value).toBe("—");
+    expect(proof!.unknown).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// K. Snapshot + continuation summaries
+// ---------------------------------------------------------------------------
+
+describe("snapshot + continuation summaries", () => {
+  it("maps snapshot summary fields", () => {
+    const payload = makeDashboardPayload({
+      snapshot: { apply_records: 2, verified: 1, reverted: 0, drift_detected: false, source: "durable_apply_records" },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.snapshot).not.toBeNull();
+    expect(result.snapshot!.applyRecords).toBe(2);
+    expect(result.snapshot!.verified).toBe(1);
+    expect(result.snapshot!.driftDetected).toBe(false);
+    expect(result.snapshot!.source).toBe("durable_apply_records");
+  });
+
+  it("snapshot unknown values pass through as 'unknown'", () => {
+    const payload = makeDashboardPayload({
+      snapshot: { apply_records: "unknown", verified: "unknown", reverted: "unknown", drift_detected: "unknown", source: "unavailable" },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.snapshot!.applyRecords).toBe("unknown");
+    expect(result.snapshot!.driftDetected).toBe("unknown");
+  });
+
+  it("maps continuation summary fields", () => {
+    const payload = makeDashboardPayload({
+      continuation: { available: true, last_result: "completed_verified", last_stop_reason: "completed_verified" },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.continuation!.available).toBe(true);
+    expect(result.continuation!.lastResult).toBe("completed_verified");
+  });
+
+  it("continuation unknown available passes through", () => {
+    const payload = makeDashboardPayload({
+      continuation: { available: "unknown", last_result: "unknown", last_stop_reason: "unknown" },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.continuation!.available).toBe("unknown");
+  });
+
+  it("missing snapshot/continuation -> null", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.snapshot).toBeNull();
+    expect(result.continuation).toBeNull();
+  });
+
+  it("failure dashboard has null snapshot + continuation", () => {
+    const result = normalizeApiFailure("abc-123", ["dashboard"]);
+    expect(result.snapshot).toBeNull();
+    expect(result.continuation).toBeNull();
   });
 });

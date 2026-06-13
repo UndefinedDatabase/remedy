@@ -51,6 +51,9 @@ class ContractAction:
     DISCOVER_COMMANDS = "discover_commands"
     WRITE_METADATA = "write_metadata"
     CREATE_FIX_TASK = "create_fix_task"
+    # Repair Loop v1 metadata actions (Step 1204) — safe, allowed by default.
+    CREATE_REPAIR_ARTIFACT = "create_repair_artifact"
+    CREATE_REPAIR_PATCH_INTENT = "create_repair_patch_intent"
 
     # Apply actions (gated by stop_before_apply)
     APPLY = "apply"
@@ -67,6 +70,9 @@ class ContractAction:
 
     # Test actions
     RUN_TEST = "run_test"
+
+    # Revert actions (Step 1136) — denied by default, require explicit permission + contract grant
+    REVERT = "revert"
 
 
 ALL_KNOWN_ACTIONS: frozenset[str] = frozenset({
@@ -140,8 +146,11 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.BUILD_ARTIFACT,
     ContractAction.CREATE_PATCH_INTENT,
     ContractAction.CREATE_FIX_TASK,
+    ContractAction.CREATE_REPAIR_ARTIFACT,
+    ContractAction.CREATE_REPAIR_PATCH_INTENT,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
+    ContractAction.RUN_TEST,
 )
 
 _DEFAULT_DENIED_ACTIONS: tuple[str, ...] = (
@@ -153,6 +162,7 @@ _DEFAULT_DENIED_ACTIONS: tuple[str, ...] = (
     ContractAction.NETWORK_FETCH,
     ContractAction.INSTALL_PACKAGES,
     ContractAction.CLOUD_PROVIDER,
+    ContractAction.REVERT,
 )
 
 _DEFAULT_DENIED_PATHS: tuple[str, ...] = (
@@ -175,7 +185,8 @@ _DEFAULT_STOP_CONDITIONS: tuple[str, ...] = (
 
 _DEFAULT_REQUIRES_APPROVAL: tuple[str, ...] = (
     ContractAction.PATCH_APPLY,
-    "high_risk_command_execution",
+    ContractAction.ARBITRARY_SHELL,
+    ContractAction.REVERT,
 )
 
 _APPLY_ACTIONS = frozenset({
@@ -426,11 +437,15 @@ def validate_run_contract(contract: RunContract) -> list[str]:
     if overlap:
         errors.append(f"actions in both allowed and denied: {sorted(overlap)}")
 
-    # Warn about unknown actions (not an error, but included)
-    all_actions = set(contract.allowed_actions) | set(contract.denied_actions)
+    # Unknown actions are errors — all action strings must be canonical
+    all_actions = (
+        set(contract.allowed_actions)
+        | set(contract.denied_actions)
+        | set(contract.requires_approval_for)
+    )
     unknown = all_actions - ALL_KNOWN_ACTIONS
     if unknown:
-        errors.append(f"unknown actions (may be intentional): {sorted(unknown)}")
+        errors.append(f"unknown actions: {sorted(unknown)}")
 
     # Check denied paths for absolute paths
     for p in contract.denied_paths:
@@ -481,7 +496,16 @@ def evaluate_run_action(
             next_safe_action="remedy contract inspect <job_id> --json",
         )
 
-    # 3. stop_before_apply blocks apply-type actions
+    # 3. Test run zero-budget block — run_test requires explicit max_test_runs > 0
+    if action == ContractAction.RUN_TEST and contract.max_test_runs == 0:
+        return RunActionDecision(
+            allowed=False,
+            status="exhausted",
+            reason="max_test_runs is 0 — set it above 0 to enable test execution",
+            next_safe_action="remedy contract set <job_id> max_test_runs <n>",
+        )
+
+    # 4. stop_before_apply blocks apply-type actions
     if contract.stop_before_apply and action in _APPLY_ACTIONS:
         return RunActionDecision(
             allowed=False,
@@ -490,7 +514,7 @@ def evaluate_run_action(
             next_safe_action="remedy patch approve <job_id> <intent_id>",
         )
 
-    # 4. no_cloud blocks cloud actions
+    # 5. no_cloud blocks cloud actions
     if contract.no_cloud and action in _CLOUD_ACTIONS:
         return RunActionDecision(
             allowed=False,
@@ -499,7 +523,7 @@ def evaluate_run_action(
             next_safe_action="remedy contract inspect <job_id> --json",
         )
 
-    # 5. Loop budget (from explicit param or usage)
+    # 6. Loop budget (from explicit param or usage)
     effective_loops = loop_index if loop_index is not None else (usage.loops_used if usage else None)
     if effective_loops is not None and effective_loops >= contract.max_loops:
         return RunActionDecision(
@@ -509,7 +533,7 @@ def evaluate_run_action(
             next_safe_action="remedy job show <job_id> --json",
         )
 
-    # 6. Test run budget (from explicit param or usage)
+    # 7. Test run budget (from explicit param or usage)
     effective_tests = test_run_count if test_run_count is not None else (usage.test_runs_used if usage else None)
     if effective_tests is not None and effective_tests >= contract.max_test_runs:
         return RunActionDecision(
@@ -519,7 +543,7 @@ def evaluate_run_action(
             next_safe_action="remedy job show <job_id> --json",
         )
 
-    # 6b. Runtime/token/cost budgets from usage
+    # 8. Runtime/token/cost budgets from usage
     if usage is not None:
         budget_status = check_budget(contract, usage)
         if not budget_status.within_budget:
@@ -530,13 +554,13 @@ def evaluate_run_action(
                 next_safe_action="remedy job show <job_id> --json",
             )
 
-    # 7. Path policy
+    # 9. Path policy
     if path is not None:
         path_decision = _check_path_policy(contract, path)
         if path_decision is not None:
             return path_decision
 
-    # 8. Risk policy
+    # 10. Risk policy
     if risk is not None:
         risk_lower = risk.lower()
         if risk_lower == "unknown" and contract.stop_on_unknown_risk:

@@ -109,6 +109,7 @@ GROUPS: dict[str, GroupDef] = {
     "contract": GroupDef("contract", "Contract", "Run contract inspection and action checks."),
     "progress": GroupDef("progress", "Progress", "Progress ledger — structured checklist and evidence."),
     "feature": GroupDef("feature", "Feature", "Feature planner — deterministic suggestions and acceptance."),
+    "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback — pre-apply proof and recovery metadata."),
 }
 
 
@@ -121,6 +122,7 @@ _PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
 _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
 _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
 _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
+_APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
 
 
 # ---------------------------------------------------------------------------
@@ -377,10 +379,11 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="revert",
         description="Revert a previously applied patch intent using stored snapshot.",
         action_class="apply_write",
-        args=(_JOB_ID, _INTENT_ID, _JSON_OPT),
+        args=(_JOB_ID, _INTENT_ID, _APPLY_ID_OPT, _JSON_OPT),
         supports_json=True,
         may_mutate_repo=True,
-        related=("patch.apply",),
+        requires_permission=True,
+        related=("patch.apply", "snapshot.list-applies"),
     ),
 
     # ── test ─────────────────────────────────────────────────────────────
@@ -398,12 +401,35 @@ CATALOG: tuple[CommandEntry, ...] = (
         command_id="test.run",
         group_id="test",
         subcommand="run",
-        description="Run discovered tests for a job.",
+        description="Run discovered tests for a job (contract-gated, resource-safe).",
         action_class="test_execution",
-        args=(_JOB_ID,),
+        args=(
+            _JOB_ID,
+            ArgDef("--task-id", "Link run to a task ID", required=False,
+                   is_option=True, default=""),
+            ArgDef("--intent-id", "Link run to a patch intent ID", required=False,
+                   is_option=True, default=""),
+            ArgDef("--apply-id", "Link run to an apply record ID", required=False,
+                   is_option=True, default=""),
+            ArgDef("--timeout-seconds", "Override process timeout (seconds)", required=False,
+                   is_option=True, default=""),
+            _JSON_OPT,
+        ),
+        supports_json=True,
         may_execute_commands=True,
         requires_permission=True,
         related=("test.discover",),
+    ),
+
+    CommandEntry(
+        command_id="test.status",
+        group_id="test",
+        subcommand="status",
+        description="Show current test run status for a job (lease state, latest run, usage).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("test.run", "test.discover"),
     ),
 
     # ── brain ────────────────────────────────────────────────────────────
@@ -1303,6 +1329,23 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    CommandEntry(
+        command_id="do.continue",
+        group_id="do",
+        subcommand="continue",
+        description="Run one controlled continuation cycle for an approved intent.",
+        action_class="apply_write",
+        supports_json=True,
+        related=("change.proof", "repair.start", "snapshot.inspect"),
+        args=(
+            _JOB_ID,
+            ArgDef("--intent-id", "Approved intent ID (required when several are approved)",
+                   required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=True,
+        may_execute_commands=True,
+    ),
 
     # ── repair ──────────────────────────────────────────────────────────
     CommandEntry(
@@ -1333,6 +1376,37 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("repair.start",),
+    ),
+    CommandEntry(
+        command_id="repair.propose",
+        group_id="repair",
+        subcommand="propose",
+        description="Propose a bounded, approval-gated repair for a test failure (v1).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("failure_artifact_id", "Failure artifact ID"),
+            ArgDef("--fixture-builder", "Use the deterministic fixture repair builder",
+                   required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("repair.status", "repair.failure-show", "patch.approve"),
+    ),
+    CommandEntry(
+        command_id="repair.status",
+        group_id="repair",
+        subcommand="status",
+        description="Show repair attempts and their approval state (read-only).",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("--failure-artifact-id", "Filter to one failure artifact",
+                   required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("repair.propose", "repair.failure-show"),
     ),
 
     # ── review ───────────────────────────────────────────────────────────
@@ -1629,6 +1703,33 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("contract.inspect",),
+    ),
+
+    # ── snapshot ─────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="snapshot.inspect",
+        group_id="snapshot",
+        subcommand="inspect",
+        description="Show snapshot metadata for a specific snapshot (safe fields only, no recovery content).",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("snapshot_id", "Snapshot ID to inspect"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("snapshot.list-applies",),
+    ),
+
+    CommandEntry(
+        command_id="snapshot.list-applies",
+        group_id="snapshot",
+        subcommand="list-applies",
+        description="List durable apply records for a job.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("snapshot.inspect",),
     ),
 )
 

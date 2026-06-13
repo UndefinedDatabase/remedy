@@ -60,7 +60,7 @@ class TestReadinessBasic:
         job = _make_job()
         report = assess_job_readiness(job, [])
         assert report.levels[5].eligible is False
-        assert "revert_snapshot" in report.levels[5].missing_signals
+        assert "verified_snapshot" in report.levels[5].missing_signals
 
     def test_level_6_blocked(self):
         job = _make_job()
@@ -231,3 +231,101 @@ class TestReadinessBrainNode:
         assert "missing_count" in meta
         for forbidden in ("stdout", "stderr", "raw_output", "value"):
             assert forbidden not in meta
+
+
+class TestVerifiedSnapshotSignal:
+    """_has_verified_snapshot requires durable snapshot truth — no event/metadata
+    fallback (Step 1159). A generic event or artifact metadata alone is not proof.
+    """
+
+    @staticmethod
+    def _durable_verified(data_dir, repo_root, job_id, *, state="applied"):
+        from packages.orchestration.repository_snapshot import (
+            create_snapshot, verify_snapshot, save_durable_apply_record,
+            DurableApplyRecord,
+        )
+        (repo_root / "f.py").write_text("before\n")
+        snap = create_snapshot(job_id, "intent-x", ["f.py"], repo_root, data_dir)
+        verify_snapshot(snap.snapshot_id, job_id, data_dir)
+        rec = DurableApplyRecord(
+            apply_id="apply-x", job_id=job_id, intent_id="intent-x",
+            snapshot_id=snap.snapshot_id, state=state, target_paths=["f.py"],
+            applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={}, after_proof={}, snapshot_verified=True,
+        )
+        save_durable_apply_record(rec, job_id, data_dir)
+        return snap.snapshot_id
+
+    def test_event_only_not_ready(self, tmp_path):
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        job = _make_job()
+        # A generic snapshot_create_completed event is NOT proof.
+        assert _has_verified_snapshot(job, tmp_path) is False
+
+    def test_artifact_metadata_only_not_ready(self, tmp_path):
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        from packages.orchestration.approval_queue import make_intent_id
+        art = Artifact(name="p", content="", kind=ArtifactKind.PATCH_INTENT)
+        iid = make_intent_id(art.id, 0)
+        art.metadata["patch_intent_apply_records"] = {iid: {"snapshot_verified": True}}
+        job = _make_job()
+        job.artifacts.append(art)
+        # Metadata claims verified, but no durable record/snapshot exists.
+        assert _has_verified_snapshot(job, tmp_path) is False
+
+    def test_verified_durable_snapshot_true(self, tmp_path):
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job = _make_job()
+        self._durable_verified(data_dir, repo, str(job.id))
+        assert _has_verified_snapshot(job, data_dir) is True
+
+    def test_missing_blob_false(self, tmp_path):
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        from packages.orchestration.repository_snapshot import _snapshot_dir
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job = _make_job()
+        sid = self._durable_verified(data_dir, repo, str(job.id))
+        for b in _snapshot_dir(str(job.id), sid, data_dir).glob("blob_*.bin"):
+            b.unlink()
+        assert _has_verified_snapshot(job, data_dir) is False
+
+    def test_tampered_manifest_false(self, tmp_path):
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        from packages.orchestration.repository_snapshot import _snapshot_dir
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job = _make_job()
+        sid = self._durable_verified(data_dir, repo, str(job.id))
+        manifest = _snapshot_dir(str(job.id), sid, data_dir) / "manifest.json"
+        d = json.loads(manifest.read_text()); d["path_count"] = 999
+        manifest.write_text(json.dumps(d, indent=2, sort_keys=True))
+        assert _has_verified_snapshot(job, data_dir) is False
+
+    def test_reverted_apply_not_ready(self, tmp_path):
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job = _make_job()
+        self._durable_verified(data_dir, repo, str(job.id), state="reverted")
+        # Reverted apply is not "currently applied" → not revert-capable readiness.
+        assert _has_verified_snapshot(job, data_dir) is False
+
+    def test_level5_eligible_with_durable_verified_snapshot(self, tmp_path):
+        """Level 5 (revert_capable) eligible only with durable verified snapshot."""
+        data_dir = tmp_path / "data"; data_dir.mkdir()
+        repo = tmp_path / "repo"; repo.mkdir()
+        job = _make_job(
+            target_repo="/tmp/test",
+            permissions={"repo_generated_write": "allow", "repo_test_run": "allow"},
+        )
+        self._durable_verified(data_dir, repo, str(job.id))
+        events = [
+            {"event": "patch_apply_proof_recorded", "metadata": {}},
+            {"event": "test_run_completed", "metadata": {}},
+        ]
+        report = assess_job_readiness(job, events, data_dir=data_dir)
+        assert "verified_snapshot" in report.levels[5].present_signals

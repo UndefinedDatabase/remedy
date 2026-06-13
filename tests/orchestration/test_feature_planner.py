@@ -122,6 +122,24 @@ class TestBuildFeaturePlan:
         gap_sugs = [s for s in plan.suggestions if s.source_type == FeaturePlanSource.PROOF_GAP]
         assert len(gap_sugs) == 1
 
+    def test_snapshot_gap_is_high_priority(self):
+        """Unverified snapshot apply → HIGH priority suggestion (Step 1148)."""
+        ledger = ProgressLedger()
+        ledger.items = [
+            ProgressItem(
+                item_id="risk-snap-1",
+                title="Apply without verified snapshot: abc12345-0",
+                status=ProgressStatus.RISK,
+                source_type=ProgressSource.PROOF_GAP,
+                safe_summary="Intent abc12345-0 applied without snapshot_verified=True",
+            ),
+        ]
+        plan = build_feature_plan(ledger)
+        gap_sugs = [s for s in plan.suggestions if s.source_type == FeaturePlanSource.PROOF_GAP]
+        assert len(gap_sugs) == 1
+        assert gap_sugs[0].priority == FeaturePlanPriority.HIGH
+        assert gap_sugs[0].estimated_risk == "high"
+
 
 # ---------------------------------------------------------------------------
 # Step 1020: Accept tests

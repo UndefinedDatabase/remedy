@@ -4,7 +4,7 @@ import type {
   RemedyTimelinePhase,
   RemedyState,
 } from "../../api/types";
-import { PhaseGlyph, TaskDoneGlyph } from "../icons/RemedyGlyphs";
+import { CodeOrbGlyph, FlaskGlyph, PersonGlyph, TaskDoneGlyph } from "../icons/RemedyGlyphs";
 import styles from "./PhaseTimeline.module.css";
 
 const CANONICAL_PHASES: RemedyTimelinePhase[] = [
@@ -25,8 +25,10 @@ const PHASE_LABELS: Record<RemedyTimelinePhase, string> = {
   finalized: "Finalized",
 };
 
-function phasePosition(index: number) {
-  return `${(index / (CANONICAL_PHASES.length - 1)) * 100}%`;
+const MAX_EVENT_CHIPS = 18;
+
+function phasePercent(index: number): number {
+  return (index / (CANONICAL_PHASES.length - 1)) * 100;
 }
 
 function stateClass(state: RemedyState) {
@@ -36,16 +38,21 @@ function stateClass(state: RemedyState) {
   return styles.isPending;
 }
 
-function eventClass(event: RemedyTimelineEvent) {
+function eventChipClass(event: RemedyTimelineEvent) {
   return [
-    styles.eventDot,
+    styles.eventChip,
     event.kind === "llm_action" ? styles.eventLlm : "",
     event.kind === "test" ? styles.eventTest : "",
     event.kind === "review" ? styles.eventReview : "",
     event.state === "current" ? styles.eventCurrent : "",
-    event.state === "pending" || event.state === "suggested" ? styles.eventPending : "",
     event.state === "blocked" ? styles.eventBlocked : "",
   ].filter(Boolean).join(" ");
+}
+
+function EventGlyph({ kind }: { kind: RemedyTimelineEvent["kind"] }) {
+  if (kind === "test") return <FlaskGlyph />;
+  if (kind === "review") return <PersonGlyph />;
+  return <CodeOrbGlyph />;
 }
 
 export function PhaseTimeline({
@@ -76,19 +83,38 @@ export function PhaseTimeline({
     ? (activeIndex / (canonical.length - 1)) * 100
     : 0;
 
+  // Keep the most recent MAX_EVENT_CHIPS events (oldest trimmed first), then
+  // group by phase so chips cluster under their phase segment.
+  const trimmed = timelineEvents.slice(-MAX_EVENT_CHIPS);
+  const phaseIndex = Object.fromEntries(CANONICAL_PHASES.map((id, i) => [id, i]));
+  const segmentWidth = 100 / (CANONICAL_PHASES.length - 1);
+  const byPhase = new Map<string, RemedyTimelineEvent[]>();
+  for (const e of trimmed) {
+    const list = byPhase.get(e.phase) || [];
+    list.push(e);
+    byPhase.set(e.phase, list);
+  }
+
+  const positioned: { event: RemedyTimelineEvent; left: number }[] = [];
+  for (const [phase, list] of byPhase) {
+    const start = phasePercent(phaseIndex[phase] ?? 0);
+    list.forEach((event, slot) => {
+      const left = start + ((slot + 1) / (list.length + 1)) * segmentWidth;
+      positioned.push({ event, left: Math.max(0, Math.min(left, 100)) });
+    });
+  }
+
   return (
     <section className={styles.timeline} aria-label="Project process timeline" data-ui="phase-timeline">
       <div className={styles.phaseHeader}>
-        {canonical.map((phase) => (
+        {canonical.map((phase, index) => (
           <div
             key={`phase-${phase.id}`}
             className={[styles.phaseItem, stateClass(phase.state)].join(" ")}
+            style={{ left: `${phasePercent(index)}%` }}
             data-phase={phase.id}
             data-state={phase.state}
           >
-            <span className={styles.phaseIconShell}>
-              <PhaseGlyph phase={phase.id} className={styles.phaseIcon} />
-            </span>
             <span className={styles.phaseLabel}>{phase.label}</span>
           </div>
         ))}
@@ -101,7 +127,7 @@ export function PhaseTimeline({
           <span
             key={`marker-${phase.id}`}
             className={[styles.phaseMarker, stateClass(phase.state)].join(" ")}
-            style={{ left: phasePosition(index) }}
+            style={{ left: `${phasePercent(index)}%` }}
           >
             {phase.state === "done" && <TaskDoneGlyph className={styles.markerCheck} />}
           </span>
@@ -109,38 +135,33 @@ export function PhaseTimeline({
       </div>
 
       <div className={styles.eventRail} aria-label="Real work event rail">
-        <span className={styles.eventRailLine} />
-        {timelineEvents.map((event, index) => {
-          const left =
-            timelineEvents.length === 1
-              ? "0%"
-              : `${(index / Math.max(timelineEvents.length - 1, 1)) * 100}%`;
-
-          return (
-            <span
-              key={event.id}
-              className={styles.eventItem}
-              style={{ left }}
-              title={event.title}
-              aria-label={`${event.title}, ${event.kind.replace("_", " ")}`}
-            >
-              <span className={eventClass(event)} />
+        {positioned.map(({ event, left }) => (
+          <span
+            key={event.id}
+            className={styles.eventItem}
+            style={{ left: `${left}%` }}
+            title={event.title}
+            aria-label={`${event.title}, ${event.kind.replace("_", " ")}`}
+          >
+            <span className={styles.eventTick} aria-hidden="true" />
+            <span className={eventChipClass(event)} aria-hidden="true">
+              <EventGlyph kind={event.kind} />
             </span>
-          );
-        })}
+          </span>
+        ))}
       </div>
 
       <div className={styles.legend} aria-label="Timeline legend">
         <span className={styles.legendItem}>
-          <span className={[styles.eventDot, styles.eventLlm].join(" ")} />
+          <span className={[styles.eventChip, styles.eventLlm].join(" ")}><CodeOrbGlyph /></span>
           <span>LLM Action</span>
         </span>
         <span className={styles.legendItem}>
-          <span className={[styles.eventDot, styles.eventTest].join(" ")} />
+          <span className={[styles.eventChip, styles.eventTest].join(" ")}><FlaskGlyph /></span>
           <span>Test</span>
         </span>
         <span className={styles.legendItem}>
-          <span className={[styles.eventDot, styles.eventReview].join(" ")} />
+          <span className={[styles.eventChip, styles.eventReview].join(" ")}><PersonGlyph /></span>
           <span>Review</span>
         </span>
       </div>

@@ -1,107 +1,100 @@
 .bar {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  align-items: center;
-  border-radius: clamp(14px, 1.2vw, 20px);
-  background: rgba(255,255,255,.44);
-  border: 1px solid rgba(58,91,150,.14);
-  box-shadow: 0 10px 28px rgba(54,84,134,.06);
-  backdrop-filter: blur(24px);
-  overflow: visible;
-  position: relative;
-  z-index: 5;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 14px 10px;
+  min-height: 92px;
+  overflow: visible; /* token tooltip must not be clipped */
 }
 
 .metric {
   position: relative;
-  height: 100%;
   display: flex;
   align-items: center;
-  gap: clamp(8px, 0.8vw, 14px);
-  padding: 0 clamp(10px, 1.4vw, 22px);
-  border-right: 1px solid rgba(38,73,134,.1);
+  gap: 12px;
+  padding: 4px 22px;
+  flex: 1 1 0;
+  min-width: 0;
+  outline: none;
 }
-
-.metric:last-child { border-right: 0; }
+.metric + .metric { border-left: 1px solid var(--remedy-line); }
 
 .iconBox {
-  width: clamp(28px, 2.8vw, 34px);
-  height: clamp(28px, 2.8vw, 34px);
-  border-radius: 11px;
+  width: 38px;
+  height: 38px;
+  flex: none;
   display: grid;
   place-items: center;
-  color: #2459d6;
-  background: rgba(255,255,255,.64);
-  border: 1px solid rgba(76,131,255,.24);
-  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--remedy-blue-50);
+  color: var(--remedy-blue-strong);
+  border: 1px solid rgba(76, 131, 255, 0.18);
 }
 
-.metricBody { min-width: 0; }
+.metricBody { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 
 .label {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .065em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #122f6a;
+  color: var(--remedy-muted);
+  white-space: nowrap;
 }
 
 .value {
-  margin-top: 2px;
-  font-size: clamp(16px, 1.8vw, 22px);
+  font-family: var(--remedy-font-display);
+  font-size: 30px;
   line-height: 1;
-  font-weight: 760;
-  letter-spacing: -.04em;
-  color: #071b49;
+  font-weight: 700;
+  color: var(--remedy-ink-strong);
+  letter-spacing: -0.01em;
 }
-
-.estimated {
-  font-size: 9px;
-  color: rgba(18,47,106,.4);
-  font-weight: 600;
-  margin-top: 1px;
-}
+.valueSuffix { font-size: 17px; font-weight: 600; color: var(--remedy-muted); margin-left: 2px; }
 
 .progressTrack {
-  margin-top: 6px;
-  width: clamp(50px, 6vw, 80px);
-  height: 3px;
-  border-radius: 999px;
-  background: rgba(76,131,255,.18);
+  width: 120px;
+  height: 5px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: rgba(76, 131, 255, 0.16);
   overflow: hidden;
 }
-
-.progressTrack span {
+.progressTrack > span {
   display: block;
   height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #3478ff, #8fb3ff);
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--remedy-blue-strong), var(--remedy-blue-500));
+  transition: width 600ms ease;
 }
+
+.estimated { font-size: 10px; color: var(--remedy-faint); letter-spacing: 0.04em; }
+
+.stateDot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.statePass { background: var(--remedy-state-done); }
+.stateFail { background: var(--remedy-state-blocked); }
+.stateNone { background: var(--remedy-faint); }
 
 .tooltip {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
-  min-width: 140px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(10,25,60,.92);
-  color: rgba(255,255,255,.9);
-  font-size: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.2);
-  pointer-events: none;
+  z-index: 40;
+  min-width: 190px;
+  padding: 12px 14px;
+  border-radius: var(--remedy-radius-md);
+  background: var(--remedy-card-strong);
+  border: 1px solid var(--remedy-glass-border);
+  box-shadow: var(--remedy-shadow-card);
+  backdrop-filter: blur(14px);
 }
-
 .tooltipRow {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 2px 0;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--remedy-text);
+  padding: 3px 0;
 }
-
-.tooltipRow span:first-child { text-transform: capitalize; }
-.tooltipRow span:last-child { font-weight: 700; }
+.tooltipRow span:last-child { font-weight: 600; color: var(--remedy-ink-strong); }

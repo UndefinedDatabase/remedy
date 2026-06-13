@@ -102,6 +102,13 @@ class TestReviewBundleModel:
         f = ChangedFileSafe(path="src/main.py", status="modified")
         assert f.path == "src/main.py"
         assert f.tested_after_change is False
+        assert f.snapshot_verified is False
+
+    def test_changed_file_safe_snapshot_verified_field(self):
+        """snapshot_verified is safe bool only — no blob content (Step 1149)."""
+        from packages.orchestration.review_bundle import ChangedFileSafe
+        f = ChangedFileSafe(path="src/main.py", status="modified", snapshot_verified=True)
+        assert f.snapshot_verified is True
 
     def test_manifest_defaults(self):
         from packages.orchestration.review_bundle import ReviewBundleManifest
@@ -111,8 +118,10 @@ class TestReviewBundleModel:
 
     def test_required_sections_defined(self):
         from packages.orchestration.review_bundle import REQUIRED_SECTIONS
-        assert len(REQUIRED_SECTIONS) == 12
+        assert len(REQUIRED_SECTIONS) == 14
         assert "manifest.json" in REQUIRED_SECTIONS
+        assert "snapshot_summary.json" in REQUIRED_SECTIONS
+        assert "continuation_summary.json" in REQUIRED_SECTIONS
         assert "bundle_readme.md" in REQUIRED_SECTIONS
 
 
@@ -796,4 +805,191 @@ class TestSectionAvailability:
             assert Path(result.output_path).exists()
         finally:
             review_bundle._build_context_inspection_safe = original
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Step 1149: Snapshot integration in changed_files_safe
+# ---------------------------------------------------------------------------
+
+
+class TestSnapshotIntegration:
+    """Review bundle surfaces snapshot_verified in changed_files_safe (Step 1149)."""
+
+    def test_snapshot_verified_in_changed_files(self, tmp_path):
+        """snapshot_verified=True from apply record appears in changed_files output."""
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.approval_queue import make_intent_id
+        from packages.orchestration.review_bundle import _build_changed_files_safe
+
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            from packages.core.models import Job, Task
+            from packages.orchestration.storage import save_job
+            art = Artifact(
+                name="patch", content="", kind=ArtifactKind.PATCH_INTENT, task_id=task.id,
+                metadata={
+                    "patch_intent_explanations": [
+                        {"file": "src/main.py", "action": "modify", "risk": "low",
+                         "reason": "", "summary": ""}
+                    ],
+                    "patch_intent_approvals": {},
+                },
+            )
+            iid = make_intent_id(art.id, 0)
+            art.metadata["patch_intent_apply_records"] = {
+                iid: {"state": "applied", "snapshot_verified": True}
+            }
+            job.artifacts.append(art)
+            result = _build_changed_files_safe(job, [])
+            file_entry = next((f for f in result["files"] if f["path"] == "src/main.py"), None)
+            assert file_entry is not None
+            assert file_entry["snapshot_verified"] is True
+        finally:
+            _cleanup_env(old)
+
+    def test_unverified_snapshot_in_changed_files(self, tmp_path):
+        """snapshot_verified=False when no apply record exists."""
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.review_bundle import _build_changed_files_safe
+
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            art = Artifact(
+                name="patch", content="", kind=ArtifactKind.PATCH_INTENT, task_id=task.id,
+                metadata={
+                    "patch_intent_explanations": [
+                        {"file": "src/lib.py", "action": "modify", "risk": "low",
+                         "reason": "", "summary": ""}
+                    ],
+                    "patch_intent_approvals": {},
+                },
+            )
+            job.artifacts.append(art)
+            result = _build_changed_files_safe(job, [])
+            file_entry = next((f for f in result["files"] if f["path"] == "src/lib.py"), None)
+            assert file_entry is not None
+            assert file_entry["snapshot_verified"] is False
+        finally:
+            _cleanup_env(old)
+
+    def test_no_blob_content_in_changed_files(self, tmp_path):
+        """changed_files_safe output contains only safe metadata, no blob content (Step 1149)."""
+        import json
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.approval_queue import make_intent_id
+        from packages.orchestration.review_bundle import _build_changed_files_safe
+
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            art = Artifact(
+                name="patch", content="", kind=ArtifactKind.PATCH_INTENT, task_id=task.id,
+                metadata={
+                    "patch_intent_explanations": [
+                        {"file": "src/safe.py", "action": "create", "risk": "low",
+                         "reason": "", "summary": ""}
+                    ],
+                    "patch_intent_approvals": {},
+                },
+            )
+            iid = make_intent_id(art.id, 0)
+            art.metadata["patch_intent_apply_records"] = {
+                iid: {"state": "applied", "snapshot_verified": True}
+            }
+            job.artifacts.append(art)
+            result = _build_changed_files_safe(job, [])
+            raw = json.dumps(result)
+            for forbidden in ("blob_", "bin", "recovery", "traceback", "Traceback", "diff --git"):
+                assert forbidden not in raw, f"Forbidden term in changed_files: {forbidden}"
+        finally:
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Snapshot summary section (Step 1160)
+# ---------------------------------------------------------------------------
+
+
+class TestSnapshotSummarySection:
+    """snapshot_summary.json — safe aggregate counts, no blobs/paths."""
+
+    def _add_durable_snapshot(self, data_dir, job_id, *, state="applied"):
+        import hashlib
+        from pathlib import Path
+        from packages.orchestration.repository_snapshot import (
+            create_snapshot, verify_snapshot, save_durable_apply_record,
+            DurableApplyRecord,
+        )
+        repo = data_dir.parent / "repo"
+        repo.mkdir(exist_ok=True)
+        (repo / "f.py").write_text("before\n")
+        snap = create_snapshot(job_id, "intent-1", ["f.py"], repo, data_dir)
+        verify_snapshot(snap.snapshot_id, job_id, data_dir)
+        rec = DurableApplyRecord(
+            apply_id="apply-1", job_id=job_id, intent_id="intent-1",
+            snapshot_id=snap.snapshot_id, state=state, target_paths=["f.py"],
+            applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={}, after_proof={}, snapshot_verified=True,
+        )
+        save_durable_apply_record(rec, job_id, data_dir)
+        return snap.snapshot_id
+
+    def _read_section(self, zip_path, name):
+        import zipfile, json as _json
+        with zipfile.ZipFile(zip_path) as zf:
+            return _json.loads(zf.read(name))
+
+    def test_snapshot_summary_present_and_counted(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            self._add_durable_snapshot(data_dir, str(job.id))
+            result = build_review_bundle(str(job.id))
+            assert any(s.filename == "snapshot_summary.json" and s.status == "included"
+                       for s in result.sections)
+            summary = self._read_section(result.output_path, "snapshot_summary.json")
+            assert summary["snapshot_count"] == 1
+            assert summary["verified_count"] == 1
+            assert summary["active_apply_count"] == 1
+            assert summary["reverted_count"] == 0
+        finally:
+            _cleanup_env(old)
+
+    def test_snapshot_summary_reverted(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            self._add_durable_snapshot(data_dir, str(job.id), state="reverted")
+            result = build_review_bundle(str(job.id))
+            summary = self._read_section(result.output_path, "snapshot_summary.json")
+            assert summary["reverted_count"] == 1
+            assert summary["active_apply_count"] == 0
+        finally:
+            _cleanup_env(old)
+
+    def test_snapshot_summary_no_blob_or_path_leak(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            self._add_durable_snapshot(data_dir, str(job.id))
+            result = build_review_bundle(str(job.id))
+            import zipfile
+            with zipfile.ZipFile(result.output_path) as zf:
+                raw = zf.read("snapshot_summary.json").decode()
+            assert "blob_" not in raw
+            assert str(data_dir) not in raw
+            assert "manifest.json" not in raw
+            assert result.safety.is_safe
+        finally:
+            _cleanup_env(old)
+
+    def test_snapshot_summary_empty_job(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            result = build_review_bundle(str(job.id))
+            summary = self._read_section(result.output_path, "snapshot_summary.json")
+            assert summary["snapshot_count"] == 0
+            assert summary["applies"] == []
+        finally:
             _cleanup_env(old)

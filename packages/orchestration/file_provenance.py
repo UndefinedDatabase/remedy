@@ -16,6 +16,7 @@ Public API::
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from packages.core.models import Job
@@ -59,10 +60,14 @@ def build_file_provenance(
     job: Job,
     events: list[dict[str, Any]],
     path: str,
+    data_dir: Path | None = None,
 ) -> FileProvenance:
     """Build provenance chain for *path* within *job*.
 
     Deterministic, read-only, no repo access.
+    data_dir: if provided, consults the authoritative snapshot-truth builder
+    (build_snapshot_truth) for apply/revert state instead of stale artifact
+    metadata (Steps 1146, 1157).
     """
     job_id_str = str(job.id)
     chain: list[ProvenanceLink] = []
@@ -115,20 +120,34 @@ def build_file_provenance(
                 },
             ))
 
-        # patch_apply (from artifact metadata)
+        # patch_apply (from artifact metadata, authoritative state from DurableApplyRecord if available)
         for artifact in job.artifacts:
             records = artifact.metadata.get("patch_intent_apply_records", {})
             if iid in records:
                 rec = records[iid]
+                apply_state = rec.get("state", "unknown")
+                detail: dict[str, Any] = {
+                    "bytes_written": rec.get("bytes_written", 0),
+                    "line_count": rec.get("line_count", 0),
+                }
+                # Authoritative apply/revert state from the shared snapshot-truth
+                # builder (Step 1157). Reverted applies are not "currently applied";
+                # drift-blocked applies remain active; partial/failed revert visible.
+                if data_dir is not None:
+                    from packages.orchestration.repository_snapshot import build_snapshot_truth
+                    truth = build_snapshot_truth(job_id_str, intent_id=iid, data_dir=data_dir)
+                    if truth.apply_state != "unknown":
+                        apply_state = truth.apply_state
+                        detail["revert_state"] = truth.revert_state
+                        detail["drift_blocked"] = truth.drift_blocked
+                        detail["snapshot_verified"] = truth.snapshot_verified_now
+                        detail["evidence_status"] = truth.evidence_status
                 chain.append(ProvenanceLink(
                     step="patch_apply",
                     node_type="patch_apply",
                     node_id=f"apply:{iid}",
-                    status=rec.get("state", "unknown"),
-                    detail={
-                        "bytes_written": rec.get("bytes_written", 0),
-                        "line_count": rec.get("line_count", 0),
-                    },
+                    status=apply_state,
+                    detail=detail,
                 ))
 
         # patch_apply_proof (from events)
@@ -180,7 +199,7 @@ def build_file_provenance(
     proof_error = ""
     from packages.orchestration.proof_chain import build_proof_chain
     try:
-        pc = build_proof_chain(job, events, path=path)
+        pc = build_proof_chain(job, events, path=path, data_dir=data_dir)
         if pc.changes:
             proof_status = pc.changes[0].proof_status
     except (KeyError, ValueError, TypeError) as exc:

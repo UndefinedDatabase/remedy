@@ -93,7 +93,86 @@ def _cmd_failure_show(args: Any) -> None:
         print(summarize_failure_artifact(failure))
 
 
+def _cmd_repair_propose(args: Any) -> None:
+    """Propose a bounded, approval-gated repair (v1). Creates a Patch Intent only."""
+    from packages.orchestration.repair_loop import (
+        export_repair_attempt_json,
+        run_repair_attempt,
+        summarize_repair_attempt,
+    )
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError
+
+    fixture = str(getattr(args, "fixture_builder", "false")).lower() in ("true", "1", "yes")
+
+    try:
+        result = run_repair_attempt(
+            args.job_id,
+            args.failure_artifact_id,
+            fixture_builder=fixture,
+        )
+    except (JobNotFoundError, JobStoreError) as exc:
+        print(f"Error: {type(exc).__name__}", file=sys.stderr)
+        sys.exit(1)
+
+    if getattr(args, "json", False):
+        print(json.dumps(export_repair_attempt_json(result), indent=2))
+    else:
+        print(summarize_repair_attempt(result))
+
+
+def _cmd_repair_status(args: Any) -> None:
+    """Show repair attempts and approval state (read-only)."""
+    from packages.orchestration.approval_queue import get_patch_intent
+    from packages.orchestration.repair_loop import load_repair_attempts
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job
+
+    try:
+        job = load_job(args.job_id)
+    except (JobNotFoundError, JobStoreError):
+        print(f"Error: job {str(args.job_id)[:8]} not found", file=sys.stderr)
+        sys.exit(1)
+
+    filter_fa = getattr(args, "failure_artifact_id", None)
+    attempts = load_repair_attempts(job)
+    rows = []
+    for attempt in attempts.values():
+        if filter_fa and attempt.failure_artifact_id != filter_fa:
+            continue
+        approval_state = ""
+        if attempt.repair_intent_id:
+            intent = get_patch_intent(job, attempt.repair_intent_id)
+            approval_state = intent.get("state", "") if intent else "unresolved"
+        rows.append({
+            "attempt_id": attempt.attempt_id,
+            "failure_artifact_id": attempt.failure_artifact_id,
+            "repair_task_id": attempt.repair_task_id,
+            "repair_intent_id": attempt.repair_intent_id,
+            "status": attempt.status,
+            "stop_reason": attempt.stop_reason,
+            "approval_state": approval_state,
+            "updated_at": attempt.updated_at,
+        })
+
+    if getattr(args, "json", False):
+        print(json.dumps({"version": 1, "job_id": str(args.job_id), "attempts": rows}, indent=2))
+        return
+
+    if not rows:
+        print(f"No repair attempts for job {str(args.job_id)[:8]}.")
+        return
+    print(f"Repair attempts: {str(args.job_id)[:8]}")
+    for r in rows:
+        line = f"  [{r['status']}] {r['attempt_id'][:8]} failure={r['failure_artifact_id'][:8]}"
+        if r["repair_intent_id"]:
+            line += f" intent={r['repair_intent_id']} approval={r['approval_state']}"
+        elif r["repair_task_id"]:
+            line += f" fix_task={r['repair_task_id'][:8]}"
+        print(line)
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "repair.start": _cmd_repair_start,
     "repair.failure-show": _cmd_failure_show,
+    "repair.propose": _cmd_repair_propose,
+    "repair.status": _cmd_repair_status,
 }

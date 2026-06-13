@@ -856,4 +856,4 @@ class TestCliRunTestsLocal:
             env=env,
         )
         assert rc == 1
-        assert "target_repo" in err or "no_target_repo" in err
+        assert "No target repository" in err or "target_repo" in err or "no_target_repo" in err

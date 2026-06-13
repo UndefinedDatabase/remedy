@@ -11,6 +11,12 @@ import styles from "./RemedyShell.module.css";
 
 export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
   const selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
+  // Jump-to: case-insensitive match over real task labels; focus the first match's node.
+  const handleJump = (query: string) => {
+    const q = query.toLowerCase();
+    const match = dashboard.tasks.find(t => t.label.toLowerCase().includes(q));
+    if (match) onSelectNode(match.nodeId);
+  };
   return (
     <div className={styles.viewport}>
       <DegradedBanner apiHealth={dashboard.apiHealth} />
@@ -18,7 +24,7 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
         <LeftBrandRail dashboard={dashboard} />
         <main className={styles.main} data-testid="main-column">
           <TopMetricsBar metrics={dashboard.metrics} />
-          <CommandBar nextAction={dashboard.nextAction} />
+          <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
         </main>

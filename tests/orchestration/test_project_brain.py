@@ -995,6 +995,59 @@ class TestFileProvenanceChain:
         assert prov.found is False
         assert len(prov.chain) == 0
 
+    def test_revert_state_from_durable_record(self, tmp_path, monkeypatch):
+        """patch_apply status reflects DurableApplyRecord state when data_dir provided (Step 1146)."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.approval_queue import make_intent_id
+        from packages.orchestration.file_provenance import build_file_provenance
+        from packages.orchestration.repository_snapshot import DurableApplyRecord, save_durable_apply_record
+
+        job = _make_job_s61()
+        art_id = uuid4()
+        intent_id = make_intent_id(art_id, 0)
+        art = Artifact(
+            id=art_id, name="test-art", kind=ArtifactKind.PATCH_INTENT,
+            content="",
+            metadata={
+                "patch_intent_explanations": [
+                    {"file": "src/foo.py", "action": "modify", "risk": "low", "reason": "", "summary": ""}
+                ],
+                "patch_intent_approvals": {
+                    intent_id: {"state": "approved", "decided_at": "", "decided_by": ""}
+                },
+                "patch_intent_apply_records": {
+                    intent_id: {"state": "applied", "bytes_written": 50, "line_count": 5}
+                },
+            },
+        )
+        job.artifacts.append(art)
+        save_job(job)
+
+        # Save DurableApplyRecord with reverted state
+        record = DurableApplyRecord(
+            apply_id=intent_id,
+            job_id=str(job.id),
+            intent_id=intent_id,
+            snapshot_id="snap-001",
+            state="reverted",
+            target_paths=["src/foo.py"],
+            applied_at="2026-01-01T00:00:00Z",
+            before_proof={},
+            after_proof={},
+            snapshot_verified=True,
+        )
+        save_durable_apply_record(record, str(job.id), tmp_path)
+
+        # Without data_dir: stale artifact state ("applied")
+        prov_stale = build_file_provenance(job, [], "src/foo.py")
+        apply_link = next(l for l in prov_stale.chain if l.step == "patch_apply")
+        assert apply_link.status == "applied"
+
+        # With data_dir: authoritative DurableApplyRecord state ("reverted")
+        prov = build_file_provenance(job, [], "src/foo.py", data_dir=tmp_path)
+        apply_link = next(l for l in prov.chain if l.step == "patch_apply")
+        assert apply_link.status == "reverted"
+
     def test_provenance_json_no_raw_leaks(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.approval_queue import make_intent_id

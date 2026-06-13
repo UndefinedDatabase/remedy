@@ -371,6 +371,20 @@ def merge_job_risks(ledger: ProgressLedger, job: Any, events: list[dict] | None 
                 safe_summary=f"Test failure artifact ({kind})"[:200],
             )
             ledger.items.append(item)
+        # Snapshot integration (Step 1147): flag applies without verified snapshot
+        for iid, rec in (meta.get("patch_intent_apply_records") or {}).items():
+            if rec.get("state") == "applied" and not rec.get("snapshot_verified", False):
+                risk_idx += 1
+                item = ProgressItem(
+                    item_id=f"risk-snap-{risk_idx}",
+                    title=f"Apply without verified snapshot: {iid[:16]}"[:200],
+                    status=ProgressStatus.RISK,
+                    source_type=ProgressSource.PROOF_GAP,
+                    source_ref=iid[:16],
+                    severity="High",
+                    safe_summary=f"Intent {iid[:16]} applied without snapshot_verified=True"[:200],
+                )
+                ledger.items.append(item)
 
     if events:
         for ev in events:
@@ -391,6 +405,210 @@ def merge_job_risks(ledger: ProgressLedger, job: Any, events: list[dict] | None 
 # ---------------------------------------------------------------------------
 # Step 1059: Merge contract blockers
 # ---------------------------------------------------------------------------
+
+
+def extract_test_results_from_events(events: list[dict] | None) -> list[ProgressItem]:
+    """Extract test run results from timeline events as ProgressItems."""
+    if not events:
+        return []
+    items: list[ProgressItem] = []
+    budget_exhausted_added = False
+    for ev in events:
+        ename = ev.get("event", "")
+        meta = ev.get("metadata", ev)
+        if ename in ("test_run_completed", "test_run_timed_out"):
+            status_val = meta.get("status", "")
+            run_id = meta.get("test_run_id", "")
+            if status_val == "passed":
+                items.append(ProgressItem(
+                    item_id=f"test-pass-{run_id}",
+                    title="Test run passed",
+                    status=ProgressStatus.DONE,
+                    source_type=ProgressSource.TEST_RESULT,
+                    source_ref=run_id,
+                    safe_summary=f"test_run_id={run_id} passed",
+                ))
+            elif status_val in ("failed", "timeout"):
+                items.append(ProgressItem(
+                    item_id=f"test-fail-{run_id}",
+                    title=f"Test run {status_val}",
+                    status=ProgressStatus.BLOCKED,
+                    source_type=ProgressSource.TEST_RESULT,
+                    severity="High",
+                    source_ref=run_id,
+                    safe_summary=f"test_run_id={run_id} {status_val} — check failure artifact",
+                ))
+        elif ename == "test_run_blocked" and not budget_exhausted_added:
+            reason = meta.get("reason", "")
+            if "budget" in reason or "max_test_runs" in reason or "exhausted" in reason:
+                budget_exhausted_added = True
+                items.append(ProgressItem(
+                    item_id="test-budget-exhausted",
+                    title="Test budget exhausted",
+                    status=ProgressStatus.BLOCKED,
+                    source_type=ProgressSource.RUN_CONTRACT_BLOCKER,
+                    severity="High",
+                    safe_summary="Test run budget exhausted — set max_test_runs higher",
+                    next_action="remedy contract set <job_id> max_test_runs <n>",
+                ))
+    return items
+
+
+def merge_test_results(ledger: ProgressLedger, events: list[dict] | None) -> None:
+    """Merge test run items from events into the ledger."""
+    items = extract_test_results_from_events(events)
+    ledger.items.extend(items)
+
+
+def extract_continuation_items_from_events(events: list[dict] | None) -> list[ProgressItem]:
+    """Extract `remedy do --continue` progress items from events (Step 1176).
+
+    Produces: continuation eligible, snapshot verified, apply completed, test
+    passed/failed, proof verified, evidence incomplete. No automatic action.
+    """
+    if not events:
+        return []
+    items: list[ProgressItem] = []
+    for ev in events:
+        ename = ev.get("event", "")
+        meta = ev.get("metadata", ev)
+        if ename == "do_continue_started":
+            items.append(ProgressItem(
+                item_id="cont-eligible", title="Continuation eligible",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                source_ref=str(meta.get("intent_id", "")),
+                safe_summary="Continuation cycle started for an approved intent.",
+            ))
+        elif ename == "do_continue_snapshot_verified":
+            items.append(ProgressItem(
+                item_id="cont-snapshot", title="Snapshot verified",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                source_ref=str(meta.get("snapshot_id", "")),
+                safe_summary="Verified snapshot created before apply.",
+            ))
+        elif ename == "do_continue_applied":
+            items.append(ProgressItem(
+                item_id="cont-apply", title="Apply completed",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                source_ref=str(meta.get("apply_id", "")),
+                safe_summary="Patch applied during continuation.",
+            ))
+        elif ename == "do_continue_test_completed":
+            status_val = meta.get("status", "")
+            if status_val == "passed":
+                items.append(ProgressItem(
+                    item_id="cont-test-pass", title="Continuation test passed",
+                    status=ProgressStatus.DONE, source_type=ProgressSource.TEST_RESULT,
+                    source_ref=str(meta.get("test_run_id", "")),
+                    safe_summary="Linked test passed during continuation.",
+                ))
+            elif status_val in ("failed", "timeout"):
+                items.append(ProgressItem(
+                    item_id="cont-test-fail", title=f"Continuation test {status_val}",
+                    status=ProgressStatus.BLOCKED, source_type=ProgressSource.TEST_RESULT,
+                    severity="High", source_ref=str(meta.get("test_run_id", "")),
+                    safe_summary="Continuation test failed — repair available.",
+                    next_action="remedy repair start <job_id> <failure_artifact_id> --json",
+                ))
+        elif ename == "do_continue_proof_built":
+            if meta.get("proof_status") == "verified":
+                items.append(ProgressItem(
+                    item_id="cont-proof", title="Proof verified",
+                    status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                    safe_summary="Change proof verified after continuation.",
+                ))
+        elif ename == "do_continue_stopped":
+            reason = meta.get("stop_reason", "")
+            if reason == "evidence_incomplete":
+                items.append(ProgressItem(
+                    item_id="cont-evidence-incomplete", title="Continuation evidence incomplete",
+                    status=ProgressStatus.BLOCKED, source_type=ProgressSource.PROOF_GAP,
+                    severity="High",
+                    safe_summary="Apply may have succeeded but evidence degraded — manual review.",
+                    next_action="remedy change proof <job_id> --json",
+                ))
+            elif reason == "snapshot_failed":
+                items.append(ProgressItem(
+                    item_id="cont-snapshot-failed", title="Continuation snapshot failed",
+                    status=ProgressStatus.BLOCKED, source_type=ProgressSource.PROOF_GAP,
+                    severity="High",
+                    safe_summary="Snapshot could not be created/verified — investigate.",
+                    next_action="remedy snapshot inspect <job_id> --json",
+                ))
+    return items
+
+
+def merge_continuation_items(ledger: ProgressLedger, events: list[dict] | None) -> None:
+    """Merge continuation progress items, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_continuation_items_from_events(events):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
+def extract_repair_items_from_events(events: list[dict] | None) -> list[ProgressItem]:
+    """Extract Repair Loop v1 progress items from events (Step 1206).
+
+    Produces: repair needed, context ready, fix task created, repair patch intent
+    pending approval, repair blocked, repair unavailable. De-duplicated by item_id
+    on repeated reads. No automatic action.
+    """
+    if not events:
+        return []
+    items: list[ProgressItem] = []
+    for ev in events:
+        ename = ev.get("event", "")
+        meta = ev.get("metadata", ev)
+        if ename == "repair_attempt_requested":
+            items.append(ProgressItem(
+                item_id="repair-needed", title="Repair needed",
+                status=ProgressStatus.IN_PROGRESS, source_type=ProgressSource.REPAIR_ARTIFACT,
+                source_ref=str(meta.get("failure_artifact_id", "")),
+                safe_summary="A repair was requested for a failing test.",
+            ))
+        elif ename == "repair_context_built":
+            items.append(ProgressItem(
+                item_id="repair-context", title="Repair context ready",
+                status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+                source_ref=str(meta.get("failure_artifact_id", "")),
+                safe_summary="Safe repair context built from the failure evidence.",
+            ))
+        elif ename == "repair_fix_task_created":
+            items.append(ProgressItem(
+                item_id="repair-fix-task", title="Fix task created",
+                status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+                source_ref=str(meta.get("fix_task_id", "")),
+                safe_summary="Fix task created from the failure evidence.",
+            ))
+        elif ename == "repair_approval_required":
+            items.append(ProgressItem(
+                item_id="repair-approval", title="Repair patch intent pending approval",
+                status=ProgressStatus.BLOCKED, source_type=ProgressSource.REPAIR_ARTIFACT,
+                severity="Medium", source_ref=str(meta.get("repair_intent_id", "")),
+                safe_summary="A repair patch intent awaits approval. No apply yet.",
+                next_action="remedy patch approve <job_id> <repair_intent_id>",
+            ))
+        elif ename == "repair_attempt_blocked":
+            items.append(ProgressItem(
+                item_id="repair-blocked", title="Repair blocked",
+                status=ProgressStatus.BLOCKED, source_type=ProgressSource.REPAIR_ARTIFACT,
+                severity="Medium", source_ref=str(meta.get("failure_artifact_id", "")),
+                safe_summary="Repair could not proceed — review the blocker.",
+                next_action="remedy repair status <job_id> --json",
+            ))
+    # "Repair builder unavailable" is derived from a stopped attempt; surface it
+    # from a fix-task-created attempt with no approval-required follow-up.
+    return items
+
+
+def merge_repair_items(ledger: ProgressLedger, events: list[dict] | None) -> None:
+    """Merge Repair Loop v1 progress items, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_repair_items_from_events(events):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
 
 
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
@@ -465,6 +683,12 @@ def build_progress_ledger(
         effective_decisions = extract_contract_decisions_from_events(events)
     if effective_decisions:
         merge_contract_blockers(ledger, effective_decisions)
+
+    # Auto-extract test results from events
+    if events:
+        merge_test_results(ledger, events)
+        merge_continuation_items(ledger, events)
+        merge_repair_items(ledger, events)
 
     return ledger
 
