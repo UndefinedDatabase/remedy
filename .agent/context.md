@@ -1,13 +1,31 @@
 # Context
 
 ## Active Branch
-feature/steps-1155-1179-do-continue-v1 (now carries blocks 1110-1219;
-branch name drift to be surfaced at PR time — unmerged sequential feature line)
+feature/steps-1220-1244-approved-repair-apply (forked from clean main after
+PR #53 merged blocks 1085-1219). No drift this block.
 
 ## Scope
-Steps 1193-1219: Repair Loop v1 — TestFailureArtifact → Repair Context → Fix Task
-→ Repair Artifact → Fix Patch Intent → approval_required → safe stop.
-Prior: 1180-1192 Operator Cockpit v1 (code-clean; full suite green 5386, see below).
+Steps 1220-1244: Approved Repair Apply Cycle v1 — apply an APPROVED repair patch
+intent through the existing `do continue` path (snapshot → apply → linked test →
+proof → truthful stop), resolve the original failure only on proven pass.
+Prior: 1193-1219 Repair Loop v1 (proposal only) — merged to main in PR #53.
+
+## Carried residual risks (from 1193-1219)
+- Fixture repair builder is docs-only by design (no source rewrite yet).
+- Provider-backed source repair is future work.
+- Pre-existing deselected test `test_project_brain.py::...::test_full_chain_order`
+  (fails on main; always `-k "not test_full_chain_order"`).
+- UI `npm run lint` pre-existing blocker (no TS parser; no deps allowed) — decisions.md.
+
+## Approved Repair Apply constraints (block 1220-1244)
+- Apply ONLY through existing approved continue/apply service — no repair bypass.
+- Snapshot mandatory before mutation; Test Execution Service is the only test path.
+- Repair Loop never imports/calls source_apply/patch_apply/test_execution/provider.
+- No auto-approve / auto-revert / auto repair loop / multi-cycle.
+- Repair never "verified"/"resolved" unless snapshot verified + linked post-repair
+  test passes + proof supports it. docs-only repair must not be claimed a source fix.
+- Idempotent: no double-apply / no double test budget / no duplicate failure /
+  no double-resolve. No raw output/source/diff/secrets/tracebacks/paths in any surface.
 
 ## Repair Loop v1 constraints (block 1193-1219)
 - Creates a Patch Intent PROPOSAL only. No source_apply, no apply, no test execution,
