@@ -74,20 +74,25 @@ describe("deriveAgentStatus", () => {
 describe("selectChecklistRows", () => {
   it("renders exactly as many rows as real tasks", () => {
     const tasks = [task({ id: "a", checked: true }), task({ id: "b" }), task({ id: "c" })];
-    const { rows, completed } = selectChecklistRows(tasks);
+    const { rows, completed, total } = selectChecklistRows(tasks);
     expect(rows).toHaveLength(3);
     expect(completed).toBe(1);
+    expect(total).toBe(3);
   });
 
   it("empty tasks -> zero rows, never padded", () => {
-    const { rows, completed } = selectChecklistRows([]);
+    const { rows, completed, total } = selectChecklistRows([]);
     expect(rows).toHaveLength(0);
     expect(completed).toBe(0);
+    expect(total).toBe(0);
   });
 
-  it("caps very long task lists", () => {
-    const tasks = Array.from({ length: 30 }, (_, i) => task({ id: `t${i}` }));
-    expect(selectChecklistRows(tasks).rows).toHaveLength(16);
+  it("caps render rows but keeps the true total/completed denominator", () => {
+    const tasks = Array.from({ length: 30 }, (_, i) => task({ id: `t${i}`, checked: i < 20 }));
+    const { rows, completed, total } = selectChecklistRows(tasks);
+    expect(rows).toHaveLength(16);
+    expect(total).toBe(30);
+    expect(completed).toBe(20); // counts all checked, not just the first 16
   });
 });
 

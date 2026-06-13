@@ -1,3 +1,85 @@
+# Live Review — Steps 1180-1192
+
+Reviewer: parallel reviewer
+Scope: Merge Closure (R-0070) for 1155-1179 + read-only Operator Cockpit v1 (backend dashboard truth + UI to reference design pack)
+Timestamp: 2026-06-13
+
+## Verdict
+PENDING — no open Blocker/High. Reviewed through Step 1188 (HEAD 5ae8f0d); worker on 1189 (DetailPopover, uncommitted). R-0072 (askBar blocker) RESOLVED in 1188. Open findings all LOW: R-0071 (tests exit_code edge), R-0073 (orphan AddTaskButton file), R-0074 (checklist 16-cap denominator), R-0075 (labeled center node). Backend truth + redaction + 405 verified (B PASS); UI truth (C) PASS — LIVE pill gated on running, no fabricated activity, no fake chat, decorative nodes unclickable/uncounted; design fidelity (D) PASS on structure spot-check. Verdict stays PENDING until remaining steps land (1189 DetailPopover, 1190 ui_contract+vitest truth tests, 1191 acceptance, 1192 docs/handoff) AND builder proves full pytest green (count + wrapper) AND typecheck/lint/test:unit/build/vitest green. No PASS while any of those is unproven.
+
+## Check Matrix (A–E) — running
+| Area | Status | Note |
+|---|---|---|
+| A. Merge Closure (1180/R-0070) | PASS | Table committed (3f2a3f7). Verified vs `f51d04e^..27e83f7`, all 28 block files covered; descriptions match. Minor over-claim: lists `tests/test_autonomy_readiness.py` (not in block range) — harmless. |
+| B. Backend truth (1181) | PASS (1 low) | metrics.tests (events+exit_code), metrics.proof (build_proof_chain), snapshot (build_snapshot_truth over list_durable_apply_ids), continuation (do_continue_stopped + approved-intent). Counts/bools/enums only — no IDs/paths/blobs/diffs/output/tracebacks. data_dir None → explicit "unknown", no faked zeros. Attr names match SnapshotTruth/ProofChain (no silent-unknown bug). 405 intact (do_POST/PUT/DELETE). Frontend (1182) unknown→"—", no faked zeros, no new deps. R-0071 (low): exit_code-missing→failed edge. |
+| C. UI truth (1182-1189) | PASS (lows only) | R-0072 RESOLVED (askBar removed, 1188). 1184 unknown-safe; 1185 CommandBar jump-to only (no chat/LLM/fetch); 1188 LiveStatusPill LIVE only when `live.running`, AgentNowCard no fabricated activity, ActivityFeedCard fake input gone, TaskChecklist `+ Propose task` copies CLI only (no mutation); 1186 layout_only decorative nodes unclickable/unhoverable/uncounted, n tasks = n clickable nodes. Open lows: R-0071 (tests exit_code), R-0073 (orphan AddTaskButton file), R-0074 (checklist 16-cap count), R-0075 (labeled center node). 1189 DetailPopover pending. |
+| D. Design fidelity (1182-1189) | PASS (spot-check) | 1183 only local `@import`, no Tailwind/CDN/font/@font-face/new deps. 1184 metric order open/planned/done/progress/tests/proof/tokens. 1187 timeline MAX_EVENT_CHIPS=18, phase done/current markers, per-phase chip grouping, legend same chips. 1188 checklist done=check square/current=blue dot/planned glyph + right state text + "x of y". Full pixel audit deferred to builder; structure matches pack. |
+| E. Code quality / security (1190) | PENDING | Not started. |
+
+## Findings — Steps 1180-1192
+
+## Finding R-0071
+Status: Open
+Severity: low
+Area: ui_server (backend dashboard truth)
+Summary: `_build_metrics_tests` counts a `test_run_completed` event with missing `exit_code` metadata as a failure.
+Details: In `_build_metrics_tests` (ui_server.py, Step 1181), `passed = sum(1 for e if metadata.exit_code == 0)` and `failed = runs - passed`. An event lacking `exit_code` → `.get("exit_code")` is None → `None == 0` False → counted as failed (and `latest_state="fail"` if it is the last event). Direction is conservative (overstates failures, never fabricates a pass), so NOT a block-if and not a safety hole. But it can misreport a real pass as a fail when an emitter omits exit_code. Tests metric also never reports "unknown" (always numeric) — acceptable since the event ledger is always loadable, but means a no-data state shows `0`/`none` rather than unknown.
+Evidence: ef1c343 ui_server.py `_build_metrics_tests`; `passed = sum(1 for e in test_events if e.get("metadata", {}).get("exit_code") == 0)`.
+Expected fix: Treat missing/non-integer `exit_code` as an explicit "unknown"/uncounted bucket rather than folding into `failed`, so a pass is never mislabeled. Low priority — only matters if any emitter can omit exit_code.
+Done: R-0071 — `_build_metrics_tests` classifies each run via `_test_exit_state`
+(0->pass, int!=0->fail, missing/non-int->none/uncounted); `failed` never folds in
+unknowns; `latest_state` is none when the last run lacks an int exit_code. Test:
+`test_missing_exit_code_not_counted_as_fail`. (worker, Step 1190)
+
+## Finding R-0072
+Status: Resolved
+Severity: blocker
+Area: UI — RightLivePanel / ActivityFeedCard (fake chat input)
+Summary: Old `askBar` fake-chat input still rendered (block-if: "die alte askBar muss entfernt sein").
+Details: `ActivityFeedCard.tsx` renders `<div className={styles.askBar}><input readOnly placeholder="Ask something..." /><button aria-label="Send disabled" .../></div>`, and `ActivityFeedCard` is mounted in `RightLivePanel.tsx:18` (`<ActivityFeedCard activity={dashboard.activity} />`). The input is readOnly + the button is disabled (title "Chat input is not enabled yet"), so it performs no LLM/chat call and is not a mutation/safety hole — but it is exactly the fake-chat affordance the block-if requires removed. It claims a capability ("Ask something…") the read-only cockpit does not have. RightLivePanel rewrite is Step 1188 (not yet done), so likely removed there; filed now to keep verdict from PASS while present.
+Evidence: `apps/ui/src/components/panels/ActivityFeedCard.tsx:34-36`; mount at `RightLivePanel.tsx:18`; CSS `.askBar` in `RightLivePanel.module.css:72-74`.
+Expected fix: Remove the askBar input + send button and its CSS during the Step 1188 RightLivePanel rewrite. No chat/ask affordance in the read-only cockpit.
+RESOLVED (reviewer, Step 1188 / 5ae8f0d): askBar `<input readOnly>` + send button removed from ActivityFeedCard; `ArrowSendGlyph` import dropped; `.askBar` CSS removed (grep "askbar" → no match). No replacement input. LiveStatusPill (`live={dashboard.live.running}`) shows LIVE only when running; AgentNowCard "Working" only when `live.running`, else Idle/No active work — no fabricated activity.
+
+## Finding R-0073
+Status: Open
+Severity: low
+Area: UI — AddTaskButton (orphan placeholder)
+Summary: `AddTaskButton.tsx` placeholder ("+ Add Task") still exists as a file (block-if region: no "+ Add Task").
+Details: `AddTaskButton.tsx:13` renders `<button className={styles.addTask} title="Task creation from UI is not enabled yet." onClick={() => undefined}>+ Add Task</button>`. The handler is a no-op (`() => undefined`) so it creates nothing — the strict block-if ("'+ Add Task' der etwas anlegt") is NOT triggered. Grep shows the component is NOT imported/mounted anywhere (no `<AddTaskButton`), so it is dead code, not visible to the operator. Low severity: dead placeholder, no render, no mutation. Should be deleted to avoid a future accidental mount and to drop the misleading placeholder.
+Evidence: `apps/ui/src/components/panels/AddTaskButton.tsx:11-14`; no import/mount match in `apps/ui/src/`; `.addTask` CSS in `RightLivePanel.module.css:74`.
+Expected fix: Delete `AddTaskButton.tsx` (and unused `.addTask` CSS) during Step 1188 cleanup, unless a real mount is intended — in which case it would become a block-if and must not create anything.
+UPDATE (reviewer, Step 1188): `.addTask` CSS removed from RightLivePanel.module.css, but `AddTaskButton.tsx` file STILL EXISTS (orphan, not mounted; now references undefined `styles.addTask`). Still low/Open — dead file should be deleted in cleanup.
+Done: R-0073 — `apps/ui/src/components/panels/AddTaskButton.tsx` deleted (confirmed
+no import/mount anywhere). No "+ Add Task" affordance remains. (worker, Step 1190)
+
+## Finding R-0074
+Status: Open
+Severity: low
+Area: UI — TaskChecklistCard (completion denominator)
+Summary: "x of y completed" caps total at 16 — understates task count when a job has >16 tasks.
+Details: `TaskChecklistCard.tsx` does `realRows = tasks.slice(0, 16)`; header renders `{completed} of {realRows.length} completed`. With >16 tasks the denominator shows 16 (and `completed` counts only the first 16 `checked`), so e.g. a 20-task job reads "x of 16 completed" — a truncated total presented as the whole. Not a safety/verified-state issue; a count-truth nicety. Most jobs have <16 tasks so impact is rare.
+Evidence: `apps/ui/src/components/panels/TaskChecklistCard.tsx:29,51` (`tasks.slice(0,16)`; `{completed} of {realRows.length} completed`).
+Expected fix: Use the true `tasks.length` for the denominator (and count completed over all tasks), or label the list as truncated (e.g. "showing 16 of N"). Keep row render capped if desired, but the count must reflect the real total.
+Done: R-0074 — `selectChecklistRows` now returns `total = tasks.length` and
+`completed` counted over ALL tasks; render rows stay capped at 16. Header reads
+"{completed} of {total} completed". Test: "caps render rows but keeps the true
+total/completed denominator". (worker, Step 1190)
+
+## Finding R-0075
+Status: Open
+Severity: low
+Area: UI — graph (labeled decorative center node)
+Summary: Central `layout_only` "Project" root node carries a visible label (block-if lists "gelabelt" among forbidden layout_only properties).
+Details: `buildForceBrainModel.ts:33` defines the graph center as `sourceKind: "layout_only", label: "Project", visibleLabel: true, clickable: false`. All other layout_only nodes are `visibleLabel: false`, `clickable: false`, paint no pointer hit-area (`pointerAreaPaint` returns for layout_only), and are not counted (GraphFilterChips has no node counts; chips are pure filters). So the strict block-if (decorative dots clickable/hoverable/counted) is NOT violated: layout_only is unclickable, unhoverable, uncounted, and `n` real tasks → exactly `n` clickable `clickable:true` real_brain nodes. The lone deviation is the single center hub carrying the title "Project". This reads as a structural/title anchor, not a task masquerade. Low: confirm the reference design intends a labeled center hub; if yes, accept; if the pack shows the center unlabeled, drop `visibleLabel`.
+Evidence: `buildForceBrainModel.ts:33` (root `visibleLabel: true`), `:62/:115` (other layout_only `visibleLabel: false, clickable: false`); `ForceBrainGraph.tsx:104` (`layout_only` → no hit area), `:158` (`if (n.clickable && n.nodeId) onSelectNode`); GraphFilterChips has no counts.
+Expected fix: Confirm against the design pack. Keep if the reference shows a labeled center hub; otherwise set the root `visibleLabel: false`. No functional/truth risk either way (uncounted, unclickable).
+Done: R-0075 — root node set to `visibleLabel: false`; the live canvas renderer
+paints the center hub as the glowing `</>` orb (no text label). Decorative
+layout_only nodes remain unclickable/unhoverable/uncounted. (worker, Step 1190)
+
+---
+
 # Live Review — Steps 1155-1179
 
 Reviewer: parallel reviewer
@@ -27,9 +109,9 @@ PASS WITH RISKS — All 10 findings dispositioned and re-checked in committed co
 - **Redaction**: PASS — no raw source/diff/snapshot/output/secrets/tracebacks observed.
 - **Tests run**: NONE by reviewer (static review only; per instructions no pytest run).
 - **Full pytest run**: NO (reviewer). Worker MUST confirm full suite green before merge.
-- **Remaining findings**: R-0070 OPEN (medium, handoff) — final handoff lacks a Steps 1155-1179 changed-files table (block-if). RESOLVED: R-0057, R-0061, R-0062, R-0063, R-0064, R-0065, R-0066, R-0067, R-0068, R-0069.
+- **Remaining findings**: NONE open. RESOLVED: R-0057, R-0061, R-0062, R-0063, R-0064, R-0065, R-0066, R-0067, R-0068, R-0069, R-0070 (changed-files table verified vs git, Step 1180).
 - **Residual risks**: (1) R-0067 — create/verify/apply_record_saved emit failures best-effort/invisible by design (accepted: truth is disk-derived). (2) R-0066 fix correct by inspection but has NO dedicated regression test (R-0068 has one). (3) Reviewer did not run pytest — suite-green unverified by reviewer.
-- **Merge readiness**: NOT READY — R-0070 changed-files table missing (block-if) + worker must confirm full pytest green. Code verdict PASS WITH RISKS; once R-0070 table added and suite confirmed green, mergeable.
+- **Merge readiness**: R-0070 RESOLVED (table verified). Two gates remain before merge: (1) commit the changed-files table (currently uncommitted in live_review.md); (2) worker confirms full pytest suite green (count + wrapper) — reviewer ran none. Code verdict PASS WITH RISKS.
 
 ## Block-Status Snapshot (1155-1179)
 
@@ -52,7 +134,7 @@ PASS WITH RISKS — All 10 findings dispositioned and re-checked in committed co
 
 ## Finding R-0070
 
-Status: Open
+Status: Resolved
 Severity: medium
 Area: handoff
 Summary: Final handoff (commit 27e83f7 "Final handoff") lacks a changed-files table for Steps 1155-1179.
@@ -68,6 +150,7 @@ repository_snapshot.py, proof_chain.py, file_provenance.py,
 autonomy_readiness.py, review_bundle.py, progress_ledger.py,
 feature_planner.py, test_execution_service.py, CLI files, tests,
 docs/do-continue-v1.md). (worker, Step 1180)
+RESOLVED (reviewer, Step 1180): table verified against `git diff f51d04e^..27e83f7` — all 28 changed production/test/docs files in block range covered; descriptions match commits (R-0061/0066/0068 wiring accurate). Minor over-claim noted: row for `tests/test_autonomy_readiness.py` (file not in 1155-1179 range; changed in prior block) — harmless over-inclusion, not a block-if. CAVEAT: table currently lives in live_review.md UNCOMMITTED — must be committed with the block before merge.
 
 ## Finding R-0057 (carried forward)
 

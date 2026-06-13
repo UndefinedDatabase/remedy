@@ -31,7 +31,7 @@ export function buildForceBrainModel(
   const root: ForceBrainNode = {
     id: "root", nodeId: dashboard.jobId, kind: "root", state: "current",
     label: "Project", sourceKind: "layout_only", depth: 0, value: 18, fx: 0, fy: 0,
-    clickable: false, visibleLabel: true, alpha: 1, color: "#3478ff",
+    clickable: false, visibleLabel: false, alpha: 1, color: "#3478ff",
   };
   nodes.push(root);
 

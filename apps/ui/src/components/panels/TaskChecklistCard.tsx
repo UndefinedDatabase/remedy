@@ -27,7 +27,7 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
   jobId: string;
   onSelectNode: (nodeId: string | null) => void;
 }) {
-  const { rows: realRows, completed } = selectChecklistRows(tasks);
+  const { rows: realRows, completed, total } = selectChecklistRows(tasks);
   const proposeCommand = `remedy task propose --job ${jobId}`;
 
   if (realRows.length === 0) {
@@ -48,7 +48,7 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
     <section className={`${styles.card} ${styles.tasksCard} remedy-checklist`} data-ui="task-checklist-card">
       <header className={styles.cardHeader}>
         <h2>Tasks</h2>
-        <span>{completed} of {realRows.length} completed</span>
+        <span>{completed} of {total} completed</span>
       </header>
       <div className={styles.taskList}>
         {realRows.map(row => {

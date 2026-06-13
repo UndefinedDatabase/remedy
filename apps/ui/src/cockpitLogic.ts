@@ -39,10 +39,16 @@ export function deriveAgentStatus(dashboard: RemedyDashboard): AgentStatus {
 export interface ChecklistRows {
   rows: RemedyTaskItem[];
   completed: number;
+  total: number;
 }
 
-/** Exactly the real task rows (capped) — no padding, no fabricated rows. */
+/** Render rows are capped, but completed/total reflect ALL real tasks — the
+ *  "x of y completed" count is never truncated by the render cap. */
 export function selectChecklistRows(tasks: RemedyTaskItem[], cap = 16): ChecklistRows {
   const rows = tasks.slice(0, cap);
-  return { rows, completed: rows.filter(r => r.checked).length };
+  return {
+    rows,
+    completed: tasks.filter(t => t.checked).length,
+    total: tasks.length,
+  };
 }

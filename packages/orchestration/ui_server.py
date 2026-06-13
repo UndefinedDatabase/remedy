@@ -230,16 +230,28 @@ def _resolve_dashboard_data_dir() -> Path | None:
         return None
 
 
+def _test_exit_state(meta: dict[str, Any]) -> str:
+    """Classify a test_run_completed event: 'pass' | 'fail' | 'none'.
+
+    A missing or non-integer exit_code is 'none' (uncounted) — never folded into
+    failures, so a real pass is never mislabeled.
+    """
+    code = meta.get("exit_code")
+    if code == 0:
+        return "pass"
+    if isinstance(code, int):
+        return "fail"
+    return "none"
+
+
 def _build_metrics_tests(events: list[dict[str, Any]]) -> dict[str, Any]:
     """Safe test counters from the event ledger. Counts only, no output."""
     test_events = [e for e in events if e.get("event") == "test_run_completed"]
     runs = len(test_events)
-    passed = sum(1 for e in test_events if e.get("metadata", {}).get("exit_code") == 0)
-    failed = runs - passed
-    if runs == 0:
-        latest_state = "none"
-    else:
-        latest_state = "pass" if test_events[-1].get("metadata", {}).get("exit_code") == 0 else "fail"
+    states = [_test_exit_state(e.get("metadata", {})) for e in test_events]
+    passed = sum(1 for s in states if s == "pass")
+    failed = sum(1 for s in states if s == "fail")
+    latest_state = states[-1] if states else "none"
     return {"runs": runs, "passed": passed, "failed": failed, "latest_state": latest_state}
 
 

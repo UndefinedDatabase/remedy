@@ -44,6 +44,18 @@ class TestMetricsTests:
         ]
         assert _build_metrics_tests(events)["latest_state"] == "fail"
 
+    def test_missing_exit_code_not_counted_as_fail(self):
+        # An event without exit_code must not be mislabeled as a failure (R-0071).
+        events = [
+            {"event": "test_run_completed", "metadata": {"exit_code": 0}},
+            {"event": "test_run_completed", "metadata": {}},
+        ]
+        m = _build_metrics_tests(events)
+        assert m["runs"] == 2
+        assert m["passed"] == 1
+        assert m["failed"] == 0
+        assert m["latest_state"] == "none"
+
 
 class TestUnknownWhenNoDataDir:
     def test_proof_unknown(self):
