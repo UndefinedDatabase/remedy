@@ -1,14 +1,15 @@
 # Context
 
 ## Active Branch
-feature/steps-1220-1244-approved-repair-apply (forked from clean main after
-PR #53 merged blocks 1085-1219). No drift this block.
+feature/steps-1245-1274-overnight-prep (forked from clean main after PR #54
+merged Approved Repair Apply Cycle v1). No drift.
 
 ## Scope
-Steps 1220-1244: Approved Repair Apply Cycle v1 — apply an APPROVED repair patch
-intent through the existing `do continue` path (snapshot → apply → linked test →
-proof → truthful stop), resolve the original failure only on proven pass.
-Prior: 1193-1219 Repair Loop v1 (proposal only) — merged to main in PR #53.
+Steps 1245-1274: Bounded Overnight Preparation v0 — READ-ONLY planning/readiness/
+stop-reason/morning-report layer for future bounded overnight runs. No executor,
+no scheduler, no background worker, no apply/test/repair/provider execution.
+Prior: 1220-1244 Approved Repair Apply Cycle v1 — merged to main in PR #54
+(full suite 5432 passed, 8 skipped, 1 deselected).
 
 ## Carried residual risks (from 1193-1219)
 - Fixture repair builder is docs-only by design (no source rewrite yet).
@@ -17,15 +18,18 @@ Prior: 1193-1219 Repair Loop v1 (proposal only) — merged to main in PR #53.
   (fails on main; always `-k "not test_full_chain_order"`).
 - UI `npm run lint` pre-existing blocker (no TS parser; no deps allowed) — decisions.md.
 
-## Approved Repair Apply constraints (block 1220-1244)
-- Apply ONLY through existing approved continue/apply service — no repair bypass.
-- Snapshot mandatory before mutation; Test Execution Service is the only test path.
-- Repair Loop never imports/calls source_apply/patch_apply/test_execution/provider.
-- No auto-approve / auto-revert / auto repair loop / multi-cycle.
-- Repair never "verified"/"resolved" unless snapshot verified + linked post-repair
-  test passes + proof supports it. docs-only repair must not be claimed a source fix.
-- Idempotent: no double-apply / no double test budget / no duplicate failure /
-  no double-resolve. No raw output/source/diff/secrets/tracebacks/paths in any surface.
+## Bounded Overnight Prep constraints (block 1245-1274)
+- READ-ONLY: no repo mutation from overnight commands (safe metadata report
+  snapshot only if explicitly needed + documented). No background worker/scheduler.
+- No apply/test/repair/provider execution; no auto-approve/revert/contract-relax.
+- overnight_readiness must NOT import apply services, execute tests, call repair
+  propose, or import provider/Ollama. No subprocess, no shell=True.
+- Readiness never true from event-only proof; durable truth required; unknown
+  stays unknown; stale/missing evidence → blocker/risk.
+- Every suggested command must exist in the command catalog; no fake actions.
+- Default BoundedOvernightPolicy: planning/report only (allow_apply/repair_apply/
+  provider/revert = false, max_cycles=0). This block must NOT make overnight
+  execution silently possible.
 
 ## Repair Loop v1 constraints (block 1193-1219)
 - Creates a Patch Intent PROPOSAL only. No source_apply, no apply, no test execution,
