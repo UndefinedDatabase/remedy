@@ -103,3 +103,50 @@ def test_no_traceback_text_output(env):
     r = run_grouped_cli(["repair", "propose", job_id, fa], env)
     assert r.returncode == 0, r.stderr
     assert "Traceback" not in r.stdout and "Traceback" not in r.stderr
+
+
+def _make_job_with_source_failure(data_dir):
+    """Failure carrying a safe opt-in source-fixture target."""
+    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+    from packages.orchestration.storage import save_job
+
+    task = Task(description="orig")
+    fa = Artifact(
+        name="test-failure", content="Test test_failed: exit 1",
+        kind=ArtifactKind.VERIFICATION, task_id=task.id,
+        metadata={
+            "test_failure": True, "failure_kind": "test_failed",
+            "related_test_run_id": "tr-abc12345", "related_apply_id": "ap-1",
+            "related_task_id": str(task.id), "failing_phase": "test",
+            "command_safe": "pytest -q", "exit_code": 1,
+            "related_files": [], "safe_summary": "Test test_failed: exit 1",
+            "repair_fixture_target": "src/fix_me.py",
+        },
+    )
+    job = Job(id=uuid4(), name="cli-repair-src", user_prompt="x", state=RunState.RUNNING,
+              tasks=[task], artifacts=[fa],
+              permissions={"repo_generated_write": "allow", "repo_test_run": "allow"},
+              metadata={"target_repo": "."})
+    save_job(job, root=data_dir)
+    return str(job.id), str(fa.id)
+
+
+def test_docs_only_classification_in_status(env):
+    job_id, fa = _make_job_with_failure(env)
+    run_grouped_cli(["repair", "propose", job_id, fa, "--fixture-builder", "--json"], env)
+    r = run_grouped_cli(["repair", "status", job_id, "--json"], env)
+    row = json.loads(r.stdout)["attempts"][0]
+    assert row["expected_effect"] == "documentation_only"
+    assert row["resolved_failure"] is False
+
+
+def test_source_fixture_classification_in_status(env):
+    job_id, fa = _make_job_with_source_failure(env)
+    r0 = run_grouped_cli(["repair", "propose", job_id, fa, "--fixture-source-builder", "--json"], env)
+    assert r0.returncode == 0, r0.stderr
+    d0 = json.loads(r0.stdout)
+    assert d0["status"] == "approval_required"
+    r = run_grouped_cli(["repair", "status", job_id, "--json"], env)
+    row = json.loads(r.stdout)["attempts"][0]
+    assert row["expected_effect"] == "source_fix"
+    assert row["repair_kind"] == "source_fixture"
