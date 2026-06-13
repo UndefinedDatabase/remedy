@@ -5,21 +5,21 @@ Scope: Merge Closure (R-0070) for 1155-1179 + read-only Operator Cockpit v1 (bac
 Timestamp: 2026-06-13
 
 ## Verdict
-PENDING — no open Blocker/High. Reviewed through Step 1188 (HEAD 5ae8f0d); worker on 1189 (DetailPopover, uncommitted). R-0072 (askBar blocker) RESOLVED in 1188. Open findings all LOW: R-0071 (tests exit_code edge), R-0073 (orphan AddTaskButton file), R-0074 (checklist 16-cap denominator), R-0075 (labeled center node). Backend truth + redaction + 405 verified (B PASS); UI truth (C) PASS — LIVE pill gated on running, no fabricated activity, no fake chat, decorative nodes unclickable/uncounted; design fidelity (D) PASS on structure spot-check. Verdict stays PENDING until remaining steps land (1189 DetailPopover, 1190 ui_contract+vitest truth tests, 1191 acceptance, 1192 docs/handoff) AND builder proves full pytest green (count + wrapper) AND typecheck/lint/test:unit/build/vitest green. No PASS while any of those is unproven.
+FAIL — 1 open HIGH (R-0076). Block reached final step 1192 (HEAD e66ed8c, docs + design-guard reconcile) but is NOT mergeable. A PASS, B PASS, D PASS, E PASS(partial). R-0072 blocker + four lows (R-0071/73/74/75) RESOLVED/re-verified. Timeline/design-guard test reconcile (e66ed8c) re-checked — truth assertions intact (no `fallbackEventsFromTasks`, 6 canonical phases, no task→event synthesis), not weakened. OPEN: R-0076 (HIGH) DetailPopover renders per-task "Verified" from `proof_collected` event presence, not authoritative `build_proof_chain` (events-fallback-only / R-0066 violation) — unaddressed, ui_server.py untouched since filing; R-0077 (medium) "Applied" from `changedFilesCount`; R-0078 (medium) no 1180-1192 changed-files table in handoff. Docs make no false PASS claim (good). Builder must NOT claim PASS while FAIL. No PASS until R-0076 resolved, R-0077/R-0078 dispositioned, AND builder proves full pytest green (count + wrapper) + typecheck/lint/test:unit/build/vitest green.
 
 ## Check Matrix (A–E) — running
 | Area | Status | Note |
 |---|---|---|
 | A. Merge Closure (1180/R-0070) | PASS | Table committed (3f2a3f7). Verified vs `f51d04e^..27e83f7`, all 28 block files covered; descriptions match. Minor over-claim: lists `tests/test_autonomy_readiness.py` (not in block range) — harmless. |
 | B. Backend truth (1181) | PASS (1 low) | metrics.tests (events+exit_code), metrics.proof (build_proof_chain), snapshot (build_snapshot_truth over list_durable_apply_ids), continuation (do_continue_stopped + approved-intent). Counts/bools/enums only — no IDs/paths/blobs/diffs/output/tracebacks. data_dir None → explicit "unknown", no faked zeros. Attr names match SnapshotTruth/ProofChain (no silent-unknown bug). 405 intact (do_POST/PUT/DELETE). Frontend (1182) unknown→"—", no faked zeros, no new deps. R-0071 (low): exit_code-missing→failed edge. |
-| C. UI truth (1182-1189) | PASS (lows only) | R-0072 RESOLVED (askBar removed, 1188). 1184 unknown-safe; 1185 CommandBar jump-to only (no chat/LLM/fetch); 1188 LiveStatusPill LIVE only when `live.running`, AgentNowCard no fabricated activity, ActivityFeedCard fake input gone, TaskChecklist `+ Propose task` copies CLI only (no mutation); 1186 layout_only decorative nodes unclickable/unhoverable/uncounted, n tasks = n clickable nodes. Open lows: R-0071 (tests exit_code), R-0073 (orphan AddTaskButton file), R-0074 (checklist 16-cap count), R-0075 (labeled center node). 1189 DetailPopover pending. |
+| C. UI truth (1182-1189) | FAIL (1 high) | R-0072 RESOLVED. 1184/1185/1186/1188 truth checks pass; R-0071/73/74/75 RESOLVED (1190). 1189 DetailPopover: changed files = safe names; test/proof labels gated on payload fields; Snapshot/Reviewer/Artifacts honestly Unknown. BUT R-0076 (HIGH): per-task `proof_status="verified"` derived from `proof_collected` event presence (not authoritative `build_proof_chain`) → DetailPopover renders "Verified" — overclaim, violates events-fallback-only/R-0066. R-0077 (medium): `applyStatus` "Applied" inferred from `changedFilesCount>0`, not authoritative apply state. |
 | D. Design fidelity (1182-1189) | PASS (spot-check) | 1183 only local `@import`, no Tailwind/CDN/font/@font-face/new deps. 1184 metric order open/planned/done/progress/tests/proof/tokens. 1187 timeline MAX_EVENT_CHIPS=18, phase done/current markers, per-phase chip grouping, legend same chips. 1188 checklist done=check square/current=blue dot/planned glyph + right state text + "x of y". Full pixel audit deferred to builder; structure matches pack. |
-| E. Code quality / security (1190) | PENDING | Not started. |
+| E. Code quality / security (1190) | PASS (partial) | ui_contract pytest (test_cockpit_contract.py): 405 for POST/PUT/DELETE, cockpit sections present (tests/proof/snapshot/continuation), snapshot has source, continuation shape, redaction (no `/home/`, `Traceback`, `diff --git`). Vitest (cockpitLogic.test.ts, buildForceBrainModel.test.ts): row count, unknown display, deco-dot non-clickable. No new deps. Pre-existing repo blocker noted in decisions.md (no TS lint parser). NOTE: tests don't assert proof-truth semantics (R-0076 uncaught). Full pytest still owed by builder. |
 
 ## Findings — Steps 1180-1192
 
 ## Finding R-0071
-Status: Open
+Status: Resolved
 Severity: low
 Area: ui_server (backend dashboard truth)
 Summary: `_build_metrics_tests` counts a `test_run_completed` event with missing `exit_code` metadata as a failure.
@@ -42,7 +42,7 @@ Expected fix: Remove the askBar input + send button and its CSS during the Step 
 RESOLVED (reviewer, Step 1188 / 5ae8f0d): askBar `<input readOnly>` + send button removed from ActivityFeedCard; `ArrowSendGlyph` import dropped; `.askBar` CSS removed (grep "askbar" → no match). No replacement input. LiveStatusPill (`live={dashboard.live.running}`) shows LIVE only when running; AgentNowCard "Working" only when `live.running`, else Idle/No active work — no fabricated activity.
 
 ## Finding R-0073
-Status: Open
+Status: Resolved
 Severity: low
 Area: UI — AddTaskButton (orphan placeholder)
 Summary: `AddTaskButton.tsx` placeholder ("+ Add Task") still exists as a file (block-if region: no "+ Add Task").
@@ -54,7 +54,7 @@ Done: R-0073 — `apps/ui/src/components/panels/AddTaskButton.tsx` deleted (conf
 no import/mount anywhere). No "+ Add Task" affordance remains. (worker, Step 1190)
 
 ## Finding R-0074
-Status: Open
+Status: Resolved
 Severity: low
 Area: UI — TaskChecklistCard (completion denominator)
 Summary: "x of y completed" caps total at 16 — understates task count when a job has >16 tasks.
@@ -67,7 +67,7 @@ Done: R-0074 — `selectChecklistRows` now returns `total = tasks.length` and
 total/completed denominator". (worker, Step 1190)
 
 ## Finding R-0075
-Status: Open
+Status: Resolved
 Severity: low
 Area: UI — graph (labeled decorative center node)
 Summary: Central `layout_only` "Project" root node carries a visible label (block-if lists "gelabelt" among forbidden layout_only properties).
@@ -77,6 +77,76 @@ Expected fix: Confirm against the design pack. Keep if the reference shows a lab
 Done: R-0075 — root node set to `visibleLabel: false`; the live canvas renderer
 paints the center hub as the glowing `</>` orb (no text label). Decorative
 layout_only nodes remain unclickable/unhoverable/uncounted. (worker, Step 1190)
+RESOLVED (reviewer, Step 1190 / 6bad2eb): verified in code — R-0071 `_test_exit_state` (0→pass, int!=0→fail, missing/non-int→none; `failed`/`passed` summed from states, latest_state from states[-1]); R-0073 `AddTaskButton.tsx` deleted (file absent, no mount); R-0074 `selectChecklistRows` returns `total=tasks.length`, `completed` over all tasks, header "{completed} of {total}"; R-0075 `buildForceBrainModel.ts` root `visibleLabel:false, clickable:false`.
+
+## Finding R-0076
+Status: Open
+Severity: high
+Area: ui_server + DetailPopover (per-task proof "Verified" claim)
+Summary: Per-task `proof_status` is set to "verified" from the mere PRESENCE of a `proof_collected` event, not from the authoritative `build_proof_chain` — DetailPopover then renders "Verified", overclaiming verification.
+Details: In `_build_dashboard` task_items (ui_server.py ~line 502): `"proof_status": "verified" if any(e.get("event") == "proof_collected" and e.get("metadata", {}).get("task_id") == tid for e in events) else "none"`. `proof_collected` is emitted by autorun/builder_bridge right after apply+test with `test_passed: True` and a content hash — it signals proof MATERIAL was collected, NOT that the authoritative proof chain verifies. The authoritative truth is `build_proof_chain` → `c.proof_status == PROOF_VERIFIED`, which folds in snapshot verification + durable apply record + evidence status (the R-0066 fail-closed rule: a missing/degraded durable record must NOT read as verified). This event-presence shortcut is exactly the "events fallback-only, never authority" anti-pattern the block established. `remedyApi` maps `proof_status` → `task.proofStatus`; `DetailPopover.proofStatusLabel` renders "Verified" when `proofStatus === "verified"`. So the operator's per-task Verification panel can show "Verified" for a task whose authoritative proof chain would be incomplete/failed (e.g. degraded snapshot evidence). Block-if (C): status claim "verified" without authoritative linked evidence. Note the SAME file already does it correctly for `metrics.proof` (line ~271, `build_proof_chain` + `PROOF_VERIFIED`), so this is an inconsistency, not a missing capability.
+Evidence: `packages/orchestration/ui_server.py` ~502 (`proof_status` from `proof_collected` presence); emit sites `builder_bridge.py:190`, `autorun.py:403/582` (`proof_collected` = material collected, `test_passed:True`); `apps/ui/src/api/remedyApi.ts:74` (`proofStatus: t.proof_status`); `DetailPopover.tsx` `proofStatusLabel` → "Verified".
+Expected fix: Derive per-task proof status from the authoritative `build_proof_chain` (path/task-filtered) and only label "Verified" when `proof_status == PROOF_VERIFIED` over a verified snapshot + durable apply record. If per-task authoritative proof is not feasible here, downgrade the label (e.g. "Proof collected" / Unknown) rather than asserting "Verified" from an event. Must respect the R-0066 fail-closed rule.
+
+Done: R-0076 — per-task `proof_status` now comes from the authoritative proof
+chain. `_safe_build_proof_chain` builds `build_proof_chain` once (data_dir ->
+`build_snapshot_truth`); `_task_truth_maps` groups changes by task and labels a
+task "verified" only when every applicable change is `PROOF_VERIFIED`
+(fail-closed), "failed" if any failed, else incomplete. With no data root the
+per-task value is "unknown", never "verified". The `proof_collected`
+event-presence shortcut is removed. Test:
+`TestTaskTruthMaps::test_proof_not_verified_from_event_presence`. (worker)
+
+## Finding R-0077
+Status: Open
+Severity: medium
+Area: DetailPopover (per-task "Applied" inference)
+Summary: `applyStatus` claims "Applied" purely from `changedFilesCount > 0`, not from an authoritative apply state / DurableApplyRecord.
+Details: `DetailPopover.tsx` `applyStatus` returns "Applied" when `(task.changedFilesCount ?? 0) > 0`, else "Unknown". `changedFilesCount` is real payload data (events-derived), but "Applied" is an inference from a file count, not the authoritative apply truth that the block built (`build_snapshot_truth.apply_state` / DurableApplyRecord). A task can show changed files in events while the durable apply record is missing/degraded — the operator panel would still assert "Applied". Lower stakes than R-0076 ("Applied" < "Verified"), but same class of non-authoritative status claim. The job-level `snapshot` section already uses `build_snapshot_truth`; per-task apply state is not surfaced.
+Evidence: `apps/ui/src/components/detail/DetailPopover.tsx` `applyStatus` (`changedFilesCount ?? 0 > 0 → "Applied"`); no per-task apply_state in the payload (`task_items` has `changed_files_count`/`changed_files_safe`, no apply state).
+Expected fix: Surface an authoritative per-task apply state from `build_snapshot_truth` (apply_state == "applied" with verified recovery material) and label "Applied" only on that; otherwise show "Unknown" (or "Files changed: N" without an apply claim). Keep unknown-safe.
+
+Done: R-0077 — backend now emits authoritative per-task `apply_status`
+(applied/reverted/not_applied from the durable apply record via the proof
+chain's `apply_state`); `unknown` when the data root is unavailable.
+`DetailPopover.applyStatus` renders that field and shows "Unknown" otherwise —
+the `changedFilesCount>0` inference is removed. "Files changed: N" is shown
+separately without implying an apply claim. (worker)
+
+## Finding R-0078
+Status: Open
+Severity: medium
+Area: handoff (Steps 1180-1192 changed-files table)
+Summary: Block 1180-1192 has reached its final step (1192, docs) with no `| File | What changed | Why |` changed-files table for this block.
+Details: Protocol "Final Handoff: Changed Files Table" + block-if require the implementer's final report to enumerate all production/test/docs files changed in THIS block (1180-1192). `grep "## Changed Files"` finds only the 1155-1179 and 1145-1154 tables; `docs/operator-cockpit-v1.md` documents data sources but is not a changed-files table. Block touched (at least): `packages/orchestration/ui_server.py` (dashboard truth), `apps/ui/src/api/{types,remedyApi}.ts`, `apps/ui/src/styles/{tokens,globals}.css`, components (metrics/TopMetricsBar, command/CommandBar, graph/*, timeline/PhaseTimeline, panels/* incl. deleted AddTaskButton, detail/DetailPopover), `apps/ui/src/cockpitLogic.ts`, vitest specs, `tests/ui_server/*`, `tests/ui_contracts/*`, `docs/operator-cockpit-v1.md`. None enumerated in a handoff table. Same gap class as R-0070 for the prior block.
+Evidence: `grep -rn "## Changed Files" .agent/live_review.md docs/operator-cockpit-v1.md` → only "(Steps 1155-1179)"/"(Steps 1145-1154)"; e66ed8c (final step) added docs, no changed-files table.
+Expected fix: Add a "Changed Files (Steps 1180-1192)" table (File | What changed | Why) covering all production + test + docs files in the block to the final handoff, validated against `git diff 27e83f7..HEAD`.
+
+Done: R-0078 — "Changed Files (Steps 1180-1192)" table added below. (worker)
+
+## Changed Files (Steps 1180-1192)
+
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/ui_server.py` | `_build_dashboard` extended with `metrics.tests`/`metrics.proof`, `snapshot`, `continuation`; `_safe_build_proof_chain` + `_metrics_proof_from_chain` + `_task_truth_maps` (authoritative per-task proof/apply); `_test_exit_state` unknown bucket; data-dir resolver | Read-only cockpit truth, authoritative + redaction-safe (R-0071/R-0076/R-0077) |
+| `apps/ui/src/api/types.ts` | `RemedyMetricKey` +tests/proof; `RemedyMetric.value` number\|"—" + state/unknown; `RemedySnapshotSummary`/`RemedyContinuationSummary`; task `proofStatus`/`applyStatus` | Typed cockpit truth view models |
+| `apps/ui/src/api/remedyApi.ts` | Map tests/proof metrics + snapshot/continuation + proof/apply task fields; unknown→"—" | Unknown-safe mapping, no faked zeros |
+| `apps/ui/src/cockpitLogic.ts` | NEW — pure `liveIsActive`/`deriveAgentStatus`/`selectChecklistRows` | CSS-free, unit-testable cockpit logic |
+| `apps/ui/src/styles/tokens.css`, `globals.css` | Design pack palette/glass/glow + central glow background | Reference design (D1/D2) |
+| `apps/ui/src/components/metrics/TopMetricsBar.{tsx,module.css}` | 7-metric flex bar, status dot, suffix, em-dash unknown, tooltip | Reference design (D3) |
+| `apps/ui/src/components/command/CommandBar.{tsx,module.css}` | Jump-to filter (no chat), copy next-safe-command | Reference design (D4) |
+| `apps/ui/src/components/graph/{ForceBrainGraph.tsx,buildForceBrainModel.ts,BrainGraphStage.*,GraphFilterChips.*,BrainGraphCanvas.*}` | Node paint, decorative-dot rules (non-interactive, capped, uncounted), filter chips, stage glow, status colors | Reference design (D5) |
+| `apps/ui/src/components/timeline/PhaseTimeline.{tsx,module.css}` | Pure labels, tick+chip event rail grouped per phase, markers, legend | Reference design (D6) |
+| `apps/ui/src/components/panels/{RightLivePanel,LiveStatusPill,AgentNowCard,ActivityFeedCard,NeedsAttentionCard,TaskChecklistCard}.{tsx,module.css}` | Cards rebuilt; askBar removed; LIVE only when running; propose-task copies CLI; true completion denominator | Reference design (D7); truth (R-0072/R-0074) |
+| `apps/ui/src/components/panels/AddTaskButton.tsx` | Deleted | Orphan placeholder, no UI task creation (R-0073) |
+| `apps/ui/src/components/detail/DetailPopover.{tsx,module.css}` | Product-rule task detail: Result/Changed files/Verification (Apply/Test/Proof/Snapshot/Reviewer/Artifacts), unknown-safe, authoritative apply/proof | Reference design (D-detail); truth (R-0076/R-0077) |
+| `apps/ui/src/components/icons/RemedyGlyphs.tsx` | Add FlaskGlyph + ShieldCheckGlyph | Tests/proof metric + timeline icons |
+| `apps/ui/src/components/shell/RemedyShell.tsx` | Wire CommandBar `onJump` (task-label match → focus node) | Jump-to behaviour |
+| `apps/ui/src/types/react-force-graph-2d.d.ts` | Add `nodePointerAreaPaint` | Decorative-dot hit-area guard |
+| `docs/operator-cockpit-v1.md` | NEW — scope, data sources, truth rules, excluded mutations | Document the cockpit |
+| `apps/ui/src/api/remedyApi.test.ts`, `cockpitLogic.test.ts`, `components/graph/buildForceBrainModel.test.ts` | Vitest: mapping/unknown, live/agent/checklist/token logic, decorative-dot invariants | Frontend truth contract (1182/1190) |
+| `tests/ui_server/test_dashboard_cockpit_truth.py`, `test_cockpit_contract.py` | Backend cockpit truth + 405 + redaction + per-task truth maps | Truth/read-only contract (1181/1190) |
+| `tests/ui_server/test_dashboard_contract.py`, `tests/ui_contracts/test_{timeline_guard,design_drift,responsive,ux_quality,graph_architecture,degraded_banner}.py` | Reconcile design-guard assertions to the new pack (truth/safety invariants kept) | New design is authoritative (1192) |
 
 ---
 
