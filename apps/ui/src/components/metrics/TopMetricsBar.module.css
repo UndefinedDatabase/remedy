@@ -4,6 +4,7 @@
   gap: 0;
   padding: 14px 10px;
   min-height: 92px;
+  overflow: visible; /* token tooltip must not be clipped */
 }
 
 .metric {

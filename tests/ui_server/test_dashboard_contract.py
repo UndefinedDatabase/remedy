@@ -276,8 +276,9 @@ class TestNoFakeUiStateInComponents:
         assert "No tasks yet" in src or "emptyState" in src
 
     def test_agent_now_card_has_idle_state(self):
-        src = (UI_SRC / "components" / "panels" / "AgentNowCard.tsx").read_text()
-        assert "idle" in src.lower() or "Idle" in src
+        # Agent status logic (incl. the Idle state) lives in pure cockpitLogic.
+        logic = (UI_SRC / "cockpitLogic.ts").read_text()
+        assert "Idle" in logic
 
     def test_agent_now_card_no_always_working(self):
         src = (UI_SRC / "components" / "panels" / "AgentNowCard.tsx").read_text()
@@ -628,11 +629,15 @@ class TestVisualProductContract:
                 assert "@mui" not in src, f"{f.name} imports MUI — use RemedyGlyphs"
 
     def test_no_cli_language_in_command_bar(self):
-        """Command bar placeholder must not show CLI commands."""
+        """Command bar placeholder must be human-friendly, not a CLI command."""
         src = (UI_SRC / "components" / "command" / "CommandBar.tsx").read_text()
-        assert "remedy " not in src.lower() or "ask remedy" in src.lower()
-        # Placeholder should be human-friendly
-        assert "Ask Remedy" in src or "search tasks" in src.lower()
+        # The literal placeholder text must not be a CLI command.
+        placeholder = re.search(r"placeholder=(?:'([^']*)'|\"([^\"]*)\")", src)
+        assert placeholder, "CommandBar must have a placeholder"
+        ptext = (placeholder.group(1) or placeholder.group(2)).lower()
+        assert "remedy " not in ptext
+        # New design pack: human-friendly jump-to placeholder.
+        assert "jump to" in ptext
 
     def test_detail_popover_has_outcome_fields(self):
         """DetailPopover must show blockedReason, changedFilesSafe, completedAt."""
@@ -649,10 +654,10 @@ class TestVisualProductContract:
         assert "completed_at" in src
 
     def test_right_panel_glass_opacity(self):
-        """Right panel cards should use glass opacity >= .5."""
+        """Right panel cards should use the strong glass token (>= .5 opacity)."""
         css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
-        # Card background should be at least .5 opacity
-        assert "rgba(255,255,255,." in css
+        # New design pack: cards use the shared glass token (rgba(255,255,255,.78)).
+        assert "--remedy-glass-bg-strong" in css
 
 
 # ── Step 256: Degraded UI API State ─────────────────────────────────────────

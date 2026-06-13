@@ -869,8 +869,9 @@ class TestForceGraph:
         assert "react-force-graph-2d" in code
 
     def test_canvas_rendering(self):
+        # New design pack: links are soft (no glow/shadowBlur, no directional
+        # particles). Nodes use radial gradients; links use quadratic curves.
         code = (UI_SRC / "components" / "graph" / "ForceBrainGraph.tsx").read_text()
-        assert "shadowBlur" in code
         assert "createRadialGradient" in code
         assert "quadraticCurveTo" in code
 

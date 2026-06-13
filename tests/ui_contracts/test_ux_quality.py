@@ -483,7 +483,7 @@ class TestUXAntiRegression:
         tokens = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "src" / "styles" / "tokens.css"
         css = tokens.read_text()
         assert "--remedy-bg" in css, "Background token not found in tokens.css"
-        assert "#edf3fb" in css, "Light background color #edf3fb not found"
+        assert "#ecf2fb" in css, "Light background color #ecf2fb not found"
 
     def test_no_scanlines_in_frontend(self):
         """No retro scanline effects."""

@@ -135,6 +135,7 @@
 .taskRow.current .taskState { color: var(--remedy-blue-strong); font-weight: 600; }
 .taskRow.current .taskState::before { content: "• "; }
 .taskRow.done .taskState { color: var(--remedy-muted); }
+.taskRow.suggested .taskState { color: var(--remedy-state-open); }
 
 .emptyState { font-size: 13px; color: var(--remedy-muted); margin: 0; }
 

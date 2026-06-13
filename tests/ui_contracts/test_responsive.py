@@ -643,7 +643,7 @@ class TestFrontendBuildV2:
     def test_no_dark_background(self):
         tokens = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "styles" / "tokens.css"
         css = tokens.read_text()
-        assert "#edf3fb" in css, "Light background token must be present"
+        assert "#ecf2fb" in css, "Light background token must be present"
         for dark in ["#0a0e14", "#0d1117", "#1a1a2e", "#000000"]:
             assert dark not in css
 
@@ -677,10 +677,12 @@ class TestShellLayoutComponents:
         assert "Progress" in content or "progress" in content
 
     def test_command_bar(self):
+        # New design pack: the command bar is a local jump-to filter (editable
+        # input, no chat/LLM/mutation) — see test_command_bar_no_mutation.
         assert (UI_SRC / "components" / "command" / "CommandBar.tsx").is_file()
         content = (UI_SRC / "components" / "command" / "CommandBar.tsx").read_text(encoding="utf-8")
-        assert "readOnly" in content
         assert "placeholder" in content
+        assert "onJump" in content
 
     def test_command_bar_no_mutation(self):
         content = (UI_SRC / "components" / "command" / "CommandBar.tsx").read_text(encoding="utf-8")
@@ -734,13 +736,13 @@ class TestRightPanelCards:
         assert "Tasks" in content
         assert "completed" in content
 
-    def test_add_task_button(self):
+    def test_no_add_task_button(self):
+        # New design pack: the "+ Add Task" placeholder was removed; task
+        # creation is CLI-only. The propose affordance copies a command instead.
         f = UI_SRC / "components" / "panels" / "AddTaskButton.tsx"
-        assert f.is_file()
-        content = f.read_text(encoding="utf-8")
-        assert "not enabled yet" in content
-        # No mutation
-        assert "POST" not in content
+        assert not f.exists(), "AddTaskButton.tsx must be removed (no UI task creation)"
+        checklist = (UI_SRC / "components" / "panels" / "TaskChecklistCard.tsx").read_text(encoding="utf-8")
+        assert "remedy task propose" in checklist
 
 
 # ---------------------------------------------------------------------------

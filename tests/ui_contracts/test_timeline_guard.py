@@ -36,8 +36,9 @@ class TestPhaseHeaderAlwaysUsesPhaseGlyph:
         header_match = re.search(r'(styles\.phaseHeader.*?)(styles\.rail|styles\.eventRail)', content, re.DOTALL)
         assert header_match, "phaseHeader section not found"
         header = header_match.group(1)
-        assert "PhaseGlyph" in header, "phaseHeader must use PhaseGlyph"
-        # TaskDoneGlyph must NOT appear in header
+        # New design pack: phase header uses pure labels (phaseLabel), no icons.
+        assert "phaseLabel" in header, "phaseHeader must render the pure phase label"
+        # TaskDoneGlyph must NOT appear in header (done is a marker/visual class)
         assert "TaskDoneGlyph" not in header, (
             "TaskDoneGlyph must NOT appear in phaseHeader — done state is visual class, not icon replacement"
         )
@@ -93,9 +94,13 @@ class TestCanonicalPhases:
         phases = re.findall(r'"(\w+)"', match.group(1))
         assert phases == ["job", "planning", "build", "test", "review", "finalized"]
 
-    def test_phase_header_is_grid_six_columns(self):
+    def test_phase_header_positions_items_absolutely(self):
+        # New design pack: phase labels are absolutely positioned along the rail
+        # (left %) rather than a six-column grid.
         content = TIMELINE_CSS.read_text()
-        assert "repeat(6, 1fr)" in content, "Phase header must be 6-column grid"
+        item_match = re.search(r'\.phaseItem\s*\{([^}]+)\}', content)
+        assert item_match, ".phaseItem CSS rule not found"
+        assert "position: absolute" in item_match.group(1)
 
 
 class TestTimelineCSS:
@@ -109,17 +114,18 @@ class TestTimelineCSS:
             "Timeline must not use overflow: hidden — it clips glow effects"
         )
 
-    def test_has_event_rail_with_dashed_line(self):
+    def test_has_event_rail_with_ticks_and_chips(self):
+        # New design pack: event rail uses vertical ticks + rounded icon chips
+        # (no dashed connector line).
         content = TIMELINE_CSS.read_text()
-        assert "eventRailLine" in content or "eventRail" in content
-        assert "dashed" in content, "Event line must be dashed"
+        assert "eventRail" in content
+        assert "eventTick" in content, "Event rail must have tick marks"
+        assert "eventChip" in content, "Event rail must have icon chips"
 
-    def test_has_phase_icon_shell(self):
+    def test_phase_labels_are_pure(self):
+        # New design pack: phase icon shell is hidden; labels are pure text.
         content = TIMELINE_CSS.read_text()
-        assert "phaseIconShell" in content, "Must have phaseIconShell class"
-        shell_match = re.search(r'\.phaseIconShell\s*\{([^}]+)\}', content)
-        assert shell_match, "phaseIconShell CSS rule not found"
-        assert "border-radius" in shell_match.group(1)
+        assert "phaseLabel" in content, "Must have phaseLabel class"
 
     def test_state_classes_exist(self):
         content = TIMELINE_CSS.read_text()
@@ -127,11 +133,11 @@ class TestTimelineCSS:
         assert ".isCurrent" in content, "isCurrent class must exist"
         assert ".isPending" in content, "isPending class must exist"
 
-    def test_event_dots_have_borders(self):
+    def test_event_chips_have_borders(self):
         content = TIMELINE_CSS.read_text()
-        dot_match = re.search(r'\.eventDot\s*\{([^}]+)\}', content)
-        assert dot_match, "eventDot CSS rule not found"
-        assert "border" in dot_match.group(1), "Event dots must have borders"
+        chip_match = re.search(r'\.eventChip\s*\{([^}]+)\}', content)
+        assert chip_match, "eventChip CSS rule not found"
+        assert "border" in chip_match.group(1), "Event chips must have borders"
 
 
 class TestTimelineIcons:
@@ -236,19 +242,19 @@ class TestVisualRegressionA6:
         content = TIMELINE_TSX.read_text()
         assert "styles.legend" in content, "Legend must be in JSX"
 
-    def test_done_phases_use_phase_glyph_in_header(self):
+    def test_done_phases_use_pure_label_in_header(self):
         content = TIMELINE_TSX.read_text()
         header_match = re.search(r'(styles\.phaseHeader.*?)(styles\.rail)', content, re.DOTALL)
         assert header_match
         header = header_match.group(1)
-        assert "PhaseGlyph" in header
+        assert "phaseLabel" in header
         assert "TaskDoneGlyph" not in header
 
-    def test_timeline_css_border_radius_28(self):
+    def test_timeline_css_has_rounded_corners(self):
         content = TIMELINE_CSS.read_text()
         timeline_match = re.search(r'\.timeline\s*\{([^}]+)\}', content)
         assert timeline_match
-        assert "border-radius: 28px" in timeline_match.group(1), "Timeline must have border-radius: 28px"
+        assert "border-radius" in timeline_match.group(1), "Timeline must have rounded corners"
 
     def test_shell_timeline_row_height_at_least_150(self):
         content = SHELL_CSS.read_text()
@@ -260,10 +266,14 @@ class TestVisualRegressionA6:
             f"Shell timeline row must have min >= 150px, found clamps: {clamps}"
         )
 
-    def test_command_buttons_are_circular(self):
+    def test_command_buttons_are_rounded(self):
+        # New design pack: command bar action button is a rounded square tile.
         content = COMMAND_CSS.read_text()
-        assert "border-radius: 50%" in content or "border-radius: 999px" in content, (
-            "Command bar buttons must be circular (50% or 999px)"
+        btn_match = re.search(r'\.actionBtn\s*\{([^}]+)\}', content)
+        assert btn_match, "actionBtn CSS rule not found"
+        radius_match = re.search(r'border-radius:\s*(\d+)px', btn_match.group(1))
+        assert radius_match and int(radius_match.group(1)) >= 10, (
+            "Command bar action button must be rounded (>= 10px)"
         )
 
     def test_filter_chips_are_pills(self):
