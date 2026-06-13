@@ -1,8 +1,34 @@
 export type RemedyState = "done" | "current" | "pending" | "blocked" | "suggested";
 export type RemedyTaskKind = "goal" | "task" | "approval" | "apply" | "test" | "review" | "memory" | "proof" | "change";
-export type RemedyMetricKey = "open" | "planned" | "done" | "progress" | "tokens";
+export type RemedyMetricKey = "open" | "planned" | "done" | "progress" | "tests" | "proof" | "tokens";
 
-export interface RemedyMetric { key: RemedyMetricKey; label: string; value: number; suffix?: string; tooltip?: Record<string, number>; }
+export interface RemedyMetric {
+  key: RemedyMetricKey;
+  label: string;
+  value: number | "—";
+  suffix?: string;
+  tooltip?: Record<string, number>;
+  /** Latest test outcome — drives the status dot on the tests metric. */
+  state?: "pass" | "fail" | "none";
+  /** True when the value is not derivable (e.g. data root unavailable). */
+  unknown?: boolean;
+}
+
+/** Safe aggregate snapshot / apply-record truth. "unknown" when data root is unavailable. */
+export interface RemedySnapshotSummary {
+  applyRecords: number | "unknown";
+  verified: number | "unknown";
+  reverted: number | "unknown";
+  driftDetected: boolean | "unknown";
+  source: string;
+}
+
+/** Safe continuation summary derived from do_continue events + approved intents. */
+export interface RemedyContinuationSummary {
+  available: boolean | "unknown";
+  lastResult: string;
+  lastStopReason: string;
+}
 export interface RemedyNextAction { label: string; command: string; risk: "low" | "medium" | "high"; requiresHuman: boolean; }
 export interface RemedyJourneyItem { id: string; kind: RemedyTaskKind; title: string; subtitle: string; state: RemedyState; nodeId: string; visibleFromZoom: number; }
 export interface RemedyTaskItem { id: string; label: string; state: RemedyState; kind: RemedyTaskKind; checked: boolean; muted: boolean; nodeId: string; nextAction?: RemedyNextAction; outcomeSummary?: string; changedFilesCount?: number; changedFilesSafe?: string[]; testStatus?: string; blockedReason?: string; completedAt?: string; }
@@ -136,4 +162,4 @@ export interface RemedyWorkerStatus {
   redaction: string;
 }
 
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; }
