@@ -107,6 +107,25 @@ export function TokenGlyph(p: G) {
   );
 }
 
+export function FlaskGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M6.5 2v4L3.5 12a1 1 0 00.9 1.5h7.2a1 1 0 00.9-1.5L9.5 6V2" />
+      <line x1="5.5" y1="2" x2="10.5" y2="2" />
+      <line x1="5" y1="9.5" x2="11" y2="9.5" opacity=".6" />
+    </svg>
+  );
+}
+
+export function ShieldCheckGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M8 2l5 2v4c0 3-2.2 5-5 6-2.8-1-5-3-5-6V4z" />
+      <polyline points="6 8 7.5 9.5 10.5 6" />
+    </svg>
+  );
+}
+
 // Activity glyphs
 export function BuilderGlyph(p: G) {
   return (
