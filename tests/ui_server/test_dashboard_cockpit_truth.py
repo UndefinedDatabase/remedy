@@ -184,6 +184,15 @@ class TestDashboardShape:
         assert "proof" in dash["metrics"]
         assert "snapshot" in dash
         assert "continuation" in dash
+        assert "repair" in dash
+
+    def test_repair_section_safe_shape(self):
+        job = Job(name="t")
+        repair = _build_dashboard(job)["repair"]
+        assert repair["attempt_count"] == 0
+        assert repair["pending_approval_count"] == 0
+        assert repair["next_safe_action"] == ""  # no approve affordance without evidence
+        assert repair["source"] == "repair_attempts_v1"
         for key in ("runs", "passed", "failed", "latest_state"):
             assert key in dash["metrics"]["tests"]
 

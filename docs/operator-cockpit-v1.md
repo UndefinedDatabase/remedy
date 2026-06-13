@@ -36,6 +36,7 @@ derives the cockpit truth sections from authoritative sources:
 | `metrics.proof` | `build_proof_chain` (authoritative) | total_changes vs verified; state verified/partial/none |
 | `snapshot` | `build_snapshot_truth` over `list_durable_apply_ids` | apply_records/verified/reverted/drift_detected; `source = durable_apply_records` |
 | `continuation` | `do_continue_stopped` events + approved intents | available (approved-intent light check) + last_result/last_stop_reason (safe enums) |
+| `repair` | `repair_attempts_v1` job metadata | attempt_count + pending_approval_count + a copyable `remedy patch approve` next action — never an Approve button |
 
 When the data root cannot be resolved, every derived value is reported as the
 explicit string `"unknown"` (and the frontend renders `—`). Zeros are never
@@ -66,3 +67,5 @@ faked to stand in for unknown data.
   feeds the cockpit `continuation` section.
 - [snapshot-rollback-v1.md](snapshot-rollback-v1.md) — the durable snapshot/apply
   truth behind the `snapshot` section.
+- [repair-loop-v1.md](repair-loop-v1.md) — the repair attempts surfaced (read-only)
+  in the `repair` section.

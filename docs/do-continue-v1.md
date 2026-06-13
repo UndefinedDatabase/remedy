@@ -110,4 +110,7 @@ continuations for the same job, repository, or intent.
 - [real-test-execution-v1](real-test-execution-v1.md) — the Test Execution Service.
 - [run-contract-v1](run-contract-v1.md) — apply/test gates and budgets.
 - [do-run-v1](do-run-v1.md) — the pre-apply `remedy do run` flow this continues.
-- [repair-loop-v0](repair-loop-v0.md) — the repair path offered on test failure.
+- [repair-loop-v0](repair-loop-v0.md) — the legacy repair path.
+- [repair-loop-v1](repair-loop-v1.md) — the bounded, approval-gated repair
+  proposal offered when a continuation test fails. The next block applies an
+  approved repair intent via `remedy do continue <job_id> --intent-id <id>`.
