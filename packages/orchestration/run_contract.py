@@ -51,6 +51,9 @@ class ContractAction:
     DISCOVER_COMMANDS = "discover_commands"
     WRITE_METADATA = "write_metadata"
     CREATE_FIX_TASK = "create_fix_task"
+    # Repair Loop v1 metadata actions (Step 1204) — safe, allowed by default.
+    CREATE_REPAIR_ARTIFACT = "create_repair_artifact"
+    CREATE_REPAIR_PATCH_INTENT = "create_repair_patch_intent"
 
     # Apply actions (gated by stop_before_apply)
     APPLY = "apply"
@@ -143,6 +146,8 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.BUILD_ARTIFACT,
     ContractAction.CREATE_PATCH_INTENT,
     ContractAction.CREATE_FIX_TASK,
+    ContractAction.CREATE_REPAIR_ARTIFACT,
+    ContractAction.CREATE_REPAIR_PATCH_INTENT,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
     ContractAction.RUN_TEST,

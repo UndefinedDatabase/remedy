@@ -545,11 +545,39 @@ def _build_repair_summary(job: Any, events: list[dict]) -> dict:
             if meta.get("stop_reason") == "awaiting_approval":
                 next_safe_action = f"remedy patch approve {str(job.id)} {meta.get('fix_task_id', '?')[:8]}"
 
+    # Repair Loop v1 attempt counts (Step 1208) — safe statuses only, no body.
+    repair_attempt_count = 0
+    v1_intent_count = 0
+    pending_approval_count = 0
+    blocked_count = 0
+    unavailable_count = 0
+    attempts = (job.metadata or {}).get("repair_attempts_v1", {})
+    if isinstance(attempts, dict):
+        for v in attempts.values():
+            if not isinstance(v, dict):
+                continue
+            repair_attempt_count += 1
+            status = v.get("status", "")
+            stop_reason = v.get("stop_reason", "")
+            if v.get("repair_intent_id"):
+                v1_intent_count += 1
+            if status == "approval_required":
+                pending_approval_count += 1
+            if status == "blocked":
+                blocked_count += 1
+            if stop_reason == "repair_builder_unavailable":
+                unavailable_count += 1
+
     return {
         "failure_artifact_count": failure_count,
+        "repair_attempt_count": repair_attempt_count,
         "fix_task_count": fix_task_count,
-        "repair_patch_intent_count": repair_intent_count,
+        "repair_patch_intent_count": repair_intent_count + v1_intent_count,
+        "repair_intent_count": v1_intent_count,
         "pending_repair_intents": pending_intents,
+        "pending_approval_count": pending_approval_count,
+        "blocked_count": blocked_count,
+        "unavailable_count": unavailable_count,
         "latest_failure_kind": latest_failure_kind,
         "next_safe_action": next_safe_action,
     }

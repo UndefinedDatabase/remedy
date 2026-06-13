@@ -547,6 +547,70 @@ def merge_continuation_items(ledger: ProgressLedger, events: list[dict] | None) 
             seen.add(item.item_id)
 
 
+def extract_repair_items_from_events(events: list[dict] | None) -> list[ProgressItem]:
+    """Extract Repair Loop v1 progress items from events (Step 1206).
+
+    Produces: repair needed, context ready, fix task created, repair patch intent
+    pending approval, repair blocked, repair unavailable. De-duplicated by item_id
+    on repeated reads. No automatic action.
+    """
+    if not events:
+        return []
+    items: list[ProgressItem] = []
+    for ev in events:
+        ename = ev.get("event", "")
+        meta = ev.get("metadata", ev)
+        if ename == "repair_attempt_requested":
+            items.append(ProgressItem(
+                item_id="repair-needed", title="Repair needed",
+                status=ProgressStatus.IN_PROGRESS, source_type=ProgressSource.REPAIR_ARTIFACT,
+                source_ref=str(meta.get("failure_artifact_id", "")),
+                safe_summary="A repair was requested for a failing test.",
+            ))
+        elif ename == "repair_context_built":
+            items.append(ProgressItem(
+                item_id="repair-context", title="Repair context ready",
+                status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+                source_ref=str(meta.get("failure_artifact_id", "")),
+                safe_summary="Safe repair context built from the failure evidence.",
+            ))
+        elif ename == "repair_fix_task_created":
+            items.append(ProgressItem(
+                item_id="repair-fix-task", title="Fix task created",
+                status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+                source_ref=str(meta.get("fix_task_id", "")),
+                safe_summary="Fix task created from the failure evidence.",
+            ))
+        elif ename == "repair_approval_required":
+            items.append(ProgressItem(
+                item_id="repair-approval", title="Repair patch intent pending approval",
+                status=ProgressStatus.BLOCKED, source_type=ProgressSource.REPAIR_ARTIFACT,
+                severity="Medium", source_ref=str(meta.get("repair_intent_id", "")),
+                safe_summary="A repair patch intent awaits approval. No apply yet.",
+                next_action="remedy patch approve <job_id> <repair_intent_id>",
+            ))
+        elif ename == "repair_attempt_blocked":
+            items.append(ProgressItem(
+                item_id="repair-blocked", title="Repair blocked",
+                status=ProgressStatus.BLOCKED, source_type=ProgressSource.REPAIR_ARTIFACT,
+                severity="Medium", source_ref=str(meta.get("failure_artifact_id", "")),
+                safe_summary="Repair could not proceed — review the blocker.",
+                next_action="remedy repair status <job_id> --json",
+            ))
+    # "Repair builder unavailable" is derived from a stopped attempt; surface it
+    # from a fix-task-created attempt with no approval-required follow-up.
+    return items
+
+
+def merge_repair_items(ledger: ProgressLedger, events: list[dict] | None) -> None:
+    """Merge Repair Loop v1 progress items, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_repair_items_from_events(events):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -624,6 +688,7 @@ def build_progress_ledger(
     if events:
         merge_test_results(ledger, events)
         merge_continuation_items(ledger, events)
+        merge_repair_items(ledger, events)
 
     return ledger
 

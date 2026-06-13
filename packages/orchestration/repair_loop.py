@@ -1075,8 +1075,9 @@ def run_repair_attempt(
     # --- Fixture repair builder (optional) ---
     if fixture_builder:
         contract = ensure_contract(job)
-        pi_decision = evaluate_run_action(contract, ContractAction.CREATE_PATCH_INTENT)
-        if not pi_decision.allowed:
+        art_decision = evaluate_run_action(contract, ContractAction.CREATE_REPAIR_ARTIFACT)
+        pi_decision = evaluate_run_action(contract, ContractAction.CREATE_REPAIR_PATCH_INTENT)
+        if not art_decision.allowed or not pi_decision.allowed:
             attempt.stop_reason = RepairStopReason.BLOCKED_INELIGIBLE
             save_repair_attempt(job, attempt)
             _emit_repair(ddir, job_id, "repair_attempt_blocked",

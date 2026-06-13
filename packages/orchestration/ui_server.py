@@ -423,6 +423,37 @@ def _build_continuation_section(
     }
 
 
+def _build_repair_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Repair Loop v1 summary for the cockpit (Step 1210).
+
+    Counts + safe statuses only — no failure output, no patch body, no source.
+    No mutation affordance: a pending approval surfaces a copyable CLI command,
+    never an Approve button.
+    """
+    attempts = (job.metadata or {}).get("repair_attempts_v1", {})
+    attempt_count = 0
+    pending_approval = 0
+    pending_intent_id = ""
+    if isinstance(attempts, dict):
+        for v in attempts.values():
+            if not isinstance(v, dict):
+                continue
+            attempt_count += 1
+            if v.get("status") == "approval_required":
+                pending_approval += 1
+                if not pending_intent_id and v.get("repair_intent_id"):
+                    pending_intent_id = str(v.get("repair_intent_id"))
+    next_action = ""
+    if pending_intent_id:
+        next_action = f"remedy patch approve {job.id} {pending_intent_id}"
+    return {
+        "attempt_count": attempt_count,
+        "pending_approval_count": pending_approval,
+        "next_safe_action": next_action,
+        "source": "repair_attempts_v1",
+    }
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -682,6 +713,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         },
         "snapshot": _build_snapshot_section(job, truth_data_dir),
         "continuation": _build_continuation_section(job, events, truth_data_dir),
+        "repair": _build_repair_section(job),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,

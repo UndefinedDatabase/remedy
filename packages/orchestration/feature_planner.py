@@ -196,6 +196,51 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             next_action=next_action,
         ))
 
+    # Rule 0b: Repair Loop v1 outcomes (Step 1207) — evidence-backed next actions,
+    # no automatic approval or contract relaxation.
+    _REPAIR_RULES = {
+        "repair-needed": (
+            "Propose a repair for the failing test",
+            "A failing test has no completed repair proposal yet.",
+            FeaturePlanSource.FAILED_TEST,
+            "remedy repair propose <job_id> <failure_artifact_id> --json",
+        ),
+        "repair-approval": (
+            "Approve or reject the repair patch intent",
+            "A repair patch intent is pending approval — your decision is required.",
+            FeaturePlanSource.OPEN_FINDING,
+            "remedy patch approve <job_id> <repair_intent_id>",
+        ),
+        "repair-blocked": (
+            "Review the repair blocker",
+            "A repair attempt was blocked (e.g. contract or eligibility) — review it.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy repair status <job_id> --json",
+        ),
+    }
+    for item in ledger.items:
+        rule = _REPAIR_RULES.get(item.item_id)
+        if rule is None:
+            continue
+        title, rationale, source, next_action = rule
+        sug_id = _make_suggestion_id("repair", item.item_id)
+        if sug_id in seen_ids:
+            continue
+        seen_ids.add(sug_id)
+        seen_ids.add(_make_suggestion_id("finding", item.title))
+        seen_ids.add(_make_suggestion_id("gap", item.title))
+        plan.suggestions.append(FeatureSuggestion(
+            suggestion_id=sug_id,
+            title=title,
+            rationale=rationale,
+            priority=FeaturePlanPriority.HIGH,
+            source_type=source,
+            source_refs=[item.item_id],
+            estimated_risk="medium",
+            default_selected=True,
+            next_action=next_action,
+        ))
+
     # Rule 1: Open blocker/high findings -> high priority suggestions
     for item in ledger.items:
         if item.status == ProgressStatus.BLOCKED:
