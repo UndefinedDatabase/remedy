@@ -7,36 +7,36 @@ Intent → approval_required → safe stop. No auto-apply, no auto-repair execut
 beyond the proposal, no auto-contract-relax, no auto-revert.
 
 ## Current Step
-1194 — Repair Loop v1 models in repair_loop.py
+1219 — Final handoff (complete; full suite green 5420; awaiting reviewer verdict)
 
 ## Steps
 - [x] 1193: Handoff reconciliation (1180-1192 full-suite proof; scope→1193-1219)
-- [ ] 1194: Repair Loop v1 models (RepairAttempt/Result/ContextSummary/PatchIntentResult/StopReason)
-- [ ] 1195: build_repair_context(job_id, failure_artifact_id, data_dir) safe summary
-- [ ] 1196: evaluate_repair_eligibility(job_id, failure_artifact_id)
-- [ ] 1197: RepairAttempt persistence (idempotent, no dup task/artifact/intent)
-- [ ] 1198: Fix Task creation (idempotent, linked, Progress-visible)
-- [ ] 1199: Fixture Repair Builder v1 (deterministic; else repair_builder_unavailable)
-- [ ] 1200: Repair Patch Intent creation (real, resolvable, pending, approve action)
-- [ ] 1201: CLI repair propose
-- [ ] 1202: CLI repair status (read-only)
-- [ ] 1203: Integrate repair start (alias/canonical decision + docs)
-- [ ] 1204: Run Contract actions (create_fix_task/create_repair_artifact/create_repair_patch_intent)
-- [ ] 1205: Event emission (safe, degradation visible)
-- [ ] 1206: Progress Ledger integration
-- [ ] 1207: Feature Planner integration
-- [ ] 1208: Review Bundle repair_summary.json
-- [ ] 1209: Proof Chain / Provenance alignment (repair intent not applied/verified)
-- [ ] 1210: Operator Cockpit read-only repair counts (or defer + document)
-- [ ] 1211: Idempotency tests
-- [ ] 1212: CLI runtime tests (tiny repo)
-- [ ] 1213: Redaction tests
-- [ ] 1214: Architecture guards
-- [ ] 1215: Docs (repair-loop-v1, do-continue-v1, operator-cockpit-v1)
-- [ ] 1216: Targeted tests + full pytest once
-- [ ] 1217: Review protocol (findings/Done/verdict)
-- [ ] 1218: PR handoff prep (no PR without user OK; note branch drift)
-- [ ] 1219: Final handoff
+- [x] 1194: Repair Loop v1 models
+- [x] 1195: build_repair_context safe summary
+- [x] 1196: evaluate_repair_eligibility
+- [x] 1197: RepairAttempt persistence (idempotent)
+- [x] 1198: Fix Task creation (idempotent, linked)
+- [x] 1199: Fixture Repair Builder v1 (deterministic; else unavailable)
+- [x] 1200: Repair Patch Intent (real, resolvable, pending)
+- [x] 1201: CLI repair propose
+- [x] 1202: CLI repair status (read-only)
+- [x] 1203: repair start v0 retained + documented (propose = canonical v1)
+- [x] 1204: Run Contract repair actions
+- [x] 1205: Event emission (safe, degradation visible)
+- [x] 1206: Progress Ledger integration
+- [x] 1207: Feature Planner integration
+- [x] 1208: Review Bundle repair_summary.json v1 counts
+- [x] 1209: Proof / Provenance alignment (tested)
+- [x] 1210: Operator Cockpit read-only repair section
+- [x] 1211: Idempotency tests
+- [x] 1212: CLI runtime tests
+- [x] 1213: Redaction tests
+- [x] 1214: Architecture guards
+- [x] 1215: Docs (repair-loop-v1 + cross-links)
+- [x] 1216: Targeted + full pytest once (5420 passed)
+- [x] 1217: Review protocol (handoff posted; reviewer verdict pending)
+- [x] 1218: PR prep (below; no PR without user OK)
+- [x] 1219: Final handoff
 
 ## Hard rules
 - No shell=True. No background pytest. scripts/remedy_pytest.sh, targeted first,

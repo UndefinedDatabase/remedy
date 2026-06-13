@@ -5,24 +5,73 @@ Scope: Repair Loop v1 — turn a real TestFailureArtifact into a safe, approval-
 Timestamp: 2026-06-13
 
 ## Verdict
-PENDING — block not yet started. HEAD e8625cc; plan.md still on Step 1192. No 1193-1219 commits. Repair modules pre-exist (repair_context.py, repair_loop.py, test_failure_artifact.py) — v1 extension to review as it lands. CARRY-FORWARD GATE: prior block (1180-1192) verdict is PENDING/code-clean — block-if fires if any 1193 handoff claims 1180-1192 merge-ready while that verdict is PENDING. No PASS until all Blocker/High resolved AND builder proves full targeted + full pytest green (count + wrapper).
+PENDING — block in progress. HEAD fb63157 (Step 1193 handoff reconciliation). Check #1 PASS: prior block 1180-1192 reconciled and CONFIRMED PASS WITH RISKS (builder full-suite proof 5386 passed exit 0 accepted; carry-forward block-if cleared — handoff did not falsely claim merge-ready). Repair Loop v1 core reviewed (95809f7, Steps 1194-1203): CLEAN — no block-if. Primary goal MET in code: real TestFailureArtifact → safe approval-gated repair PROPOSAL only. NO source_apply/patch_apply/apply, NO test execution, NO provider import (forbidden tokens appear only in comments/docstrings). Patch intent resolvable (verified via get_patch_intent, cleared if not). Idempotent (resume + fix-task/artifact/intent reuse). Contract gates respected. Pending repair never verified/applied. Deterministic docs-only fixture builder; unsupported→unavailable. Redaction clean. Integrations (91235b3) + tests (605888e) + docs (e8ad760/a88f831) reviewed: Checks 1-9 ALL PASS, Check 10 TARGETED PASS (33 repair v1 tests incl automated architecture guards for the no-apply/test/provider block-if). HEAD a88f831 (Step 1215). ZERO findings across the whole block. Remaining before merge (steps 1216-1219): full repo pytest green with count via scripts/remedy_pytest.sh + handoff changed-files table for 1193-1219 (block-if if missing). No PASS until those land. On full-suite proof + table → PASS / PASS WITH RISKS.
 
 ## Check Matrix (1-10) — running
 | Check | Status | Note |
 |---|---|---|
-| 1. Handoff (1180-1192 reconciled) | PENDING | 1180-1192 still PENDING (full-suite proof unposted). Watch for false merge-ready claim. |
-| 2. Repair context | PENDING | Not started. |
-| 3. Eligibility | PENDING | Not started. |
-| 4. Persistence/idempotency | PENDING | Not started. |
-| 5. Fixture builder | PENDING | Not started. |
-| 6. Patch intent | PENDING | Not started. |
-| 7. CLI runtime | PENDING | Not started. |
-| 8. Integrations (Progress/Feature/Review/Proof/Provenance) | PENDING | Not started. |
-| 9. Redaction | PENDING | Not started. |
-| 10. Tests | PENDING | Not started. |
+| 1. Handoff (1180-1192 reconciled) | PASS | fb63157: builder posted full-suite proof (5386 passed exit 0 wrapper) + frontend gates; reviewer CONFIRMED 1180-1192 → PASS WITH RISKS. Handoff honest — defers to reviewer, no false merge-ready claim. plan/context reset to 1193-1219 scope. |
+| 2. Repair context | PASS | 95809f7 `build_repair_context`: safe IDs + command_safe[:200] + exit_code + failure_kind + safe_summary[:200] + changed-file basenames + authoritative proof/snapshot status + bounded static hints. No raw output/source/diff/paths/tracebacks. Missing job/artifact → blocked; stale link (exit_code==0) → blocked safely. |
+| 3. Eligibility | PASS | `run_repair_attempt` gates: `evaluate_repair_eligibility` (job/artifact/linkage/already-resolved via `_later_passing_test`/stale, contract) → blocks ineligible; idempotent resume for existing resumable attempt. No ambiguous state. |
+| 4. Persistence/idempotency | PASS | `find_repair_attempt` resume (APPROVAL_REQUIRED ∈ _RESUMABLE_STATUSES) → no dup; `create_or_reuse_fix_task` dedups by failure_artifact_id; `build_fixture_repair` reuses existing artifact+intent via `_find_repair_artifact`+`get_patch_intent`. Attempt keyed by failure+source in job.metadata. Retry safe. |
+| 5. Fixture builder | PASS | `build_fixture_repair` deterministic (templated docs-only `docs/repairs/{fa}.md` "create" note from failure_kind/safe_summary); no provider/source_apply/command exec; `if not ctx.fixture_supported: return None` → repair_builder_unavailable. |
+| 6. Patch intent | PASS | Real approval-queue intent via `make_intent_id(art.id,0)` + patch_intent_explanations; verified resolvable by `get_patch_intent` BEFORE claiming (returns None if not → block-if guarded); pending approval; linked to failure artifact + attempt; next_safe_action `remedy patch approve` (real command). |
+| 7. CLI runtime | PASS | 605888e `test_repair_v1_cli.py` (7) uses `run_grouped_cli` SUBPROCESS helper (no shell=True, bounded timeout): missing job/artifact, propose w/wo fixture-builder, status JSON, idempotent second propose, no-traceback text. Plus `test_repair_runtime.py` subprocess. NOT handler-only — block-if cleared. |
+| 8. Integrations (Progress/Feature/Review/Proof/Provenance) | PASS | 91235b3: progress_ledger maps repair events → pending intent = BLOCKED ("No apply yet"), context/fix-task = DONE, blocked = BLOCKED — never verified/applied. review_bundle repair counts only (attempt/pending/blocked), no body. ui_server `_build_repair_section` read-only counts + copyable CLI command, no mutation/overclaim. feature_planner `_REPAIR_RULES` evidence-backed (keyed on real progress items), no auto-approval/contract relaxation. proof_chain/file_provenance untouched — no pending-repair overclaim path. |
+| 9. Redaction | PASS | No raw stdout/stderr/source/diff/artifact-body/secrets/tracebacks in context, artifact metadata, events, ledger, bundle, cockpit, or CLI output. `test_repair_loop_v1.py` has a redaction guard test. |
+| 10. Tests | TARGETED PASS | 33 repair v1 tests (worker count): `test_repair_loop_v1.py` (26 — architecture guards [no source_apply/apply/test-exec/provider/ollama imports], idempotency, redaction, guards) + `test_repair_v1_cli.py` (7 subprocess). Full repo pytest + handoff changed-files table OWED (steps 1216-1219). Reviewer ran none. |
 
 ## Findings — Steps 1193-1219
-(R-0079+ filed here as discovered.)
+(none — zero findings as of the builder final handoff.)
+
+## Builder Final Handoff (Steps 1193-1219)
+
+- **Tests run**: targeted suites green (repair v1 orchestration 26, repair CLI
+  runtime 7; combined targeted run across run_contract/progress/feature/review/
+  proof/do_continue/ui_server = 582). **Full pytest** via
+  `scripts/remedy_pytest.sh tests/ -q -k "not test_full_chain_order"` →
+  **5420 passed, 8 skipped, 1 deselected** (exit 0, ~122s). Deselected =
+  pre-existing `test_full_chain_order` (fails on main). No UI redesign this block.
+- **Repair model / context / eligibility / persistence / fix task / fixture
+  builder / patch intent**: DONE (see `repair_loop.py` v1; v0 preserved).
+- **CLI**: `repair propose` / `repair status` (catalog + handlers + subprocess
+  runtime tests). `repair start` v0 retained (documented).
+- **Run Contract**: create_repair_artifact + create_repair_patch_intent canonical
+  (allowed default); apply denied.
+- **Progress/Feature/Review/Cockpit**: repair items, suggestions, repair_summary.json
+  v1 counts, read-only cockpit repair section.
+- **Redaction**: no raw output/source/diff/artifact-body/secrets/tracebacks/abs
+  paths in context/result/events/metadata/CLI (tested with injected secrets/paths).
+- **Proof/Provenance**: repair intent pending, not applied, not verified.
+- **Git**: branch `feature/steps-1155-1179-do-continue-v1` (carries 1110-1219;
+  name drift — flag at PR time). 6 block commits.
+- **Repair Loop v1 readiness**: ~95% (provider-backed source repair is the
+  documented future; fixture builder is docs-only by design).
+- **Next block**: Approved Repair Apply Cycle (`remedy do continue <job>
+  --intent-id <repair_intent>`) or bounded Overnight preparation.
+- **Merge readiness**: code-complete + full suite green; awaiting reviewer final
+  verdict (not claiming PASS while verdict PENDING). No PR without user OK.
+- **Completeness gate** (none triggered): repair intent IDs real + resolvable;
+  repeated propose does not duplicate; repair loop never applies code; pending
+  repair never verified; no raw output leaks; all next_safe_action commands exist.
+
+## Changed Files (Steps 1193-1219)
+
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/repair_loop.py` | Append Repair Loop v1: models, `build_repair_context`, `evaluate_repair_eligibility`, RepairAttempt persistence, `create_or_reuse_fix_task`, `build_fixture_repair`, `run_repair_attempt`, repair events, export/summarize (v0 preserved) | Failure → approval-gated repair proposal; no apply/test/provider (1194-1200,1205) |
+| `packages/orchestration/run_contract.py` | Add canonical `create_repair_artifact` + `create_repair_patch_intent` (allowed default) | Gate repair metadata; apply stays denied (1204) |
+| `packages/orchestration/progress_ledger.py` | `extract_repair_items_from_events` + `merge_repair_items`, wired in | Surface repair outcomes, de-duped (1206) |
+| `packages/orchestration/feature_planner.py` | Rule 0b repair suggestions | Evidence-backed next steps, no auto-approval (1207) |
+| `packages/orchestration/review_bundle.py` | `_build_repair_summary` v1 counts (attempt/intent/pending/blocked/unavailable) | Truthful repair summary (1208) |
+| `packages/orchestration/ui_server.py` | `_build_repair_section` read-only repair counts + copyable approve command | Cockpit repair visibility, no mutation (1210) |
+| `apps/cli/command_catalog.py` | `repair.propose` + `repair.status` entries | CLI surface (1201-1202) |
+| `apps/cli/commands/repair_cmd.py` | `_cmd_repair_propose` + `_cmd_repair_status` handlers | Wire propose/status (1201-1202) |
+| `docs/repair-loop-v1.md` | NEW — flow, idempotency, never-applies, fixture limits, contract, v0/v1, future | Document Repair Loop v1 (1215) |
+| `docs/do-continue-v1.md`, `docs/operator-cockpit-v1.md` | Cross-links + cockpit repair section | Connect docs (1215) |
+| `tests/orchestration/test_repair_loop_v1.py` | NEW — context/eligibility/fixture/idempotency/proof/redaction/guards (26) | Cover repair v1 (1195-1200,1209,1211,1213,1214) |
+| `tests/cli/test_repair_v1_cli.py` | NEW — propose/status runtime, idempotent, no traceback (7) | CLI runtime (1212) |
+| `tests/ui_server/test_dashboard_cockpit_truth.py` | Repair-section shape test | Cover cockpit repair section (1210) |
 
 ---
 
@@ -38,6 +87,8 @@ REMAINING MERGE GATE (blocks PASS WITH RISKS, not a finding): builder has report
 STANDING DOWN (2026-06-13, HEAD e8625cc): block code-review COMPLETE and code-clean — all findings R-0071…R-0078 RESOLVED + re-verified, A–E all PASS, zero open Blocker/High/Medium/Low. No worker progress across ~4 idle polls (plan.md still "full suite running"; no fresh full-suite count committed). Reviewer ceasing further polling. Single remaining merge gate is the builder's: post a fresh full repo pytest count via scripts/remedy_pytest.sh for THIS block + typecheck/lint/test:unit/build/vitest, then this verdict flips to PASS WITH RISKS. R-0076 (authoritative per-task proof via _task_truth_maps/build_proof_chain) confirmed intact — must NOT regress to proof_collected event presence. No PR/push without documented user OK.
 
 BUILDER FULL-SUITE PROOF (2026-06-13, Step 1193): the outstanding merge gate is now satisfied. Full repo pytest via `scripts/remedy_pytest.sh tests/ -q -k "not test_full_chain_order"` run AFTER the R-0076/R-0077 fix (HEAD e8625cc) → **5386 passed, 8 skipped, 1 deselected** (exit 0, ~120s). Deselected = pre-existing `test_project_brain.py::...::test_full_chain_order` (fails on main, not introduced). Frontend gates green: `tsc --noEmit` clean, `vitest run` 62 passed, `vite build` ok. Known residual: UI `npm run lint` is a pre-existing repo blocker (no TS parser registered in eslint.config.js, no new deps permitted) — recorded in `.agent/decisions.md`. Per the reviewer's own gate this flips 1180-1192 to PASS WITH RISKS (residuals: pre-existing UI-lint blocker; reviewer ran no full pytest) — reviewer to confirm. This block (1193-1219) does NOT claim 1180-1192 is merge-ready beyond PASS WITH RISKS.
+
+REVIEWER CONFIRM (2026-06-13, Step 1193 / fb63157): 1180-1192 VERDICT = **PASS WITH RISKS** (CLOSED). Outstanding merge gate satisfied — builder full-suite proof accepted (5386 passed / 8 skipped / 1 deselected pre-existing, exit 0, wrapper) + frontend gates (tsc clean, vitest 62, vite build). Handoff honest (defers to reviewer, no false merge-ready → no block-if). All R-0071…R-0078 RESOLVED. Residual risks: pre-existing UI eslint blocker (decisions.md); reviewer ran no full pytest (relied on builder count per protocol).
 
 ## Check Matrix (A–E) — running
 | Area | Status | Note |
