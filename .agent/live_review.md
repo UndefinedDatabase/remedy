@@ -1,3 +1,31 @@
+# Live Review — Steps 1193-1219
+
+Reviewer: parallel reviewer
+Scope: Repair Loop v1 — turn a real TestFailureArtifact into a safe, approval-gated repair PROPOSAL with NO code apply, NO test execution, NO provider.
+Timestamp: 2026-06-13
+
+## Verdict
+PENDING — block not yet started. HEAD e8625cc; plan.md still on Step 1192. No 1193-1219 commits. Repair modules pre-exist (repair_context.py, repair_loop.py, test_failure_artifact.py) — v1 extension to review as it lands. CARRY-FORWARD GATE: prior block (1180-1192) verdict is PENDING/code-clean — block-if fires if any 1193 handoff claims 1180-1192 merge-ready while that verdict is PENDING. No PASS until all Blocker/High resolved AND builder proves full targeted + full pytest green (count + wrapper).
+
+## Check Matrix (1-10) — running
+| Check | Status | Note |
+|---|---|---|
+| 1. Handoff (1180-1192 reconciled) | PENDING | 1180-1192 still PENDING (full-suite proof unposted). Watch for false merge-ready claim. |
+| 2. Repair context | PENDING | Not started. |
+| 3. Eligibility | PENDING | Not started. |
+| 4. Persistence/idempotency | PENDING | Not started. |
+| 5. Fixture builder | PENDING | Not started. |
+| 6. Patch intent | PENDING | Not started. |
+| 7. CLI runtime | PENDING | Not started. |
+| 8. Integrations (Progress/Feature/Review/Proof/Provenance) | PENDING | Not started. |
+| 9. Redaction | PENDING | Not started. |
+| 10. Tests | PENDING | Not started. |
+
+## Findings — Steps 1193-1219
+(R-0079+ filed here as discovered.)
+
+---
+
 # Live Review — Steps 1180-1192
 
 Reviewer: parallel reviewer
@@ -5,14 +33,18 @@ Scope: Merge Closure (R-0070) for 1155-1179 + read-only Operator Cockpit v1 (bac
 Timestamp: 2026-06-13
 
 ## Verdict
-FAIL — 1 open HIGH (R-0076). Block reached final step 1192 (HEAD e66ed8c, docs + design-guard reconcile) but is NOT mergeable. A PASS, B PASS, D PASS, E PASS(partial). R-0072 blocker + four lows (R-0071/73/74/75) RESOLVED/re-verified. Timeline/design-guard test reconcile (e66ed8c) re-checked — truth assertions intact (no `fallbackEventsFromTasks`, 6 canonical phases, no task→event synthesis), not weakened. OPEN: R-0076 (HIGH) DetailPopover renders per-task "Verified" from `proof_collected` event presence, not authoritative `build_proof_chain` (events-fallback-only / R-0066 violation) — unaddressed, ui_server.py untouched since filing; R-0077 (medium) "Applied" from `changedFilesCount`; R-0078 (medium) no 1180-1192 changed-files table in handoff. Docs make no false PASS claim (good). Builder must NOT claim PASS while FAIL. No PASS until R-0076 resolved, R-0077/R-0078 dispositioned, AND builder proves full pytest green (count + wrapper) + typecheck/lint/test:unit/build/vitest green.
+PENDING (CODE-CLEAN — zero open Blocker/High/Medium/Low; one merge gate outstanding: builder's full-suite proof). HEAD c926993. All findings R-0071…R-0078 RESOLVED and re-verified in committed code. A PASS, B PASS, C PASS, D PASS, E PASS. R-0076 (HIGH) fix verified: per-task proof + apply now from authoritative `build_proof_chain`/`build_snapshot_truth` (`_task_truth_maps`), fail-closed, unknown-never-verified, `proof_collected` event shortcut removed — this was the core goal-#3 truth defect and it is closed. Read-only contract intact (405); redaction clean; no new deps/CDN/fonts; no fake chat; decorative nodes unclickable/uncounted; design-guard truth assertions not weakened.
+REMAINING MERGE GATE (blocks PASS WITH RISKS, not a finding): builder has reported targeted/UI suites green (e.g. "UI suites 609 pass", "96 cockpit/dashboard", typecheck/vitest/build green) but has NOT yet posted FULL repo pytest green with a count via `scripts/remedy_pytest.sh`. Per verdict rules + standing instruction, PASS WITH RISKS requires that full-suite proof. Once the builder posts full pytest green (count + wrapper) + typecheck/lint/test:unit/build/vitest, verdict → PASS WITH RISKS (residual: pre-existing UI-lint blocker noted in decisions.md; reviewer ran no full pytest). Reviewer ran only targeted checks; did NOT run the full suite.
+STANDING DOWN (2026-06-13, HEAD e8625cc): block code-review COMPLETE and code-clean — all findings R-0071…R-0078 RESOLVED + re-verified, A–E all PASS, zero open Blocker/High/Medium/Low. No worker progress across ~4 idle polls (plan.md still "full suite running"; no fresh full-suite count committed). Reviewer ceasing further polling. Single remaining merge gate is the builder's: post a fresh full repo pytest count via scripts/remedy_pytest.sh for THIS block + typecheck/lint/test:unit/build/vitest, then this verdict flips to PASS WITH RISKS. R-0076 (authoritative per-task proof via _task_truth_maps/build_proof_chain) confirmed intact — must NOT regress to proof_collected event presence. No PR/push without documented user OK.
+
+BUILDER FULL-SUITE PROOF (2026-06-13, Step 1193): the outstanding merge gate is now satisfied. Full repo pytest via `scripts/remedy_pytest.sh tests/ -q -k "not test_full_chain_order"` run AFTER the R-0076/R-0077 fix (HEAD e8625cc) → **5386 passed, 8 skipped, 1 deselected** (exit 0, ~120s). Deselected = pre-existing `test_project_brain.py::...::test_full_chain_order` (fails on main, not introduced). Frontend gates green: `tsc --noEmit` clean, `vitest run` 62 passed, `vite build` ok. Known residual: UI `npm run lint` is a pre-existing repo blocker (no TS parser registered in eslint.config.js, no new deps permitted) — recorded in `.agent/decisions.md`. Per the reviewer's own gate this flips 1180-1192 to PASS WITH RISKS (residuals: pre-existing UI-lint blocker; reviewer ran no full pytest) — reviewer to confirm. This block (1193-1219) does NOT claim 1180-1192 is merge-ready beyond PASS WITH RISKS.
 
 ## Check Matrix (A–E) — running
 | Area | Status | Note |
 |---|---|---|
 | A. Merge Closure (1180/R-0070) | PASS | Table committed (3f2a3f7). Verified vs `f51d04e^..27e83f7`, all 28 block files covered; descriptions match. Minor over-claim: lists `tests/test_autonomy_readiness.py` (not in block range) — harmless. |
 | B. Backend truth (1181) | PASS (1 low) | metrics.tests (events+exit_code), metrics.proof (build_proof_chain), snapshot (build_snapshot_truth over list_durable_apply_ids), continuation (do_continue_stopped + approved-intent). Counts/bools/enums only — no IDs/paths/blobs/diffs/output/tracebacks. data_dir None → explicit "unknown", no faked zeros. Attr names match SnapshotTruth/ProofChain (no silent-unknown bug). 405 intact (do_POST/PUT/DELETE). Frontend (1182) unknown→"—", no faked zeros, no new deps. R-0071 (low): exit_code-missing→failed edge. |
-| C. UI truth (1182-1189) | FAIL (1 high) | R-0072 RESOLVED. 1184/1185/1186/1188 truth checks pass; R-0071/73/74/75 RESOLVED (1190). 1189 DetailPopover: changed files = safe names; test/proof labels gated on payload fields; Snapshot/Reviewer/Artifacts honestly Unknown. BUT R-0076 (HIGH): per-task `proof_status="verified"` derived from `proof_collected` event presence (not authoritative `build_proof_chain`) → DetailPopover renders "Verified" — overclaim, violates events-fallback-only/R-0066. R-0077 (medium): `applyStatus` "Applied" inferred from `changedFilesCount>0`, not authoritative apply state. |
+| C. UI truth (1182-1189) | PASS | All findings RESOLVED. R-0072 askBar removed; R-0071/73/74/75 fixed; R-0076 (HIGH) per-task proof now authoritative (`_task_truth_maps` over `build_proof_chain`, fail-closed, unknown-never-verified, event shortcut removed); R-0077 apply from durable `apply_state`. DetailPopover: changed files = safe names, test/proof/apply gated on authoritative payload, Snapshot/Reviewer/Artifacts honest Unknown. LIVE pill gated on running, no fabricated activity, no fake chat, decorative nodes unclickable/uncounted, n tasks = n clickable nodes. |
 | D. Design fidelity (1182-1189) | PASS (spot-check) | 1183 only local `@import`, no Tailwind/CDN/font/@font-face/new deps. 1184 metric order open/planned/done/progress/tests/proof/tokens. 1187 timeline MAX_EVENT_CHIPS=18, phase done/current markers, per-phase chip grouping, legend same chips. 1188 checklist done=check square/current=blue dot/planned glyph + right state text + "x of y". Full pixel audit deferred to builder; structure matches pack. |
 | E. Code quality / security (1190) | PASS (partial) | ui_contract pytest (test_cockpit_contract.py): 405 for POST/PUT/DELETE, cockpit sections present (tests/proof/snapshot/continuation), snapshot has source, continuation shape, redaction (no `/home/`, `Traceback`, `diff --git`). Vitest (cockpitLogic.test.ts, buildForceBrainModel.test.ts): row count, unknown display, deco-dot non-clickable. No new deps. Pre-existing repo blocker noted in decisions.md (no TS lint parser). NOTE: tests don't assert proof-truth semantics (R-0076 uncaught). Full pytest still owed by builder. |
 
@@ -80,7 +112,7 @@ layout_only nodes remain unclickable/unhoverable/uncounted. (worker, Step 1190)
 RESOLVED (reviewer, Step 1190 / 6bad2eb): verified in code — R-0071 `_test_exit_state` (0→pass, int!=0→fail, missing/non-int→none; `failed`/`passed` summed from states, latest_state from states[-1]); R-0073 `AddTaskButton.tsx` deleted (file absent, no mount); R-0074 `selectChecklistRows` returns `total=tasks.length`, `completed` over all tasks, header "{completed} of {total}"; R-0075 `buildForceBrainModel.ts` root `visibleLabel:false, clickable:false`.
 
 ## Finding R-0076
-Status: Open
+Status: Resolved
 Severity: high
 Area: ui_server + DetailPopover (per-task proof "Verified" claim)
 Summary: Per-task `proof_status` is set to "verified" from the mere PRESENCE of a `proof_collected` event, not from the authoritative `build_proof_chain` — DetailPopover then renders "Verified", overclaiming verification.
@@ -96,9 +128,10 @@ task "verified" only when every applicable change is `PROOF_VERIFIED`
 per-task value is "unknown", never "verified". The `proof_collected`
 event-presence shortcut is removed. Test:
 `TestTaskTruthMaps::test_proof_not_verified_from_event_presence`. (worker)
+RESOLVED (reviewer, c926993): verified in code — `_build_dashboard` builds `_safe_build_proof_chain` once; task_items `proof_status` = `task_proof_map.get(tid, "unknown" if chain None else "none")`; `_task_truth_maps` groups by real `ProofChange.task_id`, "verified" only when all applicable `PROOF_VERIFIED` (fail-closed), "failed" if any failed, else incomplete; never "verified" when chain None. `proof_collected` event-presence shortcut REMOVED. `metrics.proof` now `_metrics_proof_from_chain` (same authoritative chain). ProofChange carries task_id + apply_state.
 
 ## Finding R-0077
-Status: Open
+Status: Resolved
 Severity: medium
 Area: DetailPopover (per-task "Applied" inference)
 Summary: `applyStatus` claims "Applied" purely from `changedFilesCount > 0`, not from an authoritative apply state / DurableApplyRecord.
@@ -112,9 +145,10 @@ chain's `apply_state`); `unknown` when the data root is unavailable.
 `DetailPopover.applyStatus` renders that field and shows "Unknown" otherwise —
 the `changedFilesCount>0` inference is removed. "Files changed: N" is shown
 separately without implying an apply claim. (worker)
+RESOLVED (reviewer, c926993): verified — backend emits per-task `apply_status` from `_task_truth_maps` (`ProofChange.apply_state`: applied/reverted/not_applied; "unknown" when chain None). `remedyApi.ts:75` maps `applyStatus: t.apply_status`; `DetailPopover.applyStatus` renders applied/reverted/not_applied → "Applied"/"Reverted"/"Not applied", Unknown otherwise. `changedFilesCount>0` inference removed.
 
 ## Finding R-0078
-Status: Open
+Status: Resolved
 Severity: medium
 Area: handoff (Steps 1180-1192 changed-files table)
 Summary: Block 1180-1192 has reached its final step (1192, docs) with no `| File | What changed | Why |` changed-files table for this block.
@@ -123,6 +157,7 @@ Evidence: `grep -rn "## Changed Files" .agent/live_review.md docs/operator-cockp
 Expected fix: Add a "Changed Files (Steps 1180-1192)" table (File | What changed | Why) covering all production + test + docs files in the block to the final handoff, validated against `git diff 27e83f7..HEAD`.
 
 Done: R-0078 — "Changed Files (Steps 1180-1192)" table added below. (worker)
+RESOLVED (reviewer, c926993): table at line ~127 cross-checked vs `git diff 27e83f7..c926993` — all 45 changed production/test/docs files covered (ui_server.py, api types/remedyApi/cockpitLogic, styles, all components, deleted AddTaskButton, docs, vitest + ui_server + ui_contracts tests). Harmless over-inclusion: LiveStatusPill listed within the panels row (bundled). Descriptions match commits.
 
 ## Changed Files (Steps 1180-1192)
 

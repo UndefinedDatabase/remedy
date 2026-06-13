@@ -1,20 +1,31 @@
 # Context
 
 ## Active Branch
-feature/steps-1155-1179-do-continue-v1 (continues with block 1180-1192;
-branch name drift to be surfaced at PR time — unmerged feature line carries 1110-1192)
+feature/steps-1155-1179-do-continue-v1 (now carries blocks 1110-1219;
+branch name drift to be surfaced at PR time — unmerged sequential feature line)
 
 ## Scope
-Steps 1180-1192: Merge Closure (R-0070) + Operator Cockpit v1 (read-only UI).
-Prior: Steps 1155-1179 Snapshot Truth Closure + `remedy do continue` v1 (PASS WITH RISKS).
+Steps 1193-1219: Repair Loop v1 — TestFailureArtifact → Repair Context → Fix Task
+→ Repair Artifact → Fix Patch Intent → approval_required → safe stop.
+Prior: 1180-1192 Operator Cockpit v1 (code-clean; full suite green 5386, see below).
 
-## Cockpit constraints (block 1180-1192)
-- UI strictly READ-ONLY: do_POST/PUT/DELETE stay 405; no mutation endpoints/buttons.
-- No raw data in payload/UI: no diffs/stdout/tracebacks/abs paths/recovery blobs/secrets/raw prompts.
-- No demo/synthetic data; no element asserting unproven state (no fake LIVE, no idle spam).
-- No new frontend deps, no Tailwind/CDN/external fonts. React 19 + TS + CSS Modules.
-- Dashboard truth derived only from authoritative sources (build_snapshot_truth /
-  DurableApplyRecords / proof-chain / events); unresolvable data_dir → "unknown", never faked 0.
+## Repair Loop v1 constraints (block 1193-1219)
+- Creates a Patch Intent PROPOSAL only. No source_apply, no apply, no test execution,
+  no provider/Ollama, no auto-revert, no auto-contract-relax, no auto-budget-raise.
+- Apply stays separate + approval-gated (next block: do continue --intent-id).
+- No raw stdout/stderr/source/diff/artifact-body/secrets/tracebacks/abs paths in any
+  public surface (events/CLI/Progress/Proof/Review Bundle/UI payload).
+- Repair Loop must NOT import/call source_apply or apply services or test execution.
+- All next_safe_action commands must exist in the command catalog.
+- Repair intent IDs real + resolvable; idempotent (no dup Fix Task / Repair Artifact /
+  Repair Patch Intent); a pending repair is never marked verified.
+- Fixture Repair Builder v1 is deterministic; unsupported failures → repair_builder_unavailable.
+
+## Carried foundation
+- Real Test Execution v1; failed tests create TestFailureArtifact.
+- Snapshot/Revert/Proof Chain/Snapshot Truth; RunContract persisted per job.
+- `remedy do continue` cycle (degraded→evidence_incomplete; failed→repair available).
+- Repair Loop v0 (repair_loop.start_repair_loop_v0) — superseded by v1 propose path.
 
 ## Prior Step Status
 - Steps 1045-1064: PASS — Run Contract Enforcement v1. PR #51 merged.

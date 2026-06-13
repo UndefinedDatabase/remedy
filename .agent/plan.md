@@ -1,38 +1,54 @@
-# Plan — Steps 1180-1192: Merge Closure + Operator Cockpit v1 (read-only UI)
+# Plan — Steps 1193-1219: Repair Loop v1 (Failure → Fix Patch Intent → Approval)
 
 ## Goal
-Close R-0070 (changed-files table) for prior block, then extend the read-only
-dashboard truth (tests/proof/snapshot/continuation) and rebuild the operator
-cockpit UI to the reference design pack. Strictly READ-ONLY: no mutation
-endpoints, no fabricated state, no raw data in payload/UI.
+Turn a real TestFailureArtifact into a bounded, safe repair PROPOSAL:
+TestFailureArtifact → Repair Context → Fix Task → Repair Artifact → Fix Patch
+Intent → approval_required → safe stop. No auto-apply, no auto-repair execution
+beyond the proposal, no auto-contract-relax, no auto-revert.
 
 ## Current Step
-1192 — docs/operator-cockpit-v1.md (done) + final handoff (full suite running)
+1194 — Repair Loop v1 models in repair_loop.py
 
 ## Steps
-- [x] 1180: R-0070 changed-files table (1155-1179) + Open PR gate + full-suite note
-- [x] 1181: Backend dashboard truth (metrics.tests/proof, snapshot, continuation) + ui_server tests
-- [x] 1182: Frontend types + API mapping (unknown-safe) + remedyApi tests
-- [x] 1183: styles/tokens.css + globals.css
-- [x] 1184: TopMetricsBar (TSX + CSS)
-- [x] 1185: CommandBar (jump-to/filter, no fake chat)
-- [x] 1186: Graph stage/node paint + GraphFilterChips + layout-dot rules
-- [x] 1187: PhaseTimeline (TSX + CSS)
-- [x] 1188: RightLivePanel cards (LiveStatusPill/AgentNow/Activity/TaskChecklist/NeedsAttention)
-- [x] 1189: DetailPopover task-detail product rule (unknown-safe)
-- [x] 1190: Truth-contract tests (pytest + vitest) + low findings R-0071/73/74/75
-- [x] 1191: Real-data acceptance (data-truth+redaction+build verified; visual = operator-side)
-- [x] 1192: docs/operator-cockpit-v1.md + final handoff
+- [x] 1193: Handoff reconciliation (1180-1192 full-suite proof; scope→1193-1219)
+- [ ] 1194: Repair Loop v1 models (RepairAttempt/Result/ContextSummary/PatchIntentResult/StopReason)
+- [ ] 1195: build_repair_context(job_id, failure_artifact_id, data_dir) safe summary
+- [ ] 1196: evaluate_repair_eligibility(job_id, failure_artifact_id)
+- [ ] 1197: RepairAttempt persistence (idempotent, no dup task/artifact/intent)
+- [ ] 1198: Fix Task creation (idempotent, linked, Progress-visible)
+- [ ] 1199: Fixture Repair Builder v1 (deterministic; else repair_builder_unavailable)
+- [ ] 1200: Repair Patch Intent creation (real, resolvable, pending, approve action)
+- [ ] 1201: CLI repair propose
+- [ ] 1202: CLI repair status (read-only)
+- [ ] 1203: Integrate repair start (alias/canonical decision + docs)
+- [ ] 1204: Run Contract actions (create_fix_task/create_repair_artifact/create_repair_patch_intent)
+- [ ] 1205: Event emission (safe, degradation visible)
+- [ ] 1206: Progress Ledger integration
+- [ ] 1207: Feature Planner integration
+- [ ] 1208: Review Bundle repair_summary.json
+- [ ] 1209: Proof Chain / Provenance alignment (repair intent not applied/verified)
+- [ ] 1210: Operator Cockpit read-only repair counts (or defer + document)
+- [ ] 1211: Idempotency tests
+- [ ] 1212: CLI runtime tests (tiny repo)
+- [ ] 1213: Redaction tests
+- [ ] 1214: Architecture guards
+- [ ] 1215: Docs (repair-loop-v1, do-continue-v1, operator-cockpit-v1)
+- [ ] 1216: Targeted tests + full pytest once
+- [ ] 1217: Review protocol (findings/Done/verdict)
+- [ ] 1218: PR handoff prep (no PR without user OK; note branch drift)
+- [ ] 1219: Final handoff
 
 ## Hard rules
-- READ-ONLY UI: POST/PUT/DELETE stay 405. No mutation endpoints/buttons.
-- No raw data in UI/payload: no diffs/stdout/tracebacks/abs paths/blobs/secrets/prompts.
-- No demo/synthetic data; no element claiming unproven state.
-- No new deps, no Tailwind, no CDN, no external fonts. React 19 + TS + CSS Modules.
 - No shell=True. No background pytest. scripts/remedy_pytest.sh, targeted first,
-  full suite at most ONCE at block end.
-- No git reset/checkout/clean, no auto-push, no auto-merge. PR only on user OK.
-- Done: R-XXXX markers per finding; re-check live_review.md regularly.
+  full suite at most ONCE after targeted pass.
+- Repair Loop creates Patch Intent ONLY. No source_apply, no apply, no test exec,
+  no provider/Ollama import, no auto-revert, no auto-contract-relax/budget-raise.
+- No raw stdout/stderr/source/diff/artifact-body/secrets/tracebacks/abs paths in
+  events, CLI, Progress, Proof, Review Bundle, or UI payload.
+- All next_safe_action commands must exist in command catalog.
+- Repair intent IDs real + resolvable; idempotent (no dup task/artifact/intent);
+  pending repair never marked verified.
 
-## Next Block
-Repair Loop v1.
+## Next block
+Approved Repair Apply Cycle (`remedy do continue <job> --intent-id <repair_intent>`)
+or bounded Overnight preparation.
