@@ -93,3 +93,4 @@ produces the candidate instead of a human pasting it.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [bounded-overnight-executor-v0.md](bounded-overnight-executor-v0.md) — foreground one-step executor.
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
+- [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).

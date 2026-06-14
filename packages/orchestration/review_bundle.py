@@ -45,6 +45,7 @@ REQUIRED_SECTIONS = (
     "overnight_run_summary.json",
     "provider_trust_summary.json",
     "provider_material_summary.json",
+    "repair_request_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -738,6 +739,32 @@ def _build_provider_material_summary(job: Any) -> dict:
                 "materialization_failed_count": 0, "error": "provider_material_unavailable"}
 
 
+def _build_repair_request_summary(job: Any) -> dict:
+    """Safe Repair Request Builder summary (Step 1380). Counts/labels/IDs only — no
+    raw request text, no source, no diffs, no secrets, no absolute paths."""
+    try:
+        from packages.orchestration.repair_request_builder import load_request_packages
+        from packages.orchestration.provider_patch_material import load_materials
+        packages = list(load_request_packages(job).values())
+        materialized_failures = {m.get("failure_artifact_id") for m in load_materials(job).values()
+                                 if m.get("material_state") == "materialized"}
+        imported = [p for p in packages if p.get("failure_artifact_id") in materialized_failures]
+        pending = [p for p in packages if p.get("failure_artifact_id") not in materialized_failures]
+        labels: dict[str, int] = {}
+        for p in packages:
+            labels[p.get("target_kind", "external")] = labels.get(p.get("target_kind", "external"), 0) + 1
+        return {
+            "request_package_count": len(packages),
+            "target_labels": labels,
+            "pending_response_count": len(pending),
+            "imported_response_count": len(imported),
+            "failure_artifact_ids": sorted({p.get("failure_artifact_id", "") for p in packages if p.get("failure_artifact_id")}),
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"request_package_count": 0, "pending_response_count": 0,
+                "imported_response_count": 0, "error": "repair_request_unavailable"}
+
+
 def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
     """Safe context inspection summary — no file bodies."""
     try:
@@ -1154,6 +1181,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("provider_material_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("provider_material_summary.json", status="error", error="build failed"))
+
+    # repair_request_summary.json (Step 1380)
+    try:
+        rrs = _build_repair_request_summary(job)
+        content = json.dumps(rrs, indent=2).encode()
+        section_data["repair_request_summary.json"] = content
+        result.sections.append(ReviewBundleSection("repair_request_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("repair_request_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

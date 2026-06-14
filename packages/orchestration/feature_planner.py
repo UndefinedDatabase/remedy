@@ -310,6 +310,15 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.KNOWN_RISK,
             "remedy provider material-show <job_id> <material_id> --json",
         ),
+        # Repair Request Builder follow-ups (Step 1379). Provider-agnostic; no auto
+        # external execution, no auto approval.
+        "external-candidate-pending": (
+            "Import the external candidate response",
+            "A repair request was prepared — relay it to any external actor, then import "
+            "the response (it will be quarantined + trust-validated).",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy provider intake-repair <job_id> --failure-artifact-id <id> --input <file> --provider <label> --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)

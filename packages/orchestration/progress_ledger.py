@@ -858,6 +858,45 @@ def merge_provider_material_items(ledger: ProgressLedger, materials: dict | None
             seen.add(item.item_id)
 
 
+def extract_repair_request_items(packages: dict | None, materials: dict | None) -> list[ProgressItem]:
+    """Extract Repair Request Builder progress items (Step 1378). Read-only; fixed
+    item_ids → no duplicates. A request package with no materialized candidate yet is
+    an external candidate still pending import."""
+    if not packages:
+        return []
+    pkgs = list(packages.values())
+    materialized_failures = {m.get("failure_artifact_id") for m in (materials or {}).values()
+                             if m.get("material_state") == "materialized"}
+    pending = [p for p in pkgs if p.get("failure_artifact_id") not in materialized_failures]
+    items: list[ProgressItem] = []
+    items.append(ProgressItem(
+        item_id="repair-request-prepared", title="Repair request prepared",
+        status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+        safe_summary=f"{len(pkgs)} provider-agnostic repair request package(s) prepared."))
+    if pending:
+        items.append(ProgressItem(
+            item_id="external-candidate-pending", title="External candidate pending",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Low", safe_summary=f"{len(pending)} request(s) awaiting an external candidate response.",
+            next_action="remedy provider intake-repair <job_id> --failure-artifact-id <id> --input <file> --provider <label> --json"))
+    if materialized_failures & {p.get("failure_artifact_id") for p in pkgs}:
+        items.append(ProgressItem(
+            item_id="external-candidate-imported", title="External candidate imported",
+            status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+            safe_summary="An external candidate was imported and materialized."))
+    return items
+
+
+def merge_repair_request_items(ledger: ProgressLedger, packages: dict | None,
+                               materials: dict | None) -> None:
+    """Merge repair request items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_repair_request_items(packages, materials):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -958,6 +997,15 @@ def build_progress_ledger(
         try:
             from packages.orchestration.provider_patch_material import load_materials
             merge_provider_material_items(ledger, load_materials(job))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Repair request builder items from persisted request packages (Step 1378).
+    if job is not None:
+        try:
+            from packages.orchestration.repair_request_builder import load_request_packages
+            from packages.orchestration.provider_patch_material import load_materials as _lm
+            merge_repair_request_items(ledger, load_request_packages(job), _lm(job))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

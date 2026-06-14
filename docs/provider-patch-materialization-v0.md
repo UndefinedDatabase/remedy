@@ -70,3 +70,4 @@ intent — no duplicate Fix Task / Repair Artifact / Patch Intent.
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md) — the untrusted-intake trust gate.
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path materialized intents use.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
+- [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).

@@ -178,9 +178,63 @@ def _cmd_repair_status(args: Any) -> None:
         print(line)
 
 
+def _cmd_repair_request(args: Any) -> None:
+    """Build a safe provider-agnostic repair request package. No execution/apply."""
+    from packages.orchestration.repair_request_builder import (
+        build_repair_request_package, export_build_result_json,
+    )
+    fid = getattr(args, "failure_artifact_id", None)
+    if not fid:
+        print("Error: provide --failure-artifact-id", file=sys.stderr)
+        sys.exit(1)
+    result = build_repair_request_package(
+        args.job_id, fid,
+        target_kind=getattr(args, "target", None) or "external",
+        model_hint=getattr(args, "model", None),
+        new=bool(getattr(args, "new", False)),
+    )
+    data = export_build_result_json(result)
+    if getattr(args, "json", False):
+        print(json.dumps(data, indent=2))
+        return
+    print(f"Repair request: {str(args.job_id)[:8]}")
+    print(f"  stop: {data['stop_reason']}  package: {data['request_package_id'] or 'n/a'}")
+    if data["stop_reason"] == "ready":
+        print(f"  summary: {data['safe_summary']}")
+        print("  next steps:")
+        for step in data["next_steps"]:
+            print(f"    {step}")
+    else:
+        print(f"  summary: {data['safe_summary']}")
+
+
+def _cmd_repair_request_show(args: Any) -> None:
+    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.repair_request_builder import get_request_package
+    try:
+        job = load_job(args.job_id)
+    except (JobNotFoundError, ValueError) as exc:
+        print(f"Error: {type(exc).__name__}", file=sys.stderr)
+        sys.exit(1)
+    pkg = get_request_package(job, args.request_package_id)
+    if pkg is None:
+        print("Error: request package not found", file=sys.stderr)
+        sys.exit(1)
+    if getattr(args, "json", False):
+        print(json.dumps(pkg, indent=2))
+        return
+    print(f"Repair request package {args.request_package_id}")
+    print(f"  failure: {pkg.get('failure_artifact_id', '')}  target: {pkg.get('target_kind', '')}")
+    print(f"  intake: {pkg.get('output_intake_command', '')}")
+    for s in pkg.get("sections", []):
+        print(f"  ## {s['title']}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "repair.start": _cmd_repair_start,
     "repair.failure-show": _cmd_failure_show,
     "repair.propose": _cmd_repair_propose,
     "repair.status": _cmd_repair_status,
+    "repair.request": _cmd_repair_request,
+    "repair.request-show": _cmd_repair_request_show,
 }

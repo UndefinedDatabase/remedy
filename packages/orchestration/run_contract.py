@@ -61,6 +61,10 @@ class ContractAction:
     PROVIDER_TRUST_REVIEW = "provider_trust_review"
     PROVIDER_MATERIALIZE_PATCH = "provider_materialize_patch"
     CREATE_PROVIDER_REPAIR_INTENT = "create_provider_repair_intent"
+    # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
+    # Prepares/exports a safe request package; NOT external execution.
+    PREPARE_REPAIR_REQUEST = "prepare_repair_request"
+    EXPORT_REPAIR_REQUEST = "export_repair_request"
 
     # Apply actions (gated by stop_before_apply)
     APPLY = "apply"
@@ -159,6 +163,8 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.PROVIDER_TRUST_REVIEW,
     ContractAction.PROVIDER_MATERIALIZE_PATCH,
     ContractAction.CREATE_PROVIDER_REPAIR_INTENT,
+    ContractAction.PREPARE_REPAIR_REQUEST,
+    ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
     ContractAction.RUN_TEST,

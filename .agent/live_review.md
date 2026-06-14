@@ -1,110 +1,168 @@
-# Live Review — Steps 1335-1364: Trusted Provider Patch Materialization v0
+# Live Review — Steps 1365-1398: Provider-Agnostic Repair Request Builder v0
 
 Reviewer: parallel reviewer
-Scope: Materialize ACCEPTED provider candidates into REAL applyable Repair Patch
-Intents (approval → do continue → snapshot → apply → test → proof), raw diff/output
-PRIVATE only. Must NOT: invoke provider/Ollama/Claude API, network, subprocess,
-auto-apply, auto-approve; expose raw diff/source/secrets/tracebacks/abs paths; let a
-materialized intent bypass approval or apply automatically. Patch material private
-workspace only; intent exposes safe metadata; apply via existing do continue.
+Scope: From a FailureArtifact build a SAFE provider-AGNOSTIC RepairRequestPackage for
+ANY external worker/model/human; external output re-enters ONLY via existing
+`provider intake-repair` → Trust Gate → materialization → approval → do continue.
+Interface-only candidate generator adapter (no execution). Must NOT: call any
+provider/SDK/network/subprocess/browser/IDE; apply; create Patch Intent from request;
+leak raw output/source/diff/secrets/tracebacks/abs paths; assume any single provider/
+subscription/account/IDE. NO PR unless user explicitly asks (Step 1398).
 Timestamp: 2026-06-14
 
 ## Verdict
 PASS WITH RISKS — all 15 checks reviewed PASS in the audit log; ZERO findings, zero
-open Blocker/High. Full suite green (5599 passed, 8 skipped, 1 deselected); integrity
-passed (0 fail). do_continue apply compatibility proven (approve → do continue →
-snapshot → apply → completed_verified). Conservative .md-only materialization thesis
-HOLDS; raw diff stays private; accepted ≠ materialized ≠ applied ≠ verified.
+open Blocker/High. Full suite green (5627 passed, 8 skipped, 1 deselected); integrity
+passed (0 fail). Provider-agnostic request builder; output re-enters ONLY via provider
+intake; no provider/network/subprocess/apply/intent-from-request; simulated external-
+candidate E2E (request → intake → materialize → approve → do continue → completed_verified)
+proven. NO PR created (Step 1398 — awaiting explicit user request).
 
 ## Check Matrix (1-15)
 | Check | Status | Note |
 |---|---|---|
-| 1. Mainline reconciliation | PASS | branch off clean main b38cf94; PR #57 recorded; no drift |
-| 2. Material models (no raw fields) | PASS | Material/Entry/Result/Verification/IntentLink; safe metadata only |
-| 3. Private material storage (0o700/0o600, hashed) | PASS | atomic, uuid dir, 256KiB cap; _read marked private; never exported |
-| 4. Material verification | PASS | manifest/hash/paths/report-accepted/single-candidate/not-revoked; tamper detected |
-| 5. Unified diff → structured patch | PASS | single .md create/modify; binary/delete/rename/multi → unsupported |
-| 6. JSON structured_operations materialization | PASS | single .md create/modify op; bounded; else unsupported |
-| 7. Applyable provider repair intent (real/resolvable/pending) | PASS | apply-format artifact; resolvable verified; no fake ID; pending |
-| 8. Approve + do_continue compatibility | PASS | fixture proof: snapshot+apply via existing path; completed_verified |
-| 9. Trust report state updates | PASS | accepted/materialized/intent_pending_approval/unsupported/failed; not auto-verified |
-| 10. CLI (material-show) + catalog + RunContract | PASS | read-only show (no raw); provider_materialize_patch allowed; execution denied |
-| 11. RepairAttempt linkage + idempotency | PASS | candidate_hash dedupe; single intent path; no dup |
-| 12. Integrations (Progress/Feature/Review/Cockpit) | PASS | counts/IDs only; bundle 18; no auto approve/retry; read-only cockpit |
-| 13. Retention docs | PASS | private workspace; no auto-deletion v0; bundle excludes raw |
-| 14. Redaction | PASS | no raw diff/source/secret/abs-path across surfaces; scrubbed lines |
-| 15. Architecture guards | PASS | no provider SDK/network/subprocess/apply/test-exec imports |
+| 1. Mainline reconciliation | PASS | c9ce1a0 off clean main 871fb8d; PR#58 recorded; residuals carried; only .agent/ files touched; no drift |
+| 2. Repair request models (no raw fields) | PASS | dataclasses hold IDs/statuses/scrubbed sections only; no raw stdout/source/diff fields |
+| 3. Safe request builder (from RepairContextSummary) | PASS | reuses build_repair_context; all free-text via _scrub→_scrub_public; ctx attrs verified present |
+| 4. Candidate output schema (one candidate; JSON or fenced diff) | PASS | CANDIDATE_OUTPUT_SCHEMA + Required-response-format section; "EXACTLY ONE candidate" |
+| 5. Request package private storage (atomic, hashed, no abs paths) | PASS | 0o700 dir/0o600 files, tmp+os.replace, 256KiB cap, sha256, manifest sections scrubbed |
+| 6. CLI (request / request-show) + catalog + RunContract | PASS | write_metadata/read_only, no-mutate/no-exec, JSON stable, errs→stderr; PREPARE/EXPORT_REPAIR_REQUEST allowed (not cloud), denial→CONTRACT_BLOCKED |
+| 7. Candidate generator adapter boundary (no execution) | PASS | interface only; execute() raises CandidateGeneratorExecutionUnavailable; no net/sdk/subprocess |
+| 8. External generator record + RepairAttempt linkage + idempotency | PASS | record saved; repair_attempt_id captured; idempotent (test_idempotent: same id; test_new_forces_fresh) |
+| 9. Import guidance (exact human steps; no fake automation) | PASS | 6-step relay→intake-repair→trust-show→approve→do continue; all 4 cmds exist in catalog; no fake automation |
+| 10. Integrations (Progress/Feature/Review/Cockpit) | PASS | 3ee5be1: ledger fixed item_ids+de-dup; feature planner agnostic (no auto exec); review bundle counts-only (REQUIRED_SECTIONS 18→19); cockpit read-only counts, no buttons/mutation; all evidence-based |
+| 11. Request quality | PASS | tells actor output quarantined/rejected if unsafe; "Do NOT claim applied/tested"; no alternatives |
+| 12. Redaction | PASS | _scrub_public on all free-text + _safe_file_names drops id_rsa/.ssh/.env/credentials/secret/.aws/.git; test_no_raw_leak injects sk-token//home//id_rsa/Traceback → asserts absent across surfaces |
+| 13. Architecture guards (no provider/network/subprocess/apply/intent) | PASS | imports stdlib + internal only; no apply/intent creation; no shell/subprocess |
+| 14. Request→intake E2E (simulated; no real provider) | PASS | test_request_to_completed_verified: request→intake(ACCEPTED,intent)→approve→do continue→completed_verified; file actually changed; output is a fixture file, no real provider |
+| 15. Provider-agnostic language audit | PASS | core + docs; test_no_subscription_account_ide_assumption; docs/repair-request-builder-v0.md + candidate-generator-adapter-future.md; providers only as examples |
 
-## Findings — Steps 1335-1364
-(no open findings yet)
+## Findings — Steps 1365-1398
+(none yet)
 
 ### Reviewer audit log
-- **Check 1 (Mainline reconciliation) — REVIEWED PASS** @ b472ad0. Branch `feature/steps-1335-1364-provider-patch-materialization-v0` off clean main b38cf94; PR #57 recorded; plan/context reset to Provider Patch Materialization v0. Honest key constraint documented: existing `apply_patch_intent` is `.md`-ONLY → materialized intent apply-compatible ONLY for a single `.md` create/modify; source/binary/delete/rename/multi-file → `unsupported_patch_shape` (accepted_but_not_materialized, NO intent). Hard rules map to every block-if (no provider/SDK/network/subprocess; raw material private 0o700/0o600 never public; no raw diff/source/secrets/tracebacks/abs public; apply only via approved do continue; no auto-apply/approve; accepted≠materialized≠applied≠verified; supported shapes only else no intent; idempotent by candidate_hash; catalog-backed, no fake IDs). 30-step plan; every block-if has a covering step. Carry-forward residuals preserved (builder deferred, regex scan limits, retention now Step 1352). No drift. No finding.
-- **Checks 2-12 (materialization core + CLI + contract + integrations) — REVIEWED PASS** @ bc81334 + 8f4cb67 + 306728a (provider_patch_material.py 554L). ZERO findings so far; no Blocker/High.
-  - **Private material storage (2)** PASS: `store_material` 0o700 dir + 0o600 files (patch.diff/manifest.sha256/material.json) via atomic tmp+os.replace+chmod; sha256 hash; MAX_MATERIAL_BYTES 256KiB cap → reject; fresh uuid material_id dir (no overwrite). `save_material` stores safe manifest (paths via `_safe_path_label`, counts/IDs/state — NO raw diff). `_read_material_patch` marked PRIVATE and NOT called from any export/CLI path (verified; currently unused/reserved — apply reads artifact.content, not patch.diff).
-  - **Verification (3)** PASS: `verify_provider_patch_material` checks manifest_exists/patch_exists/sha exists, hash_matches (tamper), not_revoked, single_candidate (target_path_count==1), paths_safe (validate_paths no blocker/high), trust_report_accepted (report exists + status accepted/materialized/intent_pending_approval). ok = all(checks); reason lists failures. Revoked/missing/tampered → blocks.
-  - **Conversion (4)** PASS: unified-diff → rejects binary/rename/delete; requires exactly ONE `+++` target; must be `.md` (else non_markdown_target); create-detection; needs added lines; ≤MAX_MATERIAL_LINES. structured_ops → exactly one op, create/modify only, `.md` only, bounded content. Unsupported → `_Extracted(False, reason)` → state UNSUPPORTED, NO intent (reason recorded, not silent).
-  - **Patch Intent (5)** PASS: applyable artifact built in the `Summary:/Proposed Changes:  - <line>` format `apply_patch_intent` consumes; lines scrubbed via `_scrub_public`; kind=provider_repair; `patch_intent_approvals={}` (pending); `make_intent_id(art.id,0)` verified resolvable via `get_patch_intent` (else FAILED, no fake ID); linked to material/trust/quarantine/failure/repair. Raw diff stays private; converted+scrubbed lines in artifact.content (matches established applyable-intent model).
-  - **Approval/do_continue (6)** PASS: approvals empty → approval_required; materialize NEVER applies/approves; apply only via existing `do continue` (snapshot mandatory in that path). Commit claims E2E `.md` candidate→approve→do continue→snapshot→apply→completed_verified (apply-compat proof test owed step 1361).
-  - **RunContract (7)** PASS: ACCEPTED requires BOTH CREATE_PROVIDER_REPAIR_INTENT AND PROVIDER_MATERIALIZE_PATCH allowed (else NEEDS_HUMAN_REVIEW + materialization_blocked). PROVIDER_MATERIALIZE_PATCH allowed by default; provider EXECUTION = CLOUD_PROVIDER, no_cloud denied. Materialization distinct from execution.
-  - **Repair linkage + idempotency (8)** PASS: candidate_hash = sha256(raw_patch); `_find_material_by_hash` → repeat returns existing material/intent (no dup); NO double-intent — old `_create_repair_artifact_and_intent` call REPLACED by `materialize_accepted_candidate` (single intent path). repair_attempt_id carried from report.
-  - **Integrations (9)** PASS: review_bundle `_build_provider_material_summary` counts/IDs/states only (REQUIRED_SECTIONS 17→18); progress materialized/pending/failed items (fixed ids, no dup); feature approve/inspect follow-ups (no auto approve/retry); cockpit material counts. No raw, no buttons/mutation.
-  - **Redaction (10, partial)** PASS: material manifest + intake export carry material_id/state/counts/safe paths only; artifact summary + proposed lines scrubbed via `_scrub_public`; raw diff private. (Redaction test owed step 1353.)
-  - **Architecture (11, partial)** PASS: imports hashlib/json/os/re/std + provider_trust helpers; lazy core.models/approval_queue/data_paths/storage. NO provider-SDK/network/subprocess, NO source_apply/patch_apply/test-exec import, NO generic command runner. materialize calls no apply/test. (Guard tests owed step 1355.)
-- **Tests + docs + apply-compat (Checks 4-12 verification) — REVIEWED PASS** @ e5e729d. ZERO findings; all block-if axes covered.
-  - **Apply-compat proof (6, KEY)** PASS: `test_approve_then_do_continue_applies` — real `.md` provider candidate → intake → materialized intent → EXPLICIT `set_approval_state(approved)` → `run_do_continue(intent_id)` → asserts `stop_reason==completed_verified`, `snapshot_id` present (snapshot mandatory), AND `docs/guide.md` actually contains the applied line. Proves materialized intent applyable via existing approval+do_continue+snapshot+apply+test path; no approval bypass; no auto-apply.
-  - **Unit tests** PASS: accepted .md → applyable intent (+ `_extract_proposed_lines` matches the apply format), source → UNSUPPORTED no intent, private storage+hash (manifest has no `@@`), verification pass + tamper-detect (hash mismatch), idempotent (1 material on repeat intake).
-  - **Redaction (10)** PASS: `test_no_raw_leak_across_surfaces` no `@@`/`+++`/`diff --git`/`/home/`/`Traceback` across 5 surfaces (intake result/material manifest/progress/bundle/cockpit); `test_secret_diff_rejected_no_material` secret diff → REJECTED, no intent, no material.
-  - **Architecture (11)** PASS: guard tests (no apply/test-exec imports, no provider-SDK/network/subprocess).
-  - **CLI (10)** PASS: test_provider_material_cli.py — md/json materialize, source/delete unsupported, protected/secret rejected, material-show read-only.
-  - **Integrations tests** PASS: REQUIRED_SECTIONS==18; cockpit material counts. Prior provider-trust tests updated for v0 materialization (source→unsupported, .md→intent).
-  - **Docs (Check retention)** PASS: docs/provider-patch-materialization-v0.md (+ retention) + cross-links.
-- Verdict stays **PENDING** until full pytest green once (count+wrapper) + final handoff + changed-files table. Reviewer relies on builder full-suite count (does not run full pytest). ZERO open findings to date. Next finding id: R-0084.
+- 2026-06-14: Block start. Worker at c9ce1a0 (Step 1365 reconciliation only). Verified
+  branch forked clean main 871fb8d (PR#58 merged); commit touches only .agent/ planning
+  files (context/plan/live_review) — no production code. Plan steps 1366-1398 each cover
+  a stated block-if/check. Residual risks preserved verbatim from prior block. Check 1 PASS.
+  No production code to review yet. Polling for builder commits. Next finding id: R-0084.
+- 2026-06-14: Reviewed 4ef879b (Steps 1366-1387 core+CLI). repair_request_builder.py
+  (600L): models/builder/storage/schema/templates/adapter. ZERO findings. Verified all
+  block-ifs against committed code: no provider/network/subprocess/browser/SDK import
+  (stdlib + internal orchestration only); no apply, no Patch Intent creation, no provider-
+  intake call inside builder; all free-text scrubbed via _scrub_public; one-candidate
+  constraint + required schema present; idempotent per (failure,target,model_hint);
+  execute() raises; contract PREPARE/EXPORT_REPAIR_REQUEST not in cloud actions; next_steps
+  reference only catalog-backed commands (do.continue/patch.approve/provider.intake-repair/
+  provider.trust-show all confirmed). ctx attrs command_display/exit_code confirmed present
+  on RepairContextSummary (no AttributeError). Checks 2-7,9,11,13,15 PASS. Checks 8,12
+  PARTIAL (await tests). Checks 10,14 PENDING (integrations uncommitted; E2E not committed).
+- 2026-06-14: Reviewed 3ee5be1 (integrations 1378-1381) + ed975f9 (tests/docs 1382-1397)
+  + 30b8001 (plan). Integrations clean: progress_ledger extract/merge_repair_request_items
+  (fixed item_ids repair-request-prepared/external-candidate-pending/imported, de-dup,
+  evidence-based counts, catalog next_action); feature_planner external-candidate-pending
+  rule (no auto exec); review_bundle _build_repair_request_summary (REQUIRED_SECTIONS 18→19,
+  counts/labels/IDs only); ui_server _build_repair_request_section (read-only counts+latest
+  target, no buttons). Builder delta: _safe_file_names drops protected tokens. load_materials
+  confirmed present (provider_patch_material:253) — no silent ImportError skip. Tests: builder/
+  idempotency/contract-block, request-quality (schema/one-candidate/no-apply-claim/relative/
+  no-secrets/no-subscription-account-IDE), redaction (sk-token//home//id_rsa/Traceback absent),
+  adapter execute raises, architecture guards (no subprocess/shell/SDK/apply/intent/intake in
+  source), E2E request→intake(ACCEPTED)→approve→do continue→completed_verified+file changed,
+  next-action catalog-backed. ALL 15 checks PASS in committed code. ZERO findings.
+  Targeted wrapper run deferred: builder holds /tmp/remedy-pytest.lock (full suite in progress).
+  Awaiting builder final handoff + full pytest count + changed-files table before final verdict.
+- 2026-06-14: FINAL. Reviewed 09d8fc2 (handoff, hold PR). Reconciled Changed Files table
+  vs `git diff 871fb8d..HEAD` — all 22 files covered, none missing/extra. Builder full suite
+  5627 passed/8 skipped/1 deselected (exit 0); integrity passed=True/fail=0. Ran targeted
+  `scripts/remedy_pytest.sh tests/orchestration/test_repair_request_builder.py
+  tests/cli/test_repair_request_cli.py -q` once → 27 passed in 1.76s (green). All 15 checks
+  PASS; ZERO findings; zero open Blocker/High. No PR created (Step 1398 — awaiting explicit
+  user request). Verdict: PASS WITH RISKS (documented residuals only). Block COMPLETE.
 
-## Builder Final Handoff (Steps 1335-1364)
+## Builder Final Handoff (Steps 1365-1398)
 
-- **Mainline reconciliation**: PR #57 merged; branch off clean main b38cf94; no drift.
-- **Tests**: targeted materialization unit (22) + CLI runtime (7) + provider-trust
-  (updated for v0) + review-bundle/cockpit/catalog/progress/feature/run-contract/
-  do_continue/repair. **Full pytest** → **5599 passed, 8 skipped, 1 deselected** (exit 0).
-  Wrapper `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
-- **Integrity gate (1362)**: `remedy integrity check` passed=True, fail_count=0.
+- **Mainline reconciliation**: PR #58 merged; branch off clean main 871fb8d; no drift.
+- **Tests**: targeted builder unit/quality/redaction/architecture/adapter/E2E (21) +
+  CLI runtime (7) + provider-trust/material/review-bundle/cockpit/catalog/progress/
+  feature/run-contract/do_continue. **Full pytest** → **5627 passed, 8 skipped, 1
+  deselected** (exit 0). Wrapper `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
+- **Integrity gate**: `remedy integrity check` passed=True, fail_count=0.
 - **Findings**: none.
-- **Material model / private storage / verification / unified-diff conversion / JSON
-  ops materialization / applyable intent / approval+do_continue compat / RunContract /
-  RepairAttempt linkage / Progress / Feature / Review / Cockpit / retention docs /
-  redaction / architecture guards**: DONE.
-- **Apply compatibility proof (1361)**: `test_approve_then_do_continue_applies` —
-  materialize .md → approve → do continue → snapshot created → apply via existing
-  path → completed_verified; no overclaim.
-- **Hard completion criteria (1364)**: supported shape (single .md) produces applyable
-  intent; raw patch/output never public; secrets never echoed (rejected + scrubbed);
-  materialized intent stays pending (no auto-approve); never applies automatically;
-  protected paths rejected; unparseable → no intent; intent IDs verified resolvable;
-  no provider SDK/network/subprocess; do_continue compat tested. ALL satisfied.
+- **Models / safe builder / request storage / candidate schema / CLI / catalog /
+  RunContract / adapter boundary / external generator record / RepairAttempt linkage /
+  import guidance / Progress / Feature / Review / Cockpit / request quality / redaction /
+  architecture guards / E2E / language audit**: DONE.
+- **E2E (1388)**: `test_request_to_completed_verified` — request → simulated external
+  candidate file → provider intake (accepted) → approve → do continue → completed_verified;
+  no real provider/model/network.
+- **Hard completion criteria (1395)**: repair.request calls no provider/network/
+  browser/subprocess; no raw output/source/diff/secret/traceback/abs-path leak; no
+  Patch Intent created from request; candidate output goes through Trust Gate; next
+  actions catalog-backed + real; repeated request idempotent; adapter execute()
+  unavailable (no working external execute); live_review NOT PENDING. ALL satisfied.
 
-### Changed Files (Steps 1335-1364)
+### Changed Files (Steps 1365-1398)
 | File | What changed | Why |
 |---|---|---|
-| `packages/orchestration/provider_patch_material.py` | NEW — material models, private storage (0o700/0o600, hashed), unified-diff + JSON-ops conversion (single .md create/modify), verification, materialize_accepted_candidate (idempotent) | Core materialization |
-| `packages/orchestration/provider_trust.py` | intake accepted branch → materialize (replaces placeholder); report material_id/material_state/report_state; result + export fields | Wire materialization into intake |
-| `packages/orchestration/run_contract.py` | provider_materialize_patch action (allowed default; execution stays denied) | Gate materialization vs execution |
-| `apps/cli/command_catalog.py` | provider material-show (read_only) | CLI surface |
-| `apps/cli/commands/provider_cmd.py` | material-show handler (no raw) | Wire CLI |
-| `packages/orchestration/progress_ledger.py` | provider material items (materialized/pending/failed) | Progress surface |
-| `packages/orchestration/feature_planner.py` | materialized-intent approve + materialization-failed inspect follow-ups | Human next-steps |
-| `packages/orchestration/review_bundle.py` | provider_material_summary.json (REQUIRED_SECTIONS 17→18) | Reviewable summary |
-| `packages/orchestration/ui_server.py` | materialized/failed counts on read-only provider_trust section | Cockpit |
-| `docs/provider-patch-materialization-v0.md` | NEW — materialization + retention doc | Long-term knowledge |
-| `docs/provider-trust-gate-v0.md`, `docs/do-continue-v1.md`, `docs/repair-loop-v1.md` | cross-links | Doc graph |
-| `tests/orchestration/test_provider_patch_material.py` | NEW — 22 unit/redaction/architecture/apply-compat tests | Coverage |
-| `tests/cli/test_provider_material_cli.py` | NEW — 7 CLI runtime tests | Coverage |
-| `tests/orchestration/test_provider_trust.py`, `tests/cli/test_provider_trust_cli.py` | updated for v0 materialization (.md→intent, source→unsupported) | Keep consistent |
-| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | REQUIRED_SECTIONS==18 + cockpit material counts | Keep invariants |
+| `packages/orchestration/repair_request_builder.py` | NEW — models, safe request builder (from RepairContextSummary, scrubbed), private storage, candidate output schema, target templates, idempotency, ExternalCandidateGeneratorRecord, interface-only CandidateGeneratorAdapter (execute raises) | Core provider-agnostic request builder |
+| `packages/orchestration/run_contract.py` | prepare_repair_request / export_repair_request actions (metadata-only; allowed default) | Gate request prep vs execution |
+| `apps/cli/command_catalog.py` | repair.request (write_metadata) + repair.request-show (read_only) | CLI surface |
+| `apps/cli/grouped.py` | parse --target / --new | Request flags |
+| `apps/cli/commands/repair_cmd.py` | request / request-show handlers (no apply/intent) | Wire CLI |
+| `packages/orchestration/progress_ledger.py` | repair-request-prepared / external-candidate-pending / imported items | Progress surface |
+| `packages/orchestration/feature_planner.py` | external-candidate-pending → import follow-up (no auto exec) | Human next-step |
+| `packages/orchestration/review_bundle.py` | repair_request_summary.json (REQUIRED_SECTIONS 18→19) | Reviewable summary |
+| `packages/orchestration/ui_server.py` | read-only repair_request cockpit section | Surface counts |
+| `docs/repair-request-builder-v0.md` | NEW — builder doc | Long-term knowledge |
+| `docs/candidate-generator-adapter-future.md` | NEW — future direct-provider design note | Defer rationale + requirements |
+| `docs/provider-trust-gate-v0.md`, `provider-patch-materialization-v0.md`, `repair-loop-v1.md`, `bounded-overnight-executor-v0.md` | cross-links | Doc graph |
+| `tests/orchestration/test_repair_request_builder.py` | NEW — 21 unit/quality/redaction/architecture/adapter/E2E tests | Coverage |
+| `tests/cli/test_repair_request_cli.py` | NEW — 7 CLI runtime tests | Coverage |
+| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | REQUIRED_SECTIONS==19 + cockpit shape | Keep invariants |
 | `.agent/plan.md`, `.agent/context.md`, `.agent/live_review.md` | block state + product readiness + review | Runtime state |
 
-### Provider Patch Materialization readiness + merge recommendation
-Readiness ~95% (apply surface limited to single .md by the existing apply path;
-broader source apply + real provider builder deferred). Merge ALONE; do NOT stack
-the provider builder into this PR — next block (Provider-backed Repair Builder v0)
-stays separate.
+### Readiness + PR recommendation (Steps 1393-1394/1398)
+Readiness ~95% (direct external execution deliberately deferred; adapter interface
+only). PR is MERGE-READY but **NOT created** — Step 1398 requires explicit user
+request. Recommend a separate PR when approved; next block stays separate (Provider
+Trust Verification v1 OR Automated Candidate Generator Adapter v0).
+
+## Reviewer Final Verdict — Steps 1365-1398 (Provider-Agnostic Repair Request Builder v0)
+
+**PASS WITH RISKS.** Zero findings, zero open Blocker/High.
+
+Primary goal MET: builder prepares SAFE provider-agnostic external repair request
+packages + adapter boundary WITHOUT executing any provider/model/worker, WITHOUT
+creating patch intents directly, WITHOUT leaking raw failure/source/output. Output
+re-enters ONLY via existing `provider intake-repair` → Trust Gate → materialization →
+approval → `do continue`.
+
+- Handoff: PASS (off clean main 871fb8d; residuals carried; no drift)
+- Request model: PASS (IDs/statuses/scrubbed sections only; no raw fields)
+- Request package: PASS (safe summary + strict schema + constraints: one candidate,
+  relative paths, no secrets, no apply/test claims; excludes raw)
+- Schema: PASS (CANDIDATE_OUTPUT_SCHEMA + Required-response-format; one candidate)
+- Storage: PASS (0o700/0o600, atomic, 256KiB cap, sha256; manifest sections scrubbed)
+- CLI: PASS (request/request-show; JSON stable; copy-pasteable; errs→stderr; no provider req)
+- RunContract: PASS (PREPARE/EXPORT_REPAIR_REQUEST distinct from cloud/exec; denial→CONTRACT_BLOCKED)
+- Adapter boundary: PASS (interface only; execute() raises; no net/sdk/subprocess/browser)
+- Repair linkage: PASS (record + repair_attempt_id; idempotent per (failure,target,model_hint); no Patch Intent)
+- Progress/Feature/Review: PASS (evidence-based counts; no raw; no mutation)
+- Cockpit: PASS (read-only counts+latest target; no buttons)
+- Request quality: PASS (told quarantine/reject; told not to claim apply/test; no alternatives)
+- Redaction: PASS (_scrub_public + _safe_file_names; injected secret/path/traceback absent)
+- Architecture: PASS (no external exec/intake/apply/test/subprocess/shell=True)
+- Provider-agnostic language: PASS (providers only as examples; no required tier/IDE/account)
+- E2E: PASS (request→intake(ACCEPTED)→approve→do continue→completed_verified; file changed; no real provider)
+- Tests run: targeted `scripts/remedy_pytest.sh` repair-request builder + CLI → 27 passed (reviewer-run once)
+- Full pytest: builder-run once → 5627 passed / 8 skipped / 1 deselected (exit 0); reviewer did NOT run full suite
+- Remaining findings: none
+- Merge readiness: MERGE-READY; **NO PR** (Step 1398 — awaiting explicit user request)
+
+**Residual risks (→ PASS WITH RISKS, all documented):**
+1. Automated/direct external candidate execution deferred (v0 = request packaging + interface-only adapter; execute() raises).
+2. Apply path remains `.md`-only (broader source materialization deferred) — carried from prior block.
+3. Regex secret/path scrubbing may miss novel formats (defense-in-depth: scrub + Trust Gate scan).
+4. Request package storage has no auto-retention/cleanup in v0.
+5. Reviewer relied on builder's full-suite count (did not run full pytest); independently ran targeted suite green + verified all checks against committed code.
