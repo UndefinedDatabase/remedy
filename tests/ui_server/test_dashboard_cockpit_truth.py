@@ -227,6 +227,15 @@ class TestDashboardShape:
         assert "request_package_count" in rr
         assert "pending_response_count" in rr
 
+    def test_self_dogfood_section_present(self):
+        # Read-only Self-Dogfood summary (Step 1418).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "self_dogfood" in dash
+        sd = dash["self_dogfood"]
+        assert "self_improvement_item_count" in sd
+        assert "pending_evaluation_count" in sd
+
     def test_overnight_run_section_present(self):
         # Read-only Bounded Overnight Executor run summary (Step 1292).
         job = Job(name="t")
