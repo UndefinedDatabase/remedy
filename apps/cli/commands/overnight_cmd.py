@@ -71,8 +71,33 @@ def _cmd_overnight_report(args: Any) -> None:
     print(render_overnight_report_markdown(data))
 
 
+def _cmd_overnight_run(args: Any) -> None:
+    """Foreground Bounded Overnight Executor v0 — at most one bounded step.
+
+    Report-only unless ``--allow-one-cycle`` plus an explicit action flag is given.
+    No daemon/scheduler/watch/background/loop. Calls central services directly.
+    """
+    from packages.orchestration.overnight_executor import (
+        OvernightRunRequest, build_executor_policy, run_overnight_executor,
+        export_run_result_json, summarize_run_result,
+    )
+    policy = build_executor_policy(
+        allow_one_cycle=bool(getattr(args, "allow_one_cycle", False)),
+        allow_apply=bool(getattr(args, "allow_apply", False)),
+        allow_repair_propose=bool(getattr(args, "allow_repair_propose", False)),
+        allow_repair_apply=bool(getattr(args, "allow_repair_apply", False)),
+    )
+    result = run_overnight_executor(
+        OvernightRunRequest(job_id=args.job_id, policy=policy, created_by="cli_v0"))
+    if getattr(args, "json", False):
+        print(json.dumps(export_run_result_json(result), indent=2))
+        return
+    print(summarize_run_result(result))
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "overnight.readiness": _cmd_overnight_readiness,
     "overnight.plan": _cmd_overnight_plan,
     "overnight.report": _cmd_overnight_report,
+    "overnight.run": _cmd_overnight_run,
 }

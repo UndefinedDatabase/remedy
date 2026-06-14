@@ -148,6 +148,14 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                                     default="false", dest="fixture_source_builder", help=arg.help)
             elif arg.name == "--markdown":
                 parser.add_argument("--markdown", action="store_true", dest="markdown", help=arg.help)
+            elif arg.name == "--allow-one-cycle":
+                parser.add_argument("--allow-one-cycle", action="store_true", dest="allow_one_cycle", help=arg.help)
+            elif arg.name == "--allow-apply":
+                parser.add_argument("--allow-apply", action="store_true", dest="allow_apply", help=arg.help)
+            elif arg.name == "--allow-repair-propose":
+                parser.add_argument("--allow-repair-propose", action="store_true", dest="allow_repair_propose", help=arg.help)
+            elif arg.name == "--allow-repair-apply":
+                parser.add_argument("--allow-repair-apply", action="store_true", dest="allow_repair_apply", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

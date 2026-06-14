@@ -7,22 +7,22 @@ loop, or hidden background process. Answers: what would I do? am I allowed? did
 I do it? why stop? what evidence? what next?
 
 ## Current Step
-1276 — Executor models (overnight_executor.py)
+1288 — Idempotency verification (then integrations 1289-1292)
 
 ## Steps
 - [x] 1275: Mainline reconciliation + clean branch (PR #55 merged; scope→1275-1304)
-- [ ] 1276: Executor models (Run Request/Result/Record/Checkpoint/Phase/Decision/Lease/Mode)
-- [ ] 1277: Explicit execution policy (execution_enabled, max_cycles=1, --allow-one-cycle)
-- [ ] 1278: Executor lease (foreground; same job/repo/intent; stale recoverable; release on exit)
-- [ ] 1279: Run record persistence (atomic, append-only, no overwrite, no raw)
-- [ ] 1280: Phase checkpoints (durable per phase; retry from durable truth)
-- [ ] 1281: Action selection contract (only select_overnight_next_action; re-validate)
-- [ ] 1282: Action adapters (do_continue, repair_propose, read-only report; no shell/subprocess)
-- [ ] 1283: CLI overnight run (report-only default; --allow-one-cycle + explicit flags)
-- [ ] 1284: Policy gate enforcement (central re-check, not readiness alone)
-- [ ] 1285: Review-findings source (parse .agent/live_review.md; PENDING/FAIL block)
-- [ ] 1286: Stop reason enforcement (canonical taxonomy)
-- [ ] 1287: Morning report output (readiness report + executor record)
+- [x] 1276: Executor models (Run Request/Result/Record/Checkpoint/Phase/Decision/Lease/Mode)
+- [x] 1277: Explicit execution policy (executor_execution_permitted, max_cycles=1, --allow-one-cycle)
+- [x] 1278: Executor lease (foreground; job + repo-when-mutating; stale recoverable; release on exit)
+- [x] 1279: Run record persistence (atomic, append-only, no overwrite, no raw)
+- [x] 1280: Phase checkpoints (durable per phase)
+- [x] 1281: Action selection contract (select_overnight_next_action + re-validate catalog/entity/policy)
+- [x] 1282: Action adapters (do_continue, repair_propose, read-only report; no shell/subprocess)
+- [x] 1283: CLI overnight run (report-only default; --allow-one-cycle + explicit flags)
+- [x] 1284: Policy gate enforcement (review/budget/risk gate; central re-check via services)
+- [x] 1285: Review-findings source (parse .agent/live_review.md; PENDING/FAIL/unknown block)
+- [x] 1286: Stop reason enforcement (canonical taxonomy via _canonical)
+- [x] 1287: Morning report output (readiness report + executor record)
 - [ ] 1288: Idempotency (retry never double-apply/test/propose/duplicate report)
 - [ ] 1289: Progress Ledger integration
 - [ ] 1290: Feature Planner integration (no auto policy relaxation)
