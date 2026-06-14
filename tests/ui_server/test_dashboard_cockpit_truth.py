@@ -206,6 +206,18 @@ class TestDashboardShape:
         # No fabricated "ready" overnight state without evidence/policy.
         assert ov["can_run_unattended"] in (False, "unknown")
 
+    def test_overnight_run_section_present(self):
+        # Read-only Bounded Overnight Executor run summary (Step 1292).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "overnight_run" in dash
+        ovr = dash["overnight_run"]
+        assert "latest_status" in ovr
+        assert "stop_reason" in ovr
+        assert "checkpoint_count" in ovr
+        # No fabricated running state without a durable run record.
+        assert ovr.get("executed_action", "") in ("", "none")
+
     def test_unknown_when_data_dir_unavailable(self, monkeypatch):
         monkeypatch.setattr(ui_server, "_resolve_dashboard_data_dir", lambda: None)
         job = Job(name="t")

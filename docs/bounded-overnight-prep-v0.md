@@ -55,15 +55,18 @@ This block does NOT: apply code, run tests, propose/apply repairs, revert, call 
 provider, auto-approve, relax the contract, raise budgets, or start a background
 worker/scheduler. The overnight commands do not mutate the repo or the job.
 
-## How a future executor will use this
+## How the executor uses this
 
-A future Bounded Overnight Executor v0 will: load this readiness report, refuse to
-run when `can_run_unattended` is false or any blocker exists, honour the
-`BoundedOvernightPolicy` limits and stop reasons, and only ever act through the
-existing approval-gated `do continue` / repair paths — never a new apply bypass.
+The [Bounded Overnight Executor v0](bounded-overnight-executor-v0.md) consumes this
+readiness report: it is foreground, runs at most one cycle, refuses to run when
+execution is not explicitly permitted (`--allow-one-cycle` + an action flag) or a
+blocker/PENDING-FAIL review exists, honours the `BoundedOvernightPolicy` limits and
+stop reasons, and only ever acts through the existing approval-gated `do continue` /
+repair paths — never a new apply bypass.
 
 ## See also
 
-- [do-continue-v1.md](do-continue-v1.md) — the one-cycle path a future executor reuses.
+- [bounded-overnight-executor-v0.md](bounded-overnight-executor-v0.md) — the foreground one-step executor that acts on this report.
+- [do-continue-v1.md](do-continue-v1.md) — the one-cycle path the executor reuses.
 - [repair-loop-v1.md](repair-loop-v1.md) — the approval-gated repair proposal/apply cycle.
 - [snapshot-rollback-v1.md](snapshot-rollback-v1.md) — durable snapshot truth.

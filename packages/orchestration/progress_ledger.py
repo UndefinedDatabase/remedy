@@ -711,6 +711,64 @@ def merge_overnight_items(ledger: ProgressLedger, report: dict | None) -> None:
             seen.add(item.item_id)
 
 
+def extract_overnight_run_items(record: dict | None) -> list[ProgressItem]:
+    """Extract Bounded Overnight Executor progress items from the latest run
+    record (Step 1289). Read-only; fixed item_ids → no duplicates. Empty when no
+    record. Reflects the executor's own truth (selected/executed/stopped)."""
+    if not record:
+        return []
+    items: list[ProgressItem] = []
+    selected = (record.get("selected_action") or {}).get("kind", "none")
+    executed = (record.get("executed_action") or {}).get("kind", "none")
+    stop = record.get("stop_reason", "")
+    items.append(ProgressItem(
+        item_id="overnight-run-requested", title="Overnight run requested",
+        status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+        safe_summary=f"Mode {record.get('mode', 'report_only')}."))
+    items.append(ProgressItem(
+        item_id="overnight-run-action-selected", title="Overnight action selected",
+        status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+        safe_summary=f"Selected: {selected}."))
+    if executed and executed != "none":
+        items.append(ProgressItem(
+            item_id="overnight-run-action-executed", title="Overnight action executed",
+            status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+            safe_summary=f"Executed: {executed} (stop={stop})."))
+    if stop == "completed_verified":
+        items.append(ProgressItem(
+            item_id="overnight-run-completed-verified", title="Overnight completed (verified)",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="One bounded cycle completed and verified."))
+    elif stop == "evidence_incomplete":
+        items.append(ProgressItem(
+            item_id="overnight-run-evidence-incomplete", title="Overnight evidence incomplete",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.PROOF_GAP,
+            severity="High", safe_summary="Run stopped with incomplete evidence.",
+            next_action="remedy change proof <job_id> --json"))
+    elif stop in ("review_findings_open", "budget_exhausted", "medium_or_high_risk",
+                  "human_approval_required", "contract_blocked", "permission_missing"):
+        items.append(ProgressItem(
+            item_id="overnight-run-blocked", title="Overnight run blocked",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Medium", safe_summary=f"Run blocked: {stop}.",
+            next_action="remedy overnight readiness <job_id> --json"))
+    else:
+        items.append(ProgressItem(
+            item_id="overnight-run-stopped", title="Overnight run stopped",
+            status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+            safe_summary=f"Run stopped: {stop}."))
+    return items
+
+
+def merge_overnight_run_items(ledger: ProgressLedger, record: dict | None) -> None:
+    """Merge overnight executor run items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_overnight_run_items(record):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -789,6 +847,14 @@ def build_progress_ledger(
         merge_test_results(ledger, events)
         merge_continuation_items(ledger, events)
         merge_repair_items(ledger, events)
+
+    # Overnight executor run items from the latest durable run record (Step 1289).
+    if job is not None:
+        try:
+            from packages.orchestration.overnight_executor import latest_run_record
+            merge_overnight_run_items(ledger, latest_run_record(str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
 
     return ledger
 

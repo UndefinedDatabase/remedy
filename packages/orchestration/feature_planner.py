@@ -261,6 +261,20 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.PROOF_GAP,
             "remedy change proof <job_id> --json",
         ),
+        # Bounded Overnight Executor run follow-ups (Step 1290).
+        "overnight-run-blocked": (
+            "Resolve overnight run blocker",
+            "An overnight run was blocked (review findings / budget / risk / approval) — "
+            "resolve it manually. No automatic policy relaxation.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy overnight readiness <job_id> --json",
+        ),
+        "overnight-run-evidence-incomplete": (
+            "Inspect overnight run evidence",
+            "An overnight run stopped with incomplete evidence — inspect before trusting it.",
+            FeaturePlanSource.PROOF_GAP,
+            "remedy change proof <job_id> --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)
