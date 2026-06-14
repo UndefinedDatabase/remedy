@@ -206,6 +206,16 @@ class TestDashboardShape:
         # No fabricated "ready" overnight state without evidence/policy.
         assert ov["can_run_unattended"] in (False, "unknown")
 
+    def test_provider_trust_section_present(self):
+        # Read-only Provider Trust Gate summary (Step 1325).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "provider_trust" in dash
+        pt = dash["provider_trust"]
+        assert "report_count" in pt
+        assert "rejected" in pt
+        assert "pending_provider_repair_approval" in pt
+
     def test_overnight_run_section_present(self):
         # Read-only Bounded Overnight Executor run summary (Step 1292).
         job = Job(name="t")

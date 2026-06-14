@@ -8,7 +8,7 @@ accepted create a Repair Artifact + pending Repair Patch Intent → approval_req
 auto-approval. Apply stays through `do continue`.
 
 ## Current Step
-1326 — tests (redaction, CLI runtime, architecture guards)
+1330 — full pytest once (post targeted green)
 
 ## Steps
 - [x] 1305: Mainline reconciliation + clean branch (PR #56 merged; scope→1305-1334)
@@ -32,10 +32,10 @@ auto-approval. Apply stays through `do continue`.
 - [x] 1323: Feature Planner integration (no auto provider/approval)
 - [x] 1324: Review Bundle provider_trust_summary.json
 - [x] 1325: Cockpit read-only provider trust counts
-- [ ] 1326: Redaction tests
-- [ ] 1327: CLI runtime tests
-- [ ] 1328: Architecture guards (no network/subprocess/provider SDK/apply/test-exec imports)
-- [ ] 1329: Documentation (provider-trust-gate-v0 + cross-links)
+- [x] 1326: Redaction tests
+- [x] 1327: CLI runtime tests
+- [x] 1328: Architecture guards (no network/subprocess/provider SDK/apply/test-exec imports)
+- [x] 1329: Documentation (provider-trust-gate-v0 + cross-links)
 - [ ] 1330: Targeted tests + full pytest once
 - [ ] 1331: Live review
 - [ ] 1332: PR discipline
