@@ -613,13 +613,16 @@ def _build_self_dogfood_section(job: Any) -> dict[str, Any]:
         from packages.orchestration.proposed_tasks import load_proposed_tasks_safe
         tasks, _ = load_proposed_tasks_safe(str(job.id))
         sd = [t for t in tasks if getattr(t, "task_type", "") == "self_dogfood"]
+        def _st(t):
+            s = getattr(t, "status", "")
+            return str(getattr(s, "value", s)).lower()
         high = sum(1 for t in sd if t.priority == "high")
-        pending = sum(1 for t in sd if str(t.status).endswith("proposed"))
+        pending = sum(1 for t in sd if _st(t) in ("proposed", "evaluated"))
         return {
             "self_improvement_item_count": len(sd),
             "high_priority_count": high,
             "pending_evaluation_count": pending,
-            "latest_status": (str(sd[-1].status) if sd else "none"),
+            "latest_status": (_st(sd[-1]) if sd else "none"),
             "source": "self_dogfood",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):

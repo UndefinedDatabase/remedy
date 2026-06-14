@@ -905,9 +905,14 @@ def extract_self_dogfood_items(proposed_tasks: list | None) -> list[ProgressItem
     sd = [t for t in proposed_tasks if getattr(t, "task_type", "") == "self_dogfood"]
     if not sd:
         return []
-    proposed = [t for t in sd if str(getattr(t, "status", "")).endswith("proposed")]
-    approved = [t for t in sd if "approved" in str(getattr(t, "status", ""))]
-    deferred = [t for t in sd if "deferred" in str(getattr(t, "status", ""))]
+
+    def _st(t: Any) -> str:
+        s = getattr(t, "status", "")
+        return str(getattr(s, "value", s)).lower()
+
+    proposed = [t for t in sd if _st(t) in ("proposed", "evaluated")]
+    approved = [t for t in sd if "approved" in _st(t)]
+    deferred = [t for t in sd if "deferred" in _st(t)]
     items: list[ProgressItem] = []
     items.append(ProgressItem(
         item_id="self-improvement-proposed", title="Self-improvement tasks proposed",
