@@ -70,6 +70,11 @@ class ContractAction:
     SELF_INSPECT = "self_inspect"
     SELF_PLAN = "self_plan"
     SELF_PROPOSE_TASK = "self_propose_task"
+    # Self-Dogfood Execution v0 (Step 1447) — metadata/tracking only; apply stays
+    # controlled by do continue.
+    SELF_EXECUTE_PREPARE = "self_execute_prepare"
+    SELF_RECONCILE = "self_reconcile"
+    SELF_EXECUTION_STATUS = "self_execution_status"
 
     # Apply actions (gated by stop_before_apply)
     APPLY = "apply"
@@ -173,6 +178,9 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.SELF_INSPECT,
     ContractAction.SELF_PLAN,
     ContractAction.SELF_PROPOSE_TASK,
+    ContractAction.SELF_EXECUTE_PREPARE,
+    ContractAction.SELF_RECONCILE,
+    ContractAction.SELF_EXECUTION_STATUS,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
     ContractAction.RUN_TEST,
