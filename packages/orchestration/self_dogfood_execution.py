@@ -92,22 +92,24 @@ _TRANSITIONS: dict[str, frozenset[str]] = {
     AttemptState.TRUST_NEEDS_REVIEW: frozenset({AttemptState.INTENT_PENDING_APPROVAL, AttemptState.BLOCKED}),
     AttemptState.INTENT_PENDING_APPROVAL: frozenset({
         AttemptState.INTENT_APPROVED, AttemptState.BLOCKED}),
+    # COMPLETED is reachable ONLY via PROOF_VERIFIED (R-0085): no jump to completed
+    # from intent-approved/tested without an authoritative verified proof.
     AttemptState.INTENT_APPROVED: frozenset({
         AttemptState.APPLY_STARTED, AttemptState.APPLIED, AttemptState.TESTED_PASSED,
-        AttemptState.TESTED_FAILED, AttemptState.PROOF_VERIFIED, AttemptState.COMPLETED,
+        AttemptState.TESTED_FAILED, AttemptState.PROOF_VERIFIED,
         AttemptState.EVIDENCE_INCOMPLETE, AttemptState.BLOCKED}),
     AttemptState.APPLY_STARTED: frozenset({
         AttemptState.APPLIED, AttemptState.TESTED_PASSED, AttemptState.TESTED_FAILED,
-        AttemptState.EVIDENCE_INCOMPLETE, AttemptState.BLOCKED}),
+        AttemptState.PROOF_VERIFIED, AttemptState.EVIDENCE_INCOMPLETE, AttemptState.BLOCKED}),
     AttemptState.APPLIED: frozenset({
         AttemptState.TESTED_PASSED, AttemptState.TESTED_FAILED, AttemptState.PROOF_VERIFIED,
         AttemptState.EVIDENCE_INCOMPLETE, AttemptState.BLOCKED}),
     AttemptState.TESTED_PASSED: frozenset({
-        AttemptState.PROOF_VERIFIED, AttemptState.COMPLETED, AttemptState.EVIDENCE_INCOMPLETE}),
+        AttemptState.PROOF_VERIFIED, AttemptState.EVIDENCE_INCOMPLETE}),
     AttemptState.TESTED_FAILED: frozenset({AttemptState.BLOCKED, AttemptState.EVIDENCE_INCOMPLETE}),
     AttemptState.PROOF_VERIFIED: frozenset({AttemptState.COMPLETED}),
     AttemptState.TRUST_REJECTED: frozenset({AttemptState.BLOCKED}),
-    AttemptState.EVIDENCE_INCOMPLETE: frozenset({AttemptState.BLOCKED, AttemptState.COMPLETED}),
+    AttemptState.EVIDENCE_INCOMPLETE: frozenset({AttemptState.BLOCKED}),
     AttemptState.BLOCKED: frozenset(),
     AttemptState.COMPLETED: frozenset(),
 }
@@ -262,6 +264,11 @@ class SelfImprovementAttemptResult:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _self_provider_label(attempt_id: str) -> str:
+    """Provider label that correlates an imported candidate to THIS attempt (R-0084)."""
+    return f"self_dogfood:{attempt_id}"
 
 
 def _scrub(text: str) -> str:
@@ -620,7 +627,7 @@ def start_self_execution(
     attempt.stop_reason = StopReason.AWAITING_EXTERNAL_CANDIDATE
     attempt.next_safe_action = (
         f"remedy provider intake-repair {jid} --input <response_file> "
-        f"--provider self_dogfood --json")
+        f"--provider {_self_provider_label(attempt.attempt_id)} --json")
     save_attempt(attempt, ddir)
     return _result_from_attempt(attempt)
 
@@ -659,16 +666,20 @@ def reconcile_self_attempt(
         save_attempt(a, ddir)
         return _result_from_attempt(a)
 
-    # Link a materialized provider intent if not yet linked: newest accepted trust
-    # report carrying a repair_intent_id not already linked to another attempt.
+    # Link a materialized provider intent — DETERMINISTICALLY (R-0084). The candidate
+    # for THIS attempt must be imported with provider label "self_dogfood:<attempt_id>"
+    # (the exact label the request's intake command supplies), so we only link a trust
+    # report whose provider_name matches this attempt. No cross-attempt mislink.
     if not a.patch_intent_id:
+        want_provider = _self_provider_label(a.attempt_id)
         linked_intents = {x.get("patch_intent_id") for x in list_attempts(ddir)
                           if x.get("attempt_id") != a.attempt_id and x.get("patch_intent_id")}
         reports = sorted(load_trust_reports(job).values(),
                          key=lambda r: r.get("received_at", ""))
         for rep in reversed(reports):
             iid = rep.get("repair_intent_id", "")
-            if iid and iid not in linked_intents:
+            if (iid and iid not in linked_intents
+                    and rep.get("provider_name", "") == want_provider):
                 a.patch_intent_id = iid
                 a.provider_trust_report_id = rep.get("report_id", "")
                 a.provider_material_id = rep.get("material_id", "")
@@ -719,7 +730,7 @@ def _next_action_for(a: SelfImprovementAttempt) -> str:
     s = a.state
     if s == AttemptState.AWAITING_EXTERNAL_CANDIDATE:
         return (f"remedy provider intake-repair {a.job_id} --input <response_file> "
-                f"--provider self_dogfood --json")
+                f"--provider {_self_provider_label(a.attempt_id)} --json")
     if s == AttemptState.INTENT_PENDING_APPROVAL and a.patch_intent_id:
         return f"remedy patch approve {a.job_id} {a.patch_intent_id} --json"
     if s == AttemptState.INTENT_APPROVED and a.patch_intent_id:

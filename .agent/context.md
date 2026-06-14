@@ -52,5 +52,20 @@ do continue → snapshot/apply/test/proof). Orchestrator/tracking rail; bypasses
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite
   once at block end. No shell=True, no subprocess.
 
+## Product readiness — Self-Dogfood Execution v0 (Step 1456)
+CAN: after a human approves a self-dogfood ProposedTask, create+track a bounded
+SelfImprovementAttempt that prepares a safe request, routes the external candidate
+through the EXISTING Provider Trust Gate + materialization, links the pending intent,
+and (after human approval + `do continue`) reconciles to completed via durable proof.
+CLI `remedy self execute/status/reconcile/integrity`; surfaced in Progress/Feature/
+Review(21)/Cockpit/self report. Idempotent; E2E proven.
+STILL REQUIRES HUMAN: approving the ProposedTask, relaying the request + importing the
+candidate, approving the patch intent, running `do continue`.
+CANNOT (by design): edit code; apply outside `do continue`; approve; create PR/merge;
+mutate main/master (refused); call provider/model/network/subprocess/browser; insert
+Job.tasks; bypass the Trust Gate; mark a pending intent completed.
+FUTURE: Self-Dogfood Overnight (non-main, bounded, no auto-merge), Provider Trust
+Verification v1, direct candidate generators, PR creation.
+
 ## Next block
 Provider Trust Verification v1 OR Self-Dogfood Overnight v0.

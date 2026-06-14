@@ -180,7 +180,8 @@ class TestEndToEnd:
                 "@@ -1,2 +1,3 @@\n line one\n+self improvement line\n line two\n```\n")
         cf = env / "resp.md"; cf.write_text(cand)
         ir = PT.intake_provider_repair(
-            PT.ProviderOutputIntakeRequest(job_id=str(job.id), provider_name="self_dogfood"),
+            PT.ProviderOutputIntakeRequest(
+                job_id=str(job.id), provider_name=SE._self_provider_label(r.attempt_id)),
             input_path=str(cf), data_dir=env)
         assert ir.trust_status == PT.TrustStatus.ACCEPTED and ir.repair_intent_id
 
@@ -199,6 +200,24 @@ class TestEndToEnd:
         assert rec2.state == SE.AttemptState.COMPLETED
         assert rec2.proof_status == "verified"
         assert "self improvement line" in (repo / "docs" / "guide.md").read_text()
+
+    def test_reconcile_does_not_mislink_foreign_intent(self, env):
+        # R-0084: a trust report from a DIFFERENT provider label must not be linked
+        # to this attempt (no false completion).
+        job, pt = _approved_task(env)
+        r = SE.start_self_execution(pt.id, str(job.id), env)
+        # Inject an accepted trust report with a non-matching provider label.
+        reloaded = load_job(UUID(str(job.id)), env)
+        from packages.orchestration.provider_trust import save_trust_report, ProviderTrustReport
+        rep = ProviderTrustReport(
+            report_id="rogue", job_id=str(job.id), quarantine_id="q",
+            provider_name="someone_else", trust_status="accepted",
+            repair_intent_id="rogue-intent-0", received_at=SE._now())
+        save_trust_report(reloaded, rep)
+        save_job(reloaded, root=env)
+        rec = SE.reconcile_self_attempt(r.attempt_id, env)
+        assert not rec.patch_intent_id  # foreign intent NOT linked
+        assert rec.state == SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE
 
     def test_reconcile_idempotent_after_completed(self, env, monkeypatch, tmp_path):
         # Re-running reconcile on a completed attempt is stable (no double work).
