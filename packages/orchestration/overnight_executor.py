@@ -838,13 +838,24 @@ def run_overnight_executor(
 
     execute = decision.allowed and mode == OvernightExecutionMode.EXECUTE_ONE
     gate_stop = decision.stop_reason
+    # An apply (do_continue) must not run into a blocker/high-risk state. A repair
+    # PROPOSAL is the safe response to a failure, so it is gated only on blocker-
+    # severity risks (integrity), not on the high risks it exists to address.
+    if decision.kind == OvernightActionKind.DO_CONTINUE:
+        risky = any(r.severity in ("blocker", "high") for r in before.risks)
+    else:
+        risky = any(r.severity == "blocker" for r in before.risks
+                    if r.id != "budget_exhausted")
+    # Budget (test runs / loops) only constrains the apply cycle. A repair PROPOSAL
+    # consumes no test/loop budget, so an exhausted test budget does not block it.
+    budget_blocks = budget_exhausted and decision.kind == OvernightActionKind.DO_CONTINUE
     if execute and review_blocks:
         execute = False
         gate_stop = review_stop
-    elif execute and budget_exhausted:
+    elif execute and budget_blocks:
         execute = False
         gate_stop = OvernightStopReason.BUDGET_EXHAUSTED
-    elif execute and any(r.severity in ("blocker", "high") for r in before.risks):
+    elif execute and risky:
         execute = False
         gate_stop = OvernightStopReason.MEDIUM_OR_HIGH_RISK
     result._checkpoint(OvernightExecutionPhase.POLICY_CHECKED,

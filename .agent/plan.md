@@ -7,6 +7,7 @@ loop, or hidden background process. Answers: what would I do? am I allowed? did
 I do it? why stop? what evidence? what next?
 
 ## Current Step
+1297 — Documentation (then full suite 1298)
 1293 — Tests (CLI runtime, unit, redaction, architecture guards)
 
 ## Steps
@@ -29,10 +30,10 @@ I do it? why stop? what evidence? what next?
 - [x] 1291: Review Bundle overnight_run_summary.json (REQUIRED_SECTIONS 16)
 - [x] 1292: Cockpit overnight_run section (read-only)
 
-- [ ] 1293: CLI runtime tests (default report-only; flags gate; PENDING blocks)
-- [ ] 1294: Executor unit tests
-- [ ] 1295: Redaction tests
-- [ ] 1296: Architecture guards (no subprocess/provider/scheduler/git/UI mutation)
+- [x] 1293: CLI runtime tests (report-only default; flag/review/budget gates)
+- [x] 1294: Executor unit tests
+- [x] 1295: Redaction tests
+- [x] 1296: Architecture guards
 - [ ] 1297: Documentation (bounded-overnight-executor-v0 + cross-links)
 - [ ] 1298: Targeted tests + full pytest once
 - [ ] 1299: Live review
