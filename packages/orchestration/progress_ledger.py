@@ -1043,6 +1043,59 @@ def merge_orchestrator_items(ledger: ProgressLedger, latest_decision: dict | Non
             seen.add(item.item_id)
 
 
+def extract_local_advisor_items(latest_decision: dict | None) -> list[ProgressItem]:
+    """Extract Local Model Advisor progress items from the latest decision's advisor critique
+    (Step 1517). Read-only; fixed item_ids → no duplicates. No raw prompt/response."""
+    if not latest_decision:
+        return []
+    adv = latest_decision.get("advisor") or {}
+    if not adv:
+        return []
+    status = adv.get("status", "")
+    impact = adv.get("decision_impact", "")
+    items: list[ProgressItem] = []
+    if status in ("unavailable", "blocked"):
+        items.append(ProgressItem(
+            item_id="local-advisor-unavailable", title="Local advisor unavailable",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary=f"Local advisor {status} ({adv.get('stop_reason','')}); "
+                         "deterministic decision unchanged.",
+            next_action="remedy local-advisor status --json"))
+        return items
+    if status in ("completed", "reused"):
+        items.append(ProgressItem(
+            item_id="local-advisor-run", title="Local advisor consulted",
+            status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+            safe_summary=f"Local advisor {status}; impact {impact}."))
+        if adv.get("suggested_concerns"):
+            items.append(ProgressItem(
+                item_id="local-advisor-concern", title="Local advisor raised a concern",
+                status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+                safe_summary=f"{len(adv['suggested_concerns'])} advisor concern(s) — advisory only.",
+                next_action="remedy orchestrator report --json"))
+        if impact == "confidence_adjusted":
+            items.append(ProgressItem(
+                item_id="local-advisor-confidence", title="Local advisor adjusted confidence",
+                status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+                safe_summary="Advisor lowered decision confidence; action unchanged."))
+        elif impact == "human_review_required":
+            items.append(ProgressItem(
+                item_id="local-advisor-human-review", title="Local advisor escalated to human review",
+                status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+                safe_summary="Advisor flagged high risk on weak evidence — human review required.",
+                next_action="remedy orchestrator report --json"))
+    return items
+
+
+def merge_local_advisor_items(ledger: ProgressLedger, latest_decision: dict | None) -> None:
+    """Merge local advisor items into a ledger, de-duplicated by item_id (Step 1517)."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_local_advisor_items(latest_decision):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -1178,7 +1231,10 @@ def build_progress_ledger(
         from packages.orchestration.orchestrator_brain import list_decisions
         scope = f"job:{job.id}" if job is not None else "repository"
         decisions = list_decisions(scope)
-        merge_orchestrator_items(ledger, decisions[-1] if decisions else None)
+        latest = decisions[-1] if decisions else None
+        merge_orchestrator_items(ledger, latest)
+        # Local model advisor items from the latest decision's advisor critique (Step 1517).
+        merge_local_advisor_items(ledger, latest)
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
 

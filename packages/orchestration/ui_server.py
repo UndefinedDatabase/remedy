@@ -680,6 +680,33 @@ def _build_orchestrator_section(job: Any) -> dict[str, Any]:
                 "model_routing_tier": "unknown", "source": "unavailable"}
 
 
+def _build_local_advisor_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Local Model Advisor summary for the cockpit (Step 1520). Latest
+    advisor critique + counts only. No buttons, no mutation, no raw prompt/response."""
+    try:
+        from packages.orchestration.local_model_advisor import list_local_advisor_runs
+        from packages.orchestration.orchestrator_brain import list_decisions
+        scope = f"job:{job.id}"
+        runs = [r for r in list_local_advisor_runs() if r.get("scope") == scope]
+        decisions = list_decisions(scope)
+        adv = ((decisions[-1].get("advisor") if decisions else None) or {}) if decisions else {}
+        latest = runs[-1] if runs else {}
+        return {
+            "run_count": len(runs),
+            "enabled": bool(adv.get("enabled", False)),
+            "available": bool(adv.get("available", False)),
+            "latest_status": latest.get("status", "none"),
+            "latest_decision_impact": adv.get("decision_impact", latest.get("decision_impact", "")),
+            "concern_count": len(adv.get("suggested_concerns", []) or []),
+            "model_routing_tier": ((decisions[-1].get("model_routing_plan") or {}).get("tier", "")
+                                   if decisions else ""),
+            "source": "local_model_advisor",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"run_count": "unknown", "enabled": "unknown", "available": "unknown",
+                "latest_status": "unknown", "source": "unavailable"}
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -947,6 +974,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
         "orchestrator": _build_orchestrator_section(job),
+        "local_advisor": _build_local_advisor_section(job),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,

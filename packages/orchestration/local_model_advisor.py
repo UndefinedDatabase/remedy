@@ -55,6 +55,7 @@ MAX_RESPONSE_BYTES = 32_768
 DEFAULT_TIMEOUT_SECONDS = 8
 MAX_TIMEOUT_SECONDS = 30
 MAX_RETRIES = 1               # at most one retry (configured max 1 or 2; never a storm)
+MAX_UNAVAILABLE_REPEAT = 2    # stop re-probing the same evidence after this many failures
 MAX_FIELD_LEN = 300
 MAX_CONCERNS = 10
 MAX_HINTS = 10
@@ -313,7 +314,7 @@ def load_local_advisor_config(
     ep_ok, _reason, _label = _validate_endpoint(endpoint)
     effective = enabled and ep_ok and bool(model)
     return LocalAdvisorConfig(
-        enabled=effective, endpoint=endpoint if ep_ok else endpoint,
+        enabled=effective, endpoint=endpoint,
         model_name=model, timeout_seconds=timeout, max_runs=max_runs)
 
 
@@ -762,6 +763,14 @@ def _find_reusable_run(
     return None
 
 
+def _count_unavailable(data_dir: Path, scope: str, prompt_hash: str) -> int:
+    """Anti-loop (Step 1511): how many times the advisor was unavailable for this same
+    evidence (prompt_hash). Used to stop re-probing until the evidence changes."""
+    return sum(1 for r in list_local_advisor_runs(data_dir)
+               if r.get("scope") == scope and r.get("prompt_hash") == prompt_hash
+               and r.get("status") == LocalAdvisorStatus.UNAVAILABLE)
+
+
 # ---------------------------------------------------------------------------
 # Invocation (Step 1507) + impact suggestion (Step 1510 advisory side)
 # ---------------------------------------------------------------------------
@@ -831,6 +840,14 @@ def run_local_advisor(
                                       model_label, endpoint_label)
         if reusable is not None:
             return _response_from_run(reusable, config)
+
+    # Anti-loop (Step 1511): stop re-probing the same evidence after repeated failures.
+    if not new and _count_unavailable(ddir, request.scope, resp.prompt_hash) >= MAX_UNAVAILABLE_REPEAT:
+        resp.status = LocalAdvisorStatus.UNAVAILABLE
+        resp.stop_reason = LocalAdvisorStopReason.UNAVAILABLE
+        resp.summary = ("Local advisor repeatedly unavailable for this evidence; suppressed "
+                        "until new evidence. Deterministic decision unchanged.")
+        return resp
 
     # Budget (Step 1516): separate local-advisor budget; exhausted blocks the advisor only.
     usage = load_local_advisor_usage(request.scope, ddir)

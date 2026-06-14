@@ -369,6 +369,29 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.REPAIR_ARTIFACT,
             "remedy orchestrator report --json",
         ),
+        # Local Model Advisor follow-ups (Step 1518). No automatic execution.
+        "local-advisor-unavailable": (
+            "Configure a local model advisor (optional)",
+            "The orchestrator could not reach a local advisor — configure a loopback "
+            "Ollama endpoint + model if you want optional advisory critique (disabled by "
+            "default; never required for deterministic operation).",
+            FeaturePlanSource.ROADMAP,
+            "remedy local-advisor status --json",
+        ),
+        "local-advisor-concern": (
+            "Review the local advisor's concern",
+            "A local advisor raised a concern about the deterministic plan — review the "
+            "orchestrator report. The advisor is advisory only; it never changes the action.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy orchestrator report --json",
+        ),
+        "local-advisor-human-review": (
+            "Resolve the advisor-escalated human review",
+            "The local advisor flagged high risk on weak/unknown evidence; the orchestrator "
+            "escalated to human review — gather evidence or decide before any execution.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy orchestrator report --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)

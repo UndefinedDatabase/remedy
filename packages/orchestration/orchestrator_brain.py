@@ -215,6 +215,7 @@ class OrchestratorDecision:
     rationale: str = ""
     evidence_fingerprint: str = ""
     safe_summary: str = ""
+    advisor: dict[str, Any] | None = None  # optional local-advisor critique (Step 1509)
 
 
 def _now() -> str:
@@ -804,6 +805,13 @@ def _save_decision(decision: OrchestratorDecision, data_dir: Path) -> None:
         pass
 
 
+def persist_decision(decision: OrchestratorDecision, data_dir: Path | None = None) -> None:
+    """Public: persist a (possibly advisor-augmented) decision trace. Safe, atomic."""
+    from packages.orchestration.data_paths import resolve_data_root
+    ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
+    _save_decision(decision, ddir)
+
+
 def select_orchestrator_decision(
     situation: OrchestratorSituation, data_dir: Path | None = None, persist: bool = False,
 ) -> OrchestratorDecision:
@@ -860,6 +868,138 @@ def select_orchestrator_decision(
 
 
 # ---------------------------------------------------------------------------
+# Local Model Advisor integration (Steps 1509-1511) — advisory ONLY.
+#
+# The model NEVER controls the orchestrator. It can only: lower confidence, add safe
+# missing-evidence hints, or escalate weak/unknown evidence to human review. It can NEVER
+# create a command, approve/apply/propose, mark evidence complete, override a blocker/high
+# review, bypass budget/contract, or change which deterministic command executes. The final
+# next_safe_action stays deterministic + catalog-backed + entity-backed.
+# ---------------------------------------------------------------------------
+
+_CONFIDENCE_ORDER = ["low", "medium", "high"]
+
+
+def _lower_confidence(level: str) -> str:
+    try:
+        i = _CONFIDENCE_ORDER.index(level)
+    except ValueError:
+        return "low"
+    return _CONFIDENCE_ORDER[max(0, i - 1)]
+
+
+def _evidence_is_weak(decision: OrchestratorDecision,
+                      situation: OrchestratorSituation) -> bool:
+    if situation.evidence_status == "degraded" or decision.confidence == "low":
+        return True
+    return any(r.status in ("missing", "malformed", "unknown") for r in situation.evidence_refs)
+
+
+def consult_local_advisor_for_decision(
+    decision: OrchestratorDecision, situation: OrchestratorSituation, *,
+    data_dir: Path | None = None, enabled_override: bool | None = None,
+    transport: Any = None, new: bool = False,
+) -> OrchestratorDecision:
+    """Optionally consult a local advisor and apply DETERMINISTIC impact rules (Step 1510).
+
+    Mutates and returns ``decision`` with an ``advisor`` summary attached. Missing/unavailable
+    advisor never changes the deterministic decision (Step 1509). The advisor can only weaken
+    confidence or escalate to human review on weak evidence — never strengthen, never execute.
+    """
+    from packages.orchestration.data_paths import resolve_data_root
+    ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
+    from packages.orchestration.local_model_advisor import (
+        LocalAdvisorRequest, LocalAdvisorStatus, LocalAdvisorDecisionImpact,
+        load_local_advisor_config, run_local_advisor, export_local_advisor_response_json,
+    )
+
+    config = load_local_advisor_config(enabled_override=enabled_override)
+    impact = LocalAdvisorDecisionImpact.NO_CHANGE
+
+    if not config.enabled:
+        decision.advisor = {
+            "enabled": False, "available": False, "status": "disabled",
+            "stop_reason": "disabled", "decision_impact": impact,
+            "summary": "Local advisor disabled; deterministic decision unchanged.",
+        }
+        return decision
+
+    # Contract gate (Step 1515): for a job-scoped decision the run-contract may deny the
+    # local advisor. Denial never changes the deterministic decision.
+    if decision.job_id:
+        try:
+            from packages.orchestration.run_contract import (
+                ensure_contract, evaluate_run_action, ContractAction,
+            )
+            from packages.orchestration.storage import load_job, JobNotFoundError
+            job = load_job(UUID(decision.job_id), ddir)
+            if not evaluate_run_action(ensure_contract(job), ContractAction.LOCAL_ADVISOR_RUN).allowed:
+                decision.advisor = {
+                    "enabled": True, "available": False, "status": "blocked",
+                    "stop_reason": "contract_denied", "decision_impact": impact,
+                    "summary": "Contract denies local advisor; deterministic decision unchanged.",
+                }
+                return decision
+        except (ImportError, ValueError, JobNotFoundError, OSError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Build the advisor payload from the SAFE decision export + the situation's options.
+    payload = export_decision_json(decision)
+    payload["options"] = [o.to_dict() for o in situation.options]
+    req = LocalAdvisorRequest(job_id=decision.job_id, decision_id=decision.decision_id,
+                              scope=situation.scope_key(), payload=payload)
+    resp = run_local_advisor(req, config, data_dir=ddir, transport=transport, new=new)
+    adv = export_local_advisor_response_json(resp)
+    adv["suggested_impact"] = resp.decision_impact  # advisory hint (non-binding)
+
+    if resp.status != LocalAdvisorStatus.COMPLETED:
+        # Unavailable / blocked / unparseable / reused-without-content → no change.
+        adv["decision_impact"] = LocalAdvisorDecisionImpact.NO_CHANGE
+        decision.advisor = adv
+        return decision
+
+    high_concern = (any(f.severity == "high" for f in resp.findings)
+                    or any(c.get("severity") == "high" for c in resp.suggested_concerns))
+    weak = _evidence_is_weak(decision, situation)
+    open_blocker = bool(decision.blockers)
+
+    # Rule: escalate to human review only when the model flags high loop/evidence risk AND
+    # deterministic evidence is already weak — and only for an otherwise-selected action that
+    # is not already gated by an open blocker/human review.
+    if (decision.stop_reason == StopReason.SELECTED and not open_blocker
+            and (resp.loop_risk == "high" or high_concern) and weak):
+        impact = LocalAdvisorDecisionImpact.HUMAN_REVIEW_REQUIRED
+        if decision.selected_option:
+            decision.rejected_options.insert(0, {
+                "kind": decision.selected_option.get("kind", ""),
+                "label": decision.selected_option.get("label", ""),
+                "score": decision.selected_option.get("score", 0),
+                "why_not": "Local advisor flagged high risk on weak evidence — human review.",
+            })
+        decision.selected_option = None
+        decision.stop_reason = StopReason.HUMAN_REVIEW_REQUIRED
+        decision.confidence = "low"
+        decision.next_safe_action = "remedy orchestrator report --json"
+        decision.rationale = (
+            "Deterministic decision escalated to human review: local advisor flagged "
+            "high risk and the supporting evidence is weak/unknown.")
+    elif resp.suggested_concerns or resp.missing_evidence_hints or resp.confidence_hint == "low":
+        # Soften confidence; attach safe missing-evidence hints. Action unchanged.
+        new_conf = _lower_confidence(decision.confidence)
+        if new_conf != decision.confidence or resp.missing_evidence_hints:
+            impact = LocalAdvisorDecisionImpact.CONFIDENCE_ADJUSTED
+        decision.confidence = new_conf
+
+    adv["decision_impact"] = impact
+    if resp.missing_evidence_hints:
+        adv["missing_evidence_hints"] = resp.missing_evidence_hints
+    decision.advisor = adv
+    decision.safe_summary = (decision.safe_summary
+                             + f"; advisor={resp.status}/{impact}")
+    return decision
+
+
+# ---------------------------------------------------------------------------
 # Report (Step 1476) + exports
 # ---------------------------------------------------------------------------
 
@@ -891,6 +1031,7 @@ def export_decision_json(d: OrchestratorDecision) -> dict[str, Any]:
         "loop_guard_status": d.loop_guard_status, "next_safe_action": d.next_safe_action,
         "stop_reason": d.stop_reason, "rationale": d.rationale,
         "evidence_fingerprint": d.evidence_fingerprint, "safe_summary": d.safe_summary,
+        "advisor": d.advisor,
     }
 
 

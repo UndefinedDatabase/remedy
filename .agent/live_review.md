@@ -37,3 +37,9 @@ PENDING — implementation in progress.
 
 ## Findings — Steps 1499-1536
 (none yet) — Next id: R-0087.
+
+## Reviewer audit log
+- `a079378` reconciliation: touches only `.agent/{context,plan,live_review}.md`; branch off clean main `5d4cdf4` (PR #62 merged). No production drift. Check 1 OK. Prior block zero open findings — nothing to carry.
+- `2021606` core `local_model_advisor.py` (916L) reviewed — ZERO findings. Verified: disabled-by-default (`enabled=False`; `effective=enabled and ep_ok and bool(model)`); loopback-only `_validate_endpoint` (host∈{127.0.0.1,localhost,::1}, non-loopback never echoed, redirects rejected via `_NoRedirect`, timeout≤30 enforced, `MAX_RESPONSE_BYTES` bound→OVERSIZED); safe JSON-only prompt (scrub+bound, no code/secrets); stdlib urllib only (no subprocess/SDK/shell/external net); parse never raises (unparseable/oversized safe, code/diff→high concern, `_scrub_public`+`scan_secrets`); anti-loop `_count_unavailable≥2` suppress + `MAX_RETRIES=1`; impact advisory hint-only (orchestrator re-derives binding); raw prompt/response private 0o700/0o600 atomic only, public = hashes+counts+scrubbed.
+  - NIT (not a finding): line 317 `endpoint=endpoint if ep_ok else endpoint` dead ternary (identical branches); harmless (raw endpoint in-memory only, non-loopback cannot be effective-enabled).
+- PENDING for later commits: Check 9 (orchestrator binding-impact / final action stays deterministic), Check 10 (no command/entity/ProposedTask/PatchIntent from advisor; no contract/budget/review override), Checks 11-13 (CLI local-advisor status/run + decide --use-local-advisor, catalog, run_contract, budget, Progress/Feature/Review/Cockpit), Check 14 tests.

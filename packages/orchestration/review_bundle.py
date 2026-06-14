@@ -49,6 +49,7 @@ REQUIRED_SECTIONS = (
     "self_dogfood_summary.json",
     "self_execution_summary.json",
     "orchestrator_decision_summary.json",
+    "local_advisor_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -919,6 +920,47 @@ def _build_proof_chains_safe(job: Any, events: list[dict]) -> dict:
         return {"status": "section_unavailable", "reason": "proof chains not available"}
 
 
+def _build_local_advisor_summary(job: Any) -> dict:
+    """Safe Local Model Advisor summary (Step 1519). Run counts / latest status /
+    availability / model label / finding+impact counts / durations / safe IDs only — no raw
+    prompt/response, source, diffs, logs, secrets, or absolute paths."""
+    try:
+        from packages.orchestration.local_model_advisor import (
+            list_local_advisor_runs, load_local_advisor_usage,
+        )
+        scope = f"job:{job.id}"
+        runs = [r for r in list_local_advisor_runs() if r.get("scope") == scope]
+        usage = load_local_advisor_usage(scope)
+        if not runs:
+            return {"run_count": 0, "latest_status": "none", "available": False,
+                    "model_name": "", "impact_counts": {}, "finding_severity_counts": {},
+                    "duration_ms_total": 0}
+        latest = runs[-1]
+        impact_counts: dict[str, int] = {}
+        sev_counts: dict[str, int] = {}
+        for r in runs:
+            impact_counts[r.get("decision_impact", "")] = impact_counts.get(r.get("decision_impact", ""), 0) + 1
+        return {
+            "run_count": len(runs),
+            "completed_count": usage.get("completed_count", 0),
+            "latest_status": latest.get("status", ""),
+            "latest_stop_reason": latest.get("stop_reason", ""),
+            "latest_decision_impact": latest.get("decision_impact", ""),
+            "available": latest.get("status") in ("completed", "reused"),
+            "model_name": latest.get("model_name", ""),
+            "endpoint_label": latest.get("endpoint_label", ""),
+            "impact_counts": impact_counts,
+            "finding_severity_counts": sev_counts,
+            "duration_ms_total": usage.get("duration_ms_total", 0),
+            "prompt_chars_total": usage.get("prompt_chars_total", 0),
+            "response_chars_total": usage.get("response_chars_total", 0),
+            "latest_run_id": latest.get("advisor_run_id", ""),
+            "tokens_used": "unknown",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"run_count": 0, "latest_status": "unknown", "error": "local_advisor_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1299,6 +1341,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("orchestrator_decision_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("orchestrator_decision_summary.json", status="error", error="build failed"))
+
+    # local_advisor_summary.json (Step 1519)
+    try:
+        las = _build_local_advisor_summary(job)
+        content = json.dumps(las, indent=2).encode()
+        section_data["local_advisor_summary.json"] = content
+        result.sections.append(ReviewBundleSection("local_advisor_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("local_advisor_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:
