@@ -1,71 +1,57 @@
 # Context
 
 ## Active Branch
-feature/steps-1429-1464-self-dogfood-execution-v0 (forked from clean main at fa8ebe2
-after PR #60 merged Self-Dogfood Planner v0). No drift.
+feature/steps-1465-1498-main-orchestrator-brain-v0 (forked from clean main at 38df37d
+after PR #61 merged Self-Dogfood Execution v0). No drift.
 
-## Mainline reconciliation (Step 1429)
-- PR #60 MERGED → main. Current main commit: fa8ebe2.
-- Self-Dogfood Planner v0 landed: self_dogfood.py (inspect own evidence → Self
-  ImprovementItems → Plan → metadata-only ProposedTasks via existing approval flow);
-  `remedy self inspect/plan/propose/report`. No code edits/apply/approval/PR/git.
-  Full suite 5662 passed, 8 skipped, 1 deselected.
+## Mainline reconciliation (Step 1465)
+- PR #61 MERGED → main. Current main commit: 38df37d.
+- Self-Dogfood Execution v0 landed: self_dogfood_execution.py (approved self ProposedTask
+  → bounded SelfImprovementAttempt → request → Provider Trust Gate → materialize →
+  approve → do continue → reconcile; deterministic provider-label correlation; COMPLETED
+  only from verified proof). `remedy self execute/status/reconcile/integrity`. Full suite
+  5689 passed, 8 skipped, 1 deselected.
 
 ## Scope
-Steps 1429-1464: Self-Dogfood Execution v0. After a human approves a self-dogfood
-ProposedTask, create+track a bounded SelfImprovementAttempt routed through EXISTING
-gates (request package → Provider Trust Gate → materialization → approval →
-do continue → snapshot/apply/test/proof). Orchestrator/tracking rail; bypasses no gate.
+Steps 1465-1498: Main Orchestrator Brain v0 — Decision Engine, Anti-Loop Guard, Model
+Routing Plan. Read state from SAFE summaries → Situation → Options → score → loop guard
+→ routing plan → ONE Decision with rationale. Planning/decision ONLY.
+
+## Core principle
+LLMs are advisors/builders. The orchestrator is the controller. Evidence is truth.
 
 ## Carried residual risks
-- Self execution was NOT built before this block (this block builds the tracking rail).
-- Automated provider execution NOT built; Provider Trust Verification v1 NOT built.
+- Direct provider execution NOT built; local model advisory NOT built.
+- Provider Trust Verification v1 NOT built.
 - Broader source patch materialization deferred (apply path .md-only).
-- Quarantine/material/request cleanup not automated.
+- Cleanup/retention automation not built; self-overnight not built.
 - Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
 - UI `npm run lint` pre-existing TS parser/dependency blocker (no deps allowed).
 
-## Self-Dogfood Execution constraints (block 1429-1464)
-- Orchestrator/tracking rail; bypasses NO existing gate.
-- NO code edits / direct source_apply/patch_apply; apply ONLY via approved `do continue`.
-- NO approval / PR / merge / main|master mutation / git ops / direct Job.tasks insertion.
-- NO provider/model/network/subprocess/browser. Candidate output enters via existing
-  Provider Trust Gate + Materialization.
-- Mutation-capable phase refused on main/master or unknown branch (branch read from
-  .git/HEAD, no subprocess).
-- pending intent ≠ completed; approved ProposedTask ≠ success; no test/proof overclaim.
-- Idempotent by item fingerprint + candidate hash. No raw leaks.
-- NO PR unless the user explicitly asks (Step 1457/1464).
+## Orchestrator Brain constraints (block 1465-1498)
+- READ-ONLY or metadata-only. NO action execution from the brain.
+- NO Ollama/provider/API/network/subprocess/browser. Model routing is a PLAN, never a call.
+- NO apply/test, NO source_apply/patch_apply, NO approval, NO PR/git/main mutation, NO Job.tasks.
+- Model output never truth; never bypass approval; never retry a model indefinitely.
+- Anti-loop: repeated failed action → warn/block/human_review; no infinite "try again".
+- Open blocker/high review → human_review_required; budget exhaustion blocks exec-like options.
+- Every next_safe_action catalog-backed + real entities; no fake commands / missing entities.
+- No raw source/diff/stdout/stderr/artifact-body/secrets/tracebacks/absolute private paths.
+- NO PR unless the user explicitly asks (Step 1495/1498).
 
-## Foundation reused
-- self_dogfood: SelfImprovementItem (fingerprint), build_self_dogfood_inspection.
-- proposed_tasks: ProposedTask (task_type=self_dogfood, origin_recommendation_id=
-  self_dogfood:<fp>, status PROPOSED/APPROVED_FOR_BUILD…); load_proposed_tasks/get_proposed_task.
-- repair_request_builder: request package patterns (build a self request without a FailureArtifact).
-- provider_trust.intake_provider_repair (failure_artifact_id OPTIONAL → generic candidate
-  intake works; .md candidate → accepted → materialized pending intent).
-- do_continue.run_do_continue (approved intent → snapshot/apply/test/proof; idempotent).
-- run_contract ContractAction (ALL_KNOWN_ACTIONS auto-derived); _DEFAULT_ALLOWED_ACTIONS.
-- Review Bundle REQUIRED_SECTIONS currently 20; add self_execution_summary.json → 21.
+## Foundation reused (read-only evidence sources)
+- self_dogfood (inspection), self_dogfood_execution (list_attempts), overnight_readiness/
+  overnight_executor (readiness/run + parse_review_findings + review_findings_block_execution),
+  progress_ledger (build_progress_ledger), feature_planner (build_feature_plan),
+  provider_trust/provider_patch_material/repair_request_builder summaries, repair_loop
+  (load_repair_attempts), run_contract (ensure_contract/load_usage/evaluate_run_action),
+  proof_chain/snapshot truth, do_run.validate_next_safe_action_command, command_catalog.
+- proposed_tasks for self-task options.
+- Review Bundle REQUIRED_SECTIONS currently 21; add orchestrator_decision_summary.json → 22.
 
 ## Resource safety (standing)
-- No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite
-  once at block end. No shell=True, no subprocess.
-
-## Product readiness — Self-Dogfood Execution v0 (Step 1456)
-CAN: after a human approves a self-dogfood ProposedTask, create+track a bounded
-SelfImprovementAttempt that prepares a safe request, routes the external candidate
-through the EXISTING Provider Trust Gate + materialization, links the pending intent,
-and (after human approval + `do continue`) reconciles to completed via durable proof.
-CLI `remedy self execute/status/reconcile/integrity`; surfaced in Progress/Feature/
-Review(21)/Cockpit/self report. Idempotent; E2E proven.
-STILL REQUIRES HUMAN: approving the ProposedTask, relaying the request + importing the
-candidate, approving the patch intent, running `do continue`.
-CANNOT (by design): edit code; apply outside `do continue`; approve; create PR/merge;
-mutate main/master (refused); call provider/model/network/subprocess/browser; insert
-Job.tasks; bypass the Trust Gate; mark a pending intent completed.
-FUTURE: Self-Dogfood Overnight (non-main, bounded, no auto-merge), Provider Trust
-Verification v1, direct candidate generators, PR creation.
+- No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite once
+  at block end. No shell=True, no subprocess.
 
 ## Next block
-Provider Trust Verification v1 OR Self-Dogfood Overnight v0.
+Local Model Advisor Adapter v0 OR Provider Trust Verification v1.
