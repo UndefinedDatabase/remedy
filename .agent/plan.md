@@ -1,67 +1,61 @@
-# Plan — Steps 1365-1398: Provider-Agnostic Repair Request Builder v0
+# Plan — Steps 1399-1428: Self-Dogfood Readiness + Self-Improvement Planner v0
 
 ## Goal
-Given a TestFailureArtifact, produce a SAFE, structured RepairRequestPackage that can
-be handed to ANY external worker/model/human (provider-agnostic). External output
-re-enters Remedy ONLY through existing `remedy provider intake-repair` → Trust Gate →
-Materialization → Approval → do continue. Also define an interface-only candidate
-generator adapter boundary (manual/offline only; execute() raises unavailable).
+Let Remedy inspect its OWN evidence (reports, findings, risks, failed tests, stale
+handoff, missing evidence) and produce structured SelfImprovementItems + a Plan +
+ProposedTasks that flow through the EXISTING approval workflow. NOT autonomous self-
+modification: no self-apply, no self-merge, no auto-PR, no auto-approval, no main
+mutation, no scheduled/background self-run. Planning rail only.
 
-## Architecture principle
-Provider-/worker-/model-/subscription-/IDE-/account-AGNOSTIC. Providers are only
-EXAMPLE external untrusted candidate generators, never required infrastructure.
+## Flow
+project evidence → SelfDogfoodInspection → SelfImprovementItems → SelfImprovementPlan
+→ ProposedTasks → human evaluate/approve/materialize (existing flow).
 
 ## Current Step
-DONE — full suite 5627 passed; integrity ok; verdict PASS WITH RISKS; merge-ready; PR HELD per Step 1398
+1400 — self_dogfood.py (models + source registry + detectors + classification + plan)
 
 ## Steps
-- [x] 1365: Mainline reconciliation + clean branch (PR #58 merged; scope→1365-1398)
-- [x] 1366: Repair request models (Package/Section/BuildResult/StopReason/Capability/Descriptor/Record)
-- [x] 1367: Safe request package builder (from RepairContextSummary; no raw)
-- [x] 1368: Required candidate output schema (JSON or single fenced diff; one candidate)
-- [x] 1369: Request package private storage (request.md + manifest, atomic, hashed, no abs paths)
-- [x] 1370: CLI repair request (build/store; returns intake command; no apply/intent)
-- [x] 1371: CLI repair request-show (read-only)
-- [x] 1372: Command catalog (request write_metadata; request-show read_only)
-- [x] 1373: RunContract (prepare_repair_request/export_repair_request)
-- [x] 1374: Candidate generator boundary (interface only; execute raises unavailable)
-- [x] 1375: ExternalCandidateGeneratorRecord (manual|unavailable|future; no exec)
-- [x] 1376: Link request package to RepairAttempt (repair_request_prepared; idempotent)
-- [x] 1377: Import guidance (exact human next steps; no fake automation)
-- [x] 1378: Progress Ledger integration
-- [x] 1379: Feature Planner integration (no auto external execution)
-- [x] 1380: Review Bundle repair_request_summary.json
-- [x] 1381: Cockpit read-only request counts
-- [x] 1382: Prompt/request quality tests
-- [x] 1383: CLI runtime tests
-- [x] 1384: Redaction tests
-- [x] 1385: Architecture guards
-- [x] 1386: Documentation (repair-request-builder-v0 + cross-links)
-- [x] 1387: Request template pack (general/docs/test-failure/md-only)
-- [x] 1388: Request→intake E2E test (simulated external output; no real provider)
-- [x] 1389: Targeted tests + full pytest once
-- [x] 1390: Live review
-- [x] 1391: PR discipline (clean branch; NO PR unless user explicitly asks)
-- [x] 1392: Product readiness update
-- [x] 1393: Final handoff
-- [x] 1394: PR recommendation
-- [x] 1395: Hard completion criteria
-- [x] 1396: Future direct provider design note (candidate-generator-adapter-future.md)
-- [x] 1397: Provider-agnostic language audit
-- [x] 1398: Merge discipline — DO NOT create PR unless user explicitly asks
+- [x] 1399: Mainline reconciliation + clean branch (PR #59 merged; scope→1399-1428)
+- [ ] 1400: Self-dogfood models (Inspection/Item/Plan/Evidence/Source/Risk/Action/Result)
+- [ ] 1401: Evidence source registry (available|missing|malformed|stale; safe summaries)
+- [ ] 1402: Live review parser reuse (verdict + open counts; PENDING/FAIL/blocker→blocker)
+- [ ] 1403: Stale handoff detector (plan/context/verdict/changed-files/test-count/drift)
+- [ ] 1404: Evidence gap detector (claimed-PASS/full-pytest/readiness/proof/repair chain gaps)
+- [ ] 1405: Quality debt detector (missing tests/docs/catalog/bundle/cockpit; from registries)
+- [ ] 1406: Product roadmap item detector (deterministic rules; cite evidence)
+- [ ] 1407: Item classification (type/priority/confidence)
+- [ ] 1408: Plan builder (group/dedupe by fingerprint; top 3; bounded; no raw)
+- [ ] 1409: CLI self inspect (read-only)
+- [ ] 1410: CLI self plan (read-only)
+- [ ] 1411: CLI self propose (metadata-only; ProposedTask; item-id/--top N; idempotent)
+- [ ] 1412: Command catalog (inspect/plan read_only; propose write_metadata)
+- [ ] 1413: RunContract (self_inspect/self_plan/self_propose_task)
+- [ ] 1414: ProposedTask integration (origin self_dogfood; existing evaluate/approve/materialize)
+- [ ] 1415: Progress Ledger integration
+- [ ] 1416: Feature Planner integration (consume items; no auto exec)
+- [ ] 1417: Review Bundle self_dogfood_summary.json
+- [ ] 1418: Cockpit read-only self improvement counts
+- [ ] 1419: CLI self report (read-only markdown/json)
+- [ ] 1420: Idempotency tests
+- [ ] 1421: Redaction tests
+- [ ] 1422: Architecture guards
+- [ ] 1423: CLI runtime tests
+- [ ] 1424: Documentation (self-dogfood-v0)
+- [ ] 1425: Targeted tests + full pytest once
+- [ ] 1426: Live review
+- [ ] 1427: Final handoff
+- [ ] 1428: Hard completion criteria
 
 ## Hard rules
-- NO provider/Ollama/OpenAI/Pi/SDK/API, NO network, NO subprocess, NO browser, NO IDE/agent.
-- NO apply, NO test execution, NO Patch Intent creation from request generation.
-- NO direct call to provider intake inside request generation.
-- Request packages SAFE to share with untrusted external actor: no raw stdout/stderr/
-  source/diff/artifact-body/secrets/tracebacks/absolute private paths.
-- External output re-enters ONLY via `remedy provider intake-repair`.
-- Every next safe action catalog-backed + references real entities; no fake actions.
-- Provider-agnostic language only (external candidate generator / untrusted output).
-- Adapter execute() raises CandidateGeneratorExecutionUnavailable in v0.
-- Idempotent request packages (no uncontrolled duplicates; --new to force).
-- **DO NOT create a PR unless the user explicitly asks (Step 1398).**
+- READ-ONLY or metadata-only. NO code edits, NO apply, NO approval, NO PR, NO git ops,
+  NO direct Job.tasks insertion, NO main mutation, NO scheduled/background self-run.
+- Self-generated tasks enter the EXISTING ProposedTask flow (evaluate/approve/materialize).
+- NO provider SDK/network/subprocess (except existing CLI runtime tests), NO browser.
+- NO raw source/diff/stdout/stderr/secrets/tracebacks/absolute private paths in any surface.
+- No arbitrary code scanning — use known summaries/registries only.
+- PENDING/FAIL/open blocker/high review status → self-improvement BLOCKER.
+- Idempotent: dedupe items + ProposedTasks by stable fingerprint.
+- Every next safe action catalog-backed + references real entities.
 
 ## Next block
-Provider Trust Verification v1 OR Automated Candidate Generator Adapter v0.
+Self-Dogfood Execution v0 OR Provider Trust Verification v1.
