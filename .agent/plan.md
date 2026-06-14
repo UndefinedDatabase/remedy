@@ -12,24 +12,24 @@ snapshot → apply → test → proof → result. Orchestrator/tracking rail; by
 
 ## Steps
 - [x] 1429: Mainline reconciliation + clean branch (PR #60 merged; scope→1429-1464)
-- [ ] 1430: Self-execution models (Attempt/Result/State/Phase/Checkpoint/StopReason/Linkage)
-- [ ] 1431: Attempt storage (atomic, safe-transition, hashed fingerprint, no raw)
-- [ ] 1432: evaluate_self_execution_eligibility (approved self ProposedTask; no dup; review ok)
-- [ ] 1433: Branch/main safety gate (refuse mutation-capable on main/master; no git ops)
-- [ ] 1434: Attempt state machine (legal transitions; pending≠completed; idempotent)
-- [ ] 1435: Build self request package (no FailureArtifact required; safe)
-- [ ] 1436: CLI self execute (create/resume attempt → awaiting_external_candidate; real intake cmd)
-- [ ] 1437: Generic candidate intake compat (existing intake-repair w/o failure-artifact-id)
-- [ ] 1438: Link materialized intent → attempt (intent_pending_approval; idempotent)
-- [ ] 1439: Approved self intent → do continue compat (snapshot/test/proof; no overclaim)
-- [ ] 1440: CLI self status (read-only)
-- [ ] 1441: CLI self reconcile (metadata-only refresh from durable truth; no apply/provider)
-- [ ] 1442: Progress Ledger integration
-- [ ] 1443: Feature Planner integration (no auto exec)
-- [ ] 1444: Review Bundle self_execution_summary.json
-- [ ] 1445: Cockpit read-only attempt counts
-- [ ] 1446: self report includes execution attempts
-- [ ] 1447: RunContract (self_execute_prepare/self_reconcile/self_execution_status)
+- [x] 1430: Self-execution models (Attempt/Result/State/Phase/Checkpoint/StopReason/Linkage)
+- [x] 1431: Attempt storage (atomic, safe-transition, hashed fingerprint, no raw)
+- [x] 1432: evaluate_self_execution_eligibility (approved self ProposedTask; no dup; review ok)
+- [x] 1433: Branch/main safety gate (refuse mutation-capable on main/master; no git ops)
+- [x] 1434: Attempt state machine (legal transitions; pending≠completed; idempotent)
+- [x] 1435: Build self request package (no FailureArtifact required; safe)
+- [x] 1436: CLI self execute (create/resume attempt → awaiting_external_candidate; real intake cmd)
+- [x] 1437: Generic candidate intake compat (existing intake-repair w/o failure-artifact-id)
+- [x] 1438: Link materialized intent → attempt (intent_pending_approval; idempotent)
+- [x] 1439: Approved self intent → do continue compat (snapshot/test/proof; no overclaim)
+- [x] 1440: CLI self status (read-only)
+- [x] 1441: CLI self reconcile (metadata-only refresh from durable truth; no apply/provider)
+- [x] 1442: Progress Ledger integration
+- [x] 1443: Feature Planner integration (no auto exec)
+- [x] 1444: Review Bundle self_execution_summary.json
+- [x] 1445: Cockpit read-only attempt counts
+- [x] 1446: self report includes execution attempts
+- [x] 1447: RunContract (self_execute_prepare/self_reconcile/self_execution_status)
 - [x] 1448: Idempotency tests
 - [x] 1449: Redaction tests
 - [x] 1450: Architecture guards
@@ -44,7 +44,7 @@ snapshot → apply → test → proof → result. Orchestrator/tracking rail; by
 - [ ] 1459: Hard completion criteria
 - [ ] 1460: Merge recommendation (separate PR; no provider-trust stacking)
 - [x] 1461: Future design note (self-dogfood-overnight-future.md)
-- [ ] 1462: Optional self integrity gate (read-only)
+- [x] 1462: Optional self integrity gate (read-only)
 - [x] 1463: Review Bundle section count update
 - [ ] 1464: Final verification (targeted + full suite; record counts; NO PR unless asked)
 
