@@ -75,6 +75,10 @@ class ContractAction:
     SELF_EXECUTE_PREPARE = "self_execute_prepare"
     SELF_RECONCILE = "self_reconcile"
     SELF_EXECUTION_STATUS = "self_execution_status"
+    # Main Orchestrator Brain v0 (Step 1478) — read-only/metadata-only decisioning.
+    ORCHESTRATOR_INSPECT = "orchestrator_inspect"
+    ORCHESTRATOR_DECIDE = "orchestrator_decide"
+    ORCHESTRATOR_REPORT = "orchestrator_report"
 
     # Apply actions (gated by stop_before_apply)
     APPLY = "apply"
@@ -181,6 +185,9 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.SELF_EXECUTE_PREPARE,
     ContractAction.SELF_RECONCILE,
     ContractAction.SELF_EXECUTION_STATUS,
+    ContractAction.ORCHESTRATOR_INSPECT,
+    ContractAction.ORCHESTRATOR_DECIDE,
+    ContractAction.ORCHESTRATOR_REPORT,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
     ContractAction.RUN_TEST,

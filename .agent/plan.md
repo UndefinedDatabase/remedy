@@ -1,65 +1,64 @@
-# Plan — Steps 1429-1464: Self-Dogfood Execution v0
+# Plan — Steps 1465-1498: Main Orchestrator Brain v0
 
 ## Goal
-After a human approves a self-dogfood ProposedTask, create + track a bounded
-SelfImprovementAttempt that routes work through EXISTING safe systems:
-item → ProposedTask → approval → attempt → request package → external candidate →
-Provider Trust Gate → materialized pending intent → approval → do continue →
-snapshot → apply → test → proof → result. Orchestrator/tracking rail; bypasses NO gate.
+First "main orchestrator brain": read current project/job/system state from SAFE
+summaries, build a Situation, generate deterministic Options, score them, guard
+against repeated failed loops, define a model routing PLAN (no model calls), and
+select ONE structured next-step Decision with rationale. Planning/decision ONLY —
+no execution, no LLM/provider/Ollama, no apply/approve/PR/code mutation.
+
+## Core principle
+LLMs are advisors/builders. The orchestrator is the controller. Evidence is truth.
 
 ## Current Step
-DONE — R-0084/R-0085 resolved; verdict PASS WITH RISKS; merge-ready; PR HELD (Step 1457/1464)
+DONE — R-0086 resolved; verdict PASS WITH RISKS; merge-ready; PR HELD (Step 1495/1498)
 
 ## Steps
-- [x] 1429: Mainline reconciliation + clean branch (PR #60 merged; scope→1429-1464)
-- [x] 1430: Self-execution models (Attempt/Result/State/Phase/Checkpoint/StopReason/Linkage)
-- [x] 1431: Attempt storage (atomic, safe-transition, hashed fingerprint, no raw)
-- [x] 1432: evaluate_self_execution_eligibility (approved self ProposedTask; no dup; review ok)
-- [x] 1433: Branch/main safety gate (refuse mutation-capable on main/master; no git ops)
-- [x] 1434: Attempt state machine (legal transitions; pending≠completed; idempotent)
-- [x] 1435: Build self request package (no FailureArtifact required; safe)
-- [x] 1436: CLI self execute (create/resume attempt → awaiting_external_candidate; real intake cmd)
-- [x] 1437: Generic candidate intake compat (existing intake-repair w/o failure-artifact-id)
-- [x] 1438: Link materialized intent → attempt (intent_pending_approval; idempotent)
-- [x] 1439: Approved self intent → do continue compat (snapshot/test/proof; no overclaim)
-- [x] 1440: CLI self status (read-only)
-- [x] 1441: CLI self reconcile (metadata-only refresh from durable truth; no apply/provider)
-- [x] 1442: Progress Ledger integration
-- [x] 1443: Feature Planner integration (no auto exec)
-- [x] 1444: Review Bundle self_execution_summary.json
-- [x] 1445: Cockpit read-only attempt counts
-- [x] 1446: self report includes execution attempts
-- [x] 1447: RunContract (self_execute_prepare/self_reconcile/self_execution_status)
-- [x] 1448: Idempotency tests
-- [x] 1449: Redaction tests
-- [x] 1450: Architecture guards
-- [x] 1451: CLI runtime tests
-- [x] 1452: E2E simulated self-improvement test (no real provider/git/main)
-- [x] 1453: Documentation (self-dogfood-execution-v0 + cross-links)
-- [x] 1454: Targeted tests + full pytest once
-- [x] 1455: Live review
-- [x] 1456: Product readiness update
-- [x] 1457: PR discipline (clean branch; NO PR unless user asks)
-- [x] 1458: Final handoff
-- [x] 1459: Hard completion criteria
-- [x] 1460: Merge recommendation (separate PR; no provider-trust stacking)
-- [x] 1461: Future design note (self-dogfood-overnight-future.md)
-- [x] 1462: Optional self integrity gate (read-only)
-- [x] 1463: Review Bundle section count update
-- [x] 1464: Final verification (targeted + full suite; record counts; NO PR unless asked)
+- [x] 1465: Mainline reconciliation + clean branch (PR #61 merged; scope→1465-1498)
+- [x] 1466: Orchestrator models (Situation/Decision/Option/EvidenceRef/Risk/Trace/LoopGuard/RoutingPlan/Recommendation/StopReason)
+- [x] 1467: build_orchestrator_situation (safe summaries only; unknown stays unknown)
+- [x] 1468: Option generator (deterministic; real entities/commands only)
+- [x] 1469: Decision scorer (deterministic factors → score/reason codes/confidence)
+- [x] 1470: Anti-loop guard (durable summaries; allow/warn/block/require_human_review)
+- [x] 1471: Model routing plan v0 (deterministic_only/local_advisor/external_builder/human; no calls)
+- [x] 1472: Decision selector (exactly one: option | human_review | no_safe_action | evidence_incomplete)
+- [x] 1473: Decision trace persistence (safe, atomic, hashed, no raw)
+- [x] 1474: CLI orchestrator inspect (read-only)
+- [x] 1475: CLI orchestrator decide (read/metadata-only)
+- [x] 1476: CLI orchestrator report (read-only markdown/json)
+- [x] 1477: Command catalog (inspect/report read_only; decide read_only/write_metadata)
+- [x] 1478: RunContract (orchestrator_inspect/decide/report)
+- [x] 1479: User idea intake (orchestrator idea; scrub; classify; metadata-only)
+- [x] 1480: Idea-to-option integration (ideas are hints, not truth; dedupe; risky→human review)
+- [x] 1481: Progress Ledger integration
+- [x] 1482: Feature Planner integration
+- [x] 1483: Review Bundle orchestrator_decision_summary.json
+- [x] 1484: Cockpit read-only decision summary
+- [x] 1485: Orchestrator quality tests
+- [x] 1486: Anti-loop tests
+- [x] 1487: Model routing tests
+- [x] 1488: CLI runtime tests
+- [x] 1489: Redaction tests
+- [x] 1490: Architecture guards
+- [x] 1491: Documentation (orchestrator-brain-v0)
+- [x] 1492: Targeted tests + full pytest once
+- [x] 1493: Live review
+- [x] 1494: Product readiness update
+- [x] 1495: PR discipline (clean branch; NO PR unless user asks)
+- [x] 1496: Final handoff
+- [x] 1497: Hard completion criteria
+- [x] 1498: Merge discipline — DO NOT create PR unless user explicitly asks
 
 ## Hard rules
-- Orchestrator/tracking rail. Bypasses NO existing gate.
-- NO code edits, NO direct source_apply/patch_apply, NO apply outside `do continue`.
-- NO approval, NO PR/merge, NO main/master mutation, NO git ops, NO direct Job.tasks insertion.
-- NO provider/model/network/subprocess/browser. Candidate output goes through existing
-  Provider Trust Gate + Materialization (existing intake-repair, no failure-artifact-id needed).
-- Mutation-capable phase refused on main/master or unknown branch.
-- pending intent ≠ completed; approved ProposedTask ≠ execution success; no overclaim.
-- Idempotent by item fingerprint + candidate hash; no duplicate attempts/intents.
-- No raw source/diff/stdout/stderr/secrets/tracebacks/absolute private paths.
-- Every next_safe_action catalog-backed + references real entities.
-- NO PR unless the user explicitly asks (Step 1457/1464).
+- READ-ONLY or metadata-only. NO action execution from the brain.
+- NO Ollama/provider/API/network/subprocess/browser; model routing is a PLAN, never a call.
+- NO apply/test, NO source_apply/patch_apply, NO approval, NO PR/git/main mutation, NO Job.tasks insertion.
+- Model output never truth; never bypass approval; never retry a model indefinitely.
+- Anti-loop: no infinite "try again"; repeated failed action → warn/block/human_review.
+- Open blocker/high review → human_review_required. Budget exhaustion blocks execution-like options.
+- Every next_safe_action catalog-backed + references real entities; no fake commands/missing entities.
+- No raw source/diff/stdout/stderr/artifact-body/secrets/tracebacks/absolute private paths.
+- NO PR unless the user explicitly asks (Step 1495/1498).
 
 ## Next block
-Provider Trust Verification v1 OR Self-Dogfood Overnight v0.
+Local Model Advisor Adapter v0 OR Provider Trust Verification v1.

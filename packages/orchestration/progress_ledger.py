@@ -996,6 +996,53 @@ def merge_self_execution_items(ledger: ProgressLedger, attempts: list | None) ->
             seen.add(item.item_id)
 
 
+def extract_orchestrator_items(latest_decision: dict | None) -> list[ProgressItem]:
+    """Extract Orchestrator Brain progress items from the latest decision (Step 1481).
+    Read-only; fixed item_ids → no duplicates."""
+    if not latest_decision:
+        return []
+    stop = latest_decision.get("stop_reason", "")
+    tier = (latest_decision.get("model_routing_plan") or {}).get("tier", "")
+    loop = latest_decision.get("loop_guard_status", "")
+    items: list[ProgressItem] = []
+    items.append(ProgressItem(
+        item_id="orchestrator-decision-created", title="Orchestrator decision created",
+        status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+        safe_summary=f"Latest decision: {stop} (confidence {latest_decision.get('confidence','')})."))
+    if stop == "human_review_required" or loop in ("block", "require_human_review"):
+        items.append(ProgressItem(
+            item_id="orchestrator-human-review", title="Orchestrator requires human review",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="Orchestrator routed the next step to human review.",
+            next_action="remedy orchestrator report --json"))
+    elif stop in ("no_safe_action", "evidence_incomplete"):
+        items.append(ProgressItem(
+            item_id="orchestrator-blocked", title="Orchestrator has no safe action",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary=f"Orchestrator stop: {stop}.",
+            next_action="remedy orchestrator inspect --json"))
+    if tier == "local_advisor_preferred":
+        items.append(ProgressItem(
+            item_id="orchestrator-local-advisor", title="Local model advisor recommended",
+            status=ProgressStatus.RISK, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary="A future local advisor could critique the plan (not built)."))
+    elif tier == "external_builder_needed":
+        items.append(ProgressItem(
+            item_id="orchestrator-external-builder", title="External builder recommended",
+            status=ProgressStatus.RISK, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary="Candidate generation is the bottleneck (output via Trust Gate only)."))
+    return items
+
+
+def merge_orchestrator_items(ledger: ProgressLedger, latest_decision: dict | None) -> None:
+    """Merge orchestrator items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_orchestrator_items(latest_decision):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -1125,6 +1172,15 @@ def build_progress_ledger(
             merge_self_execution_items(ledger, mine)
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
+
+    # Orchestrator brain latest decision (Step 1481).
+    try:
+        from packages.orchestration.orchestrator_brain import list_decisions
+        scope = f"job:{job.id}" if job is not None else "repository"
+        decisions = list_decisions(scope)
+        merge_orchestrator_items(ledger, decisions[-1] if decisions else None)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass
 
     return ledger
 

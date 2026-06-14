@@ -246,6 +246,16 @@ class TestDashboardShape:
         assert "pending_candidate_count" in se
         assert "pending_approval_count" in se
 
+    def test_orchestrator_section_present(self):
+        # Read-only Orchestrator Brain summary (Step 1484).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "orchestrator" in dash
+        ob = dash["orchestrator"]
+        assert "decision_count" in ob
+        assert "latest_stop_reason" in ob
+        assert "model_routing_tier" in ob
+
     def test_overnight_run_section_present(self):
         # Read-only Bounded Overnight Executor run summary (Step 1292).
         job = Job(name="t")

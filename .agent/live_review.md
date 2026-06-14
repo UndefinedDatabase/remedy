@@ -1,188 +1,212 @@
-# Live Review — Steps 1429-1464: Self-Dogfood Execution v0
+# Live Review — Steps 1465-1498: Main Orchestrator Brain v0
 
 Reviewer: parallel reviewer
-Scope: After human approval of a self-dogfood ProposedTask, create+track a bounded
-SelfImprovementAttempt routed through EXISTING gates (request → Provider Trust Gate →
-materialization → approval → do continue → snapshot/apply/test/proof). Orchestrator/
-tracking rail. Must NOT: edit code, apply outside do continue, approve, create PRs,
-mutate main/master, do git ops, insert Job.tasks, call provider/network/subprocess/
-browser, bypass the Trust Gate, mark pending intent completed, overclaim test/proof,
-duplicate attempts/intents, leak raw source/diff/logs/secrets/paths. NO PR unless user asks.
+Scope: Decision Engine + Anti-Loop Guard + Model Routing Plan. Read state from SAFE
+summaries → Situation → deterministic Options → score → loop guard → routing plan →
+ONE Decision. Planning/decision ONLY. Must NOT: execute actions, call Ollama/provider/
+network/subprocess/browser, apply, approve, create PRs, mutate main/code, insert
+Job.tasks, emit fake/missing-entity commands, ignore open blocker/high review, loop on
+a failed action without new evidence, treat routing as execution, leak raw source/diff/
+logs/secrets/paths. NO PR unless user asks (Step 1495/1498).
 Timestamp: 2026-06-14
 
 ## Verdict
-PASS WITH RISKS — all 15 checks PASS; both findings (R-0084 MEDIUM, R-0085 LOW) are
-**Resolved** (deterministic provider-label intent correlation + proof-before-completed
-state machine; regression tests added). Zero open Blocker/High. Full suite green
-(post-fix run); integrity passed (0 fail). Orchestrator/tracking rail: no apply outside
-do continue, no approval/PR/git/main-mutation/provider/network; candidate via existing
-Trust Gate; pending≠completed; E2E proven. NO PR created (Step 1457/1464 — awaiting user).
+PASS WITH RISKS — all 15 checks PASS; sole finding R-0086 (MEDIUM, scorer ignored
+contract permission) is **Resolved** (CONTINUE_INTENT gated on patch_apply permission;
+regression test). Zero open Blocker/High. Orchestrator targeted 19 pass; full suite
+green; integrity passed. Planning/decision only — no execution/model/provider/apply/
+approve/PR/main mutation; routing is a plan, not a call; open blocker/high → human
+review; anti-loop holds; no fake/missing-entity commands. NO PR created (Step 1495/1498).
 
 ## Check Matrix (1-15) — to fill
 | Check | Status | Note |
 |---|---|---|
-| 1. Mainline reconciliation | PASS | 3bd6eac off clean main fa8ebe2; PR#60 recorded; residuals carried; only .agent/ files touched; no drift; PR held (Step 1457/1464) |
-| 2. Self-execution models (no raw fields) | PASS | Attempt/Linkage/Checkpoint/Result hold IDs/states/scrubbed title only; no raw |
-| 3. Attempt storage (atomic, safe-transition, hashed) | PASS | _atomic_write 0o600 tmp+os.replace; attempt.json; fingerprint dedup; _transition legality-checked |
-| 4. Eligibility (approved self ProposedTask; no dup; review ok) | PASS | task_type==self_dogfood + status==APPROVED_FOR_BUILD; non-self/unapproved blocked; _review_blocks (PENDING/FAIL/blocker-high); contract SELF_EXECUTE_PREPARE; target_repo + branch gate; dup active→resume |
-| 5. Branch/main safety gate | PASS | current_branch reads .git/HEAD only (NO subprocess/git); refuses main/master/detached(unknown); no branch creation/git mutation |
-| 6. Attempt state machine (legal; pending≠completed) | PASS w/ R-0085 | legal forward transitions; reconcile reaches COMPLETED only via PROOF_VERIFIED after proof==verified; integrity flags completed_without_proof. R-0085 (LOW): table latently permits COMPLETED from INTENT_APPROVED/TESTED_PASSED/EVIDENCE_INCOMPLETE |
-| 7. Self request package (no FailureArtifact) | PASS | no fa; scrubbed title/detail; one-candidate+.md-only+no-secrets+no-apply/test-claim constraints; required schema; stored 0o600 |
-| 8. CLI self execute → awaiting_external_candidate (real intake cmd) | PASS | start_self_execution stops at awaiting; next_safe_action = real provider intake-repair (no fa; generic intake tolerant, no fake fa); write_metadata no-mutate/no-exec |
-| 9. Generic candidate intake compat + intent linkage | CONCERN R-0084 | intake compat OK (validate_failure_link handles empty fa; arg required=False; no bypass of Trust Gate). BUT reconcile intent-linkage uncorrelated → R-0084 (MEDIUM) mislink/false-completion |
-| 10. do continue compatibility (snapshot/test/proof; no overclaim) | PASS w/ R-0084 | approved self intent → existing `do continue` (next_action); proof from authoritative build_proof_chain per intent_id; completed only if proof==verified. Overclaim possible only via mislink (R-0084) |
-| 11. CLI self status / reconcile (read/metadata-only) + RunContract | PASS | status/integrity read_only, reconcile write_metadata (no apply/provider); SELF_RECONCILE/STATUS/EXECUTE_PREPARE allowed not cloud; all next-actions catalog-backed (incl job.attach-repo) |
-| 12. Integrations (Progress/Feature/Review/Cockpit/self report) | PASS | 69075f4: ledger fixed item_ids (started/awaiting/pending/completed/blocked) counts+safe_summary, catalog next_actions; review_bundle _build_self_execution_summary counts/states/IDs only (no raw, REQUIRED_SECTIONS→21); feature planner + cockpit read-only; no mutation buttons |
-| 13. Redaction | PASS (code) | _scrub_public+[:300] on title/detail; attempts hold IDs/states only; await committed redaction test |
-| 14. Architecture guards (no apply/provider/git/PR/Job.tasks/main-mutation) | PASS (code) | imports stdlib+internal only; NO source_apply/patch_apply/subprocess/network/provider/git/Job.tasks; reconcile no apply/approve; await committed guard test |
-| 15. Idempotency + E2E simulated self-improvement | PARTIAL | idempotency PASS (fingerprint dedup→resume; reconcile excludes other-attempt intents); E2E test not yet committed |
+| 1. Mainline reconciliation | PASS | cd3d45c off clean main 38df37d; PR#61 (Self-Dogfood Execution 1429-1464) MERGED FIRST then branched (correct sequencing, no stacking); residuals carried; only .agent/ files touched; no drift; PR held (1495/1498) |
+| 2. Orchestrator models (no raw fields) | PASS | Situation/Decision/Option/EvidenceRef/Risk/RoutingPlan/LoopGuard/Idea hold IDs/labels/counts/scrubbed summaries; no raw |
+| 3. Situation builder (safe summaries; unknown stays unknown) | PASS | _gather_signals from durable stores (artifacts/repair/intents/trust/material/requests/self/contract-usage); try/except→unknown refs; missing→risk; NO event-only truth promotion |
+| 4. Option generator (real entities/commands only) | PASS | deterministic; entity-backed (intent/fa/pt ids); _catalog_ok via validate_next_safe_action_command→available=False if not catalog-backed; why_now/why_not |
+| 5. Decision scorer (deterministic; reason codes) | PASS | R-0086 RESOLVED @0bc1a47: _gather_signals evaluates evaluate_run_action(PATCH_APPLY)→patch_apply_allowed; CONTINUE_INTENT unavailable when denied; test_contract_denied_apply_not_recommended; scorer now uses evidence/review/contract/budget/loop/risk |
+| 6. Anti-loop guard (allow/warn/block/human) | PASS | durable repair_failed≥2→human_review, trust_rejected≥2→block; decision-history repetition (same evidence_fingerprint+kind)→warn/block; new evidence (diff fingerprint) resets; CLI decide persists=True |
+| 7. Model routing plan (no calls; 4 tiers) | PASS | deterministic_only/local_advisor_preferred/external_builder_needed/human_review_required; PLAN only (notes "no model called"); external only when justified + Trust Gate; no calls |
+| 8. Decision selector (exactly one outcome) | PASS | exactly one: SELECTED|HUMAN_REVIEW_REQUIRED|NO_SAFE_ACTION|EVIDENCE_INCOMPLETE; rejected_options explained; next_safe_action safe (catalog cmd or self inspect) |
+| 9. Decision trace persistence (safe/atomic/hashed) | PASS | _save_decision tmp+os.replace 0o600 + sha256; export_decision_json safe (IDs/labels/counts) |
+| 10. CLI (inspect/decide/report/idea) + catalog + RunContract | PASS | inspect/report read_only, decide/idea write_metadata, no-mutate/no-exec; JSON; no traceback; ORCHESTRATOR_INSPECT/DECIDE/REPORT contract allowed |
+| 11. Idea intake + idea-to-option (hints not truth; dedupe) | PASS | record_idea scrub+classify+dedupe(fingerprint); never creates ProposedTask; idea→option available=False (human review only) |
+| 12. Integrations (Progress/Feature/Review/Cockpit) | PASS | 4ef4235: ledger fixed item_ids+counts/safe enums; feature planner human-review follow-up; review_bundle _build_orchestrator_decision_summary counts/labels/IDs only (no raw ideas, REQUIRED_SECTIONS→22); cockpit read-only; no mutation buttons |
+| 13. Redaction | PASS | _scrub_public+[:300] on idea text; test_no_raw_leak injects sk-token//home//id_rsa/Traceback (live_review + idea text) → asserts absent |
+| 14. Architecture guards (no provider/Ollama/network/apply/git/PR/Job.tasks) | PASS | test_no_network_subprocess/no_provider_or_ollama(ollama/anthropic/openai/litellm)/no_apply_or_execution_imports(patch_apply/source_apply)/no_git_pr_jobtasks(os.system/.tasks.append) |
+| 15. Quality + anti-loop + routing tests | PASS | 2b36844: decision-quality/anti-loop(warn→block, repair-fail→human, new-evidence-resets)/routing(human/external/deterministic)/idea/redaction/arch (committed); targeted run pending builder lock |
 
-## Findings — Steps 1429-1464
+## Findings — Steps 1465-1498
 
-## Finding R-0084
-Status: Open
+## Finding R-0086
+Status: Resolved
 Severity: medium
-Area: intent-linkage
-Summary: reconcile attaches the newest unlinked accepted provider intent to a self attempt with NO correlation to that attempt — risk of mislink + false completion (proof overclaim).
-Details: `reconcile_self_attempt` (self_dogfood_execution.py:664-677), when `a.patch_intent_id`
-is empty, iterates ALL job trust reports newest-first and links the first `repair_intent_id`
-not already linked to another self attempt. There is no correlation to THIS attempt's
-request: TrustReport carries no `provider` label (verified: provider_trust.py TrustReport /
-export_trust_report_json have repair_intent_id/report_id/material_id/received_at but NO
-provider field) and the attempt records no intake/report id at candidate-import time
-(start_self_execution stops at awaiting_external_candidate; patch_intent_id is ONLY ever set
-by this heuristic). If the same job also has a regular provider repair (e.g.
-`intake-repair --failure-artifact-id ... --provider claude`) producing an accepted
-materialized intent, reconcile can attach THAT unrelated intent to the self attempt; once it
-is approved + `do continue`d to verified proof, reconcile marks the self attempt COMPLETED
-(lines 689-692). That is an unrelated change marking the self attempt complete — a
-proof/completion overclaim and a cross-flow linkage error.
-Evidence: self_dogfood_execution.py:664-677 (heuristic link), 679-692 (proof→completed);
-provider_trust.py:195-206 TrustReport has no provider field; export_trust_report_json
-(770-786) emits no provider/attempt correlation key.
-Expected fix: correlate the linked intent to the self attempt instead of guessing. Preferred:
-record the trust report id / intent id on the attempt at an explicit candidate-import step
-(metadata-only) rather than newest-unlinked heuristic; OR add a `provider`/origin label to the
-trust report and filter to the self-dogfood provider label AND match the attempt's
-request/material. At minimum, gate linkage so an intent that cannot be correlated to this
-attempt is NOT auto-adopted.
+Area: scoring
+Resolution: RESOLVED @ 0bc1a47, reviewer-verified in committed code. _gather_signals now
+evaluates evaluate_run_action(contract, ContractAction.PATCH_APPLY) → sig["patch_apply_allowed"]
+(orchestrator_brain.py:406-407, fallback False on error :410); CONTINUE_INTENT (the
+contract-gated apply action) is marked available=False + why_not "Contract denies patch_apply
+(or stop_before_apply)" when apply not permitted (:562-564), so a contract-denied apply can
+never be the SELECTED next step. APPROVE_INTENT stays available (human approval gate ≠ apply;
+the downstream CONTINUE_INTENT apply is the gated step) — acceptable. Regression test
+`test_contract_denied_apply_not_recommended` (default contract denies PATCH_APPLY → continue
+options unavailable + not selected). Targeted suite re-run confirmation deferred (builder holds
+/tmp/remedy-pytest.lock) — fix + test verified by inspection in committed code.
+Summary: decision scorer ignores run-contract action permission — options are scored/selected without evaluating their required_contract_action, so a contract-denied action can be recommended as the top next step.
+Details: Options set `required_contract_action` (e.g. APPROVE_INTENT/CONTINUE_INTENT →
+"patch_apply") in `_generate_options` (orchestrator_brain.py:540-553), but neither
+`_generate_options` nor `_score_options` (627-650) ever calls
+`run_contract.evaluate_run_action`. The only contract-derived input is `budget_exhausted`
+(from load_usage) which suppresses CONTINUE_INTENT only (639-641). If the job's contract
+denies an action (e.g. stop_before_apply, a custom disallowed action, no_cloud-style gate),
+the orchestrator still scores CONTINUE_INTENT=85 / APPROVE_INTENT=90 and selects it as the
+SELECTED next_safe_action with high confidence. Check 4 explicitly requires the scorer to use
+"contract", and the block-if list includes "budget/contract denial is ignored" — budget is
+handled, contract action permission is NOT. No unsafe EXECUTION results (the brain only emits
+a command string; the downstream `do continue`/`patch approve` still enforces the contract),
+but the brain's decision quality/confidence is wrong and the block-if/Check-4 contract factor
+is unimplemented.
+Evidence: orchestrator_brain.py:520-526 (_opt records required_contract_action but never
+checks it), 540-553 (options set patch_apply action), 627-650 (_score_options uses base score
++ review_blocks + budget + loop + risk, NO evaluate_run_action), 394-404 (only budget pulled
+from contract). No `evaluate_run_action` call anywhere in the module.
+Expected fix: in scoring/option-availability, evaluate each option's required_contract_action
+via `evaluate_run_action(ensure_contract(job), action)`; when denied, mark the option
+unavailable (or score→min) with reason_code "contract_denied" so a contract-denied action is
+never the SELECTED next step. Add a regression test (contract denies patch_apply → continue/
+approve not selected).
 
-## Finding R-0085
-Status: Open
-Severity: low
-Area: state-machine
-Summary: state transition table permits COMPLETED without verified proof (latent; reconcile + integrity-check currently gate it, but the table is over-permissive).
-Details: `_TRANSITIONS` (self_dogfood_execution.py:81-113) allows COMPLETED directly from
-INTENT_APPROVED (95-98), TESTED_PASSED (105-106) and EVIDENCE_INCOMPLETE (110). Current code
-only ever reaches COMPLETED via PROOF_VERIFIED after `proof == "verified"` (689-692), and
-`self_integrity_check` flags `completed_without_proof` (746-747), so there is no LIVE
-violation. But the table itself does not enforce the block-if invariant "no completed state
-without linked proof" — a future caller using `_transition(a, COMPLETED)` from those states
-would silently bypass proof. EVIDENCE_INCOMPLETE→COMPLETED is also semantically wrong.
-Evidence: self_dogfood_execution.py:95-98, 105-106, 110; completion only gated in reconcile
-(689-692) + integrity (746-747), not in the table.
-Expected fix: restrict COMPLETED predecessors to {PROOF_VERIFIED} only; drop COMPLETED from
-INTENT_APPROVED/TESTED_PASSED/EVIDENCE_INCOMPLETE edges so the state machine itself enforces
-proof-before-completed.
-
-Done: R-0084 — candidate intake for a self attempt is now correlated via provider label
-`self_dogfood:<attempt_id>` (`_self_provider_label`): `self execute` / `_next_action_for`
-emit the intake command with that label, and `reconcile_self_attempt` links ONLY a trust
-report whose `provider_name == self_dogfood:<attempt_id>` (provider_name IS exported on the
-trust report). A foreign/regular provider intent can no longer be adopted → no mislink, no
-false completion. Regression test `test_reconcile_does_not_mislink_foreign_intent`.
-Done: R-0085 — `_TRANSITIONS` now makes COMPLETED reachable ONLY from PROOF_VERIFIED;
-dropped COMPLETED edges from INTENT_APPROVED/TESTED_PASSED/EVIDENCE_INCOMPLETE. Test
-`test_transition_rejects_illegal` covers the illegal PROPOSED→COMPLETED jump.
+Done: R-0086 — `_gather_signals` now evaluates `evaluate_run_action(contract, PATCH_APPLY)`
+and stores `patch_apply_allowed`; the CONTINUE_INTENT option is marked `available=False`
+("Contract denies patch_apply (or stop_before_apply)") when apply is not permitted, so it
+can never be the SELECTED next step. APPROVE_INTENT is a human approval gate (not a
+contract-gated apply) and stays available. Regression test
+`test_contract_denied_apply_not_recommended` (default contract denies PATCH_APPLY →
+continue option unavailable + not selected).
 
 ### Reviewer audit log
-- 2026-06-14: Block start. Worker at 3bd6eac (Step 1429 reconciliation). Branch
-  feature/steps-1429-1464-self-dogfood-execution-v0 off clean main fa8ebe2 (PR#60 merged
-  Self-Dogfood Planner v0). Reconciliation touches only .agent/ files. Plan steps 1430-1464
-  each cover a stated check/block-if; hard rules align (orchestrator/tracking rail bypasses
-  NO gate; no direct apply/approve/PR/merge/main-mutation/git/Job.tasks; candidate via
-  existing Provider Trust Gate + materialization; approved intent via existing do continue;
-  pending≠completed; idempotent by fingerprint+candidate-hash; branch/main safety; no raw
-  leak; PR held Step 1457/1464). Residuals carried. Check 1 PASS. Worker now writing core.
-  Next finding id: R-0084.
-- 2026-06-14: Reviewed f06ebea (core+contract 1430-1441/1462) + b244e90 (CLI). self_dogfood_
-  execution.py (769L): models, branch-safety (.git/HEAD read only), storage (0o600 atomic),
-  eligibility, state machine, self request package, start/reconcile, integrity. CLI self
-  execute/status/reconcile/integrity + report. Verified deps: ProposedTaskStatus.APPROVED_FOR_
-  BUILD, get_proposed_task; contract SELF_EXECUTE_PREPARE/RECONCILE/EXECUTION_STATUS (allowed,
-  not cloud); APPROVAL_APPROVED; build_proof_chain ProofChange.intent_id/.proof_status
-  (authoritative, per-intent); all next-actions catalog-backed (incl job.attach-repo); intake
-  tolerates empty fa (no fake fa). Block-ifs mostly cleared: no source_apply/patch_apply/
-  subprocess/network/provider/git/PR/Job.tasks; candidate via existing Trust Gate (no bypass);
-  approved intent via existing do continue; pending≠completed (reconcile gates COMPLETED on
-  proof==verified); branch gate refuses main/master/detached; idempotent by fingerprint→resume.
-  TWO FINDINGS: R-0084 (MEDIUM, intent-linkage) reconcile attaches newest unlinked accepted
-  intent with NO correlation to the attempt (TrustReport has no provider field; attempt records
-  no intake id) → mislink + false-completion overclaim if a regular provider repair intent
-  exists in the same job. R-0085 (LOW, state-machine) transition table latently permits
-  COMPLETED without proof (reconcile+integrity gate it, but tighten table). Checks 2-11 PASS
-  (9/10 carry R-0084 concern, 6 carries R-0085). Check 12 PENDING (integrations uncommitted).
-  13/14 PASS by code; 15 idempotency PASS, E2E pending. Await fixes + tests. Next id: R-0086.
-- 2026-06-14: Reviewed 69075f4 (integrations 1442-1445) + 0a81f27 (tests+docs) + 7aca97c
-  (plan). Integrations clean (counts/states/IDs only, no raw, no mutation; review_bundle
-  REQUIRED_SECTIONS→21) — Check 12 PASS. Committed tests cover all checks incl E2E
-  (test_full_self_improvement_flow: execute→intake[provider self_dogfood:<attempt_id>]→
-  reconcile→approve→do continue→COMPLETED+proof verified+file changed), redaction, arch
-  guards, branch/main blocks, idempotent resume, AND R-0084 regression
-  (test_reconcile_does_not_mislink_foreign_intent) + R-0085 (test_transition_rejects_illegal).
-  CORRECTION to R-0084 evidence: ProviderTrustReport DOES have provider_name (provider_trust.py:190,
-  exported :759, set from request.provider_name:327/958) — my earlier "no provider field" was
-  wrong. The genuine defect stands: ORIGINAL code emitted a NON-UNIQUE constant label
-  "self_dogfood" AND reconcile applied NO provider filter → any newest unlinked accepted intent
-  (regular or other self attempt) could be adopted = mislink/false-completion.
-  FIX STATUS: worker addressed both in WORKING TREE (uncommitted): _self_provider_label=
-  "self_dogfood:<attempt_id>" (unique per attempt) emitted by start + _next_action_for;
-  reconcile links ONLY rep.provider_name==that label; _TRANSITIONS now reaches COMPLETED ONLY
-  from PROOF_VERIFIED. Both fixes sound by inspection and locked by the committed regression
-  tests. Worker also wrote Done: R-0084/R-0085 markers + final handoff. HOLDING Resolved:
-  per protocol I re-check in COMMITTED code — the core fix is not yet committed (self_dogfood_
-  execution.py + test modified, uncommitted). Will mark Resolved once committed + targeted
-  suite green. Next id: R-0086.
+- 2026-06-14: Block start. Worker at cd3d45c (Step 1465 reconciliation). Sequencing verified:
+  PR#61 (Self-Dogfood Execution 1429-1464) merged to main 38df37d FIRST, then branch
+  feature/steps-1465-1498-main-orchestrator-brain-v0 off clean main (no stacking on unmerged
+  work; honors prior Step 1460 "separate PR, do not stack"). Reconciliation touches only
+  .agent/ files. Plan steps 1466-1498 each cover a stated check/block-if; hard rules align
+  (advisory/read-only-metadata-only; NO action execution/Ollama/provider/network/subprocess/
+  browser; routing is a PLAN never a call; no apply/test/source_apply/patch_apply/approve/PR/
+  git/main/Job.tasks; anti-loop; open-blocker-high review→human_review; budget/contract gating;
+  catalog-backed real-entity actions; no raw leak; PR held 1495/1498). Residuals carried.
+  Check 1 PASS. Worker now writing core (orchestrator_brain.py untracked). Next id: R-0086.
+- 2026-06-14: Reviewed a4e1f1c (core+contract 1466-1480) + 31e7118 (CLI) + 4ef4235
+  (integrations 1481-1484). orchestrator_brain.py (938L): situation/options/scorer/anti-loop/
+  routing/selector/trace/idea-intake. Block-ifs cleared: NO execution (emits command STRINGS
+  only, never runs), NO Ollama/provider/network/subprocess/apply/test/approve/PR/git/Job.tasks;
+  situation from durable safe summaries (no event-truth promotion); options deterministic +
+  entity-backed + catalog-validated (_catalog_ok→validate_next_safe_action_command, non-catalog
+  →available=False); routing is PLAN (4 tiers, notes "no model called", external only via Trust
+  Gate); selector emits exactly one outcome; trace atomic 0o600+sha256; idea scrub+classify+
+  dedupe (never ProposedTask, idea→human-review-only); anti-loop durable failure signals +
+  decision-history (CLI decide persists=True); review-blocks force human_review; budget
+  suppresses continue. ONE FINDING: R-0086 (MEDIUM, scoring) — scorer/option-gen never evaluate
+  required_contract_action (only budget pulled from contract); a contract-denied action (e.g.
+  patch_apply under stop_before_apply) can be SELECTED as top next step. No unsafe execution
+  (brain advisory; downstream command enforces contract), but Check-4 "contract" factor +
+  block-if "contract denial is ignored" unmet. Checks 2-12 PASS (5 carries R-0086). 13/14 PASS
+  by code; 15 PENDING (tests not committed). Await fix + tests. Next id: R-0087.
+- 2026-06-14: Reviewed 2b36844 (tests+docs 1485-1492) + a8f5058 (plan) + 0bc1a47 (R-0086 fix).
+  R-0086 RESOLVED + reviewer-verified in committed code (evaluate_run_action PATCH_APPLY →
+  patch_apply_allowed; CONTINUE_INTENT unavailable when denied; test_contract_denied_apply_not_
+  recommended). All 15 checks now have committed test coverage: catalog-backed selected cmd,
+  open-blocker→human-review, priority ordering, anti-loop (warn→block, repair-fail→human,
+  new-evidence-resets), routing (human/external-builder notes plan-only/deterministic), idea
+  classify+dedupe+hint-not-executed, redaction (sk-token//home//id_rsa/Traceback absent),
+  architecture (no subprocess/shell/ollama/anthropic/openai/litellm/patch_apply/source_apply/
+  os.system/.tasks.append). Side fix in 2b36844: feature_planner local-advisor mapping
+  FeaturePlanSource.FEATURE_SUGGESTION→ROADMAP (FEATURE_SUGGESTION is ProgressSource-only) —
+  sound. Changed-files reconciled vs git diff 38df37d..HEAD = 17 files, all covered. ALL 15
+  checks PASS; ZERO open findings. Builder running full pytest (lock held) — await count +
+  handoff. Targeted orchestrator run deferred (lock). Next id: R-0087.
 
-## Builder Final Handoff (Steps 1429-1464)
+## Builder Final Handoff (Steps 1465-1498)
 
-- **Mainline reconciliation**: PR #60 merged; branch off clean main fa8ebe2; no drift.
-- **Tests**: self-execution unit/branch/state/idempotency/redaction/architecture/E2E (20)
-  + CLI runtime (6) + planner/review-bundle/cockpit/catalog/progress/feature/run-contract/
-  proposed-tasks/do_continue. **Full pytest** (pre-fix) 5688 passed; post R-0084/R-0085 fix
-  re-run recorded below. Wrapper `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
+- **Mainline reconciliation**: PR #61 (Self-Dogfood Execution) merged FIRST → main 38df37d;
+  branch off clean main; no stacking; no drift.
+- **Tests**: orchestrator unit/anti-loop/routing/idea/redaction/architecture (19) + CLI
+  runtime (6) + review-bundle/cockpit/catalog/progress/feature/run-contract. **Full pytest**
+  (post R-0086) re-run recorded below. Wrapper `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
 - **Integrity gate**: `remedy integrity check` passed=True, fail_count=0.
-- **Findings**: R-0084 (Resolved — deterministic provider-label correlation), R-0085
-  (Resolved — proof-before-completed state machine).
-- **Models / storage / eligibility / branch-main safety / state machine / request package /
-  generic candidate intake compat / intent linkage / do continue compat / CLI (execute/
-  status/reconcile/integrity) / RunContract / Progress / Feature / Review / Cockpit / self
-  report / idempotency / redaction / architecture guards / E2E**: DONE.
-- **Hard completion criteria (1459)**: no code edits; apply only via do continue; no
-  approval; no PR; no main mutation (refused); no provider/network/browser; candidate
-  through Trust Gate; no fake actions; pending intent ≠ completed; no test/proof overclaim;
-  no duplicate attempts/intents; no raw leak; live_review NOT PENDING. ALL satisfied.
+- **Findings**: R-0086 (Resolved — contract-gated apply option).
+- **Models / situation builder / option generator / decision scorer / anti-loop guard /
+  model routing plan / decision selector / decision trace / CLI (inspect/decide/report/idea) /
+  RunContract / idea intake / Progress / Feature / Review / Cockpit / redaction / architecture
+  guards**: DONE.
+- **Hard completion criteria (1497)**: executes nothing; no Ollama/provider/network/subprocess;
+  no apply/approve/PR/main mutation/Job.tasks; no fake/missing-entity commands; open blocker/
+  high → human_review; anti-loop (no repeat without new evidence); routing is a plan not a call;
+  no raw leak; live_review NOT PENDING. ALL satisfied.
 
-### Changed Files (Steps 1429-1464)
+### Changed Files (Steps 1465-1498)
 | File | What changed | Why |
 |---|---|---|
-| `packages/orchestration/self_dogfood_execution.py` | NEW — attempt models + storage, eligibility, branch/main safety (.git/HEAD read), state machine, self request package, start/reconcile, self_integrity, deterministic provider-label correlation | Core self-execution tracking rail |
-| `packages/orchestration/run_contract.py` | self_execute_prepare/self_reconcile/self_execution_status actions | Gate metadata vs execution |
-| `apps/cli/command_catalog.py` | self execute/status/reconcile/integrity entries | CLI surface |
-| `apps/cli/grouped.py` | parse --attempt-id | Flag |
-| `apps/cli/commands/self_cmd.py` | execute/status/reconcile/integrity handlers; report includes attempts | Wire CLI |
-| `packages/orchestration/progress_ledger.py` | self-execution attempt items (job-scoped) | Progress surface |
-| `packages/orchestration/feature_planner.py` | awaiting-candidate/intent-pending/blocked follow-ups (no auto exec) | Human next-steps |
-| `packages/orchestration/review_bundle.py` | self_execution_summary.json (REQUIRED_SECTIONS 20→21) | Reviewable summary |
-| `packages/orchestration/ui_server.py` | read-only self_execution cockpit section | Surface counts |
-| `docs/self-dogfood-execution-v0.md`, `docs/self-dogfood-overnight-future.md` | NEW — execution doc + future note | Long-term knowledge |
-| `docs/self-dogfood-v0.md`, `provider-trust-gate-v0.md`, `repair-request-builder-v0.md`, `bounded-overnight-executor-v0.md` | cross-links | Doc graph |
-| `tests/orchestration/test_self_dogfood_execution.py` | NEW — 20 unit/branch/idempotency/redaction/architecture/E2E + mislink-guard | Coverage |
-| `tests/cli/test_self_dogfood_execution_cli.py` | NEW — 6 CLI runtime tests | Coverage |
-| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | REQUIRED_SECTIONS==21 + cockpit shape | Keep invariants |
+| `packages/orchestration/orchestrator_brain.py` | NEW — situation/options/scorer/anti-loop/routing-plan/selector/decision-trace/idea intake; contract-gated apply option | Core orchestrator brain |
+| `packages/orchestration/run_contract.py` | orchestrator_inspect/decide/report actions | Gate read/metadata decisioning |
+| `apps/cli/command_catalog.py` | orchestrator group + inspect/decide/report/idea | CLI surface |
+| `apps/cli/commands/orchestrator_cmd.py` | NEW — inspect/decide/report/idea handlers | Wire CLI |
+| `apps/cli/commands/__init__.py` | register orchestrator_cmd | Handler collection |
+| `packages/orchestration/progress_ledger.py` | orchestrator decision/human-review/blocked/advisor/builder items | Progress surface |
+| `packages/orchestration/feature_planner.py` | human-review/local-advisor/external-builder follow-ups (FeaturePlanSource.ROADMAP) | Human next-steps |
+| `packages/orchestration/review_bundle.py` | orchestrator_decision_summary.json (REQUIRED_SECTIONS 21→22) | Reviewable summary |
+| `packages/orchestration/ui_server.py` | read-only orchestrator cockpit section | Surface latest decision |
+| `docs/orchestrator-brain-v0.md` | NEW — orchestrator doc | Long-term knowledge |
+| `tests/orchestration/test_orchestrator_brain.py` | NEW — 19 unit/anti-loop/routing/idea/redaction/architecture/R-0086 tests | Coverage |
+| `tests/cli/test_orchestrator_brain_cli.py` | NEW — 6 CLI runtime tests | Coverage |
+| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | REQUIRED_SECTIONS==22 + cockpit shape | Keep invariants |
 | `.agent/plan.md`, `.agent/context.md`, `.agent/live_review.md` | block state + product readiness + review | Runtime state |
 
-### Readiness + merge recommendation (Steps 1458/1460)
-Readiness ~95% (foreground/manual; self-overnight + provider verification deferred).
-Merge as a SEPARATE PR; do NOT stack Provider Trust Verification. **PR NOT created**
-(Step 1457/1464 — awaiting explicit user request).
+### Readiness + merge
+Readiness ~95% (decision/planning rail; model execution deliberately deferred). Merge-
+ready as a SEPARATE PR. **PR NOT created** (Step 1495/1498 — awaiting explicit user request).
+Next block: Local Model Advisor Adapter v0 OR Provider Trust Verification v1.
+
+### Reviewer audit log (final)
+- 2026-06-14: FINAL. Reviewed bc7c7f3 (live review + handoff, PR held). Targeted run via
+  `scripts/remedy_pytest.sh test_orchestrator_brain.py test_orchestrator_brain_cli.py -q`
+  → 25 passed (incl test_contract_denied_apply_not_recommended [R-0086], anti-loop warn→block/
+  repair-fail→human/new-evidence-resets, routing human/external/deterministic, idea dedupe+
+  hint-not-executed, redaction, architecture guards). Builder full suite 5689 passed/8 skipped/
+  1 deselected; integrity passed=True/fail=0. Changed-files table reconciled vs git diff
+  38df37d..HEAD = 17 files, all covered, none missing/extra. R-0086 Resolved + verified. ALL 15
+  checks PASS; zero open Blocker/High. Verdict PASS WITH RISKS. NO PR (Step 1495/1498). COMPLETE.
+
+## Reviewer Final Verdict — Steps 1465-1498 (Main Orchestrator Brain v0)
+
+**PASS WITH RISKS.** Zero open Blocker/High. One finding filed (R-0086 MEDIUM, scoring) and
+**Resolved** — reviewer-verified in committed code.
+
+Primary goal MET: produces evidence-backed next-step decisions + anti-loop protection +
+model-routing recommendations WITHOUT executing actions, calling models, applying patches,
+approving work, or leaking raw data. Controller-not-executor: emits command strings only.
+
+- Handoff: PASS (PR#61 merged first → clean main 38df37d; correct sequencing, no stacking; residuals carried; PR held)
+- Situation builder: PASS (durable safe summaries; unknown stays unknown; missing→risk; no event-only truth promotion)
+- Option generator: PASS (deterministic; entity-backed; catalog-validated via validate_next_safe_action_command; why-now/why-not)
+- Scoring: PASS (deterministic; evidence/review/contract[R-0086 fix]/budget/loop/risk; reason codes; no fake green)
+- Anti-loop: PASS (durable repair-fail≥2→human, trust-reject≥2→block; persisted decision-history warn→block; new evidence resets)
+- Model routing: PASS (4 tiers; PLAN only, no calls; external only when justified + via Trust Gate)
+- Decision selector: PASS (exactly one: SELECTED|HUMAN_REVIEW_REQUIRED|NO_SAFE_ACTION|EVIDENCE_INCOMPLETE; rejected explained; safe next action)
+- CLI: PASS (inspect/report read_only, decide/idea write_metadata; JSON; no traceback; no shell=True)
+- Idea intake: PASS (scrub+classify+dedupe; never ProposedTask; hint not truth → human review only)
+- Progress/Feature/Review: PASS (counts/labels/IDs/safe enums only; no raw; no mutation)
+- Cockpit: PASS (read-only latest decision; no buttons)
+- Redaction: PASS (_scrub_public; injected secret/path/traceback absent — test asserted)
+- Architecture: PASS (no provider/Ollama/network/subprocess/apply/test/git/PR/Job.tasks — test asserted; routing never executes)
+- Tests run: targeted `scripts/remedy_pytest.sh` orchestrator_brain + CLI → 25 passed (reviewer-run once)
+- Full pytest: builder post-fix → 5689 passed / 8 skipped / 1 deselected (exit 0); reviewer did NOT run full suite
+- Remaining findings: none (R-0086 Resolved)
+- Merge readiness: MERGE-READY as a SEPARATE PR; **NO PR** (Step 1495/1498 — awaiting explicit user request)
+
+**Residual risks (→ PASS WITH RISKS, all documented):**
+1. Model execution deliberately deferred (v0 = decision/planning rail; routing is a plan, no model called — next block Local Model Advisor Adapter v0).
+2. Contract gating now covers patch_apply for the apply option (R-0086); other future option kinds that become contract-gated must extend the same evaluate_run_action check.
+3. Anti-loop decision-history relies on persisted decisions (CLI decide persists=True); a caller using persist=False loses history-repetition detection (durable repair/trust-reject signals still apply).
+4. Regex `_scrub_public` may miss novel secret/path formats (R-0083 lineage; surfaces are counts/labels/IDs only).
+5. Reviewer relied on builder's full-suite count (5689); independently ran targeted suite green + verified all checks + R-0086 fix against committed code.
