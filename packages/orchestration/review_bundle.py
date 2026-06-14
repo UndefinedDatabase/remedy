@@ -44,6 +44,7 @@ REQUIRED_SECTIONS = (
     "overnight_readiness_summary.json",
     "overnight_run_summary.json",
     "provider_trust_summary.json",
+    "provider_material_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -712,6 +713,31 @@ def _build_provider_trust_summary(job: Any) -> dict:
                 "error": "provider_trust_unavailable"}
 
 
+def _build_provider_material_summary(job: Any) -> dict:
+    """Safe Provider Patch Materialization summary (Step 1350). Counts/IDs/states
+    only — no raw diff, no source, no secrets, no private/absolute paths."""
+    try:
+        from packages.orchestration.provider_patch_material import load_materials
+        materials = list(load_materials(job).values())
+        materialized = [m for m in materials if m.get("material_state") == "materialized"]
+        failed = [m for m in materials if m.get("material_state") == "materialization_failed"]
+        verified = [m for m in materials if m.get("verified")]
+        pending = [m for m in materialized if m.get("linked_intent_id")]
+        return {
+            "material_count": len(materials),
+            "materialized_count": len(materialized),
+            "verified_count": len(verified),
+            "materialization_failed_count": len(failed),
+            "provider_repair_intent_count": len(pending),
+            "pending_approval_count": len(pending),
+            "operation_count": sum(m.get("operation_count", 0) for m in materials),
+            "target_file_count": sum(m.get("target_path_count", 0) for m in materials),
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"material_count": 0, "materialized_count": 0, "verified_count": 0,
+                "materialization_failed_count": 0, "error": "provider_material_unavailable"}
+
+
 def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
     """Safe context inspection summary — no file bodies."""
     try:
@@ -1119,6 +1145,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("provider_trust_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("provider_trust_summary.json", status="error", error="build failed"))
+
+    # provider_material_summary.json (Step 1350)
+    try:
+        pms = _build_provider_material_summary(job)
+        content = json.dumps(pms, indent=2).encode()
+        section_data["provider_material_summary.json"] = content
+        result.sections.append(ReviewBundleSection("provider_material_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("provider_material_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

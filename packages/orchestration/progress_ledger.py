@@ -819,6 +819,45 @@ def merge_provider_trust_items(ledger: ProgressLedger, reports: dict | None) -> 
             seen.add(item.item_id)
 
 
+def extract_provider_material_items(materials: dict | None) -> list[ProgressItem]:
+    """Extract Provider Patch Materialization progress items from persisted material
+    manifests (Step 1348). Read-only; fixed item_ids → no duplicates."""
+    if not materials:
+        return []
+    vals = list(materials.values())
+    materialized = [m for m in vals if m.get("material_state") == "materialized"]
+    failed = [m for m in vals if m.get("material_state") == "materialization_failed"]
+    pending = [m for m in materialized if m.get("linked_intent_id")]
+    items: list[ProgressItem] = []
+    if materialized:
+        items.append(ProgressItem(
+            item_id="provider-patch-materialized", title="Provider patch materialized",
+            status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+            safe_summary=f"{len(materialized)} provider patch(es) materialized into pending intents."))
+    if pending:
+        items.append(ProgressItem(
+            item_id="provider-repair-intent-pending-approval", title="Provider repair intent pending approval",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.REPAIR_ARTIFACT,
+            severity="Medium", safe_summary=f"{len(pending)} materialized provider repair intent(s) pending approval.",
+            next_action="remedy patch approve <job_id> <intent_id> --json"))
+    if failed:
+        items.append(ProgressItem(
+            item_id="provider-materialization-failed", title="Provider materialization failed",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Low", safe_summary=f"{len(failed)} provider candidate(s) failed materialization.",
+            next_action="remedy provider material-show <job_id> <material_id> --json"))
+    return items
+
+
+def merge_provider_material_items(ledger: ProgressLedger, materials: dict | None) -> None:
+    """Merge provider material items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_provider_material_items(materials):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -911,6 +950,14 @@ def build_progress_ledger(
         try:
             from packages.orchestration.provider_trust import load_trust_reports
             merge_provider_trust_items(ledger, load_trust_reports(job))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Provider patch materialization items from persisted materials (Step 1348).
+    if job is not None:
+        try:
+            from packages.orchestration.provider_patch_material import load_materials
+            merge_provider_material_items(ledger, load_materials(job))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 
