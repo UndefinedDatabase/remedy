@@ -1,64 +1,56 @@
 # Context
 
 ## Active Branch
-feature/steps-1399-1428-self-dogfood-planner-v0 (forked from clean main at ce18aeb
-after PR #59 merged Provider-Agnostic Repair Request Builder v0). No drift.
+feature/steps-1429-1464-self-dogfood-execution-v0 (forked from clean main at fa8ebe2
+after PR #60 merged Self-Dogfood Planner v0). No drift.
 
-## Mainline reconciliation (Step 1399)
-- PR #59 MERGED → main. Current main commit: ce18aeb.
-- Repair Request Builder v0 landed: repair_request_builder.py (safe provider-agnostic
-  request package from FailureArtifact; output re-enters via provider intake-repair;
-  interface-only candidate generator adapter, execute raises). `remedy repair request
-  / request-show`. Full suite 5627 passed, 8 skipped, 1 deselected.
+## Mainline reconciliation (Step 1429)
+- PR #60 MERGED → main. Current main commit: fa8ebe2.
+- Self-Dogfood Planner v0 landed: self_dogfood.py (inspect own evidence → Self
+  ImprovementItems → Plan → metadata-only ProposedTasks via existing approval flow);
+  `remedy self inspect/plan/propose/report`. No code edits/apply/approval/PR/git.
+  Full suite 5662 passed, 8 skipped, 1 deselected.
 
 ## Scope
-Steps 1399-1428: Self-Dogfood Readiness + Self-Improvement Planner v0. Remedy
-inspects its OWN evidence and proposes safe self-improvement work as ProposedTasks
-through the existing approval flow. NOT autonomous self-modification.
+Steps 1429-1464: Self-Dogfood Execution v0. After a human approves a self-dogfood
+ProposedTask, create+track a bounded SelfImprovementAttempt routed through EXISTING
+gates (request package → Provider Trust Gate → materialization → approval →
+do continue → snapshot/apply/test/proof). Orchestrator/tracking rail; bypasses no gate.
 
 ## Carried residual risks
-- Automated provider execution NOT built.
-- Provider Trust Verification v1 NOT built (regex scan may miss novel formats).
+- Self execution was NOT built before this block (this block builds the tracking rail).
+- Automated provider execution NOT built; Provider Trust Verification v1 NOT built.
 - Broader source patch materialization deferred (apply path .md-only).
-- Quarantine/material/request cleanup not automated (manual; documented).
+- Quarantine/material/request cleanup not automated.
 - Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
 - UI `npm run lint` pre-existing TS parser/dependency blocker (no deps allowed).
 
-## Self-Dogfood constraints (block 1399-1428)
-- READ-ONLY or metadata-only. NO code edits/apply/approval/PR/git ops/main mutation;
-  NO direct Job.tasks insertion; NO scheduled/background self-run.
-- Self-proposed tasks enter the EXISTING ProposedTask flow (evaluate→approve→materialize).
-- NO provider SDK/network/subprocess (except existing CLI runtime tests); NO browser.
-- NO raw source/diff/stdout/stderr/secrets/tracebacks/absolute private paths in any surface.
-- No arbitrary code scanning — known summaries/registries only.
-- PENDING/FAIL/open blocker/high review → self-improvement BLOCKER.
-- Idempotent by stable item fingerprint (no duplicate items or ProposedTasks).
+## Self-Dogfood Execution constraints (block 1429-1464)
+- Orchestrator/tracking rail; bypasses NO existing gate.
+- NO code edits / direct source_apply/patch_apply; apply ONLY via approved `do continue`.
+- NO approval / PR / merge / main|master mutation / git ops / direct Job.tasks insertion.
+- NO provider/model/network/subprocess/browser. Candidate output enters via existing
+  Provider Trust Gate + Materialization.
+- Mutation-capable phase refused on main/master or unknown branch (branch read from
+  .git/HEAD, no subprocess).
+- pending intent ≠ completed; approved ProposedTask ≠ success; no test/proof overclaim.
+- Idempotent by item fingerprint + candidate hash. No raw leaks.
+- NO PR unless the user explicitly asks (Step 1457/1464).
 
 ## Foundation reused
-- proposed_tasks: ProposedTask(BaseModel) + add_proposed_task/load_proposed_tasks;
-  source enum USER/REVIEWER/ORCHESTRATOR/MODEL; fields task_type + origin_recommendation_id
-  (use ORCHESTRATOR + task_type="self_dogfood" + fingerprint in origin_recommendation_id).
-- overnight_executor.parse_review_findings → ReviewFindings (verdict + open counts).
-- progress_ledger / feature_planner / review_bundle / ui_server integration patterns.
-- overnight_readiness / integrity_gate / repair_loop / provider_trust / provider_patch_material
-  / repair_request_builder summaries as read-only evidence sources.
-- Review Bundle REQUIRED_SECTIONS currently 19; add self_dogfood_summary.json → 20.
+- self_dogfood: SelfImprovementItem (fingerprint), build_self_dogfood_inspection.
+- proposed_tasks: ProposedTask (task_type=self_dogfood, origin_recommendation_id=
+  self_dogfood:<fp>, status PROPOSED/APPROVED_FOR_BUILD…); load_proposed_tasks/get_proposed_task.
+- repair_request_builder: request package patterns (build a self request without a FailureArtifact).
+- provider_trust.intake_provider_repair (failure_artifact_id OPTIONAL → generic candidate
+  intake works; .md candidate → accepted → materialized pending intent).
+- do_continue.run_do_continue (approved intent → snapshot/apply/test/proof; idempotent).
+- run_contract ContractAction (ALL_KNOWN_ACTIONS auto-derived); _DEFAULT_ALLOWED_ACTIONS.
+- Review Bundle REQUIRED_SECTIONS currently 20; add self_execution_summary.json → 21.
 
 ## Resource safety (standing)
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite
   once at block end. No shell=True, no subprocess.
 
-## Product readiness — Self-Dogfood Planner v0 (Step 1427)
-CAN: inspect Remedy's OWN evidence (live review verdict, stale handoff, evidence-chain
-gaps, deterministic roadmap, registry quality debt) → classified+deduped Self
-ImprovementItems → Plan → metadata-only ProposedTasks (origin self_dogfood) via the
-EXISTING evaluate/approve/materialize flow. CLI `remedy self inspect/plan/propose/
-report`; surfaced in Progress/Feature/Review(20)/Cockpit. Idempotent by fingerprint.
-CANNOT (by design): NO code edits/apply/approval/PR/git/main-mutation; NO direct
-Job.tasks insertion; NO provider/network/subprocess/browser; NO scheduled/background
-self-run; NO raw findings/secrets/paths. PENDING/FAIL/open-blocker-high → blocker.
-Next block: Self-Dogfood Execution v0 (guarded, still approval-gated) OR Provider
-Trust Verification v1.
-
 ## Next block
-Self-Dogfood Execution v0 OR Provider Trust Verification v1.
+Provider Trust Verification v1 OR Self-Dogfood Overnight v0.

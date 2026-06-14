@@ -1,61 +1,65 @@
-# Plan — Steps 1399-1428: Self-Dogfood Readiness + Self-Improvement Planner v0
+# Plan — Steps 1429-1464: Self-Dogfood Execution v0
 
 ## Goal
-Let Remedy inspect its OWN evidence (reports, findings, risks, failed tests, stale
-handoff, missing evidence) and produce structured SelfImprovementItems + a Plan +
-ProposedTasks that flow through the EXISTING approval workflow. NOT autonomous self-
-modification: no self-apply, no self-merge, no auto-PR, no auto-approval, no main
-mutation, no scheduled/background self-run. Planning rail only.
-
-## Flow
-project evidence → SelfDogfoodInspection → SelfImprovementItems → SelfImprovementPlan
-→ ProposedTasks → human evaluate/approve/materialize (existing flow).
+After a human approves a self-dogfood ProposedTask, create + track a bounded
+SelfImprovementAttempt that routes work through EXISTING safe systems:
+item → ProposedTask → approval → attempt → request package → external candidate →
+Provider Trust Gate → materialized pending intent → approval → do continue →
+snapshot → apply → test → proof → result. Orchestrator/tracking rail; bypasses NO gate.
 
 ## Current Step
-DONE — full suite 5662 passed; integrity ok; verdict PASS WITH RISKS; merge-ready
+1430 — self_dogfood_execution.py (models + storage + eligibility + state machine)
 
 ## Steps
-- [x] 1399: Mainline reconciliation + clean branch (PR #59 merged; scope→1399-1428)
-- [x] 1400: Self-dogfood models (Inspection/Item/Plan/Evidence/Source/Risk/Action/Result)
-- [x] 1401: Evidence source registry (available|missing|malformed|stale; safe summaries)
-- [x] 1402: Live review parser reuse (verdict + open counts; PENDING/FAIL/blocker→blocker)
-- [x] 1403: Stale handoff detector (plan/context/verdict/changed-files/test-count/drift)
-- [x] 1404: Evidence gap detector (claimed-PASS/full-pytest/readiness/proof/repair chain gaps)
-- [x] 1405: Quality debt detector (missing tests/docs/catalog/bundle/cockpit; from registries)
-- [x] 1406: Product roadmap item detector (deterministic rules; cite evidence)
-- [x] 1407: Item classification (type/priority/confidence)
-- [x] 1408: Plan builder (group/dedupe by fingerprint; top 3; bounded; no raw)
-- [x] 1409: CLI self inspect (read-only)
-- [x] 1410: CLI self plan (read-only)
-- [x] 1411: CLI self propose (metadata-only; ProposedTask; item-id/--top N; idempotent)
-- [x] 1412: Command catalog (inspect/plan read_only; propose write_metadata)
-- [x] 1413: RunContract (self_inspect/self_plan/self_propose_task)
-- [x] 1414: ProposedTask integration (origin self_dogfood; existing evaluate/approve/materialize)
-- [x] 1415: Progress Ledger integration
-- [x] 1416: Feature Planner integration (consume items; no auto exec)
-- [x] 1417: Review Bundle self_dogfood_summary.json
-- [x] 1418: Cockpit read-only self improvement counts
-- [x] 1419: CLI self report (read-only markdown/json)
-- [x] 1420: Idempotency tests
-- [x] 1421: Redaction tests
-- [x] 1422: Architecture guards
-- [x] 1423: CLI runtime tests
-- [x] 1424: Documentation (self-dogfood-v0)
-- [x] 1425: Targeted tests + full pytest once
-- [x] 1426: Live review
-- [x] 1427: Final handoff
-- [x] 1428: Hard completion criteria
+- [x] 1429: Mainline reconciliation + clean branch (PR #60 merged; scope→1429-1464)
+- [ ] 1430: Self-execution models (Attempt/Result/State/Phase/Checkpoint/StopReason/Linkage)
+- [ ] 1431: Attempt storage (atomic, safe-transition, hashed fingerprint, no raw)
+- [ ] 1432: evaluate_self_execution_eligibility (approved self ProposedTask; no dup; review ok)
+- [ ] 1433: Branch/main safety gate (refuse mutation-capable on main/master; no git ops)
+- [ ] 1434: Attempt state machine (legal transitions; pending≠completed; idempotent)
+- [ ] 1435: Build self request package (no FailureArtifact required; safe)
+- [ ] 1436: CLI self execute (create/resume attempt → awaiting_external_candidate; real intake cmd)
+- [ ] 1437: Generic candidate intake compat (existing intake-repair w/o failure-artifact-id)
+- [ ] 1438: Link materialized intent → attempt (intent_pending_approval; idempotent)
+- [ ] 1439: Approved self intent → do continue compat (snapshot/test/proof; no overclaim)
+- [ ] 1440: CLI self status (read-only)
+- [ ] 1441: CLI self reconcile (metadata-only refresh from durable truth; no apply/provider)
+- [ ] 1442: Progress Ledger integration
+- [ ] 1443: Feature Planner integration (no auto exec)
+- [ ] 1444: Review Bundle self_execution_summary.json
+- [ ] 1445: Cockpit read-only attempt counts
+- [ ] 1446: self report includes execution attempts
+- [ ] 1447: RunContract (self_execute_prepare/self_reconcile/self_execution_status)
+- [ ] 1448: Idempotency tests
+- [ ] 1449: Redaction tests
+- [ ] 1450: Architecture guards
+- [ ] 1451: CLI runtime tests
+- [ ] 1452: E2E simulated self-improvement test (no real provider/git/main)
+- [ ] 1453: Documentation (self-dogfood-execution-v0 + cross-links)
+- [ ] 1454: Targeted tests + full pytest once
+- [ ] 1455: Live review
+- [ ] 1456: Product readiness update
+- [ ] 1457: PR discipline (clean branch; NO PR unless user asks)
+- [ ] 1458: Final handoff
+- [ ] 1459: Hard completion criteria
+- [ ] 1460: Merge recommendation (separate PR; no provider-trust stacking)
+- [ ] 1461: Future design note (self-dogfood-overnight-future.md)
+- [ ] 1462: Optional self integrity gate (read-only)
+- [ ] 1463: Review Bundle section count update
+- [ ] 1464: Final verification (targeted + full suite; record counts; NO PR unless asked)
 
 ## Hard rules
-- READ-ONLY or metadata-only. NO code edits, NO apply, NO approval, NO PR, NO git ops,
-  NO direct Job.tasks insertion, NO main mutation, NO scheduled/background self-run.
-- Self-generated tasks enter the EXISTING ProposedTask flow (evaluate/approve/materialize).
-- NO provider SDK/network/subprocess (except existing CLI runtime tests), NO browser.
-- NO raw source/diff/stdout/stderr/secrets/tracebacks/absolute private paths in any surface.
-- No arbitrary code scanning — use known summaries/registries only.
-- PENDING/FAIL/open blocker/high review status → self-improvement BLOCKER.
-- Idempotent: dedupe items + ProposedTasks by stable fingerprint.
-- Every next safe action catalog-backed + references real entities.
+- Orchestrator/tracking rail. Bypasses NO existing gate.
+- NO code edits, NO direct source_apply/patch_apply, NO apply outside `do continue`.
+- NO approval, NO PR/merge, NO main/master mutation, NO git ops, NO direct Job.tasks insertion.
+- NO provider/model/network/subprocess/browser. Candidate output goes through existing
+  Provider Trust Gate + Materialization (existing intake-repair, no failure-artifact-id needed).
+- Mutation-capable phase refused on main/master or unknown branch.
+- pending intent ≠ completed; approved ProposedTask ≠ execution success; no overclaim.
+- Idempotent by item fingerprint + candidate hash; no duplicate attempts/intents.
+- No raw source/diff/stdout/stderr/secrets/tracebacks/absolute private paths.
+- Every next_safe_action catalog-backed + references real entities.
+- NO PR unless the user explicitly asks (Step 1457/1464).
 
 ## Next block
-Self-Dogfood Execution v0 OR Provider Trust Verification v1.
+Provider Trust Verification v1 OR Self-Dogfood Overnight v0.
