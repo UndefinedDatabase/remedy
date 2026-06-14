@@ -48,6 +48,7 @@ REQUIRED_SECTIONS = (
     "repair_request_summary.json",
     "self_dogfood_summary.json",
     "self_execution_summary.json",
+    "orchestrator_decision_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -818,6 +819,34 @@ def _build_self_execution_summary(job: Any) -> dict:
         return {"attempt_count": 0, "by_state": {}, "error": "self_execution_unavailable"}
 
 
+def _build_orchestrator_decision_summary(job: Any) -> dict:
+    """Safe Orchestrator Brain summary (Step 1483). Latest decision counts/labels/IDs
+    only — no raw ideas, source, diffs, logs, secrets, or absolute paths."""
+    try:
+        from packages.orchestration.orchestrator_brain import list_decisions
+        scope = f"job:{job.id}"
+        decisions = list_decisions(scope)
+        if not decisions:
+            return {"decision_count": 0, "latest_selected_option": "", "stop_reason": "none",
+                    "confidence": "", "model_routing_tier": "", "loop_guard_status": "",
+                    "blocker_count": 0, "risk_count": 0, "next_safe_action": ""}
+        latest = decisions[-1]
+        sel = latest.get("selected_option") or {}
+        return {
+            "decision_count": len(decisions),
+            "latest_selected_option": sel.get("kind", ""),
+            "stop_reason": latest.get("stop_reason", ""),
+            "confidence": latest.get("confidence", ""),
+            "model_routing_tier": (latest.get("model_routing_plan") or {}).get("tier", ""),
+            "loop_guard_status": latest.get("loop_guard_status", ""),
+            "blocker_count": len(latest.get("blockers", [])),
+            "risk_count": len(latest.get("risks", [])),
+            "next_safe_action": latest.get("next_safe_action", ""),
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"decision_count": 0, "stop_reason": "unknown", "error": "orchestrator_unavailable"}
+
+
 def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
     """Safe context inspection summary — no file bodies."""
     try:
@@ -1261,6 +1290,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("self_execution_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("self_execution_summary.json", status="error", error="build failed"))
+
+    # orchestrator_decision_summary.json (Step 1483)
+    try:
+        ods = _build_orchestrator_decision_summary(job)
+        content = json.dumps(ods, indent=2).encode()
+        section_data["orchestrator_decision_summary.json"] = content
+        result.sections.append(ReviewBundleSection("orchestrator_decision_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("orchestrator_decision_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

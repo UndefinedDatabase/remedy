@@ -347,6 +347,28 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.KNOWN_RISK,
             "remedy self status --json",
         ),
+        # Orchestrator Brain follow-ups (Step 1482). No automatic execution.
+        "orchestrator-human-review": (
+            "Resolve the orchestrator's human-review decision",
+            "The orchestrator routed the next step to human review (open blocker/high or "
+            "loop guard) — decide before any execution.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy orchestrator report --json",
+        ),
+        "orchestrator-local-advisor": (
+            "Consider a local model advisor (future)",
+            "The orchestrator found close options where a cheap local advisor could help "
+            "critique the plan — Local Model Advisor Adapter v0 is the next block.",
+            FeaturePlanSource.FEATURE_SUGGESTION,
+            "remedy orchestrator report --json",
+        ),
+        "orchestrator-external-builder": (
+            "Provide an external candidate (trust-gated)",
+            "Candidate generation is the bottleneck — relay a request and import the "
+            "response through the Provider Trust Gate (no direct provider execution).",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy orchestrator report --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)

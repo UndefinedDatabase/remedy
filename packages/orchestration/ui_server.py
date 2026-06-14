@@ -654,6 +654,32 @@ def _build_self_execution_section(job: Any) -> dict[str, Any]:
                 "latest_state": "unknown", "source": "unavailable"}
 
 
+def _build_orchestrator_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Orchestrator Brain summary for the cockpit (Step 1484). Latest
+    decision only. No buttons, no mutation, no raw content."""
+    try:
+        from packages.orchestration.orchestrator_brain import list_decisions
+        decisions = list_decisions(f"job:{job.id}")
+        if not decisions:
+            return {"decision_count": 0, "latest_stop_reason": "none", "confidence": "",
+                    "next_safe_action": "", "loop_guard_status": "", "model_routing_tier": "",
+                    "source": "orchestrator_brain"}
+        latest = decisions[-1]
+        return {
+            "decision_count": len(decisions),
+            "latest_stop_reason": latest.get("stop_reason", ""),
+            "confidence": latest.get("confidence", ""),
+            "next_safe_action": latest.get("next_safe_action", ""),
+            "loop_guard_status": latest.get("loop_guard_status", ""),
+            "model_routing_tier": (latest.get("model_routing_plan") or {}).get("tier", ""),
+            "source": "orchestrator_brain",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"decision_count": "unknown", "latest_stop_reason": "unknown", "confidence": "unknown",
+                "next_safe_action": "", "loop_guard_status": "unknown",
+                "model_routing_tier": "unknown", "source": "unavailable"}
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -920,6 +946,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
+        "orchestrator": _build_orchestrator_section(job),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,
