@@ -13,36 +13,36 @@ apply-compatible ONLY for a single `.md` target. Source/binary/delete/rename/mul
 file → `unsupported_patch_shape` (accepted_but_not_materialized; no intent).
 
 ## Current Step
-1336 — provider_patch_material.py (models + storage + verify + conversion)
+1357 — full pytest once (post targeted green)
 
 ## Steps
 - [x] 1335: Mainline reconciliation + clean branch (PR #57 merged; scope→1335-1364)
 - [ ] 1336: Material models (Material/Entry/Result/Verification/IntentLink)
 - [ ] 1337: Private material storage (0o700/0o600, atomic, hashed, no public raw)
-- [ ] 1338: verify_provider_patch_material (manifest/hash/paths/report-accepted/one-candidate)
-- [ ] 1339: unified diff → structured patch (modify/create text; no delete/rename/binary)
-- [ ] 1340: JSON structured_operations materialization (same restrictions)
-- [ ] 1341: applyable provider repair intent (real/resolvable/pending; linked; safe metadata)
-- [ ] 1342: approve + do_continue compatibility (existing apply path; snapshot mandatory)
-- [ ] 1343: trust report state updates (accepted/materialized/failed/pending/approved/applied/tested)
-- [ ] 1344: CLI provider material-show (+ optional materialize)
-- [ ] 1345: command catalog (material-show/materialize; no mutate/exec)
-- [ ] 1346: RunContract (provider_materialize_patch/create_provider_repair_intent)
-- [ ] 1347: RepairAttempt linkage (idempotent by candidate_hash; no dup)
-- [ ] 1348: Progress Ledger integration
-- [ ] 1349: Feature Planner integration (no auto approve/retry)
-- [ ] 1350: Review Bundle provider_material_summary.json
-- [ ] 1351: Cockpit read-only material counts
-- [ ] 1352: Retention policy docs
-- [ ] 1353: Redaction tests
-- [ ] 1354: CLI runtime tests
-- [ ] 1355: Architecture guards
-- [ ] 1356: Docs (materialization-v0 + cross-links)
+- [x] 1338: verify_provider_patch_material (manifest/hash/paths/report-accepted/one-candidate)
+- [x] 1339: unified diff → structured patch (modify/create text; no delete/rename/binary)
+- [x] 1340: JSON structured_operations materialization (same restrictions)
+- [x] 1341: applyable provider repair intent (real/resolvable/pending; linked; safe metadata)
+- [x] 1342: approve + do_continue compatibility (existing apply path; snapshot mandatory)
+- [x] 1343: trust report state updates (accepted/materialized/failed/pending/approved/applied/tested)
+- [x] 1344: CLI provider material-show (+ optional materialize)
+- [x] 1345: command catalog (material-show/materialize; no mutate/exec)
+- [x] 1346: RunContract (provider_materialize_patch/create_provider_repair_intent)
+- [x] 1347: RepairAttempt linkage (idempotent by candidate_hash; no dup)
+- [x] 1348: Progress Ledger integration
+- [x] 1349: Feature Planner integration (no auto approve/retry)
+- [x] 1350: Review Bundle provider_material_summary.json
+- [x] 1351: Cockpit read-only material counts
+- [x] 1352: Retention policy docs
+- [x] 1353: Redaction tests
+- [x] 1354: CLI runtime tests
+- [x] 1355: Architecture guards
+- [x] 1356: Docs (materialization-v0 + cross-links)
 - [ ] 1357: Targeted tests + full pytest once
 - [ ] 1358: Live review
 - [ ] 1359: PR discipline
 - [ ] 1360: Product readiness update
-- [ ] 1361: Apply compatibility proof (approve→do continue fixture, snapshot, no overclaim)
+- [x] 1361: Apply compatibility proof (approve→do continue fixture, snapshot, no overclaim)
 - [ ] 1362: Integrity gate
 - [ ] 1363: Final handoff
 - [ ] 1364: Hard completion criteria

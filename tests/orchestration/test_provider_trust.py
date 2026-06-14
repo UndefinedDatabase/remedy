@@ -213,16 +213,28 @@ class TestDecision:
 
 
 class TestIntake:
-    def test_accepted_creates_pending_intent(self, env):
+    def test_accepted_md_creates_pending_intent(self, env):
+        # v0 materialization: a single-.md candidate materializes into a pending intent.
         from packages.orchestration.approval_queue import get_patch_intent, APPROVAL_PENDING
-        job, fid = _job(env)
-        r = _intake(job, env, _GOOD_DIFF, fid=fid)
+        job, fid = _job(env, related_files=["docs/guide.md"])
+        md = ("Fix.\n```diff\n--- a/docs/guide.md\n+++ b/docs/guide.md\n"
+              "@@ -1,2 +1,3 @@\n line one\n+new line\n line two\n```\n")
+        r = _intake(job, env, md, fid=fid)
         assert r.trust_status == PT.TrustStatus.ACCEPTED
         assert r.repair_intent_id
         assert r.next_safe_action == f"remedy patch approve {job.id} {r.repair_intent_id} --json"
         reloaded = load_job(UUID(str(job.id)), env)
         intent = get_patch_intent(reloaded, r.repair_intent_id)
         assert intent is not None and intent["state"] == APPROVAL_PENDING  # not auto-approved
+
+    def test_accepted_source_not_materialized(self, env):
+        # A source-file candidate is accepted but cannot materialize (apply path is
+        # .md-only in v0) → no intent.
+        job, fid = _job(env)  # related_files defaults to ['src/app.py']
+        r = _intake(job, env, _GOOD_DIFF, fid=fid)
+        assert r.trust_status == PT.TrustStatus.ACCEPTED
+        assert not r.repair_intent_id
+        assert r.material_state == "unsupported_patch_shape"
 
     def test_secret_rejected_no_intent(self, env):
         job, fid = _job(env)
@@ -363,8 +375,10 @@ class TestArchitectureGuards:
 
     def test_accepted_intent_resolvable(self, env):
         from packages.orchestration.approval_queue import get_patch_intent
-        job, fid = _job(env)
-        r = _intake(job, env, _GOOD_DIFF, fid=fid)
+        job, fid = _job(env, related_files=["docs/guide.md"])
+        md = ("Fix.\n```diff\n--- a/docs/guide.md\n+++ b/docs/guide.md\n"
+              "@@ -1,2 +1,3 @@\n line one\n+new line\n line two\n```\n")
+        r = _intake(job, env, md, fid=fid)
         reloaded = load_job(UUID(str(job.id)), env)
         assert get_patch_intent(reloaded, r.repair_intent_id) is not None
 
