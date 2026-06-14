@@ -9,33 +9,36 @@ for command execution, no double-apply/test/propose on retry.
 Timestamp: 2026-06-14
 
 ## Verdict
-PENDING — block in progress. Builder constructing executor on top of Bounded
-Overnight Prep v0 (PR #55 merged, main 9c59ad1). Hard completion criteria (Step
-1304) gate the final verdict.
+PASS WITH RISKS — all 14 checks reviewed PASS in the audit log; the only two
+findings (R-0081 Medium, R-0082 Low) are **Resolved** and reviewer-verified at
+84f5b70; zero open Blocker/High. Full suite green (5518 passed, 8 skipped, 1
+deselected). Residual low risks documented below. Foreground/one-cycle/explicit-
+flag/no-provider/no-git/idempotent thesis HOLDS.
 
-## Check Matrix (1-14) — to fill
+## Check Matrix (1-14)
 | Check | Status | Note |
 |---|---|---|
-| 1. Mainline reconciliation | PENDING | branch off clean main 9c59ad1; PR #55 recorded |
-| 2. Executor models | PENDING | |
-| 3. Explicit execution policy (--allow-one-cycle) | PENDING | |
-| 4. Lease (foreground; release on exit) | PENDING | |
-| 5. Run record persistence (atomic, no overwrite) | PENDING | |
-| 6. Phase checkpoints (durable; retry from truth) | PENDING | |
-| 7. Action selection + adapters (no subprocess) | PENDING | |
-| 8. Policy gate enforcement (central re-check) | PENDING | |
-| 9. Review-findings source (PENDING/FAIL blocks) | PENDING | |
-| 10. Stop reason taxonomy | PENDING | |
-| 11. Morning report | PENDING | |
-| 12. Integrations (Progress/Feature/Review/Cockpit) | PENDING | |
-| 13. Redaction | PENDING | |
-| 14. Architecture guards + idempotency | PENDING | |
+| 1. Mainline reconciliation | PASS | branch off clean main 9c59ad1; PR #55 recorded; no drift |
+| 2. Executor models | PASS | RunRequest/Result/Record/Checkpoint/Phase/Decision/Lease/Mode |
+| 3. Explicit execution policy (--allow-one-cycle) | PASS | no implicit enable; max_cycles==1; both flags required |
+| 4. Lease (foreground; release on exit) | PASS | job lock always + repo lock when mutating; finally-release; stale recoverable |
+| 5. Run record persistence (atomic, no overwrite) | PASS | tmp+os.replace 0o600; append-only per run_id; failure visible |
+| 6. Phase checkpoints (durable; retry from truth) | PASS | per-phase durable flush (R-0081 resolved); write failure surfaced |
+| 7. Action selection + adapters (no subprocess) | PASS | catalog+entity revalidated; explicit adapters; no generic runner/subprocess; entity honored (R-0082 resolved) |
+| 8. Policy gate enforcement (central re-check) | PASS | layered (policy+review+budget+risk); central service owns contract/perm/snapshot |
+| 9. Review-findings source (PENDING/FAIL blocks) | PASS | parse live_review verdict+counts; unknown/PENDING/FAIL/open-blocker-high block |
+| 10. Stop reason taxonomy | PASS | canonical OvernightStopReason via _canonical |
+| 11. Morning report | PASS | readiness before/after + run record; safe summaries only |
+| 12. Integrations (Progress/Feature/Review/Cockpit) | PASS | run items; blocked follow-ups (no relax); overnight_run_summary (16); read-only cockpit |
+| 13. Redaction | PASS | 6 surfaces clean (no /home//etc/Traceback/secret/diff) |
+| 14. Architecture guards + idempotency | PASS | no subprocess/provider/scheduler/git; retry no double-apply/test/dup-repair |
 
 ## Findings — Steps 1275-1304
 
 ### R-0081: Executor per-phase checkpoints are buffered, not durably written before/after the action
 Done: R-0081 - `result._checkpoint` now flushes each phase to disk immediately via `save_overnight_checkpoint` (result carries `_data_dir`), so ACTION_STARTED/ACTION_COMPLETED are durable before/after the mutating action; a failed checkpoint write now degrades `error_status="checkpoint_persist_degraded"` (no longer silent); `_finalize`'s redundant bulk-flush loop removed. New test `test_action_checkpoints_durably_flushed` asserts ACTION_STARTED/COMPLETED/STOPPED are on disk.
-- **Status**: Open
+- **Status**: Resolved
+- **Reviewer verification** @ 84f5b70: `OvernightRunResult._data_dir` set immediately after construction (before REQUESTED checkpoint); `_checkpoint` now calls `save_overnight_checkpoint` per phase, so ACTION_STARTED (before) and ACTION_COMPLETED (after) the mutating action are durably on disk; failed write sets `error_status="checkpoint_persist_degraded"` (surfaced, not silent); redundant `_finalize` bulk-flush loop removed. Test `test_action_checkpoints_durably_flushed` asserts ACTION_STARTED/COMPLETED/STOPPED persisted. Confirmed.
 - **Severity**: Medium
 - **Area**: checkpoints
 - **Details**: `overnight_executor.py` docstring + plan Step 1280 claim "durable per-phase checkpoint; retry resumes from durable truth". Actual behaviour: every `result._checkpoint(...)` (REQUESTED, READINESS_BEFORE, POLICY_CHECKED, ACTION_SELECTED, LEASE_ACQUIRED, ACTION_STARTED, ACTION_COMPLETED...) only appends to the in-memory `result.checkpoints` list. The ONLY disk flush happens in `_finalize` (`for cp in result.checkpoints: save_overnight_checkpoint(...)` + a final STOPPED append), which runs at the very end. So there is NO durable executor checkpoint written BEFORE the mutating action runs — if the process crashes inside `_adapt_do_continue`, the executor leaves no `checkpoints.json` / `record.json` at all, and on retry it starts a fresh `run_id` rather than resuming from its own durable truth. Additionally, `save_overnight_checkpoint` and the `save_run_record` checkpoint writes in the `_finalize` loop ignore their boolean return (lines ~931-934), so a `checkpoints.json` write failure is silent.
@@ -45,7 +48,8 @@ Done: R-0081 - `result._checkpoint` now flushes each phase to disk immediately v
 
 ### R-0082: Repair-propose adapter re-derives the failure id instead of honoring the selected action's entity
 Done: R-0082 - decision now carries `entity_id` parsed from the catalog-validated selected command (`_entity_id_from_command`); the REPAIR_PROPOSE branch uses `decision.entity_id` (falls back to first-unresolved only if absent), so executed entity == selected/displayed entity. New test `test_executed_entity_equals_selected_entity`.
-- **Status**: Open
+- **Status**: Resolved
+- **Reviewer verification** @ 84f5b70: `OvernightExecutionDecision.entity_id` parsed via `_entity_id_from_command` (parts[4] of `remedy repair propose <job> <fa> --json`); REPAIR_PROPOSE branch uses `decision.entity_id or _first_unresolved_failure_id(...)` so executed entity == selected/displayed entity. Test `test_executed_entity_equals_selected_entity` asserts the repair attempt is keyed to the exact fa in the selected command. Confirmed.
 - **Severity**: Low
 - **Area**: action-selection
 - **Details**: When the selected action is REPAIR_PROPOSE, the executor does NOT use the failure artifact embedded in the catalog-validated selected command (`remedy repair propose <job> <fa> --json`). Instead `run_overnight_executor` calls `_first_unresolved_failure_id(job_id, ddir)`, which independently returns the first artifact whose metadata lacks `failure_resolved`. `select_overnight_next_action` chose `failure_artifacts[0].id`. These normally coincide (the selector's repair branch only fires when NO repair attempts exist, which usually means all failures are unresolved → `[0]` is unresolved), but they can diverge in an edge case (artifact `[0]` resolved with no repair attempt while `[1]` is unresolved): the report's `selected_action.command` would name a different `fa` than the one actually proposed (`executed_action`), breaking selected==executed truthfulness.
@@ -82,3 +86,36 @@ Done: R-0082 - decision now carries `entity_id` parsed from the catalog-validate
   - **Idempotency (block-if double-apply/test-budget/dup-repair)** PASS: covered by retry-no-double-apply + repair-propose-idempotent (delegated services idempotent; executor append-only).
   - **Docs** PASS: docs/bounded-overnight-executor-v0.md accurate (foreground/one-cycle/explicit flags/no provider/auto-approve/git/docs-only repair); cross-linked prep/do-continue/repair; no overclaim.
   - NOTE: tests do NOT exercise crash-mid-action recovery (test_checkpoints_durable only checks post-completion existence) → R-0081 stands. R-0082 edge (resolved [0] no attempt) not tested → stays LOW.
+
+## Builder Final Handoff (Steps 1275-1304)
+
+- **Mainline reconciliation**: PR #55 merged; branch `feature/steps-1275-1304-bounded-overnight-executor-v0` off clean main 9c59ad1; no drift.
+- **Tests**: targeted executor unit (38) + CLI runtime (9) + readiness/review-bundle/cockpit/catalog/progress/feature/do_continue/repair. **Full pytest** (post R-0081/R-0082) → **5518 passed, 8 skipped, 1 deselected** (exit 0). Wrapper `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
+- **Integrity**: `remedy integrity check` → passed=True, fail_count=0, check_count=5.
+- **Findings**: R-0081 (durable per-phase checkpoints) + R-0082 (selected==executed entity) — Resolved + reviewer-verified.
+- **Executor model / policy gate / lease / checkpoint / adapters / CLI / review-findings source / idempotency / stop reasons / morning report / Progress / Feature / Review / Cockpit / redaction / architecture guards**: DONE.
+- **Hard completion criteria (1304)**: cannot loop (max_cycles==1, no scheduler/daemon/watch); foreground only; never executes without `--allow-one-cycle`; cannot apply/repair-propose without policy flag; PENDING/FAIL review blocks; no double-apply/test on retry (delegated idempotent services); no subprocess/CLI execution; no provider/Ollama import; no raw content. ALL satisfied.
+
+### Changed Files (Steps 1275-1304)
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/overnight_executor.py` | NEW — foreground one-step executor (models, one-cycle policy, lease, atomic append-only run records + durable per-phase checkpoints, catalog/entity-revalidated selection, explicit do_continue/repair_propose adapters, policy+review gate, canonical stop reasons, morning report) | Core of Bounded Overnight Executor v0 |
+| `apps/cli/command_catalog.py` | Added `overnight.run` (apply_write, may_mutate_repo, requires_permission) + flags | CLI surface for the executor |
+| `apps/cli/grouped.py` | Parse `--allow-one-cycle`/`--allow-apply`/`--allow-repair-propose`/`--allow-repair-apply` | Explicit execution flags |
+| `apps/cli/commands/overnight_cmd.py` | `_cmd_overnight_run` handler (report-only default; json/text) | Wire CLI to executor |
+| `packages/orchestration/progress_ledger.py` | `extract_overnight_run_items`/`merge_overnight_run_items` from latest run record; wired into `build_progress_ledger` | Surface executor runs in progress |
+| `packages/orchestration/feature_planner.py` | overnight-run blocked / evidence-incomplete follow-ups (no auto relaxation) | Human next-steps for blocked runs |
+| `packages/orchestration/review_bundle.py` | `overnight_run_summary.json` (REQUIRED_SECTIONS 15→16) | Reviewable run summary |
+| `packages/orchestration/ui_server.py` | read-only `overnight_run` cockpit section | Surface latest run (no buttons/mutation) |
+| `docs/bounded-overnight-executor-v0.md` | NEW — executor doc | Long-term knowledge |
+| `docs/bounded-overnight-prep-v0.md`, `docs/do-continue-v1.md`, `docs/repair-loop-v1.md` | cross-links | Doc graph |
+| `tests/orchestration/test_overnight_executor.py` | NEW — 38 unit tests (policy/report-only/models/stop/selection/review/gate/adapters/idempotency/lease/redaction/architecture/R-0081/R-0082) | Coverage |
+| `tests/cli/test_overnight_executor_cli.py` | NEW — 9 CLI runtime tests | Coverage |
+| `tests/orchestration/test_review_bundle.py` | REQUIRED_SECTIONS==16 + overnight_run_summary | Keep invariant |
+| `tests/ui_server/test_dashboard_cockpit_truth.py` | overnight_run section shape | Keep invariant |
+| `.agent/plan.md`, `.agent/context.md`, `.agent/live_review.md` | block state + product readiness + review | Runtime state |
+
+### Merge recommendation (Step 1303)
+Merge Bounded Overnight Executor v0 ALONE. Do NOT stack provider into this PR; keep
+the next block (Provider-backed Repair Builder v0 / Provider Trust Verification) a
+separate PR. Readiness ~95% (executor loop + provider deliberately deferred).

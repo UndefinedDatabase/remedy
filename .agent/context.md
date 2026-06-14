@@ -60,5 +60,21 @@ AT MOST ONE bounded reviewable step. Builds on readiness/plan/report from prep v
 - Do not weaken permission/approval/RunContract/snapshot/test gates.
 - Gates live in central services — executor calls them, never reimplements/bypasses.
 
+## Product readiness — Bounded Overnight Executor v0 (Step 1301)
+CAN: from an explicit `remedy overnight run <job>` invocation, run one readiness
+check, select one catalog+entity-backed safe action, and — only with
+`--allow-one-cycle` + an explicit action flag and all gates passing — execute
+exactly ONE central-service action (do_continue apply OR docs-only repair propose),
+persist an append-only run record + durable per-phase checkpoints, recompute
+readiness, and emit a morning report. Foreground; report-only by default.
+CANNOT (deferred/by design): no daemon/scheduler/watch/background/multi-cycle loop;
+no provider/Ollama; no auto-approval/auto-revert/contract-relax/budget-raise; no
+git commit; no source-rewriting repair (fixture builder docs-only); no UI mutation;
+no subprocess/CLI for command execution.
+Provider still deferred: trust/verification + no-cloud gating not built; source
+repair needs a verified provider path first.
+Before a real scheduled overnight: a bounded executor LOOP with budget/runtime
+caps, provider-backed source repair, and review-findings automation hardening.
+
 ## Next block
 Provider-backed Repair Builder v0 OR Provider Trust Verification.

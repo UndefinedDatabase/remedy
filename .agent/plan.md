@@ -7,7 +7,7 @@ loop, or hidden background process. Answers: what would I do? am I allowed? did
 I do it? why stop? what evidence? what next?
 
 ## Current Step
-1298 — Full pytest once (post targeted green)
+DONE — full suite 5518 passed; verdict PASS WITH RISKS; ready to merge alone
 
 ## Steps
 - [x] 1275: Mainline reconciliation + clean branch (PR #55 merged; scope→1275-1304)
@@ -36,11 +36,11 @@ I do it? why stop? what evidence? what next?
 - [x] 1297: Documentation (bounded-overnight-executor-v0 + cross-links)
 - [x] 1298: Targeted tests + full pytest once (5516 passed); R-0081/R-0082 fixed
 - [x] 1299: Live review (R-0081/R-0082 Done-marked)
-- [ ] 1300: PR discipline
-- [ ] 1301: Product readiness update
-- [ ] 1302: Final handoff
-- [ ] 1303: Merge recommendation (executor alone; no provider stacking)
-- [ ] 1304: Hard completion criteria
+- [x] 1300: PR discipline (clean tree, no drift; changed-files table; tests recorded)
+- [x] 1301: Product readiness update (context.md)
+- [x] 1302: Final handoff (changed-files table)
+- [x] 1303: Merge recommendation (executor alone)
+- [x] 1304: Hard completion criteria — all satisfied
 
 ## Hard rules
 - Foreground, explicitly invoked ONLY. No daemon/scheduler/watch/background/loop.
