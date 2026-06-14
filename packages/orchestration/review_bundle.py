@@ -42,6 +42,7 @@ REQUIRED_SECTIONS = (
     "continuation_summary.json",
     "repair_summary.json",
     "overnight_readiness_summary.json",
+    "overnight_run_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -646,6 +647,37 @@ def _build_overnight_readiness_summary(job: Any, data_dir: Path) -> dict:
                 "blocker_count": 0, "risk_count": 0, "error": "overnight_readiness_unavailable"}
 
 
+def _build_overnight_run_summary(job: Any, data_dir: Path) -> dict:
+    """Safe Bounded Overnight Executor run summary (Step 1291). Counts/labels only."""
+    try:
+        from packages.orchestration.overnight_executor import (
+            list_run_records, latest_run_record,
+        )
+        records = list_run_records(str(job.id), data_dir)
+        latest = latest_run_record(str(job.id), data_dir)
+        if not latest:
+            return {"run_count": 0, "latest_status": "none", "selected_action": "",
+                    "executed_action": "", "stop_reason": "", "evidence_status": "",
+                    "checkpoint_count": 0, "policy_summary": {}, "next_safe_action": ""}
+        na = latest.get("next_safe_action") or {}
+        return {
+            "run_count": len(records),
+            "latest_status": latest.get("stop_reason", ""),
+            "mode": latest.get("mode", ""),
+            "selected_action": (latest.get("selected_action") or {}).get("kind", ""),
+            "executed_action": (latest.get("executed_action") or {}).get("kind", ""),
+            "stop_reason": latest.get("stop_reason", ""),
+            "evidence_status": latest.get("evidence_status", ""),
+            "checkpoint_count": len(latest.get("checkpoints", [])),
+            "policy_summary": latest.get("policy_summary", {}),
+            "review_findings": latest.get("review_findings", {}),
+            "next_safe_action": na.get("command", "") if isinstance(na, dict) else "",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"run_count": 0, "latest_status": "unknown",
+                "error": "overnight_run_unavailable"}
+
+
 def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
     """Safe context inspection summary — no file bodies."""
     try:
@@ -1035,6 +1067,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("overnight_readiness_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("overnight_readiness_summary.json", status="error", error="build failed"))
+
+    # overnight_run_summary.json (Step 1291)
+    try:
+        ovr = _build_overnight_run_summary(job, data_dir)
+        content = json.dumps(ovr, indent=2).encode()
+        section_data["overnight_run_summary.json"] = content
+        result.sections.append(ReviewBundleSection("overnight_run_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("overnight_run_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

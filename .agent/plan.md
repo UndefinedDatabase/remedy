@@ -7,7 +7,7 @@ loop, or hidden background process. Answers: what would I do? am I allowed? did
 I do it? why stop? what evidence? what next?
 
 ## Current Step
-1288 — Idempotency verification (then integrations 1289-1292)
+1293 — Tests (CLI runtime, unit, redaction, architecture guards)
 
 ## Steps
 - [x] 1275: Mainline reconciliation + clean branch (PR #55 merged; scope→1275-1304)
@@ -23,11 +23,12 @@ I do it? why stop? what evidence? what next?
 - [x] 1285: Review-findings source (parse .agent/live_review.md; PENDING/FAIL/unknown block)
 - [x] 1286: Stop reason enforcement (canonical taxonomy via _canonical)
 - [x] 1287: Morning report output (readiness report + executor record)
-- [ ] 1288: Idempotency (retry never double-apply/test/propose/duplicate report)
-- [ ] 1289: Progress Ledger integration
-- [ ] 1290: Feature Planner integration (no auto policy relaxation)
-- [ ] 1291: Review Bundle overnight_run_summary.json
-- [ ] 1292: Cockpit integration (read-only; no buttons; no fake running state)
+- [x] 1288: Idempotency (delegated services idempotent; append-only records)
+- [x] 1289: Progress Ledger integration (overnight run items)
+- [x] 1290: Feature Planner integration (run blockers; no auto relaxation)
+- [x] 1291: Review Bundle overnight_run_summary.json (REQUIRED_SECTIONS 16)
+- [x] 1292: Cockpit overnight_run section (read-only)
+
 - [ ] 1293: CLI runtime tests (default report-only; flags gate; PENDING blocks)
 - [ ] 1294: Executor unit tests
 - [ ] 1295: Redaction tests

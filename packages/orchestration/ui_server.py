@@ -504,6 +504,46 @@ def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
         return unknown
 
 
+def _build_overnight_run_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
+    """Safe read-only Bounded Overnight Executor run summary for the cockpit (Step
+    1292).
+
+    Latest run status + stop reason + selected-action label + checkpoint count +
+    morning-report availability. Read-only: no buttons, no mutation, no fabricated
+    running state. "none"/"unknown" when no run or the data root is unavailable.
+    """
+    unknown = {"run_count": "unknown", "latest_status": "unknown",
+               "selected_action": "", "executed_action": "", "stop_reason": "",
+               "checkpoint_count": "unknown", "report_available": "unknown",
+               "source": "unavailable"}
+    if data_dir is None:
+        return unknown
+    try:
+        from packages.orchestration.overnight_executor import (
+            list_run_records, latest_run_record,
+        )
+        records = list_run_records(str(job.id), data_dir)
+        latest = latest_run_record(str(job.id), data_dir)
+        if not latest:
+            return {"run_count": 0, "latest_status": "none", "selected_action": "",
+                    "executed_action": "", "stop_reason": "", "checkpoint_count": 0,
+                    "report_available": False, "source": "overnight_executor"}
+        return {
+            "run_count": len(records),
+            "latest_status": latest.get("stop_reason", ""),
+            "mode": latest.get("mode", ""),
+            "selected_action": (latest.get("selected_action") or {}).get("kind", ""),
+            "executed_action": (latest.get("executed_action") or {}).get("kind", ""),
+            "stop_reason": latest.get("stop_reason", ""),
+            "evidence_status": latest.get("evidence_status", ""),
+            "checkpoint_count": len(latest.get("checkpoints", [])),
+            "report_available": bool(latest.get("run_id")),
+            "source": "overnight_executor",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return unknown
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -765,6 +805,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "continuation": _build_continuation_section(job, events, truth_data_dir),
         "repair": _build_repair_section(job),
         "overnight": _build_overnight_section(job, truth_data_dir),
+        "overnight_run": _build_overnight_run_section(job, truth_data_dir),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,
