@@ -59,6 +59,7 @@ class ContractAction:
     # denied by no_cloud). Allowed by default; create the intent still needs approval.
     PROVIDER_INTAKE = "provider_intake"
     PROVIDER_TRUST_REVIEW = "provider_trust_review"
+    PROVIDER_MATERIALIZE_PATCH = "provider_materialize_patch"
     CREATE_PROVIDER_REPAIR_INTENT = "create_provider_repair_intent"
 
     # Apply actions (gated by stop_before_apply)
@@ -156,6 +157,7 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.CREATE_REPAIR_PATCH_INTENT,
     ContractAction.PROVIDER_INTAKE,
     ContractAction.PROVIDER_TRUST_REVIEW,
+    ContractAction.PROVIDER_MATERIALIZE_PATCH,
     ContractAction.CREATE_PROVIDER_REPAIR_INTENT,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,

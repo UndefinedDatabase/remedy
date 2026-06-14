@@ -122,3 +122,6 @@ continuations for the same job, repository, or intent.
 - [bounded-overnight-executor-v0](bounded-overnight-executor-v0.md) — the foreground
   one-step executor invokes THIS path (in-process, no bypass) for an approved
   intent when `--allow-one-cycle --allow-apply` is given and all gates pass.
+- [provider-patch-materialization-v0](provider-patch-materialization-v0.md) — a
+  materialized provider repair intent (single `.md`) is applied through THIS path
+  after `remedy patch approve`; no special provider apply path exists.

@@ -74,6 +74,13 @@ creates an intent.
 3. `remedy provider intake-repair <job> --input <file> --failure-artifact-id <fa> --provider claude`.
 4. If accepted, review with `remedy provider trust-show`, then approve + `do continue`.
 
+## Materialization
+
+An accepted candidate is now **materialized** into a real applyable pending Repair
+Patch Intent (v0: single `.md` create/modify) — see
+[provider-patch-materialization-v0.md](provider-patch-materialization-v0.md). Accepted
+≠ materialized ≠ applied; apply still requires approval + `do continue`.
+
 ## Next block
 
 **Provider-backed Repair Builder v0** will wire a real (local-first, gated) provider
@@ -82,6 +89,7 @@ produces the candidate instead of a human pasting it.
 
 ## See also
 
+- [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md) — accepted candidate → applyable pending intent.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [bounded-overnight-executor-v0.md](bounded-overnight-executor-v0.md) — foreground one-step executor.
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.

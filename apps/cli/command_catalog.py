@@ -1522,6 +1522,22 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
         related=("provider.intake-repair",),
     ),
+    CommandEntry(
+        command_id="provider.material-show",
+        group_id="provider",
+        subcommand="material-show",
+        description="Read-only: show provider patch material status + verification (no raw diff).",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("material_id", "Provider patch material id"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("provider.intake-repair", "provider.trust-show", "patch.approve"),
+    ),
 
     # ── review ───────────────────────────────────────────────────────────
     CommandEntry(

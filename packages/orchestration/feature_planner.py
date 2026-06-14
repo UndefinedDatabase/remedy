@@ -296,6 +296,20 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.REPAIR_ARTIFACT,
             "remedy patch approve <job_id> <intent_id> --json",
         ),
+        # Provider patch materialization follow-ups (Step 1349). No auto approve/retry.
+        "provider-repair-intent-pending-approval": (
+            "Approve or reject the materialized provider repair",
+            "A materialized provider repair intent is pending approval; apply later via do continue.",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy patch approve <job_id> <intent_id> --json",
+        ),
+        "provider-materialization-failed": (
+            "Inspect failed provider materialization",
+            "An accepted provider candidate could not be materialized (unsupported patch shape) — "
+            "inspect the material; retry with a conservative single-.md patch (manual).",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy provider material-show <job_id> <material_id> --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)

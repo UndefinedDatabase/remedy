@@ -557,17 +557,28 @@ def _build_provider_trust_section(job: Any) -> dict[str, Any]:
         needs = sum(1 for r in reports if r.get("trust_status") == "needs_human_review")
         pending = sum(1 for r in reports
                       if r.get("trust_status") == "accepted" and r.get("repair_intent_id"))
+        materialized = failed = 0
+        try:
+            from packages.orchestration.provider_patch_material import load_materials
+            mats = list(load_materials(job).values())
+            materialized = sum(1 for m in mats if m.get("material_state") == "materialized")
+            failed = sum(1 for m in mats if m.get("material_state") == "materialization_failed")
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            materialized = failed = 0
         return {
             "report_count": len(reports),
             "accepted": accepted,
             "rejected": rejected,
             "needs_review": needs,
             "pending_provider_repair_approval": pending,
+            "materialized_count": materialized,
+            "materialization_failed_count": failed,
             "source": "provider_trust",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"report_count": "unknown", "accepted": "unknown", "rejected": "unknown",
                 "needs_review": "unknown", "pending_provider_repair_approval": "unknown",
+                "materialized_count": "unknown", "materialization_failed_count": "unknown",
                 "source": "unavailable"}
 
 

@@ -22,7 +22,7 @@ def _job(data_dir, *, with_failure=True):
     if with_failure:
         fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=task.id,
                       metadata={"test_failure": True, "failure_kind": "test_failed",
-                                "related_task_id": str(task.id), "related_files": ["src/app.py"],
+                                "related_task_id": str(task.id), "related_files": ["docs/guide.md"],
                                 "safe_summary": "boom"})
         arts.append(fa); fid = str(fa.id)
     job = Job(id=uuid4(), name="ov-prov", user_prompt="x", state=RunState.RUNNING,
@@ -31,7 +31,7 @@ def _job(data_dir, *, with_failure=True):
     return str(job.id), fid
 
 
-_GOOD = ("Fix.\n```diff\n--- a/src/app.py\n+++ b/src/app.py\n@@ -1,2 +1,2 @@\n-x = 1\n+x = 2\n```\n")
+_GOOD = ("Fix.\n```diff\n--- a/docs/guide.md\n+++ b/docs/guide.md\n@@ -1,2 +1,3 @@\n line one\n+fixed line\n line two\n```\n")
 
 
 @pytest.fixture()
@@ -113,7 +113,7 @@ def test_accepted_creates_pending_intent_and_trust_show(env):
     assert d["trust_status"] == "accepted"
     assert d["repair_intent_id"]
     assert d["next_safe_action"] == f"remedy patch approve {job_id} {d['repair_intent_id']} --json"
-    assert "x = 2" not in r.stdout  # no raw diff line
+    assert "@@" not in r.stdout and "+++" not in r.stdout  # no raw diff
 
     rid = d["trust_report_id"]
     r2 = run_grouped_cli(["provider", "trust-show", job_id, rid, "--json"], env)
@@ -121,7 +121,7 @@ def test_accepted_creates_pending_intent_and_trust_show(env):
     d2 = json.loads(r2.stdout)
     assert d2["trust_status"] == "accepted"
     assert d2["repair_intent_id"] == d["repair_intent_id"]
-    assert "x = 2" not in r2.stdout
+    assert "@@" not in r2.stdout
 
 
 def test_stdin_input(env):

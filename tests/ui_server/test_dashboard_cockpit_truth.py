@@ -215,6 +215,8 @@ class TestDashboardShape:
         assert "report_count" in pt
         assert "rejected" in pt
         assert "pending_provider_repair_approval" in pt
+        assert "materialized_count" in pt
+        assert "materialization_failed_count" in pt
 
     def test_overnight_run_section_present(self):
         # Read-only Bounded Overnight Executor run summary (Step 1292).
