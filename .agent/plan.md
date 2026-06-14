@@ -17,8 +17,8 @@ file → `unsupported_patch_shape` (accepted_but_not_materialized; no intent).
 
 ## Steps
 - [x] 1335: Mainline reconciliation + clean branch (PR #57 merged; scope→1335-1364)
-- [ ] 1336: Material models (Material/Entry/Result/Verification/IntentLink)
-- [ ] 1337: Private material storage (0o700/0o600, atomic, hashed, no public raw)
+- [x] 1336: Material models (Material/Entry/Result/Verification/IntentLink)
+- [x] 1337: Private material storage (0o700/0o600, atomic, hashed, no public raw)
 - [x] 1338: verify_provider_patch_material (manifest/hash/paths/report-accepted/one-candidate)
 - [x] 1339: unified diff → structured patch (modify/create text; no delete/rename/binary)
 - [x] 1340: JSON structured_operations materialization (same restrictions)
