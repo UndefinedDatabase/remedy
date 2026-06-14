@@ -1,57 +1,61 @@
-# Plan — Steps 1305-1334: Provider Trust Gate + External Repair Intake v0
+# Plan — Steps 1335-1364: Trusted Provider Patch Materialization v0
 
 ## Goal
-Take UNTRUSTED external model/agent output (local file or stdin), quarantine it,
-parse/normalize, validate trust, emit a safe ProviderTrustReport, and ONLY when
-accepted create a Repair Artifact + pending Repair Patch Intent → approval_required
-→ stop. No provider/API/Ollama execution, no model invocation, no auto-apply, no
-auto-approval. Apply stays through `do continue`.
+Materialize ACCEPTED provider candidates into REAL applyable Repair Patch Intents
+that flow through approval → `do continue` → snapshot → apply → test → proof, while
+raw provider output + raw diffs stay PRIVATE. No provider execution, no network, no
+auto-apply, no auto-approval. Apply only via existing `do continue`.
+
+## Key constraint
+Existing apply path (`apply_patch_intent`) is `.md`-only (create writes file, modify
+appends a "Proposed Changes" section). So a materialized intent is genuinely
+apply-compatible ONLY for a single `.md` target. Source/binary/delete/rename/multi-
+file → `unsupported_patch_shape` (accepted_but_not_materialized; no intent).
 
 ## Current Step
-DONE — full suite 5568 passed; verdict PASS WITH RISKS; ready to merge alone
+1336 — provider_patch_material.py (models + storage + verify + conversion)
 
 ## Steps
-- [x] 1305: Mainline reconciliation + clean branch (PR #56 merged; scope→1305-1334)
-- [x] 1306: Intake models (Request/QuarantineRecord/CandidateRepair/TrustReport/Finding/Decision/Result)
-- [x] 1307: Private quarantine storage (0o700/0o600, bounded, hashed, no public raw)
-- [x] 1308: Input size/encoding limits (bytes/UTF-8/binary/NUL/traversal)
-- [x] 1309: Candidate parser (JSON or single fenced unified diff; exactly one patch)
-- [x] 1310: Trust finding taxonomy (codes + severities)
-- [x] 1311: Secret/raw-leak scanner (keys/tokens/passwords/private keys/abs paths/tracebacks)
-- [x] 1312: Path safety validation (relative-only, protected paths reject)
-- [x] 1313: Patch shape validation (bounded files/hunks/lines; delete high-risk; no binary)
-- [x] 1314: Failure link validation (exists/unresolved; link RepairAttempt; overlap→confidence)
-- [x] 1315: Trust decision (blocker/high→rejected; medium→needs_human_review; low→accepted)
-- [x] 1316: Repair Artifact from accepted candidate (linked, no raw export)
-- [x] 1317: Repair Patch Intent (real, pending; linked; catalog approve next action)
-- [x] 1318: CLI provider intake-repair (file/stdin)
-- [x] 1319: CLI provider trust-show (read-only)
-- [x] 1320: Command catalog (intake-repair write_metadata; trust-show read_only)
-- [x] 1321: RunContract (provider_intake/provider_trust_review/create_provider_repair_intent)
-- [x] 1322: Progress Ledger integration
-- [x] 1323: Feature Planner integration (no auto provider/approval)
-- [x] 1324: Review Bundle provider_trust_summary.json
-- [x] 1325: Cockpit read-only provider trust counts
-- [x] 1326: Redaction tests
-- [x] 1327: CLI runtime tests
-- [x] 1328: Architecture guards (no network/subprocess/provider SDK/apply/test-exec imports)
-- [x] 1329: Documentation (provider-trust-gate-v0 + cross-links)
-- [x] 1330: Targeted + full pytest once (R-0083 + resource-safety fixed)
-- [x] 1331: Live review
-- [x] 1332: PR discipline
-- [x] 1333: Product readiness update
-- [x] 1334: Final handoff
+- [x] 1335: Mainline reconciliation + clean branch (PR #57 merged; scope→1335-1364)
+- [ ] 1336: Material models (Material/Entry/Result/Verification/IntentLink)
+- [ ] 1337: Private material storage (0o700/0o600, atomic, hashed, no public raw)
+- [ ] 1338: verify_provider_patch_material (manifest/hash/paths/report-accepted/one-candidate)
+- [ ] 1339: unified diff → structured patch (modify/create text; no delete/rename/binary)
+- [ ] 1340: JSON structured_operations materialization (same restrictions)
+- [ ] 1341: applyable provider repair intent (real/resolvable/pending; linked; safe metadata)
+- [ ] 1342: approve + do_continue compatibility (existing apply path; snapshot mandatory)
+- [ ] 1343: trust report state updates (accepted/materialized/failed/pending/approved/applied/tested)
+- [ ] 1344: CLI provider material-show (+ optional materialize)
+- [ ] 1345: command catalog (material-show/materialize; no mutate/exec)
+- [ ] 1346: RunContract (provider_materialize_patch/create_provider_repair_intent)
+- [ ] 1347: RepairAttempt linkage (idempotent by candidate_hash; no dup)
+- [ ] 1348: Progress Ledger integration
+- [ ] 1349: Feature Planner integration (no auto approve/retry)
+- [ ] 1350: Review Bundle provider_material_summary.json
+- [ ] 1351: Cockpit read-only material counts
+- [ ] 1352: Retention policy docs
+- [ ] 1353: Redaction tests
+- [ ] 1354: CLI runtime tests
+- [ ] 1355: Architecture guards
+- [ ] 1356: Docs (materialization-v0 + cross-links)
+- [ ] 1357: Targeted tests + full pytest once
+- [ ] 1358: Live review
+- [ ] 1359: PR discipline
+- [ ] 1360: Product readiness update
+- [ ] 1361: Apply compatibility proof (approve→do continue fixture, snapshot, no overclaim)
+- [ ] 1362: Integrity gate
+- [ ] 1363: Final handoff
+- [ ] 1364: Hard completion criteria
 
 ## Hard rules
-- NO provider/Ollama/Claude API execution, NO model invocation, NO network, NO subprocess.
-- External output is UNTRUSTED → quarantine private (0o700/0o600), never public.
-- No raw provider output/source/diff/stdout/stderr/artifact-body/secrets/tracebacks/
-  abs paths in ANY public surface (CLI/trust-show/events/Progress/Feature/Review/Cockpit).
-- Patch Intent creation ONLY; approval_required; apply stays via `do continue`.
-- Accepted ≠ applied, ≠ approved, ≠ verified.
-- blocker/high finding → rejected; medium → needs_human_review; unparseable → needs_human_review.
-- Protected paths rejected; secret-bearing rejected; exactly one patch candidate.
-- Every next safe action catalog-backed; no fake intent IDs.
+- NO provider/Ollama/Claude SDK, NO network, NO subprocess, NO shell=True.
+- Raw patch material ONLY in private workspace storage (0o700/0o600); NEVER public.
+- No raw diff/source/stdout/stderr/artifact-body/secrets/tracebacks/abs paths public.
+- Patch Intent exposes safe metadata only. Apply ONLY later via approved `do continue`.
+- No auto-apply, no auto-approval. accepted ≠ materialized ≠ applied ≠ verified.
+- Materialize ONLY supported shapes (single .md create/modify, bounded); else no intent.
+- Idempotent by candidate_hash (no dup Fix Task / Repair Artifact / Intent).
+- Every next safe action catalog-backed + entity-backed; no fake intent IDs.
 
 ## Next block
 Provider-backed Repair Builder v0.
