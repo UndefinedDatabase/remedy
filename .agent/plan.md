@@ -28,10 +28,10 @@ EXAMPLE external untrusted candidate generators, never required infrastructure.
 - [x] 1375: ExternalCandidateGeneratorRecord (manual|unavailable|future; no exec)
 - [x] 1376: Link request package to RepairAttempt (repair_request_prepared; idempotent)
 - [x] 1377: Import guidance (exact human next steps; no fake automation)
-- [ ] 1378: Progress Ledger integration
-- [ ] 1379: Feature Planner integration (no auto external execution)
-- [ ] 1380: Review Bundle repair_request_summary.json
-- [ ] 1381: Cockpit read-only request counts
+- [x] 1378: Progress Ledger integration
+- [x] 1379: Feature Planner integration (no auto external execution)
+- [x] 1380: Review Bundle repair_request_summary.json
+- [x] 1381: Cockpit read-only request counts
 - [x] 1382: Prompt/request quality tests
 - [x] 1383: CLI runtime tests
 - [x] 1384: Redaction tests
