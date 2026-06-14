@@ -811,6 +811,8 @@ def export_intake_result_json(result: ProviderRepairIntakeResult) -> dict[str, A
         "findings": [f.to_dict() for f in result.findings],
         "repair_artifact_id": result.repair_artifact_id,
         "repair_intent_id": result.repair_intent_id,
+        "material_id": result.material_id,
+        "material_state": result.material_state,
         "next_safe_action": result.next_safe_action,
         "safe_summary": result.safe_summary,
     }
