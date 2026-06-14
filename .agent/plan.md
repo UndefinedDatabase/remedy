@@ -8,26 +8,27 @@ accepted create a Repair Artifact + pending Repair Patch Intent → approval_req
 auto-approval. Apply stays through `do continue`.
 
 ## Current Step
+1322 — integrations (Progress/Feature/Review/Cockpit)
 1306 — provider_trust.py models + quarantine + parser + validation
 
 ## Steps
 - [x] 1305: Mainline reconciliation + clean branch (PR #56 merged; scope→1305-1334)
-- [ ] 1306: Intake models (Request/QuarantineRecord/CandidateRepair/TrustReport/Finding/Decision/Result)
-- [ ] 1307: Private quarantine storage (0o700/0o600, bounded, hashed, no public raw)
-- [ ] 1308: Input size/encoding limits (bytes/UTF-8/binary/NUL/traversal)
-- [ ] 1309: Candidate parser (JSON or single fenced unified diff; exactly one patch)
-- [ ] 1310: Trust finding taxonomy (codes + severities)
-- [ ] 1311: Secret/raw-leak scanner (keys/tokens/passwords/private keys/abs paths/tracebacks)
-- [ ] 1312: Path safety validation (relative-only, protected paths reject)
-- [ ] 1313: Patch shape validation (bounded files/hunks/lines; delete high-risk; no binary)
-- [ ] 1314: Failure link validation (exists/unresolved; link RepairAttempt; overlap→confidence)
-- [ ] 1315: Trust decision (blocker/high→rejected; medium→needs_human_review; low→accepted)
-- [ ] 1316: Repair Artifact from accepted candidate (linked, no raw export)
-- [ ] 1317: Repair Patch Intent (real, pending; linked; catalog approve next action)
-- [ ] 1318: CLI provider intake-repair (file/stdin)
-- [ ] 1319: CLI provider trust-show (read-only)
-- [ ] 1320: Command catalog (intake-repair write_metadata; trust-show read_only)
-- [ ] 1321: RunContract (provider_intake/provider_trust_review/create_provider_repair_intent)
+- [x] 1306: Intake models (Request/QuarantineRecord/CandidateRepair/TrustReport/Finding/Decision/Result)
+- [x] 1307: Private quarantine storage (0o700/0o600, bounded, hashed, no public raw)
+- [x] 1308: Input size/encoding limits (bytes/UTF-8/binary/NUL/traversal)
+- [x] 1309: Candidate parser (JSON or single fenced unified diff; exactly one patch)
+- [x] 1310: Trust finding taxonomy (codes + severities)
+- [x] 1311: Secret/raw-leak scanner (keys/tokens/passwords/private keys/abs paths/tracebacks)
+- [x] 1312: Path safety validation (relative-only, protected paths reject)
+- [x] 1313: Patch shape validation (bounded files/hunks/lines; delete high-risk; no binary)
+- [x] 1314: Failure link validation (exists/unresolved; link RepairAttempt; overlap→confidence)
+- [x] 1315: Trust decision (blocker/high→rejected; medium→needs_human_review; low→accepted)
+- [x] 1316: Repair Artifact from accepted candidate (linked, no raw export)
+- [x] 1317: Repair Patch Intent (real, pending; linked; catalog approve next action)
+- [x] 1318: CLI provider intake-repair (file/stdin)
+- [x] 1319: CLI provider trust-show (read-only)
+- [x] 1320: Command catalog (intake-repair write_metadata; trust-show read_only)
+- [x] 1321: RunContract (provider_intake/provider_trust_review/create_provider_repair_intent)
 - [ ] 1322: Progress Ledger integration
 - [ ] 1323: Feature Planner integration (no auto provider/approval)
 - [ ] 1324: Review Bundle provider_trust_summary.json
