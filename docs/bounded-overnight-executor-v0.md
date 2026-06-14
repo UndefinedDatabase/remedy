@@ -106,3 +106,4 @@ diffs, artifact bodies, secrets, tracebacks, or absolute private paths.
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md) — intake of UNTRUSTED external model output into a pending repair intent (no provider execution).
 - [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).
 - [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — foreground self-improvement execution; future self-overnight builds on this executor pattern.
+- [local-model-advisor-v0.md](local-model-advisor-v0.md) — optional loopback-only advisory critique behind orchestrator routing (advisory-only; never executes or applies).

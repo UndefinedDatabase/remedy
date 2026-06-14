@@ -65,3 +65,4 @@ outputs through the same trust/apply/test/proof gates.
 - [self-dogfood-v0.md](self-dogfood-v0.md) — the planner.
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [repair-request-builder-v0.md](repair-request-builder-v0.md)
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
+- [local-model-advisor-v0.md](local-model-advisor-v0.md) — optional advisory critique of orchestrator decisions (advisory-only; never changes the gated apply path).
