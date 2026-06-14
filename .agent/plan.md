@@ -12,7 +12,7 @@ project evidence → SelfDogfoodInspection → SelfImprovementItems → SelfImpr
 → ProposedTasks → human evaluate/approve/materialize (existing flow).
 
 ## Current Step
-1425 — full pytest once (post targeted green)
+DONE — full suite 5662 passed; integrity ok; verdict PASS WITH RISKS; merge-ready
 
 ## Steps
 - [x] 1399: Mainline reconciliation + clean branch (PR #59 merged; scope→1399-1428)
@@ -41,10 +41,10 @@ project evidence → SelfDogfoodInspection → SelfImprovementItems → SelfImpr
 - [x] 1422: Architecture guards
 - [x] 1423: CLI runtime tests
 - [x] 1424: Documentation (self-dogfood-v0)
-- [ ] 1425: Targeted tests + full pytest once
-- [ ] 1426: Live review
-- [ ] 1427: Final handoff
-- [ ] 1428: Hard completion criteria
+- [x] 1425: Targeted tests + full pytest once
+- [x] 1426: Live review
+- [x] 1427: Final handoff
+- [x] 1428: Hard completion criteria
 
 ## Hard rules
 - READ-ONLY or metadata-only. NO code edits, NO apply, NO approval, NO PR, NO git ops,

@@ -48,5 +48,17 @@ through the existing approval flow. NOT autonomous self-modification.
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite
   once at block end. No shell=True, no subprocess.
 
+## Product readiness — Self-Dogfood Planner v0 (Step 1427)
+CAN: inspect Remedy's OWN evidence (live review verdict, stale handoff, evidence-chain
+gaps, deterministic roadmap, registry quality debt) → classified+deduped Self
+ImprovementItems → Plan → metadata-only ProposedTasks (origin self_dogfood) via the
+EXISTING evaluate/approve/materialize flow. CLI `remedy self inspect/plan/propose/
+report`; surfaced in Progress/Feature/Review(20)/Cockpit. Idempotent by fingerprint.
+CANNOT (by design): NO code edits/apply/approval/PR/git/main-mutation; NO direct
+Job.tasks insertion; NO provider/network/subprocess/browser; NO scheduled/background
+self-run; NO raw findings/secrets/paths. PENDING/FAIL/open-blocker-high → blocker.
+Next block: Self-Dogfood Execution v0 (guarded, still approval-gated) OR Provider
+Trust Verification v1.
+
 ## Next block
 Self-Dogfood Execution v0 OR Provider Trust Verification v1.
