@@ -8,7 +8,7 @@ Provider Trust Gate → materialized pending intent → approval → do continue
 snapshot → apply → test → proof → result. Orchestrator/tracking rail; bypasses NO gate.
 
 ## Current Step
-1454 — full pytest once (post targeted green)
+DONE — R-0084/R-0085 resolved; verdict PASS WITH RISKS; merge-ready; PR HELD (Step 1457/1464)
 
 ## Steps
 - [x] 1429: Mainline reconciliation + clean branch (PR #60 merged; scope→1429-1464)
@@ -37,16 +37,16 @@ snapshot → apply → test → proof → result. Orchestrator/tracking rail; by
 - [x] 1452: E2E simulated self-improvement test (no real provider/git/main)
 - [x] 1453: Documentation (self-dogfood-execution-v0 + cross-links)
 - [x] 1454: Targeted tests + full pytest once
-- [ ] 1455: Live review
-- [ ] 1456: Product readiness update
-- [ ] 1457: PR discipline (clean branch; NO PR unless user asks)
-- [ ] 1458: Final handoff
-- [ ] 1459: Hard completion criteria
-- [ ] 1460: Merge recommendation (separate PR; no provider-trust stacking)
+- [x] 1455: Live review
+- [x] 1456: Product readiness update
+- [x] 1457: PR discipline (clean branch; NO PR unless user asks)
+- [x] 1458: Final handoff
+- [x] 1459: Hard completion criteria
+- [x] 1460: Merge recommendation (separate PR; no provider-trust stacking)
 - [x] 1461: Future design note (self-dogfood-overnight-future.md)
 - [x] 1462: Optional self integrity gate (read-only)
 - [x] 1463: Review Bundle section count update
-- [ ] 1464: Final verification (targeted + full suite; record counts; NO PR unless asked)
+- [x] 1464: Final verification (targeted + full suite; record counts; NO PR unless asked)
 
 ## Hard rules
 - Orchestrator/tracking rail. Bypasses NO existing gate.
