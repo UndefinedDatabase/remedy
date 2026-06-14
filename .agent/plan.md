@@ -8,7 +8,7 @@ Provider Trust Gate → materialized pending intent → approval → do continue
 snapshot → apply → test → proof → result. Orchestrator/tracking rail; bypasses NO gate.
 
 ## Current Step
-1430 — self_dogfood_execution.py (models + storage + eligibility + state machine)
+1454 — full pytest once (post targeted green)
 
 ## Steps
 - [x] 1429: Mainline reconciliation + clean branch (PR #60 merged; scope→1429-1464)
@@ -30,22 +30,22 @@ snapshot → apply → test → proof → result. Orchestrator/tracking rail; by
 - [ ] 1445: Cockpit read-only attempt counts
 - [ ] 1446: self report includes execution attempts
 - [ ] 1447: RunContract (self_execute_prepare/self_reconcile/self_execution_status)
-- [ ] 1448: Idempotency tests
-- [ ] 1449: Redaction tests
-- [ ] 1450: Architecture guards
-- [ ] 1451: CLI runtime tests
-- [ ] 1452: E2E simulated self-improvement test (no real provider/git/main)
-- [ ] 1453: Documentation (self-dogfood-execution-v0 + cross-links)
-- [ ] 1454: Targeted tests + full pytest once
+- [x] 1448: Idempotency tests
+- [x] 1449: Redaction tests
+- [x] 1450: Architecture guards
+- [x] 1451: CLI runtime tests
+- [x] 1452: E2E simulated self-improvement test (no real provider/git/main)
+- [x] 1453: Documentation (self-dogfood-execution-v0 + cross-links)
+- [x] 1454: Targeted tests + full pytest once
 - [ ] 1455: Live review
 - [ ] 1456: Product readiness update
 - [ ] 1457: PR discipline (clean branch; NO PR unless user asks)
 - [ ] 1458: Final handoff
 - [ ] 1459: Hard completion criteria
 - [ ] 1460: Merge recommendation (separate PR; no provider-trust stacking)
-- [ ] 1461: Future design note (self-dogfood-overnight-future.md)
+- [x] 1461: Future design note (self-dogfood-overnight-future.md)
 - [ ] 1462: Optional self integrity gate (read-only)
-- [ ] 1463: Review Bundle section count update
+- [x] 1463: Review Bundle section count update
 - [ ] 1464: Final verification (targeted + full suite; record counts; NO PR unless asked)
 
 ## Hard rules

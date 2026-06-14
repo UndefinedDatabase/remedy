@@ -79,3 +79,4 @@ package; pass `--new` to force a fresh one.
 - [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md) — accepted candidate → applyable intent.
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
+- [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts route candidate output through the same request/intake flow.
