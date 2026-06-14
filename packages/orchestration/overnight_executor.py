@@ -216,6 +216,7 @@ class OvernightExecutionDecision:
     kind: str = OvernightActionKind.NONE
     label: str = ""
     command: str = ""
+    entity_id: str = ""
     allowed: bool = False
     reason: str = ""
     stop_reason: str = OvernightStopReason.NO_SAFE_ACTION
@@ -247,12 +248,25 @@ class OvernightRunResult:
     review_findings: dict[str, Any] = field(default_factory=dict)
     record_path: str = ""
     safe_summary: str = ""
+    # Data root for immediate per-phase checkpoint flushing (not exported).
+    _data_dir: Any = field(default=None, repr=False, compare=False)
 
     def _checkpoint(self, phase: str, status: str, **ids: str) -> None:
-        self.checkpoints.append(OvernightRunCheckpoint(
+        """Append a phase checkpoint AND flush it durably right away (Step 1280).
+
+        Persisting before/after each phase — in particular immediately before and
+        after the mutating action — means a crash leaves a durable trail and the
+        write outcome is surfaced (a silent failure degrades ``error_status``).
+        """
+        cp = OvernightRunCheckpoint(
             phase=phase, status=status, at=_now(),
             evidence_status=self.evidence_status, ids={k: v for k, v in ids.items() if v},
-        ))
+        )
+        self.checkpoints.append(cp)
+        if self._data_dir is not None:
+            ok = save_overnight_checkpoint(self.job_id, self.run_id, self._data_dir, cp)
+            if not ok and not self.error_status:
+                self.error_status = "checkpoint_persist_degraded"
 
 
 def _now() -> str:
@@ -622,6 +636,19 @@ def _classify_action(command: str) -> str:
     return OvernightActionKind.NONE
 
 
+def _entity_id_from_command(command: str, kind: str) -> str:
+    """Extract the target entity from the selected command so the executed entity
+    is always exactly the selected/displayed one (R-0082).
+
+    ``remedy repair propose <job_id> <failure_artifact_id> --json`` → the fa id.
+    """
+    if kind != OvernightActionKind.REPAIR_PROPOSE:
+        return ""
+    parts = (command or "").split()
+    # parts: ["remedy", "repair", "propose", "<job>", "<fa>", "--json"]
+    return parts[4] if len(parts) >= 5 else ""
+
+
 def _select_decision(job_id: str, data_dir: Path, policy: BoundedOvernightPolicy) -> OvernightExecutionDecision:
     """Select one safe action and decide whether it may execute (Steps 1281/1284).
 
@@ -639,7 +666,8 @@ def _select_decision(job_id: str, data_dir: Path, policy: BoundedOvernightPolicy
     na = select_overnight_next_action(inp, job_id)
     kind = _classify_action(na.command)
     decision = OvernightExecutionDecision(
-        kind=kind, label=na.label, command=na.command, allowed=False)
+        kind=kind, label=na.label, command=na.command,
+        entity_id=_entity_id_from_command(na.command, kind), allowed=False)
 
     # Catalog-backed check (no fake actions).
     if na.command and not validate_next_safe_action_command(na.command):
@@ -810,6 +838,7 @@ def run_overnight_executor(
         run_id=uuid4().hex[:12], job_id=request.job_id, created_by=request.created_by,
         mode=mode, started_at=_now(), policy_summary=_policy_summary(policy),
     )
+    result._data_dir = ddir  # enable immediate per-phase checkpoint flushing
     result._checkpoint(OvernightExecutionPhase.REQUESTED, "completed")
 
     # ── Readiness before ────────────────────────────────────────────────
@@ -890,7 +919,9 @@ def run_overnight_executor(
             if decision.kind == OvernightActionKind.DO_CONTINUE:
                 outcome = _adapt_do_continue(request.job_id, ddir)
             else:  # REPAIR_PROPOSE
-                fa = _first_unresolved_failure_id(request.job_id, ddir)
+                # Honor the entity in the selected/validated command (R-0082); only
+                # fall back to first-unresolved if the command carried none.
+                fa = decision.entity_id or _first_unresolved_failure_id(request.job_id, ddir)
                 if not fa:
                     outcome = _AdapterOutcome(
                         executed=False, stop_reason=OvernightStopReason.NO_SAFE_ACTION,
@@ -933,17 +964,16 @@ def _finalize_after_readiness(
 
 
 def _finalize(result: OvernightRunResult, data_dir: Path) -> OvernightRunResult:
+    # Per-phase checkpoints are already flushed durably as they happen
+    # (result._checkpoint persists immediately). Here we only write the final
+    # record/report and the closing phases.
     result.completed_at = _now()
     if not result.safe_summary:
         result.safe_summary = f"Overnight run {result.run_id[:8]}: {result.stop_reason}."
     result.record_path = save_run_record(result, data_dir)
     result._checkpoint(OvernightExecutionPhase.REPORT_WRITTEN,
                        "completed" if result.record_path else "blocked")
-    for cp in result.checkpoints:
-        save_overnight_checkpoint(result.job_id, result.run_id, data_dir, cp)
     result._checkpoint(OvernightExecutionPhase.STOPPED, "completed")
-    save_overnight_checkpoint(result.job_id, result.run_id, data_dir,
-                              result.checkpoints[-1])
     return result
 
 

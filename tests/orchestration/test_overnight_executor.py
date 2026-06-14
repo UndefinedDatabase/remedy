@@ -282,6 +282,30 @@ class TestRepairProposeAdapter:
         _run(str(job.id), env, allow_one_cycle=True, allow_repair_propose=True)
         assert list(env.rglob("*.lock")) == []
 
+    def test_action_checkpoints_durably_flushed(self, env):
+        # R-0081: ACTION_STARTED/COMPLETED are flushed to disk around the action,
+        # not only at finalize — durable trail survives a crash.
+        job = _job(env)
+        _add_failure(env, job)
+        r = _run(str(job.id), env, allow_one_cycle=True, allow_repair_propose=True)
+        cps = OX.load_overnight_checkpoints(str(job.id), r.run_id, env)
+        phases = {c.phase for c in cps}
+        assert OX.OvernightExecutionPhase.ACTION_STARTED in phases
+        assert OX.OvernightExecutionPhase.ACTION_COMPLETED in phases
+        assert OX.OvernightExecutionPhase.STOPPED in phases
+
+    def test_executed_entity_equals_selected_entity(self, env):
+        # R-0082: the proposed failure id is exactly the one in the selected command.
+        job = _job(env)
+        fa = _add_failure(env, job)
+        r = _run(str(job.id), env, allow_one_cycle=True, allow_repair_propose=True)
+        assert fa in r.selected_action.get("command", "")
+        assert r.executed_action.get("kind") == OX.OvernightActionKind.REPAIR_PROPOSE
+        # The repair attempt is keyed to that exact failure artifact.
+        j = load_job(UUID(str(job.id)), env)
+        attempts = list(RL.load_repair_attempts(j).values())
+        assert len(attempts) == 1 and attempts[0].failure_artifact_id == fa
+
 
 # ---------------------------------------------------------------------------
 # do_continue adapter + idempotency (Steps 1282/1288)

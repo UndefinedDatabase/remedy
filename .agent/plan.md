@@ -8,7 +8,6 @@ I do it? why stop? what evidence? what next?
 
 ## Current Step
 1298 — Full pytest once (post targeted green)
-1297 — Documentation (then full suite 1298)
 
 ## Steps
 - [x] 1275: Mainline reconciliation + clean branch (PR #55 merged; scope→1275-1304)
@@ -35,8 +34,8 @@ I do it? why stop? what evidence? what next?
 - [x] 1295: Redaction tests
 - [x] 1296: Architecture guards
 - [x] 1297: Documentation (bounded-overnight-executor-v0 + cross-links)
-- [ ] 1298: Targeted tests + full pytest once
-- [ ] 1299: Live review
+- [x] 1298: Targeted tests + full pytest once (5516 passed); R-0081/R-0082 fixed
+- [x] 1299: Live review (R-0081/R-0082 Done-marked)
 - [ ] 1300: PR discipline
 - [ ] 1301: Product readiness update
 - [ ] 1302: Final handoff
