@@ -88,6 +88,29 @@ class TestDecisionQuality:
         dec = OB.select_orchestrator_decision(s, d)
         assert dec.selected_option["kind"] == OB.OptionKind.APPROVE_INTENT
 
+    def test_contract_denied_apply_not_recommended(self, env):
+        # R-0086: an approved intent whose contract denies patch_apply must not yield a
+        # selectable "continue" option.
+        from packages.orchestration.approval_queue import set_approval_state
+        d, _ = env
+        t = Task(description="t")
+        art = Artifact(name="b", content="Proposed Changes:\n  - x", kind=ArtifactKind.BUILDER_PROPOSAL,
+                       task_id=t.id, metadata={"patch_intent_explanations": [
+                           {"file": "docs/x.md", "action": "create", "risk": "low",
+                            "reason": "", "summary": "s"}], "patch_intent_approvals": {}})
+        job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=[art], metadata={"target_repo": "."})
+        save_job(job, root=d)
+        from packages.orchestration.approval_queue import make_intent_id
+        iid = make_intent_id(art.id, 0)
+        j = load_job(UUID(str(job.id)), d)
+        set_approval_state(j, iid, "approved", decided_by="human")
+        save_job(j, root=d)  # default contract denies PATCH_APPLY
+        s = OB.build_orchestrator_situation(str(job.id), d)
+        cont = [o for o in s.options if o.kind == OB.OptionKind.CONTINUE_INTENT]
+        assert cont and all(not o.available for o in cont)
+        dec = OB.select_orchestrator_decision(s, d)
+        assert (dec.selected_option or {}).get("kind") != OB.OptionKind.CONTINUE_INTENT
+
     def test_missing_job_safe(self, env):
         d, _ = env
         s = OB.build_orchestrator_situation(str(uuid4()), d)

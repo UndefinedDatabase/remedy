@@ -53,5 +53,20 @@ LLMs are advisors/builders. The orchestrator is the controller. Evidence is trut
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite once
   at block end. No shell=True, no subprocess.
 
+## Product readiness — Main Orchestrator Brain v0 (Step 1494)
+CAN: produce an evidence-backed orchestration decision — read safe state into a
+Situation, generate deterministic catalog-backed options, score them, guard against
+repeated failed loops (durable repair-failure/trust-rejection + decision-history
+fingerprint repetition), define a model routing PLAN (deterministic/local-advisor/
+external-builder/human; no model calls), and select ONE next step with rationale +
+rejected alternatives. CLI `remedy orchestrator inspect/decide/report/idea`; surfaced
+in Progress/Feature/Review(22)/Cockpit. Explains WHY one action is chosen; avoids
+loops. User ideas captured as scrubbed roadmap hints (never truth, never executed).
+CANNOT (by design): execute actions; call Ollama/provider/network/subprocess; apply;
+approve; create PR; mutate main/code; insert Job.tasks; emit fake/missing-entity
+commands; treat routing as execution; ignore open blocker/high (→ human_review).
+FUTURE: Local Model Advisor Adapter v0 (cheap advisory critique behind the routing
+plan), Provider Trust Verification v1.
+
 ## Next block
 Local Model Advisor Adapter v0 OR Provider Trust Verification v1.

@@ -393,14 +393,21 @@ def _gather_signals(job_id: str, data_dir: Path,
 
     # Budget.
     try:
-        from packages.orchestration.run_contract import ensure_contract, load_usage
+        from packages.orchestration.run_contract import (
+            ensure_contract, load_usage, evaluate_run_action, ContractAction,
+        )
         c = ensure_contract(job)
         u = load_usage(job)
         loops_left = c.max_loops - u.loops_used
         tests_left = c.max_test_runs - u.test_runs_used
         sig["budget_exhausted"] = (loops_left <= 0) or (tests_left <= 0)
+        # Contract permission for the apply path (R-0086): do not recommend a
+        # do-continue (patch_apply) option the contract denies / stop_before_apply blocks.
+        sig["patch_apply_allowed"] = bool(
+            evaluate_run_action(c, ContractAction.PATCH_APPLY).allowed)
         refs.append(OrchestratorEvidenceRef("run_contract", "available"))
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        sig["patch_apply_allowed"] = False
         refs.append(OrchestratorEvidenceRef("run_contract", "unknown"))
     return sig
 
@@ -545,12 +552,17 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
                              contract_action="patch_apply"))
         # Approved intent → continue.
         for iid in sig.get("approved_intents", [])[:1]:
-            opts.append(_opt(OptionKind.CONTINUE_INTENT, "Continue an approved intent",
-                             command=f"remedy do continue {job_id} --intent-id {iid} --json",
-                             entity_ids=[iid], risk="medium",
-                             outcome="Snapshot → apply → test → proof.",
-                             why_now="An approved intent is ready for one cycle.",
-                             contract_action="patch_apply", permission="repo_generated_write"))
+            cont = _opt(OptionKind.CONTINUE_INTENT, "Continue an approved intent",
+                        command=f"remedy do continue {job_id} --intent-id {iid} --json",
+                        entity_ids=[iid], risk="medium",
+                        outcome="Snapshot → apply → test → proof.",
+                        why_now="An approved intent is ready for one cycle.",
+                        contract_action="patch_apply", permission="repo_generated_write")
+            # R-0086: do not recommend apply when the contract denies it.
+            if not sig.get("patch_apply_allowed", False):
+                cont.available = False
+                cont.why_not_now = "Contract denies patch_apply (or stop_before_apply)."
+            opts.append(cont)
         # Unresolved failure with no repair attempt → propose repair.
         if sig.get("unresolved_failures", 0) > 0 and sig.get("repair_attempts", 0) == 0:
             fa = sig["failure_ids"][0]
