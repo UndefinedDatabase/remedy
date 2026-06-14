@@ -359,7 +359,7 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             "Consider a local model advisor (future)",
             "The orchestrator found close options where a cheap local advisor could help "
             "critique the plan — Local Model Advisor Adapter v0 is the next block.",
-            FeaturePlanSource.FEATURE_SUGGESTION,
+            FeaturePlanSource.ROADMAP,
             "remedy orchestrator report --json",
         ),
         "orchestrator-external-builder": (

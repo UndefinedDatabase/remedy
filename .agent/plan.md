@@ -11,7 +11,7 @@ no execution, no LLM/provider/Ollama, no apply/approve/PR/code mutation.
 LLMs are advisors/builders. The orchestrator is the controller. Evidence is truth.
 
 ## Current Step
-1466 — orchestrator_brain.py (models + situation + options + scorer + loop guard + routing + selector)
+1492 — full pytest once (post targeted green)
 
 ## Steps
 - [x] 1465: Mainline reconciliation + clean branch (PR #61 merged; scope→1465-1498)
@@ -30,18 +30,18 @@ LLMs are advisors/builders. The orchestrator is the controller. Evidence is trut
 - [ ] 1478: RunContract (orchestrator_inspect/decide/report)
 - [ ] 1479: User idea intake (orchestrator idea; scrub; classify; metadata-only)
 - [ ] 1480: Idea-to-option integration (ideas are hints, not truth; dedupe; risky→human review)
-- [ ] 1481: Progress Ledger integration
-- [ ] 1482: Feature Planner integration
-- [ ] 1483: Review Bundle orchestrator_decision_summary.json
-- [ ] 1484: Cockpit read-only decision summary
-- [ ] 1485: Orchestrator quality tests
-- [ ] 1486: Anti-loop tests
-- [ ] 1487: Model routing tests
-- [ ] 1488: CLI runtime tests
-- [ ] 1489: Redaction tests
-- [ ] 1490: Architecture guards
-- [ ] 1491: Documentation (orchestrator-brain-v0)
-- [ ] 1492: Targeted tests + full pytest once
+- [x] 1481: Progress Ledger integration
+- [x] 1482: Feature Planner integration
+- [x] 1483: Review Bundle orchestrator_decision_summary.json
+- [x] 1484: Cockpit read-only decision summary
+- [x] 1485: Orchestrator quality tests
+- [x] 1486: Anti-loop tests
+- [x] 1487: Model routing tests
+- [x] 1488: CLI runtime tests
+- [x] 1489: Redaction tests
+- [x] 1490: Architecture guards
+- [x] 1491: Documentation (orchestrator-brain-v0)
+- [x] 1492: Targeted tests + full pytest once
 - [ ] 1493: Live review
 - [ ] 1494: Product readiness update
 - [ ] 1495: PR discipline (clean branch; NO PR unless user asks)
