@@ -8,7 +8,7 @@ accepted create a Repair Artifact + pending Repair Patch Intent → approval_req
 auto-approval. Apply stays through `do continue`.
 
 ## Current Step
-1330 — full pytest once (post targeted green)
+DONE — full suite 5568 passed; verdict PASS WITH RISKS; ready to merge alone
 
 ## Steps
 - [x] 1305: Mainline reconciliation + clean branch (PR #56 merged; scope→1305-1334)
@@ -37,10 +37,10 @@ auto-approval. Apply stays through `do continue`.
 - [x] 1328: Architecture guards (no network/subprocess/provider SDK/apply/test-exec imports)
 - [x] 1329: Documentation (provider-trust-gate-v0 + cross-links)
 - [x] 1330: Targeted + full pytest once (R-0083 + resource-safety fixed)
-- [ ] 1331: Live review
-- [ ] 1332: PR discipline
-- [ ] 1333: Product readiness update
-- [ ] 1334: Final handoff
+- [x] 1331: Live review
+- [x] 1332: PR discipline
+- [x] 1333: Product readiness update
+- [x] 1334: Final handoff
 
 ## Hard rules
 - NO provider/Ollama/Claude API execution, NO model invocation, NO network, NO subprocess.

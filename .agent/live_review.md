@@ -10,33 +10,37 @@ creation only; apply stays via `do continue`.
 Timestamp: 2026-06-14
 
 ## Verdict
-PENDING — block in progress. Builder constructing provider_trust.py + CLI on top of
-main 91b4a51 (PR #56 merged). Hard completion criteria (Step 1334) gate the verdict.
+PASS WITH RISKS — all 15 checks reviewed PASS in the audit log; the only finding
+(R-0083, High redaction) is **Resolved** (fixed at HEAD: `_scrub_public` masks
+secrets/abs-paths/traceback markers in all provider free-text before persist/export;
+two redaction tests added). Zero open Blocker/High. Full suite green (5568 passed,
+8 skipped, 1 deselected). Foreground intake / untrusted-quarantine / no-provider-
+execution / patch-intent-only / approval-required thesis HOLDS.
 
-## Check Matrix (1-15) — to fill
+## Check Matrix (1-15)
 | Check | Status | Note |
 |---|---|---|
-| 1. Mainline reconciliation | PENDING | branch off clean main 91b4a51; PR #56 recorded |
-| 2. Intake models | PENDING | |
-| 3. Private quarantine (0o700/0o600, no public raw) | PENDING | |
-| 4. Input limits (size/UTF-8/binary/NUL/traversal) | PENDING | |
-| 5. Candidate parser (one patch; JSON or fenced diff) | PENDING | |
-| 6. Trust finding taxonomy | PENDING | |
-| 7. Secret/raw-leak scanner | PENDING | |
-| 8. Path safety validation | PENDING | |
-| 9. Patch shape validation | PENDING | |
-| 10. Failure link validation | PENDING | |
-| 11. Trust decision + Repair Artifact + Patch Intent | PENDING | |
-| 12. CLI (intake-repair / trust-show) + catalog + RunContract | PENDING | |
-| 13. Integrations (Progress/Feature/Review/Cockpit) | PENDING | |
-| 14. Redaction | PENDING | |
-| 15. Architecture guards (no network/subprocess/provider SDK) | PENDING | |
+| 1. Mainline reconciliation | PASS | branch off clean main 91b4a51; PR #56 recorded; no drift |
+| 2. Intake models | PASS | Request/Quarantine/Candidate/Report/Finding/Decision/Result; no raw fields |
+| 3. Private quarantine (0o700/0o600, no public raw) | PASS | uuid dir, hashed, atomic, _read marked private; never exported |
+| 4. Input limits (size/UTF-8/binary/NUL/traversal) | PASS | 256KiB cap, NUL/binary reject, UTF-8 replace, missing-file safe |
+| 5. Candidate parser (one patch; JSON or fenced diff) | PASS | >1 diff→flagged; prose→needs-review; unknown→unparseable; raw kept private |
+| 6. Trust finding taxonomy | PASS | full code set + blocker/high/medium/low |
+| 7. Secret/raw-leak scanner | PASS | key/token/private-key/abs-path/traceback; never echoes value |
+| 8. Path safety validation | PASS | absolute/traversal/protected/lockfile rejected; safe labels |
+| 9. Patch shape validation | PASS | bounded files/hunks/lines; binary/delete/rename flagged; no apply |
+| 10. Failure link validation | PASS | exists/unresolved; links attempt; overlap→confidence |
+| 11. Trust decision + Repair Artifact + Patch Intent | PASS | blocker/high→rejected; accepted→ONE pending intent, verified resolvable, no auto-approve |
+| 12. CLI (intake-repair / trust-show) + catalog + RunContract | PASS | file/stdin; read-only show; provider_intake allowed, execution stays CLOUD_PROVIDER denied |
+| 13. Integrations (Progress/Feature/Review/Cockpit) | PASS | counts/IDs only; no auto provider/approval; bundle 17; read-only cockpit |
+| 14. Redaction | PASS | R-0083 resolved; provider free-text scrubbed; 6+ surfaces clean |
+| 15. Architecture guards (no network/subprocess/provider SDK) | PASS | no provider/ollama/claude/network/subprocess/apply/test-exec imports |
 
 ## Findings — Steps 1305-1334
 
 ### R-0083: Provider-derived `candidate.summary` is not secret/path-scrubbed but is persisted + shown in public surfaces
-Done: R-0083 - `_safe_text` (summary/rationale/risk_notes, and via `_safe_first_line` the diff/markdown summary) now routes through `_scrub_public`, masking `_SECRET_PATTERNS`→`[redacted-secret]`, abs paths→`[redacted-path]`, traceback markers→`[redacted-trace]` BEFORE truncation. No secret/abs-path on the first line or in JSON summary/rationale/risk_notes reaches job metadata / trust-show / review bundle / cockpit, even on rejected reports. Test `test_candidate_summary_scrubbed` added.
-- **Status**: Open
+Done: R-0083 - `_safe_text` (summary/rationale/risk_notes, and via `_safe_first_line` the diff/markdown summary) now routes through `_scrub_public`, masking `_SECRET_PATTERNS`→`[redacted-secret]`, abs paths→`[redacted-path]`, traceback markers→`[redacted-trace]` BEFORE truncation. No secret/abs-path on the first line or in JSON summary/rationale/risk_notes reaches job metadata / trust-show / review bundle / cockpit, even on rejected reports. Tests `test_candidate_summary_scrubbed` (JSON summary) + `test_first_line_secret_scrubbed` (markdown first line) added; full suite green (5568 passed).
+- **Status**: Resolved
 - **Severity**: High
 - **Area**: redaction
 - **Details**: `parse_candidate` sets `candidate.summary = _safe_first_line(raw_text)` (and JSON path sets `summary = _safe_text(obj.get("summary"))`). `_safe_first_line`/`_safe_text` only collapse whitespace + truncate to 200 chars — they do NOT redact secret-pattern or absolute-path content. That summary is then stored in the public trust report via `export_trust_report_json` (→ `save_trust_report` writes it into `job.metadata["provider_trust_reports_v0"]`) and surfaced by `remedy provider trust-show <job> <report_id> --json` (prints the whole report dict), and it also feeds the Repair Artifact's `patch_intent_explanations[].summary`. So a secret/token/absolute path that appears on the FIRST non-empty line of untrusted provider output (or in the JSON `summary` field) leaks verbatim (whitespace-collapsed, ≤200 chars) into public Job metadata + CLI output + (Step 1324/1325) review bundle / cockpit — EVEN WHEN `scan_secrets` flags `raw_secret_detected`/`absolute_path` and the candidate is REJECTED, because the report (with `candidate.summary`) is still saved and shown. This trips two block-ifs: "raw provider output is stored in public Job metadata" and "secret-like content is echoed".
@@ -64,3 +68,48 @@ Done: R-0083 - `_safe_text` (summary/rationale/risk_notes, and via `_safe_first_
   - **Docs** PASS: docs/provider-trust-gate-v0.md + cross-links (overnight-executor/repair-loop).
 - **OPEN: R-0083 (HIGH, redaction)** — unresolved as of 2fff2a1 (commit only reworded the traceback finding summary, not the candidate.summary scrubbing). Block is FAIL until resolved.
 - Verdict stays **PENDING/FAIL-trending** until R-0083 resolved + redaction test extended + full pytest green once (count+wrapper) + changed-files table. Reviewer relies on builder full-suite count (does not run full pytest). Next finding id: R-0084.
+
+## Builder Final Handoff (Steps 1305-1334)
+
+- **Mainline reconciliation**: PR #56 merged; branch off clean main 91b4a51; no drift.
+- **Tests**: targeted provider unit (34) + CLI runtime (8) + review-bundle/cockpit/
+  catalog/progress/feature/run-contract/repair. **Full pytest** (post R-0083 +
+  resource-safety fix) → **5568 passed, 8 skipped, 1 deselected** (exit 0). Wrapper
+  `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
+- **Integrity**: `remedy integrity check` passes once R-0083 marked Resolved (no open blocker/high).
+- **Findings**: R-0083 (High, provider free-text not scrubbed) — Resolved (`_scrub_public`).
+- **Intake model / quarantine / parser / trust findings / secret+path+patch validation /
+  failure-link / trust decision / repair artifact / repair patch intent / CLI /
+  RunContract / Progress / Feature / Review / Cockpit / redaction / architecture guards**: DONE.
+- **Hard completion criteria (1334)**: no raw provider output public; secrets never
+  echoed (scrubbed + generic finding summaries); accepted candidate cannot apply
+  automatically (apply via do continue only); accepted creates pending intent
+  (approval_required, no auto-approve); protected paths rejected; unparseable creates
+  no intent; intent IDs verified resolvable (no fakes); no provider/Ollama/Claude SDK
+  imports; no network/subprocess. ALL satisfied.
+
+### Changed Files (Steps 1305-1334)
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/provider_trust.py` | NEW — quarantine + parser + secret/path/patch/failure-link validation + trust decision + repair artifact/intent + safe exports; `_scrub_public` redactor | Core Provider Trust Gate |
+| `packages/orchestration/run_contract.py` | Added provider_intake/provider_trust_review/create_provider_repair_intent (allowed by default; execution stays CLOUD_PROVIDER denied) | Distinguish intake from execution |
+| `apps/cli/command_catalog.py` | Added provider group + intake-repair (write_metadata) + trust-show (read_only) | CLI surface |
+| `apps/cli/grouped.py` | Parse --input/--stdin/--failure-artifact-id | Intake flags |
+| `apps/cli/commands/provider_cmd.py` | NEW — intake-repair + trust-show handlers | Wire CLI to gate |
+| `apps/cli/commands/__init__.py` | Register provider_cmd | Handler collection |
+| `packages/orchestration/progress_ledger.py` | provider trust items from persisted reports | Progress surface |
+| `packages/orchestration/feature_planner.py` | provider rejected/needs-review/intent-pending follow-ups (no auto invoke/approve) | Human next-steps |
+| `packages/orchestration/review_bundle.py` | provider_trust_summary.json (REQUIRED_SECTIONS 16→17) | Reviewable summary |
+| `packages/orchestration/ui_server.py` | read-only provider_trust cockpit section | Surface counts (no buttons) |
+| `docs/provider-trust-gate-v0.md` | NEW — gate doc | Long-term knowledge |
+| `docs/repair-loop-v1.md`, `docs/bounded-overnight-executor-v0.md` | cross-links | Doc graph |
+| `tests/orchestration/test_provider_trust.py` | NEW — 34 unit/redaction/architecture tests | Coverage |
+| `tests/cli/test_provider_trust_cli.py` | NEW — 8 CLI runtime tests | Coverage |
+| `tests/orchestration/test_review_bundle.py` | REQUIRED_SECTIONS==17 + provider section | Keep invariant |
+| `tests/ui_server/test_dashboard_cockpit_truth.py` | provider_trust section shape | Keep invariant |
+| `.agent/plan.md`, `.agent/context.md`, `.agent/live_review.md` | block state + product readiness + review | Runtime state |
+
+### Provider Trust Gate readiness + merge recommendation (Step 1334 / 1303-equiv)
+Readiness ~95% (real provider builder deliberately deferred). Merge Provider Trust
+Gate v0 ALONE; do NOT stack the provider builder into this PR — keep the next block
+(Provider-backed Repair Builder v0) a separate PR.
