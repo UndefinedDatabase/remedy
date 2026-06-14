@@ -940,6 +940,8 @@ def _build_local_advisor_summary(job: Any) -> dict:
         sev_counts: dict[str, int] = {}
         for r in runs:
             impact_counts[r.get("decision_impact", "")] = impact_counts.get(r.get("decision_impact", ""), 0) + 1
+            for sev, n in (r.get("finding_severity_counts") or {}).items():
+                sev_counts[sev] = sev_counts.get(sev, 0) + int(n)
         return {
             "run_count": len(runs),
             "completed_count": usage.get("completed_count", 0),

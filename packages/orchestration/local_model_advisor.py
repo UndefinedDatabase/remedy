@@ -213,6 +213,7 @@ class LocalAdvisorRunRecord:
     prompt_chars: int = 0
     response_chars: int = 0
     duration_ms: int = 0
+    finding_severity_counts: dict[str, int] = field(default_factory=dict)
     created_at: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -224,7 +225,9 @@ class LocalAdvisorRunRecord:
             "status": self.status, "stop_reason": self.stop_reason,
             "decision_impact": self.decision_impact,
             "prompt_chars": self.prompt_chars, "response_chars": self.response_chars,
-            "duration_ms": self.duration_ms, "created_at": self.created_at,
+            "duration_ms": self.duration_ms,
+            "finding_severity_counts": self.finding_severity_counts,
+            "created_at": self.created_at,
         }
 
 
@@ -895,6 +898,15 @@ def run_local_advisor(
     return resp
 
 
+def _severity_counts(resp: LocalAdvisorResponse) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for sev in [f.severity for f in resp.findings] + \
+            [c.get("severity", "") for c in resp.suggested_concerns]:
+        if sev:
+            counts[sev] = counts.get(sev, 0) + 1
+    return counts
+
+
 def _persist(data_dir: Path, resp: LocalAdvisorResponse, prompt: str, raw: str) -> None:
     run = LocalAdvisorRunRecord(
         advisor_run_id=resp.advisor_run_id, job_id=resp.job_id, decision_id=resp.decision_id,
@@ -902,7 +914,7 @@ def _persist(data_dir: Path, resp: LocalAdvisorResponse, prompt: str, raw: str) 
         prompt_hash=resp.prompt_hash, response_hash=resp.response_hash, status=resp.status,
         stop_reason=resp.stop_reason, decision_impact=resp.decision_impact,
         prompt_chars=len(prompt), response_chars=len(raw), duration_ms=resp.duration_ms,
-        created_at=resp.created_at)
+        finding_severity_counts=_severity_counts(resp), created_at=resp.created_at)
     _store_run(data_dir, run, prompt, raw)
 
 
