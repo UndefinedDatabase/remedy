@@ -198,6 +198,9 @@ class ProviderTrustReport:
     candidate: ProviderCandidateRepair | None = None
     repair_artifact_id: str = ""
     repair_intent_id: str = ""
+    material_id: str = ""
+    material_state: str = ""          # ""|materialized|unsupported_patch_shape|materialization_failed
+    report_state: str = ""            # accepted|materialized|intent_pending_approval|materialization_failed
     next_safe_action: str = ""
     received_at: str = ""
     safe_summary: str = ""
@@ -214,6 +217,8 @@ class ProviderRepairIntakeResult:
     findings: list[ProviderTrustFinding] = field(default_factory=list)
     repair_artifact_id: str = ""
     repair_intent_id: str = ""
+    material_id: str = ""
+    material_state: str = ""
     next_safe_action: str = ""
     safe_summary: str = ""
 
@@ -771,6 +776,9 @@ def export_trust_report_json(report: ProviderTrustReport) -> dict[str, Any]:
         },
         "repair_artifact_id": report.repair_artifact_id,
         "repair_intent_id": report.repair_intent_id,
+        "material_id": report.material_id,
+        "material_state": report.material_state,
+        "report_state": report.report_state,
         "next_safe_action": report.next_safe_action,
         "received_at": report.received_at,
         "safe_summary": report.safe_summary,
@@ -952,22 +960,37 @@ def intake_provider_repair(
         received_at=_now(),
     )
 
-    # 8. Accepted → create Repair Artifact + pending Patch Intent (still needs approval).
+    # 8. Accepted → MATERIALIZE into a real applyable pending Patch Intent when the
+    #    patch shape is supported (single .md create/modify). Unsupported shapes stay
+    #    accepted_but_not_materialized (no intent). Always approval-gated; no apply.
+    report.report_state = report.trust_status
     if decision.trust_status == TrustStatus.ACCEPTED:
-        if not evaluate_run_action(contract, ContractAction.CREATE_PROVIDER_REPAIR_INTENT).allowed:
+        if not (evaluate_run_action(contract, ContractAction.CREATE_PROVIDER_REPAIR_INTENT).allowed
+                and evaluate_run_action(contract, ContractAction.PROVIDER_MATERIALIZE_PATCH).allowed):
             report.trust_status = TrustStatus.NEEDS_HUMAN_REVIEW
+            report.report_state = "materialization_blocked"
             report.findings.append(_finding(TrustFindingCode.REQUIRES_HUMAN_REVIEW, Severity.MEDIUM,
-                                            "Contract denies provider repair intent creation."))
+                                            "Contract denies provider repair materialization."))
         else:
-            art_id, intent_id = _create_repair_artifact_and_intent(job, report, candidate, request)
-            if intent_id:
-                report.repair_artifact_id = art_id
-                report.repair_intent_id = intent_id
-                report.next_safe_action = f"remedy patch approve {request.job_id} {intent_id} --json"
+            from packages.orchestration.provider_patch_material import (
+                materialize_accepted_candidate, MaterialState,
+            )
+            mres = materialize_accepted_candidate(job, report, candidate, raw_patch, request, ddir)
+            report.material_id = mres.material_id
+            report.material_state = mres.state
+            if mres.state == MaterialState.MATERIALIZED and mres.linked_intent_id:
+                report.repair_artifact_id = mres.repair_artifact_id
+                report.repair_intent_id = mres.linked_intent_id
+                report.report_state = "intent_pending_approval"
+                report.next_safe_action = (
+                    f"remedy patch approve {request.job_id} {mres.linked_intent_id} --json")
             else:
-                report.trust_status = TrustStatus.NEEDS_HUMAN_REVIEW
-                report.findings.append(_finding(TrustFindingCode.REQUIRES_HUMAN_REVIEW, Severity.MEDIUM,
-                                                "Patch intent could not be created — manual review."))
+                # Accepted but not materialized — safe stop, no intent.
+                report.report_state = ("materialization_failed"
+                                       if mres.state == MaterialState.FAILED
+                                       else "accepted_but_not_materialized")
+                report.findings.append(_finding(TrustFindingCode.REQUIRES_HUMAN_REVIEW, Severity.LOW,
+                                                f"Accepted but not materialized ({mres.reason})."))
 
     if not report.next_safe_action:
         report.next_safe_action = (
@@ -987,6 +1010,8 @@ def intake_provider_repair(
     result.findings = report.findings
     result.repair_artifact_id = report.repair_artifact_id
     result.repair_intent_id = report.repair_intent_id
+    result.material_id = report.material_id
+    result.material_state = report.material_state
     result.next_safe_action = report.next_safe_action
     result.safe_summary = report.safe_summary
     return result

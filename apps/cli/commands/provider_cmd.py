@@ -74,7 +74,37 @@ def _cmd_provider_trust_show(args: Any) -> None:
     print(f"  next: {report.get('next_safe_action', '')}")
 
 
+def _cmd_provider_material_show(args: Any) -> None:
+    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.provider_patch_material import (
+        get_material, verify_provider_patch_material,
+    )
+    try:
+        job = load_job(args.job_id)
+    except (JobNotFoundError, ValueError) as exc:
+        print(f"Error: {type(exc).__name__}", file=sys.stderr)
+        sys.exit(1)
+    material = get_material(job, args.material_id)
+    if material is None:
+        print("Error: material not found", file=sys.stderr)
+        sys.exit(1)
+    verification = verify_provider_patch_material(str(args.job_id), args.material_id)
+    out = {**material, "verification": verification.to_dict()}
+    if getattr(args, "json", False):
+        print(json.dumps(out, indent=2))
+        return
+    print(f"Provider patch material {args.material_id}")
+    print(f"  state: {material['material_state']}  verified: {verification.ok}  "
+          f"format: {material['patch_format']}")
+    print(f"  targets: {material['target_path_count']}  ops: {material['operation_count']}  "
+          f"lines: {material['total_line_count']}")
+    if material.get("linked_intent_id"):
+        print(f"  pending intent: {material['linked_intent_id']}")
+    print(f"  trust report: {material.get('trust_report_id', '')}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "provider.intake-repair": _cmd_provider_intake_repair,
     "provider.trust-show": _cmd_provider_trust_show,
+    "provider.material-show": _cmd_provider_material_show,
 }
