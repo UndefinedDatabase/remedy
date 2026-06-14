@@ -46,6 +46,7 @@ REQUIRED_SECTIONS = (
     "provider_trust_summary.json",
     "provider_material_summary.json",
     "repair_request_summary.json",
+    "self_dogfood_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -765,6 +766,32 @@ def _build_repair_request_summary(job: Any) -> dict:
                 "imported_response_count": 0, "error": "repair_request_unavailable"}
 
 
+def _build_self_dogfood_summary(job: Any) -> dict:
+    """Safe Self-Dogfood summary (Step 1417). Counts/IDs only — no raw finding body,
+    source, diffs, logs, secrets, or absolute paths. Derived from durable self-dogfood
+    ProposedTasks (no .agent re-scan in the bundle)."""
+    try:
+        from packages.orchestration.proposed_tasks import load_proposed_tasks_safe
+        tasks, _ = load_proposed_tasks_safe(str(job.id))
+        sd = [t for t in tasks if getattr(t, "task_type", "") == "self_dogfood"]
+        by_priority: dict[str, int] = {}
+        by_status: dict[str, int] = {}
+        for t in sd:
+            by_priority[t.priority] = by_priority.get(t.priority, 0) + 1
+            st = str(t.status.value if hasattr(t.status, "value") else t.status)
+            by_status[st] = by_status.get(st, 0) + 1
+        return {
+            "proposed_task_count": len(sd),
+            "by_priority": by_priority,
+            "by_status": by_status,
+            "high_priority_count": by_priority.get("high", 0),
+            "top_item_ids": [t.id for t in sd[:5]],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"proposed_task_count": 0, "by_priority": {}, "by_status": {},
+                "error": "self_dogfood_unavailable"}
+
+
 def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
     """Safe context inspection summary — no file bodies."""
     try:
@@ -1190,6 +1217,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("repair_request_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("repair_request_summary.json", status="error", error="build failed"))
+
+    # self_dogfood_summary.json (Step 1417)
+    try:
+        sds = _build_self_dogfood_summary(job)
+        content = json.dumps(sds, indent=2).encode()
+        section_data["self_dogfood_summary.json"] = content
+        result.sections.append(ReviewBundleSection("self_dogfood_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("self_dogfood_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

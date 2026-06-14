@@ -606,6 +606,28 @@ def _build_repair_request_section(job: Any) -> dict[str, Any]:
                 "latest_request_target": "unknown", "source": "unavailable"}
 
 
+def _build_self_dogfood_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Self-Dogfood summary for the cockpit (Step 1418). Counts +
+    latest status only. No buttons, no mutation, no raw findings."""
+    try:
+        from packages.orchestration.proposed_tasks import load_proposed_tasks_safe
+        tasks, _ = load_proposed_tasks_safe(str(job.id))
+        sd = [t for t in tasks if getattr(t, "task_type", "") == "self_dogfood"]
+        high = sum(1 for t in sd if t.priority == "high")
+        pending = sum(1 for t in sd if str(t.status).endswith("proposed"))
+        return {
+            "self_improvement_item_count": len(sd),
+            "high_priority_count": high,
+            "pending_evaluation_count": pending,
+            "latest_status": (str(sd[-1].status) if sd else "none"),
+            "source": "self_dogfood",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"self_improvement_item_count": "unknown", "high_priority_count": "unknown",
+                "pending_evaluation_count": "unknown", "latest_status": "unknown",
+                "source": "unavailable"}
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -870,6 +892,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "overnight_run": _build_overnight_run_section(job, truth_data_dir),
         "provider_trust": _build_provider_trust_section(job),
         "repair_request": _build_repair_request_section(job),
+        "self_dogfood": _build_self_dogfood_section(job),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,

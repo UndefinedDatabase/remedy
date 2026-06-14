@@ -897,6 +897,50 @@ def merge_repair_request_items(ledger: ProgressLedger, packages: dict | None,
             seen.add(item.item_id)
 
 
+def extract_self_dogfood_items(proposed_tasks: list | None) -> list[ProgressItem]:
+    """Extract Self-Dogfood progress items from durable self-dogfood ProposedTasks
+    (Step 1415). Read-only; fixed item_ids → no duplicates."""
+    if not proposed_tasks:
+        return []
+    sd = [t for t in proposed_tasks if getattr(t, "task_type", "") == "self_dogfood"]
+    if not sd:
+        return []
+    proposed = [t for t in sd if str(getattr(t, "status", "")).endswith("proposed")]
+    approved = [t for t in sd if "approved" in str(getattr(t, "status", ""))]
+    deferred = [t for t in sd if "deferred" in str(getattr(t, "status", ""))]
+    items: list[ProgressItem] = []
+    items.append(ProgressItem(
+        item_id="self-improvement-proposed", title="Self-improvement tasks proposed",
+        status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+        safe_summary=f"{len(sd)} self-dogfood task(s) proposed."))
+    if proposed:
+        items.append(ProgressItem(
+            item_id="self-improvement-pending-evaluation", title="Self-improvement awaiting evaluation",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Low", safe_summary=f"{len(proposed)} self-dogfood task(s) await human evaluation.",
+            next_action="remedy decision list <job_id> --json"))
+    if approved:
+        items.append(ProgressItem(
+            item_id="self-improvement-approved", title="Self-improvement approved",
+            status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+            safe_summary=f"{len(approved)} self-dogfood task(s) approved for build."))
+    if deferred:
+        items.append(ProgressItem(
+            item_id="self-improvement-deferred", title="Self-improvement deferred",
+            status=ProgressStatus.DEFERRED, source_type=ProgressSource.KNOWN_RISK,
+            safe_summary=f"{len(deferred)} self-dogfood task(s) deferred."))
+    return items
+
+
+def merge_self_dogfood_items(ledger: ProgressLedger, proposed_tasks: list | None) -> None:
+    """Merge self-dogfood items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_self_dogfood_items(proposed_tasks):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -1006,6 +1050,15 @@ def build_progress_ledger(
             from packages.orchestration.repair_request_builder import load_request_packages
             from packages.orchestration.provider_patch_material import load_materials as _lm
             merge_repair_request_items(ledger, load_request_packages(job), _lm(job))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Self-dogfood items from durable self-dogfood ProposedTasks (Step 1415).
+    if job is not None:
+        try:
+            from packages.orchestration.proposed_tasks import load_proposed_tasks_safe
+            pts, _degraded = load_proposed_tasks_safe(str(job.id))
+            merge_self_dogfood_items(ledger, pts)
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

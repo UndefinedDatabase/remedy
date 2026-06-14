@@ -319,6 +319,14 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.REPAIR_ARTIFACT,
             "remedy provider intake-repair <job_id> --failure-artifact-id <id> --input <file> --provider <label> --json",
         ),
+        # Self-Dogfood follow-ups (Step 1416). No automatic execution/approval.
+        "self-improvement-pending-evaluation": (
+            "Evaluate self-proposed improvement tasks",
+            "Self-dogfood proposed improvement tasks await human evaluation/approval "
+            "(no self-apply / self-merge).",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy decision list <job_id> --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)
