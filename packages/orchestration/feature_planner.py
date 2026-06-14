@@ -275,6 +275,27 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.PROOF_GAP,
             "remedy change proof <job_id> --json",
         ),
+        # Provider Trust Gate follow-ups (Step 1323). No automatic provider
+        # invocation, no automatic approval.
+        "provider-trust-rejected": (
+            "Review rejected provider output",
+            "External provider output was rejected by the trust gate — inspect findings and "
+            "retry with a safer candidate (manual; no automatic provider invocation).",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy provider trust-show <job_id> <report_id> --json",
+        ),
+        "provider-trust-needs-review": (
+            "Review provider output (needs human review)",
+            "External provider output needs human review before any repair intent.",
+            FeaturePlanSource.OPEN_FINDING,
+            "remedy provider trust-show <job_id> <report_id> --json",
+        ),
+        "provider-repair-intent-pending": (
+            "Approve or reject the provider repair",
+            "A provider-sourced repair patch intent is pending approval (apply via do continue).",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy patch approve <job_id> <intent_id> --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)

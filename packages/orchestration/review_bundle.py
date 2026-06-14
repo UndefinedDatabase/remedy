@@ -43,6 +43,7 @@ REQUIRED_SECTIONS = (
     "repair_summary.json",
     "overnight_readiness_summary.json",
     "overnight_run_summary.json",
+    "provider_trust_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -678,6 +679,39 @@ def _build_overnight_run_summary(job: Any, data_dir: Path) -> dict:
                 "error": "overnight_run_unavailable"}
 
 
+def _build_provider_trust_summary(job: Any) -> dict:
+    """Safe Provider Trust Gate summary (Step 1324). Counts/codes/IDs only — no raw
+    provider output, no diff, no source, no secrets, no absolute paths."""
+    try:
+        from packages.orchestration.provider_trust import load_trust_reports
+        reports = list(load_trust_reports(job).values())
+        by_status = {"accepted": 0, "rejected": 0, "needs_human_review": 0}
+        finding_codes: dict[str, int] = {}
+        finding_sev: dict[str, int] = {}
+        pending = 0
+        for r in reports:
+            st = r.get("trust_status", "")
+            if st in by_status:
+                by_status[st] += 1
+            if st == "accepted" and r.get("repair_intent_id"):
+                pending += 1
+            for f in r.get("findings", []):
+                finding_codes[f.get("code", "")] = finding_codes.get(f.get("code", ""), 0) + 1
+                finding_sev[f.get("severity", "")] = finding_sev.get(f.get("severity", ""), 0) + 1
+        return {
+            "report_count": len(reports),
+            "accepted": by_status["accepted"],
+            "rejected": by_status["rejected"],
+            "needs_review": by_status["needs_human_review"],
+            "pending_provider_repair_intents": pending,
+            "finding_counts_by_code": finding_codes,
+            "finding_counts_by_severity": finding_sev,
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"report_count": 0, "accepted": 0, "rejected": 0, "needs_review": 0,
+                "error": "provider_trust_unavailable"}
+
+
 def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
     """Safe context inspection summary — no file bodies."""
     try:
@@ -1076,6 +1110,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("overnight_run_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("overnight_run_summary.json", status="error", error="build failed"))
+
+    # provider_trust_summary.json (Step 1324)
+    try:
+        pts = _build_provider_trust_summary(job)
+        content = json.dumps(pts, indent=2).encode()
+        section_data["provider_trust_summary.json"] = content
+        result.sections.append(ReviewBundleSection("provider_trust_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("provider_trust_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

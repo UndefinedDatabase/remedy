@@ -156,6 +156,12 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--allow-repair-propose", action="store_true", dest="allow_repair_propose", help=arg.help)
             elif arg.name == "--allow-repair-apply":
                 parser.add_argument("--allow-repair-apply", action="store_true", dest="allow_repair_apply", help=arg.help)
+            elif arg.name == "--input":
+                parser.add_argument("--input", default=None, dest="input", help=arg.help)
+            elif arg.name == "--stdin":
+                parser.add_argument("--stdin", action="store_true", dest="stdin", help=arg.help)
+            elif arg.name == "--failure-artifact-id":
+                parser.add_argument("--failure-artifact-id", default=None, dest="failure_artifact_id", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

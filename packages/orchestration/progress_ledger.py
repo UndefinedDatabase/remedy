@@ -769,6 +769,56 @@ def merge_overnight_run_items(ledger: ProgressLedger, record: dict | None) -> No
             seen.add(item.item_id)
 
 
+def extract_provider_trust_items(reports: dict | None) -> list[ProgressItem]:
+    """Extract Provider Trust Gate progress items from persisted trust reports
+    (Step 1322). Read-only; fixed item_ids → no duplicates. Safe summaries only."""
+    if not reports:
+        return []
+    vals = list(reports.values())
+    accepted = [r for r in vals if r.get("trust_status") == "accepted"]
+    rejected = [r for r in vals if r.get("trust_status") == "rejected"]
+    needs = [r for r in vals if r.get("trust_status") == "needs_human_review"]
+    pending = [r for r in accepted if r.get("repair_intent_id")]
+    items: list[ProgressItem] = []
+    items.append(ProgressItem(
+        item_id="provider-output-received", title="Provider output received",
+        status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+        safe_summary=f"{len(vals)} provider trust report(s) on record."))
+    if rejected:
+        items.append(ProgressItem(
+            item_id="provider-trust-rejected", title="Provider output rejected",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Medium", safe_summary=f"{len(rejected)} provider candidate(s) rejected by trust gate.",
+            next_action="remedy provider trust-show <job_id> <report_id> --json"))
+    if needs:
+        items.append(ProgressItem(
+            item_id="provider-trust-needs-review", title="Provider output needs review",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Medium", safe_summary=f"{len(needs)} provider candidate(s) need human review.",
+            next_action="remedy provider trust-show <job_id> <report_id> --json"))
+    if pending:
+        items.append(ProgressItem(
+            item_id="provider-repair-intent-pending", title="Provider repair intent pending approval",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.REPAIR_ARTIFACT,
+            severity="Medium", safe_summary=f"{len(pending)} provider repair intent(s) pending approval.",
+            next_action="remedy patch approve <job_id> <intent_id> --json"))
+    elif accepted and not pending:
+        items.append(ProgressItem(
+            item_id="provider-repair-unavailable", title="Provider repair unavailable",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Low", safe_summary="Accepted provider candidate produced no pending intent."))
+    return items
+
+
+def merge_provider_trust_items(ledger: ProgressLedger, reports: dict | None) -> None:
+    """Merge provider trust items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_provider_trust_items(reports):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -853,6 +903,14 @@ def build_progress_ledger(
         try:
             from packages.orchestration.overnight_executor import latest_run_record
             merge_overnight_run_items(ledger, latest_run_record(str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Provider trust gate items from persisted trust reports (Step 1322).
+    if job is not None:
+        try:
+            from packages.orchestration.provider_trust import load_trust_reports
+            merge_provider_trust_items(ledger, load_trust_reports(job))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

@@ -147,3 +147,4 @@ fixture builder for real source repairs.
 
 - [bounded-overnight-prep-v0.md](bounded-overnight-prep-v0.md) — read-only readiness/report layer that surfaces repair attempts in its checklist + capability matrix.
 - [bounded-overnight-executor-v0.md](bounded-overnight-executor-v0.md) — the foreground one-step executor invokes THIS propose path (docs-only, no apply) when `--allow-one-cycle --allow-repair-propose` is given and all gates pass.
+- [provider-trust-gate-v0.md](provider-trust-gate-v0.md) — turns UNTRUSTED external model output into a pending Repair Patch Intent behind a trust gate (no provider execution); complements the deterministic fixture builder.

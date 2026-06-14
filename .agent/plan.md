@@ -1,59 +1,57 @@
-# Plan — Steps 1275-1304: Bounded Overnight Executor v0
+# Plan — Steps 1305-1334: Provider Trust Gate + External Repair Intake v0
 
 ## Goal
-First Bounded Overnight Executor: Remedy may perform AT MOST ONE bounded,
-foreground, reviewable step when EXPLICITLY invoked. Never a daemon, scheduler,
-loop, or hidden background process. Answers: what would I do? am I allowed? did
-I do it? why stop? what evidence? what next?
+Take UNTRUSTED external model/agent output (local file or stdin), quarantine it,
+parse/normalize, validate trust, emit a safe ProviderTrustReport, and ONLY when
+accepted create a Repair Artifact + pending Repair Patch Intent → approval_required
+→ stop. No provider/API/Ollama execution, no model invocation, no auto-apply, no
+auto-approval. Apply stays through `do continue`.
 
 ## Current Step
-DONE — full suite 5518 passed; verdict PASS WITH RISKS; ready to merge alone
+DONE — full suite 5568 passed; verdict PASS WITH RISKS; ready to merge alone
 
 ## Steps
-- [x] 1275: Mainline reconciliation + clean branch (PR #55 merged; scope→1275-1304)
-- [x] 1276: Executor models (Run Request/Result/Record/Checkpoint/Phase/Decision/Lease/Mode)
-- [x] 1277: Explicit execution policy (executor_execution_permitted, max_cycles=1, --allow-one-cycle)
-- [x] 1278: Executor lease (foreground; job + repo-when-mutating; stale recoverable; release on exit)
-- [x] 1279: Run record persistence (atomic, append-only, no overwrite, no raw)
-- [x] 1280: Phase checkpoints (durable per phase)
-- [x] 1281: Action selection contract (select_overnight_next_action + re-validate catalog/entity/policy)
-- [x] 1282: Action adapters (do_continue, repair_propose, read-only report; no shell/subprocess)
-- [x] 1283: CLI overnight run (report-only default; --allow-one-cycle + explicit flags)
-- [x] 1284: Policy gate enforcement (review/budget/risk gate; central re-check via services)
-- [x] 1285: Review-findings source (parse .agent/live_review.md; PENDING/FAIL/unknown block)
-- [x] 1286: Stop reason enforcement (canonical taxonomy via _canonical)
-- [x] 1287: Morning report output (readiness report + executor record)
-- [x] 1288: Idempotency (delegated services idempotent; append-only records)
-- [x] 1289: Progress Ledger integration (overnight run items)
-- [x] 1290: Feature Planner integration (run blockers; no auto relaxation)
-- [x] 1291: Review Bundle overnight_run_summary.json (REQUIRED_SECTIONS 16)
-- [x] 1292: Cockpit overnight_run section (read-only)
-
-- [x] 1293: CLI runtime tests (report-only default; flag/review/budget gates)
-- [x] 1294: Executor unit tests
-- [x] 1295: Redaction tests
-- [x] 1296: Architecture guards
-- [x] 1297: Documentation (bounded-overnight-executor-v0 + cross-links)
-- [x] 1298: Targeted tests + full pytest once (5516 passed); R-0081/R-0082 fixed
-- [x] 1299: Live review (R-0081/R-0082 Done-marked)
-- [x] 1300: PR discipline (clean tree, no drift; changed-files table; tests recorded)
-- [x] 1301: Product readiness update (context.md)
-- [x] 1302: Final handoff (changed-files table)
-- [x] 1303: Merge recommendation (executor alone)
-- [x] 1304: Hard completion criteria — all satisfied
+- [x] 1305: Mainline reconciliation + clean branch (PR #56 merged; scope→1305-1334)
+- [x] 1306: Intake models (Request/QuarantineRecord/CandidateRepair/TrustReport/Finding/Decision/Result)
+- [x] 1307: Private quarantine storage (0o700/0o600, bounded, hashed, no public raw)
+- [x] 1308: Input size/encoding limits (bytes/UTF-8/binary/NUL/traversal)
+- [x] 1309: Candidate parser (JSON or single fenced unified diff; exactly one patch)
+- [x] 1310: Trust finding taxonomy (codes + severities)
+- [x] 1311: Secret/raw-leak scanner (keys/tokens/passwords/private keys/abs paths/tracebacks)
+- [x] 1312: Path safety validation (relative-only, protected paths reject)
+- [x] 1313: Patch shape validation (bounded files/hunks/lines; delete high-risk; no binary)
+- [x] 1314: Failure link validation (exists/unresolved; link RepairAttempt; overlap→confidence)
+- [x] 1315: Trust decision (blocker/high→rejected; medium→needs_human_review; low→accepted)
+- [x] 1316: Repair Artifact from accepted candidate (linked, no raw export)
+- [x] 1317: Repair Patch Intent (real, pending; linked; catalog approve next action)
+- [x] 1318: CLI provider intake-repair (file/stdin)
+- [x] 1319: CLI provider trust-show (read-only)
+- [x] 1320: Command catalog (intake-repair write_metadata; trust-show read_only)
+- [x] 1321: RunContract (provider_intake/provider_trust_review/create_provider_repair_intent)
+- [x] 1322: Progress Ledger integration
+- [x] 1323: Feature Planner integration (no auto provider/approval)
+- [x] 1324: Review Bundle provider_trust_summary.json
+- [x] 1325: Cockpit read-only provider trust counts
+- [x] 1326: Redaction tests
+- [x] 1327: CLI runtime tests
+- [x] 1328: Architecture guards (no network/subprocess/provider SDK/apply/test-exec imports)
+- [x] 1329: Documentation (provider-trust-gate-v0 + cross-links)
+- [x] 1330: Targeted + full pytest once (R-0083 + resource-safety fixed)
+- [x] 1331: Live review
+- [x] 1332: PR discipline
+- [x] 1333: Product readiness update
+- [x] 1334: Final handoff
 
 ## Hard rules
-- Foreground, explicitly invoked ONLY. No daemon/scheduler/watch/background/loop.
-- Default behavior report-only; execution requires --allow-one-cycle + explicit
-  action flag (--allow-apply / --allow-repair-propose / --allow-repair-apply).
-- max_cycles == 1 hard limit. Exactly one allowed service action per invocation.
-- No provider/Ollama. No auto-approval. No auto-revert. No git commit.
-- No subprocess/CLI for executing Remedy commands — call central services directly.
-- No shell=True. No background pytest (scripts/remedy_pytest.sh; full suite once).
-- Idempotent: retry never double-applies/tests/proposes or duplicates reports.
-- Every next action catalog-backed + entity-backed. No event-only truth.
-- No raw stdout/stderr/source/diff/artifact-body/secrets/tracebacks/abs paths.
-- PENDING/FAIL review verdict or open blocker/high finding blocks execution.
+- NO provider/Ollama/Claude API execution, NO model invocation, NO network, NO subprocess.
+- External output is UNTRUSTED → quarantine private (0o700/0o600), never public.
+- No raw provider output/source/diff/stdout/stderr/artifact-body/secrets/tracebacks/
+  abs paths in ANY public surface (CLI/trust-show/events/Progress/Feature/Review/Cockpit).
+- Patch Intent creation ONLY; approval_required; apply stays via `do continue`.
+- Accepted ≠ applied, ≠ approved, ≠ verified.
+- blocker/high finding → rejected; medium → needs_human_review; unparseable → needs_human_review.
+- Protected paths rejected; secret-bearing rejected; exactly one patch candidate.
+- Every next safe action catalog-backed; no fake intent IDs.
 
 ## Next block
-Provider-backed Repair Builder v0 OR Provider Trust Verification.
+Provider-backed Repair Builder v0.

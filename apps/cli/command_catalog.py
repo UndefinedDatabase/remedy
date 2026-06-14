@@ -103,6 +103,7 @@ GROUPS: dict[str, GroupDef] = {
     "do": GroupDef("do", "Do", "High-level guided autorun — one command to start a Remedy run."),
     "repair": GroupDef("repair", "Repair", "Test failure repair — structured failure evidence and fix tasks."),
     "overnight": GroupDef("overnight", "Overnight", "Bounded overnight preparation — read-only readiness, plan, morning report."),
+    "provider": GroupDef("provider", "Provider", "Provider Trust Gate — quarantine + validate UNTRUSTED external model output (no provider execution)."),
     "review": GroupDef("review", "Review", "Reviewer recommendations — suggest, accept, reject follow-up tasks."),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation — list, evaluate, approve, reject, defer."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
@@ -1481,6 +1482,45 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=True,
         may_execute_commands=True,
         related=("overnight.readiness", "overnight.plan", "overnight.report"),
+    ),
+
+    # ── provider (trust gate — intake UNTRUSTED external output) ──────────
+    CommandEntry(
+        command_id="provider.intake-repair",
+        group_id="provider",
+        subcommand="intake-repair",
+        description="Quarantine + trust-validate an external repair candidate; create a pending intent only if accepted.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--input", "Path to a local file with the candidate repair", required=False, is_option=True),
+            ArgDef("--stdin", "Read the candidate repair from stdin", required=False, is_option=True, default="false"),
+            ArgDef("--failure-artifact-id", "Failure artifact this repair targets", required=False, is_option=True),
+            ArgDef("--provider", "Provider name (e.g. claude, fable, ollama)", required=False, is_option=True, default="unknown"),
+            ArgDef("--model", "Model name", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        requires_permission=False,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("provider.trust-show", "patch.approve", "repair.propose"),
+    ),
+    CommandEntry(
+        command_id="provider.trust-show",
+        group_id="provider",
+        subcommand="trust-show",
+        description="Read-only: show a ProviderTrustReport (safe findings/IDs; no raw output).",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("trust_report_id", "Trust report id"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("provider.intake-repair",),
     ),
 
     # ── review ───────────────────────────────────────────────────────────
