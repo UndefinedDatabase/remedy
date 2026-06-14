@@ -54,5 +54,24 @@ LLMs advise. The orchestrator controls. Evidence is truth. Local cheap advisor f
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite once
   at block end with `-k "not test_full_chain_order"`. No shell=True, no subprocess.
 
+## Product readiness — Local Model Advisor Adapter v0 (Step 1530)
+CAN: optionally consult a local advisor (loopback Ollama; `remedy orchestrator decide
+--use-local-advisor`, `remedy local-advisor status/run`). The advisor critiques a SAFE
+decision summary and may lower confidence, add missing-evidence hints, or escalate weak+high-
+risk evidence to human review. The deterministic orchestrator remains the controller; the
+final next_safe_action stays deterministic + catalog-backed; a missing/unavailable advisor
+never blocks deterministic operation. Surfaced in Progress/Feature/Review(23)/Cockpit; private
+run storage (0o700/0o600) holds raw, public surfaces hold hashes/counts/labels only.
+CANNOT (by design): be enabled by default; reach a non-loopback host; import a provider/cloud
+SDK; run a subprocess for model exec; let model output become a command/entity/approval/apply/
+PR/job; override contract/budget/review blockers; mark evidence complete/success/failure;
+strengthen confidence; loop endlessly (reuse by prompt_hash + suppress after repeated
+unavailability). Readiness ~90% (advisory rail complete; real external builder routing deferred).
+FUTURE: Provider Trust Verification v1; Expensive Builder Routing v0.
+
+## Status
+Steps 1499-1536 COMPLETE. Full pytest 5777 passed, 8 skipped, 1 deselected (exit 0); integrity
+fail_count=0; live review verdict PASS, zero findings. Branch pushed; NO PR (Step 1536).
+
 ## Next block
 Provider Trust Verification v1 OR Expensive Builder Routing v0.

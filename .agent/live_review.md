@@ -14,7 +14,15 @@ loop endlessly on repeated advisor failure. NO PR unless user asks (Step 1536).
 Timestamp: 2026-06-14
 
 ## Verdict
-PENDING — implementation in progress.
+PASS — all 15 checks PASS; ZERO open findings (next id R-0087). Both reviewer NITs resolved
+(dead config ternary dropped; review-bundle finding_severity_counts now populated from the
+advisor manifest). Local advisor is optional + disabled by default + loopback-only + advisory-
+only; deterministic decision stays the controller; missing/unavailable advisor never breaks
+deterministic orchestration; no model output becomes a command/entity/approval/apply/PR/job
+or overrides contract/budget/review; no raw prompt/response/secret/path/traceback in any
+public surface; stdlib-only HTTP (no provider/cloud SDK/subprocess/external net). Targeted
+suites green; full pytest 5777 passed, 8 skipped, 1 deselected (exit 0); integrity fail_count=0.
+NO PR created (Step 1536).
 
 ## Check Matrix (1-15) — to fill
 | Check | Status | Note |
@@ -34,7 +42,7 @@ PENDING — implementation in progress.
 | 13. Budget/usage + Progress/Feature/Review/Cockpit integrations | PASS | fixed item_ids; FeaturePlanSource valid; no raw/buttons |
 | 14. Redaction (no raw prompt/response/secrets/paths/tracebacks in public) | PASS | _scrub_public + scan_secrets; hashes only public |
 | 15. Architecture guards (no provider SDK/cloud/subprocess/network/apply/git/PR) | PASS | stdlib only; no SDK/subprocess in any new file |
-| (tests) Targeted suite + full pytest once | PENDING | steps 1521-1526 not yet committed |
+| (tests) Targeted suite + full pytest once | PASS | test_local_model_advisor.py (39) + test_local_advisor_cli.py (6) + review_bundle(23)/cockpit updated; full pytest 5777 passed/8 skipped/1 deselected; integrity 0 fail |
 
 ## Findings — Steps 1499-1536
 (none yet) — Next id: R-0087.
@@ -51,4 +59,22 @@ PENDING — implementation in progress.
   - Check 13 (integrations): progress_ledger `merge_local_advisor_items` fixed item_ids de-duped, safe summaries (status/impact/counts); feature_planner 3 rules map to valid `FeaturePlanSource.ROADMAP/KNOWN_RISK`; review_bundle REQUIRED_SECTIONS += `local_advisor_summary.json` (counts/labels/IDs only); ui_server cockpit section counts/status only, no buttons/mutation/raw. ✓
   - Check 15 (arch): stdlib urllib only; no provider SDK/cloud/subprocess/shell/external net/apply/git/PR/browser in any new file. ✓
   - NIT (not a finding): review_bundle `_build_local_advisor_summary` `sev_counts` is declared but never populated (manifest carries no per-finding list) → `finding_severity_counts` always `{}`. Cosmetic, no leak.
-- PENDING: Check 14 (targeted tests — redaction/endpoint/parsing/impact/CLI/arch guards; steps 1521-1526 not yet committed) + full pytest once + final handoff (changed-files table, integrity, verdict).
+- Tests committed + green: `test_local_model_advisor.py` (39: config/endpoint safety,
+  availability probe, parsing+redaction, invocation/storage/idempotency/budget/oversized/
+  anti-loop, advisor impact rules incl. cannot-create-action / cannot-override-blocker /
+  lower-confidence / escalate-weak-evidence / cannot-strengthen / downstream-redaction,
+  architecture guards), `test_local_advisor_cli.py` (6 subprocess: disabled status / external
+  endpoint blocked / decide ±advisor safe / run missing-decision safe / run disabled safe),
+  review_bundle (REQUIRED_SECTIONS==23) + cockpit section. Full pytest 5777 passed, 8 skipped,
+  1 deselected (exit 0); `remedy integrity check` fail_count=0.
+- Both prior NITs RESOLVED: dead `endpoint=endpoint if ep_ok else endpoint` ternary removed;
+  `finding_severity_counts` now populated (LocalAdvisorRunRecord.finding_severity_counts via
+  `_severity_counts`, aggregated in `_build_local_advisor_summary`). Re-reviewed → still ZERO findings.
+
+## Reviewer Final Verdict — Steps 1499-1536 (Local Model Advisor Adapter v0)
+**PASS.** Zero open Blocker/High; zero findings filed. The optional local advisor is disabled
+by default, loopback-only, advisory-only; it never executes, never imports a provider/cloud
+SDK, never breaks deterministic orchestration when absent, never lets model output become a
+command/entity/approval/apply/PR/job, never overrides contract/budget/review, and leaks no raw
+prompt/response/secret/path/traceback. Final next_safe_action stays deterministic + catalog-
+backed. Merge-ready. NO PR (Step 1536). Next id: R-0087.

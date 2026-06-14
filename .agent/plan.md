@@ -11,19 +11,26 @@ deterministic evidence and the final next_safe_action stays deterministic + cata
 LLMs advise. The orchestrator controls. Evidence is truth. Local cheap advisor first.
 
 ## Current Step
-1500 — local_model_advisor.py core
+1528-1532 — full pytest recorded; live review + handoff; PR HELD
 
 ## Steps
 - [x] 1499: Mainline reconciliation (PR #62 merged; main 5d4cdf4; scope→1499-1536)
-- [ ] 1500-1508: local_model_advisor.py (models/config/prompt/schema/storage/client/availability/invoke/redaction)
-- [ ] 1509-1511: orchestrator advisory mode + impact rules + anti-loop
-- [ ] 1512-1515: CLI local-advisor status/run + catalog + run_contract
-- [ ] 1516-1520: budget/usage + progress/feature/review-bundle/cockpit
-- [ ] 1521-1526: tests (redaction/endpoint/parsing/impact/CLI/arch guards)
-- [ ] 1527,1534: docs (local-model-advisor-v0 + updates + expensive-builder-routing-future)
-- [ ] 1528: targeted tests + full pytest once
-- [ ] 1529-1533: live review, readiness, PR discipline, handoff
-- [ ] 1536: merge discipline — DO NOT create PR unless user explicitly asks
+- [x] 1500-1508: local_model_advisor.py (models/config/prompt/schema/storage/client/availability/invoke/redaction)
+- [x] 1509-1511: orchestrator advisory mode + impact rules + anti-loop
+- [x] 1512-1515: CLI local-advisor status/run + catalog + run_contract
+- [x] 1516-1520: budget/usage + progress/feature/review-bundle/cockpit
+- [x] 1521-1526: tests (redaction/endpoint/parsing/impact/CLI/arch guards)
+- [x] 1527,1534: docs (local-model-advisor-v0 + updates + expensive-builder-routing-future)
+- [x] 1528: targeted tests + full pytest once (5777+ passed)
+- [x] 1529-1533: live review PASS (zero findings), readiness, PR discipline, handoff
+- [x] 1536: merge discipline — PR HELD (no PR unless user explicitly asks)
+
+## Product readiness (Step 1530)
+The orchestrator can OPTIONALLY consult a local advisor (loopback Ollama; disabled by
+default). Advisor critique never executes; the deterministic decision stays the controller;
+a missing local advisor never blocks deterministic operation. Final next_safe_action stays
+deterministic + catalog-backed. Readiness ~90% (advisory rail complete; real external builder
+routing deferred). Next block: Provider Trust Verification v1 OR Expensive Builder Routing v0.
 
 ## Hard rules
 - Local advisor OPTIONAL + DISABLED by default. Missing Ollama never breaks deterministic flow.
