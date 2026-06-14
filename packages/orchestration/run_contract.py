@@ -65,6 +65,11 @@ class ContractAction:
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
     EXPORT_REPAIR_REQUEST = "export_repair_request"
+    # Self-Dogfood Planner v0 (Step 1413) — read-only inspection/plan + metadata-only
+    # ProposedTask creation. No apply/test/provider; no self-modification.
+    SELF_INSPECT = "self_inspect"
+    SELF_PLAN = "self_plan"
+    SELF_PROPOSE_TASK = "self_propose_task"
 
     # Apply actions (gated by stop_before_apply)
     APPLY = "apply"
@@ -165,6 +170,9 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.CREATE_PROVIDER_REPAIR_INTENT,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
+    ContractAction.SELF_INSPECT,
+    ContractAction.SELF_PLAN,
+    ContractAction.SELF_PROPOSE_TASK,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
     ContractAction.RUN_TEST,

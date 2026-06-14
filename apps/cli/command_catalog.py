@@ -104,6 +104,7 @@ GROUPS: dict[str, GroupDef] = {
     "repair": GroupDef("repair", "Repair", "Test failure repair — structured failure evidence and fix tasks."),
     "overnight": GroupDef("overnight", "Overnight", "Bounded overnight preparation — read-only readiness, plan, morning report."),
     "provider": GroupDef("provider", "Provider", "Provider Trust Gate — quarantine + validate UNTRUSTED external model output (no provider execution)."),
+    "self": GroupDef("self", "Self", "Self-dogfood — inspect Remedy's own evidence and propose self-improvement tasks (read/metadata-only)."),
     "review": GroupDef("review", "Review", "Reviewer recommendations — suggest, accept, reject follow-up tasks."),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation — list, evaluate, approve, reject, defer."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
@@ -1575,6 +1576,63 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
         related=("provider.intake-repair", "provider.trust-show", "patch.approve"),
+    ),
+
+    # ── self (self-dogfood planner — read/metadata-only) ──────────────────
+    CommandEntry(
+        command_id="self.inspect",
+        group_id="self",
+        subcommand="inspect",
+        description="Read-only: inspect Remedy's own evidence for self-improvement items.",
+        action_class="read_only",
+        args=(
+            ArgDef("--job-id", "Optional job to include in inspection", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self.plan", "self.propose", "self.report"),
+    ),
+    CommandEntry(
+        command_id="self.plan",
+        group_id="self",
+        subcommand="plan",
+        description="Read-only: build a self-improvement plan (grouped items, top recommendations).",
+        action_class="read_only",
+        args=(
+            ArgDef("--job-id", "Optional job to include in the plan", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self.inspect", "self.propose"),
+    ),
+    CommandEntry(
+        command_id="self.propose",
+        group_id="self",
+        subcommand="propose",
+        description="Metadata-only: create ProposedTask(s) from self-improvement items (existing approval flow).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--item-id", "Self-improvement item id to propose", required=False, is_option=True),
+            ArgDef("--top", "Propose the top N items", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self.inspect", "self.plan"),
+    ),
+    CommandEntry(
+        command_id="self.report",
+        group_id="self",
+        subcommand="report",
+        description="Read-only: self-dogfood report (what Remedy thinks is wrong + evidence).",
+        action_class="read_only",
+        args=(
+            ArgDef("--job-id", "Optional job to include in the report", required=False, is_option=True),
+            ArgDef("--markdown", "Render the report as markdown", required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self.inspect", "self.plan"),
     ),
 
     # ── review ───────────────────────────────────────────────────────────

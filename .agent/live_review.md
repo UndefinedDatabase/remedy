@@ -1,168 +1,109 @@
-# Live Review — Steps 1365-1398: Provider-Agnostic Repair Request Builder v0
+# Live Review — Steps 1399-1428: Self-Dogfood Readiness + Self-Improvement Planner v0
 
 Reviewer: parallel reviewer
-Scope: From a FailureArtifact build a SAFE provider-AGNOSTIC RepairRequestPackage for
-ANY external worker/model/human; external output re-enters ONLY via existing
-`provider intake-repair` → Trust Gate → materialization → approval → do continue.
-Interface-only candidate generator adapter (no execution). Must NOT: call any
-provider/SDK/network/subprocess/browser/IDE; apply; create Patch Intent from request;
-leak raw output/source/diff/secrets/tracebacks/abs paths; assume any single provider/
-subscription/account/IDE. NO PR unless user explicitly asks (Step 1398).
+Scope: Remedy inspects its OWN evidence (reports/findings/risks/failed tests/stale
+handoff/missing evidence) → SelfImprovementItems → Plan → ProposedTasks via the
+EXISTING approval flow. Must NOT: edit code, apply, approve, insert Job.tasks directly,
+create PRs, do git ops, mutate main, run scheduled/background; call provider/network/
+subprocess/browser; read raw source/logs/diffs; leak findings/secrets/paths; ignore
+PENDING/FAIL/open blocker-high; duplicate ProposedTasks for same item.
 Timestamp: 2026-06-14
 
 ## Verdict
 PASS WITH RISKS — all 15 checks reviewed PASS in the audit log; ZERO findings, zero
-open Blocker/High. Full suite green (5627 passed, 8 skipped, 1 deselected); integrity
-passed (0 fail). Provider-agnostic request builder; output re-enters ONLY via provider
-intake; no provider/network/subprocess/apply/intent-from-request; simulated external-
-candidate E2E (request → intake → materialize → approve → do continue → completed_verified)
-proven. NO PR created (Step 1398 — awaiting explicit user request).
+open Blocker/High. Full suite green (5662 passed, 8 skipped, 1 deselected); integrity
+passed (0 fail). Read-only inspect/plan/report + metadata-only propose (ProposedTask
+via existing flow); no self-apply/approve/PR/git/Job.tasks/provider/network; idempotent
+by fingerprint; PENDING/FAIL/open-blocker-high → self-improvement blocker.
 
-## Check Matrix (1-15)
+## Check Matrix (1-15) — to fill
 | Check | Status | Note |
 |---|---|---|
-| 1. Mainline reconciliation | PASS | c9ce1a0 off clean main 871fb8d; PR#58 recorded; residuals carried; only .agent/ files touched; no drift |
-| 2. Repair request models (no raw fields) | PASS | dataclasses hold IDs/statuses/scrubbed sections only; no raw stdout/source/diff fields |
-| 3. Safe request builder (from RepairContextSummary) | PASS | reuses build_repair_context; all free-text via _scrub→_scrub_public; ctx attrs verified present |
-| 4. Candidate output schema (one candidate; JSON or fenced diff) | PASS | CANDIDATE_OUTPUT_SCHEMA + Required-response-format section; "EXACTLY ONE candidate" |
-| 5. Request package private storage (atomic, hashed, no abs paths) | PASS | 0o700 dir/0o600 files, tmp+os.replace, 256KiB cap, sha256, manifest sections scrubbed |
-| 6. CLI (request / request-show) + catalog + RunContract | PASS | write_metadata/read_only, no-mutate/no-exec, JSON stable, errs→stderr; PREPARE/EXPORT_REPAIR_REQUEST allowed (not cloud), denial→CONTRACT_BLOCKED |
-| 7. Candidate generator adapter boundary (no execution) | PASS | interface only; execute() raises CandidateGeneratorExecutionUnavailable; no net/sdk/subprocess |
-| 8. External generator record + RepairAttempt linkage + idempotency | PASS | record saved; repair_attempt_id captured; idempotent (test_idempotent: same id; test_new_forces_fresh) |
-| 9. Import guidance (exact human steps; no fake automation) | PASS | 6-step relay→intake-repair→trust-show→approve→do continue; all 4 cmds exist in catalog; no fake automation |
-| 10. Integrations (Progress/Feature/Review/Cockpit) | PASS | 3ee5be1: ledger fixed item_ids+de-dup; feature planner agnostic (no auto exec); review bundle counts-only (REQUIRED_SECTIONS 18→19); cockpit read-only counts, no buttons/mutation; all evidence-based |
-| 11. Request quality | PASS | tells actor output quarantined/rejected if unsafe; "Do NOT claim applied/tested"; no alternatives |
-| 12. Redaction | PASS | _scrub_public on all free-text + _safe_file_names drops id_rsa/.ssh/.env/credentials/secret/.aws/.git; test_no_raw_leak injects sk-token//home//id_rsa/Traceback → asserts absent across surfaces |
-| 13. Architecture guards (no provider/network/subprocess/apply/intent) | PASS | imports stdlib + internal only; no apply/intent creation; no shell/subprocess |
-| 14. Request→intake E2E (simulated; no real provider) | PASS | test_request_to_completed_verified: request→intake(ACCEPTED,intent)→approve→do continue→completed_verified; file actually changed; output is a fixture file, no real provider |
-| 15. Provider-agnostic language audit | PASS | core + docs; test_no_subscription_account_ide_assumption; docs/repair-request-builder-v0.md + candidate-generator-adapter-future.md; providers only as examples |
+| 1. Mainline reconciliation | PASS | f1495c3 off clean main ce18aeb; PR#59 recorded; residuals carried; only .agent/ files touched; no drift |
+| 2. Self-dogfood models (no raw fields) | PASS | dataclasses hold IDs/types/priority/scrubbed title+detail; evidence ref=IDs/module names; no raw fields |
+| 3. Evidence source registry (available/missing/malformed/stale) | PASS | _read_agent_file → available/missing/malformed; job available/missing; sources_checked names+status only |
+| 4. Live review parser reuse (PENDING/FAIL/blocker→blocker) | PASS | reuses overnight_executor.parse_review_findings; verdict pending/fail→blocker+SAFETY_GAP blocker item; open_blocker_or_high>0→blocker; unavailable/malformed→evidence_gap |
+| 5. Stale handoff detector | PASS | deterministic regex on plan.md Current Step + open [ ] count + live_review changed-files/test-count presence |
+| 6. Evidence gap detector | PASS | deterministic from job repair attempts (failure w/o repair, attempt w/o intent) + provider trust accepted-not-materialized; try/except guarded |
+| 7. Quality debt detector (registries only; no code scan) | PASS | docs existence only; NO arbitrary source scan |
+| 8. Roadmap detector (deterministic; cites evidence) | PASS | module-existence rules only; cites module file; LOW roadmap items (names scope-blocker topics only as future suggestions, does NOT add them) |
+| 9. Item classification + plan builder (dedupe fingerprint; top 3) | PASS | fingerprint sha256(type:key)[:12]; dedup by fingerprint; sort by priority; plan groups by type, recommended[:3] |
+| 10. CLI (inspect/plan/propose/report) + catalog + RunContract | PASS | inspect/plan/report read_only, propose write_metadata; JSON via export; errs→stderr no traceback; SELF_INSPECT/PLAN/PROPOSE_TASK allowed (not cloud); denial→contract_blocked; 7 referenced cmds all in catalog |
+| 11. ProposedTask integration (origin self_dogfood; existing flow; idempotent) | PASS | add_proposed_task (NOT Job.tasks); task_type=self_dogfood; origin_recommendation_id=self_dogfood:<fp>; dedup vs existing_recs; ambiguous(>1 high)→require --item-id/--top; no approval/exec |
+| 12. Integrations (Progress/Feature/Review/Cockpit) | PASS | e589959+9fc5b0c: ledger fixed item_ids+de-dup (status .value normalized); feature planner decision-list (no auto exec); review_bundle counts/IDs only (19→20, no .agent re-scan); cockpit read-only counts, no buttons |
+| 13. Redaction | PASS (code) | _scrub_public+[:300] on title/detail; bundle/cockpit emit counts+IDs only; await committed redaction test |
+| 14. Architecture guards (no apply/test/provider/git/Job.tasks/PR) | PASS (code) | imports stdlib+internal only; no subprocess/network/provider/git/apply/test/Job.tasks; await committed guard test |
+| 15. Idempotency | PASS (code) | deterministic fingerprints + propose dedup by origin_recommendation_id; await committed idempotency test |
 
-## Findings — Steps 1365-1398
+## Findings — Steps 1399-1428
 (none yet)
 
 ### Reviewer audit log
-- 2026-06-14: Block start. Worker at c9ce1a0 (Step 1365 reconciliation only). Verified
-  branch forked clean main 871fb8d (PR#58 merged); commit touches only .agent/ planning
-  files (context/plan/live_review) — no production code. Plan steps 1366-1398 each cover
-  a stated block-if/check. Residual risks preserved verbatim from prior block. Check 1 PASS.
-  No production code to review yet. Polling for builder commits. Next finding id: R-0084.
-- 2026-06-14: Reviewed 4ef879b (Steps 1366-1387 core+CLI). repair_request_builder.py
-  (600L): models/builder/storage/schema/templates/adapter. ZERO findings. Verified all
-  block-ifs against committed code: no provider/network/subprocess/browser/SDK import
-  (stdlib + internal orchestration only); no apply, no Patch Intent creation, no provider-
-  intake call inside builder; all free-text scrubbed via _scrub_public; one-candidate
-  constraint + required schema present; idempotent per (failure,target,model_hint);
-  execute() raises; contract PREPARE/EXPORT_REPAIR_REQUEST not in cloud actions; next_steps
-  reference only catalog-backed commands (do.continue/patch.approve/provider.intake-repair/
-  provider.trust-show all confirmed). ctx attrs command_display/exit_code confirmed present
-  on RepairContextSummary (no AttributeError). Checks 2-7,9,11,13,15 PASS. Checks 8,12
-  PARTIAL (await tests). Checks 10,14 PENDING (integrations uncommitted; E2E not committed).
-- 2026-06-14: Reviewed 3ee5be1 (integrations 1378-1381) + ed975f9 (tests/docs 1382-1397)
-  + 30b8001 (plan). Integrations clean: progress_ledger extract/merge_repair_request_items
-  (fixed item_ids repair-request-prepared/external-candidate-pending/imported, de-dup,
-  evidence-based counts, catalog next_action); feature_planner external-candidate-pending
-  rule (no auto exec); review_bundle _build_repair_request_summary (REQUIRED_SECTIONS 18→19,
-  counts/labels/IDs only); ui_server _build_repair_request_section (read-only counts+latest
-  target, no buttons). Builder delta: _safe_file_names drops protected tokens. load_materials
-  confirmed present (provider_patch_material:253) — no silent ImportError skip. Tests: builder/
-  idempotency/contract-block, request-quality (schema/one-candidate/no-apply-claim/relative/
-  no-secrets/no-subscription-account-IDE), redaction (sk-token//home//id_rsa/Traceback absent),
-  adapter execute raises, architecture guards (no subprocess/shell/SDK/apply/intent/intake in
-  source), E2E request→intake(ACCEPTED)→approve→do continue→completed_verified+file changed,
-  next-action catalog-backed. ALL 15 checks PASS in committed code. ZERO findings.
-  Targeted wrapper run deferred: builder holds /tmp/remedy-pytest.lock (full suite in progress).
-  Awaiting builder final handoff + full pytest count + changed-files table before final verdict.
-- 2026-06-14: FINAL. Reviewed 09d8fc2 (handoff, hold PR). Reconciled Changed Files table
-  vs `git diff 871fb8d..HEAD` — all 22 files covered, none missing/extra. Builder full suite
-  5627 passed/8 skipped/1 deselected (exit 0); integrity passed=True/fail=0. Ran targeted
-  `scripts/remedy_pytest.sh tests/orchestration/test_repair_request_builder.py
-  tests/cli/test_repair_request_cli.py -q` once → 27 passed in 1.76s (green). All 15 checks
-  PASS; ZERO findings; zero open Blocker/High. No PR created (Step 1398 — awaiting explicit
-  user request). Verdict: PASS WITH RISKS (documented residuals only). Block COMPLETE.
+- 2026-06-14: Block start. Worker at f1495c3 (Step 1399 reconciliation). Branch off clean
+  main ce18aeb (PR#59 merged Repair Request Builder v0). Reconciliation touches only .agent/
+  files (context/plan/live_review). Plan steps 1400-1428 each cover a stated check/block-if;
+  hard rules align (read-only/metadata-only, ProposedTask flow not Job.tasks, no self-apply/
+  approve/PR/git, fingerprint dedup, PENDING/FAIL/open-blocker-high→BLOCKER, no raw scan).
+  Residuals carried. Check 1 PASS. Worker now writing core (self_dogfood.py untracked;
+  command_catalog.py + run_contract.py modified, uncommitted) — await commit to review.
+  Next finding id: R-0084.
+- 2026-06-14: Reviewed 7a07335 (core+CLI+contract 1400-1419) + e589959 (integrations
+  1415-1418) + 9fc5b0c (enum .value status fix). self_dogfood.py (683L): models, source
+  registry, detectors (review/stale-handoff/evidence-gap/roadmap/quality-debt — all
+  deterministic), fingerprint dedup, plan(top3), metadata-only propose. ZERO findings.
+  Verified deps exist: ProposedTask.task_type+origin_recommendation_id fields, ORCHESTRATOR
+  enum, add_proposed_task/load_proposed_tasks_safe signatures; ReviewFindings.verdict/source/
+  open_blocker_or_high (reuses trusted executor parser); contract SELF_INSPECT/PLAN/
+  PROPOSE_TASK default-allowed not cloud; all 7 referenced next-actions in catalog
+  (self.inspect/plan/propose, decision.list, contract.inspect, job.list, repair.propose).
+  Block-ifs cleared: propose uses add_proposed_task NOT Job.tasks; no approval/apply/exec/git/
+  PR/subprocess/network/provider; idempotent by origin_recommendation_id=self_dogfood:<fp>;
+  PENDING/FAIL/open-blocker-high→BLOCKER; deterministic detectors (no arbitrary code scan);
+  roadmap names scope-blocker topics only as LOW future suggestions (does not add them);
+  all free-text scrubbed via _scrub_public; bundle/cockpit counts+IDs only (no raw, no .agent
+  re-scan, no mutation buttons). Enum-fix 9fc5b0c corrects ledger/cockpit pending count
+  (str(enum) → .value lowercased). Checks 2-12 PASS in committed code. Checks 13/14/15 PASS
+  by code inspection; await committed redaction/architecture/idempotency tests (untracked:
+  test_self_dogfood.py, docs/self-dogfood-v0.md). Await full pytest + handoff before verdict.
 
-## Builder Final Handoff (Steps 1365-1398)
+## Builder Final Handoff (Steps 1399-1428)
 
-- **Mainline reconciliation**: PR #58 merged; branch off clean main 871fb8d; no drift.
-- **Tests**: targeted builder unit/quality/redaction/architecture/adapter/E2E (21) +
-  CLI runtime (7) + provider-trust/material/review-bundle/cockpit/catalog/progress/
-  feature/run-contract/do_continue. **Full pytest** → **5627 passed, 8 skipped, 1
-  deselected** (exit 0). Wrapper `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
+- **Mainline reconciliation**: PR #59 merged; branch off clean main ce18aeb; no drift.
+- **Tests**: targeted self_dogfood unit/idempotency/redaction/architecture (19) + CLI
+  runtime (7) + review-bundle/cockpit/catalog/progress/feature/run-contract/proposed-tasks.
+  **Full pytest** → **5662 passed, 8 skipped, 1 deselected** (exit 0). Wrapper
+  `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
 - **Integrity gate**: `remedy integrity check` passed=True, fail_count=0.
 - **Findings**: none.
-- **Models / safe builder / request storage / candidate schema / CLI / catalog /
-  RunContract / adapter boundary / external generator record / RepairAttempt linkage /
-  import guidance / Progress / Feature / Review / Cockpit / request quality / redaction /
-  architecture guards / E2E / language audit**: DONE.
-- **E2E (1388)**: `test_request_to_completed_verified` — request → simulated external
-  candidate file → provider intake (accepted) → approve → do continue → completed_verified;
-  no real provider/model/network.
-- **Hard completion criteria (1395)**: repair.request calls no provider/network/
-  browser/subprocess; no raw output/source/diff/secret/traceback/abs-path leak; no
-  Patch Intent created from request; candidate output goes through Trust Gate; next
-  actions catalog-backed + real; repeated request idempotent; adapter execute()
-  unavailable (no working external execute); live_review NOT PENDING. ALL satisfied.
+- **Models / source registry / live-review reuse / stale-handoff / evidence-gap /
+  quality-debt / roadmap / classification / plan builder / CLI (inspect/plan/propose/
+  report) / catalog / RunContract / ProposedTask integration / Progress / Feature /
+  Review / Cockpit / report / redaction / architecture guards / idempotency**: DONE.
+- **Hard completion criteria (1428)**: does not edit code/apply/approve; no direct
+  Job.tasks insertion (uses add_proposed_task); no PR/git; reads only .agent summaries
+  + durable registries (no raw source/logs/diffs); no findings/secrets/paths leak;
+  next actions catalog-backed; PENDING/FAIL/open-blocker-high → blocker; no duplicate
+  ProposedTasks (fingerprint dedupe); live_review NOT PENDING. ALL satisfied.
 
-### Changed Files (Steps 1365-1398)
+### Changed Files (Steps 1399-1428)
 | File | What changed | Why |
 |---|---|---|
-| `packages/orchestration/repair_request_builder.py` | NEW — models, safe request builder (from RepairContextSummary, scrubbed), private storage, candidate output schema, target templates, idempotency, ExternalCandidateGeneratorRecord, interface-only CandidateGeneratorAdapter (execute raises) | Core provider-agnostic request builder |
-| `packages/orchestration/run_contract.py` | prepare_repair_request / export_repair_request actions (metadata-only; allowed default) | Gate request prep vs execution |
-| `apps/cli/command_catalog.py` | repair.request (write_metadata) + repair.request-show (read_only) | CLI surface |
-| `apps/cli/grouped.py` | parse --target / --new | Request flags |
-| `apps/cli/commands/repair_cmd.py` | request / request-show handlers (no apply/intent) | Wire CLI |
-| `packages/orchestration/progress_ledger.py` | repair-request-prepared / external-candidate-pending / imported items | Progress surface |
-| `packages/orchestration/feature_planner.py` | external-candidate-pending → import follow-up (no auto exec) | Human next-step |
-| `packages/orchestration/review_bundle.py` | repair_request_summary.json (REQUIRED_SECTIONS 18→19) | Reviewable summary |
-| `packages/orchestration/ui_server.py` | read-only repair_request cockpit section | Surface counts |
-| `docs/repair-request-builder-v0.md` | NEW — builder doc | Long-term knowledge |
-| `docs/candidate-generator-adapter-future.md` | NEW — future direct-provider design note | Defer rationale + requirements |
-| `docs/provider-trust-gate-v0.md`, `provider-patch-materialization-v0.md`, `repair-loop-v1.md`, `bounded-overnight-executor-v0.md` | cross-links | Doc graph |
-| `tests/orchestration/test_repair_request_builder.py` | NEW — 21 unit/quality/redaction/architecture/adapter/E2E tests | Coverage |
-| `tests/cli/test_repair_request_cli.py` | NEW — 7 CLI runtime tests | Coverage |
-| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | REQUIRED_SECTIONS==19 + cockpit shape | Keep invariants |
+| `packages/orchestration/self_dogfood.py` | NEW — models, evidence source registry, live-review/stale-handoff/evidence-gap/quality-debt/roadmap detectors, classification, plan builder, propose (ProposedTask), report, exports | Core self-dogfood planner |
+| `packages/orchestration/run_contract.py` | self_inspect / self_plan / self_propose_task actions (allowed default; no apply/test/provider) | Gate planning vs execution |
+| `apps/cli/command_catalog.py` | self group + inspect/plan/report (read_only) + propose (write_metadata) | CLI surface |
+| `apps/cli/grouped.py` | parse --job-id / --item-id / --top | Self flags |
+| `apps/cli/commands/self_cmd.py` | NEW — inspect/plan/propose/report handlers | Wire CLI |
+| `apps/cli/commands/__init__.py` | register self_cmd | Handler collection |
+| `packages/orchestration/progress_ledger.py` | self-improvement proposed/pending/approved/deferred items (durable ProposedTasks; status .value normalized) | Progress surface |
+| `packages/orchestration/feature_planner.py` | self-improvement-pending-evaluation → decision list (no auto exec) | Human next-step |
+| `packages/orchestration/review_bundle.py` | self_dogfood_summary.json (REQUIRED_SECTIONS 19→20) | Reviewable summary |
+| `packages/orchestration/ui_server.py` | read-only self_dogfood cockpit section | Surface counts |
+| `docs/self-dogfood-v0.md` | NEW — planner doc | Long-term knowledge |
+| `tests/orchestration/test_self_dogfood.py` | NEW — 19 unit/idempotency/redaction/architecture tests | Coverage |
+| `tests/cli/test_self_dogfood_cli.py` | NEW — 7 CLI runtime tests | Coverage |
+| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | REQUIRED_SECTIONS==20 + cockpit shape | Keep invariants |
 | `.agent/plan.md`, `.agent/context.md`, `.agent/live_review.md` | block state + product readiness + review | Runtime state |
 
-### Readiness + PR recommendation (Steps 1393-1394/1398)
-Readiness ~95% (direct external execution deliberately deferred; adapter interface
-only). PR is MERGE-READY but **NOT created** — Step 1398 requires explicit user
-request. Recommend a separate PR when approved; next block stays separate (Provider
-Trust Verification v1 OR Automated Candidate Generator Adapter v0).
-
-## Reviewer Final Verdict — Steps 1365-1398 (Provider-Agnostic Repair Request Builder v0)
-
-**PASS WITH RISKS.** Zero findings, zero open Blocker/High.
-
-Primary goal MET: builder prepares SAFE provider-agnostic external repair request
-packages + adapter boundary WITHOUT executing any provider/model/worker, WITHOUT
-creating patch intents directly, WITHOUT leaking raw failure/source/output. Output
-re-enters ONLY via existing `provider intake-repair` → Trust Gate → materialization →
-approval → `do continue`.
-
-- Handoff: PASS (off clean main 871fb8d; residuals carried; no drift)
-- Request model: PASS (IDs/statuses/scrubbed sections only; no raw fields)
-- Request package: PASS (safe summary + strict schema + constraints: one candidate,
-  relative paths, no secrets, no apply/test claims; excludes raw)
-- Schema: PASS (CANDIDATE_OUTPUT_SCHEMA + Required-response-format; one candidate)
-- Storage: PASS (0o700/0o600, atomic, 256KiB cap, sha256; manifest sections scrubbed)
-- CLI: PASS (request/request-show; JSON stable; copy-pasteable; errs→stderr; no provider req)
-- RunContract: PASS (PREPARE/EXPORT_REPAIR_REQUEST distinct from cloud/exec; denial→CONTRACT_BLOCKED)
-- Adapter boundary: PASS (interface only; execute() raises; no net/sdk/subprocess/browser)
-- Repair linkage: PASS (record + repair_attempt_id; idempotent per (failure,target,model_hint); no Patch Intent)
-- Progress/Feature/Review: PASS (evidence-based counts; no raw; no mutation)
-- Cockpit: PASS (read-only counts+latest target; no buttons)
-- Request quality: PASS (told quarantine/reject; told not to claim apply/test; no alternatives)
-- Redaction: PASS (_scrub_public + _safe_file_names; injected secret/path/traceback absent)
-- Architecture: PASS (no external exec/intake/apply/test/subprocess/shell=True)
-- Provider-agnostic language: PASS (providers only as examples; no required tier/IDE/account)
-- E2E: PASS (request→intake(ACCEPTED)→approve→do continue→completed_verified; file changed; no real provider)
-- Tests run: targeted `scripts/remedy_pytest.sh` repair-request builder + CLI → 27 passed (reviewer-run once)
-- Full pytest: builder-run once → 5627 passed / 8 skipped / 1 deselected (exit 0); reviewer did NOT run full suite
-- Remaining findings: none
-- Merge readiness: MERGE-READY; **NO PR** (Step 1398 — awaiting explicit user request)
-
-**Residual risks (→ PASS WITH RISKS, all documented):**
-1. Automated/direct external candidate execution deferred (v0 = request packaging + interface-only adapter; execute() raises).
-2. Apply path remains `.md`-only (broader source materialization deferred) — carried from prior block.
-3. Regex secret/path scrubbing may miss novel formats (defense-in-depth: scrub + Trust Gate scan).
-4. Request package storage has no auto-retention/cleanup in v0.
-5. Reviewer relied on builder's full-suite count (did not run full pytest); independently ran targeted suite green + verified all checks against committed code.
+### Readiness + merge
+Readiness ~95% (planning rail only; guarded self-execution deliberately deferred).
+Merge-ready. Next block: Self-Dogfood Execution v0 OR Provider Trust Verification v1.

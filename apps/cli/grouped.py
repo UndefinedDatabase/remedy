@@ -166,6 +166,12 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--target", default=arg.default, dest="target", help=arg.help)
             elif arg.name == "--new":
                 parser.add_argument("--new", action="store_true", dest="new", help=arg.help)
+            elif arg.name == "--job-id":
+                parser.add_argument("--job-id", default=None, dest="job_id", help=arg.help)
+            elif arg.name == "--item-id":
+                parser.add_argument("--item-id", default=None, dest="item_id", help=arg.help)
+            elif arg.name == "--top":
+                parser.add_argument("--top", default=None, dest="top", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

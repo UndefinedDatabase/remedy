@@ -1,78 +1,64 @@
 # Context
 
 ## Active Branch
-feature/steps-1365-1398-repair-request-builder-v0 (forked from clean main at 871fb8d
-after PR #58 merged Provider Patch Materialization v0). No drift.
+feature/steps-1399-1428-self-dogfood-planner-v0 (forked from clean main at ce18aeb
+after PR #59 merged Provider-Agnostic Repair Request Builder v0). No drift.
 
-## Mainline reconciliation (Step 1365)
-- PR #58 MERGED → main. Current main commit: 871fb8d.
-- Provider Patch Materialization v0 landed: provider_patch_material.py (private
-  material, unified-diff/JSON-ops → single .md create/modify, verification,
-  idempotent materialize); intake materializes accepted candidates → applyable
-  pending Repair Patch Intent; approve → do continue → snapshot → apply →
-  completed_verified proven. No provider SDK/network/subprocess. Full suite 5599
-  passed, 8 skipped, 1 deselected.
+## Mainline reconciliation (Step 1399)
+- PR #59 MERGED → main. Current main commit: ce18aeb.
+- Repair Request Builder v0 landed: repair_request_builder.py (safe provider-agnostic
+  request package from FailureArtifact; output re-enters via provider intake-repair;
+  interface-only candidate generator adapter, execute raises). `remedy repair request
+  / request-show`. Full suite 5627 passed, 8 skipped, 1 deselected.
 
 ## Scope
-Steps 1365-1398: Provider-Agnostic Repair Request Builder v0. From a FailureArtifact,
-build a SAFE structured RepairRequestPackage for ANY external worker/model/human.
-External output re-enters ONLY via existing `provider intake-repair`. Define an
-interface-only candidate generator adapter boundary (no execution in v0).
-
-## Architecture principle (load-bearing)
-Provider-/worker-/model-/subscription-/IDE-/account-AGNOSTIC. NEVER depend on or
-require: Claude Max, subscription tiers, a specific IDE, browser/account automation,
-or any single provider as infrastructure. Providers appear ONLY as example external
-untrusted candidate generators.
+Steps 1399-1428: Self-Dogfood Readiness + Self-Improvement Planner v0. Remedy
+inspects its OWN evidence and proposes safe self-improvement work as ProposedTasks
+through the existing approval flow. NOT autonomous self-modification.
 
 ## Carried residual risks
-- Automated provider execution NOT built (this block: request packaging + adapter
-  interface only; next block could add an Automated Candidate Generator Adapter v0).
-- Broader source patch materialization deferred (apply path stays .md-only).
-- Regex secret scan may miss novel formats (defense-in-depth: scrub + scan in gate).
-- Quarantine/material retention documented; cleanup automation not built.
+- Automated provider execution NOT built.
+- Provider Trust Verification v1 NOT built (regex scan may miss novel formats).
+- Broader source patch materialization deferred (apply path .md-only).
+- Quarantine/material/request cleanup not automated (manual; documented).
 - Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
 - UI `npm run lint` pre-existing TS parser/dependency blocker (no deps allowed).
 
-## Request Builder constraints (block 1365-1398)
-- NO provider/SDK/API/network/subprocess/browser/IDE/agent. NO apply/test execution.
-- NO Patch Intent creation from request generation; NO direct provider-intake call.
-- Request packages SAFE to share with an untrusted external actor: no raw stdout/
-  stderr/source/diff/artifact-body/secrets/tracebacks/absolute private paths.
-- External output re-enters ONLY via `remedy provider intake-repair`.
-- Adapter execute() raises CandidateGeneratorExecutionUnavailable in v0.
-- Idempotent request packages; `--new` to force a fresh one.
-- Every next safe action catalog-backed + references real entities.
-- DO NOT create a PR unless the user explicitly asks (Step 1398).
+## Self-Dogfood constraints (block 1399-1428)
+- READ-ONLY or metadata-only. NO code edits/apply/approval/PR/git ops/main mutation;
+  NO direct Job.tasks insertion; NO scheduled/background self-run.
+- Self-proposed tasks enter the EXISTING ProposedTask flow (evaluate→approve→materialize).
+- NO provider SDK/network/subprocess (except existing CLI runtime tests); NO browser.
+- NO raw source/diff/stdout/stderr/secrets/tracebacks/absolute private paths in any surface.
+- No arbitrary code scanning — known summaries/registries only.
+- PENDING/FAIL/open blocker/high review → self-improvement BLOCKER.
+- Idempotent by stable item fingerprint (no duplicate items or ProposedTasks).
 
 ## Foundation reused
-- repair_loop.build_repair_context(job_id, fa_id, data_dir) → RepairContextSummary
-  (safe: safe_summary, changed_files_safe, proof_status, snapshot_status, failure_kind,
-  test_run_id/task_id/intent_id/apply_id). find_repair_attempt / save_repair_attempt /
-  RepairAttempt.
-- provider_trust intake (`remedy provider intake-repair <job> --failure-artifact-id
-  <id> --input <file> --provider <label> --json`) → Trust Gate → materialization.
-- run_contract ContractAction (ALL_KNOWN_ACTIONS auto-derived); _DEFAULT_ALLOWED_ACTIONS.
-- Review Bundle REQUIRED_SECTIONS currently 18; add repair_request_summary.json → 19.
+- proposed_tasks: ProposedTask(BaseModel) + add_proposed_task/load_proposed_tasks;
+  source enum USER/REVIEWER/ORCHESTRATOR/MODEL; fields task_type + origin_recommendation_id
+  (use ORCHESTRATOR + task_type="self_dogfood" + fingerprint in origin_recommendation_id).
+- overnight_executor.parse_review_findings → ReviewFindings (verdict + open counts).
+- progress_ledger / feature_planner / review_bundle / ui_server integration patterns.
+- overnight_readiness / integrity_gate / repair_loop / provider_trust / provider_patch_material
+  / repair_request_builder summaries as read-only evidence sources.
+- Review Bundle REQUIRED_SECTIONS currently 19; add self_dogfood_summary.json → 20.
 
 ## Resource safety (standing)
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite
   once at block end. No shell=True, no subprocess.
 
-## Product readiness — Repair Request Builder v0 (Step 1392)
-CAN: from a FailureArtifact, prepare a SAFE provider-AGNOSTIC RepairRequestPackage
-(scrubbed sections, strict candidate output contract, exact human import next-steps)
-for ANY external worker/model/human. Stored privately; surfaced in Progress/Feature/
-Review(19)/Cockpit; idempotent (`--new` to force). External candidate output re-enters
-ONLY via `remedy provider intake-repair` → Trust Gate → Materialization → Approval →
-do continue (simulated E2E proven). Interface-only candidate generator adapter
-boundary (manual adapter; execute raises CandidateGeneratorExecutionUnavailable).
-CANNOT (by design): NO provider/SDK/API/network/subprocess/browser/IDE; NO apply; NO
-Patch Intent creation from request generation; NO direct provider-intake call. Direct
-external execution NOT built. No single provider/subscription/account/IDE assumed.
-Next block can add Provider Trust Verification v1 OR an Automated Candidate Generator
-Adapter v0 (behind the same request package + trust gate; see docs/candidate-
-generator-adapter-future.md).
+## Product readiness — Self-Dogfood Planner v0 (Step 1427)
+CAN: inspect Remedy's OWN evidence (live review verdict, stale handoff, evidence-chain
+gaps, deterministic roadmap, registry quality debt) → classified+deduped Self
+ImprovementItems → Plan → metadata-only ProposedTasks (origin self_dogfood) via the
+EXISTING evaluate/approve/materialize flow. CLI `remedy self inspect/plan/propose/
+report`; surfaced in Progress/Feature/Review(20)/Cockpit. Idempotent by fingerprint.
+CANNOT (by design): NO code edits/apply/approval/PR/git/main-mutation; NO direct
+Job.tasks insertion; NO provider/network/subprocess/browser; NO scheduled/background
+self-run; NO raw findings/secrets/paths. PENDING/FAIL/open-blocker-high → blocker.
+Next block: Self-Dogfood Execution v0 (guarded, still approval-gated) OR Provider
+Trust Verification v1.
 
 ## Next block
-Provider Trust Verification v1 OR Automated Candidate Generator Adapter v0.
+Self-Dogfood Execution v0 OR Provider Trust Verification v1.
