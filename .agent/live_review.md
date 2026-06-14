@@ -72,6 +72,13 @@ proven. NO PR created (Step 1398 — awaiting explicit user request).
   next-action catalog-backed. ALL 15 checks PASS in committed code. ZERO findings.
   Targeted wrapper run deferred: builder holds /tmp/remedy-pytest.lock (full suite in progress).
   Awaiting builder final handoff + full pytest count + changed-files table before final verdict.
+- 2026-06-14: FINAL. Reviewed 09d8fc2 (handoff, hold PR). Reconciled Changed Files table
+  vs `git diff 871fb8d..HEAD` — all 22 files covered, none missing/extra. Builder full suite
+  5627 passed/8 skipped/1 deselected (exit 0); integrity passed=True/fail=0. Ran targeted
+  `scripts/remedy_pytest.sh tests/orchestration/test_repair_request_builder.py
+  tests/cli/test_repair_request_cli.py -q` once → 27 passed in 1.76s (green). All 15 checks
+  PASS; ZERO findings; zero open Blocker/High. No PR created (Step 1398 — awaiting explicit
+  user request). Verdict: PASS WITH RISKS (documented residuals only). Block COMPLETE.
 
 ## Builder Final Handoff (Steps 1365-1398)
 
@@ -120,3 +127,42 @@ Readiness ~95% (direct external execution deliberately deferred; adapter interfa
 only). PR is MERGE-READY but **NOT created** — Step 1398 requires explicit user
 request. Recommend a separate PR when approved; next block stays separate (Provider
 Trust Verification v1 OR Automated Candidate Generator Adapter v0).
+
+## Reviewer Final Verdict — Steps 1365-1398 (Provider-Agnostic Repair Request Builder v0)
+
+**PASS WITH RISKS.** Zero findings, zero open Blocker/High.
+
+Primary goal MET: builder prepares SAFE provider-agnostic external repair request
+packages + adapter boundary WITHOUT executing any provider/model/worker, WITHOUT
+creating patch intents directly, WITHOUT leaking raw failure/source/output. Output
+re-enters ONLY via existing `provider intake-repair` → Trust Gate → materialization →
+approval → `do continue`.
+
+- Handoff: PASS (off clean main 871fb8d; residuals carried; no drift)
+- Request model: PASS (IDs/statuses/scrubbed sections only; no raw fields)
+- Request package: PASS (safe summary + strict schema + constraints: one candidate,
+  relative paths, no secrets, no apply/test claims; excludes raw)
+- Schema: PASS (CANDIDATE_OUTPUT_SCHEMA + Required-response-format; one candidate)
+- Storage: PASS (0o700/0o600, atomic, 256KiB cap, sha256; manifest sections scrubbed)
+- CLI: PASS (request/request-show; JSON stable; copy-pasteable; errs→stderr; no provider req)
+- RunContract: PASS (PREPARE/EXPORT_REPAIR_REQUEST distinct from cloud/exec; denial→CONTRACT_BLOCKED)
+- Adapter boundary: PASS (interface only; execute() raises; no net/sdk/subprocess/browser)
+- Repair linkage: PASS (record + repair_attempt_id; idempotent per (failure,target,model_hint); no Patch Intent)
+- Progress/Feature/Review: PASS (evidence-based counts; no raw; no mutation)
+- Cockpit: PASS (read-only counts+latest target; no buttons)
+- Request quality: PASS (told quarantine/reject; told not to claim apply/test; no alternatives)
+- Redaction: PASS (_scrub_public + _safe_file_names; injected secret/path/traceback absent)
+- Architecture: PASS (no external exec/intake/apply/test/subprocess/shell=True)
+- Provider-agnostic language: PASS (providers only as examples; no required tier/IDE/account)
+- E2E: PASS (request→intake(ACCEPTED)→approve→do continue→completed_verified; file changed; no real provider)
+- Tests run: targeted `scripts/remedy_pytest.sh` repair-request builder + CLI → 27 passed (reviewer-run once)
+- Full pytest: builder-run once → 5627 passed / 8 skipped / 1 deselected (exit 0); reviewer did NOT run full suite
+- Remaining findings: none
+- Merge readiness: MERGE-READY; **NO PR** (Step 1398 — awaiting explicit user request)
+
+**Residual risks (→ PASS WITH RISKS, all documented):**
+1. Automated/direct external candidate execution deferred (v0 = request packaging + interface-only adapter; execute() raises).
+2. Apply path remains `.md`-only (broader source materialization deferred) — carried from prior block.
+3. Regex secret/path scrubbing may miss novel formats (defense-in-depth: scrub + Trust Gate scan).
+4. Request package storage has no auto-retention/cleanup in v0.
+5. Reviewer relied on builder's full-suite count (did not run full pytest); independently ran targeted suite green + verified all checks against committed code.
