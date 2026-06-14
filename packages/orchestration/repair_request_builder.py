@@ -337,8 +337,24 @@ def _find_existing_package(job: Any, failure_artifact_id: str, target_kind: str,
 # ---------------------------------------------------------------------------
 
 
+_PROTECTED_FILE_TOKENS = ("id_rsa", ".ssh", ".env", "credentials", "secret", ".aws", ".git")
+
+
+def _safe_file_names(names: list[str]) -> list[str]:
+    """Scrub + drop protected/sensitive-looking file names from the shared request."""
+    out: list[str] = []
+    for n in names[:20]:
+        low = (n or "").lower()
+        if any(tok in low for tok in _PROTECTED_FILE_TOKENS):
+            continue
+        scrubbed = _scrub(n)
+        if scrubbed and scrubbed not in out:
+            out.append(scrubbed)
+    return out[:10]
+
+
 def _build_sections(ctx: Any, target_kind: str, model_hint: str) -> list[RepairRequestSection]:
-    files = ", ".join(_scrub(f) for f in (ctx.changed_files_safe or [])[:10]) or "(none known)"
+    files = ", ".join(_safe_file_names(ctx.changed_files_safe or [])) or "(none known)"
     schema = json.dumps(CANDIDATE_OUTPUT_SCHEMA, indent=2)
     constraints = [
         "Return EXACTLY ONE candidate repair. No alternatives, no multiple patches.",
