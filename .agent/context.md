@@ -41,6 +41,10 @@ validation → ProviderTrustReport → optional artifact+intent → approval_req
 - Protected/abs/traversal paths rejected; secret-bearing rejected; exactly one patch.
 - Every next safe action catalog-backed; no fake intent IDs.
 
+## Resource safety (standing)
+- No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized) for
+  Remedy's own tests; full suite once at block end. No shell=True, no subprocess.
+
 ## Foundation reused
 - approval_queue: patch intents are explanation entries on an Artifact's metadata
   `patch_intent_explanations` keyed by make_intent_id(artifact.id, idx);
@@ -52,6 +56,20 @@ validation → ProviderTrustReport → optional artifact+intent → approval_req
 
 ## Product readiness — Bounded Overnight Executor v0 (prior block)
 Foreground one-step executor; report-only default; explicit flags; no provider/loop.
+
+## Product readiness — Provider Trust Gate v0 (Step 1333)
+CAN: ingest UNTRUSTED external model/agent output (local file or stdin) safely —
+quarantine raw bytes privately (0o700/0o600, hashed, never public), parse a
+conservative v0 candidate (JSON or one fenced unified diff), trust-validate (secret
+scan, path safety, patch shape, failure link), emit a safe ProviderTrustReport, and
+ONLY when accepted create a Repair Artifact + ONE pending Repair Patch Intent.
+Surfaced in Progress/Feature/Review Bundle (provider_trust_summary.json)/Cockpit.
+CANNOT (by design): NO provider/Ollama/Claude API execution, NO model invocation,
+NO network, NO subprocess. Accepted ≠ applied ≠ approved ≠ verified — apply still
+requires `remedy patch approve` + `do continue`. No raw output/diff/source/secrets/
+tracebacks/abs paths on any public surface.
+Next block can wire a real (local-first, gated) provider builder BEHIND this gate —
+the gate stays the trust boundary; the builder just produces the candidate.
 
 ## Next block
 Provider-backed Repair Builder v0.

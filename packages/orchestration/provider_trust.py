@@ -493,10 +493,24 @@ def _safe_first_line(text: str) -> str:
 
 
 def _safe_text(text: str, limit: int) -> str:
-    """Collapse whitespace + truncate; strip anything that could be a secret/path
-    is handled separately — this only bounds length and removes control chars."""
+    """Collapse whitespace, REDACT secret-like / absolute-path tokens, then truncate.
+
+    Provider-derived free text (summary/rationale/risk_notes) is untrusted and is
+    surfaced publicly, so it must be scrubbed before it ever leaves this module
+    (R-0083) — never echo a secret value or an absolute path."""
     out = re.sub(r"\s+", " ", str(text)).strip()
+    out = _scrub_public(out)
     return out[:limit]
+
+
+def _scrub_public(text: str) -> str:
+    """Mask secret-like material and absolute paths in a public-facing string."""
+    scrubbed = text
+    for pat in _SECRET_PATTERNS:
+        scrubbed = pat.sub("[redacted-secret]", scrubbed)
+    scrubbed = _ABS_PATH_RE.sub(lambda m: m.group(0).replace(m.group(1), "[redacted-path]"), scrubbed)
+    scrubbed = _TRACEBACK_RE.sub("[redacted-trace]", scrubbed)
+    return scrubbed
 
 
 # ---------------------------------------------------------------------------
@@ -527,7 +541,7 @@ def scan_secrets(text: str) -> list[ProviderTrustFinding]:
                                  "Absolute filesystem path detected in provider output."))
     if _TRACEBACK_RE.search(text):
         findings.append(_finding(TrustFindingCode.REQUIRES_HUMAN_REVIEW, Severity.MEDIUM,
-                                 "Traceback-like block detected — needs human review."))
+                                 "Stack-trace-like block detected — needs human review."))
     return findings
 
 

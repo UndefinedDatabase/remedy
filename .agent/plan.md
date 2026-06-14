@@ -36,7 +36,7 @@ auto-approval. Apply stays through `do continue`.
 - [x] 1327: CLI runtime tests
 - [x] 1328: Architecture guards (no network/subprocess/provider SDK/apply/test-exec imports)
 - [x] 1329: Documentation (provider-trust-gate-v0 + cross-links)
-- [ ] 1330: Targeted tests + full pytest once
+- [x] 1330: Targeted + full pytest once (R-0083 + resource-safety fixed)
 - [ ] 1331: Live review
 - [ ] 1332: PR discipline
 - [ ] 1333: Product readiness update

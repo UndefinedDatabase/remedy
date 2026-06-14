@@ -251,6 +251,22 @@ class TestIntake:
         assert r.trust_status == PT.TrustStatus.REJECTED
         assert not r.repair_intent_id
 
+    def test_candidate_summary_scrubbed(self, env):
+        # R-0083: provider free-text fields are scrubbed of secrets/abs paths before
+        # being persisted/shown publicly.
+        job, fid = _job(env)
+        obj = json.dumps({
+            "summary": "uses token sk-abcdef0123456789abcd at /home/u/.ssh/id_rsa",
+            "target_files": ["src/app.py"],
+            "unified_diff": "--- a/src/app.py\n+++ b/src/app.py\n@@ -1 +1 @@\n-a\n+b\n",
+            "rationale": "see /etc/passwd",
+        })
+        r = _intake(job, env, obj, fid=fid)
+        rep = PT.get_trust_report(load_job(UUID(str(job.id)), env), r.trust_report_id)
+        blob = json.dumps(rep)
+        assert "sk-abcdef0123456789abcd" not in blob
+        assert "/home/" not in blob and "/etc/passwd" not in blob and "id_rsa" not in blob
+
     def test_quarantine_private_and_hashed(self, env):
         job, fid = _job(env)
         r = _intake(job, env, _GOOD_DIFF, fid=fid)
