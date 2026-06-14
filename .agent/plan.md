@@ -1,61 +1,67 @@
-# Plan — Steps 1335-1364: Trusted Provider Patch Materialization v0
+# Plan — Steps 1365-1398: Provider-Agnostic Repair Request Builder v0
 
 ## Goal
-Materialize ACCEPTED provider candidates into REAL applyable Repair Patch Intents
-that flow through approval → `do continue` → snapshot → apply → test → proof, while
-raw provider output + raw diffs stay PRIVATE. No provider execution, no network, no
-auto-apply, no auto-approval. Apply only via existing `do continue`.
+Given a TestFailureArtifact, produce a SAFE, structured RepairRequestPackage that can
+be handed to ANY external worker/model/human (provider-agnostic). External output
+re-enters Remedy ONLY through existing `remedy provider intake-repair` → Trust Gate →
+Materialization → Approval → do continue. Also define an interface-only candidate
+generator adapter boundary (manual/offline only; execute() raises unavailable).
 
-## Key constraint
-Existing apply path (`apply_patch_intent`) is `.md`-only (create writes file, modify
-appends a "Proposed Changes" section). So a materialized intent is genuinely
-apply-compatible ONLY for a single `.md` target. Source/binary/delete/rename/multi-
-file → `unsupported_patch_shape` (accepted_but_not_materialized; no intent).
+## Architecture principle
+Provider-/worker-/model-/subscription-/IDE-/account-AGNOSTIC. Providers are only
+EXAMPLE external untrusted candidate generators, never required infrastructure.
 
 ## Current Step
-DONE — full suite 5599 passed; integrity ok; verdict PASS WITH RISKS; ready to merge alone
+1366 — repair_request_builder.py (models + builder + storage + adapter boundary)
 
 ## Steps
-- [x] 1335: Mainline reconciliation + clean branch (PR #57 merged; scope→1335-1364)
-- [x] 1336: Material models (Material/Entry/Result/Verification/IntentLink)
-- [x] 1337: Private material storage (0o700/0o600, atomic, hashed, no public raw)
-- [x] 1338: verify_provider_patch_material (manifest/hash/paths/report-accepted/one-candidate)
-- [x] 1339: unified diff → structured patch (modify/create text; no delete/rename/binary)
-- [x] 1340: JSON structured_operations materialization (same restrictions)
-- [x] 1341: applyable provider repair intent (real/resolvable/pending; linked; safe metadata)
-- [x] 1342: approve + do_continue compatibility (existing apply path; snapshot mandatory)
-- [x] 1343: trust report state updates (accepted/materialized/failed/pending/approved/applied/tested)
-- [x] 1344: CLI provider material-show (+ optional materialize)
-- [x] 1345: command catalog (material-show/materialize; no mutate/exec)
-- [x] 1346: RunContract (provider_materialize_patch/create_provider_repair_intent)
-- [x] 1347: RepairAttempt linkage (idempotent by candidate_hash; no dup)
-- [x] 1348: Progress Ledger integration
-- [x] 1349: Feature Planner integration (no auto approve/retry)
-- [x] 1350: Review Bundle provider_material_summary.json
-- [x] 1351: Cockpit read-only material counts
-- [x] 1352: Retention policy docs
-- [x] 1353: Redaction tests
-- [x] 1354: CLI runtime tests
-- [x] 1355: Architecture guards
-- [x] 1356: Docs (materialization-v0 + cross-links)
-- [x] 1357: Targeted tests + full pytest once
-- [x] 1358: Live review
-- [x] 1359: PR discipline
-- [x] 1360: Product readiness update
-- [x] 1361: Apply compatibility proof (approve→do continue fixture, snapshot, no overclaim)
-- [x] 1362: Integrity gate
-- [x] 1363: Final handoff
-- [x] 1364: Hard completion criteria
+- [x] 1365: Mainline reconciliation + clean branch (PR #58 merged; scope→1365-1398)
+- [ ] 1366: Repair request models (Package/Section/BuildResult/StopReason/Capability/Descriptor/Record)
+- [ ] 1367: Safe request package builder (from RepairContextSummary; no raw)
+- [ ] 1368: Required candidate output schema (JSON or single fenced diff; one candidate)
+- [ ] 1369: Request package private storage (request.md + manifest, atomic, hashed, no abs paths)
+- [ ] 1370: CLI repair request (build/store; returns intake command; no apply/intent)
+- [ ] 1371: CLI repair request-show (read-only)
+- [ ] 1372: Command catalog (request write_metadata; request-show read_only)
+- [ ] 1373: RunContract (prepare_repair_request/export_repair_request)
+- [ ] 1374: Candidate generator boundary (interface only; execute raises unavailable)
+- [ ] 1375: ExternalCandidateGeneratorRecord (manual|unavailable|future; no exec)
+- [ ] 1376: Link request package to RepairAttempt (repair_request_prepared; idempotent)
+- [ ] 1377: Import guidance (exact human next steps; no fake automation)
+- [ ] 1378: Progress Ledger integration
+- [ ] 1379: Feature Planner integration (no auto external execution)
+- [ ] 1380: Review Bundle repair_request_summary.json
+- [ ] 1381: Cockpit read-only request counts
+- [ ] 1382: Prompt/request quality tests
+- [ ] 1383: CLI runtime tests
+- [ ] 1384: Redaction tests
+- [ ] 1385: Architecture guards
+- [ ] 1386: Documentation (repair-request-builder-v0 + cross-links)
+- [ ] 1387: Request template pack (general/docs/test-failure/md-only)
+- [ ] 1388: Request→intake E2E test (simulated external output; no real provider)
+- [ ] 1389: Targeted tests + full pytest once
+- [ ] 1390: Live review
+- [ ] 1391: PR discipline (clean branch; NO PR unless user explicitly asks)
+- [ ] 1392: Product readiness update
+- [ ] 1393: Final handoff
+- [ ] 1394: PR recommendation
+- [ ] 1395: Hard completion criteria
+- [ ] 1396: Future direct provider design note (candidate-generator-adapter-future.md)
+- [ ] 1397: Provider-agnostic language audit
+- [ ] 1398: Merge discipline — DO NOT create PR unless user explicitly asks
 
 ## Hard rules
-- NO provider/Ollama/Claude SDK, NO network, NO subprocess, NO shell=True.
-- Raw patch material ONLY in private workspace storage (0o700/0o600); NEVER public.
-- No raw diff/source/stdout/stderr/artifact-body/secrets/tracebacks/abs paths public.
-- Patch Intent exposes safe metadata only. Apply ONLY later via approved `do continue`.
-- No auto-apply, no auto-approval. accepted ≠ materialized ≠ applied ≠ verified.
-- Materialize ONLY supported shapes (single .md create/modify, bounded); else no intent.
-- Idempotent by candidate_hash (no dup Fix Task / Repair Artifact / Intent).
-- Every next safe action catalog-backed + entity-backed; no fake intent IDs.
+- NO provider/Ollama/OpenAI/Pi/SDK/API, NO network, NO subprocess, NO browser, NO IDE/agent.
+- NO apply, NO test execution, NO Patch Intent creation from request generation.
+- NO direct call to provider intake inside request generation.
+- Request packages SAFE to share with untrusted external actor: no raw stdout/stderr/
+  source/diff/artifact-body/secrets/tracebacks/absolute private paths.
+- External output re-enters ONLY via `remedy provider intake-repair`.
+- Every next safe action catalog-backed + references real entities; no fake actions.
+- Provider-agnostic language only (external candidate generator / untrusted output).
+- Adapter execute() raises CandidateGeneratorExecutionUnavailable in v0.
+- Idempotent request packages (no uncontrolled duplicates; --new to force).
+- **DO NOT create a PR unless the user explicitly asks (Step 1398).**
 
 ## Next block
-Provider-backed Repair Builder v0.
+Provider Trust Verification v1 OR Automated Candidate Generator Adapter v0.
