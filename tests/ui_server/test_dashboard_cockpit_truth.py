@@ -256,6 +256,19 @@ class TestDashboardShape:
         assert "latest_stop_reason" in ob
         assert "model_routing_tier" in ob
 
+    def test_local_advisor_section_present(self):
+        # Read-only Local Model Advisor summary (Step 1520).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "local_advisor" in dash
+        la = dash["local_advisor"]
+        assert "run_count" in la
+        assert "enabled" in la
+        assert "available" in la
+        assert "latest_status" in la
+        # No fabricated availability without a real local advisor run.
+        assert la["available"] in (False, "unknown")
+
     def test_overnight_run_section_present(self):
         # Read-only Bounded Overnight Executor run summary (Step 1292).
         job = Job(name="t")

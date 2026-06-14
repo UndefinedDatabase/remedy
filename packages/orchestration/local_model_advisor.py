@@ -559,7 +559,7 @@ def _stdlib_transport(method: str, url: str, body: bytes | None, timeout: float)
 
 def _generate(config: LocalAdvisorConfig, prompt: str, transport: Transport,
               ) -> Tuple[str, str]:
-    """Call the local /api/generate endpoint. Returns (raw_response_text, stop_reason).
+    """Call the local /api/generate endpoint. Returns (model_text, stop_reason).
 
     stop_reason is OK on success, else TIMEOUT/UNAVAILABLE/OVERSIZED/ERROR. Never raises."""
     ok, _reason, _label = _validate_endpoint(config.endpoint)
@@ -679,7 +679,7 @@ def _runs_root(data_dir: Path) -> Path:
 
 
 def _store_run(
-    data_dir: Path, run: LocalAdvisorRunRecord, prompt: str, raw_response: str,
+    data_dir: Path, run: LocalAdvisorRunRecord, prompt: str, raw_text: str,
 ) -> bool:
     """Persist the run privately: prompt.md + response.txt (raw, 0o600) + run_manifest.json
     (safe). 0o700 dir. Atomic. No overwrite (fresh run_id dir). Returns stored flag."""
@@ -691,7 +691,7 @@ def _store_run(
         except OSError:
             pass
         _atomic_private_write(rdir / "prompt.md", prompt.encode("utf-8", errors="replace"))
-        _atomic_private_write(rdir / "response.txt", raw_response.encode("utf-8", errors="replace"))
+        _atomic_private_write(rdir / "response.txt", raw_text.encode("utf-8", errors="replace"))
         manifest = json.dumps(run.to_dict(), indent=2, sort_keys=True).encode("utf-8")
         _atomic_private_write(rdir / "run_manifest.json", manifest)
         return True
