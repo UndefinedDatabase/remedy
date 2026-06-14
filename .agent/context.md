@@ -59,5 +59,20 @@ untrusted candidate generators.
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite
   once at block end. No shell=True, no subprocess.
 
+## Product readiness — Repair Request Builder v0 (Step 1392)
+CAN: from a FailureArtifact, prepare a SAFE provider-AGNOSTIC RepairRequestPackage
+(scrubbed sections, strict candidate output contract, exact human import next-steps)
+for ANY external worker/model/human. Stored privately; surfaced in Progress/Feature/
+Review(19)/Cockpit; idempotent (`--new` to force). External candidate output re-enters
+ONLY via `remedy provider intake-repair` → Trust Gate → Materialization → Approval →
+do continue (simulated E2E proven). Interface-only candidate generator adapter
+boundary (manual adapter; execute raises CandidateGeneratorExecutionUnavailable).
+CANNOT (by design): NO provider/SDK/API/network/subprocess/browser/IDE; NO apply; NO
+Patch Intent creation from request generation; NO direct provider-intake call. Direct
+external execution NOT built. No single provider/subscription/account/IDE assumed.
+Next block can add Provider Trust Verification v1 OR an Automated Candidate Generator
+Adapter v0 (behind the same request package + trust gate; see docs/candidate-
+generator-adapter-future.md).
+
 ## Next block
 Provider Trust Verification v1 OR Automated Candidate Generator Adapter v0.

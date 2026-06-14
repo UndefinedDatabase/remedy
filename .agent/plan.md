@@ -12,7 +12,7 @@ Provider-/worker-/model-/subscription-/IDE-/account-AGNOSTIC. Providers are only
 EXAMPLE external untrusted candidate generators, never required infrastructure.
 
 ## Current Step
-1389 — full pytest once (post targeted green)
+DONE — full suite 5627 passed; integrity ok; verdict PASS WITH RISKS; merge-ready; PR HELD per Step 1398
 
 ## Steps
 - [x] 1365: Mainline reconciliation + clean branch (PR #58 merged; scope→1365-1398)
@@ -39,16 +39,16 @@ EXAMPLE external untrusted candidate generators, never required infrastructure.
 - [x] 1386: Documentation (repair-request-builder-v0 + cross-links)
 - [x] 1387: Request template pack (general/docs/test-failure/md-only)
 - [x] 1388: Request→intake E2E test (simulated external output; no real provider)
-- [ ] 1389: Targeted tests + full pytest once
-- [ ] 1390: Live review
-- [ ] 1391: PR discipline (clean branch; NO PR unless user explicitly asks)
-- [ ] 1392: Product readiness update
-- [ ] 1393: Final handoff
-- [ ] 1394: PR recommendation
-- [ ] 1395: Hard completion criteria
+- [x] 1389: Targeted tests + full pytest once
+- [x] 1390: Live review
+- [x] 1391: PR discipline (clean branch; NO PR unless user explicitly asks)
+- [x] 1392: Product readiness update
+- [x] 1393: Final handoff
+- [x] 1394: PR recommendation
+- [x] 1395: Hard completion criteria
 - [x] 1396: Future direct provider design note (candidate-generator-adapter-future.md)
 - [x] 1397: Provider-agnostic language audit
-- [ ] 1398: Merge discipline — DO NOT create PR unless user explicitly asks
+- [x] 1398: Merge discipline — DO NOT create PR unless user explicitly asks
 
 ## Hard rules
 - NO provider/Ollama/OpenAI/Pi/SDK/API, NO network, NO subprocess, NO browser, NO IDE/agent.
