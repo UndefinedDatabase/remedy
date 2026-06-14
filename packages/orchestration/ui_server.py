@@ -544,6 +544,33 @@ def _build_overnight_run_section(job: Any, data_dir: Path | None) -> dict[str, A
         return unknown
 
 
+def _build_provider_trust_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Provider Trust Gate summary for the cockpit (Step 1325).
+
+    Counts only (reports / accepted / rejected / needs_review / pending intents).
+    No buttons, no provider execution, no mutation, no raw output."""
+    try:
+        from packages.orchestration.provider_trust import load_trust_reports
+        reports = list(load_trust_reports(job).values())
+        accepted = sum(1 for r in reports if r.get("trust_status") == "accepted")
+        rejected = sum(1 for r in reports if r.get("trust_status") == "rejected")
+        needs = sum(1 for r in reports if r.get("trust_status") == "needs_human_review")
+        pending = sum(1 for r in reports
+                      if r.get("trust_status") == "accepted" and r.get("repair_intent_id"))
+        return {
+            "report_count": len(reports),
+            "accepted": accepted,
+            "rejected": rejected,
+            "needs_review": needs,
+            "pending_provider_repair_approval": pending,
+            "source": "provider_trust",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"report_count": "unknown", "accepted": "unknown", "rejected": "unknown",
+                "needs_review": "unknown", "pending_provider_repair_approval": "unknown",
+                "source": "unavailable"}
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -806,6 +833,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "repair": _build_repair_section(job),
         "overnight": _build_overnight_section(job, truth_data_dir),
         "overnight_run": _build_overnight_run_section(job, truth_data_dir),
+        "provider_trust": _build_provider_trust_section(job),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,

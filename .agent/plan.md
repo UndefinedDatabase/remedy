@@ -8,8 +8,7 @@ accepted create a Repair Artifact + pending Repair Patch Intent → approval_req
 auto-approval. Apply stays through `do continue`.
 
 ## Current Step
-1322 — integrations (Progress/Feature/Review/Cockpit)
-1306 — provider_trust.py models + quarantine + parser + validation
+1326 — tests (redaction, CLI runtime, architecture guards)
 
 ## Steps
 - [x] 1305: Mainline reconciliation + clean branch (PR #56 merged; scope→1305-1334)
@@ -29,10 +28,10 @@ auto-approval. Apply stays through `do continue`.
 - [x] 1319: CLI provider trust-show (read-only)
 - [x] 1320: Command catalog (intake-repair write_metadata; trust-show read_only)
 - [x] 1321: RunContract (provider_intake/provider_trust_review/create_provider_repair_intent)
-- [ ] 1322: Progress Ledger integration
-- [ ] 1323: Feature Planner integration (no auto provider/approval)
-- [ ] 1324: Review Bundle provider_trust_summary.json
-- [ ] 1325: Cockpit read-only provider trust counts
+- [x] 1322: Progress Ledger integration
+- [x] 1323: Feature Planner integration (no auto provider/approval)
+- [x] 1324: Review Bundle provider_trust_summary.json
+- [x] 1325: Cockpit read-only provider trust counts
 - [ ] 1326: Redaction tests
 - [ ] 1327: CLI runtime tests
 - [ ] 1328: Architecture guards (no network/subprocess/provider SDK/apply/test-exec imports)
