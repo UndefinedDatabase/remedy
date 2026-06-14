@@ -327,6 +327,26 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.KNOWN_RISK,
             "remedy decision list <job_id> --json",
         ),
+        # Self-Dogfood Execution follow-ups (Step 1443). No automatic execution.
+        "self-execution-awaiting-candidate": (
+            "Provide the external candidate for a self-improvement attempt",
+            "A self-improvement request is prepared — relay it externally and import the "
+            "response via provider intake-repair (trust-validated).",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy provider intake-repair <job_id> --input <file> --provider self_dogfood --json",
+        ),
+        "self-execution-intent-pending": (
+            "Approve or reject the self-improvement intent",
+            "A self-improvement patch intent is pending approval (apply via do continue).",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy patch approve <job_id> <intent_id> --json",
+        ),
+        "self-execution-blocked": (
+            "Review the blocked self-improvement attempt",
+            "A self-improvement attempt is blocked — inspect its state.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy self status --json",
+        ),
     }
     for item in ledger.items:
         rule = _REPAIR_RULES.get(item.item_id)

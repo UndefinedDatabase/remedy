@@ -47,6 +47,7 @@ REQUIRED_SECTIONS = (
     "provider_material_summary.json",
     "repair_request_summary.json",
     "self_dogfood_summary.json",
+    "self_execution_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -792,6 +793,31 @@ def _build_self_dogfood_summary(job: Any) -> dict:
                 "error": "self_dogfood_unavailable"}
 
 
+def _build_self_execution_summary(job: Any) -> dict:
+    """Safe Self-Dogfood Execution summary (Step 1444). Counts/states/IDs only — no
+    raw request/candidate content, no diff/source/logs/secrets/paths."""
+    try:
+        from packages.orchestration.self_dogfood_execution import list_attempts
+        attempts = [a for a in list_attempts() if a.get("job_id") == str(job.id)]
+        by_state: dict[str, int] = {}
+        for a in attempts:
+            by_state[a.get("state", "")] = by_state.get(a.get("state", ""), 0) + 1
+        return {
+            "attempt_count": len(attempts),
+            "by_state": by_state,
+            "pending_external_candidate": by_state.get("awaiting_external_candidate", 0),
+            "pending_approval": by_state.get("intent_pending_approval", 0),
+            "applied": by_state.get("applied", 0),
+            "tested_passed": by_state.get("tested_passed", 0),
+            "tested_failed": by_state.get("tested_failed", 0),
+            "completed": by_state.get("completed", 0),
+            "blocked": by_state.get("blocked", 0),
+            "attempt_ids": [a.get("attempt_id", "") for a in attempts[:10]],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"attempt_count": 0, "by_state": {}, "error": "self_execution_unavailable"}
+
+
 def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
     """Safe context inspection summary — no file bodies."""
     try:
@@ -1226,6 +1252,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("self_dogfood_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("self_dogfood_summary.json", status="error", error="build failed"))
+
+    # self_execution_summary.json (Step 1444)
+    try:
+        ses = _build_self_execution_summary(job)
+        content = json.dumps(ses, indent=2).encode()
+        section_data["self_execution_summary.json"] = content
+        result.sections.append(ReviewBundleSection("self_execution_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("self_execution_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:
