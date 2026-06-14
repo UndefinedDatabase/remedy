@@ -25,7 +25,7 @@ review; anti-loop holds; no fake/missing-entity commands. NO PR created (Step 14
 | 2. Orchestrator models (no raw fields) | PASS | Situation/Decision/Option/EvidenceRef/Risk/RoutingPlan/LoopGuard/Idea hold IDs/labels/counts/scrubbed summaries; no raw |
 | 3. Situation builder (safe summaries; unknown stays unknown) | PASS | _gather_signals from durable stores (artifacts/repair/intents/trust/material/requests/self/contract-usage); try/except→unknown refs; missing→risk; NO event-only truth promotion |
 | 4. Option generator (real entities/commands only) | PASS | deterministic; entity-backed (intent/fa/pt ids); _catalog_ok via validate_next_safe_action_command→available=False if not catalog-backed; why_now/why_not |
-| 5. Decision scorer (deterministic; reason codes) | CONCERN R-0086 | deterministic base+review_blocks+budget+loop+risk reason codes. BUT contract action permission NOT evaluated → R-0086 (MEDIUM): contract-denied action can be selected |
+| 5. Decision scorer (deterministic; reason codes) | PASS | R-0086 RESOLVED @0bc1a47: _gather_signals evaluates evaluate_run_action(PATCH_APPLY)→patch_apply_allowed; CONTINUE_INTENT unavailable when denied; test_contract_denied_apply_not_recommended; scorer now uses evidence/review/contract/budget/loop/risk |
 | 6. Anti-loop guard (allow/warn/block/human) | PASS | durable repair_failed≥2→human_review, trust_rejected≥2→block; decision-history repetition (same evidence_fingerprint+kind)→warn/block; new evidence (diff fingerprint) resets; CLI decide persists=True |
 | 7. Model routing plan (no calls; 4 tiers) | PASS | deterministic_only/local_advisor_preferred/external_builder_needed/human_review_required; PLAN only (notes "no model called"); external only when justified + Trust Gate; no calls |
 | 8. Decision selector (exactly one outcome) | PASS | exactly one: SELECTED|HUMAN_REVIEW_REQUIRED|NO_SAFE_ACTION|EVIDENCE_INCOMPLETE; rejected_options explained; next_safe_action safe (catalog cmd or self inspect) |
@@ -33,16 +33,26 @@ review; anti-loop holds; no fake/missing-entity commands. NO PR created (Step 14
 | 10. CLI (inspect/decide/report/idea) + catalog + RunContract | PASS | inspect/report read_only, decide/idea write_metadata, no-mutate/no-exec; JSON; no traceback; ORCHESTRATOR_INSPECT/DECIDE/REPORT contract allowed |
 | 11. Idea intake + idea-to-option (hints not truth; dedupe) | PASS | record_idea scrub+classify+dedupe(fingerprint); never creates ProposedTask; idea→option available=False (human review only) |
 | 12. Integrations (Progress/Feature/Review/Cockpit) | PASS | 4ef4235: ledger fixed item_ids+counts/safe enums; feature planner human-review follow-up; review_bundle _build_orchestrator_decision_summary counts/labels/IDs only (no raw ideas, REQUIRED_SECTIONS→22); cockpit read-only; no mutation buttons |
-| 13. Redaction | PASS (code) | _scrub_public+[:300] on idea text; options/risks/refs hold static labels/counts/safe enums; await committed redaction test |
-| 14. Architecture guards (no provider/Ollama/network/apply/git/PR/Job.tasks) | PASS (code) | imports stdlib+internal only; NO subprocess/network/Ollama/provider-SDK/apply/test/git/PR/Job.tasks; validate_next_safe_action_command is validation not execution; await committed guard test |
-| 15. Quality + anti-loop + routing tests | PENDING | tests not yet committed |
+| 13. Redaction | PASS | _scrub_public+[:300] on idea text; test_no_raw_leak injects sk-token//home//id_rsa/Traceback (live_review + idea text) → asserts absent |
+| 14. Architecture guards (no provider/Ollama/network/apply/git/PR/Job.tasks) | PASS | test_no_network_subprocess/no_provider_or_ollama(ollama/anthropic/openai/litellm)/no_apply_or_execution_imports(patch_apply/source_apply)/no_git_pr_jobtasks(os.system/.tasks.append) |
+| 15. Quality + anti-loop + routing tests | PASS | 2b36844: decision-quality/anti-loop(warn→block, repair-fail→human, new-evidence-resets)/routing(human/external/deterministic)/idea/redaction/arch (committed); targeted run pending builder lock |
 
 ## Findings — Steps 1465-1498
 
 ## Finding R-0086
-Status: Open
+Status: Resolved
 Severity: medium
 Area: scoring
+Resolution: RESOLVED @ 0bc1a47, reviewer-verified in committed code. _gather_signals now
+evaluates evaluate_run_action(contract, ContractAction.PATCH_APPLY) → sig["patch_apply_allowed"]
+(orchestrator_brain.py:406-407, fallback False on error :410); CONTINUE_INTENT (the
+contract-gated apply action) is marked available=False + why_not "Contract denies patch_apply
+(or stop_before_apply)" when apply not permitted (:562-564), so a contract-denied apply can
+never be the SELECTED next step. APPROVE_INTENT stays available (human approval gate ≠ apply;
+the downstream CONTINUE_INTENT apply is the gated step) — acceptable. Regression test
+`test_contract_denied_apply_not_recommended` (default contract denies PATCH_APPLY → continue
+options unavailable + not selected). Targeted suite re-run confirmation deferred (builder holds
+/tmp/remedy-pytest.lock) — fix + test verified by inspection in committed code.
 Summary: decision scorer ignores run-contract action permission — options are scored/selected without evaluating their required_contract_action, so a contract-denied action can be recommended as the top next step.
 Details: Options set `required_contract_action` (e.g. APPROVE_INTENT/CONTINUE_INTENT →
 "patch_apply") in `_generate_options` (orchestrator_brain.py:540-553), but neither
@@ -102,6 +112,19 @@ continue option unavailable + not selected).
   (brain advisory; downstream command enforces contract), but Check-4 "contract" factor +
   block-if "contract denial is ignored" unmet. Checks 2-12 PASS (5 carries R-0086). 13/14 PASS
   by code; 15 PENDING (tests not committed). Await fix + tests. Next id: R-0087.
+- 2026-06-14: Reviewed 2b36844 (tests+docs 1485-1492) + a8f5058 (plan) + 0bc1a47 (R-0086 fix).
+  R-0086 RESOLVED + reviewer-verified in committed code (evaluate_run_action PATCH_APPLY →
+  patch_apply_allowed; CONTINUE_INTENT unavailable when denied; test_contract_denied_apply_not_
+  recommended). All 15 checks now have committed test coverage: catalog-backed selected cmd,
+  open-blocker→human-review, priority ordering, anti-loop (warn→block, repair-fail→human,
+  new-evidence-resets), routing (human/external-builder notes plan-only/deterministic), idea
+  classify+dedupe+hint-not-executed, redaction (sk-token//home//id_rsa/Traceback absent),
+  architecture (no subprocess/shell/ollama/anthropic/openai/litellm/patch_apply/source_apply/
+  os.system/.tasks.append). Side fix in 2b36844: feature_planner local-advisor mapping
+  FeaturePlanSource.FEATURE_SUGGESTION→ROADMAP (FEATURE_SUGGESTION is ProgressSource-only) —
+  sound. Changed-files reconciled vs git diff 38df37d..HEAD = 17 files, all covered. ALL 15
+  checks PASS; ZERO open findings. Builder running full pytest (lock held) — await count +
+  handoff. Targeted orchestrator run deferred (lock). Next id: R-0087.
 
 ## Builder Final Handoff (Steps 1465-1498)
 
@@ -143,3 +166,47 @@ continue option unavailable + not selected).
 Readiness ~95% (decision/planning rail; model execution deliberately deferred). Merge-
 ready as a SEPARATE PR. **PR NOT created** (Step 1495/1498 — awaiting explicit user request).
 Next block: Local Model Advisor Adapter v0 OR Provider Trust Verification v1.
+
+### Reviewer audit log (final)
+- 2026-06-14: FINAL. Reviewed bc7c7f3 (live review + handoff, PR held). Targeted run via
+  `scripts/remedy_pytest.sh test_orchestrator_brain.py test_orchestrator_brain_cli.py -q`
+  → 25 passed (incl test_contract_denied_apply_not_recommended [R-0086], anti-loop warn→block/
+  repair-fail→human/new-evidence-resets, routing human/external/deterministic, idea dedupe+
+  hint-not-executed, redaction, architecture guards). Builder full suite 5689 passed/8 skipped/
+  1 deselected; integrity passed=True/fail=0. Changed-files table reconciled vs git diff
+  38df37d..HEAD = 17 files, all covered, none missing/extra. R-0086 Resolved + verified. ALL 15
+  checks PASS; zero open Blocker/High. Verdict PASS WITH RISKS. NO PR (Step 1495/1498). COMPLETE.
+
+## Reviewer Final Verdict — Steps 1465-1498 (Main Orchestrator Brain v0)
+
+**PASS WITH RISKS.** Zero open Blocker/High. One finding filed (R-0086 MEDIUM, scoring) and
+**Resolved** — reviewer-verified in committed code.
+
+Primary goal MET: produces evidence-backed next-step decisions + anti-loop protection +
+model-routing recommendations WITHOUT executing actions, calling models, applying patches,
+approving work, or leaking raw data. Controller-not-executor: emits command strings only.
+
+- Handoff: PASS (PR#61 merged first → clean main 38df37d; correct sequencing, no stacking; residuals carried; PR held)
+- Situation builder: PASS (durable safe summaries; unknown stays unknown; missing→risk; no event-only truth promotion)
+- Option generator: PASS (deterministic; entity-backed; catalog-validated via validate_next_safe_action_command; why-now/why-not)
+- Scoring: PASS (deterministic; evidence/review/contract[R-0086 fix]/budget/loop/risk; reason codes; no fake green)
+- Anti-loop: PASS (durable repair-fail≥2→human, trust-reject≥2→block; persisted decision-history warn→block; new evidence resets)
+- Model routing: PASS (4 tiers; PLAN only, no calls; external only when justified + via Trust Gate)
+- Decision selector: PASS (exactly one: SELECTED|HUMAN_REVIEW_REQUIRED|NO_SAFE_ACTION|EVIDENCE_INCOMPLETE; rejected explained; safe next action)
+- CLI: PASS (inspect/report read_only, decide/idea write_metadata; JSON; no traceback; no shell=True)
+- Idea intake: PASS (scrub+classify+dedupe; never ProposedTask; hint not truth → human review only)
+- Progress/Feature/Review: PASS (counts/labels/IDs/safe enums only; no raw; no mutation)
+- Cockpit: PASS (read-only latest decision; no buttons)
+- Redaction: PASS (_scrub_public; injected secret/path/traceback absent — test asserted)
+- Architecture: PASS (no provider/Ollama/network/subprocess/apply/test/git/PR/Job.tasks — test asserted; routing never executes)
+- Tests run: targeted `scripts/remedy_pytest.sh` orchestrator_brain + CLI → 25 passed (reviewer-run once)
+- Full pytest: builder post-fix → 5689 passed / 8 skipped / 1 deselected (exit 0); reviewer did NOT run full suite
+- Remaining findings: none (R-0086 Resolved)
+- Merge readiness: MERGE-READY as a SEPARATE PR; **NO PR** (Step 1495/1498 — awaiting explicit user request)
+
+**Residual risks (→ PASS WITH RISKS, all documented):**
+1. Model execution deliberately deferred (v0 = decision/planning rail; routing is a plan, no model called — next block Local Model Advisor Adapter v0).
+2. Contract gating now covers patch_apply for the apply option (R-0086); other future option kinds that become contract-gated must extend the same evaluate_run_action check.
+3. Anti-loop decision-history relies on persisted decisions (CLI decide persists=True); a caller using persist=False loses history-repetition detection (durable repair/trust-reject signals still apply).
+4. Regex `_scrub_public` may miss novel secret/path formats (R-0083 lineage; surfaces are counts/labels/IDs only).
+5. Reviewer relied on builder's full-suite count (5689); independently ran targeted suite green + verified all checks + R-0086 fix against committed code.
