@@ -582,6 +582,30 @@ def _build_provider_trust_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_repair_request_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Repair Request Builder summary for the cockpit (Step 1381).
+
+    Counts + latest target only. No buttons, no mutation, no external execution,
+    no raw request content."""
+    try:
+        from packages.orchestration.repair_request_builder import load_request_packages
+        from packages.orchestration.provider_patch_material import load_materials
+        packages = list(load_request_packages(job).values())
+        materialized = {m.get("failure_artifact_id") for m in load_materials(job).values()
+                        if m.get("material_state") == "materialized"}
+        pending = sum(1 for p in packages if p.get("failure_artifact_id") not in materialized)
+        latest = packages[-1].get("target_kind", "") if packages else "none"
+        return {
+            "request_package_count": len(packages),
+            "pending_response_count": pending,
+            "latest_request_target": latest,
+            "source": "repair_request_builder",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"request_package_count": "unknown", "pending_response_count": "unknown",
+                "latest_request_target": "unknown", "source": "unavailable"}
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -845,6 +869,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "overnight": _build_overnight_section(job, truth_data_dir),
         "overnight_run": _build_overnight_run_section(job, truth_data_dir),
         "provider_trust": _build_provider_trust_section(job),
+        "repair_request": _build_repair_request_section(job),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,
