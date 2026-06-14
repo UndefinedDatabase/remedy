@@ -7,8 +7,8 @@ loop, or hidden background process. Answers: what would I do? am I allowed? did
 I do it? why stop? what evidence? what next?
 
 ## Current Step
+1298 — Full pytest once (post targeted green)
 1297 — Documentation (then full suite 1298)
-1293 — Tests (CLI runtime, unit, redaction, architecture guards)
 
 ## Steps
 - [x] 1275: Mainline reconciliation + clean branch (PR #55 merged; scope→1275-1304)
@@ -34,7 +34,7 @@ I do it? why stop? what evidence? what next?
 - [x] 1294: Executor unit tests
 - [x] 1295: Redaction tests
 - [x] 1296: Architecture guards
-- [ ] 1297: Documentation (bounded-overnight-executor-v0 + cross-links)
+- [x] 1297: Documentation (bounded-overnight-executor-v0 + cross-links)
 - [ ] 1298: Targeted tests + full pytest once
 - [ ] 1299: Live review
 - [ ] 1300: PR discipline
