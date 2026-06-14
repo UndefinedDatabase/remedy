@@ -57,5 +57,19 @@ rename/multi-file candidates → `unsupported_patch_shape` (accepted but no inte
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite
   once at block end. No shell=True, no subprocess.
 
+## Product readiness — Provider Patch Materialization v0 (Step 1360)
+CAN: an accepted external-provider candidate (single `.md` create/modify) is now
+MATERIALIZED into a real, applyable pending Repair Patch Intent that flows through
+`remedy patch approve` → `remedy do continue` → snapshot → apply → test → proof via
+the EXISTING apply path (no special provider apply). Raw diff stays in private
+workspace storage; public surfaces carry safe metadata only. Idempotent by candidate
+hash. Surfaced in Progress/Feature/Review(18)/Cockpit; verifiable via material-show.
+CANNOT (by design): NO provider execution/network/subprocess; NO auto-apply/approval;
+source/multi-file/delete/rename/binary candidates → unsupported_patch_shape (no
+intent — apply path is .md-only in v0). accepted ≠ materialized ≠ applied ≠ verified.
+Next block (Provider-backed Repair Builder v0) can wire a real local-first gated
+builder BEHIND this gate to PRODUCE candidates (the trust+materialization boundary
+stays); extending the applyable surface beyond .md is separate future work.
+
 ## Next block
 Provider-backed Repair Builder v0.

@@ -13,7 +13,7 @@ apply-compatible ONLY for a single `.md` target. Source/binary/delete/rename/mul
 file → `unsupported_patch_shape` (accepted_but_not_materialized; no intent).
 
 ## Current Step
-1357 — full pytest once (post targeted green)
+DONE — full suite 5599 passed; integrity ok; verdict PASS WITH RISKS; ready to merge alone
 
 ## Steps
 - [x] 1335: Mainline reconciliation + clean branch (PR #57 merged; scope→1335-1364)
@@ -38,14 +38,14 @@ file → `unsupported_patch_shape` (accepted_but_not_materialized; no intent).
 - [x] 1354: CLI runtime tests
 - [x] 1355: Architecture guards
 - [x] 1356: Docs (materialization-v0 + cross-links)
-- [ ] 1357: Targeted tests + full pytest once
-- [ ] 1358: Live review
-- [ ] 1359: PR discipline
-- [ ] 1360: Product readiness update
+- [x] 1357: Targeted tests + full pytest once
+- [x] 1358: Live review
+- [x] 1359: PR discipline
+- [x] 1360: Product readiness update
 - [x] 1361: Apply compatibility proof (approve→do continue fixture, snapshot, no overclaim)
-- [ ] 1362: Integrity gate
-- [ ] 1363: Final handoff
-- [ ] 1364: Hard completion criteria
+- [x] 1362: Integrity gate
+- [x] 1363: Final handoff
+- [x] 1364: Hard completion criteria
 
 ## Hard rules
 - NO provider/Ollama/Claude SDK, NO network, NO subprocess, NO shell=True.
