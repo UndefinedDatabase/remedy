@@ -631,6 +631,29 @@ def _build_self_dogfood_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_self_execution_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Self-Dogfood Execution summary for the cockpit (Step 1445).
+    Counts + latest state only. No buttons, no mutation, no raw content."""
+    try:
+        from packages.orchestration.self_dogfood_execution import list_attempts
+        attempts = [a for a in list_attempts() if a.get("job_id") == str(job.id)]
+        by_state: dict[str, int] = {}
+        for a in attempts:
+            by_state[a.get("state", "")] = by_state.get(a.get("state", ""), 0) + 1
+        return {
+            "attempt_count": len(attempts),
+            "pending_candidate_count": by_state.get("awaiting_external_candidate", 0),
+            "pending_approval_count": by_state.get("intent_pending_approval", 0),
+            "completed_count": by_state.get("completed", 0),
+            "latest_state": (attempts[-1].get("state", "") if attempts else "none"),
+            "source": "self_dogfood_execution",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"attempt_count": "unknown", "pending_candidate_count": "unknown",
+                "pending_approval_count": "unknown", "completed_count": "unknown",
+                "latest_state": "unknown", "source": "unavailable"}
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     events = _load_events(job)
@@ -896,6 +919,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "provider_trust": _build_provider_trust_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
+        "self_execution": _build_self_execution_section(job),
         "token_usage": _build_token_usage(events),
         "tasks": task_items,
         "activity": activity_items,

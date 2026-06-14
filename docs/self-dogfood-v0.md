@@ -65,3 +65,4 @@ execution rail — still behind approval, never self-merging.
 
 - [repair-loop-v1.md](repair-loop-v1.md), [do-continue-v1.md](do-continue-v1.md)
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [repair-request-builder-v0.md](repair-request-builder-v0.md)
+- [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — acts on an APPROVED self-dogfood task through the existing trust/materialize/approve/do-continue gates.

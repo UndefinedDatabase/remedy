@@ -94,3 +94,4 @@ produces the candidate instead of a human pasting it.
 - [bounded-overnight-executor-v0.md](bounded-overnight-executor-v0.md) — foreground one-step executor.
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
 - [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).
+- [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts reuse this candidate-intake → trust → materialize path.

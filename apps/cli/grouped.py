@@ -172,6 +172,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--item-id", default=None, dest="item_id", help=arg.help)
             elif arg.name == "--top":
                 parser.add_argument("--top", default=None, dest="top", help=arg.help)
+            elif arg.name == "--attempt-id":
+                parser.add_argument("--attempt-id", default=None, dest="attempt_id", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

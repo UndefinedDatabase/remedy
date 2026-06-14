@@ -946,6 +946,56 @@ def merge_self_dogfood_items(ledger: ProgressLedger, proposed_tasks: list | None
             seen.add(item.item_id)
 
 
+def extract_self_execution_items(attempts: list | None) -> list[ProgressItem]:
+    """Extract Self-Dogfood Execution progress items from attempts (Step 1442).
+    Read-only; fixed item_ids → no duplicates. `attempts` are safe dicts."""
+    if not attempts:
+        return []
+    states = [a.get("state", "") for a in attempts]
+    items: list[ProgressItem] = []
+    items.append(ProgressItem(
+        item_id="self-execution-started", title="Self-improvement attempt started",
+        status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+        safe_summary=f"{len(attempts)} self-improvement attempt(s)."))
+    awaiting = sum(1 for s in states if s == "awaiting_external_candidate")
+    pending = sum(1 for s in states if s == "intent_pending_approval")
+    completed = sum(1 for s in states if s == "completed")
+    blocked = sum(1 for s in states if s == "blocked")
+    if awaiting:
+        items.append(ProgressItem(
+            item_id="self-execution-awaiting-candidate", title="Self attempt awaiting external candidate",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary=f"{awaiting} attempt(s) awaiting an external candidate.",
+            next_action="remedy provider intake-repair <job_id> --input <file> --provider self_dogfood --json"))
+    if pending:
+        items.append(ProgressItem(
+            item_id="self-execution-intent-pending", title="Self attempt intent pending approval",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.REPAIR_ARTIFACT, severity="Medium",
+            safe_summary=f"{pending} self intent(s) pending approval.",
+            next_action="remedy patch approve <job_id> <intent_id> --json"))
+    if completed:
+        items.append(ProgressItem(
+            item_id="self-execution-completed", title="Self-improvement completed",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary=f"{completed} self-improvement attempt(s) completed (proof verified)."))
+    if blocked:
+        items.append(ProgressItem(
+            item_id="self-execution-blocked", title="Self-improvement attempt blocked",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary=f"{blocked} self-improvement attempt(s) blocked.",
+            next_action="remedy self status --json"))
+    return items
+
+
+def merge_self_execution_items(ledger: ProgressLedger, attempts: list | None) -> None:
+    """Merge self-execution items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_self_execution_items(attempts):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_contract_decisions_from_events(events: list[dict] | None) -> list[dict]:
     """Extract contract decision metadata from timeline events."""
     if not events:
@@ -1064,6 +1114,15 @@ def build_progress_ledger(
             from packages.orchestration.proposed_tasks import load_proposed_tasks_safe
             pts, _degraded = load_proposed_tasks_safe(str(job.id))
             merge_self_dogfood_items(ledger, pts)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Self-dogfood execution attempts for this job (Step 1442).
+    if job is not None:
+        try:
+            from packages.orchestration.self_dogfood_execution import list_attempts
+            mine = [a for a in list_attempts() if a.get("job_id") == str(job.id)]
+            merge_self_execution_items(ledger, mine)
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

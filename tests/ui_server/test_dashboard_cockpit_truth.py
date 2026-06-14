@@ -236,6 +236,16 @@ class TestDashboardShape:
         assert "self_improvement_item_count" in sd
         assert "pending_evaluation_count" in sd
 
+    def test_self_execution_section_present(self):
+        # Read-only Self-Dogfood Execution summary (Step 1445).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "self_execution" in dash
+        se = dash["self_execution"]
+        assert "attempt_count" in se
+        assert "pending_candidate_count" in se
+        assert "pending_approval_count" in se
+
     def test_overnight_run_section_present(self):
         # Read-only Bounded Overnight Executor run summary (Step 1292).
         job = Job(name="t")
