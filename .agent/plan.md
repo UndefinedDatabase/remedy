@@ -11,7 +11,7 @@ no execution, no LLM/provider/Ollama, no apply/approve/PR/code mutation.
 LLMs are advisors/builders. The orchestrator is the controller. Evidence is truth.
 
 ## Current Step
-1492 — full pytest once (post targeted green)
+DONE — R-0086 resolved; verdict PASS WITH RISKS; merge-ready; PR HELD (Step 1495/1498)
 
 ## Steps
 - [x] 1465: Mainline reconciliation + clean branch (PR #61 merged; scope→1465-1498)
@@ -42,12 +42,12 @@ LLMs are advisors/builders. The orchestrator is the controller. Evidence is trut
 - [x] 1490: Architecture guards
 - [x] 1491: Documentation (orchestrator-brain-v0)
 - [x] 1492: Targeted tests + full pytest once
-- [ ] 1493: Live review
-- [ ] 1494: Product readiness update
-- [ ] 1495: PR discipline (clean branch; NO PR unless user asks)
-- [ ] 1496: Final handoff
-- [ ] 1497: Hard completion criteria
-- [ ] 1498: Merge discipline — DO NOT create PR unless user explicitly asks
+- [x] 1493: Live review
+- [x] 1494: Product readiness update
+- [x] 1495: PR discipline (clean branch; NO PR unless user asks)
+- [x] 1496: Final handoff
+- [x] 1497: Hard completion criteria
+- [x] 1498: Merge discipline — DO NOT create PR unless user explicitly asks
 
 ## Hard rules
 - READ-ONLY or metadata-only. NO action execution from the brain.

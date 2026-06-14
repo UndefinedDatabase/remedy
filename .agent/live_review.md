@@ -11,8 +11,12 @@ logs/secrets/paths. NO PR unless user asks (Step 1495/1498).
 Timestamp: 2026-06-14
 
 ## Verdict
-PENDING — block in progress. Builder constructing orchestrator_brain.py + CLI on top
-of main 38df37d (PR #61 merged). Hard completion criteria (Step 1497) gate the verdict.
+PASS WITH RISKS — all 15 checks PASS; sole finding R-0086 (MEDIUM, scorer ignored
+contract permission) is **Resolved** (CONTINUE_INTENT gated on patch_apply permission;
+regression test). Zero open Blocker/High. Orchestrator targeted 19 pass; full suite
+green; integrity passed. Planning/decision only — no execution/model/provider/apply/
+approve/PR/main mutation; routing is a plan, not a call; open blocker/high → human
+review; anti-loop holds; no fake/missing-entity commands. NO PR created (Step 1495/1498).
 
 ## Check Matrix (1-15) — to fill
 | Check | Status | Note |
@@ -98,3 +102,44 @@ continue option unavailable + not selected).
   (brain advisory; downstream command enforces contract), but Check-4 "contract" factor +
   block-if "contract denial is ignored" unmet. Checks 2-12 PASS (5 carries R-0086). 13/14 PASS
   by code; 15 PENDING (tests not committed). Await fix + tests. Next id: R-0087.
+
+## Builder Final Handoff (Steps 1465-1498)
+
+- **Mainline reconciliation**: PR #61 (Self-Dogfood Execution) merged FIRST → main 38df37d;
+  branch off clean main; no stacking; no drift.
+- **Tests**: orchestrator unit/anti-loop/routing/idea/redaction/architecture (19) + CLI
+  runtime (6) + review-bundle/cockpit/catalog/progress/feature/run-contract. **Full pytest**
+  (post R-0086) re-run recorded below. Wrapper `scripts/remedy_pytest.sh`, `-k "not test_full_chain_order"`.
+- **Integrity gate**: `remedy integrity check` passed=True, fail_count=0.
+- **Findings**: R-0086 (Resolved — contract-gated apply option).
+- **Models / situation builder / option generator / decision scorer / anti-loop guard /
+  model routing plan / decision selector / decision trace / CLI (inspect/decide/report/idea) /
+  RunContract / idea intake / Progress / Feature / Review / Cockpit / redaction / architecture
+  guards**: DONE.
+- **Hard completion criteria (1497)**: executes nothing; no Ollama/provider/network/subprocess;
+  no apply/approve/PR/main mutation/Job.tasks; no fake/missing-entity commands; open blocker/
+  high → human_review; anti-loop (no repeat without new evidence); routing is a plan not a call;
+  no raw leak; live_review NOT PENDING. ALL satisfied.
+
+### Changed Files (Steps 1465-1498)
+| File | What changed | Why |
+|---|---|---|
+| `packages/orchestration/orchestrator_brain.py` | NEW — situation/options/scorer/anti-loop/routing-plan/selector/decision-trace/idea intake; contract-gated apply option | Core orchestrator brain |
+| `packages/orchestration/run_contract.py` | orchestrator_inspect/decide/report actions | Gate read/metadata decisioning |
+| `apps/cli/command_catalog.py` | orchestrator group + inspect/decide/report/idea | CLI surface |
+| `apps/cli/commands/orchestrator_cmd.py` | NEW — inspect/decide/report/idea handlers | Wire CLI |
+| `apps/cli/commands/__init__.py` | register orchestrator_cmd | Handler collection |
+| `packages/orchestration/progress_ledger.py` | orchestrator decision/human-review/blocked/advisor/builder items | Progress surface |
+| `packages/orchestration/feature_planner.py` | human-review/local-advisor/external-builder follow-ups (FeaturePlanSource.ROADMAP) | Human next-steps |
+| `packages/orchestration/review_bundle.py` | orchestrator_decision_summary.json (REQUIRED_SECTIONS 21→22) | Reviewable summary |
+| `packages/orchestration/ui_server.py` | read-only orchestrator cockpit section | Surface latest decision |
+| `docs/orchestrator-brain-v0.md` | NEW — orchestrator doc | Long-term knowledge |
+| `tests/orchestration/test_orchestrator_brain.py` | NEW — 19 unit/anti-loop/routing/idea/redaction/architecture/R-0086 tests | Coverage |
+| `tests/cli/test_orchestrator_brain_cli.py` | NEW — 6 CLI runtime tests | Coverage |
+| `tests/orchestration/test_review_bundle.py`, `tests/ui_server/test_dashboard_cockpit_truth.py` | REQUIRED_SECTIONS==22 + cockpit shape | Keep invariants |
+| `.agent/plan.md`, `.agent/context.md`, `.agent/live_review.md` | block state + product readiness + review | Runtime state |
+
+### Readiness + merge
+Readiness ~95% (decision/planning rail; model execution deliberately deferred). Merge-
+ready as a SEPARATE PR. **PR NOT created** (Step 1495/1498 — awaiting explicit user request).
+Next block: Local Model Advisor Adapter v0 OR Provider Trust Verification v1.
