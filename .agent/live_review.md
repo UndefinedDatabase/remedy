@@ -1,70 +1,209 @@
-# Live Review — Steps 1645-1680: Candidate Quality Evaluation v1
+# Live Review — Steps 1681-1716: External Builder Sandbox v0
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict, protocol §5)
-Scope: Evaluate generated/external candidate USEFULNESS from DURABLE evidence (trust report,
-verification report, materialization/intent state, proof chain, linked test runs) and feed SAFE
-scorecards back into Builder Routing as confidence/recommendation signals. Read/metadata-only. Must
-NOT: execute models/providers, call network/subprocess, apply patches, approve work, run tests,
-create PRs/git; claim success without linked proof/test evidence; let rejected/unverified candidates
-score high/excellent; treat pending approval as completed; treat model confidence/text as truth;
-trigger automatic generation via routing feedback; leak raw prompt/output/candidate/diff/source/log/
-secrets/abs paths; emit fake next actions. NO PR unless user asks (Step 1680).
+Scope: INGRESS sandbox for EXTERNAL builder candidates — safe request-package export, quarantined
+external candidate submission, bridge into the EXISTING Trust Gate → Verification → Materialization
+seams, candidate quality evaluation for external submissions, READ-ONLY routing feedback, safe
+progress/review/cockpit summaries, docs/tests/integrity. Sandbox is INGRESS, NOT execution. Must NOT:
+execute external providers, call Claude/Pi/OpenAI/Ollama, use network/browser/subprocess/MCP, auto
+apply/approve/test/repair, automate git commit/branch/PR, or build a model/route tournament.
+NO PR unless user asks (Step 1716).
 Timestamp: 2026-06-15
 
 ## Verdict (reviewer-owned)
-PASS — reviewed @ commit `600304e`; ZERO open findings. All 12 checks PASS. Quality evaluation is
-evidence-only: `_classify` is durable-evidence-driven (local_candidate run manifest + trust report +
-verification report + intent state via get_patch_intent + apply/test/proof via authoritative
-`build_proof_chain`) — NEVER model confidence/text, NEVER event-only proof promotion. `_score`
-enforces the no-success-without-proof CEILINGS: verification≠pass → cap MEDIUM (rejected/unverified
-cannot score high), human_decision unknown → cap MEDIUM, proof_outcome≠pass → cap HIGH (EXCELLENT
-requires proof_status==verified + test passed). PENDING_APPROVAL scored MEDIUM and explicitly "not
-complete"; rejected/trust-failed → LOW; cost always "unknown" (never invented). `route_quality_feedback`
-is a READ-ONLY confidence signal (raise/lower/neutral) that NEVER triggers generation — wired into
-builder_routing step 8 so poor history (reject_rate≥0.5 / loop≥2) escalates to HUMAN_REVIEW_REQUIRED
-instead of recommending more generation (routing still emits a string only). Evaluator does NO
-model/provider/network/subprocess/apply/approve/test/git/PR; reports carry codes/IDs/counts/bands/
-dimensions only (no raw prompt/output/candidate/diff/source/secret/path); idempotent by evidence
-fingerprint; `candidate_quality_integrity` flags success_without_proof / high_score_for_rejected /
-duplicate_fingerprint. All emitted next_safe_action are catalog-valid (R-0088 lesson applied:
-`candidate-quality show <evaluation_id>` positional matches catalog; `patch approve`, `do continue
---intent-id`, `provider verification-show`/`trust-show`). REVIEWER-INDEPENDENT verification: targeted
-`scripts/remedy_pytest.sh` (test_candidate_quality + test_candidate_quality_cli + test_review_bundle +
-test_dashboard_cockpit_truth + test_builder_routing) = **145 passed**; builder-reported full pytest
-5927 passed/8 skipped/1 deselected (exit 0) — relied on per standing rule. Changed-files table present
-in `.agent/context.md`. Merge-ready. NO PR (Step 1680).
+PASS (closure review @ fix commit `993781f`) — directed closure audit (Steps 1707-1716) opened 3 findings;
+ALL RESOLVED + reviewer-verified. ZERO open Blocker/High/Medium/Low. R-0091/R-0092/R-0094 fixed @ 993781f
+with real `Done:` markers + regression tests; R-0093 verified/refuted. No safety-invariant violation
+throughout: external candidate stays untrusted, pending≠completed, rejected scores low, no provider/
+network/subprocess/apply/approve, no raw/secret/diff/traceback content leak, routing emits strings only.
+R-0091–R-0094 status table:
+| ID | Sev | Status | Note |
+|---|---|---|---|
+| R-0091 | low | RESOLVED @993781f | raw_storage_ref removed from to_dict/export (in-memory only; quarantine_id stays public); test_public_export_has_no_raw_storage_ref |
+| R-0092 | medium | RESOLVED @993781f | valid package+job blocked submissions now persisted (state=BLOCKED, safe stop_reason, no raw); invalid/missing package ephemeral+documented; test_blocked_submission_persisted/test_protected_blocked_persisted/test_missing_package_block_ephemeral |
+| R-0093 | low | RESOLVED | CLI suite 7 passed/2.29s; no hang/traceback/leak — refuted |
+| R-0094 | medium | RESOLVED @993781f | external route now emits `remedy external-builder package-create <job> --route-id <route> --json` (catalog-valid, parser-validated); poor→HUMAN_REVIEW, unknown neutral, pending≠success; test_external_route_with_known_cost |
 
-## Check Matrix (1-12)
+REVIEWER-INDEPENDENT re-verification: inspected fix diff `05710d0..993781f` line-level (to_dict has no
+raw_storage_ref; `_blocked_submission` _atomic_writes for valid package+job, ephemeral otherwise; external
+route finalize emits `_external_package_cmd`); re-ran targeted `scripts/remedy_pytest.sh`
+(test_external_builder_sandbox + test_external_builder_cli + test_builder_routing + test_review_bundle)
+= **120 passed** (incl. all new regression tests); R-0093 CLI isolated = 7 passed. Builder full suite
+5969+ now ACCEPTED (targeted green, zero open Medium/High/Blocker). Changed-files table present in
+context.md. Commit reviewed: `993781f`. MERGE-READY. NO PR unless user asks (Step 1716).
+
+---
+(superseded) Prior safety pass — reviewed @ commit `05710d0`; ZERO open findings; all 14 checks PASS; all 10 negative cases
+verified. External Builder Sandbox is INGRESS-ONLY ("Worker execute. Remedy governs."): Remedy never
+executes an external worker, never calls provider/model/network/browser/subprocess/MCP/git, never
+auto-applies/approves/tests. An external candidate FILE enters the EXISTING pipeline verbatim via
+`intake_provider_repair(provider_name="external_builder:<label>", source_kind=FILE)` → quarantine →
+Trust Gate → Verification → Materialization; the module NEVER reads/renders the raw candidate and
+NEVER parses-to-intent — a pending intent (`PENDING_APPROVAL`) appears ONLY when the PTV gate sets
+`repair_intent_id`. Intake pre-checks reject path-traversal (`..`), protected substrings (.env/.ssh/
+.aws/.git/credentials/id_rsa/secrets/…), symlinks, non-regular files, oversized (>256KiB), unreadable
+— all as safe structured errors (never raises). Request-package export carries safe context only
+(failure IDs + scrubbed safe_summary labels; scrubbed objective; no raw source/diff/log/secret/path).
+Candidate-quality reuse for external submissions adds model_label/route_tier LABELS only — scoring
+path (`_classify`/`_score` evidence-only ceilings) is UNCHANGED, so rejected/unverified can't score
+high and pending≠completed. Routing feedback (builder_routing step 9) is READ-ONLY — poor external
+history → HUMAN_REVIEW_REQUIRED, never starts a worker/generation. Public surfaces = IDs/labels/
+counts/states only (raw_storage_ref = quarantine pointer); `external_builder_integrity` actively flags
+raw markers (diff --git/-----BEGIN/Traceback/sk-) + abs paths in public. run_contract
+EXTERNAL_BUILDER_PACKAGE/SUBMIT/SHOW + all 8 catalog commands are write_metadata/read_only,
+`may_execute_commands=False` (non-executable). All emitted next_safe_action catalog-valid (R-0088
+lesson). REVIEWER-INDEPENDENT verification: targeted `scripts/remedy_pytest.sh`
+(test_external_builder_sandbox + test_external_builder_cli + test_candidate_quality + test_builder_routing
++ test_review_bundle + test_dashboard_cockpit_truth) = **172 passed**; builder-reported full pytest
+5969 passed/8 skipped/1 deselected (exit 0) — ACCEPTED per standing rule (targeted green, count clearly
+reported, no hidden-failure evidence). Changed-files table present in `.agent/context.md`. Commit
+reviewed: `05710d0`. Open findings: 0. MERGE-READY. NO PR unless user asks (Step 1716).
+2 NITs (not findings): `save_job` imported but unused in external_builder_sandbox.py; traversal shares
+the PROTECTED_PATH stop_reason with protected substrings (cosmetic).
+
+## Check Matrix (1-14)
 | Check | Status | Note |
 |---|---|---|
-| 1. Handoff/mainline (clean main after local-candidate merge; residuals preserved; no drift) | PASS | branch off 3641618 (merged main); 0 drift commits |
-| 2. Models/taxonomy (safe fields; clear outcome states; no raw content fields) | PASS | 16 outcomes + finding codes + bands; export = codes/IDs/counts/dims only |
-| 3. Inputs/evidence (safe summaries; unknown stays unknown; no event-only proof promotion) | PASS | _gather_evidence durable summaries; build_proof_chain authoritative; try/except→unknown |
-| 4. Scoring/outcome (proof/test gates; rejected/unverified can't score high; pending≠completed; no invented costs) | PASS | _score ceilings (verif/human/proof); rejected→LOW; pending=MEDIUM not complete; cost=unknown |
-| 5. Idempotency/scorecards (stable fingerprints; no dup active evals; scorecards safe+bounded) | PASS | _fingerprint stable; _find_existing reuse; scorecards counts/rates only |
-| 6. Routing feedback (confidence/recommend only; no auto gen; pending suppresses gen; poor→human review) | PASS | route_quality_feedback read-only; builder_routing step 8 lower→HUMAN_REVIEW; never generates |
-| 7. CLI runtime (evaluate/show/scorecard/report; JSON; markdown safe; no traceback; no shell) | PASS | evaluate write_metadata / show+scorecard+report+integrity read_only; JSON; errors→stderr |
-| 8. RunContract/catalog (metadata/read-only; catalog-backed; no may_execute_commands) | PASS | 4 actions default-allowed non-cloud; may_execute_commands=False |
-| 9. Progress/Feature/Review/Cockpit (safe counts/status; no raw; no mutation buttons) | PASS | fixed item_ids; bundle +candidate_quality_summary; cockpit counts/no buttons |
-| 10. Redaction (no secrets/paths/tracebacks/source/diff/log in public) | PASS | _scrub_public on summaries; public = codes/IDs/counts/bands/dims only |
-| 11. Architecture (no provider/model/net/subprocess/apply/test/git/PR; no source_apply/patch_apply import; no auto approval) | PASS | stdlib + _scrub_public; lazy durable-reader imports; reads intent state never sets it |
-| 12. Tests (targeted candidate-quality/local-candidate/routing/verification/catalog/redaction; full pytest ≤1×) | PASS | reviewer targeted = 145 passed; builder full 5927 passed/8 skipped/1 deselected (exit 0) |
-| (handoff) Changed-files table present | PASS | table in context.md; reconciled vs git diff 3641618..600304e |
+| 1. Mainline closure (Candidate Quality v1 PASS respected; no scope before closure) | PASS | branch off 7cec21c (merged main); 0 drift commits |
+| 2. Scope boundary (sandbox is ingress, not execution) | PASS | export package + submit file → intake; no worker exec; arch-guard tests |
+| 3. Request package safety (safe context only; no raw/protected leaks) | PASS | _gather_safe_context = failure IDs + scrubbed labels; objective scrubbed; idempotent |
+| 4. Storage/quarantine (raw/private separated from public summaries) | PASS | pkg/sub 0o600/dir 0o700; raw only via intake quarantine; public = IDs/labels |
+| 5. Submission intake (bounded; protected; no traversal/symlink/binary unsafe) | PASS | _validate_candidate_path rejects ../protected/symlink/non-file/oversized/unreadable; binary via intake |
+| 6. Trust/verification bridge (external candidate stays untrusted until verified) | PASS | intake_provider_repair FILE; intent only via PTV gate; PENDING_APPROVAL explicit |
+| 7. Candidate Quality (evidence-only; ceilings preserved) | PASS | model_label/route_tier = labels only; _classify/_score unchanged |
+| 8. Routing feedback (read-only confidence only; no auto generation) | PASS | builder_routing step 9 lower→HUMAN_REVIEW; never starts worker/generation |
+| 9. Progress/Feature/Review/Cockpit (safe summaries; no fake live state) | PASS | fixed item_ids; bundle +external_builder_summary; cockpit counts/no buttons |
+| 10. CLI/catalog/run contract (catalog-valid; non-executable classifications) | PASS | 8 commands write_metadata/read_only; may_execute_commands=False; non-cloud actions |
+| 11. Redaction (no raw/secret/path/log/diff/traceback public) | PASS | public = IDs/labels/states; integrity flags raw markers + abs paths; test_public_surfaces_never_expose |
+| 12. Architecture guards (no forbidden imports/calls) | PASS | stdlib + scrub helpers; test_no_forbidden_imports + test_no_execution_or_apply |
+| 13. Tests (targeted + full suite reported) | PASS | reviewer targeted = 172 passed; builder full 5969 passed/8 skipped/1 deselected (accepted) |
+| 14. Handoff (changed-files table, risks, non-goals, next block) | PASS | changed-files table in context.md; non-goals + risks documented |
 
-## Findings — Steps 1645-1680
-(none) — ZERO open Blocker/High/Medium/Low. Reviewed committed diff `3641618..600304e` line-level +
-targeted 145 passed. Builder committed reviewer PENDING ledger (no pre-written verdict).
+## Negative-test checklist (reviewer must verify)
+| # | Case | Status |
+|---|---|---|
+| 1 | Candidate fake "tests passed" claim → no proof promotion | PASS | candidate_quality scoring uses durable test_state/proof_chain, not candidate text (scoring path unchanged); test_external_evaluation + candidate_quality suite |
+| 2 | Candidate secret-looking token → not public | PASS | test_secret_candidate_trust_rejected_no_echo + test_public_surfaces_never_expose (sk-/BEGIN) |
+| 3 | Candidate absolute path → not public | PASS | test_public_surfaces_never_expose (/home//Users/ forbidden); integrity abs-path check |
+| 4 | Candidate `diff --git` → not public | PASS | test_public_surfaces_never_expose payload "diff --git a/x b/x" absent from public |
+| 5 | Candidate oversized → rejected safely | PASS | test_oversized_rejected + CLI test_submit_oversized → OVERSIZED, no raise |
+| 6 | Candidate symlink / path traversal / protected path → rejected safely | PASS | test_symlink_rejected + test_protected_path_rejected; _validate_candidate_path `..`+protected branch |
+| 7 | Rejected candidate → low score / no intent | PASS | trust-rejected → no intent (test_secret_candidate...); candidate_quality rejected→LOW |
+| 8 | Pending approval → not completed | PASS | PENDING_APPROVAL state explicit; candidate_quality pending→MEDIUM "not complete" |
+| 9 | Routing poor history → human-review recommendation only | PASS | builder_routing step 9 lower→HUMAN_REVIEW (test_builder_routing) |
+| 10 | Routing recommendation creates/runs/generates nothing | PASS | route_quality_feedback read-only; test_no_execution_or_apply + test_no_forbidden_imports |
 
-Next id: R-0091.
+## Findings — Steps 1681-1716
+
+NOTE: initial safety pass @ `05710d0` was clean (10/10 negative cases, 172 passed). A directed CLOSURE
+review (Steps 1707-1716) surfaced 3 completeness/hygiene findings below — none are safety-invariant
+violations, but R-0092/R-0094 are MEDIUM and gate the closure PASS. Verdict downgraded to FAIL until
+resolved.
+
+## Finding R-0091
+Status: Resolved
+Resolution: RESOLVED @ 993781f (reviewer-verified) — `raw_storage_ref` removed from `to_dict()` /
+`export_external_submission_json` (kept in-memory only; `quarantine_id` carries the public pointer);
+regression test `test_public_export_has_no_raw_storage_ref`. Reviewer confirmed to_dict no longer emits it.
+Severity: low
+Area: redaction
+Summary: `raw_storage_ref` (a field documented "private; never rendered") is emitted in the public CLI submission JSON.
+Details: `ExternalBuilderCandidateSubmission.to_dict()` (external_builder_sandbox.py:177) includes
+`"raw_storage_ref"`, and `export_external_submission_json` == `to_dict`, so `remedy external-builder
+submit/submission-show --json` (external_builder_cmd.py:80) prints it. The field is annotated
+":155 quarantine id — private; never rendered", AND `external_builder_integrity` (:538) DELIBERATELY
+excludes `raw_storage_ref` from its raw-marker leak scan — so the code itself treats it as private,
+yet `to_dict` exposes it. NOT a raw/secret/content leak: the value is the quarantine_id (an opaque id
+already public via the separate `quarantine_id` field), so no NEW sensitive data escapes — hence LOW.
+But it violates the field's own contract + the integrity-scanner intent.
+Evidence: external_builder_sandbox.py:155 (comment), :177 (to_dict emits it), :538 (integrity excludes
+it); external_builder_cmd.py:80 prints export_external_submission_json.
+Expected fix: Drop `raw_storage_ref` from `to_dict`/`export_external_submission_json` (keep it as an
+in-memory/private field only; `quarantine_id` already carries the public pointer), add a CLI/bundle/
+cockpit test asserting `raw_storage_ref` absent from public JSON. Then write `Done: R-0091`.
+
+## Finding R-0092
+Status: Resolved
+Resolution: RESOLVED @ 993781f (reviewer-verified) — `_blocked_submission` now `_atomic_write`s a
+BLOCKED record (safe stop_reason only, no raw candidate read/stored) when package+job are valid;
+missing/invalid package stays ephemeral (documented). Regression tests test_blocked_submission_persisted
+/ test_protected_blocked_persisted / test_missing_package_block_ephemeral. Blocked never becomes
+success/pending. Reviewer confirmed persistence + safety.
+Severity: medium
+Area: idempotency
+Summary: Valid-package BLOCKED submissions are not persisted as safe evidence (ephemeral return).
+Details: `_blocked_submission` (external_builder_sandbox.py:415) builds a BLOCKED submission but never
+`_atomic_write`s it; `submit_external_candidate` returns it directly at :457/:466/:470/:476
+(package-not-found, job-not-found, contract-denied, path-validation-failure incl. oversized/symlink/
+protected/unreadable). Only the successful path persists (`_atomic_write(_sub_path…)` :507). So a
+rejected external candidate against a VALID package leaves NO durable record — `load_external_submissions`
+/ progress / review-bundle never see it; an attacker repeatedly submitting protected/oversized files
+produces no audit trail. SAFETY is intact (state=BLOCKED, never success/pending), so this is not a
+blocker — but the evidence/audit rail is incomplete (this is the block's own ingress-evidence purpose).
+Evidence: external_builder_sandbox.py:415 (_blocked_submission, no write), :457/:466/:470/:476 (return
+without persist), :507 (only success persists).
+Expected fix: Persist BLOCKED submissions as safe evidence when the job+package are valid (oversized/
+symlink/protected/contract-denied) under `_sub_path` with state=BLOCKED + safe stop_reason only; keep
+invalid-package/job-not-found ephemeral (nowhere to persist) and document that behavior. Add a test:
+oversized/symlink submission against a valid package → persisted, state=BLOCKED, public surface shows
+only the stop_reason. Then write `Done: R-0092`.
+
+## Finding R-0093
+Status: Resolved (verified — not a defect)
+Severity: low
+Area: cli-runtime
+Summary: External-builder CLI suite stability.
+Resolution: Reviewer ran `scripts/remedy_pytest.sh tests/cli/test_external_builder_cli.py -q` =
+**7 passed in 2.29s** — suite completes, no hang, JSON parses, no tracebacks, no raw candidate content
+in output. Stability concern refuted. (Note: the suite does NOT assert `raw_storage_ref` absent — that
+hygiene gap is tracked under R-0091, not here.)
+
+## Finding R-0094
+Status: Resolved
+Resolution: RESOLVED @ 993781f (reviewer-verified) — builder_routing external route finalize now emits
+`_external_package_cmd` → `remedy external-builder package-create {job_id} --route-id {routing_id} --json`
+(catalog-valid, parser-validated) instead of the old `repair request` path; poor history still →
+HUMAN_REVIEW, unknown neutral, pending≠success, recommendation STRING only (no auto generation).
+Regression test test_external_route_with_known_cost. Reviewer confirmed step-9 finalize uses the new cmd.
+Severity: medium
+Area: routing-feedback
+Summary: Builder Routing's external route recommends the OLD `repair request` path, not the new External Builder rail.
+Details: In `select_builder_routing_decision` step 9 (builder_routing.py ~:722), the
+EXTERNAL_CANDIDATE_GENERATOR route emits `_prepare_request_cmd(request)` → `remedy repair request
+{job_id} --json`. That is a valid catalog command (so NOT a fake-action/R-0088-class defect), but it
+points at the older repair-request packaging path rather than this block's new external-builder rail
+(`remedy external-builder package-create …`). The local route was updated to `local-candidate generate`
+in the prior block; the external route was not updated to the external-builder rail. Result: the user
+following the routing recommendation lands on the confusing old path instead of the rail this block
+exists to provide. Read-only/no-auto-generation is intact (string only); this is a UX/architecture
+correctness gap, not a safety violation.
+Evidence: builder_routing.py:722 `_finalize(d, EXTERNAL_CANDIDATE_GENERATOR, …, _prepare_request_cmd(request), …)`;
+`_prepare_request_cmd` returns `remedy repair request …`; new rail command `external-builder.package-create`
+exists in the catalog but is never recommended by routing.
+Expected fix: Emit a catalog-valid external-builder next action (e.g. `remedy external-builder
+package-create --job-id {job_id} [--route-id {routing_id}] --json`) for the external route; keep it a
+recommendation STRING only (no auto generation). Add a builder_routing test asserting the external
+route's next_safe_action targets the external-builder rail and parses via build_parser. Then write
+`Done: R-0094`.
+
+Next id: R-0095.
 
 ## Reviewer audit log
-- PR #66 merged Local Candidate Generator v0 (1609-1644) to main → `3641618`; reviewer verdict PASS
-  @ `c7ea7ff`. New branch `feature/steps-1645-1680-local-candidate-quality-evaluation-v1` off
-  `3641618` (clean merged main). `git log main..HEAD` empty → no drift, no block code yet. Check 1 PASS.
-- WATCH: quality score MUST derive from DURABLE truth (build_proof_chain / build_snapshot_truth /
-  linked test_run_id / verification decision), NEVER from event presence or model confidence/text;
-  rejected/unverified/pending candidates must NOT score high; pending approval ≠ completed; scorecard
-  public = safe counts/labels/IDs only (no raw prompt/output/candidate/diff/source/log); routing
-  feedback influences confidence/recommendation ONLY (no auto generation); pure read/metadata — no
-  model/provider/network/subprocess/apply/approve/test/git/PR; idempotent; emitted next actions
-  catalog-valid (R-0088 lesson).
+- PR #67 merged Candidate Quality Evaluation v1 (1645-1680) to main → `7cec21c`; reviewer verdict
+  PASS @ `7729b89`. New branch `feature/steps-1681-1716-external-builder-sandbox-v0` off `7cec21c`
+  (clean merged main). `git log main..HEAD` empty → no drift, no block code yet. Check 1 PASS.
+- WATCH: sandbox is INGRESS only — external candidate text is UNTRUSTED and must flow through the
+  EXISTING quarantine → Trust Gate → Verification → Materialization pipeline (no direct parse-to-
+  intent, no pre-trust materialization, no trusting external candidate). Quality eval must reuse the
+  evidence-only ceilings (no model confidence / self-claim / "tests passed" / raw text). Routing
+  feedback read-only (no auto generation / no worker exec). Intake must reject traversal/symlink/
+  protected/binary/oversized safely. NO provider/network/subprocess/browser/MCP/git/apply/approve/
+  test/PR. Public surfaces = codes/IDs/counts only. Idempotent. next actions catalog-valid (R-0088).
+
+## Builder remediation — audit findings R-0091..R-0094 (awaiting reviewer re-check @ new HEAD)
+Done: R-0091 - raw_storage_ref removed from ExternalBuilderCandidateSubmission.to_dict (public export + persisted record); kept in-memory only; equals quarantine_id which stays public. Test: test_public_export_has_no_raw_storage_ref.
+Done: R-0092 - blocked submissions (oversized/protected/symlink/traversal/contract-denied) now persisted as evidence-backed BLOCKED records when package+job valid (no raw candidate stored); missing/invalid package stays ephemeral (documented). Tests: test_blocked_submission_persisted, test_protected_blocked_persisted, test_missing_package_block_ephemeral.
+Done: R-0093 - external builder CLI suite verified isolated `scripts/remedy_pytest.sh tests/cli/test_external_builder_cli.py -vv -s` = 7 passed in 2.29s; no hang; no traceback in safe error JSON.
+Done: R-0094 - builder_routing external route next_safe_action now emits `remedy external-builder package-create <job> --route-id <route> --json` (catalog-valid), not the old repair-request rail; poor history still HUMAN_REVIEW, unknown neutral, pending not success. Test: test_external_route_with_known_cost (parser-validated).
+
+Builder verification: targeted external sandbox/routing/quality = 78 passed; CLI 7 passed; review_bundle/cockpit/catalog/run_contract/progress/feature = 261 passed; integrity passed=True/fail=0. Full pytest pending (one run). NOT claiming merge-ready — reviewer owns verdict at new HEAD.

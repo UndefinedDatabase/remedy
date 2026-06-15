@@ -1,93 +1,79 @@
 # Context
 
 ## Active Branch
-feature/steps-1645-1680-local-candidate-quality-evaluation-v1 (forked from clean main at
-3641618 after PR #66 merged Automated Local Candidate Generator v0). No drift.
+feature/steps-1681-1716-external-builder-sandbox-v0 (forked from clean main at 7cec21c after
+PR #67 merged Local Candidate Quality Evaluation v1). No drift.
 
-## Mainline reconciliation (Step 1645)
-- PR #66 MERGED → main. Current main commit: 3641618.
-- Automated Local Candidate Generator v0 landed: local_candidate_generator.py (loopback model
-  generation, disabled by default, routing-gated, output→quarantine→trust→verification→
-  materialize→pending approval). `remedy local-candidate status/generate`. Reviewer verdict PASS.
-  Full suite 5887 passed, 8 skipped, 1 deselected.
+## Mainline reconciliation (Step 1681)
+- PR #67 MERGED → main (user-confirmed). Current main commit: 7cec21c.
+- Local Candidate Quality Evaluation v1 landed: candidate_quality.py (evidence-based scorecards;
+  no success without proof; routing feedback read-only). `remedy candidate-quality evaluate/show/
+  scorecard/report/integrity`. Reviewer verdict PASS @ 600304e. Full suite 5927 passed.
 
 ## Scope
-Steps 1645-1680: Local Candidate Quality Evaluation v1 — evidence-based scorecards for candidate-
-generation outcomes (was it useful, not just safe?). Evaluation/reporting/routing-feedback only.
+Steps 1681-1716: External Builder Sandbox v0 — first SAFE ingress for EXTERNAL builder work:
+safe request-package export + quarantined untrusted-candidate intake + bridge into existing
+Trust/Verification/Candidate-Quality seams. NOT an external agent runner / provider integration.
 
 ## Core principle
-Evidence, not model confidence, determines quality. No score claims success without linked
-proof/test evidence. Candidate quality feeds future routing. No automatic execution.
+External builder output is untrusted input. Worker execute, Remedy governs. No execution in
+Remedy. Routing feedback is read-only confidence only. Approval + apply stay separate.
 
 ## Carried residual risks
-- External builder EXECUTION not built (next block: External Builder Sandbox v0).
+- External builder EXECUTION still not built (this block is INGRESS only; no runner/provider).
 - Cloud provider execution not built.
-- Candidate quality evaluation NOT built before this block (this block builds it).
 - Broader source patch materialization deferred (apply path .md-only).
 - Self overnight not built; cleanup/retention automation not built.
 - Regex/entropy scanning can miss novel secret formats (R-0083 lineage).
 - Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
 - UI `npm run lint` pre-existing TS parser/dependency blocker (no deps allowed).
 
-## Candidate Quality Evaluation constraints (block 1645-1680)
-- Evaluation/reporting/routing-feedback ONLY. No generation, no model/provider calls, no approval/apply/test/PR/git/mutation.
-- No score claims success without linked proof/test evidence; pending approval ≠ completed; model confidence ≠ truth.
-- Score ≤ medium if verification missing; not high if human decision unknown; not excellent without proof_verified; rejected/trust-failed → low.
-- Routing feedback NEVER triggers automatic generation.
-- Reports = safe IDs/hashes/counts/statuses/evidence refs only; no raw prompt/output/candidate/diff/source/stdout/stderr/secrets/tracebacks/abs paths.
-- No token/cost invention. Every next_safe_action catalog-backed + entity-backed.
-- NO PR unless the user explicitly asks (Step 1680).
+## External Builder Sandbox constraints (block 1681-1716)
+- NO provider/model calls, network, browser, subprocess, shell=True.
+- NO apply/approve/reject/test-run/git/PR/merge; NO automatic generation/repair.
+- External output ALWAYS untrusted → quarantined privately → same Trust Gate + Verification +
+  Materialization + human Approval + do_continue path as local candidates. Raw candidate never rendered.
+- Routing feedback only influences confidence/recommendation; never starts work.
+- No raw prompt/candidate/diff/stdout/stderr/traceback/secrets/abs paths in public reports/bundles/
+  scorecards/UI/CLI JSON. Bounded candidate size; symlink/traversal/protected/binary rejected safely.
+- Every next_safe_action catalog-backed + entity-backed. NO PR unless user explicitly asks.
 
-## Foundation reused (read-only evidence sources)
-- local_candidate_generator.list_local_candidate_runs (generation manifests: status + trust/verification/material/intent linkage + model_name).
-- provider_trust.load_trust_reports; provider_trust_verification.load_verification_reports;
-  provider_patch_material.load_materials; approval_queue.list_patch_intents (state pending/approved/rejected).
-- proof_chain.build_proof_chain + repair_loop._load_events_safe (ProofChange per intent: approval/apply/test/proof_status).
-- builder_routing.load_builder_routing_traces; provider_trust._scrub_public (redaction).
-- run_contract (add candidate_quality_evaluate/show/scorecard/report); data_paths/storage; command_catalog/grouped CLI.
-- progress_ledger.merge_*, feature_planner, review_bundle (REQUIRED_SECTIONS +candidate_quality_summary.json), ui_server cockpit.
+## Foundation reused
+- provider_trust.intake_provider_repair (quarantine→trust→verification→materialize) via provider
+  label `external_builder:<source_label>`; _scrub_public for redaction; read_intake_input bounds.
+- candidate_quality.evaluate_candidate_quality (+ optional model/route override for external source).
+- builder_routing.route_quality_feedback (read-only confidence).
+- local_candidate_generator private-storage/CLI patterns; run_contract; command_catalog/grouped CLI.
+- progress_ledger.merge_*, feature_planner, review_bundle (REQUIRED_SECTIONS +external_builder_summary.json), ui_server cockpit.
 
 ## Resource safety (standing)
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite once
   at block end with `-k "not test_full_chain_order"`. No shell=True, no subprocess (except CLI runtime tests).
 
-## Product readiness — Local Candidate Quality Evaluation v1 (Step 1673)
-CAN: evaluate a generated candidate's OUTCOME from durable evidence (`remedy candidate-quality
-evaluate/show/scorecard/report/integrity`): outcome classification + 11 score dimensions with
-invariant ceilings (≤medium w/o verification, not high w/o human decision, not excellent w/o
-proof_verified, rejected→low, pending≠completed); idempotent by evidence fingerprint; model/route
-scorecards (rates/counts, no cost invention). Builder Routing consumes feedback (repeated poor
-quality → human review; proof-verified → raise; unknown never promotes expensive). Surfaced in
-Progress/Feature/Review(27)/Cockpit; private 0o600 evaluation storage.
-CANNOT (by design): generate candidates; call models/providers/network/subprocess/SDK; approve/
-apply/test/PR/git/mutate; claim success without proof/test evidence; treat pending approval as
-completed or model confidence as truth; trigger automatic generation via routing feedback; leak raw
-prompt/output/candidate/diff/source/secrets/paths. Readiness ~85% (evaluation rail complete;
-tournament harness + external builder sandbox deferred).
-
-## Changed files (Steps 1645-1680) — File | What changed | Why
+## Changed files (Steps 1681-1716) — File | What changed | Why
 | File | What changed | Why |
 |---|---|---|
-| packages/orchestration/candidate_quality.py | NEW core: models/taxonomy, evidence gather, scoring+invariant ceilings, outcome classification, idempotent evaluate, scorecards, route feedback, integrity | the evaluation rail |
-| packages/orchestration/run_contract.py | candidate_quality_evaluate/show/scorecard/report actions (default-allowed, non-exec) | contract gate |
-| apps/cli/commands/candidate_quality_cmd.py | NEW evaluate/show/scorecard/report/integrity handlers | CLI surface |
-| apps/cli/commands/__init__.py | register candidate_quality_cmd | wire handlers |
-| apps/cli/command_catalog.py | candidate-quality group + 5 entries (evaluate write_metadata; rest read_only) | catalog-backed |
-| packages/orchestration/builder_routing.py | local-candidate branch consults route_quality_feedback → escalate on poor quality (read-only, no auto-gen) | routing feedback |
-| packages/orchestration/progress_ledger.py | extract/merge_candidate_quality_items (fixed item_ids) | surface quality, no raw |
-| packages/orchestration/feature_planner.py | 5 candidate-quality repair rules | suggestions, no auto-exec |
-| packages/orchestration/review_bundle.py | REQUIRED_SECTIONS 26→27 + _build_candidate_quality_summary | bundle safe summary |
-| packages/orchestration/ui_server.py | _build_candidate_quality_section cockpit | read-only, no buttons |
-| tests/orchestration/test_candidate_quality.py | NEW 24 tests (scoring/invariants/feedback/integrity/integration/redaction/arch) | coverage |
-| tests/cli/test_candidate_quality_cli.py | NEW 7 subprocess tests | CLI runtime |
-| tests/orchestration/test_review_bundle.py | REQUIRED_SECTIONS==27 + assert | bundle test |
-| tests/ui_server/test_dashboard_cockpit_truth.py | test_candidate_quality_section_present | cockpit test |
-| docs/candidate-quality-evaluation-v1.md, docs/model-route-tournament-future.md | NEW docs | document rail + future |
-| docs/{local-candidate-generator-v0,expensive-builder-routing-v0,provider-trust-verification-v1,orchestrator-brain-v0}.md | cross-ref updates | document the new stage |
+| packages/orchestration/external_builder_sandbox.py | NEW core: request-package + submission models, safe export (idempotent), private storage, bounded/protected intake → existing trust/verification bridge, integrity | the untrusted ingress rail |
+| packages/orchestration/run_contract.py | external_builder_package/submit/show actions (default-allowed, non-exec) | contract gate |
+| apps/cli/commands/external_builder_cmd.py | NEW package-create/show/list, submit, submission-show/list, evaluate, integrity handlers | CLI surface |
+| apps/cli/commands/__init__.py | register external_builder_cmd | wire handlers |
+| apps/cli/command_catalog.py | external-builder group + 8 entries (create/submit/evaluate write_metadata; rest read_only; no may_execute) | catalog-backed |
+| packages/orchestration/candidate_quality.py | evaluate_candidate_quality model_label/route_tier overrides for external source | external submissions scored by external route/source |
+| packages/orchestration/builder_routing.py | external branch consults route_quality_feedback → escalate on poor external history (read-only; no auto-run) | external routing feedback |
+| packages/orchestration/progress_ledger.py | extract/merge_external_builder_items (fixed item_ids) | surface ingress, no fake "running" |
+| packages/orchestration/feature_planner.py | 3 external-builder rules (approve/route-contract-review) | evidence-based suggestions, no new exec |
+| packages/orchestration/review_bundle.py | REQUIRED_SECTIONS 27→28 + _build_external_builder_summary | bundle safe summary |
+| packages/orchestration/ui_server.py | _build_external_builder_section cockpit (live=false) | read-only, no buttons/run-button |
+| tests/orchestration/test_external_builder_sandbox.py | NEW 26 tests (package/submission/quality/integrity/smoke/arch/redaction-torture) | coverage |
+| tests/cli/test_external_builder_cli.py | NEW 7 subprocess tests | CLI runtime |
+| tests/orchestration/test_review_bundle.py | REQUIRED_SECTIONS==28 + assert | bundle test |
+| tests/ui_server/test_dashboard_cockpit_truth.py | test_external_builder_section_present | cockpit test |
+| docs/external-builder-sandbox-v0.md, docs/external-builder-worker-contract-v0.md | NEW docs (scope contract + worker contract) | document rail + anti-goals |
+| .agent/context.md, .agent/plan.md | reconciliation + readiness + changed-files table | handoff |
 
 ## Status
-Steps 1645-1680 COMPLETE. Full pytest 5927 passed, 8 skipped, 1 deselected (exit 0).
-Builder self-run counts; parallel reviewer owns the live_review verdict. NO PR (Step 1680).
+Steps 1681-1716 COMPLETE (builder). Full pytest 5969 passed, 8 skipped, 1 deselected (exit 0).
+Builder self-run counts; parallel reviewer owns the live_review verdict (PENDING). NO PR.
 
 ## Next block
-External Builder Sandbox v0 OR Model/Route Tournament Harness v0.
+Model/Route Tournament Harness v0 (only if this block PASS).

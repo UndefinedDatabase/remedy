@@ -54,6 +54,7 @@ REQUIRED_SECTIONS = (
     "builder_routing_summary.json",
     "local_candidate_summary.json",
     "candidate_quality_summary.json",
+    "external_builder_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1132,6 +1133,45 @@ def _build_candidate_quality_summary(job: Any) -> dict:
         return {"evaluation_count": 0, "outcome_counts": {}, "error": "candidate_quality_unavailable"}
 
 
+def _build_external_builder_summary(job: Any) -> dict:
+    """Safe External Builder Sandbox v0 summary (Step 1692). Package/submission counts, states,
+    latest safe outcome, related quality evaluations, safe route/source labels, known risks only —
+    no raw candidate/package context/output/diff/secrets/absolute paths."""
+    try:
+        from packages.orchestration.external_builder_sandbox import (
+            load_external_packages, load_external_submissions,
+        )
+        pkgs = load_external_packages(job_id=str(job.id))
+        subs = load_external_submissions(job_id=str(job.id))
+        by_state: dict[str, int] = {}
+        sources: set[str] = set()
+        for s in subs:
+            by_state[s.get("state", "")] = by_state.get(s.get("state", ""), 0) + 1
+            if s.get("source_label"):
+                sources.add(str(s.get("source_label")))
+        latest = subs[-1] if subs else None
+        risks = []
+        if by_state.get("trust_rejected"):
+            risks.append("trust_rejected")
+        if by_state.get("verification_rejected"):
+            risks.append("verification_rejected")
+        return {
+            "package_count": len(pkgs),
+            "submission_count": len(subs),
+            "submissions_by_state": by_state,
+            "pending_approval_count": by_state.get("pending_approval", 0),
+            "latest_state": (latest or {}).get("state", ""),
+            "latest_trust_status": (latest or {}).get("trust_status", ""),
+            "latest_verification_decision": (latest or {}).get("verification_decision", ""),
+            "source_labels": sorted(sources)[:20],
+            "known_risks": risks,
+            "submission_ids": [s.get("submission_id", "") for s in subs][:50],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"package_count": 0, "submission_count": 0, "submissions_by_state": {},
+                "error": "external_builder_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1557,6 +1597,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("candidate_quality_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("candidate_quality_summary.json", status="error", error="build failed"))
+
+    # external_builder_summary.json (Step 1692)
+    try:
+        ebs = _build_external_builder_summary(job)
+        content = json.dumps(ebs, indent=2).encode()
+        section_data["external_builder_summary.json"] = content
+        result.sections.append(ReviewBundleSection("external_builder_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("external_builder_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

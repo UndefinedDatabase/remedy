@@ -1,51 +1,51 @@
-# Plan — Steps 1645-1680: Local Candidate Quality Evaluation v1
+# Plan — Steps 1681-1716: External Builder Sandbox v0
 
 ## Goal
-Evidence-based quality evaluation of candidate-generation OUTCOMES. After a candidate is generated
-and run through trust/verification/materialization/approval/apply/test/proof, score whether it was
-actually USEFUL (not just safe). Produce model/route scorecards that feed future routing.
-Evaluation / reporting / routing-feedback ONLY — no generation, no model calls, no approval/apply/
-test/PR/git/mutation.
+First SAFE ingress for EXTERNAL builder work. Remedy can export a safe request package to an
+external worker (Claude/Pi/another agent/human) and ingest the worker's result — but the result
+stays fully UNTRUSTED until it passes the same quarantine → Trust Gate → Verification →
+Materialization → (human) Approval → do_continue path as local candidates. Worker execute,
+Remedy governs.
 
 ## Core principle
-Evidence, not model confidence, determines quality. No score claims success without linked
-proof/test evidence. Candidate quality feeds future routing decisions. No automatic execution.
+External builder output is untrusted input. No execution in Remedy. Routing feedback is read-only
+confidence only — never starts work. Approval + apply stay separate.
 
 ## Current Step
-1672-1680 — code/tests/docs complete; live review + handoff; PR HELD
+1706 — code/tests/docs complete; handoff; reviewer owns verdict; PR HELD
 
 ## Steps
-- [x] 1645: mainline reconciliation (generator PR #66 merged; main 3641618; scope 1645-1680)
-- [x] 1646-1647: quality models + taxonomy (21 finding codes, 5 severities)
-- [x] 1648-1650: evidence inputs (safe summaries) + scoring dimensions + outcome classification
-- [x] 1651-1652: idempotent evaluate (fingerprint) + model/route scorecards
-- [x] 1653-1654: routing feedback (builder_routing hook) + orchestrator surfacing (progress/feature)
-- [x] 1655-1660: CLI evaluate/show/scorecard/report/integrity + catalog + run_contract
-- [x] 1661-1664,1678: progress/feature/review-bundle(27)/cockpit
-- [x] 1665-1671,1679: tests (24 unit + 7 CLI) + targeted + full pytest once (5927 passed)
-- [x] 1670,1677: docs (candidate-quality-evaluation-v1 + model-route-tournament-future + 4 updates)
-- [x] 1672-1675: live review + readiness + PR discipline + handoff
-- [x] 1680: merge discipline — NO PR unless user explicitly asks
+- [x] 1681: merge closure (PR #67 PASS → main 7cec21c; fresh branch) [user-confirmed merge]
+- [x] 1682: scope contract doc (external-builder-sandbox-v0.md) — anti-goals explicit
+- [x] 1683-1685: models (request package / submission) + safe export + private storage
+- [x] 1688: bridge into existing trust/verification/materialization seams (provider label external_builder:<src>)
+- [x] 1686-1687: CLI package-create/show/list + submit + submission-show/list + evaluate + integrity; catalog; run_contract (no execution)
+- [x] 1689: candidate_quality external-submission evaluation (model/route override; same ceilings)
+- [x] 1690: builder_routing read-only external feedback (poor→human review; never starts work)
+- [x] 1691-1693: progress/feature/review-bundle(28)/cockpit
+- [x] 1695: integrity invariants (no submission without package; no raw markers/abs paths in public)
+- [x] 1696: external-builder-worker-contract-v0 doc
+- [x] 1697-1703,1705: tests (26 unit + 7 CLI + bundle/cockpit; redaction-torture; arch; smoke) + full pytest once (5969 passed)
+- [x] 1704,1706: changed-files table (context.md) + final report
+- [ ] 1707-1716: reserved for reviewer findings (R-0091+)
 
-## Product readiness (Step 1673)
-Remedy now evaluates generated candidates AFTER THE FACT from durable evidence (trust/verification/
-approval/apply/proof) — no score claims success without proof; pending≠completed; rejected→low.
-Model/route scorecards feed Builder Routing (repeated poor quality → human review; proof-verified →
-raise confidence; unknown never promotes expensive). Still no automatic PR/apply/approval.
-Readiness ~85% (evaluation rail complete; tournament harness + external builder sandbox deferred).
-Next: External Builder Sandbox v0 OR Model/Route Tournament Harness v0.
+## Product readiness
+External Builder Sandbox v0 complete: safe request-package export + bounded/protected untrusted
+candidate ingress → existing Trust Gate + Verification + Materialization + human approval; quality
+evaluation of external submissions; read-only routing feedback. No execution/apply/approve/test/
+git/PR. Readiness ~85% (ingress rail complete; tournament harness deferred). Next: Model/Route
+Tournament Harness v0 (only if this block PASS).
 
 ## Hard rules
-- Evaluation/reporting/routing-feedback ONLY. No generation, no model/provider calls, no approval/apply/test/PR/git/mutation.
-- No score claims success without linked proof/test evidence. Score ≤ medium if verification missing;
-  not high if human decision unknown; not excellent without proof_verified. Rejected/trust-failed → low.
-- Pending approval is NOT completed. Model confidence is NOT truth.
-- Routing feedback must NEVER trigger automatic generation.
-- Reports = safe IDs / hashes / counts / statuses / evidence refs only. No raw prompt/output/
-  candidate/diff/source/stdout/stderr/secrets/tracebacks/abs paths.
-- No token/cost invention (unknown stays unknown).
+- NO provider/model calls, network, browser, subprocess, shell=True.
+- NO apply / approve / reject / test-run / git / PR / merge.
+- NO automatic generation / repair / materialization-without-existing-approval-gates.
+- External output ALWAYS untrusted; raw candidate quarantined privately, never rendered.
+- Routing feedback only influences confidence/recommendation, never starts work.
+- No raw prompt/candidate/diff/stdout/stderr/traceback/secrets/abs paths in public surfaces.
 - Every next_safe_action catalog-backed + entity-backed.
-- NO PR unless the user explicitly asks (Step 1680).
+- Tests via scripts/remedy_pytest.sh; full suite at most once at end. No background pytest.
+- NO PR unless the user explicitly asks.
 
 ## Next block
-External Builder Sandbox v0 OR Model/Route Tournament Harness v0.
+Model/Route Tournament Harness v0 (only if this block PASS).

@@ -700,6 +700,20 @@ def select_builder_routing_decision(
 
     # 9. External candidate generation — strict preconditions.
     if pol.allow_external_candidate_generator:
+        # External builder quality feedback (Step 1690): poor external-route history escalates to
+        # human review. Read-only; NEVER starts a worker or generation. Unknown history is neutral.
+        try:
+            from packages.orchestration.candidate_quality import route_quality_feedback
+            efb = route_quality_feedback(model_label="", route_tier=BuilderRoutingTier.EXTERNAL_CANDIDATE_GENERATOR,
+                                         data_dir=ddir)
+            if efb.get("recommend") == "lower":
+                return _finalize(d, BuilderRoutingTier.HUMAN_REVIEW_REQUIRED,
+                                 BuilderRoutingStopReason.LOOP_BLOCK,
+                                 "External builder quality history is poor — human review before "
+                                 "more external work.",
+                                 _report_cmd(request.job_id), ddir, persist)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
         ext_ok, ext_why = _external_allowed(request, inputs, pol, budget, loop_status, d.justification_codes)
         if ext_ok:
             if request.user_requested:
@@ -708,7 +722,7 @@ def select_builder_routing_decision(
             return _finalize(d, BuilderRoutingTier.EXTERNAL_CANDIDATE_GENERATOR,
                              BuilderRoutingStopReason.OK,
                              "External candidate generation is justified (recommended; not executed in v0).",
-                             _prepare_request_cmd(request), ddir, persist)
+                             _external_package_cmd(request, d.routing_id), ddir, persist)
         # External wanted but not allowed → human review with the reason.
         return _finalize(d, BuilderRoutingTier.HUMAN_REVIEW_REQUIRED,
                          BuilderRoutingStopReason.BUDGET_EXHAUSTED if "budget" in ext_why else
@@ -780,6 +794,15 @@ def _prepare_request_cmd(request: BuilderRoutingRequest) -> str:
         return (f"remedy repair request {request.job_id} "
                 f"--failure-artifact-id {request.failure_artifact_id} --json")
     return f"remedy repair request {request.job_id} --json"
+
+
+def _external_package_cmd(request: BuilderRoutingRequest, routing_id: str = "") -> str:
+    # External builder route points at the External Builder Sandbox package export (R-0094), not
+    # the old repair-request rail. Export-only; no auto-run, no generation, no provider call.
+    if request.job_id:
+        rid = f" --route-id {routing_id}" if routing_id else ""
+        return f"remedy external-builder package-create {request.job_id}{rid} --json"
+    return _prepare_request_cmd(request)
 
 
 def _generation_next_cmd(request: BuilderRoutingRequest, routing_id: str = "") -> str:
