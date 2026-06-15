@@ -67,6 +67,11 @@ class ContractAction:
     # applies/approves/tests/creates PRs.
     PROVIDER_VERIFY_CANDIDATE = "provider_verify_candidate"
     PROVIDER_VERIFICATION_SHOW = "provider_verification_show"
+    # Expensive Builder Routing v0 (Step 1587) — routing/policy/planning ONLY. NOT builder/
+    # provider/model execution and NOT candidate generation. decide is metadata-only (persists
+    # a safe trace); report is read-only. Allowed by default.
+    BUILDER_ROUTING_DECIDE = "builder_routing_decide"
+    BUILDER_ROUTING_REPORT = "builder_routing_report"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -191,6 +196,8 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.CREATE_PROVIDER_REPAIR_INTENT,
     ContractAction.PROVIDER_VERIFY_CANDIDATE,
     ContractAction.PROVIDER_VERIFICATION_SHOW,
+    ContractAction.BUILDER_ROUTING_DECIDE,
+    ContractAction.BUILDER_ROUTING_REPORT,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

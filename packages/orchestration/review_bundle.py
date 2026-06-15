@@ -51,6 +51,7 @@ REQUIRED_SECTIONS = (
     "self_execution_summary.json",
     "orchestrator_decision_summary.json",
     "local_advisor_summary.json",
+    "builder_routing_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1008,6 +1009,49 @@ def _build_local_advisor_summary(job: Any) -> dict:
         return {"run_count": 0, "latest_status": "unknown", "error": "local_advisor_unavailable"}
 
 
+def _build_builder_routing_summary(job: Any) -> dict:
+    """Safe Expensive Builder Routing v0 summary (Step 1594). Decision counts / selected-tier
+    counts / loop+budget block counts / latest tier / safe next action only — no raw prompt/
+    response, provider output, source, diffs, logs, secrets, or absolute paths."""
+    try:
+        from packages.orchestration.builder_routing import load_builder_routing_traces
+        scope = f"job:{job.id}"
+        traces = load_builder_routing_traces(scope=scope)
+        tier_counts: dict[str, int] = {}
+        loop_counts: dict[str, int] = {}
+        external_recommended = 0
+        local_recommended = 0
+        blocked = 0
+        budget_blocked = 0
+        for t in traces:
+            tier = t.get("selected_tier", "")
+            tier_counts[tier] = tier_counts.get(tier, 0) + 1
+            loop_counts[t.get("loop_guard_status", "")] = loop_counts.get(t.get("loop_guard_status", ""), 0) + 1
+            if tier == "external_candidate_generator":
+                external_recommended += 1
+            if tier == "local_candidate_generator":
+                local_recommended += 1
+            if tier == "no_safe_route":
+                blocked += 1
+            if t.get("stop_reason") == "budget_exhausted":
+                budget_blocked += 1
+        latest = traces[-1] if traces else None
+        return {
+            "routing_decision_count": len(traces),
+            "selected_tier_counts": tier_counts,
+            "external_recommended_count": external_recommended,
+            "local_recommended_count": local_recommended,
+            "blocked_count": blocked,
+            "budget_block_count": budget_blocked,
+            "loop_guard_counts": loop_counts,
+            "latest_selected_tier": (latest or {}).get("selected_tier", ""),
+            "latest_next_safe_action": (latest or {}).get("next_safe_action", ""),
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"routing_decision_count": 0, "selected_tier_counts": {},
+                "error": "builder_routing_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1406,6 +1450,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("local_advisor_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("local_advisor_summary.json", status="error", error="build failed"))
+
+    # builder_routing_summary.json (Step 1594)
+    try:
+        brs = _build_builder_routing_summary(job)
+        content = json.dumps(brs, indent=2).encode()
+        section_data["builder_routing_summary.json"] = content
+        result.sections.append(ReviewBundleSection("builder_routing_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("builder_routing_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

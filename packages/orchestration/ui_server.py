@@ -582,6 +582,33 @@ def _build_provider_trust_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_builder_routing_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Expensive Builder Routing v0 summary for the cockpit (Step 1595).
+
+    Latest tier + budget/loop status + external-recommended flag + next-action label only.
+    No buttons, no mutation, no execution, no raw content."""
+    try:
+        from packages.orchestration.builder_routing import load_builder_routing_traces
+        scope = f"job:{job.id}"
+        traces = load_builder_routing_traces(scope=scope)
+        latest = traces[-1] if traces else None
+        external_recommended = any(
+            t.get("selected_tier") == "external_candidate_generator" for t in traces)
+        return {
+            "routing_decision_count": len(traces),
+            "latest_tier": (latest or {}).get("selected_tier", ""),
+            "loop_guard_status": (latest or {}).get("loop_guard_status", ""),
+            "risk_level": ((latest or {}).get("risk_summary", {}) or {}).get("level", ""),
+            "external_builder_recommended": external_recommended,
+            "next_safe_action_label": (latest or {}).get("next_safe_action", ""),
+            "source": "builder_routing",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"routing_decision_count": "unknown", "latest_tier": "",
+                "loop_guard_status": "", "external_builder_recommended": False,
+                "next_safe_action_label": "", "source": "unavailable"}
+
+
 def _build_provider_verification_section(job: Any) -> dict[str, Any]:
     """Safe read-only Provider Trust Verification v1 summary for the cockpit (Step 1559).
 
@@ -1003,6 +1030,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "overnight_run": _build_overnight_run_section(job, truth_data_dir),
         "provider_trust": _build_provider_trust_section(job),
         "provider_verification": _build_provider_verification_section(job),
+        "builder_routing": _build_builder_routing_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
