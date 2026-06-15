@@ -650,6 +650,40 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_model_route_tournament_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Model/Route Tournament v0 summary for the cockpit (Step 1811).
+
+    Latest status + competitor count + evidence status + recommended route + confidence + warning
+    count + next action only. No mutation buttons, no fake live tournament, no raw data, no provider
+    readiness claim. LIVE is always false — evidence/reporting only."""
+    try:
+        from packages.orchestration.model_route_tournament import generate_tournament_report
+        rep = generate_tournament_report(str(job.id), persist=False)
+        d = rep.to_dict()
+        winner = next((c for c in d.get("competitors", [])
+                       if c.get("competitor_id") == d.get("winner_competitor_id")), None)
+        ev_status = "complete" if any(
+            e.get("evidence_status") == "complete" for e in d.get("evidence", [])) else (
+            "partial" if any(e.get("evidence_status") == "partial" for e in d.get("evidence", []))
+            else "insufficient_evidence")
+        return {
+            "latest_status": d.get("status"),
+            "competitor_count": len(d.get("competitors", [])),
+            "evidence_status": ev_status,
+            "recommended_route": (winner or {}).get("worker_id", ""),
+            "confidence": d.get("confidence"),
+            "warning_count": len(d.get("warnings", [])),
+            "next_safe_action": (d.get("next_safe_actions") or [""])[0],
+            "live": False,
+            "source": "model_route_tournament",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"latest_status": "insufficient_evidence", "competitor_count": "unknown",
+                "evidence_status": "insufficient_evidence", "recommended_route": "",
+                "confidence": "low", "warning_count": "unknown", "next_safe_action": "",
+                "live": False, "source": "unavailable"}
+
+
 def _build_worker_registry_section(job: Any) -> dict[str, Any]:
     """Safe read-only Worker Registry + Route Policy v0 summary for the cockpit (Step 1730).
 
@@ -1207,6 +1241,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "external_builder": _build_external_builder_section(job),
         "worker_registry": _build_worker_registry_section(job),
         "token_economy": _build_token_economy_section(job),
+        "model_route_tournament": _build_model_route_tournament_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),

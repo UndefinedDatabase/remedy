@@ -110,6 +110,14 @@ class ContractAction:
     TOKEN_ESTIMATE = "token_estimate"
     TOKEN_ECONOMY_REPORT = "token_economy_report"
     CONTEXT_PACK_RECOMMEND = "context_pack_recommend"
+    # Model/Route Tournament Harness v0 (Step 1807) — EVIDENCE + SCORING + REPORTING only. NOT
+    # provider/model/Ollama/cloud execution, NOT candidate generation, NOT worker/tournament
+    # execution. tournament-report writes a safe metadata report; show/list/integrity are read-only.
+    # None execute a worker, run a tournament, start work, or call a provider.
+    TOURNAMENT_REPORT = "tournament_report"
+    TOURNAMENT_SHOW = "tournament_show"
+    TOURNAMENT_LIST = "tournament_list"
+    TOURNAMENT_INTEGRITY = "tournament_integrity"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -254,6 +262,10 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.TOKEN_ESTIMATE,
     ContractAction.TOKEN_ECONOMY_REPORT,
     ContractAction.CONTEXT_PACK_RECOMMEND,
+    ContractAction.TOURNAMENT_REPORT,
+    ContractAction.TOURNAMENT_SHOW,
+    ContractAction.TOURNAMENT_LIST,
+    ContractAction.TOURNAMENT_INTEGRITY,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

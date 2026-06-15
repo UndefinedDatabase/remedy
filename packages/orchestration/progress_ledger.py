@@ -1037,6 +1037,47 @@ def merge_token_economy_items(ledger: ProgressLedger, report: dict | None) -> No
             seen.add(item.item_id)
 
 
+def extract_tournament_items(report: dict | None) -> list[ProgressItem]:
+    """Extract Model/Route Tournament progress items (Step 1808) from a safe report. Read-only;
+    fixed item_ids → no duplicates. Honest: no fake winner, no fake worker-running, no raw evidence."""
+    if not report:
+        return []
+    items: list[ProgressItem] = []
+    items.append(ProgressItem(
+        item_id="tournament-report-exists", title="Route tournament report exists",
+        status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+        safe_summary=f"Evidence-based route comparison generated ({len(report.get('competitors', []))} "
+                     "competitors; nothing executed)."))
+    status = report.get("status", "")
+    winner = report.get("winner_competitor_id", "")
+    if winner and status == "complete":
+        comps = {c.get("competitor_id"): c for c in report.get("competitors", [])}
+        wlabel = (comps.get(winner) or {}).get("worker_id", winner)
+        items.append(ProgressItem(
+            item_id="tournament-winner", title="Evidence-backed route recommended",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary=f"Route '{wlabel}' is recommended on durable evidence "
+                         f"(confidence={report.get('confidence', 'low')}; estimate, nothing runs).",
+            next_action="remedy tournament show <tournament_id> --json"))
+    else:
+        items.append(ProgressItem(
+            item_id="tournament-insufficient-evidence", title="No evidence-backed route winner yet",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary="Insufficient durable evidence to pick a winning route — gather more "
+                         "candidate-quality / submission evidence first.",
+            next_action="remedy tournament report <job_id> --json"))
+    return items
+
+
+def merge_tournament_items(ledger: ProgressLedger, report: dict | None) -> None:
+    """Merge tournament items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_tournament_items(report):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1691,6 +1732,15 @@ def build_progress_ledger(
         try:
             from packages.orchestration.token_economy import token_economy_report
             merge_token_economy_items(ledger, token_economy_report(str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Model/Route Tournament items (Step 1808). Read-only; evidence-only; no fake winner.
+    if job is not None:
+        try:
+            from packages.orchestration.model_route_tournament import generate_tournament_report
+            rep = generate_tournament_report(str(job.id), persist=False)
+            merge_tournament_items(ledger, rep.to_dict())
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 
