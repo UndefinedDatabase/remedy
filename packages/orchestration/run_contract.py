@@ -61,6 +61,12 @@ class ContractAction:
     PROVIDER_TRUST_REVIEW = "provider_trust_review"
     PROVIDER_MATERIALIZE_PATCH = "provider_materialize_patch"
     CREATE_PROVIDER_REPAIR_INTENT = "create_provider_repair_intent"
+    # Provider Trust Verification v1 (Step 1553) — second-stage SAFE verification of an
+    # already-quarantined candidate. NOT provider execution (that stays CLOUD_PROVIDER).
+    # verify is metadata-only; verification-show is read-only. Allowed by default; never
+    # applies/approves/tests/creates PRs.
+    PROVIDER_VERIFY_CANDIDATE = "provider_verify_candidate"
+    PROVIDER_VERIFICATION_SHOW = "provider_verification_show"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -183,6 +189,8 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.PROVIDER_TRUST_REVIEW,
     ContractAction.PROVIDER_MATERIALIZE_PATCH,
     ContractAction.CREATE_PROVIDER_REPAIR_INTENT,
+    ContractAction.PROVIDER_VERIFY_CANDIDATE,
+    ContractAction.PROVIDER_VERIFICATION_SHOW,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

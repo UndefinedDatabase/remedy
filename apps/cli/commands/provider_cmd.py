@@ -103,8 +103,63 @@ def _cmd_provider_material_show(args: Any) -> None:
     print(f"  trust report: {material.get('trust_report_id', '')}")
 
 
+def _cmd_provider_verify(args: Any) -> None:
+    from packages.orchestration.provider_trust_verification import (
+        ProviderVerificationRequest, verify_provider_candidate,
+        export_verification_report_json,
+    )
+    request = ProviderVerificationRequest(
+        job_id=str(args.job_id),
+        trust_report_id=args.trust_report_id,
+        request_package_id=getattr(args, "request_package_id", None) or "",
+        self_attempt_id=getattr(args, "self_attempt_id", None) or "",
+        new=bool(getattr(args, "new", False)),
+    )
+    report = verify_provider_candidate(request)
+    data = export_verification_report_json(report)
+    if getattr(args, "json", False):
+        print(json.dumps(data, indent=2))
+        return
+    print(f"Provider verify: {str(args.job_id)[:8]}  trust={args.trust_report_id}")
+    print(f"  decision: {data['decision']}  status: {data['verification_status']}  "
+          f"score: {data['score']['value']}  loop_risk: {data['loop_risk']}")
+    print(f"  materialize_allowed: {data['allowed_to_materialize']}")
+    for f in data.get("findings", [])[:8]:
+        print(f"  - {f['severity']}: {f['code']} {f.get('target', '')}".rstrip())
+    print(f"  next: {data['next_safe_action']}")
+
+
+def _cmd_provider_verification_show(args: Any) -> None:
+    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.provider_trust_verification import get_verification_report
+    try:
+        job = load_job(args.job_id)
+    except (JobNotFoundError, ValueError) as exc:
+        print(f"Error: {type(exc).__name__}", file=sys.stderr)
+        sys.exit(1)
+    report = get_verification_report(job, args.verification_id)
+    if report is None:
+        print("Error: verification report not found", file=sys.stderr)
+        sys.exit(1)
+    if getattr(args, "json", False):
+        print(json.dumps(report, indent=2))
+        return
+    print(f"Provider verification {args.verification_id}")
+    print(f"  decision: {report['decision']}  status: {report['verification_status']}  "
+          f"score: {report['score']['value']}  loop_risk: {report['loop_risk']}")
+    print(f"  trust report: {report.get('trust_report_id', '')}  "
+          f"material: {report.get('material_id', '')}")
+    for f in report.get("findings", []):
+        print(f"  - {f['severity']}: {f['code']} {f.get('target', '')}".rstrip())
+    for e in report.get("evidence_refs", []):
+        print(f"  ref: {e['kind']}={e['ref_id']}")
+    print(f"  next: {report.get('next_safe_action', '')}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
     "provider.intake-repair": _cmd_provider_intake_repair,
     "provider.trust-show": _cmd_provider_trust_show,
     "provider.material-show": _cmd_provider_material_show,
+    "provider.verify": _cmd_provider_verify,
+    "provider.verification-show": _cmd_provider_verification_show,
 }

@@ -95,3 +95,4 @@ produces the candidate instead of a human pasting it.
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
 - [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).
 - [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts reuse this candidate-intake → trust → materialize path.
+- [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — **second-stage** check that now runs between trust-accept and materialization; an accepted candidate must also pass verification before any pending intent is created.

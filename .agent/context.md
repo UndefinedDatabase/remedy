@@ -1,77 +1,82 @@
 # Context
 
 ## Active Branch
-feature/steps-1499-1536-local-model-advisor-v0 (forked from clean main at 5d4cdf4
-after PR #62 merged Main Orchestrator Brain v0). No drift.
+feature/steps-1537-1572-provider-trust-verification-v1 (forked from clean main at 50ea930
+after PR #63 merged Local Model Advisor Adapter v0). No drift.
 
-## Mainline reconciliation (Step 1499)
-- PR #62 MERGED → main. Current main commit: 5d4cdf4.
-- Main Orchestrator Brain v0 landed: orchestrator_brain.py (situation → deterministic
-  options → score → anti-loop guard → model routing PLAN → ONE decision + safe trace;
-  idea intake). `remedy orchestrator inspect/decide/report/idea`. R-0086 resolved.
-  Full suite 5723 passed, 8 skipped, 1 deselected.
+## Mainline reconciliation (Step 1537)
+- PR #63 MERGED → main. Current main commit: 50ea930.
+- Local Model Advisor Adapter v0 landed: local_model_advisor.py (optional, loopback-only,
+  disabled-by-default advisory critique for orchestrator decisions; advisory-only, never
+  executes, never imports provider/cloud SDK). `remedy local-advisor status/run`,
+  `remedy orchestrator decide --use-local-advisor`. R-0087 (handoff table) resolved.
+  Full suite 5777 passed, 8 skipped, 1 deselected.
 
 ## Scope
-Steps 1499-1536: Local Model Advisor Adapter v0 — optional Ollama-compatible local-model
-advisory layer for orchestrator decisions. Loopback-only, disabled by default, advisory-only.
+Steps 1537-1572: Provider Trust Verification v1 — second-stage verification layer for
+UNTRUSTED external candidate output before/during materialization into pending repair intents.
 
 ## Core principle
-LLMs advise. The orchestrator controls. Evidence is truth. Local cheap advisor first.
+Trust Gate = candidate SAFE to ingest. Verification = candidate PLAUSIBLE, RELEVANT, BOUNDED,
+WORTHY of becoming a pending intent. Accepted ≠ verified ≠ approved ≠ applied. Approval + apply
+stay separate. Evidence is truth. Local-advisor/model output, if used, is critique only.
 
 ## Carried residual risks
-- Local model advisor NOT built before this block (this block builds it, advisory-only).
-- External/provider builder EXECUTION not built (plan-only routing).
-- Provider Trust Verification v1 not built.
+- External/provider builder EXECUTION still not built (plan-only routing; request packages only).
 - Broader source patch materialization deferred (apply path .md-only).
+- Provider Trust Verification NOT built before this block (this block builds it).
 - Self overnight not built; cleanup/retention automation not built.
+- Regex/heuristic scanning can miss novel secret formats (entropy heuristic mitigates, not perfect).
 - Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
 - UI `npm run lint` pre-existing TS parser/dependency blocker (no deps allowed).
 
-## Local Model Advisor constraints (block 1499-1536)
-- OPTIONAL + DISABLED by default. Missing/unavailable Ollama never breaks deterministic flow.
-- Loopback only (127.0.0.1 / localhost / ::1); external host, https-external, file://, redirects rejected.
-- Stdlib HTTP only; NO provider/cloud SDK imports; NO subprocess for model exec; NO shell=True; NO browser.
-- Short timeout; response size bounded; max 1-2 retries (no retry storm).
-- Safe prompt only (phase/options/refs/counts/loop/routing); NO raw source/diff/logs/secrets/abs paths.
-- JSON response required; unparseable → advisor_unparseable; code/diff in response → high concern, not accepted.
-- Model output never truth; never next_safe_action/ProposedTask/Patch Intent/approval/apply/PR/job.
-- Model influence limited to: lower confidence, safe missing-evidence hints, escalate weak evidence to human.
-- Cannot override blocker/high review, contract, budget; cannot mark evidence complete/success/failure.
-- Raw prompt/response stored PRIVATELY only if enabled (0o700 dir / 0o600 files); never public.
-- Local advisor budget separate from external provider budget; exhausted → blocks advisor, not deterministic.
-- No raw prompt/response/source/diff/stdout/stderr/artifact-body/secrets/tracebacks/abs paths in public surfaces.
-- NO PR unless the user explicitly asks (Step 1536).
+## Provider Trust Verification constraints (block 1537-1572)
+- Unsafe/unverified accepted candidates MUST NOT create pending intents. v1 prefers verify-before-intent.
+- NO provider/model execution, cloud API, external network, browser, subprocess (except CLI runtime tests).
+- NO automatic apply/approval/repair-loop/PR/merge/git-commit-gate/background orchestration/UI mutation/MCP.
+- NO provider SDK imports; no shell=True; no dependency upgrades.
+- Verification reports = SAFE summaries only. NO raw provider output/diff/source/stdout/stderr/
+  artifact-body/secrets/tracebacks/absolute private paths in any public surface.
+- Verification cannot approve/apply/test/create PRs.
+- Local advisor (if used) critique-only: may only lower confidence / add human-review concern; cannot pass/reject/create commands/override deterministic checks.
+- Overclaim / unrelated / repeated-failed candidates must not pass silently.
+- Every next_safe_action exists in command catalog + references real entities.
+- NO PR unless the user explicitly asks (Step 1572).
 
 ## Foundation reused
-- orchestrator_brain (build_orchestrator_situation/select_orchestrator_decision/export_decision_json,
-  list_decisions, RoutingTier, OrchestratorModelRoutingPlan).
-- provider_trust._scrub_public / scan_secrets / _SECRET_PATTERNS / _ABS_PATH_RE / _TRACEBACK_RE (redaction).
-- run_contract (ensure_contract/evaluate_run_action/ContractAction; add local_advisor_status/run).
-- data_paths.resolve_data_root; storage.load_job; command_catalog/grouped CLI; do_run.validate_next_safe_action_command.
-- progress_ledger.merge_*, feature_planner, review_bundle (REQUIRED_SECTIONS 22→23), ui_server cockpit.
+- provider_trust (intake_provider_repair flow; _scrub_public/scan_secrets/_SECRET_PATTERNS/
+  _ABS_PATH_RE/_TRACEBACK_RE; Severity; TrustStatus; _safe_path_label; read quarantine raw privately).
+- provider_patch_material (materialize_accepted_candidate; MaterialState; candidate_hash=sha256(raw_patch); load materials).
+- repair_request_builder (RepairRequestPackage; get_request_package/load_request_packages) for consistency.
+- run_contract (ensure_contract/evaluate_run_action/ContractAction; ALL_KNOWN auto-derived; add provider_verify_candidate/provider_verification_show).
+- data_paths.resolve_data_root; storage.load_job/save_job; command_catalog/grouped CLI.
+- progress_ledger.merge_*, feature_planner, review_bundle (REQUIRED_SECTIONS +provider_verification_summary.json), ui_server cockpit.
+- local_model_advisor (optional critique hook — deferred/conservative; see docs).
 
 ## Resource safety (standing)
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite once
   at block end with `-k "not test_full_chain_order"`. No shell=True, no subprocess.
 
-## Product readiness — Local Model Advisor Adapter v0 (Step 1530)
-CAN: optionally consult a local advisor (loopback Ollama; `remedy orchestrator decide
---use-local-advisor`, `remedy local-advisor status/run`). The advisor critiques a SAFE
-decision summary and may lower confidence, add missing-evidence hints, or escalate weak+high-
-risk evidence to human review. The deterministic orchestrator remains the controller; the
-final next_safe_action stays deterministic + catalog-backed; a missing/unavailable advisor
-never blocks deterministic operation. Surfaced in Progress/Feature/Review(23)/Cockpit; private
-run storage (0o700/0o600) holds raw, public surfaces hold hashes/counts/labels only.
-CANNOT (by design): be enabled by default; reach a non-loopback host; import a provider/cloud
-SDK; run a subprocess for model exec; let model output become a command/entity/approval/apply/
-PR/job; override contract/budget/review blockers; mark evidence complete/success/failure;
-strengthen confidence; loop endlessly (reuse by prompt_hash + suppress after repeated
-unavailability). Readiness ~90% (advisory rail complete; real external builder routing deferred).
-FUTURE: Provider Trust Verification v1; Expensive Builder Routing v0.
+## Product readiness — Provider Trust Verification v1 (Step 1567)
+CAN: run a second-stage SAFE verification on UNTRUSTED candidate output before it becomes a
+pending intent (`remedy provider verify`, `remedy provider verification-show`; inline during
+`provider intake-repair`). Checks request/candidate consistency, failure/self relevance,
+overclaim, minimality/scope, testability, loop risk, secret/entropy. Decision rules:
+blocker/high→rejected, medium→needs_review, low-only→passed, missing→incomplete. PASSED is the
+ONLY path to materialization+pending intent; non-passing creates NO intent. Surfaced in
+Progress/Feature/Review(24 sections)/Cockpit; safe report in job metadata + private
+0o600 report.json. Orchestrator recommends verify for accepted-but-unverified and escalates
+needs-review/repeated-rejection to human review.
+CANNOT (by design): execute providers/models/patches/tests; approve/apply/create PRs/git;
+import provider SDK / network / subprocess; let unsafe/unverified candidates create intents;
+let overclaim/unrelated/repeated-failed candidates pass silently; leak raw candidate/diff/
+source/secrets/tracebacks/abs paths. Local advisor critique hook DEFERRED (forward seam only;
+if built, critique-only — cannot pass/reject).
+Readiness ~88% (verification rail complete; advisor critique hook + expensive routing deferred).
 
 ## Status
-Steps 1499-1536 COMPLETE. Full pytest 5777 passed, 8 skipped, 1 deselected (exit 0); integrity
-fail_count=0; live review verdict PASS, zero findings. Branch pushed; NO PR (Step 1536).
+Steps 1537-1572 COMPLETE. Full pytest 5812 passed, 8 skipped, 1 deselected (exit 0); integrity
+clean (only "relevant untracked" pre-commit). Live review verdict PASS. NO PR (Step 1572).
 
 ## Next block
-Provider Trust Verification v1 OR Expensive Builder Routing v0.
+Expensive Builder Routing v0 OR Automated Candidate Generator Adapter v0.

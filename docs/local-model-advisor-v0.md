@@ -93,3 +93,4 @@ have their output verified.
 - [orchestrator-brain-v0.md](orchestrator-brain-v0.md)
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md)
 - [expensive-builder-routing-future.md](expensive-builder-routing-future.md)
+- [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — an optional advisor critique of the safe verification summary is a documented forward seam (deferred); if implemented it may only lower confidence / add a human-review concern, never pass or reject a candidate.

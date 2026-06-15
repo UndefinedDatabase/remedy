@@ -1,130 +1,107 @@
-# Live Review — Steps 1499-1536: Local Model Advisor Adapter v0
+# Live Review — Steps 1537-1572: Provider Trust Verification v1
 
 Reviewer: parallel reviewer
-Scope: Optional Ollama-compatible local-model advisory layer for orchestrator decisions.
-Loopback-only, DISABLED by default, advisory-only. The deterministic orchestrator MAY ask
-a local advisor to critique a SAFE decision summary; the advisor may flag concerns/
-alternatives/missing evidence; the orchestrator verifies everything against deterministic
-evidence; the final next_safe_action stays deterministic + catalog-backed + entity-backed.
-Must NOT: call external network, import provider/cloud SDKs, be enabled by default, break
-deterministic orchestration when the model is missing, let model output become commands/
-entities/approvals/applies/PRs/jobs, override contract/budget/review blockers, mark evidence
-true/complete, leak raw prompt/response/source/diff/logs/secrets/tracebacks/abs paths, or
-loop endlessly on repeated advisor failure. NO PR unless user asks (Step 1536).
-Timestamp: 2026-06-14
+Scope: Safe second-stage verification layer for external candidate output BEFORE it becomes a
+pending repair intent. Verification must NOT: execute providers/models, call external network,
+run subprocess/shell, apply patches, approve work, run tests, create PRs, run git ops, leak raw
+candidate/output/diff/source/secrets/tracebacks/abs paths, echo secret values, or treat model
+output as truth. Local advisor (if used) may only critique/lower-confidence/escalate — never
+pass/reject a candidate by itself. Decision rules: blocker/high → rejected; medium → needs_review;
+low-only → passed (if policy allows); passed ≠ approved/applied/verified. Failed verification
+creates NO intent; passed verification may create a real pending intent only where materialization
+is supported; existing approval/do_continue path unchanged. NO PR unless user explicitly asks.
+Timestamp: 2026-06-15
 
 ## Verdict (reviewer-owned)
-PASS — all 15 functional checks PASS; ZERO code/security findings; R-0087 (handoff table) RESOLVED. Local advisor is
-optional + disabled by default + loopback-only + advisory-only; deterministic decision stays the
-controller; missing/unavailable advisor never breaks deterministic orchestration; no model output
-becomes a command/entity/approval/apply/PR/job or overrides contract/budget/review; no raw
-prompt/response/secret/path/traceback in any public surface; stdlib-only HTTP (no provider/cloud
-SDK/subprocess/external net). Both reviewer NITs resolved (dead config ternary dropped @ 4e5dd18;
-finding_severity_counts now populated from the advisor manifest @ 4e5dd18). Reviewer-independent
-verification: targeted `scripts/remedy_pytest.sh` (test_local_model_advisor + test_local_advisor_cli
-+ test_review_bundle + test_dashboard_cockpit_truth) = 131 passed; builder full pytest 5777 passed,
-8 skipped, 1 deselected (exit 0); integrity fail_count=0; changed-files reconciled vs `git diff
-5d4cdf4..HEAD` = 21 prod files, all reviewed.
+PASS — all 15 checks PASS; ZERO open findings (next id R-0088). Verification is a SAFE
+second-stage layer: unsafe/unverified accepted candidates create NO intent (verify-before-
+materialize in `intake_provider_repair._verification_allows_materialization`); overclaim /
+unrelated / repeated-failed / too-broad / secret candidates are caught and never pass silently;
+no provider/model execution, no network, no subprocess, no provider SDK, no apply/approval/PR/
+git; reports are safe summaries only (no raw candidate/diff/source/secret/path/traceback); the
+local-advisor critique hook is DEFERRED (forward seam `advisor_critique=None`) so it cannot pass/
+reject by itself. REVIEWER-INDEPENDENT verification (reviewer ran, not builder self-report):
+targeted `scripts/remedy_pytest.sh` (test_provider_trust_verification + test_provider_verification_cli
++ test_review_bundle + test_dashboard_cockpit_truth) = **121 passed** (flock-serialized, one run);
+core + integration gate (`_verification_allows_materialization` inside the `trust_status==ACCEPTED`
+branch, returns True ONLY on `decision==PASSED and allowed_to_materialize`) verified by line-level
+inspection of the committed diff `50ea930..128ea24`. Builder-reported full pytest 5812 passed / 8
+skipped / 1 deselected (exit 0) — reviewer relies on builder full-suite count per standing rule;
+reviewer targeted subset green. NIT (not a finding): `_INTENT_OK_RE` (provider_trust_verification.py
+L400) is defined but unused in `check_overclaims` — harmless dead regex, no false-positive risk.
+Merge-ready. NO PR created (Step 1572 — held for explicit user request).
 
-R-0087 (low, handoff) RESOLVED — changed-files table added below (§53/§82 satisfied). Merge-ready.
-NO PR created (Step 1536).
-
-## Changed files (Steps 1499-1536) — File | What changed | Why
-| File | What changed | Why |
-|---|---|---|
-| packages/orchestration/local_model_advisor.py | NEW core adapter: config/models/prompt/schema/private storage/stdlib client/availability/invoke/redaction/anti-loop | optional loopback-only advisory rail |
-| packages/orchestration/orchestrator_brain.py | `consult_local_advisor_for_decision` + deterministic impact rules + `advisor` field + public `persist_decision` | advisory critique; action stays deterministic |
-| apps/cli/commands/local_advisor_cmd.py | NEW `local-advisor status/run` handlers | CLI surface (read-only + write_metadata) |
-| apps/cli/commands/orchestrator_cmd.py | `decide --use-local-advisor/--new` honored | opt-in advisory mode |
-| apps/cli/commands/__init__.py | register local_advisor_cmd | wire handlers |
-| apps/cli/grouped.py | `--use-local-advisor` store_true arg | CLI flag plumb |
-| apps/cli/command_catalog.py | `local-advisor` group + status/run entries + decide args | catalog-backed surface |
-| packages/orchestration/run_contract.py | `LOCAL_ADVISOR_STATUS/RUN` actions (non-cloud, allowed by default) | contract gate distinct from cloud |
-| packages/orchestration/progress_ledger.py | `extract/merge_local_advisor_items` fixed item_ids | surface advisor state, no raw |
-| packages/orchestration/feature_planner.py | 3 advisor repair rules → valid FeaturePlanSource | suggestions, no auto-retry |
-| packages/orchestration/review_bundle.py | REQUIRED_SECTIONS 22→23 + `_build_local_advisor_summary` | bundle advisor summary (counts/labels/IDs) |
-| packages/orchestration/ui_server.py | `_build_local_advisor_section` cockpit counts/status | read-only surface, no buttons |
-| tests/orchestration/test_local_model_advisor.py | NEW 39 tests (config/endpoint/parse/invoke/impact/arch) | safety+behavior coverage |
-| tests/cli/test_local_advisor_cli.py | NEW 6 subprocess tests | CLI runtime coverage |
-| tests/orchestration/test_review_bundle.py | REQUIRED_SECTIONS==23 + section assert | bundle test update |
-| tests/ui_server/test_dashboard_cockpit_truth.py | test_local_advisor_section_present | cockpit test update |
-| docs/local-model-advisor-v0.md | NEW design doc | document advisory rail |
-| docs/expensive-builder-routing-future.md | NEW future-design doc | routing deferral note |
-| docs/orchestrator-brain-v0.md | advisor integration note | cross-ref |
-| docs/self-dogfood-execution-v0.md | advisor note | cross-ref |
-| docs/bounded-overnight-executor-v0.md | advisor note | cross-ref |
-
-## Check Matrix (1-15) — to fill
+## Check Matrix (1-15)
 | Check | Status | Note |
 |---|---|---|
-| 1. Mainline reconciliation (PR #62 merged; clean branch; residuals carried) | PASS | a079378 .agent-only; off clean main 5d4cdf4 |
-| 2. Advisor models (no raw prompt/response fields) | PASS | public = hashes/counts/scrubbed only |
-| 3. Config (loopback-only; disabled by default; scrubbed) | PASS | enabled=False; effective gate; no token field |
-| 4. Safe prompt builder (safe summaries only; no raw) | PASS | counts/kind/label/score; JSON-only; scrub+bound |
-| 5. Response schema + parsing (unparseable safe; code/diff → high concern) | PASS | never raises; oversized/code-diff handled |
-| 6. Private run storage (0o700/0o600; atomic; bounded; no public raw) | PASS | raw only in private dir; manifest safe |
-| 7. Ollama client (stdlib; loopback; timeout; bounded; no SDK/subprocess) | PASS | urllib only; _NoRedirect; size-bounded |
-| 8. Availability probe (disabled/non-loopback/timeout → unavailable, no crash) | PASS | degrades; never raises |
-| 9. Orchestrator integration (deterministic first; final action deterministic) | PASS | escalate→report cmd or unchanged; never strengthens |
-| 10. Advisor impact rules (lower confidence/escalate only; no commands/override) | PASS | tightens only; contract+budget gated; no entity creation |
-| 11. Anti-loop integration (reuse by prompt_hash; failure → loop guard) | PASS | _count_unavailable≥2 suppress |
-| 12. CLI + catalog + RunContract (status read_only; run write_metadata; no exec) | PASS | UUID imported; LOCAL_ADVISOR_RUN non-cloud; no shell |
-| 13. Budget/usage + Progress/Feature/Review/Cockpit integrations | PASS | fixed item_ids; FeaturePlanSource valid; no raw/buttons |
-| 14. Redaction (no raw prompt/response/secrets/paths/tracebacks in public) | PASS | _scrub_public + scan_secrets; hashes only public |
-| 15. Architecture guards (no provider SDK/cloud/subprocess/network/apply/git/PR) | PASS | stdlib only; no SDK/subprocess in any new file |
-| (tests) Targeted suite + full pytest once | PASS | reviewer targeted = 131 passed; builder full 5777 passed/8 skipped/1 deselected; integrity 0 fail |
-| (handoff) Changed-files table present | FAIL | R-0087 — table absent in live_review/context/handoff; explicit block-if; merge HELD |
+| 1. Handoff/mainline (clean main after advisor merge; residuals preserved; no drift) | PASS | branch off 50ea930 (merged main); reconciliation in context/plan |
+| 2. Models/taxonomy (safe fields; canonical codes; passed/needs_review/rejected/incomplete) | PASS | 20 canonical + 6 scanner codes; export has no raw/diff/source fields |
+| 3. Consistency/relevance (request/candidate constraints; artifact linkage; unrelated blocked) | PASS | missing pkg = LOW (no crash); docs/source mismatch; self-link via self_dogfood: label |
+| 4. Overclaim/scope/testability (apply/test/verified claims; minimality; no raw echo) | PASS | intent-framing allowed; codes only; too-broad/lock; testability surfaced not executed |
+| 5. Loop risk (repeated failed candidates detected; no endless recommendations) | PASS | same-hash rejected→HIGH→human review; per-failure count→MEDIUM |
+| 6. Secret/entropy (high-entropy/private-key/env-like detected; never echoed) | PASS | reuses scan_secrets + entropy/cred/url heuristic; values never echoed |
+| 7. Decision rules (blocker/high reject; medium needs_review; low-only pass; pass≠approved) | PASS | deterministic; incomplete on missing candidate/trust; pass = eligible only |
+| 8. Integration (failed→no intent; passed→real pending intent; approval/do_continue unchanged) | PASS | verify-before-materialize; existing 72 provider tests green |
+| 9. CLI runtime (provider verify / verification-show; JSON parses; no traceback; no shell; timeout) | PASS | 7 subprocess tests; bounded; no raw diff in output |
+| 10. RunContract/Catalog (verify actions distinct from provider exec; catalog-backed; no may_execute) | PASS | provider_verify_candidate/provider_verification_show in defaults; may_execute=False |
+| 11. Orchestrator/local-advisor (recommends verify; advisor critique/lower/escalate only) | PASS | verify option (score 60, contract-gated); advisor hook deferred (cannot pass/reject) |
+| 12. Progress/Feature/Review/Cockpit (safe counts/status; no raw; no mutation buttons) | PASS | fixed item_ids; 4 planner rules; bundle 24; cockpit counts only, no buttons |
+| 13. Redaction (no secrets/paths/tracebacks/source/diff/log) | PASS | _scrub_public on summaries; private report.json 0o600; public = codes/counts/IDs |
+| 14. Architecture (no provider SDK/network/subprocess/apply/test/git/PR; no source_apply/patch_apply import; no auto approval) | PASS | guard tests assert forbidden imports/exec tokens absent |
+| 15. Tests (targeted + full pytest ≤1×) | PASS | reviewer targeted = 121 passed (one flock run); builder full 5812 passed/8 skipped/1 deselected (exit 0) |
 
-## Findings — Steps 1499-1536
+## Changed files (Steps 1537-1572) — File | What changed | Why
+| File | What changed | Why |
+|---|---|---|
+| packages/orchestration/provider_trust_verification.py | NEW: models/taxonomy/checks/decision/score/impact/persistence/idempotency/CLI+inline entry points | the verification rail |
+| packages/orchestration/provider_trust.py | `_verification_allows_materialization` between trust-accept and materialize; verification linkage fields on report+result | unverified candidates create no intent |
+| packages/orchestration/run_contract.py | `PROVIDER_VERIFY_CANDIDATE`/`PROVIDER_VERIFICATION_SHOW` actions (allowed by default, non-cloud) | contract gate distinct from provider exec |
+| apps/cli/commands/provider_cmd.py | `provider verify` + `provider verification-show` handlers | CLI surface |
+| apps/cli/command_catalog.py | provider.verify (write_metadata) + provider.verification-show (read_only) entries | catalog-backed commands |
+| packages/orchestration/orchestrator_brain.py | verification signals + verify/needs-review/repeat-rejection options; PROVIDER_TRUST_VERIFICATION score 60 | recommend verify; escalate; no exec |
+| packages/orchestration/progress_ledger.py | extract/merge_provider_verification_items (fixed item_ids) | surface verification state, no raw |
+| packages/orchestration/feature_planner.py | 4 verification repair rules → valid FeaturePlanSource | suggestions, no auto-retry/approval |
+| packages/orchestration/review_bundle.py | REQUIRED_SECTIONS 23→24 + _build_provider_verification_summary | bundle safe verification summary |
+| packages/orchestration/ui_server.py | _build_provider_verification_section cockpit counts/status | read-only surface, no buttons |
+| tests/orchestration/test_provider_trust_verification.py | NEW 27 unit/integration/arch tests | safety + behavior coverage |
+| tests/cli/test_provider_verification_cli.py | NEW 7 subprocess tests | CLI runtime coverage |
+| tests/orchestration/test_review_bundle.py | REQUIRED_SECTIONS==24 + section assert | bundle test update |
+| tests/ui_server/test_dashboard_cockpit_truth.py | test_provider_verification_section_present | cockpit test update |
+| docs/provider-trust-verification-v1.md, docs/expensive-builder-routing-v0-plan.md | NEW design docs | document rail + future routing |
+| docs/{provider-trust-gate-v0,provider-patch-materialization-v0,repair-request-builder-v0,orchestrator-brain-v0,local-model-advisor-v0}.md | cross-ref updates | document the new stage |
 
-## Finding R-0087
-
-Status: Resolved
-Done: R-0087 — changed-files table added to live_review.md ("Changed files (Steps 1499-1536)").
-Severity: low
-Area: handoff
-Summary: Final handoff lacks the protocol-required changed-files table (explicit block-if).
-Details: Protocol §53/§82 and this block's block-if list ("final handoff lacks changed files
-table") require a `| File | What changed | Why |` table in the final handoff for merge
-readiness. The committed handoff (`7f3631a`, live_review.md "Reviewer Final Verdict" + context.md)
-declares PASS / merge-ready but contains no changed-files table. Code/security/tests are clean
-(zero code findings); this is a handoff-completeness gap, not a code defect — but the block-if
-gates merge-readiness regardless of severity.
-Evidence: `grep -n "| File|Changed Files|What changed" .agent/live_review.md .agent/context.md`
-returns nothing; `git diff --name-only 5d4cdf4..HEAD` = 21 prod files with no corresponding table.
-Expected fix: Add a changed-files table (File | What changed | Why) covering the 21 changed
-production files to the final handoff (live_review.md or context.md), then write `Done: R-0087`.
-
-Next id: R-0088.
+## Findings — Steps 1537-1572
+(none) — ZERO open Blocker/High. Next id: R-0088.
 
 ## Reviewer audit log
-- `a079378` reconciliation: touches only `.agent/{context,plan,live_review}.md`; branch off clean main `5d4cdf4` (PR #62 merged). No production drift. Check 1 OK. Prior block zero open findings — nothing to carry.
-- `2021606` core `local_model_advisor.py` (916L) reviewed — ZERO findings. Verified: disabled-by-default (`enabled=False`; `effective=enabled and ep_ok and bool(model)`); loopback-only `_validate_endpoint` (host∈{127.0.0.1,localhost,::1}, non-loopback never echoed, redirects rejected via `_NoRedirect`, timeout≤30 enforced, `MAX_RESPONSE_BYTES` bound→OVERSIZED); safe JSON-only prompt (scrub+bound, no code/secrets); stdlib urllib only (no subprocess/SDK/shell/external net); parse never raises (unparseable/oversized safe, code/diff→high concern, `_scrub_public`+`scan_secrets`); anti-loop `_count_unavailable≥2` suppress + `MAX_RETRIES=1`; impact advisory hint-only (orchestrator re-derives binding); raw prompt/response private 0o700/0o600 atomic only, public = hashes+counts+scrubbed.
-  - NIT (not a finding): line 317 `endpoint=endpoint if ep_ok else endpoint` dead ternary (identical branches); harmless (raw endpoint in-memory only, non-loopback cannot be effective-enabled).
-- `cc7a645` integration (orchestrator advisory mode + CLI + contract + integrations) reviewed — ZERO findings.
-  - Check 9 (final action deterministic): `consult_local_advisor_for_decision` only either leaves action unchanged or escalates to `StopReason.HUMAN_REVIEW_REQUIRED` with `next_safe_action="remedy orchestrator report --json"` (deterministic catalog command). Advisor never emits a new command; never strengthens. ✓
-  - Check 10 (no creation / no override): advisor can ONLY lower confidence (`_lower_confidence`, monotone-down) or escalate to human review. Escalation gated by `decision.stop_reason==SELECTED and not open_blocker and (loop_risk==high or high_concern) and deterministic _evidence_is_weak` — strictly tightens, can't clear a blocker/enable an action. No ProposedTask/PatchIntent/approval/apply. Contract-gated via `evaluate_run_action(..., ContractAction.LOCAL_ADVISOR_RUN)`; denial → no change. Budget enforced in `run_local_advisor`. ✓
-  - Check 11 (anti-loop): `_count_unavailable≥2` (MAX_UNAVAILABLE_REPEAT) suppress until new evidence; unavailable attempts persisted for the count. ✓
-  - Check 12 (CLI/catalog/contract): `local-advisor.status` read_only, `local-advisor.run` + `orchestrator.decide --use-local-advisor` write_metadata, all `may_execute_commands=False`/`may_mutate_repo=False`; decide runs deterministic select first then advisory consult then single persist; degrades to disabled msg (no Ollama in CI); `UUID` imported (line 37, no crash); `LOCAL_ADVISOR_STATUS/RUN` in `_DEFAULT_ALLOWED_ACTIONS` only (distinct from cloud — no_cloud doesn't deny local loopback). No shell=True. ✓
-  - Check 13 (integrations): progress_ledger `merge_local_advisor_items` fixed item_ids de-duped, safe summaries (status/impact/counts); feature_planner 3 rules map to valid `FeaturePlanSource.ROADMAP/KNOWN_RISK`; review_bundle REQUIRED_SECTIONS += `local_advisor_summary.json` (counts/labels/IDs only); ui_server cockpit section counts/status only, no buttons/mutation/raw. ✓
-  - Check 15 (arch): stdlib urllib only; no provider SDK/cloud/subprocess/shell/external net/apply/git/PR/browser in any new file. ✓
-  - NIT (not a finding): review_bundle `_build_local_advisor_summary` `sev_counts` is declared but never populated (manifest carries no per-finding list) → `finding_severity_counts` always `{}`. Cosmetic, no leak.
-- Tests committed + green: `test_local_model_advisor.py` (39: config/endpoint safety,
-  availability probe, parsing+redaction, invocation/storage/idempotency/budget/oversized/
-  anti-loop, advisor impact rules incl. cannot-create-action / cannot-override-blocker /
-  lower-confidence / escalate-weak-evidence / cannot-strengthen / downstream-redaction,
-  architecture guards), `test_local_advisor_cli.py` (6 subprocess: disabled status / external
-  endpoint blocked / decide ±advisor safe / run missing-decision safe / run disabled safe),
-  review_bundle (REQUIRED_SECTIONS==23) + cockpit section. Full pytest 5777 passed, 8 skipped,
-  1 deselected (exit 0); `remedy integrity check` fail_count=0.
-- Both prior NITs RESOLVED: dead `endpoint=endpoint if ep_ok else endpoint` ternary removed;
-  `finding_severity_counts` now populated (LocalAdvisorRunRecord.finding_severity_counts via
-  `_severity_counts`, aggregated in `_build_local_advisor_summary`). Re-reviewed → still ZERO findings.
+- `50ea930` PR #63 merged Local Model Advisor v0 (1499-1536) to main; prior block R-0087 (changed-
+  files table) RESOLVED @ `eb33351`; prior verdict PASS. New block branch
+  `feature/steps-1537-1572-provider-trust-verification-v1` created off `50ea930` (clean merged main).
+  `git log main..HEAD` empty → no drift, no block code yet. Check 1 PASS. Awaiting builder commits.
+- Watch: `verifier.py` / `verifier_profiles.py` pre-exist (last touched `72f47a7`/`6444e49`, prior
+  blocks). Provider-trust-verification v1 should add a NEW second-stage candidate-verification layer
+  — flag scope overlap, direct `source_apply`/`patch_apply` imports, provider/model/network/
+  subprocess calls, auto-apply/approve, or any path where failed verification still creates an intent.
+- Reviewed `provider_trust_verification.py` (NEW) + intake integration — ZERO findings. Verified:
+  verify-before-materialize gate (`_verification_allows_materialization` returns True ONLY on
+  `verification_passed and allowed_to_materialize`; contract `provider_verify_candidate` denial →
+  False → no intent); decision rules deterministic (blocker/high→rejected, medium→needs_review,
+  low-only→passed, missing→incomplete); HIGH loop risk forces human review even on low-only;
+  scanner runs on PRIVATE raw + reuses `scan_secrets`, never echoes values (overclaim/secret
+  findings carry codes only); persistence private 0o600 report.json + safe job-metadata copy,
+  idempotent by (trust_report_id, candidate_hash, request_package_id/self_attempt_id); imports
+  only stdlib + sibling orchestration modules (no provider SDK / urllib / socket / subprocess);
+  no `source_apply`/`patch_apply`/approve/PR/git anywhere. Self-dogfood candidates route via the
+  `self_dogfood:<attempt>` provider label through self-relevance (fixes the only full-suite
+  regression). Local-advisor critique hook DEFERRED (forward seam `advisor_critique=None`).
+- Backward-compat: existing provider trust/material suites (72) + orchestrator/progress/feature/
+  review-bundle/cockpit/run_contract/catalog all green; review_bundle count test updated 23→24.
 
-## Reviewer Final Verdict — Steps 1499-1536 (Local Model Advisor Adapter v0)
-**PASS.** Zero open Blocker/High; zero findings filed. The optional local advisor is disabled
-by default, loopback-only, advisory-only; it never executes, never imports a provider/cloud
-SDK, never breaks deterministic orchestration when absent, never lets model output become a
-command/entity/approval/apply/PR/job, never overrides contract/budget/review, and leaks no raw
-prompt/response/secret/path/traceback. Final next_safe_action stays deterministic + catalog-
-backed. Merge-ready. NO PR (Step 1536). Next id: R-0087.
+## Reviewer Final Verdict — Steps 1537-1572 (Provider Trust Verification v1)
+**PASS.** Zero open Blocker/High; zero findings filed. Verification is a SAFE, deterministic
+second-stage gate: unsafe/unverified accepted candidates create no pending intent; overclaim/
+unrelated/repeated-failed/secret candidates never pass silently; no provider/model execution,
+network, subprocess, provider SDK, apply, approval, PR, or git; reports leak no raw candidate/
+diff/source/secret/path/traceback; the optional local-advisor critique is deferred and cannot
+pass/reject by itself. Full suite 5812 passed/8 skipped/1 deselected. Merge-ready. NO PR
+(Step 1572). Next id: R-0088.

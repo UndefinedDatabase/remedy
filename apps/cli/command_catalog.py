@@ -1579,6 +1579,42 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
         related=("provider.intake-repair", "provider.trust-show", "patch.approve"),
     ),
+    CommandEntry(
+        command_id="provider.verify",
+        group_id="provider",
+        subcommand="verify",
+        description="Second-stage SAFE verification of a quarantined candidate (relevance/overclaim/scope/loop). Metadata-only; never applies/approves.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("trust_report_id", "Trust report id to verify"),
+            ArgDef("--request-package-id", "Repair request package to check consistency against", required=False, is_option=True),
+            ArgDef("--self-attempt-id", "Self-improvement attempt this candidate targets", required=False, is_option=True),
+            ArgDef("--new", "Force a fresh verification (ignore idempotent reuse)", required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        requires_permission=False,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("provider.verification-show", "provider.trust-show", "patch.approve"),
+    ),
+    CommandEntry(
+        command_id="provider.verification-show",
+        group_id="provider",
+        subcommand="verification-show",
+        description="Read-only: show a ProviderVerificationReport (safe findings/score/refs; no raw candidate/diff).",
+        action_class="read_only",
+        args=(
+            _JOB_ID,
+            ArgDef("verification_id", "Verification report id"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("provider.verify", "provider.trust-show"),
+    ),
 
     # ── self (self-dogfood planner — read/metadata-only) ──────────────────
     CommandEntry(

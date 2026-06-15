@@ -296,6 +296,36 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.REPAIR_ARTIFACT,
             "remedy patch approve <job_id> <intent_id> --json",
         ),
+        # Provider Trust Verification v1 follow-ups (Step 1557). No auto provider retry,
+        # no auto approval — verification only marks eligibility for a pending intent.
+        "provider-verification-passed": (
+            "Approve or reject the verified provider repair",
+            "A candidate passed verification and has a pending intent — approve or reject "
+            "it (apply later via do continue). Passed ≠ approved ≠ applied.",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy patch approve <job_id> <intent_id> --json",
+        ),
+        "provider-verification-needs-review": (
+            "Inspect the verification report (needs review)",
+            "A candidate passed the trust gate but verification flagged concerns — inspect "
+            "the safe verification report before any approval. No intent was created.",
+            FeaturePlanSource.OPEN_FINDING,
+            "remedy provider verification-show <job_id> <verification_id> --json",
+        ),
+        "provider-verification-rejected": (
+            "Revise the candidate or request (verification rejected)",
+            "Verification rejected the candidate (wrong problem / overclaim / too broad / "
+            "unrelated). Revise the request package or candidate manually; no auto retry.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy provider verification-show <job_id> <verification_id> --json",
+        ),
+        "provider-verification-loop-risk": (
+            "Change approach (verification loop risk)",
+            "An identical/repeated candidate keeps failing verification — change approach or "
+            "escalate to human review. Do not resubmit the same candidate.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy provider verification-show <job_id> <verification_id> --json",
+        ),
         # Provider patch materialization follow-ups (Step 1349). No auto approve/retry.
         "provider-repair-intent-pending-approval": (
             "Approve or reject the materialized provider repair",
