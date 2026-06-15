@@ -858,6 +858,57 @@ def merge_provider_material_items(ledger: ProgressLedger, materials: dict | None
             seen.add(item.item_id)
 
 
+def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
+    """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
+    evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
+    if not evals:
+        return []
+    latest = evals[-1]
+    items: list[ProgressItem] = [ProgressItem(
+        item_id="candidate-quality-evaluated", title="Candidate quality evaluated",
+        status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+        safe_summary=f"{len(evals)} candidate quality evaluation(s); latest={latest.get('outcome','')}.")]
+    if any(e.get("outcome") in ("proof_verified", "completed_success") for e in evals):
+        items.append(ProgressItem(
+            item_id="candidate-quality-proof-verified", title="Candidate quality proof verified",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="A generated candidate completed with verified proof."))
+    if any(e.get("outcome") == "tests_failed" for e in evals):
+        items.append(ProgressItem(
+            item_id="candidate-quality-tests-failed", title="Candidate quality tests failed",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="High",
+            safe_summary="An applied generated candidate's linked test failed.",
+            next_action="remedy candidate-quality report --json"))
+    if any(e.get("outcome") in ("trust_rejected", "verification_rejected", "human_rejected") for e in evals):
+        items.append(ProgressItem(
+            item_id="candidate-quality-rejected", title="Candidate quality rejected",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="A generated candidate was rejected (trust/verification/human).",
+            next_action="remedy candidate-quality report --json"))
+    if any(e.get("outcome") == "evidence_incomplete" for e in evals):
+        items.append(ProgressItem(
+            item_id="candidate-quality-evidence-incomplete", title="Candidate quality evidence incomplete",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.PROOF_GAP, severity="Low",
+            safe_summary="A candidate evaluation lacks proof/test evidence.",
+            next_action="remedy candidate-quality report --json"))
+    if any((e.get("score", {}) or {}).get("dimensions", {}).get("loop_risk") == "fail" for e in evals):
+        items.append(ProgressItem(
+            item_id="candidate-quality-loop-risk", title="Candidate quality loop risk",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="Repeated failed candidates flagged loop risk.",
+            next_action="remedy candidate-quality report --json"))
+    return items
+
+
+def merge_candidate_quality_items(ledger: ProgressLedger, evals: list[dict] | None) -> None:
+    """Merge candidate quality items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_candidate_quality_items(evals):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_local_candidate_items(runs: list[dict] | None) -> list[ProgressItem]:
     """Extract Automated Local Candidate Generator v0 progress items (Step 1624) from persisted
     run manifests. Read-only; fixed item_ids → no duplicates. Generation never auto-applies."""
@@ -1418,6 +1469,14 @@ def build_progress_ledger(
             from packages.orchestration.local_candidate_generator import list_local_candidate_runs
             mine = [r for r in list_local_candidate_runs() if r.get("job_id") == str(job.id)]
             merge_local_candidate_items(ledger, mine)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Candidate quality evaluations (Step 1661).
+    if job is not None:
+        try:
+            from packages.orchestration.candidate_quality import load_candidate_quality_evaluations
+            merge_candidate_quality_items(ledger, load_candidate_quality_evaluations(job_id=str(job.id)))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

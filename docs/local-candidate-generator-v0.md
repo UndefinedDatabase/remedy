@@ -99,5 +99,8 @@ orchestration/UI mutation/MCP/dep upgrades. The adapter never creates an intent 
 
 ## Next
 
-- **Local Candidate Quality Evaluation v1** — score/compare generated candidates safely.
+- **Local Candidate Quality Evaluation v1** — now built: see
+  [candidate-quality-evaluation-v1.md](candidate-quality-evaluation-v1.md). It scores each
+  generation run's OUTCOME from durable evidence (trust/verification/approval/apply/proof) and
+  feeds model/route scorecards back into Builder Routing.
 - **External Builder Sandbox v0** — see [external-builder-sandbox-future.md](external-builder-sandbox-future.md).

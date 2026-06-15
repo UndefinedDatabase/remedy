@@ -255,6 +255,17 @@ class TestDashboardShape:
         assert "pending_approval_count" in lc
         assert "buttons" not in lc and "actions" not in lc
 
+    def test_candidate_quality_section_present(self):
+        # Read-only Local Candidate Quality Evaluation v1 summary (Step 1664).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "candidate_quality" in dash
+        cq = dash["candidate_quality"]
+        assert "evaluation_count" in cq
+        assert "latest_outcome" in cq
+        assert "pending_with_quality_count" in cq
+        assert "buttons" not in cq and "actions" not in cq
+
     def test_repair_request_section_present(self):
         # Read-only Repair Request Builder summary (Step 1381).
         job = Job(name="t")

@@ -116,4 +116,7 @@ catalog-backed and entity-backed.
 See also: [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — when this router
 selects the `local_candidate_generator` tier, it emits `remedy local-candidate generate …` as the
 next action; that adapter runs only if explicitly enabled + routed and routes output through Trust
-Gate + Verification.
+Gate + Verification. Routing also consumes
+[candidate-quality-evaluation-v1.md](candidate-quality-evaluation-v1.md) feedback: repeated poor
+quality for the local-candidate route escalates to human review instead of recommending more
+generation (read-only; never triggers generation).

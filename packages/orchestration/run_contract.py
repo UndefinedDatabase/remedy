@@ -79,6 +79,13 @@ class ContractAction:
     # the disabled-by-default generator config + the routing gate.
     LOCAL_CANDIDATE_GENERATOR_STATUS = "local_candidate_generator_status"
     LOCAL_CANDIDATE_GENERATE = "local_candidate_generate"
+    # Local Candidate Quality Evaluation v1 (Step 1660) — evidence-based scoring / reporting /
+    # routing-feedback ONLY. NOT generation/model/provider/apply/test. evaluate is metadata-only;
+    # show/scorecard/report are read-only. Allowed by default.
+    CANDIDATE_QUALITY_EVALUATE = "candidate_quality_evaluate"
+    CANDIDATE_QUALITY_SHOW = "candidate_quality_show"
+    CANDIDATE_QUALITY_SCORECARD = "candidate_quality_scorecard"
+    CANDIDATE_QUALITY_REPORT = "candidate_quality_report"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -207,6 +214,10 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.BUILDER_ROUTING_REPORT,
     ContractAction.LOCAL_CANDIDATE_GENERATOR_STATUS,
     ContractAction.LOCAL_CANDIDATE_GENERATE,
+    ContractAction.CANDIDATE_QUALITY_EVALUATE,
+    ContractAction.CANDIDATE_QUALITY_SHOW,
+    ContractAction.CANDIDATE_QUALITY_SCORECARD,
+    ContractAction.CANDIDATE_QUALITY_REPORT,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

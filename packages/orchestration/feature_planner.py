@@ -391,6 +391,42 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.OPEN_FINDING,
             "remedy provider verification-show <job_id> <verification_id> --json",
         ),
+        # Local Candidate Quality Evaluation v1 follow-ups (Step 1662). No auto execution.
+        "candidate-quality-proof-verified": (
+            "Prefer this route (proof-verified quality)",
+            "A generated candidate completed with verified proof — prefer the same route/model in "
+            "future routing (review the scorecard).",
+            FeaturePlanSource.ROADMAP,
+            "remedy candidate-quality scorecard --json",
+        ),
+        "candidate-quality-tests-failed": (
+            "Revise candidate (tests failed)",
+            "An applied generated candidate's linked test failed — revise the request/approach or "
+            "escalate to human review; no automatic retry.",
+            FeaturePlanSource.FAILED_TEST,
+            "remedy candidate-quality report --json",
+        ),
+        "candidate-quality-rejected": (
+            "Avoid repeat / refine request (candidate rejected)",
+            "A generated candidate was rejected — avoid repeating the same route/model; refine the "
+            "request or escalate to human review.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy candidate-quality report --json",
+        ),
+        "candidate-quality-evidence-incomplete": (
+            "Gather proof/test evidence (quality incomplete)",
+            "A candidate evaluation lacks proof/test evidence — approve + apply via do continue, or "
+            "gather proof before claiming success.",
+            FeaturePlanSource.PROOF_GAP,
+            "remedy candidate-quality report --json",
+        ),
+        "candidate-quality-loop-risk": (
+            "Change approach (candidate quality loop risk)",
+            "Repeated failed candidates flagged loop risk — change approach or human review; do not "
+            "keep generating.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy candidate-quality report --json",
+        ),
         # Provider patch materialization follow-ups (Step 1349). No auto approve/retry.
         "provider-repair-intent-pending-approval": (
             "Approve or reject the materialized provider repair",

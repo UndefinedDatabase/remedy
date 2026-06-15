@@ -1,78 +1,70 @@
-# Live Review — Steps 1609-1644: Automated Local Candidate Generator v0
+# Live Review — Steps 1645-1680: Candidate Quality Evaluation v1
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict, protocol §5)
-Scope: Generate a repair candidate ONLY via an explicit, loopback-only, routing-gated LOCAL model
-adapter, then immediately route the output through the EXISTING Provider Trust Gate + Verification +
-Materialization pipeline. Must NOT: be enabled by default, break deterministic flow when the local
-model is missing, allow non-loopback endpoints, import provider/cloud SDKs, use subprocess/shell/
-external network/browser, bypass Builder Routing, run without a request package, bypass Trust Gate /
-Verification, materialize/create intent before trust+verification pass, auto-approve/apply/test a
-generated intent, loop generation without new evidence, ignore pending intent/approval, leak raw
-prompt/output/source/diff/log/secrets/tracebacks/abs paths, or emit fake next actions. NO PR unless
-user asks (Step 1644).
+Scope: Evaluate generated/external candidate USEFULNESS from DURABLE evidence (trust report,
+verification report, materialization/intent state, proof chain, linked test runs) and feed SAFE
+scorecards back into Builder Routing as confidence/recommendation signals. Read/metadata-only. Must
+NOT: execute models/providers, call network/subprocess, apply patches, approve work, run tests,
+create PRs/git; claim success without linked proof/test evidence; let rejected/unverified candidates
+score high/excellent; treat pending approval as completed; treat model confidence/text as truth;
+trigger automatic generation via routing feedback; leak raw prompt/output/candidate/diff/source/log/
+secrets/abs paths; emit fake next actions. NO PR unless user asks (Step 1680).
 Timestamp: 2026-06-15
 
 ## Verdict (reviewer-owned)
-PASS — reviewed @ commit `dde0bc6`; ZERO open findings. All 14 checks PASS. The local generator is
-DISABLED by default + loopback-only (reuses the validated local_model_advisor `_validate_endpoint` +
-`_stdlib_transport` — no new HTTP client); a missing/unavailable model returns a safe blocked/
-unavailable result and NEVER breaks deterministic flow; generation runs ONLY when Builder Routing
-selected the `local_candidate_generator` tier (no bypass), a request package exists, no pending intent,
-contract allows, and budget/attempt caps not exhausted; generated output is treated as UNTRUSTED and
-routed through the EXISTING `intake_provider_repair` pipeline (quarantine → Trust Gate → Verification →
-Materialization) — the adapter NEVER parses to an intent directly and NEVER creates/approves/applies/
-tests an intent; a pending patch intent is created ONLY when the PTV-v1 gate (trust ACCEPTED + verif
-PASSED + supported materialization) sets `repair_intent_id`; idempotent by (request_package_id, model,
-prompt_hash); raw prompt/output only in private 0o600 storage (public = hashes/labels/counts/IDs);
-no provider/cloud SDK / subprocess / external net / browser / apply / git / PR; all emitted
-next_safe_action are catalog-valid (R-0088 lesson applied: `builder-routing report --job-id`,
-`local-candidate generate --request-package-id/--job-id/--routing-id`). REVIEWER-INDEPENDENT
-verification: targeted `scripts/remedy_pytest.sh` (test_local_candidate_generator + test_local_candidate_cli
-+ test_review_bundle + test_dashboard_cockpit_truth + test_builder_routing) = **139 passed**; builder-
-reported full pytest 5887 passed/8 skipped/1 deselected (exit 0) — relied on per standing rule.
-Changed-files table present in `.agent/context.md` (16 rows, reconciled vs `git diff --name-only
-4d4d7ad..dde0bc6` = 14 prod + 4 test + docs). Merge-ready. NO PR (Step 1644).
+PASS — reviewed @ commit `600304e`; ZERO open findings. All 12 checks PASS. Quality evaluation is
+evidence-only: `_classify` is durable-evidence-driven (local_candidate run manifest + trust report +
+verification report + intent state via get_patch_intent + apply/test/proof via authoritative
+`build_proof_chain`) — NEVER model confidence/text, NEVER event-only proof promotion. `_score`
+enforces the no-success-without-proof CEILINGS: verification≠pass → cap MEDIUM (rejected/unverified
+cannot score high), human_decision unknown → cap MEDIUM, proof_outcome≠pass → cap HIGH (EXCELLENT
+requires proof_status==verified + test passed). PENDING_APPROVAL scored MEDIUM and explicitly "not
+complete"; rejected/trust-failed → LOW; cost always "unknown" (never invented). `route_quality_feedback`
+is a READ-ONLY confidence signal (raise/lower/neutral) that NEVER triggers generation — wired into
+builder_routing step 8 so poor history (reject_rate≥0.5 / loop≥2) escalates to HUMAN_REVIEW_REQUIRED
+instead of recommending more generation (routing still emits a string only). Evaluator does NO
+model/provider/network/subprocess/apply/approve/test/git/PR; reports carry codes/IDs/counts/bands/
+dimensions only (no raw prompt/output/candidate/diff/source/secret/path); idempotent by evidence
+fingerprint; `candidate_quality_integrity` flags success_without_proof / high_score_for_rejected /
+duplicate_fingerprint. All emitted next_safe_action are catalog-valid (R-0088 lesson applied:
+`candidate-quality show <evaluation_id>` positional matches catalog; `patch approve`, `do continue
+--intent-id`, `provider verification-show`/`trust-show`). REVIEWER-INDEPENDENT verification: targeted
+`scripts/remedy_pytest.sh` (test_candidate_quality + test_candidate_quality_cli + test_review_bundle +
+test_dashboard_cockpit_truth + test_builder_routing) = **145 passed**; builder-reported full pytest
+5927 passed/8 skipped/1 deselected (exit 0) — relied on per standing rule. Changed-files table present
+in `.agent/context.md`. Merge-ready. NO PR (Step 1680).
 
-## Check Matrix (1-14)
+## Check Matrix (1-12)
 | Check | Status | Note |
 |---|---|---|
-| 1. Handoff/mainline (clean main after routing merge; residuals preserved; no drift) | PASS | branch off 4d4d7ad (merged main); 0 drift commits |
-| 2. Config/endpoint (disabled default; opt-in; loopback-only; timeout/size bound; unavailable safe) | PASS | enabled=False; _effective_enabled=enabled+ep_ok+model; reuses _validate_endpoint; timeout≤60; never raises |
-| 3. Prompt (request-package based; one candidate; relative paths; no secrets/claims/raw) | PASS | _CANDIDATE_SCHEMA_INSTRUCTIONS (one candidate/relative/no-secrets/no-claims); _scrub_public+bound |
-| 4. Storage (private prompt/output; 0o700/0o600; atomic/hash/bounded; no raw public) | PASS | _store_run prompt.md+raw_output.txt 0o600/dir 0o700 atomic bounded; manifest+public = hashes/IDs |
-| 5. Intake bridge (enters provider intake/quarantine; deterministic label; linked generation_id; no direct parse-to-intent) | PASS | intake_provider_repair(provider=`local_candidate_generator:<model>`, STDIN); no direct parse-to-intent |
-| 6. Trust/verification/materialization (reject stops; intent only after passed verif + supported material) | PASS | _status_from_intake maps trust/verif outcomes; intent only when intake.repair_intent_id (PTV gate) |
-| 7. Routing gate (routing selected local_candidate_generator; no pending; budget/attempt/loop; live_review/contract) | PASS | _check_routing_gate requires LOCAL_CANDIDATE_GENERATOR tier; pending suppresses; budget caps; contract; review via routing |
-| 8. CLI runtime (status/generate; JSON; no traceback; no shell; no real Ollama in CI) | PASS | status read_only / generate write_metadata; JSON; errors→stderr; transport injectable (no Ollama in CI) |
-| 9. RunContract/budget (local distinct from cloud; usage counted; exhausted blocks generation only) | PASS | LOCAL_CANDIDATE_GENERATE/STATUS default-allowed non-cloud; usage from runs; budget blocks generation only |
-| 10. Integrations (orchestrator/progress/feature/review/cockpit safe; no buttons/mutations) | PASS | routing emits string only (planning-only); fixed item_ids; bundle 25→26; cockpit counts/no buttons |
-| 11. Idempotency (no dup quarantine/trust/verif/intent; pending blocks new gen; failed not retried endlessly) | PASS | _find_reusable_run by (pkg,model,prompt_hash); pending blocks; budget caps bound failed retries |
-| 12. Redaction (no secrets/paths/tracebacks/source/diff/log in public) | PASS | _scrub_public; endpoint_label never raw host; raw only private 0o600 |
-| 13. Architecture (no SDK/net/subprocess/apply/test/git/PR; no raw prompt/output in public dataclasses) | PASS | stdlib + reused loopback transport; lazy internal imports; no SDK/subprocess/source_apply/patch_apply/intent-creation |
-| 14. Tests (targeted local-candidate/routing/trust/verif/material/catalog/redaction; full pytest ≤1×) | PASS | reviewer targeted = 139 passed; builder full 5887 passed/8 skipped/1 deselected (exit 0) |
-| (handoff) Changed-files table present | PASS | table in context.md (16 rows); reconciled vs git diff 4d4d7ad..dde0bc6 |
+| 1. Handoff/mainline (clean main after local-candidate merge; residuals preserved; no drift) | PASS | branch off 3641618 (merged main); 0 drift commits |
+| 2. Models/taxonomy (safe fields; clear outcome states; no raw content fields) | PASS | 16 outcomes + finding codes + bands; export = codes/IDs/counts/dims only |
+| 3. Inputs/evidence (safe summaries; unknown stays unknown; no event-only proof promotion) | PASS | _gather_evidence durable summaries; build_proof_chain authoritative; try/except→unknown |
+| 4. Scoring/outcome (proof/test gates; rejected/unverified can't score high; pending≠completed; no invented costs) | PASS | _score ceilings (verif/human/proof); rejected→LOW; pending=MEDIUM not complete; cost=unknown |
+| 5. Idempotency/scorecards (stable fingerprints; no dup active evals; scorecards safe+bounded) | PASS | _fingerprint stable; _find_existing reuse; scorecards counts/rates only |
+| 6. Routing feedback (confidence/recommend only; no auto gen; pending suppresses gen; poor→human review) | PASS | route_quality_feedback read-only; builder_routing step 8 lower→HUMAN_REVIEW; never generates |
+| 7. CLI runtime (evaluate/show/scorecard/report; JSON; markdown safe; no traceback; no shell) | PASS | evaluate write_metadata / show+scorecard+report+integrity read_only; JSON; errors→stderr |
+| 8. RunContract/catalog (metadata/read-only; catalog-backed; no may_execute_commands) | PASS | 4 actions default-allowed non-cloud; may_execute_commands=False |
+| 9. Progress/Feature/Review/Cockpit (safe counts/status; no raw; no mutation buttons) | PASS | fixed item_ids; bundle +candidate_quality_summary; cockpit counts/no buttons |
+| 10. Redaction (no secrets/paths/tracebacks/source/diff/log in public) | PASS | _scrub_public on summaries; public = codes/IDs/counts/bands/dims only |
+| 11. Architecture (no provider/model/net/subprocess/apply/test/git/PR; no source_apply/patch_apply import; no auto approval) | PASS | stdlib + _scrub_public; lazy durable-reader imports; reads intent state never sets it |
+| 12. Tests (targeted candidate-quality/local-candidate/routing/verification/catalog/redaction; full pytest ≤1×) | PASS | reviewer targeted = 145 passed; builder full 5927 passed/8 skipped/1 deselected (exit 0) |
+| (handoff) Changed-files table present | PASS | table in context.md; reconciled vs git diff 3641618..600304e |
 
-## Findings — Steps 1609-1644
-(none) — ZERO open Blocker/High/Medium/Low. Reviewed committed diff `4d4d7ad..dde0bc6` line-level +
-targeted 139 passed.
-
-NIT (not a finding): `LocalCandidateGenerationStopReason.REVIEW_BLOCKER` + `policy.stop_on_review_blocker`
-are defined but never directly enforced in `run_local_candidate_generation` — review-blocker protection
-is enforced transitively via the routing gate (review_blocks → builder_routing high risk →
-HUMAN_REVIEW_REQUIRED tier ≠ local_candidate_generator → generation blocked). Harmless dead config.
-NIT: `_next_action` else-branch `return f"remedy local-candidate status --json"` is an f-string with no
-placeholder (cosmetic).
+## Findings — Steps 1645-1680
+(none) — ZERO open Blocker/High/Medium/Low. Reviewed committed diff `3641618..600304e` line-level +
+targeted 145 passed. Builder committed reviewer PENDING ledger (no pre-written verdict).
 
 Next id: R-0091.
 
 ## Reviewer audit log
-- PR #65 merged Expensive Builder Routing v0 (1573-1608) to main → `4d4d7ad`; reviewer verdict PASS
-  @ `50ecb9d` (R-0088/R-0089/R-0090 resolved). New branch
-  `feature/steps-1609-1644-automated-local-candidate-generator-v0` off `4d4d7ad` (clean merged main).
-  `git log 4d4d7ad..HEAD` empty → no drift, no block code yet. Check 1 PASS. Awaiting builder commits.
-- WATCH (this block layers a REAL local model generator on the loopback adapter): endpoint must stay
-  loopback-only + disabled by default; generation must be routing-gated (local_candidate_generator
-  tier) + request-package-required; output MUST enter the existing Trust Gate→Verification→
-  Materialization pipeline (no direct parse-to-intent, no pre-trust materialization); no provider/
-  cloud SDK / subprocess / external net; no raw prompt/output on public surfaces; idempotent;
-  pending intent/approval suppresses new generation; loop guard on repeated failed generation.
+- PR #66 merged Local Candidate Generator v0 (1609-1644) to main → `3641618`; reviewer verdict PASS
+  @ `c7ea7ff`. New branch `feature/steps-1645-1680-local-candidate-quality-evaluation-v1` off
+  `3641618` (clean merged main). `git log main..HEAD` empty → no drift, no block code yet. Check 1 PASS.
+- WATCH: quality score MUST derive from DURABLE truth (build_proof_chain / build_snapshot_truth /
+  linked test_run_id / verification decision), NEVER from event presence or model confidence/text;
+  rejected/unverified/pending candidates must NOT score high; pending approval ≠ completed; scorecard
+  public = safe counts/labels/IDs only (no raw prompt/output/candidate/diff/source/log); routing
+  feedback influences confidence/recommendation ONLY (no auto generation); pure read/metadata — no
+  model/provider/network/subprocess/apply/approve/test/git/PR; idempotent; emitted next actions
+  catalog-valid (R-0088 lesson).

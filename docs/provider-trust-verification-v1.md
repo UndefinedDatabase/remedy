@@ -131,3 +131,6 @@ Generator Adapter v0 — both gated behind request package + trust + verificatio
 See also: [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — locally-generated
 candidates enter this exact Trust Gate + Verification pipeline (provider label
 `local_candidate_generator:<model>`); no candidate becomes an intent before verification passes.
+The verification decision is also read (after the fact) by
+[candidate-quality-evaluation-v1.md](candidate-quality-evaluation-v1.md) as one evidence stage —
+a candidate cannot score high without verification passing, nor excellent without verified proof.
