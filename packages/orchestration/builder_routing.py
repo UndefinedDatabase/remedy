@@ -296,6 +296,8 @@ class BuilderRoutingDecision:
     next_safe_action: str = ""
     safe_summary: str = ""
     created_at: str = ""
+    # Token Economy + Context Budget hint (Step 1764) — read-only estimate metadata; never executes.
+    token_economy: dict[str, Any] = field(default_factory=dict)
 
 
 # BuilderRoutingTrace is the persisted form of a decision (same safe shape).
@@ -620,6 +622,15 @@ def select_builder_routing_decision(
             return _finalize(d, BuilderRoutingTier.NO_SAFE_ROUTE,
                              BuilderRoutingStopReason.JOB_NOT_FOUND, "Job not found.",
                              "remedy job list --json", ddir, persist)
+
+    # Token Economy + Context Budget hint (Step 1764) — read-only estimate metadata attached to
+    # every decision. Best-effort; never executes a worker / calls a model. No-op-safe on failure.
+    if request.job_id:
+        try:
+            from packages.orchestration.token_economy import routing_token_hint
+            d.token_economy = routing_token_hint(request.job_id, data_dir=ddir)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            d.token_economy = {}
 
     inputs = gather_routing_inputs(request.job_id, ddir, request)
     sig = inputs.get("_signals", {})
@@ -970,6 +981,7 @@ def export_builder_routing_json(d: BuilderRoutingDecision) -> dict[str, Any]:
         "next_safe_action": d.next_safe_action,
         "safe_summary": d.safe_summary,
         "created_at": d.created_at,
+        "token_economy": d.token_economy,
     }
 
 
@@ -1034,6 +1046,7 @@ def _decision_from_dict(d: dict) -> BuilderRoutingDecision:
         evidence_fingerprint=str(d.get("evidence_fingerprint", "")),
         next_safe_action=str(d.get("next_safe_action", "")),
         safe_summary=str(d.get("safe_summary", "")), created_at=str(d.get("created_at", "")),
+        token_economy=dict(d.get("token_economy", {})) if isinstance(d.get("token_economy"), dict) else {},
     )
     b = d.get("budget_summary", {}) or {}
     dec.budget_summary = BuilderRoutingBudget(

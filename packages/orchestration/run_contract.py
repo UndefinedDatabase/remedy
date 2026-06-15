@@ -101,6 +101,15 @@ class ContractAction:
     ROUTE_POLICY_SHOW = "route_policy_show"
     ROUTE_POLICY_SET = "route_policy_set"
     ROUTE_POLICY_EVALUATE = "route_policy_evaluate"
+    # Token Economy + Context Budget Optimizer v0 (Step 1766) — ESTIMATES + METADATA only. NOT
+    # provider/model/Ollama/cloud execution, NOT real pricing. budget-show/estimate/economy-report
+    # and context-pack-recommend are read-only; budget-set is metadata-only (persists a safe per-job
+    # budget profile). None execute a worker, start work, or call a provider.
+    TOKEN_BUDGET_SHOW = "token_budget_show"
+    TOKEN_BUDGET_SET = "token_budget_set"
+    TOKEN_ESTIMATE = "token_estimate"
+    TOKEN_ECONOMY_REPORT = "token_economy_report"
+    CONTEXT_PACK_RECOMMEND = "context_pack_recommend"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -240,6 +249,11 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.ROUTE_POLICY_SHOW,
     ContractAction.ROUTE_POLICY_SET,
     ContractAction.ROUTE_POLICY_EVALUATE,
+    ContractAction.TOKEN_BUDGET_SHOW,
+    ContractAction.TOKEN_BUDGET_SET,
+    ContractAction.TOKEN_ESTIMATE,
+    ContractAction.TOKEN_ECONOMY_REPORT,
+    ContractAction.CONTEXT_PACK_RECOMMEND,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

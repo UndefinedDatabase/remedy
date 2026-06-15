@@ -56,6 +56,7 @@ REQUIRED_SECTIONS = (
     "candidate_quality_summary.json",
     "external_builder_summary.json",
     "worker_registry_summary.json",
+    "token_economy_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1226,6 +1227,50 @@ def _build_worker_registry_summary(job: Any) -> dict:
                 "error": "worker_registry_unavailable"}
 
 
+def _build_token_economy_summary(job: Any) -> dict:
+    """Safe Token Economy + Context Budget v0 summary (Step 1769). Budget profile + estimated band +
+    context pack recommendation + warnings + memory-candidate COUNT + safe next actions only — no raw
+    prompts/context/source dumps, no secrets, no absolute paths, no provider pricing claims. All
+    estimates labeled estimated."""
+    try:
+        from packages.orchestration.token_economy import token_economy_report
+        rep = token_economy_report(str(job.id))
+        profile = rep.get("budget_profile", {}) or {}
+        est = rep.get("context_budget_estimate", {}) or {}
+        pack = rep.get("context_pack_recommendation", {}) or {}
+        decision = rep.get("decision", {}) or {}
+        return {
+            "budget_profile": {
+                "max_context_tokens": profile.get("max_context_tokens"),
+                "max_total_estimated_tokens": profile.get("max_total_estimated_tokens"),
+                "prefer_local_under_tokens": profile.get("prefer_local_under_tokens"),
+                "require_human_approval_over_tokens": profile.get("require_human_approval_over_tokens"),
+            },
+            "estimated_token_band": decision.get("estimated_token_band"),
+            "estimated_cost_band": decision.get("estimated_cost_band"),
+            "estimated_total_tokens": est.get("estimated_total_tokens"),
+            "budget_status": decision.get("budget_status"),
+            "context_pack_recommendation": pack.get("recommended_pack_kind"),
+            "estimated_token_savings_band": (pack.get("estimated_token_savings", {}) or {}).get("band"),
+            "local_first_recommended": (decision.get("estimated_cost_band") in ("free", "cheap")
+                                        and not decision.get("requires_human_approval")),
+            "requires_human_approval": decision.get("requires_human_approval"),
+            "warnings": est.get("warnings", []),
+            "memory_candidates_count": len(pack.get("memory_candidates", [])),
+            "memory_candidates_persisted": False,
+            "estimated": True,
+            "verified": False,
+            "safe_next_actions": [
+                f"remedy token budget-show {str(job.id)} --json",
+                f"remedy token economy-report {str(job.id)} --json",
+                f"remedy context-pack recommend {str(job.id)} --json",
+            ],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"budget_status": "unknown_budget", "estimated": True,
+                "error": "token_economy_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1669,6 +1714,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("worker_registry_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("worker_registry_summary.json", status="error", error="build failed"))
+
+    # token_economy_summary.json (Step 1769)
+    try:
+        tes = _build_token_economy_summary(job)
+        content = json.dumps(tes, indent=2).encode()
+        section_data["token_economy_summary.json"] = content
+        result.sections.append(ReviewBundleSection("token_economy_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("token_economy_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

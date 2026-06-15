@@ -617,6 +617,82 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
         if sug_id in seen_ids:
             continue
         seen_ids.add(sug_id)
+        # Claim generic variants so Rules 1-3 don't double-emit for the same ledger item.
+        seen_ids.add(_make_suggestion_id("risk", item.title))
+        seen_ids.add(_make_suggestion_id("finding", item.title))
+        seen_ids.add(_make_suggestion_id("gap", item.title))
+        plan.suggestions.append(FeatureSuggestion(
+            suggestion_id=sug_id,
+            title=title,
+            rationale=rationale,
+            priority=priority,
+            source_type=source,
+            source_refs=[item.item_id],
+            estimated_risk=risk,
+            suggested_steps=steps,
+            creates_proposed_task=False,
+            next_action=next_action,
+        ))
+
+    # Rule 0c: Token Economy + Context Budget evidence (Step 1768) — forward-looking, user-choice
+    # suggestions. Item-id driven (fire only on real budget/context evidence). Effort ≈
+    # suggested_steps; impact ≈ priority. No auto-build, no execution, no fake evidence.
+    _TOKEN_ECONOMY_RULES = {
+        "token-budget-over": (
+            "Add Context Budget Optimizer enforcement",
+            "Estimated tokens exceed the budget — an enforcing optimizer could trim context to the "
+            "budget automatically (still no execution; recommendation-gated).",
+            FeaturePlanSource.KNOWN_RISK, FeaturePlanPriority.MEDIUM, "low",
+            ["Define enforcement policy", "Wire to context pack recommender", "Human-gated apply"],
+            "remedy context-pack recommend <job_id> --json",
+        ),
+        "token-economy-expensive-route": (
+            "Tighten expensive-route approval policy",
+            "An expensive/unknown/high-risk route is being recommended — consider a tighter "
+            "route policy (max cost tier, approval-over-tokens threshold).",
+            FeaturePlanSource.KNOWN_RISK, FeaturePlanPriority.MEDIUM, "low",
+            ["Lower --max-cost-tier", "Lower --require-human-approval-over-tokens", "Prefer local"],
+            "remedy route-policy show <job_id> --json",
+        ),
+        "token-economy-local-route": (
+            "Configure a real Ollama worker for the local route",
+            "A cheap/local route fits the budget — a real Ollama adapter would let this run "
+            "locally to cut tokens (placeholder is non-executable today).",
+            FeaturePlanSource.ROADMAP, FeaturePlanPriority.MEDIUM, "medium",
+            ["Loopback-only transport", "Config-gated + disabled by default", "Trust+verify output"],
+            "remedy worker registry-show ollama.placeholder --json",
+        ),
+        "token-memory-candidates": (
+            "Add MemPalace project memory v0",
+            "Durable-knowledge candidates were suggested — a MemPalace memory layer could retain "
+            "them across runs (suggestions only today; nothing is persisted as memory).",
+            FeaturePlanSource.ROADMAP, FeaturePlanPriority.LOW, "medium",
+            ["Define memory schema", "Safe retention policy", "Read-only recall surface"],
+            "remedy token economy-report <job_id> --json",
+        ),
+        "token-context-compression": (
+            "Add a token savings report to the Cockpit",
+            "Context compression is recommended — a Cockpit savings view would make token "
+            "reduction visible and actionable for the user (estimates only).",
+            FeaturePlanSource.ROADMAP, FeaturePlanPriority.LOW, "low",
+            ["Aggregate estimated savings", "Cockpit read-only panel", "No verified-savings claim"],
+            "remedy token economy-report <job_id> --json",
+        ),
+    }
+    for item in ledger.items:
+        rule = _TOKEN_ECONOMY_RULES.get(item.item_id)
+        if rule is None:
+            continue
+        title, rationale, source, priority, risk, steps, next_action = rule
+        sug_id = _make_suggestion_id("token-economy", item.item_id)
+        if sug_id in seen_ids:
+            continue
+        seen_ids.add(sug_id)
+        # Claim the generic risk/finding/gap variants for this item so Rules 1-3 below do not also
+        # emit a duplicate (creates_proposed_task=True) suggestion for the same ledger item.
+        seen_ids.add(_make_suggestion_id("risk", item.title))
+        seen_ids.add(_make_suggestion_id("finding", item.title))
+        seen_ids.add(_make_suggestion_id("gap", item.title))
         plan.suggestions.append(FeatureSuggestion(
             suggestion_id=sug_id,
             title=title,

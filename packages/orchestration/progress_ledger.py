@@ -971,6 +971,72 @@ def merge_worker_registry_items(ledger: ProgressLedger, registry: list | None, p
             seen.add(item.item_id)
 
 
+def extract_token_economy_items(report: dict | None) -> list[ProgressItem]:
+    """Extract Token Economy + Context Budget progress items (Step 1767) from a safe economy report.
+    Read-only; fixed item_ids → no duplicates. Honest: estimates labeled as estimates; no fake cost
+    certainty, no fake provider readiness, no fake memory persistence."""
+    if not report:
+        return []
+    items: list[ProgressItem] = []
+    profile = report.get("budget_profile", {}) or {}
+    decision = report.get("decision", {}) or {}
+    pack = report.get("context_pack_recommendation", {}) or {}
+    if profile.get("profile_id"):
+        items.append(ProgressItem(
+            item_id="token-budget-profile-exists", title="Token budget profile exists",
+            status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary=f"Estimated token budget configured (max_total~"
+                         f"{profile.get('max_total_estimated_tokens')}; estimates only)."))
+    status = decision.get("budget_status", "")
+    if status == "over_budget":
+        items.append(ProgressItem(
+            item_id="token-budget-over", title="Estimated token budget exceeded",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="Estimated total tokens exceed the budget (estimate, not verified) — "
+                         "consider compression or a smaller context pack.",
+            next_action="remedy context-pack recommend <job_id> --json"))
+    elif status == "near_budget":
+        items.append(ProgressItem(
+            item_id="token-budget-near", title="Estimated token budget near limit",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary="Estimated total tokens are near the budget limit (estimate)."))
+    if decision.get("requires_human_approval") and decision.get("recommended_worker_id"):
+        items.append(ProgressItem(
+            item_id="token-economy-expensive-route", title="Recommended route requires approval",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="Recommended route is expensive/unknown/high-risk/placeholder or over "
+                         "budget — human approval required (nothing runs automatically).",
+            next_action="remedy token economy-report <job_id> --json"))
+    elif decision.get("recommended_worker_id"):
+        items.append(ProgressItem(
+            item_id="token-economy-local-route", title="Cheap/local route fits budget",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary="A cheap/local route fits the estimated budget (estimate; no execution)."))
+    if pack.get("compression_recommendation") and "no compression" not in \
+            str(pack.get("compression_recommendation", "")).lower():
+        items.append(ProgressItem(
+            item_id="token-context-compression", title="Context compression recommended",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary="A smaller/compressed context pack is recommended (estimate).",
+            next_action="remedy context-pack recommend <job_id> --json"))
+    if pack.get("memory_candidates"):
+        items.append(ProgressItem(
+            item_id="token-memory-candidates", title="Durable memory candidates (suggestions)",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary=f"{len(pack.get('memory_candidates', []))} durable-knowledge candidate(s) "
+                         "suggested (NOT persisted as memory in this block)."))
+    return items
+
+
+def merge_token_economy_items(ledger: ProgressLedger, report: dict | None) -> None:
+    """Merge token economy items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_token_economy_items(report):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1617,6 +1683,14 @@ def build_progress_ledger(
                 WorkerSelectionRequest(job_id=str(job.id), task_type="repair"), policy=policy,
                 registry=registry)
             merge_worker_registry_items(ledger, registry, policy, selection)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Token economy + context budget items (Step 1767). Read-only; estimates only.
+    if job is not None:
+        try:
+            from packages.orchestration.token_economy import token_economy_report
+            merge_token_economy_items(ledger, token_economy_report(str(job.id)))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

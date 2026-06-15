@@ -1,136 +1,113 @@
-# Live Review — Steps 1717-1756: Worker Registry + User-Selectable Route Policy v0
+# Live Review — Steps 1757-1796: Token Economy + Context Budget Optimizer v0
 
-Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict, protocol §5)
-Scope: Worker Registry + WorkerSpec metadata model + built-in worker specs + User-Selectable Route
-Policy + token/cost/risk metadata scoring + routing recommendation integration + CLI visibility +
-command catalog/run-contract entries + progress/feature/review/cockpit safe surfacing + integrity +
-docs/tests. METADATA + POLICY ONLY — no execution. Must NOT: call Ollama/cloud/provider/network/
-browser, execute workers, run a model/route tournament, implement MemPalace/memory, auto-apply/
-approve/test/repair, automate git/PR, redesign UI, or activate MCP. Remedy stays a modular Baukasten:
-workers/models replaceable, routes user-selectable, local/Ollama preferred for cheap-safe tasks,
-expensive routes need justification, token reduction first-class, no provider monopoly, no worker
-output trusted without verification. NO PR unless user asks.
+Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict).
+Scope: token budget profiles + context budget estimates + context pack recommendations + token-economy
+decisions + estimate helpers + worker-registry/route-policy + builder-routing read-only integration +
+CLI visibility + catalog/run-contract entries + progress/feature/review/cockpit safe surfacing +
+integrity + placeholder-readiness hardening + docs/tests. ESTIMATES + METADATA + POLICY ONLY — no
+execution. Must NOT: call provider/Ollama/cloud/local model/network/browser/subprocess/shell, execute
+workers, sync/claim real provider pricing, run a Model/Route Tournament, implement MemPalace/memory,
+auto-apply/approve/test/repair, automate git/PR, redesign UI, or activate MCP. All costs/tokens are
+ESTIMATED bands unless configured evidence exists; unknown stays unknown (never cheap). Expensive/
+unknown/high-risk/placeholder routes always require human approval. NO PR unless user asks.
 Timestamp: 2026-06-15
 
 ## Verdict (reviewer-owned)
-PASS — re-reviewed @ fix commit `32e480f`; all three directed findings RESOLVED + reviewer-verified;
-ZERO open Blocker/High/Medium/Low. R-0095 status table:
+PASS — re-reviewed @ fix commit `5d75b1c`; all three directed findings RESOLVED + reviewer-verified;
+ZERO open Blocker/High/Medium/Low. R-0098–R-0100 status table:
 | ID | Sev | Status | Note |
 |---|---|---|---|
-| R-0095 | high | RESOLVED @32e480f | `hard_safety_requires_approval(spec)` is an unconditional FLOOR called first in `_requires_approval` (+ candidate.requires_human_justification + integrity): expensive/unknown cost, HIGH/BLOCKED/UNKNOWN risk, EXTERNAL_BUILDER/CLOUD kinds, CLOUD_MODEL, any placeholder ALWAYS require approval regardless of policy flags; flags only add. Tests: test_external_always_requires_approval, test_high_risk_route_cannot_become_no_approval, test_unknown_cost_route_requires_approval |
-| R-0096 | medium | RESOLVED @32e480f | integrity flags `high_risk_route_approval_disabled` (hard-safety route + flag disabled) + real `unknown_cost_treated_cheap` (estimate_token_cost_band=="low") replacing the dead check + placeholder_claims_ready retained. Tests: test_high_risk_route_approval_disabled_flagged, test_unknown_cost_selected_treated_cheap_flagged, test_placeholder_claiming_executable_readiness_flagged |
-| R-0097 | low | RESOLVED @32e480f | plan.md steps 1717-1739 marked [x], Current Step → review closure; consistent with context.md |
+| R-0098 | high | RESOLVED @5d75b1c | `compute_token_economy_decision` now computes `unknown_context = no_context_inspection_available in warnings OR estimated_token_band==UNKNOWN OR budget_status==UNKNOWN` and folds it into `requires_human_approval` (forced True); a dedicated `elif unknown_context` reason states "Context/budget is unknown … cannot claim a cheap/local route fits" + next_safe_action `remedy context inspect`; `routing_token_hint.local_first_recommended = cost_band in (free,cheap) and not requires_human_approval` → False when approval required. Tests: test_unknown_context_requires_approval, test_unknown_context_hint_not_local_first, test_real_unknown_decision_is_safe_under_audit |
+| R-0099 | medium | RESOLVED @5d75b1c | added `audit_decision_safety(decision)` (codes unknown_token_band_without_approval / unknown_budget_without_approval / no_inspection_without_approval / unknown_context_presented_as_fit) + `token_economy_integrity(decisions=[...])` scans decision samples; docstring corrected. Tests: test_audit_flags_* (4), test_audit_safe_decision_clean, test_integrity_scans_decisions |
+| R-0100 | low | RESOLVED @5d75b1c | plan.md steps 1757-1781 marked [x], Current Step → review closure; consistent with context.md |
 
-REVIEWER-INDEPENDENT re-verification: inspected fix diff `73d89b0..32e480f` line-level
-(hard_safety_requires_approval covers all hard classes; `_requires_approval` calls it first as a floor
-so a HIGH-risk external route with both approval flags false still returns True; integrity new safe
-codes present); re-ran targeted `scripts/remedy_pytest.sh` (test_worker_registry +
-test_worker_route_integration + test_route_policy_cli + test_builder_routing) = **81 passed** incl. all
-6 new regression tests. Builder full suite 6033 passed/8 skipped/1 deselected now ACCEPTED (targeted
-green, zero open Blocker/High/Medium). No forbidden execution path (metadata+policy only). No German
-project-facing content. Commit reviewed: `32e480f`. MERGE-READY. NO PR unless user asks.
-(superseded) FAIL @ 73d89b0 — R-0095/R-0096/R-0097 opened; now all resolved.
+REVIEWER-INDEPENDENT re-verification: inspected fix diff `729d44c..5d75b1c` line-level (unknown floor
+forces approval + honest unknown reason + local_first False; audit_decision_safety + integrity-decisions
+present); re-ran targeted `scripts/remedy_pytest.sh` (test_token_economy + test_token_economy_integration
++ test_token_cli + test_builder_routing) = **80 passed** incl. new regression tests. Builder full suite
+(reported) now ACCEPTED (targeted green, zero open Blocker/High/Medium). No forbidden execution path
+(metadata+policy only). No German project-facing content. Commit reviewed: `5d75b1c`. MERGE-READY.
+NO PR unless user asks (Step 1796).
+(superseded) FAIL @ 729d44c — R-0098/R-0099/R-0100 opened; now all resolved.
 
-## Check Matrix (1-10)
-| Check | Status | Note |
-|---|---|---|
-| 1. Mainline closure (Ext Builder Sandbox reviewer PASS; fresh branch after merge; no pre-closure work) | PASS | branch off a290238 (PR #68 merged); 0 drift commits |
-| 2. WorkerSpec safety (bounded fields; no secrets/keys/raw prompts/abs paths; disabled unselectable; unknown≠truth) | PASS | bounded safe fields; integrity flags raw/abs-path/disabled-but-selectable; no secrets/raw prompts |
-| 3. Built-in registry (deterministic; Ollama placeholder/metadata-only; external→package-create; no provider/network import) | PASS | deterministic built-ins; ollama.placeholder enabled=False metadata-only; external.builder_package → package-create; stdlib only |
-| 4. RoutePolicy (select/prefer/block; local/Ollama pref; max cost/risk; blocked beats preference; expensive needs justification; never starts work) | PASS | R-0095 RESOLVED @32e480f — hard_safety approval floor; flags only stricter; blocked-beats-preference; never starts work |
-| 5. Builder routing integration (respects policy; next_safe_action catalog-valid; external→package-create; no exec; no provider/model/local call; unknown cost stays unknown) | PASS | routing respects policy; emits strings only; no exec/provider call |
-| 6. Token economy (estimated bands; no invented pricing; cheap/local metadata-only; high risk not overridden by cheap cost) | PASS | estimated bands; cost rejection by ceiling not selection; risk ceiling independent of cost |
-| 7. CLI/catalog/run_contract (worker list/show + route-policy; safe JSON; safe invalid-id errors; catalog entries; read_only/write_metadata only; no may_execute_commands) | PASS | route-policy + registry commands; read_only/write_metadata; no may_execute (verify in detail) |
-| 8. Progress/Feature/Review/Cockpit (safe summaries; no fake worker-running/Ollama-ready/provider-avail; no mutation buttons; understandable next action) | PASS | safe counts/status; no fake readiness; no buttons |
-| 9. Integrity (detects missing/disabled/blocked selected worker; expensive-w/o-justification; Ollama placeholder claiming exec readiness; unknown-cost-as-cheap; public leak) | PASS | R-0096 RESOLVED @32e480f — flags high_risk_route_approval_disabled + real unknown_cost_treated_cheap + placeholder_claims_ready + leaks |
-| 10. Architecture guards (no provider SDK/network/subprocess/shell/apply/approve/test/git/PR/Ollama/cloud exec) | PASS | stdlib + scrub helpers only; danger scan clean |
-| (tests) Targeted + full suite reported | PASS | reviewer targeted post-fix = 81 passed (incl. 6 new regression tests covering approval floor + integrity); builder full 6033 passed/8 skipped/1 deselected ACCEPTED |
-| (handoff) Changed-files table present | PASS | plan.md reconciled @32e480f (R-0097); verify changed-files table in final handoff before merge |
+## Findings — Steps 1757-1796
 
-## Findings — Steps 1717-1756
-
-### R-0095: High-risk/external route can bypass human approval via user policy flags
-- **Status**: Resolved (reviewer-verified @32e480f)
+### R-0098: Unknown context/budget can bypass human approval (presented as cheap/local-ready)
+- **Status**: Resolved (reviewer-verified @5d75b1c)
 - **Severity**: High
-- **Area**: packages/orchestration/worker_registry.py (`_requires_approval`)
-- **Details**: `_requires_approval(spec, pol)` gates the approval requirement behind two
-  user-settable policy flags. For an enabled, user-selectable, HIGH-risk, non-placeholder route
-  (the default built-in `external.builder_package`: enabled=True, user_selectable=True,
-  risk_tier=HIGH, kind=EXTERNAL_BUILDER), setting `require_human_approval_for_high_risk=false`
-  makes `_requires_approval` skip the high-risk branch, skip the expensive branch (STANDARD cost not
-  expensive), skip the placeholder branch, and `return False`. Result:
-  `requires_human_approval = false` for a high-risk external route. The flags weaken approval instead
-  of acting as a one-way floor. Violates the block invariants "high-risk/external/unknown/placeholder
-  routes always require human approval", "policy flags can only make approval stricter, never weaker",
-  and "user selection cannot override hard safety". Not an auto-execution path (recommendation is
-  metadata-only), so not a Blocker — but a downstream consumer reading `requires_human_approval=false`
-  on an external/high-risk route is a real safety-surface defect → High.
-- **Evidence**: worker_registry.py `_requires_approval` (returns False when both flags off / single
-  flag off for STANDARD-cost HIGH-risk); built-in `external.builder_package` enabled+user_selectable+
-  risk_tier=HIGH (worker_registry.py ~L265-275); RoutePolicy fields
-  `require_human_approval_for_high_risk`/`_for_expensive` loaded from policy JSON via `bool(d.get(...))`.
-- **Expected fix**: Make a mandatory approval FLOOR independent of policy flags: any route that is
-  external-builder / high-risk / unknown-cost / unknown-risk / placeholder ALWAYS sets
-  `requires_human_approval=True` (and `requires_human_justification=True`); the policy flags may only
-  ADD approval for additional tiers (e.g. medium), never remove the floor. Add a regression test:
-  high-risk external route with both approval flags false → still `requires_human_approval=True`.
-  Then write `Done: R-0095`.
+- **Area**: packages/orchestration/token_economy.py (`compute_token_economy_decision`, `routing_token_hint`)
+- **Details**: When there is no context inspection (`est.warnings` contains
+  `no_context_inspection_available`), the code correctly sets `estimated_token_band = UNKNOWN`, but
+  `estimate_context_budget` sets `estimated_total_tokens = 0` (token_economy.py L367-369), so
+  `_budget_status(0, profile)` returns UNDER (not OVER), and `over_threshold` is False (requires
+  `est_total > 0`). The approval expression
+  `requires_human_approval = selection.requires_human_approval or hard or over_threshold or
+  budget_status==OVER or not spec` has NO term for the unknown/no-inspection state. So if the route
+  policy selects a cheap, low-risk, non-placeholder LOCAL worker, `requires_human_approval=False`, the
+  decision falls into the `else` branch with reason "Cheap/local route fits the estimated budget", and
+  `routing_token_hint` sets `local_first_recommended = (cost_band in (free,cheap) and not
+  requires_human_approval) = True`. Result: unknown context is presented as a cheap/local-ready route
+  with no approval — violating "unknown never cheap/safe", "unknown budget can avoid approval", and the
+  R-0098 expectation. Metadata-only recommendation (not auto-exec) → High, not Blocker.
+- **Evidence**: token_economy.py `compute_token_economy_decision` L582-660 (no unknown-context approval
+  term); L367-369 (no-inspection → est_total=0); `routing_token_hint` L678-679
+  (`local_first_recommended = cost_band in (free,cheap) and not requires_human_approval`).
+- **Expected fix**: Add an unknown floor: if `no_context_inspection_available` in warnings, or
+  `estimated_token_band==UNKNOWN`, or `budget_status==UNKNOWN`, then force
+  `requires_human_approval=True`, `local_first_recommended=False`, set a reason that states context/
+  budget is unknown, and point `next_safe_action` at context inspection / safe estimation (not a
+  cheap-ready route). Add regression tests (no-inspection job → approval required, not local-first).
+  Then write `Done: R-0098`.
 
-### R-0096: Integrity does not catch unsafe approval policy / expensive-without-approval
-- **Status**: Resolved (reviewer-verified @32e480f)
+### R-0099: Integrity misses the unknown-budget / no-approval state (docstring overclaims)
+- **Status**: Resolved (reviewer-verified @5d75b1c)
 - **Severity**: Medium
-- **Area**: packages/orchestration/worker_registry.py (`worker_registry_integrity`)
-- **Details**: `worker_registry_integrity()` flags placeholder_claims_ready, unknown_cost_treated_cheap,
-  raw_or_secret_in_public, absolute_path_in_public, disabled_but_user_selectable, selected_worker_missing,
-  selected_worker_disabled, worker_selected_and_blocked. It does NOT detect: (a) a persisted policy that
-  disables approval for a high-risk/external selected route (`require_human_approval_for_high_risk=false`
-  while a HIGH-risk worker is selected) — the R-0095 state; (b) an expensive selected route without
-  approval requirement (`require_human_approval_for_expensive=false`) — the code comment claims this is
-  "flagged" but no such check exists; (c) the `unknown_cost_treated_cheap` per-spec check
-  (`cost_tier==UNKNOWN and cost_tier in _CHEAP_TIERS`) is logically dead (a tier cannot be both), so it
-  never fires; (d) `placeholder_claims_ready` EXEMPTS kind OLLAMA_CANDIDATE/CLOUD_CANDIDATE, so an Ollama
-  placeholder marked enabled+ready-mode would not be caught.
-- **Evidence**: worker_registry.py `worker_registry_integrity` (L922+) — no approval-flag inspection in
-  the per-policy loop; comment "expensive selection without approval requirement is flagged" with no
-  matching code; dead `unknown_cost_treated_cheap` condition; placeholder check `kind not in
-  (OLLAMA_CANDIDATE, CLOUD_CANDIDATE)` exemption.
-- **Expected fix**: Add integrity checks that fail with safe codes when a persisted policy selects a
-  high-risk/external/unknown route with approval disabled, or selects an expensive route without
-  approval/justification, or treats an unknown-cost route as cheap; remove the OLLAMA/CLOUD exemption
-  from `placeholder_claims_ready` (or justify it). Keep positive integrity passing for safe defaults.
-  Add tests for each new failure code + a passing safe-default case. Then write `Done: R-0096`.
+- **Area**: packages/orchestration/token_economy.py (`token_economy_integrity`)
+- **Details**: `token_economy_integrity` only iterates persisted budget profiles and flags
+  non_positive_budget, exact_pricing_claimed, absolute_path_in_public, raw_or_secret_in_public. Its
+  own docstring claims it flags "expensive route without approval, placeholder marked executable,
+  unknown band marked cheap (when a sample is built)" — but there is NO sample-decision check in the
+  body. So integrity does not catch: unknown token band + no approval, unknown budget + no approval,
+  no context inspection + local-first recommendation, unknown context presented as a budget-fit
+  (the R-0098 states).
+- **Evidence**: token_economy.py `token_economy_integrity` L712-735 — profile loop only; docstring vs
+  code mismatch.
+- **Expected fix**: Add an invariant check (in integrity or a tested helper) that fails with safe
+  codes when a sample/persisted decision shows unknown band/budget/no-inspection with
+  `requires_human_approval=False` or `local_first_recommended=True`, or unknown presented as
+  budget-fit; keep positive integrity passing for safe defaults; either implement the docstring's
+  promised checks or correct the docstring. Add tests per failure code. Then write `Done: R-0099`.
 
-### R-0097: `.agent/plan.md` is stale (says still building; steps unchecked)
-- **Status**: Resolved (reviewer-verified @32e480f)
+### R-0100: `.agent/plan.md` is stale (says still building; steps unchecked)
+- **Status**: Resolved (reviewer-verified @5d75b1c)
 - **Severity**: Low
 - **Area**: .agent/plan.md
-- **Details**: The implementation is committed and complete @ 73d89b0, but `.agent/plan.md` still
-  marks steps 1718-1740 as `- [ ]` (unchecked) and only 1717 as `[x]`, contradicting `.agent/context.md`
-  ("implementation complete") and the committed code/tests. Handoff inconsistency.
-- **Evidence**: `git show 73d89b0:.agent/plan.md` — lines 19-30 all `- [ ]` (architecture doc, core,
-  routing, CLI, integrations, doc, tests, full-suite, handoff) despite those files existing in the commit.
-- **Expected fix**: Update plan.md to check off the completed steps and set Current Step to
-  review-closure / awaiting reviewer PASS, consistent with context.md + final report + this ledger.
-  Then write `Done: R-0097`.
+- **Details**: The implementation is committed and complete @ 729d44c, but plan.md marks steps
+  1758-1781 as `- [ ]` (unchecked) and only 1757 as `[x]`, contradicting context.md ("implementation
+  complete") and the committed code/tests.
+- **Evidence**: `git show 729d44c:.agent/plan.md` lines 18-29 all `- [ ]` despite those files existing.
+- **Expected fix**: Update plan.md to check off completed steps and set Current Step to review-closure
+  / awaiting reviewer PASS, consistent with context.md + final report + this ledger. Then write
+  `Done: R-0100`.
 
-Next id: R-0098.
+Next id: R-0101.
 
 ## Reviewer audit log
-- PR #68 merged External Builder Sandbox v0 (1681-1716) to main → `a290238`; reviewer closure PASS
-  committed @ `e243eb2` (R-0091/R-0092/R-0094 resolved, R-0093 refuted). New branch
-  `feature/steps-1717-1756-worker-registry-route-policy-v0` off `a290238` (clean merged main).
-  `git log main..HEAD` empty → no drift, no block code yet. Check 1 PASS. Awaiting builder commits.
-- WATCH: METADATA/POLICY ONLY. WorkerSpec public = bounded safe fields (no secrets/keys/raw prompts/
-  abs paths); disabled workers unselectable; Ollama built-in is placeholder/metadata-only (must NOT
-  claim executable readiness); external-builder worker maps to `external-builder package-create` rail;
-  RoutePolicy blocked-beats-preference + never starts work + user selection cannot override hard safety
-  block; token/cost = estimated bands, unknown stays unknown (never "cheap"), high risk not overridden
-  by cheap cost; CLI read_only/write_metadata only (no may_execute_commands); no provider/network/
-  subprocess/Ollama/cloud exec; routing next_safe_action catalog-valid. All project-facing notes English.
+- PR #69 merged Worker Registry + Route Policy v0 (1717-1756) to main → `c8f4fa5`; reviewer verdict
+  PASS @ `32e480f`. New branch `feature/steps-1757-1796-token-economy-context-budget-optimizer-v0`
+  off `c8f4fa5` (clean merged main).
+- WATCH: ESTIMATES/METADATA/POLICY ONLY. No provider/Ollama/cloud/local-model/network/subprocess
+  execution. No invented exact pricing — all costs/tokens ESTIMATED bands; unknown never cheap.
+  Context pack recommendations must exclude protected paths + never dump raw content; missing context
+  → warning not fake zero. memory_candidates are SUGGESTIONS only (not persisted memory). Expensive/
+  unknown/high-risk/placeholder routes always require human approval (reuse worker_registry
+  hard_safety floor). Ollama/cloud placeholders must not appear executable/ready. CLI read_only/
+  write_metadata only (no may_execute_commands). next_safe_action catalog-valid. All project-facing
+  text English.
 
-## Builder remediation — audit findings R-0095..R-0097 (awaiting reviewer re-check @ new HEAD)
-Done: R-0095 - hard-safety approval floor added (hard_safety_requires_approval): expensive/unknown cost, high/blocked/unknown risk, external-builder + cloud kinds, cloud execution mode, and any placeholder ALWAYS require human approval regardless of RoutePolicy flags; policy flags can only add stricter approval, never weaken it. _requires_approval + candidate.requires_human_justification both route through it. Tests: test_external_always_requires_approval, test_high_risk_route_cannot_become_no_approval, test_unknown_cost_route_requires_approval.
-Done: R-0096 - worker_registry_integrity now flags unsafe policies: a hard-safety selected route with the matching approval flag disabled (high_risk_route_approval_disabled), an unknown-cost selected worker treated as cheap/local-safe (unknown_cost_treated_cheap), and replaced the no-op UNKNOWN-in-CHEAP_TIERS per-spec check with a real estimate_token_cost_band=="low" check; placeholder_claims_ready retained. Tests: test_high_risk_route_approval_disabled_flagged, test_unknown_cost_selected_treated_cheap_flagged, test_placeholder_claiming_executable_readiness_flagged.
-Done: R-0097 - .agent/plan.md reconciled: steps 1717-1740 marked [x], 1741-1756 marked review-closure in progress, Current Step set to review closure / awaiting reviewer PASS; carried risks preserved; reviewer verdict NOT set by builder.
+## Builder remediation — audit findings R-0098..R-0100 (awaiting reviewer re-check @ new HEAD)
+Done: R-0098 - compute_token_economy_decision now has an unknown-context floor: if no_context_inspection_available in warnings OR estimated_token_band==UNKNOWN OR budget_status==UNKNOWN, then requires_human_approval is forced True, the reason states context/budget is unknown (no "fits the estimated budget" claim) and next_safe_action points to `remedy context inspect`; routing_token_hint local_first_recommended is False when approval required. Tests: test_unknown_context_requires_approval, test_unknown_context_hint_not_local_first, test_real_unknown_decision_is_safe_under_audit.
+Done: R-0099 - added audit_decision_safety(decision) invariant helper (codes: unknown_token_band_without_approval, unknown_budget_without_approval, no_inspection_without_approval, unknown_context_presented_as_fit) and wired token_economy_integrity(decisions=[...]) to scan decision samples; corrected the docstring to match the actual checks. Tests: test_audit_flags_* (4), test_audit_safe_decision_clean, test_integrity_scans_decisions.
+Done: R-0100 - .agent/plan.md reconciled: steps 1757-1781 marked [x], 1782-1796 review-closure in progress, Current Step set to review closure / awaiting reviewer PASS; carried risks preserved; reviewer verdict NOT set by builder.
 
-Builder verification: targeted worker_registry/route-integration/CLI/builder_routing/catalog/run_contract/review_bundle/cockpit = 284 passed; worker registry-integrity passed=True/violations=0. Full pytest = 6039 passed, 8 skipped, 1 deselected (exit 0). NOT claiming merge-ready — reviewer owns verdict at new HEAD.
+Builder verification: targeted token/worker/routing/catalog/run_contract/bundle/ledger/planner/cockpit = 381 passed; token + worker registry integrity passed=True. Full pytest = 6111 passed, 8 skipped, 1 deselected (exit 0). NOT claiming merge-ready — reviewer owns verdict at new HEAD.
