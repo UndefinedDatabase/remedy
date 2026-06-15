@@ -11,27 +11,26 @@ NO PR unless user asks (Step 1716).
 Timestamp: 2026-06-15
 
 ## Verdict (reviewer-owned)
-FAIL (closure review @ `05710d0`) — directed closure audit (Steps 1707-1716) opened 3 findings:
-R-0091 (LOW, redaction — raw_storage_ref in public CLI JSON), R-0092 (MEDIUM, idempotency — valid-package
-blocked submissions not persisted as safe evidence), R-0094 (MEDIUM, routing-feedback — external route
-recommends old `repair request` path, not the new external-builder rail). R-0093 (CLI stability) verified
-PASS / refuted. Two open MEDIUM → per closure verdict rules merge-readiness is HELD until R-0091–R-0094
-all resolved (zero open Medium/High/Blocker). NO safety-invariant violation: external candidate stays
-untrusted, pending≠completed, rejected scores low, no provider/network/subprocess/apply/approve, no raw/
-secret/diff/traceback content leak (raw_storage_ref = opaque quarantine_id duplicate, not content),
-routing emits strings only. R-0091–R-0094 status table:
+PASS (closure review @ fix commit `993781f`) — directed closure audit (Steps 1707-1716) opened 3 findings;
+ALL RESOLVED + reviewer-verified. ZERO open Blocker/High/Medium/Low. R-0091/R-0092/R-0094 fixed @ 993781f
+with real `Done:` markers + regression tests; R-0093 verified/refuted. No safety-invariant violation
+throughout: external candidate stays untrusted, pending≠completed, rejected scores low, no provider/
+network/subprocess/apply/approve, no raw/secret/diff/traceback content leak, routing emits strings only.
+R-0091–R-0094 status table:
 | ID | Sev | Status | Note |
 |---|---|---|---|
-| R-0091 | low | OPEN | raw_storage_ref emitted in public submission JSON (to_dict); remove from public export + test |
-| R-0092 | medium | OPEN | valid-package blocked submissions not persisted as safe evidence; persist + test |
+| R-0091 | low | RESOLVED @993781f | raw_storage_ref removed from to_dict/export (in-memory only; quarantine_id stays public); test_public_export_has_no_raw_storage_ref |
+| R-0092 | medium | RESOLVED @993781f | valid package+job blocked submissions now persisted (state=BLOCKED, safe stop_reason, no raw); invalid/missing package ephemeral+documented; test_blocked_submission_persisted/test_protected_blocked_persisted/test_missing_package_block_ephemeral |
 | R-0093 | low | RESOLVED | CLI suite 7 passed/2.29s; no hang/traceback/leak — refuted |
-| R-0094 | medium | OPEN | external route next_safe_action = `repair request` (old); switch to `external-builder package-create` rail + test |
+| R-0094 | medium | RESOLVED @993781f | external route now emits `remedy external-builder package-create <job> --route-id <route> --json` (catalog-valid, parser-validated); poor→HUMAN_REVIEW, unknown neutral, pending≠success; test_external_route_with_known_cost |
 
-Targeted tests run: `tests/cli/test_external_builder_cli.py` = 7 passed (R-0093); prior full targeted
-(external_builder_sandbox + candidate_quality + builder_routing + review_bundle + cockpit) = 172 passed.
-Integrity: external_builder_integrity logic present + arch-guards green. Builder full suite 5969 passed/
-8 skipped/1 deselected reported — NOT accepted as merge-evidence while R-0092/R-0094 open. Changed-files
-table present in context.md. MERGE-READINESS: HELD (FAIL) pending R-0091/R-0092/R-0094. NO PR unless user asks.
+REVIEWER-INDEPENDENT re-verification: inspected fix diff `05710d0..993781f` line-level (to_dict has no
+raw_storage_ref; `_blocked_submission` _atomic_writes for valid package+job, ephemeral otherwise; external
+route finalize emits `_external_package_cmd`); re-ran targeted `scripts/remedy_pytest.sh`
+(test_external_builder_sandbox + test_external_builder_cli + test_builder_routing + test_review_bundle)
+= **120 passed** (incl. all new regression tests); R-0093 CLI isolated = 7 passed. Builder full suite
+5969+ now ACCEPTED (targeted green, zero open Medium/High/Blocker). Changed-files table present in
+context.md. Commit reviewed: `993781f`. MERGE-READY. NO PR unless user asks (Step 1716).
 
 ---
 (superseded) Prior safety pass — reviewed @ commit `05710d0`; ZERO open findings; all 14 checks PASS; all 10 negative cases
@@ -102,7 +101,10 @@ violations, but R-0092/R-0094 are MEDIUM and gate the closure PASS. Verdict down
 resolved.
 
 ## Finding R-0091
-Status: Open
+Status: Resolved
+Resolution: RESOLVED @ 993781f (reviewer-verified) — `raw_storage_ref` removed from `to_dict()` /
+`export_external_submission_json` (kept in-memory only; `quarantine_id` carries the public pointer);
+regression test `test_public_export_has_no_raw_storage_ref`. Reviewer confirmed to_dict no longer emits it.
 Severity: low
 Area: redaction
 Summary: `raw_storage_ref` (a field documented "private; never rendered") is emitted in the public CLI submission JSON.
@@ -121,7 +123,12 @@ in-memory/private field only; `quarantine_id` already carries the public pointer
 cockpit test asserting `raw_storage_ref` absent from public JSON. Then write `Done: R-0091`.
 
 ## Finding R-0092
-Status: Open
+Status: Resolved
+Resolution: RESOLVED @ 993781f (reviewer-verified) — `_blocked_submission` now `_atomic_write`s a
+BLOCKED record (safe stop_reason only, no raw candidate read/stored) when package+job are valid;
+missing/invalid package stays ephemeral (documented). Regression tests test_blocked_submission_persisted
+/ test_protected_blocked_persisted / test_missing_package_block_ephemeral. Blocked never becomes
+success/pending. Reviewer confirmed persistence + safety.
 Severity: medium
 Area: idempotency
 Summary: Valid-package BLOCKED submissions are not persisted as safe evidence (ephemeral return).
@@ -152,7 +159,12 @@ in output. Stability concern refuted. (Note: the suite does NOT assert `raw_stor
 hygiene gap is tracked under R-0091, not here.)
 
 ## Finding R-0094
-Status: Open
+Status: Resolved
+Resolution: RESOLVED @ 993781f (reviewer-verified) — builder_routing external route finalize now emits
+`_external_package_cmd` → `remedy external-builder package-create {job_id} --route-id {routing_id} --json`
+(catalog-valid, parser-validated) instead of the old `repair request` path; poor history still →
+HUMAN_REVIEW, unknown neutral, pending≠success, recommendation STRING only (no auto generation).
+Regression test test_external_route_with_known_cost. Reviewer confirmed step-9 finalize uses the new cmd.
 Severity: medium
 Area: routing-feedback
 Summary: Builder Routing's external route recommends the OLD `repair request` path, not the new External Builder rail.
