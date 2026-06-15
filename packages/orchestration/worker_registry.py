@@ -785,9 +785,7 @@ def evaluate_worker_selection(
             cand.reason = f"risk_tier '{s.risk_tier}' exceeds policy max '{pol.max_risk_tier}'"
             rejected.append(cand); continue
         cand.eligible = True
-        cand.requires_human_justification = (
-            s.cost_tier in _EXPENSIVE_TIERS or s.cost_tier == WorkerCostTier.UNKNOWN
-            or s.risk_tier in (WorkerRiskTier.HIGH, WorkerRiskTier.UNKNOWN))
+        cand.requires_human_justification = hard_safety_requires_approval(s)
         # Score: cheaper + lower risk + enabled non-placeholder rank higher.
         cand.score = (100 - _cost_rank(s.cost_tier) * 10 - _risk_rank(s.risk_tier) * 5
                       - (20 if ph else 0))
@@ -833,15 +831,35 @@ def evaluate_worker_selection(
     return result
 
 
+def hard_safety_requires_approval(spec: WorkerSpec) -> bool:
+    """HARD safety invariant (R-0095): these route classes ALWAYS require human-facing approval/
+    justification regardless of any RoutePolicy flag. A user policy may add stricter approval but
+    must NEVER weaken this. Covers: expensive or unknown cost, high/blocked/unknown risk, the
+    external-builder and cloud kinds, the cloud execution mode, and any placeholder (non-executable
+    routes always need a human to configure them)."""
+    if spec.cost_tier in _EXPENSIVE_TIERS or spec.cost_tier == WorkerCostTier.UNKNOWN:
+        return True
+    if spec.risk_tier in (WorkerRiskTier.HIGH, WorkerRiskTier.BLOCKED, WorkerRiskTier.UNKNOWN):
+        return True
+    if spec.kind in (WorkerKind.EXTERNAL_BUILDER, WorkerKind.CLOUD_CANDIDATE):
+        return True
+    if spec.execution_mode == WorkerExecutionMode.CLOUD_MODEL:
+        return True
+    if is_placeholder(spec):
+        return True
+    return False
+
+
 def _requires_approval(spec: WorkerSpec, pol: RoutePolicy) -> bool:
+    # Hard safety first — policy flags can only ADD approval, never remove it.
+    if hard_safety_requires_approval(spec):
+        return True
+    # Policy-driven stricter approval (does not weaken the hard floor above).
     if pol.require_human_approval_for_expensive and (
             spec.cost_tier in _EXPENSIVE_TIERS or spec.cost_tier == WorkerCostTier.UNKNOWN):
         return True
     if pol.require_human_approval_for_high_risk and (
             spec.risk_tier in (WorkerRiskTier.HIGH, WorkerRiskTier.UNKNOWN)):
-        return True
-    # Placeholders are never "ready" — recommending one always needs a human (to configure it).
-    if is_placeholder(spec):
         return True
     return False
 
@@ -930,8 +948,11 @@ def worker_registry_integrity(data_dir: Path | None = None) -> dict[str, Any]:
         if is_placeholder(s) and s.enabled and s.execution_mode not in _PLACEHOLDER_MODES \
                 and s.kind not in (WorkerKind.OLLAMA_CANDIDATE, WorkerKind.CLOUD_CANDIDATE):
             violations.append({"worker_id": s.worker_id, "code": "placeholder_claims_ready"})
-        # Unknown cost must never be a cheap tier.
-        if s.cost_tier == WorkerCostTier.UNKNOWN and s.cost_tier in _CHEAP_TIERS:
+        # Unknown cost must never be presented as cheap/local-safe (R-0096). The old `UNKNOWN in
+        # CHEAP_TIERS` test was a no-op; check the real signal: an unknown-cost worker whose token
+        # band estimates as low/cheap is mislabeled, and an unknown-cost worker must not be eligible
+        # without justification.
+        if s.cost_tier == WorkerCostTier.UNKNOWN and estimate_token_cost_band(s) == "low":
             violations.append({"worker_id": s.worker_id, "code": "unknown_cost_treated_cheap"})
         # No secrets / raw markers / absolute private paths in the public export.
         blob = json.dumps(s.to_dict()).lower()
@@ -944,17 +965,38 @@ def worker_registry_integrity(data_dir: Path | None = None) -> dict[str, Any]:
             violations.append({"worker_id": s.worker_id, "code": "disabled_but_user_selectable"})
 
     # Persisted policies: every referenced selected worker must exist + be enabled; blocked+selected
-    # is contradictory; expensive selection without approval requirement is flagged.
+    # is contradictory; a hard-safety route selected with approval disabled/bypassed is flagged.
     policies = _load_all_policies(data_dir)
     for p in policies:
+        appr_expensive = bool(p.get("require_human_approval_for_expensive", True))
+        appr_high_risk = bool(p.get("require_human_approval_for_high_risk", True))
+        prefers_cheap = bool(p.get("prefer_local_for_cheap_tasks", False)
+                             or p.get("prefer_ollama_for_cheap_tasks", False))
         for wid in p.get("user_selected_worker_ids", []):
             spec = by_id.get(wid)
             if spec is None:
                 violations.append({"policy_id": p.get("policy_id"), "code": "selected_worker_missing"})
-            elif not spec.enabled:
+                continue
+            if not spec.enabled:
                 violations.append({"policy_id": p.get("policy_id"), "code": "selected_worker_disabled"})
             if wid in p.get("blocked_worker_ids", []):
                 violations.append({"policy_id": p.get("policy_id"), "code": "worker_selected_and_blocked"})
+            # R-0096: a hard-safety route (expensive/unknown cost, high/unknown risk, external,
+            # cloud, placeholder) selected while the matching approval flag is disabled is unsafe —
+            # the policy attempts to bypass mandatory approval. Flag it even though evaluate_worker_
+            # selection now enforces approval at the hard floor (defense in depth).
+            if hard_safety_requires_approval(spec):
+                cost_unsafe = (spec.cost_tier in _EXPENSIVE_TIERS
+                               or spec.cost_tier == WorkerCostTier.UNKNOWN) and not appr_expensive
+                risk_unsafe = (spec.risk_tier in (WorkerRiskTier.HIGH, WorkerRiskTier.BLOCKED,
+                               WorkerRiskTier.UNKNOWN)) and not appr_high_risk
+                if cost_unsafe or risk_unsafe:
+                    violations.append({"policy_id": p.get("policy_id"),
+                                       "code": "high_risk_route_approval_disabled"})
+            # R-0096: an unknown-cost selected worker must not be treated as cheap/local-safe.
+            if spec.cost_tier == WorkerCostTier.UNKNOWN and (prefers_cheap or not appr_expensive):
+                violations.append({"policy_id": p.get("policy_id"),
+                                   "code": "unknown_cost_treated_cheap"})
         blob = json.dumps(p).lower()
         if "/home/" in blob or "/users/" in blob:
             violations.append({"policy_id": p.get("policy_id"), "code": "absolute_path_in_policy"})

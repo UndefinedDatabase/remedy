@@ -171,6 +171,40 @@ class TestWorkerSelection:
 
 
 # ---------------------------------------------------------------------------
+# R-0095 — hard-safety approval cannot be weakened by policy flags
+# ---------------------------------------------------------------------------
+
+
+class TestHardSafetyApproval:
+    def test_external_always_requires_approval(self):
+        p = default_route_policy("j")
+        p.require_human_approval_for_expensive = False
+        p.require_human_approval_for_high_risk = False
+        p.user_selected_worker_ids = ["external.builder_package"]
+        r = evaluate_worker_selection(WorkerSelectionRequest(task_type="feature"), policy=p)
+        assert r.recommended_worker_id == "external.builder_package"
+        assert r.requires_human_approval is True
+
+    def test_high_risk_route_cannot_become_no_approval(self):
+        from packages.orchestration.worker_registry import hard_safety_requires_approval
+        p = default_route_policy("j")
+        p.require_human_approval_for_expensive = False
+        p.require_human_approval_for_high_risk = False
+        for wid in ("external.builder_package", "ollama.placeholder", "cloud.placeholder"):
+            spec = get_worker_spec(wid)
+            assert hard_safety_requires_approval(spec) is True
+            # _requires_approval honours the hard floor regardless of disabled flags
+            from packages.orchestration.worker_registry import _requires_approval
+            assert _requires_approval(spec, p) is True
+
+    def test_unknown_cost_route_requires_approval(self):
+        from packages.orchestration.worker_registry import hard_safety_requires_approval
+        spec = WorkerSpec(worker_id="u", enabled=True, cost_tier=WorkerCostTier.UNKNOWN,
+                          risk_tier=WorkerRiskTier.LOW, kind=WorkerKind.LOCAL_CANDIDATE)
+        assert hard_safety_requires_approval(spec) is True
+
+
+# ---------------------------------------------------------------------------
 # Token economy — estimate bands only
 # ---------------------------------------------------------------------------
 
@@ -241,6 +275,48 @@ class TestIntegrity:
         ig = worker_registry_integrity(data_dir=tmp_path)
         codes = {v.get("code") for v in ig["violations"]}
         assert "worker_selected_and_blocked" in codes
+
+    # R-0096 negative cases
+    def _write_custom_spec(self, tmp_path, spec_dict):
+        import json as _j
+        f = tmp_path / "workspaces" / "orchestrator" / "worker_registry" / spec_dict["worker_id"] / "worker.json"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(_j.dumps(spec_dict))
+
+    def test_high_risk_route_approval_disabled_flagged(self, tmp_path):
+        p = default_route_policy("jobH")
+        p.user_selected_worker_ids = ["external.builder_package"]  # high risk
+        p.require_human_approval_for_high_risk = False
+        save_route_policy(p, data_dir=tmp_path)
+        ig = worker_registry_integrity(data_dir=tmp_path)
+        codes = {v.get("code") for v in ig["violations"]}
+        assert "high_risk_route_approval_disabled" in codes
+        assert ig["passed"] is False
+
+    def test_unknown_cost_selected_treated_cheap_flagged(self, tmp_path):
+        self._write_custom_spec(tmp_path, {
+            "worker_id": "custom.unknown_cost", "kind": WorkerKind.LOCAL_CANDIDATE,
+            "enabled": True, "user_selectable": True, "cost_tier": WorkerCostTier.UNKNOWN,
+            "risk_tier": WorkerRiskTier.LOW, "execution_mode": "local_model",
+            "token_profile": {"band": "small"}})
+        p = default_route_policy("jobU")
+        p.user_selected_worker_ids = ["custom.unknown_cost"]
+        p.prefer_local_for_cheap_tasks = True
+        save_route_policy(p, data_dir=tmp_path)
+        ig = worker_registry_integrity(data_dir=tmp_path)
+        codes = {v.get("code") for v in ig["violations"]}
+        assert "unknown_cost_treated_cheap" in codes
+        assert ig["passed"] is False
+
+    def test_placeholder_claiming_executable_readiness_flagged(self, tmp_path):
+        self._write_custom_spec(tmp_path, {
+            "worker_id": "custom.fake_ready", "kind": WorkerKind.LOCAL_CANDIDATE,
+            "enabled": True, "user_selectable": True, "cost_tier": WorkerCostTier.CHEAP,
+            "risk_tier": WorkerRiskTier.LOW, "execution_mode": "local_model",
+            "notes": "this is a placeholder pretending to be ready"})
+        ig = worker_registry_integrity(data_dir=tmp_path)
+        codes = {v.get("code") for v in ig["violations"]}
+        assert "placeholder_claims_ready" in codes
 
 
 # ---------------------------------------------------------------------------

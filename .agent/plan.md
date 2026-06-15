@@ -11,24 +11,28 @@ Workers execute. Remedy governs. Users choose. Cheap → local/Ollama-first when
 evidence-based justification. Worker output untrusted until verified. No route silently starts work.
 
 ## Current Step
-1717 — mainline reconciliation done (PR #68 merged → main a290238; fresh branch). Building core.
+1741-1756 — REVIEW CLOSURE. Builder feature work (1717-1740) complete @ 73d89b0; audit findings
+R-0095/R-0096/R-0097 fixed. Awaiting parallel Reviewer to set PASS (verdict currently PENDING).
+Builder does NOT set the verdict and does NOT claim merge-ready until Reviewer PASS.
 
 ## Steps
 - [x] 1717: merge closure (PR #68 PASS → main a290238; fresh branch) + reconcile existing `worker`
       group collision (registry surfaced as `worker registry-*` + `route-policy`); Tournament deferred
-- [ ] 1718: architecture doc (worker-registry-route-policy-v0.md) — anti-goals explicit
-- [ ] 1719-1722,1724: worker_registry.py core (WorkerSpec/RoutePolicy + enums + built-ins + storage +
+- [x] 1718: architecture doc (worker-registry-route-policy-v0.md) — anti-goals explicit
+- [x] 1719-1722,1724: worker_registry.py core (WorkerSpec/RoutePolicy + enums + built-ins + storage +
       evaluate_worker_selection + token/cost band scoring)
-- [ ] 1723: builder_routing integration (user selection/blocked/disabled/cost/risk/local-Ollama pref;
-      recommendation only; catalog-valid next actions)
-- [ ] 1725-1726: CLI (worker registry-list/registry-show + route-policy show/set/evaluate) + catalog +
-      run_contract actions (read_only/write_metadata; no may_execute)
-- [ ] 1727-1731: progress_ledger + feature_planner + review_bundle section + ui_server cockpit + integrity
-- [ ] 1732: user-facing route policy doc (worker-route-policy-user-guide-v0.md)
-- [ ] 1733-1737: tests (unit/routing/CLI/bundle/cockpit/integrity) + architecture import guards
-- [ ] 1738-1739: targeted suites green → full suite once
-- [ ] 1740: final handoff report
-- [ ] 1741-1756: reserved for reviewer findings (R-0095+)
+- [x] 1723: builder_routing integration (user selection/blocked/disabled/cost/risk/local-Ollama pref;
+      recommendation only; catalog-valid next actions; no-op under default policy)
+- [x] 1725-1726: CLI (worker registry-list/registry-show/registry-integrity + route-policy show/set/
+      evaluate) + catalog + run_contract actions (read_only/write_metadata; no may_execute)
+- [x] 1727-1731: progress_ledger + feature_planner + review_bundle section (29) + ui_server cockpit + integrity
+- [x] 1732: user-facing route policy doc (worker-route-policy-user-guide-v0.md)
+- [x] 1733-1737: tests (unit/routing/CLI/bundle/cockpit/integrity) + architecture import guards
+- [x] 1738-1739: targeted suites green → full suite once (6033 passed/8 skipped/1 deselected)
+- [x] 1740: final handoff report
+- [~] 1741-1756: reviewer findings closure — R-0095 (hard-safety approval cannot be weakened),
+      R-0096 (integrity flags unsafe approval/unknown-cost/placeholder), R-0097 (plan.md reconciled)
+      FIXED with Done markers + regression tests; awaiting Reviewer Resolved + PASS
 
 ## Hard rules
 - NO provider/model/Ollama/cloud calls, network, browser, subprocess, shell=True.
