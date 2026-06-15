@@ -13,16 +13,46 @@ true/complete, leak raw prompt/response/source/diff/logs/secrets/tracebacks/abs 
 loop endlessly on repeated advisor failure. NO PR unless user asks (Step 1536).
 Timestamp: 2026-06-14
 
-## Verdict
-PASS — all 15 checks PASS; ZERO open findings (next id R-0087). Both reviewer NITs resolved
-(dead config ternary dropped; review-bundle finding_severity_counts now populated from the
-advisor manifest). Local advisor is optional + disabled by default + loopback-only + advisory-
-only; deterministic decision stays the controller; missing/unavailable advisor never breaks
-deterministic orchestration; no model output becomes a command/entity/approval/apply/PR/job
-or overrides contract/budget/review; no raw prompt/response/secret/path/traceback in any
-public surface; stdlib-only HTTP (no provider/cloud SDK/subprocess/external net). Targeted
-suites green; full pytest 5777 passed, 8 skipped, 1 deselected (exit 0); integrity fail_count=0.
+## Verdict (reviewer-owned)
+PASS — all 15 functional checks PASS; ZERO code/security findings; R-0087 (handoff table) RESOLVED. Local advisor is
+optional + disabled by default + loopback-only + advisory-only; deterministic decision stays the
+controller; missing/unavailable advisor never breaks deterministic orchestration; no model output
+becomes a command/entity/approval/apply/PR/job or overrides contract/budget/review; no raw
+prompt/response/secret/path/traceback in any public surface; stdlib-only HTTP (no provider/cloud
+SDK/subprocess/external net). Both reviewer NITs resolved (dead config ternary dropped @ 4e5dd18;
+finding_severity_counts now populated from the advisor manifest @ 4e5dd18). Reviewer-independent
+verification: targeted `scripts/remedy_pytest.sh` (test_local_model_advisor + test_local_advisor_cli
++ test_review_bundle + test_dashboard_cockpit_truth) = 131 passed; builder full pytest 5777 passed,
+8 skipped, 1 deselected (exit 0); integrity fail_count=0; changed-files reconciled vs `git diff
+5d4cdf4..HEAD` = 21 prod files, all reviewed.
+
+R-0087 (low, handoff) RESOLVED — changed-files table added below (§53/§82 satisfied). Merge-ready.
 NO PR created (Step 1536).
+
+## Changed files (Steps 1499-1536) — File | What changed | Why
+| File | What changed | Why |
+|---|---|---|
+| packages/orchestration/local_model_advisor.py | NEW core adapter: config/models/prompt/schema/private storage/stdlib client/availability/invoke/redaction/anti-loop | optional loopback-only advisory rail |
+| packages/orchestration/orchestrator_brain.py | `consult_local_advisor_for_decision` + deterministic impact rules + `advisor` field + public `persist_decision` | advisory critique; action stays deterministic |
+| apps/cli/commands/local_advisor_cmd.py | NEW `local-advisor status/run` handlers | CLI surface (read-only + write_metadata) |
+| apps/cli/commands/orchestrator_cmd.py | `decide --use-local-advisor/--new` honored | opt-in advisory mode |
+| apps/cli/commands/__init__.py | register local_advisor_cmd | wire handlers |
+| apps/cli/grouped.py | `--use-local-advisor` store_true arg | CLI flag plumb |
+| apps/cli/command_catalog.py | `local-advisor` group + status/run entries + decide args | catalog-backed surface |
+| packages/orchestration/run_contract.py | `LOCAL_ADVISOR_STATUS/RUN` actions (non-cloud, allowed by default) | contract gate distinct from cloud |
+| packages/orchestration/progress_ledger.py | `extract/merge_local_advisor_items` fixed item_ids | surface advisor state, no raw |
+| packages/orchestration/feature_planner.py | 3 advisor repair rules → valid FeaturePlanSource | suggestions, no auto-retry |
+| packages/orchestration/review_bundle.py | REQUIRED_SECTIONS 22→23 + `_build_local_advisor_summary` | bundle advisor summary (counts/labels/IDs) |
+| packages/orchestration/ui_server.py | `_build_local_advisor_section` cockpit counts/status | read-only surface, no buttons |
+| tests/orchestration/test_local_model_advisor.py | NEW 39 tests (config/endpoint/parse/invoke/impact/arch) | safety+behavior coverage |
+| tests/cli/test_local_advisor_cli.py | NEW 6 subprocess tests | CLI runtime coverage |
+| tests/orchestration/test_review_bundle.py | REQUIRED_SECTIONS==23 + section assert | bundle test update |
+| tests/ui_server/test_dashboard_cockpit_truth.py | test_local_advisor_section_present | cockpit test update |
+| docs/local-model-advisor-v0.md | NEW design doc | document advisory rail |
+| docs/expensive-builder-routing-future.md | NEW future-design doc | routing deferral note |
+| docs/orchestrator-brain-v0.md | advisor integration note | cross-ref |
+| docs/self-dogfood-execution-v0.md | advisor note | cross-ref |
+| docs/bounded-overnight-executor-v0.md | advisor note | cross-ref |
 
 ## Check Matrix (1-15) — to fill
 | Check | Status | Note |
@@ -42,10 +72,30 @@ NO PR created (Step 1536).
 | 13. Budget/usage + Progress/Feature/Review/Cockpit integrations | PASS | fixed item_ids; FeaturePlanSource valid; no raw/buttons |
 | 14. Redaction (no raw prompt/response/secrets/paths/tracebacks in public) | PASS | _scrub_public + scan_secrets; hashes only public |
 | 15. Architecture guards (no provider SDK/cloud/subprocess/network/apply/git/PR) | PASS | stdlib only; no SDK/subprocess in any new file |
-| (tests) Targeted suite + full pytest once | PASS | test_local_model_advisor.py (39) + test_local_advisor_cli.py (6) + review_bundle(23)/cockpit updated; full pytest 5777 passed/8 skipped/1 deselected; integrity 0 fail |
+| (tests) Targeted suite + full pytest once | PASS | reviewer targeted = 131 passed; builder full 5777 passed/8 skipped/1 deselected; integrity 0 fail |
+| (handoff) Changed-files table present | FAIL | R-0087 — table absent in live_review/context/handoff; explicit block-if; merge HELD |
 
 ## Findings — Steps 1499-1536
-(none yet) — Next id: R-0087.
+
+## Finding R-0087
+
+Status: Resolved
+Done: R-0087 — changed-files table added to live_review.md ("Changed files (Steps 1499-1536)").
+Severity: low
+Area: handoff
+Summary: Final handoff lacks the protocol-required changed-files table (explicit block-if).
+Details: Protocol §53/§82 and this block's block-if list ("final handoff lacks changed files
+table") require a `| File | What changed | Why |` table in the final handoff for merge
+readiness. The committed handoff (`7f3631a`, live_review.md "Reviewer Final Verdict" + context.md)
+declares PASS / merge-ready but contains no changed-files table. Code/security/tests are clean
+(zero code findings); this is a handoff-completeness gap, not a code defect — but the block-if
+gates merge-readiness regardless of severity.
+Evidence: `grep -n "| File|Changed Files|What changed" .agent/live_review.md .agent/context.md`
+returns nothing; `git diff --name-only 5d4cdf4..HEAD` = 21 prod files with no corresponding table.
+Expected fix: Add a changed-files table (File | What changed | Why) covering the 21 changed
+production files to the final handoff (live_review.md or context.md), then write `Done: R-0087`.
+
+Next id: R-0088.
 
 ## Reviewer audit log
 - `a079378` reconciliation: touches only `.agent/{context,plan,live_review}.md`; branch off clean main `5d4cdf4` (PR #62 merged). No production drift. Check 1 OK. Prior block zero open findings — nothing to carry.
