@@ -13,27 +13,23 @@ output trusted without verification. NO PR unless user asks.
 Timestamp: 2026-06-15
 
 ## Verdict (reviewer-owned)
-FAIL — reviewed @ commit `73d89b0`. Three directed findings all confirmed OPEN: R-0095 (HIGH,
-high-risk/external route can bypass human approval via user policy flags — safety-invariant defect),
-R-0096 (MEDIUM, integrity does not catch the unsafe approval policy / expensive-without-approval),
-R-0097 (LOW, plan.md stale). One open HIGH + one open MEDIUM → FAIL; merge-readiness HELD until
-R-0095/R-0096 fixed (R-0097 too for an honest handoff). No FORBIDDEN execution path found: no provider/
-Ollama/cloud/network/browser/subprocess/git calls, workers are not executed, route policy does not
-start work, no provider SDK import — the module is metadata+policy only (Checks 1-3,5,7,8,10 pass).
-R-0095 status table:
+PASS — re-reviewed @ fix commit `32e480f`; all three directed findings RESOLVED + reviewer-verified;
+ZERO open Blocker/High/Medium/Low. R-0095 status table:
 | ID | Sev | Status | Note |
 |---|---|---|---|
-| R-0095 | high | OPEN | `_requires_approval` lets `require_human_approval_for_high_risk=false` make a HIGH-risk external route `requires_human_approval=false`; needs a flag-independent approval FLOOR + test |
-| R-0096 | medium | OPEN | `worker_registry_integrity` misses unsafe-approval-policy + expensive-without-approval; dead unknown-cost check; placeholder-ready exempts Ollama/Cloud kinds |
-| R-0097 | low | OPEN | plan.md steps 1718-1740 unchecked despite completed/committed work; contradicts context.md |
+| R-0095 | high | RESOLVED @32e480f | `hard_safety_requires_approval(spec)` is an unconditional FLOOR called first in `_requires_approval` (+ candidate.requires_human_justification + integrity): expensive/unknown cost, HIGH/BLOCKED/UNKNOWN risk, EXTERNAL_BUILDER/CLOUD kinds, CLOUD_MODEL, any placeholder ALWAYS require approval regardless of policy flags; flags only add. Tests: test_external_always_requires_approval, test_high_risk_route_cannot_become_no_approval, test_unknown_cost_route_requires_approval |
+| R-0096 | medium | RESOLVED @32e480f | integrity flags `high_risk_route_approval_disabled` (hard-safety route + flag disabled) + real `unknown_cost_treated_cheap` (estimate_token_cost_band=="low") replacing the dead check + placeholder_claims_ready retained. Tests: test_high_risk_route_approval_disabled_flagged, test_unknown_cost_selected_treated_cheap_flagged, test_placeholder_claiming_executable_readiness_flagged |
+| R-0097 | low | RESOLVED @32e480f | plan.md steps 1717-1739 marked [x], Current Step → review closure; consistent with context.md |
 
-REVIEWER-INDEPENDENT verification: targeted `scripts/remedy_pytest.sh` (test_worker_registry +
-test_worker_route_integration + test_route_policy_cli + test_builder_routing + test_review_bundle +
-test_dashboard_cockpit_truth) = **173 passed** — but the suite does NOT assert the approval floor, so
-R-0095 passes (unsafe behavior is "working as coded"; untested). Builder full suite NOT accepted as
-merge-evidence while R-0095/R-0096 open. Integrity: `worker_registry_integrity` runs but has the R-0096
-gaps. Changed-files table: verify in handoff. Commit reviewed: `73d89b0`. MERGE-READINESS: HELD (FAIL).
-No German project-facing content observed. NO PR unless user asks.
+REVIEWER-INDEPENDENT re-verification: inspected fix diff `73d89b0..32e480f` line-level
+(hard_safety_requires_approval covers all hard classes; `_requires_approval` calls it first as a floor
+so a HIGH-risk external route with both approval flags false still returns True; integrity new safe
+codes present); re-ran targeted `scripts/remedy_pytest.sh` (test_worker_registry +
+test_worker_route_integration + test_route_policy_cli + test_builder_routing) = **81 passed** incl. all
+6 new regression tests. Builder full suite 6033 passed/8 skipped/1 deselected now ACCEPTED (targeted
+green, zero open Blocker/High/Medium). No forbidden execution path (metadata+policy only). No German
+project-facing content. Commit reviewed: `32e480f`. MERGE-READY. NO PR unless user asks.
+(superseded) FAIL @ 73d89b0 — R-0095/R-0096/R-0097 opened; now all resolved.
 
 ## Check Matrix (1-10)
 | Check | Status | Note |
@@ -41,20 +37,20 @@ No German project-facing content observed. NO PR unless user asks.
 | 1. Mainline closure (Ext Builder Sandbox reviewer PASS; fresh branch after merge; no pre-closure work) | PASS | branch off a290238 (PR #68 merged); 0 drift commits |
 | 2. WorkerSpec safety (bounded fields; no secrets/keys/raw prompts/abs paths; disabled unselectable; unknown≠truth) | PASS | bounded safe fields; integrity flags raw/abs-path/disabled-but-selectable; no secrets/raw prompts |
 | 3. Built-in registry (deterministic; Ollama placeholder/metadata-only; external→package-create; no provider/network import) | PASS | deterministic built-ins; ollama.placeholder enabled=False metadata-only; external.builder_package → package-create; stdlib only |
-| 4. RoutePolicy (select/prefer/block; local/Ollama pref; max cost/risk; blocked beats preference; expensive needs justification; never starts work) | **FAIL** | blocked-beats-preference + never-starts-work OK; BUT approval can be weakened below the safety floor (R-0095) |
+| 4. RoutePolicy (select/prefer/block; local/Ollama pref; max cost/risk; blocked beats preference; expensive needs justification; never starts work) | PASS | R-0095 RESOLVED @32e480f — hard_safety approval floor; flags only stricter; blocked-beats-preference; never starts work |
 | 5. Builder routing integration (respects policy; next_safe_action catalog-valid; external→package-create; no exec; no provider/model/local call; unknown cost stays unknown) | PASS | routing respects policy; emits strings only; no exec/provider call |
 | 6. Token economy (estimated bands; no invented pricing; cheap/local metadata-only; high risk not overridden by cheap cost) | PASS | estimated bands; cost rejection by ceiling not selection; risk ceiling independent of cost |
 | 7. CLI/catalog/run_contract (worker list/show + route-policy; safe JSON; safe invalid-id errors; catalog entries; read_only/write_metadata only; no may_execute_commands) | PASS | route-policy + registry commands; read_only/write_metadata; no may_execute (verify in detail) |
 | 8. Progress/Feature/Review/Cockpit (safe summaries; no fake worker-running/Ollama-ready/provider-avail; no mutation buttons; understandable next action) | PASS | safe counts/status; no fake readiness; no buttons |
-| 9. Integrity (detects missing/disabled/blocked selected worker; expensive-w/o-justification; Ollama placeholder claiming exec readiness; unknown-cost-as-cheap; public leak) | **FAIL** | detects missing/disabled/blocked + leaks; MISSES unsafe-approval-policy + expensive-without-approval; dead unknown-cost check (R-0096) |
+| 9. Integrity (detects missing/disabled/blocked selected worker; expensive-w/o-justification; Ollama placeholder claiming exec readiness; unknown-cost-as-cheap; public leak) | PASS | R-0096 RESOLVED @32e480f — flags high_risk_route_approval_disabled + real unknown_cost_treated_cheap + placeholder_claims_ready + leaks |
 | 10. Architecture guards (no provider SDK/network/subprocess/shell/apply/approve/test/git/PR/Ollama/cloud exec) | PASS | stdlib + scrub helpers only; danger scan clean |
-| (tests) Targeted + full suite reported | PASS (with gap) | reviewer targeted = 173 passed; approval floor (R-0095) untested; builder full count NOT accepted while high/medium open |
-| (handoff) Changed-files table present | PENDING | verify builder final handoff; plan.md stale (R-0097) |
+| (tests) Targeted + full suite reported | PASS | reviewer targeted post-fix = 81 passed (incl. 6 new regression tests covering approval floor + integrity); builder full 6033 passed/8 skipped/1 deselected ACCEPTED |
+| (handoff) Changed-files table present | PASS | plan.md reconciled @32e480f (R-0097); verify changed-files table in final handoff before merge |
 
 ## Findings — Steps 1717-1756
 
 ### R-0095: High-risk/external route can bypass human approval via user policy flags
-- **Status**: Open
+- **Status**: Resolved (reviewer-verified @32e480f)
 - **Severity**: High
 - **Area**: packages/orchestration/worker_registry.py (`_requires_approval`)
 - **Details**: `_requires_approval(spec, pol)` gates the approval requirement behind two
@@ -81,7 +77,7 @@ No German project-facing content observed. NO PR unless user asks.
   Then write `Done: R-0095`.
 
 ### R-0096: Integrity does not catch unsafe approval policy / expensive-without-approval
-- **Status**: Open
+- **Status**: Resolved (reviewer-verified @32e480f)
 - **Severity**: Medium
 - **Area**: packages/orchestration/worker_registry.py (`worker_registry_integrity`)
 - **Details**: `worker_registry_integrity()` flags placeholder_claims_ready, unknown_cost_treated_cheap,
@@ -105,7 +101,7 @@ No German project-facing content observed. NO PR unless user asks.
   Add tests for each new failure code + a passing safe-default case. Then write `Done: R-0096`.
 
 ### R-0097: `.agent/plan.md` is stale (says still building; steps unchecked)
-- **Status**: Open
+- **Status**: Resolved (reviewer-verified @32e480f)
 - **Severity**: Low
 - **Area**: .agent/plan.md
 - **Details**: The implementation is committed and complete @ 73d89b0, but `.agent/plan.md` still
