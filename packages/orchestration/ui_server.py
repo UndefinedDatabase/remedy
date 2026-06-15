@@ -612,6 +612,44 @@ def _build_external_builder_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_token_economy_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Token Economy + Context Budget v0 summary for the cockpit (Step 1770).
+
+    Estimated bands + budget status + context pack recommendation + warning count only. No mutation
+    buttons, no fake provider readiness, no raw context, no exact pricing, no "savings verified"
+    claim. LIVE is always false — estimates + metadata only."""
+    try:
+        from packages.orchestration.token_economy import token_economy_report
+        rep = token_economy_report(str(job.id))
+        est = rep.get("context_budget_estimate", {}) or {}
+        pack = rep.get("context_pack_recommendation", {}) or {}
+        decision = rep.get("decision", {}) or {}
+        from packages.orchestration.worker_registry import get_worker_spec, is_placeholder
+        oll = get_worker_spec("ollama.placeholder")
+        return {
+            "budget_status": decision.get("budget_status", "unknown_budget"),
+            "estimated_token_band": decision.get("estimated_token_band", "unknown"),
+            "estimated_context_tokens": est.get("estimated_input_tokens", 0),
+            "context_pack_recommendation": pack.get("recommended_pack_kind", ""),
+            "estimated_token_savings_band": (pack.get("estimated_token_savings", {}) or {}).get("band", "unknown"),
+            "local_first_recommended": (decision.get("estimated_cost_band") in ("free", "cheap")
+                                        and not decision.get("requires_human_approval")),
+            "ollama_placeholder_available": bool(oll is not None and is_placeholder(oll)),
+            "requires_human_approval": decision.get("requires_human_approval", True),
+            "warning_count": len(est.get("warnings", [])),
+            "next_safe_action": decision.get("next_safe_action", ""),
+            "live": False,
+            "source": "token_economy",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"budget_status": "unknown_budget", "estimated_token_band": "unknown",
+                "estimated_context_tokens": "unknown", "context_pack_recommendation": "",
+                "estimated_token_savings_band": "unknown", "local_first_recommended": False,
+                "ollama_placeholder_available": "unknown", "requires_human_approval": True,
+                "warning_count": "unknown", "next_safe_action": "", "live": False,
+                "source": "unavailable"}
+
+
 def _build_worker_registry_section(job: Any) -> dict[str, Any]:
     """Safe read-only Worker Registry + Route Policy v0 summary for the cockpit (Step 1730).
 
@@ -1168,6 +1206,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "candidate_quality": _build_candidate_quality_section(job),
         "external_builder": _build_external_builder_section(job),
         "worker_registry": _build_worker_registry_section(job),
+        "token_economy": _build_token_economy_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
