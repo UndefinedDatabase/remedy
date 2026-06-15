@@ -218,6 +218,20 @@ class TestDashboardShape:
         assert "materialized_count" in pt
         assert "materialization_failed_count" in pt
 
+    def test_provider_verification_section_present(self):
+        # Read-only Provider Trust Verification v1 summary (Step 1559).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "provider_verification" in dash
+        pv = dash["provider_verification"]
+        assert "verification_count" in pv
+        assert "passed" in pv
+        assert "needs_review" in pv
+        assert "rejected" in pv
+        assert "pending_approval_after_verification" in pv
+        # No buttons / mutation surface.
+        assert "buttons" not in pv and "actions" not in pv
+
     def test_repair_request_section_present(self):
         # Read-only Repair Request Builder summary (Step 1381).
         job = Job(name="t")

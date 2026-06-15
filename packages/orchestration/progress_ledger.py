@@ -858,6 +858,62 @@ def merge_provider_material_items(ledger: ProgressLedger, materials: dict | None
             seen.add(item.item_id)
 
 
+def extract_provider_verification_items(reports: dict | None) -> list[ProgressItem]:
+    """Extract Provider Trust Verification v1 progress items (Step 1556) from persisted
+    verification reports. Read-only; fixed item_ids → no duplicates."""
+    if not reports:
+        return []
+    vals = list(reports.values())
+    passed = [r for r in vals if r.get("decision") == "verification_passed"]
+    needs = [r for r in vals if r.get("decision") == "needs_human_review"]
+    rejected = [r for r in vals if r.get("decision") == "verification_rejected"]
+    incomplete = [r for r in vals if r.get("decision") == "verification_incomplete"]
+    loop = [r for r in vals if r.get("loop_risk") in ("medium", "high")]
+    items: list[ProgressItem] = []
+    items.append(ProgressItem(
+        item_id="provider-verification-run", title="Provider verification run",
+        status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+        safe_summary=f"{len(vals)} provider verification report(s) on record."))
+    if passed:
+        items.append(ProgressItem(
+            item_id="provider-verification-passed", title="Provider verification passed",
+            status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+            safe_summary=f"{len(passed)} candidate(s) passed verification (pending approval, not applied)."))
+    if needs:
+        items.append(ProgressItem(
+            item_id="provider-verification-needs-review", title="Provider verification needs review",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK,
+            severity="Medium", safe_summary=f"{len(needs)} candidate(s) need human review after verification.",
+            next_action="remedy provider verification-show <job_id> <verification_id> --json"))
+    if rejected:
+        items.append(ProgressItem(
+            item_id="provider-verification-rejected", title="Provider verification rejected",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK,
+            severity="Medium", safe_summary=f"{len(rejected)} candidate(s) rejected by verification.",
+            next_action="remedy provider verification-show <job_id> <verification_id> --json"))
+    if incomplete:
+        items.append(ProgressItem(
+            item_id="provider-verification-incomplete", title="Provider verification incomplete",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+            severity="Low", safe_summary=f"{len(incomplete)} verification(s) incomplete (no intent)."))
+    if loop:
+        items.append(ProgressItem(
+            item_id="provider-verification-loop-risk", title="Provider verification loop risk",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK,
+            severity="High", safe_summary=f"{len(loop)} verification(s) flagged loop risk (repeated candidate).",
+            next_action="remedy provider verification-show <job_id> <verification_id> --json"))
+    return items
+
+
+def merge_provider_verification_items(ledger: ProgressLedger, reports: dict | None) -> None:
+    """Merge provider verification items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_provider_verification_items(reports):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_repair_request_items(packages: dict | None, materials: dict | None) -> list[ProgressItem]:
     """Extract Repair Request Builder progress items (Step 1378). Read-only; fixed
     item_ids → no duplicates. A request package with no materialized candidate yet is
@@ -1196,6 +1252,14 @@ def build_progress_ledger(
         try:
             from packages.orchestration.provider_patch_material import load_materials
             merge_provider_material_items(ledger, load_materials(job))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Provider Trust Verification v1 items from persisted verification reports (Step 1556).
+    if job is not None:
+        try:
+            from packages.orchestration.provider_trust_verification import load_verification_reports
+            merge_provider_verification_items(ledger, load_verification_reports(job))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

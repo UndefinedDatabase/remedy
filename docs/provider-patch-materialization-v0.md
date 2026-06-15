@@ -71,3 +71,4 @@ intent — no duplicate Fix Task / Repair Artifact / Patch Intent.
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path materialized intents use.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).
+- [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — materialization now only proceeds for a candidate that PASSED verification; non-passing candidates create no material/intent.

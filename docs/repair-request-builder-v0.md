@@ -80,3 +80,4 @@ package; pass `--new` to force a fresh one.
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts route candidate output through the same request/intake flow.
+- [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — the request package is checked for consistency against the candidate during verification (`--request-package-id`).

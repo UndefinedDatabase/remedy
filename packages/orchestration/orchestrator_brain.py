@@ -369,6 +369,29 @@ def _gather_signals(job_id: str, data_dir: Path,
                                   if m.get("material_state") == "materialized")
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
+
+    # Provider Trust Verification v1 signals (Step 1554).
+    try:
+        from packages.orchestration.provider_trust_verification import load_verification_reports
+        vreps = list(load_verification_reports(job).values())
+        sig["verification_passed"] = sum(1 for r in vreps if r.get("decision") == "verification_passed")
+        sig["verification_needs_review"] = sum(1 for r in vreps if r.get("decision") == "needs_human_review")
+        sig["verification_rejected"] = sum(1 for r in vreps if r.get("decision") == "verification_rejected")
+        sig["verification_loop_risk"] = sum(1 for r in vreps if r.get("loop_risk") == "high")
+        verified_trust_ids = {r.get("trust_report_id") for r in vreps if r.get("trust_report_id")}
+        from packages.orchestration.provider_trust import load_trust_reports as _ltr
+        accepted_reps = [r for r in _ltr(job).values() if r.get("trust_status") == "accepted"]
+        unverified = [r for r in accepted_reps if r.get("report_id") not in verified_trust_ids]
+        sig["trust_accepted_unverified"] = len(unverified)
+        sig["unverified_trust_report_id"] = str(unverified[0].get("report_id")) if unverified else ""
+        sig["verification_needs_review_id"] = next(
+            (str(r.get("verification_id")) for r in vreps
+             if r.get("decision") == "needs_human_review" and r.get("verification_id")), "")
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        sig["verification_passed"] = sig["verification_needs_review"] = 0
+        sig["verification_rejected"] = sig["verification_loop_risk"] = 0
+        sig["trust_accepted_unverified"] = 0
+        sig["unverified_trust_report_id"] = sig["verification_needs_review_id"] = ""
     try:
         from packages.orchestration.repair_request_builder import load_request_packages
         sig["request_packages"] = len(load_request_packages(job))
@@ -594,13 +617,36 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
                          outcome="Plan improvement items for human approval.",
                          why_now="Self-improvement items exist."))
 
-    # Repeated trust rejection → roadmap option (verification), human-gated.
-    if sig.get("trust_rejected", 0) >= 2:
+    # Provider Trust Verification v1 (Step 1554).
+    if job_id:
+        # Trust accepted but not yet verified → recommend verification before any approval.
+        if sig.get("trust_accepted_unverified", 0) > 0 and sig.get("unverified_trust_report_id"):
+            trid = sig["unverified_trust_report_id"]
+            opts.append(_opt(OptionKind.PROVIDER_TRUST_VERIFICATION,
+                             "Verify an accepted-but-unverified candidate",
+                             command=f"remedy provider verify {job_id} {trid} --json",
+                             entity_ids=[trid], risk="low",
+                             outcome="Second-stage check before any pending intent (no apply).",
+                             why_now="A trust-accepted candidate has not been verified.",
+                             contract_action="provider_verify_candidate"))
+        # Verification needs review → human-gated inspection (never auto-approve).
+        if sig.get("verification_needs_review", 0) > 0 and sig.get("verification_needs_review_id"):
+            vid = sig["verification_needs_review_id"]
+            opts.append(_opt(OptionKind.HUMAN_REVIEW,
+                             "Inspect a verification report (needs review)",
+                             command=f"remedy provider verification-show {job_id} {vid} --json",
+                             entity_ids=[vid], risk="low",
+                             outcome="Human reviews the safe verification findings.",
+                             why_now="A candidate passed trust but verification needs human review."))
+            opts[-1].available = False
+
+    # Repeated verification / trust rejection → roadmap note, human-gated.
+    if sig.get("verification_rejected", 0) >= 2 or sig.get("trust_rejected", 0) >= 2:
         opts.append(_opt(OptionKind.PROVIDER_TRUST_VERIFICATION,
-                         "Provider Trust Verification needed (roadmap)",
-                         risk="medium", outcome="Stronger trust verification (future).",
-                         why_now="Repeated provider trust rejections.",
-                         why_not="Not built yet — human review / future block."))
+                         "Change approach (repeated rejection)",
+                         risk="medium", outcome="Revise the request/candidate (manual).",
+                         why_now="Repeated provider trust/verification rejections.",
+                         why_not="Repeated failures need a human to change approach — no auto retry."))
         opts[-1].available = False
 
     # Ideas as roadmap hints → human review only.
@@ -631,7 +677,7 @@ _BASE_SCORE = {
     OptionKind.SELF_EXECUTE: 55,
     OptionKind.SELF_PROPOSE: 40,
     OptionKind.SELF_INSPECT: 20,
-    OptionKind.PROVIDER_TRUST_VERIFICATION: 10,
+    OptionKind.PROVIDER_TRUST_VERIFICATION: 60,
     OptionKind.LOCAL_ADVISOR_NEEDED: 10,
     OptionKind.HUMAN_REVIEW: 5,
 }

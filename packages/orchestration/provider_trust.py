@@ -200,7 +200,10 @@ class ProviderTrustReport:
     repair_intent_id: str = ""
     material_id: str = ""
     material_state: str = ""          # ""|materialized|unsupported_patch_shape|materialization_failed
-    report_state: str = ""            # accepted|materialized|intent_pending_approval|materialization_failed
+    report_state: str = ""            # accepted|verified|materialized|intent_pending_approval|...
+    verification_id: str = ""         # Provider Trust Verification v1 linkage
+    verification_status: str = ""     # ""|verified|needs_review|rejected|incomplete
+    verification_decision: str = ""
     next_safe_action: str = ""
     received_at: str = ""
     safe_summary: str = ""
@@ -219,6 +222,9 @@ class ProviderRepairIntakeResult:
     repair_intent_id: str = ""
     material_id: str = ""
     material_state: str = ""
+    verification_id: str = ""
+    verification_status: str = ""
+    verification_decision: str = ""
     next_safe_action: str = ""
     safe_summary: str = ""
 
@@ -779,6 +785,9 @@ def export_trust_report_json(report: ProviderTrustReport) -> dict[str, Any]:
         "material_id": report.material_id,
         "material_state": report.material_state,
         "report_state": report.report_state,
+        "verification_id": report.verification_id,
+        "verification_status": report.verification_status,
+        "verification_decision": report.verification_decision,
         "next_safe_action": report.next_safe_action,
         "received_at": report.received_at,
         "safe_summary": report.safe_summary,
@@ -813,6 +822,9 @@ def export_intake_result_json(result: ProviderRepairIntakeResult) -> dict[str, A
         "repair_intent_id": result.repair_intent_id,
         "material_id": result.material_id,
         "material_state": result.material_state,
+        "verification_id": result.verification_id,
+        "verification_status": result.verification_status,
+        "verification_decision": result.verification_decision,
         "next_safe_action": result.next_safe_action,
         "safe_summary": result.safe_summary,
     }
@@ -886,6 +898,44 @@ def _create_repair_artifact_and_intent(
 # ---------------------------------------------------------------------------
 # Top-level orchestrator (Steps 1306-1317)
 # ---------------------------------------------------------------------------
+
+
+def _verification_allows_materialization(
+    job: Any, report: ProviderTrustReport, candidate: ProviderCandidateRepair,
+    raw_text: str, request: ProviderOutputIntakeRequest, ddir: Path, contract: Any,
+) -> bool:
+    """Run Provider Trust Verification v1 on an accepted candidate BEFORE materializing.
+
+    Records the safe verification linkage on the trust report and returns True ONLY when
+    verification PASSED (eligible to materialize). A denied verification contract, or any
+    non-passing decision, returns False and the candidate creates NO intent. No apply,
+    no approval, no execution — verification is metadata-only."""
+    from packages.orchestration.run_contract import evaluate_run_action, ContractAction
+    if not evaluate_run_action(contract, ContractAction.PROVIDER_VERIFY_CANDIDATE).allowed:
+        report.report_state = "verification_blocked"
+        report.verification_status = "incomplete"
+        report.findings.append(_finding(TrustFindingCode.REQUIRES_HUMAN_REVIEW, Severity.MEDIUM,
+                                        "Contract denies provider verification."))
+        report.next_safe_action = f"remedy contract inspect {request.job_id} --json"
+        return False
+    from packages.orchestration.provider_trust_verification import (
+        run_inline_verification, VerificationDecision,
+    )
+    vreport = run_inline_verification(job, report, candidate, raw_text, request, ddir)
+    report.verification_id = vreport.verification_id
+    report.verification_status = vreport.verification_status
+    report.verification_decision = vreport.decision
+    if vreport.decision == VerificationDecision.PASSED and vreport.allowed_to_materialize:
+        report.report_state = "verified"
+        return True
+    # Not passed → no intent. Surface the verification outcome safely.
+    report.report_state = f"verification_{vreport.verification_status}"
+    report.next_safe_action = (
+        f"remedy provider verification-show {request.job_id} {vreport.verification_id} --json")
+    report.findings.append(_finding(
+        TrustFindingCode.REQUIRES_HUMAN_REVIEW, Severity.LOW,
+        f"Verification {vreport.decision}; no intent created."))
+    return False
 
 
 def intake_provider_repair(
@@ -973,6 +1023,12 @@ def intake_provider_repair(
             report.report_state = "materialization_blocked"
             report.findings.append(_finding(TrustFindingCode.REQUIRES_HUMAN_REVIEW, Severity.MEDIUM,
                                             "Contract denies provider repair materialization."))
+        elif not _verification_allows_materialization(
+                job, report, candidate, raw_text, request, ddir, contract):
+            # Provider Trust Verification v1 (Step 1548): an accepted-but-unverified or
+            # not-passing candidate creates NO intent. The verification report carries
+            # the safe outcome + next action; raw stays in quarantine.
+            pass
         else:
             from packages.orchestration.provider_patch_material import (
                 materialize_accepted_candidate, MaterialState,
@@ -1014,6 +1070,9 @@ def intake_provider_repair(
     result.repair_intent_id = report.repair_intent_id
     result.material_id = report.material_id
     result.material_state = report.material_state
+    result.verification_id = report.verification_id
+    result.verification_status = report.verification_status
+    result.verification_decision = report.verification_decision
     result.next_safe_action = report.next_safe_action
     result.safe_summary = report.safe_summary
     return result

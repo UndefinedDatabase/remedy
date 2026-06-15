@@ -45,6 +45,7 @@ REQUIRED_SECTIONS = (
     "overnight_run_summary.json",
     "provider_trust_summary.json",
     "provider_material_summary.json",
+    "provider_verification_summary.json",
     "repair_request_summary.json",
     "self_dogfood_summary.json",
     "self_execution_summary.json",
@@ -718,6 +719,50 @@ def _build_provider_trust_summary(job: Any) -> dict:
                 "error": "provider_trust_unavailable"}
 
 
+def _build_provider_verification_summary(job: Any) -> dict:
+    """Safe Provider Trust Verification v1 summary (Step 1558). Counts/codes/IDs only —
+    no raw candidate, no diff, no source, no secrets, no absolute paths."""
+    try:
+        from packages.orchestration.provider_trust_verification import load_verification_reports
+        reports = list(load_verification_reports(job).values())
+        by_decision = {"verification_passed": 0, "needs_human_review": 0,
+                       "verification_rejected": 0, "verification_incomplete": 0}
+        loop_counts = {"none": 0, "low": 0, "medium": 0, "high": 0}
+        finding_codes: dict[str, int] = {}
+        finding_sev: dict[str, int] = {}
+        pending = 0
+        linked_ids: list[str] = []
+        for r in reports:
+            dec = r.get("decision", "")
+            if dec in by_decision:
+                by_decision[dec] += 1
+            lr = r.get("loop_risk", "none")
+            if lr in loop_counts:
+                loop_counts[lr] += 1
+            if dec == "verification_passed" and r.get("allowed_to_create_intent"):
+                pending += 1
+            if r.get("verification_id"):
+                linked_ids.append(str(r.get("verification_id")))
+            for f in r.get("findings", []):
+                finding_codes[f.get("code", "")] = finding_codes.get(f.get("code", ""), 0) + 1
+                finding_sev[f.get("severity", "")] = finding_sev.get(f.get("severity", ""), 0) + 1
+        return {
+            "verification_count": len(reports),
+            "passed": by_decision["verification_passed"],
+            "needs_review": by_decision["needs_human_review"],
+            "rejected": by_decision["verification_rejected"],
+            "incomplete": by_decision["verification_incomplete"],
+            "pending_verification_passed_count": pending,
+            "loop_risk_counts": loop_counts,
+            "finding_counts_by_code": finding_codes,
+            "finding_counts_by_severity": finding_sev,
+            "verification_ids": linked_ids[:50],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"verification_count": 0, "passed": 0, "needs_review": 0, "rejected": 0,
+                "incomplete": 0, "error": "provider_verification_unavailable"}
+
+
 def _build_provider_material_summary(job: Any) -> dict:
     """Safe Provider Patch Materialization summary (Step 1350). Counts/IDs/states
     only — no raw diff, no source, no secrets, no private/absolute paths."""
@@ -1307,6 +1352,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("provider_material_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("provider_material_summary.json", status="error", error="build failed"))
+
+    # provider_verification_summary.json (Step 1558)
+    try:
+        pvs = _build_provider_verification_summary(job)
+        content = json.dumps(pvs, indent=2).encode()
+        section_data["provider_verification_summary.json"] = content
+        result.sections.append(ReviewBundleSection("provider_verification_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("provider_verification_summary.json", status="error", error="build failed"))
 
     # repair_request_summary.json (Step 1380)
     try:

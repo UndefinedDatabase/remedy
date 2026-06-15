@@ -582,6 +582,38 @@ def _build_provider_trust_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_provider_verification_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Provider Trust Verification v1 summary for the cockpit (Step 1559).
+
+    Counts + latest status only. No buttons, no mutation, no provider execution, no raw."""
+    try:
+        from packages.orchestration.provider_trust_verification import load_verification_reports
+        reports = list(load_verification_reports(job).values())
+        passed = sum(1 for r in reports if r.get("decision") == "verification_passed")
+        needs = sum(1 for r in reports if r.get("decision") == "needs_human_review")
+        rejected = sum(1 for r in reports if r.get("decision") == "verification_rejected")
+        incomplete = sum(1 for r in reports if r.get("decision") == "verification_incomplete")
+        pending = sum(1 for r in reports
+                      if r.get("decision") == "verification_passed" and r.get("allowed_to_create_intent"))
+        latest = reports[-1] if reports else None
+        return {
+            "verification_count": len(reports),
+            "passed": passed,
+            "needs_review": needs,
+            "rejected": rejected,
+            "incomplete": incomplete,
+            "pending_approval_after_verification": pending,
+            "latest_status": (latest or {}).get("verification_status", ""),
+            "latest_decision": (latest or {}).get("decision", ""),
+            "source": "provider_verification",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"verification_count": "unknown", "passed": "unknown", "needs_review": "unknown",
+                "rejected": "unknown", "incomplete": "unknown",
+                "pending_approval_after_verification": "unknown", "latest_status": "",
+                "latest_decision": "", "source": "unavailable"}
+
+
 def _build_repair_request_section(job: Any) -> dict[str, Any]:
     """Safe read-only Repair Request Builder summary for the cockpit (Step 1381).
 
@@ -970,6 +1002,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "overnight": _build_overnight_section(job, truth_data_dir),
         "overnight_run": _build_overnight_run_section(job, truth_data_dir),
         "provider_trust": _build_provider_trust_section(job),
+        "provider_verification": _build_provider_verification_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
