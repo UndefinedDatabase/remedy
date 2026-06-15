@@ -12,10 +12,11 @@ generation, or emit fake next actions. NO PR unless user asks (Step 1608).
 Timestamp: 2026-06-15
 
 ## Verdict (reviewer-owned)
-PASS WITH RISKS — R-0088 (HIGH) + R-0089 (MEDIUM) RESOLVED @ d2a1ee4 (reviewer-verified); ZERO open
-Blocker/High/Medium. ONE open LOW: R-0090 (handoff changed-files table missing) → an explicit block-if,
-so MERGE-READINESS IS HELD until the builder adds a `| File | What changed | Why |` table + writes
-`Done: R-0090` (code is otherwise merge-quality). All SAFETY properties PASS: routing is planning-only
+PASS — R-0088 (HIGH) + R-0089 (MEDIUM) RESOLVED @ d2a1ee4 + R-0090 (LOW, handoff) RESOLVED @ 8579774,
+all reviewer-verified; ZERO open findings. Changed-files table now present in BOTH .agent/context.md
+(committed earlier) AND .agent/live_review.md (@ 8579774), reconciled vs `git diff --name-only
+d22e1dd..HEAD` = all 20 changed prod/test/doc files covered (incl. orchestrator_brain.py from the fix).
+Merge-ready (NO PR — Step 1608, held for explicit user request). All SAFETY properties PASS: routing is planning-only
 (no builder/model/provider execution, no network/subprocess/SDK, no candidate generation, no Repair
 Artifact/Patch Intent/ProposedTask creation, no apply/approve/PR/git, no Job.tasks); external generator
 DISABLED by default + gated behind request-package + trust + verification + budget + low-loop-risk +
@@ -49,7 +50,7 @@ standing rule. NO PR (Step 1608).
 | 14. Redaction (no raw in any surface) | PASS | _scrub_public; trace/export = codes/counts/IDs/fingerprint only; no raw/secret/path/diff |
 | 15. Architecture guards (no exec/SDK/net/subprocess/apply/approval/PR/intent) | PASS | stdlib+_scrub_public; lazy internal imports only; no save_job; no source_apply/patch_apply/materialize |
 | (tests) Targeted + full pytest once | PASS | reviewer targeted post-fix = 90 passed; new regression validates emitted next_safe_action via build_parser; builder full 5852 passed/8 skipped/1 deselected |
-| (handoff) Changed-files table present | FAIL | R-0090 (low) — table absent; explicit block-if; merge HELD until added + Done: R-0090 |
+| (handoff) Changed-files table present | PASS | R-0090 RESOLVED @ 8579774 — table in context.md + live_review.md; 20 files reconciled vs git diff |
 
 ## Findings — Steps 1573-1608
 
@@ -117,20 +118,21 @@ Expected fix: Emit a valid form (e.g. `remedy self status --json`, or `--attempt
 attempt id is available), then write `Done: R-0089`.
 
 ## Finding R-0090
-Status: Open
+Status: Resolved
+Resolution: RESOLVED @ 8579774 (reviewer-verified). NOTE: this was a weak finding — when filing I
+grepped only `.agent/live_review.md`, but protocol §53/§82 also accepts the table in the handoff
+`.agent/context.md`, which already carried a committed changed-files table. Builder additionally added
+a `| File | What changed | Why |` table to live_review.md @ 8579774 (incl. the orchestrator_brain.py
+row from the R-0089 fix). Reviewer reconciled the table vs `git diff --name-only d22e1dd..HEAD` = all
+20 changed prod/test/doc files covered. Block-if "final handoff lacks changed files table" satisfied.
 Severity: low
 Area: handoff
 Summary: Final handoff lacks the protocol-required changed-files table (explicit block-if).
-Details: Protocol §53/§82 + this block's block-if "final handoff lacks changed files table" require a
-`| File | What changed | Why |` table covering the changed production files. live_review.md has no
-such table. Code/findings now clean (R-0088/R-0089 resolved), but the block-if gates merge-readiness
-regardless of severity — same lineage as prior-block R-0087.
-Evidence: `grep -E "^\| File \| What changed \| Why \|" .agent/live_review.md` → nothing;
-`git diff --name-only d22e1dd..HEAD` = builder_routing.py + builder_routing_cmd.py + command_catalog +
-grouped + commands/__init__ + run_contract + feature_planner + progress_ledger + review_bundle +
-ui_server + orchestrator_brain + 3 test files + docs, with no corresponding table.
-Expected fix: Add a changed-files table to the final handoff (live_review.md or context.md) covering
-the changed production files, then write `Done: R-0090`.
+Details: (original) Protocol §53/§82 + block-if require a `| File | What changed | Why |` table; my
+filing checked only live_review.md and missed the table already present in context.md.
+Evidence: table now in context.md + live_review.md; reconciled vs `git diff --name-only d22e1dd..HEAD`
+(20 files).
+Expected fix: (done) table added to final handoff; `Done: R-0090` written @ 8579774.
 
 Next id: R-0091.
 
