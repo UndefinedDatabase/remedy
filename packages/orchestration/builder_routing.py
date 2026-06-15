@@ -676,6 +676,21 @@ def select_builder_routing_decision(
 
     # 8. Local candidate generation (recommended only — never executed).
     if pol.allow_local_candidate_generator and _budget_allows_local(budget):
+        # Candidate Quality feedback (Step 1653): repeated poor quality for this route lowers
+        # confidence → escalate to human review instead of recommending more generation. Read-only;
+        # NEVER triggers generation. Unknown quality is neutral (does not block).
+        try:
+            from packages.orchestration.candidate_quality import route_quality_feedback
+            fb = route_quality_feedback(model_label="", route_tier=BuilderRoutingTier.LOCAL_CANDIDATE_GENERATOR,
+                                        data_dir=ddir)
+            if fb.get("recommend") == "lower":
+                return _finalize(d, BuilderRoutingTier.HUMAN_REVIEW_REQUIRED,
+                                 BuilderRoutingStopReason.LOOP_BLOCK,
+                                 "Candidate quality history is poor for this route — human review "
+                                 "before more local generation.",
+                                 _report_cmd(request.job_id), ddir, persist)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
         d.justification_codes.append(BuilderRoutingJustification.BUDGET_AVAILABLE)
         d.rejected_tiers = [o.to_dict() for o in options
                             if o.tier == BuilderRoutingTier.EXTERNAL_CANDIDATE_GENERATOR]

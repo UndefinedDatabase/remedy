@@ -582,6 +582,38 @@ def _build_provider_trust_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_candidate_quality_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Local Candidate Quality Evaluation v1 summary for the cockpit (Step 1664).
+
+    Status + latest outcome + pending-with-quality + best route + loop-risk counts only.
+    No buttons, no mutation, no raw content."""
+    try:
+        from packages.orchestration.candidate_quality import (
+            load_candidate_quality_evaluations, build_candidate_scorecards,
+        )
+        evals = load_candidate_quality_evaluations(job_id=str(job.id))
+        latest = evals[-1] if evals else None
+        pending = sum(1 for e in evals if e.get("outcome") == "pending_approval")
+        loop = sum(1 for e in evals
+                   if (e.get("score", {}) or {}).get("dimensions", {}).get("loop_risk") == "fail")
+        cards = build_candidate_scorecards(job_id=str(job.id))
+        ranked = sorted((cards.get("by_route_tier", {}) or {}).items(),
+                        key=lambda kv: kv[1].get("average_score", 0.0), reverse=True)
+        return {
+            "evaluation_count": len(evals),
+            "latest_outcome": (latest or {}).get("outcome", ""),
+            "latest_score_band": ((latest or {}).get("score", {}) or {}).get("band", ""),
+            "pending_with_quality_count": pending,
+            "best_route": ranked[0][0] if ranked else "",
+            "loop_risk_count": loop,
+            "source": "candidate_quality",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"evaluation_count": "unknown", "latest_outcome": "", "latest_score_band": "",
+                "pending_with_quality_count": "unknown", "best_route": "",
+                "loop_risk_count": "unknown", "source": "unavailable"}
+
+
 def _build_local_candidate_section(job: Any) -> dict[str, Any]:
     """Safe read-only Automated Local Candidate Generator v0 summary for the cockpit (Step 1627).
 
@@ -1063,6 +1095,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "provider_verification": _build_provider_verification_section(job),
         "builder_routing": _build_builder_routing_section(job),
         "local_candidate": _build_local_candidate_section(job),
+        "candidate_quality": _build_candidate_quality_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),

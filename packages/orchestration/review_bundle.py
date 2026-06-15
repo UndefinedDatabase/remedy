@@ -53,6 +53,7 @@ REQUIRED_SECTIONS = (
     "local_advisor_summary.json",
     "builder_routing_summary.json",
     "local_candidate_summary.json",
+    "candidate_quality_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1092,6 +1093,45 @@ def _build_local_candidate_summary(job: Any) -> dict:
         return {"run_count": 0, "latest_status": "unknown", "error": "local_candidate_unavailable"}
 
 
+def _build_candidate_quality_summary(job: Any) -> dict:
+    """Safe Local Candidate Quality Evaluation v1 summary (Step 1663). Evaluation/outcome counts /
+    score distribution / model+route scorecards / pending+loop counts / safe IDs only — no raw
+    prompt/output/candidate/diff/source/logs/secrets/absolute paths."""
+    try:
+        from packages.orchestration.candidate_quality import (
+            load_candidate_quality_evaluations, build_candidate_scorecards,
+        )
+        evals = load_candidate_quality_evaluations(job_id=str(job.id))
+        if not evals:
+            return {"evaluation_count": 0, "outcome_counts": {}, "score_band_counts": {},
+                    "pending_approval_count": 0, "loop_risk_count": 0}
+        outcome_counts: dict[str, int] = {}
+        band_counts: dict[str, int] = {}
+        pending = loop = 0
+        for e in evals:
+            outcome_counts[e.get("outcome", "")] = outcome_counts.get(e.get("outcome", ""), 0) + 1
+            band = (e.get("score", {}) or {}).get("band", "")
+            band_counts[band] = band_counts.get(band, 0) + 1
+            if e.get("outcome") == "pending_approval":
+                pending += 1
+            if (e.get("score", {}) or {}).get("dimensions", {}).get("loop_risk") == "fail":
+                loop += 1
+        cards = build_candidate_scorecards(job_id=str(job.id))
+        return {
+            "evaluation_count": len(evals),
+            "outcome_counts": outcome_counts,
+            "score_band_counts": band_counts,
+            "pending_approval_count": pending,
+            "loop_risk_count": loop,
+            "by_model": cards.get("by_model", {}),
+            "by_route_tier": cards.get("by_route_tier", {}),
+            "latest_outcome": evals[-1].get("outcome", ""),
+            "evaluation_ids": [e.get("evaluation_id", "") for e in evals][:50],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"evaluation_count": 0, "outcome_counts": {}, "error": "candidate_quality_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1508,6 +1548,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("local_candidate_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("local_candidate_summary.json", status="error", error="build failed"))
+
+    # candidate_quality_summary.json (Step 1663)
+    try:
+        cqs = _build_candidate_quality_summary(job)
+        content = json.dumps(cqs, indent=2).encode()
+        section_data["candidate_quality_summary.json"] = content
+        result.sections.append(ReviewBundleSection("candidate_quality_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("candidate_quality_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:
