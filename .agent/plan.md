@@ -1,51 +1,51 @@
-# Plan — Steps 1573-1608: Expensive Builder Routing v0
+# Plan — Steps 1609-1644: Automated Local Candidate Generator Adapter v0
 
 ## Goal
-Local-first, budgeted, anti-loop ROUTING/POLICY for *when* Remedy should use deterministic
-logic, local advisory, local candidate generation, or expensive external builder generation.
-Routing/policy/planning ONLY — no execution, no provider/cloud calls, no candidate generation,
-no intent/ProposedTask creation. May define future adapter contracts, budgets, decision records.
+First automated local candidate generator. When Builder Routing selects
+`local_candidate_generator`, Remedy MAY ask an explicitly-configured local loopback model to
+generate candidate output from a SAFE request package. That output IMMEDIATELY enters the
+untrusted intake pipeline: quarantine → Trust Gate → Verification → Materialization → pending
+approval. Disabled by default. Loopback only. No approval/apply/test/PR/git from this adapter.
 
 ## Core principle
-LLMs advise or build candidates. The orchestrator controls. Evidence is truth. Local first when
-useful. Expensive builders only when targeted, budgeted, and bounded. No loops.
+Local model may generate candidates. The orchestrator controls. Trust + Verification judge.
+Human approves. do_continue applies. Model output is UNTRUSTED — quarantined before parsing.
 
 ## Current Step
-1603-1608 — code/tests/docs complete; live review + handoff; PR HELD
+1636-1644 — code/tests/docs complete; live review + handoff; PR HELD
 
 ## Steps
-- [x] 1573: mainline reconciliation (verification PR #64 merged; main d22e1dd; scope 1573-1608)
-- [x] 1574-1575: routing models + policy (tiers, budget, risk, evidence, stop reasons)
-- [x] 1576-1577: routing inputs (safe summaries) + candidate-generation need detector
-- [x] 1578-1579: local-first decision rules + expensive builder justification codes
-- [x] 1580-1581: budget model + loop governor integration
-- [x] 1582-1583: routing decision selector + safe trace persistence (idempotent)
-- [x] 1584-1587: CLI decide/report + catalog + run_contract actions
-- [x] 1588-1591: orchestrator / local-advisor / verification / self-dogfood integration (consumed by selector)
-- [x] 1592-1595: progress / feature / review-bundle(25) / cockpit integrations
-- [x] 1596-1602: tests (18 unit + 7 CLI + bundle/cockpit) + targeted + full pytest once (5846 passed)
-- [x] 1601: docs (expensive-builder-routing-v0 + 4 updates)
-- [x] 1603-1606: live review + readiness + PR discipline + handoff
-- [x] 1608: merge discipline — NO PR unless user explicitly asks
+- [x] 1609: mainline reconciliation (routing PR #65 merged; main 4d4d7ad; scope 1609-1644)
+- [x] 1610-1611: models + config/policy (disabled default; loopback only; bounded; attempt caps)
+- [x] 1612-1613: safe prompt builder (from request package) + loopback client (reuse advisor utils)
+- [x] 1614-1615: private run storage + immediate intake bridge (provider label local_candidate_generator:<model>)
+- [x] 1616-1617: trust+verification integration + routing gate (must select local_candidate_generator)
+- [x] 1618-1619: run_contract actions + budget/usage ledger
+- [x] 1620-1623: CLI status/generate + catalog + orchestrator/routing next-action
+- [x] 1624-1627: progress/feature/review-bundle(26)/cockpit
+- [x] 1628-1635,1642-1643: tests (20 unit + 6 CLI) + targeted + full pytest once (5887 passed)
+- [x] 1634,1641: docs (generator-v0 + external-builder-sandbox-future + 5 updates)
+- [x] 1636-1640: live review + readiness + PR discipline + handoff
+- [x] 1644: merge discipline — NO PR unless user explicitly asks
 
-## Product readiness (Step 1604)
-Remedy can now DECIDE when builder help is justified: deterministic-first, local-advisor before
-expensive, local/external candidate generation only when targeted + budgeted + bounded + trust/
-verification available + low loop risk. Local-first + anti-loop routing exists. Expensive builders
-are STILL NOT executed (routing produces a plan/trace, never a call). Readiness ~85% (routing rail
-complete; actual local/external candidate generators deferred). Next: Automated Local Candidate
-Generator Adapter v0 OR External Builder Adapter / Provider Execution Sandbox v0.
+## Product readiness (Step 1637)
+Local candidate generation is now possible WHEN explicitly configured + routed: a loopback model
+generates a candidate from a safe request package; ALL output passes Trust Gate + Verification
+before any materialization; approval + apply remain separate (human + do_continue). Disabled by
+default; missing model never breaks deterministic flow. Readiness ~85% (generation rail complete;
+quality evaluation + external builder sandbox deferred). Next: Local Candidate Quality Evaluation
+v1 OR External Builder Sandbox v0.
 
 ## Hard rules
-- Routing/policy/planning ONLY. No routing result executes anything; none creates Patch Intents/ProposedTasks.
-- No external provider/cloud execution, no automated candidate generation, no network, no browser, no subprocess (except CLI runtime tests), no provider SDK.
-- No auto apply/approval/repair-loop/PR/merge/git-commit-gate/background orchestration/UI mutation/MCP/dep upgrades.
-- External builder NEVER recommended without: request package ready + Trust Gate available + Verification available + budget allowed + loop risk not high + no pending approval/intent.
-- Local first; deterministic first; local advisor before external builder; no repeated expensive route without new evidence.
-- Unknown cost stays unknown and BLOCKS external by default. Local unavailable does NOT imply external allowed.
-- No raw prompt/response/source/diff/stdout/stderr/artifact-body/secrets/tracebacks/abs paths in any surface.
+- DISABLED by default; explicit opt-in; loopback only (127.0.0.1/localhost/::1); external/file:///redirects rejected.
+- No cloud/provider SDK; no external network; no subprocess for model exec; no shell=True; no browser.
+- Model output UNTRUSTED → quarantined before parsing → MUST pass Trust Gate + Verification before materialization.
+- No candidate output creates an intent directly; no approval/apply/test/PR/git from this adapter.
+- May only run if Builder Routing selected local_candidate_generator + policy/contract allow + request package + no pending intent + trust/verification available + budget + low loop risk + no open blocker/high.
+- Missing local model never breaks deterministic flow.
+- No raw prompt/output/source/diff/stdout/stderr/artifact-body/secrets/tracebacks/abs paths in public surfaces.
 - Every next_safe_action catalog-backed + entity-backed.
-- NO PR unless the user explicitly asks (Step 1608).
+- NO PR unless the user explicitly asks (Step 1644).
 
 ## Next block
-Automated Local Candidate Generator Adapter v0 OR Provider Execution Sandbox v0.
+External Builder Sandbox v0 OR Local Candidate Quality Evaluation v1.

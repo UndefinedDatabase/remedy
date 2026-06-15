@@ -356,6 +356,41 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.KNOWN_RISK,
             "remedy builder-routing report --job-id <job_id> --json",
         ),
+        # Automated Local Candidate Generator v0 follow-ups (Step 1625). No auto retry/approval;
+        # generation is disabled by default + routing-gated; output still goes through trust+verif.
+        "local-candidate-unavailable": (
+            "Configure the local candidate generator (optional)",
+            "Local candidate generation is disabled/unavailable — configure an explicit loopback "
+            "model if you want it; deterministic flow is unaffected.",
+            FeaturePlanSource.ROADMAP,
+            "remedy local-candidate status --json",
+        ),
+        "local-candidate-intent-pending": (
+            "Approve or reject the local candidate repair",
+            "A local-candidate-generated repair intent is pending approval (apply via do continue).",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy patch approve <job_id> <intent_id> --json",
+        ),
+        "local-candidate-trust-rejected": (
+            "Revise the request (local candidate trust-rejected)",
+            "A local candidate was rejected by the Trust Gate — revise the request package or "
+            "model; no automatic retry.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy local-candidate status --json",
+        ),
+        "local-candidate-verification-rejected": (
+            "Revise the request (local candidate verification-rejected)",
+            "A local candidate was rejected by Verification — revise the request/approach or "
+            "escalate to human review; no automatic retry.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy provider verification-show <job_id> <verification_id> --json",
+        ),
+        "local-candidate-needs-review": (
+            "Inspect the local candidate verification (needs review)",
+            "A local candidate needs human review after verification — inspect the safe report.",
+            FeaturePlanSource.OPEN_FINDING,
+            "remedy provider verification-show <job_id> <verification_id> --json",
+        ),
         # Provider patch materialization follow-ups (Step 1349). No auto approve/retry.
         "provider-repair-intent-pending-approval": (
             "Approve or reject the materialized provider repair",

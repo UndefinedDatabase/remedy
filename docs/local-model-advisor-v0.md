@@ -95,3 +95,4 @@ have their output verified.
 - [expensive-builder-routing-future.md](expensive-builder-routing-future.md)
 - [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — an optional advisor critique of the safe verification summary is a documented forward seam (deferred); if implemented it may only lower confidence / add a human-review concern, never pass or reject a candidate.
 - [expensive-builder-routing-v0.md](expensive-builder-routing-v0.md) — routing recommends the local advisor *before* any expensive external builder, and never loops the advisor once it has run for the current evidence.
+- [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — the local candidate generator reuses this adapter's loopback endpoint validation + transport seam; advisor *critiques*, the generator *produces candidates* (which are then trust+verification-judged).

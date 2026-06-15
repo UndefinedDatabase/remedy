@@ -858,6 +858,59 @@ def merge_provider_material_items(ledger: ProgressLedger, materials: dict | None
             seen.add(item.item_id)
 
 
+def extract_local_candidate_items(runs: list[dict] | None) -> list[ProgressItem]:
+    """Extract Automated Local Candidate Generator v0 progress items (Step 1624) from persisted
+    run manifests. Read-only; fixed item_ids → no duplicates. Generation never auto-applies."""
+    if not runs:
+        return []
+    latest = runs[-1]
+    items: list[ProgressItem] = [ProgressItem(
+        item_id="local-candidate-run", title="Local candidate generation run",
+        status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+        safe_summary=f"{len(runs)} local candidate generation run(s); latest={latest.get('status','')}.")]
+    if any(r.get("status") == "unavailable" for r in runs):
+        items.append(ProgressItem(
+            item_id="local-candidate-unavailable", title="Local candidate generator unavailable",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary="Local candidate model unavailable on a run (deterministic flow unaffected).",
+            next_action="remedy local-candidate status --json"))
+    if any(r.get("status") == "trust_rejected" for r in runs):
+        items.append(ProgressItem(
+            item_id="local-candidate-trust-rejected", title="Local candidate trust rejected",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="A local candidate was rejected by the Trust Gate.",
+            next_action="remedy local-candidate status --json"))
+    if any(r.get("status") == "verification_rejected" for r in runs):
+        items.append(ProgressItem(
+            item_id="local-candidate-verification-rejected", title="Local candidate verification rejected",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="A local candidate was rejected by Verification.",
+            next_action="remedy provider verification-show <job_id> <verification_id> --json"))
+    if any(r.get("status") == "needs_review" for r in runs):
+        items.append(ProgressItem(
+            item_id="local-candidate-needs-review", title="Local candidate needs review",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="A local candidate needs human review after verification.",
+            next_action="remedy provider verification-show <job_id> <verification_id> --json"))
+    pending = [r for r in runs if r.get("status") == "intent_pending_approval" and r.get("intent_id")]
+    if pending:
+        items.append(ProgressItem(
+            item_id="local-candidate-intent-pending", title="Local candidate intent pending approval",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.REPAIR_ARTIFACT,
+            safe_summary=f"{len(pending)} local-candidate repair intent(s) pending approval.",
+            next_action="remedy patch approve <job_id> <intent_id> --json"))
+    return items
+
+
+def merge_local_candidate_items(ledger: ProgressLedger, runs: list[dict] | None) -> None:
+    """Merge local candidate items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_local_candidate_items(runs):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_provider_verification_items(reports: dict | None) -> list[ProgressItem]:
     """Extract Provider Trust Verification v1 progress items (Step 1556) from persisted
     verification reports. Read-only; fixed item_ids → no duplicates."""
@@ -1358,6 +1411,15 @@ def build_progress_ledger(
         merge_builder_routing_items(ledger, load_builder_routing_traces(scope=scope))
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
+
+    # Automated local candidate generation items from persisted run manifests (Step 1624).
+    if job is not None:
+        try:
+            from packages.orchestration.local_candidate_generator import list_local_candidate_runs
+            mine = [r for r in list_local_candidate_runs() if r.get("job_id") == str(job.id)]
+            merge_local_candidate_items(ledger, mine)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
 
     return ledger
 

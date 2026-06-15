@@ -52,6 +52,7 @@ REQUIRED_SECTIONS = (
     "orchestrator_decision_summary.json",
     "local_advisor_summary.json",
     "builder_routing_summary.json",
+    "local_candidate_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1052,6 +1053,45 @@ def _build_builder_routing_summary(job: Any) -> dict:
                 "error": "builder_routing_unavailable"}
 
 
+def _build_local_candidate_summary(job: Any) -> dict:
+    """Safe Automated Local Candidate Generator v0 summary (Step 1626). Run counts / statuses /
+    trust+verification outcomes / materialized-intent count / model label / duration / safe IDs
+    only — no raw prompt/output, source, diff, logs, secrets, or absolute paths."""
+    try:
+        from packages.orchestration.local_candidate_generator import (
+            list_local_candidate_runs, load_local_candidate_usage,
+        )
+        runs = [r for r in list_local_candidate_runs() if r.get("job_id") == str(job.id)]
+        usage = load_local_candidate_usage(f"job:{job.id}")
+        if not runs:
+            return {"run_count": 0, "latest_status": "none", "status_counts": {},
+                    "materialized_intent_count": 0, "pending_approval_count": 0,
+                    "model_name": "", "duration_ms_total": 0}
+        status_counts: dict[str, int] = {}
+        for r in runs:
+            status_counts[r.get("status", "")] = status_counts.get(r.get("status", ""), 0) + 1
+        pending = [r for r in runs if r.get("status") == "intent_pending_approval" and r.get("intent_id")]
+        latest = runs[-1]
+        return {
+            "run_count": len(runs),
+            "latest_status": latest.get("status", ""),
+            "latest_stop_reason": latest.get("stop_reason", ""),
+            "status_counts": status_counts,
+            "trust_rejected_count": status_counts.get("trust_rejected", 0),
+            "verification_rejected_count": status_counts.get("verification_rejected", 0),
+            "needs_review_count": status_counts.get("needs_review", 0),
+            "materialized_intent_count": len(pending),
+            "pending_approval_count": len(pending),
+            "model_name": latest.get("model_name", ""),
+            "endpoint_label": latest.get("endpoint_label", ""),
+            "duration_ms_total": usage.get("duration_ms_total", 0),
+            "latest_generation_id": latest.get("generation_id", ""),
+            "tokens_used": "unknown",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"run_count": 0, "latest_status": "unknown", "error": "local_candidate_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1459,6 +1499,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("builder_routing_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("builder_routing_summary.json", status="error", error="build failed"))
+
+    # local_candidate_summary.json (Step 1626)
+    try:
+        lcs = _build_local_candidate_summary(job)
+        content = json.dumps(lcs, indent=2).encode()
+        section_data["local_candidate_summary.json"] = content
+        result.sections.append(ReviewBundleSection("local_candidate_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("local_candidate_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

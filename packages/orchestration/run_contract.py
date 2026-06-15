@@ -72,6 +72,13 @@ class ContractAction:
     # a safe trace); report is read-only. Allowed by default.
     BUILDER_ROUTING_DECIDE = "builder_routing_decide"
     BUILDER_ROUTING_REPORT = "builder_routing_report"
+    # Automated Local Candidate Generator v0 (Step 1618) — LOOPBACK-only local model candidate
+    # generation, routing-gated, output goes through Trust Gate + Verification. NOT cloud/external
+    # builder execution (distinct from CLOUD_PROVIDER). status read-only; generate metadata-only
+    # (the model call is local loopback; no apply/approve). Allowed by default; the real switch is
+    # the disabled-by-default generator config + the routing gate.
+    LOCAL_CANDIDATE_GENERATOR_STATUS = "local_candidate_generator_status"
+    LOCAL_CANDIDATE_GENERATE = "local_candidate_generate"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -198,6 +205,8 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.PROVIDER_VERIFICATION_SHOW,
     ContractAction.BUILDER_ROUTING_DECIDE,
     ContractAction.BUILDER_ROUTING_REPORT,
+    ContractAction.LOCAL_CANDIDATE_GENERATOR_STATUS,
+    ContractAction.LOCAL_CANDIDATE_GENERATE,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

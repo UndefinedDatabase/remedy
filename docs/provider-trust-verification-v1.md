@@ -127,3 +127,7 @@ upgrades. Verification reports are safe summaries only.
 [Expensive Builder Routing v0](expensive-builder-routing-v0.md) (now built — local-first routing
 that requires trust + verification before any external builder route) OR Automated Local Candidate
 Generator Adapter v0 — both gated behind request package + trust + verification.
+
+See also: [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — locally-generated
+candidates enter this exact Trust Gate + Verification pipeline (provider label
+`local_candidate_generator:<model>`); no candidate becomes an intent before verification passes.

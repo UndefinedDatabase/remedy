@@ -244,6 +244,17 @@ class TestDashboardShape:
         assert "next_safe_action_label" in br
         assert "buttons" not in br and "actions" not in br
 
+    def test_local_candidate_section_present(self):
+        # Read-only Automated Local Candidate Generator v0 summary (Step 1627).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "local_candidate" in dash
+        lc = dash["local_candidate"]
+        assert "enabled" in lc
+        assert "run_count" in lc
+        assert "pending_approval_count" in lc
+        assert "buttons" not in lc and "actions" not in lc
+
     def test_repair_request_section_present(self):
         # Read-only Repair Request Builder summary (Step 1381).
         job = Job(name="t")

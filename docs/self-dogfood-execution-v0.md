@@ -66,3 +66,4 @@ outputs through the same trust/apply/test/proof gates.
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [repair-request-builder-v0.md](repair-request-builder-v0.md)
 - [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
 - [local-model-advisor-v0.md](local-model-advisor-v0.md) — optional advisory critique of orchestrator decisions (advisory-only; never changes the gated apply path).
+- [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — a self attempt's request package can drive routing-gated local candidate generation (`--self-attempt-id`); output still passes Trust Gate + Verification + human approval.
