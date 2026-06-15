@@ -291,6 +291,96 @@ class TestArchitectureGuards:
 # ---------------------------------------------------------------------------
 
 
+class TestEmittedCommandsRunnable:
+    """R-0088 / R-0089 regression: every emitted next_safe_action must parse against the
+    real CLI catalog/parser (no positional/flag shapes the parser rejects)."""
+
+    @staticmethod
+    def _parse(cmd: str) -> bool:
+        import re as _re
+        from apps.cli.grouped import build_parser
+        # Substitute <placeholder> templates with dummy tokens.
+        cmd = _re.sub(r"<[^>]+>", "X", cmd)
+        parts = cmd.split()
+        assert parts and parts[0] == "remedy", cmd
+        parser = build_parser()
+        try:
+            ns = parser.parse_args(parts[1:])
+        except SystemExit:
+            return False
+        return getattr(ns, "_command_id", None) is not None
+
+    def test_human_review_report_command_runnable(self, env):
+        # Force a human-review route (two verification rejections → loop human review).
+        jid, fid = _make_job(env, related=["docs/g.md"])
+        _add_request_package(env, jid, fid)
+        from packages.orchestration.storage import load_job, save_job
+        job = load_job(UUID(jid), env)
+        job.metadata["repair_attempts_v1"] = _failed_attempt(fid)
+        job.metadata["provider_verifications_v1"] = {
+            "v1": {"decision": "verification_rejected", "candidate_hash": "h1"},
+            "v2": {"decision": "verification_rejected", "candidate_hash": "h2"}}
+        save_job(job, root=env)
+        d = select_builder_routing_decision(_req(jid, fid), data_dir=env)
+        assert d.selected_tier == BuilderRoutingTier.HUMAN_REVIEW_REQUIRED
+        assert "builder-routing report --job-id" in d.next_safe_action
+        assert self._parse(d.next_safe_action)
+
+    def test_no_safe_route_report_command_runnable(self, env):
+        # NO_SAFE_ROUTE on a clean job still emits a runnable next action.
+        jid, _ = _make_job(env, failure=False)
+        d = select_builder_routing_decision(_req(jid), data_dir=env)
+        assert self._parse(d.next_safe_action)
+
+    def test_self_pending_command_runnable(self, env, monkeypatch):
+        # self_attempts_pending branch must emit a valid `self status` (never --job-id).
+        from packages.orchestration import orchestrator_brain as ob
+
+        def _fake_signals(job_id, data_dir, refs):
+            refs.append(ob.OrchestratorEvidenceRef("job", "available", ref=job_id))
+            return {"self_attempts_pending": 1, "self_pending_attempt_id": "att-9",
+                    "failure_ids": [], "pending_intents": [], "approved_intents": []}
+        monkeypatch.setattr(ob, "_gather_signals", _fake_signals)
+        from packages.orchestration.builder_routing import _deterministic_action
+        cmd, ids = _deterministic_action("JOB", {"self_attempts_pending": 1,
+                                                 "self_pending_attempt_id": "att-9"})
+        assert cmd == "remedy self status --attempt-id att-9 --json"
+        assert "--job-id" not in cmd
+        assert self._parse(cmd)
+
+    def test_self_pending_no_id_command_runnable(self):
+        from packages.orchestration.builder_routing import _deterministic_action
+        cmd, _ids = _deterministic_action("JOB", {"self_attempts_pending": 1})
+        assert cmd == "remedy self status --json"
+        assert "--job-id" not in cmd
+        assert self._parse(cmd)
+
+    def test_feature_planner_builder_routing_commands_runnable(self):
+        # Feature planner builder-routing recommendations must parse.
+        from packages.orchestration.feature_planner import build_feature_plan
+        from packages.orchestration.progress_ledger import (
+            ProgressLedger, ProgressItem, ProgressStatus, ProgressSource,
+        )
+        for iid in ("builder-routing-local-candidate", "builder-routing-external-candidate",
+                    "builder-routing-human-review", "builder-routing-blocked"):
+            led = ProgressLedger()
+            led.items.append(ProgressItem(item_id=iid, title=iid, status=ProgressStatus.PLANNED,
+                                          source_type=ProgressSource.FEATURE_SUGGESTION))
+            plan = build_feature_plan(led)
+            cmds = [s.next_action for s in plan.suggestions if s.next_action]
+            assert cmds, f"no suggestion for {iid}"
+            for c in cmds:
+                assert self._parse(c), f"unrunnable: {c}"
+
+    def test_no_unsupported_shapes_in_emitters(self):
+        # Static guard: emitters never use the broken shapes.
+        br = Path("packages/orchestration/builder_routing.py").read_text()
+        fp = Path("packages/orchestration/feature_planner.py").read_text()
+        assert "builder-routing report {job_id}" not in br
+        assert "self status --job-id" not in br
+        assert "builder-routing report <job_id>" not in fp
+
+
 class TestSelectorBasics:
     def test_missing_job_safe(self, env):
         d = select_builder_routing_decision(_req(str(uuid4())), data_dir=env)

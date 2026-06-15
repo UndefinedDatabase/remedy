@@ -333,7 +333,7 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             "Routing recommends a local candidate generator — relay the request package "
             "manually for now; an Automated Local Candidate Generator Adapter is a future block.",
             FeaturePlanSource.ROADMAP,
-            "remedy builder-routing report <job_id> --json",
+            "remedy builder-routing report --job-id <job_id> --json",
         ),
         "builder-routing-external-candidate": (
             "Prepare external candidate generation (manual / enable policy)",
@@ -347,14 +347,14 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             "Builder routing escalated to human review (loop risk / unknown evidence / blocked "
             "generation). A human must decide the next step.",
             FeaturePlanSource.KNOWN_RISK,
-            "remedy builder-routing report <job_id> --json",
+            "remedy builder-routing report --job-id <job_id> --json",
         ),
         "builder-routing-blocked": (
             "Gather evidence (no safe builder route)",
             "Routing found no safe builder route — gather evidence or prepare a repair request "
             "package before any generation.",
             FeaturePlanSource.KNOWN_RISK,
-            "remedy builder-routing report <job_id> --json",
+            "remedy builder-routing report --job-id <job_id> --json",
         ),
         # Provider patch materialization follow-ups (Step 1349). No auto approve/retry.
         "provider-repair-intent-pending-approval": (

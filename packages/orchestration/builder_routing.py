@@ -357,7 +357,12 @@ def _deterministic_action(job_id: str, sig: dict[str, Any]) -> tuple[str, list[s
         vid = sig["verification_needs_review_id"]
         return f"remedy provider verification-show {job_id} {vid} --json", [vid]
     if sig.get("self_attempts_pending", 0) > 0:
-        return f"remedy self status --job-id {job_id} --json", []
+        # self status supports --attempt-id (not --job-id); use it when an id is available,
+        # else the scope-less form. Never emit an unsupported flag.
+        aid = sig.get("self_pending_attempt_id", "")
+        if aid:
+            return f"remedy self status --attempt-id {aid} --json", [aid]
+        return "remedy self status --json", []
     if sig.get("unresolved_failures", 0) > 0 and sig.get("repair_attempts", 0) == 0:
         fa = sig["failure_ids"][0]
         return f"remedy repair propose {job_id} {fa} --json", [fa]
@@ -751,7 +756,8 @@ def _build_options(
 
 
 def _report_cmd(job_id: str) -> str:
-    return f"remedy builder-routing report {job_id} --json" if job_id else "remedy self inspect --json"
+    # builder-routing.report takes --job-id (not positional) per the command catalog.
+    return f"remedy builder-routing report --job-id {job_id} --json" if job_id else "remedy self inspect --json"
 
 
 def _prepare_request_cmd(request: BuilderRoutingRequest) -> str:
