@@ -166,6 +166,49 @@ class TestSubmission:
         sub = submit_external_candidate("nope", _cand_file(env, _SAFE_CAND), "w", data_dir=env)
         assert sub.stop_reason == ExternalSubmissionStopReason.PACKAGE_NOT_FOUND
 
+    def test_public_export_has_no_raw_storage_ref(self, env):
+        # R-0091: raw_storage_ref must never appear in public export / persisted record.
+        jid, _ = _job(env)
+        pkg = create_external_builder_request_package(jid, data_dir=env)
+        sub = submit_external_candidate(pkg.package_id, _cand_file(env, _SAFE_CAND), "w", data_dir=env)
+        assert "raw_storage_ref" not in export_external_submission_json(sub)
+        rec = get_external_submission(sub.submission_id, data_dir=env)
+        assert rec is not None and "raw_storage_ref" not in rec
+        # quarantine_id (safe public pointer) is still present
+        assert rec["quarantine_id"]
+
+    def test_blocked_submission_persisted(self, env):
+        # R-0092: oversized/protected blocked submissions stay in safe history.
+        jid, _ = _job(env)
+        pkg = create_external_builder_request_package(jid, data_dir=env)
+        big = _cand_file(env, "x" * (300 * 1024), name="big.md")
+        sub = submit_external_candidate(pkg.package_id, big, "w", data_dir=env)
+        assert sub.state == ExternalSubmissionState.BLOCKED
+        listed = load_external_submissions(job_id=jid, data_dir=env)
+        rec = next((s for s in listed if s.get("submission_id") == sub.submission_id), None)
+        assert rec is not None
+        assert rec["state"] == ExternalSubmissionState.BLOCKED
+        assert rec["stop_reason"] == ExternalSubmissionStopReason.OVERSIZED
+        assert not rec.get("intent_id")
+        # blocked record carries no raw candidate
+        assert "raw_storage_ref" not in rec
+
+    def test_protected_blocked_persisted(self, env):
+        # R-0092: protected path submission persisted as blocked with the right stop reason.
+        jid, _ = _job(env)
+        pkg = create_external_builder_request_package(jid, data_dir=env)
+        (env / ".env").write_text("SECRET=1")
+        sub = submit_external_candidate(pkg.package_id, str(env / ".env"), "w", data_dir=env)
+        rec = next((s for s in load_external_submissions(job_id=jid, data_dir=env)
+                    if s.get("submission_id") == sub.submission_id), None)
+        assert rec is not None and rec["stop_reason"] == ExternalSubmissionStopReason.PROTECTED_PATH
+
+    def test_missing_package_block_ephemeral(self, env):
+        # R-0092: missing package stays ephemeral (not persisted) — documented.
+        before = len(load_external_submissions(data_dir=env))
+        submit_external_candidate("nope", _cand_file(env, _SAFE_CAND), "w", data_dir=env)
+        assert len(load_external_submissions(data_dir=env)) == before
+
     def test_secret_candidate_trust_rejected_no_echo(self, env):
         jid, _ = _job(env)
         pkg = create_external_builder_request_package(jid, data_dir=env)

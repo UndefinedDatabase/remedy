@@ -190,6 +190,13 @@ class TestBudgetPolicy:
                      BuilderRoutingJustification.BUDGET_AVAILABLE,
                      BuilderRoutingJustification.LOOP_RISK_LOW):
             assert code in d.justification_codes
+        # R-0094: external route points at the External Builder Sandbox package export rail.
+        assert d.next_safe_action.startswith(f"remedy external-builder package-create {jid}")
+        assert "repair request" not in d.next_safe_action
+        # the emitted command must be catalog-valid
+        from apps.cli.grouped import build_parser
+        ns = build_parser().parse_args(d.next_safe_action.split()[1:])
+        assert ns._command_id == "external-builder.package-create"
 
     def test_local_candidate_route_when_enabled(self, env):
         jid, fid = _make_job(env, related=["docs/g.md"])

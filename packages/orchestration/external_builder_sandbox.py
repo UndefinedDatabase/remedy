@@ -152,7 +152,9 @@ class ExternalBuilderCandidateSubmission:
     declared_capabilities: list[str] = field(default_factory=list)
     declared_files_touched: list[str] = field(default_factory=list)
     declared_tests: list[str] = field(default_factory=list)
-    raw_storage_ref: str = ""            # quarantine id — private; never rendered
+    raw_storage_ref: str = ""            # private raw-storage hint (in-memory only; NEVER serialized
+                                         # or exported — R-0091). Equals quarantine_id; use that
+                                         # public field instead.
     public_summary: str = ""
     # Pipeline linkage (all safe IDs).
     quarantine_id: str = ""
@@ -174,7 +176,7 @@ class ExternalBuilderCandidateSubmission:
             "candidate_ref": self.candidate_ref, "metadata": self.metadata,
             "declared_capabilities": self.declared_capabilities,
             "declared_files_touched": [_safe_path_label(f) for f in self.declared_files_touched],
-            "declared_tests": self.declared_tests, "raw_storage_ref": self.raw_storage_ref,
+            "declared_tests": self.declared_tests,
             "public_summary": self.public_summary, "quarantine_id": self.quarantine_id,
             "trust_report_id": self.trust_report_id, "verification_id": self.verification_id,
             "material_id": self.material_id, "intent_id": self.intent_id,
@@ -412,7 +414,11 @@ def _validate_candidate_path(candidate_path: str, max_bytes: int) -> tuple[bool,
     return True, ExternalSubmissionStopReason.OK
 
 
-def _blocked_submission(job_id, package_id, source_label, stop_reason, summary) -> ExternalBuilderCandidateSubmission:
+def _blocked_submission(job_id, package_id, source_label, stop_reason, summary,
+                        data_dir: Path | None = None) -> ExternalBuilderCandidateSubmission:
+    """Build a BLOCKED submission record. When the package + job are valid (data_dir given and
+    job_id set) the blocked record is PERSISTED so the rejection stays in the safe history
+    (R-0092); a missing/invalid package stays ephemeral (no raw candidate is ever stored here)."""
     sub = ExternalBuilderCandidateSubmission(
         submission_id=uuid4().hex[:16], package_id=package_id, job_id=job_id,
         source_label=_sanitize_label(source_label), received_at=_now(),
@@ -420,6 +426,12 @@ def _blocked_submission(job_id, package_id, source_label, stop_reason, summary) 
         public_summary=_scrub_public(summary)[:200],
         next_safe_action=(f"remedy external-builder package-show {package_id} --json"
                           if package_id else "remedy external-builder package-list --json"))
+    sub.candidate_ref = sub.submission_id
+    # Persist evidence-backed blocked submissions (package+job valid). No raw candidate is read or
+    # stored for blocked cases. Missing/invalid package → ephemeral (not persisted).
+    if data_dir is not None and job_id and package_id:
+        _atomic_write(_sub_path(job_id, sub.submission_id, data_dir),
+                      json.dumps(sub.to_dict(), indent=2).encode("utf-8"))
     return sub
 
 
@@ -463,18 +475,21 @@ def submit_external_candidate(
     try:
         job = load_job(UUID(job_id), ddir)
     except (ValueError, JobNotFoundError):
+        # Job missing → cannot scope a persisted record safely; stays ephemeral.
         return _blocked_submission(job_id, package_id, label,
                                    ExternalSubmissionStopReason.JOB_NOT_FOUND, "Job not found.")
     contract = ensure_contract(job)
     if not evaluate_run_action(contract, ContractAction.EXTERNAL_BUILDER_SUBMIT).allowed:
         return _blocked_submission(job_id, package_id, label,
                                    ExternalSubmissionStopReason.CONTRACT_DENIED,
-                                   "Contract denies external builder submission.")
+                                   "Contract denies external builder submission.", data_dir=ddir)
 
     ok, sr = _validate_candidate_path(candidate_path, pkg.max_candidate_bytes)
     if not ok:
+        # Evidence-backed: a rejected (oversized/protected/symlink/traversal/…) submission stays
+        # in the safe history. No raw candidate is read for blocked cases.
         return _blocked_submission(job_id, package_id, label, sr,
-                                   f"Candidate rejected: {sr}.")
+                                   f"Candidate rejected: {sr}.", data_dir=ddir)
 
     # Untrusted ingress through the EXISTING pipeline. The raw file is read + quarantined by
     # intake_provider_repair; this module never reads the raw content itself.

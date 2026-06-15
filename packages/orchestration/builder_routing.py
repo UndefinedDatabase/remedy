@@ -722,7 +722,7 @@ def select_builder_routing_decision(
             return _finalize(d, BuilderRoutingTier.EXTERNAL_CANDIDATE_GENERATOR,
                              BuilderRoutingStopReason.OK,
                              "External candidate generation is justified (recommended; not executed in v0).",
-                             _prepare_request_cmd(request), ddir, persist)
+                             _external_package_cmd(request, d.routing_id), ddir, persist)
         # External wanted but not allowed → human review with the reason.
         return _finalize(d, BuilderRoutingTier.HUMAN_REVIEW_REQUIRED,
                          BuilderRoutingStopReason.BUDGET_EXHAUSTED if "budget" in ext_why else
@@ -794,6 +794,15 @@ def _prepare_request_cmd(request: BuilderRoutingRequest) -> str:
         return (f"remedy repair request {request.job_id} "
                 f"--failure-artifact-id {request.failure_artifact_id} --json")
     return f"remedy repair request {request.job_id} --json"
+
+
+def _external_package_cmd(request: BuilderRoutingRequest, routing_id: str = "") -> str:
+    # External builder route points at the External Builder Sandbox package export (R-0094), not
+    # the old repair-request rail. Export-only; no auto-run, no generation, no provider call.
+    if request.job_id:
+        rid = f" --route-id {routing_id}" if routing_id else ""
+        return f"remedy external-builder package-create {request.job_id}{rid} --json"
+    return _prepare_request_cmd(request)
 
 
 def _generation_next_cmd(request: BuilderRoutingRequest, routing_id: str = "") -> str:
