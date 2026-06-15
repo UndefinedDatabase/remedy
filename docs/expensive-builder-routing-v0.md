@@ -112,3 +112,8 @@ catalog-backed and entity-backed.
   re-enters via Trust Gate + Verification (still approval-gated).
 - **External Builder Adapter v0 / Provider Execution Sandbox v0** — bounded external generation,
   gated behind request package + trust + verification + budget + anti-loop.
+
+See also: [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — when this router
+selects the `local_candidate_generator` tier, it emits `remedy local-candidate generate …` as the
+next action; that adapter runs only if explicitly enabled + routed and routes output through Trust
+Gate + Verification.

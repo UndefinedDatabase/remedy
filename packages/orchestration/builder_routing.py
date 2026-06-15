@@ -680,8 +680,8 @@ def select_builder_routing_decision(
         d.rejected_tiers = [o.to_dict() for o in options
                             if o.tier == BuilderRoutingTier.EXTERNAL_CANDIDATE_GENERATOR]
         return _finalize(d, BuilderRoutingTier.LOCAL_CANDIDATE_GENERATOR, BuilderRoutingStopReason.OK,
-                         "Local candidate generation is justified (recommended; not executed in v0).",
-                         _generation_next_cmd(request), ddir, persist)
+                         "Local candidate generation is justified (recommended).",
+                         _generation_next_cmd(request, d.routing_id), ddir, persist)
 
     # 9. External candidate generation — strict preconditions.
     if pol.allow_external_candidate_generator:
@@ -767,10 +767,16 @@ def _prepare_request_cmd(request: BuilderRoutingRequest) -> str:
     return f"remedy repair request {request.job_id} --json"
 
 
-def _generation_next_cmd(request: BuilderRoutingRequest) -> str:
-    # Generation is NOT built; the safe next action is to relay/import the request package
-    # response through the existing trust+verification flow, or review the routing plan.
-    return _report_cmd(request.job_id)
+def _generation_next_cmd(request: BuilderRoutingRequest, routing_id: str = "") -> str:
+    # When a request package is known, the safe next action is the routing-gated local candidate
+    # generator (it runs only if explicitly enabled + routed; output still goes through Trust Gate
+    # + Verification + human approval). Otherwise prepare a request package first.
+    if request.request_package_id:
+        rid = f" --routing-id {routing_id}" if routing_id else ""
+        job = f" --job-id {request.job_id}" if request.job_id else ""
+        return (f"remedy local-candidate generate "
+                f"--request-package-id {request.request_package_id}{job}{rid} --json")
+    return _prepare_request_cmd(request)
 
 
 # ---------------------------------------------------------------------------

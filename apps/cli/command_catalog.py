@@ -108,6 +108,7 @@ GROUPS: dict[str, GroupDef] = {
     "orchestrator": GroupDef("orchestrator", "Orchestrator", "Main orchestrator brain — evidence-backed next-step decisions (read/metadata-only; no execution)."),
     "local-advisor": GroupDef("local-advisor", "Local Advisor", "Optional local-model advisory critique (loopback-only Ollama; disabled by default; advisory-only, never executes)."),
     "builder-routing": GroupDef("builder-routing", "Builder Routing", "Local-first, budgeted, anti-loop routing policy for when to use deterministic/local/external candidate help (planning-only; never executes)."),
+    "local-candidate": GroupDef("local-candidate", "Local Candidate", "Automated local loopback candidate generation (disabled by default; routing-gated; output goes through Trust Gate + Verification; never auto-applies)."),
     "review": GroupDef("review", "Review", "Reviewer recommendations — suggest, accept, reject follow-up tasks."),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation — list, evaluate, approve, reject, defer."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
@@ -1840,6 +1841,40 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
         related=("builder-routing.decide", "orchestrator.report"),
+    ),
+
+    # ── local-candidate (automated local loopback generation — disabled by default) ──
+    CommandEntry(
+        command_id="local-candidate.status",
+        group_id="local-candidate",
+        subcommand="status",
+        description="Read-only: local candidate generator enabled/availability/budget (loopback only; no raw output).",
+        action_class="read_only",
+        args=(
+            ArgDef("--job-id", "Optional job to scope usage", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("local-candidate.generate", "builder-routing.decide"),
+    ),
+    CommandEntry(
+        command_id="local-candidate.generate",
+        group_id="local-candidate",
+        subcommand="generate",
+        description="Metadata-only: generate a candidate via a routing-gated local loopback model; output goes through Trust Gate + Verification (never auto-applies/approves).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--request-package-id", "Repair request package to generate from", required=False, is_option=True),
+            ArgDef("--job-id", "Job that owns the request package", required=False, is_option=True),
+            ArgDef("--failure-artifact-id", "Failure artifact the candidate targets", required=False, is_option=True),
+            ArgDef("--self-attempt-id", "Self-improvement attempt the candidate targets", required=False, is_option=True),
+            ArgDef("--routing-id", "Builder routing decision that selected local_candidate_generator", required=False, is_option=True),
+            ArgDef("--new", "Force a fresh generation (ignore idempotent reuse)", required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True, requires_permission=False,
+        may_mutate_repo=False, may_execute_commands=False,
+        related=("local-candidate.status", "builder-routing.decide", "provider.verify", "patch.approve"),
     ),
 
     # ── review ───────────────────────────────────────────────────────────

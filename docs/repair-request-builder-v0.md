@@ -82,3 +82,4 @@ package; pass `--new` to force a fresh one.
 - [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts route candidate output through the same request/intake flow.
 - [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — the request package is checked for consistency against the candidate during verification (`--request-package-id`).
 - [expensive-builder-routing-v0.md](expensive-builder-routing-v0.md) — a request package is a hard precondition before any local/external candidate-generation route is recommended.
+- [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — the local candidate generator builds its model prompt from this request package (safe sections only) and requires one to exist.

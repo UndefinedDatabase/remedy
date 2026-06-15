@@ -582,6 +582,37 @@ def _build_provider_trust_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_local_candidate_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Automated Local Candidate Generator v0 summary for the cockpit (Step 1627).
+
+    Status + latest generation state + pending-approval + trust/verification rejection counts only.
+    No buttons, no mutation, no model execution, no raw output."""
+    try:
+        from packages.orchestration.local_candidate_generator import (
+            load_local_candidate_config, list_local_candidate_runs,
+        )
+        cfg = load_local_candidate_config()
+        runs = [r for r in list_local_candidate_runs() if r.get("job_id") == str(job.id)]
+        latest = runs[-1] if runs else None
+        pending = sum(1 for r in runs
+                      if r.get("status") == "intent_pending_approval" and r.get("intent_id"))
+        return {
+            "enabled": cfg.enabled,
+            "run_count": len(runs),
+            "latest_status": (latest or {}).get("status", ""),
+            "pending_approval_count": pending,
+            "trust_rejected_count": sum(1 for r in runs if r.get("status") == "trust_rejected"),
+            "verification_rejected_count": sum(1 for r in runs if r.get("status") == "verification_rejected"),
+            "needs_review_count": sum(1 for r in runs if r.get("status") == "needs_review"),
+            "source": "local_candidate",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"enabled": False, "run_count": "unknown", "latest_status": "",
+                "pending_approval_count": "unknown", "trust_rejected_count": "unknown",
+                "verification_rejected_count": "unknown", "needs_review_count": "unknown",
+                "source": "unavailable"}
+
+
 def _build_builder_routing_section(job: Any) -> dict[str, Any]:
     """Safe read-only Expensive Builder Routing v0 summary for the cockpit (Step 1595).
 
@@ -1031,6 +1062,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "provider_trust": _build_provider_trust_section(job),
         "provider_verification": _build_provider_verification_section(job),
         "builder_routing": _build_builder_routing_section(job),
+        "local_candidate": _build_local_candidate_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
