@@ -1,51 +1,49 @@
-# Plan — Steps 1681-1716: External Builder Sandbox v0
+# Plan — Steps 1717-1756: Worker Registry + User-Selectable Route Policy v0
 
 ## Goal
-First SAFE ingress for EXTERNAL builder work. Remedy can export a safe request package to an
-external worker (Claude/Pi/another agent/human) and ingest the worker's result — but the result
-stays fully UNTRUSTED until it passes the same quarantine → Trust Gate → Verification →
-Materialization → (human) Approval → do_continue path as local candidates. Worker execute,
-Remedy governs.
+Make Remedy a modular Baukasten Mission Control layer: workers are REPLACEABLE specs; the user can
+select/constrain routes (workers, cost tier, risk tier, local/Ollama-first preference). This block
+is the registry + policy + routing-recommendation + safety + visibility layer that later enables
+Model/Route Tournament, real Ollama routing, cost-aware planning, and MemPalace project memory.
 
 ## Core principle
-External builder output is untrusted input. No execution in Remedy. Routing feedback is read-only
-confidence only — never starts work. Approval + apply stay separate.
+Workers execute. Remedy governs. Users choose. Cheap → local/Ollama-first when safe; expensive →
+evidence-based justification. Worker output untrusted until verified. No route silently starts work.
 
 ## Current Step
-1706 — code/tests/docs complete; handoff; reviewer owns verdict; PR HELD
+1741-1756 — REVIEW CLOSURE. Builder feature work (1717-1740) complete @ 73d89b0; audit findings
+R-0095/R-0096/R-0097 fixed. Awaiting parallel Reviewer to set PASS (verdict currently PENDING).
+Builder does NOT set the verdict and does NOT claim merge-ready until Reviewer PASS.
 
 ## Steps
-- [x] 1681: merge closure (PR #67 PASS → main 7cec21c; fresh branch) [user-confirmed merge]
-- [x] 1682: scope contract doc (external-builder-sandbox-v0.md) — anti-goals explicit
-- [x] 1683-1685: models (request package / submission) + safe export + private storage
-- [x] 1688: bridge into existing trust/verification/materialization seams (provider label external_builder:<src>)
-- [x] 1686-1687: CLI package-create/show/list + submit + submission-show/list + evaluate + integrity; catalog; run_contract (no execution)
-- [x] 1689: candidate_quality external-submission evaluation (model/route override; same ceilings)
-- [x] 1690: builder_routing read-only external feedback (poor→human review; never starts work)
-- [x] 1691-1693: progress/feature/review-bundle(28)/cockpit
-- [x] 1695: integrity invariants (no submission without package; no raw markers/abs paths in public)
-- [x] 1696: external-builder-worker-contract-v0 doc
-- [x] 1697-1703,1705: tests (26 unit + 7 CLI + bundle/cockpit; redaction-torture; arch; smoke) + full pytest once (5969 passed)
-- [x] 1704,1706: changed-files table (context.md) + final report
-- [ ] 1707-1716: reserved for reviewer findings (R-0091+)
-
-## Product readiness
-External Builder Sandbox v0 complete: safe request-package export + bounded/protected untrusted
-candidate ingress → existing Trust Gate + Verification + Materialization + human approval; quality
-evaluation of external submissions; read-only routing feedback. No execution/apply/approve/test/
-git/PR. Readiness ~85% (ingress rail complete; tournament harness deferred). Next: Model/Route
-Tournament Harness v0 (only if this block PASS).
+- [x] 1717: merge closure (PR #68 PASS → main a290238; fresh branch) + reconcile existing `worker`
+      group collision (registry surfaced as `worker registry-*` + `route-policy`); Tournament deferred
+- [x] 1718: architecture doc (worker-registry-route-policy-v0.md) — anti-goals explicit
+- [x] 1719-1722,1724: worker_registry.py core (WorkerSpec/RoutePolicy + enums + built-ins + storage +
+      evaluate_worker_selection + token/cost band scoring)
+- [x] 1723: builder_routing integration (user selection/blocked/disabled/cost/risk/local-Ollama pref;
+      recommendation only; catalog-valid next actions; no-op under default policy)
+- [x] 1725-1726: CLI (worker registry-list/registry-show/registry-integrity + route-policy show/set/
+      evaluate) + catalog + run_contract actions (read_only/write_metadata; no may_execute)
+- [x] 1727-1731: progress_ledger + feature_planner + review_bundle section (29) + ui_server cockpit + integrity
+- [x] 1732: user-facing route policy doc (worker-route-policy-user-guide-v0.md)
+- [x] 1733-1737: tests (unit/routing/CLI/bundle/cockpit/integrity) + architecture import guards
+- [x] 1738-1739: targeted suites green → full suite once (6033 passed/8 skipped/1 deselected)
+- [x] 1740: final handoff report
+- [~] 1741-1756: reviewer findings closure — R-0095 (hard-safety approval cannot be weakened),
+      R-0096 (integrity flags unsafe approval/unknown-cost/placeholder), R-0097 (plan.md reconciled)
+      FIXED with Done markers + regression tests; awaiting Reviewer Resolved + PASS
 
 ## Hard rules
-- NO provider/model calls, network, browser, subprocess, shell=True.
-- NO apply / approve / reject / test-run / git / PR / merge.
-- NO automatic generation / repair / materialization-without-existing-approval-gates.
-- External output ALWAYS untrusted; raw candidate quarantined privately, never rendered.
-- Routing feedback only influences confidence/recommendation, never starts work.
-- No raw prompt/candidate/diff/stdout/stderr/traceback/secrets/abs paths in public surfaces.
-- Every next_safe_action catalog-backed + entity-backed.
-- Tests via scripts/remedy_pytest.sh; full suite at most once at end. No background pytest.
+- NO provider/model/Ollama/cloud calls, network, browser, subprocess, shell=True.
+- NO apply/approve/reject/test-run/git/PR/merge; NO automatic generation/repair; NO worker execution.
+- Disabled/blocked workers never recommended/selected. Unknown cost never "cheap".
+- Expensive/cloud/unknown route requires human-facing justification.
+- local/Ollama preference cannot override safety/missing capability. Ollama/cloud = placeholders.
+- No raw prompts/secrets/abs paths/raw model output in any public surface.
+- Every next_safe_action catalog-backed + entity-backed. Tests via scripts/remedy_pytest.sh; full once.
 - NO PR unless the user explicitly asks.
 
 ## Next block
-Model/Route Tournament Harness v0 (only if this block PASS).
+Token Economy + Context Budget Optimizer v0 (or Model/Route Tournament Harness v0 if route evidence
+is sufficient) — only after this block PASS.

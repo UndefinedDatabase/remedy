@@ -101,6 +101,53 @@ _EXTERNAL_REQUIRED_JUSTIFICATIONS = (
     BuilderRoutingJustification.LOOP_RISK_LOW,
 )
 
+# Worker Registry route-policy bridge (Step 1723). Maps a routing tier to the registry worker it
+# would use, so a user RoutePolicy that blocks/disables that worker (or caps cost/risk) can
+# escalate the route to human review. READ-ONLY: this never executes a worker and is a no-op under
+# the default policy (which blocks nothing and selects nothing).
+_TIER_TO_WORKER_ID: dict[str, str] = {
+    BuilderRoutingTier.LOCAL_CANDIDATE_GENERATOR: "local.candidate_generator",
+    BuilderRoutingTier.EXTERNAL_CANDIDATE_GENERATOR: "external.builder_package",
+}
+
+
+def _route_policy_blocks_tier(job_id: str, tier: str, data_dir: Path) -> tuple[bool, str]:
+    """Return (blocked, reason) if a persisted user RoutePolicy would block the worker this tier
+    maps to. No-op (False) when no constraining policy exists. READ-ONLY; never executes."""
+    worker_id = _TIER_TO_WORKER_ID.get(tier, "")
+    if not worker_id or not job_id:
+        return False, ""
+    try:
+        from packages.orchestration.worker_registry import (
+            load_route_policy, load_worker_registry, evaluate_worker_selection,
+            WorkerSelectionRequest, get_worker_spec,
+        )
+        pol = load_route_policy(job_id, data_dir)
+        # Only a policy that actually constrains anything can block — keep default behaviour intact.
+        constrains = bool(pol.blocked_worker_ids or pol.blocked_worker_kinds
+                          or pol.allowed_worker_kinds or pol.user_selected_worker_ids)
+        if not constrains:
+            return False, ""
+        registry = load_worker_registry(data_dir)
+        spec = get_worker_spec(worker_id, registry)
+        if spec is None:
+            return False, ""
+        result = evaluate_worker_selection(
+            WorkerSelectionRequest(job_id=job_id, task_type="repair", user_requested_worker_id=""),
+            policy=pol, registry=registry, data_dir=data_dir)
+        eligible_ids = {c.worker_id for c in result.eligible_candidates}
+        # If the user selected a DIFFERENT worker, or this tier's worker is not eligible under the
+        # policy, the route is constrained → escalate to human review (recommendation only).
+        if pol.user_selected_worker_ids and worker_id not in pol.user_selected_worker_ids:
+            return True, (f"route policy selects {pol.user_selected_worker_ids[0]}, not "
+                          f"{worker_id} — human review before routing this tier.")
+        if worker_id not in eligible_ids:
+            return True, (f"route policy blocks/disables worker '{worker_id}' for this route — "
+                          "human review or adjust the policy.")
+        return False, ""
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return False, ""
+
 
 # ---------------------------------------------------------------------------
 # Models (Step 1574) — no raw content fields anywhere.
@@ -676,6 +723,14 @@ def select_builder_routing_decision(
 
     # 8. Local candidate generation (recommended only — never executed).
     if pol.allow_local_candidate_generator and _budget_allows_local(budget):
+        # User RoutePolicy gate (Step 1723): if the user blocked/disabled the local worker or
+        # selected a different one, escalate to human review. Read-only; no-op under default policy.
+        blocked_local, why_local = _route_policy_blocks_tier(
+            request.job_id, BuilderRoutingTier.LOCAL_CANDIDATE_GENERATOR, ddir)
+        if blocked_local:
+            return _finalize(d, BuilderRoutingTier.HUMAN_REVIEW_REQUIRED,
+                             BuilderRoutingStopReason.CONTRACT_DENIED, why_local,
+                             _route_policy_cmd(request.job_id), ddir, persist)
         # Candidate Quality feedback (Step 1653): repeated poor quality for this route lowers
         # confidence → escalate to human review instead of recommending more generation. Read-only;
         # NEVER triggers generation. Unknown quality is neutral (does not block).
@@ -700,6 +755,14 @@ def select_builder_routing_decision(
 
     # 9. External candidate generation — strict preconditions.
     if pol.allow_external_candidate_generator:
+        # User RoutePolicy gate (Step 1723): if the user blocked/disabled the external worker or
+        # selected a different one, escalate to human review. Read-only; no-op under default policy.
+        blocked_ext, why_ext = _route_policy_blocks_tier(
+            request.job_id, BuilderRoutingTier.EXTERNAL_CANDIDATE_GENERATOR, ddir)
+        if blocked_ext:
+            return _finalize(d, BuilderRoutingTier.HUMAN_REVIEW_REQUIRED,
+                             BuilderRoutingStopReason.CONTRACT_DENIED, why_ext,
+                             _route_policy_cmd(request.job_id), ddir, persist)
         # External builder quality feedback (Step 1690): poor external-route history escalates to
         # human review. Read-only; NEVER starts a worker or generation. Unknown history is neutral.
         try:
@@ -787,6 +850,12 @@ def _build_options(
 def _report_cmd(job_id: str) -> str:
     # builder-routing.report takes --job-id (not positional) per the command catalog.
     return f"remedy builder-routing report --job-id {job_id} --json" if job_id else "remedy self inspect --json"
+
+
+def _route_policy_cmd(job_id: str) -> str:
+    # Catalog-valid route-policy inspection (Step 1723) — the safe next action when a user route
+    # policy constrains a route. Read-only; never executes a worker.
+    return f"remedy route-policy show {job_id} --json" if job_id else "remedy worker registry-list --json"
 
 
 def _prepare_request_cmd(request: BuilderRoutingRequest) -> str:

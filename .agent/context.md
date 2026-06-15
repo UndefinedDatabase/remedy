@@ -1,79 +1,101 @@
 # Context
 
 ## Active Branch
-feature/steps-1681-1716-external-builder-sandbox-v0 (forked from clean main at 7cec21c after
-PR #67 merged Local Candidate Quality Evaluation v1). No drift.
+feature/steps-1717-1756-worker-registry-route-policy-v0 (forked from clean main at a290238 after
+PR #68 merged External Builder Sandbox v0). No drift.
 
-## Mainline reconciliation (Step 1681)
-- PR #67 MERGED → main (user-confirmed). Current main commit: 7cec21c.
-- Local Candidate Quality Evaluation v1 landed: candidate_quality.py (evidence-based scorecards;
-  no success without proof; routing feedback read-only). `remedy candidate-quality evaluate/show/
-  scorecard/report/integrity`. Reviewer verdict PASS @ 600304e. Full suite 5927 passed.
+## Mainline reconciliation (Step 1717)
+- PR #68 MERGED → main (user-confirmed: "PR + merge, then branch"). Current main commit: a290238.
+- External Builder Sandbox v0 (1681-1716) landed: external_builder_sandbox.py (safe request-package
+  export + bounded/protected untrusted candidate ingress → existing Trust/Verification pipeline;
+  raw_storage_ref never public). `remedy external-builder package-create/show/list/submit/
+  submission-show/list/evaluate/integrity`. Reviewer verdict PASS @ 993781f. Full suite 5973 passed.
+- Carried risks reconciled below. No feature code committed before merge closure.
 
 ## Scope
-Steps 1681-1716: External Builder Sandbox v0 — first SAFE ingress for EXTERNAL builder work:
-safe request-package export + quarantined untrusted-candidate intake + bridge into existing
-Trust/Verification/Candidate-Quality seams. NOT an external agent runner / provider integration.
+Steps 1717-1756: Worker Registry + User-Selectable Route Policy v0 — the modular Baukasten layer
+that models workers as REPLACEABLE specs and lets the user constrain/select routes (workers,
+cost tier, risk tier, local/Ollama-first preference). Metadata + policy + routing recommendation +
+safety + CLI visibility ONLY. NOT worker/provider/model/Ollama execution.
 
 ## Core principle
-External builder output is untrusted input. Worker execute, Remedy governs. No execution in
-Remedy. Routing feedback is read-only confidence only. Approval + apply stay separate.
+Workers execute. Remedy governs. Users choose or constrain workers/routes. Cheap work prefers
+local/Ollama-capable routes when safe; expensive models need evidence-based justification. Every
+worker output stays UNTRUSTED until verified. No route silently starts work. Token + context
+retention are first-class product concerns.
+
+## Existing-system reconciliation (important — read before coding)
+There is a PRE-EXISTING `worker` CLI group backed by `worker_adapters.py`
+(`WorkerProviderSpec`: provider_id/display_name/supported_roles/execution_mode/status) +
+`worker_recommend.py` + `worker_queue.py` (the legacy provider-catalog + execution-ish layer;
+`worker run` executes a local loop). That taxonomy describes PROVIDERS.
+This block adds a DISTINCT, richer route-policy taxonomy in `worker_registry.py`
+(`WorkerSpec` with kind/cost/risk/execution-mode/token/context/output-contract + `RoutePolicy`).
+To avoid breaking the existing `worker list`/`worker show` (and their tests), the new registry is
+surfaced as NON-colliding subcommands `worker registry-list` / `worker registry-show` plus the new
+`route-policy` group. The two worker views coexist intentionally; a future block may unify them.
+Model/Route Tournament is DEFERRED until this Worker Registry exists.
 
 ## Carried residual risks
-- External builder EXECUTION still not built (this block is INGRESS only; no runner/provider).
-- Cloud provider execution not built.
+- Worker/provider/Ollama/cloud EXECUTION still not built (this block is metadata + policy only).
+- External builder EXECUTION not built (ingress only, from 1681-1716).
+- Token/cost figures are ESTIMATED bands only — no real pricing, no provider pricing calls.
 - Broader source patch materialization deferred (apply path .md-only).
-- Self overnight not built; cleanup/retention automation not built.
 - Regex/entropy scanning can miss novel secret formats (R-0083 lineage).
 - Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
 - UI `npm run lint` pre-existing TS parser/dependency blocker (no deps allowed).
+- Legacy `worker` group (worker_adapters/worker_queue) and the new registry coexist (see above).
 
-## External Builder Sandbox constraints (block 1681-1716)
-- NO provider/model calls, network, browser, subprocess, shell=True.
+## Worker Registry + Route Policy constraints (block 1717-1756)
+- NO provider/model/Ollama/cloud calls, network, browser, subprocess, shell=True.
 - NO apply/approve/reject/test-run/git/PR/merge; NO automatic generation/repair.
-- External output ALWAYS untrusted → quarantined privately → same Trust Gate + Verification +
-  Materialization + human Approval + do_continue path as local candidates. Raw candidate never rendered.
-- Routing feedback only influences confidence/recommendation; never starts work.
-- No raw prompt/candidate/diff/stdout/stderr/traceback/secrets/abs paths in public reports/bundles/
-  scorecards/UI/CLI JSON. Bounded candidate size; symlink/traversal/protected/binary rejected safely.
-- Every next_safe_action catalog-backed + entity-backed. NO PR unless user explicitly asks.
+- NO worker execution: registry/policy are metadata; routing emits recommendation + next_safe_action.
+- Disabled/blocked workers can never be recommended/selected. Unknown cost is never treated as cheap.
+- Expensive/cloud/unknown route requires explicit human-facing justification.
+- local/Ollama preference cannot override safety or missing capability.
+- No raw prompts/secrets/abs paths/raw model output in any public surface (CLI JSON, bundle, cockpit).
+- Every next_safe_action catalog-backed + entity-backed. NO PR unless the user explicitly asks.
+- Ollama/cloud workers are PLACEHOLDERS — metadata-only, clearly non-executable.
 
 ## Foundation reused
-- provider_trust.intake_provider_repair (quarantine→trust→verification→materialize) via provider
-  label `external_builder:<source_label>`; _scrub_public for redaction; read_intake_input bounds.
-- candidate_quality.evaluate_candidate_quality (+ optional model/route override for external source).
-- builder_routing.route_quality_feedback (read-only confidence).
-- local_candidate_generator private-storage/CLI patterns; run_contract; command_catalog/grouped CLI.
-- progress_ledger.merge_*, feature_planner, review_bundle (REQUIRED_SECTIONS +external_builder_summary.json), ui_server cockpit.
+- provider_trust._scrub_public / _safe_path_label for redaction; data_paths.resolve_data_root;
+  atomic-write + 0o700/0o600 private-storage pattern (mirrors external_builder_sandbox.py).
+- builder_routing.select_builder_routing_decision (registry-aware constraints layered in, read-only).
+- candidate_quality.route_quality_feedback (read-only confidence) reused unchanged.
+- run_contract ContractAction + _DEFAULT_ALLOWED_ACTIONS; command_catalog/grouped CLI;
+  progress_ledger.merge_*, feature_planner, review_bundle REQUIRED_SECTIONS, ui_server cockpit.
 
 ## Resource safety (standing)
-- No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite once
-  at block end with `-k "not test_full_chain_order"`. No shell=True, no subprocess (except CLI runtime tests).
+- No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite once at block
+  end with `-k "not test_full_chain_order"`. No shell=True, no subprocess (except CLI runtime tests).
 
-## Changed files (Steps 1681-1716) — File | What changed | Why
+## Changed files (Steps 1717-1756) — File | What changed | Why
 | File | What changed | Why |
 |---|---|---|
-| packages/orchestration/external_builder_sandbox.py | NEW core: request-package + submission models, safe export (idempotent), private storage, bounded/protected intake → existing trust/verification bridge, integrity | the untrusted ingress rail |
-| packages/orchestration/run_contract.py | external_builder_package/submit/show actions (default-allowed, non-exec) | contract gate |
-| apps/cli/commands/external_builder_cmd.py | NEW package-create/show/list, submit, submission-show/list, evaluate, integrity handlers | CLI surface |
-| apps/cli/commands/__init__.py | register external_builder_cmd | wire handlers |
-| apps/cli/command_catalog.py | external-builder group + 8 entries (create/submit/evaluate write_metadata; rest read_only; no may_execute) | catalog-backed |
-| packages/orchestration/candidate_quality.py | evaluate_candidate_quality model_label/route_tier overrides for external source | external submissions scored by external route/source |
-| packages/orchestration/builder_routing.py | external branch consults route_quality_feedback → escalate on poor external history (read-only; no auto-run) | external routing feedback |
-| packages/orchestration/progress_ledger.py | extract/merge_external_builder_items (fixed item_ids) | surface ingress, no fake "running" |
-| packages/orchestration/feature_planner.py | 3 external-builder rules (approve/route-contract-review) | evidence-based suggestions, no new exec |
-| packages/orchestration/review_bundle.py | REQUIRED_SECTIONS 27→28 + _build_external_builder_summary | bundle safe summary |
-| packages/orchestration/ui_server.py | _build_external_builder_section cockpit (live=false) | read-only, no buttons/run-button |
-| tests/orchestration/test_external_builder_sandbox.py | NEW 26 tests (package/submission/quality/integrity/smoke/arch/redaction-torture) | coverage |
-| tests/cli/test_external_builder_cli.py | NEW 7 subprocess tests | CLI runtime |
-| tests/orchestration/test_review_bundle.py | REQUIRED_SECTIONS==28 + assert | bundle test |
-| tests/ui_server/test_dashboard_cockpit_truth.py | test_external_builder_section_present | cockpit test |
-| docs/external-builder-sandbox-v0.md, docs/external-builder-worker-contract-v0.md | NEW docs (scope contract + worker contract) | document rail + anti-goals |
-| .agent/context.md, .agent/plan.md | reconciliation + readiness + changed-files table | handoff |
+| packages/orchestration/worker_registry.py | NEW core: WorkerSpec/RoutePolicy models + enums; deterministic built-in registry (7 specs); safe policy storage (atomic 0o600); evaluate_worker_selection (read-only); token/cost ESTIMATE band helpers; worker_registry_integrity | the Baukasten registry + policy layer |
+| packages/orchestration/run_contract.py | WORKER_REGISTRY_SHOW / ROUTE_POLICY_SHOW/SET/EVALUATE actions (default-allowed, non-exec) | contract gate |
+| apps/cli/commands/route_policy_cmd.py | NEW handlers: worker registry-list/show/integrity + route-policy show/set/evaluate | CLI surface |
+| apps/cli/commands/__init__.py | register route_policy_cmd (import + loop) | wire handlers |
+| apps/cli/command_catalog.py | route-policy group + worker registry-list/show/integrity + route-policy show/set/evaluate entries (read_only/write_metadata; no may_execute) | catalog-backed |
+| apps/cli/grouped.py | store_true branches for the 3 route-policy flags | arg parsing |
+| packages/orchestration/builder_routing.py | _route_policy_blocks_tier + _route_policy_cmd; local/external finalize escalate to human review when a user policy blocks/reselects the worker (no-op under default) | user route policy honored read-only |
+| packages/orchestration/progress_ledger.py | extract/merge_worker_registry_items + build_progress_ledger wiring | surface registry/policy honestly (no fake running) |
+| packages/orchestration/feature_planner.py | item-id driven worker-registry suggestions (tournament/ollama/expensive/token) | evidence-based, user-choice, no auto-build |
+| packages/orchestration/review_bundle.py | REQUIRED_SECTIONS 28→29 + _build_worker_registry_summary | safe bundle summary |
+| packages/orchestration/ui_server.py | _build_worker_registry_section cockpit (live=false; no buttons) | read-only cockpit |
+| tests/orchestration/test_worker_registry.py | NEW 30 tests (model/builtins/policy/selection/token/integrity/redaction/arch-guards) | coverage |
+| tests/orchestration/test_worker_route_integration.py | NEW 10 tests (routing constraint/ledger/planner/bundle/cockpit) | integration coverage |
+| tests/cli/test_route_policy_cli.py | NEW 11 subprocess tests | CLI runtime |
+| tests/orchestration/test_review_bundle.py | REQUIRED_SECTIONS==29 + worker_registry assert | bundle test |
+| tests/ui_server/test_dashboard_cockpit_truth.py | test_worker_registry_section_present | cockpit test |
+| docs/worker-registry-route-policy-v0.md, docs/worker-route-policy-user-guide-v0.md | NEW architecture + user-facing docs (anti-goals explicit) | document layer + non-goals |
+| .agent/context.md, .agent/plan.md | reconciliation + changed-files table | handoff |
 
 ## Status
-Steps 1681-1716 COMPLETE (builder). Full pytest 5969 passed, 8 skipped, 1 deselected (exit 0).
-Builder self-run counts; parallel reviewer owns the live_review verdict (PENDING). NO PR.
+Steps 1717-1756 builder work COMPLETE. Full pytest 6033 passed, 8 skipped, 1 deselected (exit 0).
+worker registry-integrity passed (0 violations). Parallel reviewer owns the live_review verdict
+(PENDING at handoff). Reviewer findings start at R-0095. NO PR until the user explicitly asks.
 
 ## Next block
-Model/Route Tournament Harness v0 (only if this block PASS).
+Token Economy + Context Budget Optimizer v0 — or Model/Route Tournament Harness v0 if the registry
+reveals enough route evidence (only after this block PASS).
