@@ -124,5 +124,6 @@ upgrades. Verification reports are safe summaries only.
 
 ## Next
 
-[Expensive Builder Routing v0](expensive-builder-routing-v0-plan.md) OR Automated Candidate
+[Expensive Builder Routing v0](expensive-builder-routing-v0.md) (now built — local-first routing
+that requires trust + verification before any external builder route) OR Automated Local Candidate
 Generator Adapter v0 — both gated behind request package + trust + verification.

@@ -326,6 +326,36 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.KNOWN_RISK,
             "remedy provider verification-show <job_id> <verification_id> --json",
         ),
+        # Expensive Builder Routing v0 follow-ups (Step 1593). Routing recommends only;
+        # nothing is executed/generated/approved automatically.
+        "builder-routing-local-candidate": (
+            "Set up local candidate generation (future)",
+            "Routing recommends a local candidate generator — relay the request package "
+            "manually for now; an Automated Local Candidate Generator Adapter is a future block.",
+            FeaturePlanSource.ROADMAP,
+            "remedy builder-routing report --job-id <job_id> --json",
+        ),
+        "builder-routing-external-candidate": (
+            "Prepare external candidate generation (manual / enable policy)",
+            "Routing recommends an external candidate generator — prepare/relay the request "
+            "package manually or enable the external policy. External execution is not built.",
+            FeaturePlanSource.ROADMAP,
+            "remedy repair request <job_id> --json",
+        ),
+        "builder-routing-human-review": (
+            "Human review required by routing",
+            "Builder routing escalated to human review (loop risk / unknown evidence / blocked "
+            "generation). A human must decide the next step.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy builder-routing report --job-id <job_id> --json",
+        ),
+        "builder-routing-blocked": (
+            "Gather evidence (no safe builder route)",
+            "Routing found no safe builder route — gather evidence or prepare a repair request "
+            "package before any generation.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy builder-routing report --job-id <job_id> --json",
+        ),
         # Provider patch materialization follow-ups (Step 1349). No auto approve/retry.
         "provider-repair-intent-pending-approval": (
             "Approve or reject the materialized provider repair",

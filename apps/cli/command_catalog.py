@@ -107,6 +107,7 @@ GROUPS: dict[str, GroupDef] = {
     "self": GroupDef("self", "Self", "Self-dogfood — inspect Remedy's own evidence and propose self-improvement tasks (read/metadata-only)."),
     "orchestrator": GroupDef("orchestrator", "Orchestrator", "Main orchestrator brain — evidence-backed next-step decisions (read/metadata-only; no execution)."),
     "local-advisor": GroupDef("local-advisor", "Local Advisor", "Optional local-model advisory critique (loopback-only Ollama; disabled by default; advisory-only, never executes)."),
+    "builder-routing": GroupDef("builder-routing", "Builder Routing", "Local-first, budgeted, anti-loop routing policy for when to use deterministic/local/external candidate help (planning-only; never executes)."),
     "review": GroupDef("review", "Review", "Reviewer recommendations — suggest, accept, reject follow-up tasks."),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation — list, evaluate, approve, reject, defer."),
     "dev": GroupDef("dev", "Dev", "Developer utilities."),
@@ -1801,6 +1802,44 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
         related=("local-advisor.status", "orchestrator.decide"),
+    ),
+
+    # ── builder-routing (local-first routing policy — planning only) ───────
+    CommandEntry(
+        command_id="builder-routing.decide",
+        group_id="builder-routing",
+        subcommand="decide",
+        description="Select ONE local-first builder routing tier + persist a safe trace (planning only; never executes/generates).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--job-id", "Optional job to scope routing", required=False, is_option=True),
+            ArgDef("--failure-artifact-id", "Failure artifact to route for", required=False, is_option=True),
+            ArgDef("--self-attempt-id", "Self-improvement attempt to route for", required=False, is_option=True),
+            ArgDef("--request-package-id", "Repair request package id", required=False, is_option=True),
+            ArgDef("--orchestrator-decision-id", "Linked orchestrator decision id", required=False, is_option=True),
+            ArgDef("--user-requested", "Mark that a human explicitly requested builder help", required=False, is_option=True, default="false"),
+            ArgDef("--new", "Force a fresh routing decision (ignore idempotent reuse)", required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True, requires_permission=False,
+        may_mutate_repo=False, may_execute_commands=False,
+        related=("builder-routing.report", "orchestrator.decide", "repair.request"),
+    ),
+    CommandEntry(
+        command_id="builder-routing.report",
+        group_id="builder-routing",
+        subcommand="report",
+        description="Read-only: builder routing report (situation/need/local-first/justification/budget/loop/next action).",
+        action_class="read_only",
+        args=(
+            ArgDef("--job-id", "Optional job to scope routing", required=False, is_option=True),
+            ArgDef("--failure-artifact-id", "Failure artifact to route for", required=False, is_option=True),
+            ArgDef("--self-attempt-id", "Self-improvement attempt to route for", required=False, is_option=True),
+            ArgDef("--markdown", "Render as markdown", required=False, is_option=True, default="false"),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("builder-routing.decide", "orchestrator.report"),
     ),
 
     # ── review ───────────────────────────────────────────────────────────

@@ -232,6 +232,18 @@ class TestDashboardShape:
         # No buttons / mutation surface.
         assert "buttons" not in pv and "actions" not in pv
 
+    def test_builder_routing_section_present(self):
+        # Read-only Expensive Builder Routing v0 summary (Step 1595).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "builder_routing" in dash
+        br = dash["builder_routing"]
+        assert "routing_decision_count" in br
+        assert "latest_tier" in br
+        assert "external_builder_recommended" in br
+        assert "next_safe_action_label" in br
+        assert "buttons" not in br and "actions" not in br
+
     def test_repair_request_section_present(self):
         # Read-only Repair Request Builder summary (Step 1381).
         job = Job(name="t")

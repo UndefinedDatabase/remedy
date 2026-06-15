@@ -1,53 +1,51 @@
-# Plan — Steps 1537-1572: Provider Trust Verification v1
+# Plan — Steps 1573-1608: Expensive Builder Routing v0
 
 ## Goal
-Second-stage verification of UNTRUSTED external candidate output before/during
-materialization into pending repair intents. Trust Gate = safe to ingest.
-Verification = plausible, relevant, bounded, worthy of becoming a pending intent.
-Approval + apply stay separate. No provider/model/patch/test/approval/PR/git execution.
+Local-first, budgeted, anti-loop ROUTING/POLICY for *when* Remedy should use deterministic
+logic, local advisory, local candidate generation, or expensive external builder generation.
+Routing/policy/planning ONLY — no execution, no provider/cloud calls, no candidate generation,
+no intent/ProposedTask creation. May define future adapter contracts, budgets, decision records.
 
 ## Core principle
-Trust checks SAFE-to-ingest. Verification checks PLAUSIBLE/RELEVANT/BOUNDED/WORTHY.
-Accepted ≠ verified ≠ approved ≠ applied. Evidence is truth. Model critique only.
+LLMs advise or build candidates. The orchestrator controls. Evidence is truth. Local first when
+useful. Expensive builders only when targeted, budgeted, and bounded. No loops.
 
 ## Current Step
-1566-1572 — code/tests/docs complete; live review + handoff; PR HELD
+1603-1608 — code/tests/docs complete; live review + handoff; PR HELD
 
 ## Steps
-- [x] 1537: mainline reconciliation (advisor PR #63 merged; main 50ea930; scope 1537-1572)
-- [x] 1538-1539: verification models + finding taxonomy (20 canonical + 6 scanner codes, 4 severities)
-- [x] 1540-1546: checks — consistency / failure+self relevance / overclaim / minimality / testability / loop risk / secret-entropy
-- [x] 1547: verification decision rules (passed/needs_review/rejected/incomplete)
-- [x] 1548-1549: intake/materialization integration + safe report persistence (private report.json)
-- [x] 1550-1553: CLI verify/verification-show + catalog + run_contract actions
-- [x] 1554: orchestrator integration (recommend verify; escalate needs-review/repeat-rejection)
-- [x] 1555: local-advisor critique hook — DEFERRED + documented (forward seam advisor_critique=None)
-- [x] 1556-1559: progress/feature/review-bundle(24)/cockpit integrations
-- [x] 1560-1565: tests (27 unit + 7 CLI + cockpit + bundle) + targeted + full pytest once (5812 passed)
-- [x] 1564,1571: docs (verification-v1 + expensive-builder-routing-v0-plan + 5 updates)
-- [x] 1566-1570: live review + readiness + PR discipline + final handoff
-- [x] 1572: merge discipline — NO PR unless user explicitly asks
+- [x] 1573: mainline reconciliation (verification PR #64 merged; main d22e1dd; scope 1573-1608)
+- [x] 1574-1575: routing models + policy (tiers, budget, risk, evidence, stop reasons)
+- [x] 1576-1577: routing inputs (safe summaries) + candidate-generation need detector
+- [x] 1578-1579: local-first decision rules + expensive builder justification codes
+- [x] 1580-1581: budget model + loop governor integration
+- [x] 1582-1583: routing decision selector + safe trace persistence (idempotent)
+- [x] 1584-1587: CLI decide/report + catalog + run_contract actions
+- [x] 1588-1591: orchestrator / local-advisor / verification / self-dogfood integration (consumed by selector)
+- [x] 1592-1595: progress / feature / review-bundle(25) / cockpit integrations
+- [x] 1596-1602: tests (18 unit + 7 CLI + bundle/cockpit) + targeted + full pytest once (5846 passed)
+- [x] 1601: docs (expensive-builder-routing-v0 + 4 updates)
+- [x] 1603-1606: live review + readiness + PR discipline + handoff
+- [x] 1608: merge discipline — NO PR unless user explicitly asks
 
-## Product readiness (Step 1567)
-External candidates now pass Trust AND Verification before materialization/intent. Unsafe/
-unverified accepted candidates create NO intent. Overclaim/unrelated/repeated-failed candidates
-are caught. Local advisor can critique only (deferred). Expensive builder routing is now safer
-to build next (output safety solved; cost/loop/justification remain). Direct provider execution
-still not built. Readiness ~88% (verification rail complete; advisor critique hook + expensive
-routing deferred).
+## Product readiness (Step 1604)
+Remedy can now DECIDE when builder help is justified: deterministic-first, local-advisor before
+expensive, local/external candidate generation only when targeted + budgeted + bounded + trust/
+verification available + low loop risk. Local-first + anti-loop routing exists. Expensive builders
+are STILL NOT executed (routing produces a plan/trace, never a call). Readiness ~85% (routing rail
+complete; actual local/external candidate generators deferred). Next: Automated Local Candidate
+Generator Adapter v0 OR External Builder Adapter / Provider Execution Sandbox v0.
 
 ## Hard rules
-- Unsafe/unverified accepted candidates MUST NOT create pending intents (prefer verify-before-intent).
-- No provider/model execution, cloud API, external network, browser, subprocess (except CLI runtime tests).
-- No automatic apply/approval/repair-loop/PR/merge/git-commit-gate/background orchestration.
-- No provider SDK imports; no shell=True; no dependency upgrades; no MCP; no UI mutation buttons.
-- Verification reports = safe summaries only: NO raw provider output/diff/source/stdout/stderr/
-  artifact-body/secrets/tracebacks/abs paths.
-- Verification cannot approve/apply/test/create PRs.
-- Local advisor (if used) = critique only; can only lower confidence / add human-review; cannot pass/reject.
-- Overclaim + unrelated + repeated-failed candidates must not pass silently.
-- Every next_safe_action exists in command catalog + references real entities.
-- NO PR unless user explicitly asks (Step 1572).
+- Routing/policy/planning ONLY. No routing result executes anything; none creates Patch Intents/ProposedTasks.
+- No external provider/cloud execution, no automated candidate generation, no network, no browser, no subprocess (except CLI runtime tests), no provider SDK.
+- No auto apply/approval/repair-loop/PR/merge/git-commit-gate/background orchestration/UI mutation/MCP/dep upgrades.
+- External builder NEVER recommended without: request package ready + Trust Gate available + Verification available + budget allowed + loop risk not high + no pending approval/intent.
+- Local first; deterministic first; local advisor before external builder; no repeated expensive route without new evidence.
+- Unknown cost stays unknown and BLOCKS external by default. Local unavailable does NOT imply external allowed.
+- No raw prompt/response/source/diff/stdout/stderr/artifact-body/secrets/tracebacks/abs paths in any surface.
+- Every next_safe_action catalog-backed + entity-backed.
+- NO PR unless the user explicitly asks (Step 1608).
 
 ## Next block
-Expensive Builder Routing v0 OR Automated Candidate Generator Adapter v0.
+Automated Local Candidate Generator Adapter v0 OR Provider Execution Sandbox v0.

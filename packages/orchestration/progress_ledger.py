@@ -914,6 +914,55 @@ def merge_provider_verification_items(ledger: ProgressLedger, reports: dict | No
             seen.add(item.item_id)
 
 
+def extract_builder_routing_items(traces: list[dict] | None) -> list[ProgressItem]:
+    """Extract Expensive Builder Routing v0 progress items (Step 1592) from persisted routing
+    traces. Read-only; fixed item_ids → no duplicates. Routing recommends only — no execution."""
+    if not traces:
+        return []
+    latest = traces[-1]
+    tier = latest.get("selected_tier", "")
+    items: list[ProgressItem] = [ProgressItem(
+        item_id="builder-routing-decision", title="Builder routing decision created",
+        status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+        safe_summary=f"{len(traces)} builder routing decision(s); latest tier={tier}.")]
+    _tier_item = {
+        "deterministic_only": ("builder-routing-deterministic", "Deterministic route selected",
+                               ProgressStatus.DONE, ProgressSource.FEATURE_SUGGESTION, "", ""),
+        "local_advisor": ("builder-routing-local-advisor", "Local advisor route selected",
+                          ProgressStatus.DONE, ProgressSource.FEATURE_SUGGESTION, "", ""),
+        "local_candidate_generator": ("builder-routing-local-candidate",
+                                      "Local candidate route recommended", ProgressStatus.PLANNED,
+                                      ProgressSource.FEATURE_SUGGESTION, "Low",
+                                      "Local candidate generation recommended (not executed in v0)."),
+        "external_candidate_generator": ("builder-routing-external-candidate",
+                                         "External candidate route recommended", ProgressStatus.PLANNED,
+                                         ProgressSource.FEATURE_SUGGESTION, "Medium",
+                                         "External candidate generation recommended (not executed in v0)."),
+        "human_review_required": ("builder-routing-human-review", "Builder routing needs human review",
+                                  ProgressStatus.RISK, ProgressSource.KNOWN_RISK, "Medium",
+                                  "Routing escalated to human review."),
+        "no_safe_route": ("builder-routing-blocked", "Builder route blocked / no safe route",
+                          ProgressStatus.BLOCKED, ProgressSource.KNOWN_RISK, "Low",
+                          "No safe builder route; gather evidence or prepare a request package."),
+    }.get(tier)
+    if _tier_item:
+        iid, title, status, src, sev, summ = _tier_item
+        items.append(ProgressItem(
+            item_id=iid, title=title, status=status, source_type=src, severity=sev,
+            safe_summary=summ or f"Builder routing selected {tier}.",
+            next_action=latest.get("next_safe_action", "")))
+    return items
+
+
+def merge_builder_routing_items(ledger: ProgressLedger, traces: list[dict] | None) -> None:
+    """Merge builder routing items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_builder_routing_items(traces):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_repair_request_items(packages: dict | None, materials: dict | None) -> list[ProgressItem]:
     """Extract Repair Request Builder progress items (Step 1378). Read-only; fixed
     item_ids → no duplicates. A request package with no materialized candidate yet is
@@ -1299,6 +1348,14 @@ def build_progress_ledger(
         merge_orchestrator_items(ledger, latest)
         # Local model advisor items from the latest decision's advisor critique (Step 1517).
         merge_local_advisor_items(ledger, latest)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass
+
+    # Expensive builder routing items from persisted routing traces (Step 1592).
+    try:
+        from packages.orchestration.builder_routing import load_builder_routing_traces
+        scope = f"job:{job.id}" if job is not None else "repository"
+        merge_builder_routing_items(ledger, load_builder_routing_traces(scope=scope))
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
 

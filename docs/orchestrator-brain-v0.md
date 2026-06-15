@@ -63,3 +63,4 @@ escalates warn → block. New evidence resets the guard.
 - [self-dogfood-v0.md](self-dogfood-v0.md), [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md)
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [do-continue-v1.md](do-continue-v1.md)
 - [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — the brain now recommends `provider verify` for trust-accepted-but-unverified candidates and escalates needs-review/repeated-rejection to human review (deterministic, catalog-backed).
+- [expensive-builder-routing-v0.md](expensive-builder-routing-v0.md) — a local-first routing/policy layer that consumes the brain's signals to decide deterministic vs local-advisor vs local/external candidate generation (planning only; never executes).

@@ -403,7 +403,9 @@ def _gather_signals(job_id: str, data_dir: Path,
         from packages.orchestration.self_dogfood_execution import list_attempts
         mine = [a for a in list_attempts(data_dir) if a.get("job_id") == job_id]
         sig["self_attempts_awaiting"] = sum(1 for a in mine if a.get("state") == "awaiting_external_candidate")
-        sig["self_attempts_pending"] = sum(1 for a in mine if a.get("state") == "intent_pending_approval")
+        pending_self = [a for a in mine if a.get("state") == "intent_pending_approval"]
+        sig["self_attempts_pending"] = len(pending_self)
+        sig["self_pending_attempt_id"] = (pending_self[0].get("attempt_id", "") if pending_self else "")
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
     try:
