@@ -598,13 +598,24 @@ def compute_token_economy_decision(
     from packages.orchestration.worker_registry import classify_route_cost
     d.estimated_cost_band = classify_route_cost(spec) if spec is not None else TokenBand.UNKNOWN
 
-    # Approval: hard-safety floor OR over-budget OR over the approval-token threshold.
+    # Unknown context/budget is NEVER cheap/safe (R-0098). If the context could not be inspected,
+    # or the token band / budget status is unknown, Remedy must not claim a cheap/local route fits —
+    # it must require human approval and recommend a context inspection / estimate.
+    unknown_context = (
+        "no_context_inspection_available" in est.warnings
+        or d.estimated_token_band == TokenBand.UNKNOWN
+        or d.budget_status == BudgetStatus.UNKNOWN)
+
+    # Approval: unknown context OR hard-safety floor OR over-budget OR over the approval threshold.
     hard = bool(spec is not None and hard_safety_requires_approval(spec))
     over_threshold = est.estimated_total_tokens >= profile.require_human_approval_over_tokens \
         and est.estimated_total_tokens > 0
-    d.requires_human_approval = bool(selection.requires_human_approval or hard or over_threshold
-                                     or d.budget_status == BudgetStatus.OVER or not spec)
+    d.requires_human_approval = bool(unknown_context or selection.requires_human_approval or hard
+                                     or over_threshold or d.budget_status == BudgetStatus.OVER
+                                     or not spec)
 
+    if unknown_context and "unknown_context_or_budget" not in d.warnings:
+        d.warnings.append("unknown_context_or_budget")
     if d.budget_status == BudgetStatus.OVER:
         d.warnings.append("estimated_total_over_budget")
     if over_threshold:
@@ -615,6 +626,12 @@ def compute_token_economy_decision(
         d.reason = "No eligible worker under the route policy — adjust policy or use the human route."
         d.next_safe_action = f"remedy route-policy show {job_id} --json" if job_id else \
             "remedy worker registry-list --json"
+    elif unknown_context:
+        # Honest unknown state — never imply a cheap route is ready.
+        d.reason = ("Context/budget is unknown (no inspection or unknown estimate) — cannot claim a "
+                    "cheap/local route fits; run a context inspection or review before routing.")
+        d.next_safe_action = (f"remedy context inspect {job_id} --json" if job_id
+                              else "remedy context inspect <job_id> --json")
     elif d.requires_human_approval:
         d.reason = ("Recommended route needs human approval (expensive/unknown/high-risk/placeholder "
                     "or over budget/threshold) — estimate only, nothing runs.")
@@ -709,10 +726,39 @@ def _load_all_profiles(data_dir: Path) -> list[dict]:
     return out
 
 
-def token_economy_integrity(data_dir: Path | None = None) -> dict[str, Any]:
-    """Read-only invariant check over persisted budget profiles + a sample decision/pack. No mutation.
-    Flags: budgets <= 0; exact-pricing fields; absolute paths in public; (when a sample is built)
-    expensive route without approval, placeholder marked executable, unknown band marked cheap."""
+def audit_decision_safety(decision: dict[str, Any]) -> list[dict[str, str]]:
+    """Focused invariant helper (R-0099): given a TokenEconomyDecision dict, flag unsafe states
+    where unknown context/budget avoids human approval or is presented as a cheap/local fit. Safe
+    public codes only; no raw content. Returns a list of violation dicts (empty = safe)."""
+    if not isinstance(decision, dict):
+        return []
+    out: list[dict[str, str]] = []
+    band = decision.get("estimated_token_band")
+    status = decision.get("budget_status")
+    warnings = decision.get("warnings", []) or []
+    approval = bool(decision.get("requires_human_approval"))
+    reason = str(decision.get("reason", "")).lower()
+    no_inspection = "no_context_inspection_available" in warnings
+    unknown_ctx = (band == TokenBand.UNKNOWN or status == BudgetStatus.UNKNOWN or no_inspection)
+    if band == TokenBand.UNKNOWN and not approval:
+        out.append({"code": "unknown_token_band_without_approval"})
+    if status == BudgetStatus.UNKNOWN and not approval:
+        out.append({"code": "unknown_budget_without_approval"})
+    if no_inspection and not approval:
+        out.append({"code": "no_inspection_without_approval"})
+    # Unknown context must not be presented as a cheap/local budget-fit. Match only the AFFIRMATIVE
+    # claim ("fits the estimated budget") — a negated reason ("cannot ... fit") is safe.
+    if unknown_ctx and "fits the estimated budget" in reason:
+        out.append({"code": "unknown_context_presented_as_fit"})
+    return out
+
+
+def token_economy_integrity(data_dir: Path | None = None,
+                            decisions: list[dict] | None = None) -> dict[str, Any]:
+    """Read-only invariant check over persisted budget profiles plus optional decision samples. No
+    mutation. Flags: budgets <= 0; exact-pricing fields; absolute paths / raw markers in public; and
+    (R-0099) decision states where unknown context/budget avoids approval or is shown as a cheap fit.
+    Safe public failure codes only."""
     from packages.orchestration.data_paths import resolve_data_root
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     violations: list[dict] = []
@@ -733,8 +779,14 @@ def token_economy_integrity(data_dir: Path | None = None) -> dict[str, Any]:
         if any(m.lower() in blob for m in _RAW_MARKERS):
             violations.append({"profile_id": pid, "code": "raw_or_secret_in_public"})
 
-    return {"version": 1, "profile_count": len(profiles), "violation_count": len(violations),
-            "passed": not violations, "violations": violations[:50]}
+    # Optional decision-state audit (R-0099).
+    for dec in (decisions or []):
+        for v in audit_decision_safety(dec):
+            entry = {"decision_id": dec.get("decision_id", ""), **v}
+            violations.append(entry)
+
+    return {"version": 1, "profile_count": len(profiles), "decision_count": len(decisions or []),
+            "violation_count": len(violations), "passed": not violations, "violations": violations[:50]}
 
 
 # Keep redaction helpers referenced for parity with the rest of the orchestration package.

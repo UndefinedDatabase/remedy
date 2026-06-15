@@ -11,23 +11,27 @@ ESTIMATED bands; unknown never cheap; expensive/unknown/high-risk/placeholder ro
 approval. User never feels lost — every warning understandable + actionable.
 
 ## Current Step
-1757 — mainline reconciliation done (PR #69 merged → main c8f4fa5; fresh branch). Building core.
+1782-1796 — REVIEW CLOSURE. Builder feature work (1757-1781) complete @ 729d44c; audit findings
+R-0098/R-0099/R-0100 fixed. Awaiting parallel Reviewer to set PASS (verdict currently PENDING).
+Builder does NOT set the verdict; auto-merge fires on reviewer PASS (user preference).
 
 ## Steps
 - [x] 1757: merge closure (PR #69 PASS → main c8f4fa5; fresh branch) + carried risks + Tournament deferred
-- [ ] 1758: architecture doc (token-economy-context-budget-optimizer-v0.md)
-- [ ] 1759-1762: token_economy.py core (TokenBudgetProfile/ContextBudgetEstimate/ContextPackRecommendation/
+- [x] 1758: architecture doc (token-economy-context-budget-optimizer-v0.md)
+- [x] 1759-1762: token_economy.py core (TokenBudgetProfile/ContextBudgetEstimate/ContextPackRecommendation/
       TokenEconomyDecision; estimate helpers; profile storage; context pack recommender)
-- [ ] 1763-1764: worker_registry + builder_routing read-only integration (token band/warning/pack rec)
-- [ ] 1765-1766: CLI (token budget-show/set/estimate, context-pack recommend, token economy-report) +
+- [x] 1763-1764: worker_registry + builder_routing read-only integration (token band/warning/pack rec)
+- [x] 1765-1766: CLI (token budget-show/set/estimate, context-pack recommend, token economy-report) +
       catalog + run_contract actions (read_only/write_metadata; no may_execute)
-- [ ] 1767-1772: progress_ledger + feature_planner + review_bundle section + ui_server cockpit +
+- [x] 1767-1772: progress_ledger + feature_planner + review_bundle section (30) + ui_server cockpit +
       integrity + placeholder-readiness hardening
-- [ ] 1773: user-facing doc (token-economy-user-guide-v0.md)
-- [ ] 1774-1778: tests (unit/routing/CLI/bundle/cockpit/integrity) + architecture guards
-- [ ] 1779-1780: targeted suites green → full suite once
-- [ ] 1781: final handoff report (+ auto-merge on reviewer PASS)
-- [ ] 1782-1796: reserved for reviewer findings (R-0098+)
+- [x] 1773: user-facing doc (token-economy-user-guide-v0.md)
+- [x] 1774-1778: tests (unit/routing/CLI/bundle/cockpit/integrity) + architecture guards
+- [x] 1779-1780: targeted suites green → full suite once (6102 passed/8 skipped/1 deselected)
+- [x] 1781: final handoff report
+- [~] 1782-1796: reviewer findings closure — R-0098 (unknown context/budget always requires approval,
+      never cheap/local fit), R-0099 (audit_decision_safety + integrity catches unknown-no-approval),
+      R-0100 (plan.md reconciled) FIXED with Done markers + regression tests; awaiting Reviewer PASS
 
 ## Hard rules
 - NO provider/model/Ollama/cloud/local-model calls, network, browser, subprocess, shell=True.

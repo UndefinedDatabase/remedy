@@ -170,6 +170,21 @@ class TestDecision:
         d = te.compute_token_economy_decision("no-such-job", task_type="repair")
         assert d.estimated_token_band == te.TokenBand.UNKNOWN  # unknown context never "low"/cheap
 
+    # R-0098 — unknown context/budget must require approval and never claim a cheap/local fit.
+    def test_unknown_context_requires_approval(self, env):
+        d = te.compute_token_economy_decision("no-such-job", task_type="repair")
+        assert d.requires_human_approval is True
+        assert "unknown_context_or_budget" in d.warnings
+        assert "fits the estimated budget" not in d.reason.lower()
+        assert "unknown" in d.reason.lower()
+        # next action points to a safe inspection, not a cheap-route-ready implication.
+        assert "context inspect" in d.next_safe_action or "route-policy" in d.next_safe_action
+
+    def test_unknown_context_hint_not_local_first(self, env):
+        h = te.routing_token_hint("no-such-job")
+        assert h["requires_human_approval"] is True
+        assert h["local_first_recommended"] is False
+
     def test_local_route_no_approval_when_cheap(self, env):
         jid = _job_with_repo(env, files={"README.md": "hi\n", "src/a.py": "x=1\n"})
         d = te.compute_token_economy_decision(jid, task_type="repair")
@@ -242,6 +257,55 @@ class TestIntegrity:
         ig = te.token_economy_integrity(data_dir=tmp_path)
         codes = {v.get("code") for v in ig["violations"]}
         assert "exact_pricing_claimed" in codes
+
+    # R-0099 — decision-state audit catches unknown-without-approval / unknown-as-fit.
+    def test_audit_flags_unknown_band_without_approval(self):
+        v = te.audit_decision_safety({
+            "decision_id": "te-x", "estimated_token_band": "unknown",
+            "budget_status": "within_budget", "requires_human_approval": False, "warnings": []})
+        codes = {x["code"] for x in v}
+        assert "unknown_token_band_without_approval" in codes
+
+    def test_audit_flags_unknown_budget_without_approval(self):
+        v = te.audit_decision_safety({
+            "decision_id": "te-y", "estimated_token_band": "low",
+            "budget_status": "unknown_budget", "requires_human_approval": False, "warnings": []})
+        codes = {x["code"] for x in v}
+        assert "unknown_budget_without_approval" in codes
+
+    def test_audit_flags_no_inspection_without_approval(self):
+        v = te.audit_decision_safety({
+            "decision_id": "te-z", "estimated_token_band": "low", "budget_status": "within_budget",
+            "requires_human_approval": False, "warnings": ["no_context_inspection_available"]})
+        codes = {x["code"] for x in v}
+        assert "no_inspection_without_approval" in codes
+
+    def test_audit_flags_unknown_presented_as_fit(self):
+        v = te.audit_decision_safety({
+            "decision_id": "te-w", "estimated_token_band": "unknown", "budget_status": "unknown_budget",
+            "requires_human_approval": True,
+            "reason": "Cheap/local route fits the estimated budget", "warnings": []})
+        codes = {x["code"] for x in v}
+        assert "unknown_context_presented_as_fit" in codes
+
+    def test_audit_safe_decision_clean(self):
+        assert te.audit_decision_safety({
+            "decision_id": "ok", "estimated_token_band": "low", "budget_status": "within_budget",
+            "requires_human_approval": False, "reason": "Cheap/local route fits the estimated budget",
+            "warnings": []}) == []
+
+    def test_integrity_scans_decisions(self, tmp_path):
+        bad = {"decision_id": "te-bad", "estimated_token_band": "unknown",
+               "budget_status": "unknown_budget", "requires_human_approval": False, "warnings": []}
+        ig = te.token_economy_integrity(data_dir=tmp_path, decisions=[bad])
+        assert ig["passed"] is False
+        codes = {v.get("code") for v in ig["violations"]}
+        assert "unknown_token_band_without_approval" in codes
+
+    def test_real_unknown_decision_is_safe_under_audit(self, env):
+        # The fixed compute_token_economy_decision must produce a decision that PASSES the audit.
+        d = te.compute_token_economy_decision("no-such-job", task_type="repair")
+        assert te.audit_decision_safety(d.to_dict()) == []
 
     def test_report_no_raw_or_pricing(self, env):
         jid = _job_with_repo(env, files={"README.md": "hi\n", ".env": "TOKEN=sk-secret\n"})
