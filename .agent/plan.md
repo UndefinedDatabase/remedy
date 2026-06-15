@@ -1,64 +1,47 @@
-# Plan — Steps 1465-1498: Main Orchestrator Brain v0
+# Plan — Steps 1499-1536: Local Model Advisor Adapter v0
 
 ## Goal
-First "main orchestrator brain": read current project/job/system state from SAFE
-summaries, build a Situation, generate deterministic Options, score them, guard
-against repeated failed loops, define a model routing PLAN (no model calls), and
-select ONE structured next-step Decision with rationale. Planning/decision ONLY —
-no execution, no LLM/provider/Ollama, no apply/approve/PR/code mutation.
+Optional Ollama-compatible local-model advisory critique for orchestrator decisions.
+Loopback-only, disabled by default, advisory-only. When the deterministic orchestrator is
+uncertain, it MAY ask a local advisor to critique a SAFE decision summary. The advisor may
+flag concerns/alternatives/missing evidence; the orchestrator verifies everything against
+deterministic evidence and the final next_safe_action stays deterministic + catalog-backed.
 
 ## Core principle
-LLMs are advisors/builders. The orchestrator is the controller. Evidence is truth.
+LLMs advise. The orchestrator controls. Evidence is truth. Local cheap advisor first.
 
 ## Current Step
-DONE — R-0086 resolved; verdict PASS WITH RISKS; merge-ready; PR HELD (Step 1495/1498)
+1528-1532 — full pytest recorded; live review + handoff; PR HELD
 
 ## Steps
-- [x] 1465: Mainline reconciliation + clean branch (PR #61 merged; scope→1465-1498)
-- [x] 1466: Orchestrator models (Situation/Decision/Option/EvidenceRef/Risk/Trace/LoopGuard/RoutingPlan/Recommendation/StopReason)
-- [x] 1467: build_orchestrator_situation (safe summaries only; unknown stays unknown)
-- [x] 1468: Option generator (deterministic; real entities/commands only)
-- [x] 1469: Decision scorer (deterministic factors → score/reason codes/confidence)
-- [x] 1470: Anti-loop guard (durable summaries; allow/warn/block/require_human_review)
-- [x] 1471: Model routing plan v0 (deterministic_only/local_advisor/external_builder/human; no calls)
-- [x] 1472: Decision selector (exactly one: option | human_review | no_safe_action | evidence_incomplete)
-- [x] 1473: Decision trace persistence (safe, atomic, hashed, no raw)
-- [x] 1474: CLI orchestrator inspect (read-only)
-- [x] 1475: CLI orchestrator decide (read/metadata-only)
-- [x] 1476: CLI orchestrator report (read-only markdown/json)
-- [x] 1477: Command catalog (inspect/report read_only; decide read_only/write_metadata)
-- [x] 1478: RunContract (orchestrator_inspect/decide/report)
-- [x] 1479: User idea intake (orchestrator idea; scrub; classify; metadata-only)
-- [x] 1480: Idea-to-option integration (ideas are hints, not truth; dedupe; risky→human review)
-- [x] 1481: Progress Ledger integration
-- [x] 1482: Feature Planner integration
-- [x] 1483: Review Bundle orchestrator_decision_summary.json
-- [x] 1484: Cockpit read-only decision summary
-- [x] 1485: Orchestrator quality tests
-- [x] 1486: Anti-loop tests
-- [x] 1487: Model routing tests
-- [x] 1488: CLI runtime tests
-- [x] 1489: Redaction tests
-- [x] 1490: Architecture guards
-- [x] 1491: Documentation (orchestrator-brain-v0)
-- [x] 1492: Targeted tests + full pytest once
-- [x] 1493: Live review
-- [x] 1494: Product readiness update
-- [x] 1495: PR discipline (clean branch; NO PR unless user asks)
-- [x] 1496: Final handoff
-- [x] 1497: Hard completion criteria
-- [x] 1498: Merge discipline — DO NOT create PR unless user explicitly asks
+- [x] 1499: Mainline reconciliation (PR #62 merged; main 5d4cdf4; scope→1499-1536)
+- [x] 1500-1508: local_model_advisor.py (models/config/prompt/schema/storage/client/availability/invoke/redaction)
+- [x] 1509-1511: orchestrator advisory mode + impact rules + anti-loop
+- [x] 1512-1515: CLI local-advisor status/run + catalog + run_contract
+- [x] 1516-1520: budget/usage + progress/feature/review-bundle/cockpit
+- [x] 1521-1526: tests (redaction/endpoint/parsing/impact/CLI/arch guards)
+- [x] 1527,1534: docs (local-model-advisor-v0 + updates + expensive-builder-routing-future)
+- [x] 1528: targeted tests + full pytest once (5777+ passed)
+- [x] 1529-1533: live review PASS (zero findings), readiness, PR discipline, handoff
+- [x] 1536: merge discipline — PR HELD (no PR unless user explicitly asks)
+
+## Product readiness (Step 1530)
+The orchestrator can OPTIONALLY consult a local advisor (loopback Ollama; disabled by
+default). Advisor critique never executes; the deterministic decision stays the controller;
+a missing local advisor never blocks deterministic operation. Final next_safe_action stays
+deterministic + catalog-backed. Readiness ~90% (advisory rail complete; real external builder
+routing deferred). Next block: Provider Trust Verification v1 OR Expensive Builder Routing v0.
 
 ## Hard rules
-- READ-ONLY or metadata-only. NO action execution from the brain.
-- NO Ollama/provider/API/network/subprocess/browser; model routing is a PLAN, never a call.
-- NO apply/test, NO source_apply/patch_apply, NO approval, NO PR/git/main mutation, NO Job.tasks insertion.
-- Model output never truth; never bypass approval; never retry a model indefinitely.
-- Anti-loop: no infinite "try again"; repeated failed action → warn/block/human_review.
-- Open blocker/high review → human_review_required. Budget exhaustion blocks execution-like options.
-- Every next_safe_action catalog-backed + references real entities; no fake commands/missing entities.
-- No raw source/diff/stdout/stderr/artifact-body/secrets/tracebacks/absolute private paths.
-- NO PR unless the user explicitly asks (Step 1495/1498).
+- Local advisor OPTIONAL + DISABLED by default. Missing Ollama never breaks deterministic flow.
+- Loopback only (127.0.0.1/localhost/::1); external/file:// rejected; stdlib only; no provider SDK.
+- No subprocess for model exec; no shell=True; no external network; no browser; short timeout; max 1-2 retries.
+- Model output never truth; never becomes next_safe_action/ProposedTask/Patch Intent/approval/apply/PR/job.
+- Model may only: lower confidence, add safe missing-evidence hints, escalate weak evidence to human review.
+- Final next_safe_action stays deterministic + catalog-backed + entity-backed.
+- No raw prompt/response in public models. No raw source/diff/stdout/stderr/artifact-body/secrets/tracebacks/abs paths.
+- Repeated advisor failure must not loop endlessly → loop guard.
+- NO PR unless the user explicitly asks (Step 1536).
 
 ## Next block
-Local Model Advisor Adapter v0 OR Provider Trust Verification v1.
+Provider Trust Verification v1 OR Expensive Builder Routing v0.

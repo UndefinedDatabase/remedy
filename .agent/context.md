@@ -1,72 +1,77 @@
 # Context
 
 ## Active Branch
-feature/steps-1465-1498-main-orchestrator-brain-v0 (forked from clean main at 38df37d
-after PR #61 merged Self-Dogfood Execution v0). No drift.
+feature/steps-1499-1536-local-model-advisor-v0 (forked from clean main at 5d4cdf4
+after PR #62 merged Main Orchestrator Brain v0). No drift.
 
-## Mainline reconciliation (Step 1465)
-- PR #61 MERGED → main. Current main commit: 38df37d.
-- Self-Dogfood Execution v0 landed: self_dogfood_execution.py (approved self ProposedTask
-  → bounded SelfImprovementAttempt → request → Provider Trust Gate → materialize →
-  approve → do continue → reconcile; deterministic provider-label correlation; COMPLETED
-  only from verified proof). `remedy self execute/status/reconcile/integrity`. Full suite
-  5689 passed, 8 skipped, 1 deselected.
+## Mainline reconciliation (Step 1499)
+- PR #62 MERGED → main. Current main commit: 5d4cdf4.
+- Main Orchestrator Brain v0 landed: orchestrator_brain.py (situation → deterministic
+  options → score → anti-loop guard → model routing PLAN → ONE decision + safe trace;
+  idea intake). `remedy orchestrator inspect/decide/report/idea`. R-0086 resolved.
+  Full suite 5723 passed, 8 skipped, 1 deselected.
 
 ## Scope
-Steps 1465-1498: Main Orchestrator Brain v0 — Decision Engine, Anti-Loop Guard, Model
-Routing Plan. Read state from SAFE summaries → Situation → Options → score → loop guard
-→ routing plan → ONE Decision with rationale. Planning/decision ONLY.
+Steps 1499-1536: Local Model Advisor Adapter v0 — optional Ollama-compatible local-model
+advisory layer for orchestrator decisions. Loopback-only, disabled by default, advisory-only.
 
 ## Core principle
-LLMs are advisors/builders. The orchestrator is the controller. Evidence is truth.
+LLMs advise. The orchestrator controls. Evidence is truth. Local cheap advisor first.
 
 ## Carried residual risks
-- Direct provider execution NOT built; local model advisory NOT built.
-- Provider Trust Verification v1 NOT built.
+- Local model advisor NOT built before this block (this block builds it, advisory-only).
+- External/provider builder EXECUTION not built (plan-only routing).
+- Provider Trust Verification v1 not built.
 - Broader source patch materialization deferred (apply path .md-only).
-- Cleanup/retention automation not built; self-overnight not built.
+- Self overnight not built; cleanup/retention automation not built.
 - Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
 - UI `npm run lint` pre-existing TS parser/dependency blocker (no deps allowed).
 
-## Orchestrator Brain constraints (block 1465-1498)
-- READ-ONLY or metadata-only. NO action execution from the brain.
-- NO Ollama/provider/API/network/subprocess/browser. Model routing is a PLAN, never a call.
-- NO apply/test, NO source_apply/patch_apply, NO approval, NO PR/git/main mutation, NO Job.tasks.
-- Model output never truth; never bypass approval; never retry a model indefinitely.
-- Anti-loop: repeated failed action → warn/block/human_review; no infinite "try again".
-- Open blocker/high review → human_review_required; budget exhaustion blocks exec-like options.
-- Every next_safe_action catalog-backed + real entities; no fake commands / missing entities.
-- No raw source/diff/stdout/stderr/artifact-body/secrets/tracebacks/absolute private paths.
-- NO PR unless the user explicitly asks (Step 1495/1498).
+## Local Model Advisor constraints (block 1499-1536)
+- OPTIONAL + DISABLED by default. Missing/unavailable Ollama never breaks deterministic flow.
+- Loopback only (127.0.0.1 / localhost / ::1); external host, https-external, file://, redirects rejected.
+- Stdlib HTTP only; NO provider/cloud SDK imports; NO subprocess for model exec; NO shell=True; NO browser.
+- Short timeout; response size bounded; max 1-2 retries (no retry storm).
+- Safe prompt only (phase/options/refs/counts/loop/routing); NO raw source/diff/logs/secrets/abs paths.
+- JSON response required; unparseable → advisor_unparseable; code/diff in response → high concern, not accepted.
+- Model output never truth; never next_safe_action/ProposedTask/Patch Intent/approval/apply/PR/job.
+- Model influence limited to: lower confidence, safe missing-evidence hints, escalate weak evidence to human.
+- Cannot override blocker/high review, contract, budget; cannot mark evidence complete/success/failure.
+- Raw prompt/response stored PRIVATELY only if enabled (0o700 dir / 0o600 files); never public.
+- Local advisor budget separate from external provider budget; exhausted → blocks advisor, not deterministic.
+- No raw prompt/response/source/diff/stdout/stderr/artifact-body/secrets/tracebacks/abs paths in public surfaces.
+- NO PR unless the user explicitly asks (Step 1536).
 
-## Foundation reused (read-only evidence sources)
-- self_dogfood (inspection), self_dogfood_execution (list_attempts), overnight_readiness/
-  overnight_executor (readiness/run + parse_review_findings + review_findings_block_execution),
-  progress_ledger (build_progress_ledger), feature_planner (build_feature_plan),
-  provider_trust/provider_patch_material/repair_request_builder summaries, repair_loop
-  (load_repair_attempts), run_contract (ensure_contract/load_usage/evaluate_run_action),
-  proof_chain/snapshot truth, do_run.validate_next_safe_action_command, command_catalog.
-- proposed_tasks for self-task options.
-- Review Bundle REQUIRED_SECTIONS currently 21; add orchestrator_decision_summary.json → 22.
+## Foundation reused
+- orchestrator_brain (build_orchestrator_situation/select_orchestrator_decision/export_decision_json,
+  list_decisions, RoutingTier, OrchestratorModelRoutingPlan).
+- provider_trust._scrub_public / scan_secrets / _SECRET_PATTERNS / _ABS_PATH_RE / _TRACEBACK_RE (redaction).
+- run_contract (ensure_contract/evaluate_run_action/ContractAction; add local_advisor_status/run).
+- data_paths.resolve_data_root; storage.load_job; command_catalog/grouped CLI; do_run.validate_next_safe_action_command.
+- progress_ledger.merge_*, feature_planner, review_bundle (REQUIRED_SECTIONS 22→23), ui_server cockpit.
 
 ## Resource safety (standing)
 - No background pytest. Use `scripts/remedy_pytest.sh` (flock-serialized); full suite once
-  at block end. No shell=True, no subprocess.
+  at block end with `-k "not test_full_chain_order"`. No shell=True, no subprocess.
 
-## Product readiness — Main Orchestrator Brain v0 (Step 1494)
-CAN: produce an evidence-backed orchestration decision — read safe state into a
-Situation, generate deterministic catalog-backed options, score them, guard against
-repeated failed loops (durable repair-failure/trust-rejection + decision-history
-fingerprint repetition), define a model routing PLAN (deterministic/local-advisor/
-external-builder/human; no model calls), and select ONE next step with rationale +
-rejected alternatives. CLI `remedy orchestrator inspect/decide/report/idea`; surfaced
-in Progress/Feature/Review(22)/Cockpit. Explains WHY one action is chosen; avoids
-loops. User ideas captured as scrubbed roadmap hints (never truth, never executed).
-CANNOT (by design): execute actions; call Ollama/provider/network/subprocess; apply;
-approve; create PR; mutate main/code; insert Job.tasks; emit fake/missing-entity
-commands; treat routing as execution; ignore open blocker/high (→ human_review).
-FUTURE: Local Model Advisor Adapter v0 (cheap advisory critique behind the routing
-plan), Provider Trust Verification v1.
+## Product readiness — Local Model Advisor Adapter v0 (Step 1530)
+CAN: optionally consult a local advisor (loopback Ollama; `remedy orchestrator decide
+--use-local-advisor`, `remedy local-advisor status/run`). The advisor critiques a SAFE
+decision summary and may lower confidence, add missing-evidence hints, or escalate weak+high-
+risk evidence to human review. The deterministic orchestrator remains the controller; the
+final next_safe_action stays deterministic + catalog-backed; a missing/unavailable advisor
+never blocks deterministic operation. Surfaced in Progress/Feature/Review(23)/Cockpit; private
+run storage (0o700/0o600) holds raw, public surfaces hold hashes/counts/labels only.
+CANNOT (by design): be enabled by default; reach a non-loopback host; import a provider/cloud
+SDK; run a subprocess for model exec; let model output become a command/entity/approval/apply/
+PR/job; override contract/budget/review blockers; mark evidence complete/success/failure;
+strengthen confidence; loop endlessly (reuse by prompt_hash + suppress after repeated
+unavailability). Readiness ~90% (advisory rail complete; real external builder routing deferred).
+FUTURE: Provider Trust Verification v1; Expensive Builder Routing v0.
+
+## Status
+Steps 1499-1536 COMPLETE. Full pytest 5777 passed, 8 skipped, 1 deselected (exit 0); integrity
+fail_count=0; live review verdict PASS, zero findings. Branch pushed; NO PR (Step 1536).
 
 ## Next block
-Local Model Advisor Adapter v0 OR Provider Trust Verification v1.
+Provider Trust Verification v1 OR Expensive Builder Routing v0.

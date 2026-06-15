@@ -31,9 +31,17 @@ def _cmd_orchestrator_inspect(args: Any) -> None:
 def _cmd_orchestrator_decide(args: Any) -> None:
     from packages.orchestration.orchestrator_brain import (
         build_orchestrator_situation, select_orchestrator_decision, export_decision_json,
+        consult_local_advisor_for_decision, persist_decision,
     )
     s = build_orchestrator_situation(getattr(args, "job_id", None))
-    d = select_orchestrator_decision(s, persist=True)
+    use_advisor = bool(getattr(args, "use_local_advisor", False))
+    d = select_orchestrator_decision(s, persist=not use_advisor)
+    if use_advisor:
+        # Deterministic decision first; advisor critique is advisory-only and never changes
+        # which command executes. Persist after the (possibly softened) decision is final.
+        d = consult_local_advisor_for_decision(
+            d, s, enabled_override=True, new=bool(getattr(args, "new", False)))
+        persist_decision(d)
     data = export_decision_json(d)
     if getattr(args, "json", False):
         print(json.dumps(data, indent=2))
@@ -44,6 +52,9 @@ def _cmd_orchestrator_decide(args: Any) -> None:
         print(f"  selected: {sel['label']}")
     print(f"  next: {data['next_safe_action']}")
     print(f"  routing: {data['model_routing_plan']['tier']}  loop: {data['loop_guard_status']}")
+    adv = data.get("advisor")
+    if adv:
+        print(f"  advisor: {adv.get('status')}  impact: {adv.get('decision_impact')}")
 
 
 def _cmd_orchestrator_report(args: Any) -> None:
