@@ -20,11 +20,16 @@ unrelated / repeated-failed / too-broad / secret candidates are caught and never
 no provider/model execution, no network, no subprocess, no provider SDK, no apply/approval/PR/
 git; reports are safe summaries only (no raw candidate/diff/source/secret/path/traceback); the
 local-advisor critique hook is DEFERRED (forward seam `advisor_critique=None`) so it cannot pass/
-reject by itself. Reviewer-independent verification: targeted `scripts/remedy_pytest.sh`
-(test_provider_trust_verification 27 + test_provider_verification_cli 7 + provider trust/material
-+ orchestrator/progress/feature/review-bundle(24)/cockpit/run_contract/catalog = 395 passed +
-the two new files); full pytest 5812 passed, 8 skipped, 1 deselected (exit 0); integrity clean
-(only "relevant untracked" pre-commit, clears on commit). NO PR (Step 1572).
+reject by itself. REVIEWER-INDEPENDENT verification (reviewer ran, not builder self-report):
+targeted `scripts/remedy_pytest.sh` (test_provider_trust_verification + test_provider_verification_cli
++ test_review_bundle + test_dashboard_cockpit_truth) = **121 passed** (flock-serialized, one run);
+core + integration gate (`_verification_allows_materialization` inside the `trust_status==ACCEPTED`
+branch, returns True ONLY on `decision==PASSED and allowed_to_materialize`) verified by line-level
+inspection of the committed diff `50ea930..128ea24`. Builder-reported full pytest 5812 passed / 8
+skipped / 1 deselected (exit 0) — reviewer relies on builder full-suite count per standing rule;
+reviewer targeted subset green. NIT (not a finding): `_INTENT_OK_RE` (provider_trust_verification.py
+L400) is defined but unused in `check_overclaims` — harmless dead regex, no false-positive risk.
+Merge-ready. NO PR created (Step 1572 — held for explicit user request).
 
 ## Check Matrix (1-15)
 | Check | Status | Note |
@@ -43,7 +48,7 @@ the two new files); full pytest 5812 passed, 8 skipped, 1 deselected (exit 0); i
 | 12. Progress/Feature/Review/Cockpit (safe counts/status; no raw; no mutation buttons) | PASS | fixed item_ids; 4 planner rules; bundle 24; cockpit counts only, no buttons |
 | 13. Redaction (no secrets/paths/tracebacks/source/diff/log) | PASS | _scrub_public on summaries; private report.json 0o600; public = codes/counts/IDs |
 | 14. Architecture (no provider SDK/network/subprocess/apply/test/git/PR; no source_apply/patch_apply import; no auto approval) | PASS | guard tests assert forbidden imports/exec tokens absent |
-| 15. Tests (targeted + full pytest ≤1×) | PASS | targeted 395 + 34 new; full 5812 passed/8 skipped/1 deselected (exit 0) |
+| 15. Tests (targeted + full pytest ≤1×) | PASS | reviewer targeted = 121 passed (one flock run); builder full 5812 passed/8 skipped/1 deselected (exit 0) |
 
 ## Changed files (Steps 1537-1572) — File | What changed | Why
 | File | What changed | Why |

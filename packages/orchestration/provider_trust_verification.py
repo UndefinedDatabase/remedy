@@ -396,9 +396,8 @@ _TEST_CLAIM_RE = re.compile(
 _VERIFY_CLAIM_RE = re.compile(
     r"\b(verified|confirmed\s+fixed|fix\s+is\s+confirmed|proven|validated\s+the\s+fix|"
     r"successfully\s+fixed|bug\s+is\s+fixed|issue\s+is\s+resolved)\b", re.IGNORECASE)
-# "intended to fix" / "should fix" / "will fix" are allowed framing, not overclaims.
-_INTENT_OK_RE = re.compile(r"\b(intended\s+to|aims?\s+to|should|will|meant\s+to|attempts?\s+to)\s+\w+",
-                           re.IGNORECASE)
+# Note: "intended to fix" / "should fix" / "will fix" are allowed framing — the claim
+# patterns above intentionally do NOT match them, so no whitelist pass is needed.
 
 
 def check_overclaims(claim_text: str) -> list[ProviderVerificationFinding]:
