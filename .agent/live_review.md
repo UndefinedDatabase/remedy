@@ -12,22 +12,23 @@ generation, or emit fake next actions. NO PR unless user asks (Step 1608).
 Timestamp: 2026-06-15
 
 ## Verdict (reviewer-owned)
-FAIL — one open HIGH finding (R-0088) + one MEDIUM (R-0089). All SAFETY properties PASS: routing is
-planning-only (no builder/model/provider execution, no network/subprocess/SDK, no candidate
-generation, no Repair Artifact/Patch Intent/ProposedTask creation, no apply/approve/PR/git, no
-Job.tasks); external generator DISABLED by default + gated behind request-package + trust + verification
-+ budget + low-loop-risk + no-pending (user_requested justifies, never bypasses); unknown external cost
-blocks external; loop governor blocks repeat-same-evidence / escalates repeated failure; pending
-intent/approval & unverified-trust suppress generation; redaction clean (no raw/secret/path/diff;
-trace 0o600). BUT the selector's PRIMARY output is broken: `_report_cmd` emits
-`remedy builder-routing report <job_id>` (positional) while the command takes `--job-id` (option) →
-unrunnable next_safe_action in the MAJORITY of branches (R-0088, HIGH, block-if "selected next action
-is fake"); `self status --job-id` also unrunnable (R-0089, MEDIUM). Same wrong shape recurs in
-feature_planner + propagates to progress/cockpit. REVIEWER-INDEPENDENT verification: targeted
-`scripts/remedy_pytest.sh` (test_builder_routing + test_builder_routing_cli + test_review_bundle +
-test_dashboard_cockpit_truth) = **113 passed** — but tests do NOT validate emitted next_safe_action
-against argparse, so the defect is untested. Per verdict rules an open HIGH = FAIL; merge HELD until
-R-0088 fixed (and R-0089). NO PR (Step 1608).
+PASS WITH RISKS — R-0088 (HIGH) + R-0089 (MEDIUM) RESOLVED @ d2a1ee4 (reviewer-verified); ZERO open
+Blocker/High/Medium. ONE open LOW: R-0090 (handoff changed-files table missing) → an explicit block-if,
+so MERGE-READINESS IS HELD until the builder adds a `| File | What changed | Why |` table + writes
+`Done: R-0090` (code is otherwise merge-quality). All SAFETY properties PASS: routing is planning-only
+(no builder/model/provider execution, no network/subprocess/SDK, no candidate generation, no Repair
+Artifact/Patch Intent/ProposedTask creation, no apply/approve/PR/git, no Job.tasks); external generator
+DISABLED by default + gated behind request-package + trust + verification + budget + low-loop-risk +
+no-pending (user_requested justifies, never bypasses); unknown external cost blocks external; loop
+governor blocks repeat-same-evidence / escalates repeated failure; pending intent/approval &
+unverified-trust suppress generation; redaction clean (no raw/secret/path/diff; trace 0o600). The
+selector next_safe_action defect (R-0088/R-0089) is fixed: all emitters now produce catalog-valid
+commands, and a new regression class validates every emitted next_safe_action through the real
+`apps.cli.grouped.build_parser()` + static shape guard (closes the prior testing gap). REVIEWER-
+INDEPENDENT verification: targeted `scripts/remedy_pytest.sh` (test_builder_routing +
+test_builder_routing_cli + test_review_bundle) = **90 passed** post-fix (was 113 pre-fix on a wider
+set); builder-reported full pytest 5852 passed/8 skipped/1 deselected (exit 0) — relied on per
+standing rule. NO PR (Step 1608).
 
 ## Check Matrix (1-15)
 | Check | Status | Note |
@@ -40,20 +41,26 @@ R-0088 fixed (and R-0089). NO PR (Step 1608).
 | 6. Expensive builder justification codes + hard preconditions | PASS | _external_allowed requires ALL (pkg/trust/verif/budget/low-loop); user_requested justifies not bypasses |
 | 7. Budget model (unknown cost blocks external; local≠external) | PASS | estimated_external_cost never invented; unknown→block external; per-failure/daily from traces |
 | 8. Loop governor (no repeated expensive route without new evidence) | PASS | same-fp external→BLOCK; repeated failure→HUMAN_REVIEW; 1 rejection→WARN; new fp resets |
-| 9. Routing selector (exactly one tier / no_safe_route / human_review) | **FAIL** | R-0088 (HIGH) + R-0089 (MED): emitted next_safe_action unrunnable (arg-shape mismatch vs catalog) |
+| 9. Routing selector (exactly one tier / no_safe_route / human_review) | PASS | R-0088/R-0089 RESOLVED @ d2a1ee4; all emitted next_safe_action now parse via build_parser (regression-tested) |
 | 10. Trace persistence (atomic; safe; idempotent by fingerprint) | PASS | _save_trace 0o600/dir 0o700 + content_sha256; idempotent by fingerprint unless --new |
 | 11. CLI decide/report + catalog + run_contract | PASS | decide write_metadata, report read_only, no exec/mutate; BUILDER_ROUTING_DECIDE/REPORT default-allowed non-cloud |
 | 12. Orchestrator / local-advisor / verification / self-dogfood integration | PASS | reuses signals/advisor-config/verification/self via durable summaries; no exec |
-| 13. Progress/Feature/Review-bundle/Cockpit | PARTIAL | fixed item_ids; bundle +builder_routing_summary; cockpit counts/no buttons — but next_action propagates R-0088 bad cmd |
+| 13. Progress/Feature/Review-bundle/Cockpit | PASS | fixed item_ids; bundle +builder_routing_summary; cockpit counts/no buttons; next_action now valid (R-0088 fixed upstream) |
 | 14. Redaction (no raw in any surface) | PASS | _scrub_public; trace/export = codes/counts/IDs/fingerprint only; no raw/secret/path/diff |
 | 15. Architecture guards (no exec/SDK/net/subprocess/apply/approval/PR/intent) | PASS | stdlib+_scrub_public; lazy internal imports only; no save_job; no source_apply/patch_apply/materialize |
-| (tests) Targeted + full pytest once | PASS (with gap) | reviewer targeted = 113 passed; tests don't validate emitted next_safe_action (R-0088 untested); builder full count TBD |
-| (handoff) Changed-files table present | PENDING | builder final handoff not yet written |
+| (tests) Targeted + full pytest once | PASS | reviewer targeted post-fix = 90 passed; new regression validates emitted next_safe_action via build_parser; builder full 5852 passed/8 skipped/1 deselected |
+| (handoff) Changed-files table present | FAIL | R-0090 (low) — table absent; explicit block-if; merge HELD until added + Done: R-0090 |
 
 ## Findings — Steps 1573-1608
 
 ## Finding R-0088
-Status: Open
+Status: Resolved
+Resolution: RESOLVED @ d2a1ee4 (reviewer-verified). `_report_cmd` now emits `remedy builder-routing
+report --job-id {job_id} --json` (matches catalog --job-id option); feature_planner 3 templates
+switched to `--job-id <job_id>`. New regression class runs every emitted next_safe_action through
+the real `apps.cli.grouped.build_parser()` + a static guard rejecting `builder-routing report
+{job_id}` / `<job_id>` positional shapes. Reviewer re-ran targeted scripts/remedy_pytest.sh = 90
+passed. Emitted command now parses.
 Severity: high
 Area: selector
 Summary: `_report_cmd` emits an unrunnable `builder-routing report` next_safe_action (positional job vs `--job-id` option) — block-if "selected next action is fake".
@@ -87,7 +94,13 @@ audit all emitted next actions for arg-shape correctness (ideally add a catalog-
 next_safe_action). Then write `Done: R-0088`.
 
 ## Finding R-0089
-Status: Open
+Status: Resolved
+Resolution: RESOLVED @ d2a1ee4 (reviewer-verified). `_deterministic_action` now emits
+`remedy self status --attempt-id {aid} --json` when a pending attempt id exists, else the scope-less
+`remedy self status --json` — never the invalid `--job-id`. The attempt id comes from a real durable
+signal (`self_pending_attempt_id` populated in orchestrator_brain `_gather_signals` from
+`list_attempts`), not invented. Regression tests assert both forms parse via build_parser and that
+`--job-id` is absent. Reviewer targeted run green (90 passed).
 Severity: medium
 Area: selector
 Summary: `_deterministic_action` emits `self status --job-id …` but `self.status` has no `--job-id` flag → unrunnable next action.
@@ -103,11 +116,49 @@ only.
 Expected fix: Emit a valid form (e.g. `remedy self status --json`, or `--attempt-id <id>` if an
 attempt id is available), then write `Done: R-0089`.
 
-Next id: R-0090.
+## Finding R-0090
+Status: Open
+Severity: low
+Area: handoff
+Summary: Final handoff lacks the protocol-required changed-files table (explicit block-if).
+Details: Protocol §53/§82 + this block's block-if "final handoff lacks changed files table" require a
+`| File | What changed | Why |` table covering the changed production files. live_review.md has no
+such table. Code/findings now clean (R-0088/R-0089 resolved), but the block-if gates merge-readiness
+regardless of severity — same lineage as prior-block R-0087.
+Evidence: `grep -E "^\| File \| What changed \| Why \|" .agent/live_review.md` → nothing;
+`git diff --name-only d22e1dd..HEAD` = builder_routing.py + builder_routing_cmd.py + command_catalog +
+grouped + commands/__init__ + run_contract + feature_planner + progress_ledger + review_bundle +
+ui_server + orchestrator_brain + 3 test files + docs, with no corresponding table.
+Expected fix: Add a changed-files table to the final handoff (live_review.md or context.md) covering
+the changed production files, then write `Done: R-0090`.
+
+Next id: R-0091.
 
 ## Builder remediation (awaiting reviewer re-check)
 Done: R-0088 - fixed builder-routing report next_safe_action shape and added parser validation
 Done: R-0089 - fixed self status next_safe_action shape and added regression coverage
+Done: R-0090 - added protocol-required changed-files table to final handoff
+
+## Changed files (Steps 1573-1608) — final handoff
+| File | What changed | Why |
+| ---- | ------------ | --- |
+| packages/orchestration/builder_routing.py | NEW core: tiers/policy/inputs/need-detector/local-first selector/justification codes/budget/loop governor/safe trace persistence; R-0088/R-0089 emitter fixes (`_report_cmd` --job-id; `_deterministic_action` self status --attempt-id/scope-less) | the routing rail + runnable next actions |
+| apps/cli/commands/builder_routing_cmd.py | NEW `builder-routing decide/report` handlers | CLI surface (planning only) |
+| apps/cli/command_catalog.py | NEW builder-routing group + decide(write_metadata)/report(read_only) entries | catalog-backed commands |
+| apps/cli/grouped.py | `--user-requested` store_true flag | CLI arg plumb |
+| apps/cli/commands/__init__.py | register builder_routing_cmd in imports + handler loop | wire handlers |
+| packages/orchestration/run_contract.py | BUILDER_ROUTING_DECIDE/REPORT actions in _DEFAULT_ALLOWED (non-cloud, non-exec) | contract gate |
+| packages/orchestration/feature_planner.py | 4 builder-routing repair rules (R-0088 fix: report `--job-id <job_id>`) | suggestions, no auto-exec; runnable next actions |
+| packages/orchestration/progress_ledger.py | extract/merge_builder_routing_items (fixed item_ids) | surface routing state, no raw |
+| packages/orchestration/review_bundle.py | REQUIRED_SECTIONS 24→25 + _build_builder_routing_summary | bundle safe routing summary |
+| packages/orchestration/ui_server.py | _build_builder_routing_section cockpit (counts/tier/flag) | read-only surface, no buttons |
+| packages/orchestration/orchestrator_brain.py | _gather_signals exposes self_pending_attempt_id (R-0089 enables `self status --attempt-id`) | runnable self-status next action |
+| tests/orchestration/test_builder_routing.py | NEW 24 tests (quality/budget/loop/redaction/arch) incl. TestEmittedCommandsRunnable parser validation (R-0088/R-0089 regression) | coverage + emitted-command runnability |
+| tests/cli/test_builder_routing_cli.py | NEW 7 subprocess tests | CLI runtime coverage |
+| tests/orchestration/test_review_bundle.py | REQUIRED_SECTIONS==25 + builder_routing_summary assert | bundle test update |
+| tests/ui_server/test_dashboard_cockpit_truth.py | test_builder_routing_section_present | cockpit test update |
+| docs/expensive-builder-routing-v0.md | NEW design doc | document the routing rail |
+| docs/{orchestrator-brain-v0,local-model-advisor-v0,provider-trust-verification-v1,repair-request-builder-v0}.md | cross-ref updates | document the new stage |
 
 Fix detail:
 - `builder_routing.py::_report_cmd` now emits `remedy builder-routing report --job-id <id> --json`
