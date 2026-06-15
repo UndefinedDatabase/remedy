@@ -570,6 +570,66 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             next_action=next_action,
         ))
 
+    # Rule 0b: Worker Registry + Route Policy evidence (Step 1728) — forward-looking, user-choice
+    # suggestions. Item-id driven (only fire when the ledger surfaced the matching evidence), so
+    # they never fabricate provider availability and never auto-build. Effort ≈ suggested_steps;
+    # impact ≈ priority. No execution; the user must choose.
+    _WORKER_REGISTRY_RULES = {
+        "worker-registry-available": (
+            "Add a Model/Route Tournament Harness (compare workers/routes)",
+            "The Worker Registry now models replaceable workers — a Tournament Harness could "
+            "compare routes by evidence (cost/quality). Metadata/eval only; no execution added here.",
+            FeaturePlanSource.ROADMAP, FeaturePlanPriority.LOW, "low",
+            ["Define route trial schema", "Score by candidate-quality evidence", "Read-only report"],
+            "remedy worker registry-list --json",
+        ),
+        "route-policy-local-first": (
+            "Add a real Ollama adapter for the local route",
+            "Local/Ollama-first preference is enabled but the Ollama worker is a non-executable "
+            "placeholder. A real loopback adapter would let cheap tasks run locally to cut tokens.",
+            FeaturePlanSource.ROADMAP, FeaturePlanPriority.MEDIUM, "medium",
+            ["Loopback-only transport", "Config-gated + disabled by default", "Trust+verify output"],
+            "remedy worker registry-show ollama.placeholder --json",
+        ),
+        "route-policy-expensive-approval": (
+            "Review expensive route usage",
+            "The recommended route is expensive/high-risk/placeholder and needs human approval — "
+            "review whether a cheaper local route or a tighter policy fits.",
+            FeaturePlanSource.KNOWN_RISK, FeaturePlanPriority.MEDIUM, "low",
+            ["Inspect route policy", "Consider --max-cost-tier", "Prefer local for cheap tasks"],
+            "remedy route-policy show <job_id> --json",
+        ),
+        "route-policy-token-warning": (
+            "Tighten the token/context budget",
+            "Estimated context/token exceeds the recommended route's band (estimate). Consider a "
+            "smaller context or a larger-context worker.",
+            FeaturePlanSource.KNOWN_RISK, FeaturePlanPriority.MEDIUM, "low",
+            ["Set token_budget_hint", "Add Context Budget Optimizer", "Prefer smaller context"],
+            "remedy route-policy evaluate <job_id> --json",
+        ),
+    }
+    for item in ledger.items:
+        rule = _WORKER_REGISTRY_RULES.get(item.item_id)
+        if rule is None:
+            continue
+        title, rationale, source, priority, risk, steps, next_action = rule
+        sug_id = _make_suggestion_id("worker-registry", item.item_id)
+        if sug_id in seen_ids:
+            continue
+        seen_ids.add(sug_id)
+        plan.suggestions.append(FeatureSuggestion(
+            suggestion_id=sug_id,
+            title=title,
+            rationale=rationale,
+            priority=priority,
+            source_type=source,
+            source_refs=[item.item_id],
+            estimated_risk=risk,
+            suggested_steps=steps,
+            creates_proposed_task=False,
+            next_action=next_action,
+        ))
+
     # Rule 1: Open blocker/high findings -> high priority suggestions
     for item in ledger.items:
         if item.status == ProgressStatus.BLOCKED:

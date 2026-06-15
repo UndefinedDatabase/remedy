@@ -178,6 +178,15 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--use-local-advisor", action="store_true", dest="use_local_advisor", help=arg.help)
             elif arg.name == "--user-requested":
                 parser.add_argument("--user-requested", action="store_true", dest="user_requested", help=arg.help)
+            elif arg.name == "--prefer-local-for-cheap-tasks":
+                parser.add_argument("--prefer-local-for-cheap-tasks", action="store_true",
+                                    dest="prefer_local_for_cheap_tasks", help=arg.help)
+            elif arg.name == "--prefer-ollama-for-cheap-tasks":
+                parser.add_argument("--prefer-ollama-for-cheap-tasks", action="store_true",
+                                    dest="prefer_ollama_for_cheap_tasks", help=arg.help)
+            elif arg.name == "--require-human-approval-for-expensive":
+                parser.add_argument("--require-human-approval-for-expensive", action="store_true",
+                                    dest="require_human_approval_for_expensive", help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

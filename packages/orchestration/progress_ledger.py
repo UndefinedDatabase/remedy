@@ -909,6 +909,68 @@ def merge_external_builder_items(ledger: ProgressLedger, packages: list[dict] | 
             seen.add(item.item_id)
 
 
+def extract_worker_registry_items(registry: list | None, policy: Any,
+                                  selection: Any = None) -> list[ProgressItem]:
+    """Extract Worker Registry + Route Policy progress items (Step 1727). Read-only; fixed item_ids
+    → no duplicates. Honest: never "worker running", never "Ollama ready", never "provider available"
+    — placeholders/unknown are shown as such."""
+    registry = registry or []
+    if not registry:
+        return []
+    items: list[ProgressItem] = []
+    enabled = sum(1 for s in registry if getattr(s, "enabled", False))
+    items.append(ProgressItem(
+        item_id="worker-registry-available", title="Worker registry available",
+        status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+        safe_summary=f"{len(registry)} worker spec(s); {enabled} enabled (metadata only — no "
+                     "worker is running, no provider/Ollama call is made)."))
+    if policy is not None:
+        constrains = bool(getattr(policy, "blocked_worker_ids", []) or
+                          getattr(policy, "user_selected_worker_ids", []) or
+                          getattr(policy, "blocked_worker_kinds", []) or
+                          getattr(policy, "allowed_worker_kinds", []))
+        if constrains:
+            items.append(ProgressItem(
+                item_id="route-policy-configured", title="Route policy configured",
+                status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+                safe_summary="A user route policy constrains worker selection (selected/blocked/"
+                             "kind filters).",
+                next_action="remedy route-policy show <job_id> --json"))
+        if getattr(policy, "prefer_local_for_cheap_tasks", False) or \
+                getattr(policy, "prefer_ollama_for_cheap_tasks", False):
+            items.append(ProgressItem(
+                item_id="route-policy-local-first", title="Local/Ollama-first preference enabled",
+                status=ProgressStatus.PLANNED, source_type=ProgressSource.FEATURE_SUGGESTION,
+                safe_summary="Cheap tasks prefer a local/Ollama-capable route when safe (Ollama "
+                             "route is a non-executable placeholder until a real adapter lands)."))
+    if selection is not None and getattr(selection, "requires_human_approval", False) \
+            and getattr(selection, "recommended_worker_id", ""):
+        items.append(ProgressItem(
+            item_id="route-policy-expensive-approval",
+            title="Recommended route requires human approval",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="The recommended route is expensive/high-risk/placeholder — human approval "
+                         "required before any work (nothing runs automatically).",
+            next_action="remedy route-policy evaluate <job_id> --json"))
+    if selection is not None and getattr(selection, "token_budget_warning", ""):
+        items.append(ProgressItem(
+            item_id="route-policy-token-warning", title="Estimated token budget warning",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary="Estimated context/token exceeds the route's band (estimate, not verified).",
+            next_action="remedy route-policy evaluate <job_id> --json"))
+    return items
+
+
+def merge_worker_registry_items(ledger: ProgressLedger, registry: list | None, policy: Any,
+                                selection: Any = None) -> None:
+    """Merge worker registry / route policy items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_worker_registry_items(registry, policy, selection):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1539,6 +1601,22 @@ def build_progress_ledger(
             )
             merge_external_builder_items(ledger, load_external_packages(job_id=str(job.id)),
                                          load_external_submissions(job_id=str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Worker registry + route policy items (Step 1727). Read-only; honest placeholder/unknown.
+    if job is not None:
+        try:
+            from packages.orchestration.worker_registry import (
+                load_worker_registry, load_route_policy, evaluate_worker_selection,
+                WorkerSelectionRequest,
+            )
+            registry = load_worker_registry()
+            policy = load_route_policy(str(job.id))
+            selection = evaluate_worker_selection(
+                WorkerSelectionRequest(job_id=str(job.id), task_type="repair"), policy=policy,
+                registry=registry)
+            merge_worker_registry_items(ledger, registry, policy, selection)
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

@@ -278,6 +278,21 @@ class TestDashboardShape:
         assert eb["live"] is False
         assert "buttons" not in eb and "actions" not in eb
 
+    def test_worker_registry_section_present(self):
+        # Read-only Worker Registry + Route Policy v0 summary (Step 1730).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "worker_registry" in dash
+        wr = dash["worker_registry"]
+        assert "available_workers_count" in wr
+        assert "selected_workers" in wr
+        assert "blocked_workers" in wr
+        assert "recommended_next_action" in wr
+        assert wr["live"] is False
+        assert "buttons" not in wr and "actions" not in wr
+        # No execution affordance in the recommended next action.
+        assert " run" not in str(wr.get("recommended_next_action", ""))
+
     def test_repair_request_section_present(self):
         # Read-only Repair Request Builder summary (Step 1381).
         job = Job(name="t")

@@ -612,6 +612,46 @@ def _build_external_builder_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_worker_registry_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Worker Registry + Route Policy v0 summary for the cockpit (Step 1730).
+
+    Counts + active route policy + recommended route only. No buttons, no mutation, no "run worker",
+    no fake provider/Ollama status. LIVE is always false — this block is metadata + policy only."""
+    try:
+        from packages.orchestration.worker_registry import (
+            load_worker_registry, load_route_policy, evaluate_worker_selection, is_placeholder,
+            WorkerSelectionRequest,
+        )
+        specs = load_worker_registry()
+        policy = load_route_policy(str(job.id))
+        selection = evaluate_worker_selection(
+            WorkerSelectionRequest(job_id=str(job.id), task_type="repair"), policy=policy,
+            registry=specs)
+        return {
+            "available_workers_count": len(specs),
+            "enabled_workers_count": sum(1 for s in specs if s.enabled),
+            "placeholder_workers_count": sum(1 for s in specs if is_placeholder(s)),
+            "selected_workers": list(policy.user_selected_worker_ids),
+            "preferred_workers": list(policy.preferred_worker_ids),
+            "blocked_workers": list(policy.blocked_worker_ids),
+            "local_first_enabled": policy.prefer_local_for_cheap_tasks,
+            "ollama_preference_enabled": policy.prefer_ollama_for_cheap_tasks,
+            "max_cost_tier": policy.max_cost_tier,
+            "max_risk_tier": policy.max_risk_tier,
+            "token_budget_hint": policy.token_budget_hint,
+            "recommended_worker_id": selection.recommended_worker_id,
+            "requires_human_approval": selection.requires_human_approval,
+            "recommended_next_action": selection.next_safe_action,
+            "live": False,
+            "source": "worker_registry",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"available_workers_count": "unknown", "selected_workers": [],
+                "preferred_workers": [], "blocked_workers": [], "local_first_enabled": "unknown",
+                "ollama_preference_enabled": "unknown", "recommended_worker_id": "",
+                "recommended_next_action": "", "live": False, "source": "unavailable"}
+
+
 def _build_candidate_quality_section(job: Any) -> dict[str, Any]:
     """Safe read-only Local Candidate Quality Evaluation v1 summary for the cockpit (Step 1664).
 
@@ -1127,6 +1167,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "local_candidate": _build_local_candidate_section(job),
         "candidate_quality": _build_candidate_quality_section(job),
         "external_builder": _build_external_builder_section(job),
+        "worker_registry": _build_worker_registry_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),

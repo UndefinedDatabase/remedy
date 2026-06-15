@@ -55,6 +55,7 @@ REQUIRED_SECTIONS = (
     "local_candidate_summary.json",
     "candidate_quality_summary.json",
     "external_builder_summary.json",
+    "worker_registry_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1172,6 +1173,59 @@ def _build_external_builder_summary(job: Any) -> dict:
                 "error": "external_builder_unavailable"}
 
 
+def _build_worker_registry_summary(job: Any) -> dict:
+    """Safe Worker Registry + Route Policy v0 summary (Step 1729). Worker/kind/cost/risk counts,
+    the active route policy summary, local/Ollama preference flags, token-budget warning if present,
+    and safe next actions only — no secrets/keys/raw prompts/raw output/absolute paths. Metadata
+    only — never indicates a running worker or an available provider."""
+    try:
+        from packages.orchestration.worker_registry import (
+            load_worker_registry, load_route_policy, evaluate_worker_selection, is_placeholder,
+            WorkerSelectionRequest,
+        )
+        specs = load_worker_registry()
+        by_kind: dict[str, int] = {}
+        by_cost: dict[str, int] = {}
+        by_risk: dict[str, int] = {}
+        for s in specs:
+            by_kind[s.kind] = by_kind.get(s.kind, 0) + 1
+            by_cost[s.cost_tier] = by_cost.get(s.cost_tier, 0) + 1
+            by_risk[s.risk_tier] = by_risk.get(s.risk_tier, 0) + 1
+        policy = load_route_policy(str(job.id))
+        selection = evaluate_worker_selection(
+            WorkerSelectionRequest(job_id=str(job.id), task_type="repair"), policy=policy,
+            registry=specs)
+        return {
+            "enabled_workers": sum(1 for s in specs if s.enabled),
+            "user_selectable_workers": sum(1 for s in specs if s.user_selectable),
+            "disabled_workers": sum(1 for s in specs if not s.enabled),
+            "placeholder_workers": sum(1 for s in specs if is_placeholder(s)),
+            "workers_by_kind": by_kind,
+            "cost_distribution": by_cost,
+            "risk_distribution": by_risk,
+            "route_policy": {
+                "policy_id": policy.policy_id,
+                "user_selected_worker_ids": list(policy.user_selected_worker_ids),
+                "blocked_worker_ids": list(policy.blocked_worker_ids),
+                "max_cost_tier": policy.max_cost_tier,
+                "max_risk_tier": policy.max_risk_tier,
+                "prefer_local_for_cheap_tasks": policy.prefer_local_for_cheap_tasks,
+                "prefer_ollama_for_cheap_tasks": policy.prefer_ollama_for_cheap_tasks,
+            },
+            "recommended_worker_id": selection.recommended_worker_id,
+            "requires_human_approval": selection.requires_human_approval,
+            "token_budget_warning": selection.token_budget_warning,
+            "safe_next_actions": [
+                f"remedy route-policy show {str(job.id)} --json",
+                f"remedy route-policy evaluate {str(job.id)} --task-type repair --json",
+                "remedy worker registry-list --json",
+            ],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"enabled_workers": 0, "user_selectable_workers": 0, "workers_by_kind": {},
+                "error": "worker_registry_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1606,6 +1660,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("external_builder_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("external_builder_summary.json", status="error", error="build failed"))
+
+    # worker_registry_summary.json (Step 1729)
+    try:
+        wrs = _build_worker_registry_summary(job)
+        content = json.dumps(wrs, indent=2).encode()
+        section_data["worker_registry_summary.json"] = content
+        result.sections.append(ReviewBundleSection("worker_registry_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("worker_registry_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:
