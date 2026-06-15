@@ -700,6 +700,20 @@ def select_builder_routing_decision(
 
     # 9. External candidate generation — strict preconditions.
     if pol.allow_external_candidate_generator:
+        # External builder quality feedback (Step 1690): poor external-route history escalates to
+        # human review. Read-only; NEVER starts a worker or generation. Unknown history is neutral.
+        try:
+            from packages.orchestration.candidate_quality import route_quality_feedback
+            efb = route_quality_feedback(model_label="", route_tier=BuilderRoutingTier.EXTERNAL_CANDIDATE_GENERATOR,
+                                         data_dir=ddir)
+            if efb.get("recommend") == "lower":
+                return _finalize(d, BuilderRoutingTier.HUMAN_REVIEW_REQUIRED,
+                                 BuilderRoutingStopReason.LOOP_BLOCK,
+                                 "External builder quality history is poor — human review before "
+                                 "more external work.",
+                                 _report_cmd(request.job_id), ddir, persist)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
         ext_ok, ext_why = _external_allowed(request, inputs, pol, budget, loop_status, d.justification_codes)
         if ext_ok:
             if request.user_requested:

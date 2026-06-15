@@ -86,6 +86,13 @@ class ContractAction:
     CANDIDATE_QUALITY_SHOW = "candidate_quality_show"
     CANDIDATE_QUALITY_SCORECARD = "candidate_quality_scorecard"
     CANDIDATE_QUALITY_REPORT = "candidate_quality_report"
+    # External Builder Sandbox v0 (Step 1694) — UNTRUSTED external candidate INGRESS only. NOT
+    # external execution / provider / model / apply / test. package-create/submit are metadata/
+    # quarantine-write; show/list/report are read-only. The submitted candidate goes through the
+    # existing Trust Gate + Verification + (human) approval; this never applies/approves.
+    EXTERNAL_BUILDER_PACKAGE = "external_builder_package"
+    EXTERNAL_BUILDER_SUBMIT = "external_builder_submit"
+    EXTERNAL_BUILDER_SHOW = "external_builder_show"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -218,6 +225,9 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.CANDIDATE_QUALITY_SHOW,
     ContractAction.CANDIDATE_QUALITY_SCORECARD,
     ContractAction.CANDIDATE_QUALITY_REPORT,
+    ContractAction.EXTERNAL_BUILDER_PACKAGE,
+    ContractAction.EXTERNAL_BUILDER_SUBMIT,
+    ContractAction.EXTERNAL_BUILDER_SHOW,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

@@ -582,6 +582,36 @@ def _build_provider_trust_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_external_builder_section(job: Any) -> dict[str, Any]:
+    """Safe read-only External Builder Sandbox v0 summary for the cockpit (Step 1693).
+
+    Counts + latest state only. No buttons, no mutation, no "run external builder", no raw.
+    LIVE only with real running evidence — in this block normally false (ingress only)."""
+    try:
+        from packages.orchestration.external_builder_sandbox import (
+            load_external_packages, load_external_submissions,
+        )
+        pkgs = load_external_packages(job_id=str(job.id))
+        subs = load_external_submissions(job_id=str(job.id))
+        latest = subs[-1] if subs else None
+        return {
+            "external_packages": len(pkgs),
+            "external_submissions": len(subs),
+            "pending_external_reviews": sum(1 for s in subs if s.get("state") == "needs_review"),
+            "rejected_external_candidates": sum(
+                1 for s in subs if s.get("state") in ("trust_rejected", "verification_rejected")),
+            "verified_external_candidates": sum(1 for s in subs if s.get("state") == "pending_approval"),
+            "latest_state": (latest or {}).get("state", ""),
+            "live": False,
+            "source": "external_builder",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"external_packages": "unknown", "external_submissions": "unknown",
+                "pending_external_reviews": "unknown", "rejected_external_candidates": "unknown",
+                "verified_external_candidates": "unknown", "latest_state": "", "live": False,
+                "source": "unavailable"}
+
+
 def _build_candidate_quality_section(job: Any) -> dict[str, Any]:
     """Safe read-only Local Candidate Quality Evaluation v1 summary for the cockpit (Step 1664).
 
@@ -1096,6 +1126,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "builder_routing": _build_builder_routing_section(job),
         "local_candidate": _build_local_candidate_section(job),
         "candidate_quality": _build_candidate_quality_section(job),
+        "external_builder": _build_external_builder_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),

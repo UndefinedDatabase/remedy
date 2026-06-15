@@ -427,6 +427,29 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.KNOWN_RISK,
             "remedy candidate-quality report --json",
         ),
+        # External Builder Sandbox v0 follow-ups (Step 1691). Suggestions from evidence only — no
+        # new external execution is proposed without a user request.
+        "external-builder-pending-approval": (
+            "Approve or reject the external candidate",
+            "An external-builder candidate passed trust+verification and has a pending intent — "
+            "approve or reject it (apply via do continue). Untrusted source; human-gated.",
+            FeaturePlanSource.REPAIR_ARTIFACT,
+            "remedy patch approve <job_id> <intent_id> --json",
+        ),
+        "external-builder-trust-rejected": (
+            "Review external builder route contract (trust rejected)",
+            "An external candidate was rejected by the Trust Gate — review the request package / "
+            "worker contract; do not auto-resubmit.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy external-builder submission-list <job_id> --json",
+        ),
+        "external-builder-verification-rejected": (
+            "Review external builder route contract (verification rejected)",
+            "An external candidate was rejected by Verification — revise the request package / "
+            "worker contract or escalate to human review.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy external-builder submission-list <job_id> --json",
+        ),
         # Provider patch materialization follow-ups (Step 1349). No auto approve/retry.
         "provider-repair-intent-pending-approval": (
             "Approve or reject the materialized provider repair",

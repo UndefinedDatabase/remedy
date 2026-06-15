@@ -858,6 +858,57 @@ def merge_provider_material_items(ledger: ProgressLedger, materials: dict | None
             seen.add(item.item_id)
 
 
+def extract_external_builder_items(packages: list[dict] | None,
+                                   submissions: list[dict] | None) -> list[ProgressItem]:
+    """Extract External Builder Sandbox v0 progress items (Step 1691). Read-only; fixed item_ids →
+    no duplicates. Ingress only — never "running"; no fake builder activity."""
+    packages = packages or []
+    submissions = submissions or []
+    if not packages and not submissions:
+        return []
+    items: list[ProgressItem] = []
+    if packages:
+        items.append(ProgressItem(
+            item_id="external-builder-package-created", title="External builder package created",
+            status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary=f"{len(packages)} external builder request package(s) exported."))
+    if submissions:
+        items.append(ProgressItem(
+            item_id="external-builder-submission-received", title="External builder submission received",
+            status=ProgressStatus.DONE, source_type=ProgressSource.REPAIR_ARTIFACT,
+            safe_summary=f"{len(submissions)} external candidate submission(s) (untrusted)."))
+    if any(s.get("state") == "trust_rejected" for s in submissions):
+        items.append(ProgressItem(
+            item_id="external-builder-trust-rejected", title="External builder trust rejected",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="An external candidate was rejected by the Trust Gate.",
+            next_action="remedy external-builder submission-list <job_id> --json"))
+    if any(s.get("state") == "verification_rejected" for s in submissions):
+        items.append(ProgressItem(
+            item_id="external-builder-verification-rejected", title="External builder verification rejected",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="An external candidate was rejected by Verification.",
+            next_action="remedy external-builder submission-list <job_id> --json"))
+    pending = [s for s in submissions if s.get("state") == "pending_approval" and s.get("intent_id")]
+    if pending:
+        items.append(ProgressItem(
+            item_id="external-builder-pending-approval", title="External builder intent pending approval",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.REPAIR_ARTIFACT,
+            safe_summary=f"{len(pending)} external candidate intent(s) pending approval.",
+            next_action="remedy patch approve <job_id> <intent_id> --json"))
+    return items
+
+
+def merge_external_builder_items(ledger: ProgressLedger, packages: list[dict] | None,
+                                 submissions: list[dict] | None) -> None:
+    """Merge external builder items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_external_builder_items(packages, submissions):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1477,6 +1528,17 @@ def build_progress_ledger(
         try:
             from packages.orchestration.candidate_quality import load_candidate_quality_evaluations
             merge_candidate_quality_items(ledger, load_candidate_quality_evaluations(job_id=str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # External builder sandbox items (Step 1691).
+    if job is not None:
+        try:
+            from packages.orchestration.external_builder_sandbox import (
+                load_external_packages, load_external_submissions,
+            )
+            merge_external_builder_items(ledger, load_external_packages(job_id=str(job.id)),
+                                         load_external_submissions(job_id=str(job.id)))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

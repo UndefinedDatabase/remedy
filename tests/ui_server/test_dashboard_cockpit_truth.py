@@ -266,6 +266,18 @@ class TestDashboardShape:
         assert "pending_with_quality_count" in cq
         assert "buttons" not in cq and "actions" not in cq
 
+    def test_external_builder_section_present(self):
+        # Read-only External Builder Sandbox v0 summary (Step 1693).
+        job = Job(name="t")
+        dash = _build_dashboard(job)
+        assert "external_builder" in dash
+        eb = dash["external_builder"]
+        assert "external_packages" in eb
+        assert "external_submissions" in eb
+        assert "verified_external_candidates" in eb
+        assert eb["live"] is False
+        assert "buttons" not in eb and "actions" not in eb
+
     def test_repair_request_section_present(self):
         # Read-only Repair Request Builder summary (Step 1381).
         job = Job(name="t")

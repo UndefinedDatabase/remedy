@@ -577,9 +577,14 @@ def evaluate_candidate_quality(
     generation_id: str | None = None, trust_report_id: str | None = None,
     verification_id: str | None = None, intent_id: str | None = None,
     job_id: str | None = None, data_dir: Path | None = None, new: bool = False,
+    model_label: str | None = None, route_tier: str | None = None,
 ) -> CandidateQualityEvaluation:
     """Evaluate one candidate's outcome from durable evidence. Read-only inputs; writes a SAFE
-    evaluation report. Never generates/approves/applies/tests."""
+    evaluation report. Never generates/approves/applies/tests.
+
+    ``model_label`` / ``route_tier`` override the source/route labels when there is no local
+    generation run manifest (e.g. an EXTERNAL builder submission) so scorecards can aggregate by
+    external source/route. They NEVER affect scoring — only the safe labels."""
     from packages.orchestration.data_paths import resolve_data_root
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     ev = _gather_evidence(
@@ -612,8 +617,9 @@ def evaluate_candidate_quality(
         job_id=ids.get("job_id", ""), request_package_id=run.get("request_package_id", ""),
         failure_artifact_id=run.get("failure_artifact_id", ""),
         self_attempt_id=run.get("self_attempt_id", ""),
-        route_tier=ev.get("route_tier", "") or "local_candidate_generator",
-        model_label=ev.get("model_label", ""), outcome=outcome, score=score, findings=findings,
+        route_tier=(ev.get("route_tier", "") or route_tier or "local_candidate_generator"),
+        model_label=(ev.get("model_label", "") or model_label or ""),
+        outcome=outcome, score=score, findings=findings,
         evidence_fingerprint=fp, created_at=_now())
     # Evidence refs (safe IDs only).
     for kind, rid in (("generation", e.generation_id), ("trust_report", e.trust_report_id),
