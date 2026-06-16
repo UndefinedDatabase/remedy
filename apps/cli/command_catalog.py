@@ -823,7 +823,7 @@ CATALOG: tuple[CommandEntry, ...] = (
         group_id="execution",
         subcommand="run",
         description="Run a managed builder execution (bounded subprocess; shell=False; timeout; output cap).",
-        action_class="test_execution",
+        action_class="controlled_builder_execution",
         args=(
             ArgDef("session_id", "Session ID"),
             ArgDef("--template", "Template ID", required=True, is_option=True),

@@ -59,7 +59,7 @@ class TestCatalogIntegrity:
 
 class TestCatalogClassification:
     def test_every_command_has_action_class(self) -> None:
-        valid = {"read_only", "write_metadata", "approval_gate", "apply_write", "test_execution", "dev_helper", "local_state_change"}
+        valid = {"read_only", "write_metadata", "approval_gate", "apply_write", "test_execution", "controlled_builder_execution", "dev_helper", "local_state_change"}
         for cmd in CATALOG:
             assert cmd.action_class in valid, f"{cmd.command_id} has invalid action_class: {cmd.action_class}"
 

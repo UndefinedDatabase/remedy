@@ -116,6 +116,7 @@ _FORBIDDEN_ENV_KEYS = frozenset({
 MAX_TIMEOUT_SECONDS = 600
 DEFAULT_TIMEOUT_SECONDS = 300
 MAX_OUTPUT_BYTES = 256 * 1024  # 256 KB
+DEFAULT_APPROVAL_EXPIRY_SECONDS = 1800  # 30 minutes
 
 # Allowed placeholder keys in command templates.
 _ALLOWED_PLACEHOLDER_KEYS = frozenset({
@@ -564,6 +565,11 @@ def approve_managed_execution(
     if not tmpl.get("enabled", False):
         return None
 
+    # Default expiry: now + 30 minutes if not specified.
+    if not expires_at:
+        from datetime import timedelta
+        expires_at = (datetime.now(timezone.utc) + timedelta(seconds=DEFAULT_APPROVAL_EXPIRY_SECONDS)).isoformat()
+
     # Derive adapter_kind from template if not specified.
     ak = adapter_kind or tmpl.get("adapter_kind", "")
     scope = approval_scope if approval_scope in _ALL_APPROVAL_SCOPES else ApprovalScope.SINGLE_RUN
@@ -638,9 +644,11 @@ def validate_execution_approval(
     if approval.get("template_id", "") != template_id:
         codes.append("template_mismatch")
 
-    # 3. Expiry check.
+    # 3. Expiry check — missing/empty expires_at is treated as expired.
     expires_at = approval.get("expires_at", "")
-    if expires_at:
+    if not expires_at:
+        codes.append("approval_expired")
+    else:
         try:
             exp_dt = datetime.fromisoformat(expires_at)
             if datetime.now(timezone.utc) > exp_dt:
@@ -691,6 +699,64 @@ def validate_execution_approval(
         approval_output = int(approval.get("max_output_bytes", MAX_OUTPUT_BYTES))
         if approval_output > 0 and tmpl_output > approval_output:
             codes.append("output_exceeds_cap")
+
+    # 11+. Session/adapter/template binding validation (R-0107).
+    codes.extend(_validate_session_binding(
+        session_id, template_id, approval, tmpl, ddir,
+    ))
+
+    return codes
+
+
+def _validate_session_binding(
+    session_id: str, template_id: str,
+    approval: dict[str, Any], tmpl: dict[str, Any] | None,
+    ddir: Path,
+) -> list[str]:
+    """Validate approval against real session, adapter, and template bindings (R-0107)."""
+    codes: list[str] = []
+    try:
+        from packages.orchestration.main_builder_adapter import (
+            load_builder_session, get_builder_adapter_spec,
+        )
+    except ImportError:
+        return codes  # graceful degradation if module not available
+
+    # Load real session — if no session exists, binding validation is skipped
+    # (approval system works standalone; bindings only checked against existing sessions).
+    session = load_builder_session(session_id, ddir)
+    if not session:
+        return codes
+
+    # Session must be in an executable state (not completed/intake-only).
+    non_executable = {"completed_intake_only"}
+    if session.status in non_executable:
+        codes.append("session_not_executable")
+
+    # Approval package_id must match session.package_id (auto-check, not caller-dependent).
+    approval_pkg = approval.get("package_id", "")
+    if approval_pkg and session.package_id and approval_pkg != session.package_id:
+        codes.append("approval_package_mismatch")
+
+    # Approval adapter_id must match session.adapter_id.
+    approval_adp = approval.get("adapter_id", "")
+    if approval_adp and session.adapter_id and approval_adp != session.adapter_id:
+        codes.append("approval_adapter_mismatch")
+
+    # Template adapter_kind must match adapter spec kind.
+    if session.adapter_id and tmpl:
+        spec = get_builder_adapter_spec(session.adapter_id, ddir)
+        if spec:
+            spec_dict = spec.to_dict()
+            tmpl_ak = tmpl.get("adapter_kind", "")
+            spec_kind = spec_dict.get("kind", "")
+            if tmpl_ak and spec_kind and tmpl_ak != spec_kind:
+                codes.append("template_adapter_kind_mismatch")
+            if not spec_dict.get("enabled", False):
+                codes.append("adapter_disabled")
+        elif approval_adp:
+            # Adapter specified in approval but not found.
+            codes.append("adapter_not_found")
 
     return codes
 
@@ -952,6 +1018,14 @@ def run_managed_builder(
     timeout = min(tmpl.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS), MAX_TIMEOUT_SECONDS)
     max_bytes = min(tmpl.get("max_output_bytes", MAX_OUTPUT_BYTES), MAX_OUTPUT_BYTES)
 
+    # 4b. Consume approval BEFORE subprocess start (R-0108).
+    # Counts allowed starts, not successful exits. Failed/timeout runs still consume.
+    if tmpl.get("requires_approval", True):
+        _increment_approval_used_count(session_id, ddir)
+        _append_event(result.execution_id, session_id, job_id,
+                       ExecutionEventKind.APPROVAL_CONSUMED,
+                       "Approval used_count incremented before execution", ddir=ddir)
+
     # 5. Record start event.
     _append_event(result.execution_id, session_id, job_id,
                    ExecutionEventKind.STARTED,
@@ -991,11 +1065,6 @@ def run_managed_builder(
         if proc.returncode == 0:
             result.status = ManagedExecutionStatus.COMPLETED
             result.next_safe_action = f"remedy builder session-record-output {session_id} --artifact-ref {result.output_ref} --json"
-            # v1.1: increment approval used_count.
-            _increment_approval_used_count(session_id, ddir)
-            _append_event(result.execution_id, session_id, job_id,
-                           ExecutionEventKind.APPROVAL_CONSUMED,
-                           "Approval used_count incremented", ddir=ddir)
         else:
             result.status = ManagedExecutionStatus.FAILED
             result.safe_summary = _safe(f"Exit code {proc.returncode}: {summary_text}", 300)
@@ -1146,6 +1215,27 @@ def build_debug_bundle(execution_id: str, data_dir: Path | None = None) -> dict[
     elif "approval_exhausted" in blocking:
         repair_suggestion = f"Re-approve with higher max_runs: remedy execution approve {session_id} --template {result.get('template_id', '')} --max-runs N --json"
 
+    # R-0110: binding summary — session/package/adapter/template matching.
+    binding_summary: dict[str, Any] = {
+        "session_id_match": True,
+        "template_id_match": True,
+    }
+    if approval:
+        binding_summary["package_id"] = approval.get("package_id", "")
+        binding_summary["adapter_id"] = approval.get("adapter_id", "")
+        binding_summary["adapter_kind"] = approval.get("adapter_kind", "")
+        if tmpl:
+            binding_summary["template_adapter_kind"] = tmpl.get("adapter_kind", "")
+            binding_summary["adapter_kind_match"] = (
+                not approval.get("adapter_kind", "") or
+                not tmpl.get("adapter_kind", "") or
+                approval.get("adapter_kind", "") == tmpl.get("adapter_kind", "")
+            )
+
+    # R-0110: event sequence summary.
+    event_kinds_present = [e.get("kind", "") for e in exec_events]
+    has_output_ref = bool(result.get("output_ref", ""))
+
     return {
         "execution_id": execution_id,
         "session_id": session_id,
@@ -1157,8 +1247,10 @@ def build_debug_bundle(execution_id: str, data_dir: Path | None = None) -> dict[
         "started_at": result.get("started_at", ""),
         "ended_at": result.get("ended_at", ""),
         "output_ref": result.get("output_ref", ""),
+        "output_ref_present": has_output_ref,
         "safe_summary": result.get("safe_summary", ""),
         "blocking_reasons": blocking,
+        "next_safe_action": result.get("next_safe_action", ""),
         "approval": {
             "approved": bool(approval),
             "operator_id": _safe(approval.get("operator_id", ""), 100) if approval else "",
@@ -1169,7 +1261,9 @@ def build_debug_bundle(execution_id: str, data_dir: Path | None = None) -> dict[
             "expires_at": approval.get("expires_at", "") if approval else "",
         },
         "approval_validation": approval_validation,
+        "binding_summary": binding_summary,
         "repair_suggestion": repair_suggestion,
+        "event_sequence": event_kinds_present,
         "event_timeline": [
             {
                 "kind": e.get("kind", ""),
@@ -1254,8 +1348,11 @@ def audit_template_safety(tmpl: dict[str, Any]) -> list[dict[str, str]]:
     return out
 
 
-def audit_execution_result_safety(result: dict[str, Any]) -> list[dict[str, str]]:
-    """Flag unsafe execution result states."""
+def audit_execution_result_safety(
+    result: dict[str, Any],
+    events: list[dict[str, Any]] | None = None,
+) -> list[dict[str, str]]:
+    """Flag unsafe execution result states (R-0110 hardened)."""
     out: list[dict[str, str]] = []
     eid = result.get("execution_id", "")
     blob = json.dumps(result).lower()
@@ -1268,6 +1365,29 @@ def audit_execution_result_safety(result: dict[str, Any]) -> list[dict[str, str]
     # Unknown status.
     if result.get("status", "") not in _ALL_EXECUTION_STATUSES:
         out.append({"execution_id": eid, "code": "unknown_execution_status"})
+
+    # R-0110: completed run must have output_ref.
+    status = result.get("status", "")
+    if status == ManagedExecutionStatus.COMPLETED and not result.get("output_ref", ""):
+        out.append({"execution_id": eid, "code": "completed_missing_output_ref"})
+
+    # R-0110: event sequence checks (if events provided).
+    if events is not None:
+        exec_events = [e for e in events if e.get("execution_id") == eid]
+        kinds = [e.get("kind", "") for e in exec_events]
+        if status == ManagedExecutionStatus.COMPLETED:
+            if ExecutionEventKind.STARTED not in kinds:
+                out.append({"execution_id": eid, "code": "completed_missing_started_event"})
+            if ExecutionEventKind.COMPLETED not in kinds:
+                out.append({"execution_id": eid, "code": "completed_missing_completed_event"})
+
+    # R-0110: result must not claim repair/mission done.
+    summary_lower = result.get("safe_summary", "").lower()
+    for forbidden in ["repair_done", "mission_done", "repair_complete", "mission_complete"]:
+        if forbidden in summary_lower:
+            out.append({"execution_id": eid, "code": "result_claims_repair_or_mission_done"})
+            break
+
     return out
 
 
@@ -1287,9 +1407,11 @@ def audit_approval_safety(approval: dict[str, Any], templates: list[dict[str, An
     if max_runs > 0 and used_count > max_runs:
         out.append({"approval_id": aid, "code": "used_count_exceeds_max_runs"})
 
-    # Expiry check (informational).
+    # Expiry check — missing expiry is a violation.
     expires_at = approval.get("expires_at", "")
-    if expires_at:
+    if not expires_at:
+        out.append({"approval_id": aid, "code": "missing_expires_at"})
+    else:
         try:
             exp_dt = datetime.fromisoformat(expires_at)
             if datetime.now(timezone.utc) > exp_dt:
@@ -1340,8 +1462,10 @@ def managed_execution_integrity(data_dir: Path | None = None) -> dict[str, Any]:
     for a in approvals:
         violations.extend(audit_approval_safety(a, templates))
     results = list_execution_results(data_dir=ddir)
+    # R-0110: load all events for event sequence checks.
+    all_events = list_execution_events(data_dir=ddir)
     for r in results:
-        violations.extend(audit_execution_result_safety(r))
+        violations.extend(audit_execution_result_safety(r, events=all_events))
     return {
         "version": 2,
         "template_count": len(templates),

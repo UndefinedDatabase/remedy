@@ -50,6 +50,7 @@ from packages.orchestration.managed_builder_execution import (
     _ALLOWED_PLACEHOLDER_KEYS,
     MAX_TIMEOUT_SECONDS,
     MAX_OUTPUT_BYTES,
+    DEFAULT_APPROVAL_EXPIRY_SECONDS,
 )
 
 
@@ -456,7 +457,8 @@ class TestIntegrity(unittest.TestCase):
         assert "unknown_execution_status" in codes
 
     def test_known_status_clean(self):
-        result = {"execution_id": "exe1", "status": "completed"}
+        result = {"execution_id": "exe1", "status": "completed",
+                  "output_ref": "mbe/output/exe1.raw"}
         violations = audit_execution_result_safety(result)
         assert len(violations) == 0
 
@@ -590,7 +592,7 @@ class TestApprovalValidation(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as td:
             t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
-                                enabled=True, requires_approval=False)
+                                enabled=True)
             save_command_template(t, data_dir=Path(td))
             # Approve with max_runs=1, then run to exhaust.
             approve_managed_execution("ses1", "tmpl1", max_runs=1,
@@ -696,6 +698,7 @@ class TestApprovalIntegrity(unittest.TestCase):
         violations = audit_approval_safety({
             "approval_id": "a1", "approval_scope": "single_run", "max_runs": 1,
             "used_count": 0,
+            "expires_at": "2099-12-31T23:59:59+00:00",
         })
         assert len(violations) == 0
 
@@ -830,6 +833,292 @@ class TestRunnerApprovalEnforcement(unittest.TestCase):
             ExecutionEventKind.OUTPUT_CAP_APPLIED,
         ]:
             assert kind in _ALL_EVENT_KINDS, f"{kind} not in _ALL_EVENT_KINDS"
+
+
+class TestR0106DefaultExpiry(unittest.TestCase):
+    """R-0106: Approval must have default expiry; missing expiry = invalid."""
+
+    def test_default_approval_has_future_expires_at(self):
+        """approve_managed_execution() auto-sets expires_at ~30min in future."""
+        import tempfile
+        from datetime import datetime, timezone
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="r106-t", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approval = approve_managed_execution("ses-r106", "r106-t",
+                                                   data_dir=Path(td))
+            assert approval is not None
+            d = approval.to_dict()
+            assert d["expires_at"], "expires_at must not be empty"
+            exp_dt = datetime.fromisoformat(d["expires_at"])
+            assert exp_dt > datetime.now(timezone.utc), "expires_at must be in the future"
+
+    def test_missing_expires_at_is_invalid(self):
+        """validate_execution_approval flags missing expires_at as expired."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="r106-t", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            # Approve then manually strip expires_at.
+            approve_managed_execution("ses-r106b", "r106-t", data_dir=Path(td))
+            p = Path(td) / "managed_builder_execution" / "approvals" / "ses-r106b.json"
+            import json
+            data = json.loads(p.read_text())
+            data["expires_at"] = ""
+            p.write_text(json.dumps(data))
+            codes = validate_execution_approval("ses-r106b", "r106-t",
+                                                  data_dir=Path(td))
+            assert "approval_expired" in codes
+
+    def test_expired_approval_blocks_execution(self):
+        """Runner blocks execution when approval has expired."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="r106-t", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses-r106c", "r106-t",
+                                       expires_at="2020-01-01T00:00:00+00:00",
+                                       data_dir=Path(td))
+            result = run_managed_builder("ses-r106c", template_id="r106-t",
+                                           data_dir=Path(td))
+            assert result.status == ManagedExecutionStatus.BLOCKED
+
+    def test_integrity_flags_missing_expiry(self):
+        """audit_approval_safety flags missing expires_at."""
+        violations = audit_approval_safety({
+            "approval_id": "a-r106", "approval_scope": "single_run",
+            "max_runs": 1, "used_count": 0,
+        })
+        codes = [v["code"] for v in violations]
+        assert "missing_expires_at" in codes
+
+
+class TestR0107SessionBinding(unittest.TestCase):
+    """R-0107: validate_execution_approval validates against real session."""
+
+    def test_missing_session_no_binding_error(self):
+        """Missing session = no binding validation codes (approval works standalone)."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="r107-t", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses-r107-ghost", "r107-t",
+                                       data_dir=Path(td))
+            codes = validate_execution_approval("ses-r107-ghost", "r107-t",
+                                                  data_dir=Path(td))
+            # No binding-related codes when session doesn't exist.
+            for c in codes:
+                assert "mismatch" not in c and "not_found" not in c
+
+    def _create_session(self, td, session_id, package_id="", adapter_id="",
+                         job_id="_global", status=None):
+        """Helper to create a real builder session for binding tests."""
+        from packages.orchestration.main_builder_adapter import (
+            BuilderSessionRecord, BuilderSessionStatus,
+        )
+        if status is None:
+            status = BuilderSessionStatus.PACKAGE_READY
+        s = BuilderSessionRecord(
+            session_id=session_id, adapter_id=adapter_id,
+            package_id=package_id, job_id=job_id, status=status)
+        sessions_dir = Path(td) / "workspaces" / job_id / "main_builder_adapter" / "sessions"
+        sessions_dir.mkdir(parents=True, exist_ok=True)
+        import json
+        (sessions_dir / f"{session_id}.json").write_text(json.dumps(s.to_dict()))
+
+    def test_package_mismatch_via_binding(self):
+        """Approval with package_id mismatch against real session package_id."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            self._create_session(td, "ses-r107-pkg", package_id="pkg-real")
+            t = CommandTemplate(template_id="r107-t", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses-r107-pkg", "r107-t",
+                                       package_id="pkg-WRONG",
+                                       data_dir=Path(td))
+            codes = validate_execution_approval("ses-r107-pkg", "r107-t",
+                                                  data_dir=Path(td))
+            assert "approval_package_mismatch" in codes
+
+    def test_valid_session_passes_binding(self):
+        """Session with matching fields passes binding validation."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            self._create_session(td, "ses-r107-ok", package_id="pkg1")
+            t = CommandTemplate(template_id="r107-t", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses-r107-ok", "r107-t",
+                                       package_id="pkg1",
+                                       data_dir=Path(td))
+            codes = validate_execution_approval("ses-r107-ok", "r107-t",
+                                                  data_dir=Path(td))
+            # Should not have binding-related codes.
+            assert "approval_package_mismatch" not in codes
+
+
+class TestR0108UsedCountTiming(unittest.TestCase):
+    """R-0108: used_count increments before execution, not after success."""
+
+    def test_failed_run_consumes_approval(self):
+        """A run that fails (exit_code != 0) still increments used_count."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="r108-t", argv_template=["false"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses-r108", "r108-t",
+                                       max_runs=5,
+                                       approval_scope=ApprovalScope.SESSION_LIFETIME,
+                                       data_dir=Path(td))
+            result = run_managed_builder("ses-r108", template_id="r108-t",
+                                           data_dir=Path(td))
+            # Even with non-zero exit, used_count must increment.
+            approval = get_execution_approval("ses-r108", data_dir=Path(td))
+            assert approval is not None
+            assert int(approval.get("used_count", 0)) >= 1
+
+    def test_single_run_blocks_after_failed_run(self):
+        """Single-run approval is exhausted even if first run fails."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="r108-t2", argv_template=["false"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses-r108b", "r108-t2",
+                                       max_runs=1,
+                                       approval_scope=ApprovalScope.SINGLE_RUN,
+                                       data_dir=Path(td))
+            # First run fails but consumes.
+            run_managed_builder("ses-r108b", template_id="r108-t2",
+                                  data_dir=Path(td))
+            # Second run must be blocked.
+            r2 = run_managed_builder("ses-r108b", template_id="r108-t2",
+                                       data_dir=Path(td))
+            assert r2.status == ManagedExecutionStatus.BLOCKED
+
+    def test_argv_failure_does_not_consume(self):
+        """If argv resolution fails before subprocess start, used_count stays 0."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            # Template with allowed placeholder but no value provided at runtime.
+            t = CommandTemplate(template_id="r108-t3",
+                                argv_template=["echo", "{repo_path}"],
+                                allowed_placeholders=["repo_path"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses-r108c", "r108-t3",
+                                       max_runs=5,
+                                       approval_scope=ApprovalScope.SESSION_LIFETIME,
+                                       data_dir=Path(td))
+            result = run_managed_builder("ses-r108c", template_id="r108-t3",
+                                           data_dir=Path(td))
+            assert result.status == ManagedExecutionStatus.BLOCKED
+            assert any("argv_resolution_failed" in r for r in result.blocking_reasons)
+            approval = get_execution_approval("ses-r108c", data_dir=Path(td))
+            # Argv failed before subprocess start — used_count stays 0.
+            assert int(approval.get("used_count", 0)) == 0
+
+
+class TestR0109ActionClass(unittest.TestCase):
+    """R-0109: execution.run action_class must be controlled_builder_execution."""
+
+    def test_catalog_execution_run_action_class(self):
+        from apps.cli.command_catalog import CATALOG
+        execution_run = None
+        for cmd in CATALOG:
+            if cmd.group_id == "execution" and cmd.subcommand == "run":
+                execution_run = cmd
+                break
+        assert execution_run is not None, "execution.run not found in catalog"
+        assert execution_run.action_class == "controlled_builder_execution", \
+            f"Expected controlled_builder_execution, got {execution_run.action_class}"
+
+    def test_not_test_execution(self):
+        from apps.cli.command_catalog import CATALOG
+        for cmd in CATALOG:
+            if cmd.group_id == "execution" and cmd.subcommand == "run":
+                assert cmd.action_class != "test_execution", \
+                    "execution.run must NOT use test_execution action_class"
+
+
+class TestR0110EventSequenceIntegrity(unittest.TestCase):
+    """R-0110: Debug/integrity must verify event sequence and output refs."""
+
+    def test_completed_missing_output_ref_flagged(self):
+        violations = audit_execution_result_safety(
+            {"execution_id": "r110-e1", "status": "completed"})
+        codes = [v["code"] for v in violations]
+        assert "completed_missing_output_ref" in codes
+
+    def test_completed_with_output_ref_clean(self):
+        violations = audit_execution_result_safety(
+            {"execution_id": "r110-e2", "status": "completed",
+             "output_ref": "mbe/output/r110-e2.raw"})
+        assert len(violations) == 0
+
+    def test_completed_missing_started_event_flagged(self):
+        events = [{"execution_id": "r110-e3", "kind": "approval_validated"}]
+        violations = audit_execution_result_safety(
+            {"execution_id": "r110-e3", "status": "completed",
+             "output_ref": "mbe/output/r110-e3.raw"},
+            events=events)
+        codes = [v["code"] for v in violations]
+        assert "completed_missing_started_event" in codes
+
+    def test_completed_with_full_events_clean(self):
+        events = [
+            {"execution_id": "r110-e4", "kind": ExecutionEventKind.STARTED},
+            {"execution_id": "r110-e4", "kind": ExecutionEventKind.COMPLETED},
+        ]
+        violations = audit_execution_result_safety(
+            {"execution_id": "r110-e4", "status": "completed",
+             "output_ref": "mbe/output/r110-e4.raw"},
+            events=events)
+        assert len(violations) == 0
+
+    def test_result_claiming_repair_done_flagged(self):
+        violations = audit_execution_result_safety(
+            {"execution_id": "r110-e5", "status": "completed",
+             "output_ref": "mbe/output/r110-e5.raw",
+             "safe_summary": "repair_done successfully"})
+        codes = [v["code"] for v in violations]
+        assert "result_claims_repair_or_mission_done" in codes
+
+    def test_debug_bundle_has_binding_summary(self):
+        """Debug bundle includes binding_summary and event_sequence."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="r110-t", argv_template=["echo", "hi"],
+                                enabled=True, requires_approval=False)
+            save_command_template(t, data_dir=Path(td))
+            result = run_managed_builder("ses-r110", template_id="r110-t",
+                                          job_id="job-r110", data_dir=Path(td))
+            bundle = build_debug_bundle(result.execution_id, data_dir=Path(td))
+            assert bundle is not None
+            assert "binding_summary" in bundle
+            assert "event_sequence" in bundle
+            assert "output_ref_present" in bundle
+
+    def test_debug_bundle_no_absolute_paths(self):
+        """Debug bundle output_ref must not leak absolute paths."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="r110-t2", argv_template=["echo", "hi"],
+                                enabled=True, requires_approval=False)
+            save_command_template(t, data_dir=Path(td))
+            result = run_managed_builder("ses-r110b", template_id="r110-t2",
+                                          data_dir=Path(td))
+            bundle = build_debug_bundle(result.execution_id, data_dir=Path(td))
+            assert bundle is not None
+            # output_ref must be scrubbed (no absolute paths).
+            output_ref = bundle.get("output_ref", "")
+            assert not output_ref.startswith("/home/"), "output_ref leaks absolute path"
 
 
 class TestArchitectureGuards(unittest.TestCase):
