@@ -61,6 +61,7 @@ REQUIRED_SECTIONS = (
     "overnight_mission_summary.json",
     "snapshot_rollback_summary.json",
     "repair_loop_summary.json",
+    "main_builder_adapter_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1420,6 +1421,37 @@ def _build_repair_loop_summary(job: Any) -> dict:
                 "latest_status": "none", "error": "repair_loop_v2_unavailable"}
 
 
+def _build_main_builder_adapter_summary(job: Any) -> dict:
+    """Safe Main Builder Adapter v0 summary (Step 1991). Configured/enabled adapter counts + latest
+    session status + candidate intake + token warning + next safe actions only — never raw prompts/
+    transcripts/candidates/diffs/secrets/paths. Honest (no fake running/done)."""
+    try:
+        from packages.orchestration.main_builder_adapter import (
+            list_builder_adapter_specs, list_builder_sessions,
+        )
+        specs = list_builder_adapter_specs()
+        sessions = list_builder_sessions(str(job.id))
+        enabled = sum(1 for s in specs if s.get("enabled", False))
+        latest = sessions[-1] if sessions else {}
+        blocked = sum(1 for s in sessions if s.get("status") == "blocked")
+        candidate = sum(1 for s in sessions if s.get("status") == "candidate_received")
+        intake = sum(1 for s in sessions if s.get("status") == "completed_intake_only")
+        return {
+            "configured_adapter_count": len(specs),
+            "enabled_adapter_count": enabled,
+            "session_count": len(sessions),
+            "blocked_session_count": blocked,
+            "candidate_received_count": candidate,
+            "intake_complete_count": intake,
+            "latest_session_status": latest.get("status", "none"),
+            "latest_adapter_id": latest.get("adapter_id", ""),
+            "next_safe_action": latest.get("next_safe_action", ""),
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"configured_adapter_count": 0, "enabled_adapter_count": 0,
+                "latest_session_status": "none", "error": "main_builder_adapter_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1908,6 +1940,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("repair_loop_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("repair_loop_summary.json", status="error", error="build failed"))
+
+    # main_builder_adapter_summary.json (Step 1991)
+    try:
+        mbas = _build_main_builder_adapter_summary(job)
+        content = json.dumps(mbas, indent=2).encode()
+        section_data["main_builder_adapter_summary.json"] = content
+        result.sections.append(ReviewBundleSection("main_builder_adapter_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("main_builder_adapter_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

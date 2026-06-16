@@ -457,6 +457,8 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
         "proof_status": "unavailable", "repair_status": "unknown", "ledger_available": False,
         "snapshot_recorded": False, "rollback_restore_available": False,
         "repair_loop_open": 0, "repair_loop_blocked": 0, "repair_loop_user_decision": False,
+        "builder_adapter_active": False, "builder_adapter_blocked": 0,
+        "builder_adapter_user_decision": False,
     }
     job = None
     events: list[dict] = []
@@ -558,6 +560,19 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
                 ev["repair_status"] = "needed"
             elif ev["repair_status"] in ("unknown", "none") and sig.get("total"):
                 ev["repair_status"] = "none"
+        except Exception:
+            pass
+    # Main Builder Adapter v0 (Step 1977) — running/waiting builder sessions do NOT satisfy mission;
+    # blocked sessions create user decisions. Honest (no fake done).
+    if job_id:
+        try:
+            from packages.orchestration.main_builder_adapter import builder_adapter_mission_signal
+            bsig = builder_adapter_mission_signal(job_id, data_dir)
+            ev["builder_adapter_active"] = bool(bsig.get("has_active_sessions", False))
+            ev["builder_adapter_blocked"] = int(bsig.get("blocked_session_count", 0))
+            ev["builder_adapter_user_decision"] = bool(bsig.get("user_decision_required", False))
+            if bsig.get("user_decision_required"):
+                ev["repair_status"] = "needed"
         except Exception:
             pass
     return ev

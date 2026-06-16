@@ -254,6 +254,29 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.FAILED_TEST,
             "remedy repair route-recommend <repair_id> --json",
         ),
+        # Main Builder Adapter v0 outcomes (Step 1989) — REQUIRED blockers (impact: unblocks builder
+        # pipeline; effort: low-medium). Optional future ideas (configure Claude/Pi/OpenCode adapter,
+        # Ollama for cheap tasks, external memory) are kept separate as ROADMAP suggestions.
+        "builder-adapter-blocked": (
+            "Resolve the blocked builder session (user decision)",
+            "Impact: high. Effort: medium. A builder session is blocked — user decision required.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy builder session-list <job_id> --json",
+        ),
+        "builder-adapter-waiting": (
+            "Launch the external builder with the request package",
+            "Impact: high. Effort: low. A builder request package is ready — operator must launch the "
+            "external builder.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy builder session-list <job_id> --json",
+        ),
+        "builder-adapter-candidate": (
+            "Run sandbox intake on builder candidate",
+            "Impact: high. Effort: low. A builder candidate is received but not yet through sandbox "
+            "intake — run intake to evaluate quality.",
+            FeaturePlanSource.FAILED_TEST,
+            "remedy builder session-list <job_id> --json",
+        ),
         # Bounded Overnight Prep follow-ups (Step 1260).
         "overnight-blocked": (
             "Review overnight readiness",

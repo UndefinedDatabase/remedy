@@ -1225,6 +1225,60 @@ def merge_repair_loop_items(ledger: ProgressLedger, work_items: list[dict] | Non
             seen.add(item.item_id)
 
 
+def extract_builder_adapter_items(sessions: list[dict] | None) -> list[ProgressItem]:
+    """Extract Main Builder Adapter v0 progress items (Step 1987) from sessions. Read-only;
+    fixed item_ids → no duplicates. Honest: blocked/waiting surfaces as RISK (never fake running/done);
+    intake complete surfaces as DONE; no raw transcript/candidate. RISK/DONE statuses are NOT counted
+    as open mission tasks (mission consumes builder state via builder_adapter_mission_signal)."""
+    sessions = sessions or []
+    if not sessions:
+        return []
+    running = sum(1 for s in sessions if s.get("status") == "running")
+    waiting = sum(1 for s in sessions if s.get("status") in ("waiting_for_operator", "package_ready"))
+    blocked = sum(1 for s in sessions if s.get("status") == "blocked")
+    intake = sum(1 for s in sessions if s.get("status") == "completed_intake_only")
+    candidate = sum(1 for s in sessions if s.get("status") == "candidate_received")
+    items: list[ProgressItem] = []
+    if blocked:
+        items.append(ProgressItem(
+            item_id="builder-adapter-blocked", title=f"{blocked} blocked builder session(s)",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="High",
+            safe_summary="Builder session blocked — user decision required.",
+            next_action="remedy builder session-list <job_id> --json"))
+    if waiting:
+        items.append(ProgressItem(
+            item_id="builder-adapter-waiting", title=f"{waiting} builder session(s) waiting",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="Builder session waiting for operator or package — action needed.",
+            next_action="remedy builder session-list <job_id> --json"))
+    if running:
+        items.append(ProgressItem(
+            item_id="builder-adapter-running", title=f"{running} builder session(s) running",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary="Builder session running — waiting for output."))
+    if candidate:
+        items.append(ProgressItem(
+            item_id="builder-adapter-candidate", title=f"{candidate} builder candidate(s) received",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="Builder candidate received but not yet through sandbox intake.",
+            next_action="remedy builder session-list <job_id> --json"))
+    if intake:
+        items.append(ProgressItem(
+            item_id="builder-adapter-intake-complete", title=f"{intake} builder intake(s) complete",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Builder candidate intake complete — downstream gates still required."))
+    return items
+
+
+def merge_builder_adapter_items(ledger: ProgressLedger, sessions: list[dict] | None) -> None:
+    """Merge builder-adapter items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_builder_adapter_items(sessions):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1923,6 +1977,14 @@ def build_progress_ledger(
         try:
             from packages.orchestration.repair_loop_v2 import list_repair_work_items
             merge_repair_loop_items(ledger, list_repair_work_items(job_id=str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Main Builder Adapter v0 (Step 1987).
+    if job:
+        try:
+            from packages.orchestration.main_builder_adapter import list_builder_sessions
+            merge_builder_adapter_items(ledger, list_builder_sessions(str(job.id)))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 
