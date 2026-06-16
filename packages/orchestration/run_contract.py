@@ -152,6 +152,16 @@ class ContractAction:
     BUILDER_SESSION_CREATE = "builder_session_create"
     BUILDER_SESSION_SHOW = "builder_session_show"
     BUILDER_SESSION_INTAKE = "builder_session_intake"
+    # Managed Builder Execution v1 (Step 2035) — BOUNDED MANAGED EXECUTION via command templates.
+    # template-list/show/execution-show/list/debug-bundle are read-only; template-create is
+    # write_metadata; approve is approval_gate; run is test_execution (bounded managed runner,
+    # no shell, sanitized env, timeout, output cap). None execute arbitrary commands.
+    EXECUTION_TEMPLATE_SHOW = "execution_template_show"
+    EXECUTION_TEMPLATE_CREATE = "execution_template_create"
+    EXECUTION_APPROVE = "execution_approve"
+    EXECUTION_RUN = "execution_run"
+    EXECUTION_SHOW = "execution_show"
+    EXECUTION_DEBUG_BUNDLE = "execution_debug_bundle"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -318,6 +328,12 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.BUILDER_SESSION_CREATE,
     ContractAction.BUILDER_SESSION_SHOW,
     ContractAction.BUILDER_SESSION_INTAKE,
+    ContractAction.EXECUTION_TEMPLATE_SHOW,
+    ContractAction.EXECUTION_TEMPLATE_CREATE,
+    ContractAction.EXECUTION_APPROVE,
+    ContractAction.EXECUTION_RUN,
+    ContractAction.EXECUTION_SHOW,
+    ContractAction.EXECUTION_DEBUG_BUNDLE,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

@@ -62,6 +62,7 @@ REQUIRED_SECTIONS = (
     "snapshot_rollback_summary.json",
     "repair_loop_summary.json",
     "main_builder_adapter_summary.json",
+    "managed_execution_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1452,6 +1453,36 @@ def _build_main_builder_adapter_summary(job: Any) -> dict:
                 "latest_session_status": "none", "error": "main_builder_adapter_unavailable"}
 
 
+def _build_managed_execution_summary(job: Any) -> dict:
+    """Safe Managed Builder Execution v1 summary (Step 2041). Template/execution counts + latest
+    status + next safe actions — never raw output/commands/secrets. Honest (no fake done)."""
+    try:
+        from packages.orchestration.managed_builder_execution import (
+            list_command_templates, list_execution_results,
+        )
+        templates = list_command_templates()
+        results = list_execution_results(str(job.id))
+        enabled = sum(1 for t in templates if t.get("enabled", False))
+        latest = results[-1] if results else {}
+        completed = sum(1 for r in results if r.get("status") == "completed")
+        failed = sum(1 for r in results if r.get("status") == "failed")
+        blocked = sum(1 for r in results if r.get("status") in ("blocked", "approval_required"))
+        return {
+            "template_count": len(templates),
+            "enabled_template_count": enabled,
+            "execution_count": len(results),
+            "completed_count": completed,
+            "failed_count": failed,
+            "blocked_count": blocked,
+            "latest_status": latest.get("status", "none"),
+            "latest_template_id": latest.get("template_id", ""),
+            "next_safe_action": latest.get("next_safe_action", ""),
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"template_count": 0, "execution_count": 0,
+                "latest_status": "none", "error": "managed_execution_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1949,6 +1980,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("main_builder_adapter_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("main_builder_adapter_summary.json", status="error", error="build failed"))
+
+    # managed_execution_summary.json (Step 2041)
+    try:
+        mes = _build_managed_execution_summary(job)
+        content = json.dumps(mes, indent=2).encode()
+        section_data["managed_execution_summary.json"] = content
+        result.sections.append(ReviewBundleSection("managed_execution_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("managed_execution_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

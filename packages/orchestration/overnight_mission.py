@@ -458,6 +458,8 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
         "snapshot_recorded": False, "rollback_restore_available": False,
         "repair_loop_open": 0, "repair_loop_blocked": 0, "repair_loop_user_decision": False,
         "builder_adapter_active": False, "builder_adapter_blocked": 0,
+        "managed_execution_active": False, "managed_execution_blocked": 0,
+        "managed_execution_user_decision": False,
         "builder_adapter_user_decision": False,
     }
     job = None
@@ -572,6 +574,19 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
             ev["builder_adapter_blocked"] = int(bsig.get("blocked_session_count", 0))
             ev["builder_adapter_user_decision"] = bool(bsig.get("user_decision_required", False))
             if bsig.get("user_decision_required"):
+                ev["repair_status"] = "needed"
+        except Exception:
+            pass
+    # Managed Builder Execution v1 (Step 2033) — running/blocked executions do NOT satisfy mission;
+    # blocked executions create user decisions. Honest (no fake done).
+    if job_id:
+        try:
+            from packages.orchestration.managed_builder_execution import managed_execution_mission_signal
+            msig = managed_execution_mission_signal(job_id, data_dir)
+            ev["managed_execution_active"] = bool(msig.get("has_active_executions", False))
+            ev["managed_execution_blocked"] = int(msig.get("blocked_count", 0))
+            ev["managed_execution_user_decision"] = bool(msig.get("user_decision_required", False))
+            if msig.get("user_decision_required"):
                 ev["repair_status"] = "needed"
         except Exception:
             pass
