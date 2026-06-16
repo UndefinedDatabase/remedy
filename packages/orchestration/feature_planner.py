@@ -296,6 +296,19 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.KNOWN_RISK,
             "remedy builder session-list <job_id> --json",
         ),
+        # v1.1: approval-specific repair rules.
+        "managed-execution-approval-expired": (
+            "Re-approve the managed execution (approval expired)",
+            "Impact: high. Effort: low. Approval expired — re-approve with new expiry.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy execution approval-validate <session_id> --template <template_id> --json",
+        ),
+        "managed-execution-approval-exhausted": (
+            "Re-approve the managed execution (max runs exhausted)",
+            "Impact: high. Effort: low. Approval exhausted — re-approve with higher max_runs.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy execution approval-validate <session_id> --template <template_id> --json",
+        ),
         # Bounded Overnight Prep follow-ups (Step 1260).
         "overnight-blocked": (
             "Review overnight readiness",

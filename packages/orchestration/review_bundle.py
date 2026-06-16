@@ -1454,19 +1454,37 @@ def _build_main_builder_adapter_summary(job: Any) -> dict:
 
 
 def _build_managed_execution_summary(job: Any) -> dict:
-    """Safe Managed Builder Execution v1 summary (Step 2041). Template/execution counts + latest
+    """Safe Managed Builder Execution v1.1 summary. Template/execution/approval counts + latest
     status + next safe actions — never raw output/commands/secrets. Honest (no fake done)."""
     try:
         from packages.orchestration.managed_builder_execution import (
             list_command_templates, list_execution_results,
+            list_execution_approvals,
         )
         templates = list_command_templates()
         results = list_execution_results(str(job.id))
+        approvals = list_execution_approvals()
         enabled = sum(1 for t in templates if t.get("enabled", False))
         latest = results[-1] if results else {}
         completed = sum(1 for r in results if r.get("status") == "completed")
         failed = sum(1 for r in results if r.get("status") == "failed")
         blocked = sum(1 for r in results if r.get("status") in ("blocked", "approval_required"))
+        # v1.1: approval state summary.
+        expired_approvals = 0
+        exhausted_approvals = 0
+        for a in approvals:
+            max_runs = int(a.get("max_runs", 0))
+            used = int(a.get("used_count", 0))
+            if max_runs > 0 and used >= max_runs:
+                exhausted_approvals += 1
+            exp = a.get("expires_at", "")
+            if exp:
+                try:
+                    from datetime import datetime, timezone
+                    if datetime.now(timezone.utc) > datetime.fromisoformat(exp):
+                        expired_approvals += 1
+                except (ValueError, TypeError):
+                    expired_approvals += 1
         return {
             "template_count": len(templates),
             "enabled_template_count": enabled,
@@ -1474,6 +1492,9 @@ def _build_managed_execution_summary(job: Any) -> dict:
             "completed_count": completed,
             "failed_count": failed,
             "blocked_count": blocked,
+            "approval_count": len(approvals),
+            "expired_approval_count": expired_approvals,
+            "exhausted_approval_count": exhausted_approvals,
             "latest_status": latest.get("status", "none"),
             "latest_template_id": latest.get("template_id", ""),
             "next_safe_action": latest.get("next_safe_action", ""),

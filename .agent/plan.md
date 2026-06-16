@@ -1,42 +1,32 @@
-# Plan — Steps 2026-2075: Managed External Builder Execution v1 + Dogfood Observability
+# Plan — Steps 2126-2145: Managed Execution Approval Binding Closure
 
 ## Goal
-Add first managed execution seam for external builder adapters: bounded command templates,
-operator approval gate, managed subprocess runner (argv only, no shell), session event tracking,
-redacted output refs, dogfood debug bundle, sandbox intake integration. Remedy governs; workers
-execute. Builder output untrusted until verified.
+Close 5 reviewer findings (R-0111 through R-0115) from Steps 2076-2125 block.
+Session-required runner, dict-safe adapter spec, auto-binding, controlled execution class,
+output-ref-created event.
 
 ## Core principle
-Workers execute. Remedy governs. No provider monopoly. Subprocess ONLY through bounded command
-templates with sanitized env, argv list, timeout, output cap.
+Workers execute. Remedy governs. Approval scoped+expiring+bounded+auditable.
+Done ≠ Resolved. Reviewer verdict beats builder self-report.
 
 ## Current Step
-2050-2051 — builder work complete; targeted + full suites green; awaiting reviewer verdict (R-0106+).
+2126-2145 — all 5 fixes implemented; targeted 119 + CLI 10 + catalog 18 green; full suite 6497.
 
 ## Steps
-- [x] 2026: mainline closure (PR #75 → main 8e7d2e5; fresh branch) + reconcile
-- [x] 2027: architecture doc (managed-external-builder-execution-v1.md)
-- [x] 2028-2030: core managed execution module (command templates + approval gate + managed runner)
-- [x] 2031-2032: session event ledger + dogfood debug bundle
-- [x] 2033-2034: sandbox intake integration + repair/mission state consumption
-- [x] 2035-2038: CLI surface (9 commands) + command catalog + run_contract
-- [x] 2039-2040: progress ledger / feature planner integration
-- [x] 2041-2042: review bundle (35→36 sections) / cockpit integration
-- [x] 2043-2044: integrity checks
-- [x] 2045: user-facing doc
-- [x] 2046: architecture guards
-- [x] 2047-2048: targeted tests (630 passed)
-- [x] 2049: full suite once (6427 passed, 8 skipped, 1 deselected, 0 failed)
-- [ ] 2050: final handoff
-- [ ] 2051-2075: reserved for reviewer findings (R-0106+)
+- [x] 2126: R-0111 — runner blocks ghost sessions; _validate_session_binding returns session_not_found
+- [x] 2127: R-0112 — spec dict handling (isinstance check, no .to_dict() crash)
+- [x] 2128: R-0113 — approve_managed_execution auto-binds package_id/adapter_id/adapter_kind from session
+- [x] 2129: R-0114 — execution.run may_execute_commands=False; controlled_builder_execution only
+- [x] 2130: R-0115 — OUTPUT_REF_CREATED event kind; emit after _save_raw_output; integrity check
+- [x] 2131-2140: fix all existing tests (add _create_test_session helper); add 23 closure tests
+- [x] 2141: targeted 119 + CLI 10 + catalog 18 passed; full suite 6497 passed (0 failed)
+- [ ] 2142: commit + push
+- [ ] 2143-2145: reserved for reviewer findings (R-0116+)
 
 ## Hard rules
-- Subprocess ONLY with argv list (no shell=True), sanitized env, timeout, output cap.
-- No arbitrary shell; no provider SDK; no auto-apply/approve/PR/git; no MemPalace/memory/embeddings.
-- All real adapters disabled by default. Managed runner disabled by default.
-- Builder output ALWAYS untrusted: goes through External Builder Sandbox / Trust Gate / Candidate
-  Quality / review / re-test gates. No direct repo write.
-- Tests via scripts/remedy_pytest.sh; full once. Auto-merge on reviewer PASS (no PR unless asked).
+- No shell=True; no provider SDK; no auto-apply/approve/PR/git; no MemPalace/embeddings.
+- Builder output ALWAYS untrusted. execution_satisfies_mission stays False.
+- Do not claim merge-ready until reviewer PASS.
 
 ## Next block
-Ollama Cheap-Task Adapter v0 OR Overnight Autonomy Gate v1 (only after this block PASS).
+Dogfood Run Profile + Replay Analyzer v0 (only after reviewer PASS).

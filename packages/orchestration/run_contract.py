@@ -162,6 +162,10 @@ class ContractAction:
     EXECUTION_RUN = "execution_run"
     EXECUTION_SHOW = "execution_show"
     EXECUTION_DEBUG_BUNDLE = "execution_debug_bundle"
+    # v1.1: approval hardening read-only surfaces
+    EXECUTION_APPROVAL_SHOW = "execution_approval_show"
+    EXECUTION_APPROVAL_VALIDATE = "execution_approval_validate"
+    EXECUTION_APPROVAL_LIST = "execution_approval_list"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -334,6 +338,9 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.EXECUTION_RUN,
     ContractAction.EXECUTION_SHOW,
     ContractAction.EXECUTION_DEBUG_BUNDLE,
+    ContractAction.EXECUTION_APPROVAL_SHOW,
+    ContractAction.EXECUTION_APPROVAL_VALIDATE,
+    ContractAction.EXECUTION_APPROVAL_LIST,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,
