@@ -1,45 +1,42 @@
-# Plan — Steps 1797-1836: Model/Route Tournament Harness v0
+# Plan — Steps 1837-1876: Overnight Mission Contract + Review/Repair Spine v0
 
 ## Goal
-Evidence-based comparison layer for worker routes. Compare durable evidence (Candidate Quality,
-Token Economy, Worker Registry, route policy, trust/verification, approval, proof/test, submission
-history) to recommend the best route per task type. No execution — compares + recommends only.
+First hard mission-contract spine for Overnight Mode. A user mission becomes a CONTRACT; Remedy tracks
+it until fulfilled or safely blocked, evaluating satisfaction from durable evidence (progress ledger,
+review findings, tests/proof/snapshot gates, repair status, route/token/tournament readiness).
+Metadata + state-machine + evaluation + reporting only — no execution, no fake overnight autonomy.
 
 ## Core principle
-Workers execute. Remedy governs. Tournament compares + recommends, never runs workers. No self-claim
-becomes truth; unknown stays unknown; insufficient evidence → no winner; cheap never beats failed
-trust/verification. User must always understand the recommendation.
+Workers execute. Remedy governs. The Mission Contract decides done — never from builder self-report.
+Reviewer verdict beats self-report; Done != Resolved; open Blocker/High blocks satisfaction; missing
+required gates block satisfaction; no fake readiness. User never feels lost.
 
 ## Current Step
-1819-1836 — REVIEW CLOSURE complete. Builder feature work (1797-1818) done @ b8f6ea8; reviewer
-verdict PASS @ b8f6ea8 (zero open findings). Handoff reconciliation (R-0101: plan.md) done. Auto-merge
-on reviewer PASS per merge-autonomy (honor hard gate; operator may override). Next: MemPalace v0.
+1837 — mainline reconciliation done (PR #71 merged → main 4ddd59f; fresh branch). Building core.
 
 ## Steps
-- [x] 1797: merge closure (PR #70 → main 6a81b8f; fresh branch) + carried risks + MemPalace deferred
-- [x] 1798: architecture doc (model-route-tournament-harness-v0.md)
-- [x] 1799-1804: model_route_tournament.py core (models; competitor discovery; evidence gathering;
-      scoring with hard ceilings; report generation; storage; integrity)
-- [x] 1805-1807: builder_routing read-only tournament hint + CLI (report/show/list/integrity) +
-      catalog + run_contract actions (report write_metadata; rest read_only; no may_execute)
-- [x] 1808-1812: progress_ledger + feature_planner + review_bundle section (31) + ui_server cockpit + integrity
-- [x] 1813: user-facing doc (model-route-tournament-user-guide-v0.md)
-- [x] 1814-1815: tests (unit/routing/CLI/bundle/cockpit/integrity) + architecture guards
-- [x] 1816-1817: targeted suites green → full suite once (6160 passed/8 skipped/1 deselected)
-- [x] 1818: final handoff report
-- [~] 1819-1836: review closure — reviewer PASS @ b8f6ea8; R-0101 (plan.md reconciled) fixed;
-      awaiting PR/merge per merge-autonomy
+- [x] 1837: mainline closure (PR #71 → main 4ddd59f; fresh branch) + carried risks + MemPalace deferred
+- [ ] 1838: architecture doc (overnight-mission-contract-review-repair-spine-v0.md)
+- [ ] 1839-1846: overnight_mission.py core (models; storage; contract creation; review-findings
+      blockers; evaluation; next-safe-action planner; review/repair state machine; required-vs-optional queue)
+- [ ] 1850-1851: CLI (contract-create/show/evaluate/next-action/cycles/readiness/integrity) + catalog +
+      run_contract actions (create write_metadata; rest read_only; no may_execute)
+- [ ] 1847-1849,1852: progress_ledger + review_bundle section (32) + ui_server cockpit + integrity
+- [ ] 1853: user-facing doc (overnight-mission-user-guide-v0.md)
+- [ ] 1854-1855: tests (unit/CLI/integration/integrity) + architecture guards
+- [ ] 1856: full suite once
+- [ ] 1857: final handoff report (+ auto-merge on reviewer PASS)
+- [ ] 1858-1876: reserved for reviewer findings (R-0102+)
 
 ## Hard rules
-- NO provider/model/Ollama/cloud/local execution, network, browser, subprocess, shell=True.
-- NO new candidate generation, external builder auto-calls, apply/approve/test/git/PR, MemPalace,
-  real pricing sync, UI redesign, MCP.
-- Evidence absence = insufficient_evidence (never failure); no self-claim becomes truth; unknown stays
-  unknown; no fake winner; cheap never beats failed trust/verification.
-- Scoring hard ceilings enforced (no proof → not excellent; rejected/unverified → blocked/weak;
-  high-risk without approval → blocked; placeholder executable claim → blocked).
-- No raw prompts/candidates/diffs/logs/secrets/abs paths in public surfaces. next_safe_action catalog-backed.
+- NO provider/Claude/Pi/OpenCode/Ollama/cloud/local execution, network, browser, subprocess, shell.
+- NO worker execution, test run, apply/approve, git/PR automation, MemPalace/memory/embeddings/vector
+  DB, UI redesign, MCP, pricing sync.
+- Satisfaction ONLY from durable evidence; reviewer verdict beats self-report; Done != Resolved; open
+  Blocker/High blocks satisfaction; missing required gates block satisfaction; no fake readiness.
+- Required blockers separated from optional future ideas. No raw prompts (beyond scrubbed user_goal)/
+  logs/diffs/secrets/abs paths in public surfaces. next_safe_action catalog-backed.
 - Tests via scripts/remedy_pytest.sh; full once. NO PR unless asked (auto-merge on reviewer PASS).
 
 ## Next block
-MemPalace Project Memory v0 (only after this block PASS).
+Real Test Execution + Snapshot/Rollback Proof v1 (only after this block PASS).

@@ -650,6 +650,43 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_overnight_mission_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Overnight Mission Contract v0 summary for the cockpit (Step 1849).
+
+    Status + satisfied + open finding/gate counts + required next actions + optional ideas + next
+    safe action only. No mutation buttons, no fake live overnight run, no raw/private data. LIVE is
+    false unless real active evidence exists — in this metadata-only block it stays false."""
+    try:
+        from packages.orchestration.overnight_mission import (
+            list_mission_contracts, evaluate_mission_contract, _contract_from_dict,
+        )
+        contracts = list_mission_contracts(job_id=str(job.id))
+        if not contracts:
+            return {"status": "not_started", "satisfied": False, "open_findings_count": 0,
+                    "missing_gates_count": 0, "required_next_actions": [], "optional_next_ideas": [],
+                    "user_decision_required": False,
+                    "next_safe_action": f"remedy overnight contract-create {str(job.id)} --json",
+                    "live": False, "source": "overnight_mission"}
+        ev = evaluate_mission_contract(_contract_from_dict(contracts[-1]), persist=False)
+        return {
+            "status": ev.status,
+            "satisfied": ev.satisfied,
+            "open_findings_count": ev.open_review_findings,
+            "missing_gates_count": len(ev.missing_proofs),
+            "required_next_actions": [a.get("command") for a in ev.required_next_actions],
+            "optional_next_ideas": [i.get("title") for i in ev.optional_next_ideas],
+            "user_decision_required": ev.user_decision_required,
+            "next_safe_action": (ev.next_safe_actions or [""])[0],
+            "live": False,
+            "source": "overnight_mission",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"status": "not_started", "satisfied": False, "open_findings_count": "unknown",
+                "missing_gates_count": "unknown", "required_next_actions": [], "optional_next_ideas": [],
+                "user_decision_required": False, "next_safe_action": "", "live": False,
+                "source": "unavailable"}
+
+
 def _build_model_route_tournament_section(job: Any) -> dict[str, Any]:
     """Safe read-only Model/Route Tournament v0 summary for the cockpit (Step 1811).
 
@@ -1242,6 +1279,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "worker_registry": _build_worker_registry_section(job),
         "token_economy": _build_token_economy_section(job),
         "model_route_tournament": _build_model_route_tournament_section(job),
+        "overnight_mission": _build_overnight_mission_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
