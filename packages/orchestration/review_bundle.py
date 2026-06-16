@@ -57,6 +57,7 @@ REQUIRED_SECTIONS = (
     "external_builder_summary.json",
     "worker_registry_summary.json",
     "token_economy_summary.json",
+    "model_route_tournament_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1271,6 +1272,47 @@ def _build_token_economy_summary(job: Any) -> dict:
                 "error": "token_economy_unavailable"}
 
 
+def _build_model_route_tournament_summary(job: Any) -> dict:
+    """Safe Model/Route Tournament v0 summary (Step 1810). Reports count, latest status, competitor
+    count, evidence status, winner (only if evidence-backed), score-band distribution, token/cost
+    tradeoff, next actions — no raw prompts/candidates/diffs/logs/secrets/absolute paths."""
+    try:
+        from packages.orchestration.model_route_tournament import (
+            generate_tournament_report, list_tournament_reports,
+        )
+        reports = list_tournament_reports(job_id=str(job.id))
+        rep = generate_tournament_report(str(job.id), persist=False)
+        d = rep.to_dict()
+        band_dist: dict[str, int] = {}
+        for s in d.get("scores", []):
+            band_dist[s.get("score_band", "")] = band_dist.get(s.get("score_band", ""), 0) + 1
+        winner = next((c for c in d.get("competitors", [])
+                       if c.get("competitor_id") == d.get("winner_competitor_id")), None)
+        ev_status = "complete" if any(
+            e.get("evidence_status") == "complete" for e in d.get("evidence", [])) else (
+            "partial" if any(e.get("evidence_status") == "partial" for e in d.get("evidence", []))
+            else "insufficient_evidence")
+        return {
+            "reports_count": len(reports),
+            "latest_status": d.get("status"),
+            "competitor_count": len(d.get("competitors", [])),
+            "evidence_status": ev_status,
+            "winner_worker_id": (winner or {}).get("worker_id", ""),
+            "confidence": d.get("confidence"),
+            "score_band_distribution": band_dist,
+            "token_cost_tradeoff": {c.get("worker_id"): c.get("cost_tier")
+                                    for c in d.get("competitors", [])},
+            "warnings": d.get("warnings", []),
+            "next_safe_actions": [
+                f"remedy tournament report {str(job.id)} --json",
+                f"remedy tournament list {str(job.id)} --json",
+            ],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"reports_count": 0, "latest_status": "insufficient_evidence",
+                "error": "model_route_tournament_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1723,6 +1765,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("token_economy_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("token_economy_summary.json", status="error", error="build failed"))
+
+    # model_route_tournament_summary.json (Step 1810)
+    try:
+        mrt = _build_model_route_tournament_summary(job)
+        content = json.dumps(mrt, indent=2).encode()
+        section_data["model_route_tournament_summary.json"] = content
+        result.sections.append(ReviewBundleSection("model_route_tournament_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("model_route_tournament_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

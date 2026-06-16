@@ -118,7 +118,8 @@ class TestReviewBundleModel:
 
     def test_required_sections_defined(self):
         from packages.orchestration.review_bundle import REQUIRED_SECTIONS
-        assert len(REQUIRED_SECTIONS) == 30
+        assert len(REQUIRED_SECTIONS) == 31
+        assert "model_route_tournament_summary.json" in REQUIRED_SECTIONS
         assert "token_economy_summary.json" in REQUIRED_SECTIONS
         assert "local_advisor_summary.json" in REQUIRED_SECTIONS
         assert "provider_verification_summary.json" in REQUIRED_SECTIONS

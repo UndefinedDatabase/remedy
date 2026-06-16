@@ -706,6 +706,44 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             next_action=next_action,
         ))
 
+    # Rule 0d: Model/Route Tournament evidence (Step 1809) — item-id driven, evidence-based,
+    # user-choice suggestions. Effort ≈ suggested_steps; impact ≈ priority. No auto-build.
+    _TOURNAMENT_RULES = {
+        "tournament-insufficient-evidence": (
+            "Gather route evidence (run an external builder package)",
+            "The route tournament has insufficient evidence to pick a winner — generating a safe "
+            "external builder request package (or local candidate) would produce comparable "
+            "evidence. No execution is added; the candidate stays untrusted + verified.",
+            FeaturePlanSource.KNOWN_RISK, FeaturePlanPriority.MEDIUM, "low",
+            ["Export external builder package", "Submit candidate (untrusted)", "Compare evidence"],
+            "remedy external-builder package-create <job_id> --json",
+        ),
+        "tournament-winner": (
+            "Tighten route policy around the winning route",
+            "An evidence-backed route is recommended — consider a route policy that prefers it for "
+            "this task type while keeping safety floors (approval for expensive/high-risk).",
+            FeaturePlanSource.ROADMAP, FeaturePlanPriority.LOW, "low",
+            ["Review tournament report", "Set --prefer-worker", "Keep approval floors"],
+            "remedy route-policy show <job_id> --json",
+        ),
+    }
+    for item in ledger.items:
+        rule = _TOURNAMENT_RULES.get(item.item_id)
+        if rule is None:
+            continue
+        title, rationale, source, priority, risk, steps, next_action = rule
+        sug_id = _make_suggestion_id("tournament", item.item_id)
+        if sug_id in seen_ids:
+            continue
+        seen_ids.add(sug_id)
+        seen_ids.add(_make_suggestion_id("risk", item.title))
+        seen_ids.add(_make_suggestion_id("finding", item.title))
+        seen_ids.add(_make_suggestion_id("gap", item.title))
+        plan.suggestions.append(FeatureSuggestion(
+            suggestion_id=sug_id, title=title, rationale=rationale, priority=priority,
+            source_type=source, source_refs=[item.item_id], estimated_risk=risk,
+            suggested_steps=steps, creates_proposed_task=False, next_action=next_action))
+
     # Rule 1: Open blocker/high findings -> high priority suggestions
     for item in ledger.items:
         if item.status == ProgressStatus.BLOCKED:
