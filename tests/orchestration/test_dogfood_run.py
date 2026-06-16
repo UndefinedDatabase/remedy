@@ -1,0 +1,507 @@
+"""Targeted tests for Open-Ended Dogfood Run Orchestrator + Replay Analyzer v0 (Steps 2146-2205)."""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+from pathlib import Path
+
+import pytest
+
+# Module under test.
+from packages.orchestration.dogfood_run import (
+    BrainstormIdea,
+    DogfoodLane,
+    DogfoodRunCheckpoint,
+    DogfoodRunEvaluation,
+    DogfoodRunPolicy,
+    DogfoodRunRecord,
+    DogfoodRunStatus,
+    DogfoodReplayAnalysis,
+    LaneStatus,
+    SCHEMA_VERSION,
+    _ALL_LANES,
+    _ALL_STATUSES,
+    _TERMINAL_STATUSES,
+    analyze_dogfood_run_replay,
+    append_checkpoint,
+    create_dogfood_run,
+    dogfood_run_integrity,
+    evaluate_dogfood_run,
+    list_brainstorm_ideas,
+    list_dogfood_runs,
+    load_checkpoints,
+    load_dogfood_run,
+    save_brainstorm_idea,
+    save_dogfood_run,
+    step_dogfood_run,
+    stop_dogfood_run,
+)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_run(td: str, **overrides) -> DogfoodRunRecord:
+    """Create a test run with sensible defaults, persisted to td."""
+    defaults = dict(job_id="test-job-001", contract_id="msn-test001")
+    defaults.update(overrides)
+    return create_dogfood_run(**defaults, data_dir=Path(td))
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Core Model Tests
+# ---------------------------------------------------------------------------
+
+
+class TestDogfoodRunStatus:
+    def test_all_statuses_known(self):
+        assert len(_ALL_STATUSES) >= 10
+        assert DogfoodRunStatus.NOT_STARTED in _ALL_STATUSES
+        assert DogfoodRunStatus.SATISFIED in _ALL_STATUSES
+        assert DogfoodRunStatus.BUDGET_EXHAUSTED in _ALL_STATUSES
+
+    def test_terminal_statuses_subset(self):
+        assert _TERMINAL_STATUSES.issubset(_ALL_STATUSES)
+        assert DogfoodRunStatus.SATISFIED in _TERMINAL_STATUSES
+        assert DogfoodRunStatus.RUNNING not in _TERMINAL_STATUSES
+
+    def test_all_lanes_known(self):
+        assert len(_ALL_LANES) >= 6
+        assert DogfoodLane.MISSION in _ALL_LANES
+        assert DogfoodLane.BRAINSTORM in _ALL_LANES
+
+
+class TestDogfoodRunPolicy:
+    def test_default_policy(self):
+        p = DogfoodRunPolicy()
+        assert p.max_steps == 100
+        assert p.max_tokens_estimated == 500_000
+        assert p.max_wall_minutes == 480
+        assert p.require_clean_review is True
+        assert p.auto_step is False
+
+    def test_policy_round_trip(self):
+        p = DogfoodRunPolicy(max_steps=50, max_tokens_estimated=100_000)
+        d = p.to_dict()
+        assert d["max_steps"] == 50
+        assert d["max_tokens_estimated"] == 100_000
+
+
+class TestDogfoodRunRecord:
+    def test_record_to_dict(self):
+        r = DogfoodRunRecord(run_id="dfr-test", job_id="j1")
+        d = r.to_dict()
+        assert d["run_id"] == "dfr-test"
+        assert d["schema_version"] == SCHEMA_VERSION
+        assert "policy" in d
+
+    def test_default_status_not_started(self):
+        r = DogfoodRunRecord()
+        assert r.status == DogfoodRunStatus.NOT_STARTED
+
+
+class TestDogfoodRunCheckpoint:
+    def test_checkpoint_to_dict(self):
+        cp = DogfoodRunCheckpoint(
+            checkpoint_id="cp-test", run_id="dfr-test", step_index=1,
+            lane="mission", action_taken="evaluate", outcome="running",
+        )
+        d = cp.to_dict()
+        assert d["checkpoint_id"] == "cp-test"
+        assert d["lane"] == "mission"
+
+
+class TestBrainstormIdea:
+    def test_idea_to_dict(self):
+        idea = BrainstormIdea(
+            idea_id="idea-1", run_id="dfr-test", job_id="j1",
+            title="Improve test coverage", rationale="Low coverage on module X",
+        )
+        d = idea.to_dict()
+        assert d["title"] == "Improve test coverage"
+        assert d["status"] == "proposed"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Storage Tests
+# ---------------------------------------------------------------------------
+
+
+class TestStorage:
+    def test_create_and_load(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            assert run.run_id.startswith("dfr-")
+            loaded = load_dogfood_run(run.run_id, "test-job-001", data_dir=Path(td))
+            assert loaded is not None
+            assert loaded.run_id == run.run_id
+
+    def test_list_runs(self):
+        with tempfile.TemporaryDirectory() as td:
+            _make_run(td)
+            _make_run(td)
+            runs = list_dogfood_runs(job_id="test-job-001", data_dir=Path(td))
+            assert len(runs) == 2
+
+    def test_list_runs_all(self):
+        with tempfile.TemporaryDirectory() as td:
+            _make_run(td, job_id="j1")
+            _make_run(td, job_id="j2")
+            runs = list_dogfood_runs(data_dir=Path(td))
+            assert len(runs) == 2
+
+    def test_load_nonexistent(self):
+        with tempfile.TemporaryDirectory() as td:
+            assert load_dogfood_run("nope", "nope", data_dir=Path(td)) is None
+
+    def test_save_updates_timestamp(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            old_ts = run.updated_at
+            run.status = DogfoodRunStatus.RUNNING
+            save_dogfood_run(run, data_dir=Path(td))
+            loaded = load_dogfood_run(run.run_id, "test-job-001", data_dir=Path(td))
+            assert loaded.status == DogfoodRunStatus.RUNNING
+            assert loaded.updated_at >= old_ts
+
+    def test_checkpoint_append_and_load(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            cp = DogfoodRunCheckpoint(
+                checkpoint_id="cp-1", run_id=run.run_id, step_index=1,
+                lane="mission", action_taken="test", outcome="ok",
+            )
+            assert append_checkpoint(cp, "test-job-001", data_dir=Path(td))
+            cps = load_checkpoints(run.run_id, "test-job-001", data_dir=Path(td))
+            assert len(cps) == 1
+            assert cps[0].checkpoint_id == "cp-1"
+
+    def test_brainstorm_save_and_list(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            idea = BrainstormIdea(
+                idea_id="idea-1", run_id=run.run_id, job_id="test-job-001",
+                title="Test idea", rationale="Test rationale",
+            )
+            assert save_brainstorm_idea(idea, data_dir=Path(td))
+            ideas = list_brainstorm_ideas(run.run_id, "test-job-001", data_dir=Path(td))
+            assert len(ideas) == 1
+            assert ideas[0]["title"] == "Test idea"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: Evaluator Tests
+# ---------------------------------------------------------------------------
+
+
+class TestEvaluator:
+    def test_evaluate_not_started(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert isinstance(ev, DogfoodRunEvaluation)
+            assert ev.run_id == run.run_id
+            assert ev.budget_remaining_steps > 0
+
+    def test_evaluate_terminal_stays_terminal(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert ev.satisfied is True
+
+    def test_evaluate_budget_exhausted_steps(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td, policy=DogfoodRunPolicy(max_steps=5))
+            run.step_count = 5
+            run.status = DogfoodRunStatus.RUNNING
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert ev.status == DogfoodRunStatus.BUDGET_EXHAUSTED
+            assert "step_budget_exhausted" in ev.blocking_reasons
+
+    def test_evaluate_budget_exhausted_tokens(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td, policy=DogfoodRunPolicy(max_tokens_estimated=100))
+            run.cumulative_tokens = 100
+            run.status = DogfoodRunStatus.RUNNING
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert ev.status == DogfoodRunStatus.BUDGET_EXHAUSTED
+
+    def test_evaluate_has_evidence(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.RUNNING
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert "contract_status" in ev.evidence
+
+    def test_evaluate_proposes_next_action(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.RUNNING
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert len(ev.next_actions) > 0
+
+
+# ---------------------------------------------------------------------------
+# Phase 5: Stepping Tests
+# ---------------------------------------------------------------------------
+
+
+class TestStepping:
+    def test_step_starts_run(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            assert run.status == DogfoodRunStatus.NOT_STARTED
+            run, cp = step_dogfood_run(run, data_dir=Path(td))
+            assert run.status != DogfoodRunStatus.NOT_STARTED
+            assert run.started_at != ""
+            assert run.step_count == 1
+
+    def test_step_records_checkpoint(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run, cp = step_dogfood_run(run, data_dir=Path(td))
+            assert cp.checkpoint_id.startswith("cp-")
+            cps = load_checkpoints(run.run_id, "test-job-001", data_dir=Path(td))
+            assert len(cps) == 1
+
+    def test_step_terminal_is_noop(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T00:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            run, cp = step_dogfood_run(run, data_dir=Path(td))
+            assert cp.action_taken == "no_op"
+
+    def test_multiple_steps_increment(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            for i in range(3):
+                run, cp = step_dogfood_run(run, data_dir=Path(td))
+            assert run.step_count == 3
+            cps = load_checkpoints(run.run_id, "test-job-001", data_dir=Path(td))
+            assert len(cps) == 3
+
+    def test_stop_run(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run, _ = step_dogfood_run(run, data_dir=Path(td))
+            run = stop_dogfood_run(run, reason="test stop", data_dir=Path(td))
+            assert run.status == DogfoodRunStatus.STOPPED_BY_OPERATOR
+            assert run.stop_reason == "test stop"
+            assert run.finished_at != ""
+
+    def test_stop_terminal_is_noop(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T00:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            run = stop_dogfood_run(run, data_dir=Path(td))
+            assert run.status == DogfoodRunStatus.SATISFIED
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: Replay Analyzer Tests
+# ---------------------------------------------------------------------------
+
+
+class TestReplayAnalyzer:
+    def test_replay_no_checkpoints(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            analysis = analyze_dogfood_run_replay(run.run_id, "test-job-001", data_dir=Path(td))
+            assert isinstance(analysis, DogfoodReplayAnalysis)
+            assert analysis.total_steps == 0
+            assert "no_checkpoints" in analysis.anomalies
+
+    def test_replay_with_steps(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            for _ in range(3):
+                run, _ = step_dogfood_run(run, data_dir=Path(td))
+            analysis = analyze_dogfood_run_replay(run.run_id, "test-job-001", data_dir=Path(td))
+            assert analysis.total_steps == 3
+            assert len(analysis.timeline) == 3
+            assert len(analysis.lane_summaries) > 0
+
+    def test_replay_token_curve(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run, _ = step_dogfood_run(run, data_dir=Path(td))
+            analysis = analyze_dogfood_run_replay(run.run_id, "test-job-001", data_dir=Path(td))
+            assert len(analysis.token_curve) > 0
+
+    def test_replay_caches_result(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run, _ = step_dogfood_run(run, data_dir=Path(td))
+            analyze_dogfood_run_replay(run.run_id, "test-job-001", data_dir=Path(td))
+            # Check cached file exists.
+            replay_file = Path(td) / "workspaces" / "test-job-001" / "dogfood_runs" / run.run_id / "replay.json"
+            assert replay_file.is_file()
+
+    def test_replay_to_dict(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run, _ = step_dogfood_run(run, data_dir=Path(td))
+            analysis = analyze_dogfood_run_replay(run.run_id, "test-job-001", data_dir=Path(td))
+            d = analysis.to_dict()
+            assert "timeline" in d
+            assert "lane_summaries" in d
+            assert "anomalies" in d
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: Brainstorm Tests
+# ---------------------------------------------------------------------------
+
+
+class TestBrainstorm:
+    def test_brainstorm_ideas_not_auto_injected(self):
+        """Ideas are metadata-only. Saving an idea should not affect run status."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            idea = BrainstormIdea(
+                idea_id="idea-1", run_id=run.run_id, job_id="test-job-001",
+                title="Add telemetry", rationale="Would help debugging",
+                evidence_needed=["Coverage report"],
+            )
+            save_brainstorm_idea(idea, data_dir=Path(td))
+            loaded = load_dogfood_run(run.run_id, "test-job-001", data_dir=Path(td))
+            assert loaded.status == DogfoodRunStatus.NOT_STARTED  # unchanged
+
+    def test_multiple_ideas(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            for i in range(3):
+                idea = BrainstormIdea(
+                    idea_id=f"idea-{i}", run_id=run.run_id, job_id="test-job-001",
+                    title=f"Idea {i}",
+                )
+                save_brainstorm_idea(idea, data_dir=Path(td))
+            ideas = list_brainstorm_ideas(run.run_id, "test-job-001", data_dir=Path(td))
+            assert len(ideas) == 3
+
+
+# ---------------------------------------------------------------------------
+# Phase 11: Integrity Tests
+# ---------------------------------------------------------------------------
+
+
+class TestIntegrity:
+    def test_integrity_empty(self):
+        with tempfile.TemporaryDirectory() as td:
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is True
+            assert result["checks"] == []
+
+    def test_integrity_valid_run(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run, _ = step_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is True
+
+    def test_integrity_detects_satisfied_with_blockers(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T00:00:00+00:00"
+            run.blocking_reasons = ["should_not_be_here"]
+            save_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "satisfied_with_blockers" in codes
+
+    def test_integrity_detects_terminal_missing_finished_at(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.BLOCKED
+            run.finished_at = ""  # missing
+            save_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "terminal_missing_finished_at" in codes
+
+
+# ---------------------------------------------------------------------------
+# CLI Integration Tests
+# ---------------------------------------------------------------------------
+
+
+class TestCLIHandlers:
+    def test_handlers_registered(self):
+        from apps.cli.commands.dogfood_cmd import COMMAND_HANDLERS
+        assert len(COMMAND_HANDLERS) == 10
+        assert "dogfood.create" in COMMAND_HANDLERS
+        assert "dogfood.step" in COMMAND_HANDLERS
+        assert "dogfood.replay" in COMMAND_HANDLERS
+        assert "dogfood.brainstorm" in COMMAND_HANDLERS
+
+
+class TestCatalogEntries:
+    def test_dogfood_group_exists(self):
+        from apps.cli.command_catalog import GROUPS
+        assert "dogfood" in GROUPS
+
+    def test_dogfood_commands_in_catalog(self):
+        from apps.cli.command_catalog import CATALOG
+        dogfood_cmds = [c for c in CATALOG if c.group_id == "dogfood"]
+        assert len(dogfood_cmds) == 10
+        ids = {c.command_id for c in dogfood_cmds}
+        assert "dogfood.create" in ids
+        assert "dogfood.step" in ids
+        assert "dogfood.replay" in ids
+
+    def test_all_dogfood_commands_have_handlers(self):
+        from apps.cli.command_catalog import CATALOG
+        from apps.cli.commands.dogfood_cmd import COMMAND_HANDLERS
+        dogfood_cmds = [c for c in CATALOG if c.group_id == "dogfood"]
+        for cmd in dogfood_cmds:
+            assert cmd.command_id in COMMAND_HANDLERS, f"Missing handler for {cmd.command_id}"
+
+
+class TestRunContractActions:
+    def test_dogfood_actions_in_contract(self):
+        from packages.orchestration.run_contract import ContractAction, ALL_KNOWN_ACTIONS
+        assert ContractAction.DOGFOOD_RUN_CREATE in ALL_KNOWN_ACTIONS
+        assert ContractAction.DOGFOOD_RUN_STEP in ALL_KNOWN_ACTIONS
+        assert ContractAction.DOGFOOD_RUN_SHOW in ALL_KNOWN_ACTIONS
+
+
+class TestProgressLedgerIntegration:
+    def test_extract_dogfood_run_items_empty(self):
+        from packages.orchestration.progress_ledger import extract_dogfood_run_items
+        assert extract_dogfood_run_items(None) == []
+        assert extract_dogfood_run_items([]) == []
+
+    def test_extract_dogfood_run_items_active(self):
+        from packages.orchestration.progress_ledger import extract_dogfood_run_items
+        items = extract_dogfood_run_items([
+            {"run_id": "dfr-1", "status": "running", "step_count": 5},
+        ])
+        assert len(items) == 1
+        assert items[0].item_id == "dogfood-run-dfr-1"
+
+    def test_extract_dogfood_run_items_satisfied(self):
+        from packages.orchestration.progress_ledger import extract_dogfood_run_items
+        items = extract_dogfood_run_items([
+            {"run_id": "dfr-2", "status": "satisfied", "step_count": 10},
+        ])
+        assert len(items) == 1
+        assert "DONE" in items[0].status or items[0].status == "done"
+
+    def test_extract_dogfood_run_items_blocked(self):
+        from packages.orchestration.progress_ledger import extract_dogfood_run_items
+        items = extract_dogfood_run_items([
+            {"run_id": "dfr-3", "status": "blocked", "step_count": 3},
+        ])
+        assert len(items) == 1

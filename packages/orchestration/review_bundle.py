@@ -63,6 +63,7 @@ REQUIRED_SECTIONS = (
     "repair_loop_summary.json",
     "main_builder_adapter_summary.json",
     "managed_execution_summary.json",
+    "dogfood_run_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1453,6 +1454,29 @@ def _build_main_builder_adapter_summary(job: Any) -> dict:
                 "latest_session_status": "none", "error": "main_builder_adapter_unavailable"}
 
 
+def _build_dogfood_run_summary(job: Any) -> dict:
+    """Safe Dogfood Run Orchestrator v0 summary. Run counts + status + lanes — never raw
+    logs/secrets/paths. Honest (no fake satisfied)."""
+    try:
+        from packages.orchestration.dogfood_run import list_dogfood_runs
+        runs = list_dogfood_runs(job_id=str(job.id))
+        active = sum(1 for r in runs if r.get("status") not in (
+            "satisfied", "blocked", "stopped_by_operator", "budget_exhausted", "error"))
+        satisfied = sum(1 for r in runs if r.get("status") == "satisfied")
+        blocked = sum(1 for r in runs if r.get("status") in ("blocked", "error"))
+        total_steps = sum(r.get("step_count", 0) for r in runs)
+        latest = runs[-1] if runs else {}
+        return {
+            "run_count": len(runs), "active_count": active,
+            "satisfied_count": satisfied, "blocked_count": blocked,
+            "total_steps": total_steps,
+            "latest_status": latest.get("status", "none"),
+            "latest_run_id": latest.get("run_id", ""),
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"run_count": 0, "latest_status": "none", "error": "dogfood_run_unavailable"}
+
+
 def _build_managed_execution_summary(job: Any) -> dict:
     """Safe Managed Builder Execution v1.1 summary. Template/execution/approval counts + latest
     status + next safe actions — never raw output/commands/secrets. Honest (no fake done)."""
@@ -2010,6 +2034,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("managed_execution_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("managed_execution_summary.json", status="error", error="build failed"))
+
+    # dogfood_run_summary.json (Step 2160)
+    try:
+        drs = _build_dogfood_run_summary(job)
+        content = json.dumps(drs, indent=2).encode()
+        section_data["dogfood_run_summary.json"] = content
+        result.sections.append(ReviewBundleSection("dogfood_run_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("dogfood_run_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

@@ -191,6 +191,17 @@ class ContractAction:
     LOCAL_ADVISOR_STATUS = "local_advisor_status"
     LOCAL_ADVISOR_RUN = "local_advisor_run"
 
+    # Open-Ended Dogfood Run Orchestrator + Replay Analyzer v0 (Step 2160) — METADATA + EVALUATION +
+    # REPLAY only. NOT provider/model/worker execution, NOT apply/approve/git. create/step/stop persist
+    # safe metadata + checkpoints; show/status/replay/checkpoints/next/evaluate/brainstorm are read-only.
+    # None execute a worker, run a test, apply a change, or call a provider.
+    DOGFOOD_RUN_CREATE = "dogfood_run_create"
+    DOGFOOD_RUN_STEP = "dogfood_run_step"
+    DOGFOOD_RUN_STOP = "dogfood_run_stop"
+    DOGFOOD_RUN_SHOW = "dogfood_run_show"
+    DOGFOOD_RUN_REPLAY = "dogfood_run_replay"
+    DOGFOOD_RUN_EVALUATE = "dogfood_run_evaluate"
+
     # Apply actions (gated by stop_before_apply)
     APPLY = "apply"
     SOURCE_APPLY = "source_apply"
@@ -354,6 +365,12 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.ORCHESTRATOR_REPORT,
     ContractAction.LOCAL_ADVISOR_STATUS,
     ContractAction.LOCAL_ADVISOR_RUN,
+    ContractAction.DOGFOOD_RUN_CREATE,
+    ContractAction.DOGFOOD_RUN_STEP,
+    ContractAction.DOGFOOD_RUN_STOP,
+    ContractAction.DOGFOOD_RUN_SHOW,
+    ContractAction.DOGFOOD_RUN_REPLAY,
+    ContractAction.DOGFOOD_RUN_EVALUATE,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
     ContractAction.RUN_TEST,
