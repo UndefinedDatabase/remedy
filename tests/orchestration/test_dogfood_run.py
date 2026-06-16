@@ -2,28 +2,23 @@
 
 from __future__ import annotations
 
-import json
-import os
 import tempfile
 from pathlib import Path
 
-import pytest
-
 # Module under test.
 from packages.orchestration.dogfood_run import (
+    _ALL_LANES,
+    _ALL_STATUSES,
+    _TERMINAL_STATUSES,
+    SCHEMA_VERSION,
     BrainstormIdea,
     DogfoodLane,
+    DogfoodReplayAnalysis,
     DogfoodRunCheckpoint,
     DogfoodRunEvaluation,
     DogfoodRunPolicy,
     DogfoodRunRecord,
     DogfoodRunStatus,
-    DogfoodReplayAnalysis,
-    LaneStatus,
-    SCHEMA_VERSION,
-    _ALL_LANES,
-    _ALL_STATUSES,
-    _TERMINAL_STATUSES,
     analyze_dogfood_run_replay,
     append_checkpoint,
     create_dogfood_run,
@@ -38,7 +33,6 @@ from packages.orchestration.dogfood_run import (
     step_dogfood_run,
     stop_dogfood_run,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -471,7 +465,7 @@ class TestCatalogEntries:
 
 class TestRunContractActions:
     def test_dogfood_actions_in_contract(self):
-        from packages.orchestration.run_contract import ContractAction, ALL_KNOWN_ACTIONS
+        from packages.orchestration.run_contract import ALL_KNOWN_ACTIONS, ContractAction
         assert ContractAction.DOGFOOD_RUN_CREATE in ALL_KNOWN_ACTIONS
         assert ContractAction.DOGFOOD_RUN_STEP in ALL_KNOWN_ACTIONS
         assert ContractAction.DOGFOOD_RUN_SHOW in ALL_KNOWN_ACTIONS
@@ -621,6 +615,79 @@ class TestR0116DeepIntegrity:
             # Only check: no false positive on satisfied_with_unsatisfied_mission
             sat_codes = [c for c in result["checks"] if c["code"] == "satisfied_with_unsatisfied_mission"]
             assert len(sat_codes) == 0
+
+    def test_satisfied_with_open_findings(self):
+        """R-0119: Satisfied run with open review findings should fail integrity."""
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T00:00:00+00:00"
+            run.blocking_reasons = []
+            save_dogfood_run(run, data_dir=Path(td))
+            fake_evidence = {
+                "contract_status": "contract_satisfied", "contract_satisfied": True,
+                "open_review_findings": 3, "failed_tests": 0, "tests_status": "passed",
+                "proof_status": "verified", "repair_open": 0, "repair_blocked": 0,
+                "builder_sessions_active": 0, "builder_sessions_blocked": 0,
+                "managed_executions_active": 0,
+            }
+            with patch("packages.orchestration.dogfood_run._gather_run_evidence", return_value=fake_evidence):
+                result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "satisfied_with_open_findings" in codes
+
+    def test_satisfied_with_failing_tests(self):
+        """R-0119: Satisfied run with failing required tests should fail integrity."""
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T00:00:00+00:00"
+            run.blocking_reasons = []
+            save_dogfood_run(run, data_dir=Path(td))
+            fake_evidence = {
+                "contract_status": "contract_satisfied", "contract_satisfied": True,
+                "open_review_findings": 0, "failed_tests": 5, "tests_status": "failed",
+                "proof_status": "verified", "repair_open": 0, "repair_blocked": 0,
+                "builder_sessions_active": 0, "builder_sessions_blocked": 0,
+                "managed_executions_active": 0,
+            }
+            with patch("packages.orchestration.dogfood_run._gather_run_evidence", return_value=fake_evidence):
+                result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "satisfied_with_failing_tests" in codes
+
+    def test_token_guardrail_exceeded_without_terminal(self):
+        """R-0120: Non-terminal run exceeding token budget should fail integrity."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td, policy=DogfoodRunPolicy(max_tokens_estimated=100_000))
+            run.status = DogfoodRunStatus.RUNNING
+            run.started_at = "2026-01-01T00:00:00+00:00"
+            run.cumulative_tokens = 200_000
+            save_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "guardrail_exceeded_without_terminal_status" in codes
+            # Verify it mentions tokens in detail
+            detail_checks = [c for c in result["checks"] if c["code"] == "guardrail_exceeded_without_terminal_status"]
+            assert any("tokens" in c.get("detail", "") for c in detail_checks)
+
+    def test_budget_exhausted_no_false_positive(self):
+        """R-0120: Budget-exhausted terminal run should NOT trigger guardrail check."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td, policy=DogfoodRunPolicy(max_tokens_estimated=100_000))
+            run.status = DogfoodRunStatus.BUDGET_EXHAUSTED
+            run.started_at = "2026-01-01T00:00:00+00:00"
+            run.finished_at = "2026-01-01T01:00:00+00:00"
+            run.cumulative_tokens = 200_000
+            save_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            codes = [c["code"] for c in result["checks"]]
+            assert "guardrail_exceeded_without_terminal_status" not in codes
 
 
 # ---------------------------------------------------------------------------
