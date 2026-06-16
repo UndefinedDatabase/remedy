@@ -340,6 +340,7 @@ class ExecutionEventKind:
     APPROVAL_CONSUMED = "approval_consumed"
     RUNTIME_CAP_APPLIED = "runtime_cap_applied"
     OUTPUT_CAP_APPLIED = "output_cap_applied"
+    OUTPUT_REF_CREATED = "output_ref_created"
 
 
 _ALL_EVENT_KINDS = frozenset({
@@ -350,7 +351,7 @@ _ALL_EVENT_KINDS = frozenset({
     ExecutionEventKind.APPROVAL_EXPIRED, ExecutionEventKind.APPROVAL_EXHAUSTED,
     ExecutionEventKind.APPROVAL_VALIDATED, ExecutionEventKind.BINDING_MISMATCH,
     ExecutionEventKind.APPROVAL_CONSUMED, ExecutionEventKind.RUNTIME_CAP_APPLIED,
-    ExecutionEventKind.OUTPUT_CAP_APPLIED,
+    ExecutionEventKind.OUTPUT_CAP_APPLIED, ExecutionEventKind.OUTPUT_REF_CREATED,
 })
 
 
@@ -570,7 +571,26 @@ def approve_managed_execution(
         from datetime import timedelta
         expires_at = (datetime.now(timezone.utc) + timedelta(seconds=DEFAULT_APPROVAL_EXPIRY_SECONDS)).isoformat()
 
-    # Derive adapter_kind from template if not specified.
+    # R-0113: auto-bind package_id, adapter_id, adapter_kind from real session when omitted.
+    try:
+        from packages.orchestration.main_builder_adapter import (
+            load_builder_session, get_builder_adapter_spec,
+        )
+        session = load_builder_session(session_id, ddir)
+        if session:
+            if not package_id and session.package_id:
+                package_id = session.package_id
+            if not adapter_id and session.adapter_id:
+                adapter_id = session.adapter_id
+            if not adapter_kind and session.adapter_id:
+                spec = get_builder_adapter_spec(session.adapter_id, ddir)
+                if spec:
+                    spec_dict = spec if isinstance(spec, dict) else spec.to_dict()
+                    adapter_kind = spec_dict.get("kind", "")
+    except ImportError:
+        pass  # graceful degradation
+
+    # Derive adapter_kind from template if still not specified.
     ak = adapter_kind or tmpl.get("adapter_kind", "")
     scope = approval_scope if approval_scope in _ALL_APPROVAL_SCOPES else ApprovalScope.SINGLE_RUN
 
@@ -722,10 +742,10 @@ def _validate_session_binding(
     except ImportError:
         return codes  # graceful degradation if module not available
 
-    # Load real session — if no session exists, binding validation is skipped
-    # (approval system works standalone; bindings only checked against existing sessions).
+    # Load real session — if not found, return session_not_found code.
     session = load_builder_session(session_id, ddir)
     if not session:
+        codes.append("session_not_found")
         return codes
 
     # Session must be in an executable state (not completed/intake-only).
@@ -747,7 +767,8 @@ def _validate_session_binding(
     if session.adapter_id and tmpl:
         spec = get_builder_adapter_spec(session.adapter_id, ddir)
         if spec:
-            spec_dict = spec.to_dict()
+            # spec is dict (get_builder_adapter_spec returns dict | None).
+            spec_dict = spec if isinstance(spec, dict) else spec.to_dict()
             tmpl_ak = tmpl.get("adapter_kind", "")
             spec_kind = spec_dict.get("kind", "")
             if tmpl_ak and spec_kind and tmpl_ak != spec_kind:
@@ -934,6 +955,22 @@ def run_managed_builder(
                        ExecutionEventKind.FAILED, "Template disabled", ddir=ddir)
         return result
 
+    # 1b. R-0111: require real BuilderSession for managed execution.
+    try:
+        from packages.orchestration.main_builder_adapter import load_builder_session
+        _session = load_builder_session(session_id, ddir)
+        if not _session:
+            result.status = ManagedExecutionStatus.BLOCKED
+            result.blocking_reasons.append("session_not_found")
+            result.next_safe_action = f"remedy builder session-show {session_id} --json"
+            result.ended_at = _now()
+            _save_execution_result(result, ddir)
+            _append_event(result.execution_id, session_id, job_id,
+                           ExecutionEventKind.FAILED, "BuilderSession not found", ddir=ddir)
+            return result
+    except ImportError:
+        pass  # graceful degradation if module unavailable
+
     # 2. Check approval (v1.1: full validation with 11 codes).
     if tmpl.get("requires_approval", True):
         validation_codes = validate_execution_approval(
@@ -1054,6 +1091,12 @@ def run_managed_builder(
         # Store raw output privately.
         output_path = _save_raw_output(result.execution_id, job_id, stdout, stderr, ddir)
         result.output_ref = _safe_path_label(str(output_path))
+
+        # R-0115: emit output_ref_created event for dogfood replay provenance.
+        _append_event(result.execution_id, session_id, job_id,
+                       ExecutionEventKind.OUTPUT_REF_CREATED,
+                       f"Raw output stored privately: {result.output_ref}",
+                       ddir=ddir)
 
         # Safe summary (first 200 chars of stdout, scrubbed).
         try:
@@ -1215,8 +1258,15 @@ def build_debug_bundle(execution_id: str, data_dir: Path | None = None) -> dict[
     elif "approval_exhausted" in blocking:
         repair_suggestion = f"Re-approve with higher max_runs: remedy execution approve {session_id} --template {result.get('template_id', '')} --max-runs N --json"
 
-    # R-0110: binding summary — session/package/adapter/template matching.
+    # R-0110/R-0111: binding summary — session/package/adapter/template matching.
+    session_exists = False
+    try:
+        from packages.orchestration.main_builder_adapter import load_builder_session
+        session_exists = load_builder_session(session_id, ddir) is not None
+    except ImportError:
+        pass
     binding_summary: dict[str, Any] = {
+        "session_exists": session_exists,
         "session_id_match": True,
         "template_id_match": True,
     }
@@ -1232,9 +1282,10 @@ def build_debug_bundle(execution_id: str, data_dir: Path | None = None) -> dict[
                 approval.get("adapter_kind", "") == tmpl.get("adapter_kind", "")
             )
 
-    # R-0110: event sequence summary.
+    # R-0110/R-0115: event sequence summary.
     event_kinds_present = [e.get("kind", "") for e in exec_events]
     has_output_ref = bool(result.get("output_ref", ""))
+    has_output_ref_event = ExecutionEventKind.OUTPUT_REF_CREATED in event_kinds_present
 
     return {
         "execution_id": execution_id,
@@ -1248,6 +1299,7 @@ def build_debug_bundle(execution_id: str, data_dir: Path | None = None) -> dict[
         "ended_at": result.get("ended_at", ""),
         "output_ref": result.get("output_ref", ""),
         "output_ref_present": has_output_ref,
+        "output_ref_event_present": has_output_ref_event,
         "safe_summary": result.get("safe_summary", ""),
         "blocking_reasons": blocking,
         "next_safe_action": result.get("next_safe_action", ""),
@@ -1380,6 +1432,8 @@ def audit_execution_result_safety(
                 out.append({"execution_id": eid, "code": "completed_missing_started_event"})
             if ExecutionEventKind.COMPLETED not in kinds:
                 out.append({"execution_id": eid, "code": "completed_missing_completed_event"})
+            if ExecutionEventKind.OUTPUT_REF_CREATED not in kinds:
+                out.append({"execution_id": eid, "code": "completed_missing_output_ref_event"})
 
     # R-0110: result must not claim repair/mission done.
     summary_lower = result.get("safe_summary", "").lower()

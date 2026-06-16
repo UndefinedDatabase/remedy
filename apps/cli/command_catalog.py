@@ -832,7 +832,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        may_execute_commands=True,
+        may_execute_commands=False,  # R-0114: controlled builder execution, not generic commands
     ),
     CommandEntry(
         command_id="execution.show",

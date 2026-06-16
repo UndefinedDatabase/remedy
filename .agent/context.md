@@ -5,17 +5,17 @@ feature/steps-2076-2125-managed-execution-approval-dogfood-observability-hardeni
 (forked from clean main at 1970b7c after PR #76 merged Managed External Builder Execution v1).
 
 ## Scope
-Steps 2113-2125: Review closure for R-0106/R-0107/R-0108/R-0109/R-0110.
-All code fixes + 19 new/updated tests. Awaiting reviewer re-verdict.
+Steps 2126-2145: Review closure for R-0111/R-0112/R-0113/R-0114/R-0115.
+All code fixes + 23 new tests + existing test updates. Awaiting reviewer re-verdict.
 
 ## Findings closure summary
 | Finding | Severity | Fix summary |
 |---------|----------|-------------|
-| R-0106 | Medium | DEFAULT_APPROVAL_EXPIRY_SECONDS=1800; empty expires_at → expired; integrity flag |
-| R-0107 | High | _validate_session_binding loads real BuilderSessionRecord; graceful if absent |
-| R-0108 | Medium | _increment_approval_used_count before subprocess.run; argv failure doesn't consume |
-| R-0109 | Medium | action_class changed to controlled_builder_execution |
-| R-0110 | Low | completed_missing_output_ref/started/completed event checks; binding_summary in bundle |
+| R-0111 | High | Runner blocks ghost sessions; _validate_session_binding returns session_not_found |
+| R-0112 | Medium | isinstance check on adapter spec; no .to_dict() crash on dict |
+| R-0113 | Medium | approve_managed_execution auto-binds package_id/adapter_id/adapter_kind from real session |
+| R-0114 | Medium | execution.run may_execute_commands=False; controlled_builder_execution action_class only |
+| R-0115 | Medium | OUTPUT_REF_CREATED event; integrity checks completed_missing_output_ref_event; debug bundle output_ref_event_present |
 
 ## Carried residual risks
 - Real rollback RESTORE still NOT implemented (metadata-only).
@@ -23,8 +23,5 @@ All code fixes + 19 new/updated tests. Awaiting reviewer re-verdict.
 - Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
 - UI `npm run lint` pre-existing TS parser blocker.
 
-## Resource safety (standing)
-- No background pytest. Use `scripts/remedy_pytest.sh`; full suite once at block end.
-
 ## Status
-Code + tests complete. Targeted 102 + CLI 10 passed. Awaiting full suite + commit.
+Code + tests complete. Full suite 6497 passed. Awaiting commit + reviewer verdict.
