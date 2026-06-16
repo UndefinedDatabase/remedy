@@ -142,6 +142,16 @@ class ContractAction:
     REPAIR_LOOP_EVALUATE = "repair_loop_evaluate"
     REPAIR_LOOP_POLICY_SET = "repair_loop_policy_set"
     REPAIR_LOOP_SHOW = "repair_loop_show"
+    # Main Builder Adapter v0 (Step 1985) — METADATA + POLICY only. NOT provider/model/worker
+    # execution, NOT candidate generation, NOT apply/approve. adapter-list/show/session-show/list/
+    # integrity are read-only; adapter-enable/package-create/session-create/session-record-output/
+    # session-intake are write_metadata. None execute a worker, apply a change, or call a provider.
+    BUILDER_ADAPTER_SHOW = "builder_adapter_show"
+    BUILDER_ADAPTER_ENABLE = "builder_adapter_enable"
+    BUILDER_PACKAGE_CREATE = "builder_package_create"
+    BUILDER_SESSION_CREATE = "builder_session_create"
+    BUILDER_SESSION_SHOW = "builder_session_show"
+    BUILDER_SESSION_INTAKE = "builder_session_intake"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -302,6 +312,12 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.REPAIR_LOOP_EVALUATE,
     ContractAction.REPAIR_LOOP_POLICY_SET,
     ContractAction.REPAIR_LOOP_SHOW,
+    ContractAction.BUILDER_ADAPTER_SHOW,
+    ContractAction.BUILDER_ADAPTER_ENABLE,
+    ContractAction.BUILDER_PACKAGE_CREATE,
+    ContractAction.BUILDER_SESSION_CREATE,
+    ContractAction.BUILDER_SESSION_SHOW,
+    ContractAction.BUILDER_SESSION_INTAKE,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

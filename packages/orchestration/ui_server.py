@@ -420,6 +420,41 @@ def _build_repair_loop_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_main_builder_adapter_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Main Builder Adapter v0 cockpit summary (Step 1993). Counts/status + next safe
+    action only; no mutation buttons; no fake live builder; no raw/private data."""
+    try:
+        from packages.orchestration.main_builder_adapter import (
+            list_builder_adapter_specs, list_builder_sessions,
+        )
+        specs = list_builder_adapter_specs()
+        sessions = list_builder_sessions(str(job.id))
+        enabled = sum(1 for s in specs if s.get("enabled", False))
+        latest = sessions[-1] if sessions else {}
+        blocked = sum(1 for s in sessions if s.get("status") == "blocked")
+        pkg_ready = sum(1 for s in sessions if s.get("status") in ("package_ready", "waiting_for_operator"))
+        candidate = sum(1 for s in sessions if s.get("status") == "candidate_received")
+        intake = sum(1 for s in sessions if s.get("status") == "completed_intake_only")
+        running = sum(1 for s in sessions if s.get("status") == "running")
+        return {
+            "enabled_adapter_count": enabled,
+            "latest_session_status": latest.get("status", "none"),
+            "latest_adapter_kind": latest.get("adapter_id", ""),
+            "package_ready_count": pkg_ready,
+            "blocked_session_count": blocked,
+            "candidate_intake_status": "candidate_received" if candidate else (
+                "intake_complete" if intake else "none"),
+            "token_warning": "",
+            "next_safe_action": latest.get("next_safe_action", ""),
+            "live": bool(running),
+            "source": "main_builder_adapter",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"enabled_adapter_count": 0, "latest_session_status": "none",
+                "blocked_session_count": 0, "next_safe_action": "", "live": False,
+                "source": "unavailable"}
+
+
 def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
     """Safe snapshot/apply-record summary from the authoritative builder.
 
@@ -1364,6 +1399,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "test_execution": _build_test_execution_section(job),
         "snapshot_rollback": _build_snapshot_rollback_section(job),
         "repair_loop": _build_repair_loop_section(job),
+        "main_builder_adapter": _build_main_builder_adapter_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
