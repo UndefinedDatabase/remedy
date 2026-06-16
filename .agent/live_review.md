@@ -18,13 +18,13 @@ fake pass); proof chain safe IDs only (no event-only fake promotion); no worker/
 Timestamp: 2026-06-16
 
 ## Verdict (reviewer-owned)
-**PASS WITH RISKS** @ cb2c640 — zero open Blocker/High/Medium; ONE documented Low (R-0104). All 11
-checks PASS; targeted suite 602 passed; no forbidden execution path (no shell=True / arbitrary cmd /
-provider / worker / network); no raw leak; honest snapshot/rollback (no fake restore/rollback-ready);
-no fake test pass; English-only; changed-files table present. Merge-ready (Low documented). Auto-merge
+**PASS** @ 7230268 — ZERO open findings (R-0104 Resolved). All 11 checks PASS; targeted suite 264
+passed @ 7230268 (602 @ cb2c640 unchanged); no forbidden execution path (no shell=True / arbitrary cmd
+/ provider / worker / network); no raw leak; honest snapshot/rollback (no fake restore/rollback-ready);
+no fake test pass; English-only; changed-files table present. Merge-ready (zero open). Auto-merge
 applies on reviewer PASS per merge-autonomy; NO PR opened (user has not asked).
 
-## Check matrix (reviewed @ cb2c640)
+## Check matrix (reviewed @ cb2c640, re-verified @ 7230268)
 1. Mainline closure — PASS. Overnight Mission v0 reviewer PASS @ 90768fd merged via PR #72 → main
    `aacafbd`. Fresh branch off merged main; no work before closure. (Baseline `test_execution_service.py`
    /`repository_snapshot.py` reviewed for runner safety — see checks 3/4.)
@@ -69,7 +69,7 @@ applies on reviewer PASS per merge-autonomy; NO PR opened (user has not asked).
 
 ### R-0104
 - **Severity**: Low
-- **Status**: Open
+- **Status**: Resolved @ 7230268 (reviewer-verified; Done≠Resolved — independently confirmed below)
 - **Area**: `packages/orchestration/real_test_execution.py` `run_allowed_test` ×
   `test_execution_service.execute_test_run`.
 - **Problem**: `run_allowed_test` calls `resolve_allowed_command(command_id)` to validate the requested
@@ -85,12 +85,19 @@ applies on reviewer PASS per merge-autonomy; NO PR opened (user has not asked).
   command and document that v1 always runs the best-discovered test command. Add a test asserting the
   reported command matches the executed one.
 
-Done: R-0104 - `TestExecutionRequest`/`TestExecutionResult` gained `command_id`; `execute_test_run`
-Gate 8 executes the requested discovered candidate (blocks `requested_command_not_found` /
-`requested_command_not_test`); `result.command_id` = executed candidate id and is persisted in the
-test record; `run_allowed_test` forwards `command_id` and reports the runner's executed id. Tests:
-runner explicit/no-swap/unknown/non-test + facade forward/runner-selected/unknown-not-reached. Targeted
-249 passed; `test integrity` + `integrity check` PASS. (Builder self-report; Reviewer owns Resolved.)
+- **Resolution (reviewer-verified @ 7230268)**: `TestExecutionRequest.command_id` added; `run_allowed_test`
+  forwards the validated `command_id` into `execute_test_run`. Gate 8: when `command_id` supplied, runner
+  selects the EXACT discovered candidate by id (`next((c for c in candidates if c.id == command_id))`) —
+  not found → block `requested_command_not_found`; `purpose != "test"` → block `requested_command_not_test`
+  (HONEST, never self-selects/swaps). Empty id → legacy `select_best_test_candidate` (back-compat). CRITICAL:
+  both paths converge on `candidate`, after which the high-risk gate (`candidate.risk == "high"` →
+  `high_risk_command`) AND `_EXECUTION_SAFE_EXECUTABLES` allowlist (`candidate.argv[0]` → `executable_not_
+  in_safe_list`) STILL run (svc lines 735/742) — explicit-id path does NOT bypass any safety gate; argv
+  comes only from a discovered candidate (no arbitrary injection); no shell=True; timeout/cwd/safe-env/
+  output-cap/output_ref unchanged. `TestExecutionResult.command_id = candidate.id` (executed) → persisted in
+  test record → `run_allowed_test` sets `res.command_id = out.command_id`. Honesty chain closed:
+  validated == executed == `TestRunResult.command_id` == public summary id. Builder's `Done:` was correct;
+  Reviewer independently confirmed + marks Resolved.
 
 Next id: R-0105.
 
@@ -103,8 +110,20 @@ Next id: R-0105.
 - Integrity: `test_execution_integrity` + `audit_*` codes present (see Check 10). German scan CLEAN.
   Builder full-suite self-report NOT independently re-run; reviewer targeted = 602 passed (zero open
   Medium/High/Blocker → full-suite acceptance criteria met for PASS WITH RISKS).
+- R-0104 closure re-run @ 7230268: `remedy_pytest.sh test_real_test_execution.py +
+  tests/cli/test_real_test_execution_cli.py + test_test_execution_service.py + test_run_contract.py +
+  tests/test_command_catalog.py + tests/cli/test_command_catalog.py + test_overnight_mission.py +
+  test_integrity_gate.py -q` → **264 passed**, 0 failed. New tests cover: runner explicit-id executes
+  that cmd; non-best id NOT swapped to select_best; unknown id → `requested_command_not_found` (argv
+  never run); non-test id → `requested_command_not_test` (argv never run); facade forwards id; facade
+  reports runner-selected id; unknown id never reaches runner; `to_dict` carries `command_id` + no raw/
+  path leak. Builder full-suite self-report (6243 passed/8 skipped) NOT independently re-run; reviewer
+  targeted 264 passed + zero open findings → acceptance criteria met for PASS.
 
 ## Reviewer audit log
+- VERDICT PASS @ 7230268 — R-0104 Resolved (reviewer-verified): command_id forwarded into runner;
+  executed == reported == validated; allowlist/high-risk gates still run after explicit-id selection
+  (no bypass); no shell=True; bounded runner unchanged. Targeted 264 passed. ZERO open findings.
 - VERDICT PASS WITH RISKS @ cb2c640 — one documented Low R-0104 (command_id not forwarded to runner;
   no safety impact). All checks PASS; runner verified no-shell/bounded/allowlisted/output-capped/
   env-sanitized; honest snapshot/rollback proofs.
