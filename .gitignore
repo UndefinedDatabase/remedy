@@ -221,3 +221,6 @@ packages.zip
 node_modules/
 
 remedy-review-*
+
+# Coverage reports
+.coverage_reports/

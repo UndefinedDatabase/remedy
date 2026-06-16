@@ -25,13 +25,11 @@ import os
 import secrets
 import sys
 from datetime import datetime, timezone
-from functools import partial
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 from uuid import UUID
-
 
 # ---------------------------------------------------------------------------
 # Safe data builders (no raw content leaks)
@@ -308,7 +306,7 @@ def _task_truth_maps(chain: Any) -> tuple[dict[str, str], dict[str, str]]:
     if chain is None:
         return proof_by_task, apply_by_task
     try:
-        from packages.orchestration.proof_chain import PROOF_VERIFIED, PROOF_FAILED, PROOF_NOT_APPLICABLE
+        from packages.orchestration.proof_chain import PROOF_FAILED, PROOF_NOT_APPLICABLE, PROOF_VERIFIED
         grouped: dict[str, list[Any]] = {}
         for c in chain.changes:
             tid = getattr(c, "task_id", "") or ""
@@ -366,7 +364,8 @@ def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
     no fake rollback-ready; no mutation; no raw data."""
     try:
         from packages.orchestration.real_test_execution import (
-            list_snapshot_proofs, list_rollback_proofs,
+            list_rollback_proofs,
+            list_snapshot_proofs,
         )
         snaps = list_snapshot_proofs(job_id=str(job.id))
         rbs = list_rollback_proofs(job_id=str(job.id))
@@ -389,7 +388,9 @@ def _build_repair_loop_section(job: Any) -> dict[str, Any]:
     next safe action only; no mutation buttons; no fake live repair; no raw/private data."""
     try:
         from packages.orchestration.repair_loop_v2 import (
-            list_repair_work_items, list_repair_attempts, load_latest_repair_evaluation,
+            list_repair_attempts,
+            list_repair_work_items,
+            load_latest_repair_evaluation,
         )
         items = list_repair_work_items(job_id=str(job.id))
         open_count = sum(1 for i in items if i.get("status") not in ("repaired", "abandoned"))
@@ -425,7 +426,8 @@ def _build_main_builder_adapter_section(job: Any) -> dict[str, Any]:
     action only; no mutation buttons; no fake live builder; no raw/private data."""
     try:
         from packages.orchestration.main_builder_adapter import (
-            list_builder_adapter_specs, list_builder_sessions,
+            list_builder_adapter_specs,
+            list_builder_sessions,
         )
         specs = list_builder_adapter_specs()
         sessions = list_builder_sessions(str(job.id))
@@ -460,8 +462,9 @@ def _build_managed_execution_section(job: Any) -> dict[str, Any]:
     next safe action only; no mutation buttons; no raw output; no fake live execution."""
     try:
         from packages.orchestration.managed_builder_execution import (
-            list_command_templates, list_execution_results,
+            list_command_templates,
             list_execution_approvals,
+            list_execution_results,
         )
         templates = list_command_templates()
         results = list_execution_results(str(job.id))
@@ -513,7 +516,8 @@ def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
         return unknown
     try:
         from packages.orchestration.repository_snapshot import (
-            build_snapshot_truth, list_durable_apply_ids,
+            build_snapshot_truth,
+            list_durable_apply_ids,
         )
         apply_ids = list_durable_apply_ids(str(job.id), data_dir)
         verified = 0
@@ -557,7 +561,8 @@ def _build_continuation_section(
     available = False
     try:
         from packages.orchestration.approval_queue import (
-            list_patch_intents, APPROVAL_APPROVED,
+            APPROVAL_APPROVED,
+            list_patch_intents,
         )
         intents = list_patch_intents(job)
         available = any(i.get("state") == APPROVAL_APPROVED for i in intents)
@@ -644,7 +649,8 @@ def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
         return unknown
     try:
         from packages.orchestration.overnight_readiness import (
-            build_overnight_readiness, export_readiness_json,
+            build_overnight_readiness,
+            export_readiness_json,
         )
         d = export_readiness_json(build_overnight_readiness(str(job.id), data_dir))
         checklist = d.get("checklist", [])
@@ -679,7 +685,8 @@ def _build_overnight_run_section(job: Any, data_dir: Path | None) -> dict[str, A
         return unknown
     try:
         from packages.orchestration.overnight_executor import (
-            list_run_records, latest_run_record,
+            latest_run_record,
+            list_run_records,
         )
         records = list_run_records(str(job.id), data_dir)
         latest = latest_run_record(str(job.id), data_dir)
@@ -748,7 +755,8 @@ def _build_external_builder_section(job: Any) -> dict[str, Any]:
     LIVE only with real running evidence — in this block normally false (ingress only)."""
     try:
         from packages.orchestration.external_builder_sandbox import (
-            load_external_packages, load_external_submissions,
+            load_external_packages,
+            load_external_submissions,
         )
         pkgs = load_external_packages(job_id=str(job.id))
         subs = load_external_submissions(job_id=str(job.id))
@@ -817,7 +825,9 @@ def _build_overnight_mission_section(job: Any) -> dict[str, Any]:
     false unless real active evidence exists — in this metadata-only block it stays false."""
     try:
         from packages.orchestration.overnight_mission import (
-            list_mission_contracts, evaluate_mission_contract, _contract_from_dict,
+            _contract_from_dict,
+            evaluate_mission_contract,
+            list_mission_contracts,
         )
         contracts = list_mission_contracts(job_id=str(job.id))
         if not contracts:
@@ -887,8 +897,11 @@ def _build_worker_registry_section(job: Any) -> dict[str, Any]:
     no fake provider/Ollama status. LIVE is always false — this block is metadata + policy only."""
     try:
         from packages.orchestration.worker_registry import (
-            load_worker_registry, load_route_policy, evaluate_worker_selection, is_placeholder,
             WorkerSelectionRequest,
+            evaluate_worker_selection,
+            is_placeholder,
+            load_route_policy,
+            load_worker_registry,
         )
         specs = load_worker_registry()
         policy = load_route_policy(str(job.id))
@@ -927,7 +940,8 @@ def _build_candidate_quality_section(job: Any) -> dict[str, Any]:
     No buttons, no mutation, no raw content."""
     try:
         from packages.orchestration.candidate_quality import (
-            load_candidate_quality_evaluations, build_candidate_scorecards,
+            build_candidate_scorecards,
+            load_candidate_quality_evaluations,
         )
         evals = load_candidate_quality_evaluations(job_id=str(job.id))
         latest = evals[-1] if evals else None
@@ -959,7 +973,8 @@ def _build_local_candidate_section(job: Any) -> dict[str, Any]:
     No buttons, no mutation, no model execution, no raw output."""
     try:
         from packages.orchestration.local_candidate_generator import (
-            load_local_candidate_config, list_local_candidate_runs,
+            list_local_candidate_runs,
+            load_local_candidate_config,
         )
         cfg = load_local_candidate_config()
         runs = [r for r in list_local_candidate_runs() if r.get("job_id") == str(job.id)]
@@ -1048,8 +1063,8 @@ def _build_repair_request_section(job: Any) -> dict[str, Any]:
     Counts + latest target only. No buttons, no mutation, no external execution,
     no raw request content."""
     try:
-        from packages.orchestration.repair_request_builder import load_request_packages
         from packages.orchestration.provider_patch_material import load_materials
+        from packages.orchestration.repair_request_builder import load_request_packages
         packages = list(load_request_packages(job).values())
         materialized = {m.get("failure_artifact_id") for m in load_materials(job).values()
                         if m.get("material_state") == "materialized"}
@@ -1512,8 +1527,8 @@ def _build_proposed_tasks_section(job_id: str) -> dict[str, Any]:
     }
     try:
         from packages.orchestration.proposed_tasks import (
-            load_proposed_tasks_safe,
             ProposedTaskStatus,
+            load_proposed_tasks_safe,
         )
         tasks, degraded = load_proposed_tasks_safe(job_id)
         if degraded:
@@ -1557,11 +1572,11 @@ def _build_proposed_tasks_section(job_id: str) -> dict[str, Any]:
 def _build_resume_section(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     """Build safe resume/checkpoint visibility for dashboard."""
     try:
+        from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.event_replay import (
             find_checkpoints,
             replay_job,
         )
-        from packages.orchestration.data_paths import resolve_data_root
         data_dir = resolve_data_root()
         replay = replay_job(str(job.id), data_dir)
         cps = find_checkpoints(replay)
@@ -1607,7 +1622,6 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
         from packages.orchestration.project_summary import (
             build_project_summary,
             detect_patterns,
-            export_project_summary_json,
         )
         from packages.orchestration.storage import list_jobs
         from packages.orchestration.timeline import load_run_events
@@ -1925,7 +1939,7 @@ def _pipeline_next_command(
     if stop_reason == "provider_unavailable":
         return "remedy worker resources --json"
     if stop_reason in ("provider_output_prose_only", "provider_output_malformed"):
-        return f"remedy do \"<goal>\" --repo . --builder-provider fixture --json"
+        return "remedy do \"<goal>\" --repo . --builder-provider fixture --json"
     if stop_reason == "test_failed_after_apply":
         return f"remedy job summary {job_id} --json"
     if stop_reason == "repair_budget_exhausted":
@@ -2633,7 +2647,7 @@ def start_ui_server(
         Path(info_file).write_text(json.dumps(info, indent=2))
 
     print(f"\nRemedy UI: {url}\n")
-    print(f"Press Ctrl-C to stop.\n")
+    print("Press Ctrl-C to stop.\n")
 
     # Optional browser open
     if open_browser:

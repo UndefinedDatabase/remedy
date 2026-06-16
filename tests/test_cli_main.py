@@ -23,7 +23,6 @@ from packages.core.models import Job, RunState, Task
 from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.storage import load_job, save_job
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -676,8 +675,9 @@ class TestProjectCommandsCLI:
 
     def test_create_project_prints_uuid(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from apps.cli.commands.project import _cmd_create_project
         import uuid
+
+        from apps.cli.commands.project import _cmd_create_project
         _cmd_create_project("MyApp", None)
         out = capsys.readouterr().out.strip()
         uuid.UUID(out)  # must be parseable
@@ -705,8 +705,9 @@ class TestProjectCommandsCLI:
         assert d["version"] == 1
 
     def test_show_project_missing_exits_1(self, tmp_path, monkeypatch):
-        import pytest
         from uuid import uuid4
+
+        import pytest
         self._env(tmp_path, monkeypatch)
         from apps.cli.commands.project import _cmd_show_project
         with pytest.raises(SystemExit) as exc:
@@ -714,8 +715,9 @@ class TestProjectCommandsCLI:
         assert exc.value.code == 1
 
     def test_show_project_missing_stderr_safe(self, tmp_path, monkeypatch, capsys):
-        import pytest
         from uuid import uuid4
+
+        import pytest
         self._env(tmp_path, monkeypatch)
         from apps.cli.commands.project import _cmd_show_project
         with pytest.raises(SystemExit):
@@ -730,7 +732,8 @@ class TestProjectCommandsCLI:
         _cmd_create_project("RepoTest", None)
         project_id = capsys.readouterr().out.strip()
         repo = str(tmp_path / "myrepo")
-        import os; os.makedirs(repo)
+        import os
+        os.makedirs(repo)
         _cmd_attach_project_repo(project_id, repo)
         capsys.readouterr()
         _cmd_attach_project_repo(project_id, repo)
@@ -739,10 +742,11 @@ class TestProjectCommandsCLI:
 
     def test_attach_project_job_sets_metadata(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
+        from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from apps.cli.commands.project import _cmd_attach_project_job, _cmd_create_project
         from packages.orchestration.storage import load_job
-        from uuid import UUID
         _cmd_create_project("JobLink", None)
         project_id = capsys.readouterr().out.strip()
         _cmd_create_job("test prompt")
@@ -786,7 +790,6 @@ class TestProjectCommandsCLI:
         assert "project_id" not in job.metadata
 
     def test_malformed_project_id_no_placeholder_in_brain(self, tmp_path, monkeypatch, capsys):
-        import json
         self._env(tmp_path, monkeypatch)
         from packages.core.models import Job, RunState
         from packages.orchestration.project_brain import build_project_brain, export_project_brain_json
@@ -812,6 +815,7 @@ class TestCreateJobTaskType:
     def test_task_type_creates_one_task(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("smoke prompt", task_type="write_readme")
@@ -822,6 +826,7 @@ class TestCreateJobTaskType:
     def test_task_type_sets_state_planned(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from packages.core.models import RunState
         from packages.orchestration.storage import load_job
@@ -833,6 +838,7 @@ class TestCreateJobTaskType:
     def test_task_type_stored_in_task_inputs(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("prompt", task_type="analyze_code")
@@ -843,6 +849,7 @@ class TestCreateJobTaskType:
     def test_task_description_stored_in_task(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("prompt", task_type="write_readme", task_description="Custom desc.")
@@ -853,6 +860,7 @@ class TestCreateJobTaskType:
     def test_default_description_when_none_given(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("prompt", task_type="write_readme")
@@ -863,6 +871,7 @@ class TestCreateJobTaskType:
     def test_no_task_type_leaves_state_pending(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from packages.core.models import RunState
         from packages.orchestration.storage import load_job
@@ -875,6 +884,7 @@ class TestCreateJobTaskType:
     def test_hyphens_and_underscores_allowed_in_task_type(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from packages.orchestration.storage import load_job
         _cmd_create_job("prompt", task_type="analyze-code_v2")
@@ -916,6 +926,7 @@ class TestCreateJobTaskType:
         import json
         self._env(tmp_path, monkeypatch)
         from uuid import UUID
+
         from apps.cli.commands.job import _cmd_create_job
         from apps.cli.commands.project import _cmd_create_project, _cmd_show_project
         from packages.core.models import RunState

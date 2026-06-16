@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = ["pydantic>=2.0"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "ruff", "mypy", "pytest-cov", "coverage"]
 ollama = ["ollama>=0.4"]
 
 [project.scripts]
@@ -31,3 +31,115 @@ markers = [
     "safety: Resource safety and process isolation guards",
     "architecture: Structural guards (no step files, imports, namespaces)",
 ]
+
+# -- Ruff (baseline v0) --
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = [
+    ".git",
+    ".data",
+    ".pytest_cache",
+    "__pycache__",
+    "node_modules",
+    "apps/ui/dist",
+    "apps/ui/coverage",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = [
+    "E501",   # line-too-long — 330 hits across long descriptions and compact data; deferred
+    "E702",   # multiple-statements-on-semicolon — 136 hits in compact test/data patterns; deferred
+    "E741",   # ambiguous-variable-name — 30 hits (l, I, O as loop vars); existing patterns; deferred
+    "F841",   # unused-variable — 47 hits; many are intentional (capturing return values); deferred
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["F811"]  # redefined-while-unused — pytest fixtures redefine names intentionally
+"packages/orchestration/progress_ledger.py" = ["E402"]  # re import after class defs — intentional layout
+"packages/orchestration/provider_trust_verification.py" = ["UP031"]  # %-format in regex — clearer than f-string
+"packages/orchestration/review_bundle.py" = ["F402"]  # loop var `field` shadows dataclass import — safe
+"packages/orchestration/run_contract.py" = ["F402"]  # loop var `field` shadows dataclass import — safe
+
+# -- Mypy (permissive baseline v0) --
+[tool.mypy]
+python_version = "3.10"
+mypy_path = "."
+explicit_package_bases = true
+namespace_packages = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = false
+warn_return_any = false
+check_untyped_defs = false
+disallow_untyped_defs = false
+no_implicit_optional = false
+pretty = true
+show_error_codes = true
+
+# Mypy module excludes — baseline v0, 144 errors in 42 files deferred.
+# Top offenders: ui_view_model (24), agent_loop (12), worker_queue (11).
+# These require architectural typing work beyond this baseline block.
+[[tool.mypy.overrides]]
+module = [
+    "packages.orchestration.ui_view_model",
+    "packages.orchestration.agent_loop",
+    "packages.orchestration.worker_queue",
+    "packages.orchestration.command_discovery",
+    "packages.orchestration.project_brain",
+    "packages.orchestration.feature_planner",
+    "packages.orchestration.verifier",
+    "packages.orchestration.review_bundle",
+    "packages.orchestration.do_run",
+    "packages.orchestration.autonomy_readiness",
+    "packages.orchestration.autorun",
+    "packages.orchestration.builder_bridge",
+    "packages.orchestration.builder_routing",
+    "packages.orchestration.change_set",
+    "packages.orchestration.context_coverage",
+    "packages.orchestration.do_continue",
+    "packages.orchestration.dogfood_run",
+    "packages.orchestration.guidance",
+    "packages.orchestration.local_candidate_generator",
+    "packages.orchestration.local_model_advisor",
+    "packages.orchestration.orchestrator_brain",
+    "packages.orchestration.progress_ledger",
+    "packages.orchestration.proof_chain",
+    "packages.orchestration.provider_patch_material",
+    "packages.orchestration.real_test_execution",
+    "packages.orchestration.repair_loop",
+    "packages.orchestration.test_execution_service",
+    "packages.orchestration.trust_report",
+    "packages.orchestration.ui_server",
+    "packages.providers.ollama_builder.provider",
+    "packages.providers.ollama_planner.provider",
+    "apps.cli.command_catalog",
+    "apps.cli.grouped",
+    "apps.cli.commands.contract_cmd",
+    "apps.cli.commands.feature_cmd",
+    "apps.cli.commands.job",
+    "apps.cli.commands.local_advisor_cmd",
+    "apps.cli.commands.main_builder_adapter_cmd",
+    "apps.cli.commands.managed_builder_execution_cmd",
+    "apps.cli.commands.progress_cmd",
+    "apps.cli.commands.repair_cmd",
+    "apps.cli.commands.snapshot_cmds",
+]
+ignore_errors = true
+
+# -- Coverage (baseline v0 — measure first, then set fail_under) --
+[tool.coverage.run]
+branch = true
+source = ["packages", "apps"]
+omit = [
+    "*/__pycache__/*",
+    "tests/*",
+    "apps/ui/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+precision = 1
+fail_under = 75.0  # baseline v0 measured at 76.3%; rounded down for safety margin

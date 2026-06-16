@@ -119,7 +119,6 @@ def run_autonomy_loop(
 def _emit_token_policy_applied(job: Job, events: list[dict[str, Any]]) -> None:
     """Emit token_policy_applied run-log event once at loop start."""
     try:
-        from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.run_log import RunLogWriter
         from packages.orchestration.token_policy import build_default_token_policy
         from packages.orchestration.worker_recommend import recommend_worker
@@ -274,7 +273,7 @@ def summarize_loop_result(result: LoopResult) -> str:
     for c in result.cycles:
         lines.append(f"  Cycle {c.cycle}: {c.decision} — {c.reason}")
     if result.stop_reasons:
-        lines.append(f"  Stop reasons:")
+        lines.append("  Stop reasons:")
         for sr in result.stop_reasons:
             lines.append(f"    - {sr}")
     return "\n".join(lines)

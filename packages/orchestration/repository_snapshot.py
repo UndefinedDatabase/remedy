@@ -39,11 +39,13 @@ import stat
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from packages.orchestration.data_paths import resolve_data_root
 
+if TYPE_CHECKING:
+    from packages.orchestration.event_persistence import EventPersistenceResult
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -323,7 +325,7 @@ def _emit_snapshot_event(
     job_id: str,
     event_type: str,
     metadata: dict,
-) -> "EventPersistenceResult":
+) -> EventPersistenceResult:
     """Emit a snapshot lifecycle event, returning a structured persistence result.
 
     Failures are no longer swallowed silently (R-0057, Step 1162): the returned
@@ -1366,15 +1368,27 @@ def revert_repository_apply(
     No caller-supplied permission booleans (Step 1137).
     """
     from uuid import UUID as _UUID
-    from packages.orchestration.storage import (
-        load_job as _load_job, JobNotFoundError as _JobNotFoundError,
+
+    from packages.orchestration.permissions import (
+        Capability as _Capability,
     )
     from packages.orchestration.permissions import (
-        is_allowed as _is_allowed, Capability as _Capability,
+        is_allowed as _is_allowed,
     )
     from packages.orchestration.run_contract import (
-        ensure_contract as _ensure_contract, evaluate_run_action as _evaluate_run_action,
         ContractAction as _ContractAction,
+    )
+    from packages.orchestration.run_contract import (
+        ensure_contract as _ensure_contract,
+    )
+    from packages.orchestration.run_contract import (
+        evaluate_run_action as _evaluate_run_action,
+    )
+    from packages.orchestration.storage import (
+        JobNotFoundError as _JobNotFoundError,
+    )
+    from packages.orchestration.storage import (
+        load_job as _load_job,
     )
 
     data_dir = data_dir or resolve_data_root()
