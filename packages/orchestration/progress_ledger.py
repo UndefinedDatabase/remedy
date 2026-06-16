@@ -1177,6 +1177,54 @@ def merge_real_test_execution_items(ledger: ProgressLedger, test_runs: list[dict
             seen.add(item.item_id)
 
 
+def extract_repair_loop_items(work_items: list[dict] | None) -> list[ProgressItem]:
+    """Extract Token-Aware Repair Loop v1/v2 progress items (Step 1932) from work items. Read-only;
+    fixed item_ids → no duplicates. Honest: open/blocked repairs surface as RISK (never silently DONE);
+    repaired surfaces as DONE; no raw output. RISK/DONE statuses are NOT counted as open mission tasks
+    (the mission consumes repair state via repair_loop_mission_signal)."""
+    work_items = work_items or []
+    if not work_items:
+        return []
+    open_count = sum(1 for w in work_items if w.get("status") not in ("repaired", "abandoned"))
+    blocked = [w for w in work_items if w.get("status") in ("blocked", "abandoned")]
+    repaired = sum(1 for w in work_items if w.get("status") == "repaired")
+    retest_failed = sum(1 for w in work_items if w.get("status") == "retest_failed")
+    items: list[ProgressItem] = []
+    if open_count:
+        items.append(ProgressItem(
+            item_id="repair-loop-open", title=f"{open_count} open repair work item(s)",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="Open repair work items — candidate/review/re-test gates not yet satisfied.",
+            next_action="remedy repair item-list <job_id> --json"))
+    if blocked:
+        items.append(ProgressItem(
+            item_id="repair-loop-blocked", title=f"{len(blocked)} blocked repair work item(s)",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="High",
+            safe_summary="Repair work blocked (max attempts/retests or abandoned) — user decision required.",
+            next_action="remedy repair item-list <job_id> --json"))
+    if retest_failed:
+        items.append(ProgressItem(
+            item_id="repair-loop-retest-failed", title=f"{retest_failed} repair re-test failure(s)",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="A repair candidate's re-test failed — another safe attempt is needed.",
+            next_action="remedy repair item-list <job_id> --json"))
+    if repaired:
+        items.append(ProgressItem(
+            item_id="repair-loop-repaired", title=f"{repaired} repaired work item(s)",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Repair completed with reviewer pass + apply proof + re-test green."))
+    return items
+
+
+def merge_repair_loop_items(ledger: ProgressLedger, work_items: list[dict] | None) -> None:
+    """Merge repair-loop items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_repair_loop_items(work_items):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1867,6 +1915,14 @@ def build_progress_ledger(
             merge_real_test_execution_items(
                 ledger, list_test_runs(str(job.id)),
                 list_snapshot_proofs(job_id=str(job.id)), list_rollback_proofs(job_id=str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Token-Aware Repair Loop v1/v2 items (Step 1932). Read-only; honest.
+    if job is not None:
+        try:
+            from packages.orchestration.repair_loop_v2 import list_repair_work_items
+            merge_repair_loop_items(ledger, list_repair_work_items(job_id=str(job.id)))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

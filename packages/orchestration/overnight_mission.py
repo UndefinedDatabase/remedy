@@ -456,6 +456,7 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
         "open_tasks": 0, "blocked_tasks": 0, "failed_tests": 0, "tests_status": "unavailable",
         "proof_status": "unavailable", "repair_status": "unknown", "ledger_available": False,
         "snapshot_recorded": False, "rollback_restore_available": False,
+        "repair_loop_open": 0, "repair_loop_blocked": 0, "repair_loop_user_decision": False,
     }
     job = None
     events: list[dict] = []
@@ -543,6 +544,22 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
                                    "in_progress" if states else "none")
         except Exception:
             ev["repair_status"] = "unknown"
+
+    # Token-Aware Repair Loop v1/v2 (Step 1929) — required repair work items block satisfaction; an
+    # abandoned/blocked repair signals a user decision. Honest (no fake repaired).
+    if job_id:
+        try:
+            from packages.orchestration.repair_loop_v2 import repair_loop_mission_signal
+            sig = repair_loop_mission_signal(job_id, data_dir)
+            ev["repair_loop_open"] = int(sig.get("open_repair_count", 0))
+            ev["repair_loop_blocked"] = int(sig.get("blocked_repair_count", 0))
+            ev["repair_loop_user_decision"] = bool(sig.get("user_decision_required", False))
+            if sig.get("repair_needed") or sig.get("user_decision_required"):
+                ev["repair_status"] = "needed"
+            elif ev["repair_status"] in ("unknown", "none") and sig.get("total"):
+                ev["repair_status"] = "none"
+        except Exception:
+            pass
     return ev
 
 

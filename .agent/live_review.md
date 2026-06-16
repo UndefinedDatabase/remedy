@@ -1,138 +1,172 @@
-# Live Review — Steps 1877-1916: Real Test Execution + Snapshot/Rollback Proof v1
+# Live Review — Steps 1917-1960: Token-Aware Repair Loop v1/v2
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict;
 a builder `Done:` marker is NOT reviewer `Resolved`).
-Scope (ALLOWED): bounded allowlisted test execution + test-run result models/storage + private output
-refs + safe public summaries + failure artifact integration + snapshot proof metadata + rollback
-proof metadata + mission contract gate integration + proof chain integration + CLI visibility +
-catalog/run_contract entries + progress/feature/review/cockpit summaries + integrity + docs/tests.
-Must NOT: Claude/Pi/OpenCode/Ollama/provider/local-model execution; worker execution; ARBITRARY
-command execution; shell=True; auto-apply; auto-approval; autonomous repair execution; auto-PR/git;
-MemPalace; embeddings/vector DB; UI redesign; MCP.
-HIGH-RISK BLOCK — first real subprocess execution. Hard invariants: ONLY allowlisted test commands
-run; arbitrary commands blocked; NO shell=True; timeout + output caps mandatory; cwd controlled + env
-sanitized; no background exec; raw stdout/stderr NEVER public; failed/timeout → safe failure artifact;
-snapshot metadata must not claim real restore; rollback proof distinguishes restore_available vs
-restore_tested (no fake rollback-ready); mission test gate consumes honestly (failed test blocks, no
-fake pass); proof chain safe IDs only (no event-only fake promotion); no worker/provider/model exec.
+Scope (ALLOWED): repair loop metadata/state machine; repair work items from failure artifacts; repair
+work items from review findings; token-aware repair context packs; route recommendations; candidate
+intake state tracking; review gate tracking; re-test gate tracking; mission contract integration; CLI
+visibility; command catalog / run_contract entries; progress ledger / feature planner / review bundle /
+cockpit summaries; integrity checks; docs/tests. Existing bounded test execution may be CONSUMED but
+must stay bounded/synchronous (no unbounded/background exec).
+Must NOT: provider/Claude/Pi/OpenCode/Ollama execution; direct worker execution; ARBITRARY command
+execution; auto-apply; auto-approval; autonomous repair mutation; auto-PR/git automation; real rollback
+restore; internal MemPalace memory; embeddings/vector DB; UI redesign; MCP activation.
+BRIDGE BLOCK — test failure → controlled repair. Hard invariants: failure artifact is EVIDENCE not raw
+log dump; repair context minimal + token-aware; candidates UNTRUSTED until reviewed; candidate quality
+pass ≠ applied; applied ≠ repaired until re-test passes; `Done:` ≠ reviewer `Resolved`; open review
+findings block repair completion; failed/timeout latest relevant test blocks repair completion; max
+attempts/retests prevent infinite loops; required blockers vs optional ideas separated; token reduction
+must NOT drop safety-critical evidence; NO provider/model/worker exec; NO auto-apply/approval/mutation;
+no fake repaired state; no fake autonomy.
 Timestamp: 2026-06-16
 
 ## Verdict (reviewer-owned)
-**PASS** @ 7230268 — ZERO open findings (R-0104 Resolved). All 11 checks PASS; targeted suite 264
-passed @ 7230268 (602 @ cb2c640 unchanged); no forbidden execution path (no shell=True / arbitrary cmd
-/ provider / worker / network); no raw leak; honest snapshot/rollback (no fake restore/rollback-ready);
-no fake test pass; English-only; changed-files table present. Merge-ready (zero open). Auto-merge
-applies on reviewer PASS per merge-autonomy; NO PR opened (user has not asked).
+**PASS WITH RISKS** @ 5c411dd — zero open Blocker/High/Medium; ONE documented Low (R-0105, integrity-
+scanner completeness vs Check 12). All 13 checks PASS (Check 12 PASS with the documented Low). Targeted
+suite 516 passed (345 + 171), 0 failed. No forbidden execution path (no shell=True / arbitrary cmd /
+provider / worker / model / network / git-write / embeddings / MemPalace); no auto-apply/approve/mutate/
+PR; no real rollback restore; no fake repaired (review+apply+retest gates with durable evidence). Token
+pack bounded (unknown→decision, oversized→compress, no raw). Route reco never executes (unknown/
+expensive→human approval; external→package-create ingress; local only if safe+available). English-only;
+changed-files table present. Merge-ready (Low documented). Auto-merge applies on reviewer PASS per merge-
+autonomy; NO PR opened (user has not asked).
+RISKS: (1) R-0105 Low. (2) Builder full-suite self-report "6283 passed" REJECTED — NOT reproduced: a
+deterministic, PRE-EXISTING failure `test_project_brain.py::TestFileProvenanceChain::test_full_chain_
+order` exists (fails standalone AND at base 43197d9; unrelated to repair-loop scope — commit touched no
+file_provenance/project_brain source). Carry-forward repo issue, NOT a 1917-1960 regression; block's own
+targeted suite is fully green.
 
-## Check matrix (reviewed @ cb2c640, re-verified @ 7230268)
-1. Mainline closure — PASS. Overnight Mission v0 reviewer PASS @ 90768fd merged via PR #72 → main
-   `aacafbd`. Fresh branch off merged main; no work before closure. (Baseline `test_execution_service.py`
-   /`repository_snapshot.py` reviewed for runner safety — see checks 3/4.)
-2. Test execution model — PASS. `TestRunResult`/`SnapshotProof`/`RollbackProof` bounded; `to_dict`
-   scrubs safe_summary(≤300) + `_safe_path_label` on repo_path; raw output referenced by `output_ref`
-   only; explicit statuses incl BLOCKED_BY_POLICY/CONTRACT/TIMEOUT.
-3. Command resolution — PASS. `resolve_allowed_command`: unknown id blocked; `purpose != "test"`
-   blocked; `_argv_is_safe` rejects shell metachars (`; | & $ \` > < && ||`) + forbidden/destructive
-   programs (rm/dd/sudo/curl/wget/pip/npm/git/ssh/chmod…). Runner adds `_EXECUTION_SAFE_EXECUTABLES`
-   allowlist + high-risk block.
-4. Bounded runner — PASS. `_run_isolated_process`: `subprocess.Popen(argv_list)` — NO shell=True;
-   `cwd` set; `env=_build_safe_env` (strips secret-key patterns, allowlist prefixes); stdin=DEVNULL;
-   stdout/stderr→file (not public); `start_new_session=True`; `close_fds=True`; timeout via
-   `wait(timeout=)` clamped [5s,600s]; TimeoutExpired→SIGTERM→SIGKILL process-group; synchronous (no
-   background); output capped 1 MiB + truncation marker.
-5. Snapshot/Rollback proof — PASS. Snapshot metadata-only: `restore_available=False` always (inventory
-   hash, no content). Rollback: `restore_tested=False` always; `restore_available` only when
-   `build_snapshot_truth` recovery verified AND snapshot not metadata-only; limitations surfaced. No
-   fake rollback-ready.
-6. Failure artifact integration — PASS. Failed/timeout → runner `failure_artifact_id` threaded into
-   result; raw output stays `output_ref`; `next_safe_action` catalog-valid (`remedy test result/status/
-   discover`).
-7. Mission/proof integration — PASS. Latest REAL test run overrides `tests_status` (passed→green,
-   failed/timeout→failing); `require_tests_green` + failing → missing_proofs → blocks satisfaction (no
-   fake pass). New `rollback_restore_available` gate; snapshot/rollback gates block when not recorded/
-   available. Proof references safe IDs only.
-8. CLI/catalog/run_contract — PASS. `test result/list/integrity`+`snapshot/rollback show`=read_only;
-   `snapshot/rollback create`=write_metadata; execution stays on existing capability-gated `RUN_TEST`/
-   `repo_test_run`; no generic `may_execute_commands` for shell.
-9. Surfacing — PASS. Ledger/bundle/cockpit safe summaries (status/counts/IDs); no raw output; no fake
-   live run / fake pass / fake rollback availability.
-10. Integrity — PASS. `audit_test_run_safety` (passed_with_nonzero_exit, raw_or_secret_in_public,
-    absolute_path_in_public) + `audit_rollback_safety` (restore_tested_without_available,
-    restore_available_on_metadata_snapshot) + `test_execution_integrity` (snapshot_metadata_claims_
-    restore). Failed-satisfies-tests_green & satisfied-mission-with-failing-latest-test enforced via
-    mission evaluate + `audit_evaluation_safety`; non-catalog next-action covered by catalog parser.
-11. Architecture guards — PASS. `real_test_execution.py` facade = stdlib + provider_trust scrub; NO
-    own subprocess/shell/network/provider/SDK/embeddings/vector-DB/git-write; delegates execution to
-    the single bounded runner. No MemPalace/MCP/UI-redesign.
+## Check matrix (reviewed @ 5c411dd)
+1. Mainline closure — PASS. Real Test Execution v1 (1877-1916) reviewer PASS @ 7230268 merged via PR #73
+   → main `43197d9`. Fresh branch `feature/steps-1917-1960-token-aware-repair-loop-v1-v2` off merged
+   main `43197d9`; ZERO feature commits before closure; plan.md/context.md reconciled (Current Step
+   1917) before code commit.
+2. Repair models — PASS. `RepairLoopPolicy` (bounded max_attempts/max_retests/max_estimated_tokens +
+   gate flags), `RepairWorkItem`, `RepairAttempt`, `RepairLoopEvaluation`; explicit `RepairLoopStatus`
+   set (13 statuses incl BLOCKED/ABANDONED/RETEST_FAILED); `to_dict` scrubs via `_safe` (≤300) +
+   `_safe_file_refs` (basenames, bounded ≤12, no `..`); unknown defaults explicit; from_dict safe.
+3. Failure artifact integration — PASS. `create_repair_item_from_failure_artifact` idempotent via
+   `_stable_repair_id` (sha256); uses artifact SAFE summary + `output_ref` only (never raw); missing/
+   non-test artifact → None (safe); `suspected_files` = `_safe_file_refs` only; does NOT start repair.
+4. Review finding integration — PASS. `create_repair_item_from_review_finding`: only OPEN finding at
+   {blocker,high,medium} floor creates a required item; `status != "open"` (incl Done marker) or below
+   floor → None. `_review_gate` re-checks the specific finding still open → "open" blocks; uses
+   `parse_review_findings` verdict (pass / pass_with_risks-low-only) — reviewer verdict beats self-report.
+5. Token-aware context pack — PASS. `build_repair_context_pack` read-only: safe summaries + `output_ref`
+   + ids + token estimate + route hint only; never raw logs/diffs/candidates. band unknown OR budget
+   unknown → `needs_decision`/`unknown_context` (never blind cheap). very_high/huge/over_budget/over →
+   `needs_compression`. `requires_human_approval` defaults True.
+6. Route recommendation — PASS. `recommend_repair_route` read-only, NEVER executes. unknown/requires-
+   approval → `human_review` + approval. local_worker only when `prefer_local` AND `local_first` AND a
+   worker that is enabled+user_selectable+not placeholder+not hard_safety_requires_approval (no fake
+   Ollama readiness). else `external_builder_package` ingress (no exec) + approval. Respects Worker
+   Registry / Token Economy hint / Route Policy.
+7. Candidate/review/apply/retest gates — PASS. `evaluate_repair_loop`: candidate absent → CONTEXT_NEEDED/
+   WAITING_FOR_CANDIDATE; review open → REVIEW_FAILED; review unknown → WAITING_FOR_REVIEW; apply not
+   present (policy) → WAITING_FOR_APPLY_APPROVAL; retest failing → RETEST_FAILED; retest none/unknown →
+   APPLIED_WAITING_RETEST. received≠repaired, quality≠applied, applied≠repaired until retest green.
+8. State machine / loop safety — PASS. `len(attempts) > max_attempts` → BLOCKED + user decision; failing
+   retests > max_retests (stop_on_repeated_failure) → BLOCKED + user decision (no infinite loop). Every
+   returned state sets `required_next_actions` (catalog-valid) or `blocked_reasons`. REPAIRED only when
+   review_ok AND apply_ok AND retest_ok (policy gates) + `satisfied=True`; defensive else → WAITING_FOR_
+   REVIEW (never fake repaired).
+9. Mission contract integration — PASS. `repair_loop_mission_signal` (open/blocked/repaired counts +
+   user_decision); `_gather_mission_evidence` sets `repair_status="needed"` when repair_needed/user_
+   decision; satisfaction conjunctive requires `repair_status != "needed"` (overnight_mission L633);
+   blocked/abandoned → user_decision_required. Honest (no fake repaired).
+10. CLI/catalog/run_contract — PASS. Catalog `repair.*`: item-show/list/context-pack/route-recommend/
+    attempts/policy-show/integrity = read_only; item-create-from-failure/review + evaluate + policy-set =
+    write_metadata. NO `may_execute`. run_contract `REPAIR_ITEM_CREATE/EVALUATE/POLICY_SET/SHOW` in
+    `_DEFAULT_ALLOWED_ACTIONS`, none executable. CLI handlers stdlib-only, JSON-safe, no exec/apply/
+    approve/shell.
+11. Progress/Feature/Review/Cockpit — PASS. progress_ledger + feature_planner (required vs optional
+    separated + Impact/Effort) + review_bundle (33→34 sections) + ui_server cockpit repair_loop READ-
+    ONLY; safe summaries (counts/ids/status), no raw/private.
+12. Integrity — PASS (with R-0105 Low). `audit_work_item_safety` (raw_or_secret_in_public via
+    `_RAW_MARKERS` incl diff/BEGIN/Traceback/secrets, absolute_path_in_public, unknown_status);
+    `audit_evaluation_safety` (repaired_with_open_review_finding, repaired_with_failing_retest,
+    repaired_without_apply_proof, repaired_but_not_satisfied); `repair_loop_integrity` (repaired_but_not_
+    satisfied + non_catalog_next_action). Done≠Resolved manifests as repaired_with_open_review_finding.
+    GAP (R-0105, Low): no DEDICATED scanner code for max-attempts/retests-exceeded-without-blocked, nor
+    optional-idea-marked-required — both STRUCTURALLY enforced by `evaluate_repair_loop` + tested, so no
+    runtime path produces them; defense-in-depth completeness only.
+13. Architecture guards — PASS. `repair_loop_v2.py` = stdlib (json/os/re/dataclasses/datetime/pathlib/
+    typing/uuid/hashlib) + `provider_trust` scrub only. NO provider SDK / network / browser / subprocess
+    / shell=True / arbitrary exec / git-write / apply-approve-PR / Ollama-cloud-model exec / embeddings-
+    vector-DB / MemPalace. CLI cmd = stdlib only. Reuses v0/v1 repair_loop + real_test_execution +
+    review parser + token_economy (no duplicated apply cycle, no execution).
 
-## Findings — Steps 1877-1916
+## Findings — Steps 1917-1960
 
-### R-0104
+### R-0105
 - **Severity**: Low
-- **Status**: Resolved @ 7230268 (reviewer-verified; Done≠Resolved — independently confirmed below)
-- **Area**: `packages/orchestration/real_test_execution.py` `run_allowed_test` ×
-  `test_execution_service.execute_test_run`.
-- **Problem**: `run_allowed_test` calls `resolve_allowed_command(command_id)` to validate the requested
-  command, but then invokes `execute_test_run(TestExecutionRequest(job_id, source, timeout))` WITHOUT
-  forwarding `command_id` — the runner independently `select_best_test_candidate(...)`. So the validated
-  `command_id` is not the command actually executed when a repo exposes more than one test command, yet
-  `TestRunResult.command_id` reports the REQUESTED id. NO safety impact: the runner enforces its own
-  gates (purpose=test, risk, `_EXECUTION_SAFE_EXECUTABLES`, no-shell, timeout, output cap, env sanitize)
-  so the executed command is always a safe test command. It is a correctness/honesty nuance
-  (reported-vs-executed command identity) and makes the facade's per-id allowlist check advisory.
-- **Fix options**: thread the resolved candidate/command_id into the runner (have `execute_test_run`
-  accept an explicit command_id and run that), OR set `result.command_id` to the actually-selected
-  command and document that v1 always runs the best-discovered test command. Add a test asserting the
-  reported command matches the executed one.
+- **Status**: Open
+- **Area**: `packages/orchestration/repair_loop_v2.py` `repair_loop_integrity` /
+  `audit_evaluation_safety`.
+- **Problem**: Check 12 enumerates eight integrity detections. Six are present as dedicated codes
+  (repaired_with_open_review_finding, repaired_with_failing_retest, repaired_without_apply_proof,
+  repaired_but_not_satisfied, raw_or_secret_in_public, absolute_path_in_public/unknown_status,
+  non_catalog_next_action; Done-as-Resolved is caught indirectly via repaired_with_open_review_finding).
+  TWO have NO dedicated scanner code: (a) max-attempts/max-retests exceeded while status is not
+  BLOCKED/ABANDONED, and (b) an optional future idea appearing in `required_next_actions` (optional-
+  marked-required-without-evidence). Both invariants ARE enforced at runtime by `evaluate_repair_loop`
+  (attempts/retests over bound → BLOCKED + user decision before REPAIRED; `_optional_ideas` returns a
+  separate list never merged into `required`) and are covered by unit tests, so no runtime path can
+  produce the bad state. Impact is limited to defense-in-depth completeness of the standalone integrity
+  scanner vs the Check-12 checklist — hence Low.
+- **Fix options**: add two `repair_loop_integrity` codes — `attempts_exceeded_without_blocked`
+  (attempts_count > policy.max_attempts OR failing-retests > policy.max_retests while status ∉
+  {blocked, abandoned}) and `optional_idea_in_required_actions` (a `required_next_actions` entry that
+  matches an `optional_next_ideas` entry / is not evidence-backed). Add regression tests.
+- **Done: R-0105** — Added three dedicated integrity codes to `audit_evaluation_safety`:
+  `attempts_exceeded_without_blocked` (attempts_count > max_attempts while status ∉ {blocked,
+  abandoned}), `retests_exceeded_without_blocked` (failing_retest_count > max_retests while status ∉
+  {blocked, abandoned}), `optional_idea_marked_required` (overlap between required_next_actions and
+  optional_next_ideas). Wired into `repair_loop_integrity` scanner with attempt-loading for failing
+  retest count. Added 9 regression tests (3 positive + 6 negative). Targeted suite 43+107 passed.
 
-- **Resolution (reviewer-verified @ 7230268)**: `TestExecutionRequest.command_id` added; `run_allowed_test`
-  forwards the validated `command_id` into `execute_test_run`. Gate 8: when `command_id` supplied, runner
-  selects the EXACT discovered candidate by id (`next((c for c in candidates if c.id == command_id))`) —
-  not found → block `requested_command_not_found`; `purpose != "test"` → block `requested_command_not_test`
-  (HONEST, never self-selects/swaps). Empty id → legacy `select_best_test_candidate` (back-compat). CRITICAL:
-  both paths converge on `candidate`, after which the high-risk gate (`candidate.risk == "high"` →
-  `high_risk_command`) AND `_EXECUTION_SAFE_EXECUTABLES` allowlist (`candidate.argv[0]` → `executable_not_
-  in_safe_list`) STILL run (svc lines 735/742) — explicit-id path does NOT bypass any safety gate; argv
-  comes only from a discovered candidate (no arbitrary injection); no shell=True; timeout/cwd/safe-env/
-  output-cap/output_ref unchanged. `TestExecutionResult.command_id = candidate.id` (executed) → persisted in
-  test record → `run_allowed_test` sets `res.command_id = out.command_id`. Honesty chain closed:
-  validated == executed == `TestRunResult.command_id` == public summary id. Builder's `Done:` was correct;
-  Reviewer independently confirmed + marks Resolved.
-
-Next id: R-0105.
+Next id: R-0106.
 
 ## Reviewer test run (targeted)
-- `remedy_pytest.sh test_real_test_execution.py + test_real_test_execution_cli.py +
-  test_overnight_mission.py + test_autonomy.py + test_review_bundle.py -q` → **192 passed**.
-- regression: `test_test_execution_service.py + test_repository_snapshot.py + test_proof_chain.py +
-  test_progress_ledger.py + test_feature_planner.py + test_run_contract.py + test_command_catalog.py +
-  test_dashboard_cockpit_truth.py -q` → **410 passed**. Targeted total **602 passed**, 0 failed.
-- Integrity: `test_execution_integrity` + `audit_*` codes present (see Check 10). German scan CLEAN.
-  Builder full-suite self-report NOT independently re-run; reviewer targeted = 602 passed (zero open
-  Medium/High/Blocker → full-suite acceptance criteria met for PASS WITH RISKS).
-- R-0104 closure re-run @ 7230268: `remedy_pytest.sh test_real_test_execution.py +
-  tests/cli/test_real_test_execution_cli.py + test_test_execution_service.py + test_run_contract.py +
-  tests/test_command_catalog.py + tests/cli/test_command_catalog.py + test_overnight_mission.py +
-  test_integrity_gate.py -q` → **264 passed**, 0 failed. New tests cover: runner explicit-id executes
-  that cmd; non-best id NOT swapped to select_best; unknown id → `requested_command_not_found` (argv
-  never run); non-test id → `requested_command_not_test` (argv never run); facade forwards id; facade
-  reports runner-selected id; unknown id never reaches runner; `to_dict` carries `command_id` + no raw/
-  path leak. Builder full-suite self-report (6243 passed/8 skipped) NOT independently re-run; reviewer
-  targeted 264 passed + zero open findings → acceptance criteria met for PASS.
+- `remedy_pytest.sh test_repair_loop_v2.py + tests/cli/test_repair_loop_v2_cli.py + test_overnight_
+  mission.py + test_real_test_execution.py + test_run_contract.py + tests/test_command_catalog.py +
+  tests/cli/test_command_catalog.py + test_progress_ledger.py + test_feature_planner.py +
+  test_review_bundle.py + test_integrity_gate.py -q` → **345 passed**.
+- regression: `test_worker_registry.py + test_builder_routing.py + test_model_route_tournament.py +
+  test_model_route_tournament_integration.py + test_token_economy.py + test_token_economy_integration.py
+  + test_repair_request_builder.py + test_builder_repair_loop.py -q` → **171 passed**. Targeted total
+  **516 passed**, 0 failed. German scan CLEAN.
+- FULL-SUITE: builder self-report "6283 passed, 8 skipped, 1 deselected" is REJECTED (not reproduced).
+  Reviewer observed a deterministic failure `test_project_brain.py::TestFileProvenanceChain::test_full_
+  chain_order` (provenance chain missing `test_run` step) — fails standalone (1 failed/83 passed in file)
+  AND at pre-block base `43197d9`. PRE-EXISTING, out of repair-loop scope (commit modified no
+  file_provenance/project_brain source). NOT a 1917-1960 regression. Carry-forward repo issue to raise
+  separately. Block acceptance rests on the green targeted verification (zero open Medium/High/Blocker
+  in scope), not on the rejected full-suite claim.
 
 ## Reviewer audit log
-- VERDICT PASS @ 7230268 — R-0104 Resolved (reviewer-verified): command_id forwarded into runner;
-  executed == reported == validated; allowlist/high-risk gates still run after explicit-id selection
-  (no bypass); no shell=True; bounded runner unchanged. Targeted 264 passed. ZERO open findings.
-- VERDICT PASS WITH RISKS @ cb2c640 — one documented Low R-0104 (command_id not forwarded to runner;
-  no safety impact). All checks PASS; runner verified no-shell/bounded/allowlisted/output-capped/
-  env-sanitized; honest snapshot/rollback proofs.
-- Block opened. Check 1 (mainline closure) PASS @ branch base `aacafbd` (PR #72 merged overnight v0).
-- WATCH (HIGH-RISK, real subprocess): allowlist-only resolution; NO shell=True; mandatory
-  timeout+output caps; cwd controlled + env sanitized; no background exec; raw stdout/stderr never
-  public; failed/timeout → safe failure artifact; snapshot ≠ real restore; rollback restore_available
-  vs restore_tested (no fake rollback-ready); mission test gate: failed test blocks, no fake pass;
-  proof chain safe IDs only; integrity catches passed-with-failing-exit / failed-satisfies-tests_green
-  / raw-in-public / snapshot-claims-restore_available / rollback-claims-restore_tested-without-evidence
-  / satisfied-mission-with-failing-latest-test / non-catalog-next-action; CLI no generic may_execute
-  shell; all project-facing text English.
+- VERDICT PASS WITH RISKS @ 5c411dd — one documented Low R-0105 (integrity-scanner completeness vs
+  Check 12: max-attempts/optional-marked-required detections absent but structurally enforced +
+  tested). All 13 checks PASS. Repair loop verified: no exec/apply/approve/mutate/PR/git; no fake
+  repaired (review+apply+retest gates + satisfied); bounded loop (max_attempts/retests→BLOCKED+user
+  decision); token pack bounded (unknown→decision, oversized→compress, no raw); route never executes
+  (unknown/expensive→approval, external→package ingress, local only if safe+available); mission gate
+  required-repair-blocks-satisfaction; catalog read_only/write_metadata no may_execute; English-only.
+  Targeted 516 passed. Builder full-suite "6283 passed" REJECTED (pre-existing unrelated failure
+  test_project_brain::test_full_chain_order at base 43197d9; out of scope, not a regression).
+- Block opened. Check 1 (mainline closure) PASS @ branch base `43197d9` (PR #73 merged Real Test
+  Execution v1 → main). Prior block 1877-1916 PASS @ 7230268 (R-0104 Resolved) merged; fresh branch at
+  main tip; no work before closure. Plan.md reconciled to new block (Current Step 1917) before commit.
+- WATCH (BRIDGE failure→repair): failure artifact = evidence not raw dump; context minimal+token-aware
+  (no full logs/repo/candidate dumps; oversized→compress/human; unknown≠cheap; safety-critical evidence
+  kept); candidates UNTRUSTED (received≠repaired, quality≠applied, applied≠repaired until passed
+  re-test; failed/timeout re-test blocks); open Blocker/High/Medium findings block completion;
+  Done≠Resolved; reviewer verdict beats self-report; max attempts/retests (no infinite loop, user
+  decision at limit, no fake repaired); required blockers vs optional ideas separated; route reco
+  respects registry/policy/economy/tournament (expensive/unknown→approval, disabled not recommended,
+  external→package-create not exec); mission gate (required repair blocks satisfaction); integrity 8
+  detections; CLI read_only/write_metadata no may_execute; NO provider/worker/model exec, NO auto-apply/
+  approve/mutate/PR/git, NO real rollback restore, NO MemPalace/embeddings/MCP/UI-redesign; all
+  project-facing text English.
+- Merge-autonomy: PR #73 (prior block) auto-merged on reviewer PASS per merge-autonomy. No PR for THIS
+  block; NO PR unless user asks.

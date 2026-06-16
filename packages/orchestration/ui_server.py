@@ -384,6 +384,42 @@ def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
                 "next_safe_action": "", "live": False, "source": "unavailable"}
 
 
+def _build_repair_loop_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Token-Aware Repair Loop v1/v2 cockpit summary (Step 1935). Counts/status/IDs +
+    next safe action only; no mutation buttons; no fake live repair; no raw/private data."""
+    try:
+        from packages.orchestration.repair_loop_v2 import (
+            list_repair_work_items, list_repair_attempts, load_latest_repair_evaluation,
+        )
+        items = list_repair_work_items(job_id=str(job.id))
+        open_count = sum(1 for i in items if i.get("status") not in ("repaired", "abandoned"))
+        blocked = sum(1 for i in items if i.get("status") in ("blocked", "abandoned"))
+        latest = items[-1] if items else {}
+        latest_id = latest.get("repair_id", "")
+        attempts = list_repair_attempts(latest_id, str(job.id)) if latest_id else []
+        ev = (load_latest_repair_evaluation(latest_id) or {}) if latest_id else {}
+        token_band = attempts[-1].get("token_estimate_band", "unknown") if attempts else "unknown"
+        route = attempts[-1].get("route_id", "") if attempts else ""
+        retest = attempts[-1].get("retest_status", "unknown") if attempts else "unknown"
+        return {
+            "open_repair_count": open_count,
+            "blocked_repair_count": blocked,
+            "latest_status": latest.get("status", "none"),
+            "latest_repair_id": latest_id,
+            "token_band": token_band,
+            "route_recommendation": route,
+            "retest_status": retest,
+            "user_decision_required": bool(blocked) or latest.get("status") == "abandoned",
+            "next_safe_action": (ev.get("required_next_actions", []) or
+                                 [f"remedy repair item-list {str(job.id)} --json"])[0],
+            "live": False, "source": "repair_loop_v2",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"open_repair_count": 0, "blocked_repair_count": 0, "latest_status": "none",
+                "user_decision_required": False, "next_safe_action": "", "live": False,
+                "source": "unavailable"}
+
+
 def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
     """Safe snapshot/apply-record summary from the authoritative builder.
 
@@ -1327,6 +1363,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "overnight_mission": _build_overnight_mission_section(job),
         "test_execution": _build_test_execution_section(job),
         "snapshot_rollback": _build_snapshot_rollback_section(job),
+        "repair_loop": _build_repair_loop_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
