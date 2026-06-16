@@ -58,6 +58,7 @@ REQUIRED_SECTIONS = (
     "worker_registry_summary.json",
     "token_economy_summary.json",
     "model_route_tournament_summary.json",
+    "overnight_mission_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1313,6 +1314,40 @@ def _build_model_route_tournament_summary(job: Any) -> dict:
                 "error": "model_route_tournament_unavailable"}
 
 
+def _build_overnight_mission_summary(job: Any) -> dict:
+    """Safe Overnight Mission Contract v0 summary (Step 1848). Contract id + status + satisfied flag +
+    unsatisfied/finding/gate counts + next actions + user summary only — no raw prompts (beyond a
+    scrubbed user_goal), logs, diffs, secrets, or absolute paths."""
+    try:
+        from packages.orchestration.overnight_mission import (
+            list_mission_contracts, evaluate_mission_contract, _contract_from_dict,
+        )
+        contracts = list_mission_contracts(job_id=str(job.id))
+        if not contracts:
+            return {"has_contract": False, "status": "not_started", "satisfied": False,
+                    "next_safe_actions": [f"remedy overnight contract-create {str(job.id)} --json"]}
+        contract = _contract_from_dict(contracts[-1])
+        ev = evaluate_mission_contract(contract, persist=False)
+        return {
+            "has_contract": True,
+            "contract_id": ev.contract_id,
+            "status": ev.status,
+            "satisfied": ev.satisfied,
+            "unsatisfied_criteria_count": len(ev.unsatisfied_criteria),
+            "open_findings_count": ev.open_review_findings,
+            "open_tasks": ev.open_tasks,
+            "failed_tests": ev.failed_tests,
+            "missing_gates": ev.missing_proofs,
+            "user_decision_required": ev.user_decision_required,
+            "required_next_actions": [a.get("command") for a in ev.required_next_actions],
+            "next_safe_actions": ev.next_safe_actions,
+            "user_summary": ev.user_summary,
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"has_contract": False, "status": "not_started", "satisfied": False,
+                "error": "overnight_mission_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1774,6 +1809,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("model_route_tournament_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("model_route_tournament_summary.json", status="error", error="build failed"))
+
+    # overnight_mission_summary.json (Step 1848)
+    try:
+        oms = _build_overnight_mission_summary(job)
+        content = json.dumps(oms, indent=2).encode()
+        section_data["overnight_mission_summary.json"] = content
+        result.sections.append(ReviewBundleSection("overnight_mission_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("overnight_mission_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

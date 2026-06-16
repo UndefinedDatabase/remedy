@@ -1078,6 +1078,58 @@ def merge_tournament_items(ledger: ProgressLedger, report: dict | None) -> None:
             seen.add(item.item_id)
 
 
+def extract_mission_items(contract: dict | None, evaluation: dict | None) -> list[ProgressItem]:
+    """Extract Overnight Mission Contract progress items (Step 1847) from a PERSISTED contract +
+    its latest persisted evaluation. Read-only, LOAD-only (never re-evaluates → no recursion). Honest:
+    no fake done, no fake overnight readiness; status comes from the durable evaluation."""
+    if not contract:
+        return []
+    items: list[ProgressItem] = [ProgressItem(
+        item_id="mission-contract-created", title="Overnight mission contract created",
+        status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+        safe_summary=f"Mission contract exists ({len(contract.get('acceptance_criteria', []))} "
+                     "acceptance criterion/criteria; metadata only — nothing runs automatically).")]
+    if not evaluation:
+        items.append(ProgressItem(
+            item_id="mission-not-evaluated", title="Mission not yet evaluated",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary="Run mission evaluation to judge contract satisfaction from evidence.",
+            next_action="remedy overnight evaluate <contract_id> --json"))
+        return items
+    status = evaluation.get("status", "")
+    satisfied = bool(evaluation.get("satisfied"))
+    if satisfied:
+        items.append(ProgressItem(
+            item_id="mission-satisfied", title="Mission contract satisfied",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Contract satisfied from durable evidence (review clean, gates passed)."))
+    else:
+        sev = "Medium" if status in ("blocked", "repair_needed") else "Low"
+        items.append(ProgressItem(
+            item_id="mission-not-satisfied", title="Mission contract not satisfied",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity=sev,
+            safe_summary=f"Mission status={status}; {evaluation.get('open_review_findings', 0)} open "
+                         f"finding(s), {evaluation.get('open_tasks', 0)} open task(s) "
+                         f"(nothing runs automatically).",
+            next_action="remedy overnight next-action <contract_id> --json"))
+    if evaluation.get("user_decision_required"):
+        items.append(ProgressItem(
+            item_id="mission-user-decision", title="Mission needs a user decision",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary="Mission needs user input (e.g. acceptance criteria) before progress.",
+            next_action="remedy overnight contract-show <contract_id> --json"))
+    return items
+
+
+def merge_mission_items(ledger: ProgressLedger, contract: dict | None, evaluation: dict | None) -> None:
+    """Merge mission items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_mission_items(contract, evaluation):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1741,6 +1793,21 @@ def build_progress_ledger(
             from packages.orchestration.model_route_tournament import generate_tournament_report
             rep = generate_tournament_report(str(job.id), persist=False)
             merge_tournament_items(ledger, rep.to_dict())
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Overnight mission contract items (Step 1847). LOAD-only (persisted contract + latest
+    # evaluation) — never re-evaluates here, so no recursion with evaluate_mission_contract.
+    if job is not None:
+        try:
+            from packages.orchestration.overnight_mission import (
+                list_mission_contracts, load_latest_mission_evaluation,
+            )
+            contracts = list_mission_contracts(job_id=str(job.id))
+            if contracts:
+                latest_c = contracts[-1]
+                latest_e = load_latest_mission_evaluation(latest_c.get("contract_id", ""))
+                merge_mission_items(ledger, latest_c, latest_e)
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

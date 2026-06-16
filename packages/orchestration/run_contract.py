@@ -118,6 +118,13 @@ class ContractAction:
     TOURNAMENT_SHOW = "tournament_show"
     TOURNAMENT_LIST = "tournament_list"
     TOURNAMENT_INTEGRITY = "tournament_integrity"
+    # Overnight Mission Contract + Review/Repair Spine v0 (Step 1851) — METADATA + STATE-MACHINE +
+    # EVALUATION only. NOT worker/provider/model execution, NOT test run, NOT apply/approve/git.
+    # contract-create / evaluate persist safe metadata; show/next-action/cycles/readiness/integrity
+    # are read-only. None execute a worker, run a test, or call a provider.
+    OVERNIGHT_MISSION_CREATE = "overnight_mission_create"
+    OVERNIGHT_MISSION_EVALUATE = "overnight_mission_evaluate"
+    OVERNIGHT_MISSION_SHOW = "overnight_mission_show"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -266,6 +273,9 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.TOURNAMENT_SHOW,
     ContractAction.TOURNAMENT_LIST,
     ContractAction.TOURNAMENT_INTEGRITY,
+    ContractAction.OVERNIGHT_MISSION_CREATE,
+    ContractAction.OVERNIGHT_MISSION_EVALUATE,
+    ContractAction.OVERNIGHT_MISSION_SHOW,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,
