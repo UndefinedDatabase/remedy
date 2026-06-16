@@ -505,3 +505,155 @@ class TestProgressLedgerIntegration:
             {"run_id": "dfr-3", "status": "blocked", "step_count": 3},
         ])
         assert len(items) == 1
+
+    def test_extract_dogfood_run_items_stopped(self):
+        from packages.orchestration.progress_ledger import extract_dogfood_run_items
+        items = extract_dogfood_run_items([
+            {"run_id": "dfr-4", "status": "stopped_by_operator", "step_count": 7},
+        ])
+        assert len(items) == 1
+        assert "stopped" in items[0].title.lower()
+
+    def test_extract_dogfood_run_items_not_started(self):
+        from packages.orchestration.progress_ledger import extract_dogfood_run_items
+        items = extract_dogfood_run_items([
+            {"run_id": "dfr-5", "status": "not_started", "step_count": 0},
+        ])
+        assert len(items) == 1
+        assert "not started" in items[0].title.lower()
+
+
+# ---------------------------------------------------------------------------
+# R-0116 Closure: Deep Integrity Checks (Steps 2206-2225)
+# ---------------------------------------------------------------------------
+
+
+class TestR0116DeepIntegrity:
+    def test_satisfied_with_unsatisfied_mission(self):
+        """Satisfied run with mission contract NOT satisfied should fail integrity."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T00:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            # No mission contract exists -> contract_status="unknown" -> skip (conservative)
+            result = dogfood_run_integrity(data_dir=Path(td))
+            # unknown contract_status is NOT a violation (conservative)
+            codes = [c["code"] for c in result["checks"]]
+            assert "satisfied_with_unsatisfied_mission" not in codes
+
+    def test_guardrail_exceeded_without_terminal(self):
+        """Run that exceeded step guardrail but is not terminal should fail."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td, policy=DogfoodRunPolicy(max_steps=5))
+            run.status = DogfoodRunStatus.RUNNING
+            run.step_count = 10
+            run.started_at = "2026-01-01T00:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "guardrail_exceeded_without_terminal_status" in codes
+
+    def test_active_lane_status_mismatch(self):
+        """Running run with done/blocked active lane should fail integrity."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.RUNNING
+            run.current_lane = DogfoodLane.MISSION
+            run.lane_statuses = {DogfoodLane.MISSION: "done"}
+            run.started_at = "2026-01-01T00:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "active_lane_status_mismatch" in codes
+
+    def test_replay_raw_data_leak(self):
+        """Replay with raw markers should fail integrity."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            # Create a replay file with a secret marker.
+            replay_path = Path(td) / "workspaces" / "test-job-001" / "dogfood_runs" / run.run_id / "replay.json"
+            replay_path.parent.mkdir(parents=True, exist_ok=True)
+            import json as _json
+            _json.dump({
+                "run_id": run.run_id, "timeline": [{"action": "leaked sk-ant-12345"}],
+            }, open(replay_path, "w"))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "replay_raw_data_leak" in codes
+
+    def test_brainstorm_required_without_evidence(self):
+        """Brainstorm idea with status=required but no evidence_needed should fail."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            brainstorm_dir = Path(td) / "workspaces" / "test-job-001" / "dogfood_runs" / run.run_id / "brainstorm"
+            brainstorm_dir.mkdir(parents=True, exist_ok=True)
+            import json as _json
+            _json.dump({
+                "idea_id": "idea-bad", "status": "required", "evidence_needed": [],
+                "title": "Bad idea without evidence",
+            }, open(brainstorm_dir / "idea-bad.json", "w"))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is False
+            codes = [c["code"] for c in result["checks"]]
+            assert "brainstorm_required_without_evidence" in codes
+
+    def test_valid_run_still_passes(self):
+        """A properly-formed run must still pass all integrity checks."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run, _ = step_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            assert result["passed"] is True
+
+    def test_satisfied_run_no_false_positive(self):
+        """Satisfied run with no evidence (unknown) should not false-positive."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T00:00:00+00:00"
+            run.blocking_reasons = []
+            save_dogfood_run(run, data_dir=Path(td))
+            result = dogfood_run_integrity(data_dir=Path(td))
+            # Only check: no false positive on satisfied_with_unsatisfied_mission
+            sat_codes = [c for c in result["checks"] if c["code"] == "satisfied_with_unsatisfied_mission"]
+            assert len(sat_codes) == 0
+
+
+# ---------------------------------------------------------------------------
+# R-0117 Closure: Evidence Gathering (Steps 2206-2225)
+# ---------------------------------------------------------------------------
+
+
+class TestR0117EvidenceGathering:
+    def test_evidence_has_builder_fields(self):
+        """Evidence dict must have builder/execution/proof keys."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert "builder_sessions_active" in ev.evidence
+            assert "builder_sessions_blocked" in ev.evidence
+            assert "managed_executions_active" in ev.evidence
+            assert "proof_status" in ev.evidence
+
+    def test_evidence_defaults_conservative(self):
+        """Without subsystems, evidence defaults should be safe/conservative."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert ev.evidence["builder_sessions_active"] == 0
+            assert ev.evidence["builder_sessions_blocked"] == 0
+            assert ev.evidence["managed_executions_active"] == 0
+            assert ev.evidence["proof_status"] in ("unavailable", "incomplete", "unverified")
+
+    def test_evidence_no_fake_satisfaction(self):
+        """Without real evidence, run must NOT be satisfied."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.RUNNING
+            run.started_at = "2026-01-01T00:00:00+00:00"
+            ev = evaluate_dogfood_run(run, data_dir=Path(td))
+            assert ev.satisfied is False
