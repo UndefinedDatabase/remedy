@@ -60,6 +60,7 @@ REQUIRED_SECTIONS = (
     "model_route_tournament_summary.json",
     "overnight_mission_summary.json",
     "snapshot_rollback_summary.json",
+    "repair_loop_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1382,6 +1383,43 @@ def _build_snapshot_rollback_summary(job: Any) -> dict:
                 "rollback_restore_available": False, "error": "real_test_execution_unavailable"}
 
 
+def _build_repair_loop_summary(job: Any) -> dict:
+    """Safe Token-Aware Repair Loop v1/v2 summary (Step 1934). Open/blocked/repaired counts + latest
+    status + attempts + token band + route + review/retest gate + next safe action only — never raw
+    stdout/stderr/logs/candidates/diffs/secrets/paths. Honest (no fake repaired)."""
+    try:
+        from packages.orchestration.repair_loop_v2 import (
+            list_repair_work_items, list_repair_attempts, load_latest_repair_evaluation,
+        )
+        items = list_repair_work_items(job_id=str(job.id))
+        open_count = sum(1 for i in items if i.get("status") not in ("repaired", "abandoned"))
+        blocked = sum(1 for i in items if i.get("status") in ("blocked", "abandoned"))
+        repaired = sum(1 for i in items if i.get("status") == "repaired")
+        latest = items[-1] if items else {}
+        latest_id = latest.get("repair_id", "")
+        attempts = list_repair_attempts(latest_id, str(job.id)) if latest_id else []
+        ev = load_latest_repair_evaluation(latest_id) or {} if latest_id else {}
+        token_band = attempts[-1].get("token_estimate_band", "unknown") if attempts else "unknown"
+        return {
+            "open_repair_count": open_count,
+            "blocked_repair_count": blocked,
+            "repaired_count": repaired,
+            "total_repair_items": len(items),
+            "latest_repair_id": latest_id,
+            "latest_status": latest.get("status", "none"),
+            "attempts_count": len(attempts),
+            "token_estimate_band": token_band,
+            "review_gate": "see_evaluation",
+            "retest_gate": "see_evaluation",
+            "satisfied": bool(ev.get("satisfied", False)),
+            "next_safe_action": (ev.get("required_next_actions", []) or
+                                 [f"remedy repair item-list {str(job.id)} --json"])[0],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"open_repair_count": 0, "blocked_repair_count": 0, "repaired_count": 0,
+                "latest_status": "none", "error": "repair_loop_v2_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1861,6 +1899,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("snapshot_rollback_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("snapshot_rollback_summary.json", status="error", error="build failed"))
+
+    # repair_loop_summary.json (Step 1934)
+    try:
+        rls = _build_repair_loop_summary(job)
+        content = json.dumps(rls, indent=2).encode()
+        section_data["repair_loop_summary.json"] = content
+        result.sections.append(ReviewBundleSection("repair_loop_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("repair_loop_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

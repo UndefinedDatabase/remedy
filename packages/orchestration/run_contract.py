@@ -133,6 +133,15 @@ class ContractAction:
     SNAPSHOT_PROOF_SHOW = "snapshot_proof_show"
     ROLLBACK_PROOF_CREATE = "rollback_proof_create"
     ROLLBACK_PROOF_SHOW = "rollback_proof_show"
+    # Token-Aware Repair Loop v1/v2 (Step 1931) — ORCHESTRATION + METADATA + EVALUATION only. NOT
+    # provider/model/worker execution, NOT candidate generation, NOT apply/approve. item-create-from-
+    # failure/review + policy-set persist safe metadata; evaluate persists a safe evaluation; show/list/
+    # context-pack/route-recommend/attempts/policy-show/integrity are read-only. None execute a worker,
+    # apply a change, run an unbounded loop, or run a test (re-test stays on the existing RUN_TEST gate).
+    REPAIR_ITEM_CREATE = "repair_item_create"
+    REPAIR_LOOP_EVALUATE = "repair_loop_evaluate"
+    REPAIR_LOOP_POLICY_SET = "repair_loop_policy_set"
+    REPAIR_LOOP_SHOW = "repair_loop_show"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -289,6 +298,10 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.SNAPSHOT_PROOF_SHOW,
     ContractAction.ROLLBACK_PROOF_CREATE,
     ContractAction.ROLLBACK_PROOF_SHOW,
+    ContractAction.REPAIR_ITEM_CREATE,
+    ContractAction.REPAIR_LOOP_EVALUATE,
+    ContractAction.REPAIR_LOOP_POLICY_SET,
+    ContractAction.REPAIR_LOOP_SHOW,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

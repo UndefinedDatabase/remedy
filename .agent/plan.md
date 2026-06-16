@@ -1,46 +1,58 @@
-# Plan — Steps 1877-1916: Real Test Execution + Snapshot/Rollback Proof v1
+# Plan — Steps 1917-1960: Token-Aware Repair Loop v1/v2
 
 ## Goal
-First safe execution gate for Overnight Mode. Run ALLOWED test commands through the existing bounded
-safe runner; results become durable evidence; failing tests → safe failure artifacts; Snapshot Proof
-+ Rollback Proof record honestly whether a real restore exists. Mission Contract consumes the gates.
+Turn test failures and review findings into a controlled, token-aware repair workflow:
+Failure Artifact → Minimal Repair Context → Fix Candidate → Review → Re-Test. Remedy governs the loop,
+tracks progress toward the Mission Contract, and prevents unbounded/expensive/unsafe repair attempts.
+Orchestration/metadata/evaluation ONLY — no model execution, no auto-apply.
 
 ## Core principle
-Workers execute. Remedy governs. Bounded, command-discovered, policy-gated, evidence-backed. No fake
-pass; metadata snapshot ≠ rollback restore; raw output stays private. Reuse existing safe runner +
-snapshot infra — do not reinvent subprocess execution.
+Workers execute. Remedy governs. Token reduction is first-class: minimal context (safe summaries +
+output_ref, never raw logs/diffs). Candidate received ≠ repaired. Reviewer + re-test gates enforced.
+Unknown/oversized context → compression or human decision, never blind expensive routing.
 
 ## Current Step
-1899-1916 — R-0104 closure (command_id forwarded into runner; reported == executed). Done; awaiting
-reviewer re-verdict.
+1939-1940 — builder work complete; targeted suites green; running full suite once, then handoff.
+Awaiting reviewer verdict (R-0105+).
 
 ## Steps
-- [x] 1877: mainline closure (PR #72 → main aacafbd; fresh branch) + carried risks
-- [x] 1878: architecture doc (real-test-execution-snapshot-rollback-proof-v1.md)
-- [x] 1879-1885: real_test_execution.py facade (TestRunRequest/Result + allowed-command resolution +
-      run_allowed_test wrapping execute_test_run + SnapshotProof + RollbackProof + storage + integrity)
-- [x] 1886: overnight_mission gate consumption (tests_green from real pass; snapshot_recorded vs
-      rollback_restore_available)
-- [x] 1887-1888: CLI (test result/list, snapshot create/show, rollback proof/show, test integrity) +
-      catalog + run_contract (controlled_test_execution; no arbitrary exec)
-- [x] 1889-1893: progress_ledger + feature_planner + review_bundle + ui_server cockpit + integrity
-- [x] 1894: user-facing doc
-- [x] 1895-1896: arch guards + targeted suites
-- [x] 1897: full suite once (6235 passed @ cb2c640)
-- [x] 1898: final handoff
-- [x] 1899-1916: R-0104 closure — `command_id` threaded into `execute_test_run` Gate 8; executed
-      candidate id reported (`TestExecutionResult.command_id`) + persisted; `run_allowed_test` forwards
-      and reports the executed id; blocks `requested_command_not_found`/`requested_command_not_test`.
-      Tests added (runner + facade); targeted 249 passed; integrity PASS. Awaiting reviewer re-verdict.
+- [x] 1917: mainline closure (PR #73 → main 43197d9; fresh branch) + reconcile + carried risks
+- [x] 1918: architecture doc (token-aware-repair-loop-v1-v2.md)
+- [x] 1919: core repair_loop_v2.py models + statuses (Policy/WorkItem/Attempt/Evaluation)
+- [x] 1920: storage (atomic, corruption-aware, idempotent, bounded export)
+- [x] 1921: failure artifact → repair work item
+- [x] 1922: review finding → repair work item (Done ≠ Resolved)
+- [x] 1923: token-aware repair context pack (minimal; oversized/unknown → compression/human)
+- [x] 1924: route recommendation (Worker Registry/Route Policy/Token Economy/Tournament/Builder Routing)
+- [x] 1925: candidate intake (external builder / local candidate / candidate quality; received ≠ repaired)
+- [x] 1926: review gate (open finding blocks; Done ≠ Resolved; PASS WITH RISKS low-only)
+- [x] 1927: re-test gate (failed blocks; passed satisfies; no-retest-after-apply blocks; max_retests)
+- [x] 1928: repair loop state machine evaluate_repair_loop (no infinite loop; every state next action)
+- [x] 1929: mission contract integration (required repair items block; repaired satisfies)
+- [x] 1930: CLI surface (item-create-from-failure/review, show/list, context-pack, route-recommend,
+      evaluate, attempts, policy-show/set, integrity)
+- [x] 1931: command catalog + run_contract registration (read_only/write_metadata; no may_execute)
+- [x] 1932: progress ledger integration
+- [x] 1933: feature planner / IdeaFactory (required blockers vs optional ideas, Impact/Effort)
+- [x] 1934: review bundle section (repair_loop_summary)
+- [x] 1935: cockpit read-only surface (repair_loop)
+- [x] 1936: integrity checks
+- [x] 1937: user-facing doc
+- [x] 1938: architecture guards
+- [x] 1939: targeted tests
+- [ ] 1940: full suite once
+- [ ] 1941: final handoff
+- [ ] 1942-1960: reserved for reviewer findings (R-0105+)
 
 ## Hard rules
-- Subprocess ONLY via the approved runner (execute_test_run/run_tests_local). No shell=True, no
-  arbitrary/destructive/network/install/git-write commands; commands allowlisted/discovered.
-- No provider/model/Ollama/worker execution; no auto-apply/approve/repair/PR/git; no MemPalace/
-  embeddings; no UI redesign; no MCP.
-- Raw output private; public summaries safe. No fake pass; metadata snapshot ≠ rollback restore; no
-  fake restore_available/restore_tested. next_safe_action catalog-backed.
-- Tests via scripts/remedy_pytest.sh; full once. NO PR unless asked (auto-merge on reviewer PASS).
+- No provider/model/Claude/Pi/OpenCode/Ollama/worker execution; no automatic candidate generation by
+  model; no auto-apply/approve/autonomous mutation/PR/git; no real rollback restore; no MemPalace/
+  internal memory/embeddings; no UI redesign; no MCP; no shell=True; no arbitrary command execution.
+- Subprocess only via the already-approved real test execution path, bounded by max_test_runs.
+- Minimal token-aware context; no raw logs/stdout/stderr/candidates/diffs/secrets/abs paths public.
+- Candidate ≠ repaired; reviewer PASS + re-test green required per policy; Done ≠ Resolved; no fake
+  repaired; required blockers separated from optional future ideas; next_safe_action catalog-valid.
+- Tests via scripts/remedy_pytest.sh; full once. Auto-merge on reviewer PASS (no PR unless asked).
 
 ## Next block
-Repair Loop v1/v2: Failure Artifact → Fix Candidate → Review → Re-Test (only after this block PASS).
+Main Builder Adapter v0: Claude/Pi/OpenCode Worker Control Plane (only after this block PASS).

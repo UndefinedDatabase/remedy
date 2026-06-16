@@ -230,6 +230,30 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.PROOF_GAP,
             "remedy change proof <job_id> --json",
         ),
+        # Token-Aware Repair Loop v1/v2 outcomes (Step 1933) — REQUIRED blockers (impact: unblocks the
+        # mission; effort: low-medium). Optional future ideas (Claude/Ollama adapter, rollback restore)
+        # are kept separate as ROADMAP suggestions, never mixed into these required blockers.
+        "repair-loop-open": (
+            "Advance the open repair work item",
+            "Impact: high (unblocks the mission). Effort: medium. Build the repair context and route a "
+            "candidate (no auto-apply).",
+            FeaturePlanSource.FAILED_TEST,
+            "remedy repair item-list <job_id> --json",
+        ),
+        "repair-loop-blocked": (
+            "Resolve the blocked repair (user decision)",
+            "Impact: high. Effort: medium. A repair hit max attempts/retests or was abandoned — a user "
+            "decision is required (no automatic loop).",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy repair item-list <job_id> --json",
+        ),
+        "repair-loop-retest-failed": (
+            "Propose another safe repair attempt",
+            "Impact: high. Effort: medium. A repair candidate's re-test failed — route another candidate "
+            "(no auto-apply, bounded by policy).",
+            FeaturePlanSource.FAILED_TEST,
+            "remedy repair route-recommend <repair_id> --json",
+        ),
         # Bounded Overnight Prep follow-ups (Step 1260).
         "overnight-blocked": (
             "Review overnight readiness",
