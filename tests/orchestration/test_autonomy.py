@@ -621,13 +621,13 @@ class TestDashboardV3RuntimeContract:
 
 
 class TestGeneratedCommandCatalogConsistency:
-    def test_no_remedy_test_list_in_production(self):
-        """remedy test list is not a valid command."""
-        for f in ORCH.glob("*.py"):
-            if f.name.startswith("test_"):
-                continue
-            src = f.read_text()
-            assert "remedy test list" not in src, f"{f.name} contains invalid 'remedy test list'"
+    def test_remedy_test_list_is_a_valid_command(self):
+        """`remedy test list` became a real catalog command in Real Test Execution v1 (Step 1887):
+        a read-only safe listing of test run records. It was previously a hallucination guard; now it
+        is valid, so the assertion is inverted to require it to be a registered catalog command."""
+        from apps.cli.command_catalog import CATALOG
+        ids = {(c.group_id, c.subcommand) for c in CATALOG}
+        assert ("test", "list") in ids, "remedy test list must be a registered catalog command"
 
     def test_permit_arg_order_correct(self):
         """remedy job permit order: <job_id> <permission> <action>."""

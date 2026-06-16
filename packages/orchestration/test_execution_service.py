@@ -85,6 +85,9 @@ class TestExecutionRequest:
     intent_id: str = ""
     apply_id: str = ""
     requested_timeout_seconds: float | None = None
+    # Optional explicit discovered-command id. When set, the runner executes that exact
+    # discovered candidate instead of self-selecting the best one. Empty = runner selects.
+    command_id: str = ""
 
 
 @dataclass
@@ -99,6 +102,8 @@ class TestExecutionResult:
     status: str = "blocked"           # blocked | passed | failed | timeout | environment_failure
     safe_summary: str = ""
     command_safe: str = ""
+    command_id: str = ""              # id of the discovered candidate actually executed
+
     exit_code: int | None = None
     duration_ms: int = 0
     output_ref: str = ""              # relative basename of workspace output file
@@ -688,7 +693,33 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
     try:
         # ── Gate 8: Discover safe test command ──────────────────────────────
         candidates = discover_commands(job, repo_root)
-        candidate = select_best_test_candidate(candidates)
+        if request.command_id:
+            # Explicit command id: execute exactly that discovered candidate so the
+            # reported command identity always matches the executed one (R-0104). The
+            # remaining gates (purpose, risk, safe-executable allowlist) still apply.
+            candidate = next((c for c in candidates if c.id == request.command_id), None)
+            if candidate is None:
+                result.status = "blocked"
+                result.stop_reason = "requested_command_not_found"
+                result.safe_summary = "Requested command id was not discovered for this repository."
+                result.next_safe_action = f"remedy test discover {job.id} --json"
+                _emit(data_dir, job_id_parsed, "test_run_blocked", {
+                    "test_run_id": test_run_id,
+                    "reason": "requested_command_not_found",
+                })
+                return result
+            if candidate.purpose != "test":
+                result.status = "blocked"
+                result.stop_reason = "requested_command_not_test"
+                result.safe_summary = "Requested command is not a test command."
+                result.next_safe_action = f"remedy test discover {job.id} --json"
+                _emit(data_dir, job_id_parsed, "test_run_blocked", {
+                    "test_run_id": test_run_id,
+                    "reason": "requested_command_not_test",
+                })
+                return result
+        else:
+            candidate = select_best_test_candidate(candidates)
 
         if candidate is None:
             result.status = "blocked"
@@ -716,6 +747,7 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
             return result
 
         result.command_safe = candidate.display
+        result.command_id = candidate.id
 
         # ── Derive timeout ───────────────────────────────────────────────────
         timeout = _derive_timeout(
@@ -842,6 +874,7 @@ def _persist_test_record(
             "test_run_id": test_run_id,
             "contract_id": result.contract_id,
             "command_safe": result.command_safe,
+            "command_id": result.command_id,
             "status": result.status,
             "exit_code": result.exit_code,
             "duration_ms": result.duration_ms,

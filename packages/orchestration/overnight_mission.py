@@ -87,6 +87,7 @@ GATE_CLEAN_REVIEW = "clean_review"
 GATE_TESTS_GREEN = "tests_green"
 GATE_PROOF_CHAIN = "proof_chain"
 GATE_SNAPSHOT_BEFORE_APPLY = "snapshot_before_apply"
+GATE_ROLLBACK_RESTORE = "rollback_restore_available"
 
 _DEFAULT_FORBIDDEN = (
     "arbitrary_shell", "network_fetch", "install_packages", "cloud_provider",
@@ -232,7 +233,7 @@ def validate_mission_contract(c: MissionContract) -> list[str]:
         errors.append("autonomy_level must be >= 0")
     bad_gates = [g for g in c.required_gates
                  if g not in (GATE_CLEAN_REVIEW, GATE_TESTS_GREEN, GATE_PROOF_CHAIN,
-                              GATE_SNAPSHOT_BEFORE_APPLY)]
+                              GATE_SNAPSHOT_BEFORE_APPLY, GATE_ROLLBACK_RESTORE)]
     if bad_gates:
         errors.append(f"unknown required_gates: {bad_gates}")
     return errors
@@ -454,6 +455,7 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
     ev: dict[str, Any] = {
         "open_tasks": 0, "blocked_tasks": 0, "failed_tests": 0, "tests_status": "unavailable",
         "proof_status": "unavailable", "repair_status": "unknown", "ledger_available": False,
+        "snapshot_recorded": False, "rollback_restore_available": False,
     }
     job = None
     events: list[dict] = []
@@ -509,6 +511,26 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
             ev["proof_status"] = getattr(pc, "overall_status", "unverified")
         except Exception:
             ev["proof_status"] = "unavailable"
+
+    # Real test execution + snapshot/rollback proof (Step 1886). The latest REAL test run overrides
+    # the ledger-derived tests_status; snapshot/rollback availability come from honest proofs.
+    if job_id:
+        try:
+            from packages.orchestration.real_test_execution import (
+                list_test_runs, list_snapshot_proofs, list_rollback_proofs,
+            )
+            runs = list_test_runs(job_id, data_dir)
+            if runs:
+                latest = runs[-1].get("status", "")
+                if latest == "passed":
+                    ev["tests_status"] = "green"
+                elif latest in ("failed", "timeout"):
+                    ev["tests_status"] = "failing"
+            ev["snapshot_recorded"] = bool(list_snapshot_proofs(job_id=job_id, data_dir=data_dir))
+            ev["rollback_restore_available"] = any(
+                r.get("restore_available") for r in list_rollback_proofs(job_id=job_id, data_dir=data_dir))
+        except Exception:
+            pass
 
     # Repair status (any open/needed repair).
     if job is not None:
@@ -574,6 +596,12 @@ def evaluate_mission_contract(
         blockers.append(f"{e.failed_tests} failing test(s)")
     if contract.require_proof_chain and ev["proof_status"] != "verified":
         missing_proofs.append(f"proof_chain (status={ev['proof_status']})")
+    # Snapshot / rollback gates (Step 1886) — honest: a recorded metadata snapshot satisfies
+    # snapshot_before_apply, but rollback_restore_available requires a real verified restore path.
+    if GATE_SNAPSHOT_BEFORE_APPLY in contract.required_gates and not ev["snapshot_recorded"]:
+        missing_proofs.append("snapshot_before_apply (no snapshot proof recorded)")
+    if GATE_ROLLBACK_RESTORE in contract.required_gates and not ev["rollback_restore_available"]:
+        missing_proofs.append("rollback_restore_available (no verified restore path)")
     e.missing_proofs = missing_proofs
 
     # 5. Repair.

@@ -624,6 +624,89 @@ class TestExecuteTestRunGates:
         assert result.status == "blocked"
         assert result.stop_reason == "no_test_command_discovered"
 
+    def _two_test_candidates(self):
+        from packages.orchestration.command_discovery import CommandCandidate
+        a = CommandCandidate(
+            id="test:makefile:test", purpose="test", argv=("make", "test"),
+            display="make test", source_type="makefile", source_path="Makefile",
+            confidence="medium", risk="low", reason="", requires_permission="repo_test_run")
+        b = CommandCandidate(
+            id="test:makefile:check", purpose="test", argv=("make", "check"),
+            display="make check", source_type="makefile", source_path="Makefile",
+            confidence="medium", risk="low", reason="", requires_permission="repo_test_run")
+        return [a, b]
+
+    def _run_with_candidates(self, tmp_path, candidates, command_id, captured):
+        """Drive execute_test_run with discovery stubbed to `candidates` and the real
+        process replaced by a capture. Returns the TestExecutionResult."""
+        from packages.orchestration.test_execution_service import execute_test_run
+        from packages.orchestration.run_contract import RunUsage
+
+        def fake_run(argv, *, cwd, env, output_file, timeout_seconds):
+            captured["argv"] = list(argv)
+            Path(output_file).write_bytes(b"ok\n")
+            return "passed", 0, 5, True
+
+        with patch("packages.orchestration.test_execution_service.resolve_data_root",
+                   return_value=tmp_path):
+            with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
+                job = self._make_job_with_repo(tmp_path)
+                mock_load.return_value = job
+                with patch("packages.orchestration.test_execution_service.is_allowed",
+                           return_value=True), \
+                     patch("packages.orchestration.test_execution_service.ensure_contract",
+                           return_value=_make_contract(max_test_runs=5)), \
+                     patch("packages.orchestration.test_execution_service.validate_run_contract",
+                           return_value=[]), \
+                     patch("packages.orchestration.test_execution_service.load_usage",
+                           return_value=RunUsage()), \
+                     patch("packages.orchestration.test_execution_service.save_usage"), \
+                     patch("packages.orchestration.test_execution_service.save_job"), \
+                     patch("packages.orchestration.test_execution_service.discover_commands",
+                           return_value=candidates), \
+                     patch("packages.orchestration.test_execution_service._run_isolated_process",
+                           side_effect=fake_run):
+                    req = TestExecutionRequest(job_id=str(job.id), command_id=command_id)
+                    return execute_test_run(req)
+
+    def test_explicit_command_id_executes_that_command(self, tmp_path):
+        """R-0104: an explicit command_id runs and reports exactly that command."""
+        captured: dict = {}
+        result = self._run_with_candidates(
+            tmp_path, self._two_test_candidates(), "test:makefile:test", captured)
+        assert result.status == "passed"
+        assert result.command_id == "test:makefile:test"
+        assert captured["argv"] == ["make", "test"]
+
+    def test_command_id_not_silently_swapped(self, tmp_path):
+        """R-0104: requesting the non-best candidate must NOT fall back to select_best."""
+        # select_best would pick "check" (lexicographically smaller id); we request "test".
+        captured: dict = {}
+        result = self._run_with_candidates(
+            tmp_path, self._two_test_candidates(), "test:makefile:check", captured)
+        assert result.command_id == "test:makefile:check"
+        assert captured["argv"] == ["make", "check"]
+
+    def test_unknown_command_id_blocked_at_runner(self, tmp_path):
+        captured: dict = {}
+        result = self._run_with_candidates(
+            tmp_path, self._two_test_candidates(), "test:makefile:nope", captured)
+        assert result.status == "blocked"
+        assert result.stop_reason == "requested_command_not_found"
+        assert "argv" not in captured  # never executed
+
+    def test_non_test_command_id_blocked_at_runner(self, tmp_path):
+        from packages.orchestration.command_discovery import CommandCandidate
+        lint = CommandCandidate(
+            id="lint:makefile:lint", purpose="lint", argv=("make", "lint"),
+            display="make lint", source_type="makefile", source_path="Makefile",
+            confidence="medium", risk="low", reason="", requires_permission="repo_lint_run")
+        captured: dict = {}
+        result = self._run_with_candidates(tmp_path, [lint], "lint:makefile:lint", captured)
+        assert result.status == "blocked"
+        assert result.stop_reason == "requested_command_not_test"
+        assert "argv" not in captured
+
     def test_blocked_does_not_consume_usage(self, tmp_path):
         from packages.orchestration.test_execution_service import execute_test_run
         from packages.orchestration.run_contract import RunUsage

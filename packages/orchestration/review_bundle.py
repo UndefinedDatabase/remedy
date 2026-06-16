@@ -59,6 +59,7 @@ REQUIRED_SECTIONS = (
     "token_economy_summary.json",
     "model_route_tournament_summary.json",
     "overnight_mission_summary.json",
+    "snapshot_rollback_summary.json",
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
@@ -1348,6 +1349,39 @@ def _build_overnight_mission_summary(job: Any) -> dict:
                 "error": "overnight_mission_unavailable"}
 
 
+def _build_snapshot_rollback_summary(job: Any) -> dict:
+    """Safe Snapshot/Rollback Proof v1 summary (Step 1891). Latest test status + snapshot proof count
+    + honest rollback restore availability + failure-artifact count + safe next actions only — no raw
+    stdout/stderr/logs/secrets/paths. Never claims restore_available for a metadata snapshot."""
+    try:
+        from packages.orchestration.real_test_execution import (
+            list_test_runs, list_snapshot_proofs, list_rollback_proofs,
+        )
+        runs = list_test_runs(str(job.id))
+        snaps = list_snapshot_proofs(job_id=str(job.id))
+        rbs = list_rollback_proofs(job_id=str(job.id))
+        latest = runs[-1] if runs else None
+        restore_available = any(r.get("restore_available") for r in rbs)
+        return {
+            "latest_test_status": (latest or {}).get("status", "none"),
+            "latest_test_run_id": (latest or {}).get("test_run_id", ""),
+            "test_run_count": len(runs),
+            "snapshot_proof_count": len(snaps),
+            "snapshot_recorded": bool(snaps),
+            "rollback_proof_count": len(rbs),
+            "rollback_restore_available": restore_available,
+            "rollback_restore_tested": False,
+            "failure_artifact_count": sum(1 for r in runs if r.get("status") in ("failed", "timeout")),
+            "next_safe_actions": [
+                f"remedy test list {str(job.id)} --json",
+                f"remedy snapshot create {str(job.id)} --json",
+            ],
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"latest_test_status": "none", "snapshot_recorded": False,
+                "rollback_restore_available": False, "error": "real_test_execution_unavailable"}
+
+
 def _build_command_summary(job: Any) -> dict:
     """Safe command summary — commands available for this job."""
     from apps.cli.command_catalog import CATALOG
@@ -1818,6 +1852,15 @@ def build_review_bundle(
         result.sections.append(ReviewBundleSection("overnight_mission_summary.json", byte_count=len(content)))
     except Exception:
         result.sections.append(ReviewBundleSection("overnight_mission_summary.json", status="error", error="build failed"))
+
+    # snapshot_rollback_summary.json (Step 1891)
+    try:
+        srs = _build_snapshot_rollback_summary(job)
+        content = json.dumps(srs, indent=2).encode()
+        section_data["snapshot_rollback_summary.json"] = content
+        result.sections.append(ReviewBundleSection("snapshot_rollback_summary.json", byte_count=len(content)))
+    except Exception:
+        result.sections.append(ReviewBundleSection("snapshot_rollback_summary.json", status="error", error="build failed"))
 
     # command_summary.json
     try:

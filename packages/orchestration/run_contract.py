@@ -125,6 +125,14 @@ class ContractAction:
     OVERNIGHT_MISSION_CREATE = "overnight_mission_create"
     OVERNIGHT_MISSION_EVALUATE = "overnight_mission_evaluate"
     OVERNIGHT_MISSION_SHOW = "overnight_mission_show"
+    # Real Test Execution + Snapshot/Rollback Proof v1 (Step 1888) — read-only result/list/integrity
+    # + write_metadata snapshot/rollback proof. Test EXECUTION itself stays on the existing RUN_TEST
+    # action (the contract-gated safe runner). None of these run arbitrary commands or shells.
+    TEST_RESULT_SHOW = "test_result_show"
+    SNAPSHOT_PROOF_CREATE = "snapshot_proof_create"
+    SNAPSHOT_PROOF_SHOW = "snapshot_proof_show"
+    ROLLBACK_PROOF_CREATE = "rollback_proof_create"
+    ROLLBACK_PROOF_SHOW = "rollback_proof_show"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -276,6 +284,11 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.OVERNIGHT_MISSION_CREATE,
     ContractAction.OVERNIGHT_MISSION_EVALUATE,
     ContractAction.OVERNIGHT_MISSION_SHOW,
+    ContractAction.TEST_RESULT_SHOW,
+    ContractAction.SNAPSHOT_PROOF_CREATE,
+    ContractAction.SNAPSHOT_PROOF_SHOW,
+    ContractAction.ROLLBACK_PROOF_CREATE,
+    ContractAction.ROLLBACK_PROOF_SHOW,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,

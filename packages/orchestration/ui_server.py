@@ -339,6 +339,51 @@ def _task_truth_maps(chain: Any) -> tuple[dict[str, str], dict[str, str]]:
     return proof_by_task, apply_by_task
 
 
+def _build_test_execution_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Real Test Execution v1 cockpit summary (Step 1892). Latest test status + run id
+    + failure artifact only. No raw output, no mutation, no fake live."""
+    try:
+        from packages.orchestration.real_test_execution import list_test_runs
+        runs = list_test_runs(str(job.id))
+        latest = runs[-1] if runs else None
+        return {
+            "latest_test_status": (latest or {}).get("status", "none"),
+            "latest_test_run_id": (latest or {}).get("test_run_id", ""),
+            "failure_artifact_id": (latest or {}).get("failure_artifact_id", ""),
+            "test_run_count": len(runs),
+            "next_safe_action": (f"remedy test result {(latest or {}).get('test_run_id')} --json"
+                                 if latest else f"remedy test run {str(job.id)} --json"),
+            "live": False, "source": "real_test_execution",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"latest_test_status": "none", "latest_test_run_id": "", "failure_artifact_id": "",
+                "test_run_count": "unknown", "next_safe_action": "", "live": False,
+                "source": "unavailable"}
+
+
+def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Snapshot/Rollback Proof v1 cockpit summary (Step 1892). Honest restore flags;
+    no fake rollback-ready; no mutation; no raw data."""
+    try:
+        from packages.orchestration.real_test_execution import (
+            list_snapshot_proofs, list_rollback_proofs,
+        )
+        snaps = list_snapshot_proofs(job_id=str(job.id))
+        rbs = list_rollback_proofs(job_id=str(job.id))
+        return {
+            "snapshot_recorded": bool(snaps),
+            "snapshot_proof_count": len(snaps),
+            "restore_available": any(r.get("restore_available") for r in rbs),
+            "restore_tested": False,
+            "rollback_proof_count": len(rbs),
+            "next_safe_action": f"remedy snapshot create {str(job.id)} --json",
+            "live": False, "source": "real_test_execution",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"snapshot_recorded": False, "restore_available": False, "restore_tested": False,
+                "next_safe_action": "", "live": False, "source": "unavailable"}
+
+
 def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
     """Safe snapshot/apply-record summary from the authoritative builder.
 
@@ -1280,6 +1325,8 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "token_economy": _build_token_economy_section(job),
         "model_route_tournament": _build_model_route_tournament_section(job),
         "overnight_mission": _build_overnight_mission_section(job),
+        "test_execution": _build_test_execution_section(job),
+        "snapshot_rollback": _build_snapshot_rollback_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),

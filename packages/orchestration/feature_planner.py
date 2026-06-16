@@ -744,6 +744,43 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             source_type=source, source_refs=[item.item_id], estimated_risk=risk,
             suggested_steps=steps, creates_proposed_task=False, next_action=next_action))
 
+    # Rule 0e: Real Test Execution + Snapshot/Rollback evidence (Step 1890). Item-id driven; required
+    # vs optional clear; Impact (priority) + Effort (estimated_risk) included; no auto-build/exec.
+    _REAL_TEST_RULES = {
+        "test-run-failed": (
+            "Create a repair task from the failing test",
+            "The latest allowed test run failed — turn the safe Test Failure Artifact into a repair "
+            "task (no auto-repair; candidate stays untrusted + re-tested).",
+            FeaturePlanSource.FAILED_TEST, FeaturePlanPriority.HIGH, "medium",
+            ["Inspect failure artifact", "Create fix task", "Re-run allowed test"],
+            "remedy repair status <job_id> --json",
+        ),
+        "rollback-restore-unavailable": (
+            "Implement real rollback restore (currently metadata-only)",
+            "A snapshot proof exists but no real restore path — v1 records metadata only. A future "
+            "block can add a verified restore so the rollback gate can be satisfied.",
+            FeaturePlanSource.PROOF_GAP, FeaturePlanPriority.MEDIUM, "high",
+            ["Design restore from recovery blobs", "Verify restore", "Mark restore_available honestly"],
+            "remedy rollback show <rollback_proof_id> --json",
+        ),
+    }
+    for item in ledger.items:
+        rule = _REAL_TEST_RULES.get(item.item_id)
+        if rule is None:
+            continue
+        title, rationale, source, priority, risk, steps, next_action = rule
+        sug_id = _make_suggestion_id("real-test", item.item_id)
+        if sug_id in seen_ids:
+            continue
+        seen_ids.add(sug_id)
+        seen_ids.add(_make_suggestion_id("risk", item.title))
+        seen_ids.add(_make_suggestion_id("finding", item.title))
+        seen_ids.add(_make_suggestion_id("gap", item.title))
+        plan.suggestions.append(FeatureSuggestion(
+            suggestion_id=sug_id, title=title, rationale=rationale, priority=priority,
+            source_type=source, source_refs=[item.item_id], estimated_risk=risk,
+            suggested_steps=steps, creates_proposed_task=False, next_action=next_action))
+
     # Rule 1: Open blocker/high findings -> high priority suggestions
     for item in ledger.items:
         if item.status == ProgressStatus.BLOCKED:
