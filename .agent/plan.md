@@ -11,21 +11,24 @@ becomes truth; unknown stays unknown; insufficient evidence → no winner; cheap
 trust/verification. User must always understand the recommendation.
 
 ## Current Step
-1797 — mainline reconciliation done (PR #70 merged → main 6a81b8f; fresh branch). Building core.
+1819-1836 — REVIEW CLOSURE complete. Builder feature work (1797-1818) done @ b8f6ea8; reviewer
+verdict PASS @ b8f6ea8 (zero open findings). Handoff reconciliation (R-0101: plan.md) done. Auto-merge
+on reviewer PASS per merge-autonomy (honor hard gate; operator may override). Next: MemPalace v0.
 
 ## Steps
 - [x] 1797: merge closure (PR #70 → main 6a81b8f; fresh branch) + carried risks + MemPalace deferred
-- [ ] 1798: architecture doc (model-route-tournament-harness-v0.md)
-- [ ] 1799-1804: model_route_tournament.py core (models; competitor discovery; evidence gathering;
+- [x] 1798: architecture doc (model-route-tournament-harness-v0.md)
+- [x] 1799-1804: model_route_tournament.py core (models; competitor discovery; evidence gathering;
       scoring with hard ceilings; report generation; storage; integrity)
-- [ ] 1805-1807: builder_routing read-only tournament hint + CLI (report/show/list/integrity) +
+- [x] 1805-1807: builder_routing read-only tournament hint + CLI (report/show/list/integrity) +
       catalog + run_contract actions (report write_metadata; rest read_only; no may_execute)
-- [ ] 1808-1812: progress_ledger + feature_planner + review_bundle section (31) + ui_server cockpit + integrity
-- [ ] 1813: user-facing doc (model-route-tournament-user-guide-v0.md)
-- [ ] 1814-1815: tests (unit/routing/CLI/bundle/cockpit/integrity) + architecture guards
-- [ ] 1816-1817: targeted suites green → full suite once
-- [ ] 1818: final handoff report (+ auto-merge on reviewer PASS)
-- [ ] 1819-1836: reserved for reviewer findings (R-0101+)
+- [x] 1808-1812: progress_ledger + feature_planner + review_bundle section (31) + ui_server cockpit + integrity
+- [x] 1813: user-facing doc (model-route-tournament-user-guide-v0.md)
+- [x] 1814-1815: tests (unit/routing/CLI/bundle/cockpit/integrity) + architecture guards
+- [x] 1816-1817: targeted suites green → full suite once (6160 passed/8 skipped/1 deselected)
+- [x] 1818: final handoff report
+- [~] 1819-1836: review closure — reviewer PASS @ b8f6ea8; R-0101 (plan.md reconciled) fixed;
+      awaiting PR/merge per merge-autonomy
 
 ## Hard rules
 - NO provider/model/Ollama/cloud/local execution, network, browser, subprocess, shell=True.
