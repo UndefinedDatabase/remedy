@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -24,7 +25,8 @@ def _print(data: Any, args: Any, line: str) -> None:
 
 def _cmd_item_create_from_failure(args: Any) -> None:
     from packages.orchestration.repair_loop_v2 import (
-        create_repair_item_from_failure_artifact, export_repair_work_item_json,
+        create_repair_item_from_failure_artifact,
+        export_repair_work_item_json,
     )
     item = create_repair_item_from_failure_artifact(
         str(args.job_id), str(args.failure_artifact_id),
@@ -38,7 +40,8 @@ def _cmd_item_create_from_failure(args: Any) -> None:
 
 def _cmd_item_create_from_review(args: Any) -> None:
     from packages.orchestration.repair_loop_v2 import (
-        create_repair_item_from_review_finding, export_repair_work_item_json,
+        create_repair_item_from_review_finding,
+        export_repair_work_item_json,
     )
     item = create_repair_item_from_review_finding(str(args.job_id), str(args.finding_id))
     if item is None:
@@ -51,7 +54,8 @@ def _cmd_item_create_from_review(args: Any) -> None:
 
 def _cmd_item_show(args: Any) -> None:
     from packages.orchestration.repair_loop_v2 import (
-        load_repair_work_item, export_repair_work_item_json,
+        export_repair_work_item_json,
+        load_repair_work_item,
     )
     item = load_repair_work_item(str(args.repair_id))
     if item is None:
@@ -92,7 +96,8 @@ def _cmd_route_recommend(args: Any) -> None:
 
 def _cmd_evaluate(args: Any) -> None:
     from packages.orchestration.repair_loop_v2 import (
-        evaluate_repair_loop, export_repair_evaluation_json,
+        evaluate_repair_loop,
+        export_repair_evaluation_json,
     )
     ev = evaluate_repair_loop(str(args.repair_id))
     d = export_repair_evaluation_json(ev)
@@ -111,7 +116,8 @@ def _cmd_attempts(args: Any) -> None:
 
 def _cmd_policy_show(args: Any) -> None:
     from packages.orchestration.repair_loop_v2 import (
-        load_repair_loop_policy, export_repair_policy_json,
+        export_repair_policy_json,
+        load_repair_loop_policy,
     )
     d = export_repair_policy_json(load_repair_loop_policy(str(args.job_id)))
     _print(d, args, f"Repair policy: max_attempts={d['max_attempts']} max_retests={d['max_retests']}")
@@ -132,7 +138,9 @@ def _parse_bool(val: Any, default: bool) -> bool:
 
 def _cmd_policy_set(args: Any) -> None:
     from packages.orchestration.repair_loop_v2 import (
-        load_repair_loop_policy, save_repair_loop_policy, export_repair_policy_json,
+        export_repair_policy_json,
+        load_repair_loop_policy,
+        save_repair_loop_policy,
     )
     policy = load_repair_loop_policy(str(args.job_id))
     if getattr(args, "max_attempts", None) is not None:
@@ -164,7 +172,7 @@ def _cmd_integrity(args: Any) -> None:
                        f"violations={data['violation_count']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "repair.item-create-from-failure": _cmd_item_create_from_failure,
     "repair.item-create-from-review": _cmd_item_create_from_review,
     "repair.item-show": _cmd_item_show,

@@ -13,9 +13,8 @@ from __future__ import annotations
 
 import hashlib
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -202,6 +201,7 @@ def emit_memory_recalled_event(
         return
     try:
         from uuid import UUID
+
         from packages.orchestration.timeline import append_run_event
         append_run_event(data_dir, UUID(job_id), event="project_memory_recalled", metadata={
             "stage": stage,

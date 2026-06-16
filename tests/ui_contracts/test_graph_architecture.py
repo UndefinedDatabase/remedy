@@ -5,18 +5,12 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
+import json
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
-import json
-import os
-import pytest
-import re
-import sys
-import tempfile
 
-from packages.core.models import Job, RunState
 from packages.core.models import Job, RunState, Task
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -94,7 +88,7 @@ def _make_job_s101(task_count: int = 3):
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -689,7 +683,6 @@ class TestJourneyLeftToRightLayout:
 
     def test_no_system_nodes_in_default(self):
         from packages.orchestration.ui_view_model import build_story
-        from packages.orchestration.ui_copy import is_diagnostics_only
 
         job = _make_job_s163()
         events = _make_events()

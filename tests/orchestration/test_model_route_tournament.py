@@ -9,12 +9,10 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from uuid import uuid4
 
 import pytest
 
 from packages.orchestration import model_route_tournament as mrt
-
 
 # ---------------------------------------------------------------------------
 # Helpers

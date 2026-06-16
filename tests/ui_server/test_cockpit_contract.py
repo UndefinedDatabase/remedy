@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 
 from packages.core.models import Job
-from packages.orchestration.ui_server import _RemedyHandler, _build_dashboard
+from packages.orchestration.ui_server import _build_dashboard, _RemedyHandler
 
 
 class TestReadOnlyMethods:

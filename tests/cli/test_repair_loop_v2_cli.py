@@ -14,7 +14,7 @@ from tests.cli.runtime_helpers import run_grouped_cli
 
 
 def _job(env, *, with_failure=False):
-    from packages.core.models import Job, RunState, Task, Artifact, ArtifactKind
+    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
     from packages.orchestration.storage import save_job
     repo = env / f"repo-{uuid4().hex[:6]}"; repo.mkdir(parents=True); (repo / "a.py").write_text("x=1\n")
     arts = []

@@ -5,8 +5,8 @@ Smoke tests: verify that core models and contracts import without errors.
 
 def test_core_models_import():
     from packages.core.models import (
-        Artifact,
         AcceptanceCheck,
+        Artifact,
         Budget,
         Job,
         RunState,
@@ -49,7 +49,7 @@ def test_job_defaults():
 
 
 def test_task_lifecycle_defaults():
-    from packages.core.models import Task, RunState
+    from packages.core.models import RunState, Task
     task = Task(description="do something")
     assert task.status == RunState.PENDING
     assert task.output_artifact_ids == []
@@ -68,7 +68,8 @@ def test_artifact_provenance():
 
 
 def test_interfaces_are_protocols():
-    from packages.contracts.interfaces import LLMWorker, MemoryGateway, RuntimeProvider, Verifier
     from typing import Protocol
+
+    from packages.contracts.interfaces import LLMWorker, MemoryGateway, RuntimeProvider, Verifier
     for iface in (LLMWorker, MemoryGateway, RuntimeProvider, Verifier):
         assert issubclass(iface, Protocol)

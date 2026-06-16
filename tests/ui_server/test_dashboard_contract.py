@@ -5,23 +5,14 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from http.client import HTTPConnection
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-from uuid import uuid4
 import ast
-import json
 import os
-import pytest
 import re
-import shlex
-import signal
-import socket
-import sys
-import tempfile
-import threading
-import time
+from pathlib import Path
+from unittest.mock import patch
+from uuid import uuid4
+
+import pytest
 
 from packages.core.models import Job, RunState, Task
 
@@ -402,7 +393,6 @@ class TestJobSummaryCommandContract:
 
     def test_no_shell_true_in_subprocess_calls(self):
         """Verify no subprocess calls use shell=True (comments mentioning it are OK)."""
-        import ast
         exempt = {"test_runner.py"}
         for f in ORCH.glob("*.py"):
             if f.name in exempt:
@@ -480,11 +470,11 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
     def test_readiness_runtime_with_empty_job(self):
         """Runtime test: assess_job_readiness returns real report for minimal job."""
+        from packages.core.models import Job
         from packages.orchestration.autonomy_readiness import (
             assess_job_readiness,
             export_readiness_json,
         )
-        from packages.core.models import Job
 
         job = Job(name="test-readiness", user_prompt="test")
         report = assess_job_readiness(job, [])
@@ -500,8 +490,8 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
     def test_readiness_runtime_with_events(self):
         """Level 1 requires attached_repo + tasks."""
-        from packages.orchestration.autonomy_readiness import assess_job_readiness
         from packages.core.models import Job, Task
+        from packages.orchestration.autonomy_readiness import assess_job_readiness
 
         job = Job(
             name="test-readiness",
@@ -532,7 +522,6 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 class TestAutoBuildBehavior:
     def test_auto_build_runs_by_default(self):
         """Without REMEDY_UI_NO_AUTO_BUILD, auto-build proceeds (returns None in test env)."""
-        import os
         from packages.orchestration.ui_server import _auto_build_frontend
 
         env = os.environ.copy()
@@ -545,7 +534,6 @@ class TestAutoBuildBehavior:
 
     def test_auto_build_disabled_with_env(self):
         """REMEDY_UI_NO_AUTO_BUILD=1 disables auto-build."""
-        import os
         from packages.orchestration.ui_server import _auto_build_frontend
 
         with patch.dict(os.environ, {"REMEDY_UI_NO_AUTO_BUILD": "1"}):
@@ -554,7 +542,6 @@ class TestAutoBuildBehavior:
 
     def test_no_npm_when_disabled(self):
         """No subprocess calls when auto-build is disabled."""
-        import os
         import subprocess as sp
 
         with patch.dict(os.environ, {"REMEDY_UI_NO_AUTO_BUILD": "1"}):

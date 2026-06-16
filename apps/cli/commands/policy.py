@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.storage import JobNotFoundError, load_job
@@ -26,7 +27,9 @@ def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
         sys.exit(1)
 
     from packages.orchestration.run_contract import (
-        build_default_run_contract, export_run_contract_json, summarize_run_contract,
+        build_default_run_contract,
+        export_run_contract_json,
+        summarize_run_contract,
     )
     from packages.orchestration.run_log import RunLogWriter
 
@@ -58,10 +61,12 @@ def _cmd_token_policy(job_id_str: str, *, json_output: bool = False) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.token_policy import (
-        build_default_token_policy, export_token_policy_json, summarize_token_policy,
-    )
     from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.token_policy import (
+        build_default_token_policy,
+        export_token_policy_json,
+        summarize_token_policy,
+    )
 
     policy = build_default_token_policy(job)
     if json_output:
@@ -104,7 +109,7 @@ def _cmd_token_explain() -> None:
     )
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "policy.contract": lambda args: _cmd_run_contract(args.job_id, json_output=args.json),
     "policy.token": lambda args: _cmd_token_policy(args.job_id, json_output=args.json),
     "policy.token-explain": lambda args: _cmd_token_explain(),

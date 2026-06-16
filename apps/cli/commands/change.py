@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.data_paths import resolve_data_root
@@ -113,7 +114,7 @@ def _cmd_change_proof(job_id_str: str, *, path: str | None = None, json_output: 
         print(summarize_proof_chain(chain))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "change.list": lambda args: _cmd_change_list(args.job_id, json_output=args.json),
     "change.show": lambda args: _cmd_change_show(args.job_id, args.intent_id, json_output=args.json),
     "change.proof": lambda args: _cmd_change_proof(args.job_id, path=getattr(args, "path", None), json_output=args.json),

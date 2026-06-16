@@ -6,19 +6,17 @@ redaction, and architecture guards. No apply, no test execution, no provider.
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-from packages.orchestration.storage import save_job, load_job
-from packages.orchestration.test_failure_artifact import (
-    TestFailureArtifact, persist_failure_artifact,
-)
+from packages.core.models import ArtifactKind, Job, RunState, Task
 from packages.orchestration import repair_loop as RL
 from packages.orchestration.approval_queue import get_patch_intent
-
+from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.test_failure_artifact import (
+    TestFailureArtifact,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -233,7 +231,7 @@ class TestProofAlignment:
         intent = get_patch_intent(job, r.repair_intent_id)
         assert intent is not None
         assert intent.get("state") == "pending"  # not approved, not applied
-        from packages.orchestration.proof_chain import build_proof_chain, PROOF_VERIFIED
+        from packages.orchestration.proof_chain import PROOF_VERIFIED, build_proof_chain
         from packages.orchestration.timeline import load_run_events
         events = load_run_events(data_dir, uuid.UUID(jid))
         chain = build_proof_chain(job, events, data_dir=data_dir)

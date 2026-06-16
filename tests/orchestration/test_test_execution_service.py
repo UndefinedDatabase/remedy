@@ -16,16 +16,11 @@ Coverage:
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
-import tempfile
-import time
 from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
-
-import pytest
 
 from packages.orchestration.test_execution_service import (
     TestExecutionLease,
@@ -36,13 +31,12 @@ from packages.orchestration.test_execution_service import (
     _run_isolated_process,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _make_job(*, permitted: bool = True, target_repo: str | None = None, max_test_runs: int = 1):
-    from packages.core.models import Job, RunState
+    from packages.core.models import Job
     job = MagicMock(spec=Job)
     job.id = uuid4()
     job.name = "test-job"
@@ -56,7 +50,6 @@ def _make_job(*, permitted: bool = True, target_repo: str | None = None, max_tes
 
 def _make_contract(max_test_runs: int = 1, max_runtime_seconds: float = 300.0):
     from packages.orchestration.run_contract import build_default_run_contract
-    from packages.core.models import Job
     job = MagicMock()
     job.id = uuid4()
     job.metadata = {}
@@ -279,12 +272,14 @@ class TestRunIsolatedProcess:
         # Verify _run_isolated_process cannot be called with shell=True
         # by checking the source doesn't contain shell=True in production path
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         src = inspect.getsource(svc._run_isolated_process)
         assert "shell=True" not in src
 
     def test_uses_popen_not_subprocess_run(self):
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         src = inspect.getsource(svc._run_isolated_process)
         assert "subprocess.Popen(" in src
@@ -292,12 +287,14 @@ class TestRunIsolatedProcess:
 
     def test_start_new_session_used(self):
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         src = inspect.getsource(svc._run_isolated_process)
         assert "start_new_session=True" in src
 
     def test_stdin_devnull(self):
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         src = inspect.getsource(svc._run_isolated_process)
         assert "DEVNULL" in src
@@ -479,7 +476,7 @@ class TestExecuteTestRunGates:
     """Tests for all gate checks in execute_test_run."""
 
     def _make_job_with_repo(self, tmp_path):
-        from packages.core.models import Job, RunState
+        from packages.core.models import Job
         job = MagicMock(spec=Job)
         job.id = uuid4()
         job.name = "test-job"
@@ -504,8 +501,6 @@ class TestExecuteTestRunGates:
 
     def test_no_target_repo_blocked(self, tmp_path):
         from packages.orchestration.test_execution_service import execute_test_run
-        from packages.orchestration.storage import load_job, save_job
-        from packages.core.models import Job, RunState
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
@@ -535,8 +530,8 @@ class TestExecuteTestRunGates:
         assert "repo_test_run" in result.next_safe_action
 
     def test_contract_budget_zero_blocked(self, tmp_path):
-        from packages.orchestration.test_execution_service import execute_test_run
         from packages.orchestration.run_contract import RunUsage
+        from packages.orchestration.test_execution_service import execute_test_run
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
@@ -555,8 +550,8 @@ class TestExecuteTestRunGates:
         assert "max_test_runs" in result.safe_summary.lower() or "exhausted" in result.stop_reason
 
     def test_concurrent_run_blocked(self, tmp_path):
-        from packages.orchestration.test_execution_service import execute_test_run
         from packages.orchestration.run_contract import RunUsage
+        from packages.orchestration.test_execution_service import execute_test_run
 
         # Pre-place a lock file to simulate an active run
         ws = tmp_path / "workspaces" / "test-job-id"
@@ -599,8 +594,8 @@ class TestExecuteTestRunGates:
         assert result.stop_reason == "test_run_already_active"
 
     def test_no_test_command_blocked(self, tmp_path):
-        from packages.orchestration.test_execution_service import execute_test_run
         from packages.orchestration.run_contract import RunUsage
+        from packages.orchestration.test_execution_service import execute_test_run
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
@@ -639,8 +634,8 @@ class TestExecuteTestRunGates:
     def _run_with_candidates(self, tmp_path, candidates, command_id, captured):
         """Drive execute_test_run with discovery stubbed to `candidates` and the real
         process replaced by a capture. Returns the TestExecutionResult."""
-        from packages.orchestration.test_execution_service import execute_test_run
         from packages.orchestration.run_contract import RunUsage
+        from packages.orchestration.test_execution_service import execute_test_run
 
         def fake_run(argv, *, cwd, env, output_file, timeout_seconds):
             captured["argv"] = list(argv)
@@ -709,7 +704,6 @@ class TestExecuteTestRunGates:
 
     def test_blocked_does_not_consume_usage(self, tmp_path):
         from packages.orchestration.test_execution_service import execute_test_run
-        from packages.orchestration.run_contract import RunUsage
 
         save_usage_calls = []
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
@@ -735,9 +729,8 @@ class TestExecuteTestRunGates:
 class TestUsageAccounting:
     def test_usage_incremented_on_process_start(self, tmp_path):
         """Integration: a passing mini-repo increments test_runs_used by 1."""
-        import os
+        from packages.orchestration.run_contract import RunUsage
         from packages.orchestration.test_execution_service import execute_test_run
-        from packages.orchestration.run_contract import RunUsage, export_usage_json
 
         # Create a minimal passing repo
         repo = tmp_path / "repo"
@@ -799,6 +792,7 @@ class TestUsageAccounting:
 class TestArchitectureGuards:
     def test_no_shell_true_in_service(self):
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         # Check the execution functions specifically (not docstrings/comments)
         src = inspect.getsource(svc._run_isolated_process)
@@ -808,6 +802,7 @@ class TestArchitectureGuards:
 
     def test_no_subprocess_run_in_execute_path(self):
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         # The isolation function must use Popen, not subprocess.run
         src = inspect.getsource(svc._run_isolated_process)
@@ -816,6 +811,7 @@ class TestArchitectureGuards:
 
     def test_no_env_loading_in_service(self):
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         # Check that production execution path never loads .env files
         exec_src = inspect.getsource(svc.execute_test_run)
@@ -832,6 +828,7 @@ class TestArchitectureGuards:
 
     def test_service_has_no_source_apply_import(self):
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         src = inspect.getsource(svc)
         # source_apply should not be imported (no automatic repair)
@@ -848,6 +845,7 @@ class TestArchitectureGuards:
 
     def test_service_calls_isolated_process_not_subprocess_run(self):
         import inspect
+
         from packages.orchestration import test_execution_service as svc
         src = inspect.getsource(svc.execute_test_run)
         assert "subprocess.run(" not in src
@@ -868,15 +866,17 @@ class TestCatalogValidation:
 
     def test_lease_blocked_next_action_references_catalog_command(self, tmp_path):
         """When lease is active, next_safe_action must point to a catalog-backed command."""
-        from uuid import uuid4
         from unittest.mock import patch
-        from packages.orchestration.test_execution_service import (
-            execute_test_run, TestExecutionRequest,
-        )
+        from uuid import uuid4
+
         from packages.orchestration.run_contract import RunUsage
+        from packages.orchestration.test_execution_service import (
+            TestExecutionRequest,
+            execute_test_run,
+        )
 
         def _make_contract(max_test_runs=5):
-            from packages.orchestration.run_contract import RunContract, ContractAction
+            from packages.orchestration.run_contract import ContractAction, RunContract
             return RunContract(
                 contract_id="test-contract",
                 job_id="test",

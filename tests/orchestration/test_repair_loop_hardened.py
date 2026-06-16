@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from packages.orchestration.builder_models import BuilderOutput
 from tests.orchestration.small_repo_fixtures import (
     create_repair_scenario_repo,

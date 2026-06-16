@@ -14,9 +14,9 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-from packages.orchestration.storage import save_job, load_job
 from packages.orchestration import overnight_executor as OX
 from packages.orchestration import repair_loop as RL
+from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -235,8 +235,8 @@ class TestPolicyGate:
 
     def test_budget_exhausted_blocks_apply(self, env):
         # An exhausted test/loop budget blocks an apply cycle before any execution.
-        from tests.orchestration.test_do_continue import make_continue_job
         from packages.orchestration.run_contract import load_usage, save_usage
+        from tests.orchestration.test_do_continue import make_continue_job
         repo = env.parent / "repo"; repo.mkdir(exist_ok=True)
         job, _ = make_continue_job(env, repo, max_test_runs=1)
         u = load_usage(job); u.test_runs_used = 1; u.loops_used = 99; save_usage(job, u)
@@ -314,8 +314,8 @@ class TestRepairProposeAdapter:
 
 class TestDoContinueAdapter:
     def _continue_job(self, env, monkeypatch):
-        from tests.orchestration.test_do_continue import make_continue_job, _fake_test
         import packages.orchestration.test_execution_service as tes
+        from tests.orchestration.test_do_continue import _fake_test, make_continue_job
         repo = env.parent / "repo"; repo.mkdir(exist_ok=True)
         job, iid = make_continue_job(env, repo)
         fn, _ = _fake_test(env, status="passed")

@@ -3,9 +3,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -161,8 +158,6 @@ class TestModelContract:
 
     def test_exports_expected_types(self):
         from packages.memory.context_summary import (
-            MemoryContextSummary,
-            MemoryContextItem,
             build_memory_context,
             export_memory_context_json,
             format_memory_section,

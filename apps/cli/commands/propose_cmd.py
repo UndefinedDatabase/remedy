@@ -12,7 +12,6 @@ import sys
 from typing import Any
 from uuid import UUID
 
-
 _MAX_REASON_LEN = 200
 _MAX_NOTES_DISPLAY = 200
 
@@ -39,7 +38,7 @@ def _require_job(job_id: str, args: Any) -> bool:
     Returns True if job exists, False + printed error if not.
     """
     try:
-        from packages.orchestration.storage import load_job, JobNotFoundError, JobStoreError
+        from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job
         uid = UUID(job_id)
         load_job(uid)
         return True
@@ -83,10 +82,10 @@ def _task_to_safe_dict(t: Any) -> dict[str, Any]:
 
 def _cmd_propose_list(args: Any) -> None:
     from packages.orchestration.proposed_tasks import (
-        load_proposed_tasks,
-        list_by_status,
         ProposedTaskStatus,
         ProposedTaskStoreError,
+        list_by_status,
+        load_proposed_tasks,
     )
 
     job_id = args.job_id
@@ -131,8 +130,8 @@ def _cmd_propose_list(args: Any) -> None:
 
 def _cmd_propose_show(args: Any) -> None:
     from packages.orchestration.proposed_tasks import (
-        get_proposed_task,
         ProposedTaskStoreError,
+        get_proposed_task,
     )
 
     job_id = args.job_id
@@ -172,10 +171,10 @@ def _cmd_propose_evaluate(args: Any) -> None:
     if not _require_job(args.job_id, args):
         sys.exit(1)
     from packages.orchestration.proposed_tasks import (
-        evaluate_proposed_task,
-        evaluate_all_proposed,
-        emit_proposed_task_event,
         ProposedTaskStoreError,
+        emit_proposed_task_event,
+        evaluate_all_proposed,
+        evaluate_proposed_task,
     )
 
     job_id = args.job_id
@@ -225,10 +224,10 @@ def _cmd_propose_approve(args: Any) -> None:
     if not _require_job(args.job_id, args):
         sys.exit(1)
     from packages.orchestration.proposed_tasks import (
-        approve_proposed_task,
-        emit_proposed_task_event,
         InvalidTransitionError,
         ProposedTaskStoreError,
+        approve_proposed_task,
+        emit_proposed_task_event,
     )
 
     job_id = args.job_id
@@ -277,10 +276,10 @@ def _cmd_propose_reject(args: Any) -> None:
     if not _require_job(args.job_id, args):
         sys.exit(1)
     from packages.orchestration.proposed_tasks import (
-        reject_proposed_task,
-        emit_proposed_task_event,
         InvalidTransitionError,
         ProposedTaskStoreError,
+        emit_proposed_task_event,
+        reject_proposed_task,
     )
 
     job_id = args.job_id
@@ -330,10 +329,10 @@ def _cmd_propose_defer(args: Any) -> None:
     if not _require_job(args.job_id, args):
         sys.exit(1)
     from packages.orchestration.proposed_tasks import (
-        defer_proposed_task,
-        emit_proposed_task_event,
         InvalidTransitionError,
         ProposedTaskStoreError,
+        defer_proposed_task,
+        emit_proposed_task_event,
     )
 
     job_id = args.job_id
@@ -383,10 +382,10 @@ def _cmd_propose_materialize(args: Any) -> None:
     if not _require_job(args.job_id, args):
         sys.exit(1)
     from packages.orchestration.proposed_tasks import (
-        do_materialize,
-        list_approved_not_materialized,
-        emit_proposed_task_event,
         ProposedTaskStoreError,
+        do_materialize,
+        emit_proposed_task_event,
+        list_approved_not_materialized,
     )
 
     job_id = args.job_id

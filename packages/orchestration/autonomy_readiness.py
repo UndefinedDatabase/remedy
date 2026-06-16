@@ -30,8 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import Job, RunState
-
+from packages.core.models import Job
 
 # ---------------------------------------------------------------------------
 # Data model

@@ -19,12 +19,10 @@ import pytest
 from apps.cli.command_catalog import (
     CATALOG,
     GROUPS,
-    CommandEntry,
     get_command,
     get_commands_for_group,
     get_group,
 )
-
 
 # ---------------------------------------------------------------------------
 # Structural integrity

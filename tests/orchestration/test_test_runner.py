@@ -5,19 +5,17 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock
-from unittest.mock import MagicMock, patch
-from unittest.mock import patch
-from uuid import uuid4
 import ast
 import json
 import os
-import pytest
 import shlex
 import sys
-import tempfile
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
+
+import pytest
 
 from packages.core.models import Job, RunState
 
@@ -48,7 +46,7 @@ def _make_job(task_count: int = 3):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -77,7 +75,9 @@ def _make_approved_job() -> tuple[Job, str]:
     """Create a job with repo_generated_write + an approved patch intent."""
     from packages.core.models import Artifact
     from packages.orchestration.approval_queue import (
-        make_intent_id, set_approval_state, APPROVAL_APPROVED,
+        APPROVAL_APPROVED,
+        make_intent_id,
+        set_approval_state,
     )
     from packages.orchestration.permissions import Capability, set_permission
 
@@ -155,7 +155,6 @@ class TestHeadlessSmokeNosBrowserLaunch:
         from packages.orchestration.ui_server import _RemedyHandler
         handler = _RemedyHandler.__new__(_RemedyHandler)
         # log_message is overridden to suppress
-        import io
         handler.log_message("test %s", "msg")  # should not raise
 
 
@@ -402,6 +401,7 @@ class TestSourceApplyPermissionBoundary:
     def test_job_parameter_required(self):
         """apply_structured_patch requires job parameter."""
         import inspect
+
         from packages.orchestration.source_apply import apply_structured_patch
         sig = inspect.signature(apply_structured_patch)
         param = sig.parameters["job"]
@@ -524,8 +524,9 @@ class TestTestRunnerOutputTruncation:
 
     def test_record_has_truncation_fields(self):
         """TestRunRecord has output_truncated, original_output_bytes, persisted_output_bytes."""
-        from packages.orchestration.test_runner import TestRunRecord
         import dataclasses
+
+        from packages.orchestration.test_runner import TestRunRecord
         fields = {f.name for f in dataclasses.fields(TestRunRecord)}
         assert "output_truncated" in fields
         assert "original_output_bytes" in fields
@@ -534,6 +535,7 @@ class TestTestRunnerOutputTruncation:
     def test_large_output_truncated(self, tmp_path):
         """Mock subprocess returning > cap output → truncated."""
         import subprocess as _sp
+
         from packages.orchestration.test_runner import MAX_TEST_OUTPUT_BYTES, run_tests_local
 
         job = _make_job_s261()
@@ -562,6 +564,7 @@ class TestTestRunnerOutputTruncation:
     def test_small_output_not_truncated(self, tmp_path):
         """Normal small output has output_truncated=False."""
         import subprocess as _sp
+
         from packages.orchestration.test_runner import run_tests_local
 
         job = _make_job_s261()
@@ -593,7 +596,6 @@ class TestTestRunnerOutputTruncation:
 class TestCommandDiscoveryRuntimeSafety:
     def test_quoted_command_parsed_correctly(self):
         """Constitution command with quotes produces correct argv."""
-        from packages.orchestration.command_discovery import _detect_constitution
 
         job = _make_job_s261()
         job.metadata["constitution"] = {
@@ -608,7 +610,6 @@ class TestCommandDiscoveryRuntimeSafety:
 
     def test_shell_metacharacters_rejected(self):
         """Shell-composed commands rejected by constitution detector."""
-        from packages.orchestration.command_discovery import _detect_constitution
 
         dangerous = [
             'pytest && rm -rf .',
@@ -620,7 +621,6 @@ class TestCommandDiscoveryRuntimeSafety:
         ]
         for cmd in dangerous:
             # The _SHELL_METACHARACTERS check in _detect_constitution filters these
-            from packages.orchestration.command_discovery import _detect_constitution
             # Direct metachar check
             _SHELL_METACHARACTERS = ("|", "&&", ";", ">>", ">", "<", "`", "$(")
             has_metachar = any(mc in cmd for mc in _SHELL_METACHARACTERS)
@@ -660,6 +660,7 @@ class TestCommandDiscoveryRuntimeSafety:
     def test_discovery_runtime_does_not_hang(self, tmp_path):
         """Command discovery on a multi-source repo completes quickly (no hang)."""
         import time
+
         from packages.orchestration.command_discovery import discover_commands
 
         # Build a repo with multiple manifest types

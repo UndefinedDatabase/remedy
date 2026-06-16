@@ -42,7 +42,7 @@ def emit_important_event(
     event_type: str,
     metadata: dict,
     *,
-    eligible: "frozenset[str] | set[str] | None" = None,
+    eligible: frozenset[str] | set[str] | None = None,
 ) -> EventPersistenceResult:
     """Append an important event, returning a structured persistence result.
 
@@ -53,6 +53,7 @@ def emit_important_event(
         return EventPersistenceResult(event_type, "skipped", "not_eligible")
     try:
         from uuid import UUID
+
         from packages.orchestration.timeline import append_run_event
         try:
             UUID(str(job_id))

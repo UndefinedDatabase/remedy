@@ -40,9 +40,12 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from packages.orchestration.provider_trust import (
-    Severity, TrustStatus, _safe_path_label, _scrub_public, validate_paths,
+    Severity,
+    TrustStatus,
+    _safe_path_label,
+    _scrub_public,
+    validate_paths,
 )
-
 
 # ---------------------------------------------------------------------------
 # Limits (mirror the trust gate; materialization stays conservative)
@@ -499,8 +502,8 @@ def verify_provider_patch_material(
 ) -> ProviderPatchMaterialVerification:
     """Verify private patch material against its manifest + trust report. Safe."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
     from packages.orchestration.provider_trust import get_trust_report
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     v = ProviderPatchMaterialVerification(material_id=material_id)

@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -17,8 +18,10 @@ if TYPE_CHECKING:
 
 def _cmd_provider_intake_repair(args: Any) -> None:
     from packages.orchestration.provider_trust import (
-        ProviderOutputIntakeRequest, intake_provider_repair, export_intake_result_json,
+        ProviderOutputIntakeRequest,
         SourceKind,
+        export_intake_result_json,
+        intake_provider_repair,
     )
     use_stdin = bool(getattr(args, "stdin", False))
     input_path = getattr(args, "input", None)
@@ -49,8 +52,8 @@ def _cmd_provider_intake_repair(args: Any) -> None:
 
 
 def _cmd_provider_trust_show(args: Any) -> None:
-    from packages.orchestration.storage import load_job, JobNotFoundError
     from packages.orchestration.provider_trust import get_trust_report
+    from packages.orchestration.storage import JobNotFoundError, load_job
     try:
         job = load_job(args.job_id)
     except (JobNotFoundError, ValueError) as exc:
@@ -75,10 +78,11 @@ def _cmd_provider_trust_show(args: Any) -> None:
 
 
 def _cmd_provider_material_show(args: Any) -> None:
-    from packages.orchestration.storage import load_job, JobNotFoundError
     from packages.orchestration.provider_patch_material import (
-        get_material, verify_provider_patch_material,
+        get_material,
+        verify_provider_patch_material,
     )
+    from packages.orchestration.storage import JobNotFoundError, load_job
     try:
         job = load_job(args.job_id)
     except (JobNotFoundError, ValueError) as exc:
@@ -105,8 +109,9 @@ def _cmd_provider_material_show(args: Any) -> None:
 
 def _cmd_provider_verify(args: Any) -> None:
     from packages.orchestration.provider_trust_verification import (
-        ProviderVerificationRequest, verify_provider_candidate,
+        ProviderVerificationRequest,
         export_verification_report_json,
+        verify_provider_candidate,
     )
     request = ProviderVerificationRequest(
         job_id=str(args.job_id),
@@ -130,8 +135,8 @@ def _cmd_provider_verify(args: Any) -> None:
 
 
 def _cmd_provider_verification_show(args: Any) -> None:
-    from packages.orchestration.storage import load_job, JobNotFoundError
     from packages.orchestration.provider_trust_verification import get_verification_report
+    from packages.orchestration.storage import JobNotFoundError, load_job
     try:
         job = load_job(args.job_id)
     except (JobNotFoundError, ValueError) as exc:
@@ -156,7 +161,7 @@ def _cmd_provider_verification_show(args: Any) -> None:
     print(f"  next: {report.get('next_safe_action', '')}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "provider.intake-repair": _cmd_provider_intake_repair,
     "provider.trust-show": _cmd_provider_trust_show,
     "provider.material-show": _cmd_provider_material_show,

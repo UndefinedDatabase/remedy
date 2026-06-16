@@ -14,9 +14,9 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-from packages.orchestration.storage import save_job, load_job
-from packages.orchestration import provider_trust as PT
 from packages.orchestration import provider_patch_material as PM
+from packages.orchestration import provider_trust as PT
+from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -110,7 +110,7 @@ class TestConversion:
 
 class TestMaterialization:
     def test_accepted_md_materializes_applyable_intent(self, env):
-        from packages.orchestration.approval_queue import get_patch_intent, APPROVAL_PENDING
+        from packages.orchestration.approval_queue import APPROVAL_PENDING, get_patch_intent
         from packages.orchestration.patch_apply import _extract_proposed_lines
         job, fid = _job(env)
         r = _intake(job, env, _md_diff(), fid=fid)
@@ -174,14 +174,16 @@ class TestMaterialization:
 
 class TestApplyCompatibility:
     def test_approve_then_do_continue_applies(self, env, monkeypatch, tmp_path):
-        from packages.orchestration.permissions import set_permission, Capability
-        from packages.orchestration.run_contract import (
-            build_default_run_contract, save_contract, ContractAction,
-        )
-        from packages.orchestration.approval_queue import set_approval_state
         import packages.orchestration.test_execution_service as tes
-        from tests.orchestration.test_do_continue import _fake_test
         from packages.orchestration import do_continue as dc
+        from packages.orchestration.approval_queue import set_approval_state
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.run_contract import (
+            ContractAction,
+            build_default_run_contract,
+            save_contract,
+        )
+        from tests.orchestration.test_do_continue import _fake_test
 
         repo = tmp_path / "repo"; (repo / "docs").mkdir(parents=True)
         (repo / "docs" / "guide.md").write_text("line one\nline two\n")
@@ -228,9 +230,9 @@ class TestRedaction:
         r = _intake(job, env, _md_diff(), fid=fid)
         reloaded = load_job(UUID(str(job.id)), env)
         from packages.orchestration.progress_ledger import extract_provider_material_items
+        from packages.orchestration.provider_patch_material import get_material, load_materials
         from packages.orchestration.review_bundle import _build_provider_material_summary
         from packages.orchestration.ui_server import _build_provider_trust_section
-        from packages.orchestration.provider_patch_material import get_material, load_materials
         items = extract_provider_material_items(load_materials(reloaded))
         blobs = [
             json.dumps(PT.export_intake_result_json(r)),

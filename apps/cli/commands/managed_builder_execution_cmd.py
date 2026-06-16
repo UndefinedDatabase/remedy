@@ -18,13 +18,13 @@ def _err(msg: str) -> None:
     sys.exit(1)
 
 
-def _cmd_template_list(ns: "argparse.Namespace") -> None:
+def _cmd_template_list(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import list_command_templates
     templates = list_command_templates()
     print(json.dumps(templates, indent=2))
 
 
-def _cmd_template_show(ns: "argparse.Namespace") -> None:
+def _cmd_template_show(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import get_command_template
     tid = getattr(ns, "template_id", "")
     if not tid:
@@ -35,7 +35,7 @@ def _cmd_template_show(ns: "argparse.Namespace") -> None:
     print(json.dumps(tmpl, indent=2))
 
 
-def _cmd_template_create(ns: "argparse.Namespace") -> None:
+def _cmd_template_create(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import CommandTemplate, save_command_template
     tid = getattr(ns, "template_id", "")
     if not tid:
@@ -60,7 +60,7 @@ def _cmd_template_create(ns: "argparse.Namespace") -> None:
     print(json.dumps({"saved": True, "template_id": tid}))
 
 
-def _cmd_approve(ns: "argparse.Namespace") -> None:
+def _cmd_approve(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import approve_managed_execution
     sid = getattr(ns, "session_id", "")
     tid = getattr(ns, "template", "") or getattr(ns, "template_id", "")
@@ -82,7 +82,7 @@ def _cmd_approve(ns: "argparse.Namespace") -> None:
     print(json.dumps(approval.to_dict(), indent=2))
 
 
-def _cmd_run(ns: "argparse.Namespace") -> None:
+def _cmd_run(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import run_managed_builder
     sid = getattr(ns, "session_id", "")
     tid = getattr(ns, "template", "") or getattr(ns, "template_id", "")
@@ -98,7 +98,7 @@ def _cmd_run(ns: "argparse.Namespace") -> None:
     print(json.dumps(result.to_dict(), indent=2))
 
 
-def _cmd_show(ns: "argparse.Namespace") -> None:
+def _cmd_show(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import get_execution_result
     eid = getattr(ns, "execution_id", "")
     if not eid:
@@ -109,14 +109,14 @@ def _cmd_show(ns: "argparse.Namespace") -> None:
     print(json.dumps(result, indent=2))
 
 
-def _cmd_list(ns: "argparse.Namespace") -> None:
+def _cmd_list(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import list_execution_results
     job_id = getattr(ns, "job_id", "") or ""
     results = list_execution_results(job_id)
     print(json.dumps(results, indent=2))
 
 
-def _cmd_debug_bundle(ns: "argparse.Namespace") -> None:
+def _cmd_debug_bundle(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import build_debug_bundle
     eid = getattr(ns, "execution_id", "")
     if not eid:
@@ -127,13 +127,13 @@ def _cmd_debug_bundle(ns: "argparse.Namespace") -> None:
     print(json.dumps(bundle, indent=2))
 
 
-def _cmd_integrity(ns: "argparse.Namespace") -> None:
+def _cmd_integrity(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import managed_execution_integrity
     result = managed_execution_integrity()
     print(json.dumps(result, indent=2))
 
 
-def _cmd_approval_show(ns: "argparse.Namespace") -> None:
+def _cmd_approval_show(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import get_execution_approval
     sid = getattr(ns, "session_id", "")
     if not sid:
@@ -144,7 +144,7 @@ def _cmd_approval_show(ns: "argparse.Namespace") -> None:
     print(json.dumps(approval, indent=2))
 
 
-def _cmd_approval_validate(ns: "argparse.Namespace") -> None:
+def _cmd_approval_validate(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import validate_execution_approval
     sid = getattr(ns, "session_id", "")
     tid = getattr(ns, "template", "") or getattr(ns, "template_id", "")
@@ -156,7 +156,7 @@ def _cmd_approval_validate(ns: "argparse.Namespace") -> None:
     print(json.dumps({"valid": len(codes) == 0, "codes": codes}, indent=2))
 
 
-def _cmd_approval_list(ns: "argparse.Namespace") -> None:
+def _cmd_approval_list(ns: argparse.Namespace) -> None:
     from packages.orchestration.managed_builder_execution import list_execution_approvals
     approvals = list_execution_approvals()
     print(json.dumps(approvals, indent=2))

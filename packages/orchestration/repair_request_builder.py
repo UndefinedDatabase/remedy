@@ -39,7 +39,6 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-
 MAX_REQUEST_BYTES = 256 * 1024
 _REQUESTS_META_KEY = "repair_request_packages_v0"
 _GENERATORS_META_KEY = "external_candidate_generators_v0"
@@ -455,11 +454,13 @@ def build_repair_request_package(
     Never calls a provider/network/subprocess, never applies, never creates a Patch
     Intent. Idempotent per (failure, target_kind, model_hint) unless ``new=True``."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, save_job, JobNotFoundError
-    from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
-    )
     from packages.orchestration.repair_loop import build_repair_context, find_repair_attempt
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
+    )
+    from packages.orchestration.storage import JobNotFoundError, load_job, save_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     label = (generator_label or "external").strip() or "external"

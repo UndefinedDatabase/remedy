@@ -24,22 +24,17 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
-from packages.core.models import Job, Task
+from packages.core.models import Job
 from packages.orchestration.do_run import (
     DO_PHASES,
     DoRunNextAction,
     DoRunPhase,
-    DoRunResult,
     DoRunStopReason,
     export_do_run_json,
     run_do,
     summarize_do_run,
     validate_next_safe_action_command,
 )
-from packages.orchestration.run_contract import RunContract
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -100,7 +95,6 @@ class TestPhaseModel:
 
     def test_contract_defaults(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        from packages.core.models import Job
         job = Job(name="test")
         c = build_default_run_contract(job)
         assert c.stop_before_apply is True
@@ -321,6 +315,7 @@ class TestApprovalGate:
     def test_no_apply_import_in_do_run(self):
         """Step 933: source_apply not imported in do_run."""
         import inspect
+
         from packages.orchestration import do_run
         src = inspect.getsource(do_run)
         assert "from packages.orchestration.source_apply import" not in src
@@ -585,20 +580,17 @@ class TestContractConsolidation:
 
     def test_contract_has_source(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        from packages.core.models import Job
         c = build_default_run_contract(Job(name="test"))
         assert c.source == "default_v1"
 
     def test_contract_has_allowed_actions(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        from packages.core.models import Job
         c = build_default_run_contract(Job(name="test"))
         assert len(c.allowed_actions) > 0
         assert "plan" in c.allowed_actions
 
     def test_contract_has_denied_actions(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        from packages.core.models import Job
         c = build_default_run_contract(Job(name="test"))
         assert len(c.denied_actions) > 0
         assert "apply" in c.denied_actions

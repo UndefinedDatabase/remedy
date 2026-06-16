@@ -35,15 +35,23 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 from packages.orchestration._symbols import (
-    OK as _OK,
     FAIL as _FAIL,
-    WARN as _WARN,
+)
+from packages.orchestration._symbols import (
     INFO as _INFO,
+)
+from packages.orchestration._symbols import (
     NEXT as _NEXT,
-    LINE as _LINE,
+)
+from packages.orchestration._symbols import (
+    OK as _OK,
+)
+from packages.orchestration._symbols import (
+    WARN as _WARN,
+)
+from packages.orchestration._symbols import (
     section,
 )
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -55,7 +63,7 @@ def summarize_cockpit(
     events: list[dict[str, Any]],
     *,
     data_dir: Path | None = None,
-    constitution: "ProjectConstitution | None" = None,
+    constitution: ProjectConstitution | None = None,
 ) -> str:
     """Return a decision-oriented cockpit string for a job.
 

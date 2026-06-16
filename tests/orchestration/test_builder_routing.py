@@ -9,18 +9,23 @@ response/source/diff/log/secrets/paths in any surface. Every next action is cata
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
 
 from packages.orchestration.builder_routing import (
-    BuilderRoutingRequest, BuilderRoutingPolicy, BuilderRoutingTier, BuilderRoutingStopReason,
-    BuilderRoutingJustification, LoopGovernorStatus, default_builder_routing_policy,
-    select_builder_routing_decision, export_builder_routing_json, load_builder_routing_traces,
+    BuilderRoutingJustification,
+    BuilderRoutingPolicy,
+    BuilderRoutingRequest,
+    BuilderRoutingStopReason,
+    BuilderRoutingTier,
+    LoopGovernorStatus,
+    default_builder_routing_policy,
+    export_builder_routing_json,
+    load_builder_routing_traces,
+    select_builder_routing_decision,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -29,7 +34,7 @@ from packages.orchestration.builder_routing import (
 
 def _make_job(data_dir, *, failure=True, related=None, repair_attempts=None,
               trust=None):
-    from packages.core.models import Job, Artifact, ArtifactKind, RunState
+    from packages.core.models import Artifact, ArtifactKind, Job, RunState
     from packages.orchestration.storage import save_job
     arts = []
     fid = ""
@@ -305,6 +310,7 @@ class TestEmittedCommandsRunnable:
     @staticmethod
     def _parse(cmd: str) -> bool:
         import re as _re
+
         from apps.cli.grouped import build_parser
         # Substitute <placeholder> templates with dummy tokens.
         cmd = _re.sub(r"<[^>]+>", "X", cmd)
@@ -366,7 +372,10 @@ class TestEmittedCommandsRunnable:
         # Feature planner builder-routing recommendations must parse.
         from packages.orchestration.feature_planner import build_feature_plan
         from packages.orchestration.progress_ledger import (
-            ProgressLedger, ProgressItem, ProgressStatus, ProgressSource,
+            ProgressItem,
+            ProgressLedger,
+            ProgressSource,
+            ProgressStatus,
         )
         for iid in ("builder-routing-local-candidate", "builder-routing-external-candidate",
                     "builder-routing-human-review", "builder-routing-blocked"):

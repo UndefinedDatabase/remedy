@@ -5,21 +5,15 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from http.client import HTTPConnection
-from pathlib import Path
-from unittest.mock import MagicMock
-from unittest.mock import patch
-from uuid import uuid4
 import json
-import os
-import pytest
 import re
-import signal
-import socket
 import sys
 import tempfile
-import threading
-import time
+from pathlib import Path
+from unittest.mock import MagicMock
+from uuid import uuid4
+
+import pytest
 
 from packages.core.models import Job, RunState, Task
 
@@ -154,12 +148,14 @@ def _make_approved_job() -> tuple:
 
 class TestBrainViewerShell:
     def _get_html(self):
-        from packages.orchestration.brain_viewer import (
-            build_brain_viewer_data, write_brain_viewer_files,
-        )
-        from packages.orchestration.project_brain import build_project_brain
         import tempfile
         from pathlib import Path
+
+        from packages.orchestration.brain_viewer import (
+            build_brain_viewer_data,
+            write_brain_viewer_files,
+        )
+        from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job()
         events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.id),
@@ -231,8 +227,10 @@ class TestBrainViewerShell:
 
     def test_viewer_data_valid_json(self):
         import json
+
         from packages.orchestration.brain_viewer import (
-            build_brain_viewer_data, export_brain_viewer_json,
+            build_brain_viewer_data,
+            export_brain_viewer_json,
         )
         from packages.orchestration.project_brain import build_project_brain
         job = _make_job()
@@ -327,9 +325,6 @@ class TestGuidanceRail:
     def test_guidance_module_exists(self):
         from packages.orchestration.guidance import (
             GuidanceCard,
-            build_guidance_cards,
-            export_guidance_json,
-            summarize_guidance,
         )
         assert GuidanceCard is not None
 
@@ -412,9 +407,9 @@ class TestViewerPreview:
         job = _make_job_s74()
         save_job(job)
 
-        from apps.cli.commands.brain import _cmd_viewer_path
         import io
-        import sys
+
+        from apps.cli.commands.brain import _cmd_viewer_path
         old = sys.stdout
         sys.stdout = buf = io.StringIO()
         try:
@@ -433,9 +428,9 @@ class TestViewerPreview:
         job = _make_job_s74()
         save_job(job)
 
-        from apps.cli.commands.brain import _cmd_viewer_path
         import io
-        import sys
+
+        from apps.cli.commands.brain import _cmd_viewer_path
         old = sys.stdout
         sys.stdout = buf = io.StringIO()
         try:
@@ -454,7 +449,6 @@ class TestViewerPreview:
         from apps.cli.commands.brain import _cmd_export_viewer
         export_dir = tmp_path / "exported"
         import io
-        import sys
         old = sys.stdout
         sys.stdout = buf = io.StringIO()
         try:
@@ -487,9 +481,9 @@ class TestViewerPreview:
             raise FileNotFoundError("no opener")
         monkeypatch.setattr(subprocess, "Popen", fake_popen)
 
-        from apps.cli.commands.brain import _cmd_brain_open
         import io
-        import sys
+
+        from apps.cli.commands.brain import _cmd_brain_open
         old_out = sys.stdout
         old_err = sys.stderr
         sys.stdout = io.StringIO()

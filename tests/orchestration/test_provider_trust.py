@@ -14,8 +14,8 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-from packages.orchestration.storage import save_job, load_job
 from packages.orchestration import provider_trust as PT
+from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -215,7 +215,7 @@ class TestDecision:
 class TestIntake:
     def test_accepted_md_creates_pending_intent(self, env):
         # v0 materialization: a single-.md candidate materializes into a pending intent.
-        from packages.orchestration.approval_queue import get_patch_intent, APPROVAL_PENDING
+        from packages.orchestration.approval_queue import APPROVAL_PENDING, get_patch_intent
         job, fid = _job(env, related_files=["docs/guide.md"])
         md = ("Fix.\n```diff\n--- a/docs/guide.md\n+++ b/docs/guide.md\n"
               "@@ -1,2 +1,3 @@\n line one\n+new line\n line two\n```\n")

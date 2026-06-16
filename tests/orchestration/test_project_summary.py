@@ -10,12 +10,8 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
-import pytest
-
 from packages.orchestration.project_summary import (
-    MemorySuggestion,
     ProjectBrainSummary,
-    ProjectModelSummary,
     ProjectPattern,
     build_project_model_summary,
     build_project_summary,
@@ -25,7 +21,6 @@ from packages.orchestration.project_summary import (
     export_project_summary_json,
     suggest_memory_updates,
 )
-
 
 # -- Minimal stubs for testing without real storage --
 
@@ -422,8 +417,9 @@ class TestProjectBrainDocs:
         assert "does not auto-write" in text.lower() or "require" in text.lower()
 
     def test_docs_commands_catalog_valid(self):
-        from pathlib import Path
         import re
+        from pathlib import Path
+
         from apps.cli.command_catalog import CATALOG
 
         text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()

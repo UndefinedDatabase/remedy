@@ -21,7 +21,6 @@ from uuid import UUID
 
 from packages.orchestration.data_paths import workspaces_dir as _workspaces_dir
 
-
 # ---------------------------------------------------------------------------
 # Domain models
 # ---------------------------------------------------------------------------

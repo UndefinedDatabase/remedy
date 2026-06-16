@@ -168,7 +168,7 @@ class ProjectContextCoverageSnapshot:
 
 
 def derive_project_context_coverage(
-    project: "RemyProject",
+    project: RemyProject,
     jobs: list[Any],  # list[Job] — Any to avoid cross-package circular imports
 ) -> ProjectContextCoverageSnapshot:
     """Build a read-only ProjectContextCoverageSnapshot from a project and its loaded jobs.

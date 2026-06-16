@@ -15,12 +15,16 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.orchestration.external_builder_sandbox import (
-    create_external_builder_request_package, submit_external_candidate,
-    export_external_package_json, export_external_submission_json,
-    load_external_packages, load_external_submissions, get_external_submission,
-    external_builder_integrity, ExternalSubmissionState, ExternalSubmissionStopReason,
+    ExternalSubmissionState,
+    ExternalSubmissionStopReason,
+    create_external_builder_request_package,
+    export_external_package_json,
+    export_external_submission_json,
+    external_builder_integrity,
+    get_external_submission,
+    load_external_submissions,
+    submit_external_candidate,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -45,7 +49,7 @@ def env(tmp_path, monkeypatch):
 
 
 def _job(env):
-    from packages.core.models import Job, Artifact, ArtifactKind, RunState
+    from packages.core.models import Artifact, ArtifactKind, Job, RunState
     from packages.orchestration.storage import save_job
     fa = Artifact(name="f", content="x", kind=ArtifactKind.VERIFICATION, task_id=None,
                   metadata={"test_failure": True, "related_files": ["docs/note.md"],
@@ -88,7 +92,7 @@ class TestPackage:
         assert c.package_id != a.package_id
 
     def test_safe_context_no_secrets(self, env):
-        from packages.core.models import Job, Artifact, ArtifactKind, RunState
+        from packages.core.models import Artifact, ArtifactKind, Job, RunState
         from packages.orchestration.storage import save_job
         fa = Artifact(name="f", content="x", kind=ArtifactKind.VERIFICATION, task_id=None,
                       metadata={"test_failure": True,
@@ -227,7 +231,8 @@ class TestSubmission:
 class TestQualityIntegration:
     def test_external_evaluation(self, env):
         from packages.orchestration.candidate_quality import (
-            evaluate_candidate_quality, export_candidate_quality_json,
+            evaluate_candidate_quality,
+            export_candidate_quality_json,
         )
         jid, _ = _job(env)
         pkg = create_external_builder_request_package(jid, data_dir=env)

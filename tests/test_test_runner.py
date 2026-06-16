@@ -19,10 +19,8 @@ from __future__ import annotations
 
 import json
 import subprocess
-import textwrap
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from unittest.mock import patch
 
 import pytest
 
@@ -34,12 +32,11 @@ from packages.orchestration.permissions import (
     set_permission,
 )
 from packages.orchestration.test_runner import (
+    _EXECUTION_SAFE_EXECUTABLES,
     TIMEOUT_DEFAULT_SEC,
     TestRunRecord,
-    _EXECUTION_SAFE_EXECUTABLES,
     run_tests_local,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -726,12 +723,13 @@ class TestTimelineTestRunRendering:
 
 class TestViewerJsonTestRunNode:
     def _build_viewer_data(self, events: list) -> tuple[dict, str]:
+        import tempfile
+
         from packages.orchestration.brain_viewer import (
             build_brain_viewer_data,
             write_brain_viewer_files,
         )
         from packages.orchestration.project_brain import build_project_brain
-        import tempfile
 
         job = Job(name="test", state=RunState.PENDING)
         graph = build_project_brain(job, events)
@@ -817,7 +815,6 @@ class TestCliRunTestsLocal:
         return result.returncode, result.stdout.decode(), result.stderr.decode()
 
     def _create_job(self, tmp_path: Path) -> str:
-        import os
         import subprocess as sp
 
         env = {**__import__("os").environ, "REMEDY_DATA_DIR": str(tmp_path)}

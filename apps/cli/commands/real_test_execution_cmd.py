@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -51,7 +52,8 @@ def _cmd_test_integrity(args: Any) -> None:
 
 def _cmd_snapshot_create(args: Any) -> None:
     from packages.orchestration.real_test_execution import (
-        create_snapshot_proof, export_snapshot_proof_json,
+        create_snapshot_proof,
+        export_snapshot_proof_json,
     )
     proof = create_snapshot_proof(str(args.job_id))
     data = export_snapshot_proof_json(proof)
@@ -76,7 +78,8 @@ def _cmd_snapshot_show(args: Any) -> None:
 
 def _cmd_rollback_proof(args: Any) -> None:
     from packages.orchestration.real_test_execution import (
-        create_rollback_proof, export_rollback_proof_json,
+        create_rollback_proof,
+        export_rollback_proof_json,
     )
     snap = getattr(args, "snapshot_id", None) or ""
     proof = create_rollback_proof(str(args.job_id), snap)
@@ -102,7 +105,7 @@ def _cmd_rollback_show(args: Any) -> None:
     print(f"Rollback {rec.get('rollback_proof_id')}: restore_available={rec.get('restore_available')}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "test.result": _cmd_test_result,
     "test.list": _cmd_test_list,
     "test.integrity": _cmd_test_integrity,

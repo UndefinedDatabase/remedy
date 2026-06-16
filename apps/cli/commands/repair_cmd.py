@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -181,7 +182,8 @@ def _cmd_repair_status(args: Any) -> None:
 def _cmd_repair_request(args: Any) -> None:
     """Build a safe provider-agnostic repair request package. No execution/apply."""
     from packages.orchestration.repair_request_builder import (
-        build_repair_request_package, export_build_result_json,
+        build_repair_request_package,
+        export_build_result_json,
     )
     fid = getattr(args, "failure_artifact_id", None)
     if not fid:
@@ -209,8 +211,8 @@ def _cmd_repair_request(args: Any) -> None:
 
 
 def _cmd_repair_request_show(args: Any) -> None:
-    from packages.orchestration.storage import load_job, JobNotFoundError
     from packages.orchestration.repair_request_builder import get_request_package
+    from packages.orchestration.storage import JobNotFoundError, load_job
     try:
         job = load_job(args.job_id)
     except (JobNotFoundError, ValueError) as exc:
@@ -230,7 +232,7 @@ def _cmd_repair_request_show(args: Any) -> None:
         print(f"  ## {s['title']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "repair.start": _cmd_repair_start,
     "repair.failure-show": _cmd_failure_show,
     "repair.propose": _cmd_repair_propose,

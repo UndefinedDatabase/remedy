@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import argparse
@@ -13,10 +14,10 @@ if TYPE_CHECKING:
 def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = False) -> None:
     """Show snapshot metadata. Safe fields only — no recovery content, no blob data."""
     from uuid import UUID
-    from pathlib import Path as _Path
-    from packages.orchestration.repository_snapshot import load_snapshot, verify_snapshot
+
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.repository_snapshot import load_snapshot
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     try:
         job_id = UUID(job_id_str)
@@ -90,9 +91,10 @@ def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = 
 def _cmd_snapshot_list_applies(job_id_str: str, *, as_json: bool = False) -> None:
     """List durable apply records for a job. Safe fields only."""
     from uuid import UUID
-    from packages.orchestration.repository_snapshot import load_durable_apply_record
+
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.repository_snapshot import load_durable_apply_record
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     try:
         job_id = UUID(job_id_str)
@@ -155,7 +157,7 @@ def _cmd_snapshot_list_applies(job_id_str: str, *, as_json: bool = False) -> Non
         )
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "snapshot.inspect": lambda args: _cmd_snapshot_inspect(
         args.job_id, args.snapshot_id, as_json=getattr(args, "json", False)
     ),

@@ -122,7 +122,7 @@ def _derive_target_path(task_type: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def derive_patch_intents(artifact: "Artifact", task_type: str) -> PatchIntentSet:
+def derive_patch_intents(artifact: Artifact, task_type: str) -> PatchIntentSet:
     """Derive a PatchIntentSet from a builder artifact and its task type.
 
     Target routing is resolved through get_task_type_spec() via
@@ -225,10 +225,10 @@ def verify_patch_intent_set(pis: PatchIntentSet) -> list[str]:
 
 def materialize_patch_intents(
     pis: PatchIntentSet,
-    runtime: "LocalWorkspaceRuntime",
+    runtime: LocalWorkspaceRuntime,
     task_index: int,
     task_type: str,
-) -> "MaterializedFile | None":
+) -> MaterializedFile | None:
     """Write a PatchIntentSet as a JSON file inside the workspace.
 
     Path: patch_intents/{index:03d}_{safe_type}_{short_task_id}.json
@@ -372,7 +372,7 @@ def _build_preview_block(
     parts: list[str] = []
 
     if action == "preview-only":
-        parts.append(f"[preview-only — no repository attached]")
+        parts.append("[preview-only — no repository attached]")
         parts.append(f"would target: {target_path}")
     elif action == "create":
         parts.append(f"+++ {target_path}  (new file — does not exist yet)")

@@ -6,14 +6,14 @@ Unit tests + architecture guards. No network, no provider, no real subprocess fo
 from __future__ import annotations
 
 import json
-import os
 import re
-import textwrap
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from packages.orchestration.managed_builder_execution import (
+    _ALLOWED_ENV_KEYS,
+    MAX_OUTPUT_BYTES,
+    MAX_TIMEOUT_SECONDS,
     SCHEMA_VERSION,
     ApprovalScope,
     CommandTemplate,
@@ -22,35 +22,24 @@ from packages.orchestration.managed_builder_execution import (
     ExecutionEventKind,
     ManagedExecutionResult,
     ManagedExecutionStatus,
-    default_command_templates,
-    save_command_template,
-    list_command_templates,
-    get_command_template,
-    approve_managed_execution,
-    get_execution_approval,
-    list_execution_approvals,
-    validate_execution_approval,
-    run_managed_builder,
-    list_execution_events,
-    get_execution_result,
-    list_execution_results,
-    build_debug_bundle,
-    managed_execution_mission_signal,
-    audit_template_safety,
-    audit_execution_result_safety,
-    audit_approval_safety,
-    managed_execution_integrity,
-    _validate_argv_template,
-    _resolve_argv,
     _build_sanitized_env,
-    _SHELL_METACHARS,
-    _FORBIDDEN_PROGRAMS,
-    _ALLOWED_ENV_KEYS,
-    _FORBIDDEN_ENV_KEYS,
-    _ALLOWED_PLACEHOLDER_KEYS,
-    MAX_TIMEOUT_SECONDS,
-    MAX_OUTPUT_BYTES,
-    DEFAULT_APPROVAL_EXPIRY_SECONDS,
+    _resolve_argv,
+    _validate_argv_template,
+    approve_managed_execution,
+    audit_approval_safety,
+    audit_execution_result_safety,
+    audit_template_safety,
+    build_debug_bundle,
+    default_command_templates,
+    get_execution_approval,
+    list_command_templates,
+    list_execution_approvals,
+    list_execution_events,
+    managed_execution_integrity,
+    managed_execution_mission_signal,
+    run_managed_builder,
+    save_command_template,
+    validate_execution_approval,
 )
 
 
@@ -947,7 +936,8 @@ class TestR0107SessionBinding(unittest.TestCase):
                          job_id="_global", status=None):
         """Helper to create a real builder session for binding tests."""
         from packages.orchestration.main_builder_adapter import (
-            BuilderSessionRecord, BuilderSessionStatus,
+            BuilderSessionRecord,
+            BuilderSessionStatus,
         )
         if status is None:
             status = BuilderSessionStatus.PACKAGE_READY
@@ -956,7 +946,6 @@ class TestR0107SessionBinding(unittest.TestCase):
             package_id=package_id, job_id=job_id, status=status)
         sessions_dir = Path(td) / "workspaces" / job_id / "main_builder_adapter" / "sessions"
         sessions_dir.mkdir(parents=True, exist_ok=True)
-        import json
         (sessions_dir / f"{session_id}.json").write_text(json.dumps(s.to_dict()))
 
     def test_package_mismatch_via_binding(self):

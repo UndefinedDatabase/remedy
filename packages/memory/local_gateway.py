@@ -18,7 +18,6 @@ from typing import Any
 from packages.memory.models import MemoryEntry
 from packages.orchestration.data_paths import resolve_data_root
 
-
 # ---------------------------------------------------------------------------
 # Redaction blocklist — reject values containing secret patterns
 # ---------------------------------------------------------------------------

@@ -56,7 +56,6 @@ from uuid import uuid4
 
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
 
-
 # ---------------------------------------------------------------------------
 # Constants / vocabularies
 # ---------------------------------------------------------------------------
@@ -339,8 +338,9 @@ def _inspect(job_id: str, task_id: str, data_dir: Path) -> Any:
     """Run the existing safe context inspection for a job. Returns ContextInspection or None."""
     try:
         from uuid import UUID
-        from packages.orchestration.storage import load_job
+
         from packages.orchestration.context_inspector import inspect_context
+        from packages.orchestration.storage import load_job
         from packages.orchestration.timeline import load_run_events
         job = load_job(UUID(job_id), data_dir)
         events = load_run_events(data_dir, job.id)
@@ -570,8 +570,11 @@ def compute_token_economy_decision(
     cheap small task under the local-preference threshold recommends a local route."""
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.worker_registry import (
-        evaluate_worker_selection, get_worker_spec, hard_safety_requires_approval,
-        load_worker_registry, WorkerSelectionRequest,
+        WorkerSelectionRequest,
+        evaluate_worker_selection,
+        get_worker_spec,
+        hard_safety_requires_approval,
+        load_worker_registry,
     )
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     d = TokenEconomyDecision(decision_id=f"te-{uuid4().hex[:8]}", job_id=job_id, task_id=task_id,

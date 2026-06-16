@@ -24,8 +24,7 @@ Coverage:
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -37,17 +36,14 @@ from packages.core.models import (
     Task,
 )
 from packages.orchestration.project_context_coverage import (
-    V0_MAX_SCORE,
-    ProjectContextCoverageSnapshot,
-    ProjectContextSignal,
     _SIGNALS,
     _TOTAL_WEIGHT,
+    V0_MAX_SCORE,
     derive_project_context_coverage,
     export_project_context_coverage_json,
     summarize_project_context_coverage,
 )
 from packages.orchestration.project_registry import RemyProject, attach_job, attach_repo
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -124,7 +120,7 @@ def _make_job_with_patch_intent() -> Job:
 
 def _make_job_with_approval() -> Job:
     """Job with a patch intent that has been approved."""
-    from packages.orchestration.approval_queue import set_approval_state, make_intent_id
+    from packages.orchestration.approval_queue import make_intent_id, set_approval_state
     job = _make_job_with_patch_intent()
     art = job.artifacts[0]
     intent_id = make_intent_id(art.id, 0)
@@ -636,11 +632,15 @@ class TestRunLogSchema:
     def test_run_log_event_has_exact_metadata_keys(self, tmp_path, monkeypatch):
         import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
         from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
-            RemyProject, save_project, attach_job as _attach_job,
+            RemyProject,
+            save_project,
         )
+        from packages.orchestration.project_registry import (
+            attach_job as _attach_job,
+        )
+        from packages.orchestration.storage import save_job
 
         job = _make_job()
         save_job(job)
@@ -678,11 +678,15 @@ class TestRunLogSchema:
     def test_run_log_event_scope_is_project(self, tmp_path, monkeypatch):
         import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
         from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
-            RemyProject, save_project, attach_job as _attach_job,
+            RemyProject,
+            save_project,
         )
+        from packages.orchestration.project_registry import (
+            attach_job as _attach_job,
+        )
+        from packages.orchestration.storage import save_job
 
         job = _make_job()
         save_job(job)
@@ -705,13 +709,16 @@ class TestRunLogSchema:
         pytest.fail("project_context_coverage_inspected event not found")
 
     def test_run_log_no_sentinels(self, tmp_path, monkeypatch):
-        import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
         from apps.cli.commands.project import _cmd_project_context
         from packages.orchestration.project_registry import (
-            RemyProject, save_project, attach_job as _attach_job,
+            RemyProject,
+            save_project,
         )
+        from packages.orchestration.project_registry import (
+            attach_job as _attach_job,
+        )
+        from packages.orchestration.storage import save_job
 
         job = _make_job()
         save_job(job)
@@ -851,8 +858,8 @@ class TestProjectContextCLI:
     def test_existing_job_context_command_unchanged(self, tmp_path, monkeypatch, capsys):
         """Confirm `remedy context <job_id>` still works and uses job scope."""
         self._env(tmp_path, monkeypatch)
-        from packages.orchestration.storage import save_job
         from apps.cli.commands.brain import _cmd_context
+        from packages.orchestration.storage import save_job
         job = _make_job()
         save_job(job)
         _cmd_context(str(job.id), json_output=True)

@@ -12,9 +12,6 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # Guard: No shell=True in snapshot/revert code paths
 # ---------------------------------------------------------------------------

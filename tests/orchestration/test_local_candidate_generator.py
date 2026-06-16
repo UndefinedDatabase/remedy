@@ -9,19 +9,21 @@ transport — no real Ollama.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from packages.orchestration.local_candidate_generator import (
-    LocalCandidateGenerationRequest, LocalCandidateGenerationStopReason, LocalCandidateStatus,
-    load_local_candidate_config, check_local_candidate_availability,
-    run_local_candidate_generation, export_local_candidate_result_json,
+    LocalCandidateGenerationRequest,
+    LocalCandidateGenerationStopReason,
+    LocalCandidateStatus,
+    check_local_candidate_availability,
+    export_local_candidate_result_json,
     list_local_candidate_runs,
+    load_local_candidate_config,
+    run_local_candidate_generation,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -45,7 +47,7 @@ def _tx(output: str, *, status: int = 200, oversized: bool = False, timeout: boo
 
 
 def _make_job(data_dir, *, related=("docs/note.md",), with_pkg=True, failed_repair=True):
-    from packages.core.models import Job, Artifact, ArtifactKind, RunState
+    from packages.core.models import Artifact, ArtifactKind, Job, RunState
     from packages.orchestration.storage import save_job
     fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=None,
                   metadata={"test_failure": True, "related_files": list(related),

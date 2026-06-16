@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -16,7 +17,8 @@ if TYPE_CHECKING:
 
 def _cmd_self_inspect(args: Any) -> None:
     from packages.orchestration.self_dogfood import (
-        build_self_dogfood_inspection, export_inspection_json,
+        build_self_dogfood_inspection,
+        export_inspection_json,
     )
     insp = build_self_dogfood_inspection(getattr(args, "job_id", None))
     data = export_inspection_json(insp)
@@ -35,7 +37,8 @@ def _cmd_self_inspect(args: Any) -> None:
 
 def _cmd_self_plan(args: Any) -> None:
     from packages.orchestration.self_dogfood import (
-        build_self_improvement_plan, export_plan_json,
+        build_self_improvement_plan,
+        export_plan_json,
     )
     plan = build_self_improvement_plan(getattr(args, "job_id", None))
     data = export_plan_json(plan)
@@ -49,7 +52,8 @@ def _cmd_self_plan(args: Any) -> None:
 
 def _cmd_self_propose(args: Any) -> None:
     from packages.orchestration.self_dogfood import (
-        propose_self_improvement, export_result_json,
+        export_result_json,
+        propose_self_improvement,
     )
     item_ids = [args.item_id] if getattr(args, "item_id", None) else None
     top = None
@@ -74,7 +78,8 @@ def _cmd_self_propose(args: Any) -> None:
 
 def _cmd_self_report(args: Any) -> None:
     from packages.orchestration.self_dogfood import (
-        build_self_dogfood_report, render_report_markdown,
+        build_self_dogfood_report,
+        render_report_markdown,
     )
     from packages.orchestration.self_dogfood_execution import list_attempts
     data = build_self_dogfood_report(getattr(args, "job_id", None))
@@ -98,7 +103,8 @@ def _cmd_self_report(args: Any) -> None:
 
 def _cmd_self_execute(args: Any) -> None:
     from packages.orchestration.self_dogfood_execution import (
-        start_self_execution, export_result_json,
+        export_result_json,
+        start_self_execution,
     )
     result = start_self_execution(args.proposed_task_id, getattr(args, "job_id", None))
     data = export_result_json(result)
@@ -113,7 +119,7 @@ def _cmd_self_execute(args: Any) -> None:
 
 
 def _cmd_self_status(args: Any) -> None:
-    from packages.orchestration.self_dogfood_execution import list_attempts, get_attempt
+    from packages.orchestration.self_dogfood_execution import get_attempt, list_attempts
     attempt_id = getattr(args, "attempt_id", None)
     attempts = [get_attempt(attempt_id)] if attempt_id else list_attempts()
     attempts = [a for a in attempts if a]
@@ -128,7 +134,8 @@ def _cmd_self_status(args: Any) -> None:
 
 def _cmd_self_reconcile(args: Any) -> None:
     from packages.orchestration.self_dogfood_execution import (
-        reconcile_self_attempt, export_result_json,
+        export_result_json,
+        reconcile_self_attempt,
     )
     data = export_result_json(reconcile_self_attempt(args.attempt_id))
     if getattr(args, "json", False):
@@ -151,7 +158,7 @@ def _cmd_self_integrity(args: Any) -> None:
         print(f"  - {i}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "self.inspect": _cmd_self_inspect,
     "self.plan": _cmd_self_plan,
     "self.propose": _cmd_self_propose,

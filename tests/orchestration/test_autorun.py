@@ -5,15 +5,11 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
+import json
+import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
-import json
-import os
-import pytest
-import sys
-import tempfile
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -30,7 +26,7 @@ def _make_job():
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -52,7 +48,7 @@ def _make_job_s111(*, tasks=None, name="test"):
 
 
 def _make_job_s122(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -74,7 +70,7 @@ def _make_job_s122(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -96,7 +92,7 @@ def _make_job_s127(*, tasks=None, name="test"):
 
 
 def _make_job_s135(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -399,7 +395,9 @@ class TestCalcFixtureBuilderWithProof:
     def test_structured_patch_uses_calc(self):
         """Fixture builder structured patch targets calc.py."""
         from packages.orchestration.structured_patch import (
-            FileOp, StructuredPatch, validate_structured_patch,
+            FileOp,
+            StructuredPatch,
+            validate_structured_patch,
         )
         patch = StructuredPatch(
             intent_kind="file_ops",
@@ -601,8 +599,8 @@ class TestFixtureBuilderWrongCalcRepair:
         """Fixture builder events should not leak raw content."""
         from packages.core.models import Job
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
         from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.storage import save_job
         from packages.orchestration.timeline import load_run_events
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -620,8 +618,8 @@ class TestFixtureBuilderWrongCalcRepair:
         """source_patch_applied event must have required fields."""
         from packages.core.models import Job
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
         from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.storage import save_job
         from packages.orchestration.timeline import load_run_events
 
         with tempfile.TemporaryDirectory() as tmp:

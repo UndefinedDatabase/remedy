@@ -11,10 +11,10 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-from packages.orchestration.storage import save_job, load_job
+from packages.core.models import Artifact, ArtifactKind, Job, Task
 from packages.orchestration import overnight_readiness as OV
 from packages.orchestration import repair_loop as RL
+from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -88,9 +88,9 @@ class TestReadinessTruth:
 
     def test_verified_durable_snapshot_counts(self, env, monkeypatch):
         # Run a real do_continue cycle to create a verified durable apply.
-        from tests.orchestration.test_do_continue import make_continue_job, _fake_test
         import packages.orchestration.test_execution_service as tes
         from packages.orchestration import do_continue as dc
+        from tests.orchestration.test_do_continue import _fake_test, make_continue_job
         repo = env.parent / "repo"; repo.mkdir(exist_ok=True)
         job, iid = make_continue_job(env, repo)
         fn, _ = _fake_test(env, status="passed")
@@ -144,8 +144,12 @@ class TestReadinessTruth:
     def test_exhausted_budget_blocks(self, env):
         # R-0079: an exhausted test/loop budget must block readiness.
         import dataclasses
+
         from packages.orchestration.run_contract import (
-            build_default_run_contract, save_contract, load_usage, save_usage,
+            build_default_run_contract,
+            load_usage,
+            save_contract,
+            save_usage,
         )
         job = _job(env)
         c = build_default_run_contract(job)

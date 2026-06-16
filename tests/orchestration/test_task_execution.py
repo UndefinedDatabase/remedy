@@ -3,20 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from uuid import UUID, uuid4
-
-import pytest
+from uuid import uuid4
 
 from packages.orchestration.task_execution import (
-    TaskExecutionRequest,
-    TaskExecutionResult,
+    ALLOWED_PROVIDERS,
+    BudgetGate,
     FixtureTaskExecutor,
     NoneExecutor,
+    TaskExecutionRequest,
+    can_retry_task,
     execute_task,
     get_executor,
-    BudgetGate,
-    can_retry_task,
-    ALLOWED_PROVIDERS,
 )
 
 
@@ -151,7 +148,7 @@ class TestCanRetryTask:
     def test_completed_not_retryable(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
         monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
-        from packages.core.models import Job, Task, RunState
+        from packages.core.models import Job, RunState, Task
         job = Job(id=uuid4(), name="retry-test")
         task = Task(description="Done", status=RunState.COMPLETED)
         job.tasks.append(task)
@@ -164,7 +161,7 @@ class TestCanRetryTask:
     def test_pending_not_retryable(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
         monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
-        from packages.core.models import Job, Task, RunState
+        from packages.core.models import Job, RunState, Task
         job = Job(id=uuid4(), name="retry-test")
         task = Task(description="Pending", status=RunState.PENDING)
         job.tasks.append(task)

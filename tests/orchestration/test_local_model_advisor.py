@@ -13,7 +13,6 @@ import pytest
 
 from packages.orchestration import local_model_advisor as M
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -270,8 +269,7 @@ class TestAdvisorImpact:
         return OrchestratorDecision(**base)
 
     def _sit(self, weak=False):
-        from packages.orchestration.orchestrator_brain import (
-            OrchestratorSituation, OrchestratorEvidenceRef)
+        from packages.orchestration.orchestrator_brain import OrchestratorEvidenceRef, OrchestratorSituation
         s = OrchestratorSituation(scope="repository",
                                   evidence_status=("degraded" if weak else "complete"))
         s.evidence_refs = [OrchestratorEvidenceRef("job", "unknown" if weak else "available")]
@@ -354,7 +352,6 @@ class TestAdvisorImpact:
         # The decision.advisor dict feeds Progress/Feature/Review/Cockpit — it must be scrubbed.
         from packages.orchestration import orchestrator_brain as OB
         from packages.orchestration import progress_ledger as PL
-        from packages.orchestration.review_bundle import _build_local_advisor_summary
         d = self._dec()
         inner = {"summary": "leak sk-abcdef0123456789abcd /home/u/.ssh/id_rsa",
                  "concerns": [{"severity": "low", "message": "Traceback (most recent call last) "

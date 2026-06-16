@@ -15,7 +15,6 @@ import pytest
 
 from packages.orchestration import token_economy as te
 
-
 # ---------------------------------------------------------------------------
 # Job + repo fixtures (small bounded repo so inspect_context is deterministic)
 # ---------------------------------------------------------------------------

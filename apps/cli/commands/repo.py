@@ -5,7 +5,8 @@ from __future__ import annotations
 import hashlib
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -162,10 +163,10 @@ def _cmd_commit_readiness(
     json_output: bool = False,
 ) -> None:
     """Preview commit readiness — read-only, no git writes."""
-    from packages.orchestration.storage import load_job
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.timeline import load_run_events
     from packages.orchestration.git_status import read_git_status
+    from packages.orchestration.storage import load_job
+    from packages.orchestration.timeline import load_run_events
 
     try:
         job = load_job(UUID(job_id_str))
@@ -264,7 +265,7 @@ def _cmd_commit_readiness(
         print("Note: This is read-only. No git add/commit/push.")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "repo.status": lambda args: _cmd_repo_status(
         getattr(args, "job_id", None),
         path=getattr(args, "path", None),

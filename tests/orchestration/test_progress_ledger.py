@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from packages.orchestration.progress_ledger import (
     ProgressItem,
     ProgressLedger,
@@ -18,7 +16,6 @@ from packages.orchestration.progress_ledger import (
     merge_live_review_findings,
     summarize_progress_ledger,
 )
-
 
 # ---------------------------------------------------------------------------
 # Step 1012: Plan parsing tests

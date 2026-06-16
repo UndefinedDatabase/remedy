@@ -15,10 +15,7 @@ import sys
 from pathlib import Path
 from uuid import uuid4
 
-import pytest
-
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-
 
 # ---------------------------------------------------------------------------
 # Helpers

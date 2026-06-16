@@ -17,11 +17,7 @@ Tests cover:
 
 from __future__ import annotations
 
-from datetime import timezone
-from pathlib import Path
-from uuid import UUID, uuid4
-
-import pytest
+from uuid import uuid4
 
 from packages.orchestration.run_log import (
     RunEvent,
@@ -29,7 +25,6 @@ from packages.orchestration.run_log import (
     new_run_id,
     read_run_events,
 )
-
 
 # ---------------------------------------------------------------------------
 # new_run_id
@@ -247,7 +242,6 @@ class TestRunLogWriterAppend:
 
 class TestRunLogWriterLog:
     def test_log_writes_event_name(self, tmp_path):
-        import json
 
         writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
         writer.log("my_event")

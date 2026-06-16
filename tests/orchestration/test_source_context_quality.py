@@ -1,8 +1,6 @@
 """Tests: source context quality for real builder runs."""
 from __future__ import annotations
 
-import pytest
-
 from tests.orchestration.small_repo_fixtures import (
     create_missing_function_repo,
     create_repair_scenario_repo,
@@ -45,8 +43,8 @@ class TestSourceContextBudget:
         assert total_small <= 200
 
     def test_same_repo_same_selection(self, tmp_path):
-        from packages.orchestration.source_context import inject_source_context
         from packages.core.models import Job
+        from packages.orchestration.source_context import inject_source_context
         repo = create_missing_function_repo(tmp_path / "repo")
         job1 = Job(name="test1")
         job2 = Job(name="test2")

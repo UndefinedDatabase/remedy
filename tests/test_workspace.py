@@ -9,7 +9,6 @@ automatically.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -23,8 +22,7 @@ from packages.orchestration.task_runner import (
     materialize_task_output,
     run_next_task,
 )
-from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile, Workspace
-
+from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -576,7 +574,7 @@ def test_materialize_raises_when_task_id_not_in_job_tasks(tmp_path, monkeypatch)
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     from uuid import uuid4 as _uuid4
 
-    from packages.core.models import Artifact, RunState
+    from packages.core.models import Artifact
     from packages.orchestration.task_runner import RunTaskResult
 
     job = _make_planned_job()

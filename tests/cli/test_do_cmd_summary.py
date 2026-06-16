@@ -169,6 +169,7 @@ class TestDocsCommandContract:
     def test_docs_remedy_commands_catalog_valid(self):
         import re
         from pathlib import Path
+
         from apps.cli.command_catalog import CATALOG
 
         doc = Path("docs/autocoder-usage.md")
@@ -191,6 +192,7 @@ class TestDocsCommandContract:
     def test_docs_do_commands_valid(self):
         import re
         from pathlib import Path
+
         from apps.cli.command_catalog import CATALOG
 
         doc = Path("docs/autocoder-usage.md")

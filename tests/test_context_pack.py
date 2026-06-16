@@ -7,8 +7,6 @@ import subprocess
 import sys
 from uuid import uuid4
 
-import pytest
-
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.context_pack import (
     build_context_pack,

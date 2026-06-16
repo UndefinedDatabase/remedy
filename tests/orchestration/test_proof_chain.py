@@ -15,17 +15,12 @@ Covers:
 from __future__ import annotations
 
 import json
-import traceback
-from uuid import uuid4
-
-import pytest
 
 from packages.core.models import (
     Artifact,
     ArtifactKind,
     Job,
     Task,
-    RunState,
 )
 from packages.orchestration.approval_queue import make_intent_id
 from packages.orchestration.proof_chain import (
@@ -40,19 +35,15 @@ from packages.orchestration.proof_chain import (
     TEST_LINK_SOLE_CHANGE,
     TEST_LINK_TASK,
     NextSafeAction,
-    ProofChain,
-    ProofChange,
     _classify_proof_status,
     _derive_missing_links,
     _event_timestamp,
     _is_after_or_same,
     _link_test_to_change,
     build_proof_chain,
-    derive_next_safe_action,
     export_proof_chain_json,
     summarize_proof_chain,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -1047,10 +1038,11 @@ class TestProofChainDurableTruth:
 
     def _durable(self, data_dir, repo_root, job_id, intent_id, *,
                  state="applied", snapshot_id=None, make_snapshot=True):
-        import hashlib
         from packages.orchestration.repository_snapshot import (
-            create_snapshot, verify_snapshot, save_durable_apply_record,
             DurableApplyRecord,
+            create_snapshot,
+            save_durable_apply_record,
+            verify_snapshot,
         )
         sid = snapshot_id
         if make_snapshot:
@@ -1098,7 +1090,8 @@ class TestProofChainDurableTruth:
 
     def test_drift_blocked_revert_leaves_apply_active(self, tmp_path):
         from packages.orchestration.repository_snapshot import (
-            _update_snapshot_state, load_durable_apply_record,
+            _update_snapshot_state,
+            load_durable_apply_record,
             save_durable_apply_record,
         )
         data_dir = tmp_path / "data"; data_dir.mkdir()

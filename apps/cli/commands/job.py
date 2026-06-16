@@ -5,12 +5,13 @@ from __future__ import annotations
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.data_paths import resolve_data_root
-from packages.orchestration.job_runner import PlanJobResult, plan_job
+from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
 
 if TYPE_CHECKING:
@@ -258,7 +259,9 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(1)
 
     from pathlib import Path
+
     from pydantic import ValidationError
+
     from packages.orchestration.permissions import Capability
     from packages.orchestration.permissions import is_allowed as _perm_allowed
     from packages.orchestration.repo_applicator import check_and_apply_to_repo
@@ -595,6 +598,7 @@ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
 
 def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
     import json as _json
+
     from packages.orchestration.event_replay import (
         export_checkpoints_json,
         find_checkpoints,
@@ -631,6 +635,7 @@ def _cmd_resume(
     json_output: bool = False,
 ) -> None:
     import json as _json
+
     from packages.orchestration.event_replay import (
         export_dry_run_json,
         resume_dry_run,
@@ -722,7 +727,7 @@ def _cmd_resume(
         print(f"Resume blocked: mode '{cp.resume_mode}' not implemented yet.")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
         project_id=getattr(args, "project", None),

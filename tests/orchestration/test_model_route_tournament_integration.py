@@ -21,10 +21,12 @@ def env(tmp_path, monkeypatch):
 
 class TestRoutingIntegration:
     def test_decision_carries_tournament(self, env):
-        from packages.orchestration.builder_routing import (
-            select_builder_routing_decision, BuilderRoutingRequest, export_builder_routing_json,
-        )
         from packages.core.models import Job, RunState, Task
+        from packages.orchestration.builder_routing import (
+            BuilderRoutingRequest,
+            export_builder_routing_json,
+            select_builder_routing_decision,
+        )
         from packages.orchestration.storage import save_job
         job = Job(id=uuid4(), name="t", user_prompt="x", state=RunState.RUNNING,
                   tasks=[Task(description="t")], artifacts=[], metadata={"target_repo": "."})

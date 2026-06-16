@@ -17,14 +17,12 @@ Public API::
 from __future__ import annotations
 
 import json
-import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
-
 
 LIFECYCLE_STATES = frozenset({
     "queued", "claimed", "running", "waiting_for_approval",
@@ -187,8 +185,8 @@ def _has_unresolved_proposals(job_id: str, data_dir: str | Path | None = None) -
     """
     try:
         from packages.orchestration.proposed_tasks import (
-            load_proposed_tasks_safe,
             ProposedTaskStatus,
+            load_proposed_tasks_safe,
         )
         root = Path(data_dir) if data_dir is not None else None
         tasks, degraded = load_proposed_tasks_safe(job_id, root)
@@ -430,9 +428,9 @@ def _run_via_task_execution(
     max_runtime_seconds: int = 60,
 ) -> WorkerResult:
     """Execute one pending Job.tasks item through the modular task_execution port."""
-    from packages.orchestration.task_execution import TaskExecutionRequest, BudgetGate, execute_task
-    from packages.orchestration.storage import load_job, save_job, JobNotFoundError, JobStoreError
     from packages.core.models import RunState
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job, save_job
+    from packages.orchestration.task_execution import BudgetGate, TaskExecutionRequest, execute_task
 
     root = Path(data_dir)
     result.provider = provider

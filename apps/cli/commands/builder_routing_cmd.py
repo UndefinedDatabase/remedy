@@ -10,8 +10,8 @@ No raw prompt/response/source/diff/log/secrets/paths in any surface.
 from __future__ import annotations
 
 import json
-import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -32,7 +32,8 @@ def _build_request(args: Any):
 
 def _cmd_builder_routing_decide(args: Any) -> None:
     from packages.orchestration.builder_routing import (
-        select_builder_routing_decision, export_builder_routing_json,
+        export_builder_routing_json,
+        select_builder_routing_decision,
     )
     decision = select_builder_routing_decision(_build_request(args))
     data = export_builder_routing_json(decision)
@@ -57,7 +58,8 @@ def _cmd_builder_routing_decide(args: Any) -> None:
 
 def _cmd_builder_routing_report(args: Any) -> None:
     from packages.orchestration.builder_routing import (
-        select_builder_routing_decision, export_builder_routing_json,
+        export_builder_routing_json,
+        select_builder_routing_decision,
     )
     decision = select_builder_routing_decision(_build_request(args), persist=False)
     data = export_builder_routing_json(decision)
@@ -105,7 +107,7 @@ def _cmd_builder_routing_report(args: Any) -> None:
     print("\n".join(lines))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "builder-routing.decide": _cmd_builder_routing_decide,
     "builder-routing.report": _cmd_builder_routing_report,
 }

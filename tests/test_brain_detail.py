@@ -80,7 +80,6 @@ from packages.orchestration.project_brain import (
 )
 from packages.orchestration.storage import save_job
 
-
 # ---------------------------------------------------------------------------
 # Sentinels
 # ---------------------------------------------------------------------------
@@ -757,6 +756,7 @@ class TestCLIBrainNode:
     def test_invalid_uuid_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import sys
+
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
             monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", "bad-uuid", "some-node"])
@@ -766,6 +766,7 @@ class TestCLIBrainNode:
     def test_unknown_job_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import sys
+
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
             monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(uuid4()), "some-node"])
@@ -777,6 +778,7 @@ class TestCLIBrainNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
             monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist"])
@@ -788,6 +790,7 @@ class TestCLIBrainNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
@@ -800,6 +803,7 @@ class TestCLIBrainNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
         main()
@@ -813,6 +817,7 @@ class TestCLIBrainNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
         main()
@@ -829,6 +834,7 @@ class TestCLIBrainNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
@@ -840,6 +846,7 @@ class TestCLIBrainNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
@@ -866,6 +873,7 @@ class TestCLIBrainNode:
         job.artifacts.append(artifact)
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
@@ -880,6 +888,7 @@ class TestCLIBrainNode:
         set_approval_state(job, intent_id, APPROVAL_APPROVED, reason=APPROVAL_REASON_MUST_NOT_RENDER)
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
         main()

@@ -31,7 +31,6 @@ from typing import Any
 
 from packages.core.models import Job
 
-
 # ---------------------------------------------------------------------------
 # Canonical action vocabulary (Step 1068)
 # ---------------------------------------------------------------------------

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.storage import JobNotFoundError, load_job
@@ -32,7 +33,9 @@ def _cmd_context_pack(
         sys.exit(1)
 
     from packages.orchestration.context_pack import (
-        build_context_pack, export_context_pack_json, summarize_context_pack,
+        build_context_pack,
+        export_context_pack_json,
+        summarize_context_pack,
     )
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.run_log import RunLogWriter
@@ -95,7 +98,7 @@ def _cmd_context_explain(
         for s in data.get("excluded", []):
             print(f"  {s['id']}: ~{s['estimated_tokens']}t [excluded] — {s['reason']}")
         if data.get("recommendations"):
-            print(f"  Recommendations:")
+            print("  Recommendations:")
             for r in data["recommendations"]:
                 print(f"    -> {r}")
 
@@ -206,7 +209,7 @@ def _cmd_context_inspect(
         print(summarize_context_inspection(inspection))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "context.inspect": lambda args: _cmd_context_inspect(
         args.job_id,
         task_id=getattr(args, "task_id", None),

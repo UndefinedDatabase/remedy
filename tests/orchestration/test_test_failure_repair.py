@@ -12,14 +12,9 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
-from uuid import UUID, uuid4
-
-import pytest
 
 from packages.orchestration.test_failure_artifact import (
     FAILURE_COLLECTION_FAILED,
-    FAILURE_COMMAND_FAILED,
     FAILURE_ENVIRONMENT_FAILED,
     FAILURE_KINDS,
     FAILURE_TEST_FAILED,
@@ -29,16 +24,15 @@ from packages.orchestration.test_failure_artifact import (
     SuggestedRepairAction,
     TestFailureArtifact,
     TestFailureSummary,
+    _classify_failure_kind,
+    _normalize_command,
     build_test_failure_artifact,
     create_fix_task_from_failure,
     emit_failure_events,
     export_failure_artifact_json,
     persist_failure_artifact,
     summarize_failure_artifact,
-    _classify_failure_kind,
-    _normalize_command,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -367,8 +361,8 @@ class TestRepairLoopV0:
             _cleanup_env(old)
 
     def test_repair_loop_next_safe_action(self, tmp_path):
-        from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.do_run import validate_next_safe_action_command
+        from packages.orchestration.repair_loop import start_repair_loop_v0
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
             result = start_repair_loop_v0(str(job.id), fail_art_id)
@@ -553,7 +547,7 @@ class TestRepairIntentTruth:
 
     def test_repair_intent_visible_in_approval_queue(self, tmp_path):
         """repair_patch_intent_id must be findable via get_patch_intent."""
-        from packages.orchestration.approval_queue import get_patch_intent, list_patch_intents
+        from packages.orchestration.approval_queue import get_patch_intent
         from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.storage import load_job
 
@@ -589,8 +583,8 @@ class TestRepairIntentTruth:
     def test_repair_intent_next_action_points_to_real_intent(self, tmp_path):
         """next_safe_action must reference intent that actually exists."""
         from packages.orchestration.approval_queue import get_patch_intent
-        from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.do_run import validate_next_safe_action_command
+        from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.storage import load_job
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)

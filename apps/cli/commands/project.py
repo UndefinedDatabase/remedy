@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
@@ -165,6 +166,7 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
 
 def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> None:
     from pathlib import Path
+
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.project_brain_aggregate import (
         build_project_brain_aggregate,
@@ -285,7 +287,7 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
             print(f"Command: {summary.next_command}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
     "project.list": lambda args: _cmd_list_projects(),
     "project.show": lambda args: _cmd_show_project(args.project_id, json_output=args.json),

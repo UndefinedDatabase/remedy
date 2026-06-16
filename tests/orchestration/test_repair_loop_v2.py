@@ -18,7 +18,7 @@ from packages.orchestration import repair_loop_v2 as v2
 
 
 def _job(env: Path, *, with_failure: bool = False, repo: bool = True) -> tuple[str, str]:
-    from packages.core.models import Job, RunState, Task, Artifact, ArtifactKind
+    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
     from packages.orchestration.storage import save_job
     meta: dict = {}
     if repo:

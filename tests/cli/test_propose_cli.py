@@ -14,7 +14,6 @@ from packages.orchestration.proposed_tasks import (
     ProposedTask,
     ProposedTaskStatus,
     add_proposed_task,
-    save_proposed_tasks,
 )
 
 
@@ -38,9 +37,10 @@ def tmp_store_with_job(tmp_path, monkeypatch):
         "packages.orchestration.storage._DATA_DIR",
         tmp_path / "jobs",
     )
+    from uuid import UUID
+
     from packages.core.models import Job
     from packages.orchestration.storage import save_job
-    from uuid import UUID
     job = Job(id=UUID(REAL_JOB_UUID), name="cli-test")
     save_job(job)
     return tmp_path
@@ -262,8 +262,9 @@ class TestProposeMaterializeHandler:
         data = json.loads(capsys.readouterr().out)
         assert data["materialized_count"] == 1
         assert data["tasks"][0]["materialized_task_id"] != ""
-        from packages.orchestration.storage import load_job
         from uuid import UUID
+
+        from packages.orchestration.storage import load_job
         job = load_job(UUID(REAL_JOB_UUID))
         assert len(job.tasks) == 1
 
@@ -277,8 +278,9 @@ class TestProposeMaterializeHandler:
         handlers["propose.materialize"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["materialized_count"] == 2
-        from packages.orchestration.storage import load_job
         from uuid import UUID
+
+        from packages.orchestration.storage import load_job
         job = load_job(UUID(REAL_JOB_UUID))
         assert len(job.tasks) == 2
 
@@ -307,10 +309,11 @@ class TestAuditEvents:
             "packages.orchestration.storage._DATA_DIR",
             tmp_path / "jobs",
         )
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        from packages.orchestration.run_log import RunLogWriter
         from uuid import UUID
+
+        from packages.core.models import Job
+        from packages.orchestration.run_log import RunLogWriter
+        from packages.orchestration.storage import save_job
         job_uuid = "12345678-1234-1234-1234-123456789012"
         save_job(Job(id=UUID(job_uuid), name="audit-test"))
         t = ProposedTask(title="Test", risk="medium")
@@ -322,7 +325,8 @@ class TestAuditEvents:
 
         handlers = collect_all_handlers()
         args = SimpleNamespace(job_id=job_uuid, task_id=t.id, json=True)
-        import io, contextlib
+        import contextlib
+        import io
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             handlers["propose.evaluate"](args)
@@ -331,6 +335,5 @@ class TestAuditEvents:
         assert "proposed_task_evaluated" in content
 
     def test_no_dormant_none_writer_in_cli(self):
-        from pathlib import Path
         cli_src = Path("apps/cli/commands/propose_cmd.py").read_text()
         assert "emit_proposed_task_event(None" not in cli_src

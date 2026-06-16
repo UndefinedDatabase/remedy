@@ -5,23 +5,18 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
+import json
+import os
+import threading
+import time
 from http.client import HTTPConnection
 from pathlib import Path
 from unittest.mock import MagicMock
-from unittest.mock import patch
 from uuid import uuid4
-import json
-import os
-import pytest
-import re
-import signal
-import socket
-import sys
-import tempfile
-import threading
-import time
 
-from packages.core.models import Job, RunState, Task
+import pytest
+
+from packages.core.models import Job, Task
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -138,6 +133,7 @@ class TestUIServerIntegration:
     def _start_server(self, **kwargs):
         """Start server in background thread, return (port, token, thread)."""
         import secrets as _s
+
         from packages.orchestration.ui_server import start_ui_server
 
         info_file = str(self.tmp_path / "server_info.json")

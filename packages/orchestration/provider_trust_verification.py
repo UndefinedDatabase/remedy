@@ -44,17 +44,16 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from packages.orchestration.provider_trust import (
+    ProviderCandidateRepair,
     Severity,
-    _scrub_public,
-    _safe_path_label,
     _is_docs_path,
     _is_test_path,
-    scan_secrets,
     _read_quarantined_raw,
+    _safe_path_label,
+    _scrub_public,
     parse_candidate,
-    ProviderCandidateRepair,
+    scan_secrets,
 )
-
 
 # ---------------------------------------------------------------------------
 # Limits
@@ -834,12 +833,14 @@ def verify_provider_candidate(
     """Verify an existing trust-report candidate. Reads existing entities + the PRIVATE
     quarantine bytes only. NEVER materializes, approves, applies, tests, or executes."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, save_job, JobNotFoundError
-    from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
-    )
     from packages.orchestration.provider_trust import get_trust_report
     from packages.orchestration.repair_request_builder import get_request_package
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
+    )
+    from packages.orchestration.storage import JobNotFoundError, load_job, save_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     vid = uuid4().hex[:16]

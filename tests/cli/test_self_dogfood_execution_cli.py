@@ -15,11 +15,14 @@ from tests.cli.runtime_helpers import run_grouped_cli
 
 def _approved_task(data_dir):
     from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-    from packages.orchestration.storage import save_job
     from packages.orchestration import self_dogfood as SD
     from packages.orchestration.proposed_tasks import (
-        load_proposed_tasks, save_proposed_tasks, transition_status, ProposedTaskStatus,
+        ProposedTaskStatus,
+        load_proposed_tasks,
+        save_proposed_tasks,
+        transition_status,
     )
+    from packages.orchestration.storage import save_job
     task = Task(description="t")
     fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=task.id,
                   metadata={"test_failure": True, "failure_kind": "test_failed",
@@ -90,7 +93,7 @@ def test_integrity_json(env):
 
 def test_unapproved_blocks(env):
     from packages.orchestration import self_dogfood as SD
-    from packages.orchestration.proposed_tasks import load_proposed_tasks, ProposedTaskStatus
+    from packages.orchestration.proposed_tasks import ProposedTaskStatus, load_proposed_tasks
     job_id, _ = _approved_task(env)
     SD.propose_self_improvement(job_id, top=2, data_dir=env)
     tasks = load_proposed_tasks(job_id, env)

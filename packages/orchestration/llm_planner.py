@@ -10,7 +10,7 @@ code. Orchestration owns all state transitions, transformation, and idempotency.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.artifact_index import planning_artifact

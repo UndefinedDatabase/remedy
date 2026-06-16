@@ -2,10 +2,7 @@
 from __future__ import annotations
 
 import json
-from io import StringIO
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 
 def _capture_json_output(result):

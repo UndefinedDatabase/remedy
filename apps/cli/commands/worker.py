@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.storage import JobNotFoundError, load_job
@@ -15,7 +16,9 @@ if TYPE_CHECKING:
 
 def _cmd_workers(*, json_output: bool = False) -> None:
     from packages.orchestration.worker_adapters import (
-        export_worker_specs_json, list_worker_specs, summarize_worker_specs,
+        export_worker_specs_json,
+        list_worker_specs,
+        summarize_worker_specs,
     )
 
     specs = list_worker_specs()
@@ -57,7 +60,8 @@ def _cmd_worker_recommend(job_id_str: str, *, json_output: bool = False) -> None
 
 def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     from packages.orchestration.worker_adapters import (
-        export_worker_specs_json, list_worker_specs,
+        export_worker_specs_json,
+        list_worker_specs,
     )
 
     specs = list_worker_specs()
@@ -111,7 +115,7 @@ def _cmd_worker_explain(job_id_str: str, *, json_output: bool = False) -> None:
         print(f"  Selected: {rec.recommended_worker}")
         print(f"  Token mode: {rec.token_mode}")
         print(f"  Requires approval: {rec.requires_approval}")
-        print(f"\n  Scoring breakdown:")
+        print("\n  Scoring breakdown:")
         for c in rec.candidates:
             marker = ">>>" if c.provider_id == rec.recommended_worker else "   "
             print(f"  {marker} {c.provider_id}: score={c.score} ({c.reason})")
@@ -310,7 +314,7 @@ def _cmd_worker_status_live(*, json_output: bool = False) -> None:
         print(f"Processed: {status.processed_job_count}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "worker.list": lambda args: _cmd_workers(json_output=args.json),
     "worker.recommend": lambda args: _cmd_worker_recommend(args.job_id, json_output=args.json),
     "worker.show": lambda args: _cmd_worker_show(args.provider_id, json_output=args.json),

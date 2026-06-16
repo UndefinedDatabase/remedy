@@ -22,9 +22,7 @@ Public API::
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -53,7 +51,6 @@ def dry_run_autorun(
     enable_ui: bool = False,
 ) -> dict[str, Any]:
     """Dry run — no LLM, no repo mutation. Shows what would happen."""
-    from packages.orchestration.data_paths import resolve_data_root
 
     repo = Path(repo_path).resolve()
     repo_exists = repo.is_dir()
@@ -139,7 +136,6 @@ def run_autorun(
 
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.storage import save_job
-    from packages.orchestration.timeline import append_run_event
 
     data_dir = resolve_data_root()
     result = AutorunResult(job_id="", cycles_run=0, stage="init")
@@ -243,7 +239,9 @@ def _create_and_approve_fixture_intent(job: Any, patch_summary: str) -> str:
     """
     from packages.core.models import Artifact
     from packages.orchestration.approval_queue import (
-        make_intent_id, set_approval_state, APPROVAL_APPROVED,
+        APPROVAL_APPROVED,
+        make_intent_id,
+        set_approval_state,
     )
 
     artifact = Artifact(
@@ -276,7 +274,6 @@ def _run_fixture_builder(
     from packages.orchestration.permissions import Capability, set_permission
     from packages.orchestration.source_apply import apply_structured_patch
     from packages.orchestration.structured_patch import FileOp, StructuredPatch
-    from packages.orchestration.timeline import append_run_event
 
     # Grant write permission for fixture
     set_permission(job, Capability.repo_generated_write, allow=True)
@@ -439,11 +436,13 @@ def _run_repair_loop_fixture(
     Cycle 1: Apply wrong-ish fix → tests fail → repair_context_created.
     Cycle 2: Apply correct fix → tests pass → proof_collected.
     """
+    import subprocess
+    import sys as _sys
+
     from packages.orchestration.permissions import Capability, set_permission
+    from packages.orchestration.repair_context import build_repair_context
     from packages.orchestration.source_apply import apply_structured_patch
     from packages.orchestration.structured_patch import FileOp, StructuredPatch
-    from packages.orchestration.repair_context import build_repair_context
-    import subprocess, sys as _sys
 
     # Grant write permission for fixture
     set_permission(job, Capability.repo_generated_write, allow=True)

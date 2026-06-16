@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,7 +33,6 @@ from typing import Any
 from uuid import uuid4
 
 from packages.orchestration.provider_trust import _scrub_public
-
 
 SCHEMA_VERSION = "dogfood-run-v0"
 _DR_DIRNAME = "dogfood_runs"
@@ -506,7 +504,8 @@ def _gather_run_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
     # Mission contract evaluation.
     try:
         from packages.orchestration.overnight_mission import (
-            list_mission_contracts, load_latest_mission_evaluation,
+            list_mission_contracts,
+            load_latest_mission_evaluation,
         )
         contracts = list_mission_contracts(job_id=job_id, data_dir=data_dir)
         if contracts:
@@ -574,10 +573,11 @@ def _gather_run_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
 
     # Proof chain status.
     try:
+        from uuid import UUID
+
         from packages.orchestration.proof_chain import build_proof_chain
         from packages.orchestration.storage import load_job
         from packages.orchestration.timeline import load_run_events
-        from uuid import UUID
         job = load_job(UUID(job_id), data_dir)
         events = load_run_events(data_dir, UUID(job_id))
         chain = build_proof_chain(job, events)

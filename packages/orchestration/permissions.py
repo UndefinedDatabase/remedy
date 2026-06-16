@@ -93,7 +93,7 @@ _DEFAULTS: dict[str, bool] = {
 _RESERVED: frozenset[str] = frozenset({"repo_overwrite", "shell_exec"})
 
 
-def is_allowed(job: "Job", capability: Capability) -> bool:
+def is_allowed(job: Job, capability: Capability) -> bool:
     """Return True if the capability is allowed for this job.
 
     Reads the job-level override from job.metadata["permissions"][capability.value].
@@ -105,7 +105,7 @@ def is_allowed(job: "Job", capability: Capability) -> bool:
     return _DEFAULTS.get(capability.value, False)
 
 
-def set_permission(job: "Job", capability: Capability, *, allow: bool) -> None:
+def set_permission(job: Job, capability: Capability, *, allow: bool) -> None:
     """Set a capability permission on a job.
 
     Mutates job.metadata["permissions"] in place.  The caller is responsible
@@ -131,7 +131,7 @@ def is_reserved(capability: Capability) -> bool:
     return capability.value in _RESERVED
 
 
-def effective_permissions(job: "Job") -> list[dict]:
+def effective_permissions(job: Job) -> list[dict]:
     """Return the effective permission state for all capabilities.
 
     Each entry in the returned list is a dict with:

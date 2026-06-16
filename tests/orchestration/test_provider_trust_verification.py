@@ -9,24 +9,33 @@ candidates must not pass silently. Local advisor (if used) is critique-only.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
 
-from packages.orchestration.provider_trust_verification import (
-    CANONICAL_FINDING_CODES, VerificationFindingCode, VerificationDecision,
-    VerificationStatus, LoopRisk, ProviderCandidateRepair,
-    ProviderVerificationRequest, ProviderVerificationReport,
-    check_request_consistency, check_failure_relevance, check_self_relevance,
-    check_overclaims, check_minimality, check_testability, check_loop_risk,
-    scan_candidate_secrets, decide_verification, score_findings,
-    export_verification_report_json, verify_provider_candidate,
-    load_verification_reports, get_verification_report,
-)
 from packages.orchestration.provider_trust import Severity
-
+from packages.orchestration.provider_trust_verification import (
+    CANONICAL_FINDING_CODES,
+    LoopRisk,
+    ProviderCandidateRepair,
+    ProviderVerificationReport,
+    ProviderVerificationRequest,
+    VerificationDecision,
+    VerificationFindingCode,
+    VerificationStatus,
+    check_loop_risk,
+    check_minimality,
+    check_overclaims,
+    check_request_consistency,
+    decide_verification,
+    export_verification_report_json,
+    get_verification_report,
+    load_verification_reports,
+    scan_candidate_secrets,
+    score_findings,
+    verify_provider_candidate,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -41,7 +50,7 @@ def _patch_candidate(targets, *, summary="Fix", rationale="addresses the gap", b
 
 
 def _make_job(data_dir, *, failure_meta=None):
-    from packages.core.models import Job, Artifact, ArtifactKind, RunState
+    from packages.core.models import Artifact, ArtifactKind, Job, RunState
     from packages.orchestration.storage import save_job
     arts = []
     fid = ""
@@ -202,7 +211,9 @@ class TestIntakeIntegration:
 
     def _intake(self, data_dir, fid, raw):
         from packages.orchestration.provider_trust import (
-            ProviderOutputIntakeRequest, intake_provider_repair, export_intake_result_json,
+            ProviderOutputIntakeRequest,
+            export_intake_result_json,
+            intake_provider_repair,
         )
         res = intake_provider_repair(
             ProviderOutputIntakeRequest(job_id=fid[0], provider_name="claude",
@@ -243,7 +254,9 @@ class TestIntakeIntegration:
         # A self-linked candidate (provider label self_dogfood:<attempt>) is verified via
         # the self-relevance path, not failure-relevance — it should pass + link a report.
         from packages.orchestration.provider_trust import (
-            ProviderOutputIntakeRequest, intake_provider_repair, export_intake_result_json,
+            ProviderOutputIntakeRequest,
+            export_intake_result_json,
+            intake_provider_repair,
         )
         from packages.orchestration.storage import load_job
         jid, _ = _make_job(data_dir)
@@ -290,7 +303,8 @@ class TestStandaloneVerify:
 
     def test_idempotent_reuse(self, data_dir):
         from packages.orchestration.provider_trust import (
-            ProviderOutputIntakeRequest, intake_provider_repair,
+            ProviderOutputIntakeRequest,
+            intake_provider_repair,
         )
         jid, fid = _make_job(data_dir, failure_meta={
             "test_failure": True, "related_files": ["docs/note.md"], "test_command": "pytest"})

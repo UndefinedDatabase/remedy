@@ -11,7 +11,6 @@ import pytest
 
 from tests.cli.runtime_helpers import run_grouped_cli
 
-
 _SAFE_CAND = json.dumps({
     "summary": "Add note", "rationale": "addresses the documentation gap",
     "target_files": ["docs/note.md"],
@@ -20,7 +19,7 @@ _SAFE_CAND = json.dumps({
 
 
 def _job(env):
-    from packages.core.models import Job, Artifact, ArtifactKind, RunState, Task
+    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
     from packages.orchestration.storage import save_job
     task = Task(description="t")
     fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=task.id,

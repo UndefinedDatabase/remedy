@@ -31,7 +31,6 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
@@ -298,7 +297,16 @@ def load_project_constitution(repo_root: Path | None) -> ProjectConstitution:
 def render_constitution(constitution: ProjectConstitution, repo_root: Path | None) -> str:
     """Render a ProjectConstitution as a human-readable plain-text report."""
     from packages.orchestration._symbols import (
-        OK as _OK, INFO as _INFO, WARN as _WARN, LINE as _LINE, section as _section,
+        INFO as _INFO,
+    )
+    from packages.orchestration._symbols import (
+        OK as _OK,
+    )
+    from packages.orchestration._symbols import (
+        WARN as _WARN,
+    )
+    from packages.orchestration._symbols import (
+        section as _section,
     )
 
     parts: list[str] = []
@@ -451,7 +459,7 @@ def _extract_package_json(content: str) -> dict[str, list[str]]:
         if key == "test":
             result["test"].append(f"npm test  # {safe_cmd}" if safe_cmd != "npm test" else "npm test")
         elif key == "build":
-            result["build"].append(f"npm run build")
+            result["build"].append("npm run build")
         elif key in ("lint", "check"):
             result["lint"].append(f"npm run {key}")
         elif key == "format":

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.data_paths import resolve_data_root
@@ -43,6 +44,6 @@ def _cmd_guide_job(job_id_str: str, *, json_output: bool = False) -> None:
         print(summarize_guidance(job, cards))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "guide.job": lambda args: _cmd_guide_job(args.job_id, json_output=args.json),
 }

@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1246/1250)
 # ---------------------------------------------------------------------------
@@ -221,11 +220,11 @@ class _Inputs:
 
 
 def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
-    from packages.orchestration.storage import load_job, JobNotFoundError
-    from packages.orchestration.approval_queue import list_patch_intents, APPROVAL_APPROVED, APPROVAL_PENDING
+    from packages.orchestration.approval_queue import APPROVAL_APPROVED, APPROVAL_PENDING, list_patch_intents
+    from packages.orchestration.repair_loop import load_repair_attempts
     from packages.orchestration.repository_snapshot import build_snapshot_truth, list_durable_apply_ids
     from packages.orchestration.run_contract import ensure_contract, load_usage
-    from packages.orchestration.repair_loop import load_repair_attempts
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     try:
         job = load_job(UUID(job_id), data_dir)
@@ -331,8 +330,8 @@ def _build_evidence_summary(inp: _Inputs) -> dict[str, Any]:
 
 
 def _build_capabilities(inp: _Inputs, job_id: str) -> list[OvernightCapability]:
-    from packages.orchestration.permissions import is_allowed, Capability
-    from packages.orchestration.run_contract import evaluate_run_action, ContractAction
+    from packages.orchestration.permissions import Capability, is_allowed
+    from packages.orchestration.run_contract import ContractAction, evaluate_run_action
 
     job, c = inp.job, inp.contract
 
@@ -479,7 +478,7 @@ def _build_risks(inp: _Inputs) -> list[OvernightRisk]:
 def _integrity_status() -> str:
     """Lightweight integrity status: pass | fail | unknown. Never runs tests."""
     try:
-        from packages.orchestration.integrity_gate import run_integrity_checks, IntegrityStatus
+        from packages.orchestration.integrity_gate import IntegrityStatus, run_integrity_checks
         result = run_integrity_checks(collect_only=True)
         status = getattr(result, "status", None)
         if status == IntegrityStatus.FAIL:
@@ -628,7 +627,7 @@ def _build_stop_reasons(inp: _Inputs, budget: dict[str, Any], risks: list[Overni
 
 def build_overnight_readiness(
     job_id: str,
-    data_dir: "Path | None" = None,
+    data_dir: Path | None = None,
     policy: BoundedOvernightPolicy | None = None,
 ) -> OvernightReadinessReport:
     """Read-only readiness assessment. Never executes anything."""
@@ -719,7 +718,7 @@ def _policy_summary(p: BoundedOvernightPolicy) -> dict[str, Any]:
 
 def build_overnight_plan(
     job_id: str,
-    data_dir: "Path | None" = None,
+    data_dir: Path | None = None,
     policy: BoundedOvernightPolicy | None = None,
 ) -> OvernightRunPlan:
     """Dry-run plan: what Remedy WOULD do (≤1 hypothetical cycle). No execution."""
@@ -768,7 +767,7 @@ def build_overnight_plan(
 
 def build_overnight_report(
     job_id: str,
-    data_dir: "Path | None" = None,
+    data_dir: Path | None = None,
     policy: BoundedOvernightPolicy | None = None,
 ) -> dict[str, Any]:
     """Morning-style report built from current job evidence (read-only)."""

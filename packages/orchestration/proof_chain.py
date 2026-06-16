@@ -22,10 +22,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from packages.core.models import Job
-
 
 # ---------------------------------------------------------------------------
 # Proof status enum
@@ -366,7 +366,7 @@ def _derive_change_next_action(
     if approval_state == "pending":
         cmd = f"remedy patch approve {job_id} {intent_id}"
         obj = _make_next_action(
-            label=f"Approve or reject intent.",
+            label="Approve or reject intent.",
             command=cmd, reason="Approval pending.",
         )
         return obj.label, obj
@@ -476,7 +476,7 @@ def build_proof_chain(
     job: Job,
     events: list[dict[str, Any]],
     path: str | None = None,
-    data_dir: "Path | None" = None,
+    data_dir: Path | None = None,
 ) -> ProofChain:
     """Build proof chain from job and events.
 

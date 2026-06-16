@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -17,7 +18,8 @@ if TYPE_CHECKING:
 def _cmd_dogfood_create(args: Any) -> None:
     """Create a new open-ended dogfood run for a job."""
     from packages.orchestration.dogfood_run import (
-        DogfoodRunPolicy, create_dogfood_run,
+        DogfoodRunPolicy,
+        create_dogfood_run,
     )
     policy = DogfoodRunPolicy(
         max_steps=int(getattr(args, "max_steps", None) or 100),
@@ -212,7 +214,7 @@ def _cmd_dogfood_brainstorm(args: Any) -> None:
         print(f"  [{idea.get('priority', '?')}] {idea.get('title', '?')} ({idea.get('status', '?')})")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "dogfood.create": _cmd_dogfood_create,
     "dogfood.show": _cmd_dogfood_show,
     "dogfood.status": _cmd_dogfood_status,

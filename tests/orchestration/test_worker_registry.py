@@ -10,16 +10,28 @@ import json
 import re
 from pathlib import Path
 
-import pytest
-
 from packages.orchestration.worker_registry import (
-    RoutePolicy, WorkerCostTier, WorkerKind, WorkerRiskTier, WorkerSelectionRequest, WorkerSpec,
-    classify_route_cost, default_route_policy, estimate_context_fit, estimate_token_cost_band,
-    evaluate_worker_selection, export_route_policy_json, export_worker_spec_json, get_worker_spec,
-    is_placeholder, list_worker_specs, load_route_policy, load_worker_registry, save_route_policy,
-    token_reduction_reason, worker_registry_integrity,
+    WorkerCostTier,
+    WorkerKind,
+    WorkerRiskTier,
+    WorkerSelectionRequest,
+    WorkerSpec,
+    classify_route_cost,
+    default_route_policy,
+    estimate_context_fit,
+    estimate_token_cost_band,
+    evaluate_worker_selection,
+    export_route_policy_json,
+    export_worker_spec_json,
+    get_worker_spec,
+    is_placeholder,
+    list_worker_specs,
+    load_route_policy,
+    load_worker_registry,
+    save_route_policy,
+    token_reduction_reason,
+    worker_registry_integrity,
 )
-
 
 # ---------------------------------------------------------------------------
 # WorkerSpec model + built-in registry

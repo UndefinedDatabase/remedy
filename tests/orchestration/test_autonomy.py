@@ -5,19 +5,15 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-from unittest.mock import patch
-from uuid import uuid4
 import ast
 import json
-import os
-import pytest
 import shlex
 import subprocess
-import sys
-import tempfile
+from pathlib import Path
+from unittest.mock import patch
+from uuid import uuid4
+
+import pytest
 
 from packages.core.models import Job, RunState, Task
 
@@ -48,7 +44,7 @@ def _make_job(**overrides) -> Job:
 
 
 def _make_job_s135(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -71,7 +67,7 @@ def _make_job_s135(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -186,8 +182,8 @@ class TestNextActionGroundedInJobState:
     """Next action must be grounded in job state."""
 
     def test_completed_job_no_action(self):
-        from packages.orchestration.ui_view_model import build_next_action
         from packages.core.models import RunState
+        from packages.orchestration.ui_view_model import build_next_action
         job = _make_job_s135(tasks=[{"type": "t1", "status": "completed"}])
         job.state = RunState.COMPLETED
         na = build_next_action(job, [])
@@ -195,8 +191,8 @@ class TestNextActionGroundedInJobState:
         assert na["primary_action"]["label"] == "No action needed"
 
     def test_active_job_suggests_ui(self):
-        from packages.orchestration.ui_view_model import build_next_action
         from packages.core.models import RunState
+        from packages.orchestration.ui_view_model import build_next_action
         job = _make_job_s135(tasks=[{"type": "t1", "status": "running"}])
         job.state = RunState.RUNNING
         na = build_next_action(job, [])
@@ -643,8 +639,8 @@ class TestGeneratedCommandCatalogConsistency:
         valid_commands = {f"{c.group_id} {c.subcommand}" for c in CATALOG}
 
         # Check readiness next_actions
-        from packages.orchestration.autonomy_readiness import assess_job_readiness
         from packages.core.models import Job
+        from packages.orchestration.autonomy_readiness import assess_job_readiness
 
         job = Job(name="test", user_prompt="test")
         report = assess_job_readiness(job, [])
@@ -679,8 +675,8 @@ class TestAutonomyLevelSingleSourceOfTruth:
 
     def test_loop_respects_readiness(self):
         """Loop blocks if requested level exceeds readiness or has blockers."""
-        from packages.orchestration.autonomy_loop import run_autonomy_loop
         from packages.core.models import Job
+        from packages.orchestration.autonomy_loop import run_autonomy_loop
 
         job = Job(name="test", user_prompt="test")
         # Request level 4 (bounded_loop) but job has no signals → blocked
@@ -692,8 +688,8 @@ class TestAutonomyLevelSingleSourceOfTruth:
 
     def test_levels_6_7_blocked(self):
         """Levels 6-7 must be blocked (future only)."""
-        from packages.orchestration.autonomy_readiness import assess_job_readiness
         from packages.core.models import Job
+        from packages.orchestration.autonomy_readiness import assess_job_readiness
 
         job = Job(name="test", user_prompt="test")
         report = assess_job_readiness(job, [])
@@ -711,9 +707,9 @@ class TestMutationExecutionSafetyInvariants:
     # Part A: source_apply permission boundary
     def test_source_apply_permission_denied(self):
         """source_apply blocks without repo_generated_write permission."""
+        from packages.core.models import Job
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import StructuredPatch
-        from packages.core.models import Job
 
         job = Job(name="test", user_prompt="test", metadata={"permissions": {}})
         patch = StructuredPatch(intent_kind="file_ops", file_ops=[], unified_diffs=[])

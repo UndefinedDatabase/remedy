@@ -117,6 +117,7 @@ class TestRealOllamaSmoke:
 
     def test_ollama_builder_produces_output(self):
         from uuid import uuid4
+
         from packages.orchestration.builder_models import (
             BuilderOutput,
             TaskExecutionContext,

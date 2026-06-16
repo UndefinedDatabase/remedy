@@ -42,7 +42,9 @@ def env(tmp_path, monkeypatch):
 class TestRoutingIntegration:
     def test_decision_carries_token_economy(self, env):
         from packages.orchestration.builder_routing import (
-            select_builder_routing_decision, BuilderRoutingRequest, export_builder_routing_json,
+            BuilderRoutingRequest,
+            export_builder_routing_json,
+            select_builder_routing_decision,
         )
         jid = _job_with_repo(env, files={"README.md": "hi\n", "src/a.py": "x=1\n"})
         d = select_builder_routing_decision(BuilderRoutingRequest(job_id=jid), data_dir=env)
@@ -56,7 +58,8 @@ class TestRoutingIntegration:
     def test_no_side_effects(self, env):
         # Calling routing twice must not create execution artifacts; pure recommendation.
         from packages.orchestration.builder_routing import (
-            select_builder_routing_decision, BuilderRoutingRequest,
+            BuilderRoutingRequest,
+            select_builder_routing_decision,
         )
         jid = _job_with_repo(env, files={"README.md": "hi\n"})
         d1 = select_builder_routing_decision(BuilderRoutingRequest(job_id=jid), data_dir=env)
@@ -104,7 +107,8 @@ class TestFeatureSuggestions:
     def test_suggestions_from_evidence(self):
         from packages.orchestration.feature_planner import build_feature_plan
         from packages.orchestration.progress_ledger import (
-            ProgressLedger, extract_token_economy_items,
+            ProgressLedger,
+            extract_token_economy_items,
         )
         report = {
             "budget_profile": {"profile_id": "tb-x", "max_total_estimated_tokens": 40000},
@@ -180,7 +184,8 @@ class TestPlaceholderHardening:
         # A future custom enabled ollama_candidate must still be treated as a placeholder requiring
         # approval, and integrity must flag any claim of executable readiness.
         from packages.orchestration.worker_registry import (
-            hard_safety_requires_approval, _spec_from_dict,
+            _spec_from_dict,
+            hard_safety_requires_approval,
         )
         spec = _spec_from_dict({"worker_id": "custom.ollama", "kind": "ollama_candidate",
                                 "enabled": True, "cost_tier": "cheap", "risk_tier": "medium",

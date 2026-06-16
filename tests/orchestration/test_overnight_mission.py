@@ -134,6 +134,7 @@ class TestEvaluation:
     # R-0102: real persisted-UUID job path must NOT self-block on the mission's own ledger items.
     def test_real_uuid_job_first_eval_not_self_blocked(self, env, monkeypatch):
         from uuid import uuid4
+
         from packages.core.models import Job, RunState, Task
         from packages.orchestration.storage import save_job
         monkeypatch.setenv("REMEDY_REVIEW_FILE", str(_review_file(env.parent, "PASS")))
@@ -153,6 +154,7 @@ class TestEvaluation:
         rf = ("### R-0001: x\n- **Status**: Open\n- **Severity**: High\n")
         monkeypatch.setenv("REMEDY_REVIEW_FILE", str(_review_file(env.parent, "FAIL", findings=rf)))
         from uuid import uuid4
+
         from packages.core.models import Job, RunState, Task
         from packages.orchestration.storage import save_job
         job = Job(id=uuid4(), name="m", user_prompt="x", state=RunState.RUNNING,

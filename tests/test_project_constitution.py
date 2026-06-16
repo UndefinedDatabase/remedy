@@ -56,7 +56,6 @@ from packages.orchestration.project_constitution import (
 from packages.orchestration.storage import save_job
 from packages.orchestration.trust_report import summarize_trust_report
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

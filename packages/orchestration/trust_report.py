@@ -24,6 +24,28 @@ from packages.core.models import ArtifactKind, Job, RunState
 
 if TYPE_CHECKING:
     from packages.orchestration.project_constitution import ProjectConstitution
+from packages.orchestration._symbols import (
+    FAIL as _FAIL,
+)
+from packages.orchestration._symbols import (
+    INFO as _INFO,
+)
+from packages.orchestration._symbols import (
+    NEXT as _NEXT,
+)
+
+# ---------------------------------------------------------------------------
+# Symbols (consistent with timeline.py / cockpit.py)
+# ---------------------------------------------------------------------------
+from packages.orchestration._symbols import (
+    OK as _OK,
+)
+from packages.orchestration._symbols import (
+    WARN as _WARN,
+)
+from packages.orchestration._symbols import (
+    section,
+)
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_PENDING,
@@ -31,21 +53,6 @@ from packages.orchestration.approval_queue import (
     list_patch_intents,
 )
 from packages.orchestration.permissions import Capability, effective_permissions, is_allowed
-
-# ---------------------------------------------------------------------------
-# Symbols (consistent with timeline.py / cockpit.py)
-# ---------------------------------------------------------------------------
-
-from packages.orchestration._symbols import (
-    OK as _OK,
-    FAIL as _FAIL,
-    WARN as _WARN,
-    INFO as _INFO,
-    NEXT as _NEXT,
-    LINE as _LINE,
-    section,
-)
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -57,7 +64,7 @@ def summarize_trust_report(
     events: list[dict[str, Any]],
     *,
     data_dir: Path | None = None,
-    constitution: "ProjectConstitution | None" = None,
+    constitution: ProjectConstitution | None = None,
 ) -> str:
     """Return a full trust/audit report string for a job.
 

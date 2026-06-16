@@ -40,7 +40,6 @@ from uuid import UUID, uuid4
 
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
 
-
 SCHEMA_VERSION = "repair-loop-v2"
 _RL_DIRNAME = "repair_loop_v2"
 _RAW_MARKERS = ("diff --git", "-----BEGIN", "Traceback (most recent call last)", "sk-ant", "sk-proj",
@@ -142,7 +141,7 @@ class RepairLoopPolicy:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "RepairLoopPolicy":
+    def from_dict(cls, d: dict[str, Any]) -> RepairLoopPolicy:
         base = cls()
         return cls(**{k: d.get(k, getattr(base, k)) for k in base.__dict__})
 
@@ -179,7 +178,7 @@ class RepairWorkItem:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "RepairWorkItem":
+    def from_dict(cls, d: dict[str, Any]) -> RepairWorkItem:
         base = cls()
         return cls(**{k: d.get(k, getattr(base, k)) for k in base.__dict__})
 
@@ -216,7 +215,7 @@ class RepairAttempt:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "RepairAttempt":
+    def from_dict(cls, d: dict[str, Any]) -> RepairAttempt:
         base = cls()
         return cls(**{k: d.get(k, getattr(base, k)) for k in base.__dict__})
 
@@ -433,7 +432,7 @@ def load_latest_repair_evaluation(repair_id: str, data_dir: Path | None = None) 
 def _stable_repair_id(source_type: str, source_id: str) -> str:
     """Deterministic id so the same source yields the same work item (idempotent)."""
     import hashlib
-    h = hashlib.sha256(f"{source_type}::{source_id}".encode("utf-8")).hexdigest()[:12]
+    h = hashlib.sha256(f"{source_type}::{source_id}".encode()).hexdigest()[:12]
     return f"rep-{h}"
 
 
@@ -818,8 +817,8 @@ def _v1_attempt_view(item: RepairWorkItem, data_dir: Path) -> dict[str, str]:
     if not item.failure_artifact_id:
         return view
     try:
+        from packages.orchestration.repair_loop import RepairStatus, load_repair_attempts
         from packages.orchestration.storage import load_job
-        from packages.orchestration.repair_loop import load_repair_attempts, RepairStatus
         job = load_job(UUID(item.job_id), data_dir)
         attempts = load_repair_attempts(job)
         att = next((a for a in attempts.values()

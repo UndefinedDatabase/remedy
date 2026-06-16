@@ -1,8 +1,6 @@
 """Tests for Taskfile command body risk inspection."""
 from __future__ import annotations
 
-from pathlib import Path
-
 from packages.orchestration.command_discovery import (
     _detect_taskfile,
     _parse_taskfile_tasks,

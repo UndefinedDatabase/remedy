@@ -5,7 +5,6 @@ repair context, repair loop, reviewer, memory candidates, live UI v2, UX polish.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -21,7 +20,7 @@ if str(_ROOT) not in sys.path:
 
 
 def _make_job(*, tasks=None, name="test", metadata=None):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if metadata:
         job.metadata = dict(metadata)
@@ -49,8 +48,10 @@ class TestDevStatusBlockerAdvisorySplit:
 
     def test_dev_status_schema_has_advisories(self):
         """dev status JSON must have 'advisories' key."""
+        import contextlib
+        import io
+
         from apps.cli.commands.dev import _dev_status
-        import io, contextlib
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             _dev_status(json_output=True)
@@ -61,8 +62,10 @@ class TestDevStatusBlockerAdvisorySplit:
 
     def test_commit_readiness_false_is_advisory(self):
         """commit-readiness false should not be a blocker."""
+        import contextlib
+        import io
+
         from apps.cli.commands.dev import _dev_status
-        import io, contextlib
         # Mock smoke to return a job_id, and commit-readiness to return False
         with patch("apps.cli.commands.dev._find_latest_smoke") as mock_smoke, \
              patch("apps.cli.commands.repo._cmd_commit_readiness") as mock_cr:
@@ -85,8 +88,10 @@ class TestDevStatusBlockerAdvisorySplit:
 
     def test_commit_readiness_crash_is_blocker(self):
         """commit-readiness crash should be a hard blocker."""
+        import contextlib
+        import io
+
         from apps.cli.commands.dev import _dev_status
-        import io, contextlib
         with patch("apps.cli.commands.dev._find_latest_smoke") as mock_smoke, \
              patch("apps.cli.commands.repo._cmd_commit_readiness") as mock_cr:
             mock_smoke.return_value = {
@@ -103,8 +108,10 @@ class TestDevStatusBlockerAdvisorySplit:
 
     def test_worker_cleanup_unavailable_is_advisory(self):
         """ollama missing = advisory, not blocker."""
+        import contextlib
+        import io
+
         from apps.cli.commands.dev import _dev_status
-        import io, contextlib
         with patch("shutil.which", return_value=None), \
              patch("apps.cli.commands.dev._find_latest_smoke") as mock_smoke:
             mock_smoke.return_value = {
@@ -267,7 +274,7 @@ class TestReviewerAcceptRejectRecommendation:
     """Fixture reviewer returns deterministic recommendations; accept/reject works."""
 
     def test_fixture_reviewer_returns_two(self):
-        from packages.orchestration.reviewer import run_reviewer, _fixture_reviewer
+        from packages.orchestration.reviewer import _fixture_reviewer, run_reviewer
         job = _make_job(tasks=[
             {"type": "readme_draft", "status": "completed"},
         ])
@@ -278,11 +285,13 @@ class TestReviewerAcceptRejectRecommendation:
         assert all(r.status == "pending" for r in recs)
 
     def test_accept_recommendation_creates_proposed_task(self, tmp_path, monkeypatch):
-        from packages.orchestration.reviewer import (
-            run_reviewer, store_recommendations,
-            accept_recommendation, _fixture_reviewer,
-        )
         from packages.orchestration.proposed_tasks import load_proposed_tasks
+        from packages.orchestration.reviewer import (
+            _fixture_reviewer,
+            accept_recommendation,
+            run_reviewer,
+            store_recommendations,
+        )
         monkeypatch.setattr(
             "packages.orchestration.proposed_tasks._STORE_DIR",
             tmp_path / "proposed_tasks",
@@ -302,8 +311,11 @@ class TestReviewerAcceptRejectRecommendation:
 
     def test_reject_recommendation_no_task(self):
         from packages.orchestration.reviewer import (
-            run_reviewer, store_recommendations,
-            reject_recommendation, list_recommendations, _fixture_reviewer,
+            _fixture_reviewer,
+            list_recommendations,
+            reject_recommendation,
+            run_reviewer,
+            store_recommendations,
         )
         job = _make_job()
         job.metadata = {}
@@ -325,7 +337,7 @@ class TestReviewerAcceptRejectRecommendation:
 
     def test_reviewer_no_auto_append(self):
         """Reviewer must NOT auto-append tasks; only accept does."""
-        from packages.orchestration.reviewer import run_reviewer, _fixture_reviewer
+        from packages.orchestration.reviewer import _fixture_reviewer, run_reviewer
         job = _make_job()
         task_count_before = len(job.tasks)
         run_reviewer(job, reviewer_fn=_fixture_reviewer)
@@ -358,7 +370,9 @@ class TestMemoryCandidateHumanApprovalRequired:
 
     def test_approve_creates_memory(self):
         from packages.orchestration.memory_candidates import (
-            create_candidate, approve_candidate, list_candidates,
+            approve_candidate,
+            create_candidate,
+            list_candidates,
         )
         job = _make_job()
         job.metadata = {}
@@ -375,7 +389,9 @@ class TestMemoryCandidateHumanApprovalRequired:
 
     def test_reject_no_memory(self):
         from packages.orchestration.memory_candidates import (
-            create_candidate, reject_candidate, list_candidates,
+            create_candidate,
+            list_candidates,
+            reject_candidate,
         )
         job = _make_job()
         job.metadata = {}
@@ -396,7 +412,8 @@ class TestMemoryCandidateHumanApprovalRequired:
     def test_candidate_not_auto_approved(self):
         """Candidates must be pending, never auto-approved."""
         from packages.orchestration.memory_candidates import (
-            create_candidate, list_candidates,
+            create_candidate,
+            list_candidates,
         )
         job = _make_job()
         job.metadata = {}
@@ -465,8 +482,8 @@ class TestLiveStateRepairReviewerMemoryCounts:
         assert state["memory_candidate_count"] == 1
 
     def test_live_state_running_accepts_both_states(self):
-        from packages.orchestration.ui_server import _build_live_state_json
         from packages.core.models import RunState
+        from packages.orchestration.ui_server import _build_live_state_json
         job = _make_job()
         job.metadata = {}
         job.state = RunState.RUNNING

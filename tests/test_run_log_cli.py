@@ -26,8 +26,7 @@ import pytest
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.run_log import read_run_events
-from packages.orchestration.storage import load_job, save_job
-
+from packages.orchestration.storage import save_job
 
 # ---------------------------------------------------------------------------
 # Helpers

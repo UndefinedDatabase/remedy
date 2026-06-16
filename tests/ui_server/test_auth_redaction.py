@@ -5,14 +5,12 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from uuid import uuid4
-import json
-import pytest
-import re
-import tempfile
 
 from packages.core.models import Job, RunState, Task
+
 
 def _make_job(**overrides) -> Job:
     defaults = {
@@ -56,7 +54,6 @@ class TestRedactionPatterns:
         from packages.orchestration.redaction_patterns import (
             FORBIDDEN_RAW_FIELD_NAMES,
             FORBIDDEN_SECRET_PATTERNS,
-            find_forbidden_surface_tokens,
         )
         assert len(FORBIDDEN_RAW_FIELD_NAMES) >= 5
         assert len(FORBIDDEN_SECRET_PATTERNS) >= 5

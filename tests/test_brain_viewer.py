@@ -25,8 +25,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-from packages.orchestration.brain_detail import build_brain_node_detail
+from packages.core.models import Artifact, ArtifactKind, Job, RunState
 from packages.orchestration.brain_viewer import (
     BrainViewerData,
     _compute_positions,
@@ -37,7 +36,6 @@ from packages.orchestration.brain_viewer import (
 )
 from packages.orchestration.project_brain import build_project_brain
 from packages.orchestration.storage import save_job
-
 
 # ---------------------------------------------------------------------------
 # Redaction sentinels
@@ -429,6 +427,7 @@ class TestBrainViewerRedaction:
     def test_cli_viewer_files_no_sentinels(self, tmp_path, monkeypatch, capsys):
         """brain-view CLI: viewer files must be free of all sentinels when job has poisoned events."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -449,6 +448,7 @@ class TestBrainViewerRedaction:
     ):
         """brain_viewer_prepared run-log event must not contain any sentinel string."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -474,6 +474,7 @@ class TestConstitutionGuard:
     def test_stale_repo_no_crash(self, tmp_path, monkeypatch, capsys):
         """brain-view succeeds when target_repo points to a non-existent path."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -488,6 +489,7 @@ class TestConstitutionGuard:
     def test_stale_repo_generates_index_html(self, tmp_path, monkeypatch, capsys):
         """brain-view still creates index.html when target_repo is stale."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -502,6 +504,7 @@ class TestConstitutionGuard:
     def test_stale_repo_stderr_safe_warning(self, tmp_path, monkeypatch, capsys):
         """stderr contains only the safe warning text, not raw exception messages."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -516,6 +519,7 @@ class TestConstitutionGuard:
     def test_stale_repo_stderr_no_traceback(self, tmp_path, monkeypatch, capsys):
         """No raw exception text or traceback in stderr for stale repos."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -534,6 +538,7 @@ class TestConstitutionGuard:
     def test_no_attached_repo_still_works(self, tmp_path, monkeypatch, capsys):
         """brain-view works for a job with no target_repo metadata."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -592,6 +597,7 @@ class TestComputePositions:
 class TestBrainViewCli:
     def test_invalid_uuid_exits_1(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -604,6 +610,7 @@ class TestBrainViewCli:
 
     def test_job_not_found_exits_1(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -615,6 +622,7 @@ class TestBrainViewCli:
 
     def test_happy_path_creates_index_html(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -627,6 +635,7 @@ class TestBrainViewCli:
 
     def test_happy_path_prints_path(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -640,6 +649,7 @@ class TestBrainViewCli:
 
     def test_happy_path_logs_brain_viewer_prepared(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -655,6 +665,7 @@ class TestBrainViewCli:
     def test_brain_viewer_prepared_schema(self, tmp_path, monkeypatch, capsys):
         """brain_viewer_prepared metadata keys must be exactly the contract set."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -675,6 +686,7 @@ class TestBrainViewCli:
 
     def test_brain_viewer_prepared_mode_is_static(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -692,6 +704,7 @@ class TestBrainViewCli:
     ):
         """brain_viewer_prepared detail_fallback_count is 0 for a normal job."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -707,6 +720,7 @@ class TestBrainViewCli:
     def test_no_writes_to_cwd(self, tmp_path, monkeypatch, capsys):
         """brain-view must not write files outside REMEDY_DATA_DIR."""
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -850,6 +864,7 @@ class TestBrainViewerDiagnostics:
         self, tmp_path, monkeypatch, capsys
     ):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

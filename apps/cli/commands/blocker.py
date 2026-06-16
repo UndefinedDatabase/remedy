@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
-from uuid import UUID
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import argparse
@@ -67,7 +67,7 @@ def _cmd_blocker_show(
         print(f"  Status: {sr.status}")
         print(f"  Summary: {sr.safe_summary}")
         if sr.next_actions:
-            print(f"  Next actions:")
+            print("  Next actions:")
             for a in sr.next_actions:
                 print(f"    - {a}")
 
@@ -87,7 +87,7 @@ def _cmd_blocker_resolve(
     print(f"Resolved: {sr.id[:8]} ({sr.reason_code})")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "blocker.list": lambda args: _cmd_blocker_list(
         args.job_id,
         json_output=getattr(args, "json", False),

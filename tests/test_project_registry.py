@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -19,7 +18,6 @@ from packages.orchestration.project_registry import (
     save_project,
     summarize_project,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

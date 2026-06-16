@@ -50,6 +50,7 @@ import pytest
 
 from packages.core.models import Artifact
 from packages.orchestration.patch_intent import (
+    _MAX_PREVIEW_CHARS,  # private import — testing truncate_preview contract
     RISK_HIGH,
     RISK_LEVELS,
     RISK_LOW,
@@ -59,7 +60,6 @@ from packages.orchestration.patch_intent import (
     PatchIntent,
     PatchIntentSet,
     _extract_proposed_lines,  # private import — testing section-parse contract
-    _MAX_PREVIEW_CHARS,       # private import — testing truncate_preview contract
     classify_risk,
     derive_patch_intents,
     format_dry_run_explanations,
@@ -69,7 +69,6 @@ from packages.orchestration.patch_intent import (
     verify_patch_intent_set,
 )
 from packages.orchestration.workspace import LocalWorkspaceRuntime
-
 
 # ---------------------------------------------------------------------------
 # Helpers

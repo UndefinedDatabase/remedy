@@ -5,18 +5,13 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-from unittest.mock import patch
-from uuid import uuid4
 import json
-import os
-import pytest
-import re
-import sys
-import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock
+from uuid import uuid4
 
-from packages.core.models import Job, RunState
+import pytest
+
 from packages.core.models import Job, RunState, Task
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -40,7 +35,7 @@ def _make_job(**overrides) -> Job:
 
 
 def _make_job_s122(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -62,7 +57,7 @@ def _make_job_s122(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -150,9 +145,7 @@ class TestBrainViewModel:
     """Tests for ui_view_model.build_brain_view_model."""
 
     def _make_job(self):
-        from packages.orchestration.storage import load_job
         # Use a minimal mock job
-        from unittest.mock import MagicMock
         job = MagicMock()
         job.id = uuid4()
         job.name = "test-job"
@@ -259,7 +252,6 @@ class TestBrainViewModel:
 
 class TestNodeDetail:
     def _make_job(self):
-        from unittest.mock import MagicMock
         job = MagicMock()
         job.id = uuid4()
         job.name = "test-job"
@@ -284,7 +276,6 @@ class TestNodeDetail:
 
     def test_detail_missing_node(self):
         from packages.orchestration.ui_view_model import build_node_detail
-        from unittest.mock import MagicMock
         job = MagicMock()
         job.id = uuid4()
         job.name = "test"

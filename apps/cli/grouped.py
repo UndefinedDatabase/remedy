@@ -22,7 +22,6 @@ import argparse
 import sys
 
 from apps.cli.command_catalog import (
-    CATALOG,
     GROUPS,
     CommandEntry,
     get_commands_for_group,
@@ -33,7 +32,6 @@ from apps.cli.help_renderer import (
     render_group_help,
     render_root_help,
 )
-
 
 # ---------------------------------------------------------------------------
 # Dispatch table: catalog command_id -> handler callable
@@ -393,7 +391,7 @@ def main(argv: list[str] | None = None) -> None:
 
     command_id = getattr(args, "_command_id", None)
     if command_id is None:
-        print(f"Error: unknown command", file=sys.stderr)
+        print("Error: unknown command", file=sys.stderr)
         sys.exit(1)
 
     dispatch = _get_dispatch_table()

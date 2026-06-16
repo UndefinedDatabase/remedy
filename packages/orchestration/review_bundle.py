@@ -27,7 +27,6 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-
 BUNDLE_VERSION = 1
 
 REQUIRED_SECTIONS = (
@@ -189,14 +188,14 @@ def redact_safe_text(text: str, max_len: int = 200) -> tuple[str, int]:
 
     redaction_count = 0
 
-    def _replace(m: "re.Match[str]") -> str:
+    def _replace(m: re.Match[str]) -> str:
         nonlocal redaction_count
         redaction_count += 1
         return "[REDACTED]"
 
     result = _SECRET_RE.sub(_replace, text)
 
-    def _replace_path(m: "re.Match[str]") -> str:
+    def _replace_path(m: re.Match[str]) -> str:
         nonlocal redaction_count
         full = m.group(0)
         path_part = m.group(1)
@@ -216,9 +215,9 @@ def redact_safe_text(text: str, max_len: int = 200) -> tuple[str, int]:
 def _is_protected_path(path: str) -> bool:
     """Check if path is protected — reuses context inspector policy."""
     from packages.orchestration.context_inspector import (
+        _PROTECTED_DIRS,
         _PROTECTED_EXACT,
         _PROTECTED_PREFIXES,
-        _PROTECTED_DIRS,
         _SECRET_NAMES,
     )
     p = Path(path)
@@ -395,7 +394,8 @@ def _build_snapshot_summary(job_id: str, data_dir: Path) -> dict:
     """
     try:
         from packages.orchestration.repository_snapshot import (
-            build_snapshot_truth, list_durable_apply_ids,
+            build_snapshot_truth,
+            list_durable_apply_ids,
         )
 
         apply_ids = list_durable_apply_ids(job_id, data_dir)
@@ -474,7 +474,9 @@ def _build_continuation_summary(job_id: str, data_dir: Path, events: list[dict])
     """
     try:
         from packages.orchestration.do_continue import (
-            load_checkpoints, latest_checkpoint, CONTINUE_PHASES,
+            CONTINUE_PHASES,
+            latest_checkpoint,
+            load_checkpoints,
         )
         cps = load_checkpoints(job_id, data_dir)
         if not cps:
@@ -633,7 +635,8 @@ def _build_overnight_readiness_summary(job: Any, data_dir: Path) -> dict:
     """Safe Bounded Overnight Prep summary (Step 1261). Counts/labels only."""
     try:
         from packages.orchestration.overnight_readiness import (
-            build_overnight_readiness, export_readiness_json,
+            build_overnight_readiness,
+            export_readiness_json,
         )
         report = build_overnight_readiness(str(job.id), data_dir)
         d = export_readiness_json(report)
@@ -672,7 +675,8 @@ def _build_overnight_run_summary(job: Any, data_dir: Path) -> dict:
     """Safe Bounded Overnight Executor run summary (Step 1291). Counts/labels only."""
     try:
         from packages.orchestration.overnight_executor import (
-            list_run_records, latest_run_record,
+            latest_run_record,
+            list_run_records,
         )
         records = list_run_records(str(job.id), data_dir)
         latest = latest_run_record(str(job.id), data_dir)
@@ -805,8 +809,8 @@ def _build_repair_request_summary(job: Any) -> dict:
     """Safe Repair Request Builder summary (Step 1380). Counts/labels/IDs only — no
     raw request text, no source, no diffs, no secrets, no absolute paths."""
     try:
-        from packages.orchestration.repair_request_builder import load_request_packages
         from packages.orchestration.provider_patch_material import load_materials
+        from packages.orchestration.repair_request_builder import load_request_packages
         packages = list(load_request_packages(job).values())
         materialized_failures = {m.get("failure_artifact_id") for m in load_materials(job).values()
                                  if m.get("material_state") == "materialized"}
@@ -984,7 +988,8 @@ def _build_local_advisor_summary(job: Any) -> dict:
     prompt/response, source, diffs, logs, secrets, or absolute paths."""
     try:
         from packages.orchestration.local_model_advisor import (
-            list_local_advisor_runs, load_local_advisor_usage,
+            list_local_advisor_runs,
+            load_local_advisor_usage,
         )
         scope = f"job:{job.id}"
         runs = [r for r in list_local_advisor_runs() if r.get("scope") == scope]
@@ -1070,7 +1075,8 @@ def _build_local_candidate_summary(job: Any) -> dict:
     only — no raw prompt/output, source, diff, logs, secrets, or absolute paths."""
     try:
         from packages.orchestration.local_candidate_generator import (
-            list_local_candidate_runs, load_local_candidate_usage,
+            list_local_candidate_runs,
+            load_local_candidate_usage,
         )
         runs = [r for r in list_local_candidate_runs() if r.get("job_id") == str(job.id)]
         usage = load_local_candidate_usage(f"job:{job.id}")
@@ -1109,7 +1115,8 @@ def _build_candidate_quality_summary(job: Any) -> dict:
     prompt/output/candidate/diff/source/logs/secrets/absolute paths."""
     try:
         from packages.orchestration.candidate_quality import (
-            load_candidate_quality_evaluations, build_candidate_scorecards,
+            build_candidate_scorecards,
+            load_candidate_quality_evaluations,
         )
         evals = load_candidate_quality_evaluations(job_id=str(job.id))
         if not evals:
@@ -1148,7 +1155,8 @@ def _build_external_builder_summary(job: Any) -> dict:
     no raw candidate/package context/output/diff/secrets/absolute paths."""
     try:
         from packages.orchestration.external_builder_sandbox import (
-            load_external_packages, load_external_submissions,
+            load_external_packages,
+            load_external_submissions,
         )
         pkgs = load_external_packages(job_id=str(job.id))
         subs = load_external_submissions(job_id=str(job.id))
@@ -1188,8 +1196,11 @@ def _build_worker_registry_summary(job: Any) -> dict:
     only — never indicates a running worker or an available provider."""
     try:
         from packages.orchestration.worker_registry import (
-            load_worker_registry, load_route_policy, evaluate_worker_selection, is_placeholder,
             WorkerSelectionRequest,
+            evaluate_worker_selection,
+            is_placeholder,
+            load_route_policy,
+            load_worker_registry,
         )
         specs = load_worker_registry()
         by_kind: dict[str, int] = {}
@@ -1284,7 +1295,8 @@ def _build_model_route_tournament_summary(job: Any) -> dict:
     tradeoff, next actions — no raw prompts/candidates/diffs/logs/secrets/absolute paths."""
     try:
         from packages.orchestration.model_route_tournament import (
-            generate_tournament_report, list_tournament_reports,
+            generate_tournament_report,
+            list_tournament_reports,
         )
         reports = list_tournament_reports(job_id=str(job.id))
         rep = generate_tournament_report(str(job.id), persist=False)
@@ -1325,7 +1337,9 @@ def _build_overnight_mission_summary(job: Any) -> dict:
     scrubbed user_goal), logs, diffs, secrets, or absolute paths."""
     try:
         from packages.orchestration.overnight_mission import (
-            list_mission_contracts, evaluate_mission_contract, _contract_from_dict,
+            _contract_from_dict,
+            evaluate_mission_contract,
+            list_mission_contracts,
         )
         contracts = list_mission_contracts(job_id=str(job.id))
         if not contracts:
@@ -1359,7 +1373,9 @@ def _build_snapshot_rollback_summary(job: Any) -> dict:
     stdout/stderr/logs/secrets/paths. Never claims restore_available for a metadata snapshot."""
     try:
         from packages.orchestration.real_test_execution import (
-            list_test_runs, list_snapshot_proofs, list_rollback_proofs,
+            list_rollback_proofs,
+            list_snapshot_proofs,
+            list_test_runs,
         )
         runs = list_test_runs(str(job.id))
         snaps = list_snapshot_proofs(job_id=str(job.id))
@@ -1392,7 +1408,9 @@ def _build_repair_loop_summary(job: Any) -> dict:
     stdout/stderr/logs/candidates/diffs/secrets/paths. Honest (no fake repaired)."""
     try:
         from packages.orchestration.repair_loop_v2 import (
-            list_repair_work_items, list_repair_attempts, load_latest_repair_evaluation,
+            list_repair_attempts,
+            list_repair_work_items,
+            load_latest_repair_evaluation,
         )
         items = list_repair_work_items(job_id=str(job.id))
         open_count = sum(1 for i in items if i.get("status") not in ("repaired", "abandoned"))
@@ -1429,7 +1447,8 @@ def _build_main_builder_adapter_summary(job: Any) -> dict:
     transcripts/candidates/diffs/secrets/paths. Honest (no fake running/done)."""
     try:
         from packages.orchestration.main_builder_adapter import (
-            list_builder_adapter_specs, list_builder_sessions,
+            list_builder_adapter_specs,
+            list_builder_sessions,
         )
         specs = list_builder_adapter_specs()
         sessions = list_builder_sessions(str(job.id))
@@ -1482,8 +1501,9 @@ def _build_managed_execution_summary(job: Any) -> dict:
     status + next safe actions — never raw output/commands/secrets. Honest (no fake done)."""
     try:
         from packages.orchestration.managed_builder_execution import (
-            list_command_templates, list_execution_results,
+            list_command_templates,
             list_execution_approvals,
+            list_execution_results,
         )
         templates = list_command_templates()
         results = list_execution_results(str(job.id))
@@ -1608,8 +1628,8 @@ def _build_contract_summary(job_id: str) -> dict:
         from packages.orchestration.run_contract import (
             ensure_contract,
             export_run_contract_json,
-            load_usage,
             export_usage_json,
+            load_usage,
         )
         from packages.orchestration.storage import load_job
 
@@ -1631,7 +1651,7 @@ def _build_contract_summary(job_id: str) -> dict:
 def _build_test_execution_summary(job: Any, events: list[dict]) -> dict:
     """Safe test execution summary for the review bundle. No raw output."""
     try:
-        from packages.orchestration.run_contract import load_usage, export_usage_json
+        from packages.orchestration.run_contract import export_usage_json, load_usage
 
         # Collect test run records from job metadata
         test_runs = job.metadata.get("test_runs") or []
@@ -2134,7 +2154,6 @@ def build_review_bundle(
 def _audit_bundle_safety(result: ReviewBundleResult, section_data: dict[str, bytes]) -> None:
     """Post-build safety audit — scans all sections for forbidden content."""
     from packages.orchestration.redaction_patterns import (
-        find_forbidden_surface_tokens,
         _SECRET_RE,
     )
 

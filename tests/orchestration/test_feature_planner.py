@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from packages.orchestration.feature_planner import (
     FeaturePlan,
     FeaturePlanPriority,
@@ -22,7 +20,6 @@ from packages.orchestration.progress_ledger import (
     ProgressSource,
     ProgressStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # Step 1018: Deterministic rule tests

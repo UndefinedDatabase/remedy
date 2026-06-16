@@ -9,14 +9,12 @@ Reuses the do_continue tmp-repo harness.
 from __future__ import annotations
 
 from pathlib import Path
-
-import pytest
+from uuid import UUID
 
 from packages.orchestration import do_continue as dc
 from packages.orchestration import repair_loop as RL
 from packages.orchestration.storage import load_job, save_job
-from tests.orchestration.test_do_continue import make_continue_job, _fake_test, env  # noqa: F401
-from uuid import UUID
+from tests.orchestration.test_do_continue import _fake_test, env, make_continue_job  # noqa: F401
 
 
 def _attach_repair(data_dir, job, intent_id, *, expected_effect):
@@ -115,7 +113,7 @@ class TestProofAwareness:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo, approve=False)
         _attach_repair(data_dir, job, iid, expected_effect="source_fix")
-        from packages.orchestration.proof_chain import build_proof_chain, PROOF_VERIFIED
+        from packages.orchestration.proof_chain import PROOF_VERIFIED, build_proof_chain
         from packages.orchestration.timeline import load_run_events
         job2 = load_job(UUID(str(job.id)), data_dir)
         events = load_run_events(data_dir, UUID(str(job.id)))

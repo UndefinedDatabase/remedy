@@ -183,7 +183,7 @@ def apply_task_output_to_repo(
 
 
 def check_and_apply_to_repo(
-    job: "Job",
+    job: Job,
     artifact: Artifact,
     repo_root: Path,
 ) -> list[str]:

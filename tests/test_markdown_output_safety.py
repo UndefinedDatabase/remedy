@@ -1,6 +1,5 @@
 """Tests for the shared Markdown output-boundary safety helper."""
 
-import pytest
 
 from packages.orchestration.markdown_output_safety import (
     HTML_COMMENT_START,

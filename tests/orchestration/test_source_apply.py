@@ -5,13 +5,10 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock
-from uuid import UUID, uuid4
 from uuid import uuid4
-import json
-import os
-import pytest
 
 from packages.core.models import (
     Artifact,
@@ -21,6 +18,7 @@ from packages.core.models import (
     Task,
 )
 from packages.orchestration.storage import save_job
+
 
 def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
     meta: dict = {}
@@ -132,8 +130,11 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
 
     # Persist a contract that allows REVERT (Step 1137)
     import dataclasses
+
     from packages.orchestration.run_contract import (
-        build_default_run_contract, save_contract, ContractAction,
+        ContractAction,
+        build_default_run_contract,
+        save_contract,
     )
     contract = build_default_run_contract(job)
     contract = dataclasses.replace(
@@ -489,8 +490,8 @@ class TestSourceContext:
         assert not any("node_modules" in p for p in paths)
 
     def test_event_schema(self, tmp_path):
-        from packages.orchestration.source_context import inject_source_context
         from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.source_context import inject_source_context
         (tmp_path / "main.py").write_text("x = 1")
 
         job = _make_job_s91()
@@ -545,7 +546,9 @@ class TestStructuredPatch:
 
     def test_validate_path_traversal(self):
         from packages.orchestration.structured_patch import (
-            FileOp, StructuredPatch, validate_structured_patch,
+            FileOp,
+            StructuredPatch,
+            validate_structured_patch,
         )
         patch = StructuredPatch(
             intent_kind="file_ops",
@@ -558,7 +561,9 @@ class TestStructuredPatch:
 
     def test_validate_env_blocked(self):
         from packages.orchestration.structured_patch import (
-            FileOp, StructuredPatch, validate_structured_patch,
+            FileOp,
+            StructuredPatch,
+            validate_structured_patch,
         )
         patch = StructuredPatch(
             intent_kind="file_ops",
@@ -643,14 +648,17 @@ class TestSourceApply:
     def test_snapshot_and_revert(self, tmp_path):
         import dataclasses
         from uuid import uuid4 as _uuid4
-        from packages.orchestration.source_apply import apply_structured_patch, revert_apply
-        from packages.orchestration.structured_patch import FileOp, StructuredPatch
+
         from packages.core.models import Job, RunState
-        from packages.orchestration.storage import save_job
         from packages.orchestration.permissions import Capability, set_permission
         from packages.orchestration.run_contract import (
-            build_default_run_contract, save_contract, ContractAction,
+            ContractAction,
+            build_default_run_contract,
+            save_contract,
         )
+        from packages.orchestration.source_apply import apply_structured_patch, revert_apply
+        from packages.orchestration.storage import save_job
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -658,7 +666,7 @@ class TestSourceApply:
         data_dir.mkdir()
 
         # Real job saved to storage with repo_revert=allow + contract allowing REVERT (Step 1137)
-        from packages.orchestration.approval_queue import make_intent_id, set_approval_state, APPROVAL_APPROVED
+        from packages.orchestration.approval_queue import APPROVAL_APPROVED, make_intent_id, set_approval_state
         art_id = _uuid4()
         intent_id = make_intent_id(art_id, 0)
         artifact = Artifact(
@@ -780,8 +788,9 @@ class TestSourceContextFinalization:
         assert "_is_text_file" in src
 
     def test_inject_source_context_budget(self):
-        from packages.orchestration.source_context import inject_source_context
         import tempfile
+
+        from packages.orchestration.source_context import inject_source_context
         with tempfile.TemporaryDirectory() as td:
             p = Path(td)
             (p / "main.py").write_text("x = 1\n")

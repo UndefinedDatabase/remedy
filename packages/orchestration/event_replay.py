@@ -415,7 +415,6 @@ def execute_resume_from_apply(
     data_dir: str | Path,
 ) -> ResumeResult:
     """Execute from_apply resume using Remedy's test_runner. Returns safe result."""
-    from packages.orchestration.permissions import Capability, is_allowed
     from packages.orchestration.test_runner import run_tests_local
     from packages.orchestration.timeline import append_run_event
 

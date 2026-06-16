@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from packages.orchestration.builder_models import BuilderOutput, parse_builder_patch
 
 
@@ -34,6 +32,7 @@ class TestPromptContent:
 
     def test_user_message_includes_goal(self):
         from uuid import uuid4
+
         from packages.orchestration.builder_models import TaskExecutionContext
         from packages.providers.ollama_builder.provider import _build_user_message
         ctx = TaskExecutionContext(
@@ -48,6 +47,7 @@ class TestPromptContent:
 
     def test_user_message_includes_memory_context(self):
         from uuid import uuid4
+
         from packages.orchestration.builder_models import TaskExecutionContext
         from packages.providers.ollama_builder.provider import _build_user_message
         ctx = TaskExecutionContext(

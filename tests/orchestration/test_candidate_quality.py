@@ -8,17 +8,20 @@ models/network/subprocess, never leaks raw prompt/output/secrets/paths.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
 from packages.orchestration.candidate_quality import (
-    QualityOutcome, QualityBand, _classify, _score,
-    evaluate_candidate_quality, export_candidate_quality_json,
-    build_candidate_scorecards, route_quality_feedback, candidate_quality_integrity,
-    load_candidate_quality_evaluations,
+    QualityBand,
+    QualityOutcome,
+    _classify,
+    _score,
+    candidate_quality_integrity,
+    evaluate_candidate_quality,
+    export_candidate_quality_json,
+    route_quality_feedback,
 )
 
 
@@ -205,7 +208,7 @@ class TestIntegration:
         monkeypatch.setenv("REMEDY_REVIEW_FILE", str(rv))
         for k, v in {"ENABLED": "1", "ENDPOINT": "http://127.0.0.1:11434", "MODEL": "qwen"}.items():
             monkeypatch.setenv("REMEDY_LOCAL_CANDIDATE_GENERATOR_" + k, v)
-        from packages.core.models import Job, Artifact, ArtifactKind, RunState
+        from packages.core.models import Artifact, ArtifactKind, Job, RunState
         from packages.orchestration.storage import save_job
         fa = Artifact(name="f", content="x", kind=ArtifactKind.VERIFICATION, task_id=None,
                       metadata={"test_failure": True, "related_files": ["docs/note.md"], "test_command": "pytest"})
@@ -219,7 +222,8 @@ class TestIntegration:
         def tx(m, u, b, t):
             return (200, json.dumps({"response": cand}).encode())
         from packages.orchestration.local_candidate_generator import (
-            run_local_candidate_generation, LocalCandidateGenerationRequest,
+            LocalCandidateGenerationRequest,
+            run_local_candidate_generation,
         )
         g = run_local_candidate_generation(
             LocalCandidateGenerationRequest(request_package_id="rp1", job_id=str(job.id),

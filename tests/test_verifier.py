@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
-
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.task_runner import (
@@ -21,11 +19,9 @@ from packages.orchestration.task_runner import (
 )
 from packages.orchestration.verifier import (
     TaskContract,
-    VerificationResult,
     verify_task_output,
 )
 from packages.orchestration.workspace import LocalWorkspaceRuntime
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -494,7 +490,6 @@ class TestGenericProfileVerification:
         Passing TaskContract(require_workspace_file=False) skips workspace checks
         but must NOT skip profile content checks.
         """
-        from packages.orchestration.verifier import TaskContract
 
         job = _make_planned_job("write_readme")  # repo_doc profile → forbids TODO/TBD
         task = job.tasks[0]

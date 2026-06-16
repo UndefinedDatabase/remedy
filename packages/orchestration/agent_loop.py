@@ -62,29 +62,23 @@ from typing import Any
 from uuid import UUID
 
 from packages.core.models import Job, RunState
+from packages.orchestration._symbols import (
+    NEXT as _NEXT,
+)
+
+# ---------------------------------------------------------------------------
+# Symbols (consistent with other orchestration views)
+# ---------------------------------------------------------------------------
+from packages.orchestration._symbols import (
+    section,
+)
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_PENDING,
     list_patch_intents,
 )
 from packages.orchestration.patch_intent import RISK_LOW
-from packages.orchestration.permissions import Capability, is_allowed, is_reserved
-
-
-# ---------------------------------------------------------------------------
-# Symbols (consistent with other orchestration views)
-# ---------------------------------------------------------------------------
-
-from packages.orchestration._symbols import (
-    OK as _OK,
-    FAIL as _FAIL,
-    WARN as _WARN,
-    INFO as _INFO,
-    NEXT as _NEXT,
-    LINE as _LINE,
-    section,
-)
-
+from packages.orchestration.permissions import Capability, is_reserved
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -499,7 +493,7 @@ def run_agent_loop(
     """
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.storage import load_job
     from packages.orchestration.timeline import load_run_events
 
     data_dir = resolve_data_root()

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -53,6 +54,7 @@ def _cmd_run_tests(
 def _print_result_text(result: object, *, out=None) -> None:
     """Print human-readable result. No raw output."""
     import sys as _sys
+
     from packages.orchestration.test_execution_service import TestExecutionResult
     r: TestExecutionResult = result  # type: ignore[assignment]
     if out is None:
@@ -99,7 +101,7 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        from packages.orchestration.storage import load_job, JobNotFoundError
+        from packages.orchestration.storage import load_job
         job = load_job(job_id)
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -114,6 +116,7 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
         sys.exit(1)
 
     from pathlib import Path as _Path
+
     from packages.orchestration.command_discovery import discover_commands
 
     repo_root = _Path(target_repo_str).resolve()
@@ -121,6 +124,7 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
 
     if as_json:
         from collections import Counter as _Counter
+
         from packages.orchestration.command_discovery import select_best_test_candidate
 
         selected = select_best_test_candidate(candidates)
@@ -171,16 +175,12 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
 
 def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
     """Show lease state, latest test run, and usage for a job. Read-only."""
-    from packages.orchestration.test_execution_service import (
-        TestExecutionLease,
-        _LEASE_TIMEOUT_STATUS_SECONDS,
-    )
-    from packages.orchestration.run_contract import ensure_contract, load_usage, export_usage_json
-    from packages.orchestration.storage import load_job, JobNotFoundError
-    from packages.orchestration.data_paths import resolve_data_root
-    from pathlib import Path as _Path
     import json as _json
     from uuid import UUID
+
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     try:
         job_id = UUID(job_id_str)
@@ -209,7 +209,7 @@ def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
     if lease_path.exists():
         import fcntl
         try:
-            with open(lease_path, "r") as lf:
+            with open(lease_path) as lf:
                 fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 fcntl.flock(lf, fcntl.LOCK_UN)
         except OSError:
@@ -257,7 +257,7 @@ def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
         print(f"  latest_run:    {latest_safe['test_run_id']}  status={latest_safe['status']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "test.discover": lambda args: _cmd_discover_commands(args.job_id, as_json=args.json),
     "test.run": lambda args: _cmd_run_tests(
         args.job_id,

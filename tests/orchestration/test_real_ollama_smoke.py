@@ -17,8 +17,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
-import sys
 
 import pytest
 
@@ -105,6 +103,7 @@ class TestRealOllamaSmoke:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from uuid import uuid4
+
         from packages.orchestration.builder_models import TaskExecutionContext
         from packages.providers.ollama_builder.provider import OllamaBuilder
 
@@ -138,6 +137,7 @@ class TestRealOllamaSmoke:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from uuid import uuid4
+
         from packages.core.models import Job
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import TaskExecutionContext

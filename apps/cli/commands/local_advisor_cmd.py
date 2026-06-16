@@ -8,7 +8,8 @@ no model output ever becomes a command/entity/approval/apply.
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -16,7 +17,9 @@ if TYPE_CHECKING:
 
 def _cmd_local_advisor_status(args: Any) -> None:
     from packages.orchestration.local_model_advisor import (
-        load_local_advisor_config, check_local_advisor_availability, list_local_advisor_runs,
+        check_local_advisor_availability,
+        list_local_advisor_runs,
+        load_local_advisor_config,
     )
     config = load_local_advisor_config()
     av = check_local_advisor_availability(config)
@@ -45,8 +48,11 @@ def _cmd_local_advisor_status(args: Any) -> None:
 def _cmd_local_advisor_run(args: Any) -> None:
     from packages.orchestration.local_model_advisor import load_local_advisor_config
     from packages.orchestration.orchestrator_brain import (
-        build_orchestrator_situation, select_orchestrator_decision,
-        consult_local_advisor_for_decision, persist_decision, export_decision_json,
+        build_orchestrator_situation,
+        consult_local_advisor_for_decision,
+        export_decision_json,
+        persist_decision,
+        select_orchestrator_decision,
     )
 
     config = load_local_advisor_config(enabled_override=True)
@@ -89,7 +95,7 @@ def _cmd_local_advisor_run(args: Any) -> None:
     print(f"  next: {data['next_safe_action']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "local-advisor.status": _cmd_local_advisor_status,
     "local-advisor.run": _cmd_local_advisor_run,
 }

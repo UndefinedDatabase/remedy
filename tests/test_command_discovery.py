@@ -25,7 +25,6 @@ import pytest
 from packages.core.models import Job, RunState
 from packages.orchestration.command_discovery import (
     CommandCandidate,
-    _SCAN_IGNORE_DIRS,
     _detect_cargo,
     _detect_constitution,
     _detect_go,
@@ -38,7 +37,6 @@ from packages.orchestration.command_discovery import (
     discover_commands,
     select_best_test_candidate,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -619,7 +617,8 @@ class TestNoShellTrue:
 
     def test_run_tests_local_no_shell_true(self, tmp_path):
         """run_tests_local must never pass shell=True to subprocess.run."""
-        from unittest.mock import patch, call
+        from unittest.mock import patch
+
         from packages.orchestration.test_runner import run_tests_local
 
         repo = tmp_path / "repo"
@@ -984,6 +983,7 @@ class TestCLIDiscoverCommandsSchemaV1:
 class TestNoProviderCoupling:
     def test_command_discovery_has_no_pi_reference(self):
         import inspect
+
         import packages.orchestration.command_discovery as cd
         src = inspect.getsource(cd)
         for token in ("pi.dev", "bootcamp", "ollama", "copilot", "anthropic"):
@@ -993,6 +993,7 @@ class TestNoProviderCoupling:
 
     def test_test_runner_has_no_provider_reference(self):
         import inspect
+
         import packages.orchestration.test_runner as tr
         src = inspect.getsource(tr)
         for token in ("pi.dev", "bootcamp", "copilot"):

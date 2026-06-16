@@ -98,7 +98,7 @@ class PatchApplyResult:
 
 
 def apply_patch_intent(
-    job: "Job",
+    job: Job,
     intent_id: str,
     *,
     data_dir: Path | None = None,
@@ -183,14 +183,22 @@ def apply_patch_intent(
         return _blocked("permission_denied", target_path, action)
 
     # ── 8b. Mandatory pre-apply snapshot ─────────────────────────────────
+    from packages.orchestration.data_paths import resolve_data_root as _resolve_data_root
+    from packages.orchestration.repository_snapshot import (
+        DurableApplyRecord as _DurableApplyRecord,
+    )
     from packages.orchestration.repository_snapshot import (
         create_snapshot as _create_snapshot,
-        verify_snapshot as _verify_snapshot,
-        save_durable_apply_record as _save_durable_apply_record,
-        DurableApplyRecord as _DurableApplyRecord,
+    )
+    from packages.orchestration.repository_snapshot import (
         load_snapshot as _load_snapshot,
     )
-    from packages.orchestration.data_paths import resolve_data_root as _resolve_data_root
+    from packages.orchestration.repository_snapshot import (
+        save_durable_apply_record as _save_durable_apply_record,
+    )
+    from packages.orchestration.repository_snapshot import (
+        verify_snapshot as _verify_snapshot,
+    )
     _data_dir_path = data_dir or _resolve_data_root()
     _job_id_str = str(job.id)
     _snap_result = _create_snapshot(_job_id_str, intent_id, [target_path], repo_root, _data_dir_path)
@@ -348,7 +356,7 @@ def format_apply_result(result: PatchApplyResult) -> str:
         lines = [
             f"Applied: {result.intent_id} ({result.target_path})",
             f"  action: {result.action}",
-            f"  outcome: applied",
+            "  outcome: applied",
             f"  bytes_written: {result.bytes_written}",
             f"  lines_written: {result.line_count}",
             "Note: patch application is limited to approved Markdown intents in v0.",
@@ -469,7 +477,7 @@ def _build_modify_section(proposed_lines: list[str]) -> str:
 
 
 def _emit_run_log(
-    job: "Job",
+    job: Job,
     result: PatchApplyResult,
     data_dir: Path | None,
 ) -> None:
@@ -503,7 +511,7 @@ def _emit_run_log(
 
 
 def _emit_proof_run_log(
-    job: "Job",
+    job: Job,
     result: PatchApplyResult,
     data_dir: Path | None,
     applied_at: str,

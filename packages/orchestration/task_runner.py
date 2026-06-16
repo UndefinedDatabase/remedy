@@ -48,8 +48,8 @@ Materialization (Step 6 + 6.5):
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 from uuid import UUID
 
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task

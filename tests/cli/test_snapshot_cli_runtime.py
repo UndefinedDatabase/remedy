@@ -10,8 +10,6 @@ import json
 import subprocess
 import sys
 
-import pytest
-
 _NULL_JOB_ID = "00000000-0000-0000-0000-000000000000"
 _NULL_SNAP_ID = "00000000-0000-0000-0000-111111111111"
 _NULL_INTENT_ID = "00000000-0"
@@ -52,6 +50,7 @@ class TestSnapshotInspectCLI:
 
     def test_no_shell_true_in_source(self):
         import inspect
+
         from apps.cli.commands import snapshot_cmds
         source = inspect.getsource(snapshot_cmds)
         assert "shell=True" not in source
@@ -125,6 +124,7 @@ class TestPatchRevertCLI:
 
     def test_no_shell_true_in_patch_source(self):
         import inspect
+
         from apps.cli.commands import patch
         source = inspect.getsource(patch)
         assert "shell=True" not in source

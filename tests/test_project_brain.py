@@ -44,7 +44,6 @@ Coverage:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -63,10 +62,10 @@ from packages.orchestration.project_brain import (
     ET_CREATED,
     ET_DECIDED,
     ET_EMITTED,
-    ET_FUTURE_MEMORY,
     ET_FUTURE_MCP,
-    ET_HAS_MEMORY,
+    ET_FUTURE_MEMORY,
     ET_GOVERNED,
+    ET_HAS_MEMORY,
     ET_HAS_TASK,
     ET_INSPECTED,
     ET_PRODUCED_PI,
@@ -87,13 +86,11 @@ from packages.orchestration.project_brain import (
     NT_VERIFICATION,
     BrainEdge,
     BrainNode,
-    ProjectBrainGraph,
     build_project_brain,
     export_project_brain_json,
     summarize_project_brain,
 )
 from packages.orchestration.storage import save_job
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -829,8 +826,9 @@ class TestCLIBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         out = capsys.readouterr().out
@@ -841,8 +839,9 @@ class TestCLIBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -860,8 +859,9 @@ class TestCLIBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -889,8 +889,9 @@ class TestCLIBrain:
         )
         job.artifacts.append(artifact)
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -901,8 +902,9 @@ class TestCLIBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)
@@ -912,8 +914,9 @@ class TestCLIBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
@@ -927,8 +930,9 @@ class TestCLIBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
@@ -962,8 +966,9 @@ class TestCLIBrain:
         intent_id = make_intent_id(artifact.id, 0)
         set_approval_state(job, intent_id, APPROVAL_APPROVED, reason=APPROVAL_REASON_MUST_NOT_RENDER)
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         out = capsys.readouterr().out
@@ -978,8 +983,9 @@ class TestCLIBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job(job)
-        from apps.cli.main import main
         import sys
+
+        from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
         runs_dir = tmp_path / "runs" / str(job.id)

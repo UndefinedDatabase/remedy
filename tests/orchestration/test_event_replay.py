@@ -5,8 +5,6 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-import pytest
-
 
 def _write_events(tmp_path, job_id, events):
     runs_dir = tmp_path / "runs" / str(job_id)
@@ -106,7 +104,7 @@ class TestReplayRepairLoop:
 
 class TestReplayNoRawLeaks:
     def test_no_raw_content(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, export_replay_json
+        from packages.orchestration.event_replay import export_replay_json, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {"goal": "fix SECRET_KEY bug"}},
@@ -124,7 +122,7 @@ class TestReplayNoRawLeaks:
 
 class TestCheckpoints:
     def test_fixture_success_checkpoints(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -146,7 +144,7 @@ class TestCheckpoints:
         assert "tests_passed" in kinds
 
     def test_approval_pending_checkpoint_blocked(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -162,7 +160,7 @@ class TestCheckpoints:
         assert intent_cp.blocked_reason == "approval_pending"
 
     def test_tests_failed_checkpoint_blocked(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -181,7 +179,7 @@ class TestCheckpoints:
         assert fail_cp.blocked_reason == "resume_mode_not_implemented"
 
     def test_context_ready_inspectable_not_resumable(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -196,7 +194,7 @@ class TestCheckpoints:
         assert ctx_cp.blocked_reason == "resume_mode_not_implemented"
 
     def test_approval_recorded_blocked_missing_patch(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -212,7 +210,7 @@ class TestCheckpoints:
         assert approved_cp.blocked_reason == "missing_patch_payload"
 
     def test_source_apply_proven_resumable(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -230,8 +228,9 @@ class TestCheckpoints:
 
     def test_next_command_catalog_valid(self, tmp_path):
         import re
+
         from apps.cli.command_catalog import CATALOG
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         catalog_subs = {(c.group_id, c.subcommand) for c in CATALOG}
 
         jid = str(uuid4())
@@ -260,7 +259,7 @@ class TestR12001Regression:
     """R-12001: resume must not claim success for no-op behavior."""
 
     def test_from_approval_not_resumable(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -278,7 +277,7 @@ class TestR12001Regression:
         )
 
     def test_no_resumed_true_for_unimplemented_mode(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -294,7 +293,7 @@ class TestR12001Regression:
 
 class TestCheckpointDataContract:
     def test_from_approval_shows_missing_data(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints, export_checkpoints_json
+        from packages.orchestration.event_replay import export_checkpoints_json, find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -313,7 +312,7 @@ class TestCheckpointDataContract:
         assert "required_data" in approved_j
 
     def test_from_apply_shows_requirements(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -328,7 +327,7 @@ class TestCheckpointDataContract:
         assert applied.resume_mode_supported is True
 
     def test_tests_failed_shows_repair_missing(self, tmp_path):
-        from packages.orchestration.event_replay import replay_job, find_checkpoints
+        from packages.orchestration.event_replay import find_checkpoints, replay_job
         jid = str(uuid4())
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -346,8 +345,8 @@ class TestCheckpointDataContract:
 class TestDryRunValidation:
     def test_dry_run_no_permission_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.event_replay import resume_dry_run
         from packages.core.models import Job, RunState
+        from packages.orchestration.event_replay import resume_dry_run
         jid = uuid4()
         job = Job(id=jid, name="test", state=RunState.COMPLETED, permissions={})
         events = [
@@ -361,9 +360,9 @@ class TestDryRunValidation:
 
     def test_dry_run_no_repo_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job, RunState
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.permissions import Capability, set_permission
-        from packages.core.models import Job, RunState
         jid = uuid4()
         job = Job(id=jid, name="test", state=RunState.COMPLETED, metadata={})
         set_permission(job, Capability.repo_test_run, allow=True)
@@ -378,9 +377,9 @@ class TestDryRunValidation:
 
     def test_dry_run_creates_no_events(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job, RunState
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.timeline import load_run_events
-        from packages.core.models import Job, RunState
         jid = uuid4()
         job = Job(id=jid, name="test", state=RunState.COMPLETED, permissions={})
         events = [{"event": "autorun_started", "metadata": {}}]
@@ -393,7 +392,6 @@ class TestDryRunValidation:
 
 class TestDocsExist:
     def test_resume_docs_exist(self):
-        from pathlib import Path
         doc = Path("docs/resume.md")
         assert doc.is_file()
         content = doc.read_text()
@@ -404,7 +402,7 @@ class TestDocsExist:
 
     def test_resume_docs_commands_catalog_valid(self):
         import re
-        from pathlib import Path
+
         from apps.cli.command_catalog import CATALOG
         catalog_subs = {(c.group_id, c.subcommand) for c in CATALOG}
 
@@ -420,8 +418,8 @@ class TestDocsExist:
 class TestResumeDryRun:
     def test_dry_run_from_approved_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.event_replay import resume_dry_run
         from packages.core.models import Job, RunState
+        from packages.orchestration.event_replay import resume_dry_run
         jid = uuid4()
         job = Job(id=jid, name="test", state=RunState.COMPLETED)
         events = [
@@ -437,9 +435,9 @@ class TestResumeDryRun:
 
     def test_dry_run_from_apply_resumable(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job, RunState
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.permissions import Capability, set_permission
-        from packages.core.models import Job, RunState
         jid = uuid4()
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -463,8 +461,8 @@ class TestResumeDryRun:
 
     def test_dry_run_checkpoint_not_found(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.event_replay import resume_dry_run
         from packages.core.models import Job, RunState
+        from packages.orchestration.event_replay import resume_dry_run
         jid = uuid4()
         job = Job(id=jid, name="test", state=RunState.COMPLETED)
         dr = resume_dry_run(job, "nonexistent", str(tmp_path))
@@ -473,8 +471,8 @@ class TestResumeDryRun:
 
     def test_dry_run_not_resumable(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.event_replay import resume_dry_run
         from packages.core.models import Job, RunState
+        from packages.orchestration.event_replay import resume_dry_run
         jid = uuid4()
         job = Job(id=jid, name="test", state=RunState.COMPLETED)
         events = [

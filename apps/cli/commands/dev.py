@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -71,8 +71,8 @@ def _dev_status(*, json_output: bool = False) -> None:
 
     # Check UI contract
     try:
-        from packages.orchestration.ui_view_model import build_brain_view_model
         from packages.core.models import Job
+        from packages.orchestration.ui_view_model import build_brain_view_model
         job = Job(name="status-check")
         vm = build_brain_view_model(job, [])
         origins = [n for n in vm["nodes"] if n["is_origin"]]
@@ -86,8 +86,8 @@ def _dev_status(*, json_output: bool = False) -> None:
 
     # Check task progress
     try:
-        from packages.orchestration.ui_view_model import build_task_progress
         from packages.core.models import Job
+        from packages.orchestration.ui_view_model import build_task_progress
         job = Job(name="tp-check")
         tp = build_task_progress(job, [])
         status["task_progress_ok"] = tp["version"] == 1
@@ -100,8 +100,8 @@ def _dev_status(*, json_output: bool = False) -> None:
 
     # Check autocoder path — verify apply is callable, not just importable
     try:
-        from packages.orchestration.structured_patch import FileOp, StructuredPatch
         from packages.orchestration.source_apply import apply_structured_patch
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
         _p = StructuredPatch(
             intent_kind="file_ops",
             file_ops=(FileOp(path="test.py", action="create", language="python",
@@ -122,7 +122,7 @@ def _dev_status(*, json_output: bool = False) -> None:
 
     # Check reviewer loop — module importable
     try:
-        from packages.orchestration.reviewer import run_reviewer, _fixture_reviewer
+        from packages.orchestration.reviewer import run_reviewer
         status["reviewer_loop_ok"] = callable(run_reviewer)
     except (ImportError, Exception):
         status["reviewer_loop_ok"] = False
@@ -145,8 +145,10 @@ def _dev_status(*, json_output: bool = False) -> None:
     _cr_crashed = False
     if smoke_info["found"] and smoke_info["job_id"]:
         try:
+            import contextlib
+            import io
+
             from apps.cli.commands.repo import _cmd_commit_readiness
-            import io, contextlib
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 _cmd_commit_readiness(smoke_info["job_id"], json_output=True)
@@ -227,7 +229,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         print("  source scripts/remedy_smoke.sh && remedy_smoke     — smoke")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "dev.agent-loop": lambda args: _cmd_agent_loop(args.job_id),
     "dev.smoke-help": lambda args: _dev_smoke_help(),
     "dev.status": lambda args: _dev_status(json_output=getattr(args, "json", False)),

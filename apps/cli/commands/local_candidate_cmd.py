@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -18,8 +19,10 @@ if TYPE_CHECKING:
 
 def _cmd_local_candidate_status(args: Any) -> None:
     from packages.orchestration.local_candidate_generator import (
-        load_local_candidate_config, check_local_candidate_availability,
-        load_local_candidate_usage, list_local_candidate_runs,
+        check_local_candidate_availability,
+        list_local_candidate_runs,
+        load_local_candidate_config,
+        load_local_candidate_usage,
     )
     cfg = load_local_candidate_config()
     avail = check_local_candidate_availability(cfg)
@@ -47,8 +50,9 @@ def _cmd_local_candidate_status(args: Any) -> None:
 
 def _cmd_local_candidate_generate(args: Any) -> None:
     from packages.orchestration.local_candidate_generator import (
-        run_local_candidate_generation, LocalCandidateGenerationRequest,
+        LocalCandidateGenerationRequest,
         export_local_candidate_result_json,
+        run_local_candidate_generation,
     )
     request_package_id = getattr(args, "request_package_id", None) or ""
     if not request_package_id:
@@ -77,7 +81,7 @@ def _cmd_local_candidate_generate(args: Any) -> None:
     print(f"  next: {data['next_safe_action']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "local-candidate.status": _cmd_local_candidate_status,
     "local-candidate.generate": _cmd_local_candidate_generate,
 }

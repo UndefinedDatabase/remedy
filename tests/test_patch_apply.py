@@ -17,22 +17,19 @@ Test categories:
 from __future__ import annotations
 
 import json
-import os
 import sys
 import tempfile
 from pathlib import Path
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
 import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
-
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, Job
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
-    APPROVAL_PENDING,
     APPROVAL_REJECTED,
     make_intent_id,
     set_approval_state,
@@ -41,7 +38,6 @@ from packages.orchestration.markdown_output_safety import (
     neutralize_markdown_html_comment_start as _neutralize_markdown_html_comment_start,
 )
 from packages.orchestration.patch_apply import (
-    PatchApplyResult,
     _build_create_content,
     _build_modify_section,
     apply_patch_intent,
@@ -86,7 +82,7 @@ def _add_artifact(
                     "file": target_path,
                     "action": action,
                     "risk": risk,
-                    "reason": f"task type 'test'",
+                    "reason": "task type 'test'",
                     "summary": "test intent",
                 }
             ]
@@ -165,7 +161,6 @@ class TestPathSafety:
         _validate_target_path passes — but resolution of the symlink moves
         outside the repo, which the boundary guard catches.
         """
-        import os
         # Create repo and an external directory that a symlink will point at
         repo_dir = tmp_path / "repo"
         repo_dir.mkdir()
@@ -184,10 +179,11 @@ class TestPathSafety:
 
         # Build an intent pointing at escape/file.md — passes path component checks
         # but resolves to external_dir/file.md (outside repo_dir)
-        from packages.core.models import Artifact, ArtifactKind
-        from packages.orchestration.approval_queue import make_intent_id, set_approval_state, APPROVAL_APPROVED
-        from packages.orchestration.permissions import Capability, set_permission
         from uuid import uuid4
+
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.approval_queue import APPROVAL_APPROVED, make_intent_id, set_approval_state
+        from packages.orchestration.permissions import Capability, set_permission
         artifact = Artifact(
             name="symlink test artifact",
             content="Summary:\n  test\nProposed Changes:\n  - bullet\n",
@@ -353,7 +349,7 @@ class TestPermissions:
 
     def test_shell_exec_not_touched(self, tmp_path):
         """shell_exec capability must not be involved in apply."""
-        from packages.orchestration.permissions import is_allowed, Capability
+        from packages.orchestration.permissions import Capability, is_allowed
         job, _ = _make_job(tmp_repo=tmp_path)
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
         _approve(job, intent_id)
@@ -843,7 +839,7 @@ class TestApplyRecord:
                 f"proof contains raw content keys: {set(proof.keys()) & raw_content_keys}"
 
     def test_apply_state_visible_after_reload(self, tmp_path):
-        from packages.orchestration.storage import save_job, load_job
+        from packages.orchestration.storage import load_job
         job, _ = _make_job(tmp_repo=tmp_path)
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
         _approve(job, intent_id)
@@ -994,7 +990,6 @@ class TestRunLog:
 class TestCLI:
     def _run_cli(self, *args):
         from unittest.mock import patch as mock_patch
-        import io
         with mock_patch.object(sys, "argv", ["remedy", *[str(a) for a in args]]):
             from apps.cli.main import main
             try:

@@ -38,13 +38,13 @@ import json
 import os
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Tuple
+from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
-
 
 # ---------------------------------------------------------------------------
 # Bounds (no magic numbers in the flow)
@@ -267,7 +267,7 @@ def _looks_like_code_or_diff(text: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _validate_endpoint(endpoint: str) -> Tuple[bool, str, str]:
+def _validate_endpoint(endpoint: str) -> tuple[bool, str, str]:
     """Return (ok, reason, public_label). Loopback only; never echoes a raw external host."""
     ep = (endpoint or "").strip()
     if not ep:
@@ -333,8 +333,10 @@ def _as_summary_dict(decision_or_situation: Any) -> dict[str, Any]:
         return obj
     try:
         from packages.orchestration.orchestrator_brain import (
-            OrchestratorDecision, OrchestratorSituation,
-            export_decision_json, export_situation_json,
+            OrchestratorDecision,
+            OrchestratorSituation,
+            export_decision_json,
+            export_situation_json,
         )
         if isinstance(obj, OrchestratorDecision):
             return export_decision_json(obj)
@@ -435,7 +437,7 @@ def _normalise_confidence(value: Any) -> str:
 
 def parse_local_advisor_response(
     raw_text: str,
-) -> Tuple[dict[str, Any], list[LocalAdvisorFinding], str]:
+) -> tuple[dict[str, Any], list[LocalAdvisorFinding], str]:
     """Parse + validate + redact a model response.
 
     Returns (safe_parsed, findings, status). ``status`` is COMPLETED or UNPARSEABLE.
@@ -533,13 +535,13 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
 # Transport seam: (method, url, body_bytes|None, timeout) -> (status_code, body_bytes).
 # Tests inject a fake transport; production uses the stdlib transport. NEVER a subprocess,
 # NEVER a provider SDK, NEVER a non-loopback host (validated before the call).
-Transport = Callable[[str, str, "bytes | None", float], Tuple[int, bytes]]
+Transport = Callable[[str, str, "bytes | None", float], tuple[int, bytes]]
 
 
-def _stdlib_transport(method: str, url: str, body: bytes | None, timeout: float) -> Tuple[int, bytes]:
+def _stdlib_transport(method: str, url: str, body: bytes | None, timeout: float) -> tuple[int, bytes]:
     """Minimal stdlib HTTP. Redirects are rejected; response is size-bounded."""
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     class _NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401
@@ -561,7 +563,7 @@ def _stdlib_transport(method: str, url: str, body: bytes | None, timeout: float)
 
 
 def _generate(config: LocalAdvisorConfig, prompt: str, transport: Transport,
-              ) -> Tuple[str, str]:
+              ) -> tuple[str, str]:
     """Call the local /api/generate endpoint. Returns (model_text, stop_reason).
 
     stop_reason is OK on success, else TIMEOUT/UNAVAILABLE/OVERSIZED/ERROR. Never raises."""

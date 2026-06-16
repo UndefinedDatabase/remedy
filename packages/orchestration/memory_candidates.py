@@ -19,7 +19,6 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-
 VALID_KINDS = frozenset({
     "repair_pattern", "test_command", "repo_preference",
     "token_policy", "review_note",

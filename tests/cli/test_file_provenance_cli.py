@@ -14,22 +14,23 @@ from uuid import uuid4
 
 import pytest
 
+from apps.cli.commands.file import _cmd_file_why
 from packages.core.models import Artifact, ArtifactKind, Job, RunState
 from packages.orchestration.approval_queue import make_intent_id
+from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.repository_snapshot import (
     DurableApplyRecord,
     create_snapshot,
+    revert_repository_apply,
     save_durable_apply_record,
     verify_snapshot,
-    revert_repository_apply,
+)
+from packages.orchestration.run_contract import (
+    ContractAction,
+    build_default_run_contract,
+    save_contract,
 )
 from packages.orchestration.storage import save_job
-from packages.orchestration.permissions import Capability, set_permission
-from packages.orchestration.run_contract import (
-    build_default_run_contract, save_contract, ContractAction,
-)
-from apps.cli.commands.file import _cmd_file_why
-
 
 PATH = "src/foo.py"
 

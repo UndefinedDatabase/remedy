@@ -46,7 +46,6 @@ from uuid import UUID, uuid4
 
 from packages.orchestration.provider_trust import _scrub_public
 
-
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1646 / 1647 / 1650)
 # ---------------------------------------------------------------------------
@@ -258,7 +257,7 @@ def _gather_evidence(
 
     # Job-scoped reports.
     try:
-        from packages.orchestration.storage import load_job, JobNotFoundError
+        from packages.orchestration.storage import JobNotFoundError, load_job
         job = load_job(UUID(job_id), data_dir)
     except (ValueError, JobNotFoundError, OSError, TypeError):
         return ev

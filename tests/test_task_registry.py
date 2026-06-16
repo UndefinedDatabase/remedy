@@ -21,13 +21,12 @@ from __future__ import annotations
 import pytest
 
 from packages.orchestration.task_registry import (
-    TaskTypeSpec,
     _ROUTE_RULES,  # internal — verifying registry completeness and ordering
+    TaskTypeSpec,
     get_task_type_spec,
     is_known_task_type,
     iter_task_type_specs,
 )
-
 
 # ---------------------------------------------------------------------------
 # TaskTypeSpec model
