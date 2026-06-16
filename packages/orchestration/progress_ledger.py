@@ -1365,6 +1365,18 @@ def extract_dogfood_run_items(runs: list[dict] | None) -> list[ProgressItem]:
                 severity="Medium",
                 safe_summary=f"Dogfood run budget exhausted at {steps} steps.",
                 next_action=f"remedy dogfood replay {rid} <job_id> --json"))
+        elif status == "stopped_by_operator":
+            items.append(ProgressItem(
+                item_id=f"dogfood-run-{rid}", title=f"Dogfood run {rid} stopped",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PLAN_STEP,
+                safe_summary=f"Dogfood run stopped by operator at {steps} steps.",
+                next_action=f"remedy dogfood replay {rid} <job_id> --json"))
+        elif status == "not_started":
+            items.append(ProgressItem(
+                item_id=f"dogfood-run-{rid}", title=f"Dogfood run {rid} not started",
+                status=ProgressStatus.PLANNED, source_type=ProgressSource.PLAN_STEP,
+                safe_summary=f"Dogfood run created but not yet started.",
+                next_action=f"remedy dogfood step {rid} <job_id>"))
         elif status in ("running", "repairing", "waiting_for_approval",
                          "waiting_for_builder", "waiting_for_review", "waiting_for_tests"):
             items.append(ProgressItem(

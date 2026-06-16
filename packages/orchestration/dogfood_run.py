@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
+from packages.orchestration.provider_trust import _scrub_public
 
 
 SCHEMA_VERSION = "dogfood-run-v0"
@@ -542,6 +542,47 @@ def _gather_run_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
             latest_run = runs[-1]
             ev["tests_status"] = latest_run.get("status", "unavailable")
             ev["failed_tests"] = int(latest_run.get("failed_count", 0))
+    except (ImportError, Exception):
+        pass
+
+    # Main Builder Adapter — active/blocked sessions.
+    try:
+        from packages.orchestration.main_builder_adapter import list_builder_sessions
+        sessions = list_builder_sessions(job_id, data_dir=data_dir)
+        for s in sessions:
+            st = s.get("status", "")
+            if st in ("package_ready", "submitted", "candidate_received"):
+                ev["builder_sessions_active"] += 1
+            elif st in ("blocked", "error", "failed"):
+                ev["builder_sessions_blocked"] += 1
+    except (ImportError, Exception):
+        pass
+
+    # Managed Builder Execution — active/blocked/failed executions.
+    try:
+        from packages.orchestration.managed_builder_execution import list_execution_results
+        results = list_execution_results(job_id, data_dir=data_dir)
+        for r in results:
+            st = r.get("status", "")
+            if st in ("running", "approval_required"):
+                ev["managed_executions_active"] += 1
+            elif st in ("failed", "timeout", "blocked"):
+                ev.setdefault("managed_executions_blocked", 0)
+                ev["managed_executions_blocked"] += 1
+    except (ImportError, Exception):
+        pass
+
+    # Proof chain status.
+    try:
+        from packages.orchestration.proof_chain import build_proof_chain
+        from packages.orchestration.storage import load_job
+        from packages.orchestration.timeline import load_run_events
+        from uuid import UUID
+        job = load_job(UUID(job_id), data_dir)
+        events = load_run_events(data_dir, UUID(job_id))
+        chain = build_proof_chain(job, events)
+        if chain:
+            ev["proof_status"] = chain.overall_status
     except (ImportError, Exception):
         pass
 
@@ -1054,6 +1095,88 @@ def dogfood_run_integrity(data_dir: Path | None = None) -> dict[str, Any]:
         if not run_id:
             out["checks"].append({"run_id": "(empty)", "code": "empty_run_id"})
             out["passed"] = False
+
+        # Check 9 (R-0116): satisfied run must not have unsatisfied mission contract.
+        if status == DogfoodRunStatus.SATISFIED:
+            evidence = _gather_run_evidence(job_id, ddir)
+            if evidence.get("contract_status") not in ("unknown", "contract_satisfied") and \
+               not evidence.get("contract_satisfied", False):
+                out["checks"].append({"run_id": run_id, "code": "satisfied_with_unsatisfied_mission"})
+                out["passed"] = False
+
+            # Check 10: satisfied run must not have open review findings.
+            if evidence.get("open_review_findings", 0) > 0:
+                policy = run_data.get("policy", {})
+                if policy.get("require_clean_review", True):
+                    out["checks"].append({"run_id": run_id, "code": "satisfied_with_open_findings",
+                                          "count": evidence["open_review_findings"]})
+                    out["passed"] = False
+
+            # Check 11: satisfied run must not have failing tests.
+            if evidence.get("failed_tests", 0) > 0:
+                policy = run_data.get("policy", {})
+                if policy.get("require_tests_green", True):
+                    out["checks"].append({"run_id": run_id, "code": "satisfied_with_failing_tests",
+                                          "count": evidence["failed_tests"]})
+                    out["passed"] = False
+
+        # Check 12: guardrail exceeded must produce terminal status.
+        policy = run_data.get("policy", {})
+        if status not in _TERMINAL_STATUSES:
+            step_count = run_data.get("step_count", 0)
+            max_steps = policy.get("max_steps", 100)
+            if max_steps > 0 and step_count > max_steps:
+                out["checks"].append({"run_id": run_id, "code": "guardrail_exceeded_without_terminal_status",
+                                      "detail": f"steps {step_count} > max {max_steps}"})
+                out["passed"] = False
+            cum_tokens = run_data.get("cumulative_tokens", 0)
+            max_tokens = policy.get("max_tokens_estimated", 500_000)
+            if max_tokens > 0 and cum_tokens > max_tokens:
+                out["checks"].append({"run_id": run_id, "code": "guardrail_exceeded_without_terminal_status",
+                                      "detail": f"tokens {cum_tokens} > max {max_tokens}"})
+                out["passed"] = False
+
+        # Check 13: active lane/status coherence.
+        current_lane = run_data.get("current_lane", "")
+        lane_statuses = run_data.get("lane_statuses", {})
+        if current_lane and lane_statuses:
+            lane_st = lane_statuses.get(current_lane, "")
+            if lane_st in ("done", "blocked") and status == DogfoodRunStatus.RUNNING:
+                out["checks"].append({"run_id": run_id, "code": "active_lane_status_mismatch",
+                                      "lane": current_lane, "lane_status": lane_st})
+                out["passed"] = False
+
+        # Check 14: replay export must not leak raw data.
+        replay_file = _replay_path(job_id, run_id, ddir)
+        replay_data = _load_json(replay_file)
+        if replay_data:
+            replay_str = json.dumps(replay_data)
+            for marker in _RAW_MARKERS:
+                if marker in replay_str:
+                    out["checks"].append({"run_id": run_id, "code": "replay_raw_data_leak",
+                                          "marker": marker[:20]})
+                    out["passed"] = False
+                    break
+
+        # Check 15: brainstorm ideas with status=required must have evidence.
+        brainstorm_dir = _run_dir(job_id, run_id, ddir) / "brainstorm"
+        try:
+            if brainstorm_dir.is_dir():
+                for f in brainstorm_dir.iterdir():
+                    if not f.is_file() or f.suffix != ".json":
+                        continue
+                    try:
+                        idea = json.loads(f.read_text(encoding="utf-8"))
+                        if idea.get("status") == "required" and not idea.get("evidence_needed"):
+                            out["checks"].append({
+                                "run_id": run_id, "code": "brainstorm_required_without_evidence",
+                                "idea_id": idea.get("idea_id", "?"),
+                            })
+                            out["passed"] = False
+                    except (OSError, ValueError):
+                        continue
+        except OSError:
+            pass
 
     return out
 
