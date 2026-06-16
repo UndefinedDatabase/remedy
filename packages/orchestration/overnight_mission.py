@@ -477,11 +477,16 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
             blocked = 0
             test_pass = False
             for it in ledger.items:
+                iid = str(it.item_id)
+                # The mission's OWN status surface (mission-*) must NOT be counted as a real open
+                # task — build_progress_ledger merges this contract's own items, so counting them
+                # would make the evaluator self-block (R-0102). Also skip pure forward-looking
+                # feature suggestions. Genuine job/task/repair/test blockers are still counted.
+                if iid.startswith(("mission-", "token-economy-local", "route-policy-local",
+                                   "tournament-winner")):
+                    continue
                 if it.status in (ProgressStatus.PLANNED, ProgressStatus.IN_PROGRESS):
-                    # Count only real work items, not pure forward-looking feature suggestions.
-                    if not str(it.item_id).startswith(("token-economy-local", "route-policy-local",
-                                                       "tournament-winner")):
-                        open_tasks += 1
+                    open_tasks += 1
                 if it.status == ProgressStatus.BLOCKED:
                     blocked += 1
                     open_tasks += 1

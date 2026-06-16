@@ -131,6 +131,37 @@ class TestEvaluation:
         e = om.evaluate_mission_contract(c, data_dir=env)
         assert e.satisfied is False
 
+    # R-0102: real persisted-UUID job path must NOT self-block on the mission's own ledger items.
+    def test_real_uuid_job_first_eval_not_self_blocked(self, env, monkeypatch):
+        from uuid import uuid4
+        from packages.core.models import Job, RunState, Task
+        from packages.orchestration.storage import save_job
+        monkeypatch.setenv("REMEDY_REVIEW_FILE", str(_review_file(env.parent, "PASS")))
+        job = Job(id=uuid4(), name="m", user_prompt="do it", state=RunState.RUNNING,
+                  tasks=[Task(description="t")], artifacts=[], metadata={"target_repo": "."})
+        save_job(job, root=env)
+        c = om.create_mission_contract_from_job(str(job.id), acceptance_criteria=["done"], data_dir=env)
+        # FIRST evaluation (no persisted evaluation yet) — must not count mission-not-evaluated.
+        e = om.evaluate_mission_contract(c, data_dir=env)
+        assert e.open_tasks == 0, e.blocked_reasons
+        assert e.satisfied is True
+        assert e.status == om.MissionStatus.CONTRACT_SATISFIED
+
+    def test_real_non_mission_open_task_still_blocks(self, env, monkeypatch):
+        # A genuine BLOCKED/PLANNED non-mission ledger item must still block satisfaction. Use an
+        # open review finding (a real durable blocker) to prove the gate is not weakened.
+        rf = ("### R-0001: x\n- **Status**: Open\n- **Severity**: High\n")
+        monkeypatch.setenv("REMEDY_REVIEW_FILE", str(_review_file(env.parent, "FAIL", findings=rf)))
+        from uuid import uuid4
+        from packages.core.models import Job, RunState, Task
+        from packages.orchestration.storage import save_job
+        job = Job(id=uuid4(), name="m", user_prompt="x", state=RunState.RUNNING,
+                  tasks=[Task(description="t")], artifacts=[], metadata={"target_repo": "."})
+        save_job(job, root=env)
+        c = om.create_mission_contract_from_job(str(job.id), acceptance_criteria=["done"], data_dir=env)
+        e = om.evaluate_mission_contract(c, data_dir=env)
+        assert e.satisfied is False
+
 
 # ---------------------------------------------------------------------------
 # Next actions + state machine

@@ -12,21 +12,25 @@ Reviewer verdict beats self-report; Done != Resolved; open Blocker/High blocks s
 required gates block satisfaction; no fake readiness. User never feels lost.
 
 ## Current Step
-1837 — mainline reconciliation done (PR #71 merged → main 4ddd59f; fresh branch). Building core.
+1858-1876 — REVIEW CLOSURE. Builder feature work (1837-1857) done @ 39bd3cc; reviewer logged
+R-0102 (FAIL @ 39bd3cc) — mission evaluator self-blocked on its own ledger items on the real-UUID
+path. FIXED (exclude mission-* from open-task counting) + regression tests + plan.md reconciled.
+Awaiting reviewer re-verification + PASS (auto-merge on PASS per merge-autonomy).
 
 ## Steps
 - [x] 1837: mainline closure (PR #71 → main 4ddd59f; fresh branch) + carried risks + MemPalace deferred
-- [ ] 1838: architecture doc (overnight-mission-contract-review-repair-spine-v0.md)
-- [ ] 1839-1846: overnight_mission.py core (models; storage; contract creation; review-findings
+- [x] 1838: architecture doc (overnight-mission-contract-review-repair-spine-v0.md)
+- [x] 1839-1846: overnight_mission.py core (models; storage; contract creation; review-findings
       blockers; evaluation; next-safe-action planner; review/repair state machine; required-vs-optional queue)
-- [ ] 1850-1851: CLI (contract-create/show/evaluate/next-action/cycles/readiness/integrity) + catalog +
-      run_contract actions (create write_metadata; rest read_only; no may_execute)
-- [ ] 1847-1849,1852: progress_ledger + review_bundle section (32) + ui_server cockpit + integrity
-- [ ] 1853: user-facing doc (overnight-mission-user-guide-v0.md)
-- [ ] 1854-1855: tests (unit/CLI/integration/integrity) + architecture guards
-- [ ] 1856: full suite once
-- [ ] 1857: final handoff report (+ auto-merge on reviewer PASS)
-- [ ] 1858-1876: reserved for reviewer findings (R-0102+)
+- [x] 1850-1851: CLI (contract-create/show/evaluate/next-action/cycles/contract-readiness/integrity) +
+      catalog + run_contract actions (create/evaluate write_metadata; rest read_only; no may_execute)
+- [x] 1847-1849,1852: progress_ledger + review_bundle section (32) + ui_server cockpit + integrity
+- [x] 1853: user-facing doc (overnight-mission-user-guide-v0.md)
+- [x] 1854-1855: tests (unit/CLI/integration/integrity) + architecture guards
+- [x] 1856: full suite once (6198 passed/8 skipped/1 deselected)
+- [x] 1857: final handoff report
+- [~] 1858-1876: review closure — R-0102 (mission evaluator self-block) FIXED with regression tests;
+      plan.md reconciled; awaiting reviewer PASS
 
 ## Hard rules
 - NO provider/Claude/Pi/OpenCode/Ollama/cloud/local execution, network, browser, subprocess, shell.
