@@ -331,6 +331,88 @@ class TestIntegrity:
         sig = v2.repair_loop_mission_signal(jid, env)
         assert sig["open_repair_count"] == 1 and sig["repair_needed"] is True
 
+    # -- R-0105: attempts_exceeded_without_blocked --
+
+    def test_audit_attempts_exceeded_without_blocked_fires(self):
+        """Positive: attempts > max but status not BLOCKED → violation."""
+        ev = {"repair_id": "r", "status": "waiting_for_candidate", "attempts_count": 5,
+              "satisfied": False, "required_next_actions": [], "optional_next_ideas": []}
+        codes = {c["code"] for c in v2.audit_evaluation_safety(
+            ev, None, review_open=False, retest_failing=False, apply_present=True,
+            policy={"max_attempts": 3})}
+        assert "attempts_exceeded_without_blocked" in codes
+
+    def test_audit_attempts_exceeded_blocked_no_fire(self):
+        """Negative: attempts > max but status IS BLOCKED → no violation."""
+        ev = {"repair_id": "r", "status": "blocked", "attempts_count": 5,
+              "satisfied": False, "required_next_actions": [], "optional_next_ideas": []}
+        codes = {c["code"] for c in v2.audit_evaluation_safety(
+            ev, None, review_open=False, retest_failing=False, apply_present=True,
+            policy={"max_attempts": 3})}
+        assert "attempts_exceeded_without_blocked" not in codes
+
+    def test_audit_attempts_within_bounds_no_fire(self):
+        """Negative: attempts within bounds → no violation regardless of status."""
+        ev = {"repair_id": "r", "status": "waiting_for_candidate", "attempts_count": 2,
+              "satisfied": False, "required_next_actions": [], "optional_next_ideas": []}
+        codes = {c["code"] for c in v2.audit_evaluation_safety(
+            ev, None, review_open=False, retest_failing=False, apply_present=True,
+            policy={"max_attempts": 3})}
+        assert "attempts_exceeded_without_blocked" not in codes
+
+    # -- R-0105: retests_exceeded_without_blocked --
+
+    def test_audit_retests_exceeded_without_blocked_fires(self):
+        """Positive: failing retests > max but status not BLOCKED → violation."""
+        ev = {"repair_id": "r", "status": "retest_failed", "attempts_count": 1,
+              "satisfied": False, "required_next_actions": [], "optional_next_ideas": []}
+        codes = {c["code"] for c in v2.audit_evaluation_safety(
+            ev, None, review_open=False, retest_failing=False, apply_present=True,
+            policy={"max_retests": 2}, failing_retest_count=4)}
+        assert "retests_exceeded_without_blocked" in codes
+
+    def test_audit_retests_exceeded_blocked_no_fire(self):
+        """Negative: failing retests > max but status IS BLOCKED → no violation."""
+        ev = {"repair_id": "r", "status": "blocked", "attempts_count": 1,
+              "satisfied": False, "required_next_actions": [], "optional_next_ideas": []}
+        codes = {c["code"] for c in v2.audit_evaluation_safety(
+            ev, None, review_open=False, retest_failing=False, apply_present=True,
+            policy={"max_retests": 2}, failing_retest_count=4)}
+        assert "retests_exceeded_without_blocked" not in codes
+
+    def test_audit_retests_within_bounds_no_fire(self):
+        """Negative: failing retests within bounds → no violation."""
+        ev = {"repair_id": "r", "status": "retest_failed", "attempts_count": 1,
+              "satisfied": False, "required_next_actions": [], "optional_next_ideas": []}
+        codes = {c["code"] for c in v2.audit_evaluation_safety(
+            ev, None, review_open=False, retest_failing=False, apply_present=True,
+            policy={"max_retests": 3}, failing_retest_count=2)}
+        assert "retests_exceeded_without_blocked" not in codes
+
+    # -- R-0105: optional_idea_marked_required --
+
+    def test_audit_optional_idea_in_required_fires(self):
+        """Positive: same string in both required and optional → violation."""
+        idea = "Configure Ollama for cheap small repairs (future, disabled by default)."
+        ev = {"repair_id": "r", "status": "waiting_for_candidate", "attempts_count": 0,
+              "satisfied": False, "required_next_actions": [idea],
+              "optional_next_ideas": [idea]}
+        codes = {c["code"] for c in v2.audit_evaluation_safety(
+            ev, None, review_open=False, retest_failing=False, apply_present=True,
+            policy={})}
+        assert "optional_idea_marked_required" in codes
+
+    def test_audit_optional_idea_not_in_required_no_fire(self):
+        """Negative: no overlap between required and optional → no violation."""
+        ev = {"repair_id": "r", "status": "waiting_for_candidate", "attempts_count": 0,
+              "satisfied": False,
+              "required_next_actions": ["remedy repair context-pack r --json"],
+              "optional_next_ideas": ["Configure Ollama (future)."]}
+        codes = {c["code"] for c in v2.audit_evaluation_safety(
+            ev, None, review_open=False, retest_failing=False, apply_present=True,
+            policy={})}
+        assert "optional_idea_marked_required" not in codes
+
 
 # ---------------------------------------------------------------------------
 # Architecture guards

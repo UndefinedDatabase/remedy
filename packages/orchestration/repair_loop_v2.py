@@ -1036,8 +1036,9 @@ def audit_work_item_safety(item: dict[str, Any]) -> list[dict[str, str]]:
 
 def audit_evaluation_safety(ev: dict[str, Any], item: dict[str, Any] | None,
                             *, review_open: bool, retest_failing: bool,
-                            apply_present: bool, policy: dict[str, Any] | None) -> list[dict[str, str]]:
-    """Flag dishonest repaired claims. Safe codes only."""
+                            apply_present: bool, policy: dict[str, Any] | None,
+                            failing_retest_count: int = 0) -> list[dict[str, str]]:
+    """Flag dishonest repaired claims and bound violations. Safe codes only."""
     out: list[dict[str, str]] = []
     rid = ev.get("repair_id", "")
     status = ev.get("status", "")
@@ -1051,6 +1052,20 @@ def audit_evaluation_safety(ev: dict[str, Any], item: dict[str, Any] | None,
             out.append({"repair_id": rid, "code": "repaired_without_apply_proof"})
         if not ev.get("satisfied"):
             out.append({"repair_id": rid, "code": "repaired_but_not_satisfied"})
+    # R-0105: attempts/retests exceeded without BLOCKED/ABANDONED status.
+    _exempt = {RepairLoopStatus.BLOCKED, RepairLoopStatus.ABANDONED}
+    max_att = pol.get("max_attempts", 3)
+    if ev.get("attempts_count", 0) > max_att and status not in _exempt:
+        out.append({"repair_id": rid, "code": "attempts_exceeded_without_blocked"})
+    max_ret = pol.get("max_retests", 3)
+    if failing_retest_count > max_ret and status not in _exempt:
+        out.append({"repair_id": rid, "code": "retests_exceeded_without_blocked"})
+    # R-0105: optional idea appearing in required_next_actions.
+    required = set(ev.get("required_next_actions") or [])
+    optional = set(ev.get("optional_next_ideas") or [])
+    overlap = required & optional
+    for idea in sorted(overlap):
+        out.append({"repair_id": rid, "code": "optional_idea_marked_required"})
     return out
 
 
@@ -1074,17 +1089,30 @@ def repair_loop_integrity(data_dir: Path | None = None,
     violations: list[dict] = []
     for it in (items or []):
         violations.extend(audit_work_item_safety(it))
-        # Check the latest evaluation honesty for repaired items.
         rid = it.get("repair_id", "")
+        job_id = it.get("job_id", "")
+        evd = load_latest_repair_evaluation(rid, ddir) or {}
+        # Repaired-without-satisfied (dedicated check kept for items without evaluation).
         if it.get("status") == RepairLoopStatus.REPAIRED:
-            evd = load_latest_repair_evaluation(rid, ddir) or {}
             if not evd.get("satisfied"):
                 violations.append({"repair_id": rid, "code": "repaired_but_not_satisfied"})
         # next actions catalog-valid.
-        evd = load_latest_repair_evaluation(rid, ddir) or {}
         for act in (evd.get("required_next_actions", []) or []):
             if act and "<" not in act and not _next_action_is_catalog_valid(act):
                 violations.append({"repair_id": rid, "code": "non_catalog_next_action"})
+        # R-0105: evaluation-level audit (attempts/retests exceeded, optional-marked-required).
+        if evd:
+            pol_d = None
+            if job_id:
+                pol_obj = load_repair_loop_policy(job_id, ddir)
+                pol_d = pol_obj.to_dict()
+            attempts = list_repair_attempts(rid, job_id, ddir) if job_id else []
+            failing_retests = sum(1 for a in attempts if a.get("retest_status") == "failing")
+            violations.extend(audit_evaluation_safety(
+                evd, it, review_open=False, retest_failing=False,
+                apply_present=True, policy=pol_d,
+                failing_retest_count=failing_retests,
+            ))
     return {"version": 1, "work_item_count": len(items or []),
             "violation_count": len(violations), "passed": not violations,
             "violations": violations[:50]}
