@@ -1337,6 +1337,53 @@ def merge_managed_execution_items(ledger: ProgressLedger, results: list[dict] | 
             seen.add(item.item_id)
 
 
+def extract_dogfood_run_items(runs: list[dict] | None) -> list[ProgressItem]:
+    """Extract dogfood run progress items (Step 2160). Read-only; honest."""
+    if not runs:
+        return []
+    items: list[ProgressItem] = []
+    for r in runs:
+        rid = str(r.get("run_id", ""))[:20]
+        status = r.get("status", "unknown")
+        steps = r.get("step_count", 0)
+        if status == "satisfied":
+            items.append(ProgressItem(
+                item_id=f"dogfood-run-{rid}", title=f"Dogfood run {rid} satisfied",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                safe_summary=f"Dogfood run completed: {steps} steps."))
+        elif status in ("blocked", "error"):
+            items.append(ProgressItem(
+                item_id=f"dogfood-run-{rid}", title=f"Dogfood run {rid} {status}",
+                status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK,
+                severity="High",
+                safe_summary=f"Dogfood run {status}: {steps} steps.",
+                next_action=f"remedy dogfood show {rid} <job_id> --json"))
+        elif status == "budget_exhausted":
+            items.append(ProgressItem(
+                item_id=f"dogfood-run-{rid}", title=f"Dogfood run {rid} budget exhausted",
+                status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK,
+                severity="Medium",
+                safe_summary=f"Dogfood run budget exhausted at {steps} steps.",
+                next_action=f"remedy dogfood replay {rid} <job_id> --json"))
+        elif status in ("running", "repairing", "waiting_for_approval",
+                         "waiting_for_builder", "waiting_for_review", "waiting_for_tests"):
+            items.append(ProgressItem(
+                item_id=f"dogfood-run-{rid}", title=f"Dogfood run {rid} active",
+                status=ProgressStatus.IN_PROGRESS, source_type=ProgressSource.PLAN_STEP,
+                safe_summary=f"Dogfood run {status}: {steps} steps so far.",
+                next_action=f"remedy dogfood next {rid} <job_id> --json"))
+    return items
+
+
+def merge_dogfood_run_items(ledger: ProgressLedger, runs: list[dict] | None) -> None:
+    """Merge dogfood-run items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_dogfood_run_items(runs):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -2051,6 +2098,14 @@ def build_progress_ledger(
         try:
             from packages.orchestration.managed_builder_execution import list_execution_results
             merge_managed_execution_items(ledger, list_execution_results(str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Open-Ended Dogfood Run Orchestrator v0 (Step 2160).
+    if job:
+        try:
+            from packages.orchestration.dogfood_run import list_dogfood_runs
+            merge_dogfood_run_items(ledger, list_dogfood_runs(job_id=str(job.id)))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

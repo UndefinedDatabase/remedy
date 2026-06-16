@@ -1,32 +1,41 @@
-# Plan — Steps 2126-2145: Managed Execution Approval Binding Closure
+# Plan — Steps 2146-2205: Open-Ended Dogfood Run Orchestrator + Replay Analyzer v0
 
 ## Goal
-Close 5 reviewer findings (R-0111 through R-0115) from Steps 2076-2125 block.
-Session-required runner, dict-safe adapter spec, auto-binding, controlled execution class,
-output-ref-created event.
+Make Remedy dogfoodable with open-ended, step-at-a-time run orchestration. No fixed
+time profiles. Runs stop when done/blocked/budget/operator-stop.
 
 ## Core principle
-Workers execute. Remedy governs. Approval scoped+expiring+bounded+auditable.
-Done ≠ Resolved. Reviewer verdict beats builder self-report.
+Workers execute. Remedy governs. No provider execution. No auto-apply. No unbounded loops.
+Done != Resolved. Reviewer verdict beats builder self-report.
 
 ## Current Step
-2126-2145 — all 5 fixes implemented; targeted 119 + CLI 10 + catalog 18 green; full suite 6497.
+2146-2205 — all 15 phases implemented; 48 targeted + 18 catalog + 6551 full suite (2 pre-existing).
 
 ## Steps
-- [x] 2126: R-0111 — runner blocks ghost sessions; _validate_session_binding returns session_not_found
-- [x] 2127: R-0112 — spec dict handling (isinstance check, no .to_dict() crash)
-- [x] 2128: R-0113 — approve_managed_execution auto-binds package_id/adapter_id/adapter_kind from session
-- [x] 2129: R-0114 — execution.run may_execute_commands=False; controlled_builder_execution only
-- [x] 2130: R-0115 — OUTPUT_REF_CREATED event kind; emit after _save_raw_output; integrity check
-- [x] 2131-2140: fix all existing tests (add _create_test_session helper); add 23 closure tests
-- [x] 2141: targeted 119 + CLI 10 + catalog 18 passed; full suite 6497 passed (0 failed)
-- [ ] 2142: commit + push
-- [ ] 2143-2145: reserved for reviewer findings (R-0116+)
+- [x] Phase 1: Architecture doc
+- [x] Phase 2: Core run model (DogfoodRunStatus, DogfoodRunPolicy, DogfoodRunRecord, DogfoodRunCheckpoint)
+- [x] Phase 3: Run storage (create/save/load/list/checkpoints/brainstorm)
+- [x] Phase 4: Run evaluator (evaluate_dogfood_run)
+- [x] Phase 5: Run stepping (step_dogfood_run, stop_dogfood_run)
+- [x] Phase 6: Replay analyzer (analyze_dogfood_run_replay)
+- [x] Phase 7: Brainstorm lane metadata
+- [x] Phase 8: CLI surface (10 commands under remedy dogfood)
+- [x] Phase 9: Command catalog + run contract entries
+- [x] Phase 10: Progress ledger + review bundle integration
+- [x] Phase 11: Integrity checks (8 invariants)
+- [x] Phase 12: User guide doc
+- [x] Phase 13: Targeted tests (48 passed)
+- [x] Phase 14: Full suite (6551 passed, 2 pre-existing failures)
+- [ ] Phase 15: Commit + push + reviewer verdict
 
 ## Hard rules
 - No shell=True; no provider SDK; no auto-apply/approve/PR/git; no MemPalace/embeddings.
 - Builder output ALWAYS untrusted. execution_satisfies_mission stays False.
 - Do not claim merge-ready until reviewer PASS.
 
+## Carried residual risks
+- Pre-existing deselected test_project_brain.py::TestFileProvenanceChain::test_full_chain_order.
+- Pre-existing test_resource_safety reads stale .agent/context.md.
+
 ## Next block
-Dogfood Run Profile + Replay Analyzer v0 (only after reviewer PASS).
+Ruff/Mypy/Coverage Baseline v0 (only after reviewer PASS).

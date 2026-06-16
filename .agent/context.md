@@ -1,27 +1,32 @@
 # Context
 
 ## Active Branch
-feature/steps-2076-2125-managed-execution-approval-dogfood-observability-hardening-v1-1
-(forked from clean main at 1970b7c after PR #76 merged Managed External Builder Execution v1).
+feature/steps-2146-2205-open-ended-dogfood-run-orchestrator-replay-analyzer-v0
+(forked from clean main at 00ced0b after PR #77 merged Managed Execution Approval blocks).
 
 ## Scope
-Steps 2126-2145: Review closure for R-0111/R-0112/R-0113/R-0114/R-0115.
-All code fixes + 23 new tests + existing test updates. Awaiting reviewer re-verdict.
+Steps 2146-2205: Open-Ended Dogfood Run Orchestrator + Replay Analyzer v0.
+All 15 phases complete. Awaiting commit + reviewer verdict.
 
-## Findings closure summary
-| Finding | Severity | Fix summary |
-|---------|----------|-------------|
-| R-0111 | High | Runner blocks ghost sessions; _validate_session_binding returns session_not_found |
-| R-0112 | Medium | isinstance check on adapter spec; no .to_dict() crash on dict |
-| R-0113 | Medium | approve_managed_execution auto-binds package_id/adapter_id/adapter_kind from real session |
-| R-0114 | Medium | execution.run may_execute_commands=False; controlled_builder_execution action_class only |
-| R-0115 | Medium | OUTPUT_REF_CREATED event; integrity checks completed_missing_output_ref_event; debug bundle output_ref_event_present |
+## New files
+- packages/orchestration/dogfood_run.py — core module (~700L)
+- apps/cli/commands/dogfood_cmd.py — 10 CLI handlers
+- tests/orchestration/test_dogfood_run.py — 48 targeted tests
+- docs/open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md — architecture doc
+- docs/dogfood-run-user-guide.md — user guide
+
+## Modified files
+- apps/cli/command_catalog.py — dogfood group + 10 entries
+- apps/cli/commands/__init__.py — dogfood_cmd import
+- apps/cli/grouped.py — --max-wall-minutes option
+- packages/orchestration/run_contract.py — 6 dogfood actions
+- packages/orchestration/progress_ledger.py — dogfood run items
+- packages/orchestration/review_bundle.py — dogfood_run_summary.json section
+- tests/orchestration/test_review_bundle.py — section count 36->37
 
 ## Carried residual risks
-- Real rollback RESTORE still NOT implemented (metadata-only).
-- Real adapters NOT configured — all disabled by default, no secrets committed.
-- Pre-existing deselected `test_project_brain.py::...::test_full_chain_order`.
-- UI `npm run lint` pre-existing TS parser blocker.
+- Pre-existing deselected test_full_chain_order.
+- Pre-existing test_resource_safety reads stale .agent/context.md.
 
 ## Status
-Code + tests complete. Full suite 6497 passed. Awaiting commit + reviewer verdict.
+Code + tests complete. 48 targeted + 18 catalog + 6551 full suite passed. Awaiting commit.
