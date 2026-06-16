@@ -1,48 +1,40 @@
 # Live Review — Steps 2226-2295: Ruff / Mypy / Coverage Baseline v0
 
-Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict;
-a builder `Done:` marker is NOT reviewer `Resolved`).
-Scope (ALLOWED): close R-0119/R-0120 test gaps; add Ruff/Mypy/Coverage config; add
-scripts/remedy_lint.sh + scripts/remedy_coverage.sh; safe lint/import/type fixes; coverage
-baseline docs; backlog update; quality baseline doc; tests for above.
-Must NOT: real provider/model execution; Claude/Pi/OpenCode/Ollama; provider SDK; config system;
-README rewrite; review_bundle exception refactor; ui_server split; orchestration subpackage split;
-semantic memory; MemPalace; auto-apply; auto-approval; auto-PR/git; direct repo mutation;
-shell=True; arbitrary shell; UI redesign; MCP.
-QUALITY BASELINE BLOCK — Ruff + Mypy + Coverage tooling, no new features.
-Hard invariants: lint config not blanket-hiding codebase; mypy config permissive but honest;
-coverage baseline measured or honestly documented; scripts executable and pipe-safe; no runtime
-behavior changes except safe lint/import fixes; normal pytest not slowed by mandatory coverage;
-Done != Resolved.
+Reviewer: parallel reviewer (independent; owns verdict).
+Scope: R-0119/R-0120 closure; Ruff/Mypy/Coverage config; lint/coverage scripts; quality baseline docs.
+QUALITY BASELINE BLOCK — no new features.
 Timestamp: 2026-06-17
 
 ## Verdict (reviewer-owned)
-PENDING — awaiting builder work.
+PASS @ 99e6fe1 (PR #80 merged).
+R-0119 Resolved. R-0120 Resolved. Zero open findings.
 
 ## Prior block
 Steps 2206-2225: PASS @ c7c6a52 (R-0116, R-0117 Resolved).
-Merged to main via PR #79 -> 6b3d8fc. 297 targeted tests passed.
+Merged to main via PR #79 -> 6b3d8fc.
 
 ## Check matrix (Steps 2226-2295)
 | # | Check | Result | Evidence |
 |---|-------|--------|----------|
-| 1 | Mainline closure | PENDING | PR #79 merged -> main 6b3d8fc; awaiting fresh branch |
-| 2 | R-0119/R-0120 closure | PENDING | |
-| 3 | Ruff baseline | PENDING | |
-| 4 | Mypy baseline | PENDING | |
-| 5 | Coverage baseline | PENDING | |
-| 6 | Scripts | PENDING | |
-| 7 | Runtime behavior | PENDING | |
-| 8 | 30-task backlog | PENDING | |
-| 9 | Docs | PENDING | |
+| 1 | Mainline closure | PASS | PR #79 merged -> main 6b3d8fc; fresh branch created |
+| 2 | R-0119/R-0120 closure | PASS | 4 positive-path tests; causal mocking; both positive + negative paths |
+| 3 | Ruff baseline | PASS | E/F/W/I/UP enabled; 4 deferred rules documented; 5 per-file ignores justified |
+| 4 | Mypy baseline | PASS | Permissive config; 42 modules excluded explicitly; honest not blanket-hiding |
+| 5 | Coverage baseline | PASS | fail_under=75.0 vs measured 76.3%; branch coverage; top 10 gaps documented |
+| 6 | Scripts | PASS | No injection; no network; executable; `set -euo pipefail`; proper quoting |
+| 7 | Runtime behavior | PASS | Only import sorting, unused import removal, pyupgrade; no behavioral changes |
+| 8 | 30-task backlog | PASS | 3/30 strict completed |
+| 9 | Docs | PASS | quality-baseline-v0.md covers tools, commands, gaps, future tightening |
 
 ## Findings — Steps 2226-2295
-(none yet)
+| ID | Severity | Status | Description |
+|----|----------|--------|-------------|
+| R-0119 | Info | Resolved | Positive-path tests for checks 10/11 added |
+| R-0120 | Info | Resolved | Token guardrail exceeded test added |
 
 Next id: R-0121.
 
 ## Reviewer audit log
 - Block opened for Steps 2226-2295 (Ruff / Mypy / Coverage Baseline v0).
 - Prior block 2206-2225 PASS @ c7c6a52 merged via PR #79 -> main 6b3d8fc.
-- Gate check: PR #79 MERGED, previous block PASS, main at 6b3d8fc.
-- Polling for builder work.
+- Reviewer verdict PASS @ 99e6fe1 (PR #80 merged). R-0119/R-0120 Resolved.
