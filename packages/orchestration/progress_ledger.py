@@ -1130,6 +1130,53 @@ def merge_mission_items(ledger: ProgressLedger, contract: dict | None, evaluatio
             seen.add(item.item_id)
 
 
+def extract_real_test_execution_items(test_runs: list[dict] | None,
+                                      snapshots: list[dict] | None,
+                                      rollbacks: list[dict] | None) -> list[ProgressItem]:
+    """Extract Real Test Execution + Snapshot/Rollback progress items (Step 1889). Read-only; fixed
+    item_ids → no duplicates. Honest: no fake pass, no fake rollback available, no raw output."""
+    test_runs = test_runs or []
+    snapshots = snapshots or []
+    rollbacks = rollbacks or []
+    items: list[ProgressItem] = []
+    if test_runs:
+        status = test_runs[-1].get("status", "")
+        if status == "passed":
+            items.append(ProgressItem(
+                item_id="test-run-passed", title="Latest test run passed",
+                status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+                safe_summary="Latest allowed test run passed (durable evidence; no raw output)."))
+        elif status in ("failed", "timeout"):
+            items.append(ProgressItem(
+                item_id="test-run-failed", title="Latest test run failed",
+                status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+                safe_summary=f"Latest test run {status} — repair available (no auto-repair).",
+                next_action="remedy repair status <job_id> --json"))
+    if snapshots:
+        items.append(ProgressItem(
+            item_id="snapshot-proof-recorded", title="Snapshot proof recorded",
+            status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary="A metadata snapshot proof exists (NOT a rollback restore)."))
+    if rollbacks and not any(r.get("restore_available") for r in rollbacks):
+        items.append(ProgressItem(
+            item_id="rollback-restore-unavailable", title="Rollback restore not available",
+            status=ProgressStatus.RISK, source_type=ProgressSource.KNOWN_RISK, severity="Low",
+            safe_summary="Rollback proof exists but no real restore path — metadata snapshot only.",
+            next_action="remedy rollback show <rollback_proof_id> --json"))
+    return items
+
+
+def merge_real_test_execution_items(ledger: ProgressLedger, test_runs: list[dict] | None,
+                                    snapshots: list[dict] | None,
+                                    rollbacks: list[dict] | None) -> None:
+    """Merge real-test-execution items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_real_test_execution_items(test_runs, snapshots, rollbacks):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1808,6 +1855,18 @@ def build_progress_ledger(
                 latest_c = contracts[-1]
                 latest_e = load_latest_mission_evaluation(latest_c.get("contract_id", ""))
                 merge_mission_items(ledger, latest_c, latest_e)
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Real test execution + snapshot/rollback items (Step 1889). Read-only; honest.
+    if job is not None:
+        try:
+            from packages.orchestration.real_test_execution import (
+                list_test_runs, list_snapshot_proofs, list_rollback_proofs,
+            )
+            merge_real_test_execution_items(
+                ledger, list_test_runs(str(job.id)),
+                list_snapshot_proofs(job_id=str(job.id)), list_rollback_proofs(job_id=str(job.id)))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 

@@ -1,46 +1,42 @@
-# Plan — Steps 1837-1876: Overnight Mission Contract + Review/Repair Spine v0
+# Plan — Steps 1877-1916: Real Test Execution + Snapshot/Rollback Proof v1
 
 ## Goal
-First hard mission-contract spine for Overnight Mode. A user mission becomes a CONTRACT; Remedy tracks
-it until fulfilled or safely blocked, evaluating satisfaction from durable evidence (progress ledger,
-review findings, tests/proof/snapshot gates, repair status, route/token/tournament readiness).
-Metadata + state-machine + evaluation + reporting only — no execution, no fake overnight autonomy.
+First safe execution gate for Overnight Mode. Run ALLOWED test commands through the existing bounded
+safe runner; results become durable evidence; failing tests → safe failure artifacts; Snapshot Proof
++ Rollback Proof record honestly whether a real restore exists. Mission Contract consumes the gates.
 
 ## Core principle
-Workers execute. Remedy governs. The Mission Contract decides done — never from builder self-report.
-Reviewer verdict beats self-report; Done != Resolved; open Blocker/High blocks satisfaction; missing
-required gates block satisfaction; no fake readiness. User never feels lost.
+Workers execute. Remedy governs. Bounded, command-discovered, policy-gated, evidence-backed. No fake
+pass; metadata snapshot ≠ rollback restore; raw output stays private. Reuse existing safe runner +
+snapshot infra — do not reinvent subprocess execution.
 
 ## Current Step
-1858-1876 — REVIEW CLOSURE. Builder feature work (1837-1857) done @ 39bd3cc; reviewer logged
-R-0102 (FAIL @ 39bd3cc) — mission evaluator self-blocked on its own ledger items on the real-UUID
-path. FIXED (exclude mission-* from open-task counting) + regression tests + plan.md reconciled.
-Awaiting reviewer re-verification + PASS (auto-merge on PASS per merge-autonomy).
+1877 — mainline reconciliation done (PR #72 merged → main aacafbd; fresh branch). Building facade.
 
 ## Steps
-- [x] 1837: mainline closure (PR #71 → main 4ddd59f; fresh branch) + carried risks + MemPalace deferred
-- [x] 1838: architecture doc (overnight-mission-contract-review-repair-spine-v0.md)
-- [x] 1839-1846: overnight_mission.py core (models; storage; contract creation; review-findings
-      blockers; evaluation; next-safe-action planner; review/repair state machine; required-vs-optional queue)
-- [x] 1850-1851: CLI (contract-create/show/evaluate/next-action/cycles/contract-readiness/integrity) +
-      catalog + run_contract actions (create/evaluate write_metadata; rest read_only; no may_execute)
-- [x] 1847-1849,1852: progress_ledger + review_bundle section (32) + ui_server cockpit + integrity
-- [x] 1853: user-facing doc (overnight-mission-user-guide-v0.md)
-- [x] 1854-1855: tests (unit/CLI/integration/integrity) + architecture guards
-- [x] 1856: full suite once (6198 passed/8 skipped/1 deselected)
-- [x] 1857: final handoff report
-- [~] 1858-1876: review closure — R-0102 (mission evaluator self-block) FIXED with regression tests;
-      plan.md reconciled; awaiting reviewer PASS
+- [x] 1877: mainline closure (PR #72 → main aacafbd; fresh branch) + carried risks
+- [ ] 1878: architecture doc (real-test-execution-snapshot-rollback-proof-v1.md)
+- [ ] 1879-1885: real_test_execution.py facade (TestRunRequest/Result + allowed-command resolution +
+      run_allowed_test wrapping execute_test_run + SnapshotProof + RollbackProof + storage + integrity)
+- [ ] 1886: overnight_mission gate consumption (tests_green from real pass; snapshot_recorded vs
+      rollback_restore_available)
+- [ ] 1887-1888: CLI (test result/list, snapshot create/show, rollback proof/show, test integrity) +
+      catalog + run_contract (controlled_test_execution; no arbitrary exec)
+- [ ] 1889-1893: progress_ledger + feature_planner + review_bundle + ui_server cockpit + integrity
+- [ ] 1894: user-facing doc
+- [ ] 1895-1896: arch guards + targeted suites
+- [ ] 1897: full suite once
+- [ ] 1898: final handoff (+ auto-merge on reviewer PASS)
+- [ ] 1899-1916: reserved for reviewer findings (R-0104+)
 
 ## Hard rules
-- NO provider/Claude/Pi/OpenCode/Ollama/cloud/local execution, network, browser, subprocess, shell.
-- NO worker execution, test run, apply/approve, git/PR automation, MemPalace/memory/embeddings/vector
-  DB, UI redesign, MCP, pricing sync.
-- Satisfaction ONLY from durable evidence; reviewer verdict beats self-report; Done != Resolved; open
-  Blocker/High blocks satisfaction; missing required gates block satisfaction; no fake readiness.
-- Required blockers separated from optional future ideas. No raw prompts (beyond scrubbed user_goal)/
-  logs/diffs/secrets/abs paths in public surfaces. next_safe_action catalog-backed.
+- Subprocess ONLY via the approved runner (execute_test_run/run_tests_local). No shell=True, no
+  arbitrary/destructive/network/install/git-write commands; commands allowlisted/discovered.
+- No provider/model/Ollama/worker execution; no auto-apply/approve/repair/PR/git; no MemPalace/
+  embeddings; no UI redesign; no MCP.
+- Raw output private; public summaries safe. No fake pass; metadata snapshot ≠ rollback restore; no
+  fake restore_available/restore_tested. next_safe_action catalog-backed.
 - Tests via scripts/remedy_pytest.sh; full once. NO PR unless asked (auto-merge on reviewer PASS).
 
 ## Next block
-Real Test Execution + Snapshot/Rollback Proof v1 (only after this block PASS).
+Repair Loop v1/v2: Failure Artifact → Fix Candidate → Review → Re-Test (only after this block PASS).
