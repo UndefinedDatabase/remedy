@@ -286,6 +286,7 @@ def run_allowed_test(
         )
         out = execute_test_run(TestExecutionRequest(
             job_id=job_id, source="real_test_execution_v1",
+            command_id=command_id,
             requested_timeout_seconds=float(timeout_seconds) if timeout_seconds else None))
     except Exception as exc:  # the runner is the only execution path; failures stay safe metadata
         res.status = TestRunStatus.ERROR
@@ -294,6 +295,9 @@ def run_allowed_test(
         return res
 
     res.test_run_id = getattr(out, "test_run_id", "")
+    # Honesty (R-0104): report the command the runner ACTUALLY executed, not just the
+    # requested id. The runner now executes the requested command_id when supplied.
+    res.command_id = getattr(out, "command_id", "") or command_id
     res.status = _STATUS_MAP.get(getattr(out, "status", ""), TestRunStatus.ERROR)
     res.exit_code = getattr(out, "exit_code", None)
     res.duration_ms = getattr(out, "duration_ms", 0)

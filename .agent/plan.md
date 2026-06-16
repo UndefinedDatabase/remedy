@@ -11,23 +11,27 @@ pass; metadata snapshot ≠ rollback restore; raw output stays private. Reuse ex
 snapshot infra — do not reinvent subprocess execution.
 
 ## Current Step
-1877 — mainline reconciliation done (PR #72 merged → main aacafbd; fresh branch). Building facade.
+1899-1916 — R-0104 closure (command_id forwarded into runner; reported == executed). Done; awaiting
+reviewer re-verdict.
 
 ## Steps
 - [x] 1877: mainline closure (PR #72 → main aacafbd; fresh branch) + carried risks
-- [ ] 1878: architecture doc (real-test-execution-snapshot-rollback-proof-v1.md)
-- [ ] 1879-1885: real_test_execution.py facade (TestRunRequest/Result + allowed-command resolution +
+- [x] 1878: architecture doc (real-test-execution-snapshot-rollback-proof-v1.md)
+- [x] 1879-1885: real_test_execution.py facade (TestRunRequest/Result + allowed-command resolution +
       run_allowed_test wrapping execute_test_run + SnapshotProof + RollbackProof + storage + integrity)
-- [ ] 1886: overnight_mission gate consumption (tests_green from real pass; snapshot_recorded vs
+- [x] 1886: overnight_mission gate consumption (tests_green from real pass; snapshot_recorded vs
       rollback_restore_available)
-- [ ] 1887-1888: CLI (test result/list, snapshot create/show, rollback proof/show, test integrity) +
+- [x] 1887-1888: CLI (test result/list, snapshot create/show, rollback proof/show, test integrity) +
       catalog + run_contract (controlled_test_execution; no arbitrary exec)
-- [ ] 1889-1893: progress_ledger + feature_planner + review_bundle + ui_server cockpit + integrity
-- [ ] 1894: user-facing doc
-- [ ] 1895-1896: arch guards + targeted suites
-- [ ] 1897: full suite once
-- [ ] 1898: final handoff (+ auto-merge on reviewer PASS)
-- [ ] 1899-1916: reserved for reviewer findings (R-0104+)
+- [x] 1889-1893: progress_ledger + feature_planner + review_bundle + ui_server cockpit + integrity
+- [x] 1894: user-facing doc
+- [x] 1895-1896: arch guards + targeted suites
+- [x] 1897: full suite once (6235 passed @ cb2c640)
+- [x] 1898: final handoff
+- [x] 1899-1916: R-0104 closure — `command_id` threaded into `execute_test_run` Gate 8; executed
+      candidate id reported (`TestExecutionResult.command_id`) + persisted; `run_allowed_test` forwards
+      and reports the executed id; blocks `requested_command_not_found`/`requested_command_not_test`.
+      Tests added (runner + facade); targeted 249 passed; integrity PASS. Awaiting reviewer re-verdict.
 
 ## Hard rules
 - Subprocess ONLY via the approved runner (execute_test_run/run_tests_local). No shell=True, no

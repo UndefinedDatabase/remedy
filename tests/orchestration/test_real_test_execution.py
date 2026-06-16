@@ -92,6 +92,71 @@ class TestAllowedCommand:
 
 
 # ---------------------------------------------------------------------------
+# Command identity forwarding (R-0104)
+# ---------------------------------------------------------------------------
+
+
+class TestCommandIdForwarding:
+    _PYPROJECT = {"pyproject.toml": "[tool.pytest.ini_options]\ntestpaths = ['.']\n",
+                  "test_x.py": "def test_x(): pass\n"}
+
+    def test_run_allowed_test_forwards_command_id(self, env, monkeypatch):
+        """The validated command_id is forwarded into the runner and reported back."""
+        jid = _job(env, files=self._PYPROJECT)
+        cmd_id = "test:pyproject:pyproject.toml"
+        ok, cand, _r = rte.resolve_allowed_command(jid, cmd_id, data_dir=env)
+        assert ok and cand is not None and cand.id == cmd_id
+        captured: dict = {}
+        from packages.orchestration import test_execution_service as svc
+
+        def fake_exec(req):
+            captured["command_id"] = req.command_id
+            return svc.TestExecutionResult(
+                job_id=req.job_id, test_run_id="t1", status="passed", exit_code=0,
+                command_id=req.command_id, command_safe="python3 -m pytest")
+
+        monkeypatch.setattr(svc, "execute_test_run", fake_exec)
+        res = rte.run_allowed_test(jid, command_id=cmd_id, data_dir=env)
+        assert captured["command_id"] == cmd_id      # forwarded, not dropped
+        assert res.command_id == cmd_id              # reported == requested == executed
+        assert res.status == rte.TestRunStatus.PASSED
+
+    def test_reports_runner_selected_command_id(self, env, monkeypatch):
+        """With no explicit id, the facade reports the command the runner actually ran."""
+        jid = _job(env)
+        from packages.orchestration import test_execution_service as svc
+
+        def fake_exec(req):
+            assert req.command_id == ""  # empty → runner self-selects
+            return svc.TestExecutionResult(
+                job_id=req.job_id, test_run_id="t2", status="passed", exit_code=0,
+                command_id="test:pyproject:pyproject.toml")
+
+        monkeypatch.setattr(svc, "execute_test_run", fake_exec)
+        res = rte.run_allowed_test(jid, data_dir=env)
+        assert res.command_id == "test:pyproject:pyproject.toml"
+
+    def test_unknown_command_id_never_reaches_runner(self, env, monkeypatch):
+        jid = _job(env)
+        from packages.orchestration import test_execution_service as svc
+
+        def boom(req):  # pragma: no cover - must not be called
+            raise AssertionError("runner must not run for an unknown command_id")
+
+        monkeypatch.setattr(svc, "execute_test_run", boom)
+        res = rte.run_allowed_test(jid, command_id="no.such.command", data_dir=env)
+        assert res.status == rte.TestRunStatus.BLOCKED_BY_POLICY
+
+    def test_result_to_dict_carries_command_id_and_no_raw(self):
+        r = rte.TestRunResult(test_run_id="t", job_id="j", command_id="test:pyproject:pyproject.toml",
+                              output_ref="t.txt", safe_summary="ok /home/u/.env sk-ant-secret")
+        d = rte.export_test_run_result_json(r)
+        assert d["command_id"] == "test:pyproject:pyproject.toml"
+        assert d["output_ref"] == "t.txt"          # only a basename ref, never raw output
+        assert "/home/u" not in d["safe_summary"]  # absolute path scrubbed
+
+
+# ---------------------------------------------------------------------------
 # Snapshot / rollback proof — honesty
 # ---------------------------------------------------------------------------
 
