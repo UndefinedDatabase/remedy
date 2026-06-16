@@ -277,6 +277,25 @@ def build_feature_plan(ledger: ProgressLedger, job: Any = None) -> FeaturePlan:
             FeaturePlanSource.FAILED_TEST,
             "remedy builder session-list <job_id> --json",
         ),
+        # Managed Builder Execution v1 outcomes (Step 2039) — REQUIRED blockers.
+        "managed-execution-blocked": (
+            "Resolve the blocked managed execution (approval or config needed)",
+            "Impact: high. Effort: low. A managed execution is blocked or awaiting approval.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy execution list --json",
+        ),
+        "managed-execution-failed": (
+            "Investigate the failed managed execution",
+            "Impact: high. Effort: medium. A managed execution failed or timed out — check debug bundle.",
+            FeaturePlanSource.FAILED_TEST,
+            "remedy execution list --json",
+        ),
+        "managed-execution-completed": (
+            "Feed completed execution output into sandbox intake",
+            "Impact: high. Effort: low. A managed execution completed — output needs sandbox intake.",
+            FeaturePlanSource.KNOWN_RISK,
+            "remedy builder session-list <job_id> --json",
+        ),
         # Bounded Overnight Prep follow-ups (Step 1260).
         "overnight-blocked": (
             "Review overnight readiness",

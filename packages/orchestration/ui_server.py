@@ -455,6 +455,38 @@ def _build_main_builder_adapter_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
+def _build_managed_execution_section(job: Any) -> dict[str, Any]:
+    """Safe read-only Managed Builder Execution v1 cockpit summary (Step 2041). Counts/status + next
+    safe action only; no mutation buttons; no raw output; no fake live execution."""
+    try:
+        from packages.orchestration.managed_builder_execution import (
+            list_command_templates, list_execution_results,
+        )
+        templates = list_command_templates()
+        results = list_execution_results(str(job.id))
+        enabled = sum(1 for t in templates if t.get("enabled", False))
+        latest = results[-1] if results else {}
+        running = sum(1 for r in results if r.get("status") == "running")
+        completed = sum(1 for r in results if r.get("status") == "completed")
+        failed = sum(1 for r in results if r.get("status") == "failed")
+        blocked = sum(1 for r in results if r.get("status") in ("blocked", "approval_required"))
+        return {
+            "enabled_template_count": enabled,
+            "execution_count": len(results),
+            "completed_count": completed,
+            "failed_count": failed,
+            "blocked_count": blocked,
+            "latest_status": latest.get("status", "none"),
+            "next_safe_action": latest.get("next_safe_action", ""),
+            "live": bool(running),
+            "source": "managed_builder_execution",
+        }
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"enabled_template_count": 0, "execution_count": 0,
+                "latest_status": "none", "next_safe_action": "", "live": False,
+                "source": "unavailable"}
+
+
 def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
     """Safe snapshot/apply-record summary from the authoritative builder.
 
@@ -1400,6 +1432,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "snapshot_rollback": _build_snapshot_rollback_section(job),
         "repair_loop": _build_repair_loop_section(job),
         "main_builder_adapter": _build_main_builder_adapter_section(job),
+        "managed_execution": _build_managed_execution_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),

@@ -1279,6 +1279,53 @@ def merge_builder_adapter_items(ledger: ProgressLedger, sessions: list[dict] | N
             seen.add(item.item_id)
 
 
+def extract_managed_execution_items(results: list[dict] | None) -> list[ProgressItem]:
+    """Extract Managed Builder Execution v1 progress items (Step 2039) from execution results.
+    Read-only; fixed item_ids → no duplicates. Honest: blocked/failed surfaces as RISK; completed
+    surfaces as DONE (but output still untrusted — downstream gates required)."""
+    results = results or []
+    if not results:
+        return []
+    running = sum(1 for r in results if r.get("status") == "running")
+    completed = sum(1 for r in results if r.get("status") == "completed")
+    failed = sum(1 for r in results if r.get("status") == "failed")
+    timeout = sum(1 for r in results if r.get("status") == "timeout")
+    blocked = sum(1 for r in results if r.get("status") in ("blocked", "approval_required"))
+    items: list[ProgressItem] = []
+    if blocked:
+        items.append(ProgressItem(
+            item_id="managed-execution-blocked", title=f"{blocked} managed execution(s) blocked",
+            status=ProgressStatus.RISK, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Managed execution blocked or awaiting approval.",
+            next_action="remedy execution list --json"))
+    if running:
+        items.append(ProgressItem(
+            item_id="managed-execution-running", title=f"{running} managed execution(s) running",
+            status=ProgressStatus.RISK, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Managed builder execution in progress."))
+    if failed or timeout:
+        items.append(ProgressItem(
+            item_id="managed-execution-failed", title=f"{failed + timeout} managed execution(s) failed/timeout",
+            status=ProgressStatus.RISK, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Managed execution failed or timed out.",
+            next_action="remedy execution list --json"))
+    if completed:
+        items.append(ProgressItem(
+            item_id="managed-execution-completed", title=f"{completed} managed execution(s) completed",
+            status=ProgressStatus.DONE, source_type=ProgressSource.PROOF_GAP,
+            safe_summary="Managed execution completed — output untrusted; downstream gates required."))
+    return items
+
+
+def merge_managed_execution_items(ledger: ProgressLedger, results: list[dict] | None) -> None:
+    """Merge managed-execution items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_managed_execution_items(results):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -1985,6 +2032,14 @@ def build_progress_ledger(
         try:
             from packages.orchestration.main_builder_adapter import list_builder_sessions
             merge_builder_adapter_items(ledger, list_builder_sessions(str(job.id)))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    # Managed Builder Execution v1 (Step 2039).
+    if job:
+        try:
+            from packages.orchestration.managed_builder_execution import list_execution_results
+            merge_managed_execution_items(ledger, list_execution_results(str(job.id)))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 
