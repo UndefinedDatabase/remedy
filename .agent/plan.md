@@ -1,42 +1,35 @@
-# Plan — Steps 2026-2075: Managed External Builder Execution v1 + Dogfood Observability
+# Plan — Steps 2076-2125: Managed Execution Approval + Dogfood Observability Hardening v1.1
 
 ## Goal
-Add first managed execution seam for external builder adapters: bounded command templates,
-operator approval gate, managed subprocess runner (argv only, no shell), session event tracking,
-redacted output refs, dogfood debug bundle, sandbox intake integration. Remedy governs; workers
-execute. Builder output untrusted until verified.
+Harden managed execution approval model: expiry, caps, session/package/adapter/template binding,
+approval validation function, extended events/debug bundle, CLI hardening, observability surfaces,
+integrity checks, structured logging bridge. Turns safe prototype into operator-grade dogfood.
 
 ## Core principle
-Workers execute. Remedy governs. No provider monopoly. Subprocess ONLY through bounded command
-templates with sanitized env, argv list, timeout, output cap.
+Workers execute. Remedy governs. Approval scoped+expiring+bounded+auditable. One approval cannot
+authorize unlimited runs. Template kind must match adapter kind. Builder output untrusted.
 
 ## Current Step
-2050-2051 — builder work complete; targeted + full suites green; awaiting reviewer verdict (R-0106+).
+2097-2110 — builder work complete; targeted 93 + full suite 6461 green; awaiting reviewer verdict.
 
 ## Steps
-- [x] 2026: mainline closure (PR #75 → main 8e7d2e5; fresh branch) + reconcile
-- [x] 2027: architecture doc (managed-external-builder-execution-v1.md)
-- [x] 2028-2030: core managed execution module (command templates + approval gate + managed runner)
-- [x] 2031-2032: session event ledger + dogfood debug bundle
-- [x] 2033-2034: sandbox intake integration + repair/mission state consumption
-- [x] 2035-2038: CLI surface (9 commands) + command catalog + run_contract
-- [x] 2039-2040: progress ledger / feature planner integration
-- [x] 2041-2042: review bundle (35→36 sections) / cockpit integration
-- [x] 2043-2044: integrity checks
-- [x] 2045: user-facing doc
-- [x] 2046: architecture guards
-- [x] 2047-2048: targeted tests (630 passed)
-- [x] 2049: full suite once (6427 passed, 8 skipped, 1 deselected, 0 failed)
-- [ ] 2050: final handoff
-- [ ] 2051-2075: reserved for reviewer findings (R-0106+)
+- [x] 2076: mainline closure (PR #76 → main 1970b7c; fresh branch) + reconcile
+- [x] 2077: architecture note (v1.1 hardening doc)
+- [x] 2078-2080: harden ExecutionApproval (9 new fields + ApprovalScope + from_dict)
+- [x] 2081-2083: validate_execution_approval() (11 codes) + binding validation in runner
+- [x] 2084-2086: 7 new event kinds + debug bundle hardening + repair item suggestion
+- [x] 2087-2088: CLI hardening (approval-show, approval-validate, approval-list) + catalog + contract
+- [x] 2089-2091: review bundle / progress / cockpit / feature planner hardening
+- [x] 2092-2094: extended integrity checks (audit_approval_safety + 9 new detection codes)
+- [x] 2095-2096: structured logging bridge (Python logging in _append_event)
+- [x] 2097-2110: tests — targeted 93 passed (83 unit + 10 CLI); full suite 6461 passed
+- [ ] 2111: final handoff
+- [ ] 2112-2125: reserved for reviewer findings (R-0106+)
 
 ## Hard rules
-- Subprocess ONLY with argv list (no shell=True), sanitized env, timeout, output cap.
-- No arbitrary shell; no provider SDK; no auto-apply/approve/PR/git; no MemPalace/memory/embeddings.
-- All real adapters disabled by default. Managed runner disabled by default.
-- Builder output ALWAYS untrusted: goes through External Builder Sandbox / Trust Gate / Candidate
-  Quality / review / re-test gates. No direct repo write.
-- Tests via scripts/remedy_pytest.sh; full once. Auto-merge on reviewer PASS (no PR unless asked).
+- No shell=True; no provider SDK; no auto-apply/approve/PR/git; no MemPalace/embeddings.
+- Builder output ALWAYS untrusted. execution_satisfies_mission stays False.
+- Tests via scripts/remedy_pytest.sh; full once. Auto-merge on reviewer PASS.
 
 ## Next block
-Ollama Cheap-Task Adapter v0 OR Overnight Autonomy Gate v1 (only after this block PASS).
+TBD (only after this block PASS).

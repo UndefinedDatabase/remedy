@@ -1293,8 +1293,19 @@ def extract_managed_execution_items(results: list[dict] | None) -> list[Progress
     blocked = sum(1 for r in results if r.get("status") in ("blocked", "approval_required"))
     items: list[ProgressItem] = []
     if blocked:
+        # v1.1: distinguish approval-specific blocks.
+        approval_blocks = sum(1 for r in results if r.get("status") == "approval_required")
+        binding_blocks = sum(1 for r in results
+                             if any(b in str(r.get("blocking_reasons", []))
+                                    for b in ("approval_expired", "approval_exhausted",
+                                              "adapter_kind_mismatch", "scope_violation")))
+        suffix = ""
+        if approval_blocks:
+            suffix = f" ({approval_blocks} awaiting approval)"
+        if binding_blocks:
+            suffix += f" ({binding_blocks} approval validation failures)"
         items.append(ProgressItem(
-            item_id="managed-execution-blocked", title=f"{blocked} managed execution(s) blocked",
+            item_id="managed-execution-blocked", title=f"{blocked} managed execution(s) blocked{suffix}",
             status=ProgressStatus.RISK, source_type=ProgressSource.PROOF_GAP,
             safe_summary="Managed execution blocked or awaiting approval.",
             next_action="remedy execution list --json"))

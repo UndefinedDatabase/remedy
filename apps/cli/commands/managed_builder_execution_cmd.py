@@ -68,7 +68,15 @@ def _cmd_approve(ns: "argparse.Namespace") -> None:
         _err("session_id required")
     if not tid:
         _err("--template required")
-    approval = approve_managed_execution(sid, tid)
+    # v1.1: pass binding fields from CLI args.
+    approval = approve_managed_execution(
+        sid, tid,
+        package_id=getattr(ns, "package_id", "") or "",
+        adapter_id=getattr(ns, "adapter_id", "") or "",
+        adapter_kind=getattr(ns, "adapter_kind", "") or "",
+        max_runs=int(getattr(ns, "max_runs", 1) or 1),
+        approval_scope=getattr(ns, "approval_scope", "") or "",
+    )
     if not approval:
         _err("approval failed (template not found or disabled)")
     print(json.dumps(approval.to_dict(), indent=2))
@@ -125,6 +133,35 @@ def _cmd_integrity(ns: "argparse.Namespace") -> None:
     print(json.dumps(result, indent=2))
 
 
+def _cmd_approval_show(ns: "argparse.Namespace") -> None:
+    from packages.orchestration.managed_builder_execution import get_execution_approval
+    sid = getattr(ns, "session_id", "")
+    if not sid:
+        _err("session_id required")
+    approval = get_execution_approval(sid)
+    if not approval:
+        _err(f"approval not found for session: {sid}")
+    print(json.dumps(approval, indent=2))
+
+
+def _cmd_approval_validate(ns: "argparse.Namespace") -> None:
+    from packages.orchestration.managed_builder_execution import validate_execution_approval
+    sid = getattr(ns, "session_id", "")
+    tid = getattr(ns, "template", "") or getattr(ns, "template_id", "")
+    if not sid:
+        _err("session_id required")
+    if not tid:
+        _err("--template required")
+    codes = validate_execution_approval(sid, tid)
+    print(json.dumps({"valid": len(codes) == 0, "codes": codes}, indent=2))
+
+
+def _cmd_approval_list(ns: "argparse.Namespace") -> None:
+    from packages.orchestration.managed_builder_execution import list_execution_approvals
+    approvals = list_execution_approvals()
+    print(json.dumps(approvals, indent=2))
+
+
 COMMAND_HANDLERS = {
     "execution.template-list": _cmd_template_list,
     "execution.template-show": _cmd_template_show,
@@ -135,4 +172,7 @@ COMMAND_HANDLERS = {
     "execution.list": _cmd_list,
     "execution.debug-bundle": _cmd_debug_bundle,
     "execution.integrity": _cmd_integrity,
+    "execution.approval-show": _cmd_approval_show,
+    "execution.approval-validate": _cmd_approval_validate,
+    "execution.approval-list": _cmd_approval_list,
 }

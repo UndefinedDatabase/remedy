@@ -456,26 +456,37 @@ def _build_main_builder_adapter_section(job: Any) -> dict[str, Any]:
 
 
 def _build_managed_execution_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Managed Builder Execution v1 cockpit summary (Step 2041). Counts/status + next
-    safe action only; no mutation buttons; no raw output; no fake live execution."""
+    """Safe read-only Managed Builder Execution v1.1 cockpit summary. Counts/status/approval state +
+    next safe action only; no mutation buttons; no raw output; no fake live execution."""
     try:
         from packages.orchestration.managed_builder_execution import (
             list_command_templates, list_execution_results,
+            list_execution_approvals,
         )
         templates = list_command_templates()
         results = list_execution_results(str(job.id))
+        approvals = list_execution_approvals()
         enabled = sum(1 for t in templates if t.get("enabled", False))
         latest = results[-1] if results else {}
         running = sum(1 for r in results if r.get("status") == "running")
         completed = sum(1 for r in results if r.get("status") == "completed")
         failed = sum(1 for r in results if r.get("status") == "failed")
         blocked = sum(1 for r in results if r.get("status") in ("blocked", "approval_required"))
+        # v1.1: approval state.
+        active_approvals = 0
+        for a in approvals:
+            max_runs = int(a.get("max_runs", 0))
+            used = int(a.get("used_count", 0))
+            if max_runs <= 0 or used < max_runs:
+                active_approvals += 1
         return {
             "enabled_template_count": enabled,
             "execution_count": len(results),
             "completed_count": completed,
             "failed_count": failed,
             "blocked_count": blocked,
+            "approval_count": len(approvals),
+            "active_approval_count": active_approvals,
             "latest_status": latest.get("status", "none"),
             "next_safe_action": latest.get("next_safe_action", ""),
             "live": bool(running),

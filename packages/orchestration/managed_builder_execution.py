@@ -70,7 +70,11 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+import logging
+
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
+
+_log = logging.getLogger("remedy.managed_execution")
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +244,19 @@ class CommandTemplate:
 # ---------------------------------------------------------------------------
 
 
+class ApprovalScope:
+    SINGLE_RUN = "single_run"
+    SESSION_LIFETIME = "session_lifetime"
+    TIME_BOUNDED = "time_bounded"
+
+
+_ALL_APPROVAL_SCOPES = frozenset({
+    ApprovalScope.SINGLE_RUN,
+    ApprovalScope.SESSION_LIFETIME,
+    ApprovalScope.TIME_BOUNDED,
+})
+
+
 @dataclass
 class ExecutionApproval:
     approval_id: str = ""
@@ -248,6 +265,16 @@ class ExecutionApproval:
     operator_id: str = ""
     approved_at: str = ""
     notes: str = ""
+    # v1.1 hardening fields
+    package_id: str = ""
+    adapter_id: str = ""
+    adapter_kind: str = ""
+    expires_at: str = ""
+    max_runs: int = 0  # 0 = unlimited
+    used_count: int = 0
+    max_runtime_seconds: int = MAX_TIMEOUT_SECONDS
+    max_output_bytes: int = MAX_OUTPUT_BYTES
+    approval_scope: str = ApprovalScope.SINGLE_RUN
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -257,8 +284,37 @@ class ExecutionApproval:
             "operator_id": _safe(self.operator_id, 100),
             "approved_at": self.approved_at,
             "notes": _safe(self.notes),
+            "package_id": self.package_id,
+            "adapter_id": self.adapter_id,
+            "adapter_kind": self.adapter_kind,
+            "expires_at": self.expires_at,
+            "max_runs": self.max_runs,
+            "used_count": self.used_count,
+            "max_runtime_seconds": min(int(self.max_runtime_seconds), MAX_TIMEOUT_SECONDS),
+            "max_output_bytes": min(int(self.max_output_bytes), MAX_OUTPUT_BYTES),
+            "approval_scope": self.approval_scope if self.approval_scope in _ALL_APPROVAL_SCOPES else ApprovalScope.SINGLE_RUN,
             "schema_version": SCHEMA_VERSION,
         }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> ExecutionApproval:
+        return cls(
+            approval_id=str(d.get("approval_id", "")),
+            session_id=str(d.get("session_id", "")),
+            template_id=str(d.get("template_id", "")),
+            operator_id=str(d.get("operator_id", "")),
+            approved_at=str(d.get("approved_at", "")),
+            notes=str(d.get("notes", "")),
+            package_id=str(d.get("package_id", "")),
+            adapter_id=str(d.get("adapter_id", "")),
+            adapter_kind=str(d.get("adapter_kind", "")),
+            expires_at=str(d.get("expires_at", "")),
+            max_runs=int(d.get("max_runs", 0)),
+            used_count=int(d.get("used_count", 0)),
+            max_runtime_seconds=min(int(d.get("max_runtime_seconds", MAX_TIMEOUT_SECONDS)), MAX_TIMEOUT_SECONDS),
+            max_output_bytes=min(int(d.get("max_output_bytes", MAX_OUTPUT_BYTES)), MAX_OUTPUT_BYTES),
+            approval_scope=str(d.get("approval_scope", ApprovalScope.SINGLE_RUN)),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -275,6 +331,14 @@ class ExecutionEventKind:
     TIMEOUT = "execution_timeout"
     INTAKE_STARTED = "intake_started"
     INTAKE_COMPLETED = "intake_completed"
+    # v1.1 hardening events
+    APPROVAL_EXPIRED = "approval_expired"
+    APPROVAL_EXHAUSTED = "approval_exhausted"
+    APPROVAL_VALIDATED = "approval_validated"
+    BINDING_MISMATCH = "binding_mismatch"
+    APPROVAL_CONSUMED = "approval_consumed"
+    RUNTIME_CAP_APPLIED = "runtime_cap_applied"
+    OUTPUT_CAP_APPLIED = "output_cap_applied"
 
 
 _ALL_EVENT_KINDS = frozenset({
@@ -282,6 +346,10 @@ _ALL_EVENT_KINDS = frozenset({
     ExecutionEventKind.STARTED, ExecutionEventKind.COMPLETED,
     ExecutionEventKind.FAILED, ExecutionEventKind.TIMEOUT,
     ExecutionEventKind.INTAKE_STARTED, ExecutionEventKind.INTAKE_COMPLETED,
+    ExecutionEventKind.APPROVAL_EXPIRED, ExecutionEventKind.APPROVAL_EXHAUSTED,
+    ExecutionEventKind.APPROVAL_VALIDATED, ExecutionEventKind.BINDING_MISMATCH,
+    ExecutionEventKind.APPROVAL_CONSUMED, ExecutionEventKind.RUNTIME_CAP_APPLIED,
+    ExecutionEventKind.OUTPUT_CAP_APPLIED,
 })
 
 
@@ -478,21 +546,51 @@ def get_command_template(template_id: str, data_dir: Path | None = None) -> dict
 
 def approve_managed_execution(
     session_id: str, template_id: str, *, operator_id: str = "",
+    package_id: str = "", adapter_id: str = "", adapter_kind: str = "",
+    expires_at: str = "", max_runs: int = 1,
+    max_runtime_seconds: int = 0, max_output_bytes: int = 0,
+    approval_scope: str = "",
     data_dir: Path | None = None,
 ) -> ExecutionApproval | None:
-    """Record operator approval for a managed execution. No auto-approval."""
+    """Record operator approval for a managed execution. No auto-approval.
+
+    v1.1: approval is scoped, expiring, bounded, and bound to session/package/adapter/template.
+    Default scope is single_run (one execution only). max_runs defaults to 1.
+    """
     ddir = _resolve_ddir(data_dir)
     tmpl = get_command_template(template_id, ddir)
     if not tmpl:
         return None
     if not tmpl.get("enabled", False):
         return None
+
+    # Derive adapter_kind from template if not specified.
+    ak = adapter_kind or tmpl.get("adapter_kind", "")
+    scope = approval_scope if approval_scope in _ALL_APPROVAL_SCOPES else ApprovalScope.SINGLE_RUN
+
+    # For single_run, force max_runs=1.
+    if scope == ApprovalScope.SINGLE_RUN:
+        max_runs = 1
+
+    # Clamp caps.
+    runtime_cap = min(max_runtime_seconds, MAX_TIMEOUT_SECONDS) if max_runtime_seconds > 0 else MAX_TIMEOUT_SECONDS
+    output_cap = min(max_output_bytes, MAX_OUTPUT_BYTES) if max_output_bytes > 0 else MAX_OUTPUT_BYTES
+
     approval = ExecutionApproval(
         approval_id=uuid4().hex[:16],
         session_id=session_id,
         template_id=template_id,
         operator_id=operator_id or "operator",
         approved_at=_now(),
+        package_id=package_id,
+        adapter_id=adapter_id,
+        adapter_kind=ak,
+        expires_at=expires_at,
+        max_runs=max(0, max_runs),
+        used_count=0,
+        max_runtime_seconds=runtime_cap,
+        max_output_bytes=output_cap,
+        approval_scope=scope,
     )
     _atomic_write(
         _global_mbe_dir(ddir) / "approvals" / f"{session_id}.json",
@@ -504,6 +602,107 @@ def approve_managed_execution(
 def get_execution_approval(session_id: str, data_dir: Path | None = None) -> dict[str, Any] | None:
     ddir = _resolve_ddir(data_dir)
     return _load_json(_global_mbe_dir(ddir) / "approvals" / f"{session_id}.json")
+
+
+def list_execution_approvals(data_dir: Path | None = None) -> list[dict[str, Any]]:
+    """List all execution approvals."""
+    ddir = _resolve_ddir(data_dir)
+    return _load_json_dir(_global_mbe_dir(ddir) / "approvals")
+
+
+def validate_execution_approval(
+    session_id: str, template_id: str, *,
+    package_id: str = "", adapter_id: str = "",
+    data_dir: Path | None = None,
+) -> list[str]:
+    """Validate an execution approval against 11 safety codes.
+
+    Returns a list of violation codes (empty = valid).
+    Codes: approval_not_found, approval_expired, approval_exhausted,
+    template_mismatch, adapter_kind_mismatch, session_mismatch,
+    package_mismatch, adapter_mismatch, runtime_exceeds_cap,
+    output_exceeds_cap, scope_violation.
+    """
+    ddir = _resolve_ddir(data_dir)
+    codes: list[str] = []
+
+    approval = get_execution_approval(session_id, ddir)
+    if not approval:
+        return ["approval_not_found"]
+
+    # 1. Session mismatch.
+    if approval.get("session_id", "") != session_id:
+        codes.append("session_mismatch")
+
+    # 2. Template mismatch.
+    if approval.get("template_id", "") != template_id:
+        codes.append("template_mismatch")
+
+    # 3. Expiry check.
+    expires_at = approval.get("expires_at", "")
+    if expires_at:
+        try:
+            exp_dt = datetime.fromisoformat(expires_at)
+            if datetime.now(timezone.utc) > exp_dt:
+                codes.append("approval_expired")
+        except (ValueError, TypeError):
+            codes.append("approval_expired")
+
+    # 4. Exhaustion check.
+    max_runs = int(approval.get("max_runs", 0))
+    used_count = int(approval.get("used_count", 0))
+    if max_runs > 0 and used_count >= max_runs:
+        codes.append("approval_exhausted")
+
+    # 5. Scope violation (single_run already used).
+    scope = approval.get("approval_scope", ApprovalScope.SINGLE_RUN)
+    if scope == ApprovalScope.SINGLE_RUN and used_count >= 1:
+        if "approval_exhausted" not in codes:
+            codes.append("scope_violation")
+
+    # 6. Adapter kind mismatch.
+    tmpl = get_command_template(template_id, ddir)
+    approval_ak = approval.get("adapter_kind", "")
+    if tmpl and approval_ak:
+        template_ak = tmpl.get("adapter_kind", "")
+        if template_ak and approval_ak != template_ak:
+            codes.append("adapter_kind_mismatch")
+
+    # 7. Package binding.
+    approval_pkg = approval.get("package_id", "")
+    if approval_pkg and package_id and approval_pkg != package_id:
+        codes.append("package_mismatch")
+
+    # 8. Adapter binding.
+    approval_adapter = approval.get("adapter_id", "")
+    if approval_adapter and adapter_id and approval_adapter != adapter_id:
+        codes.append("adapter_mismatch")
+
+    # 9. Runtime cap.
+    if tmpl:
+        tmpl_timeout = tmpl.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)
+        approval_runtime = int(approval.get("max_runtime_seconds", MAX_TIMEOUT_SECONDS))
+        if approval_runtime > 0 and tmpl_timeout > approval_runtime:
+            codes.append("runtime_exceeds_cap")
+
+    # 10. Output cap.
+    if tmpl:
+        tmpl_output = tmpl.get("max_output_bytes", MAX_OUTPUT_BYTES)
+        approval_output = int(approval.get("max_output_bytes", MAX_OUTPUT_BYTES))
+        if approval_output > 0 and tmpl_output > approval_output:
+            codes.append("output_exceeds_cap")
+
+    return codes
+
+
+def _increment_approval_used_count(session_id: str, ddir: Path) -> None:
+    """Atomically increment the used_count on an approval after successful run."""
+    p = _global_mbe_dir(ddir) / "approvals" / f"{session_id}.json"
+    data = _load_json(p)
+    if not data:
+        return
+    data["used_count"] = int(data.get("used_count", 0)) + 1
+    _atomic_write(p, data)
 
 
 # ---------------------------------------------------------------------------
@@ -528,6 +727,10 @@ def _append_event(
     jid = job_id or "_global"
     events_dir = _mbe_dir(jid, ddir) / "events"
     _atomic_write(events_dir / f"{ev.event_id}.json", ev.to_dict())
+    # v1.1: structured logging bridge — operators get events via standard Python logging.
+    _log.info("mbe_event kind=%s exec=%s session=%s summary=%s",
+              kind, execution_id[:8], session_id[:8] if session_id else "-",
+              _safe(summary, 100))
     return ev
 
 
@@ -665,19 +868,71 @@ def run_managed_builder(
                        ExecutionEventKind.FAILED, "Template disabled", ddir=ddir)
         return result
 
-    # 2. Check approval.
+    # 2. Check approval (v1.1: full validation with 11 codes).
     if tmpl.get("requires_approval", True):
-        approval = get_execution_approval(session_id, ddir)
-        if not approval or approval.get("template_id") != template_id:
-            result.status = ManagedExecutionStatus.APPROVAL_REQUIRED
-            result.blocking_reasons.append("approval_required")
+        validation_codes = validate_execution_approval(
+            session_id, template_id,
+            package_id=ph.get("package_id", ""),
+            adapter_id=ph.get("adapter_id", ""),
+            data_dir=ddir,
+        )
+        if validation_codes:
+            # Map specific codes to specific event kinds.
+            if "approval_not_found" in validation_codes:
+                result.status = ManagedExecutionStatus.APPROVAL_REQUIRED
+                result.blocking_reasons.append("approval_required")
+                ev_kind = ExecutionEventKind.REQUESTED
+            elif "approval_expired" in validation_codes:
+                result.status = ManagedExecutionStatus.BLOCKED
+                result.blocking_reasons.extend(validation_codes)
+                ev_kind = ExecutionEventKind.APPROVAL_EXPIRED
+            elif "approval_exhausted" in validation_codes or "scope_violation" in validation_codes:
+                result.status = ManagedExecutionStatus.BLOCKED
+                result.blocking_reasons.extend(validation_codes)
+                ev_kind = ExecutionEventKind.APPROVAL_EXHAUSTED
+            elif any(c.endswith("_mismatch") for c in validation_codes):
+                result.status = ManagedExecutionStatus.BLOCKED
+                result.blocking_reasons.extend(validation_codes)
+                ev_kind = ExecutionEventKind.BINDING_MISMATCH
+            else:
+                result.status = ManagedExecutionStatus.BLOCKED
+                result.blocking_reasons.extend(validation_codes)
+                ev_kind = ExecutionEventKind.FAILED
+
             result.next_safe_action = f"remedy execution approve {session_id} --template {template_id} --json"
             result.ended_at = _now()
             _save_execution_result(result, ddir)
             _append_event(result.execution_id, session_id, job_id,
-                           ExecutionEventKind.REQUESTED,
-                           "Execution requested; approval required", ddir=ddir)
+                           ev_kind,
+                           f"Approval validation failed: {', '.join(validation_codes)}",
+                           {"validation_codes": ", ".join(validation_codes)},
+                           ddir=ddir)
             return result
+
+        # Approval valid — emit validated event.
+        _append_event(result.execution_id, session_id, job_id,
+                       ExecutionEventKind.APPROVAL_VALIDATED,
+                       "Approval passed all validation checks", ddir=ddir)
+
+        # Apply approval caps (tighter-wins).
+        approval_data = get_execution_approval(session_id, ddir)
+        if approval_data:
+            approval_runtime = int(approval_data.get("max_runtime_seconds", MAX_TIMEOUT_SECONDS))
+            approval_output = int(approval_data.get("max_output_bytes", MAX_OUTPUT_BYTES))
+            tmpl_timeout = tmpl.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)
+            tmpl_output = tmpl.get("max_output_bytes", MAX_OUTPUT_BYTES)
+            if 0 < approval_runtime < tmpl_timeout:
+                tmpl["timeout_seconds"] = approval_runtime
+                _append_event(result.execution_id, session_id, job_id,
+                               ExecutionEventKind.RUNTIME_CAP_APPLIED,
+                               f"Approval runtime cap {approval_runtime}s applied",
+                               ddir=ddir)
+            if 0 < approval_output < tmpl_output:
+                tmpl["max_output_bytes"] = approval_output
+                _append_event(result.execution_id, session_id, job_id,
+                               ExecutionEventKind.OUTPUT_CAP_APPLIED,
+                               f"Approval output cap {approval_output}B applied",
+                               ddir=ddir)
 
     # 3. Resolve argv.
     ok, argv, reason = _resolve_argv(tmpl, ph)
@@ -736,6 +991,11 @@ def run_managed_builder(
         if proc.returncode == 0:
             result.status = ManagedExecutionStatus.COMPLETED
             result.next_safe_action = f"remedy builder session-record-output {session_id} --artifact-ref {result.output_ref} --json"
+            # v1.1: increment approval used_count.
+            _increment_approval_used_count(session_id, ddir)
+            _append_event(result.execution_id, session_id, job_id,
+                           ExecutionEventKind.APPROVAL_CONSUMED,
+                           "Approval used_count incremented", ddir=ddir)
         else:
             result.status = ManagedExecutionStatus.FAILED
             result.safe_summary = _safe(f"Exit code {proc.returncode}: {summary_text}", 300)
@@ -859,6 +1119,33 @@ def build_debug_bundle(execution_id: str, data_dir: Path | None = None) -> dict[
     tmpl = get_command_template(result.get("template_id", ""), ddir)
     approval = get_execution_approval(session_id, ddir) if session_id else None
 
+    # v1.1: approval validation summary.
+    approval_validation: dict[str, Any] = {"valid": False, "codes": []}
+    if approval:
+        tid = result.get("template_id", "")
+        codes = validate_execution_approval(session_id, tid, data_dir=ddir)
+        approval_validation = {
+            "valid": len(codes) == 0,
+            "codes": codes,
+            "scope": approval.get("approval_scope", ""),
+            "max_runs": approval.get("max_runs", 0),
+            "used_count": approval.get("used_count", 0),
+            "expires_at": approval.get("expires_at", ""),
+            "adapter_kind": approval.get("adapter_kind", ""),
+            "package_id": approval.get("package_id", ""),
+            "adapter_id": approval.get("adapter_id", ""),
+        }
+
+    # v1.1: repair suggestion when blocked by approval issues.
+    repair_suggestion = ""
+    blocking = result.get("blocking_reasons", [])
+    if "approval_required" in blocking or "approval_not_found" in [c for c in approval_validation.get("codes", [])]:
+        repair_suggestion = f"remedy execution approve {session_id} --template {result.get('template_id', '')} --json"
+    elif "approval_expired" in blocking:
+        repair_suggestion = f"Re-approve with new expiry: remedy execution approve {session_id} --template {result.get('template_id', '')} --json"
+    elif "approval_exhausted" in blocking:
+        repair_suggestion = f"Re-approve with higher max_runs: remedy execution approve {session_id} --template {result.get('template_id', '')} --max-runs N --json"
+
     return {
         "execution_id": execution_id,
         "session_id": session_id,
@@ -871,12 +1158,18 @@ def build_debug_bundle(execution_id: str, data_dir: Path | None = None) -> dict[
         "ended_at": result.get("ended_at", ""),
         "output_ref": result.get("output_ref", ""),
         "safe_summary": result.get("safe_summary", ""),
-        "blocking_reasons": result.get("blocking_reasons", []),
+        "blocking_reasons": blocking,
         "approval": {
             "approved": bool(approval),
             "operator_id": _safe(approval.get("operator_id", ""), 100) if approval else "",
             "approved_at": approval.get("approved_at", "") if approval else "",
+            "scope": approval.get("approval_scope", "") if approval else "",
+            "max_runs": approval.get("max_runs", 0) if approval else 0,
+            "used_count": approval.get("used_count", 0) if approval else 0,
+            "expires_at": approval.get("expires_at", "") if approval else "",
         },
+        "approval_validation": approval_validation,
+        "repair_suggestion": repair_suggestion,
         "event_timeline": [
             {
                 "kind": e.get("kind", ""),
@@ -978,19 +1271,81 @@ def audit_execution_result_safety(result: dict[str, Any]) -> list[dict[str, str]
     return out
 
 
+def audit_approval_safety(approval: dict[str, Any], templates: list[dict[str, Any]] | None = None) -> list[dict[str, str]]:
+    """Flag unsafe or invalid approval configurations (v1.1)."""
+    out: list[dict[str, str]] = []
+    aid = approval.get("approval_id", "")
+
+    # Scope validity.
+    scope = approval.get("approval_scope", "")
+    if scope and scope not in _ALL_APPROVAL_SCOPES:
+        out.append({"approval_id": aid, "code": "unknown_approval_scope"})
+
+    # Exhaustion check.
+    max_runs = int(approval.get("max_runs", 0))
+    used_count = int(approval.get("used_count", 0))
+    if max_runs > 0 and used_count > max_runs:
+        out.append({"approval_id": aid, "code": "used_count_exceeds_max_runs"})
+
+    # Expiry check (informational).
+    expires_at = approval.get("expires_at", "")
+    if expires_at:
+        try:
+            exp_dt = datetime.fromisoformat(expires_at)
+            if datetime.now(timezone.utc) > exp_dt:
+                out.append({"approval_id": aid, "code": "approval_currently_expired"})
+        except (ValueError, TypeError):
+            out.append({"approval_id": aid, "code": "invalid_expires_at_format"})
+
+    # Adapter kind mismatch with template.
+    if templates:
+        tid = approval.get("template_id", "")
+        ak = approval.get("adapter_kind", "")
+        if tid and ak:
+            for t in templates:
+                if t.get("template_id") == tid:
+                    tmpl_ak = t.get("adapter_kind", "")
+                    if tmpl_ak and ak != tmpl_ak:
+                        out.append({"approval_id": aid, "code": "adapter_kind_mismatch_with_template"})
+                    break
+
+    # Runtime/output cap validity.
+    rt = int(approval.get("max_runtime_seconds", 0))
+    if rt > MAX_TIMEOUT_SECONDS:
+        out.append({"approval_id": aid, "code": "approval_runtime_exceeds_system_max"})
+    ob = int(approval.get("max_output_bytes", 0))
+    if ob > MAX_OUTPUT_BYTES:
+        out.append({"approval_id": aid, "code": "approval_output_exceeds_system_max"})
+
+    # Single-run scope with max_runs != 1.
+    if scope == ApprovalScope.SINGLE_RUN and max_runs != 1 and max_runs != 0:
+        out.append({"approval_id": aid, "code": "single_run_scope_max_runs_mismatch"})
+
+    # Secrets in approval fields.
+    blob = json.dumps(approval).lower()
+    if any(m.lower() in blob for m in _RAW_MARKERS):
+        out.append({"approval_id": aid, "code": "secret_or_raw_in_approval"})
+
+    return out
+
+
 def managed_execution_integrity(data_dir: Path | None = None) -> dict[str, Any]:
-    """Read-only invariant check over templates + execution results."""
+    """Read-only invariant check over templates + approvals + execution results (v1.1)."""
     ddir = _resolve_ddir(data_dir)
     violations: list[dict] = []
     templates = list_command_templates(ddir)
     for t in templates:
         violations.extend(audit_template_safety(t))
+    approvals = list_execution_approvals(ddir)
+    for a in approvals:
+        violations.extend(audit_approval_safety(a, templates))
     results = list_execution_results(data_dir=ddir)
     for r in results:
         violations.extend(audit_execution_result_safety(r))
     return {
-        "version": 1,
+        "version": 2,
         "template_count": len(templates),
+        "approval_count": len(approvals),
         "execution_count": len(results),
         "violation_count": len(violations),
         "passed": not violations,
@@ -1005,15 +1360,18 @@ def managed_execution_integrity(data_dir: Path | None = None) -> dict[str, Any]:
 
 __all__ = [
     "SCHEMA_VERSION",
+    "ApprovalScope",
     "CommandTemplate", "ExecutionApproval", "ExecutionEvent", "ExecutionEventKind",
     "ManagedExecutionResult", "ManagedExecutionStatus",
     "default_command_templates", "save_command_template",
     "list_command_templates", "get_command_template",
     "approve_managed_execution", "get_execution_approval",
+    "list_execution_approvals", "validate_execution_approval",
     "run_managed_builder",
     "list_execution_events", "get_execution_result", "list_execution_results",
     "build_debug_bundle",
     "managed_execution_mission_signal",
     "audit_template_safety", "audit_execution_result_safety",
+    "audit_approval_safety",
     "managed_execution_integrity",
 ]

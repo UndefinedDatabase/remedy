@@ -1,26 +1,27 @@
-# Live Review — Steps 2026-2075: Managed External Builder Execution v1 + Dogfood Observability
+# Live Review — Steps 2076-2125: Managed Execution Approval + Dogfood Observability Hardening v1.1
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict;
 a builder `Done:` marker is NOT reviewer `Resolved`).
-Scope (ALLOWED): managed execution module; bounded command templates; operator approval gate; managed
-subprocess runner (argv only, no shell=True); session event tracking; dogfood debug bundles; sandbox
-intake integration; repair/mission state consumption; token/cost logging; CLI surface; command catalog /
-run_contract entries; progress ledger / feature planner / review bundle / cockpit summaries; integrity
-checks; docs/tests.
-Must NOT: arbitrary shell (shell=True); unconstrained subprocess; provider SDK calls; real provider
-execution; auto-apply; auto-approval; auto-PR/git; direct repo mutation; raw transcript/candidate/prompt
-leaks; MemPalace/internal memory; embeddings/vector DB; UI redesign; MCP activation.
-MANAGED EXECUTION BLOCK — bounded subprocess rail. Hard invariants: Remedy governs; subprocess ONLY
-via bounded command template (argv list, sanitized env, timeout, output cap); no shell=True; no
-arbitrary command; managed runner disabled by default; operator approval required; output untrusted
-(sandbox intake required); no direct apply/mutation; no raw leak; Done ≠ Resolved; reviewer verdict
-beats self-report.
+Scope (ALLOWED): approval model hardening (expiry/caps/binding); approval validation helper;
+session/package/adapter/template binding verification; event ledger/debug bundle hardening;
+managed execution CLI hardening; review bundle/progress/cockpit observability; managed execution
+integrity checks; small structured logging bridge; docs/tests.
+Must NOT: real provider execution; provider SDK; direct repo mutation; auto-apply; auto-approval;
+auto-PR/git; hidden browser; arbitrary shell; shell=True; raw transcript/candidate/prompt/log leaks;
+secret/env token storage; hardcoded provider monopoly; MemPalace; embeddings/vector DB; UI redesign;
+MCP; repo-wide logging refactor.
+APPROVAL HARDENING BLOCK — turns managed execution from safe prototype into operator-grade dogfood.
+Hard invariants: approval scoped+expiring+bounded+auditable; approval binds session/package/adapter/
+template; stale approvals cannot execute; one approval cannot authorize unlimited runs; template kind
+must match adapter kind; debug bundle explains failures without raw leaks; builder output remains
+untrusted; run output cannot mark repair/mission done; Done ≠ Resolved; reviewer verdict beats
+self-report.
 Timestamp: 2026-06-16
 
 ## Verdict (reviewer-owned)
-PENDING — no code committed yet.
+PENDING — no feature commit yet.
 
-## Changed files (Steps 2026-2075)
+## Changed files (Steps 2076-2125)
 | File | What changed |
 |------|-------------|
 | (none yet) | |
@@ -28,7 +29,7 @@ PENDING — no code committed yet.
 ## Check matrix (not yet reviewed)
 (awaiting first commit)
 
-## Findings — Steps 2026-2075
+## Findings — Steps 2076-2125
 
 None yet.
 
@@ -38,6 +39,8 @@ Next id: R-0106.
 (not yet run)
 
 ## Reviewer audit log
-- Block opened. Check 1 (mainline closure) pending — PR #75 merged Main Builder Adapter v0 → main
-  8e7d2e5. Fresh branch at main tip; no work before closure.
-- Prior block 1961-2025 PASS @ 786beb9 (zero open findings) merged via PR #75 → main 8e7d2e5.
+- Block opened. Check 1 (mainline closure) PASS — PR #76 merged Managed External Builder Execution
+  v1 (reviewer PASS @ b3a8182) → main 1970b7c. Fresh branch
+  feature/steps-2076-2125-managed-execution-approval-dogfood-observability-hardening-v1-1 off merged
+  main; ZERO feature commits before closure.
+- Prior block 2026-2075 PASS @ b3a8182 (zero open findings) merged via PR #76 → main 1970b7c.

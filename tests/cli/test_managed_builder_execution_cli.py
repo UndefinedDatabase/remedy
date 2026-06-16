@@ -58,6 +58,25 @@ class TestManagedBuilderExecutionCLI(unittest.TestCase):
         data = json.loads(r.stdout)
         assert "passed" in data
         assert "violation_count" in data
+        assert "approval_count" in data  # v1.1
+
+    def test_approval_show_invalid(self):
+        r = _run(["execution", "approval-show", "nonexistent-session-xyz", "--json"])
+        assert r.returncode != 0
+
+    def test_approval_validate_invalid(self):
+        r = _run(["execution", "approval-validate", "nonexistent-session-xyz",
+                   "--template", "nonexistent-tmpl", "--json"])
+        assert r.returncode == 0  # returns codes, not error
+        data = json.loads(r.stdout)
+        assert data["valid"] is False
+        assert "approval_not_found" in data["codes"]
+
+    def test_approval_list(self):
+        r = _run(["execution", "approval-list", "--json"])
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert isinstance(data, list)
 
 
 if __name__ == "__main__":

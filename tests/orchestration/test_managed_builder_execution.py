@@ -15,6 +15,7 @@ from unittest.mock import patch, MagicMock
 
 from packages.orchestration.managed_builder_execution import (
     SCHEMA_VERSION,
+    ApprovalScope,
     CommandTemplate,
     ExecutionApproval,
     ExecutionEvent,
@@ -27,6 +28,8 @@ from packages.orchestration.managed_builder_execution import (
     get_command_template,
     approve_managed_execution,
     get_execution_approval,
+    list_execution_approvals,
+    validate_execution_approval,
     run_managed_builder,
     list_execution_events,
     get_execution_result,
@@ -35,6 +38,7 @@ from packages.orchestration.managed_builder_execution import (
     managed_execution_mission_signal,
     audit_template_safety,
     audit_execution_result_safety,
+    audit_approval_safety,
     managed_execution_integrity,
     _validate_argv_template,
     _resolve_argv,
@@ -462,6 +466,370 @@ class TestIntegrity(unittest.TestCase):
         violations = audit_execution_result_safety(result)
         codes = [v["code"] for v in violations]
         assert "absolute_path_in_result" in codes
+
+
+class TestApprovalHardening(unittest.TestCase):
+    """v1.1: Approval model hardening tests."""
+
+    def test_approval_has_new_fields(self):
+        a = ExecutionApproval(
+            approval_id="ap1", session_id="ses1", template_id="tmpl1",
+            package_id="pkg1", adapter_id="adp1", adapter_kind="generic",
+            expires_at="2099-12-31T23:59:59+00:00", max_runs=5,
+            used_count=0, approval_scope=ApprovalScope.SESSION_LIFETIME,
+        )
+        d = a.to_dict()
+        assert d["package_id"] == "pkg1"
+        assert d["adapter_id"] == "adp1"
+        assert d["adapter_kind"] == "generic"
+        assert d["max_runs"] == 5
+        assert d["used_count"] == 0
+        assert d["approval_scope"] == "session_lifetime"
+
+    def test_approval_roundtrip(self):
+        a = ExecutionApproval(
+            approval_id="ap2", session_id="ses2", template_id="tmpl2",
+            max_runs=3, approval_scope=ApprovalScope.TIME_BOUNDED,
+            expires_at="2099-01-01T00:00:00+00:00",
+        )
+        d = a.to_dict()
+        a2 = ExecutionApproval.from_dict(d)
+        assert a2.approval_id == "ap2"
+        assert a2.max_runs == 3
+        assert a2.approval_scope == "time_bounded"
+
+    def test_approval_clamps_runtime(self):
+        a = ExecutionApproval(max_runtime_seconds=99999)
+        d = a.to_dict()
+        assert d["max_runtime_seconds"] == MAX_TIMEOUT_SECONDS
+
+    def test_approval_clamps_output(self):
+        a = ExecutionApproval(max_output_bytes=999999)
+        d = a.to_dict()
+        assert d["max_output_bytes"] == MAX_OUTPUT_BYTES
+
+    def test_invalid_scope_defaults_to_single_run(self):
+        a = ExecutionApproval(approval_scope="teleport")
+        d = a.to_dict()
+        assert d["approval_scope"] == "single_run"
+
+    def test_approve_single_run_forces_max_runs_1(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            result = approve_managed_execution(
+                "ses1", "tmpl1", max_runs=99,
+                approval_scope=ApprovalScope.SINGLE_RUN,
+                data_dir=Path(td),
+            )
+            assert result is not None
+            assert result.max_runs == 1
+
+    def test_approve_with_binding(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True, adapter_kind="generic")
+            save_command_template(t, data_dir=Path(td))
+            result = approve_managed_execution(
+                "ses1", "tmpl1",
+                package_id="pkg1", adapter_id="adp1",
+                data_dir=Path(td),
+            )
+            assert result is not None
+            assert result.package_id == "pkg1"
+            assert result.adapter_id == "adp1"
+            assert result.adapter_kind == "generic"  # derived from template
+
+
+class TestApprovalValidation(unittest.TestCase):
+    """v1.1: validate_execution_approval() tests."""
+
+    def test_approval_not_found(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            codes = validate_execution_approval("ses1", "tmpl1", data_dir=Path(td))
+            assert "approval_not_found" in codes
+
+    def test_valid_approval(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses1", "tmpl1", data_dir=Path(td))
+            codes = validate_execution_approval("ses1", "tmpl1", data_dir=Path(td))
+            assert len(codes) == 0
+
+    def test_template_mismatch(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses1", "tmpl1", data_dir=Path(td))
+            codes = validate_execution_approval("ses1", "wrong-tmpl", data_dir=Path(td))
+            assert "template_mismatch" in codes
+
+    def test_expired_approval(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution(
+                "ses1", "tmpl1", expires_at="2020-01-01T00:00:00+00:00",
+                data_dir=Path(td),
+            )
+            codes = validate_execution_approval("ses1", "tmpl1", data_dir=Path(td))
+            assert "approval_expired" in codes
+
+    def test_exhausted_approval(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True, requires_approval=False)
+            save_command_template(t, data_dir=Path(td))
+            # Approve with max_runs=1, then run to exhaust.
+            approve_managed_execution("ses1", "tmpl1", max_runs=1,
+                                       approval_scope=ApprovalScope.SINGLE_RUN,
+                                       data_dir=Path(td))
+            # Run to exhaust the approval.
+            run_managed_builder("ses1", template_id="tmpl1", data_dir=Path(td))
+            codes = validate_execution_approval("ses1", "tmpl1", data_dir=Path(td))
+            assert "approval_exhausted" in codes or "scope_violation" in codes
+
+    def test_adapter_kind_mismatch(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True, adapter_kind="claude_code")
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution(
+                "ses1", "tmpl1", adapter_kind="wrong_kind",
+                data_dir=Path(td),
+            )
+            codes = validate_execution_approval("ses1", "tmpl1", data_dir=Path(td))
+            assert "adapter_kind_mismatch" in codes
+
+    def test_package_mismatch(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution(
+                "ses1", "tmpl1", package_id="pkg1",
+                data_dir=Path(td),
+            )
+            codes = validate_execution_approval(
+                "ses1", "tmpl1", package_id="wrong-pkg",
+                data_dir=Path(td),
+            )
+            assert "package_mismatch" in codes
+
+    def test_adapter_mismatch(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution(
+                "ses1", "tmpl1", adapter_id="adp1",
+                data_dir=Path(td),
+            )
+            codes = validate_execution_approval(
+                "ses1", "tmpl1", adapter_id="wrong-adp",
+                data_dir=Path(td),
+            )
+            assert "adapter_mismatch" in codes
+
+
+class TestApprovalIntegrity(unittest.TestCase):
+    """v1.1: Approval integrity audit tests."""
+
+    def test_unknown_scope(self):
+        violations = audit_approval_safety({"approval_id": "a1", "approval_scope": "teleport"})
+        codes = [v["code"] for v in violations]
+        assert "unknown_approval_scope" in codes
+
+    def test_used_exceeds_max(self):
+        violations = audit_approval_safety({
+            "approval_id": "a1", "max_runs": 3, "used_count": 5,
+        })
+        codes = [v["code"] for v in violations]
+        assert "used_count_exceeds_max_runs" in codes
+
+    def test_expired_flagged(self):
+        violations = audit_approval_safety({
+            "approval_id": "a1", "expires_at": "2020-01-01T00:00:00+00:00",
+        })
+        codes = [v["code"] for v in violations]
+        assert "approval_currently_expired" in codes
+
+    def test_adapter_kind_mismatch_with_template(self):
+        templates = [{"template_id": "t1", "adapter_kind": "claude_code"}]
+        violations = audit_approval_safety(
+            {"approval_id": "a1", "template_id": "t1", "adapter_kind": "generic"},
+            templates=templates,
+        )
+        codes = [v["code"] for v in violations]
+        assert "adapter_kind_mismatch_with_template" in codes
+
+    def test_runtime_exceeds_system_max(self):
+        violations = audit_approval_safety({
+            "approval_id": "a1", "max_runtime_seconds": 99999,
+        })
+        codes = [v["code"] for v in violations]
+        assert "approval_runtime_exceeds_system_max" in codes
+
+    def test_single_run_max_runs_mismatch(self):
+        violations = audit_approval_safety({
+            "approval_id": "a1", "approval_scope": "single_run", "max_runs": 5,
+        })
+        codes = [v["code"] for v in violations]
+        assert "single_run_scope_max_runs_mismatch" in codes
+
+    def test_clean_approval_passes(self):
+        violations = audit_approval_safety({
+            "approval_id": "a1", "approval_scope": "single_run", "max_runs": 1,
+            "used_count": 0,
+        })
+        assert len(violations) == 0
+
+    def test_integrity_includes_approvals(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            result = managed_execution_integrity(data_dir=Path(td))
+            assert "approval_count" in result
+            assert result["version"] == 2
+
+
+class TestDebugBundleHardening(unittest.TestCase):
+    """v1.1: Debug bundle includes approval validation."""
+
+    def test_bundle_has_approval_validation(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="db-test", argv_template=["echo", "hi"],
+                                enabled=True, requires_approval=False)
+            save_command_template(t, data_dir=Path(td))
+            result = run_managed_builder("ses-db2", template_id="db-test",
+                                          job_id="job-db2", data_dir=Path(td))
+            bundle = build_debug_bundle(result.execution_id, data_dir=Path(td))
+            assert bundle is not None
+            assert "approval_validation" in bundle
+            assert "repair_suggestion" in bundle
+
+    def test_bundle_approval_scope_visible(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="sc-test", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses-sc", "sc-test",
+                                       approval_scope=ApprovalScope.SESSION_LIFETIME,
+                                       max_runs=10, data_dir=Path(td))
+            result = run_managed_builder("ses-sc", template_id="sc-test",
+                                          job_id="job-sc", data_dir=Path(td))
+            bundle = build_debug_bundle(result.execution_id, data_dir=Path(td))
+            assert bundle is not None
+            assert bundle["approval"]["scope"] == "session_lifetime"
+            assert bundle["approval"]["max_runs"] == 10
+
+
+class TestRunnerApprovalEnforcement(unittest.TestCase):
+    """v1.1: Runner enforces approval validation."""
+
+    def test_runner_blocks_expired_approval(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses1", "tmpl1",
+                                       expires_at="2020-01-01T00:00:00+00:00",
+                                       data_dir=Path(td))
+            result = run_managed_builder("ses1", template_id="tmpl1",
+                                          data_dir=Path(td))
+            assert result.status == ManagedExecutionStatus.BLOCKED
+            assert any("approval_expired" in r for r in result.blocking_reasons)
+
+    def test_runner_blocks_exhausted_approval(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses1", "tmpl1",
+                                       max_runs=1, approval_scope=ApprovalScope.SINGLE_RUN,
+                                       data_dir=Path(td))
+            # First run succeeds.
+            r1 = run_managed_builder("ses1", template_id="tmpl1",
+                                      data_dir=Path(td))
+            assert r1.status == ManagedExecutionStatus.COMPLETED
+            # Second run blocked.
+            r2 = run_managed_builder("ses1", template_id="tmpl1",
+                                      data_dir=Path(td))
+            assert r2.status == ManagedExecutionStatus.BLOCKED
+
+    def test_runner_emits_approval_consumed_event(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses1", "tmpl1",
+                                       max_runs=5, approval_scope=ApprovalScope.SESSION_LIFETIME,
+                                       data_dir=Path(td))
+            result = run_managed_builder("ses1", template_id="tmpl1",
+                                          job_id="j1", data_dir=Path(td))
+            events = list_execution_events(session_id="ses1", job_id="j1",
+                                            data_dir=Path(td))
+            kinds = [e.get("kind") for e in events]
+            assert ExecutionEventKind.APPROVAL_VALIDATED in kinds
+            assert ExecutionEventKind.APPROVAL_CONSUMED in kinds
+
+    def test_runner_increments_used_count(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses1", "tmpl1",
+                                       max_runs=5, approval_scope=ApprovalScope.SESSION_LIFETIME,
+                                       data_dir=Path(td))
+            run_managed_builder("ses1", template_id="tmpl1", data_dir=Path(td))
+            approval = get_execution_approval("ses1", data_dir=Path(td))
+            assert approval is not None
+            assert int(approval.get("used_count", 0)) == 1
+
+    def test_list_approvals(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            t = CommandTemplate(template_id="tmpl1", argv_template=["echo", "hi"],
+                                enabled=True)
+            save_command_template(t, data_dir=Path(td))
+            approve_managed_execution("ses1", "tmpl1", data_dir=Path(td))
+            approve_managed_execution("ses2", "tmpl1", data_dir=Path(td))
+            approvals = list_execution_approvals(data_dir=Path(td))
+            assert len(approvals) >= 2
+
+    def test_new_event_kinds_exist(self):
+        """All v1.1 event kinds are in _ALL_EVENT_KINDS."""
+        from packages.orchestration.managed_builder_execution import _ALL_EVENT_KINDS
+        for kind in [
+            ExecutionEventKind.APPROVAL_EXPIRED,
+            ExecutionEventKind.APPROVAL_EXHAUSTED,
+            ExecutionEventKind.APPROVAL_VALIDATED,
+            ExecutionEventKind.BINDING_MISMATCH,
+            ExecutionEventKind.APPROVAL_CONSUMED,
+            ExecutionEventKind.RUNTIME_CAP_APPLIED,
+            ExecutionEventKind.OUTPUT_CAP_APPLIED,
+        ]:
+            assert kind in _ALL_EVENT_KINDS, f"{kind} not in _ALL_EVENT_KINDS"
 
 
 class TestArchitectureGuards(unittest.TestCase):
