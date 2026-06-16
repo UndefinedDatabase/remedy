@@ -5,16 +5,15 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from pathlib import Path
-from uuid import UUID, uuid4
-from uuid import uuid4
 import ast
 import json
 import os
-import pytest
-import re
 import subprocess
 import sys
+from pathlib import Path
+from uuid import UUID, uuid4
+
+import pytest
 
 from packages.core.models import (
     Artifact,
@@ -23,8 +22,6 @@ from packages.core.models import (
     RunState,
     Task,
 )
-from packages.core.models import Job, RunState
-from packages.core.models import Job, RunState, Task
 from packages.memory.models import MemoryEntry
 from packages.orchestration.storage import save_job
 
@@ -309,7 +306,7 @@ class TestBrainReliabilityHygiene:
     """Shared symbols, structured degradation, no bare except Exception."""
 
     def test_symbols_module_exists(self):
-        from packages.orchestration._symbols import OK, FAIL, WARN, INFO, NEXT, LINE
+        from packages.orchestration._symbols import FAIL, INFO, LINE, NEXT, OK, WARN
 
         assert OK == "\u2713"
         assert FAIL == "\u2715"
@@ -572,9 +569,9 @@ class TestBrainIntegration:
 
     def test_brain_node_type_order(self):
         from packages.orchestration.project_brain import (
+            _NODE_TYPE_ORDER,
             NT_CONTEXT_BUDGET,
             NT_DECISION_QUEUE,
-            _NODE_TYPE_ORDER,
         )
         assert NT_DECISION_QUEUE in _NODE_TYPE_ORDER
         assert NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER
@@ -713,8 +710,8 @@ class TestStoryViewModelSchema:
             assert j.get("state") in ("done", "current", "pending", "blocked", "suggested")
 
     def test_forbidden_debug_words_absent(self):
-        from packages.orchestration.ui_view_model import build_story
         from packages.orchestration.ui_copy import FORBIDDEN_DEFAULT_WORDS
+        from packages.orchestration.ui_view_model import build_story
 
         job = _make_job_s163()
         events = _make_events_s163()
@@ -1497,8 +1494,6 @@ class TestGitStatusBrainNode:
 
     def test_job_aware_repo_status(self, tmp_path, monkeypatch):
         """Job-aware repo status reads target_repo and emits run-log event."""
-        import os
-        from pathlib import Path
         import packages.orchestration.storage as _storage
 
         jobs_dir = tmp_path / "jobs"

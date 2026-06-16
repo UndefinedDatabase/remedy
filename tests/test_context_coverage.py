@@ -56,7 +56,6 @@ import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.context_coverage import (
-    ContextCoverageSignal,
     ContextCoverageSnapshot,
     derive_context_coverage,
     export_context_coverage_json,
@@ -68,7 +67,6 @@ from packages.orchestration.project_brain import (
     build_project_brain,
 )
 from packages.orchestration.storage import save_job
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -196,6 +194,7 @@ def _add_patch_intent_artifact(job: Job) -> Artifact:
 
 def _call_context_json(job_id_str: str, monkeypatch, capsys) -> dict:
     import sys
+
     from apps.cli.main import main
     monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", job_id_str, "--json"])
     main()
@@ -549,6 +548,7 @@ class TestExportContextCoverageJson:
 class TestContextCoverageCli:
     def test_invalid_uuid_exits_1(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -560,6 +560,7 @@ class TestContextCoverageCli:
 
     def test_unknown_job_exits_1(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -572,6 +573,7 @@ class TestContextCoverageCli:
 
     def test_text_output_human_readable(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -585,6 +587,7 @@ class TestContextCoverageCli:
 
     def test_json_output_parseable(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -600,6 +603,7 @@ class TestContextCoverageCli:
 
     def test_json_stdout_is_pure_json(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -615,6 +619,7 @@ class TestContextCoverageCli:
 
     def test_run_log_event_emitted(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -629,6 +634,7 @@ class TestContextCoverageCli:
 
     def test_run_log_exact_schema(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -649,6 +655,7 @@ class TestContextCoverageCli:
 
     def test_run_log_scope_is_job(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -663,6 +670,7 @@ class TestContextCoverageCli:
 
     def test_no_sentinels_in_stdout(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -678,6 +686,7 @@ class TestContextCoverageCli:
 
     def test_no_sentinels_in_run_log(self, tmp_path, monkeypatch, capsys):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -767,6 +776,7 @@ class TestBrainContextCoverageNode:
         self, tmp_path, monkeypatch, capsys
     ):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -791,6 +801,7 @@ class TestBrainNodeContextCoverageDetail:
         self, tmp_path, monkeypatch, capsys
     ):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -815,6 +826,7 @@ class TestBrainNodeContextCoverageDetail:
         self, tmp_path, monkeypatch, capsys
     ):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -839,6 +851,7 @@ class TestBrainNodeContextCoverageDetail:
         self, tmp_path, monkeypatch, capsys
     ):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -978,6 +991,7 @@ class TestSafeInt:
         self, tmp_path, monkeypatch, capsys
     ):
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -1080,6 +1094,7 @@ class TestContextCmdStaleRepo:
 
     def _run_context(self, job_id_str: str, monkeypatch, capsys, tmp_path):
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", job_id_str])
         main()
@@ -1099,6 +1114,7 @@ class TestContextCmdStaleRepo:
         job.metadata["target_repo"] = str(tmp_path / "nonexistent_repo")
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
         main()  # must not raise SystemExit
@@ -1132,6 +1148,7 @@ class TestContextCmdStaleRepo:
         monkeypatch.setattr(_pc_mod, "load_project_constitution", _boom)
 
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job2.id)])
         main()
@@ -1167,6 +1184,7 @@ class TestContextCoverageDetailConfidenceKeys:
 
     def _get_detail(self, tmp_path, monkeypatch, capsys) -> dict:
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

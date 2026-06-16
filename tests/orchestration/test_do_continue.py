@@ -12,10 +12,11 @@ from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.approval_queue import make_intent_id, set_approval_state
 from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.run_contract import (
-    build_default_run_contract, save_contract, ContractAction,
+    ContractAction,
+    build_default_run_contract,
+    save_contract,
 )
 from packages.orchestration.storage import save_job
-
 
 ARTIFACT_CONTENT = "Summary:\n  - safe doc\nProposed Changes:\n  - add a line\nNotes:\n  - none\n"
 
@@ -196,8 +197,9 @@ class TestEligibility:
 def _fake_test(data_dir, *, status="passed", evidence="complete", fa_id=""):
     """Build a fake execute_test_run that emits a linked test event."""
     from uuid import UUID as _UUID
-    from packages.orchestration.timeline import append_run_event
+
     from packages.orchestration.test_execution_service import TestExecutionResult
+    from packages.orchestration.timeline import append_run_event
     calls = {"n": 0}
 
     def _fn(request):
@@ -215,8 +217,8 @@ def _fake_test(data_dir, *, status="passed", evidence="complete", fa_id=""):
 
 class TestRunDoContinue:
     def _run(self, data_dir, job, monkeypatch, *, status="passed", evidence="complete", fa_id=""):
-        from packages.orchestration import do_continue as dc
         import packages.orchestration.test_execution_service as tes
+        from packages.orchestration import do_continue as dc
         fn, calls = _fake_test(data_dir, status=status, evidence=evidence, fa_id=fa_id)
         monkeypatch.setattr(tes, "execute_test_run", fn)
         result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
@@ -270,9 +272,9 @@ class TestRunDoContinue:
     def test_retry_no_double_apply_or_test(self, env, monkeypatch):
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
-        from packages.orchestration import do_continue as dc
-        import packages.orchestration.test_execution_service as tes
         import packages.orchestration.patch_apply as pa
+        import packages.orchestration.test_execution_service as tes
+        from packages.orchestration import do_continue as dc
         fn, tcalls = _fake_test(data_dir, status="passed")
         monkeypatch.setattr(tes, "execute_test_run", fn)
         acalls = {"n": 0}
@@ -293,9 +295,10 @@ class TestRunDoContinue:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         # Apply manually (simulate crash after apply, before test).
+        from uuid import UUID
+
         from packages.orchestration.patch_apply import apply_patch_intent
         from packages.orchestration.storage import load_job
-        from uuid import UUID
         apply_patch_intent(load_job(UUID(str(job.id)), data_dir), iid, data_dir=data_dir)
         # Now continue — should resume apply, run test exactly once.
         result, calls = self._run(data_dir, job, monkeypatch)
@@ -308,7 +311,10 @@ class TestRunDoContinue:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         from packages.orchestration.do_continue import (
-            ContinuationLease, _continue_dir, _repo_key, ContinueStopReason,
+            ContinuationLease,
+            ContinueStopReason,
+            _continue_dir,
+            _repo_key,
         )
         lease = ContinuationLease(
             job_id=str(job.id), repo_key=_repo_key(job), intent_id=iid,
@@ -353,8 +359,8 @@ class TestRunDoContinue:
 
 class TestContinuationIntegrations:
     def _run(self, data_dir, job, monkeypatch, *, status="passed", fa_id=""):
-        from packages.orchestration import do_continue as dc
         import packages.orchestration.test_execution_service as tes
+        from packages.orchestration import do_continue as dc
         fn, _ = _fake_test(data_dir, status=status, fa_id=fa_id)
         monkeypatch.setattr(tes, "execute_test_run", fn)
         return dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
@@ -363,10 +369,11 @@ class TestContinuationIntegrations:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         self._run(data_dir, job, monkeypatch)
+        from uuid import UUID
+
+        from packages.orchestration.progress_ledger import build_progress_ledger
         from packages.orchestration.storage import load_job
         from packages.orchestration.timeline import load_run_events
-        from packages.orchestration.progress_ledger import build_progress_ledger
-        from uuid import UUID
         job = load_job(UUID(str(job.id)), data_dir)
         events = load_run_events(data_dir, UUID(str(job.id)))
         ledger = build_progress_ledger(job=job, events=events)
@@ -379,11 +386,12 @@ class TestContinuationIntegrations:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         self._run(data_dir, job, monkeypatch, status="failed", fa_id="fa-1")
+        from uuid import UUID
+
+        from packages.orchestration.feature_planner import build_feature_plan
+        from packages.orchestration.progress_ledger import build_progress_ledger
         from packages.orchestration.storage import load_job
         from packages.orchestration.timeline import load_run_events
-        from packages.orchestration.progress_ledger import build_progress_ledger
-        from packages.orchestration.feature_planner import build_feature_plan
-        from uuid import UUID
         job = load_job(UUID(str(job.id)), data_dir)
         events = load_run_events(data_dir, UUID(str(job.id)))
         ledger = build_progress_ledger(job=job, events=events)
@@ -396,8 +404,10 @@ class TestContinuationIntegrations:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         self._run(data_dir, job, monkeypatch)
+        import json as _json
+        import zipfile
+
         from packages.orchestration.review_bundle import build_review_bundle
-        import zipfile, json as _json
         result = build_review_bundle(str(job.id))
         with zipfile.ZipFile(result.output_path) as zf:
             raw = zf.read("continuation_summary.json").decode()
@@ -418,6 +428,7 @@ class TestContinuationIntegrations:
 class TestContinuationArchitecture:
     def _src(self):
         from pathlib import Path
+
         import packages.orchestration.do_continue as m
         return Path(m.__file__).read_text()
 
@@ -451,9 +462,10 @@ class TestCrashAtomicTestPhase:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         # Apply first so the test phase is the one in flight.
+        from uuid import UUID
+
         from packages.orchestration.patch_apply import apply_patch_intent
         from packages.orchestration.storage import load_job
-        from uuid import UUID
         apply_patch_intent(load_job(UUID(str(job.id)), data_dir), iid, data_dir=data_dir)
         # Simulate a crash mid-test: an in_flight TEST checkpoint with no completion.
         from packages.orchestration import do_continue as dc

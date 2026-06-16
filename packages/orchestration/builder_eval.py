@@ -14,7 +14,6 @@ Public API::
 
 from __future__ import annotations
 
-import hashlib
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -314,7 +313,6 @@ class TaskCase:
 
 def standard_task_set() -> list[TaskCase]:
     """Small set of real coding situations for model quality measurement."""
-    import json
 
     return [
         TaskCase(

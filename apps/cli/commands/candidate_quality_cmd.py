@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -18,7 +19,8 @@ if TYPE_CHECKING:
 
 def _cmd_candidate_quality_evaluate(args: Any) -> None:
     from packages.orchestration.candidate_quality import (
-        evaluate_candidate_quality, export_candidate_quality_json,
+        evaluate_candidate_quality,
+        export_candidate_quality_json,
     )
     e = evaluate_candidate_quality(
         generation_id=getattr(args, "generation_id", None) or None,
@@ -74,7 +76,8 @@ def _cmd_candidate_quality_scorecard(args: Any) -> None:
 
 def _cmd_candidate_quality_report(args: Any) -> None:
     from packages.orchestration.candidate_quality import (
-        load_candidate_quality_evaluations, build_candidate_scorecards,
+        build_candidate_scorecards,
+        load_candidate_quality_evaluations,
     )
     job_id = getattr(args, "job_id", None) or None
     evals = load_candidate_quality_evaluations(job_id=job_id)
@@ -134,7 +137,7 @@ def _cmd_candidate_quality_integrity(args: Any) -> None:
           f"violations={data['violation_count']}/{data['evaluation_count']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "candidate-quality.evaluate": _cmd_candidate_quality_evaluate,
     "candidate-quality.show": _cmd_candidate_quality_show,
     "candidate-quality.scorecard": _cmd_candidate_quality_scorecard,

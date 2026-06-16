@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import argparse
@@ -140,7 +141,7 @@ def _parse_fixture_builder(val: object) -> bool | str:
     sys.exit(2)
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.run": lambda args: _cmd_do(
         args.goal,
         repo=getattr(args, "repo", None) or ".",

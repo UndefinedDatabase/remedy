@@ -22,7 +22,6 @@ from typing import Any
 from packages.core.models import Job
 from packages.orchestration.approval_queue import list_patch_intents
 
-
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------

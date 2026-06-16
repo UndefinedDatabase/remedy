@@ -7,8 +7,6 @@ import subprocess
 import sys
 from uuid import uuid4
 
-import pytest
-
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.autonomy_readiness import (
     LEVELS,
@@ -241,8 +239,10 @@ class TestVerifiedSnapshotSignal:
     @staticmethod
     def _durable_verified(data_dir, repo_root, job_id, *, state="applied"):
         from packages.orchestration.repository_snapshot import (
-            create_snapshot, verify_snapshot, save_durable_apply_record,
             DurableApplyRecord,
+            create_snapshot,
+            save_durable_apply_record,
+            verify_snapshot,
         )
         (repo_root / "f.py").write_text("before\n")
         snap = create_snapshot(job_id, "intent-x", ["f.py"], repo_root, data_dir)
@@ -264,8 +264,8 @@ class TestVerifiedSnapshotSignal:
 
     def test_artifact_metadata_only_not_ready(self, tmp_path):
         from packages.core.models import Artifact, ArtifactKind
-        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
         from packages.orchestration.approval_queue import make_intent_id
+        from packages.orchestration.autonomy_readiness import _has_verified_snapshot
         art = Artifact(name="p", content="", kind=ArtifactKind.PATCH_INTENT)
         iid = make_intent_id(art.id, 0)
         art.metadata["patch_intent_apply_records"] = {iid: {"snapshot_verified": True}}

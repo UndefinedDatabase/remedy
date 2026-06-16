@@ -14,7 +14,6 @@ from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

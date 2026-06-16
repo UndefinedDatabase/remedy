@@ -219,7 +219,6 @@ class TestMemoryCLI:
 
 class TestContextCoverageMemorySignal:
     def test_project_memory_present_with_approved_entries(self, tmp_path, monkeypatch) -> None:
-        from uuid import uuid4
         from packages.core.models import Job
         from packages.orchestration.context_coverage import derive_context_coverage
 

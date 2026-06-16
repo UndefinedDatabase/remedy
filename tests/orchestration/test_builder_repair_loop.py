@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from packages.core.models import Job
 from packages.orchestration.builder_models import BuilderOutput
 

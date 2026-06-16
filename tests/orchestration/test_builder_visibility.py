@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 
 class TestLiveStateBridgeFields:
     def test_bridge_fields_present_after_parse_event(self, tmp_path, monkeypatch):

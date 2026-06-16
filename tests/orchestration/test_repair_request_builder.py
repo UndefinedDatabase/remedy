@@ -14,8 +14,8 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-from packages.orchestration.storage import save_job, load_job
 from packages.orchestration import repair_request_builder as RB
+from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -80,7 +80,9 @@ class TestBuilder:
 
     def test_contract_blocked(self, env):
         from packages.orchestration.run_contract import (
-            build_default_run_contract, save_contract, ContractAction,
+            ContractAction,
+            build_default_run_contract,
+            save_contract,
         )
         job, fid = _job(env)
         c = build_default_run_contract(job)
@@ -251,15 +253,17 @@ class TestArchitectureGuards:
 
 class TestEndToEnd:
     def test_request_to_completed_verified(self, env, monkeypatch, tmp_path):
-        from packages.orchestration.permissions import set_permission, Capability
-        from packages.orchestration.run_contract import (
-            build_default_run_contract, save_contract, ContractAction,
-        )
-        from packages.orchestration.approval_queue import set_approval_state
-        from packages.orchestration import provider_trust as PT
         import packages.orchestration.test_execution_service as tes
-        from tests.orchestration.test_do_continue import _fake_test
         from packages.orchestration import do_continue as dc
+        from packages.orchestration import provider_trust as PT
+        from packages.orchestration.approval_queue import set_approval_state
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.run_contract import (
+            ContractAction,
+            build_default_run_contract,
+            save_contract,
+        )
+        from tests.orchestration.test_do_continue import _fake_test
 
         repo = tmp_path / "repo"; (repo / "docs").mkdir(parents=True)
         (repo / "docs" / "guide.md").write_text("line one\nline two\n")

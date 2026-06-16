@@ -5,17 +5,12 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from uuid import UUID, uuid4
 from uuid import uuid4
-import json
-import os
+
 import pytest
-import re
-import subprocess
-import sys
-import tempfile
 
 from packages.core.models import (
     Artifact,
@@ -24,7 +19,6 @@ from packages.core.models import (
     RunState,
     Task,
 )
-from packages.core.models import Job, RunState, Task
 from packages.orchestration.storage import save_job
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -90,7 +84,7 @@ def _make_job_s71(**overrides) -> Job:
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:

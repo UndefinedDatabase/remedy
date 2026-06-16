@@ -38,7 +38,6 @@ Coverage:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -48,7 +47,6 @@ from packages.orchestration.agent_loop import (
     AgentAdapterSpec,
     AgentLoopDecision,
     AgentLoopStage,
-    AgentLoopState,
     AgentRole,
     default_agent_loop_state,
     derive_agent_loop_state,
@@ -67,7 +65,6 @@ from packages.orchestration.patch_intent import (
 )
 from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.storage import save_job
-
 
 # ---------------------------------------------------------------------------
 # Helpers

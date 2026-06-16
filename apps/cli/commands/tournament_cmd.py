@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -17,7 +18,8 @@ if TYPE_CHECKING:
 
 def _cmd_tournament_report(args: Any) -> None:
     from packages.orchestration.model_route_tournament import (
-        export_tournament_report_json, generate_tournament_report,
+        export_tournament_report_json,
+        generate_tournament_report,
     )
     rep = generate_tournament_report(
         str(args.job_id), task_id=getattr(args, "task_id", None) or "",
@@ -68,7 +70,7 @@ def _cmd_tournament_integrity(args: Any) -> None:
           f"violations={data['violation_count']} reports={data['report_count']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "tournament.report": _cmd_tournament_report,
     "tournament.show": _cmd_tournament_show,
     "tournament.list": _cmd_tournament_list,

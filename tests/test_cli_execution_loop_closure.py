@@ -9,7 +9,6 @@ import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 
@@ -19,7 +18,7 @@ if str(_ROOT) not in sys.path:
 
 
 def _make_job(*, tasks=None, name="test", metadata=None):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if metadata:
         job.metadata = dict(metadata)
@@ -182,7 +181,8 @@ class TestReviewerCliJsonOutput:
         job = _make_job(tasks=[{"type": "test", "status": "completed"}])
         with patch("packages.orchestration.storage.load_job", return_value=job), \
              patch("packages.orchestration.storage.save_job"):
-            import io, contextlib
+            import contextlib
+            import io
             args = MagicMock()
             args.job_id = str(job.id)
             args.after_task = None
@@ -201,7 +201,9 @@ class TestReviewerCliJsonOutput:
     def test_review_accept_json(self, tmp_path, monkeypatch):
         """review accept --json returns structured output (creates proposed task, not direct task)."""
         from packages.orchestration.reviewer import (
-            run_reviewer, store_recommendations, _fixture_reviewer,
+            _fixture_reviewer,
+            run_reviewer,
+            store_recommendations,
         )
         monkeypatch.setattr(
             "packages.orchestration.proposed_tasks._STORE_DIR",
@@ -214,7 +216,8 @@ class TestReviewerCliJsonOutput:
 
         with patch("packages.orchestration.storage.load_job", return_value=job), \
              patch("packages.orchestration.storage.save_job"):
-            import io, contextlib
+            import contextlib
+            import io
             args = MagicMock()
             args.job_id = str(job.id)
             args.recommendation_id = recs[0].id
@@ -229,7 +232,9 @@ class TestReviewerCliJsonOutput:
 
     def test_review_reject_json(self):
         from packages.orchestration.reviewer import (
-            run_reviewer, store_recommendations, _fixture_reviewer,
+            _fixture_reviewer,
+            run_reviewer,
+            store_recommendations,
         )
         job = _make_job()
         job.metadata = {}
@@ -238,7 +243,8 @@ class TestReviewerCliJsonOutput:
 
         with patch("packages.orchestration.storage.load_job", return_value=job), \
              patch("packages.orchestration.storage.save_job"):
-            import io, contextlib
+            import contextlib
+            import io
             args = MagicMock()
             args.job_id = str(job.id)
             args.recommendation_id = recs[0].id
@@ -266,7 +272,7 @@ class TestReviewerCliJsonOutput:
 
     def test_reviewer_no_auto_append(self):
         """run_reviewer must NOT modify job.tasks."""
-        from packages.orchestration.reviewer import run_reviewer, _fixture_reviewer
+        from packages.orchestration.reviewer import _fixture_reviewer, run_reviewer
         job = _make_job()
         count = len(job.tasks)
         run_reviewer(job, reviewer_fn=_fixture_reviewer)
@@ -302,7 +308,9 @@ class TestMemoryCandidateCliCommands:
         create_candidate(job, "repair_pattern", "Fixed mul")
 
         with patch("packages.orchestration.storage.load_job", return_value=job):
-            import io, contextlib
+            import contextlib
+            import io
+
             from apps.cli.commands.memory import _cmd_memory_candidates
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -321,7 +329,9 @@ class TestMemoryCandidateCliCommands:
         with patch("packages.orchestration.storage.load_job", return_value=job), \
              patch("packages.orchestration.storage.save_job"), \
              patch.dict("sys.modules", {"packages.orchestration.memory": MagicMock()}):
-            import io, contextlib
+            import contextlib
+            import io
+
             from apps.cli.commands.memory import _cmd_memory_approve_candidate
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -338,7 +348,9 @@ class TestMemoryCandidateCliCommands:
 
         with patch("packages.orchestration.storage.load_job", return_value=job), \
              patch("packages.orchestration.storage.save_job"):
-            import io, contextlib
+            import contextlib
+            import io
+
             from apps.cli.commands.memory import _cmd_memory_reject_candidate
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -448,8 +460,10 @@ class TestDevStatusExpandedCapabilities:
     """Dev status includes repair_loop_ok, reviewer_loop_ok, etc."""
 
     def test_dev_status_expanded_schema(self):
+        import contextlib
+        import io
+
         from apps.cli.commands.dev import _dev_status
-        import io, contextlib
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             _dev_status(json_output=True)
@@ -459,8 +473,10 @@ class TestDevStatusExpandedCapabilities:
             assert key in data
 
     def test_capabilities_ok_when_importable(self):
+        import contextlib
+        import io
+
         from apps.cli.commands.dev import _dev_status
-        import io, contextlib
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             _dev_status(json_output=True)
@@ -473,8 +489,10 @@ class TestDevStatusExpandedCapabilities:
 
     def test_missing_module_is_blocker(self):
         """If module import fails, it becomes a blocker."""
+        import contextlib
+        import io
+
         from apps.cli.commands.dev import _dev_status
-        import io, contextlib
         with patch.dict("sys.modules", {"packages.orchestration.repair_context": None}):
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):

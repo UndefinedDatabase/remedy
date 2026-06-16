@@ -5,14 +5,10 @@ Transactional tests use apply_structured_patch public API.
 """
 from __future__ import annotations
 
-from pathlib import Path
 from uuid import uuid4
-
-import pytest
 
 from packages.core.models import Job
 from packages.orchestration.source_apply import (
-    ApplyResult,
     _apply_hunks,
     apply_structured_patch,
 )
@@ -23,6 +19,7 @@ class TestTransactionRollback:
 
     def _make_approved_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Artifact
         from packages.orchestration.approval_queue import (
             APPROVAL_APPROVED,
             make_intent_id,
@@ -30,7 +27,6 @@ class TestTransactionRollback:
         )
         from packages.orchestration.permissions import Capability, set_permission
         from packages.orchestration.storage import save_job
-        from packages.core.models import Artifact
 
         job = Job(name="txn-test")
         set_permission(job, Capability.repo_generated_write, allow=True)
@@ -49,7 +45,7 @@ class TestTransactionRollback:
 
     def test_file_ops_rollback_on_second_failure(self, tmp_path, monkeypatch):
         """If second file_op fails, first file_op is rolled back via durable snapshot."""
-        from packages.orchestration.structured_patch import StructuredPatch, FileOp
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -96,7 +92,7 @@ class TestTransactionRollback:
 
     def test_apply_result_has_snapshot_id_on_success(self, tmp_path, monkeypatch):
         """Successful apply populates snapshot_id + snapshot_verified on ApplyResult."""
-        from packages.orchestration.structured_patch import StructuredPatch, FileOp
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -116,7 +112,7 @@ class TestTransactionRollback:
 
     def test_apply_result_no_content_field(self, tmp_path, monkeypatch):
         """ApplyResult must not expose raw content."""
-        from packages.orchestration.structured_patch import StructuredPatch, FileOp
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
         repo = tmp_path / "repo"
         repo.mkdir()

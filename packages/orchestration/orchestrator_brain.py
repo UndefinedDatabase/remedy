@@ -29,13 +29,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
-
 
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1466/1470/1471/1472)
@@ -304,7 +302,8 @@ def list_ideas(data_dir: Path | None = None) -> list[dict]:
 def _review_state() -> tuple[str, bool, int]:
     """Return (verdict, blocks, open_blocker_high)."""
     from packages.orchestration.overnight_executor import (
-        parse_review_findings, review_findings_block_execution,
+        parse_review_findings,
+        review_findings_block_execution,
     )
     f = parse_review_findings(_agent_dir() / "live_review.md")
     blocks, _ = review_findings_block_execution(f)
@@ -321,7 +320,7 @@ def _gather_signals(job_id: str, data_dir: Path,
         "request_packages": 0, "self_attempts_awaiting": 0, "self_attempts_pending": 0,
         "self_proposed_approved": [], "self_items": 0, "budget_exhausted": False,
     }
-    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.storage import JobNotFoundError, load_job
     try:
         job = load_job(UUID(job_id), data_dir)
     except (ValueError, JobNotFoundError):
@@ -346,7 +345,9 @@ def _gather_signals(job_id: str, data_dir: Path,
     # Patch intents.
     try:
         from packages.orchestration.approval_queue import (
-            list_patch_intents, APPROVAL_PENDING, APPROVAL_APPROVED,
+            APPROVAL_APPROVED,
+            APPROVAL_PENDING,
+            list_patch_intents,
         )
         intents = list_patch_intents(job)
         sig["pending_intents"] = [i["intent_id"] for i in intents if i["state"] == APPROVAL_PENDING]
@@ -409,7 +410,7 @@ def _gather_signals(job_id: str, data_dir: Path,
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
     try:
-        from packages.orchestration.proposed_tasks import load_proposed_tasks_safe, ProposedTaskStatus
+        from packages.orchestration.proposed_tasks import ProposedTaskStatus, load_proposed_tasks_safe
         pts, _ = load_proposed_tasks_safe(job_id, data_dir)
         sig["self_proposed_approved"] = [
             t.id for t in pts if getattr(t, "task_type", "") == "self_dogfood"
@@ -420,7 +421,10 @@ def _gather_signals(job_id: str, data_dir: Path,
     # Budget.
     try:
         from packages.orchestration.run_contract import (
-            ensure_contract, load_usage, evaluate_run_action, ContractAction,
+            ContractAction,
+            ensure_contract,
+            evaluate_run_action,
+            load_usage,
         )
         c = ensure_contract(job)
         u = load_usage(job)
@@ -957,8 +961,12 @@ def consult_local_advisor_for_decision(
     from packages.orchestration.data_paths import resolve_data_root
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     from packages.orchestration.local_model_advisor import (
-        LocalAdvisorRequest, LocalAdvisorStatus, LocalAdvisorDecisionImpact,
-        load_local_advisor_config, run_local_advisor, export_local_advisor_response_json,
+        LocalAdvisorDecisionImpact,
+        LocalAdvisorRequest,
+        LocalAdvisorStatus,
+        export_local_advisor_response_json,
+        load_local_advisor_config,
+        run_local_advisor,
     )
 
     config = load_local_advisor_config(enabled_override=enabled_override)
@@ -977,9 +985,11 @@ def consult_local_advisor_for_decision(
     if decision.job_id:
         try:
             from packages.orchestration.run_contract import (
-                ensure_contract, evaluate_run_action, ContractAction,
+                ContractAction,
+                ensure_contract,
+                evaluate_run_action,
             )
-            from packages.orchestration.storage import load_job, JobNotFoundError
+            from packages.orchestration.storage import JobNotFoundError, load_job
             job = load_job(UUID(decision.job_id), ddir)
             if not evaluate_run_action(ensure_contract(job), ContractAction.LOCAL_ADVISOR_RUN).allowed:
                 decision.advisor = {
@@ -1126,7 +1136,7 @@ def render_report_markdown(data: dict[str, Any]) -> str:
     lines.append("## Model routing recommendation")
     mrp = d.get("model_routing_plan", {})
     lines.append(f"- tier: {mrp.get('tier')} — {mrp.get('reason')}")
-    lines.append(f"  - (plan only; no model is called in v0)")
+    lines.append("  - (plan only; no model is called in v0)")
     lines.append("")
     lines.append("## Human decisions needed")
     if d.get("stop_reason") == "human_review_required" or s.get("blockers"):

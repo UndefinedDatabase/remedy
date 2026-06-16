@@ -6,8 +6,6 @@ import json
 import subprocess
 import sys
 
-import pytest
-
 
 def _run_cli(*args: str, timeout: int = 30) -> subprocess.CompletedProcess:
     """Run CLI command via subprocess. No shell=True."""
@@ -49,6 +47,7 @@ class TestContractCheckCLI:
     def test_no_shell_true_in_source(self):
         """Verify no shell=True in contract_cmd.py."""
         import inspect
+
         from apps.cli.commands import contract_cmd
         source = inspect.getsource(contract_cmd)
         assert "shell=True" not in source

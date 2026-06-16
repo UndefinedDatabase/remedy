@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from packages.orchestration.event_persistence import (
-    EventPersistenceResult, emit_important_event,
+    emit_important_event,
 )
 
 

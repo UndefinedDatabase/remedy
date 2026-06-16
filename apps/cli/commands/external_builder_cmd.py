@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -19,7 +20,8 @@ if TYPE_CHECKING:
 
 def _cmd_external_builder_package_create(args: Any) -> None:
     from packages.orchestration.external_builder_sandbox import (
-        create_external_builder_request_package, export_external_package_json,
+        create_external_builder_request_package,
+        export_external_package_json,
     )
     pkg = create_external_builder_request_package(
         str(args.job_id), task_id=getattr(args, "task_id", None) or "",
@@ -68,7 +70,8 @@ def _cmd_external_builder_package_list(args: Any) -> None:
 
 def _cmd_external_builder_submit(args: Any) -> None:
     from packages.orchestration.external_builder_sandbox import (
-        submit_external_candidate, export_external_submission_json,
+        export_external_submission_json,
+        submit_external_candidate,
     )
     candidate_file = getattr(args, "candidate_file", None)
     if not candidate_file:
@@ -117,10 +120,11 @@ def _cmd_external_builder_submission_list(args: Any) -> None:
 
 
 def _cmd_external_builder_evaluate(args: Any) -> None:
-    from packages.orchestration.external_builder_sandbox import get_external_submission
     from packages.orchestration.candidate_quality import (
-        evaluate_candidate_quality, export_candidate_quality_json,
+        evaluate_candidate_quality,
+        export_candidate_quality_json,
     )
+    from packages.orchestration.external_builder_sandbox import get_external_submission
     rec = get_external_submission(args.submission_id)
     if rec is None:
         print("Error: submission not found", file=sys.stderr)
@@ -150,7 +154,7 @@ def _cmd_external_builder_integrity(args: Any) -> None:
           f"violations={data['violation_count']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "external-builder.package-create": _cmd_external_builder_package_create,
     "external-builder.package-show": _cmd_external_builder_package_show,
     "external-builder.package-list": _cmd_external_builder_package_list,

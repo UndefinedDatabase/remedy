@@ -6,7 +6,6 @@ integrity checks, mission signal, adapter recommendation, architecture guards.
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 from uuid import uuid4
@@ -14,7 +13,6 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration import main_builder_adapter as mba
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

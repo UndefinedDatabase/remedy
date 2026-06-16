@@ -14,12 +14,15 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-from packages.orchestration.storage import save_job, load_job
 from packages.orchestration import self_dogfood as SD
 from packages.orchestration import self_dogfood_execution as SE
 from packages.orchestration.proposed_tasks import (
-    load_proposed_tasks, save_proposed_tasks, transition_status, ProposedTaskStatus,
+    ProposedTaskStatus,
+    load_proposed_tasks,
+    save_proposed_tasks,
+    transition_status,
 )
+from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -97,7 +100,9 @@ class TestEligibility:
 
     def test_contract_blocked(self, env):
         from packages.orchestration.run_contract import (
-            build_default_run_contract, save_contract, ContractAction,
+            ContractAction,
+            build_default_run_contract,
+            save_contract,
         )
         job, pt = _approved_task(env)
         c = build_default_run_contract(job)
@@ -149,15 +154,17 @@ class TestStartAndIdempotency:
 
 class TestEndToEnd:
     def test_full_self_improvement_flow(self, env, monkeypatch, tmp_path):
-        from packages.orchestration.permissions import set_permission, Capability
-        from packages.orchestration.run_contract import (
-            build_default_run_contract, save_contract, ContractAction,
-        )
-        from packages.orchestration.approval_queue import set_approval_state
-        from packages.orchestration import provider_trust as PT
         import packages.orchestration.test_execution_service as tes
-        from tests.orchestration.test_do_continue import _fake_test
         from packages.orchestration import do_continue as dc
+        from packages.orchestration import provider_trust as PT
+        from packages.orchestration.approval_queue import set_approval_state
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.run_contract import (
+            ContractAction,
+            build_default_run_contract,
+            save_contract,
+        )
+        from tests.orchestration.test_do_continue import _fake_test
 
         repo = tmp_path / "repo"; (repo / "docs").mkdir(parents=True)
         (repo / "docs" / "guide.md").write_text("line one\nline two\n")
@@ -208,7 +215,7 @@ class TestEndToEnd:
         r = SE.start_self_execution(pt.id, str(job.id), env)
         # Inject an accepted trust report with a non-matching provider label.
         reloaded = load_job(UUID(str(job.id)), env)
-        from packages.orchestration.provider_trust import save_trust_report, ProviderTrustReport
+        from packages.orchestration.provider_trust import ProviderTrustReport, save_trust_report
         rep = ProviderTrustReport(
             report_id="rogue", job_id=str(job.id), quarantine_id="q",
             provider_name="someone_else", trust_status="accepted",

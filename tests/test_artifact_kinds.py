@@ -21,8 +21,6 @@ from __future__ import annotations
 import json
 from uuid import UUID, uuid4
 
-import pytest
-
 from packages.core.models import Artifact, ArtifactKind, Job
 from packages.orchestration.artifact_index import (
     artifacts_by_kind,
@@ -33,7 +31,6 @@ from packages.orchestration.artifact_index import (
 from packages.orchestration.job_runner import plan_job
 from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
-
 
 # ---------------------------------------------------------------------------
 # ArtifactKind: enum structure

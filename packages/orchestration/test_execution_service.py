@@ -45,7 +45,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import UUID, uuid4
 
 from packages.orchestration.command_discovery import (
@@ -62,11 +62,9 @@ from packages.orchestration.run_contract import (
     load_usage,
     save_usage,
     validate_run_contract,
-    RunUsage,
 )
 from packages.orchestration.storage import JobNotFoundError, load_job, save_job
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
-
 
 # ---------------------------------------------------------------------------
 # Request / Result / Lease models (Step 1088)

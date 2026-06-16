@@ -90,8 +90,9 @@ def test_external_disabled_default(env):
 
 
 def test_no_raw_secret_echo(env):
-    from packages.orchestration.storage import load_job, save_job
     from uuid import UUID
+
+    from packages.orchestration.storage import load_job, save_job
     job_id, fid = _job(env)
     job = load_job(UUID(job_id), env)
     fa = job.artifacts[0]

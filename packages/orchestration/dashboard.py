@@ -167,7 +167,7 @@ def build_project_dashboard(
         "memory": {
             "active_count": mem_count,
         },
-        "next_actions": [f"remedy decision list <job_id>"] if total_decisions else [],
+        "next_actions": ["remedy decision list <job_id>"] if total_decisions else [],
     }
 
 
@@ -205,7 +205,7 @@ def summarize_job_dashboard(data: dict[str, Any]) -> str:
 
     na = data.get("next_actions", [])
     if na:
-        lines.append(f"  Next:")
+        lines.append("  Next:")
         for a in na[:3]:
             lines.append(f"    -> {a}")
 

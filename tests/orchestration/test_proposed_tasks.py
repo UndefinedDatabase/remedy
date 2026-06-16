@@ -8,40 +8,39 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.proposed_tasks import (
+    TERMINAL_STATUSES,
+    UNRESOLVED_STATUSES,
+    InvalidTransitionError,
     ProposedTask,
     ProposedTaskSource,
     ProposedTaskStatus,
     ProposedTaskStoreError,
-    InvalidTransitionError,
-    UNRESOLVED_STATUSES,
-    TERMINAL_STATUSES,
-    transition_status,
-    save_proposed_tasks,
-    load_proposed_tasks,
-    load_proposed_tasks_safe,
     add_proposed_task,
-    get_proposed_task,
-    update_proposed_task,
+    approve_proposed_task,
+    backend_readiness,
+    can_finalize,
     count_unresolved,
     count_unresolved_safe,
+    defer_proposed_task,
+    do_materialize,
+    emit_proposed_task_event,
+    evaluate_all_proposed,
+    evaluate_proposed_task,
+    get_proposed_task,
+    list_approved_not_materialized,
     list_by_status,
-    propose_task_from_review_finding,
+    load_proposed_tasks,
+    load_proposed_tasks_safe,
+    materialize_approved_task,
+    overnight_readiness,
     propose_from_recommendation,
     propose_rework,
-    evaluate_proposed_task,
-    evaluate_all_proposed,
-    approve_proposed_task,
-    reject_proposed_task,
-    defer_proposed_task,
-    emit_proposed_task_event,
-    can_finalize,
-    materialize_approved_task,
-    do_materialize,
-    list_approved_not_materialized,
+    propose_task_from_review_finding,
     reconcile_materialized,
-    backend_readiness,
-    overnight_readiness,
-    EvaluationResult,
+    reject_proposed_task,
+    save_proposed_tasks,
+    transition_status,
+    update_proposed_task,
 )
 
 
@@ -61,9 +60,10 @@ REAL_JOB_UUID = "12345678-1234-1234-1234-123456789012"
 
 def _create_real_job(root: Path, job_id: str = REAL_JOB_UUID) -> None:
     """Create a minimal Job file in the given data root."""
+    from uuid import UUID
+
     from packages.core.models import Job
     from packages.orchestration.storage import save_job
-    from uuid import UUID
     job = Job(id=UUID(job_id), name="test-job")
     save_job(job, root)
 
@@ -558,8 +558,9 @@ class TestMaterialization:
         assert result is not None
         assert result.materialized_task_id != ""
         assert result.materialized_at is not None
-        from packages.orchestration.storage import load_job
         from uuid import UUID
+
+        from packages.orchestration.storage import load_job
         job = load_job(UUID(REAL_JOB_UUID))
         assert any(str(task.id) == result.materialized_task_id for task in job.tasks)
 
@@ -648,8 +649,9 @@ class TestEndToEndFlow:
         assert list_approved_not_materialized(REAL_JOB_UUID) == []
         ok, _ = can_finalize(REAL_JOB_UUID)
         assert ok is True
-        from packages.orchestration.storage import load_job
         from uuid import UUID
+
+        from packages.orchestration.storage import load_job
         job = load_job(UUID(REAL_JOB_UUID))
         assert len(job.tasks) == 1
         assert str(job.tasks[0].id) == materialized.materialized_task_id
@@ -693,8 +695,15 @@ class TestFileLocking:
             assert lock.exists()
 
     def test_lock_timeout_on_busy(self, tmp_store):
-        import fcntl, os, time
-        from packages.orchestration.proposed_tasks import _file_lock, _lock_path, _resolve_store_dir, ProposedTaskStoreError
+        import fcntl
+        import os
+
+        from packages.orchestration.proposed_tasks import (
+            ProposedTaskStoreError,
+            _file_lock,
+            _lock_path,
+            _resolve_store_dir,
+        )
         store = _resolve_store_dir()
         store.mkdir(parents=True, exist_ok=True)
         lock_file = _lock_path(JOB_ID)

@@ -33,15 +33,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 
-from packages.core.models import ArtifactKind, Job, RunState, Task
+from packages.core.models import Job, RunState, Task
 from packages.orchestration.storage import save_job
 from packages.orchestration.timeline import load_run_events, summarize_timeline
-
 
 # ---------------------------------------------------------------------------
 # Helpers

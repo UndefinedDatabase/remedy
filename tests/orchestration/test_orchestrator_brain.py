@@ -12,8 +12,8 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-from packages.orchestration.storage import save_job, load_job
 from packages.orchestration import orchestrator_brain as OB
+from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -75,7 +75,6 @@ class TestDecisionQuality:
 
     def test_pending_approval_beats_proposal(self, env):
         d, _ = env
-        from packages.orchestration.approval_queue import make_intent_id
         # Build a job with a pending patch intent (beats other options).
         t = Task(description="t")
         art = Artifact(name="b", content="Proposed Changes:\n  - x", kind=ArtifactKind.BUILDER_PROPOSAL,
@@ -191,6 +190,7 @@ class TestModelRouting:
         d, _ = env
         # Failure with no repair attempt + test budget available → candidate needed.
         import dataclasses
+
         from packages.orchestration.run_contract import build_default_run_contract, save_contract
         job = _job(d)
         c = build_default_run_contract(job)

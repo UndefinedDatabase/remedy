@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.storage import JobNotFoundError, load_job, save_job
@@ -183,10 +184,12 @@ def _cmd_revert_patch_intent(
         sys.exit(1)
 
     from pathlib import Path as _Path
-    from packages.orchestration.repository_snapshot import (
-        revert_repository_apply, load_durable_apply_record,
-    )
+
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.repository_snapshot import (
+        load_durable_apply_record,
+        revert_repository_apply,
+    )
     from packages.orchestration.storage import load_job as _load_job
 
     data_dir = resolve_data_root()
@@ -272,7 +275,7 @@ def _cmd_revert_patch_intent(
     print(f"  {result.safe_summary}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "patch.list": lambda args: _cmd_list_patch_intents(args.job_id),
     "patch.show": lambda args: _cmd_show_patch_intent(args.job_id, args.intent_id),
     "patch.approve": lambda args: _cmd_approve_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),

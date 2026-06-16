@@ -15,9 +15,9 @@ from uuid import UUID
 def _cmd_review_run(args: Any) -> None:
     """Run reviewer for a job."""
     from packages.orchestration.reviewer import (
+        _fixture_reviewer,
         run_reviewer,
         store_recommendations,
-        _fixture_reviewer,
     )
     from packages.orchestration.storage import load_job, save_job
 

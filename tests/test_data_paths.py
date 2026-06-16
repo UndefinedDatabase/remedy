@@ -11,11 +11,8 @@ Verifies:
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
-
-import pytest
 
 
 class TestResolveDataRoot:
@@ -95,7 +92,7 @@ class TestDirectoryHelpers:
 
     def test_env_override_propagates_to_helpers(self, monkeypatch, tmp_path):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.data_paths import jobs_dir, runs_dir, projects_dir
+        from packages.orchestration.data_paths import jobs_dir, projects_dir, runs_dir
         assert jobs_dir() == tmp_path / "jobs"
         assert runs_dir() == tmp_path / "runs"
         assert projects_dir() == tmp_path / "projects"

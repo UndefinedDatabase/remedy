@@ -57,7 +57,6 @@ from packages.orchestration.approval_queue import (
 from packages.orchestration.patch_intent import RISK_MEDIUM
 from packages.orchestration.storage import save_job
 
-
 # ---------------------------------------------------------------------------
 # Redaction sentinels
 # ---------------------------------------------------------------------------
@@ -240,6 +239,7 @@ def _call_brain_json(job_id_str: str, monkeypatch, capsys) -> dict:
     rather than using this helper.
     """
     import sys
+
     from apps.cli.main import main
     monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", job_id_str, "--json"])
     main()
@@ -254,6 +254,7 @@ def _call_brain_node_json(job_id_str: str, node_id: str, monkeypatch, capsys) ->
     rather than using this helper.
     """
     import sys
+
     from apps.cli.main import main
     monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", job_id_str, node_id, "--json"])
     main()
@@ -387,6 +388,7 @@ class TestBrainNodeJsonAllTypes:
         events: list[dict] | None = None,
     ) -> dict:
         import sys
+
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -510,6 +512,7 @@ class TestBrainJsonRegression:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
@@ -536,6 +539,7 @@ class TestBrainJsonRegression:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id), "--json"])
         main()
@@ -566,6 +570,7 @@ class TestBrainRunLogSchema:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
@@ -580,6 +585,7 @@ class TestBrainRunLogSchema:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
@@ -594,6 +600,7 @@ class TestBrainRunLogSchema:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id)])
         main()
@@ -608,6 +615,7 @@ class TestBrainRunLogSchema:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id), "--json"])
         main()
@@ -693,6 +701,7 @@ class TestBrainRedactionHardening:
         # Check raw stdout bytes before any json.loads / json.dumps roundtrip — a roundtrip
         # could mask a leak by re-encoding sentinel bytes differently.
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), target_node["id"], "--json"])
         main()
@@ -704,6 +713,7 @@ class TestBrainRedactionHardening:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._poisoned_setup(tmp_path)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
@@ -723,6 +733,7 @@ class TestBrainRedactionHardening:
             or next(n for n in brain["nodes"] if n["type"] == "job")
         )
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), target_node["id"]])
         main()
@@ -745,6 +756,7 @@ class TestBrainNodeUnknownNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit) as exc:
@@ -756,6 +768,7 @@ class TestBrainNodeUnknownNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
@@ -767,6 +780,7 @@ class TestBrainNodeUnknownNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
@@ -779,6 +793,7 @@ class TestBrainNodeUnknownNode:
         job = _make_job()
         save_job(job)
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
@@ -791,6 +806,7 @@ class TestBrainNodeUnknownNode:
         save_job(job)
         long_id = "x" * 200
         import sys
+
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), long_id, "--json"])
         with pytest.raises(SystemExit):

@@ -17,8 +17,8 @@ def _setup(tmp_path, monkeypatch):
 class TestApprovedMemoryIncluded:
     def test_approved_project_memory_in_summary(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import build_memory_context
+        from packages.memory.local_gateway import store_memory
 
         store_memory(key="build-pattern", value="Use make test", project_id="proj1", approved=True)
         ctx = build_memory_context(project_id="proj1")
@@ -29,8 +29,8 @@ class TestApprovedMemoryIncluded:
 class TestUnrelatedProjectExcluded:
     def test_different_project_memory_excluded(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import build_memory_context
+        from packages.memory.local_gateway import store_memory
 
         store_memory(key="other-proj", value="Irrelevant", project_id="proj-other", approved=True)
         ctx = build_memory_context(project_id="proj1")
@@ -40,8 +40,8 @@ class TestUnrelatedProjectExcluded:
 class TestUnapprovedExcluded:
     def test_unapproved_memory_absent(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import build_memory_context
+        from packages.memory.local_gateway import store_memory
 
         store_memory(key="draft", value="Draft idea", project_id="proj1", approved=False)
         ctx = build_memory_context(project_id="proj1")
@@ -51,7 +51,7 @@ class TestUnapprovedExcluded:
 class TestRejectedStaleExcluded:
     def test_rejected_memory_excluded(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory, reject_memory_card
+        from packages.memory.local_gateway import reject_memory_card, store_memory
 
         entry = store_memory(key="bad-idea", value="Wrong", project_id="proj1", approved=True)
         reject_memory_card(str(entry.id), project_id="proj1")
@@ -62,7 +62,7 @@ class TestRejectedStaleExcluded:
 
     def test_stale_memory_excluded(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory, mark_stale
+        from packages.memory.local_gateway import mark_stale, store_memory
 
         entry = store_memory(key="old-fact", value="Outdated", project_id="proj1", approved=True)
         mark_stale(str(entry.id), project_id="proj1")
@@ -75,14 +75,14 @@ class TestRejectedStaleExcluded:
 class TestSecretLikeContentRedacted:
     def test_secret_pattern_rejected_at_store(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory, MemoryRedactionError
+        from packages.memory.local_gateway import MemoryRedactionError, store_memory
 
         with pytest.raises(MemoryRedactionError):
             store_memory(key="api-config", value="token=sk-abc123", project_id="proj1", approved=True)
 
     def test_forbidden_key_rejected(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory, MemoryRedactionError
+        from packages.memory.local_gateway import MemoryRedactionError, store_memory
 
         with pytest.raises(MemoryRedactionError):
             store_memory(key="artifact.content", value="raw stuff", project_id="proj1", approved=True)
@@ -91,8 +91,8 @@ class TestSecretLikeContentRedacted:
 class TestLargeMemoryBounded:
     def test_large_set_truncated(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import build_memory_context
+        from packages.memory.local_gateway import store_memory
 
         for i in range(100):
             store_memory(
@@ -107,8 +107,8 @@ class TestLargeMemoryBounded:
 class TestDeterministicOrdering:
     def test_ordering_stable(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import build_memory_context
+        from packages.memory.local_gateway import store_memory
 
         store_memory(key="alpha", value="First", project_id="proj1", approved=True)
         store_memory(key="beta", value="Second", project_id="proj1", approved=True)
@@ -123,8 +123,8 @@ class TestDeterministicOrdering:
 class TestContextHashIntegrity:
     def test_hash_changes_when_memory_changes(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import build_memory_context
+        from packages.memory.local_gateway import store_memory
 
         store_memory(key="initial", value="v1", project_id="proj1", approved=True)
         h1 = build_memory_context(project_id="proj1").context_hash
@@ -139,11 +139,11 @@ class TestNoRawMemoryLeaks:
 
     def test_no_raw_in_run_log_event(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import (
             build_memory_context,
             emit_memory_recalled_event,
         )
+        from packages.memory.local_gateway import store_memory
 
         store_memory(key="secret-pattern", value="Do not leak this", project_id="proj1", approved=True)
         ctx = build_memory_context(project_id="proj1")
@@ -151,16 +151,17 @@ class TestNoRawMemoryLeaks:
         job_id = str(uuid4())
         emit_memory_recalled_event(ctx, data_dir=str(tmp_path), job_id=job_id, stage="test")
 
-        from packages.orchestration.timeline import load_run_events
         from uuid import UUID
+
+        from packages.orchestration.timeline import load_run_events
         events = load_run_events(tmp_path, UUID(job_id))
         all_text = json.dumps(events)
         assert "Do not leak this" not in all_text
 
     def test_no_raw_in_export_json(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import build_memory_context, export_memory_context_json
+        from packages.memory.local_gateway import store_memory
 
         store_memory(key="info", value="Private details about auth system", project_id="proj1", approved=True)
         ctx = build_memory_context(project_id="proj1")
@@ -169,8 +170,8 @@ class TestNoRawMemoryLeaks:
 
     def test_no_raw_in_format_section(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
-        from packages.memory.local_gateway import store_memory
         from packages.memory.context_summary import build_memory_context, format_memory_section
+        from packages.memory.local_gateway import store_memory
 
         store_memory(key="config-note", value="Internal implementation secrets", project_id="proj1", approved=True)
         ctx = build_memory_context(project_id="proj1")

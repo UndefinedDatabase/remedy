@@ -17,11 +17,10 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-from packages.orchestration.data_paths import resolve_data_root
+from packages.core.models import Job, RunState, Task
+from packages.orchestration.project_brain import ProjectBrainGraph
 from packages.orchestration.run_log import RunLogWriter
 from packages.orchestration.storage import save_job
-from packages.orchestration.project_brain import ProjectBrainGraph
 
 
 @dataclass(frozen=True)

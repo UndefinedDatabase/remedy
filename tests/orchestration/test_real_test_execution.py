@@ -6,7 +6,6 @@ these tests never execute the real test suite (they exercise policy-block + proo
 """
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from uuid import uuid4

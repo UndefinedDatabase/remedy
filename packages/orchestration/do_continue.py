@@ -37,7 +37,6 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-
 # ---------------------------------------------------------------------------
 # Phase / stop-reason vocabulary (Step 1164)
 # ---------------------------------------------------------------------------
@@ -330,18 +329,23 @@ def evaluate_continue_eligibility(
       false; safe target repository; valid patch structure; test permission +
       budget configured; no active continuation lease.
     """
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
     from packages.orchestration.approval_queue import (
-        list_patch_intents, APPROVAL_APPROVED, APPROVAL_REJECTED,
+        APPROVAL_APPROVED,
+        APPROVAL_REJECTED,
+        list_patch_intents,
     )
-    from packages.orchestration.permissions import is_allowed, Capability
-    from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
-    )
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.permissions import Capability, is_allowed
     from packages.orchestration.repository_snapshot import (
-        build_snapshot_truth, list_durable_apply_ids, load_durable_apply_record,
+        list_durable_apply_ids,
+        load_durable_apply_record,
     )
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
+    )
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = ContinueEligibility(eligible=False, job_id=job_id)
@@ -521,13 +525,15 @@ def run_do_continue(
     Crash-safe and idempotent: resumes from durable truth, never double-applies
     or double-consumes test budget, never duplicates a Failure Artifact.
     """
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job
-    from packages.orchestration.run_contract import ensure_contract, load_usage, export_usage_json
-    from packages.orchestration.repository_snapshot import (
-        build_snapshot_truth, load_durable_apply_record, update_apply_record_state,
-    )
     from packages.orchestration.approval_queue import get_patch_intent
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.repository_snapshot import (
+        build_snapshot_truth,
+        load_durable_apply_record,
+        update_apply_record_state,
+    )
+    from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
+    from packages.orchestration.storage import load_job
 
     data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
     result = ContinueResult(
@@ -687,7 +693,8 @@ def run_do_continue(
             return result
         else:
             from packages.orchestration.test_execution_service import (
-                execute_test_run, TestExecutionRequest,
+                TestExecutionRequest,
+                execute_test_run,
             )
             # Persist an in-flight marker BEFORE consuming test budget so a crash
             # in the test window is detected on resume (R-0068).

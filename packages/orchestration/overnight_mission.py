@@ -49,7 +49,6 @@ from uuid import uuid4
 
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
 
-
 SCHEMA_VERSION = "overnight-mission-v0"
 _OM_DIRNAME = "overnight_mission"
 _RAW_MARKERS = ("diff --git", "-----BEGIN", "Traceback (most recent call last)", "sk-ant", "sk-proj",
@@ -422,6 +421,7 @@ def create_mission_contract_from_job(
     if not goal and job_id:
         try:
             from uuid import UUID
+
             from packages.orchestration.storage import load_job
             job = load_job(UUID(job_id), ddir)
             goal = job.user_prompt or job.name or ""
@@ -466,6 +466,7 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
     events: list[dict] = []
     try:
         from uuid import UUID
+
         from packages.orchestration.storage import load_job
         from packages.orchestration.timeline import load_run_events
         job = load_job(UUID(job_id), data_dir)
@@ -476,7 +477,7 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
     # Progress ledger (open tasks, failed tests, blocked).
     if job is not None:
         try:
-            from packages.orchestration.progress_ledger import build_progress_ledger, ProgressStatus
+            from packages.orchestration.progress_ledger import ProgressStatus, build_progress_ledger
             ledger = build_progress_ledger(job=job, events=events)
             ev["ledger_available"] = True
             open_tasks = 0
@@ -522,7 +523,9 @@ def _gather_mission_evidence(job_id: str, data_dir: Path) -> dict[str, Any]:
     if job_id:
         try:
             from packages.orchestration.real_test_execution import (
-                list_test_runs, list_snapshot_proofs, list_rollback_proofs,
+                list_rollback_proofs,
+                list_snapshot_proofs,
+                list_test_runs,
             )
             runs = list_test_runs(job_id, data_dir)
             if runs:
@@ -751,7 +754,7 @@ def mission_next_safe_actions(
         _req("Continue the open repair", f"remedy repair status {jid} --json")
     if evaluation.missing_proofs:
         _req("Provide the missing required gate (tests/proof)",
-             f"remedy progress checklist --json")
+             "remedy progress checklist --json")
     if evaluation.open_tasks > 0 and not required:
         _req("Work the remaining open task(s)", "remedy progress checklist --json")
 
@@ -780,10 +783,11 @@ def _optional_feature_ideas(job_id: str, data_dir: Path | None) -> list[dict]:
     contract is satisfied, so blockers and future ideas never mix."""
     try:
         from uuid import UUID
+
+        from packages.orchestration.feature_planner import build_feature_plan
+        from packages.orchestration.progress_ledger import build_progress_ledger
         from packages.orchestration.storage import load_job
         from packages.orchestration.timeline import load_run_events
-        from packages.orchestration.progress_ledger import build_progress_ledger
-        from packages.orchestration.feature_planner import build_feature_plan
         ddir = _resolve_ddir(data_dir)
         job = load_job(UUID(job_id), ddir)
         events = load_run_events(ddir, job.id)

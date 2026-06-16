@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -39,9 +40,10 @@ def _cmd_dashboard_job(job_id_str: str, *, json_output: bool = False) -> None:
 
 
 def _cmd_dashboard_project(project_id_str: str, *, json_output: bool = False) -> None:
+    from packages.orchestration.project_store import load_project
+
     from packages.orchestration.dashboard import build_project_dashboard
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.project_store import load_project
     from packages.orchestration.storage import load_job
     from packages.orchestration.timeline import load_run_events
 
@@ -76,7 +78,7 @@ def _cmd_dashboard_project(project_id_str: str, *, json_output: bool = False) ->
         print("\n".join(lines))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "dashboard.job": lambda args: _cmd_dashboard_job(
         args.job_id,
         json_output=getattr(args, "json", False),

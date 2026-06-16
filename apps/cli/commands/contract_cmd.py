@@ -90,15 +90,15 @@ def _cmd_contract_check(args: Any) -> None:
 
 def _cmd_contract_set(args: Any) -> None:
     """Set a contract field on a job (limited to safe fields)."""
+    from dataclasses import fields as dc_fields
+
     from packages.orchestration.run_contract import (
+        RunContract,
         ensure_contract,
-        export_run_contract_json,
         save_contract,
         validate_run_contract,
     )
-    from packages.orchestration.run_contract import RunContract
     from packages.orchestration.storage import load_job, save_job
-    from dataclasses import fields as dc_fields
 
     job_id = getattr(args, "job_id", "")
     field_name = getattr(args, "field", "")

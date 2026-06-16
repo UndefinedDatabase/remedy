@@ -16,15 +16,10 @@ from __future__ import annotations
 
 import fcntl
 import json
-import os
-import time
 from pathlib import Path
 from uuid import uuid4
 
-import pytest
-
 from tests.cli.runtime_helpers import create_test_env, run_grouped_cli
-
 
 # ---------------------------------------------------------------------------
 # Tiny repo factory
@@ -392,7 +387,6 @@ class TestArchitectureGuards:
 
     def test_no_shell_true_in_test_execution_service(self):
         from pathlib import Path as _Path
-        import re
         src = (_Path(__file__).parent.parent.parent
                / "packages" / "orchestration" / "test_execution_service.py"
                ).read_text()
@@ -413,6 +407,7 @@ class TestArchitectureGuards:
 
     def test_no_capture_output_in_run_isolated_process(self):
         import inspect
+
         from packages.orchestration.test_execution_service import _run_isolated_process
         src = inspect.getsource(_run_isolated_process)
         # Must use Popen, not subprocess.run

@@ -4,9 +4,7 @@ from __future__ import annotations
 import json
 from uuid import uuid4
 
-import pytest
-
-from packages.core.models import Job, RunState, Task
+from packages.core.models import Job, RunState
 
 
 def _make_job(**overrides) -> Job:
@@ -230,8 +228,9 @@ class TestTokenUsage:
 
     def test_no_raw_content_in_token_usage(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.ui_server import _build_token_usage
         import json
+
+        from packages.orchestration.ui_server import _build_token_usage
         events = [
             {"event": "source_context_injected", "metadata": {
                 "estimated_tokens": 500, "file_content": "SECRET_KEY=abc123",

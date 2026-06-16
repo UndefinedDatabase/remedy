@@ -10,20 +10,14 @@ Tests that:
 from __future__ import annotations
 
 import os
-import signal
-import subprocess
-import sys
-import time
-from pathlib import Path
 
 import pytest
 
 from tests.cli.runtime_helpers import (
-    _ensure_process_group_dead,
     _process_group_exists,
+    create_test_env,
     enable_trace,
     run_grouped_cli,
-    create_test_env,
 )
 
 

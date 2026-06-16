@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pytest
 
-from tests.cli.runtime_helpers import run_grouped_cli, assert_no_leftover_locks
+from tests.cli.runtime_helpers import assert_no_leftover_locks, run_grouped_cli
 
 
 def _job(data_dir, *, with_failure=False, approved_intent=False):

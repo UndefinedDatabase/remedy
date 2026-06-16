@@ -8,10 +8,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from packages.orchestration.builder_routing import (
-    BuilderRoutingTier, _route_policy_blocks_tier,
+    BuilderRoutingTier,
+    _route_policy_blocks_tier,
 )
 from packages.orchestration.worker_registry import default_route_policy, save_route_policy
-
 
 # ---------------------------------------------------------------------------
 # Builder routing constraint (Step 1734)
@@ -55,7 +55,7 @@ class TestRoutingPolicyConstraint:
 class TestProgressLedgerItems:
     def test_registry_items_extracted(self):
         from packages.orchestration.progress_ledger import extract_worker_registry_items
-        from packages.orchestration.worker_registry import load_worker_registry, default_route_policy
+        from packages.orchestration.worker_registry import default_route_policy, load_worker_registry
         registry = load_worker_registry()
         policy = default_route_policy("j")
         items = extract_worker_registry_items(registry, policy)
@@ -79,9 +79,10 @@ class TestFeatureSuggestions:
     def test_suggestions_only_with_evidence(self):
         from packages.orchestration.feature_planner import build_feature_plan
         from packages.orchestration.progress_ledger import (
-            ProgressLedger, extract_worker_registry_items,
+            ProgressLedger,
+            extract_worker_registry_items,
         )
-        from packages.orchestration.worker_registry import load_worker_registry, default_route_policy
+        from packages.orchestration.worker_registry import default_route_policy, load_worker_registry
         ledger = ProgressLedger()
         ledger.items.extend(extract_worker_registry_items(load_worker_registry(),
                                                           default_route_policy("j")))

@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import patch
-
-import pytest
 
 from packages.orchestration.integrity_gate import (
     IntegrityCheck,
@@ -15,7 +12,6 @@ from packages.orchestration.integrity_gate import (
     export_integrity_json,
     run_integrity_checks,
 )
-
 
 # ---------------------------------------------------------------------------
 # R-0017 regression — _ctx_says_complete

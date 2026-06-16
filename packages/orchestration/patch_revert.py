@@ -28,7 +28,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from packages.orchestration.data_paths import resolve_data_root
 
@@ -73,7 +73,7 @@ def _file_hash(data: bytes) -> str:
 
 
 def store_pre_apply_snapshot(
-    job: "Job",
+    job: Job,
     intent_id: str,
     target_path: str,
     action: str,
@@ -130,7 +130,7 @@ def store_pre_apply_snapshot(
 
 
 def revert_patch_intent(
-    job: "Job",
+    job: Job,
     intent_id: str,
     *,
     data_dir: Path | None = None,

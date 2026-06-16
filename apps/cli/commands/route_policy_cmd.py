@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -93,8 +94,13 @@ def _cmd_route_policy_show(args: Any) -> None:
 
 def _cmd_route_policy_set(args: Any) -> None:
     from packages.orchestration.worker_registry import (
-        WorkerCostTier, WorkerRiskTier, export_route_policy_json, get_worker_spec,
-        load_route_policy, load_worker_registry, save_route_policy,
+        WorkerCostTier,
+        WorkerRiskTier,
+        export_route_policy_json,
+        get_worker_spec,
+        load_route_policy,
+        load_worker_registry,
+        save_route_policy,
     )
     job_id = str(args.job_id)
     policy = load_route_policy(job_id)
@@ -162,7 +168,8 @@ def _cmd_route_policy_set(args: Any) -> None:
 
 def _cmd_route_policy_evaluate(args: Any) -> None:
     from packages.orchestration.worker_registry import (
-        WorkerSelectionRequest, evaluate_worker_selection,
+        WorkerSelectionRequest,
+        evaluate_worker_selection,
     )
     job_id = str(args.job_id)
     task_type = getattr(args, "task_type", None) or ""
@@ -179,7 +186,7 @@ def _cmd_route_policy_evaluate(args: Any) -> None:
     print(f"  next: {data['next_safe_action']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "worker.registry-list": _cmd_worker_registry_list,
     "worker.registry-show": _cmd_worker_registry_show,
     "worker.registry-integrity": _cmd_worker_registry_integrity,

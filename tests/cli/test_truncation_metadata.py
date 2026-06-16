@@ -1,7 +1,6 @@
 """Contract tests: truncation metadata survives from TestRunRecord through CLI event log and job metadata."""
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent

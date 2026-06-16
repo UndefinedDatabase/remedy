@@ -18,21 +18,28 @@ from typing import Any
 from uuid import UUID
 
 from packages.core.models import Job, RunState
+from packages.orchestration._symbols import (
+    FAIL as _FAIL,
+)
+from packages.orchestration._symbols import (
+    INFO as _INFO,
+)
+from packages.orchestration._symbols import (
+    NEXT as _NEXT,
+)
 
 # ---------------------------------------------------------------------------
 # Symbols
 # ---------------------------------------------------------------------------
-
 from packages.orchestration._symbols import (
     OK as _OK,
-    FAIL as _FAIL,
+)
+from packages.orchestration._symbols import (
     WARN as _WARN,
-    INFO as _INFO,
-    NEXT as _NEXT,
-    LINE as _LINE,
+)
+from packages.orchestration._symbols import (
     section,
 )
-
 
 # ---------------------------------------------------------------------------
 # Load
@@ -286,7 +293,7 @@ def _render_task_block(task_events: list[dict[str, Any]]) -> list[str]:
 
     if ev_name == "task_run_completed":
         model_str = f"  model={model}" if model else ""
-        verified = f"  verified=pass" if vpass_ev else ""
+        verified = "  verified=pass" if vpass_ev else ""
         lines.append(f"  {_OK} {task_type}{model_str}{elapsed}{verified}")
     elif ev_name == "task_run_failed":
         if outcome == "permission_denied":

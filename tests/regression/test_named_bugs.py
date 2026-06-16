@@ -5,28 +5,19 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
-from unittest.mock import MagicMock, patch
-from unittest.mock import patch
-from uuid import UUID, uuid4
-from uuid import uuid4
 import ast
 import json
-import os
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from uuid import UUID, uuid4
+
 import pytest
-import re
-import sys
-import tempfile
 
 from packages.core.models import (
-    Artifact,
-    ArtifactKind,
     Job,
     RunState,
     Task,
 )
-from packages.core.models import Job, RunState, Task
 from packages.orchestration.storage import save_job
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -97,7 +88,7 @@ def _make_job_s101(task_count: int = 3):
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -119,7 +110,7 @@ def _make_job_s111(*, tasks=None, name="test"):
 
 
 def _make_job_s122(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -141,7 +132,7 @@ def _make_job_s122(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -163,7 +154,7 @@ def _make_job_s127(*, tasks=None, name="test"):
 
 
 def _make_job_s135(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -186,7 +177,7 @@ def _make_job_s135(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:

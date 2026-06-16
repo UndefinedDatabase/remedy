@@ -24,7 +24,6 @@ from packages.orchestration.builder_models import (
     parse_builder_patch,
 )
 
-
 STOP_REASONS = frozenset({
     "structured_patch_parse_failed",
     "provider_output_prose_only",
@@ -95,7 +94,6 @@ def run_builder_bridge(
     Returns BridgeResult with stage tracking and events.
     """
     from packages.orchestration.source_apply import apply_structured_patch
-    from packages.orchestration.timeline import append_run_event
 
     result = BridgeResult()
 
@@ -161,7 +159,6 @@ def run_builder_bridge(
     # Stage 4: Test (if autonomy >= 4)
     if autonomy_level >= 4:
         import subprocess
-        import sys
 
         test_cmd = _find_test_command(repo_path)
         if test_cmd:

@@ -14,8 +14,8 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-from packages.orchestration.storage import save_job, load_job
 from packages.orchestration import self_dogfood as SD
+from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -146,7 +146,9 @@ class TestPlanAndPropose:
     def test_propose_contract_blocked(self, env):
         d, _ = env
         from packages.orchestration.run_contract import (
-            build_default_run_contract, save_contract, ContractAction,
+            ContractAction,
+            build_default_run_contract,
+            save_contract,
         )
         job = _job(d)
         c = build_default_run_contract(job)
@@ -172,9 +174,9 @@ class TestRedaction:
         job = _job(d)
         SD.propose_self_improvement(str(job.id), top=2, data_dir=d)
         reloaded = load_job(UUID(str(job.id)), d)
+        from packages.orchestration.proposed_tasks import load_proposed_tasks
         from packages.orchestration.review_bundle import _build_self_dogfood_summary
         from packages.orchestration.ui_server import _build_self_dogfood_section
-        from packages.orchestration.proposed_tasks import load_proposed_tasks
         blobs = [
             json.dumps(SD.export_inspection_json(SD.build_self_dogfood_inspection(str(job.id), d))),
             json.dumps(SD.export_plan_json(SD.build_self_improvement_plan(str(job.id), d))),

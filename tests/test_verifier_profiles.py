@@ -21,7 +21,6 @@ from packages.orchestration.verifier_profiles import (
     iter_verifier_profiles,
 )
 
-
 # ---------------------------------------------------------------------------
 # VerifierProfile: structure and immutability
 # ---------------------------------------------------------------------------

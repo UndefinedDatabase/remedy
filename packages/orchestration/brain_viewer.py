@@ -46,7 +46,6 @@ from packages.orchestration.project_brain import (
     export_project_brain_json,
 )
 
-
 # ---------------------------------------------------------------------------
 # Semantic zone layout — maps node types to zones and radial layers
 # ---------------------------------------------------------------------------

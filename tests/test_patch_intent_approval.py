@@ -24,7 +24,6 @@ Coverage:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -43,9 +42,7 @@ from packages.orchestration.approval_queue import (
 )
 from packages.orchestration.cockpit import summarize_cockpit
 from packages.orchestration.patch_intent import RISK_MEDIUM, RISK_UNKNOWN
-from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.storage import save_job
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -464,7 +461,6 @@ class TestCmdApprovePatchIntent:
     def test_approve_emits_run_log_event(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        from packages.orchestration.run_log import RunLogWriter
         # Capture events by reading the JSONL file after the command.
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
         runs_dir = tmp_path / "runs" / str(job.id)

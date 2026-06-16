@@ -6,8 +6,9 @@ import json
 import os
 import signal
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -76,6 +77,7 @@ def _cmd_ui_start(
     info_file: str | None = None,
 ) -> None:
     import secrets
+
     from packages.orchestration.ui_server import start_ui_server
 
     # Generate session ID for registry
@@ -176,7 +178,7 @@ def _cmd_ui_open(job_id_str: str) -> None:
     sys.exit(1)
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "ui.start": lambda args: _cmd_ui_start(
         args.job_id,
         port=int(getattr(args, "port", None) or 8787),

@@ -13,13 +13,11 @@ import pytest
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.task_runner import (
-    RunTaskResult,
     annotate_task_result,
     finalize_task,
     run_next_task,
 )
 from packages.orchestration.verifier import VerificationCheckResult, VerificationResult
-
 
 # ---------------------------------------------------------------------------
 # Helpers

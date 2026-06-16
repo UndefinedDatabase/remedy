@@ -8,7 +8,6 @@ unreachable loopback endpoint (connection refused) — never an external host. B
 from __future__ import annotations
 
 import json
-from uuid import uuid4
 
 import pytest
 

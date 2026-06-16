@@ -44,8 +44,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-from packages.orchestration.provider_trust import _scrub_public, _safe_path_label
-
+from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
 
 # ---------------------------------------------------------------------------
 # Limits / constants
@@ -337,7 +336,7 @@ def create_external_builder_request_package(
     (job, task, route, safe-evidence fingerprint) unless ``new``. Never leaks secrets / raw logs /
     private paths / unbounded context."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.storage import JobNotFoundError, load_job
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
 
     try:
@@ -459,8 +458,8 @@ def submit_external_candidate(
     quarantine + Trust Gate + Verification + Materialization (via intake_provider_repair). Never
     applies/approves/tests; never renders the raw candidate. A submission is NOT an approved intent."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, save_job, JobNotFoundError
-    from packages.orchestration.run_contract import ensure_contract, evaluate_run_action, ContractAction
+    from packages.orchestration.run_contract import ContractAction, ensure_contract, evaluate_run_action
+    from packages.orchestration.storage import JobNotFoundError, load_job
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     label = _sanitize_label(source_label)
 
@@ -494,7 +493,9 @@ def submit_external_candidate(
     # Untrusted ingress through the EXISTING pipeline. The raw file is read + quarantined by
     # intake_provider_repair; this module never reads the raw content itself.
     from packages.orchestration.provider_trust import (
-        ProviderOutputIntakeRequest, intake_provider_repair, SourceKind,
+        ProviderOutputIntakeRequest,
+        SourceKind,
+        intake_provider_repair,
     )
     intake = intake_provider_repair(
         ProviderOutputIntakeRequest(

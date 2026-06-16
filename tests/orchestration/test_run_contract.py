@@ -4,22 +4,19 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from packages.orchestration.run_contract import (
     ALL_KNOWN_ACTIONS,
     ContractAction,
-    RunActionDecision,
     RunBudgetStatus,
     RunContract,
     RunUsage,
     check_budget,
+    ensure_contract,
     evaluate_run_action,
+    export_budget_status_json,
     export_run_action_decision_json,
     export_run_contract_json,
-    export_budget_status_json,
     export_usage_json,
-    ensure_contract,
     load_contract,
     load_usage,
     migrate_contract,
@@ -29,7 +26,6 @@ from packages.orchestration.run_contract import (
     summarize_run_contract,
     validate_run_contract,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -79,6 +75,7 @@ class TestApprovalGateRegression:
 
     def test_do_run_does_not_import_source_apply(self):
         import inspect
+
         from packages.orchestration import do_run
         source = inspect.getsource(do_run)
         assert "from packages.orchestration.source_apply import" not in source
@@ -86,6 +83,7 @@ class TestApprovalGateRegression:
 
     def test_repair_loop_does_not_import_source_apply(self):
         import inspect
+
         from packages.orchestration import repair_loop
         source = inspect.getsource(repair_loop)
         assert "from packages.orchestration.source_apply import" not in source
@@ -93,8 +91,9 @@ class TestApprovalGateRegression:
 
     def test_no_fake_apply_phase(self):
         """do_run phases should not include a completed 'apply' phase."""
+        import tempfile
+
         from packages.orchestration.do_run import run_do
-        import tempfile, os
         with tempfile.TemporaryDirectory() as tmp:
             result = run_do("test goal", tmp)
             for phase in result.phases:

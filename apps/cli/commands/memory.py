@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import argparse
@@ -277,8 +278,9 @@ def _cmd_memory_candidates(
 ) -> None:
     """List memory candidates for a job."""
     from uuid import UUID
-    from packages.orchestration.storage import load_job
+
     from packages.orchestration.memory_candidates import list_candidates
+    from packages.orchestration.storage import load_job
 
     job = load_job(UUID(job_id_str))
     candidates = list_candidates(job)
@@ -309,8 +311,9 @@ def _cmd_memory_approve_candidate(
 ) -> None:
     """Approve a memory candidate."""
     from uuid import UUID
-    from packages.orchestration.storage import load_job, save_job
+
     from packages.orchestration.memory_candidates import approve_candidate
+    from packages.orchestration.storage import load_job, save_job
 
     job = load_job(UUID(job_id_str))
     ok = approve_candidate(job, candidate_id)
@@ -349,8 +352,9 @@ def _cmd_memory_reject_candidate(
 ) -> None:
     """Reject a memory candidate."""
     from uuid import UUID
-    from packages.orchestration.storage import load_job, save_job
+
     from packages.orchestration.memory_candidates import reject_candidate
+    from packages.orchestration.storage import load_job, save_job
 
     job = load_job(UUID(job_id_str))
     ok = reject_candidate(job, candidate_id)
@@ -381,7 +385,7 @@ def _cmd_memory_reject_candidate(
         sys.exit(1)
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "memory.store": lambda args: _cmd_memory_store(
         args.key, args.value,
         project_id=getattr(args, "project", None),

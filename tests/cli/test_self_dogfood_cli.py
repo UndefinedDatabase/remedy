@@ -90,11 +90,14 @@ def test_propose_explicit_item(env):
 
 def test_propose_contract_denied(env):
     import dataclasses
-    from packages.orchestration.storage import load_job, save_job
-    from packages.orchestration.run_contract import (
-        build_default_run_contract, save_contract, ContractAction,
-    )
     from uuid import UUID
+
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        build_default_run_contract,
+        save_contract,
+    )
+    from packages.orchestration.storage import load_job, save_job
     job_id = _job(env)
     job = load_job(UUID(job_id), env)
     c = build_default_run_contract(job)

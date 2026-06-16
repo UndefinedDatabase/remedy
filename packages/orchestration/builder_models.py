@@ -7,9 +7,8 @@ imports and transforms them — providers depend on these, not the other way aro
 
 from __future__ import annotations
 
-from uuid import UUID
-
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -93,6 +92,7 @@ def parse_builder_patch(output: BuilderOutput) -> BuilderPatchResult:
     Returns safe result with no raw provider output in diagnostics.
     """
     import hashlib
+
     from packages.orchestration.structured_patch import (
         parse_structured_patch,
         validate_structured_patch,

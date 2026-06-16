@@ -89,8 +89,9 @@ def test_generate_enabled_unreachable_safe(env, monkeypatch):
     monkeypatch.setenv("REMEDY_LOCAL_CANDIDATE_GENERATOR_MODEL", "m")
     job_id, fid = _job(env)
     # Need a failed repair so routing can reach local_candidate_generator.
-    from packages.orchestration.storage import load_job, save_job
     from uuid import UUID
+
+    from packages.orchestration.storage import load_job, save_job
     job = load_job(UUID(job_id), env)
     job.metadata["repair_attempts_v1"] = {"a1": {"attempt_id": "a1", "failure_artifact_id": fid,
                                                   "status": "tested_failed"}}

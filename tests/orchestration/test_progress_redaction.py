@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
+from packages.orchestration.feature_planner import (
+    build_feature_plan,
+    export_feature_plan_json,
+)
 from packages.orchestration.progress_ledger import (
     ProgressItem,
     ProgressLedger,
@@ -13,10 +15,6 @@ from packages.orchestration.progress_ledger import (
     ProgressStatus,
     build_progress_ledger,
     export_progress_ledger_json,
-)
-from packages.orchestration.feature_planner import (
-    build_feature_plan,
-    export_feature_plan_json,
 )
 
 

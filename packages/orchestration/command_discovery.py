@@ -212,7 +212,7 @@ class CommandCandidate:
 
 
 def discover_commands(
-    job: "Job",
+    job: Job,
     repo_root: Path,
 ) -> list[CommandCandidate]:
     """Run all detectors and return deduplicated CommandCandidate list.
@@ -468,7 +468,7 @@ def _js_package_manager(pkg_dir: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _detect_constitution(job: "Job", repo_root: Path) -> list[CommandCandidate]:
+def _detect_constitution(job: Job, repo_root: Path) -> list[CommandCandidate]:
     """Extract test/build/lint commands from the Project Constitution."""
     try:
         from packages.orchestration.project_constitution import load_project_constitution
@@ -788,7 +788,7 @@ def _detect_pyproject(repo_root: Path) -> list[CommandCandidate]:
 
         if has_pytest or has_tests:
             argv = ("python3", "-m", "pytest")
-            reason = f"pyproject.toml"
+            reason = "pyproject.toml"
             if has_pytest:
                 reason += " with pytest configuration"
             if has_tests:

@@ -13,15 +13,8 @@ import pytest
 
 from packages.orchestration.builder_eval import (
     EvalCase,
-    EvalMetrics,
-    EvalRecord,
-    EvalReport,
-    ModelProfile,
-    PromptRecommendation,
-    PromptTrialResult,
     Scorecard,
     ScorecardEntry,
-    TaskCase,
     aggregate_records,
     build_model_profile,
     build_scorecard,
@@ -253,9 +246,10 @@ class TestRealOllamaEval:
     """Real Ollama eval — opt-in only, not required for CI."""
 
     def test_real_ollama_eval_produces_record(self):
-        from packages.providers.ollama_builder.provider import OllamaBuilder
-        from packages.orchestration.builder_models import TaskExecutionContext
         from uuid import uuid4
+
+        from packages.orchestration.builder_models import TaskExecutionContext
+        from packages.providers.ollama_builder.provider import OllamaBuilder
 
         ctx = TaskExecutionContext(
             job_id=uuid4(),
@@ -320,7 +314,8 @@ class TestPromptProfiles:
 
     def test_profile_metadata_no_raw_prompt(self):
         from packages.providers.ollama_builder.provider import (
-            PROMPT_PROFILES, get_prompt_profile_metadata,
+            PROMPT_PROFILES,
+            get_prompt_profile_metadata,
         )
         for profile in PROMPT_PROFILES.values():
             meta = get_prompt_profile_metadata(profile)
@@ -578,7 +573,8 @@ class TestInstructionProfiles:
 
     def test_metadata_no_raw_prompt(self):
         from packages.providers.ollama_builder.provider import (
-            PROMPT_PROFILES, get_prompt_profile_metadata,
+            PROMPT_PROFILES,
+            get_prompt_profile_metadata,
         )
         for p in PROMPT_PROFILES.values():
             meta = get_prompt_profile_metadata(p)
@@ -720,8 +716,8 @@ class TestCLIReport:
         assert "example" in result.stdout.lower() or "Provider" in result.stdout
 
     def test_ollama_without_env_fails(self):
-        import subprocess
         import os
+        import subprocess
         env = {k: v for k, v in os.environ.items() if k != "REMEDY_REAL_OLLAMA_EVAL"}
         result = subprocess.run(
             ["scripts/remedy_builder_eval.sh", "--ollama"],

@@ -40,7 +40,6 @@ from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.storage import save_job
 from packages.orchestration.trust_report import summarize_trust_report
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

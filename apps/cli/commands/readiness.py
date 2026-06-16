@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.storage import JobNotFoundError, load_job
@@ -26,7 +27,9 @@ def _cmd_readiness_job(job_id_str: str, *, json_output: bool = False) -> None:
         sys.exit(1)
 
     from packages.orchestration.autonomy_readiness import (
-        assess_job_readiness, export_readiness_json, summarize_readiness,
+        assess_job_readiness,
+        export_readiness_json,
+        summarize_readiness,
     )
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.run_log import RunLogWriter
@@ -53,7 +56,9 @@ def _cmd_readiness_job(job_id_str: str, *, json_output: bool = False) -> None:
 
 def _cmd_readiness_project(project_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.autonomy_readiness import (
-        assess_project_readiness, export_readiness_json, summarize_readiness,
+        assess_project_readiness,
+        export_readiness_json,
+        summarize_readiness,
     )
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.project_registry import ProjectNotFoundError, load_project
@@ -85,7 +90,7 @@ def _cmd_readiness_project(project_id_str: str, *, json_output: bool = False) ->
         print(summarize_readiness(report))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "readiness.job": lambda args: _cmd_readiness_job(args.job_id, json_output=args.json),
     "readiness.project": lambda args: _cmd_readiness_project(args.project_id, json_output=args.json),
 }

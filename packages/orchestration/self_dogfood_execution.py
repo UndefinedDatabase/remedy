@@ -32,7 +32,6 @@ Public API::
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from dataclasses import dataclass, field
@@ -40,7 +39,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
-
 
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1430/1434)
@@ -218,7 +216,7 @@ class SelfImprovementAttempt:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "SelfImprovementAttempt":
+    def from_dict(cls, d: dict[str, Any]) -> SelfImprovementAttempt:
         cps = [SelfImprovementCheckpoint(**c) for c in d.get("checkpoints", [])]
         return cls(**{**{k: v for k, v in d.items() if k != "checkpoints"}, "checkpoints": cps})
 
@@ -400,7 +398,8 @@ _SELF_DOGFOOD_PREFIX = "self_dogfood:"
 
 def _review_blocks() -> tuple[bool, str]:
     from packages.orchestration.overnight_executor import (
-        parse_review_findings, review_findings_block_execution,
+        parse_review_findings,
+        review_findings_block_execution,
     )
     agent_dir = Path(os.environ.get("REMEDY_AGENT_DIR") or ".agent")
     return review_findings_block_execution(parse_review_findings(agent_dir / "live_review.md"))
@@ -411,12 +410,15 @@ def evaluate_self_execution_eligibility(
 ) -> SelfExecEligibility:
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.proposed_tasks import (
-        get_proposed_task, ProposedTaskStatus,
+        ProposedTaskStatus,
+        get_proposed_task,
     )
-    from packages.orchestration.storage import load_job, JobNotFoundError
     from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
     )
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = SelfExecEligibility(proposed_task_id=proposed_task_id)
@@ -581,9 +583,9 @@ def start_self_execution(
 ) -> SelfImprovementAttemptResult:
     """Create or resume a SelfImprovementAttempt and prepare a request package.
     Stops at awaiting_external_candidate. No apply, no provider, no approval."""
+    from packages.orchestration import self_dogfood as SD
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.proposed_tasks import get_proposed_task
-    from packages.orchestration import self_dogfood as SD
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = evaluate_self_execution_eligibility(proposed_task_id, job_id, ddir)
@@ -643,10 +645,10 @@ def reconcile_self_attempt(
     """Refresh an attempt's state from existing durable truth (ProposedTask, provider
     trust reports, materialization, patch intent approval, proof). Never applies,
     approves, runs tests, or calls a provider."""
+    from packages.orchestration.approval_queue import APPROVAL_APPROVED, get_patch_intent
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
     from packages.orchestration.provider_trust import load_trust_reports
-    from packages.orchestration.approval_queue import get_patch_intent, APPROVAL_APPROVED
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     a = _load_attempt(attempt_id, ddir)

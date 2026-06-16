@@ -43,14 +43,16 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 from packages.orchestration.local_model_advisor import (
-    _validate_endpoint, _stdlib_transport, _extract_generate_text, Transport,
+    Transport,
+    _extract_generate_text,
+    _stdlib_transport,
+    _validate_endpoint,
 )
 from packages.orchestration.provider_trust import _scrub_public
-
 
 # ---------------------------------------------------------------------------
 # Limits / constants
@@ -304,7 +306,9 @@ def build_candidate_prompt(request_package: dict) -> str:
     no raw source/diff/logs/findings/secrets/absolute paths beyond the already-safe package."""
     try:
         from packages.orchestration.repair_request_builder import (
-            RepairRequestPackage, RepairRequestSection, render_request_markdown,
+            RepairRequestPackage,
+            RepairRequestSection,
+            render_request_markdown,
         )
         sections = [RepairRequestSection(
             title=str(s.get("title", "")),
@@ -496,8 +500,11 @@ def _check_routing_gate(
     """Return (ok, routing_id, stop_reason). Generation may run ONLY if Builder Routing selected
     the ``local_candidate_generator`` tier. No bypass."""
     from packages.orchestration.builder_routing import (
-        BuilderRoutingTier, get_builder_routing_trace, select_builder_routing_decision,
-        BuilderRoutingRequest, BuilderRoutingPolicy,
+        BuilderRoutingPolicy,
+        BuilderRoutingRequest,
+        BuilderRoutingTier,
+        get_builder_routing_trace,
+        select_builder_routing_decision,
     )
     if request.routing_id:
         trace = get_builder_routing_trace(request.routing_id, data_dir)
@@ -567,7 +574,7 @@ def _next_action(res: LocalCandidateGenerationResult) -> str:
     if res.linkage.trust_report_id:
         return f"remedy provider trust-show {res.job_id} {res.linkage.trust_report_id} --json"
     if res.job_id:
-        return f"remedy local-candidate status --json"
+        return "remedy local-candidate status --json"
     return "remedy local-candidate status --json"
 
 
@@ -589,11 +596,13 @@ def run_local_candidate_generation(
     UNTRUSTED output through quarantine → Trust Gate → Verification → Materialization. Never
     approves/applies; never creates an intent directly; degrades safely when the model is absent."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
-    from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
-    )
     from packages.orchestration.repair_request_builder import get_request_package
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
+    )
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     pol = policy or default_local_candidate_policy()
@@ -657,7 +666,7 @@ def run_local_candidate_generation(
     # 4. Pending intent suppresses any NEW generation (more specific than the routing gate).
     if request.job_id and pol.stop_on_pending_intent:
         try:
-            from packages.orchestration.approval_queue import list_patch_intents, APPROVAL_PENDING
+            from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
             if any(i["state"] == APPROVAL_PENDING for i in list_patch_intents(job)):
                 return _blocked(res, LocalCandidateStatus.BLOCKED,
                                 LocalCandidateGenerationStopReason.PENDING_INTENT,
@@ -708,7 +717,9 @@ def run_local_candidate_generation(
 
     # 8. Immediate intake bridge — UNTRUSTED output → quarantine → trust → verification → materialize.
     from packages.orchestration.provider_trust import (
-        ProviderOutputIntakeRequest, intake_provider_repair, SourceKind,
+        ProviderOutputIntakeRequest,
+        SourceKind,
+        intake_provider_repair,
     )
     provider_label = f"{_PROVIDER_LABEL_PREFIX}:{cfg.model_name}"
     intake = intake_provider_repair(

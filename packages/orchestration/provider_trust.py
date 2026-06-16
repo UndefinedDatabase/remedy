@@ -40,7 +40,6 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-
 # ---------------------------------------------------------------------------
 # Limits (Step 1308 / 1313)
 # ---------------------------------------------------------------------------
@@ -910,7 +909,7 @@ def _verification_allows_materialization(
     verification PASSED (eligible to materialize). A denied verification contract, or any
     non-passing decision, returns False and the candidate creates NO intent. No apply,
     no approval, no execution — verification is metadata-only."""
-    from packages.orchestration.run_contract import evaluate_run_action, ContractAction
+    from packages.orchestration.run_contract import ContractAction, evaluate_run_action
     if not evaluate_run_action(contract, ContractAction.PROVIDER_VERIFY_CANDIDATE).allowed:
         report.report_state = "verification_blocked"
         report.verification_status = "incomplete"
@@ -919,7 +918,8 @@ def _verification_allows_materialization(
         report.next_safe_action = f"remedy contract inspect {request.job_id} --json"
         return False
     from packages.orchestration.provider_trust_verification import (
-        run_inline_verification, VerificationDecision,
+        VerificationDecision,
+        run_inline_verification,
     )
     vreport = run_inline_verification(job, report, candidate, raw_text, request, ddir)
     report.verification_id = vreport.verification_id
@@ -948,10 +948,12 @@ def intake_provider_repair(
     """Ingest untrusted external provider output and, only when accepted, create a
     pending Repair Patch Intent. No provider execution, no apply, no approval."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, save_job, JobNotFoundError
     from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
     )
+    from packages.orchestration.storage import JobNotFoundError, load_job, save_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     result = ProviderRepairIntakeResult(job_id=request.job_id)
@@ -1031,7 +1033,8 @@ def intake_provider_repair(
             pass
         else:
             from packages.orchestration.provider_patch_material import (
-                materialize_accepted_candidate, MaterialState,
+                MaterialState,
+                materialize_accepted_candidate,
             )
             mres = materialize_accepted_candidate(job, report, candidate, raw_patch, request, ddir)
             report.material_id = mres.material_id

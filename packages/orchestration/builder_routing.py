@@ -43,7 +43,6 @@ from typing import Any
 
 from packages.orchestration.provider_trust import _scrub_public
 
-
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1574 / 1579 / 1581)
 # ---------------------------------------------------------------------------
@@ -119,8 +118,11 @@ def _route_policy_blocks_tier(job_id: str, tier: str, data_dir: Path) -> tuple[b
         return False, ""
     try:
         from packages.orchestration.worker_registry import (
-            load_route_policy, load_worker_registry, evaluate_worker_selection,
-            WorkerSelectionRequest, get_worker_spec,
+            WorkerSelectionRequest,
+            evaluate_worker_selection,
+            get_worker_spec,
+            load_route_policy,
+            load_worker_registry,
         )
         pol = load_route_policy(job_id, data_dir)
         # Only a policy that actually constrains anything can block — keep default behaviour intact.
@@ -330,7 +332,7 @@ def gather_routing_inputs(job_id: str, data_dir: Path, request: BuilderRoutingRe
         inputs["_refs"] = refs
         return inputs
 
-    from packages.orchestration.orchestrator_brain import _gather_signals, OrchestratorEvidenceRef
+    from packages.orchestration.orchestrator_brain import OrchestratorEvidenceRef, _gather_signals
     sig_refs: list[OrchestratorEvidenceRef] = []
     sig = _gather_signals(job_id, data_dir, sig_refs)
     inputs["_signals"] = sig
@@ -339,7 +341,8 @@ def gather_routing_inputs(job_id: str, data_dir: Path, request: BuilderRoutingRe
     # Review verdict gate (blocker/high open blocks generation).
     try:
         from packages.orchestration.overnight_executor import (
-            parse_review_findings, review_findings_block_execution,
+            parse_review_findings,
+            review_findings_block_execution,
         )
         rf = parse_review_findings()
         blocked, _why = review_findings_block_execution(rf)
@@ -350,7 +353,8 @@ def gather_routing_inputs(job_id: str, data_dir: Path, request: BuilderRoutingRe
     # Local advisor availability (config only — NEVER calls the model).
     try:
         from packages.orchestration.local_model_advisor import (
-            load_local_advisor_config, load_local_advisor_usage,
+            load_local_advisor_config,
+            load_local_advisor_usage,
         )
         cfg = load_local_advisor_config()
         inputs["advisor_enabled"] = bool(getattr(cfg, "enabled", False))
@@ -365,9 +369,10 @@ def gather_routing_inputs(job_id: str, data_dir: Path, request: BuilderRoutingRe
 
     # Request package presence (global + for the targeted failure).
     try:
-        from packages.orchestration.storage import load_job
         from uuid import UUID
+
         from packages.orchestration.repair_request_builder import load_request_packages
+        from packages.orchestration.storage import load_job
         job = load_job(UUID(job_id), data_dir)
         pkgs = list(load_request_packages(job).values())
         inputs["request_packages"] = len(pkgs)
@@ -608,11 +613,14 @@ def select_builder_routing_decision(
     # Contract gate (metadata-only routing).
     if request.job_id:
         try:
-            from packages.orchestration.storage import load_job, JobNotFoundError
-            from packages.orchestration.run_contract import (
-                ensure_contract, evaluate_run_action, ContractAction,
-            )
             from uuid import UUID
+
+            from packages.orchestration.run_contract import (
+                ContractAction,
+                ensure_contract,
+                evaluate_run_action,
+            )
+            from packages.orchestration.storage import JobNotFoundError, load_job
             job = load_job(UUID(request.job_id), ddir)
             contract = ensure_contract(job)
             if not evaluate_run_action(contract, ContractAction.BUILDER_ROUTING_DECIDE).allowed:

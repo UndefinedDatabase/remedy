@@ -51,7 +51,6 @@ from uuid import uuid4
 
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
 
-
 # ---------------------------------------------------------------------------
 # Constants / vocabularies
 # ---------------------------------------------------------------------------
@@ -282,8 +281,11 @@ def list_tournament_competitors(
     comparison/planning only (never execution)."""
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.worker_registry import (
-        evaluate_worker_selection, get_worker_spec, hard_safety_requires_approval, is_placeholder,
-        load_worker_registry, WorkerSelectionRequest,
+        WorkerSelectionRequest,
+        evaluate_worker_selection,
+        hard_safety_requires_approval,
+        is_placeholder,
+        load_worker_registry,
     )
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     registry = load_worker_registry(ddir)

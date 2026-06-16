@@ -22,8 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
-
+from uuid import UUID
 
 # ---------------------------------------------------------------------------
 # Phase model (Step 906)
@@ -167,7 +166,6 @@ def run_do(
     from packages.core.models import Artifact, ArtifactKind, Job, Task
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.storage import save_job
-    from packages.orchestration.timeline import append_run_event
 
     # --- Step 931: max_loops validation ---
     if max_loops < 1:
@@ -188,10 +186,7 @@ def run_do(
 
     from packages.orchestration.run_contract import (
         RunContract,
-        RunUsage,
-        build_default_run_contract,
         ensure_contract,
-        evaluate_run_action,
         load_usage,
         save_contract,
         save_usage,
@@ -442,9 +437,8 @@ def _run_context_phase(
     """Step 911: Context inspection phase."""
     try:
         from packages.orchestration.context_inspector import (
-            inspect_context,
-            summarize_context_inspection,
             READINESS_BLOCKED,
+            inspect_context,
         )
         from packages.orchestration.timeline import load_run_events
 

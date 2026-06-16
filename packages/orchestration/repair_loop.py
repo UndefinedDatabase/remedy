@@ -21,9 +21,7 @@ from uuid import UUID
 
 from packages.orchestration.do_run import (
     DoRunNextAction,
-    validate_next_safe_action_command,
 )
-
 
 # ---------------------------------------------------------------------------
 # Result model (Step 946)
@@ -508,7 +506,7 @@ class RepairAttempt:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "RepairAttempt":
+    def from_dict(cls, d: dict[str, Any]) -> RepairAttempt:
         return cls(**{k: d.get(k, getattr(cls(), k)) for k in cls().__dict__})
 
 
@@ -595,7 +593,7 @@ def _safe_rel_target(value: Any) -> str:
 def build_repair_context(
     job_id: str,
     failure_artifact_id: str,
-    data_dir: "Path | None" = None,
+    data_dir: Path | None = None,
 ) -> RepairContextSummary:
     """Build a safe repair context for a failure (Step 1195).
 
@@ -604,7 +602,7 @@ def build_repair_context(
     failure artifacts return status="blocked" with a safe blocker code.
     """
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ctx = RepairContextSummary(job_id=job_id, failure_artifact_id=failure_artifact_id)
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
@@ -647,7 +645,7 @@ def build_repair_context(
 
     # Authoritative proof + snapshot status (best-effort, never raw).
     try:
-        from packages.orchestration.proof_chain import build_proof_chain, PROOF_VERIFIED
+        from packages.orchestration.proof_chain import PROOF_VERIFIED, build_proof_chain
         chain = build_proof_chain(job, _load_events_safe(ddir, job_id), data_dir=ddir)
         verified = sum(1 for c in chain.changes if c.proof_status == PROOF_VERIFIED)
         ctx.proof_status = "verified" if (chain.changes and verified == len(chain.changes)) else (
@@ -765,7 +763,7 @@ def _na(label: str, command: str, reason: str) -> DoRunNextAction:
 def evaluate_repair_eligibility(
     job_id: str,
     failure_artifact_id: str,
-    data_dir: "Path | None" = None,
+    data_dir: Path | None = None,
     *,
     source: str = "cli_v1",
 ) -> RepairEligibility:
@@ -778,12 +776,14 @@ def evaluate_repair_eligibility(
     return (eligible, with the existing intent id). Every block returns a
     catalog-backed next safe action.
     """
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
-    from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
-    )
     from packages.orchestration.approval_queue import get_patch_intent
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
+    )
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = RepairEligibility(job_id=job_id, failure_artifact_id=failure_artifact_id)
@@ -1060,7 +1060,7 @@ def run_repair_attempt(
     *,
     fixture_builder: bool = False,
     source_fixture_builder: bool = False,
-    data_dir: "Path | None" = None,
+    data_dir: Path | None = None,
     source: str = "cli_v1",
 ) -> RepairAttemptResult:
     """One repair proposal cycle (Steps 1194-1200). Creates a Patch Intent only.
@@ -1071,12 +1071,15 @@ def run_repair_attempt(
     repair_builder_unavailable.
     """
     from uuid import uuid4
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
-    from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
-    )
+
     from packages.orchestration.approval_queue import get_patch_intent
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
+    )
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     phases: list[dict[str, str]] = []
@@ -1390,7 +1393,7 @@ def reconcile_repair_after_continue(
     snapshot_verified: bool,
     evidence_status: str,
     proof_status: str,
-    data_dir: "Path | None" = None,
+    data_dir: Path | None = None,
 ) -> RepairReconcileResult:
     """Record repair truth after `do continue` applied + tested a repair intent.
 
@@ -1399,7 +1402,7 @@ def reconcile_repair_after_continue(
     Never applies code, never runs tests; it only reflects the outcome.
     """
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     out = RepairReconcileResult()

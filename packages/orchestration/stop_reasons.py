@@ -189,7 +189,6 @@ def derive_stop_reasons(
     events: list[dict[str, Any]],
 ) -> list[StopReason]:
     """Derive stop reasons from job state and events. Does not persist."""
-    from packages.core.models import RunState
 
     reasons: list[StopReason] = []
     job_id = str(job.id)

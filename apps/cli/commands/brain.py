@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.data_paths import resolve_data_root
@@ -27,8 +28,11 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.project_brain import (
-        build_project_brain, export_project_brain_json, summarize_project_brain,
+        build_project_brain,
+        export_project_brain_json,
+        summarize_project_brain,
     )
     from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.run_log import RunLogWriter
@@ -71,8 +75,11 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.brain_detail import (
-        build_brain_node_detail, export_brain_node_detail_json, summarize_brain_node_detail,
+        build_brain_node_detail,
+        export_brain_node_detail_json,
+        summarize_brain_node_detail,
     )
     from packages.orchestration.project_brain import build_project_brain
     from packages.orchestration.project_constitution import load_project_constitution
@@ -119,6 +126,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.brain_viewer import build_brain_viewer_data, write_brain_viewer_files
     from packages.orchestration.project_brain import build_project_brain
     from packages.orchestration.project_constitution import load_project_constitution
@@ -171,6 +179,7 @@ def _prepare_viewer(job_id_str: str):
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.brain_viewer import build_brain_viewer_data, write_brain_viewer_files
     from packages.orchestration.project_brain import build_project_brain
     from packages.orchestration.project_constitution import load_project_constitution
@@ -267,7 +276,7 @@ def _cmd_export_viewer(job_id_str: str, out_path: str) -> None:
     }
     (dst / "viewer_manifest.json").write_text(_j.dumps(manifest, sort_keys=True, indent=2))
     print(f"Exported to: {dst}")
-    print(f"  index.html, viewer_data.json, viewer_manifest.json")
+    print("  index.html, viewer_data.json, viewer_manifest.json")
 
 
 def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
@@ -283,8 +292,11 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.context_coverage import (
-        derive_context_coverage, export_context_coverage_json, summarize_context_coverage,
+        derive_context_coverage,
+        export_context_coverage_json,
+        summarize_context_coverage,
     )
     from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.run_log import RunLogWriter
@@ -334,6 +346,7 @@ def _cmd_trust_report(job_id_str: str) -> None:
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.timeline import load_run_events
     from packages.orchestration.trust_report import summarize_trust_report
@@ -379,6 +392,7 @@ def _cmd_cockpit(job_id_str: str) -> None:
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.cockpit import summarize_cockpit
     from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.timeline import load_run_events
@@ -403,6 +417,7 @@ def _cmd_constitution(job_id_str: str) -> None:
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.project_constitution import load_project_constitution, render_constitution
     from packages.orchestration.run_log import RunLogWriter
 
@@ -437,8 +452,10 @@ def _cmd_brain_continue(
         sys.exit(1)
 
     from pathlib import Path
+
     from packages.orchestration.continue_from_node import (
-        continue_from_node, export_continue_result_json,
+        continue_from_node,
+        export_continue_result_json,
     )
     from packages.orchestration.project_brain import build_project_brain
     from packages.orchestration.project_constitution import load_project_constitution
@@ -501,7 +518,7 @@ def _cmd_agent_loop(job_id_str: str) -> None:
     )
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "brain.graph": lambda args: _cmd_brain(args.job_id, json_output=args.json),
     "brain.node": lambda args: _cmd_brain_node(args.job_id, args.node_id, json_output=args.json),
     "brain.view": lambda args: _cmd_brain_view(args.job_id),

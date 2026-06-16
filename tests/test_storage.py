@@ -93,6 +93,7 @@ def test_list_jobs_sorted_newest_first(storage):
 def test_data_dir_root_param_or_legacy_compat():
     """storage.py must support root= param or legacy _DATA_DIR."""
     from pathlib import Path
+
     import packages.orchestration.storage as _storage_mod
     src = Path(_storage_mod.__file__).read_text()
     assert "root" in src, "storage.py must support root= parameter"

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -77,7 +78,7 @@ def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool =
         print(f"  Severity: {d.severity}")
         print(f"  Summary: {d.safe_summary}")
         if d.next_actions:
-            print(f"  Next actions:")
+            print("  Next actions:")
             for a in d.next_actions:
                 print(f"    - {a}")
 
@@ -105,7 +106,7 @@ def _cmd_decision_explain(job_id_str: str) -> None:
     print(explain_decisions(job, events))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "decision.list": lambda args: _cmd_decision_list(
         args.job_id,
         json_output=getattr(args, "json", False),

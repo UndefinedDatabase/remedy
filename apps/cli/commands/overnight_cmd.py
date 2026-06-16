@@ -7,8 +7,8 @@ execution, no background work. JSON/markdown carry safe summaries only.
 from __future__ import annotations
 
 import json
-import sys
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 
 def _cmd_overnight_readiness(args: Any) -> None:
     from packages.orchestration.overnight_readiness import (
-        build_overnight_readiness, export_readiness_json,
+        build_overnight_readiness,
+        export_readiness_json,
     )
     report = build_overnight_readiness(args.job_id)
     data = export_readiness_json(report)
@@ -38,7 +39,8 @@ def _cmd_overnight_readiness(args: Any) -> None:
 
 def _cmd_overnight_plan(args: Any) -> None:
     from packages.orchestration.overnight_readiness import (
-        build_overnight_plan, export_plan_json,
+        build_overnight_plan,
+        export_plan_json,
     )
     plan = build_overnight_plan(args.job_id)
     data = export_plan_json(plan)
@@ -59,7 +61,8 @@ def _cmd_overnight_plan(args: Any) -> None:
 
 def _cmd_overnight_report(args: Any) -> None:
     from packages.orchestration.overnight_readiness import (
-        build_overnight_report, render_overnight_report_markdown,
+        build_overnight_report,
+        render_overnight_report_markdown,
     )
     data = build_overnight_report(args.job_id)
     if getattr(args, "markdown", False):
@@ -78,8 +81,11 @@ def _cmd_overnight_run(args: Any) -> None:
     No daemon/scheduler/watch/background/loop. Calls central services directly.
     """
     from packages.orchestration.overnight_executor import (
-        OvernightRunRequest, build_executor_policy, run_overnight_executor,
-        export_run_result_json, summarize_run_result,
+        OvernightRunRequest,
+        build_executor_policy,
+        export_run_result_json,
+        run_overnight_executor,
+        summarize_run_result,
     )
     policy = build_executor_policy(
         allow_one_cycle=bool(getattr(args, "allow_one_cycle", False)),
@@ -95,7 +101,7 @@ def _cmd_overnight_run(args: Any) -> None:
     print(summarize_run_result(result))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "overnight.readiness": _cmd_overnight_readiness,
     "overnight.plan": _cmd_overnight_plan,
     "overnight.report": _cmd_overnight_report,

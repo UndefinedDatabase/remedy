@@ -14,25 +14,21 @@ Public API::
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
-from uuid import UUID
 
 from packages.core.models import Job
 from packages.orchestration.project_brain import (
-    BrainEdge,
-    BrainNode,
-    NT_JOB,
     NT_MEMORY_ENTRY,
     NT_PATCH_APPLY_PROOF,
     NT_TEST_RUN,
+    BrainEdge,
+    BrainNode,
     ProjectBrainGraph,
     build_project_brain,
-    export_project_brain_json,
 )
 from packages.orchestration.project_registry import RemyProject
-
 
 # ---------------------------------------------------------------------------
 # Types

@@ -5,8 +5,6 @@ import json
 import subprocess
 import sys
 
-import pytest
-
 from tests.orchestration.small_repo_fixtures import (
     create_missing_function_repo,
     create_repair_scenario_repo,

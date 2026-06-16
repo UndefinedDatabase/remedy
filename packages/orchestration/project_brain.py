@@ -78,35 +78,38 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
-from packages.core.models import Job, RunState
+from packages.core.models import Job
+from packages.orchestration._symbols import (
+    FAIL as _FAIL,
+)
+from packages.orchestration._symbols import (
+    INFO as _INFO,
+)
+
+# ---------------------------------------------------------------------------
+# Symbols
+# ---------------------------------------------------------------------------
+from packages.orchestration._symbols import (
+    OK as _OK,
+)
+from packages.orchestration._symbols import (
+    WARN as _WARN,
+)
+from packages.orchestration._symbols import (
+    section,
+)
 from packages.orchestration.approval_queue import (
     APPROVAL_PENDING,
     list_patch_intents,
 )
 from packages.orchestration.autonomy_readiness import assess_job_readiness
+from packages.orchestration.change_set import derive_change_set
 from packages.orchestration.context_coverage import derive_context_coverage
+from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.run_contract import build_default_run_contract
+from packages.orchestration.timeline import load_run_events
 from packages.orchestration.token_policy import build_default_token_policy
 from packages.orchestration.worker_adapters import list_worker_specs
-from packages.orchestration.change_set import derive_change_set
-from packages.orchestration.data_paths import resolve_data_root
-from packages.orchestration.timeline import load_run_events
-
-
-# ---------------------------------------------------------------------------
-# Symbols
-# ---------------------------------------------------------------------------
-
-from packages.orchestration._symbols import (
-    OK as _OK,
-    FAIL as _FAIL,
-    WARN as _WARN,
-    INFO as _INFO,
-    NEXT as _NEXT,
-    LINE as _LINE,
-    section,
-)
-
 
 # ---------------------------------------------------------------------------
 # Node / Edge type constants

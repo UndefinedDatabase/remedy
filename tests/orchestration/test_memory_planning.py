@@ -1,10 +1,6 @@
 """Tests: approved memory feeds into planning safely."""
 from __future__ import annotations
 
-from uuid import uuid4
-
-import pytest
-
 from packages.core.models import Job, RunState
 from packages.orchestration.llm_planner import plan_job_with_llm
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask

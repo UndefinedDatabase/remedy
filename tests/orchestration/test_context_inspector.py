@@ -15,15 +15,9 @@ Covers:
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from pathlib import Path
-from uuid import uuid4
-
-import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
-from packages.orchestration.approval_queue import make_intent_id
 from packages.orchestration.context_inspector import (
     BUDGET_NEAR,
     BUDGET_OVER,
@@ -31,18 +25,11 @@ from packages.orchestration.context_inspector import (
     BUDGET_WITHIN,
     READINESS_BLOCKED,
     READINESS_READY,
-    READINESS_UNKNOWN,
     READINESS_WARNINGS,
-    ContextBudget,
-    ContextInspection,
     ContextPathEntry,
-    ContextPolicyGate,
-    ContextReadiness,
-    ContextToolingPresence,
     _classify_path,
     _collect_event_target_paths,
     _compute_budget,
-    _count_active_mcp_servers,
     _detect_tooling,
     _is_path_traversal,
     _is_protected,
@@ -51,7 +38,6 @@ from packages.orchestration.context_inspector import (
     inspect_context,
     summarize_context_inspection,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

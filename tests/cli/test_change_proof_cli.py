@@ -12,14 +12,13 @@ Tests:
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
 from packages.orchestration.approval_queue import make_intent_id
-
 
 # ---------------------------------------------------------------------------
 # Catalog tests

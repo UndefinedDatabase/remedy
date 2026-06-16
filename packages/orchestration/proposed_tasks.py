@@ -22,16 +22,17 @@ import fcntl
 import json
 import os
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
-from packages.orchestration.data_paths import proposed_tasks_dir, resolve_data_root
+from packages.orchestration.data_paths import proposed_tasks_dir
 
 
 def _utcnow() -> datetime:
@@ -643,8 +644,8 @@ def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> Propo
         JobNotFoundError: if job_id does not correspond to a persisted Job.
         ValueError: if task is not approved or already materialized.
     """
-    from packages.orchestration.storage import load_job, save_job, JobNotFoundError
     from packages.core.models import Task
+    from packages.orchestration.storage import load_job, save_job
 
     job_uuid = UUID(job_id)
 
@@ -820,7 +821,7 @@ def _task_status_val(t: Any) -> str:
 
 def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
     """Structured readiness report: storage, build, finalize, execution, overnight sections."""
-    from packages.orchestration.storage import load_job_safe, list_jobs_safe
+    from packages.orchestration.storage import list_jobs_safe, load_job_safe
 
     job, job_degraded = load_job_safe(UUID(job_id), root)
     proposals, proposals_degraded = load_proposed_tasks_safe(job_id, root)

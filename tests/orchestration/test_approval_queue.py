@@ -5,12 +5,11 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
-from uuid import uuid4
-import ast
-import json
+
 import pytest
 
 from packages.core.models import (
@@ -20,8 +19,8 @@ from packages.core.models import (
     RunState,
     Task,
 )
-from packages.core.models import Job, RunState, Task
 from packages.orchestration.storage import save_job
+
 
 def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
     meta: dict = {}
@@ -226,8 +225,8 @@ class TestContinueFromNodeProjectLinking:
         job = _make_job(project_id=str(project.id), target_repo=str(tmp_path))
         save_job(job)
 
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.continue_from_node import continue_from_node
+        from packages.orchestration.project_brain import build_project_brain
         graph = build_project_brain(job, [])
         result = continue_from_node(job, graph, graph.nodes[0].id, "test")
 
@@ -240,8 +239,8 @@ class TestContinueFromNodeProjectLinking:
         job = _make_job(target_repo=str(tmp_path))
         save_job(job)
 
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.continue_from_node import continue_from_node
+        from packages.orchestration.project_brain import build_project_brain
         graph = build_project_brain(job, [])
         continue_from_node(job, graph, graph.nodes[0].id, "test")
 
@@ -260,8 +259,8 @@ class TestContinueFromNodeProjectLinking:
         job = _make_job(target_repo=str(tmp_path))
         save_job(job)
 
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.continue_from_node import continue_from_node
+        from packages.orchestration.project_brain import build_project_brain
         graph = build_project_brain(job, [])
         continue_from_node(job, graph, graph.nodes[0].id, "secret prompt text XYZ")
 
@@ -286,8 +285,8 @@ class TestContinueFromNodeProjectLinking:
         attach_job(project, str(job.id))
         save_project(project)
 
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.continue_from_node import continue_from_node
+        from packages.orchestration.project_brain import build_project_brain
         graph = build_project_brain(job, [])
         result = continue_from_node(job, graph, graph.nodes[0].id, "test")
 
@@ -296,16 +295,16 @@ class TestContinueFromNodeProjectLinking:
         assert result.child_job_id in project.job_ids
 
         # Build aggregate
-        from packages.orchestration.storage import list_jobs
         from packages.orchestration.project_brain_aggregate import (
             build_project_brain_aggregate,
             export_project_brain_aggregate_json,
         )
+        from packages.orchestration.storage import list_jobs
         all_jobs = list_jobs()
         linked = [j for j in all_jobs if str(j.id) in project.job_ids]
         events_map = {}
-        from packages.orchestration.timeline import load_run_events
         from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.timeline import load_run_events
         data_dir = resolve_data_root()
         for j in linked:
             events_map[str(j.id)] = load_run_events(data_dir, j.id)
@@ -329,11 +328,11 @@ class TestContinueFromNodeIntegration:
 
     def test_continue_creates_brain_edge(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.continue_from_node import continue_from_node
         from packages.orchestration.project_brain import (
             ET_CONTINUED_AS,
             build_project_brain,
         )
-        from packages.orchestration.continue_from_node import continue_from_node
 
         job = _make_job_s57(target_repo=str(tmp_path))
         save_job(job)
@@ -355,8 +354,8 @@ class TestContinueFromNodeIntegration:
 
     def test_continue_invalid_node_raises(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.continue_from_node import continue_from_node
+        from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job_s57(target_repo=str(tmp_path))
         save_job(job)
@@ -367,8 +366,8 @@ class TestContinueFromNodeIntegration:
 
     def test_child_brain_graph_valid(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.continue_from_node import continue_from_node
+        from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job_s57(target_repo=str(tmp_path))
         save_job(job)
@@ -514,7 +513,7 @@ class TestReviewerLoop:
         assert recs[0].title == "Add test"
 
     def test_store_and_list_recommendations(self):
-        from packages.orchestration.reviewer import run_reviewer, store_recommendations, list_recommendations
+        from packages.orchestration.reviewer import list_recommendations, run_reviewer, store_recommendations
         job = _make_job_s101(1)
 
         def custom_reviewer(context):
@@ -528,10 +527,12 @@ class TestReviewerLoop:
         assert stored[0]["status"] == "pending"
 
     def test_accept_recommendation(self, tmp_path, monkeypatch):
-        from packages.orchestration.reviewer import (
-            run_reviewer, store_recommendations, accept_recommendation,
-        )
         from packages.orchestration.proposed_tasks import load_proposed_tasks
+        from packages.orchestration.reviewer import (
+            accept_recommendation,
+            run_reviewer,
+            store_recommendations,
+        )
         monkeypatch.setattr(
             "packages.orchestration.proposed_tasks._STORE_DIR",
             tmp_path / "proposed_tasks",
@@ -555,7 +556,9 @@ class TestReviewerLoop:
 
     def test_reject_recommendation(self):
         from packages.orchestration.reviewer import (
-            run_reviewer, store_recommendations, reject_recommendation,
+            reject_recommendation,
+            run_reviewer,
+            store_recommendations,
         )
         job = _make_job_s101(1)
 

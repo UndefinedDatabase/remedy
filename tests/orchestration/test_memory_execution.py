@@ -1,10 +1,6 @@
 """Tests: approved memory feeds into task execution context safely."""
 from __future__ import annotations
 
-from uuid import uuid4
-
-import pytest
-
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.task_runner import run_next_task
@@ -112,7 +108,7 @@ class TestExecutionMemoryMetadata:
     def test_memory_does_not_change_approval_requirement(self, tmp_path, monkeypatch):
         """Memory cannot bypass source_apply permission gates."""
         from packages.orchestration.source_apply import apply_structured_patch
-        from packages.orchestration.structured_patch import StructuredPatch, FileOp
+        from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         repo = tmp_path / "repo"

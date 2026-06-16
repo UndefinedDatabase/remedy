@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1400/1401/1407)
 # ---------------------------------------------------------------------------
@@ -192,7 +191,7 @@ def _scrub(text: str) -> str:
 
 
 def _fingerprint(item_type: str, key: str) -> str:
-    return hashlib.sha256(f"{item_type}:{key}".encode("utf-8")).hexdigest()[:12]
+    return hashlib.sha256(f"{item_type}:{key}".encode()).hexdigest()[:12]
 
 
 def _mk_item(item_type: str, priority: str, confidence: str, title: str, *,
@@ -426,7 +425,7 @@ def build_self_dogfood_inspection(
     job = None
     if job_id:
         try:
-            from packages.orchestration.storage import load_job, JobNotFoundError
+            from packages.orchestration.storage import JobNotFoundError, load_job
             job = load_job(UUID(job_id), ddir)
             insp.sources_checked.append(SelfImprovementSource("job", SourceStatus.AVAILABLE))
         except (ValueError, JobNotFoundError):
@@ -508,13 +507,18 @@ def propose_self_improvement(
     enters the existing evaluate/approve/materialize flow. Never inserts Job.tasks,
     never approves, never executes. Idempotent by item fingerprint."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, JobNotFoundError
-    from packages.orchestration.run_contract import (
-        ensure_contract, evaluate_run_action, ContractAction,
-    )
     from packages.orchestration.proposed_tasks import (
-        ProposedTask, ProposedTaskSource, add_proposed_task, load_proposed_tasks_safe,
+        ProposedTask,
+        ProposedTaskSource,
+        add_proposed_task,
+        load_proposed_tasks_safe,
     )
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        ensure_contract,
+        evaluate_run_action,
+    )
+    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     result = SelfDogfoodResult(job_id=job_id)

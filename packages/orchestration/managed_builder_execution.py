@@ -58,8 +58,8 @@ Public API::
 
 from __future__ import annotations
 
-import hashlib
 import json
+import logging
 import os
 import re
 import subprocess
@@ -69,8 +69,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
-
-import logging
 
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
 
@@ -574,7 +572,8 @@ def approve_managed_execution(
     # R-0113: auto-bind package_id, adapter_id, adapter_kind from real session when omitted.
     try:
         from packages.orchestration.main_builder_adapter import (
-            load_builder_session, get_builder_adapter_spec,
+            get_builder_adapter_spec,
+            load_builder_session,
         )
         session = load_builder_session(session_id, ddir)
         if session:
@@ -737,7 +736,8 @@ def _validate_session_binding(
     codes: list[str] = []
     try:
         from packages.orchestration.main_builder_adapter import (
-            load_builder_session, get_builder_adapter_spec,
+            get_builder_adapter_spec,
+            load_builder_session,
         )
     except ImportError:
         return codes  # graceful degradation if module not available

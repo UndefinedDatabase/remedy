@@ -21,8 +21,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from packages.core.models import Job, RunState
-
+from packages.core.models import Job
 
 # ---------------------------------------------------------------------------
 # Data model

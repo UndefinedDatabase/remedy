@@ -555,7 +555,6 @@ def build_node_detail(job: Any, events: list[dict[str, Any]], node_id: str) -> d
 
 def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     """Build task progress ribbon data — Step 104."""
-    from packages.core.models import RunState
 
     tasks = []
     for i, task in enumerate(job.tasks):
@@ -635,7 +634,6 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
 
 def build_next_action(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     """Build next-action suggestion grounded in actual job state."""
-    from packages.core.models import RunState
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
     job_id = str(job.id)
@@ -987,7 +985,7 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
 
     Human-readable labels, no bare UUIDs, proper states.
     """
-    from packages.orchestration.ui_copy import human_label, human_state, journey_kind
+    from packages.orchestration.ui_copy import human_label
 
     items: list[dict[str, Any]] = []
 

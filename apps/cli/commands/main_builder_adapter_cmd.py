@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     import argparse
 
 
-def _out(data: dict, ns: "argparse.Namespace") -> None:
+def _out(data: dict, ns: argparse.Namespace) -> None:
     if getattr(ns, "json", False):
         json.dump(data, sys.stdout, indent=2, default=str)
         sys.stdout.write("\n")
@@ -26,13 +26,13 @@ def _err(msg: str) -> None:
     sys.exit(1)
 
 
-def _cmd_adapter_list(ns: "argparse.Namespace") -> None:
+def _cmd_adapter_list(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import list_builder_adapter_specs
     specs = list_builder_adapter_specs()
     _out({"adapters": specs, "count": len(specs)}, ns)
 
 
-def _cmd_adapter_show(ns: "argparse.Namespace") -> None:
+def _cmd_adapter_show(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import get_builder_adapter_spec
     adapter_id = getattr(ns, "adapter_id", "")
     spec = get_builder_adapter_spec(adapter_id)
@@ -41,10 +41,13 @@ def _cmd_adapter_show(ns: "argparse.Namespace") -> None:
     _out(spec, ns)
 
 
-def _cmd_adapter_enable(ns: "argparse.Namespace") -> None:
+def _cmd_adapter_enable(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import (
-        get_builder_adapter_spec, save_builder_adapter_spec, BuilderAdapterSpec,
-        BuilderAdapterMode, _ALL_MODES,
+        _ALL_MODES,
+        BuilderAdapterMode,
+        BuilderAdapterSpec,
+        get_builder_adapter_spec,
+        save_builder_adapter_spec,
     )
     adapter_id = getattr(ns, "adapter_id", "")
     mode = getattr(ns, "mode", "")
@@ -62,7 +65,7 @@ def _cmd_adapter_enable(ns: "argparse.Namespace") -> None:
     _out(spec.to_dict(), ns)
 
 
-def _cmd_package_create(ns: "argparse.Namespace") -> None:
+def _cmd_package_create(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import build_builder_request_package
     job_id = getattr(ns, "job_id", "")
     repair_id = getattr(ns, "repair_id", "") or ""
@@ -73,7 +76,7 @@ def _cmd_package_create(ns: "argparse.Namespace") -> None:
     _out(pkg.to_dict(), ns)
 
 
-def _cmd_session_create(ns: "argparse.Namespace") -> None:
+def _cmd_session_create(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import create_builder_session
     package_id = getattr(ns, "package_id", "")
     adapter_id = getattr(ns, "adapter_id", "")
@@ -85,7 +88,7 @@ def _cmd_session_create(ns: "argparse.Namespace") -> None:
     _out(session.to_dict(), ns)
 
 
-def _cmd_session_show(ns: "argparse.Namespace") -> None:
+def _cmd_session_show(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import load_builder_session
     session_id = getattr(ns, "session_id", "")
     session = load_builder_session(session_id)
@@ -94,14 +97,14 @@ def _cmd_session_show(ns: "argparse.Namespace") -> None:
     _out(session.to_dict(), ns)
 
 
-def _cmd_session_list(ns: "argparse.Namespace") -> None:
+def _cmd_session_list(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import list_builder_sessions
     job_id = getattr(ns, "job_id", "")
     sessions = list_builder_sessions(job_id)
     _out({"sessions": sessions, "count": len(sessions)}, ns)
 
 
-def _cmd_session_record_output(ns: "argparse.Namespace") -> None:
+def _cmd_session_record_output(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import record_builder_session_output
     session_id = getattr(ns, "session_id", "")
     artifact_ref = getattr(ns, "artifact_ref", "") or ""
@@ -111,7 +114,7 @@ def _cmd_session_record_output(ns: "argparse.Namespace") -> None:
     _out(session.to_dict(), ns)
 
 
-def _cmd_session_intake(ns: "argparse.Namespace") -> None:
+def _cmd_session_intake(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import record_builder_session_intake_complete
     session_id = getattr(ns, "session_id", "")
     session = record_builder_session_intake_complete(session_id, sandbox_submission_id="pending")
@@ -120,7 +123,7 @@ def _cmd_session_intake(ns: "argparse.Namespace") -> None:
     _out(session.to_dict(), ns)
 
 
-def _cmd_integrity(ns: "argparse.Namespace") -> None:
+def _cmd_integrity(ns: argparse.Namespace) -> None:
     from packages.orchestration.main_builder_adapter import builder_adapter_integrity
     result = builder_adapter_integrity()
     _out(result, ns)

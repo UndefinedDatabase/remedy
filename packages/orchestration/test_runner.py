@@ -126,7 +126,7 @@ class TestRunRecord:
 
 
 def run_tests_local(
-    job: "Job",
+    job: Job,
     workspace_root: Path,
     *,
     timeout_sec: int = TIMEOUT_DEFAULT_SEC,
@@ -147,7 +147,6 @@ def run_tests_local(
         A TestRunRecord with safe scalar fields and provenance only.
         No raw output.
     """
-    from datetime import datetime, timezone
     from uuid import uuid4
 
     test_run_id = uuid4().hex[:16]

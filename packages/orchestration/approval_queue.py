@@ -103,8 +103,8 @@ def _parse_intent_id(intent_id: str) -> tuple[str, int] | None:
 
 
 def _find_artifact_for_intent(
-    job: "Job", intent_id: str
-) -> tuple["Artifact", int] | None:
+    job: Job, intent_id: str
+) -> tuple[Artifact, int] | None:
     """Resolve an intent_id to (artifact, idx).
 
     Returns None if the intent_id is malformed or no matching artifact exists.
@@ -126,7 +126,7 @@ def _find_artifact_for_intent(
 # ---------------------------------------------------------------------------
 
 
-def list_patch_intents(job: "Job") -> list[dict]:
+def list_patch_intents(job: Job) -> list[dict]:
     """Return all patch intents across the job with their current approval state.
 
     Scans ``job.artifacts`` for any artifact that has a
@@ -183,7 +183,7 @@ def list_patch_intents(job: "Job") -> list[dict]:
     return result
 
 
-def get_patch_intent(job: "Job", intent_id: str) -> dict | None:
+def get_patch_intent(job: Job, intent_id: str) -> dict | None:
     """Return a single patch intent record by intent_id, or None if not found."""
     for item in list_patch_intents(job):
         if item["intent_id"] == intent_id:
@@ -192,7 +192,7 @@ def get_patch_intent(job: "Job", intent_id: str) -> dict | None:
 
 
 def set_approval_state(
-    job: "Job",
+    job: Job,
     intent_id: str,
     state: str,
     *,

@@ -22,7 +22,6 @@ Public API::
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -30,24 +29,24 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-from packages.orchestration.structured_patch import (
-    FileOp,
-    StructuredPatch,
-    UnifiedDiff,
-    validate_structured_patch,
-)
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.repository_snapshot import (
     DurableApplyRecord,
     RepositoryRevertResult,
     SnapshotEntry,
+    _snapshot_dir,
     build_snapshot_path_set,
     create_snapshot,
     load_snapshot,
     revert_repository_apply,
     save_durable_apply_record,
     verify_snapshot,
-    _snapshot_dir,
+)
+from packages.orchestration.structured_patch import (
+    FileOp,
+    StructuredPatch,
+    UnifiedDiff,
+    validate_structured_patch,
 )
 
 # ---------------------------------------------------------------------------
@@ -218,7 +217,7 @@ def apply_structured_patch(
         result.errors.append("approval required: intent_id not provided")
         return result
 
-    from packages.orchestration.approval_queue import get_patch_intent, APPROVAL_APPROVED
+    from packages.orchestration.approval_queue import APPROVAL_APPROVED, get_patch_intent
     intent = get_patch_intent(job, intent_id)
     if intent is None:
         result.success = False

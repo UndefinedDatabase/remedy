@@ -5,25 +5,22 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import UUID, uuid4
 
-import pytest
-
-from packages.core.models import Job, Task, RunState
+from packages.core.models import Job, RunState, Task
 from packages.orchestration.proposed_tasks import (
     ProposedTask,
-    ProposedTaskStatus,
     add_proposed_task,
     approve_proposed_task,
+    backend_readiness,
+    can_finalize,
     do_materialize,
     evaluate_proposed_task,
     propose_task_from_review_finding,
-    can_finalize,
-    backend_readiness,
 )
-from packages.orchestration.storage import save_job, load_job
+from packages.orchestration.storage import load_job, save_job
 from packages.orchestration.worker_queue import (
     enqueue_job,
-    run_worker_once,
     get_next_job,
+    run_worker_once,
 )
 
 
@@ -351,7 +348,7 @@ class TestWorkerResultV2:
 class TestBlockedFixturePersistence:
     def test_blocked_task_persists_failed(self, tmp_path, monkeypatch):
         root, jid = _setup(tmp_path, monkeypatch)
-        from packages.core.models import Task, RunState
+        from packages.core.models import RunState
         job = load_job(UUID(jid), root)
         task = Task(description="Will block", inputs={"task_type": "blocked_fixture"})
         job.tasks.append(task)
@@ -368,7 +365,6 @@ class TestBlockedFixturePersistence:
 
     def test_blocked_task_finalize_false(self, tmp_path, monkeypatch):
         root, jid = _setup(tmp_path, monkeypatch)
-        from packages.core.models import Task
         job = load_job(UUID(jid), root)
         task = Task(description="Blocked", inputs={"task_type": "blocked_fixture"})
         job.tasks.append(task)
@@ -402,7 +398,6 @@ class TestStartedCompletedEvents:
 
     def test_blocked_event_written(self, tmp_path, monkeypatch):
         root, jid = _setup(tmp_path, monkeypatch)
-        from packages.core.models import Task
         job = load_job(UUID(jid), root)
         task = Task(description="Blocked event", inputs={"task_type": "blocked_fixture"})
         job.tasks.append(task)

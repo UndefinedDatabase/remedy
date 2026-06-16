@@ -6,12 +6,9 @@ Migrated from step-numbered test files.
 from __future__ import annotations
 
 from uuid import uuid4
-import json
-import pytest
-import subprocess
-import sys
 
 from packages.core.models import Job, RunState, Task
+
 
 def _make_job(**overrides) -> Job:
     defaults = {

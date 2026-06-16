@@ -17,7 +17,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -43,11 +42,11 @@ def _make_job(tmp_path):
 def _make_job_with_failure(tmp_path):
     """Create job with failure artifact and repair loop result."""
     job, task, data_dir, old = _make_job(tmp_path)
+    from packages.orchestration.repair_loop import start_repair_loop_v0
     from packages.orchestration.test_failure_artifact import (
         TestFailureArtifact,
         persist_failure_artifact,
     )
-    from packages.orchestration.repair_loop import start_repair_loop_v0
 
     failure = TestFailureArtifact(
         artifact_id="temp",
@@ -230,7 +229,7 @@ class TestBuildReviewBundle:
 class TestBundleSafety:
 
     def test_bundle_contains_required_sections(self, tmp_path):
-        from packages.orchestration.review_bundle import build_review_bundle, REQUIRED_SECTIONS
+        from packages.orchestration.review_bundle import REQUIRED_SECTIONS, build_review_bundle
         job, task, data_dir, old = _make_job(tmp_path)
         try:
             result = build_review_bundle(str(job.id))
@@ -383,7 +382,7 @@ class TestBundleDeterminism:
             _cleanup_env(old)
 
     def test_section_filenames_stable(self, tmp_path):
-        from packages.orchestration.review_bundle import build_review_bundle, REQUIRED_SECTIONS
+        from packages.orchestration.review_bundle import REQUIRED_SECTIONS, build_review_bundle
         job, task, data_dir, old = _make_job(tmp_path)
         try:
             result = build_review_bundle(str(job.id))
@@ -846,8 +845,6 @@ class TestSnapshotIntegration:
 
         job, task, data_dir, old = _make_job(tmp_path)
         try:
-            from packages.core.models import Job, Task
-            from packages.orchestration.storage import save_job
             art = Artifact(
                 name="patch", content="", kind=ArtifactKind.PATCH_INTENT, task_id=task.id,
                 metadata={
@@ -898,6 +895,7 @@ class TestSnapshotIntegration:
     def test_no_blob_content_in_changed_files(self, tmp_path):
         """changed_files_safe output contains only safe metadata, no blob content (Step 1149)."""
         import json
+
         from packages.core.models import Artifact, ArtifactKind
         from packages.orchestration.approval_queue import make_intent_id
         from packages.orchestration.review_bundle import _build_changed_files_safe
@@ -936,11 +934,11 @@ class TestSnapshotSummarySection:
     """snapshot_summary.json — safe aggregate counts, no blobs/paths."""
 
     def _add_durable_snapshot(self, data_dir, job_id, *, state="applied"):
-        import hashlib
-        from pathlib import Path
         from packages.orchestration.repository_snapshot import (
-            create_snapshot, verify_snapshot, save_durable_apply_record,
             DurableApplyRecord,
+            create_snapshot,
+            save_durable_apply_record,
+            verify_snapshot,
         )
         repo = data_dir.parent / "repo"
         repo.mkdir(exist_ok=True)
@@ -957,7 +955,8 @@ class TestSnapshotSummarySection:
         return snap.snapshot_id
 
     def _read_section(self, zip_path, name):
-        import zipfile, json as _json
+        import json as _json
+        import zipfile
         with zipfile.ZipFile(zip_path) as zf:
             return _json.loads(zf.read(name))
 

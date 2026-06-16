@@ -22,10 +22,9 @@ from uuid import uuid4
 import pytest
 
 from apps.cli.command_catalog import GROUPS, get_commands_for_group
-from apps.cli.grouped import build_parser, main as grouped_main
+from apps.cli.grouped import build_parser
 from packages.core.models import Job, Task
 from packages.orchestration.storage import save_job
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -467,7 +466,6 @@ class TestMemoryCLIContract:
     def test_recall_json_has_version_1(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.memory import _cmd_memory_recall
-        from io import StringIO
         buf = StringIO()
         monkeypatch.setattr("sys.stdout", buf)
         _cmd_memory_recall(json_output=True)
@@ -478,7 +476,6 @@ class TestMemoryCLIContract:
     def test_list_json_has_version_1(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.memory import _cmd_memory_list
-        from io import StringIO
         buf = StringIO()
         monkeypatch.setattr("sys.stdout", buf)
         _cmd_memory_list(json_output=True)
@@ -494,8 +491,7 @@ class TestMemoryCLIContract:
 
     def test_store_approved_flag_works(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.memory import _cmd_memory_store, _cmd_memory_list
-        from io import StringIO
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
         buf = StringIO()
         monkeypatch.setattr("sys.stdout", buf)
         _cmd_memory_store("test_key", "test_value", approved=True)
@@ -508,8 +504,7 @@ class TestMemoryCLIContract:
 
     def test_store_approved_false_by_default(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.memory import _cmd_memory_store, _cmd_memory_list
-        from io import StringIO
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
         buf = StringIO()
         monkeypatch.setattr("sys.stdout", buf)
         _cmd_memory_store("test_key", "test_value")
@@ -520,13 +515,11 @@ class TestMemoryCLIContract:
         assert data["entries"][0]["approved"] is False
 
     def test_approved_is_store_true_in_argparse(self) -> None:
-        from apps.cli.grouped import build_parser
         parser = build_parser()
         args = parser.parse_args(["memory", "store", "k", "v", "--approved"])
         assert args.approved is True
 
     def test_approved_absent_is_false_in_argparse(self) -> None:
-        from apps.cli.grouped import build_parser
         parser = build_parser()
         args = parser.parse_args(["memory", "store", "k", "v"])
         assert args.approved is False

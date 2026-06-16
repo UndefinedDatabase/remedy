@@ -7,8 +7,6 @@ import subprocess
 import sys
 from uuid import uuid4
 
-import pytest
-
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.memory_learn import export_learn_json, learn_from_job
 

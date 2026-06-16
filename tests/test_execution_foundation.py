@@ -15,15 +15,16 @@ Coverage:
 from __future__ import annotations
 
 import json
-import re
 import sys
-from io import StringIO
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
 from packages.core.models import Job, Task
+from packages.orchestration.brain_detail import (
+    build_brain_node_detail,
+)
 from packages.orchestration.project_brain import (
     ET_HAS_RUN_CONTRACT,
     ET_HAS_TOKEN_POLICY,
@@ -33,11 +34,7 @@ from packages.orchestration.project_brain import (
     NT_WORKER_ADAPTER,
     build_project_brain,
 )
-from packages.orchestration.brain_detail import (
-    build_brain_node_detail,
-)
 from packages.orchestration.storage import save_job
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -370,7 +367,7 @@ class TestDocsDriftDetection:
         job = _make_job()
         rc = build_default_run_contract(job)
         doc = _ARCH_DOC.read_text()
-        assert f"| scope" in doc
+        assert "| scope" in doc
         assert '`job`' in doc, "docs must document scope = job"
         assert rc.scope == "job"
 

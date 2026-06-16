@@ -5,24 +5,15 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from http.client import HTTPConnection
-from pathlib import Path
-from unittest.mock import MagicMock
-from unittest.mock import MagicMock, patch
-from unittest.mock import patch
-from uuid import uuid4
 import json
-import os
-import pytest
 import re
-import signal
-import socket
-import sys
 import tempfile
-import threading
-import time
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
-from packages.core.models import Job, RunState
+import pytest
+
 from packages.core.models import Job, RunState, Task
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -110,7 +101,7 @@ def _make_job_s101(task_count: int = 3):
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -132,7 +123,7 @@ def _make_job_s111(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -154,7 +145,7 @@ def _make_job_s127(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -923,8 +914,8 @@ class TestUXZoomAndLabelVisibility:
 
     def test_renderer_no_full_graph_default(self):
         """Full graph requires explicit toggle — dashboard contract enforces this."""
-        from packages.orchestration.ui_server import _build_dashboard
         from packages.core.models import Job
+        from packages.orchestration.ui_server import _build_dashboard
         job = Job(name="test")
         dashboard = _build_dashboard(job)
         assert dashboard["graph_summary"]["full_graph_requires_explicit_toggle"] is True
@@ -1143,7 +1134,7 @@ class TestHumanCopyDictionaryLabels:
             assert "_" not in label, f"snake_case in label: {label}"
 
     def test_diagnostics_only_set(self):
-        from packages.orchestration.ui_copy import is_default_visible, is_diagnostics_only
+        from packages.orchestration.ui_copy import is_diagnostics_only
 
         assert is_diagnostics_only("context_coverage")
         assert is_diagnostics_only("token_policy")

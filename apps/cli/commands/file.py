@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json as _json
 import sys
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.data_paths import resolve_data_root
@@ -46,6 +47,6 @@ def _cmd_file_why(job_id_str: str, path: str, *, json_output: bool = False) -> N
         print(summarize_file_provenance(prov))
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "file.why": lambda args: _cmd_file_why(args.job_id, args.path, json_output=args.json),
 }

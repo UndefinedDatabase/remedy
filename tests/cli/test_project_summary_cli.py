@@ -7,13 +7,9 @@ Uses mock project/job data, no real storage dependency.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

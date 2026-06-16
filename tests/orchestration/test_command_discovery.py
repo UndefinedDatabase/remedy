@@ -5,15 +5,12 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
-import json
-import os
-import pytest
-import subprocess
-import sys
-import tempfile
 
 from packages.core.models import Job, RunState, Task
 
@@ -21,7 +18,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _make_job(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -43,7 +40,7 @@ def _make_job(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
+    from packages.core.models import Job, RunState, Task
     job = Job(name=name)
     if tasks:
         for t in tasks:

@@ -47,7 +47,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,7 +54,6 @@ from typing import Any
 from uuid import uuid4
 
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
-
 
 # ---------------------------------------------------------------------------
 # Constants / vocabularies

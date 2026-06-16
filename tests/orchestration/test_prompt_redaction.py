@@ -1,9 +1,7 @@
 """Tests: planning artifact does not contain raw prompt or memory content."""
 from __future__ import annotations
 
-import pytest
-
-from packages.core.models import Job, RunState
+from packages.core.models import Job
 from packages.orchestration.llm_planner import plan_job_with_llm
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 

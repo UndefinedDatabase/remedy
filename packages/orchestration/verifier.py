@@ -52,7 +52,6 @@ from packages.core.models import Job
 from packages.orchestration.task_registry import get_task_type_spec
 from packages.orchestration.verifier_profiles import get_verifier_profile
 
-
 # ---------------------------------------------------------------------------
 # Internal helper: count proposed-change lines in artifact content
 # ---------------------------------------------------------------------------

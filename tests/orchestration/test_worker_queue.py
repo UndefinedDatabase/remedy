@@ -9,15 +9,9 @@ import json
 import time
 from pathlib import Path
 
-import pytest
-
 from packages.orchestration.worker_queue import (
     ALLOWED_PROVIDERS,
     LIFECYCLE_STATES,
-    QueueEntry,
-    WorkerLease,
-    WorkerResult,
-    WorkerStatus,
     cancel_job,
     claim_job,
     detect_stale,

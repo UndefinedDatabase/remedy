@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -1375,7 +1374,7 @@ def extract_dogfood_run_items(runs: list[dict] | None) -> list[ProgressItem]:
             items.append(ProgressItem(
                 item_id=f"dogfood-run-{rid}", title=f"Dogfood run {rid} not started",
                 status=ProgressStatus.PLANNED, source_type=ProgressSource.PLAN_STEP,
-                safe_summary=f"Dogfood run created but not yet started.",
+                safe_summary="Dogfood run created but not yet started.",
                 next_action=f"remedy dogfood step {rid} <job_id>"))
         elif status in ("running", "repairing", "waiting_for_approval",
                          "waiting_for_builder", "waiting_for_review", "waiting_for_tests"):
@@ -1957,8 +1956,8 @@ def build_progress_ledger(
     # Repair request builder items from persisted request packages (Step 1378).
     if job is not None:
         try:
-            from packages.orchestration.repair_request_builder import load_request_packages
             from packages.orchestration.provider_patch_material import load_materials as _lm
+            from packages.orchestration.repair_request_builder import load_request_packages
             merge_repair_request_items(ledger, load_request_packages(job), _lm(job))
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
@@ -2022,7 +2021,8 @@ def build_progress_ledger(
     if job is not None:
         try:
             from packages.orchestration.external_builder_sandbox import (
-                load_external_packages, load_external_submissions,
+                load_external_packages,
+                load_external_submissions,
             )
             merge_external_builder_items(ledger, load_external_packages(job_id=str(job.id)),
                                          load_external_submissions(job_id=str(job.id)))
@@ -2033,8 +2033,10 @@ def build_progress_ledger(
     if job is not None:
         try:
             from packages.orchestration.worker_registry import (
-                load_worker_registry, load_route_policy, evaluate_worker_selection,
                 WorkerSelectionRequest,
+                evaluate_worker_selection,
+                load_route_policy,
+                load_worker_registry,
             )
             registry = load_worker_registry()
             policy = load_route_policy(str(job.id))
@@ -2067,7 +2069,8 @@ def build_progress_ledger(
     if job is not None:
         try:
             from packages.orchestration.overnight_mission import (
-                list_mission_contracts, load_latest_mission_evaluation,
+                list_mission_contracts,
+                load_latest_mission_evaluation,
             )
             contracts = list_mission_contracts(job_id=str(job.id))
             if contracts:
@@ -2081,7 +2084,9 @@ def build_progress_ledger(
     if job is not None:
         try:
             from packages.orchestration.real_test_execution import (
-                list_test_runs, list_snapshot_proofs, list_rollback_proofs,
+                list_rollback_proofs,
+                list_snapshot_proofs,
+                list_test_runs,
             )
             merge_real_test_execution_items(
                 ledger, list_test_runs(str(job.id)),

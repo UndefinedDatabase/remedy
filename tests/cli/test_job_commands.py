@@ -5,17 +5,12 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
-from unittest.mock import MagicMock, patch
-from unittest.mock import patch
-from uuid import uuid4
 import json
-import os
-import pytest
 import subprocess
 import sys
-import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 from packages.core.models import Job, RunState, Task
 
@@ -57,7 +52,6 @@ def _make_job_s101(task_count: int = 3):
 
 
 def _make_job_s122(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -79,7 +73,6 @@ def _make_job_s122(*, tasks=None, name="test"):
 
 
 def _make_job_s135(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -102,7 +95,6 @@ def _make_job_s135(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    from packages.core.models import Job, Task, RunState
     job = Job(name=name)
     if tasks:
         for t in tasks:
@@ -328,7 +320,6 @@ class TestDoDirectGoalCommandRewrite:
 
     def test_do_default_rewrite(self):
         """remedy do 'Make tests pass' should rewrite to do run 'Make tests pass'."""
-        from apps.cli.grouped import main as grouped_main
         from apps.cli.command_catalog import get_commands_for_group
 
         subcmds = {c.subcommand for c in get_commands_for_group("do")}
@@ -388,7 +379,6 @@ class TestDoDirectGoalCommandRewrite:
 
     def test_default_rewrite_dict(self):
         """Default command dict includes both ui and do."""
-        from apps.cli.grouped import build_parser
         # Verify the rewrite exists by checking the source
         src = Path("apps/cli/grouped.py").read_text()
         assert '"do": "run"' in src
@@ -416,31 +406,26 @@ class TestSafeTaskLabelSanitization:
 
     def test_task_with_inputs_task_type(self):
         from apps.cli.commands.repo import _safe_task_label
-        from packages.core.models import Task
         t = Task(description="d", inputs={"task_type": "readme_draft"})
         assert _safe_task_label(t) == "readme_draft"
 
     def test_task_with_inputs_type(self):
         from apps.cli.commands.repo import _safe_task_label
-        from packages.core.models import Task
         t = Task(description="d", inputs={"type": "code_fix"})
         assert _safe_task_label(t) == "code_fix"
 
     def test_task_with_description_only(self):
         from apps.cli.commands.repo import _safe_task_label
-        from packages.core.models import Task
         t = Task(description="Fix the broken auth module")
         assert _safe_task_label(t) == "Fix the broken auth module"
 
     def test_task_with_neither(self):
         from apps.cli.commands.repo import _safe_task_label
-        from packages.core.models import Task
         t = Task(description="")
         assert _safe_task_label(t) == "task"
 
     def test_malicious_multiline_description(self):
         from apps.cli.commands.repo import _safe_task_label
-        from packages.core.models import Task
         t = Task(description="Line one\nLine two\nLine three")
         label = _safe_task_label(t)
         assert "\n" not in label
@@ -448,21 +433,18 @@ class TestSafeTaskLabelSanitization:
 
     def test_long_description_truncated(self):
         from apps.cli.commands.repo import _safe_task_label
-        from packages.core.models import Task
         t = Task(description="A" * 200)
         label = _safe_task_label(t)
         assert len(label) <= 60
 
     def test_no_raw_leaks(self):
         from apps.cli.commands.repo import _safe_task_label
-        from packages.core.models import Task
         t = Task(description="raw_output is bad", inputs={"task_type": "safe_label"})
         label = _safe_task_label(t)
         assert "raw_output" not in label
 
     def test_commit_readiness_no_crash(self):
         """The actual crash site: commit-readiness with real Task objects."""
-        from packages.core.models import Job, Task
         from packages.orchestration.storage import save_job
         job = Job(name="no-crash")
         job.tasks.append(Task(description="fix stuff", inputs={"task_type": "bugfix"}))
@@ -478,7 +460,6 @@ class TestSafeTaskLabelSanitization:
 
     def test_commit_readiness_no_task_type_attr(self):
         """Task objects must not require .task_type attribute."""
-        from packages.core.models import Task
         t = Task(description="some work")
         assert not hasattr(t, "task_type") or getattr(t, "task_type", None) is None
 

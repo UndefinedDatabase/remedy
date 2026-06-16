@@ -62,7 +62,7 @@ def build_guidance_cards(
 
     # 2. Decision queue
     try:
-        from packages.orchestration.decision_queue import list_decisions, build_decision_summary
+        from packages.orchestration.decision_queue import build_decision_summary, list_decisions
         decisions = list_decisions(job, events)
         summary = build_decision_summary(decisions)
         open_count = summary.get("open_count", 0)

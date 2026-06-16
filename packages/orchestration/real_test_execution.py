@@ -48,7 +48,6 @@ from uuid import UUID, uuid4
 
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
 
-
 SCHEMA_VERSION = "real-test-execution-v1"
 _RTE_DIRNAME = "real_test_execution"
 _RAW_MARKERS = ("diff --git", "-----BEGIN", "Traceback (most recent call last)", "sk-ant", "sk-proj",
@@ -224,8 +223,8 @@ def resolve_allowed_command(
     programs. An empty command_id is allowed (the safe runner will discover the best candidate)."""
     ddir = _resolve_ddir(data_dir)
     try:
-        from packages.orchestration.storage import load_job
         from packages.orchestration.command_discovery import discover_commands
+        from packages.orchestration.storage import load_job
         job = load_job(UUID(job_id), ddir)
     except Exception:
         return False, None, "job not found or unloadable"
@@ -282,7 +281,8 @@ def run_allowed_test(
 
     try:
         from packages.orchestration.test_execution_service import (
-            execute_test_run, TestExecutionRequest,
+            TestExecutionRequest,
+            execute_test_run,
         )
         out = execute_test_run(TestExecutionRequest(
             job_id=job_id, source="real_test_execution_v1",

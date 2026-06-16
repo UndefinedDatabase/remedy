@@ -7,8 +7,8 @@ idea is metadata-only. No action execution, no model/provider calls, no apply/ap
 from __future__ import annotations
 
 import json
-import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 
 def _cmd_orchestrator_inspect(args: Any) -> None:
     from packages.orchestration.orchestrator_brain import (
-        build_orchestrator_situation, export_situation_json,
+        build_orchestrator_situation,
+        export_situation_json,
     )
     s = build_orchestrator_situation(getattr(args, "job_id", None))
     data = export_situation_json(s)
@@ -30,8 +31,11 @@ def _cmd_orchestrator_inspect(args: Any) -> None:
 
 def _cmd_orchestrator_decide(args: Any) -> None:
     from packages.orchestration.orchestrator_brain import (
-        build_orchestrator_situation, select_orchestrator_decision, export_decision_json,
-        consult_local_advisor_for_decision, persist_decision,
+        build_orchestrator_situation,
+        consult_local_advisor_for_decision,
+        export_decision_json,
+        persist_decision,
+        select_orchestrator_decision,
     )
     s = build_orchestrator_situation(getattr(args, "job_id", None))
     use_advisor = bool(getattr(args, "use_local_advisor", False))
@@ -59,7 +63,8 @@ def _cmd_orchestrator_decide(args: Any) -> None:
 
 def _cmd_orchestrator_report(args: Any) -> None:
     from packages.orchestration.orchestrator_brain import (
-        build_orchestrator_report, render_report_markdown,
+        build_orchestrator_report,
+        render_report_markdown,
     )
     data = build_orchestrator_report(getattr(args, "job_id", None))
     if getattr(args, "markdown", False):
@@ -82,7 +87,7 @@ def _cmd_orchestrator_idea(args: Any) -> None:
     print(f"  {data['summary']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "orchestrator.inspect": _cmd_orchestrator_inspect,
     "orchestrator.decide": _cmd_orchestrator_decide,
     "orchestrator.report": _cmd_orchestrator_report,

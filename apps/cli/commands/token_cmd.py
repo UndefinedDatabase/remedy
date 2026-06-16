@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -31,7 +32,8 @@ def _parse_pos_int(raw: Any, label: str) -> int:
 
 def _cmd_token_budget_show(args: Any) -> None:
     from packages.orchestration.token_economy import (
-        export_token_budget_profile_json, load_token_budget_profile,
+        export_token_budget_profile_json,
+        load_token_budget_profile,
     )
     profile = load_token_budget_profile(str(args.job_id))
     data = export_token_budget_profile_json(profile)
@@ -48,7 +50,9 @@ def _cmd_token_budget_show(args: Any) -> None:
 
 def _cmd_token_budget_set(args: Any) -> None:
     from packages.orchestration.token_economy import (
-        export_token_budget_profile_json, load_token_budget_profile, save_token_budget_profile,
+        export_token_budget_profile_json,
+        load_token_budget_profile,
+        save_token_budget_profile,
     )
     profile = load_token_budget_profile(str(args.job_id))
     if getattr(args, "max_context_tokens", None) is not None:
@@ -77,7 +81,8 @@ def _cmd_token_budget_set(args: Any) -> None:
 
 def _cmd_token_estimate(args: Any) -> None:
     from packages.orchestration.token_economy import (
-        estimate_context_budget, export_context_budget_estimate_json,
+        estimate_context_budget,
+        export_context_budget_estimate_json,
     )
     est = estimate_context_budget(
         str(args.job_id), task_id=getattr(args, "task_id", None) or "",
@@ -111,7 +116,8 @@ def _cmd_token_economy_report(args: Any) -> None:
 
 def _cmd_context_pack_recommend(args: Any) -> None:
     from packages.orchestration.token_economy import (
-        export_context_pack_recommendation_json, recommend_context_pack,
+        export_context_pack_recommendation_json,
+        recommend_context_pack,
     )
     rec = recommend_context_pack(
         str(args.job_id), task_id=getattr(args, "task_id", None) or "",
@@ -129,7 +135,7 @@ def _cmd_context_pack_recommend(args: Any) -> None:
     print(f"  next: {data['next_safe_action']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "token.budget-show": _cmd_token_budget_show,
     "token.budget-set": _cmd_token_budget_set,
     "token.estimate": _cmd_token_estimate,

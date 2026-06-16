@@ -16,8 +16,6 @@ import signal
 import subprocess
 import sys
 import tempfile
-import time
-
 
 SMOKE_SCRIPT = "scripts/remedy_runtime_cli_smoke.py"
 TIMEOUT = 30

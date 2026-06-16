@@ -5,8 +5,7 @@ Tests for plan_job() orchestration runner.
 from __future__ import annotations
 
 from packages.core.models import Artifact, Job, RunState, Task
-from packages.orchestration.job_runner import PlanJobResult, plan_job
-
+from packages.orchestration.job_runner import plan_job
 
 # ---------------------------------------------------------------------------
 # plan_job: basic behavior

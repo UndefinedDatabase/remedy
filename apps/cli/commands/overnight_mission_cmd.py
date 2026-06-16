@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -24,7 +25,8 @@ def _split_acceptance(raw: str | None) -> list[str]:
 
 def _cmd_contract_create(args: Any) -> None:
     from packages.orchestration.overnight_mission import (
-        create_mission_contract_from_job, export_mission_contract_json,
+        create_mission_contract_from_job,
+        export_mission_contract_json,
     )
     try:
         autonomy = int(getattr(args, "autonomy_level", 1) or 1)
@@ -61,8 +63,10 @@ def _cmd_contract_show(args: Any) -> None:
 
 def _cmd_evaluate(args: Any) -> None:
     from packages.orchestration.overnight_mission import (
-        evaluate_mission_contract, export_mission_evaluation_json, load_mission_contract,
         _contract_from_dict,
+        evaluate_mission_contract,
+        export_mission_evaluation_json,
+        load_mission_contract,
     )
     rec = load_mission_contract(str(args.contract_id))
     if rec is None:
@@ -82,7 +86,9 @@ def _cmd_evaluate(args: Any) -> None:
 
 def _cmd_next_action(args: Any) -> None:
     from packages.orchestration.overnight_mission import (
-        evaluate_mission_contract, load_mission_contract, _contract_from_dict,
+        _contract_from_dict,
+        evaluate_mission_contract,
+        load_mission_contract,
     )
     rec = load_mission_contract(str(args.contract_id))
     if rec is None:
@@ -139,7 +145,7 @@ def _cmd_integrity(args: Any) -> None:
           f"contracts={data['contract_count']}")
 
 
-COMMAND_HANDLERS: dict[str, Callable[["argparse.Namespace"], None]] = {
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "overnight.contract-create": _cmd_contract_create,
     "overnight.contract-show": _cmd_contract_show,
     "overnight.evaluate": _cmd_evaluate,

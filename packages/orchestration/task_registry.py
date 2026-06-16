@@ -33,7 +33,6 @@ from dataclasses import dataclass
 
 from packages.orchestration.path_utils import sanitize_path_component
 
-
 # ---------------------------------------------------------------------------
 # TaskTypeSpec
 # ---------------------------------------------------------------------------

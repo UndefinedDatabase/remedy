@@ -18,20 +18,15 @@ from __future__ import annotations
 import dataclasses
 import json
 import os
-import tempfile
 from pathlib import Path
-from uuid import UUID
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 
 from packages.orchestration.repository_snapshot import (
     DurableApplyRecord,
-    RepositoryRevertResult,
-    RepositorySnapshot,
-    SnapshotCreateResult,
     SnapshotEntry,
-    SnapshotVerification,
     _is_safe_path,
     _normalize_path_set,
     _snapshot_dir,
@@ -44,7 +39,6 @@ from packages.orchestration.repository_snapshot import (
     save_durable_apply_record,
     verify_snapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -82,12 +76,14 @@ def _save_revert_job(
     allow_perm=True  → Capability.repo_revert granted
     allow_contract=True → ContractAction.REVERT allowed (removed from denied_actions)
     """
-    from packages.core.models import Job, Task, RunState
-    from packages.orchestration.storage import save_job
+    from packages.core.models import Job, RunState
     from packages.orchestration.permissions import Capability, set_permission
     from packages.orchestration.run_contract import (
-        build_default_run_contract, save_contract, ContractAction,
+        ContractAction,
+        build_default_run_contract,
+        save_contract,
     )
+    from packages.orchestration.storage import save_job
 
     job = Job(
         id=UUID(JOB_ID),
@@ -602,6 +598,7 @@ class TestRevertRepositoryApply:
         # This is a design test: the function exists and requires explicit invocation.
         # Verify it's not called from create_snapshot or verify_snapshot.
         import inspect
+
         import packages.orchestration.repository_snapshot as mod
         src = inspect.getsource(mod.create_snapshot)
         assert "revert_repository_apply" not in src
@@ -817,7 +814,8 @@ class TestBuildSnapshotTruth:
 
     def test_tampered_manifest_not_verified(self, tmp_env):
         from packages.orchestration.repository_snapshot import (
-            build_snapshot_truth, _snapshot_dir,
+            _snapshot_dir,
+            build_snapshot_truth,
         )
         repo_root, data_dir, snap_id = self._setup_applied(tmp_env)
         manifest = _snapshot_dir(JOB_ID, snap_id, data_dir) / "manifest.json"
@@ -831,7 +829,8 @@ class TestBuildSnapshotTruth:
 
     def test_missing_recovery_blob_degraded(self, tmp_env):
         from packages.orchestration.repository_snapshot import (
-            build_snapshot_truth, _snapshot_dir,
+            _snapshot_dir,
+            build_snapshot_truth,
         )
         repo_root, data_dir, snap_id = self._setup_applied(tmp_env)
         snap_dir = _snapshot_dir(JOB_ID, snap_id, data_dir)
@@ -885,7 +884,8 @@ class TestUpdateApplyRecordState:
 
     def test_legal_transition(self, tmp_env):
         from packages.orchestration.repository_snapshot import (
-            update_apply_record_state, load_durable_apply_record,
+            load_durable_apply_record,
+            update_apply_record_state,
         )
         _, data_dir = tmp_env
         self._seed(data_dir, state="applied")
@@ -895,7 +895,8 @@ class TestUpdateApplyRecordState:
 
     def test_illegal_transition_rejected(self, tmp_env):
         from packages.orchestration.repository_snapshot import (
-            update_apply_record_state, load_durable_apply_record,
+            load_durable_apply_record,
+            update_apply_record_state,
         )
         _, data_dir = tmp_env
         self._seed(data_dir, state="reverted")  # terminal
@@ -923,8 +924,10 @@ class TestUpdateApplyRecordState:
 
     def test_history_recorded(self, tmp_env):
         import json as _json
+
         from packages.orchestration.repository_snapshot import (
-            update_apply_record_state, _apply_record_dir,
+            _apply_record_dir,
+            update_apply_record_state,
         )
         _, data_dir = tmp_env
         self._seed(data_dir, state="applied")

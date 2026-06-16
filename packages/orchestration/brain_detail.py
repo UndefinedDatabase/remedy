@@ -35,61 +35,63 @@ Public API::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-from uuid import UUID
 
 from packages.core.models import Job
+from packages.orchestration._symbols import (
+    INFO as _INFO,
+)
+from packages.orchestration._symbols import (
+    NEXT as _NEXT,
+)
+
+# ---------------------------------------------------------------------------
+# Symbols
+# ---------------------------------------------------------------------------
+from packages.orchestration._symbols import (
+    OK as _OK,
+)
+from packages.orchestration._symbols import (
+    WARN as _WARN,
+)
+from packages.orchestration._symbols import (
+    section,
+)
 from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
 from packages.orchestration.project_brain import (
     NT_AGENT_LOOP,
     NT_APPROVAL,
     NT_ARTIFACT,
+    NT_AUTONOMY_READINESS,
     NT_BLOCKER,
+    NT_CHANGE_SET,
     NT_CONSTITUTION,
+    NT_CONTEXT_BUDGET,
     NT_CONTEXT_COVERAGE,
+    NT_CONTEXT_PACK,
+    NT_DECISION_QUEUE,
+    NT_EVENT_LEDGER,
+    NT_GIT_STATUS,
     NT_JOB,
     NT_MCP,
     NT_MEMORY,
     NT_MEMORY_ENTRY,
     NT_PATCH_APPLY,
+    NT_PATCH_APPLY_PROOF,
     NT_PATCH_INTENT,
+    NT_PATCH_REVERT,
+    NT_PROJECT_PLACEHOLDER,
+    NT_RUN_CONTRACT,
     NT_RUN_EVENT,
+    NT_STOP_REASON,
     NT_TASK,
     NT_TEST_RUN,
-    NT_RUN_CONTRACT,
     NT_TOKEN_POLICY,
-    NT_WORKER_ADAPTER,
-    NT_AUTONOMY_READINESS,
-    NT_CONTEXT_PACK,
-    NT_PATCH_APPLY_PROOF,
-    NT_PATCH_REVERT,
-    NT_CHANGE_SET,
-    NT_GIT_STATUS,
-    NT_PROJECT_PLACEHOLDER,
     NT_VERIFICATION,
-    NT_EVENT_LEDGER,
-    NT_STOP_REASON,
-    NT_DECISION_QUEUE,
-    NT_CONTEXT_BUDGET,
+    NT_WORKER_ADAPTER,
     ProjectBrainGraph,
 )
-
-
-# ---------------------------------------------------------------------------
-# Symbols
-# ---------------------------------------------------------------------------
-
-from packages.orchestration._symbols import (
-    OK as _OK,
-    FAIL as _FAIL,
-    WARN as _WARN,
-    INFO as _INFO,
-    NEXT as _NEXT,
-    LINE as _LINE,
-    section,
-)
-
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -1044,11 +1046,11 @@ def _detail_test_run(
     next_actions: list[str] = []
     if status == "failed":
         next_actions.append(
-            f"Check the test run output file in the workspace/test_runs/ directory."
+            "Check the test run output file in the workspace/test_runs/ directory."
         )
     if status in ("blocked", "timeout"):
         next_actions.append(
-            f"Verify that the test command is installed and the repo is accessible."
+            "Verify that the test command is installed and the repo is accessible."
         )
 
     return BrainNodeDetail(
