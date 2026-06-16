@@ -18,9 +18,11 @@ worker/provider/model execution. BLOCK if this becomes a fake overnight runner.
 Timestamp: 2026-06-16
 
 ## Verdict (reviewer-owned)
-FAIL @ 39bd3cc — one open Medium (R-0102) in the core evaluator. No safety-invariant violation (never
-fake-satisfied; no execution; no leak; English-only), but mission evaluation is wrong on the primary
-production path. Builder must NOT claim merge-ready while FAIL. Re-review after fix + targeted re-run.
+**PASS** @ 90768fd — R-0102 RESOLVED (reviewer-verified); zero open Blocker/High/Medium/Low. All 11
+checks PASS; targeted suite green; no forbidden execution; no leak; English-only; changed-files table
+present; handoff honest (R-0103 plan reconcile verified, builder did NOT overwrite reviewer verdict).
+Merge-ready. Auto-merge applies on reviewer PASS per merge-autonomy; NO PR opened (user has not asked).
+(history) FAIL @ 39bd3cc — open Medium R-0102 (first-eval self-block); fixed @ 90768fd.
 
 ## Check matrix (reviewed @ 39bd3cc)
 1. Mainline closure — PASS. Tournament v0 merged via PR #71 → main `4ddd59f` (incl R-0101 closure
@@ -34,10 +36,12 @@ production path. Builder must NOT claim merge-ready while FAIL. Re-review after 
    verdict read from `## Verdict` heading (reviewer-owned file). `evaluate` blocks on
    open_blocker+high>0 and on verdict in pending/fail/unknown → reviewer verdict beats self-report;
    PENDING/FAIL blocks completion.
-4. Mission evaluation — **FAIL (R-0102, Medium)**. Satisfaction logic is correctly conjunctive
-   (criteria ∧ review_clean ∧ open_tasks==0 ∧ failed_tests==0 ∧ no missing_proofs ∧ repair≠needed) and
-   never fake-satisfied; BUT first-evaluation self-block via mission progress items counted as
-   open_tasks (see R-0102). Safe direction, but wrong on the production path.
+4. Mission evaluation — **PASS** (@ 90768fd). Conjunctive satisfaction (criteria ∧ review_clean ∧
+   open_tasks==0 ∧ failed_tests==0 ∧ no missing_proofs ∧ repair≠needed); never fake-satisfied. R-0102
+   FIXED: `_gather_mission_evidence` now skips `mission-`/`token-economy-local`/`route-policy-local`/
+   `tournament-winner` item_ids via a top-of-loop `continue` (covers PLANNED/IN_PROGRESS AND BLOCKED),
+   so the evaluator no longer self-blocks on its own merged ledger items; genuine non-mission
+   job/task/repair/test/review blockers still counted. Verified via real-UUID regression test.
 5. Next safe action planning — PASS. All emitted commands catalog-valid (`overnight contract-show/
    evaluate/contract-create`, `review list`, `repair status`, `progress checklist`); no provider/
    Ollama/Claude/Pi action; `user_decision_required` flagged; no-action → BLOCKED.
@@ -68,7 +72,12 @@ production path. Builder must NOT claim merge-ready while FAIL. Re-review after 
 
 ### R-0102
 - **Severity**: Medium
-- **Status**: Open
+- **Status**: Resolved (reviewer-verified @ 90768fd) — fix excludes `mission-`-prefixed ledger items
+  from open-task counting via a top-of-loop `continue` in `_gather_mission_evidence` (covers PLANNED/
+  IN_PROGRESS + BLOCKED); regression `test_real_uuid_job_first_eval_not_self_blocked` (real persisted
+  UUID job → first eval `open_tasks==0`, satisfied) + `test_real_non_mission_open_task_still_blocks`
+  (open High finding still blocks) added. Genuine blockers still block; gates unchanged; Done≠Resolved
+  intact. Reviewer re-ran targeted suite = 274 passed.
 - **Area**: `packages/orchestration/overnight_mission.py` `_gather_mission_evidence` (open-task
   counting) × `packages/orchestration/progress_ledger.py` `build_progress_ledger` (line ~1810
   `merge_mission_items`).
@@ -112,7 +121,19 @@ Next id: R-0103.
   full-suite self-report NOT accepted while Medium open.
 - German scan (module/cmd/2 docs) CLEAN. Danger scan (committed core+cmd) CLEAN.
 
+## Reviewer re-verification (R-0102 fix @ 90768fd)
+- `remedy_pytest.sh test_overnight_mission.py + _integration.py + test_overnight_mission_cli.py +
+  test_progress_ledger.py + test_review_bundle.py + test_dashboard_cockpit_truth.py +
+  test_command_catalog.py + test_run_contract.py -q` → **274 passed**.
+- Fix scope minimal (overnight_mission.py +13 / test +31 / plan.md / live_review.md only); no new
+  feature, no provider/exec/MemPalace/embeddings; German scan CLEAN. R-0103 plan reconcile verified
+  (steps 1837-1857 [x], 1858-1876 [~] closure; carried risks preserved; reviewer verdict NOT
+  overwritten — builder added only `Done:` markers + "NOT claiming merge-ready"). Builder full-suite
+  self-report 6200 passed (not independently re-run; reviewer targeted = 274 passed). Changed-files
+  table present in context.md (14 rows).
+
 ## Reviewer audit log
+- VERDICT UPGRADED FAIL→PASS @ 90768fd — R-0102 Resolved (reviewer-verified). Merge-ready.
 - VERDICT FAIL @ 39bd3cc — open Medium R-0102 (first-eval self-block). No safety violation.
 - Block opened. Check 1 (mainline closure) PASS @ branch base `4ddd59f`. Pre-existing overnight_*.py
   (executor/readiness/cmd) carried from prior blocks — any modifications will be reviewed against the
