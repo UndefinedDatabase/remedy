@@ -942,3 +942,179 @@ class TestMorningReport:
                 "nonexistent", job_id="fake", data_dir=Path(td),
             )
             assert "not found" in report.operator_summary.lower()
+
+
+# ---------------------------------------------------------------------------
+# Policy-gated mission loop tests (Steps 2775-2778)
+# ---------------------------------------------------------------------------
+
+
+class TestMissionLoopPolicyGrant:
+    """Verify policy grant hook in mission loop at WAITING_FOR_APPROVAL."""
+
+    def test_manual_approval_default_stops(self):
+        """Without enabled policies, loop stops at waiting_for_approval."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.WAITING_FOR_APPROVAL
+            run.next_suggested_action = (
+                "remedy execution approve ses-001 --template tmpl-001 --json"
+            )
+            save_dogfood_run(run, data_dir=Path(td))
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=10, max_seconds=60,
+                data_dir=Path(td),
+            )
+            assert result.stop_reason == "waiting_for_approval"
+            assert result.steps_attempted == 0
+
+    def test_denied_policy_stops_loop(self):
+        """Policy that denies still results in waiting_for_approval stop."""
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.WAITING_FOR_APPROVAL
+            run.next_suggested_action = (
+                "remedy execution approve ses-001 --template tmpl-001 --json"
+            )
+            save_dogfood_run(run, data_dir=Path(td))
+            with patch(
+                "packages.orchestration.dogfood_run._try_policy_grant",
+                return_value={"granted": False, "reason": "no_matching_policy"},
+            ):
+                result = run_mission_loop(
+                    run.run_id, job_id=run.job_id,
+                    max_steps=10, max_seconds=60,
+                    data_dir=Path(td),
+                )
+            assert result.stop_reason == "waiting_for_approval"
+
+    def test_granted_policy_continues_loop(self):
+        """When policy grants approval, loop continues (does not stop)."""
+        from unittest.mock import patch
+
+        step_count = 0
+
+        def mock_step(run_rec, *, data_dir=None):
+            nonlocal step_count
+            step_count += 1
+            run_rec.status = DogfoodRunStatus.SATISFIED
+            run_rec.finished_at = "2026-01-01T01:00:00+00:00"
+            save_dogfood_run(run_rec, data_dir=data_dir)
+            cp = DogfoodRunCheckpoint(
+                checkpoint_id=f"cp-{step_count}",
+                run_id=run_rec.run_id,
+                next_suggested_action="none",
+            )
+            return run_rec, cp
+
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.WAITING_FOR_APPROVAL
+            run.next_suggested_action = (
+                "remedy execution approve ses-001 --template tmpl-001 --json"
+            )
+            save_dogfood_run(run, data_dir=Path(td))
+
+            with patch(
+                "packages.orchestration.dogfood_run._try_policy_grant",
+                return_value={"granted": True, "approval_id": "apr-test"},
+            ), patch(
+                "packages.orchestration.dogfood_run.step_dogfood_run",
+                side_effect=mock_step,
+            ):
+                result = run_mission_loop(
+                    run.run_id, job_id=run.job_id,
+                    max_steps=10, max_seconds=60,
+                    data_dir=Path(td),
+                )
+            assert result.stop_reason != "waiting_for_approval"
+            assert "policy_grant:" in (result.report_summary or "")
+
+    def test_policy_grant_never_marks_done(self):
+        """Policy grant creates approval metadata only — never marks mission satisfied."""
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.WAITING_FOR_APPROVAL
+            run.next_suggested_action = (
+                "remedy execution approve ses-001 --template tmpl-001 --json"
+            )
+            save_dogfood_run(run, data_dir=Path(td))
+            with patch(
+                "packages.orchestration.dogfood_run._try_policy_grant",
+                return_value={"granted": True, "approval_id": "apr-test"},
+            ):
+                result = run_mission_loop(
+                    run.run_id, job_id=run.job_id,
+                    max_steps=1, max_seconds=60,
+                    data_dir=Path(td),
+                )
+            assert result.stop_reason != "mission_satisfied"
+
+    def test_missing_session_in_action_stops(self):
+        """If next_suggested_action lacks session_id, grant returns not granted."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.WAITING_FOR_APPROVAL
+            run.next_suggested_action = "remedy execution status --json"
+            save_dogfood_run(run, data_dir=Path(td))
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=10, max_seconds=60,
+                data_dir=Path(td),
+            )
+            assert result.stop_reason == "waiting_for_approval"
+
+
+# ---------------------------------------------------------------------------
+# Morning report policy fields (Steps 2779-2780)
+# ---------------------------------------------------------------------------
+
+
+class TestMorningReportPolicyFields:
+    def test_waiting_approval_shows_policy_fields(self):
+        """Report for WAITING_FOR_APPROVAL includes policy_considered and manual_approval_required."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.WAITING_FOR_APPROVAL
+            save_dogfood_run(run, data_dir=Path(td))
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            assert report.manual_approval_required is True
+            assert len(report.waiting_for_approval) > 0
+            d = report.to_dict()
+            assert "policy_considered" in d
+            assert "manual_approval_required" in d
+            assert "policy_reason" in d
+
+    def test_non_waiting_has_default_policy_fields(self):
+        """Report for non-WAITING run has default policy fields (false/empty)."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T01:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            assert report.policy_considered is False
+            assert report.policy_granted_approval is False
+            assert report.policy_decision_code == ""
+
+    def test_report_policy_fields_json_safe(self):
+        """Policy fields in morning report dict are JSON-serializable."""
+        import json
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.WAITING_FOR_APPROVAL
+            save_dogfood_run(run, data_dir=Path(td))
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            d = report.to_dict()
+            s = json.dumps(d)
+            assert "policy_considered" in s
+            assert "policy_granted_approval" in s

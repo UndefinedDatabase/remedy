@@ -48,7 +48,10 @@ class TestHandlerRegistry:
     def test_all_handlers_present(self):
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
         expected = {"worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "mission.report", "doctor.core"}
+                    "mission.run", "mission.report", "doctor.core",
+                    "approval.policy-list", "approval.policy-show",
+                    "approval.policy-enable", "approval.policy-disable",
+                    "approval.policy-evaluate", "approval.policy-grant"}
         assert set(COMMAND_HANDLERS.keys()) == expected
 
     def test_all_handlers_callable(self):
@@ -86,7 +89,7 @@ class TestCatalogIntegration:
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
         facade_cmds = [c for c in CATALOG
                        if c.command_id in COMMAND_HANDLERS]
-        assert len(facade_cmds) == 6
+        assert len(facade_cmds) == 12
         for cmd in facade_cmds:
             assert cmd.command_id in COMMAND_HANDLERS
 
@@ -453,5 +456,193 @@ class TestCollectHandlers:
         from apps.cli.commands import collect_all_handlers
         handlers = collect_all_handlers()
         for key in ("worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "mission.report", "doctor.core"):
+                    "mission.run", "mission.report", "doctor.core",
+                    "approval.policy-list", "approval.policy-show",
+                    "approval.policy-enable", "approval.policy-disable",
+                    "approval.policy-evaluate", "approval.policy-grant"):
             assert key in handlers, f"{key} missing from collect_all_handlers"
+
+
+# ---------------------------------------------------------------------------
+# Approval CLI handlers (Steps 2781-2785)
+# ---------------------------------------------------------------------------
+
+_POLICY_LIST = "packages.orchestration.execution_approval_policy.list_execution_approval_policies"
+_POLICY_LOAD = "packages.orchestration.execution_approval_policy.load_execution_approval_policy"
+_POLICY_SAVE = "packages.orchestration.execution_approval_policy.save_execution_approval_policy"
+_POLICY_EVAL = "packages.orchestration.execution_approval_policy.evaluate_execution_approval_policy"
+_POLICY_GRANT = "packages.orchestration.execution_approval_policy.create_policy_granted_execution_approval"
+
+
+class TestApprovalPolicyList:
+    @patch(_POLICY_LIST)
+    def test_list_json(self, mock_list, capsys):
+        mock_list.return_value = [
+            {"policy_id": "test-1", "enabled": True, "label": "Test"},
+        ]
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_list
+        _cmd_approval_policy_list(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert out["count"] == 1
+        assert out["policies"][0]["policy_id"] == "test-1"
+
+    @patch(_POLICY_LIST)
+    def test_list_text(self, mock_list, capsys):
+        mock_list.return_value = [
+            {"policy_id": "fixture-echo-v0", "enabled": False, "label": "Fixture"},
+        ]
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_list
+        _cmd_approval_policy_list(_ns(json=False))
+        out = capsys.readouterr().out
+        assert "fixture-echo-v0" in out
+        assert "disabled" in out
+
+
+class TestApprovalPolicyShow:
+    @patch(_POLICY_LOAD)
+    def test_show_json(self, mock_load, capsys):
+        from packages.orchestration.execution_approval_policy import ExecutionApprovalPolicy
+        mock_load.return_value = ExecutionApprovalPolicy(
+            policy_id="test-1", label="Test", enabled=True,
+            adapter_id="a-1", template_id="t-1",
+        )
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_show
+        _cmd_approval_policy_show(_ns(policy_id="test-1", json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert out["policy_id"] == "test-1"
+        assert out["enabled"] is True
+
+    @patch(_POLICY_LOAD)
+    def test_show_not_found(self, mock_load):
+        mock_load.return_value = None
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_show
+        with pytest.raises(SystemExit):
+            _cmd_approval_policy_show(_ns(policy_id="nonexistent", json=True))
+
+    def test_show_no_id(self):
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_show
+        with pytest.raises(SystemExit):
+            _cmd_approval_policy_show(_ns(policy_id="", json=True))
+
+
+class TestApprovalPolicyEnable:
+    @patch(_POLICY_SAVE, return_value=True)
+    @patch(_POLICY_LOAD)
+    def test_enable_fixture_json(self, mock_load, mock_save, capsys):
+        from packages.orchestration.execution_approval_policy import ExecutionApprovalPolicy
+        mock_load.return_value = ExecutionApprovalPolicy(
+            policy_id="fixture-echo-v0", label="Fixture",
+            requires_fixture_only=True,
+        )
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_enable
+        _cmd_approval_policy_enable(_ns(
+            policy_id="fixture-echo-v0", json=True, confirm_real_provider=False,
+        ))
+        out = json.loads(capsys.readouterr().out)
+        assert out["enabled"] is True
+
+    @patch(_POLICY_LOAD)
+    def test_enable_real_without_confirm_exits(self, mock_load):
+        from packages.orchestration.execution_approval_policy import ExecutionApprovalPolicy
+        mock_load.return_value = ExecutionApprovalPolicy(
+            policy_id="real-1", label="Real",
+            requires_fixture_only=False, allow_real_provider=False,
+        )
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_enable
+        with pytest.raises(SystemExit):
+            _cmd_approval_policy_enable(_ns(
+                policy_id="real-1", json=True, confirm_real_provider=False,
+            ))
+
+
+class TestApprovalPolicyDisable:
+    @patch(_POLICY_SAVE, return_value=True)
+    @patch(_POLICY_LOAD)
+    def test_disable_json(self, mock_load, mock_save, capsys):
+        from packages.orchestration.execution_approval_policy import ExecutionApprovalPolicy
+        mock_load.return_value = ExecutionApprovalPolicy(
+            policy_id="test-1", label="Test", enabled=True,
+        )
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_disable
+        _cmd_approval_policy_disable(_ns(policy_id="test-1", json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert out["disabled"] is True
+
+    @patch(_POLICY_LOAD)
+    def test_disable_not_found(self, mock_load):
+        mock_load.return_value = None
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_disable
+        with pytest.raises(SystemExit):
+            _cmd_approval_policy_disable(_ns(policy_id="nonexistent", json=True))
+
+
+class TestApprovalPolicyEvaluate:
+    @patch(_POLICY_EVAL)
+    def test_evaluate_json(self, mock_eval, capsys):
+        from packages.orchestration.execution_approval_policy import (
+            ExecutionApprovalPolicyDecision,
+            PolicyDecisionCode,
+        )
+        mock_eval.return_value = ExecutionApprovalPolicyDecision(
+            allowed=False,
+            decision_code=PolicyDecisionCode.NO_MATCHING_POLICY,
+            reason="No enabled policies",
+        )
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_evaluate
+        _cmd_approval_policy_evaluate(_ns(
+            session_id="ses-001", template_id="tmpl-001", json=True,
+        ))
+        out = json.loads(capsys.readouterr().out)
+        assert out["allowed"] is False
+        assert out["decision_code"] == "no_matching_policy"
+
+    def test_evaluate_no_session(self):
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_evaluate
+        with pytest.raises(SystemExit):
+            _cmd_approval_policy_evaluate(_ns(
+                session_id="", template_id="tmpl-001", json=True,
+            ))
+
+    def test_evaluate_no_template(self):
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_evaluate
+        with pytest.raises(SystemExit):
+            _cmd_approval_policy_evaluate(_ns(
+                session_id="ses-001", template_id="", json=True,
+            ))
+
+
+class TestApprovalPolicyGrant:
+    @patch(_POLICY_GRANT)
+    def test_grant_allowed_json(self, mock_grant, capsys):
+        mock_grant.return_value = {
+            "granted": True,
+            "approval_id": "apr-001",
+            "decision": {"decision_code": "allowed"},
+        }
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_grant
+        _cmd_approval_policy_grant(_ns(
+            session_id="ses-001", template_id="tmpl-001", json=True,
+        ))
+        out = json.loads(capsys.readouterr().out)
+        assert out["granted"] is True
+        assert out["approval_id"] == "apr-001"
+
+    @patch(_POLICY_GRANT)
+    def test_grant_denied_text(self, mock_grant, capsys):
+        mock_grant.return_value = {
+            "granted": False,
+            "decision": {"decision_code": "no_matching_policy", "reason": "none"},
+        }
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_grant
+        _cmd_approval_policy_grant(_ns(
+            session_id="ses-001", template_id="tmpl-001", json=False,
+        ))
+        out = capsys.readouterr().out
+        assert "Denied" in out
+
+    def test_grant_no_session(self):
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_grant
+        with pytest.raises(SystemExit):
+            _cmd_approval_policy_grant(_ns(
+                session_id="", template_id="tmpl-001", json=True,
+            ))

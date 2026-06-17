@@ -1,24 +1,32 @@
-# Plan — Steps 2696-2715: Fast Lane Runtime Split + Doctor Core Safety Closure v0.1
+# Plan — Steps 2716-2835: Execution Approval Policy + Policy-Gated Mission Continuation v0
 
 ## Goal
-Split subprocess-heavy tests out of fast lane into runtime lane.
-Harden doctor core error redaction. No new features.
+Add bounded policy layer so operator can configure automatic approval metadata
+for known worker/template/task combinations. Policy disabled by default.
+Policy creates metadata only — never executes anything.
 
 ## Steps
-- [x] Step 2696: Mainline gate — PR #89 merged, reviewer PASS
-- [x] Step 2697: Baseline — fast lane 443 passed 6.79s, review bundle 11 passed 3.04s
-- [x] Step 2698: Isolate review bundle — no local hang, but reviewer reported hang risk
-- [x] Step 2699: Decision — move all 4 subprocess files to runtime lane
-- [x] Step 2700: Create scripts/remedy_test_runtime.sh (4 subprocess-heavy files)
-- [x] Step 2701: Update fast lane — pure in-process only (6 files)
-- [x] Step 2702: Update lane self-tests (test_product_spine, test_test_categories)
-- [x] Step 2703: Harden _safe_err — add /mnt/, /tmp/, /Users/, key=value secret redaction
-- [x] Step 2704: Add negative tests for doctor core (path + secret redaction)
-- [x] Step 2705: Update docs/test-lanes-v0.md with runtime lane
-- [x] Step 2706: Targeted tests — 395 fast + 54 runtime + 12 categories + lint clean
-- [x] Step 2707: Full suite — 6876 passed, 0 failures
-- [x] Step 2708: Changed Line Map + commit + PR #90
-- [x] Step 2709: Reviewer PASS @ 9c68161 — R-0155 INFO non-blocking
+- [x] Core model: ExecutionApprovalPolicy, ExecutionApprovalPolicyDecision, PolicyDecisionCode
+- [x] Storage: save/load/list with secret/path rejection, atomic writes
+- [x] Integrity scanner: conflicts, secrets, paths, uses, expiry
+- [x] Evaluation: template→session→adapter→policies→per-condition checks
+- [x] Grant: evaluate → decrement uses → approve_managed_execution()
+- [x] Summary: safe export for review bundles
+- [x] Default policies: 3 disabled (fixture-echo, claude-code-repair, generic-cli)
+- [x] CLI commands: 6 approval.* entries in catalog + handlers in worker_facade_cmd
+- [x] Contract actions: 6 APPROVAL_POLICY_* in run_contract
+- [x] Mission loop: _try_policy_grant() hook at WAITING_FOR_APPROVAL + status transition
+- [x] Morning report: 6 policy fields
+- [x] Product spine tests: approval group + commands + handler registry
+- [x] Policy model/storage/integrity/evaluation/grant tests (52 passing)
+- [x] Mission loop policy tests: manual default, fixture grant, denied, no fake done (5 tests)
+- [x] Morning report policy tests: fields, defaults, JSON safe (3 tests)
+- [x] CLI approval tests: list/show, enable/disable, evaluate, grant, invalid IDs (13 tests)
+- [x] Docs: execution-approval-policy-v0.md
+- [x] Fast lane: added policy tests (472 passing, 0.77s)
+- [x] Lint: ruff clean, mypy clean (192 files)
+- [x] Full suite: 6961 passed, 0 failed
+- [ ] Commit + PR
 
 ## Hard rules
-Split only. No new features. No provider execution.
+Policy disabled by default. No auto-apply/PR/merge. Metadata only.

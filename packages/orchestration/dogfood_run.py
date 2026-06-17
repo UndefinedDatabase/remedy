@@ -1199,6 +1199,47 @@ def export_replay_json(analysis: DogfoodReplayAnalysis) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Policy grant hook (Step 2748)
+# ---------------------------------------------------------------------------
+
+
+def _try_policy_grant(run: DogfoodRunRecord, ddir: Path) -> dict[str, Any]:
+    """Try to grant execution approval via policy. Returns grant result dict.
+
+    Never executes anything. Creates approval metadata only if policy allows.
+    Extracts session_id and template_id from the run's next_suggested_action.
+    """
+    try:
+        from packages.orchestration.execution_approval_policy import (
+            create_policy_granted_execution_approval,
+        )
+    except ImportError:
+        return {"granted": False}
+
+    action = run.next_suggested_action or ""
+    session_id = ""
+    template_id = ""
+
+    import re
+    session_match = re.search(r"approve\s+(\S+)", action)
+    if session_match:
+        session_id = session_match.group(1)
+    template_match = re.search(r"--template\s+(\S+)", action)
+    if template_match:
+        template_id = template_match.group(1)
+
+    if not session_id or not template_id:
+        return {"granted": False}
+
+    try:
+        return create_policy_granted_execution_approval(
+            session_id, template_id, data_dir=ddir,
+        )
+    except Exception:
+        return {"granted": False}
+
+
+# ---------------------------------------------------------------------------
 # Bounded mission run loop (Step 2589-2590)
 # ---------------------------------------------------------------------------
 
@@ -1312,6 +1353,14 @@ def run_mission_loop(
 
         if run.status in _WAITING_STATUSES:
             if run.status == DogfoodRunStatus.WAITING_FOR_APPROVAL:
+                policy_result = _try_policy_grant(run, ddir)
+                if policy_result.get("granted"):
+                    result.report_summary = (
+                        f"policy_grant:{policy_result.get('approval_id', '')}"
+                    )
+                    run.status = DogfoodRunStatus.RUNNING
+                    save_dogfood_run(run, data_dir=ddir)
+                    continue
                 result.stop_reason = "waiting_for_approval"
             else:
                 result.stop_reason = "waiting_for_operator"
@@ -1340,8 +1389,12 @@ def run_mission_loop(
     result.final_status = run.status
     result.blocking_reasons = list(run.blocking_reasons)
     result.ended_at = _now()
+    policy_note = ""
+    if result.report_summary and result.report_summary.startswith("policy_grant:"):
+        policy_note = f" [{result.report_summary}]"
     result.report_summary = (
         f"{steps_done} steps, status={run.status}, stop={result.stop_reason}"
+        f"{policy_note}"
     )
     return result
 
@@ -1375,6 +1428,12 @@ class MissionMorningReport:
     next_safe_action: str = ""
     operator_summary: str = ""
     created_at: str = ""
+    policy_considered: bool = False
+    policy_decision_code: str = ""
+    policy_granted_approval: bool = False
+    policy_id: str = ""
+    manual_approval_required: bool = True
+    policy_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1398,6 +1457,12 @@ class MissionMorningReport:
             "next_safe_action": _safe(self.next_safe_action),
             "operator_summary": _safe(self.operator_summary, 500),
             "created_at": self.created_at,
+            "policy_considered": self.policy_considered,
+            "policy_decision_code": self.policy_decision_code,
+            "policy_granted_approval": self.policy_granted_approval,
+            "policy_id": self.policy_id,
+            "manual_approval_required": self.manual_approval_required,
+            "policy_reason": _safe(self.policy_reason),
         }
 
 
@@ -1552,6 +1617,18 @@ def build_mission_morning_report(
 
     if run.status == DogfoodRunStatus.WAITING_FOR_APPROVAL:
         report.waiting_for_approval.append("execution_approval_needed")
+        try:
+            from packages.orchestration.execution_approval_policy import (
+                execution_approval_policy_summary,
+            )
+            pol_summary = execution_approval_policy_summary(ddir)
+            report.policy_considered = pol_summary.get("enabled_policy_count", 0) > 0
+            report.manual_approval_required = True
+            report.policy_reason = (
+                f"{pol_summary.get('enabled_policy_count', 0)} enabled policies"
+            )
+        except (ImportError, Exception):
+            pass
 
     if ev.satisfied:
         report.completed_items.append("mission_contract_satisfied")
