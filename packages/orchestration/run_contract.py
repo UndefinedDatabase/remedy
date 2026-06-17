@@ -209,6 +209,12 @@ class ContractAction:
     # v1.3: bounded loop + morning report (Step 2586)
     DOGFOOD_RUN_LOOP = "dogfood_run_loop"
     DOGFOOD_MORNING_REPORT = "dogfood_morning_report"
+    # v1.4: worker facade + mission facade (Step 2616)
+    WORKER_DOCTOR = "worker_doctor"
+    WORKER_ADD = "worker_add"
+    WORKER_DISABLE = "worker_disable"
+    MISSION_RUN = "mission_run"
+    MISSION_REPORT = "mission_report"
 
     # Self-Repair Proposal v0 (Step 2450) — METADATA + EVALUATION only. NOT provider/model/worker
     # execution, NOT auto-apply/approve/git. proposal-create/approve/deny/edit/worker-prompt persist
@@ -397,6 +403,11 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.DOGFOOD_RUN_EVALUATE,
     ContractAction.DOGFOOD_RUN_LOOP,
     ContractAction.DOGFOOD_MORNING_REPORT,
+    ContractAction.WORKER_DOCTOR,
+    ContractAction.WORKER_ADD,
+    ContractAction.WORKER_DISABLE,
+    ContractAction.MISSION_RUN,
+    ContractAction.MISSION_REPORT,
     ContractAction.SELF_REPAIR_PROPOSAL_CREATE,
     ContractAction.SELF_REPAIR_PROPOSAL_SHOW,
     ContractAction.SELF_REPAIR_PROPOSAL_LIST,

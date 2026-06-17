@@ -1,29 +1,30 @@
 # Context
 
 ## Active Branch
-feature/steps-2586-2615-mission-run-loop-morning-report-v0
-(forked from main at df2525c after PR #85 merged).
+feature/steps-2616-2655-worker-onboarding-mission-facade-v0
+(forked from main at 8b7abb5 after PR #86 merged).
 
 ## Scope
-Steps 2586-2615: Bounded mission run loop, morning report,
-terminology guidance, stale doc fixes, core readiness summary,
-loop checkpoint safety, self-repair/builder/execution visibility.
+Steps 2616-2655: Worker onboarding facade (add/doctor/disable),
+mission command facade (run/report), alias registry, stale doc fixes.
 
-## Key findings from Step 2587 audit
-- step_dogfood_run() exists — does one safe evaluation step
-- evaluate_dogfood_run() exists — gathers evidence, determines lane/action
-- Missing: multi-step bounded loop (run_mission_loop)
-- Missing: morning report model + builder
-- Doc bug: controlled-claude-code-operator-path-v0.md uses --adapter, actual CLI is --adapter-id
-- Existing DogfoodRunStatus already has all required terminal states
+## Reviewer findings to fix (carry-forward)
+- R-0151 (MEDIUM): _build_self_repair_summary() used wrong status values
+  ("proposed"/"ready" → "awaiting_operator"/"edited"). FIXED in this branch.
+- R-0152 (LOW): inspect_command wrong CLI group
+  ("remedy self" → "remedy self-repair"). FIXED in this branch.
+- R-0153 (LOW): CLM table missing in context.md. Carry-forward pattern.
+
+## Key architectural decisions
+- Worker alias registry maps "claude" → adapter claude-code-v0 + template claude-code-repair-v0
+- "mission" group is new; "worker" group exists
+- Facades call existing safe functions, no new business logic
+- Step 2623 (worker readiness): skip — doctor already covers it
+- Step 2626 (mission status): skip — mission report already covers it
 
 ## Pre-existing test failures (not introduced by this change)
 - tests/cli/test_self_dogfood_execution_cli.py (2 failures on main)
 - tests/orchestration/test_project_brain.py::TestFileProvenanceChain::test_full_chain_order
-
-## Carry-forward findings from previous block
-- R-0148 (LOW): No CLI subprocess tests for 5 new commands (PR #85)
-- R-0149 (LOW): Context.md missing Changed Line Map table (PR #85)
 
 ## Resource safety
 All pytest runs use scripts/remedy_pytest.sh (flock-serialized, timeout-bounded).

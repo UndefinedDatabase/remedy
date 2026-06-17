@@ -1501,12 +1501,12 @@ def _build_self_repair_summary(job_id: str, ddir: Path) -> dict[str, Any]:
         from packages.orchestration.self_repair_proposal import list_self_repair_proposals
         proposals = list_self_repair_proposals(job_id=job_id, data_dir=ddir)
         summary["proposal_count"] = len(proposals)
-        awaiting = sum(1 for p in proposals if p.get("status") in ("proposed", "ready"))
+        awaiting = sum(1 for p in proposals if p.get("status") in ("awaiting_operator", "edited"))
         summary["awaiting_approval"] = awaiting
         if proposals:
             latest = proposals[-1]
             summary["latest_status"] = latest.get("status", "unknown")
-            summary["inspect_command"] = "remedy self proposal-list --json"
+            summary["inspect_command"] = "remedy self-repair proposal-list --json"
         else:
             summary["latest_status"] = "none"
     except (ImportError, Exception):
