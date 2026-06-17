@@ -19,8 +19,12 @@ Steps 2296-2365: Review Bundle Structured Error Reporting v1.
 - Partially prepared: ~7/30
 - Next: remedy.toml Configuration System v0 OR README Current-State Refresh v1
 
+## Resource safety
+All pytest runs use scripts/remedy_pytest.sh (flock-serialized, timeout-bounded).
+No shell=True. No background pytest.
+
 ## Carried observations
 - None from prior block (R-0119/R-0120 resolved in Steps 2226-2295)
 
 ## Status
-Code + tests complete. Awaiting lint, full suite, commit + PR + reviewer verdict.
+Code + tests complete. 6599 passed, 8 skipped, 1 deselected. Lint clean.
