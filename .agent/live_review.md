@@ -1,97 +1,125 @@
-# Live Review — Steps 2126-2145: Managed Execution Approval Binding Closure
+# Live Review — Steps 2366-2445 Closure: remedy.toml Config Safety + Diagnostics Fixes
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict;
 a builder `Done:` marker is NOT reviewer `Resolved`).
-Scope (ALLOWED): approval binding closure (session existence gate, adapter spec safety, auto-bind
-from session, execution classification, output-ref event); docs/tests.
-Must NOT: real provider execution; provider SDK; direct repo mutation; auto-apply; auto-approval;
-auto-PR/git; hidden browser; arbitrary shell; shell=True; raw transcript/candidate/prompt/log leaks;
-secret/env token storage; hardcoded provider monopoly; MemPalace; embeddings/vector DB; UI redesign;
-MCP; repo-wide logging refactor.
-BINDING CLOSURE BLOCK — hardens approval binding from "advisory" to "enforced".
-Hard invariants: ghost sessions blocked; adapter spec dict/dataclass safe; empty binding fields
-auto-populate from real session; execution.run is not generic command execution; output-ref event
-exists for replay provenance; Done ≠ Resolved; reviewer verdict beats self-report.
-Timestamp: 2026-06-16
+Scope (ALLOWED): R-0124 through R-0130 closure; quoted secret redaction; unknown key rejection;
+config diagnostics; path redaction; CLI completeness; registry completeness; Changed Line Map.
+Must NOT: provider execution; Claude/Pi/OpenCode/Ollama real integration; provider SDK;
+auto-apply/approve/PR/git; shell=True; semantic memory; MemPalace; UI redesign; MCP; README rewrite;
+package splits.
+CLOSURE BLOCK — safety hardening of config system, not new features.
+Timestamp: 2026-06-17
 
 ## Verdict (reviewer-owned)
-**PASS** @ e9ff046 on top of 1de56cf. Zero open findings.
-All R-0111 through R-0115 Resolved. 206 targeted tests passed (0 failed).
-Uncommitted changes: NONE (clean working tree at verdict time).
+**PASS** @ ceebe13 (2 commits, PR #82). All findings resolved.
+R-0124 Resolved. R-0125 Resolved. R-0126 Resolved. R-0127 Resolved.
+R-0128 Resolved. R-0129 Resolved. R-0130 Resolved.
 
 ## Prior block
-Steps 2076-2125: PASS @ 1de56cf (R-0106..R-0110 all Resolved). 189 targeted tests passed.
+Steps 2296-2365: PASS @ ef55c00. Merged to main via PR #81 -> b35a9f4.
+Steps 2366-2445 initial: PASS WITH RISKS @ a0fda56 (pre-closure, R-0121/R-0122/R-0123 resolved).
 
-## Changed files (Steps 2126-2145 @ e9ff046)
-| File | What changed |
-|------|-------------|
-| packages/orchestration/managed_builder_execution.py | +68L: R-0111 session existence gate in run_managed_builder (BLOCKED + session_not_found before approval check); R-0112 isinstance(spec,dict) guard in _validate_session_binding + approve auto-bind; R-0113 auto-bind package_id/adapter_id/adapter_kind from real session in approve_managed_execution; R-0115 OUTPUT_REF_CREATED event kind + emission after output save + debug bundle output_ref_event_present + integrity check completed_missing_output_ref_event; _validate_session_binding returns session_not_found when session is None; debug bundle includes session_exists in binding_summary |
-| apps/cli/command_catalog.py | +2L: R-0114 may_execute_commands=False on execution.run |
-| tests/orchestration/test_managed_builder_execution.py | +308L: _create_test_session helper; 7 existing tests updated with real sessions; TestR0111SessionRequired (3 tests); TestR0112AdapterSpecDict (3 tests); TestR0113AutoBinding (3 tests); TestR0114ControlledExecution (2 tests); TestR0115OutputRefEvent (6 tests); test_missing_session renamed to test_missing_session_returns_session_not_found; test_completed_with_full_events_clean updated with OUTPUT_REF_CREATED |
+## Findings — Steps 2366-2445 Closure
 
-## Check matrix (Steps 2126-2145 @ e9ff046)
-| # | Check | Result | Evidence |
-|---|-------|--------|----------|
-| 1 | Session existence gate | PASS | run_managed_builder blocks ghost sessions at step 1b (before approval). BLOCKED + session_not_found. _validate_session_binding also returns session_not_found. 3 regression tests. |
-| 2 | AdapterSpec dict safety | PASS | isinstance(spec, dict) guard in _validate_session_binding L767-768 and approve auto-bind L583-584. No .to_dict() crash on dict returns. 3 regression tests. |
-| 3 | Auto-bind from session | PASS | approve_managed_execution L573-590 auto-binds package_id/adapter_id/adapter_kind from real session when caller omits. Explicit values never overridden. ImportError graceful. 3 regression tests. |
-| 4 | Execution classification | PASS | may_execute_commands=False on execution.run (L835). action_class=controlled_builder_execution. 2 regression tests. |
-| 5 | Output-ref event | PASS | OUTPUT_REF_CREATED event kind (L343). Emitted after _save_raw_output (L1092-1097). Debug bundle output_ref_event_present (L1299). Integrity check completed_missing_output_ref_event (L1434). No raw output in event summary. 6 regression tests. |
-| 6 | Architecture guards | PASS | No shell=True; no auto-apply/approve; execution_satisfies_mission=False unchanged; no forbidden imports; all imports already present in committed code |
-| 7 | German scan | PASS | Zero matches in committed diff |
+### R-0124 — Quoted secret redaction (Resolved)
+`_SECRET_RE` pattern updated to `(?:"[^"]*"|'[^']*'|[^\s,;'"]*)`.
+Verified:
+- `api_key='mysecret'` → `[REDACTED]` (was leaking `'mysecret'`)
+- `api_key="mysecret"` → `[REDACTED]` (was leaking `"mysecret"`)
+- `password='hunter2'` → `[REDACTED]` (was leaking `'hunter2'`)
+- `credential='x y z'` → `[REDACTED]` (spaced quoted value captured)
+- `api_key=mysecret123` → `[REDACTED]` (unquoted still works)
+- `No secrets configured` → unchanged (no overblocking)
+- Comma case `api_key=secret,next` → `[REDACTED],next`: `,next` is delimiter context, not secret value.
+  If value contains comma, quoting captures it: `api_key="secret,next"` → `[REDACTED]`. Acceptable.
+Test: `TestRedactionClosure::test_r0124_quoted_key_value_redacted` PASS.
 
-## Findings — Steps 2126-2145
+### R-0125 — Unknown/secret-like config keys cannot be written (Resolved)
+`set_config_value` now rejects unknown keys (`spec is None → ValueError`) and secret keys.
+Verified: `set_config_value(path, 'totally.unknown.key', 'value')` → `ValueError: Unknown config key`.
+CLI `_cmd_config_set` wraps `set_config_value` in try/except — same rejection propagated.
+Tests: `TestSetConfigValueGuards` (3 tests) + `test_config_set_rejects_unknown` CLI test. All PASS.
 
-### R-0111 — Managed execution requires real BuilderSession (Medium, RESOLVED @ e9ff046)
-**Reviewer-verified**: run_managed_builder step 1b (L955-970) loads load_builder_session, blocks with
-BLOCKED + "session_not_found" + FAILED event + next_safe_action CLI hint. ImportError graceful.
-_validate_session_binding (L744-746) appends "session_not_found" when session is None.
-build_debug_bundle includes session_exists in binding_summary (L1262).
-3 regression tests pass (ghost blocked, real passes, validate returns session_not_found).
+### R-0126 — Config diagnostics are not silent (Resolved)
+1. `_load_toml` now accepts `diagnostics` list; malformed TOML appends parse error message.
+   Verified: `"Malformed TOML in /tmp/...: Expected '=' after a key..."` in diagnostics.
+2. `load_config` checks unknown keys in both project and user TOML against `_KEY_SPEC_MAP`.
+   Verified: `"Unknown key in /tmp/...: bogus_key"` in `load_report.warnings`.
+3. `validate_config` still catches type mismatches (unchanged, already worked).
+4. All diagnostics surface via `ConfigLoadReport.warnings` — visible in CLI `config validate` and
+   review bundle `config_summary.json`.
+Tests: `TestLoadDiagnostics` (3 tests). All PASS.
 
-### R-0112 — AdapterSpec dict/dataclass safety (Medium, RESOLVED @ e9ff046)
-**Reviewer-verified**: isinstance(spec, dict) guard in _validate_session_binding (L767-768) and
-approve_managed_execution auto-bind (L583-584). Prevents AttributeError when get_builder_adapter_spec
-returns dict. 3 regression tests pass (no crash, kind mismatch detected, disabled adapter detected).
+### R-0127 — Public path redaction (Resolved)
+`_redact_abs_path` replaces home-relative paths with `~/...`, other absolute with `<absolute-path-redacted>`.
+Applied in:
+- `RemedyConfig.to_summary_dict()` → `project_path` and `user_path`
+- `_cmd_config_sources` → JSON and text output (4 references)
+Verified: `to_summary_dict()["load_report"]["user_path"]` = `~/.config/remedy/remedy.toml` (was `/home/decodeux/...`).
+Tests: `TestPathRedaction` (2 tests). All PASS.
 
-### R-0113 — Empty approval binding auto-bind from real session (Medium, RESOLVED @ e9ff046)
-**Reviewer-verified**: approve_managed_execution (L573-590) loads session via load_builder_session,
-auto-binds package_id/adapter_id/adapter_kind when caller omits and session has values. Explicit
-caller values never overridden (`if not package_id and session.package_id`). ImportError graceful.
-3 regression tests pass (auto-binds package_id, auto-binds adapter_id, explicit not overridden).
+### R-0128 — CLI completeness and cwd-isolated tests (Resolved)
+1. `config show` added as alias for `config list` — catalog entry + handler mapping.
+2. `config init --json` added — JSON output `{"created": "path"}` or `{"error": "msg"}`.
+3. `config set --json` added — JSON output `{"key": k, "value": v, "path": p}` or `{"error": "msg"}`.
+4. `config init --path` added — `ArgDef("--path", ...)` in catalog, handler uses `getattr(args, "path")`.
+5. `config set --path` added — same pattern.
+6. Tests now use `--path` for isolation (no cwd dependency).
+Tests: `test_config_show_alias`, `test_config_init_json`, `test_config_set_json` CLI tests. All PASS.
 
-### R-0114 — execution.run is not generic command execution (Medium, RESOLVED @ e9ff046)
-**Reviewer-verified**: may_execute_commands=False on execution.run in command_catalog.py (L835).
-action_class=controlled_builder_execution. 2 regression tests assert both conditions.
+### R-0129 — Registry completeness (Resolved)
+Registry expanded from 9 → 18 keys:
+- Original: data_dir + 8 ollama keys
+- Added: ui.host, ui.port, tests.pytest_timeout_seconds, quality.coverage_fail_under, logging.level
+- Added env_only: claude_enabled, opencode_enabled, pi_dev_enabled, external_memory_enabled
+Provider flags are `env_only=True` — cannot be stored in config files (safe).
+`write_toml_template` updated with all new sections.
+Test: `TestConfigKeySpec::test_all_specs_populated` asserts >= 18 keys. PASS.
 
-### R-0115 — Output-ref event for replay provenance (Low, RESOLVED @ e9ff046)
-**Reviewer-verified**: OUTPUT_REF_CREATED event kind (L343), in _ALL_EVENT_KINDS (L354). Emitted
-after _save_raw_output (L1092-1097) with safe summary (no raw output leaked). Debug bundle includes
-output_ref_event_present (L1282, L1299). Integrity check completed_missing_output_ref_event (L1434).
-6 regression tests pass (run emits, missing flagged, full events clean, bundle field, in ALL_EVENT_KINDS,
-no raw output in event summary).
+### R-0130 — Changed Line Map accuracy (Resolved)
+`.agent/context.md` now has two tables:
+1. "Modified files (closure commit)" — 6 entries including test files and all closure-changed files.
+2. "Prior modified files (initial commit a0fda56)" — 8 entries for original commit files.
+All 14 non-agent files accounted for across both tables.
 
-Next id: R-0116.
+## Test results (closure @ ceebe13)
+| Suite | Result |
+|-------|--------|
+| compileall | CLEAN |
+| ruff | CLEAN |
+| tests/orchestration/test_config.py | 55 PASS |
+| tests/cli/test_config_cmd.py | 14 PASS |
+| tests/orchestration/test_review_bundle.py | 90 PASS |
+| Full suite (-k "not test_full_chain_order") | 6677 PASS, 8 skipped, 0 fail |
 
-## Reviewer test run (targeted)
-206 passed in 3.29s — tests/orchestration/test_managed_builder_execution.py (129) +
-tests/cli/test_managed_builder_execution_cli.py (10) + tests/orchestration/test_review_bundle.py (33) +
-tests/test_command_catalog.py (34)
+## Hard blocker checks
+| Check | Result |
+|-------|--------|
+| config CLI accepts unknown keys | FIXED — rejects with ValueError |
+| malformed config silently ignored | FIXED — diagnostics in load_report.warnings |
+| public surfaces leak private paths | FIXED — _redact_abs_path applied |
+| env precedence broken | N/A — env > project > user > default (verified in prior review) |
+| REMEDY_DATA_DIR compat breaks | N/A — env checked directly first (verified in prior review) |
+| provider/network execution | CLEAN — no imports of ollama/httpx/requests in config.py |
+| shell=True | CLEAN — not present |
+| CLM missing/misleading | FIXED — all files listed |
+| German content | CLEAN — English only |
+| PASS without checking uncommitted changes | CHECKED — only .agent/live_review.md (reviewer-owned) |
 
-## Top risks
-None. All 5 findings resolved. Ghost sessions blocked. Adapter spec dict-safe. Auto-bind additive only.
-execution.run is not generic. Output-ref event emitted and integrity-checked. No raw leaks.
-
-## Merge-readiness
-Merge-ready. Zero open findings. 206 targeted tests passed. All 7 checks PASS.
-NO PR unless user asks.
+## Uncommitted changes at review time
+Only `.agent/live_review.md` (reviewer-owned). No builder uncommitted changes.
 
 ## Reviewer audit log
-- Block opened for Steps 2126-2145 (Binding Closure). Prior block 2076-2125 PASS @ 1de56cf.
-- Uncommitted WIP detected: +68L managed_builder_execution.py, +2L command_catalog.py, +308L tests.
-- Pre-scan: no danger imports, no new modules, all imports already in committed code.
-- Commit e9ff046 detected: "fix(approval): close R-0111..R-0115 binding closure findings".
-  +435L across 3 production/test files. Clean working tree.
-- Full line-level review: all 5 fixes confirmed. 206 targeted tests passed (0 failed).
-- German scan: zero matches.
-- Reviewer verdict: PASS @ e9ff046 (zero open findings).
+- Closure review opened for R-0124 through R-0130 against a0fda56.
+- Initial evaluation: FAIL — 3 HIGH (R-0125, R-0126, R-0127) + 1 MEDIUM (R-0124).
+- Builder commit ceebe13 detected: closure fixes for all findings.
+- Re-evaluated all 7 findings against ceebe13:
+  - R-0124: Regex now matches quoted values. Verified with 7 test cases. RESOLVED.
+  - R-0125: Unknown keys rejected by set_config_value and CLI. Verified. RESOLVED.
+  - R-0126: Malformed TOML produces diagnostics. Unknown keys flagged at load time. RESOLVED.
+  - R-0127: Absolute paths redacted in to_summary_dict and CLI sources. Verified. RESOLVED.
+  - R-0128: show alias + --json + --path added. Verified via tests. RESOLVED.
+  - R-0129: 18 keys registered. Provider flags env_only. RESOLVED.
+  - R-0130: CLM includes all files across both tables. RESOLVED.
+- All required tests pass (6677/6677).
+- Verdict: PASS @ ceebe13.
