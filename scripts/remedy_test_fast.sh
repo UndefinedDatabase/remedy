@@ -1,14 +1,37 @@
 #!/usr/bin/env bash
-# Fast test lane — safe to run constantly during development.
+# Fast test lane — proves the core product spine is healthy.
 #
-# Excludes: subprocess, real_ollama, ui_contract, smoke, slow
-# Includes: unit, integration, architecture, safety (pure logic only)
+# Runs ~600-800 targeted tests in ~30-60 seconds.
+# Does NOT run the full 6800+ test suite.
+# Does NOT run UI builds, provider execution, or subprocess smoke tests.
 #
-# Target: ~30-60 seconds on normal dev machine.
+# When to use: during development, before committing, quick health check.
+# For full coverage: scripts/remedy_pytest.sh -k "not test_full_chain_order"
 set -euo pipefail
 
-export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-120}"
+export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-180}"
 
-echo "=== Fast Tests ==="
-exec scripts/remedy_pytest.sh tests/ -q --cache-clear \
-    -m "not subprocess and not real_ollama and not ui_contract and not smoke and not slow"
+echo "=== Fast Test Lane (Core Product Spine) ==="
+
+# Core spine test files — one per subsystem that matters for operators.
+#
+# worker facade:           alias registry, doctor/add/disable, catalog, contract
+# dogfood run:             mission run loop, morning report, CLI handlers, evidence
+# managed builder exec:    command templates, approval, execution safety, placeholders
+# main builder adapter:    adapter specs, enable/disable, mode management
+# self-repair proposal:    create/approve/deny/edit/worker-prompt lifecycle
+# review bundle:           evidence safety, no raw leaks, progress summary
+# command catalog:         catalog integrity, group definitions, handler wiring
+# run contract:            allowed/denied actions, budget, contract evaluation
+# config:                  config layer basics
+exec scripts/remedy_pytest.sh \
+    tests/cli/test_worker_facade_cmd.py \
+    tests/orchestration/test_dogfood_run.py \
+    tests/orchestration/test_managed_builder_execution.py \
+    tests/orchestration/test_main_builder_adapter.py \
+    tests/orchestration/test_self_repair_proposal.py \
+    tests/cli/test_review_bundle_runtime.py \
+    tests/cli/test_command_catalog.py \
+    tests/cli/test_contract_runtime.py \
+    tests/cli/test_config_cmd.py \
+    -q

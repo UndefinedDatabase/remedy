@@ -343,6 +343,74 @@ def _cmd_mission_report(ns: argparse.Namespace) -> None:
 
 
 # ---------------------------------------------------------------------------
+# doctor core (Step 2665)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+    from pathlib import Path
+
+    checks: list[dict[str, str | bool]] = []
+
+    def _check(name: str, ok: bool, detail: str = "") -> None:
+        checks.append({"check": name, "ok": ok, "detail": detail})
+
+    import importlib
+
+    def _try_import(name: str, module: str, attr: str) -> None:
+        try:
+            mod = importlib.import_module(module)
+            val = getattr(mod, attr, None)
+            if val is None:
+                _check(name, False, f"{attr} not found in {module}")
+            else:
+                _check(name, True, f"{attr} available")
+        except Exception as exc:
+            _check(name, False, str(exc))
+
+    _try_import("worker_facade", "apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS")
+
+    try:
+        cat = importlib.import_module("apps.cli.command_catalog")
+        _check("command_catalog", True,
+               f"{len(cat.CATALOG)} commands, {len(cat.GROUPS)} groups")
+    except Exception as exc:
+        _check("command_catalog", False, str(exc))
+
+    _try_import("run_contract", "packages.orchestration.run_contract", "ContractAction")
+    _try_import("mission_facade", "packages.orchestration.dogfood_run", "run_mission_loop")
+    _try_import("self_repair_proposal", "packages.orchestration.self_repair_proposal",
+                "list_self_repair_proposals")
+    _try_import("review_bundle", "packages.orchestration.review_bundle", "build_review_bundle")
+    _try_import("config", "packages.orchestration.config", "get_config")
+
+    fast_lane = Path("scripts/remedy_test_fast.sh")
+    _check("fast_test_lane", fast_lane.exists(), str(fast_lane))
+
+    full_lane = Path("scripts/remedy_test_full.sh")
+    _check("full_test_lane", full_lane.exists(), str(full_lane))
+
+    blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
+    ready = len(blockers) == 0
+
+    result: dict[str, Any] = {
+        "ready": ready,
+        "checks": checks,
+        "blockers": blockers,
+    }
+
+    if getattr(ns, "json", False):
+        print(json.dumps(result, indent=2))
+        return
+    print(f"Core Product Spine: {'READY' if ready else 'NOT READY'}")
+    for c in checks:
+        ok = "OK" if c["ok"] else "FAIL"
+        print(f"  [{ok}] {c['check']}: {c['detail']}")
+    if blockers:
+        print(f"  blockers: {', '.join(blockers)}")
+
+
+# ---------------------------------------------------------------------------
 # Handler registry
 # ---------------------------------------------------------------------------
 
@@ -353,4 +421,5 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "worker.disable": _cmd_worker_disable,
     "mission.run": _cmd_mission_run,
     "mission.report": _cmd_mission_report,
+    "doctor.core": _cmd_doctor_core,
 }

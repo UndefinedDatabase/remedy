@@ -48,7 +48,7 @@ class TestHandlerRegistry:
     def test_all_handlers_present(self):
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
         expected = {"worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "mission.report"}
+                    "mission.run", "mission.report", "doctor.core"}
         assert set(COMMAND_HANDLERS.keys()) == expected
 
     def test_all_handlers_callable(self):
@@ -86,7 +86,7 @@ class TestCatalogIntegration:
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
         facade_cmds = [c for c in CATALOG
                        if c.command_id in COMMAND_HANDLERS]
-        assert len(facade_cmds) == 5
+        assert len(facade_cmds) == 6
         for cmd in facade_cmds:
             assert cmd.command_id in COMMAND_HANDLERS
 
@@ -345,10 +345,37 @@ class TestMissionReport:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# doctor core
+# ---------------------------------------------------------------------------
+
+
+class TestDoctorCore:
+    def test_core_all_ready(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert out["ready"] is True
+        assert out["blockers"] == []
+        check_names = {c["check"] for c in out["checks"]}
+        assert "worker_facade" in check_names
+        assert "command_catalog" in check_names
+        assert "run_contract" in check_names
+        assert "mission_facade" in check_names
+        assert "fast_test_lane" in check_names
+
+    def test_core_text_output(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=False))
+        out = capsys.readouterr().out
+        assert "Core Product Spine" in out
+        assert "READY" in out
+
+
 class TestCollectHandlers:
     def test_facade_in_collected(self):
         from apps.cli.commands import collect_all_handlers
         handlers = collect_all_handlers()
         for key in ("worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "mission.report"):
+                    "mission.run", "mission.report", "doctor.core"):
             assert key in handlers, f"{key} missing from collect_all_handlers"

@@ -2,25 +2,25 @@
 
 ## What is a Mission Run?
 
-A mission run is a bounded, step-at-a-time orchestration loop. It evaluates
+A Mission Run is a bounded, step-at-a-time orchestration loop. It evaluates
 what Remedy should do next, records the decision, and stops when done,
 blocked, or out of budget.
 
-A mission run is not a fixed-duration timer. It stops as soon as the mission
+A Mission Run is not a fixed-duration timer. It stops as soon as the mission
 is satisfied, or when it cannot safely continue.
 
-## Terminology
+## Quick start (recommended)
 
-The CLI group is `dogfood` (internal developer naming). Operator-facing
-documentation prefers:
+```bash
+# 1. Run a bounded mission loop
+remedy mission run <run_id> --job-id <job_id> --json
 
-- **Mission Run** — the bounded loop
-- **Self-Test Run** — when Remedy tests itself
-- **Run Replay** — checkpoint log analysis
-- **Evidence Bundle** — review bundle with proof chain
-- **Self-Repair Proposal** — suggested fix from analysis
+# 2. Read the morning report
+remedy mission report <run_id> --job-id <job_id> --json
+```
 
-The CLI commands remain unchanged for backwards compatibility.
+These are the operator-facing commands. They call the same logic as the
+internal `dogfood` commands below.
 
 ## What makes a run stop?
 
@@ -32,50 +32,21 @@ A run stops on any of these conditions:
 - Waiting for operator (builder session needs human action)
 - Budget exhausted (step, token, or wall-clock limit reached)
 - Operator stopped (manual stop command)
-- Max loop steps reached (loop-level cap)
-- Max loop seconds reached (wall clock for this invocation)
+- Max loop steps reached (loop-level cap, default 10)
+- Max loop seconds reached (wall clock, default 300)
 - No safe next action
 - Internal error
 
 No unbounded loop is allowed.
 
-## Quick start
-
-```bash
-# 1. Create a run
-remedy dogfood create <job_id> --json
-
-# 2. Run the bounded loop (10 steps, 5 minutes max)
-remedy dogfood run-loop <run_id> --job-id <job_id> --max-steps 10 --max-seconds 300 --json
-
-# 3. Check the morning report
-remedy dogfood morning-report <run_id> --job-id <job_id> --json
-
-# 4. Single step (fine-grained control)
-remedy dogfood step <run_id> <job_id> --json
-
-# 5. Replay analysis
-remedy dogfood replay <run_id> <job_id> --json
-```
-
-## How to inspect at any time
-
-After 10 minutes, 1 hour, or overnight:
-
-```bash
-# Quick status
-remedy dogfood show <run_id> <job_id> --json
-
-# Full morning report
-remedy dogfood morning-report <run_id> --job-id <job_id> --json
-```
+## What the Morning Report tells you
 
 The morning report answers:
 
 - Is it done?
 - Is it stuck?
 - What is it waiting for?
-- Did Claude/another builder run?
+- Did a builder (like Claude Code) run?
 - Is there output?
 - Did output pass intake/review/test gates?
 - Is there a proposed self-repair prompt?
@@ -83,9 +54,9 @@ The morning report answers:
 
 ## How Claude Code fits
 
-Claude Code can be launched through the existing managed execution rails:
+Claude Code can be launched through managed execution rails:
 
-1. Operator enables adapter + template (`remedy execution claude-doctor --json`)
+1. Operator adds worker: `remedy worker add claude --json`
 2. Operator approves execution for a session
 3. Loop or operator runs managed execution
 4. Output enters sandbox intake (untrusted)
@@ -99,7 +70,7 @@ The morning report shows:
 
 - Whether proposals exist
 - Latest proposal status
-- How many await approval
+- How many await operator review
 - Command to inspect proposals
 
 Self-repair proposals are never auto-created by the loop. They come from
@@ -109,7 +80,7 @@ prior analysis (replay, review, test failures).
 
 For full overnight autonomy, these steps still require operator action:
 
-- Starting the loop (`remedy dogfood run-loop`)
+- Starting the loop (`remedy mission run`)
 - Approving managed execution (`remedy execution approve`)
 - Reviewing builder output
 - Applying approved self-repair proposals
@@ -117,3 +88,37 @@ For full overnight autonomy, these steps still require operator action:
 
 The loop and report make the state visible. They do not act autonomously
 beyond evaluating state and recording checkpoints.
+
+## Terminology note
+
+The CLI group `dogfood` is internal developer naming. Operator-facing
+documentation uses:
+
+- **Mission Run** — the bounded loop
+- **Mission Report** — the morning report
+- **Self-Repair Proposal** — suggested fix from analysis
+
+The internal `dogfood` commands remain available for debugging and
+backwards compatibility.
+
+## Internal commands (advanced)
+
+```bash
+# Create a run
+remedy dogfood create <job_id> --json
+
+# Run the bounded loop (low-level)
+remedy dogfood run-loop <run_id> --job-id <job_id> --max-steps 10 --max-seconds 300 --json
+
+# Morning report (low-level)
+remedy dogfood morning-report <run_id> --job-id <job_id> --json
+
+# Single step (fine-grained control)
+remedy dogfood step <run_id> <job_id> --json
+
+# Replay analysis
+remedy dogfood replay <run_id> <job_id> --json
+
+# Quick status
+remedy dogfood show <run_id> <job_id> --json
+```

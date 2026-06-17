@@ -88,6 +88,7 @@ GROUPS: dict[str, GroupDef] = {
     "policy": GroupDef("policy", "Policy", "Inspect execution policies."),
     "worker": GroupDef("worker", "Worker", "Worker management — add, doctor, disable workers + list provider specs."),
     "mission": GroupDef("mission", "Mission", "Mission run facade — bounded run loop + morning report (calls existing dogfood/execution rails; no auto-approval; no auto-apply)."),
+    "doctor": GroupDef("doctor", "Doctor", "Product spine health checks (read-only; no execution; no network)."),
     "memory": GroupDef("memory", "Memory", "Store and recall project memory."),
     "readiness": GroupDef("readiness", "Readiness", "Inspect autonomy readiness."),
     "context": GroupDef("context", "Context", "Context pack and coverage."),
@@ -1313,6 +1314,18 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.run", "dogfood.morning-report"),
+    ),
+
+    # ── doctor (product spine health check) ──────────────────────────────
+    CommandEntry(
+        command_id="doctor.core",
+        group_id="doctor",
+        subcommand="core",
+        description="Read-only core product spine health check — modules, scripts, config (no execution; no network; no secrets).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("worker.doctor", "mission.report"),
     ),
 
     # ── route-policy (Worker Registry user-selectable routing) ─────────────

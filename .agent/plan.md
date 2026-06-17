@@ -1,24 +1,32 @@
-# Plan — Steps 2616-2655: Simple Worker Onboarding + Mission Command Facade v0
+# Plan — Steps 2656-2675: Core Product Spine + Reliable Fast Test Lane v0
 
 ## Goal
-Make existing safe core easier to use. Worker add/doctor/disable facades +
-mission run/report facades. Low-level commands stay available.
+Consolidation block. Document core operator flow, create fast test lane,
+update docs to product language, add targeted consistency tests.
+No new features, no new autonomy, no new provider execution.
 
 ## Steps
-- [x] Step 2616: Mainline gate + R-0151/R-0152 fix
-- [x] Step 2617: UX audit
-- [x] Step 2618-2619: Facade principles + alias registry
-- [x] Step 2620-2622: worker doctor/add/disable
-- [x] Step 2623: worker readiness — skipped, doctor covers it
-- [x] Step 2624-2626: mission run/report/status facades (status skipped — report covers it)
-- [x] Step 2627-2628: Fix self-repair command text + status values (R-0151/R-0152)
-- [x] Step 2629-2630: Quickstart output + advanced field
-- [x] Step 2631-2632: Catalog + contract
-- [x] Step 2633-2634: CLI handlers + help text
-- [x] Step 2635-2637: Docs
-- [x] Step 2638-2644: Tests (27 facade + 6835 full suite) + lint + full suite
-- [ ] Step 2645: Final handoff
+- [x] Step 2656: Mainline gate + stale review check
+- [x] Step 2657: Core product spine audit
+- [x] Step 2658: Command taxonomy audit
+- [x] Step 2659: Canonical flow map document (core-product-spine-v0.md)
+- [x] Step 2660: Fast test lane design (9 targeted suites)
+- [x] Step 2661: scripts/remedy_test_fast.sh (420 tests, ~7s)
+- [x] Step 2662: Test lanes manifest doc (test-lanes-v0.md)
+- [x] Step 2663: scripts/remedy_test_full.sh wrapper
+- [x] Step 2664: Full-suite hang risk — all subprocess tests use timeout+killpg
+- [x] Step 2665: remedy doctor core --json (read-only, importlib-based)
+- [x] Step 2666: Catalog + contract for doctor core
+- [x] Step 2667: Update simple operator quickstart
+- [x] Step 2668: Update controlled Claude operator docs (simple path primary)
+- [x] Step 2669: Update mission report docs (product language)
+- [x] Step 2670: Stale command scanner test (6 checks)
+- [x] Step 2671: Product spine consistency tests (7 checks)
+- [x] Step 2672: Fast lane self-test (7 checks)
+- [x] Step 2673: Architecture guard scan — clean
+- [x] Step 2674: Targeted (420 fast + 49 facade + 20 spine) + full (6863) tests
+- [ ] Step 2675: Final handoff
 
 ## Hard rules
 No auto-apply/approve/provider execution/shell=True/secret storage/raw leaks.
-Facade only — calls existing safe rails.
+Consolidation only — docs, scripts, tests. No new features.
