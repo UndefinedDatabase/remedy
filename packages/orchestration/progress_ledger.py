@@ -2207,6 +2207,12 @@ def mark_progress_item_done(
 # ---------------------------------------------------------------------------
 
 
+def _redact_ledger_text(text: str) -> str:
+    """Scrub secret-like patterns from ledger text for safe export."""
+    from packages.orchestration.redaction_patterns import _SECRET_RE
+    return _SECRET_RE.sub("[REDACTED]", text)
+
+
 def export_progress_ledger_json(ledger: ProgressLedger) -> dict:
     """Export ledger as safe JSON dict."""
     return {
@@ -2223,15 +2229,15 @@ def export_progress_ledger_json(ledger: ProgressLedger) -> dict:
         "items": [
             {
                 "item_id": i.item_id,
-                "title": i.title,
+                "title": _redact_ledger_text(i.title),
                 "status": i.status.value,
                 "source_type": i.source_type.value,
                 "source_ref": i.source_ref,
                 "severity": i.severity,
                 "area": i.area,
                 "evidence_count": len(i.evidence_refs),
-                "next_action": i.next_action,
-                "safe_summary": i.safe_summary,
+                "next_action": _redact_ledger_text(i.next_action),
+                "safe_summary": _redact_ledger_text(i.safe_summary),
             }
             for i in ledger.items
         ],

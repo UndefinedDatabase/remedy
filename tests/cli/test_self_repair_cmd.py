@@ -172,6 +172,8 @@ class TestSelfRepairCli:
             status=SelfRepairProposalStatus.APPROVED,
             suggested_worker_prompt="Do the fix",
             evidence_refs=["replay:test"],
+            acceptance_criteria=["Tests pass"],
+            required_tests=["test_foo.py"],
             operator_decision="approved by op-1",
             created_at="2026-01-01T00:00:00Z",
         )

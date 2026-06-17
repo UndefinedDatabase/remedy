@@ -49,8 +49,9 @@ _RAW_MARKERS = (
 _ABS_PATH_RE = re.compile(r"(?<![:/])/(?:home|Users|tmp|var|etc)/\S+")
 
 _SECRET_RE = re.compile(
-    r"(sk-ant-[A-Za-z0-9_-]+|sk-proj-[A-Za-z0-9_-]+"
-    r"|api_key\s*=\s*\S+|password\s*=\s*\S+|secret_key\s*=\s*\S+"
+    r"(?i)"
+    r"(?:sk-ant-[A-Za-z0-9_-]+|sk-proj-[A-Za-z0-9_-]+"
+    r"|(?:api_key|password|secret_key|token|credential)\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s,;'\"]*)"
     r"|-----BEGIN\s+[A-Z ]+-----[\s\S]*?-----END\s+[A-Z ]+-----)",
 )
 
@@ -410,17 +411,17 @@ def create_self_repair_proposal_from_replay(
     # Blocking reasons → suspected Remedy bugs.
     for reason in signals.get("blocking_reasons", []):
         issues.append({"type": "blocking", "detail": reason})
-        evidence_refs.append(f"replay:{run_id}")
 
     # Anomalies → potential issues.
     for anomaly in signals.get("anomalies", []):
         if anomaly.startswith("lane_never_activated:"):
             lane = anomaly.split(":", 1)[1]
             issues.append({"type": "anomaly", "detail": f"Lane {lane} never activated"})
-            evidence_refs.append(f"replay:{run_id}")
         elif anomaly in ("approaching_step_budget", "approaching_token_budget"):
             issues.append({"type": "budget_warning", "detail": anomaly})
-            evidence_refs.append(f"replay:{run_id}")
+
+    if signals.get("blocking_reasons") or signals.get("anomalies"):
+        evidence_refs.append(f"replay:{run_id}")
 
     # Integrity failures.
     for failure in signals.get("integrity_failures", []):
@@ -636,7 +637,9 @@ def convert_self_repair_proposal_to_worker_prompt(
     if proposal.status != SelfRepairProposalStatus.APPROVED:
         return None
     if (not proposal.evidence_refs
-            or not proposal.suggested_worker_prompt.strip()):
+            or not proposal.suggested_worker_prompt.strip()
+            or not proposal.acceptance_criteria
+            or not proposal.required_tests):
         return None
     prompt = _sanitize_prompt(proposal.suggested_worker_prompt)
     proposal.status = SelfRepairProposalStatus.CONVERTED_TO_WORKER_PROMPT

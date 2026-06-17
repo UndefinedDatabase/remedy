@@ -401,6 +401,8 @@ class TestConversion:
             status=SelfRepairProposalStatus.APPROVED,
             suggested_worker_prompt="Do the fix",
             evidence_refs=["replay:test"],
+            acceptance_criteria=["Tests pass"],
+            required_tests=["test_foo.py"],
             operator_decision="approved by op-1",
             created_at="2026-01-01T00:00:00Z",
         )
@@ -417,12 +419,46 @@ class TestConversion:
             status=SelfRepairProposalStatus.APPROVED,
             suggested_worker_prompt="Do the fix",
             evidence_refs=[],
+            acceptance_criteria=["Tests pass"],
+            required_tests=["test_foo.py"],
             operator_decision="approved by op-1",
             created_at="2026-01-01T00:00:00Z",
         )
         save_self_repair_proposal(p, data_dir=tmp_path)
         assert convert_self_repair_proposal_to_worker_prompt(
             "srp-cnvnoev", data_dir=tmp_path,
+        ) is None
+
+    def test_convert_no_criteria_fails(self, tmp_path):
+        p = SelfRepairProposal(
+            proposal_id="srp-cnvnocrit",
+            status=SelfRepairProposalStatus.APPROVED,
+            suggested_worker_prompt="Do the fix",
+            evidence_refs=["replay:test"],
+            acceptance_criteria=[],
+            required_tests=["test_foo.py"],
+            operator_decision="approved by op-1",
+            created_at="2026-01-01T00:00:00Z",
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert convert_self_repair_proposal_to_worker_prompt(
+            "srp-cnvnocrit", data_dir=tmp_path,
+        ) is None
+
+    def test_convert_no_required_tests_fails(self, tmp_path):
+        p = SelfRepairProposal(
+            proposal_id="srp-cnvnotests",
+            status=SelfRepairProposalStatus.APPROVED,
+            suggested_worker_prompt="Do the fix",
+            evidence_refs=["replay:test"],
+            acceptance_criteria=["Tests pass"],
+            required_tests=[],
+            operator_decision="approved by op-1",
+            created_at="2026-01-01T00:00:00Z",
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert convert_self_repair_proposal_to_worker_prompt(
+            "srp-cnvnotests", data_dir=tmp_path,
         ) is None
 
     def test_convert_denied_blocked(self, tmp_path):
@@ -714,6 +750,30 @@ class TestSecretScrubbing:
         assert result is not None
         assert "sk-ant" not in result.suggested_worker_prompt
 
+    def test_sanitize_prompt_scrubs_token_unquoted(self):
+        result = _sanitize_prompt("token=mysecret123")
+        assert "mysecret123" not in result
+
+    def test_sanitize_prompt_scrubs_token_quoted(self):
+        result = _sanitize_prompt('token="mysecret123"')
+        assert "mysecret123" not in result
+
+    def test_sanitize_prompt_scrubs_token_case_insensitive(self):
+        result = _sanitize_prompt("TOKEN=mysecret123")
+        assert "mysecret123" not in result
+
+    def test_sanitize_prompt_scrubs_credential_unquoted(self):
+        result = _sanitize_prompt("credential=mysecret123")
+        assert "mysecret123" not in result
+
+    def test_sanitize_prompt_scrubs_credential_quoted(self):
+        result = _sanitize_prompt("credential=\"mysecret123\"")
+        assert "mysecret123" not in result
+
+    def test_normal_token_word_not_overblocked(self):
+        result = _sanitize_prompt("No token configured for this run")
+        assert result == "No token configured for this run"
+
 
 # ---------------------------------------------------------------------------
 # R-0137: Signal collection diagnostics
@@ -726,3 +786,15 @@ class TestSignalCollectionDiagnostics:
         p = create_self_repair_proposal_from_replay("nonexistent-run", data_dir=tmp_path)
         assert p.status == SelfRepairProposalStatus.BLOCKED
         assert p.proposal_id.startswith("srp-")
+
+
+# ---------------------------------------------------------------------------
+# R-0145: Evidence ref uniqueness
+# ---------------------------------------------------------------------------
+
+
+class TestEvidenceUniqueness:
+
+    def test_evidence_refs_no_duplicates(self, tmp_path):
+        p = create_self_repair_proposal_from_replay("test-run", data_dir=tmp_path)
+        assert len(p.evidence_refs) == len(set(p.evidence_refs))
