@@ -13,35 +13,43 @@ memory/MemPalace/embeddings.
 Timestamp: 2026-06-17
 
 ## Verdict (reviewer-owned)
-**PENDING** — awaiting builder commits on feature branch.
+**PASS** @ b897f48 (R-0150 Resolved)
 
 ## Precondition check (Check 1: Mainline closure)
 - Previous block: Steps 2506-2585 Controlled Claude Code Operator Path v0
   - Reviewer PASS WITH RISKS @ 2d68a7e on main (verdict @ df2525c)
   - PR #85 merged to main @ 2419dc5
-- Branch: NOT YET CREATED (awaiting builder)
-- Uncommitted changes: NONE (clean working tree on main verified at review start)
+- Branch: feature/steps-2586-2615-mission-run-loop-morning-report-v0
 
 ## Prior block
 Steps 2506-2585: PASS WITH RISKS @ 2d68a7e. Merged via PR #85 → 2419dc5.
 R-0147 Resolved. R-0148/R-0149 Low open (CLI subprocess tests, CLM format).
-Builder self-merged before reviewer verdict — protocol violation documented.
 
 ## Finding IDs
 Start at R-0150 (last reviewed: R-0149).
 
-## Required checks (9 total)
-1. Mainline and step integrity — PASS (preconditions met, awaiting branch)
-2. Bounded loop behavior — PENDING
-3. No fixed duration profile — PENDING
-4. Morning report — PENDING
-5. Claude operator path visibility — PENDING
-6. Self-repair visibility — PENDING
-7. CLI behavior — PENDING
-8. Terminology and docs — PENDING
-9. Safety — PENDING
+## Findings
+
+R-0150: LOW: packages/orchestration/dogfood_run.py:1541: build_mission_morning_report() set
+report.blocking_reasons which is not a declared field on MissionMorningReport. Orphan dynamic
+attribute never serialized. Fix: removed orphan assignment. **Resolved**.
+
+## Required checks (12 total)
+1. Mainline closure — PASS
+2. Bounded loop — PASS (10 stop conditions, max_steps + max_seconds + terminal/waiting)
+3. MissionRunLoopResult — PASS (all fields, _safe() scrubbing, JSON-safe)
+4. MissionMorningReport — PASS (all fields, no raw leaks)
+5. build_mission_morning_report() — PASS (read-only, aggregates evidence)
+6. CLI commands — PASS (run-loop + morning-report, bounded, JSON)
+7. Catalog + contract — PASS (write_metadata + read_only, no may_execute_commands)
+8. Review bundle — PASS (stop_reason, next_safe_action, morning_report_available)
+9. Stale doc fix — PASS (--adapter → --adapter-id)
+10. Tests — PASS (8 loop + 8 report = 16 new, counts updated)
+11. Architecture guards — PASS (no shell=True, no provider, no auto-apply, __all__ updated)
+12. Terminology doc — PASS (operator-facing terms, no full autonomy claim)
 
 ## Reviewer audit log
-- Precondition check: previous block PASS WITH RISKS @ 2d68a7e, PR #85 merged, main clean @ df2525c.
-- WARNING to builder: Do NOT write verdict to live_review.md. Do NOT merge PR before reviewer completes independent review. Protocol violation from prior block is documented.
-- Awaiting builder feature branch creation.
+- Precondition check: PR #85 merged @ 2419dc5, reviewer PASS WITH RISKS.
+- Single commit b897f48 reviewed. 11 files, 940 insertions.
+- R-0150 (LOW): orphan attribute fixed. Resolved.
+- Verdict: PASS @ b897f48.

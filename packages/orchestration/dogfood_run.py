@@ -1538,7 +1538,6 @@ def build_mission_morning_report(
     report.final_status = run.status
     report.stopped_because = run.stop_reason
     report.steps_completed = run.step_count
-    report.blocking_reasons = list(run.blocking_reasons)
 
     ev = evaluate_dogfood_run(run, ddir)
     report.mission_status = "satisfied" if ev.satisfied else ev.status
