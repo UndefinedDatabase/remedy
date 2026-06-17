@@ -1199,6 +1199,412 @@ def export_replay_json(analysis: DogfoodReplayAnalysis) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Bounded mission run loop (Step 2589-2590)
+# ---------------------------------------------------------------------------
+
+_WAITING_STATUSES = frozenset({
+    DogfoodRunStatus.WAITING_FOR_APPROVAL, DogfoodRunStatus.WAITING_FOR_BUILDER,
+    DogfoodRunStatus.WAITING_FOR_REVIEW, DogfoodRunStatus.WAITING_FOR_TESTS,
+})
+
+_LOOP_STOP_REASONS = frozenset({
+    "mission_satisfied", "blocked", "waiting_for_approval", "waiting_for_operator",
+    "budget_exhausted", "operator_stopped", "max_steps_reached",
+    "max_seconds_reached", "no_safe_next_action", "internal_error",
+})
+
+
+@dataclass
+class MissionRunLoopResult:
+    """Safe result from a bounded mission run loop iteration."""
+    run_id: str = ""
+    job_id: str = ""
+    started_at: str = ""
+    ended_at: str = ""
+    steps_attempted: int = 0
+    final_status: str = ""
+    stop_reason: str = ""
+    latest_checkpoint_id: str = ""
+    next_safe_action: str = ""
+    blocking_reasons: list[str] = field(default_factory=list)
+    report_summary: str = ""
+    errors: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id, "job_id": self.job_id,
+            "started_at": self.started_at, "ended_at": self.ended_at,
+            "steps_attempted": self.steps_attempted,
+            "final_status": self.final_status,
+            "stop_reason": _safe(self.stop_reason),
+            "latest_checkpoint_id": self.latest_checkpoint_id,
+            "next_safe_action": _safe(self.next_safe_action),
+            "blocking_reasons": list(self.blocking_reasons),
+            "report_summary": _safe(self.report_summary),
+            "errors": [_safe(e) for e in self.errors],
+        }
+
+
+def run_mission_loop(
+    run_id: str, *, job_id: str = "",
+    max_steps: int = 10, max_seconds: int = 300,
+    data_dir: Path | None = None,
+) -> MissionRunLoopResult:
+    """Run a bounded mission loop. Calls step_dogfood_run() repeatedly until a stop condition.
+
+    Stop conditions:
+    - mission satisfied
+    - blocked / waiting for approval / waiting for operator
+    - budget exhausted
+    - operator stopped
+    - max_steps reached (loop-level cap, separate from policy cap)
+    - max_seconds reached (wall clock for this loop invocation)
+    - no safe next action
+    - internal error
+
+    No provider execution. No auto-approval. No auto-apply.
+    """
+    import time
+
+    ddir = _resolve_ddir(data_dir)
+
+    result = MissionRunLoopResult(
+        run_id=run_id, started_at=_now(),
+    )
+
+    run = load_dogfood_run(run_id, job_id, ddir)
+    if run is None:
+        # Try searching across jobs if job_id empty.
+        if not job_id:
+            runs = list_dogfood_runs(data_dir=ddir)
+            for r in runs:
+                if r.get("run_id") == run_id:
+                    run = load_dogfood_run(run_id, r.get("job_id", ""), ddir)
+                    break
+        if run is None:
+            result.stop_reason = "internal_error"
+            result.errors.append(f"run not found: {run_id}")
+            result.ended_at = _now()
+            return result
+
+    result.job_id = run.job_id
+    start_time = time.monotonic()
+    steps_done = 0
+
+    while steps_done < max_steps:
+        elapsed = time.monotonic() - start_time
+        if elapsed >= max_seconds:
+            result.stop_reason = "max_seconds_reached"
+            break
+
+        if run.status in _TERMINAL_STATUSES:
+            if run.status == DogfoodRunStatus.SATISFIED:
+                result.stop_reason = "mission_satisfied"
+            elif run.status == DogfoodRunStatus.BLOCKED:
+                result.stop_reason = "blocked"
+            elif run.status == DogfoodRunStatus.STOPPED_BY_OPERATOR:
+                result.stop_reason = "operator_stopped"
+            elif run.status == DogfoodRunStatus.BUDGET_EXHAUSTED:
+                result.stop_reason = "budget_exhausted"
+            else:
+                result.stop_reason = "internal_error"
+            break
+
+        if run.status in _WAITING_STATUSES:
+            if run.status == DogfoodRunStatus.WAITING_FOR_APPROVAL:
+                result.stop_reason = "waiting_for_approval"
+            else:
+                result.stop_reason = "waiting_for_operator"
+            break
+
+        try:
+            run, cp = step_dogfood_run(run, data_dir=ddir)
+            steps_done += 1
+            result.latest_checkpoint_id = cp.checkpoint_id
+
+            if cp.next_suggested_action and cp.next_suggested_action != "none":
+                result.next_safe_action = cp.next_suggested_action
+            else:
+                result.stop_reason = "no_safe_next_action"
+                break
+
+        except Exception as exc:
+            result.stop_reason = "internal_error"
+            result.errors.append(str(exc)[:200])
+            break
+
+    if not result.stop_reason and steps_done >= max_steps:
+        result.stop_reason = "max_steps_reached"
+
+    result.steps_attempted = steps_done
+    result.final_status = run.status
+    result.blocking_reasons = list(run.blocking_reasons)
+    result.ended_at = _now()
+    result.report_summary = (
+        f"{steps_done} steps, status={run.status}, stop={result.stop_reason}"
+    )
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Morning report (Steps 2592-2593, 2598, 2600-2601)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MissionMorningReport:
+    """Safe morning report for operator inspection. No raw logs/output/prompts/secrets."""
+    run_id: str = ""
+    job_id: str = ""
+    mission_status: str = ""
+    final_status: str = ""
+    stopped_because: str = ""
+    steps_completed: int = 0
+    budget_remaining_steps: int = 0
+    budget_remaining_tokens: int = 0
+    completed_items: list[str] = field(default_factory=list)
+    blocked_items: list[str] = field(default_factory=list)
+    waiting_for_approval: list[str] = field(default_factory=list)
+    builder_execution_summary: dict[str, Any] = field(default_factory=dict)
+    sandbox_intake_summary: dict[str, Any] = field(default_factory=dict)
+    review_summary: dict[str, Any] = field(default_factory=dict)
+    test_summary: dict[str, Any] = field(default_factory=dict)
+    self_repair_summary: dict[str, Any] = field(default_factory=dict)
+    core_readiness: dict[str, Any] = field(default_factory=dict)
+    evidence_refs: list[str] = field(default_factory=list)
+    next_safe_action: str = ""
+    operator_summary: str = ""
+    created_at: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id, "job_id": self.job_id,
+            "mission_status": self.mission_status,
+            "final_status": self.final_status,
+            "stopped_because": _safe(self.stopped_because),
+            "steps_completed": self.steps_completed,
+            "budget_remaining_steps": self.budget_remaining_steps,
+            "budget_remaining_tokens": self.budget_remaining_tokens,
+            "completed_items": [_safe(i) for i in self.completed_items],
+            "blocked_items": [_safe(i) for i in self.blocked_items],
+            "waiting_for_approval": [_safe(i) for i in self.waiting_for_approval],
+            "builder_execution_summary": dict(self.builder_execution_summary),
+            "sandbox_intake_summary": dict(self.sandbox_intake_summary),
+            "review_summary": dict(self.review_summary),
+            "test_summary": dict(self.test_summary),
+            "self_repair_summary": dict(self.self_repair_summary),
+            "core_readiness": dict(self.core_readiness),
+            "evidence_refs": list(self.evidence_refs),
+            "next_safe_action": _safe(self.next_safe_action),
+            "operator_summary": _safe(self.operator_summary, 500),
+            "created_at": self.created_at,
+        }
+
+
+def _build_core_readiness(job_id: str, ddir: Path) -> dict[str, Any]:
+    """Check readiness of each component in the core run path."""
+    readiness: dict[str, Any] = {}
+
+    try:
+        from packages.orchestration.overnight_mission import list_mission_contracts
+        contracts = list_mission_contracts(job_id=job_id, data_dir=ddir)
+        readiness["mission_contract"] = len(contracts) > 0
+    except (ImportError, Exception):
+        readiness["mission_contract"] = False
+
+    runs = list_dogfood_runs(job_id=job_id, data_dir=ddir)
+    readiness["run_exists"] = len(runs) > 0
+
+    try:
+        from packages.orchestration.main_builder_adapter import (
+            get_builder_adapter_spec,
+            list_builder_sessions,
+        )
+        claude_adapter = get_builder_adapter_spec("claude-code-v0")
+        readiness["builder_adapter_available"] = claude_adapter is not None
+        readiness["builder_adapter_enabled"] = bool(claude_adapter and claude_adapter.get("enabled", False))
+        sessions = list_builder_sessions(job_id, data_dir=ddir)
+        readiness["builder_sessions"] = len(sessions)
+    except (ImportError, Exception):
+        readiness["builder_adapter_available"] = False
+        readiness["builder_adapter_enabled"] = False
+        readiness["builder_sessions"] = 0
+
+    try:
+        from packages.orchestration.managed_builder_execution import (
+            get_command_template,
+            list_execution_approvals,
+        )
+        claude_tmpl = get_command_template("claude-code-repair-v0")
+        readiness["claude_template_available"] = claude_tmpl is not None
+        readiness["claude_template_enabled"] = bool(claude_tmpl and claude_tmpl.get("enabled", False))
+        approvals = list_execution_approvals()
+        readiness["approval_count"] = len(approvals)
+    except (ImportError, Exception):
+        readiness["claude_template_available"] = False
+        readiness["claude_template_enabled"] = False
+        readiness["approval_count"] = 0
+
+    try:
+        from packages.orchestration.self_repair_proposal import list_self_repair_proposals
+        proposals = list_self_repair_proposals(job_id=job_id, data_dir=ddir)
+        readiness["self_repair_proposals"] = len(proposals)
+    except (ImportError, Exception):
+        readiness["self_repair_proposals"] = 0
+
+    return readiness
+
+
+def _build_builder_execution_summary(job_id: str, ddir: Path) -> dict[str, Any]:
+    """Safe builder/execution summary for morning report."""
+    summary: dict[str, Any] = {}
+    try:
+        from packages.orchestration.main_builder_adapter import list_builder_sessions
+        sessions = list_builder_sessions(job_id, data_dir=ddir)
+        summary["session_count"] = len(sessions)
+        if sessions:
+            latest = sessions[-1]
+            summary["latest_session_status"] = latest.get("status", "unknown")
+            summary["latest_adapter_id"] = latest.get("adapter_id", "")
+            summary["output_ref_exists"] = bool(latest.get("output_artifact_ref"))
+            summary["intake_pending"] = latest.get("status") in (
+                "candidate_received", "package_ready", "submitted")
+        else:
+            summary["latest_session_status"] = "none"
+            summary["output_ref_exists"] = False
+            summary["intake_pending"] = False
+    except (ImportError, Exception):
+        summary["latest_session_status"] = "unavailable"
+        summary["output_ref_exists"] = False
+        summary["intake_pending"] = False
+
+    try:
+        from packages.orchestration.managed_builder_execution import list_execution_results
+        results = list_execution_results(job_id, data_dir=ddir)
+        summary["execution_count"] = len(results)
+        if results:
+            latest = results[-1]
+            summary["latest_execution_status"] = latest.get("status", "unknown")
+        else:
+            summary["latest_execution_status"] = "none"
+    except (ImportError, Exception):
+        summary["execution_count"] = 0
+        summary["latest_execution_status"] = "unavailable"
+
+    return summary
+
+
+def _build_self_repair_summary(job_id: str, ddir: Path) -> dict[str, Any]:
+    """Safe self-repair proposal summary for morning report."""
+    summary: dict[str, Any] = {}
+    try:
+        from packages.orchestration.self_repair_proposal import list_self_repair_proposals
+        proposals = list_self_repair_proposals(job_id=job_id, data_dir=ddir)
+        summary["proposal_count"] = len(proposals)
+        awaiting = sum(1 for p in proposals if p.get("status") in ("proposed", "ready"))
+        summary["awaiting_approval"] = awaiting
+        if proposals:
+            latest = proposals[-1]
+            summary["latest_status"] = latest.get("status", "unknown")
+            summary["inspect_command"] = "remedy self proposal-list --json"
+        else:
+            summary["latest_status"] = "none"
+    except (ImportError, Exception):
+        summary["proposal_count"] = 0
+        summary["awaiting_approval"] = 0
+        summary["latest_status"] = "unavailable"
+    return summary
+
+
+def build_mission_morning_report(
+    run_id: str, *, job_id: str = "", data_dir: Path | None = None,
+) -> MissionMorningReport:
+    """Build a safe morning report from existing evidence. Read-only, no execution."""
+    ddir = _resolve_ddir(data_dir)
+    report = MissionMorningReport(run_id=run_id, created_at=_now())
+
+    run = load_dogfood_run(run_id, job_id, ddir)
+    if run is None and not job_id:
+        runs = list_dogfood_runs(data_dir=ddir)
+        for r in runs:
+            if r.get("run_id") == run_id:
+                run = load_dogfood_run(run_id, r.get("job_id", ""), ddir)
+                break
+    if run is None:
+        report.operator_summary = f"Run not found: {run_id}"
+        return report
+
+    report.job_id = run.job_id
+    report.final_status = run.status
+    report.stopped_because = run.stop_reason
+    report.steps_completed = run.step_count
+    report.blocking_reasons = list(run.blocking_reasons)
+
+    ev = evaluate_dogfood_run(run, ddir)
+    report.mission_status = "satisfied" if ev.satisfied else ev.status
+    report.budget_remaining_steps = ev.budget_remaining_steps
+    report.budget_remaining_tokens = ev.budget_remaining_tokens
+
+    if ev.next_actions:
+        report.next_safe_action = ev.next_actions[0].get("action", "")
+
+    for reason in run.blocking_reasons:
+        report.blocked_items.append(reason)
+
+    if run.status == DogfoodRunStatus.WAITING_FOR_APPROVAL:
+        report.waiting_for_approval.append("execution_approval_needed")
+
+    if ev.satisfied:
+        report.completed_items.append("mission_contract_satisfied")
+
+    report.core_readiness = _build_core_readiness(run.job_id, ddir)
+    report.builder_execution_summary = _build_builder_execution_summary(run.job_id, ddir)
+    report.self_repair_summary = _build_self_repair_summary(run.job_id, ddir)
+
+    # Test summary from evidence.
+    evidence = ev.evidence
+    report.test_summary = {
+        "status": evidence.get("tests_status", "unavailable"),
+        "failed_count": evidence.get("failed_tests", 0),
+    }
+
+    # Review summary.
+    report.review_summary = {
+        "open_findings": evidence.get("open_review_findings", 0),
+    }
+
+    # Sandbox intake.
+    report.sandbox_intake_summary = {
+        "intake_pending": report.builder_execution_summary.get("intake_pending", False),
+        "output_ref_exists": report.builder_execution_summary.get("output_ref_exists", False),
+    }
+
+    # Evidence refs.
+    checkpoints = load_checkpoints(run_id, run.job_id, ddir)
+    if checkpoints:
+        report.evidence_refs.append(f"checkpoints:{len(checkpoints)}")
+    replay = _load_json(_replay_path(run.job_id, run_id, ddir))
+    if replay:
+        report.evidence_refs.append("replay_analysis")
+
+    # Operator summary.
+    parts: list[str] = []
+    parts.append(f"Run {run_id}: {run.status}.")
+    if run.stop_reason:
+        parts.append(f"Stopped: {run.stop_reason}.")
+    parts.append(f"{run.step_count} steps completed.")
+    if ev.budget_remaining_steps <= 0:
+        parts.append("Step budget exhausted.")
+    if report.self_repair_summary.get("awaiting_approval", 0) > 0:
+        parts.append(f"{report.self_repair_summary['awaiting_approval']} self-repair proposals awaiting approval.")
+    if report.next_safe_action:
+        parts.append(f"Next: {report.next_safe_action}.")
+    report.operator_summary = " ".join(parts)
+
+    return report
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -1220,6 +1626,10 @@ __all__ = [
     "step_dogfood_run", "stop_dogfood_run",
     # Replay.
     "analyze_dogfood_run_replay",
+    # Bounded loop.
+    "MissionRunLoopResult", "run_mission_loop",
+    # Morning report.
+    "MissionMorningReport", "build_mission_morning_report",
     # Integrity.
     "dogfood_run_integrity",
     # Export.

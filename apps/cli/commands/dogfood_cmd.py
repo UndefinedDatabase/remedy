@@ -214,6 +214,57 @@ def _cmd_dogfood_brainstorm(args: Any) -> None:
         print(f"  [{idea.get('priority', '?')}] {idea.get('title', '?')} ({idea.get('status', '?')})")
 
 
+def _cmd_dogfood_run_loop(args: Any) -> None:
+    """Run a bounded mission loop (multi-step, stops on terminal/waiting/budget/max)."""
+    from packages.orchestration.dogfood_run import run_mission_loop
+    run_id = getattr(args, "run_id", "")
+    job_id = getattr(args, "job_id", "") or ""
+    max_steps = int(getattr(args, "max_steps", None) or 10)
+    max_seconds = int(getattr(args, "max_seconds", None) or 300)
+    result = run_mission_loop(
+        run_id, job_id=job_id,
+        max_steps=max_steps, max_seconds=max_seconds,
+    )
+    data = result.to_dict()
+    if getattr(args, "json", False):
+        print(json.dumps(data, indent=2))
+        return
+    print(f"Loop result: {result.run_id}")
+    print(f"  steps: {result.steps_attempted}  status: {result.final_status}")
+    print(f"  stop: {result.stop_reason}")
+    if result.next_safe_action:
+        print(f"  next: {result.next_safe_action}")
+    if result.blocking_reasons:
+        print(f"  blockers: {', '.join(result.blocking_reasons)}")
+    if result.errors:
+        print(f"  errors: {', '.join(result.errors)}")
+
+
+def _cmd_dogfood_morning_report(args: Any) -> None:
+    """Generate a safe morning report for operator inspection."""
+    from packages.orchestration.dogfood_run import build_mission_morning_report
+    run_id = getattr(args, "run_id", "")
+    job_id = getattr(args, "job_id", "") or ""
+    report = build_mission_morning_report(run_id, job_id=job_id)
+    data = report.to_dict()
+    if getattr(args, "json", False):
+        print(json.dumps(data, indent=2))
+        return
+    print(f"Morning Report: {report.run_id}")
+    print(f"  mission: {report.mission_status}  status: {report.final_status}")
+    if report.stopped_because:
+        print(f"  stopped: {report.stopped_because}")
+    print(f"  steps: {report.steps_completed}")
+    print(f"  budget: {report.budget_remaining_steps} steps, {report.budget_remaining_tokens} tokens")
+    if report.blocked_items:
+        print(f"  blocked: {', '.join(report.blocked_items)}")
+    if report.waiting_for_approval:
+        print(f"  awaiting: {', '.join(report.waiting_for_approval)}")
+    if report.next_safe_action:
+        print(f"  next: {report.next_safe_action}")
+    print(f"  summary: {report.operator_summary}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "dogfood.create": _cmd_dogfood_create,
     "dogfood.show": _cmd_dogfood_show,
@@ -225,4 +276,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "dogfood.next": _cmd_dogfood_next,
     "dogfood.evaluate": _cmd_dogfood_evaluate,
     "dogfood.brainstorm": _cmd_dogfood_brainstorm,
+    "dogfood.run-loop": _cmd_dogfood_run_loop,
+    "dogfood.morning-report": _cmd_dogfood_morning_report,
 }

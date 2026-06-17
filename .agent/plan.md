@@ -1,20 +1,33 @@
-# Plan — Steps 2506-2585: Controlled Claude Code Operator Path v0
+# Plan — Steps 2586-2615: Mission Run Loop + Morning Report v0
 
 ## Goal
-Build operator-friendly CLI path for Claude Code through existing builder adapter + managed execution rails.
+Bounded mission run loop + clear morning report. Not full overnight autonomy.
 
 ## Steps
-- [x] Phase 1: Operator path audit (documented in handoff)
-- [x] Phase 2: Template enable/disable/update CLI commands
-- [x] Phase 3: Package-bound placeholder resolution in run_managed_builder
-- [x] Phase 4: Template/session binding verification (covered by existing + new tests)
-- [x] Phase 5: Operator runbook command
-- [x] Phase 6: Fixture end-to-end path test
-- [x] Phase 7: Claude doctor command
-- [x] Phase 8: Docs (controlled-claude-code-operator-path-v0.md)
-- [x] Phase 9: Review bundle claude_code_readiness in managed execution summary
-- [x] Phase 10: Tests + lint + full suite (6784 passed, 0 failed)
+- [x] Step 2586: Mainline gate (PR #85 merged, clean working tree)
+- [x] Step 2587: Core path audit
+- [x] Step 2588: Terminology note in docs (mission-run-loop-morning-report-v0.md)
+- [x] Step 2589: Bounded loop behavior (10 stop conditions, _WAITING_STATUSES)
+- [x] Step 2590: run_mission_loop() function
+- [x] Step 2591: MissionRunLoopResult model
+- [x] Step 2592: MissionMorningReport model
+- [x] Step 2593: build_mission_morning_report()
+- [x] Step 2594: CLI dogfood run-loop
+- [x] Step 2595: CLI dogfood morning-report
+- [x] Step 2596: Alias assessment (skipped — no alias infra, documented)
+- [x] Step 2597: Fix stale CLI examples (--adapter → --adapter-id)
+- [x] Step 2598: Core readiness summary (_build_core_readiness)
+- [x] Step 2599: Loop checkpoint safety (step_dogfood_run records checkpoints)
+- [x] Step 2600: Self-repair in report (_build_self_repair_summary)
+- [x] Step 2601: Builder/execution visibility (_build_builder_execution_summary)
+- [x] Step 2602-2607: Tests (8 loop + 8 report = 16 new)
+- [x] Step 2608: Catalog + contract entries
+- [x] Step 2609: Review bundle (stop_reason, next_safe_action, morning_report_available)
+- [x] Step 2610: Docs (mission-run-loop-morning-report-v0.md)
+- [x] Step 2611: Architecture guard scan (no shell=True, no provider, no auto-apply)
+- [x] Step 2612-2613: Targeted (538) + full suite (6800 passed)
+- [ ] Step 2614: Final handoff
 
 ## Hard rules
-No provider execution; no auto-apply/approve/PR/git; no shell=True; no secret storage;
-no raw log/prompt/transcript leaks; no MemPalace/embeddings.
+No auto-apply/approve/PR/git; no provider SDK; no shell=True; no secret storage;
+no raw leaks; no fake mission satisfaction; no fixed-duration profiles.
