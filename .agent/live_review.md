@@ -13,34 +13,26 @@ MemPalace; embeddings/vector DB; UI redesign; MCP; large module split.
 Timestamp: 2026-06-17
 
 ## Verdict (reviewer-owned)
-**PENDING** — awaiting builder commits on feature branch.
+**PASS** @ 2d68a7e (R-0147 Resolved)
 
-## Precondition check (Check 1: Mainline closure)
-- Previous block: Steps 2446-2505 Self-Repair Proposal v0 + Closure
-  - Reviewer PASS @ 73df711 on main
-  - PR #84 merged to main @ 374482b
-- Branch: NOT YET CREATED (awaiting builder)
-- Uncommitted changes: NONE (clean working tree on main verified at review start)
+## Findings
 
-## Prior block
-Steps 2446-2505: PASS @ 73df711. Merged to main via PR #84 → 374482b.
-R-0135..R-0146 all Resolved. Closure cycle completed.
-
-## Finding IDs
-Start at R-0147 (last reviewed: R-0146).
+R-0147: LOW: docs/controlled-claude-code-operator-path-v0.md:63: Doc example used 2MB max-output-bytes but MAX_OUTPUT_BYTES is 256KB; silently clamped but misleading. Fix: changed to 128KB. **Resolved**.
 
 ## Required checks (10 total)
-1. Mainline closure — PASS (preconditions met, awaiting branch)
-2. Operator path audit — PENDING
-3. Template enable/update — PENDING
-4. Package-bound placeholder resolution — PENDING
-5. Binding — PENDING
-6. Operator runbook — PENDING
-7. Fixture end-to-end path — PENDING
-8. Claude doctor — PENDING
-9. Review/progress visibility — PENDING
-10. Architecture guards — PENDING
+1. Mainline closure — PASS
+2. Operator path audit — PASS
+3. Template enable/update — PASS
+4. Package-bound placeholder resolution — PASS
+5. Binding — PASS
+6. Operator runbook — PASS
+7. Fixture end-to-end path — PASS
+8. Claude doctor — PASS
+9. Review/progress visibility — PASS
+10. Architecture guards — PASS
 
 ## Reviewer audit log
 - Precondition check: previous block PASS @ 73df711, PR #84 merged, main clean @ 374482b.
-- Awaiting builder feature branch creation.
+- Full 10-check review completed @ 2d68a7e.
+- R-0147 (LOW): doc max-output-bytes example exceeded actual cap. Fixed inline. Resolved.
+- Verdict: PASS @ 2d68a7e.

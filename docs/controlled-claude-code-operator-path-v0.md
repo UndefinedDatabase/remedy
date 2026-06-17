@@ -59,8 +59,8 @@ Templates ship disabled by default. Enabling runs safety validation
 # Set timeout to 5 minutes
 remedy execution template-update claude-code-repair-v0 --timeout-seconds 300 --json
 
-# Set output cap to 2MB
-remedy execution template-update claude-code-repair-v0 --max-output-bytes 2097152 --json
+# Set output cap to 128KB
+remedy execution template-update claude-code-repair-v0 --max-output-bytes 131072 --json
 ```
 
 ### 4. Create a request package and session
