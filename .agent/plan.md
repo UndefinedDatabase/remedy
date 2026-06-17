@@ -1,23 +1,21 @@
-# Plan — Steps 2226-2295: Ruff / Mypy / Coverage Baseline v0
+# Plan — Steps 2296-2365: Review Bundle Structured Error Reporting v1
 
 ## Goal
-Add pragmatic static-analysis and coverage baseline. Close R-0119/R-0120.
-
-## Core principle
-Workers execute. Remedy governs. Automated quality visibility, not perfection.
+Turn silent/generic section failures into structured, redacted, diagnosable error reports.
 
 ## Steps
-- [x] Phase 0: Close R-0119 (positive-path tests for checks 10/11) + R-0120 (token guardrail path)
-- [x] Phase 1-4: Dev deps + Ruff/Mypy/Coverage configs in pyproject.toml
-- [x] Phase 5: Scripts (remedy_lint.sh, remedy_coverage.sh)
-- [x] Phase 6: Fix safe lint/type issues (1669 auto-fixed, F821/F401 manual, per-file ignores)
-- [x] Phase 7: Coverage baseline 76.3%, gap document, fail_under=75.0
-- [x] Phase 8: Backlog update (3/30 strict completed)
-- [ ] Phase 9-12: Catalog verify, targeted tests, full suite, commit + PR + reviewer
-
-## 30-task backlog
-- Strict completed: 3/30
-- Next: Review Bundle Structured Error Reporting v1
+- [x] Phase 1: Baseline audit (2251 lines, 47 except Exception, 37 REQUIRED_SECTIONS)
+- [x] Phase 2: ReviewBundleSectionError dataclass + error categories
+- [x] Phase 3: _safe_exception_message with redaction
+- [x] Phase 4: ReviewBundleSectionSpec registry (37 specs)
+- [x] Phase 5: _build_section_safe wrapper
+- [x] Phase 6: Replace 35 copy-pasted try/except blocks with registry loop
+- [x] Phase 7: Eliminate bare except Exception (47 -> 2 intentional)
+- [x] Phase 8: Top-level summary fields (degraded_section_count, etc)
+- [x] Phase 9: CLI behavior verified (no traceback, JSON safe)
+- [x] Phase 10: Docs (review-bundle-structured-error-reporting-v1.md)
+- [x] Phase 11: Backlog update (4/30 strict)
+- [ ] Phase 12-14: Lint + targeted tests + coverage + full suite + commit + PR
 
 ## Hard rules
-No shell=True; no provider SDK; no auto-apply/approve/PR/git; no MemPalace/embeddings.
+No review_bundle package split; no provider SDK; no shell=True; no auto-apply/approve/PR/git.

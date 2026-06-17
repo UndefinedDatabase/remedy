@@ -19,13 +19,17 @@ Public API::
 from __future__ import annotations
 
 import json
+import logging
 import re
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 BUNDLE_VERSION = 1
 
@@ -66,6 +70,8 @@ REQUIRED_SECTIONS = (
     "command_summary.json",
     "progress_ledger.json",
     "integrity_summary.json",
+    "run_contract_summary.json",
+    "test_execution_summary.json",
     "bundle_readme.md",
 )
 
@@ -86,6 +92,84 @@ _PROTECTED_OUTPUT_DIRS = frozenset({
 # ---------------------------------------------------------------------------
 
 
+SECTION_ERROR_CATEGORIES = (
+    "section_builder_error",
+    "optional_data_unavailable",
+    "import_error",
+    "validation_error",
+    "io_error",
+    "permission_error",
+    "unknown_error",
+)
+
+
+def _categorize_exception(exc: BaseException) -> str:
+    if isinstance(exc, ImportError):
+        return "import_error"
+    if isinstance(exc, (ValueError, TypeError, KeyError)):
+        return "validation_error"
+    if isinstance(exc, PermissionError):
+        return "permission_error"
+    if isinstance(exc, OSError):
+        return "io_error"
+    return "section_builder_error"
+
+
+_SAFE_MSG_SECRET_RE: re.Pattern[str] | None = None
+
+
+def _get_safe_msg_secret_re() -> re.Pattern[str]:
+    global _SAFE_MSG_SECRET_RE
+    if _SAFE_MSG_SECRET_RE is None:
+        from packages.orchestration.redaction_patterns import _SECRET_RE
+        _SAFE_MSG_SECRET_RE = _SECRET_RE
+    return _SAFE_MSG_SECRET_RE
+
+
+_HOME_RE = re.compile(r"(/(?:home|Users)/[^\s/]+)")
+
+
+def _safe_exception_message(exc: BaseException, max_len: int = 240) -> str:
+    """Redact secrets and private paths from exception message. No traceback."""
+    msg = str(exc)
+    if not msg:
+        return ""
+    msg = _get_safe_msg_secret_re().sub("[REDACTED]", msg)
+    msg = _PROTECTED_PATH_RE.sub(lambda m: "[PROTECTED_PATH]", msg)
+    msg = _HOME_RE.sub("[PRIVATE_PATH]", msg)
+    if len(msg) > max_len:
+        msg = msg[:max_len] + "..."
+    return msg
+
+
+@dataclass
+class ReviewBundleSectionError:
+    """Structured error for a failed review bundle section."""
+
+    section_name: str
+    error_type: str
+    error_category: str
+    safe_message: str
+    is_bug: bool = False
+    is_optional_dependency: bool = False
+    occurred_at: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.occurred_at:
+            self.occurred_at = datetime.now(timezone.utc).isoformat()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "section_name": self.section_name,
+            "error_type": self.error_type,
+            "error_category": self.error_category,
+            "safe_message": self.safe_message,
+            "is_bug": self.is_bug,
+            "is_optional_dependency": self.is_optional_dependency,
+            "occurred_at": self.occurred_at,
+        }
+
+
 @dataclass
 class ReviewBundleSection:
     """One section in the review bundle."""
@@ -94,6 +178,9 @@ class ReviewBundleSection:
     status: str = "included"
     error: str = ""
     byte_count: int = 0
+    error_type: str = ""
+    error_category: str = ""
+    error_message: str = ""
 
 
 @dataclass
@@ -159,6 +246,10 @@ class ReviewBundleResult:
     file_count: int = 0
     byte_count: int = 0
     error: str = ""
+    diagnostics_version: int = 1
+    degraded_section_count: int = 0
+    degraded_sections: list[str] = field(default_factory=list)
+    section_error_summary: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +348,74 @@ def _default_output_path(job_id: str, data_dir: Path) -> Path:
     bundles_dir = data_dir / "review_bundles"
     bundles_dir.mkdir(parents=True, exist_ok=True)
     return bundles_dir / f"{job_id[:8]}-review-bundle.zip"
+
+
+# ---------------------------------------------------------------------------
+# Section spec + registry (Steps 2296-2365)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ReviewBundleSectionSpec:
+    """Declarative spec for one review bundle section."""
+
+    filename: str
+    builder: Callable[..., dict | str]
+    required: bool = True
+    description: str = ""
+    args: tuple[str, ...] = ()
+
+
+def _build_section_safe(
+    spec: ReviewBundleSectionSpec,
+    *,
+    builder_args: dict[str, Any],
+) -> tuple[str, bytes | None, ReviewBundleSection]:
+    """Build one section with structured error handling on failure."""
+    try:
+        positional = [builder_args[a] for a in spec.args]
+        raw = spec.builder(*positional)
+        if isinstance(raw, str):
+            content = raw.encode("utf-8")
+        else:
+            content = json.dumps(raw, indent=2).encode("utf-8")
+        section = ReviewBundleSection(
+            spec.filename, status="included", byte_count=len(content),
+        )
+        return spec.filename, content, section
+    except Exception as exc:
+        error_type = type(exc).__name__
+        error_category = _categorize_exception(exc)
+        safe_msg = _safe_exception_message(exc)
+        is_optional = error_category == "import_error"
+        is_bug = error_category not in ("import_error", "optional_data_unavailable")
+
+        logger.warning(
+            "Review bundle section %s failed: %s: %s",
+            spec.filename, error_type, safe_msg,
+            exc_info=True,
+        )
+
+        degraded_data = {
+            "status": "degraded",
+            "reason": f"{spec.filename} build failed",
+            "error_type": error_type,
+            "error_category": error_category,
+            "error_message": safe_msg,
+            "section_name": spec.filename,
+        }
+        degraded_content = json.dumps(degraded_data, indent=2).encode("utf-8")
+
+        section = ReviewBundleSection(
+            spec.filename,
+            status="degraded",
+            error=f"{error_type}: {safe_msg}" if safe_msg else error_type,
+            byte_count=len(degraded_content),
+            error_type=error_type,
+            error_category=error_category,
+            error_message=safe_msg,
+        )
+        return spec.filename, degraded_content, section
 
 
 # ---------------------------------------------------------------------------
@@ -461,7 +620,7 @@ def _build_snapshot_summary(job_id: str, data_dir: Path) -> dict:
             "evidence_degraded_count": evidence_degraded_count,
             "applies": applies,
         }
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "snapshot summary not available"}
 
 
@@ -530,7 +689,7 @@ def _build_continuation_summary(job_id: str, data_dir: Path, events: list[dict])
             "test_run_id": ids.get("test_run_id", ""),
             "failure_artifact_id": ids.get("failure_artifact_id", ""),
         }
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "continuation summary not available"}
 
 
@@ -932,7 +1091,7 @@ def _build_context_inspection_safe(job: Any, events: list[dict]) -> dict:
                 "mcp_server_count": inspection.tooling.mcp_server_count,
             } if inspection.tooling else {},
         }
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "context inspection not available"}
 
 
@@ -948,7 +1107,7 @@ def _build_trust_report_safe(job: Any, events: list[dict], data_dir: Path) -> di
             "summary_length": len(safe_text),
             "redaction_count": redactions,
         }
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "trust report not available"}
 
 
@@ -978,7 +1137,7 @@ def _build_proof_chains_safe(job: Any, events: list[dict]) -> dict:
         exported["changes"] = safe_changes
         exported["redacted_protected_path_count"] = redacted_path_count
         return exported
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "proof chains not available"}
 
 
@@ -1599,7 +1758,7 @@ def _build_progress_ledger_safe(job: Any, events: list[dict]) -> dict:
             if item.get("safe_summary"):
                 item["safe_summary"], _ = redact_safe_text(item["safe_summary"], max_len=200)
         return exported
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "progress ledger not available"}
 
 
@@ -1618,7 +1777,7 @@ def _build_integrity_summary() -> dict:
             safe_msg, _ = redact_safe_text(msg, max_len=200)
             check["message"] = safe_msg
         return exported
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "integrity gate not available"}
 
 
@@ -1644,7 +1803,7 @@ def _build_contract_summary(job_id: str) -> dict:
         exported["allowed_paths_count"] = len(contract.allowed_paths)
         exported["usage"] = export_usage_json(load_usage(job))
         return exported
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "run contract not available"}
 
 
@@ -1695,7 +1854,7 @@ def _build_test_execution_summary(job: Any, events: list[dict]) -> dict:
             "usage": export_usage_json(usage),
             "recent_runs": safe_runs,
         }
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "test execution data not available"}
 
 
@@ -1733,7 +1892,54 @@ def _build_bundle_readme(job_id: str, sections: list[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Bundle builder (Step 978)
+# Section registry — deterministic, ordered list of all bundle sections.
+# Each spec maps a filename to its builder function and argument keys.
+# Argument keys are resolved against a context dict at build time.
+# ---------------------------------------------------------------------------
+
+_REVIEW_BUNDLE_SECTION_SPECS: tuple[ReviewBundleSectionSpec, ...] = (
+    ReviewBundleSectionSpec("job_summary.json", _build_job_summary, True, "Safe job summary", ("job",)),
+    ReviewBundleSectionSpec("proof_chains.json", _build_proof_chains_safe, True, "Proof chains", ("job", "events")),
+    ReviewBundleSectionSpec("event_summary.json", _build_event_summary, True, "Event counts", ("events",)),
+    ReviewBundleSectionSpec("trust_report.json", _build_trust_report_safe, True, "Trust report", ("job", "events", "data_dir")),
+    ReviewBundleSectionSpec("context_inspection.json", _build_context_inspection_safe, True, "Context inspection", ("job", "events")),
+    ReviewBundleSectionSpec("changed_files_safe.json", _build_changed_files_safe, True, "Changed files", ("job", "events")),
+    ReviewBundleSectionSpec("snapshot_summary.json", _build_snapshot_summary, True, "Snapshot summary", ("job_id", "data_dir")),
+    ReviewBundleSectionSpec("continuation_summary.json", _build_continuation_summary, True, "Continuation summary", ("job_id", "data_dir", "events")),
+    ReviewBundleSectionSpec("repair_summary.json", _build_repair_summary, True, "Repair summary", ("job", "events")),
+    ReviewBundleSectionSpec("overnight_readiness_summary.json", _build_overnight_readiness_summary, True, "Overnight readiness", ("job", "data_dir")),
+    ReviewBundleSectionSpec("overnight_run_summary.json", _build_overnight_run_summary, True, "Overnight run", ("job", "data_dir")),
+    ReviewBundleSectionSpec("provider_trust_summary.json", _build_provider_trust_summary, True, "Provider trust", ("job",)),
+    ReviewBundleSectionSpec("provider_material_summary.json", _build_provider_material_summary, True, "Provider material", ("job",)),
+    ReviewBundleSectionSpec("provider_verification_summary.json", _build_provider_verification_summary, True, "Provider verification", ("job",)),
+    ReviewBundleSectionSpec("repair_request_summary.json", _build_repair_request_summary, True, "Repair request", ("job",)),
+    ReviewBundleSectionSpec("self_dogfood_summary.json", _build_self_dogfood_summary, True, "Self-dogfood", ("job",)),
+    ReviewBundleSectionSpec("self_execution_summary.json", _build_self_execution_summary, True, "Self-execution", ("job",)),
+    ReviewBundleSectionSpec("orchestrator_decision_summary.json", _build_orchestrator_decision_summary, True, "Orchestrator decisions", ("job",)),
+    ReviewBundleSectionSpec("local_advisor_summary.json", _build_local_advisor_summary, True, "Local advisor", ("job",)),
+    ReviewBundleSectionSpec("builder_routing_summary.json", _build_builder_routing_summary, True, "Builder routing", ("job",)),
+    ReviewBundleSectionSpec("local_candidate_summary.json", _build_local_candidate_summary, True, "Local candidate", ("job",)),
+    ReviewBundleSectionSpec("candidate_quality_summary.json", _build_candidate_quality_summary, True, "Candidate quality", ("job",)),
+    ReviewBundleSectionSpec("external_builder_summary.json", _build_external_builder_summary, True, "External builder", ("job",)),
+    ReviewBundleSectionSpec("worker_registry_summary.json", _build_worker_registry_summary, True, "Worker registry", ("job",)),
+    ReviewBundleSectionSpec("token_economy_summary.json", _build_token_economy_summary, True, "Token economy", ("job",)),
+    ReviewBundleSectionSpec("model_route_tournament_summary.json", _build_model_route_tournament_summary, True, "Model/route tournament", ("job",)),
+    ReviewBundleSectionSpec("overnight_mission_summary.json", _build_overnight_mission_summary, True, "Overnight mission", ("job",)),
+    ReviewBundleSectionSpec("snapshot_rollback_summary.json", _build_snapshot_rollback_summary, True, "Snapshot/rollback", ("job",)),
+    ReviewBundleSectionSpec("repair_loop_summary.json", _build_repair_loop_summary, True, "Repair loop", ("job",)),
+    ReviewBundleSectionSpec("main_builder_adapter_summary.json", _build_main_builder_adapter_summary, True, "Main builder adapter", ("job",)),
+    ReviewBundleSectionSpec("managed_execution_summary.json", _build_managed_execution_summary, True, "Managed execution", ("job",)),
+    ReviewBundleSectionSpec("dogfood_run_summary.json", _build_dogfood_run_summary, True, "Dogfood run", ("job",)),
+    ReviewBundleSectionSpec("command_summary.json", _build_command_summary, True, "Command catalog", ("job",)),
+    ReviewBundleSectionSpec("progress_ledger.json", _build_progress_ledger_safe, True, "Progress ledger", ("job", "events")),
+    ReviewBundleSectionSpec("integrity_summary.json", _build_integrity_summary, True, "Integrity checks", ()),
+    ReviewBundleSectionSpec("run_contract_summary.json", _build_contract_summary, True, "Run contract", ("job_id",)),
+    ReviewBundleSectionSpec("test_execution_summary.json", _build_test_execution_summary, True, "Test execution", ("job", "events")),
+)
+
+
+# ---------------------------------------------------------------------------
+# Bundle builder (Step 978, refactored Steps 2296-2365)
 # ---------------------------------------------------------------------------
 
 
@@ -1753,7 +1959,6 @@ def build_review_bundle(
 
     data_dir = resolve_data_root()
 
-    # Validate output path
     if output_path:
         if not _is_safe_output_path(output_path):
             result.error = "Unsafe output path — contains traversal or protected directory"
@@ -1764,352 +1969,42 @@ def build_review_bundle(
 
     result.output_path = str(out_path)
 
-    # Load job
     try:
         job = load_job(job_id)
-    except Exception:
+    except Exception as exc:
+        # Broad catch intentional: load_job raises JobNotFoundError/JobStoreError
+        # but job_id string-to-UUID conversion can also fail with ValueError.
         result.error = f"Job {job_id[:8]} not found"
+        logger.warning("Job load failed for bundle: %s", _safe_exception_message(exc))
         return result
 
     events = load_run_events(data_dir, UUID(job_id))
 
-    # Build sections
+    builder_args = {
+        "job": job,
+        "events": events,
+        "data_dir": data_dir,
+        "job_id": job_id,
+    }
+
     section_data: dict[str, bytes] = {}
 
-    # job_summary.json
-    try:
-        js = _build_job_summary(job)
-        content = json.dumps(js, indent=2).encode()
-        section_data["job_summary.json"] = content
-        result.sections.append(ReviewBundleSection("job_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("job_summary.json", status="error", error="build failed"))
+    for spec in _REVIEW_BUNDLE_SECTION_SPECS:
+        filename, content, section = _build_section_safe(spec, builder_args=builder_args)
+        if content is not None:
+            section_data[filename] = content
+        result.sections.append(section)
+        if section.status == "degraded":
+            result.degraded_section_count += 1
+            result.degraded_sections.append(filename)
+            result.section_error_summary.append({
+                "section_name": filename,
+                "error_type": section.error_type,
+                "error_category": section.error_category,
+                "error_message": section.error_message,
+            })
 
-    # proof_chains.json
-    try:
-        pc = _build_proof_chains_safe(job, events)
-        content = json.dumps(pc, indent=2).encode()
-        section_data["proof_chains.json"] = content
-        result.sections.append(ReviewBundleSection("proof_chains.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("proof_chains.json", status="error", error="build failed"))
-
-    # event_summary.json
-    try:
-        es = _build_event_summary(events)
-        content = json.dumps(es, indent=2).encode()
-        section_data["event_summary.json"] = content
-        result.sections.append(ReviewBundleSection("event_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("event_summary.json", status="error", error="build failed"))
-
-    # trust_report.json
-    try:
-        tr = _build_trust_report_safe(job, events, data_dir)
-        content = json.dumps(tr, indent=2).encode()
-        section_data["trust_report.json"] = content
-        result.sections.append(ReviewBundleSection("trust_report.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("trust_report.json", status="error", error="build failed"))
-
-    # context_inspection.json
-    try:
-        ci = _build_context_inspection_safe(job, events)
-        content = json.dumps(ci, indent=2).encode()
-        section_data["context_inspection.json"] = content
-        result.sections.append(ReviewBundleSection("context_inspection.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("context_inspection.json", status="error", error="build failed"))
-
-    # changed_files_safe.json
-    try:
-        cf = _build_changed_files_safe(job, events)
-        content = json.dumps(cf, indent=2).encode()
-        section_data["changed_files_safe.json"] = content
-        result.sections.append(ReviewBundleSection("changed_files_safe.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("changed_files_safe.json", status="error", error="build failed"))
-
-    # snapshot_summary.json (Step 1160)
-    try:
-        ss = _build_snapshot_summary(job_id, data_dir)
-        content = json.dumps(ss, indent=2).encode()
-        section_data["snapshot_summary.json"] = content
-        result.sections.append(ReviewBundleSection("snapshot_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("snapshot_summary.json", status="error", error="build failed"))
-
-    # continuation_summary.json (Step 1177)
-    try:
-        cont = _build_continuation_summary(job_id, data_dir, events)
-        content = json.dumps(cont, indent=2).encode()
-        section_data["continuation_summary.json"] = content
-        result.sections.append(ReviewBundleSection("continuation_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("continuation_summary.json", status="error", error="build failed"))
-
-    # repair_summary.json
-    try:
-        rs = _build_repair_summary(job, events)
-        content = json.dumps(rs, indent=2).encode()
-        section_data["repair_summary.json"] = content
-        result.sections.append(ReviewBundleSection("repair_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("repair_summary.json", status="error", error="build failed"))
-
-    # overnight_readiness_summary.json (Step 1261)
-    try:
-        ov = _build_overnight_readiness_summary(job, data_dir)
-        content = json.dumps(ov, indent=2).encode()
-        section_data["overnight_readiness_summary.json"] = content
-        result.sections.append(ReviewBundleSection("overnight_readiness_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("overnight_readiness_summary.json", status="error", error="build failed"))
-
-    # overnight_run_summary.json (Step 1291)
-    try:
-        ovr = _build_overnight_run_summary(job, data_dir)
-        content = json.dumps(ovr, indent=2).encode()
-        section_data["overnight_run_summary.json"] = content
-        result.sections.append(ReviewBundleSection("overnight_run_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("overnight_run_summary.json", status="error", error="build failed"))
-
-    # provider_trust_summary.json (Step 1324)
-    try:
-        pts = _build_provider_trust_summary(job)
-        content = json.dumps(pts, indent=2).encode()
-        section_data["provider_trust_summary.json"] = content
-        result.sections.append(ReviewBundleSection("provider_trust_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("provider_trust_summary.json", status="error", error="build failed"))
-
-    # provider_material_summary.json (Step 1350)
-    try:
-        pms = _build_provider_material_summary(job)
-        content = json.dumps(pms, indent=2).encode()
-        section_data["provider_material_summary.json"] = content
-        result.sections.append(ReviewBundleSection("provider_material_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("provider_material_summary.json", status="error", error="build failed"))
-
-    # provider_verification_summary.json (Step 1558)
-    try:
-        pvs = _build_provider_verification_summary(job)
-        content = json.dumps(pvs, indent=2).encode()
-        section_data["provider_verification_summary.json"] = content
-        result.sections.append(ReviewBundleSection("provider_verification_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("provider_verification_summary.json", status="error", error="build failed"))
-
-    # repair_request_summary.json (Step 1380)
-    try:
-        rrs = _build_repair_request_summary(job)
-        content = json.dumps(rrs, indent=2).encode()
-        section_data["repair_request_summary.json"] = content
-        result.sections.append(ReviewBundleSection("repair_request_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("repair_request_summary.json", status="error", error="build failed"))
-
-    # self_dogfood_summary.json (Step 1417)
-    try:
-        sds = _build_self_dogfood_summary(job)
-        content = json.dumps(sds, indent=2).encode()
-        section_data["self_dogfood_summary.json"] = content
-        result.sections.append(ReviewBundleSection("self_dogfood_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("self_dogfood_summary.json", status="error", error="build failed"))
-
-    # self_execution_summary.json (Step 1444)
-    try:
-        ses = _build_self_execution_summary(job)
-        content = json.dumps(ses, indent=2).encode()
-        section_data["self_execution_summary.json"] = content
-        result.sections.append(ReviewBundleSection("self_execution_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("self_execution_summary.json", status="error", error="build failed"))
-
-    # orchestrator_decision_summary.json (Step 1483)
-    try:
-        ods = _build_orchestrator_decision_summary(job)
-        content = json.dumps(ods, indent=2).encode()
-        section_data["orchestrator_decision_summary.json"] = content
-        result.sections.append(ReviewBundleSection("orchestrator_decision_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("orchestrator_decision_summary.json", status="error", error="build failed"))
-
-    # local_advisor_summary.json (Step 1519)
-    try:
-        las = _build_local_advisor_summary(job)
-        content = json.dumps(las, indent=2).encode()
-        section_data["local_advisor_summary.json"] = content
-        result.sections.append(ReviewBundleSection("local_advisor_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("local_advisor_summary.json", status="error", error="build failed"))
-
-    # builder_routing_summary.json (Step 1594)
-    try:
-        brs = _build_builder_routing_summary(job)
-        content = json.dumps(brs, indent=2).encode()
-        section_data["builder_routing_summary.json"] = content
-        result.sections.append(ReviewBundleSection("builder_routing_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("builder_routing_summary.json", status="error", error="build failed"))
-
-    # local_candidate_summary.json (Step 1626)
-    try:
-        lcs = _build_local_candidate_summary(job)
-        content = json.dumps(lcs, indent=2).encode()
-        section_data["local_candidate_summary.json"] = content
-        result.sections.append(ReviewBundleSection("local_candidate_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("local_candidate_summary.json", status="error", error="build failed"))
-
-    # candidate_quality_summary.json (Step 1663)
-    try:
-        cqs = _build_candidate_quality_summary(job)
-        content = json.dumps(cqs, indent=2).encode()
-        section_data["candidate_quality_summary.json"] = content
-        result.sections.append(ReviewBundleSection("candidate_quality_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("candidate_quality_summary.json", status="error", error="build failed"))
-
-    # external_builder_summary.json (Step 1692)
-    try:
-        ebs = _build_external_builder_summary(job)
-        content = json.dumps(ebs, indent=2).encode()
-        section_data["external_builder_summary.json"] = content
-        result.sections.append(ReviewBundleSection("external_builder_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("external_builder_summary.json", status="error", error="build failed"))
-
-    # worker_registry_summary.json (Step 1729)
-    try:
-        wrs = _build_worker_registry_summary(job)
-        content = json.dumps(wrs, indent=2).encode()
-        section_data["worker_registry_summary.json"] = content
-        result.sections.append(ReviewBundleSection("worker_registry_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("worker_registry_summary.json", status="error", error="build failed"))
-
-    # token_economy_summary.json (Step 1769)
-    try:
-        tes = _build_token_economy_summary(job)
-        content = json.dumps(tes, indent=2).encode()
-        section_data["token_economy_summary.json"] = content
-        result.sections.append(ReviewBundleSection("token_economy_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("token_economy_summary.json", status="error", error="build failed"))
-
-    # model_route_tournament_summary.json (Step 1810)
-    try:
-        mrt = _build_model_route_tournament_summary(job)
-        content = json.dumps(mrt, indent=2).encode()
-        section_data["model_route_tournament_summary.json"] = content
-        result.sections.append(ReviewBundleSection("model_route_tournament_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("model_route_tournament_summary.json", status="error", error="build failed"))
-
-    # overnight_mission_summary.json (Step 1848)
-    try:
-        oms = _build_overnight_mission_summary(job)
-        content = json.dumps(oms, indent=2).encode()
-        section_data["overnight_mission_summary.json"] = content
-        result.sections.append(ReviewBundleSection("overnight_mission_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("overnight_mission_summary.json", status="error", error="build failed"))
-
-    # snapshot_rollback_summary.json (Step 1891)
-    try:
-        srs = _build_snapshot_rollback_summary(job)
-        content = json.dumps(srs, indent=2).encode()
-        section_data["snapshot_rollback_summary.json"] = content
-        result.sections.append(ReviewBundleSection("snapshot_rollback_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("snapshot_rollback_summary.json", status="error", error="build failed"))
-
-    # repair_loop_summary.json (Step 1934)
-    try:
-        rls = _build_repair_loop_summary(job)
-        content = json.dumps(rls, indent=2).encode()
-        section_data["repair_loop_summary.json"] = content
-        result.sections.append(ReviewBundleSection("repair_loop_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("repair_loop_summary.json", status="error", error="build failed"))
-
-    # main_builder_adapter_summary.json (Step 1991)
-    try:
-        mbas = _build_main_builder_adapter_summary(job)
-        content = json.dumps(mbas, indent=2).encode()
-        section_data["main_builder_adapter_summary.json"] = content
-        result.sections.append(ReviewBundleSection("main_builder_adapter_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("main_builder_adapter_summary.json", status="error", error="build failed"))
-
-    # managed_execution_summary.json (Step 2041)
-    try:
-        mes = _build_managed_execution_summary(job)
-        content = json.dumps(mes, indent=2).encode()
-        section_data["managed_execution_summary.json"] = content
-        result.sections.append(ReviewBundleSection("managed_execution_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("managed_execution_summary.json", status="error", error="build failed"))
-
-    # dogfood_run_summary.json (Step 2160)
-    try:
-        drs = _build_dogfood_run_summary(job)
-        content = json.dumps(drs, indent=2).encode()
-        section_data["dogfood_run_summary.json"] = content
-        result.sections.append(ReviewBundleSection("dogfood_run_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("dogfood_run_summary.json", status="error", error="build failed"))
-
-    # command_summary.json
-    try:
-        cs = _build_command_summary(job)
-        content = json.dumps(cs, indent=2).encode()
-        section_data["command_summary.json"] = content
-        result.sections.append(ReviewBundleSection("command_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("command_summary.json", status="error", error="build failed"))
-
-    # progress_ledger.json
-    try:
-        pl = _build_progress_ledger_safe(job, events)
-        content = json.dumps(pl, indent=2).encode()
-        section_data["progress_ledger.json"] = content
-        result.sections.append(ReviewBundleSection("progress_ledger.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("progress_ledger.json", status="error", error="build failed"))
-
-    # integrity_summary.json
-    try:
-        ig = _build_integrity_summary()
-        content = json.dumps(ig, indent=2).encode()
-        section_data["integrity_summary.json"] = content
-        result.sections.append(ReviewBundleSection("integrity_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("integrity_summary.json", status="error", error="build failed"))
-
-    # run_contract_summary.json
-    try:
-        rcs = _build_contract_summary(job_id)
-        content = json.dumps(rcs, indent=2).encode()
-        section_data["run_contract_summary.json"] = content
-        result.sections.append(ReviewBundleSection("run_contract_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("run_contract_summary.json", status="error", error="build failed"))
-
-    # test_execution_summary.json
-    try:
-        tes = _build_test_execution_summary(job, events)
-        content = json.dumps(tes, indent=2).encode()
-        section_data["test_execution_summary.json"] = content
-        result.sections.append(ReviewBundleSection("test_execution_summary.json", byte_count=len(content)))
-    except Exception:
-        result.sections.append(ReviewBundleSection("test_execution_summary.json", status="error", error="build failed"))
-
-    # manifest.json (built from above)
+    # manifest.json
     included = [s.filename for s in result.sections if s.status == "included"]
     skipped = [s.filename for s in result.sections if s.status != "included"]
     manifest = ReviewBundleManifest(
@@ -2126,6 +2021,10 @@ def build_review_bundle(
         "included_sections": manifest.included_sections,
         "skipped_sections": manifest.skipped_sections,
         "safety_warnings": manifest.safety_warnings,
+        "diagnostics_version": result.diagnostics_version,
+        "degraded_section_count": result.degraded_section_count,
+        "degraded_sections": result.degraded_sections,
+        "section_error_summary": result.section_error_summary,
     }, indent=2).encode()
     section_data["manifest.json"] = manifest_content
     result.sections.insert(0, ReviewBundleSection("manifest.json", byte_count=len(manifest_content)))
@@ -2145,7 +2044,6 @@ def build_review_bundle(
     result.file_count = len(section_data)
     result.byte_count = sum(len(d) for d in section_data.values())
 
-    # Safety audit
     _audit_bundle_safety(result, section_data)
 
     return result
@@ -2205,6 +2103,14 @@ def _audit_bundle_safety(result: ReviewBundleResult, section_data: dict[str, byt
 
 def export_review_bundle_json(result: ReviewBundleResult) -> dict[str, Any]:
     """Export bundle result as safe JSON dict."""
+    section_dicts = []
+    for s in result.sections:
+        d: dict[str, Any] = {"filename": s.filename, "status": s.status, "byte_count": s.byte_count}
+        if s.status == "degraded":
+            d["error_type"] = s.error_type
+            d["error_category"] = s.error_category
+            d["error_message"] = s.error_message
+        section_dicts.append(d)
     return {
         "job_id": result.job_id,
         "output_path": result.output_path,
@@ -2212,10 +2118,11 @@ def export_review_bundle_json(result: ReviewBundleResult) -> dict[str, Any]:
         "generated_at": result.generated_at,
         "file_count": result.file_count,
         "byte_count": result.byte_count,
-        "sections": [
-            {"filename": s.filename, "status": s.status, "byte_count": s.byte_count}
-            for s in result.sections
-        ],
+        "diagnostics_version": result.diagnostics_version,
+        "degraded_section_count": result.degraded_section_count,
+        "degraded_sections": result.degraded_sections,
+        "section_error_summary": result.section_error_summary,
+        "sections": section_dicts,
         "safety": {
             "is_safe": result.safety.is_safe,
             "warnings": result.safety.warnings,
@@ -2238,8 +2145,15 @@ def summarize_review_bundle(result: ReviewBundleResult) -> str:
     ]
 
     for s in result.sections:
-        status_mark = "+" if s.status == "included" else "!"
-        lines.append(f"  [{status_mark}] {s.filename} ({s.byte_count}B)")
+        if s.status == "included":
+            lines.append(f"  [+] {s.filename} ({s.byte_count}B)")
+        else:
+            lines.append(f"  [!] {s.filename} — {s.error_type or 'error'}: {s.error_message or s.error or 'unknown'}")
+
+    if result.degraded_section_count > 0:
+        lines.append(f"\nDegraded sections: {result.degraded_section_count}")
+        for name in result.degraded_sections:
+            lines.append(f"  - {name}")
 
     if result.safety.warnings:
         lines.append("\nWarnings:")
