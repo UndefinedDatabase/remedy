@@ -6,11 +6,11 @@ REMEDY_DATA_DIR.  All other production modules (storage.py, run_log.py,
 project_registry.py, workspace.py, apps/cli/main.py) must import helpers
 from this module instead of reading the environment variable directly.
 
-Resolution order (same as the historical per-module convention):
-  1. REMEDY_DATA_DIR environment variable, if set: use Path(REMEDY_DATA_DIR).
-  2. Repository-local default: <repo_root>/.data, where repo_root is derived
-     from this file's own location (packages/orchestration/data_paths.py →
-     repo root is 3 levels up).
+Resolution order (via config system):
+  1. REMEDY_DATA_DIR environment variable
+  2. Project remedy.toml [remedy] data_dir
+  3. User ~/.config/remedy/remedy.toml [remedy] data_dir
+  4. Repository-local default: <repo_root>/.data
 
 Public API::
 
@@ -31,12 +31,19 @@ from pathlib import Path
 def resolve_data_root() -> Path:
     """Return the Remedy data root directory.
 
-    Checks REMEDY_DATA_DIR env var first; falls back to <repo_root>/.data.
+    Env var checked directly (always fresh) for backward compatibility with
+    tests that set REMEDY_DATA_DIR at runtime. TOML config checked via cached
+    config system for file-based overrides.
     The returned path is NOT guaranteed to exist — callers must mkdir as needed.
     """
     env = os.environ.get("REMEDY_DATA_DIR")
     if env:
         return Path(env)
+    from packages.orchestration.config import get_config
+
+    configured = get_config().get("data_dir")
+    if configured:
+        return Path(configured)
     # packages/orchestration/data_paths.py → repo root is 3 levels up
     repo_root = Path(__file__).resolve().parents[2]
     return repo_root / ".data"

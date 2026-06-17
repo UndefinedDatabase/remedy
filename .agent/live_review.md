@@ -1,102 +1,125 @@
-# Live Review — Steps 2296-2365: Review Bundle Structured Error Reporting v1
+# Live Review — Steps 2366-2445 Closure: remedy.toml Config Safety + Diagnostics Fixes
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict;
 a builder `Done:` marker is NOT reviewer `Resolved`).
-Scope (ALLOWED): review bundle structured section error model; safe exception redaction;
-review bundle section registry; safe section builder wrapper; removal of repeated section
-assembly try/except boilerplate; degraded section count/summary; review bundle docs/tests;
-CLI/runtime degraded-section behavior; `.agent/context.md` / `.agent/plan.md` backlog update.
-Must NOT: review_bundle package split; ui_server split; orchestration subpackage split;
-config system; README rewrite; provider execution; Claude/Pi/OpenCode/Ollama; provider SDK;
-auto-apply; auto-approval; auto-PR/git; direct repo mutation; shell=True; arbitrary shell;
-semantic memory; MemPalace; UI redesign; MCP.
-REVIEW BUNDLE STRUCTURED ERROR REPORTING BLOCK — diagnostics, not features.
+Scope (ALLOWED): R-0124 through R-0130 closure; quoted secret redaction; unknown key rejection;
+config diagnostics; path redaction; CLI completeness; registry completeness; Changed Line Map.
+Must NOT: provider execution; Claude/Pi/OpenCode/Ollama real integration; provider SDK;
+auto-apply/approve/PR/git; shell=True; semantic memory; MemPalace; UI redesign; MCP; README rewrite;
+package splits.
+CLOSURE BLOCK — safety hardening of config system, not new features.
 Timestamp: 2026-06-17
 
 ## Verdict (reviewer-owned)
-**PASS** @ ef55c00 (3 commits: 927f034 + 0a5a8d9 + ef55c00). Zero open Blocker/High/Medium.
-3 Low findings (R-0121 pre-existing, R-0122 dead code, R-0123 unused dataclass).
-All 11 checks PASS.
-90 targeted tests passed (review_bundle). 29 CLI/catalog tests passed. 6600 full suite passed
-(8 skipped, 1 deselected). 0 failed.
-Ruff: All checks passed. Mypy: 186 files, no issues. compileall: clean.
-Uncommitted changes at verdict time: .agent/live_review.md (reviewer-owned) + .agent/plan.md (builder completion update).
+**PASS** @ ceebe13 (2 commits, PR #82). All findings resolved.
+R-0124 Resolved. R-0125 Resolved. R-0126 Resolved. R-0127 Resolved.
+R-0128 Resolved. R-0129 Resolved. R-0130 Resolved.
 
 ## Prior block
-Steps 2226-2295: PASS @ cdcee97 (R-0119, R-0120 Resolved).
-Merged to main via PR #80 -> 99e6fe1.
+Steps 2296-2365: PASS @ ef55c00. Merged to main via PR #81 -> b35a9f4.
+Steps 2366-2445 initial: PASS WITH RISKS @ a0fda56 (pre-closure, R-0121/R-0122/R-0123 resolved).
 
-## Changed files (Steps 2296-2365 @ ef55c00)
-| File | What changed |
-|------|-------------|
-| packages/orchestration/review_bundle.py | +269/-356: Structured error model, section registry (37 specs), safe wrapper, build_review_bundle refactored to loop, 47->2 broad exceptions, top-level diagnostics |
-| tests/orchestration/test_review_bundle.py | +365/-51: 8 new test classes, 28 new tests (90 total, was 62) |
-| docs/review-bundle-structured-error-reporting-v1.md | NEW +96L: problem/solution, error categories, redaction, operator guidance |
-| .agent/context.md | Updated scope, backlog 4/30 |
-| .agent/plan.md | Updated for 2296-2365, 14 phases completed |
+## Findings — Steps 2366-2445 Closure
 
-## Check matrix (Steps 2296-2365 @ ef55c00)
-| # | Check | Result | Evidence |
-|---|-------|--------|----------|
-| 1 | Mainline closure | PASS | PR #80 merged -> main 99e6fe1; branch fresh from a9bea59 |
-| 2 | Baseline audit | PASS | 2251->2165 lines (-86), 47->2 except Exception, 37->39 REQUIRED_SECTIONS |
-| 3 | Structured error model | PASS | All 6 required fields in degraded JSON; no traceback; bounded; redacted; JSON safe |
-| 4 | Safe section wrapper | PASS | Success->included; failure->degraded with structured diagnostics; traceback in logs only |
-| 5 | Section registry | PASS | 37 specs in tuple; loop replaces 35 copy-paste blocks; filenames stable; ordering deterministic |
-| 6 | Broad exception handling | PASS | 47->2 intentional documented; 8 builders narrowed to specific types; Ruff passes |
-| 7 | Top-level degraded summary | PASS | diagnostics_version, degraded_section_count, degraded_sections, section_error_summary; backward-compatible defaults |
-| 8 | Redaction | PASS | sk-*/ghp_*/xoxb-* redacted; private paths redacted; truncation; no traceback; R-0121 Low pre-existing gap |
-| 9 | CLI/runtime | PASS | 11 CLI tests pass; JSON safe; no traceback leak |
-| 10 | 30-task backlog | PASS | 3/30->4/30; no false claims |
-| 11 | Runtime behavior | PASS | No provider/shell/repo mutation; compatible |
+### R-0124 — Quoted secret redaction (Resolved)
+`_SECRET_RE` pattern updated to `(?:"[^"]*"|'[^']*'|[^\s,;'"]*)`.
+Verified:
+- `api_key='mysecret'` → `[REDACTED]` (was leaking `'mysecret'`)
+- `api_key="mysecret"` → `[REDACTED]` (was leaking `"mysecret"`)
+- `password='hunter2'` → `[REDACTED]` (was leaking `'hunter2'`)
+- `credential='x y z'` → `[REDACTED]` (spaced quoted value captured)
+- `api_key=mysecret123` → `[REDACTED]` (unquoted still works)
+- `No secrets configured` → unchanged (no overblocking)
+- Comma case `api_key=secret,next` → `[REDACTED],next`: `,next` is delimiter context, not secret value.
+  If value contains comma, quoting captures it: `api_key="secret,next"` → `[REDACTED]`. Acceptable.
+Test: `TestRedactionClosure::test_r0124_quoted_key_value_redacted` PASS.
 
-## Findings — Steps 2296-2365
+### R-0125 — Unknown/secret-like config keys cannot be written (Resolved)
+`set_config_value` now rejects unknown keys (`spec is None → ValueError`) and secret keys.
+Verified: `set_config_value(path, 'totally.unknown.key', 'value')` → `ValueError: Unknown config key`.
+CLI `_cmd_config_set` wraps `set_config_value` in try/except — same rejection propagated.
+Tests: `TestSetConfigValueGuards` (3 tests) + `test_config_set_rejects_unknown` CLI test. All PASS.
 
-### R-0121 — Pre-existing key=value redaction gap (Low, NOT INTRODUCED)
-`_SECRET_RE` pattern matches key prefix only, not following value.
-`api_key=mysecret123` -> `[REDACTED]mysecret123`. Pre-existing in redaction_patterns.py.
-Primary patterns (sk-*, ghp_*, xoxb-*) all work correctly.
+### R-0126 — Config diagnostics are not silent (Resolved)
+1. `_load_toml` now accepts `diagnostics` list; malformed TOML appends parse error message.
+   Verified: `"Malformed TOML in /tmp/...: Expected '=' after a key..."` in diagnostics.
+2. `load_config` checks unknown keys in both project and user TOML against `_KEY_SPEC_MAP`.
+   Verified: `"Unknown key in /tmp/...: bogus_key"` in `load_report.warnings`.
+3. `validate_config` still catches type mismatches (unchanged, already worked).
+4. All diagnostics surface via `ConfigLoadReport.warnings` — visible in CLI `config validate` and
+   review bundle `config_summary.json`.
+Tests: `TestLoadDiagnostics` (3 tests). All PASS.
 
-### R-0122 — Dead code: is_optional/is_bug in _build_section_safe (Low)
-L390-391 computes `is_optional` and `is_bug` but neither is stored or used.
+### R-0127 — Public path redaction (Resolved)
+`_redact_abs_path` replaces home-relative paths with `~/...`, other absolute with `<absolute-path-redacted>`.
+Applied in:
+- `RemedyConfig.to_summary_dict()` → `project_path` and `user_path`
+- `_cmd_config_sources` → JSON and text output (4 references)
+Verified: `to_summary_dict()["load_report"]["user_path"]` = `~/.config/remedy/remedy.toml` (was `/home/decodeux/...`).
+Tests: `TestPathRedaction` (2 tests). All PASS.
 
-### R-0123 — ReviewBundleSectionError never instantiated in production (Low)
-Dataclass defined and tested but only `ReviewBundleSection` used in production path.
+### R-0128 — CLI completeness and cwd-isolated tests (Resolved)
+1. `config show` added as alias for `config list` — catalog entry + handler mapping.
+2. `config init --json` added — JSON output `{"created": "path"}` or `{"error": "msg"}`.
+3. `config set --json` added — JSON output `{"key": k, "value": v, "path": p}` or `{"error": "msg"}`.
+4. `config init --path` added — `ArgDef("--path", ...)` in catalog, handler uses `getattr(args, "path")`.
+5. `config set --path` added — same pattern.
+6. Tests now use `--path` for isolation (no cwd dependency).
+Tests: `test_config_show_alias`, `test_config_init_json`, `test_config_set_json` CLI tests. All PASS.
 
-Next id: R-0124.
+### R-0129 — Registry completeness (Resolved)
+Registry expanded from 9 → 18 keys:
+- Original: data_dir + 8 ollama keys
+- Added: ui.host, ui.port, tests.pytest_timeout_seconds, quality.coverage_fail_under, logging.level
+- Added env_only: claude_enabled, opencode_enabled, pi_dev_enabled, external_memory_enabled
+Provider flags are `env_only=True` — cannot be stored in config files (safe).
+`write_toml_template` updated with all new sections.
+Test: `TestConfigKeySpec::test_all_specs_populated` asserts >= 18 keys. PASS.
 
-## Reviewer test runs
+### R-0130 — Changed Line Map accuracy (Resolved)
+`.agent/context.md` now has two tables:
+1. "Modified files (closure commit)" — 6 entries including test files and all closure-changed files.
+2. "Prior modified files (initial commit a0fda56)" — 8 entries for original commit files.
+All 14 non-agent files accounted for across both tables.
 
-### Targeted
-90 passed in 1.63s — tests/orchestration/test_review_bundle.py
-29 passed in 2.90s — tests/cli/test_review_bundle_runtime.py + tests/test_command_catalog.py
+## Test results (closure @ ceebe13)
+| Suite | Result |
+|-------|--------|
+| compileall | CLEAN |
+| ruff | CLEAN |
+| tests/orchestration/test_config.py | 55 PASS |
+| tests/cli/test_config_cmd.py | 14 PASS |
+| tests/orchestration/test_review_bundle.py | 90 PASS |
+| Full suite (-k "not test_full_chain_order") | 6677 PASS, 8 skipped, 0 fail |
 
-### Lint
-Ruff all checks passed. Mypy 186 files no issues. compileall clean.
+## Hard blocker checks
+| Check | Result |
+|-------|--------|
+| config CLI accepts unknown keys | FIXED — rejects with ValueError |
+| malformed config silently ignored | FIXED — diagnostics in load_report.warnings |
+| public surfaces leak private paths | FIXED — _redact_abs_path applied |
+| env precedence broken | N/A — env > project > user > default (verified in prior review) |
+| REMEDY_DATA_DIR compat breaks | N/A — env checked directly first (verified in prior review) |
+| provider/network execution | CLEAN — no imports of ollama/httpx/requests in config.py |
+| shell=True | CLEAN — not present |
+| CLM missing/misleading | FIXED — all files listed |
+| German content | CLEAN — English only |
+| PASS without checking uncommitted changes | CHECKED — only .agent/live_review.md (reviewer-owned) |
 
-### Full suite
-6600 passed, 8 skipped, 1 deselected in 171.74s. Zero failures.
-
-## Baseline audit
-| Metric | Before | After |
-|--------|--------|-------|
-| Lines | 2251 | 2165 (-86) |
-| except Exception | 47 | 2 (-45) |
-| REQUIRED_SECTIONS | 37 | 39 (+2) |
-| Registry specs | 0 | 37 |
-| Tests (file) | 62 | 90 (+28) |
-| Full suite | 6569 | 6600 (+31) |
-
-## Merge-readiness
-Merge-ready. PR #81 merged to main @ b35a9f4.
+## Uncommitted changes at review time
+Only `.agent/live_review.md` (reviewer-owned). No builder uncommitted changes.
 
 ## Reviewer audit log
-- Block opened for Steps 2296-2365.
-- Prior block 2226-2295 PASS merged via PR #80 -> main 99e6fe1.
-- WIP pre-scan clean. PermissionError/OSError bug found in WIP, builder fixed before commit.
-- 3 commits reviewed: 927f034 + 0a5a8d9 + ef55c00. All 11 checks PASS.
-- 3 Low findings (R-0121/R-0122/R-0123). Zero Blocker/High/Medium.
-- Targeted: 90 + 29 passed. Full suite: 6600 passed, 0 failed.
-- German scan clean. Danger scan clean.
-- PR #81 merged to main @ b35a9f4.
-- Reviewer verdict: PASS @ ef55c00.
+- Closure review opened for R-0124 through R-0130 against a0fda56.
+- Initial evaluation: FAIL — 3 HIGH (R-0125, R-0126, R-0127) + 1 MEDIUM (R-0124).
+- Builder commit ceebe13 detected: closure fixes for all findings.
+- Re-evaluated all 7 findings against ceebe13:
+  - R-0124: Regex now matches quoted values. Verified with 7 test cases. RESOLVED.
+  - R-0125: Unknown keys rejected by set_config_value and CLI. Verified. RESOLVED.
+  - R-0126: Malformed TOML produces diagnostics. Unknown keys flagged at load time. RESOLVED.
+  - R-0127: Absolute paths redacted in to_summary_dict and CLI sources. Verified. RESOLVED.
+  - R-0128: show alias + --json + --path added. Verified via tests. RESOLVED.
+  - R-0129: 18 keys registered. Provider flags env_only. RESOLVED.
+  - R-0130: CLM includes all files across both tables. RESOLVED.
+- All required tests pass (6677/6677).
+- Verdict: PASS @ ceebe13.

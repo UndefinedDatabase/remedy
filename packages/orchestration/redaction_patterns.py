@@ -54,7 +54,7 @@ _SECRET_RE = re.compile(
     r"|(?:ghp_[a-zA-Z0-9]{8,})"     # GitHub PAT
     r"|(?:xoxb-[a-zA-Z0-9_-]+)"     # Slack bot token
     r"|BEGIN\s+PRIVATE\s+KEY"        # PEM headers
-    r"|(?:password|api_key|secret|token|credential)\s*="  # key=value leaks
+    r"|(?:password|api_key|secret|token|credential)\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s,;'\"]*)"  # key=value leaks (unquoted + quoted)
 )
 
 # Forbidden traceback/exception patterns
