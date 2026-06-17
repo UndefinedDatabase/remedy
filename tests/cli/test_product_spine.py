@@ -53,8 +53,23 @@ class TestOperatorCommandsExist:
         from apps.cli.commands import collect_all_handlers
         handlers = collect_all_handlers()
         for cmd_id in ("worker.doctor", "worker.add", "worker.disable",
-                       "mission.run", "mission.report", "doctor.core"):
+                       "mission.run", "mission.report", "doctor.core",
+                       "approval.policy-list", "approval.policy-show",
+                       "approval.policy-enable", "approval.policy-disable",
+                       "approval.policy-evaluate", "approval.policy-grant"):
             assert cmd_id in handlers, f"{cmd_id} missing from handlers"
+
+    def test_approval_group_in_catalog(self):
+        from apps.cli.command_catalog import GROUPS
+        assert "approval" in GROUPS
+
+    def test_approval_commands_in_catalog(self):
+        from apps.cli.command_catalog import CATALOG
+        ids = {c.command_id for c in CATALOG}
+        for cmd_id in ("approval.policy-list", "approval.policy-show",
+                       "approval.policy-enable", "approval.policy-disable",
+                       "approval.policy-evaluate", "approval.policy-grant"):
+            assert cmd_id in ids, f"{cmd_id} missing from catalog"
 
 
 # ---------------------------------------------------------------------------

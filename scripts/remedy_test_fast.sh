@@ -24,6 +24,7 @@ echo "=== Fast Test Lane (Core Product Spine — in-process only) ==="
 # managed builder exec: command templates, approval, execution safety, placeholders
 # main builder adapter: adapter specs, enable/disable, mode management
 # self-repair proposal: create/approve/deny/edit/worker-prompt lifecycle
+# approval policy:      policy model, storage, integrity, evaluation, grant
 # product spine:        operator command consistency, stale doc scanner, lane self-test
 exec scripts/remedy_pytest.sh \
     tests/cli/test_worker_facade_cmd.py \
@@ -31,5 +32,6 @@ exec scripts/remedy_pytest.sh \
     tests/orchestration/test_managed_builder_execution.py \
     tests/orchestration/test_main_builder_adapter.py \
     tests/orchestration/test_self_repair_proposal.py \
+    tests/orchestration/test_execution_approval_policy.py \
     tests/cli/test_product_spine.py \
     -q

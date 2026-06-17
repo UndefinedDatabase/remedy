@@ -396,6 +396,8 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                 "list_self_repair_proposals")
     _try_import("review_bundle", "packages.orchestration.review_bundle", "build_review_bundle")
     _try_import("config", "packages.orchestration.config", "get_config")
+    _try_import("approval_policy", "packages.orchestration.execution_approval_policy",
+                "evaluate_execution_approval_policy")
 
     fast_lane = Path("scripts/remedy_test_fast.sh")
     _check("fast_test_lane", fast_lane.exists(), str(fast_lane))
@@ -424,6 +426,182 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
 
 
 # ---------------------------------------------------------------------------
+# approval policy-list (Step 2753)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_approval_policy_list(ns: argparse.Namespace) -> None:
+    from packages.orchestration.execution_approval_policy import (
+        list_execution_approval_policies,
+    )
+    policies = list_execution_approval_policies()
+    if getattr(ns, "json", False):
+        print(json.dumps({"policies": policies, "count": len(policies)}, indent=2))
+        return
+    print(f"Approval policies: {len(policies)}")
+    for p in policies:
+        status = "ENABLED" if p.get("enabled") else "disabled"
+        print(f"  [{status}] {p.get('policy_id', '?')}: {p.get('label', '')}")
+
+
+# ---------------------------------------------------------------------------
+# approval policy-show (Step 2754)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_approval_policy_show(ns: argparse.Namespace) -> None:
+    from packages.orchestration.execution_approval_policy import (
+        load_execution_approval_policy,
+    )
+    policy_id = getattr(ns, "policy_id", "")
+    if not policy_id:
+        _err("policy_id required")
+    policy = load_execution_approval_policy(policy_id)
+    if not policy:
+        _err(f"policy not found: {policy_id}")
+    if getattr(ns, "json", False):
+        print(json.dumps(policy.to_dict(), indent=2))
+        return
+    d = policy.to_dict()
+    print(f"Policy: {d['policy_id']}")
+    print(f"  label: {d['label']}")
+    print(f"  enabled: {d['enabled']}")
+    print(f"  adapter: {d['adapter_id']} ({d['adapter_kind']})")
+    print(f"  template: {d['template_id']} ({d['template_kind']})")
+    print(f"  uses: {d['uses_consumed']}/{d['max_uses']}")
+
+
+# ---------------------------------------------------------------------------
+# approval policy-enable (Step 2755)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_approval_policy_enable(ns: argparse.Namespace) -> None:
+    from packages.orchestration.execution_approval_policy import (
+        load_execution_approval_policy,
+        save_execution_approval_policy,
+    )
+    policy_id = getattr(ns, "policy_id", "")
+    if not policy_id:
+        _err("policy_id required")
+    policy = load_execution_approval_policy(policy_id)
+    if not policy:
+        from packages.orchestration.execution_approval_policy import default_policies
+        for dp in default_policies():
+            if dp.policy_id == policy_id:
+                policy = dp
+                break
+    if not policy:
+        _err(f"policy not found: {policy_id}")
+
+    if not policy.requires_fixture_only and not policy.allow_real_provider:
+        confirm = getattr(ns, "confirm_real_provider", False)
+        if not confirm:
+            _err(
+                f"Policy {policy_id} is for a real provider. "
+                "Pass --confirm-real-provider to enable."
+            )
+        policy.allow_real_provider = True
+
+    policy.enabled = True
+    policy.updated_at = json.loads(json.dumps(
+        {"t": __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc,
+        ).isoformat()},
+    ))["t"]
+
+    ok = save_execution_approval_policy(policy)
+    result: dict[str, Any] = {
+        "policy_id": policy_id,
+        "enabled": ok,
+        "allow_real_provider": policy.allow_real_provider,
+    }
+    if getattr(ns, "json", False):
+        print(json.dumps(result, indent=2))
+        return
+    print(f"Policy {policy_id}: {'ENABLED' if ok else 'FAILED'}")
+
+
+# ---------------------------------------------------------------------------
+# approval policy-disable (Step 2756)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_approval_policy_disable(ns: argparse.Namespace) -> None:
+    from packages.orchestration.execution_approval_policy import (
+        load_execution_approval_policy,
+        save_execution_approval_policy,
+    )
+    policy_id = getattr(ns, "policy_id", "")
+    if not policy_id:
+        _err("policy_id required")
+    policy = load_execution_approval_policy(policy_id)
+    if not policy:
+        _err(f"policy not found: {policy_id}")
+    policy.enabled = False
+    policy.updated_at = json.loads(json.dumps(
+        {"t": __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc,
+        ).isoformat()},
+    ))["t"]
+    ok = save_execution_approval_policy(policy)
+    if getattr(ns, "json", False):
+        print(json.dumps({"policy_id": policy_id, "disabled": ok}, indent=2))
+        return
+    print(f"Policy {policy_id}: {'DISABLED' if ok else 'FAILED'}")
+
+
+# ---------------------------------------------------------------------------
+# approval policy-evaluate (Step 2757)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_approval_policy_evaluate(ns: argparse.Namespace) -> None:
+    from packages.orchestration.execution_approval_policy import (
+        evaluate_execution_approval_policy,
+    )
+    session_id = getattr(ns, "session_id", "")
+    template_id = getattr(ns, "template_id", "")
+    if not session_id:
+        _err("session_id required")
+    if not template_id:
+        _err("template_id required (--template)")
+    decision = evaluate_execution_approval_policy(session_id, template_id)
+    if getattr(ns, "json", False):
+        print(json.dumps(decision.to_dict(), indent=2))
+        return
+    print(f"Policy evaluation: {decision.decision_code}")
+    print(f"  allowed: {decision.allowed}")
+    print(f"  reason: {decision.reason}")
+
+
+# ---------------------------------------------------------------------------
+# approval policy-grant (Step 2758)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_approval_policy_grant(ns: argparse.Namespace) -> None:
+    from packages.orchestration.execution_approval_policy import (
+        create_policy_granted_execution_approval,
+    )
+    session_id = getattr(ns, "session_id", "")
+    template_id = getattr(ns, "template_id", "")
+    if not session_id:
+        _err("session_id required")
+    if not template_id:
+        _err("template_id required (--template)")
+    result = create_policy_granted_execution_approval(session_id, template_id)
+    if getattr(ns, "json", False):
+        print(json.dumps(result, indent=2))
+        return
+    if result["granted"]:
+        print(f"Approval granted: {result['approval_id']}")
+    else:
+        print(f"Denied: {result['decision'].get('decision_code', 'unknown')}")
+        print(f"  reason: {result['decision'].get('reason', '')}")
+
+
+# ---------------------------------------------------------------------------
 # Handler registry
 # ---------------------------------------------------------------------------
 
@@ -435,4 +613,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "mission.run": _cmd_mission_run,
     "mission.report": _cmd_mission_report,
     "doctor.core": _cmd_doctor_core,
+    "approval.policy-list": _cmd_approval_policy_list,
+    "approval.policy-show": _cmd_approval_policy_show,
+    "approval.policy-enable": _cmd_approval_policy_enable,
+    "approval.policy-disable": _cmd_approval_policy_disable,
+    "approval.policy-evaluate": _cmd_approval_policy_evaluate,
+    "approval.policy-grant": _cmd_approval_policy_grant,
 }

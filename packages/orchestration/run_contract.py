@@ -216,6 +216,13 @@ class ContractAction:
     MISSION_RUN = "mission_run"
     MISSION_REPORT = "mission_report"
     DOCTOR_CORE = "doctor_core"
+    # v1.5: approval policy facade (Step 2761)
+    APPROVAL_POLICY_LIST = "approval_policy_list"
+    APPROVAL_POLICY_SHOW = "approval_policy_show"
+    APPROVAL_POLICY_ENABLE = "approval_policy_enable"
+    APPROVAL_POLICY_DISABLE = "approval_policy_disable"
+    APPROVAL_POLICY_EVALUATE = "approval_policy_evaluate"
+    APPROVAL_POLICY_GRANT = "approval_policy_grant"
 
     # Self-Repair Proposal v0 (Step 2450) — METADATA + EVALUATION only. NOT provider/model/worker
     # execution, NOT auto-apply/approve/git. proposal-create/approve/deny/edit/worker-prompt persist
@@ -410,6 +417,12 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.MISSION_RUN,
     ContractAction.MISSION_REPORT,
     ContractAction.DOCTOR_CORE,
+    ContractAction.APPROVAL_POLICY_LIST,
+    ContractAction.APPROVAL_POLICY_SHOW,
+    ContractAction.APPROVAL_POLICY_ENABLE,
+    ContractAction.APPROVAL_POLICY_DISABLE,
+    ContractAction.APPROVAL_POLICY_EVALUATE,
+    ContractAction.APPROVAL_POLICY_GRANT,
     ContractAction.SELF_REPAIR_PROPOSAL_CREATE,
     ContractAction.SELF_REPAIR_PROPOSAL_SHOW,
     ContractAction.SELF_REPAIR_PROPOSAL_LIST,
