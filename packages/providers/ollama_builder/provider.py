@@ -26,7 +26,6 @@ or:
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
@@ -172,43 +171,26 @@ def get_prompt_profile_metadata(profile: PromptProfile) -> PromptProfileMetadata
 def _resolve_model(override: str | None) -> str:
     """Resolve model with role-specific precedence.
 
-    Order: constructor arg > REMEDY_OLLAMA_BUILDER_MODEL > REMEDY_OLLAMA_MODEL > default.
+    Env vars checked directly (always fresh) for backward compatibility.
+    TOML config checked via config system as fallback.
+    Order: constructor arg > env vars > TOML config > built-in default.
     """
     if override:
         return override
+    import os
+
     builder_model = os.environ.get("REMEDY_OLLAMA_BUILDER_MODEL")
     if builder_model:
         return builder_model
     generic_model = os.environ.get("REMEDY_OLLAMA_MODEL")
     if generic_model:
         return generic_model
+    from packages.orchestration.config import get_config
+
+    configured = get_config().get("ollama.builder.model")
+    if configured:
+        return configured
     return _DEFAULT_MODEL
-
-
-def _parse_float_env(var: str) -> float | None:
-    """Parse a float environment variable, raising ValueError with the var name on failure."""
-    val = os.environ.get(var)
-    if val is None:
-        return None
-    try:
-        return float(val)
-    except ValueError:
-        raise ValueError(
-            f"Environment variable {var} must be a float (got {val!r})"
-        )
-
-
-def _parse_int_env(var: str) -> int | None:
-    """Parse an integer environment variable, raising ValueError with the var name on failure."""
-    val = os.environ.get(var)
-    if val is None:
-        return None
-    try:
-        return int(val)
-    except ValueError:
-        raise ValueError(
-            f"Environment variable {var} must be an integer (got {val!r})"
-        )
 
 
 def _build_user_message(context: TaskExecutionContext) -> str:
@@ -257,19 +239,41 @@ class OllamaBuilder:
         num_predict: int | None = None,
         prompt_profile: str | None = None,
     ) -> None:
+        import os
+
+        from packages.orchestration.config import get_config
+
+        cfg = get_config()
         self.model = _resolve_model(model)
-        self.host = host or os.environ.get("REMEDY_OLLAMA_HOST", _DEFAULT_HOST)
+        self.host = host or os.environ.get("REMEDY_OLLAMA_HOST") or cfg.get("ollama.host") or _DEFAULT_HOST
         self.prompt_profile_name = prompt_profile or "context_rich"
         self.prompt_profile = get_prompt_profile(self.prompt_profile_name)
 
-        self.temperature: float | None = (
-            temperature if temperature is not None
-            else _parse_float_env("REMEDY_OLLAMA_BUILDER_TEMPERATURE")
-        )
-        self.num_predict: int | None = (
-            num_predict if num_predict is not None
-            else _parse_int_env("REMEDY_OLLAMA_BUILDER_NUM_PREDICT")
-        )
+        env_temp = os.environ.get("REMEDY_OLLAMA_BUILDER_TEMPERATURE")
+        if temperature is not None:
+            self.temperature: float | None = temperature
+        elif env_temp is not None:
+            try:
+                self.temperature = float(env_temp)
+            except ValueError:
+                raise ValueError(
+                    f"Environment variable REMEDY_OLLAMA_BUILDER_TEMPERATURE must be a float (got {env_temp!r})"
+                )
+        else:
+            self.temperature = cfg.get("ollama.builder.temperature")
+
+        env_num = os.environ.get("REMEDY_OLLAMA_BUILDER_NUM_PREDICT")
+        if num_predict is not None:
+            self.num_predict: int | None = num_predict
+        elif env_num is not None:
+            try:
+                self.num_predict = int(env_num)
+            except ValueError:
+                raise ValueError(
+                    f"Environment variable REMEDY_OLLAMA_BUILDER_NUM_PREDICT must be an integer (got {env_num!r})"
+                )
+        else:
+            self.num_predict = cfg.get("ollama.builder.num_predict")
 
     def build(self, context: TaskExecutionContext) -> BuilderOutput:
         """Call Ollama with the execution context and return a validated BuilderOutput.

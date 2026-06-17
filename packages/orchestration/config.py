@@ -1,0 +1,463 @@
+"""
+Centralized configuration for Remedy — remedy.toml + env var precedence.
+
+Source precedence (highest to lowest):
+  1. Environment variable (REMEDY_*)
+  2. Project config (./remedy.toml)
+  3. User config (~/.config/remedy/remedy.toml)
+  4. Built-in default
+
+Public API::
+
+    ConfigSource: enum of config sources
+    ConfigValue: resolved value + metadata
+    ConfigKeySpec: typed key definition
+    RemedyConfig: main config object
+    get_config() -> RemedyConfig
+    load_config(project_path=None, user_path=None) -> RemedyConfig
+"""
+
+from __future__ import annotations
+
+import enum
+import os
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        tomllib = None  # type: ignore[assignment]
+
+
+class ConfigSource(enum.Enum):
+    """Where a config value came from."""
+
+    ENV = "env"
+    PROJECT = "project"
+    USER = "user"
+    DEFAULT = "default"
+
+
+@dataclass(frozen=True)
+class ConfigValue:
+    """A resolved config value with its source."""
+
+    key: str
+    value: Any
+    source: ConfigSource
+    raw_value: str | None = None
+
+    @property
+    def is_default(self) -> bool:
+        return self.source == ConfigSource.DEFAULT
+
+
+@dataclass(frozen=True)
+class ConfigKeySpec:
+    """Definition of one config key."""
+
+    key: str
+    env_var: str
+    description: str
+    value_type: type = str
+    default: Any = None
+    env_only: bool = False
+    secret: bool = False
+    fallback_key: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Key registry (v0)
+# ---------------------------------------------------------------------------
+
+_CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+    ConfigKeySpec(
+        key="data_dir",
+        env_var="REMEDY_DATA_DIR",
+        description="Root directory for Remedy data storage",
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="ollama.host",
+        env_var="REMEDY_OLLAMA_HOST",
+        description="Ollama server URL",
+        value_type=str,
+        default="http://localhost:11434",
+    ),
+    ConfigKeySpec(
+        key="ollama.model",
+        env_var="REMEDY_OLLAMA_MODEL",
+        description="Default Ollama model for all roles",
+        value_type=str,
+        default="qwen3-coder-next",
+    ),
+    ConfigKeySpec(
+        key="ollama.builder.model",
+        env_var="REMEDY_OLLAMA_BUILDER_MODEL",
+        description="Ollama model for builder role",
+        value_type=str,
+        default=None,
+        fallback_key="ollama.model",
+    ),
+    ConfigKeySpec(
+        key="ollama.builder.temperature",
+        env_var="REMEDY_OLLAMA_BUILDER_TEMPERATURE",
+        description="Sampling temperature for builder",
+        value_type=float,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="ollama.builder.num_predict",
+        env_var="REMEDY_OLLAMA_BUILDER_NUM_PREDICT",
+        description="Max tokens for builder",
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="ollama.planner.model",
+        env_var="REMEDY_OLLAMA_PLANNER_MODEL",
+        description="Ollama model for planner role",
+        value_type=str,
+        default=None,
+        fallback_key="ollama.model",
+    ),
+    ConfigKeySpec(
+        key="ollama.planner.temperature",
+        env_var="REMEDY_OLLAMA_PLANNER_TEMPERATURE",
+        description="Sampling temperature for planner",
+        value_type=float,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="ollama.planner.num_predict",
+        env_var="REMEDY_OLLAMA_PLANNER_NUM_PREDICT",
+        description="Max tokens for planner",
+        value_type=int,
+        default=None,
+    ),
+)
+
+_KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}
+
+
+def get_key_spec(key: str) -> ConfigKeySpec | None:
+    return _KEY_SPEC_MAP.get(key)
+
+
+def all_key_specs() -> tuple[ConfigKeySpec, ...]:
+    return _CONFIG_KEY_SPECS
+
+
+# ---------------------------------------------------------------------------
+# TOML loading
+# ---------------------------------------------------------------------------
+
+_DEFAULT_PROJECT_PATH = Path("remedy.toml")
+_DEFAULT_USER_PATH = Path.home() / ".config" / "remedy" / "remedy.toml"
+
+
+def _load_toml(path: Path) -> dict[str, Any]:
+    """Load a TOML file and return the parsed dict. Returns {} if missing or unparseable."""
+    if tomllib is None:
+        return {}
+    if not path.is_file():
+        return {}
+    try:
+        with open(path, "rb") as f:
+            return tomllib.load(f)
+    except Exception:
+        return {}
+
+
+def _extract_remedy_table(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Extract the [remedy] table from parsed TOML."""
+    return parsed.get("remedy", {})
+
+
+def _flatten_toml(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    """Flatten nested TOML dict into dotted keys.
+
+    {"ollama": {"host": "x"}} -> {"ollama.host": "x"}
+    """
+    result: dict[str, Any] = {}
+    for k, v in d.items():
+        full_key = f"{prefix}{k}" if prefix else k
+        if isinstance(v, dict):
+            result.update(_flatten_toml(v, f"{full_key}."))
+        else:
+            result[full_key] = v
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Resolution
+# ---------------------------------------------------------------------------
+
+
+def _coerce_value(raw: str, spec: ConfigKeySpec) -> Any:
+    """Coerce a string value to the spec's type."""
+    if spec.value_type is float:
+        return float(raw)
+    if spec.value_type is int:
+        return int(raw)
+    if spec.value_type is bool:
+        return raw.lower() in ("1", "true", "yes")
+    return raw
+
+
+def _resolve_key(
+    spec: ConfigKeySpec,
+    project_flat: dict[str, Any],
+    user_flat: dict[str, Any],
+    *,
+    all_specs: dict[str, ConfigKeySpec] | None = None,
+) -> ConfigValue:
+    """Resolve one key through the precedence chain."""
+    env_val = os.environ.get(spec.env_var)
+    if env_val is not None:
+        try:
+            coerced = _coerce_value(env_val, spec)
+        except (ValueError, TypeError):
+            coerced = env_val
+        return ConfigValue(key=spec.key, value=coerced, source=ConfigSource.ENV, raw_value=env_val)
+
+    if not spec.env_only:
+        if spec.key in project_flat:
+            raw = project_flat[spec.key]
+            return ConfigValue(key=spec.key, value=raw, source=ConfigSource.PROJECT, raw_value=str(raw))
+
+        if spec.key in user_flat:
+            raw = user_flat[spec.key]
+            return ConfigValue(key=spec.key, value=raw, source=ConfigSource.USER, raw_value=str(raw))
+
+    if spec.fallback_key and all_specs:
+        fallback_spec = all_specs.get(spec.fallback_key)
+        if fallback_spec:
+            fallback_val = _resolve_key(fallback_spec, project_flat, user_flat)
+            if not fallback_val.is_default:
+                return ConfigValue(
+                    key=spec.key, value=fallback_val.value,
+                    source=fallback_val.source, raw_value=fallback_val.raw_value,
+                )
+
+    return ConfigValue(key=spec.key, value=spec.default, source=ConfigSource.DEFAULT)
+
+
+# ---------------------------------------------------------------------------
+# RemedyConfig
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ConfigLoadReport:
+    """Metadata about which config files were loaded."""
+
+    project_path: str | None = None
+    project_loaded: bool = False
+    user_path: str | None = None
+    user_loaded: bool = False
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
+class RemedyConfig:
+    """Main configuration object — resolved values for all known keys."""
+
+    values: dict[str, ConfigValue] = field(default_factory=dict)
+    load_report: ConfigLoadReport = field(default_factory=ConfigLoadReport)
+
+    def get(self, key: str) -> Any:
+        """Get the resolved value for a key. Returns None if unknown."""
+        cv = self.values.get(key)
+        return cv.value if cv is not None else None
+
+    def get_value(self, key: str) -> ConfigValue | None:
+        """Get the full ConfigValue for a key."""
+        return self.values.get(key)
+
+    def get_source(self, key: str) -> ConfigSource | None:
+        """Get the source of a resolved key."""
+        cv = self.values.get(key)
+        return cv.source if cv is not None else None
+
+    def to_summary_dict(self) -> dict[str, Any]:
+        """Export config as safe summary dict for review bundle / diagnostics."""
+        entries = []
+        for spec in _CONFIG_KEY_SPECS:
+            cv = self.values.get(spec.key)
+            if cv is None:
+                continue
+            val_display = cv.value
+            if spec.secret or spec.env_only:
+                val_display = "[REDACTED]" if cv.value is not None else None
+            entries.append({
+                "key": spec.key,
+                "value": val_display,
+                "source": cv.source.value,
+                "env_var": spec.env_var,
+                "is_default": cv.is_default,
+            })
+        return {
+            "config_version": 0,
+            "keys": entries,
+            "load_report": {
+                "project_path": self.load_report.project_path,
+                "project_loaded": self.load_report.project_loaded,
+                "user_path": self.load_report.user_path,
+                "user_loaded": self.load_report.user_loaded,
+                "warnings": self.load_report.warnings,
+            },
+        }
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+_CACHED_CONFIG: RemedyConfig | None = None
+
+
+def load_config(
+    project_path: Path | None = None,
+    user_path: Path | None = None,
+) -> RemedyConfig:
+    """Load and resolve all config from TOML files + env vars.
+
+    Args:
+        project_path: Path to project remedy.toml. Default: ./remedy.toml.
+        user_path: Path to user remedy.toml. Default: ~/.config/remedy/remedy.toml.
+    """
+    p_path = project_path or _DEFAULT_PROJECT_PATH
+    u_path = user_path or _DEFAULT_USER_PATH
+
+    project_raw = _load_toml(p_path)
+    user_raw = _load_toml(u_path)
+
+    project_flat = _flatten_toml(_extract_remedy_table(project_raw))
+    user_flat = _flatten_toml(_extract_remedy_table(user_raw))
+
+    report = ConfigLoadReport(
+        project_path=str(p_path),
+        project_loaded=bool(project_raw),
+        user_path=str(u_path),
+        user_loaded=bool(user_raw),
+    )
+
+    values: dict[str, ConfigValue] = {}
+    for spec in _CONFIG_KEY_SPECS:
+        values[spec.key] = _resolve_key(spec, project_flat, user_flat, all_specs=_KEY_SPEC_MAP)
+
+    config = RemedyConfig(values=values, load_report=report)
+    return config
+
+
+def get_config() -> RemedyConfig:
+    """Get or load the cached global config."""
+    global _CACHED_CONFIG
+    if _CACHED_CONFIG is None:
+        _CACHED_CONFIG = load_config()
+    return _CACHED_CONFIG
+
+
+def reset_config() -> None:
+    """Clear the cached config — forces reload on next get_config() call."""
+    global _CACHED_CONFIG
+    _CACHED_CONFIG = None
+
+
+def write_toml_template(path: Path) -> None:
+    """Write a remedy.toml template file."""
+    template = """\
+# Remedy Configuration
+# See: docs/remedy-toml-configuration-system-v0.md
+
+[remedy]
+# data_dir = ".data"
+
+[remedy.ollama]
+# host = "http://localhost:11434"
+# model = "qwen3-coder-next"
+
+# [remedy.ollama.builder]
+# model = "qwen3-coder-next"
+# temperature = 0.3
+# num_predict = 4096
+
+# [remedy.ollama.planner]
+# model = "qwen3-coder-next"
+# temperature = 0.2
+# num_predict = 4096
+"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(template, encoding="utf-8")
+
+
+def set_config_value(path: Path, key: str, value: str) -> None:
+    """Set a key in a remedy.toml file.
+
+    Creates the file if it does not exist. Refuses env_only keys.
+    """
+    spec = get_key_spec(key)
+    if spec and spec.env_only:
+        raise ValueError(f"Key {key!r} is env-only and cannot be set in config files")
+
+    existing = _load_toml(path)
+    remedy_table = existing.setdefault("remedy", {})
+
+    parts = key.split(".")
+    target = remedy_table
+    for part in parts[:-1]:
+        target = target.setdefault(part, {})
+    target[parts[-1]] = value
+
+    lines = ["# Remedy Configuration\n\n"]
+    _serialize_toml(existing, lines, depth=0)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(lines), encoding="utf-8")
+
+
+def _serialize_toml(d: dict[str, Any], lines: list[str], depth: int, prefix: str = "") -> None:
+    """Minimal TOML serializer for remedy config (no external dependency)."""
+    for k, v in d.items():
+        if isinstance(v, dict):
+            table_key = f"{prefix}{k}" if prefix else k
+            lines.append(f"\n[{table_key}]\n")
+            _serialize_toml(v, lines, depth + 1, f"{table_key}.")
+        elif isinstance(v, bool):
+            lines.append(f"{k} = {'true' if v else 'false'}\n")
+        elif isinstance(v, int):
+            lines.append(f"{k} = {v}\n")
+        elif isinstance(v, float):
+            lines.append(f"{k} = {v}\n")
+        else:
+            lines.append(f'{k} = "{v}"\n')
+
+
+def validate_config(config: RemedyConfig) -> list[str]:
+    """Validate config values against key specs. Returns list of warnings."""
+    warnings: list[str] = []
+    for spec in _CONFIG_KEY_SPECS:
+        cv = config.values.get(spec.key)
+        if cv is None:
+            continue
+        if cv.value is None:
+            continue
+        if spec.value_type is float:
+            try:
+                float(str(cv.value))
+            except (ValueError, TypeError):
+                warnings.append(f"{spec.key}: expected float, got {type(cv.value).__name__}")
+        elif spec.value_type is int:
+            try:
+                int(str(cv.value))
+            except (ValueError, TypeError):
+                warnings.append(f"{spec.key}: expected int, got {type(cv.value).__name__}")
+    return warnings

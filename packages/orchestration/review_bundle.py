@@ -72,6 +72,7 @@ REQUIRED_SECTIONS = (
     "integrity_summary.json",
     "run_contract_summary.json",
     "test_execution_summary.json",
+    "config_summary.json",
     "bundle_readme.md",
 )
 
@@ -181,6 +182,7 @@ class ReviewBundleSection:
     error_type: str = ""
     error_category: str = ""
     error_message: str = ""
+    structured_error: ReviewBundleSectionError | None = None
 
 
 @dataclass
@@ -390,6 +392,15 @@ def _build_section_safe(
         is_optional = error_category == "import_error"
         is_bug = error_category not in ("import_error", "optional_data_unavailable")
 
+        structured_error = ReviewBundleSectionError(
+            section_name=spec.filename,
+            error_type=error_type,
+            error_category=error_category,
+            safe_message=safe_msg,
+            is_bug=is_bug,
+            is_optional_dependency=is_optional,
+        )
+
         logger.warning(
             "Review bundle section %s failed: %s: %s",
             spec.filename, error_type, safe_msg,
@@ -414,6 +425,7 @@ def _build_section_safe(
             error_type=error_type,
             error_category=error_category,
             error_message=safe_msg,
+            structured_error=structured_error,
         )
         return spec.filename, degraded_content, section
 
@@ -1891,6 +1903,11 @@ def _build_bundle_readme(job_id: str, sections: list[str]) -> str:
     return "\n".join(lines)
 
 
+def _build_config_summary() -> dict:
+    from packages.orchestration.config import get_config
+    return get_config().to_summary_dict()
+
+
 # ---------------------------------------------------------------------------
 # Section registry — deterministic, ordered list of all bundle sections.
 # Each spec maps a filename to its builder function and argument keys.
@@ -1935,6 +1952,7 @@ _REVIEW_BUNDLE_SECTION_SPECS: tuple[ReviewBundleSectionSpec, ...] = (
     ReviewBundleSectionSpec("integrity_summary.json", _build_integrity_summary, True, "Integrity checks", ()),
     ReviewBundleSectionSpec("run_contract_summary.json", _build_contract_summary, True, "Run contract", ("job_id",)),
     ReviewBundleSectionSpec("test_execution_summary.json", _build_test_execution_summary, True, "Test execution", ("job", "events")),
+    ReviewBundleSectionSpec("config_summary.json", _build_config_summary, True, "Config system state", ()),
 )
 
 
@@ -1997,12 +2015,15 @@ def build_review_bundle(
         if section.status == "degraded":
             result.degraded_section_count += 1
             result.degraded_sections.append(filename)
-            result.section_error_summary.append({
-                "section_name": filename,
-                "error_type": section.error_type,
-                "error_category": section.error_category,
-                "error_message": section.error_message,
-            })
+            if section.structured_error is not None:
+                result.section_error_summary.append(section.structured_error.to_dict())
+            else:
+                result.section_error_summary.append({
+                    "section_name": filename,
+                    "error_type": section.error_type,
+                    "error_category": section.error_category,
+                    "error_message": section.error_message,
+                })
 
     # manifest.json
     included = [s.filename for s in result.sections if s.status == "included"]

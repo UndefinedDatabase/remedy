@@ -126,6 +126,7 @@ GROUPS: dict[str, GroupDef] = {
     "builder": GroupDef("builder", "Builder", "Main Builder Adapter — controlled external builder session rail (metadata/policy only; never executes providers; output untrusted until sandbox/trust/quality/review gates)."),
     "execution": GroupDef("execution", "Execution", "Managed Builder Execution — bounded subprocess for external builders (command templates, operator approval, shell=False, sanitized env, timeout, output cap; output untrusted until sandbox/trust/quality/review gates)."),
     "dogfood": GroupDef("dogfood", "Dogfood", "Open-ended dogfood run orchestrator — step-at-a-time run loop, replay analyzer, brainstorm lane (metadata/evaluation only; no provider execution; no auto-apply; stops when done/blocked/budget)."),
+    "config": GroupDef("config", "Config", "Configuration management — list, inspect, and set remedy.toml values."),
 }
 
 
@@ -3249,6 +3250,65 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("dogfood.show",),
+    ),
+
+    # ── config ──────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="config.list",
+        group_id="config",
+        subcommand="list",
+        description="List all config keys with current values and sources.",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="config.get",
+        group_id="config",
+        subcommand="get",
+        description="Show value and source for one config key.",
+        action_class="read_only",
+        args=(
+            ArgDef("key", "Config key (e.g. ollama.host)"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="config.sources",
+        group_id="config",
+        subcommand="sources",
+        description="Show which config files are loaded and their paths.",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+    ),
+    CommandEntry(
+        command_id="config.init",
+        group_id="config",
+        subcommand="init",
+        description="Create a remedy.toml template in the current directory.",
+        action_class="write_metadata",
+    ),
+    CommandEntry(
+        command_id="config.set",
+        group_id="config",
+        subcommand="set",
+        description="Set a config key in ./remedy.toml.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("key", "Config key (e.g. ollama.host)"),
+            ArgDef("value", "Value to set"),
+        ),
+    ),
+    CommandEntry(
+        command_id="config.validate",
+        group_id="config",
+        subcommand="validate",
+        description="Validate loaded config against key specs.",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
 )
 
