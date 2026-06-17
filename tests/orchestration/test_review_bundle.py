@@ -117,7 +117,7 @@ class TestReviewBundleModel:
 
     def test_required_sections_defined(self):
         from packages.orchestration.review_bundle import REQUIRED_SECTIONS
-        assert len(REQUIRED_SECTIONS) == 37
+        assert len(REQUIRED_SECTIONS) == 39
         assert "repair_loop_summary.json" in REQUIRED_SECTIONS
         assert "main_builder_adapter_summary.json" in REQUIRED_SECTIONS
         assert "managed_execution_summary.json" in REQUIRED_SECTIONS
@@ -782,50 +782,56 @@ class TestSectionAvailability:
 
     def test_failed_section_in_manifest(self, tmp_path):
         """Monkeypatch a builder to fail — manifest should show skipped."""
-        from packages.orchestration import review_bundle
-        from packages.orchestration.review_bundle import build_review_bundle
+        from packages.orchestration.review_bundle import (
+            _REVIEW_BUNDLE_SECTION_SPECS,
+            build_review_bundle,
+        )
 
-        original = review_bundle._build_proof_chains_safe
         def _fail(*a, **kw):
             raise RuntimeError("simulated failure")
 
+        proof_spec = next(s for s in _REVIEW_BUNDLE_SECTION_SPECS if s.filename == "proof_chains.json")
+        original_builder = proof_spec.builder
+
         job, task, data_dir, old = _make_job(tmp_path)
         try:
-            review_bundle._build_proof_chains_safe = _fail
+            proof_spec.builder = _fail
             result = build_review_bundle(str(job.id))
-            assert not result.error  # bundle still generated
+            assert not result.error
 
-            # Check manifest
             with zipfile.ZipFile(result.output_path) as zf:
                 manifest = json.loads(zf.read("manifest.json"))
                 assert "proof_chains.json" in manifest["skipped_sections"]
 
-            # Check sections list
             proof_section = next(
                 (s for s in result.sections if s.filename == "proof_chains.json"), None
             )
             assert proof_section is not None
-            assert proof_section.status == "error"
+            assert proof_section.status == "degraded"
         finally:
-            review_bundle._build_proof_chains_safe = original
+            proof_spec.builder = original_builder
             _cleanup_env(old)
 
     def test_bundle_still_safe_with_failed_section(self, tmp_path):
-        from packages.orchestration import review_bundle
-        from packages.orchestration.review_bundle import build_review_bundle
+        from packages.orchestration.review_bundle import (
+            _REVIEW_BUNDLE_SECTION_SPECS,
+            build_review_bundle,
+        )
 
-        original = review_bundle._build_context_inspection_safe
         def _fail(*a, **kw):
             raise RuntimeError("simulated failure")
 
+        ctx_spec = next(s for s in _REVIEW_BUNDLE_SECTION_SPECS if s.filename == "context_inspection.json")
+        original_builder = ctx_spec.builder
+
         job, task, data_dir, old = _make_job(tmp_path)
         try:
-            review_bundle._build_context_inspection_safe = _fail
+            ctx_spec.builder = _fail
             result = build_review_bundle(str(job.id))
-            assert result.safety.is_safe  # other sections still safe
+            assert result.safety.is_safe
             assert Path(result.output_path).exists()
         finally:
-            review_bundle._build_context_inspection_safe = original
+            ctx_spec.builder = original_builder
             _cleanup_env(old)
 
 
@@ -1013,4 +1019,331 @@ class TestSnapshotSummarySection:
             assert summary["snapshot_count"] == 0
             assert summary["applies"] == []
         finally:
+            _cleanup_env(old)
+
+
+# ---------------------------------------------------------------------------
+# Steps 2296-2365: Structured error reporting tests
+# ---------------------------------------------------------------------------
+
+
+class TestStructuredErrorModel:
+    """ReviewBundleSectionError serialization and redaction."""
+
+    def test_section_error_to_dict(self):
+        from packages.orchestration.review_bundle import ReviewBundleSectionError
+        err = ReviewBundleSectionError(
+            section_name="test.json",
+            error_type="ValueError",
+            error_category="validation_error",
+            safe_message="bad input",
+        )
+        d = err.to_dict()
+        assert d["section_name"] == "test.json"
+        assert d["error_type"] == "ValueError"
+        assert d["error_category"] == "validation_error"
+        assert d["safe_message"] == "bad input"
+        assert d["is_bug"] is False
+        assert d["occurred_at"]
+
+    def test_section_error_categories(self):
+        from packages.orchestration.review_bundle import SECTION_ERROR_CATEGORIES
+        assert "section_builder_error" in SECTION_ERROR_CATEGORIES
+        assert "import_error" in SECTION_ERROR_CATEGORIES
+        assert "io_error" in SECTION_ERROR_CATEGORIES
+        assert "unknown_error" in SECTION_ERROR_CATEGORIES
+
+    def test_categorize_import_error(self):
+        from packages.orchestration.review_bundle import _categorize_exception
+        assert _categorize_exception(ImportError("no module")) == "import_error"
+
+    def test_categorize_value_error(self):
+        from packages.orchestration.review_bundle import _categorize_exception
+        assert _categorize_exception(ValueError("bad")) == "validation_error"
+
+    def test_categorize_os_error(self):
+        from packages.orchestration.review_bundle import _categorize_exception
+        assert _categorize_exception(OSError("disk")) == "io_error"
+
+    def test_categorize_permission_error(self):
+        from packages.orchestration.review_bundle import _categorize_exception
+        assert _categorize_exception(PermissionError("denied")) == "permission_error"
+
+    def test_categorize_runtime_error(self):
+        from packages.orchestration.review_bundle import _categorize_exception
+        assert _categorize_exception(RuntimeError("boom")) == "section_builder_error"
+
+
+class TestSafeExceptionMessage:
+    """_safe_exception_message redaction and truncation."""
+
+    def test_clean_message(self):
+        from packages.orchestration.review_bundle import _safe_exception_message
+        msg = _safe_exception_message(ValueError("missing field"))
+        assert msg == "missing field"
+
+    def test_secret_redacted(self):
+        from packages.orchestration.review_bundle import _safe_exception_message
+        msg = _safe_exception_message(RuntimeError("key sk-test12345678 invalid"))
+        assert "sk-test12345678" not in msg
+        assert "[REDACTED]" in msg
+
+    def test_private_path_redacted(self):
+        from packages.orchestration.review_bundle import _safe_exception_message
+        msg = _safe_exception_message(FileNotFoundError("/home/user/secret/file.txt"))
+        assert "/home/user" not in msg
+        assert "[PRIVATE_PATH]" in msg
+
+    def test_truncation(self):
+        from packages.orchestration.review_bundle import _safe_exception_message
+        msg = _safe_exception_message(RuntimeError("x" * 500))
+        assert len(msg) <= 244  # 240 + "..."
+
+    def test_empty_message(self):
+        from packages.orchestration.review_bundle import _safe_exception_message
+        msg = _safe_exception_message(RuntimeError(""))
+        assert msg == ""
+
+    def test_no_traceback(self):
+        from packages.orchestration.review_bundle import _safe_exception_message
+        try:
+            raise ValueError("test error")
+        except ValueError as exc:
+            msg = _safe_exception_message(exc)
+        assert "Traceback" not in msg
+        assert "test error" in msg
+
+    def test_exception_type_not_in_message(self):
+        from packages.orchestration.review_bundle import _safe_exception_message
+        msg = _safe_exception_message(ValueError("bad"))
+        assert "ValueError" not in msg
+
+
+class TestSectionRegistry:
+    """_REVIEW_BUNDLE_SECTION_SPECS registry tests."""
+
+    def test_spec_count_matches_required(self):
+        from packages.orchestration.review_bundle import (
+            _REVIEW_BUNDLE_SECTION_SPECS,
+            REQUIRED_SECTIONS,
+        )
+        spec_filenames = {s.filename for s in _REVIEW_BUNDLE_SECTION_SPECS}
+        required_filenames = set(REQUIRED_SECTIONS)
+        non_generated = {"manifest.json", "bundle_readme.md"}
+        assert spec_filenames == required_filenames - non_generated
+
+    def test_deterministic_order(self):
+        from packages.orchestration.review_bundle import _REVIEW_BUNDLE_SECTION_SPECS
+        names = [s.filename for s in _REVIEW_BUNDLE_SECTION_SPECS]
+        assert names == [s.filename for s in _REVIEW_BUNDLE_SECTION_SPECS]
+
+    def test_all_specs_have_builders(self):
+        from packages.orchestration.review_bundle import _REVIEW_BUNDLE_SECTION_SPECS
+        for spec in _REVIEW_BUNDLE_SECTION_SPECS:
+            assert callable(spec.builder), f"{spec.filename} has no callable builder"
+
+    def test_all_specs_have_filenames(self):
+        from packages.orchestration.review_bundle import _REVIEW_BUNDLE_SECTION_SPECS
+        for spec in _REVIEW_BUNDLE_SECTION_SPECS:
+            assert spec.filename.endswith(".json"), f"Non-JSON spec: {spec.filename}"
+
+
+class TestBuildSectionSafe:
+    """_build_section_safe wrapper tests."""
+
+    def test_success_produces_included(self):
+        from packages.orchestration.review_bundle import (
+            ReviewBundleSectionSpec,
+            _build_section_safe,
+        )
+        spec = ReviewBundleSectionSpec("test.json", lambda: {"ok": True})
+        filename, content, section = _build_section_safe(spec, builder_args={})
+        assert section.status == "included"
+        assert content is not None
+        assert b'"ok"' in content
+
+    def test_failure_produces_degraded(self):
+        from packages.orchestration.review_bundle import (
+            ReviewBundleSectionSpec,
+            _build_section_safe,
+        )
+        def _boom():
+            raise RuntimeError("test boom")
+        spec = ReviewBundleSectionSpec("test.json", _boom)
+        filename, content, section = _build_section_safe(spec, builder_args={})
+        assert section.status == "degraded"
+        assert section.error_type == "RuntimeError"
+        assert section.error_category == "section_builder_error"
+        assert "test boom" in section.error_message
+        assert content is not None
+        data = json.loads(content)
+        assert data["status"] == "degraded"
+        assert data["error_type"] == "RuntimeError"
+
+    def test_failure_no_traceback_in_content(self):
+        from packages.orchestration.review_bundle import (
+            ReviewBundleSectionSpec,
+            _build_section_safe,
+        )
+        def _boom():
+            raise ValueError("bad value")
+        spec = ReviewBundleSectionSpec("test.json", _boom)
+        _, content, _ = _build_section_safe(spec, builder_args={})
+        assert b"Traceback" not in content
+
+    def test_failure_no_secret_in_content(self):
+        from packages.orchestration.review_bundle import (
+            ReviewBundleSectionSpec,
+            _build_section_safe,
+        )
+        def _boom():
+            raise RuntimeError("key sk-secret12345678 failed")
+        spec = ReviewBundleSectionSpec("test.json", _boom)
+        _, content, _ = _build_section_safe(spec, builder_args={})
+        assert b"sk-secret12345678" not in content
+
+    def test_args_passed_to_builder(self):
+        from packages.orchestration.review_bundle import (
+            ReviewBundleSectionSpec,
+            _build_section_safe,
+        )
+        def _builder(x, y):
+            return {"sum": x + y}
+        spec = ReviewBundleSectionSpec("test.json", _builder, args=("a", "b"))
+        _, content, section = _build_section_safe(spec, builder_args={"a": 3, "b": 4})
+        assert section.status == "included"
+        data = json.loads(content)
+        assert data["sum"] == 7
+
+    def test_import_error_is_optional(self):
+        from packages.orchestration.review_bundle import (
+            ReviewBundleSectionSpec,
+            _build_section_safe,
+        )
+        def _boom():
+            raise ImportError("no module")
+        spec = ReviewBundleSectionSpec("test.json", _boom)
+        _, _, section = _build_section_safe(spec, builder_args={})
+        assert section.error_category == "import_error"
+
+    def test_log_warning_on_failure(self, caplog):
+        import logging
+
+        from packages.orchestration.review_bundle import (
+            ReviewBundleSectionSpec,
+            _build_section_safe,
+        )
+        def _boom():
+            raise RuntimeError("logged failure")
+        spec = ReviewBundleSectionSpec("logged.json", _boom)
+        with caplog.at_level(logging.WARNING, logger="packages.orchestration.review_bundle"):
+            _build_section_safe(spec, builder_args={})
+        assert any("logged.json" in r.message and "logged failure" in r.message for r in caplog.records)
+
+
+class TestDegradedSectionSummary:
+    """Top-level degraded section count and summary fields."""
+
+    def test_clean_bundle_zero_degraded(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            result = build_review_bundle(str(job.id))
+            assert result.degraded_section_count == 0
+            assert result.degraded_sections == []
+            assert result.section_error_summary == []
+            assert result.diagnostics_version == 1
+        finally:
+            _cleanup_env(old)
+
+    def test_failed_section_increments_degraded(self, tmp_path):
+        from packages.orchestration.review_bundle import (
+            _REVIEW_BUNDLE_SECTION_SPECS,
+            build_review_bundle,
+        )
+        def _fail(*a, **kw):
+            raise RuntimeError("injected")
+        proof_spec = next(s for s in _REVIEW_BUNDLE_SECTION_SPECS if s.filename == "proof_chains.json")
+        original = proof_spec.builder
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            proof_spec.builder = _fail
+            result = build_review_bundle(str(job.id))
+            assert result.degraded_section_count >= 1
+            assert "proof_chains.json" in result.degraded_sections
+            assert any(e["section_name"] == "proof_chains.json" for e in result.section_error_summary)
+        finally:
+            proof_spec.builder = original
+            _cleanup_env(old)
+
+    def test_export_json_includes_diagnostics(self, tmp_path):
+        from packages.orchestration.review_bundle import (
+            build_review_bundle,
+            export_review_bundle_json,
+        )
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            result = build_review_bundle(str(job.id))
+            data = export_review_bundle_json(result)
+            assert data["diagnostics_version"] == 1
+            assert data["degraded_section_count"] == 0
+            assert data["degraded_sections"] == []
+            assert data["section_error_summary"] == []
+        finally:
+            _cleanup_env(old)
+
+    def test_manifest_includes_diagnostics(self, tmp_path):
+        from packages.orchestration.review_bundle import build_review_bundle
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            result = build_review_bundle(str(job.id))
+            with zipfile.ZipFile(result.output_path) as zf:
+                manifest = json.loads(zf.read("manifest.json"))
+            assert manifest["diagnostics_version"] == 1
+            assert manifest["degraded_section_count"] == 0
+        finally:
+            _cleanup_env(old)
+
+    def test_degraded_section_in_zip_has_structured_data(self, tmp_path):
+        from packages.orchestration.review_bundle import (
+            _REVIEW_BUNDLE_SECTION_SPECS,
+            build_review_bundle,
+        )
+        def _fail(*a, **kw):
+            raise ValueError("bad data")
+        event_spec = next(s for s in _REVIEW_BUNDLE_SECTION_SPECS if s.filename == "event_summary.json")
+        original = event_spec.builder
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            event_spec.builder = _fail
+            result = build_review_bundle(str(job.id))
+            with zipfile.ZipFile(result.output_path) as zf:
+                data = json.loads(zf.read("event_summary.json"))
+            assert data["status"] == "degraded"
+            assert data["error_type"] == "ValueError"
+            assert data["error_category"] == "validation_error"
+            assert "bad data" in data["error_message"]
+        finally:
+            event_spec.builder = original
+            _cleanup_env(old)
+
+    def test_summarize_shows_degraded(self, tmp_path):
+        from packages.orchestration.review_bundle import (
+            _REVIEW_BUNDLE_SECTION_SPECS,
+            build_review_bundle,
+            summarize_review_bundle,
+        )
+        def _fail(*a, **kw):
+            raise RuntimeError("broken")
+        spec = next(s for s in _REVIEW_BUNDLE_SECTION_SPECS if s.filename == "command_summary.json")
+        original = spec.builder
+        job, task, data_dir, old = _make_job(tmp_path)
+        try:
+            spec.builder = _fail
+            result = build_review_bundle(str(job.id))
+            text = summarize_review_bundle(result)
+            assert "Degraded sections: " in text
+            assert "command_summary.json" in text
+        finally:
+            spec.builder = original
             _cleanup_env(old)
