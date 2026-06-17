@@ -1,17 +1,19 @@
-# Plan — Steps 2446-2505 Final Closure: R-0141..R-0146
+# Plan — Steps 2506-2585: Controlled Claude Code Operator Path v0
 
 ## Goal
-Fix 6 findings from reviewer FAIL verdict on R-0135..R-0140 closure.
+Build operator-friendly CLI path for Claude Code through existing builder adapter + managed execution rails.
 
 ## Steps
-- [x] R-0141: Redact title/next_action/safe_summary in export_progress_ledger_json via shared _SECRET_RE; reword plan.md
-- [x] R-0142: Extend _SECRET_RE in self_repair_proposal.py for token/credential with quoted/unquoted; case-insensitive
-- [x] R-0143: convert_self_repair_proposal_to_worker_prompt revalidates acceptance_criteria and required_tests
-- [x] R-0144: CLI test file passes as full file run (12 tests, no hangs, 1.93s)
-- [x] R-0145: Remove duplicate evidence_refs.append in anomaly/blocking loops; single append after
-- [x] R-0146: Simple-language handoff in commit/PR
-- [x] Tests: 77 proposal + 12 CLI + 90 bundle + 31 ledger = 210 targeted; 6768 full suite (0 failures, 8 skipped)
-- [ ] Commit + push
+- [x] Phase 1: Operator path audit (documented in handoff)
+- [x] Phase 2: Template enable/disable/update CLI commands
+- [x] Phase 3: Package-bound placeholder resolution in run_managed_builder
+- [x] Phase 4: Template/session binding verification (covered by existing + new tests)
+- [x] Phase 5: Operator runbook command
+- [x] Phase 6: Fixture end-to-end path test
+- [x] Phase 7: Claude doctor command
+- [x] Phase 8: Docs (controlled-claude-code-operator-path-v0.md)
+- [x] Phase 9: Review bundle claude_code_readiness in managed execution summary
+- [x] Phase 10: Tests + lint + full suite (6784 passed, 0 failed)
 
 ## Hard rules
 No provider execution; no auto-apply/approve/PR/git; no shell=True; no secret storage;

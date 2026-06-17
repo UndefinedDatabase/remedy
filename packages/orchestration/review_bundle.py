@@ -1701,6 +1701,19 @@ def _build_managed_execution_summary(job: Any) -> dict:
                         expired_approvals += 1
                 except (ValueError, TypeError):
                     expired_approvals += 1
+        claude_tmpl = next((t for t in templates if t.get("template_id") == "claude-code-repair-v0"), None)
+        claude_readiness = {
+            "template_exists": claude_tmpl is not None,
+            "template_enabled": bool(claude_tmpl and claude_tmpl.get("enabled", False)),
+        }
+        try:
+            from packages.orchestration.main_builder_adapter import get_builder_adapter_spec
+            claude_adapter = get_builder_adapter_spec("claude-code-v0")
+            claude_readiness["adapter_exists"] = claude_adapter is not None
+            claude_readiness["adapter_enabled"] = bool(claude_adapter and claude_adapter.get("enabled", False))
+        except (ImportError, OSError):
+            claude_readiness["adapter_exists"] = False
+            claude_readiness["adapter_enabled"] = False
         return {
             "template_count": len(templates),
             "enabled_template_count": enabled,
@@ -1714,6 +1727,7 @@ def _build_managed_execution_summary(job: Any) -> dict:
             "latest_status": latest.get("status", "none"),
             "latest_template_id": latest.get("template_id", ""),
             "next_safe_action": latest.get("next_safe_action", ""),
+            "claude_code_readiness": claude_readiness,
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"template_count": 0, "execution_count": 0,

@@ -157,6 +157,9 @@ class ContractAction:
     # no shell, sanitized env, timeout, output cap). None execute arbitrary commands.
     EXECUTION_TEMPLATE_SHOW = "execution_template_show"
     EXECUTION_TEMPLATE_CREATE = "execution_template_create"
+    EXECUTION_TEMPLATE_ENABLE = "execution_template_enable"
+    EXECUTION_TEMPLATE_DISABLE = "execution_template_disable"
+    EXECUTION_TEMPLATE_UPDATE = "execution_template_update"
     EXECUTION_APPROVE = "execution_approve"
     EXECUTION_RUN = "execution_run"
     EXECUTION_SHOW = "execution_show"
@@ -165,6 +168,9 @@ class ContractAction:
     EXECUTION_APPROVAL_SHOW = "execution_approval_show"
     EXECUTION_APPROVAL_VALIDATE = "execution_approval_validate"
     EXECUTION_APPROVAL_LIST = "execution_approval_list"
+    # v1.2: operator path (Step 2506)
+    EXECUTION_OPERATOR_RUNBOOK = "execution_operator_runbook"
+    EXECUTION_CLAUDE_DOCTOR = "execution_claude_doctor"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -355,6 +361,9 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.BUILDER_SESSION_INTAKE,
     ContractAction.EXECUTION_TEMPLATE_SHOW,
     ContractAction.EXECUTION_TEMPLATE_CREATE,
+    ContractAction.EXECUTION_TEMPLATE_ENABLE,
+    ContractAction.EXECUTION_TEMPLATE_DISABLE,
+    ContractAction.EXECUTION_TEMPLATE_UPDATE,
     ContractAction.EXECUTION_APPROVE,
     ContractAction.EXECUTION_RUN,
     ContractAction.EXECUTION_SHOW,
@@ -362,6 +371,8 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.EXECUTION_APPROVAL_SHOW,
     ContractAction.EXECUTION_APPROVAL_VALIDATE,
     ContractAction.EXECUTION_APPROVAL_LIST,
+    ContractAction.EXECUTION_OPERATOR_RUNBOOK,
+    ContractAction.EXECUTION_CLAUDE_DOCTOR,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,
