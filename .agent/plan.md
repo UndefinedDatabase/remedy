@@ -17,8 +17,8 @@ Harden doctor core error redaction. No new features.
 - [x] Step 2705: Update docs/test-lanes-v0.md with runtime lane
 - [x] Step 2706: Targeted tests — 395 fast + 54 runtime + 12 categories + lint clean
 - [x] Step 2707: Full suite — 6876 passed, 0 failures
-- [ ] Step 2708: Changed Line Map + commit + PR
-- [ ] Step 2709: Reviewer finding reserve + acceptance gate
+- [x] Step 2708: Changed Line Map + commit + PR #90
+- [x] Step 2709: Reviewer PASS @ 9c68161 — R-0155 INFO non-blocking
 
 ## Hard rules
 Split only. No new features. No provider execution.
