@@ -1,23 +1,17 @@
-# Plan — Steps 2446-2505: Run Replay to Self-Repair Proposal v0
+# Plan — Steps 2446-2505 Closure: R-0135..R-0140
 
 ## Goal
-Turn run replay analysis into a safe self-repair proposal that a human operator
-can approve, deny, or edit before it becomes a Worker prompt.
+Fix 6 findings from independent review of Run Replay to Self-Repair Proposal v0.
 
 ## Steps
-- [x] Phase 1: Architecture doc (docs/run-replay-to-self-repair-proposal-v0.md)
-- [x] Phase 2: Core proposal module (packages/orchestration/self_repair_proposal.py)
-- [x] Phase 3: Proposal generation from replay (create_self_repair_proposal_from_replay)
-- [x] Phase 4: Operator decision flow (approve/deny/edit/convert)
-- [x] Phase 5: Storage (save/load/list with atomic writes)
-- [x] Phase 6: CLI surface (apps/cli/commands/self_repair_cmd.py)
-- [x] Phase 7: Command catalog + run contract (7 commands, 7 contract actions)
-- [x] Phase 8: Review bundle / progress / cockpit (self_repair_proposal_summary.json)
-- [x] Phase 9: Integrity checks (7 invariants in self_repair_proposal_integrity)
-- [x] Phase 10: User guide doc (docs/self-repair-proposal-user-guide-v0.md)
-- [x] Phase 11: Targeted tests + lint (49 proposal + 90 bundle + 18 catalog + 64 dogfood + 119 contract = all pass)
-- [x] Phase 12: Full suite (6734 passed, 0 failed, 8 skipped)
-- [ ] Self-review + commit + push + PR
+- [x] R-0135: Restrict approval to awaiting_operator/edited; require non-empty evidence, prompt, criteria, tests; re-check safety in convert
+- [x] R-0136: Add secret marker scrubbing (sk-ant-*, api_key=*, etc.) to to_dict() and all public exports; sanitize edited prompts
+- [x] R-0137: Add signal_collection_warnings/errors fields to _gather_replay_signals; blocked proposal on collection errors
+- [x] R-0138: Wire self_repair_progress_summary into progress_ledger.py (extract/merge/build_progress_ledger)
+- [x] R-0139: Add CLI subprocess tests for all 7 commands with isolated REMEDY_DATA_DIR (12 tests)
+- [x] R-0140: Simple-language explanation in final handoff
+- [x] Tests: 68 proposal tests + 12 CLI tests + 121 progress/bundle tests + 6759 full suite (0 failures, 8 skipped)
+- [ ] Commit + push + PR
 
 ## Hard rules
 No provider execution; no auto-apply/approve/PR/git; no shell=True; no secret storage;

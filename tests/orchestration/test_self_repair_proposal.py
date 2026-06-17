@@ -6,10 +6,12 @@ import json
 
 from packages.orchestration.self_repair_proposal import (
     _ALL_STATUSES,
+    _APPROVABLE_STATUSES,
     _TERMINAL_STATUSES,
     SelfRepairProposal,
     SelfRepairProposalStatus,
     _redact_abs_paths,
+    _sanitize_prompt,
     approve_self_repair_proposal,
     convert_self_repair_proposal_to_worker_prompt,
     create_self_repair_proposal_from_replay,
@@ -244,13 +246,22 @@ class TestProposalGeneration:
 
 class TestApproval:
 
-    def test_approve(self, tmp_path):
-        p = SelfRepairProposal(
+    @staticmethod
+    def _approvable_proposal(**overrides):
+        defaults = dict(
             proposal_id="srp-appr1",
             status=SelfRepairProposalStatus.AWAITING_OPERATOR,
             evidence_refs=["replay:test"],
+            suggested_worker_prompt="Fix the bug",
+            acceptance_criteria=["Tests pass"],
+            required_tests=["test_foo.py"],
             created_at="2026-01-01T00:00:00Z",
         )
+        defaults.update(overrides)
+        return SelfRepairProposal(**defaults)
+
+    def test_approve(self, tmp_path):
+        p = self._approvable_proposal()
         save_self_repair_proposal(p, data_dir=tmp_path)
         result = approve_self_repair_proposal("srp-appr1", "op-1", data_dir=tmp_path)
         assert result is not None
@@ -258,11 +269,7 @@ class TestApproval:
         assert "approved" in result.operator_decision
 
     def test_approve_with_notes(self, tmp_path):
-        p = SelfRepairProposal(
-            proposal_id="srp-appr2",
-            status=SelfRepairProposalStatus.AWAITING_OPERATOR,
-            created_at="2026-01-01T00:00:00Z",
-        )
+        p = self._approvable_proposal(proposal_id="srp-appr2")
         save_self_repair_proposal(p, data_dir=tmp_path)
         result = approve_self_repair_proposal(
             "srp-appr2", "op-1", notes="Looks good", data_dir=tmp_path,
@@ -281,6 +288,54 @@ class TestApproval:
         )
         save_self_repair_proposal(p, data_dir=tmp_path)
         assert approve_self_repair_proposal("srp-denied1", "op-1", data_dir=tmp_path) is None
+
+    def test_approve_blocked_fails(self, tmp_path):
+        p = self._approvable_proposal(
+            proposal_id="srp-blocked1",
+            status=SelfRepairProposalStatus.BLOCKED,
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert approve_self_repair_proposal("srp-blocked1", "op-1", data_dir=tmp_path) is None
+
+    def test_approve_draft_fails(self, tmp_path):
+        p = self._approvable_proposal(
+            proposal_id="srp-draft1",
+            status=SelfRepairProposalStatus.DRAFT,
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert approve_self_repair_proposal("srp-draft1", "op-1", data_dir=tmp_path) is None
+
+    def test_approve_missing_evidence_fails(self, tmp_path):
+        p = self._approvable_proposal(
+            proposal_id="srp-noev2",
+            evidence_refs=[],
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert approve_self_repair_proposal("srp-noev2", "op-1", data_dir=tmp_path) is None
+
+    def test_approve_missing_prompt_fails(self, tmp_path):
+        p = self._approvable_proposal(
+            proposal_id="srp-noprompt",
+            suggested_worker_prompt="",
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert approve_self_repair_proposal("srp-noprompt", "op-1", data_dir=tmp_path) is None
+
+    def test_approve_missing_criteria_fails(self, tmp_path):
+        p = self._approvable_proposal(
+            proposal_id="srp-nocrit",
+            acceptance_criteria=[],
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert approve_self_repair_proposal("srp-nocrit", "op-1", data_dir=tmp_path) is None
+
+    def test_approve_missing_tests_fails(self, tmp_path):
+        p = self._approvable_proposal(
+            proposal_id="srp-notests",
+            required_tests=[],
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert approve_self_repair_proposal("srp-notests", "op-1", data_dir=tmp_path) is None
 
 
 class TestDeny:
@@ -345,6 +400,7 @@ class TestConversion:
             proposal_id="srp-cnv1",
             status=SelfRepairProposalStatus.APPROVED,
             suggested_worker_prompt="Do the fix",
+            evidence_refs=["replay:test"],
             operator_decision="approved by op-1",
             created_at="2026-01-01T00:00:00Z",
         )
@@ -354,6 +410,20 @@ class TestConversion:
         loaded = load_self_repair_proposal("srp-cnv1", data_dir=tmp_path)
         assert loaded is not None
         assert loaded.status == SelfRepairProposalStatus.CONVERTED_TO_WORKER_PROMPT
+
+    def test_convert_no_evidence_fails(self, tmp_path):
+        p = SelfRepairProposal(
+            proposal_id="srp-cnvnoev",
+            status=SelfRepairProposalStatus.APPROVED,
+            suggested_worker_prompt="Do the fix",
+            evidence_refs=[],
+            operator_decision="approved by op-1",
+            created_at="2026-01-01T00:00:00Z",
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        assert convert_self_repair_proposal_to_worker_prompt(
+            "srp-cnvnoev", data_dir=tmp_path,
+        ) is None
 
     def test_convert_denied_blocked(self, tmp_path):
         p = SelfRepairProposal(
@@ -387,6 +457,9 @@ class TestConversion:
             proposal_id="srp-reappr",
             status=SelfRepairProposalStatus.APPROVED,
             suggested_worker_prompt="Original",
+            evidence_refs=["replay:test"],
+            acceptance_criteria=["Tests pass"],
+            required_tests=["test_foo.py"],
             operator_decision="approved by op-1",
             created_at="2026-01-01T00:00:00Z",
         )
@@ -542,3 +615,114 @@ class TestNoRawLeak:
     def test_export_matches_to_dict(self):
         p = SelfRepairProposal(proposal_id="srp-exp1")
         assert export_self_repair_proposal_json(p) == p.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# R-0135: Approvable status gate
+# ---------------------------------------------------------------------------
+
+
+class TestApprovableStatuses:
+
+    def test_approvable_statuses_defined(self):
+        assert SelfRepairProposalStatus.AWAITING_OPERATOR in _APPROVABLE_STATUSES
+        assert SelfRepairProposalStatus.EDITED in _APPROVABLE_STATUSES
+        assert SelfRepairProposalStatus.DRAFT not in _APPROVABLE_STATUSES
+        assert SelfRepairProposalStatus.BLOCKED not in _APPROVABLE_STATUSES
+        assert SelfRepairProposalStatus.APPROVED not in _APPROVABLE_STATUSES
+
+    def test_edited_can_be_approved(self, tmp_path):
+        p = SelfRepairProposal(
+            proposal_id="srp-edited-appr",
+            status=SelfRepairProposalStatus.EDITED,
+            evidence_refs=["replay:test"],
+            suggested_worker_prompt="Fix bug",
+            acceptance_criteria=["Tests pass"],
+            required_tests=["test_foo.py"],
+            created_at="2026-01-01T00:00:00Z",
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        result = approve_self_repair_proposal("srp-edited-appr", "op-1", data_dir=tmp_path)
+        assert result is not None
+        assert result.status == SelfRepairProposalStatus.APPROVED
+
+
+# ---------------------------------------------------------------------------
+# R-0136: Secret marker scrubbing
+# ---------------------------------------------------------------------------
+
+
+class TestSecretScrubbing:
+
+    def test_sanitize_prompt_scrubs_sk_ant(self):
+        result = _sanitize_prompt("key is sk-ant-api03-1234567890abcdef")
+        assert "sk-ant" not in result
+        assert "<secret-redacted>" in result
+
+    def test_sanitize_prompt_scrubs_sk_proj(self):
+        result = _sanitize_prompt("sk-proj-abcdef12345")
+        assert "sk-proj" not in result
+
+    def test_sanitize_prompt_scrubs_api_key(self):
+        result = _sanitize_prompt("api_key = abc123secret")
+        assert "abc123secret" not in result
+
+    def test_sanitize_prompt_scrubs_password(self):
+        result = _sanitize_prompt("password=mysecret123")
+        assert "mysecret123" not in result
+
+    def test_sanitize_prompt_scrubs_pem(self):
+        pem = "-----BEGIN RSA PRIVATE KEY-----\ndata\n-----END RSA PRIVATE KEY-----"
+        result = _sanitize_prompt(pem)
+        assert "-----BEGIN" not in result
+
+    def test_to_dict_scrubs_secrets_in_prompt(self):
+        p = SelfRepairProposal(
+            proposal_id="srp-secprompt",
+            suggested_worker_prompt="Use sk-ant-api03-secret-value here",
+        )
+        d = p.to_dict()
+        assert "sk-ant" not in d["suggested_worker_prompt"]
+
+    def test_to_dict_scrubs_secrets_in_risk_summary(self):
+        p = SelfRepairProposal(
+            proposal_id="srp-secrisk",
+            risk_summary="Leaked password=admin123",
+        )
+        d = p.to_dict()
+        assert "admin123" not in d["risk_summary"]
+
+    def test_to_dict_scrubs_secrets_in_notes(self):
+        p = SelfRepairProposal(
+            proposal_id="srp-secnotes",
+            operator_notes="api_key=my_secret_key_here",
+        )
+        d = p.to_dict()
+        assert "my_secret_key_here" not in d["operator_notes"]
+
+    def test_edit_sanitizes_input(self, tmp_path):
+        p = SelfRepairProposal(
+            proposal_id="srp-editsec",
+            status=SelfRepairProposalStatus.AWAITING_OPERATOR,
+            suggested_worker_prompt="Original",
+            created_at="2026-01-01T00:00:00Z",
+        )
+        save_self_repair_proposal(p, data_dir=tmp_path)
+        result = edit_self_repair_proposal(
+            "srp-editsec", "op-1", "Fix with sk-ant-api03-leak", data_dir=tmp_path,
+        )
+        assert result is not None
+        assert "sk-ant" not in result.suggested_worker_prompt
+
+
+# ---------------------------------------------------------------------------
+# R-0137: Signal collection diagnostics
+# ---------------------------------------------------------------------------
+
+
+class TestSignalCollectionDiagnostics:
+
+    def test_no_issues_with_warnings_produces_blocked(self, tmp_path):
+        p = create_self_repair_proposal_from_replay("nonexistent-run", data_dir=tmp_path)
+        assert p.status == SelfRepairProposalStatus.BLOCKED
+        assert p.proposal_id.startswith("srp-")
