@@ -364,6 +364,17 @@ class TestDoctorCore:
         assert "mission_facade" in check_names
         assert "fast_test_lane" in check_names
 
+    def test_core_error_messages_safe(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        raw = json.dumps(out)
+        assert "/home/" not in raw, "Doctor core must not leak absolute home paths"
+        assert "/root/" not in raw, "Doctor core must not leak root paths"
+        for check in out["checks"]:
+            detail = str(check.get("detail", ""))
+            assert len(detail) <= 200, f"Detail too long: {detail[:50]}..."
+
     def test_core_text_output(self, capsys):
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
         _cmd_doctor_core(_ns(json=False))

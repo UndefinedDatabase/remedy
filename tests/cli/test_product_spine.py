@@ -137,6 +137,25 @@ class TestFastLaneSelfTest:
             assert forbidden not in text.lower(), \
                 f"Fast lane must not invoke UI build: {forbidden}"
 
+    def test_fast_lane_no_heavy_runtime_smoke(self):
+        p = _ROOT / "scripts" / "remedy_test_fast.sh"
+        text = p.read_text(encoding="utf-8")
+        heavy = [
+            "test_worker_cli_runtime.py",
+            "test_self_dogfood_execution_cli.py",
+            "test_smoke_scripts.py",
+            "test_overnight_executor_cli.py",
+        ]
+        for name in heavy:
+            assert name not in text, \
+                f"Fast lane must not include heavy runtime file: {name}"
+
+    def test_fast_lane_includes_product_spine(self):
+        p = _ROOT / "scripts" / "remedy_test_fast.sh"
+        text = p.read_text(encoding="utf-8")
+        assert "test_product_spine.py" in text, \
+            "Fast lane must include product spine tests"
+
     def test_full_lane_script_exists(self):
         p = _ROOT / "scripts" / "remedy_test_full.sh"
         assert p.exists(), "scripts/remedy_test_full.sh must exist"

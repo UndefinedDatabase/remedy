@@ -357,6 +357,12 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
 
     import importlib
 
+    def _safe_err(exc: Exception) -> str:
+        msg = str(exc)
+        if len(msg) > 120:
+            msg = msg[:120] + "..."
+        return msg.replace("/home/", "~/").replace("/root/", "~/")
+
     def _try_import(name: str, module: str, attr: str) -> None:
         try:
             mod = importlib.import_module(module)
@@ -366,7 +372,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
             else:
                 _check(name, True, f"{attr} available")
         except Exception as exc:
-            _check(name, False, str(exc))
+            _check(name, False, _safe_err(exc))
 
     _try_import("worker_facade", "apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS")
 
@@ -375,7 +381,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         _check("command_catalog", True,
                f"{len(cat.CATALOG)} commands, {len(cat.GROUPS)} groups")
     except Exception as exc:
-        _check("command_catalog", False, str(exc))
+        _check("command_catalog", False, _safe_err(exc))
 
     _try_import("run_contract", "packages.orchestration.run_contract", "ContractAction")
     _try_import("mission_facade", "packages.orchestration.dogfood_run", "run_mission_loop")
