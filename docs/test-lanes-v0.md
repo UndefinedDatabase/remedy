@@ -3,10 +3,11 @@
 ## Fast lane
 
 **Script**: `scripts/remedy_test_fast.sh`
-**Expected runtime**: under 15 seconds (depends on environment)
-**Tests**: ~440
+**Expected runtime**: under 10 seconds (depends on environment)
+**Tests**: ~370
 
-Proves the core product spine is healthy. Covers:
+Pure in-process tests only. No subprocess calls. Proves the core product spine is
+healthy without risk of environment-specific hangs.
 
 | Suite | Type | What it proves |
 |-------|------|----------------|
@@ -15,21 +16,31 @@ Proves the core product spine is healthy. Covers:
 | `test_managed_builder_execution.py` | unit | Command templates, approval, execution safety, placeholders |
 | `test_main_builder_adapter.py` | unit | Adapter specs, enable/disable, mode management |
 | `test_self_repair_proposal.py` | unit | Proposal lifecycle: create/approve/deny/edit/worker-prompt |
+| `test_product_spine.py` | unit | Operator command consistency, stale doc scanner, lane self-test |
+
+**Does NOT prove**: CLI subprocess integration, UI rendering, overnight planning,
+provider trust gate, tournament scoring, full event replay chain.
+
+**When to use**: During development, before committing, quick health check.
+
+## Runtime lane
+
+**Script**: `scripts/remedy_test_runtime.sh`
+**Expected runtime**: under 30 seconds (depends on environment)
+**Tests**: ~70
+
+CLI integration tests that use bounded `subprocess.run` calls (30-second timeout).
+Separated from fast lane because `test_review_bundle_runtime.py` can hang in
+environments where stdin/tty behavior differs (e.g. review sandboxes).
+
+| Suite | Type | What it proves |
+|-------|------|----------------|
 | `test_review_bundle_runtime.py` | CLI integration | Evidence safety, no raw leaks, progress summary |
 | `test_command_catalog.py` | CLI integration | Catalog integrity, group definitions, handler wiring |
 | `test_contract_runtime.py` | CLI integration | Allowed/denied actions, budget, contract evaluation |
 | `test_config_cmd.py` | CLI integration | Config layer basics |
-| `test_product_spine.py` | unit | Operator command consistency, stale doc scanner, lane self-test |
 
-Some CLI integration files (`test_config_cmd.py`, `test_review_bundle_runtime.py`,
-`test_command_catalog.py`, `test_contract_runtime.py`) use bounded `subprocess.run`
-calls with 30-second timeouts. These are lightweight CLI invocations, not heavy
-process-group smoke tests.
-
-**Does NOT prove**: UI rendering, heavy subprocess isolation, overnight planning,
-provider trust gate, tournament scoring, full event replay chain.
-
-**When to use**: During development, before committing, quick health check.
+**When to use**: After CLI changes, before PR creation, when fast lane passes.
 
 ## Full lane
 

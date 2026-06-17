@@ -358,10 +358,17 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     import importlib
 
     def _safe_err(exc: Exception) -> str:
+        import re
         msg = str(exc)
         if len(msg) > 120:
             msg = msg[:120] + "..."
-        return msg.replace("/home/", "~/").replace("/root/", "~/")
+        msg = re.sub(r"/home/[^/]+/", "~/", msg)
+        msg = re.sub(r"/Users/[^/]+/", "~/", msg)
+        msg = msg.replace("/root/", "~/")
+        msg = msg.replace("/mnt/", "~/")
+        msg = msg.replace("/tmp/", "~/")
+        msg = re.sub(r"(?i)(key|token|secret|password|api_key)=[^\s,;)\"']+", r"\1=***", msg)
+        return msg
 
     def _try_import(name: str, module: str, attr: str) -> None:
         try:

@@ -1,28 +1,24 @@
-# Plan — Steps 2676-2695: Fast Lane Reality Closure + Review State Coherence v0
+# Plan — Steps 2696-2715: Fast Lane Runtime Split + Doctor Core Safety Closure v0.1
 
 ## Goal
-Closure block. Make fast lane honest, reliable, documented.
-Scrub doctor core errors. Resolve R-0153/R-0154. No new features.
+Split subprocess-heavy tests out of fast lane into runtime lane.
+Harden doctor core error redaction. No new features.
 
 ## Steps
-- [x] Step 2676: Mainline gate — PR #88 merged, reviewer PASS, zero open findings
-- [x] Step 2677: Fast lane baseline — 420 passed, 6.85s, no timeout
-- [x] Step 2678: Audit fast lane — classified all 9 files (5 unit, 4 CLI integration)
-- [x] Step 2679: Split decision — no split needed (all 9 files run in ~7s)
-- [x] Step 2680: Honest timing claims — removed "7 seconds" claim, use "under 15 seconds"
-- [x] Step 2681: Subprocess comment — fixed to acknowledge bounded subprocess.run calls
-- [x] Step 2682: Lane self-tests — added heavy-runtime exclusion + product-spine inclusion
-- [x] Step 2683: Fast lane after changes — 443 passed, 6.86s
-- [x] Step 2684: Runtime lane — not added (no split needed)
-- [x] Step 2685: Test lane docs — updated with file classifications and honest timing
-- [x] Step 2686: Doctor core error scrub — _safe_err truncation + path redaction
-- [x] Step 2687: R-0153/R-0154 — resolved by pattern change (CLM in context.md)
-- [x] Step 2688: Product spine docs verified current
-- [x] Step 2689: Catalog + contract confirmed
-- [x] Step 2690: Architecture guard scan — clean
-- [x] Step 2691: Targeted tests — 443 fast + lint clean
-- [x] Step 2692: Full suite — 6866 passed, 0 failures
-- [ ] Step 2693: Final handoff
+- [x] Step 2696: Mainline gate — PR #89 merged, reviewer PASS
+- [x] Step 2697: Baseline — fast lane 443 passed 6.79s, review bundle 11 passed 3.04s
+- [x] Step 2698: Isolate review bundle — no local hang, but reviewer reported hang risk
+- [x] Step 2699: Decision — move all 4 subprocess files to runtime lane
+- [x] Step 2700: Create scripts/remedy_test_runtime.sh (4 subprocess-heavy files)
+- [x] Step 2701: Update fast lane — pure in-process only (6 files)
+- [x] Step 2702: Update lane self-tests (test_product_spine, test_test_categories)
+- [x] Step 2703: Harden _safe_err — add /mnt/, /tmp/, /Users/, key=value secret redaction
+- [x] Step 2704: Add negative tests for doctor core (path + secret redaction)
+- [x] Step 2705: Update docs/test-lanes-v0.md with runtime lane
+- [x] Step 2706: Targeted tests — 395 fast + 54 runtime + 12 categories + lint clean
+- [x] Step 2707: Full suite — 6876 passed, 0 failures
+- [x] Step 2708: Changed Line Map + commit + PR #90
+- [x] Step 2709: Reviewer PASS @ 9c68161 — R-0155 INFO non-blocking
 
 ## Hard rules
-Closure only. No new features. No provider execution.
+Split only. No new features. No provider execution.

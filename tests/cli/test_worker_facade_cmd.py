@@ -383,6 +383,71 @@ class TestDoctorCore:
         assert "READY" in out
 
 
+class TestDoctorCoreSafeErr:
+    def test_private_paths_redacted(self, monkeypatch, capsys):
+        import importlib
+        orig = importlib.import_module
+
+        def _boom(name, *a, **kw):
+            if name == "apps.cli.commands.worker_facade_cmd":
+                return orig(name, *a, **kw)
+            if name == "packages.orchestration.run_contract":
+                raise ImportError(
+                    "No module at /home/alice/secret-project/packages/orchestration/run_contract"
+                )
+            return orig(name, *a, **kw)
+
+        monkeypatch.setattr(importlib, "import_module", _boom)
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        raw = json.dumps(out)
+        assert "/home/" not in raw
+        assert "alice" not in raw
+
+    def test_secrets_redacted(self, monkeypatch, capsys):
+        import importlib
+        orig = importlib.import_module
+
+        def _boom(name, *a, **kw):
+            if name == "apps.cli.commands.worker_facade_cmd":
+                return orig(name, *a, **kw)
+            if name == "packages.orchestration.config":
+                raise ImportError("Failed: api_key=sk-live-abc123def token=tok_xyz")
+            return orig(name, *a, **kw)
+
+        monkeypatch.setattr(importlib, "import_module", _boom)
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        raw = json.dumps(out)
+        assert "sk-live" not in raw
+        assert "tok_xyz" not in raw
+        assert "api_key=***" in raw
+
+    def test_mnt_tmp_users_redacted(self, monkeypatch, capsys):
+        import importlib
+        orig = importlib.import_module
+
+        def _boom(name, *a, **kw):
+            if name == "apps.cli.commands.worker_facade_cmd":
+                return orig(name, *a, **kw)
+            if name == "packages.orchestration.review_bundle":
+                raise ImportError(
+                    "Error at /mnt/data/x and /tmp/build/y and /Users/bob/.config/z"
+                )
+            return orig(name, *a, **kw)
+
+        monkeypatch.setattr(importlib, "import_module", _boom)
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        raw = json.dumps(out)
+        assert "/mnt/" not in raw
+        assert "/tmp/" not in raw
+        assert "/Users/" not in raw
+
+
 class TestCollectHandlers:
     def test_facade_in_collected(self):
         from apps.cli.commands import collect_all_handlers
