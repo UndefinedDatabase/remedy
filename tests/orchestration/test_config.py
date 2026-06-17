@@ -46,12 +46,21 @@ class TestConfigValue:
 class TestConfigKeySpec:
     def test_all_specs_populated(self):
         specs = all_key_specs()
-        assert len(specs) >= 9
+        assert len(specs) >= 18
         keys = {s.key for s in specs}
         assert "data_dir" in keys
         assert "ollama.host" in keys
         assert "ollama.builder.model" in keys
         assert "ollama.planner.model" in keys
+        assert "ui.host" in keys
+        assert "ui.port" in keys
+        assert "tests.pytest_timeout_seconds" in keys
+        assert "quality.coverage_fail_under" in keys
+        assert "logging.level" in keys
+        assert "claude_enabled" in keys
+        assert "opencode_enabled" in keys
+        assert "pi_dev_enabled" in keys
+        assert "external_memory_enabled" in keys
 
     def test_get_key_spec(self):
         spec = get_key_spec("data_dir")
@@ -247,7 +256,7 @@ class TestRemedyConfigMethods:
         summary = config.to_summary_dict()
         assert summary["config_version"] == 0
         assert isinstance(summary["keys"], list)
-        assert len(summary["keys"]) >= 9
+        assert len(summary["keys"]) >= 18
         assert "load_report" in summary
 
 
@@ -303,6 +312,64 @@ class TestSetConfigValue:
         assert config.get("data_dir") == "/second"
 
 
+class TestSetConfigValueGuards:
+    def test_rejects_unknown_key(self, tmp_path):
+        path = tmp_path / "remedy.toml"
+        with pytest.raises(ValueError, match="Unknown config key"):
+            set_config_value(path, "totally.bogus.key", "val")
+
+    def test_rejects_env_only_key(self, tmp_path):
+        path = tmp_path / "remedy.toml"
+        with pytest.raises(ValueError, match="env-only"):
+            set_config_value(path, "claude_enabled", "true")
+
+    def test_accepts_known_key(self, tmp_path):
+        path = tmp_path / "remedy.toml"
+        set_config_value(path, "ollama.host", "http://custom:11434")
+        assert path.exists()
+
+
+class TestLoadDiagnostics:
+    def test_malformed_toml_warning(self, tmp_path):
+        bad = tmp_path / "bad.toml"
+        bad.write_text("this is [ not valid toml ugh")
+        config = load_config(project_path=bad, user_path=Path("/nonexistent/user.toml"))
+        assert any("Malformed TOML" in w for w in config.load_report.warnings)
+
+    def test_unknown_key_warning(self, tmp_path):
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text('[remedy]\nunknown_key = "val"\n')
+        config = load_config(project_path=toml_file, user_path=Path("/nonexistent/user.toml"))
+        assert any("Unknown key" in w for w in config.load_report.warnings)
+
+    def test_no_warnings_for_valid(self, tmp_path):
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text('[remedy.ollama]\nhost = "http://localhost:11434"\n')
+        config = load_config(project_path=toml_file, user_path=Path("/nonexistent/user.toml"))
+        assert config.load_report.warnings == []
+
+
+class TestPathRedaction:
+    def test_summary_dict_redacts_absolute_paths(self):
+        config = load_config(
+            project_path=Path("/nonexistent/project.toml"),
+            user_path=Path("/nonexistent/user.toml"),
+        )
+        summary = config.to_summary_dict()
+        pp = summary["load_report"]["project_path"]
+        up = summary["load_report"]["user_path"]
+        assert not pp.startswith("/") or pp.startswith("~/")
+        assert not up.startswith("/") or up.startswith("~/")
+
+    def test_relative_path_preserved(self):
+        config = load_config(
+            project_path=Path("remedy.toml"),
+            user_path=Path("/nonexistent/user.toml"),
+        )
+        summary = config.to_summary_dict()
+        assert summary["load_report"]["project_path"] == "remedy.toml"
+
+
 class TestValidateConfig:
     def test_valid_config(self):
         config = load_config(
@@ -345,6 +412,14 @@ class TestRedactionClosure:
         assert _SECRET_RE.sub("[REDACTED]", "password=hunter2") == "[REDACTED]"
         assert _SECRET_RE.sub("[REDACTED]", "token=xyz789") == "[REDACTED]"
         assert _SECRET_RE.sub("[REDACTED]", "api_key = spaced") == "[REDACTED]"
+
+    def test_r0124_quoted_key_value_redacted(self):
+        from packages.orchestration.redaction_patterns import _SECRET_RE
+
+        assert _SECRET_RE.sub("[REDACTED]", 'password="mysecret123"') == "[REDACTED]"
+        assert _SECRET_RE.sub("[REDACTED]", "api_key='mysecret'") == "[REDACTED]"
+        assert _SECRET_RE.sub("[REDACTED]", "secret=\"spaced value\"") == "[REDACTED]"
+        assert _SECRET_RE.sub("[REDACTED]", "token='abc def'") == "[REDACTED]"
 
     def test_r0121_category_words_not_matched(self):
         from packages.orchestration.redaction_patterns import _SECRET_RE

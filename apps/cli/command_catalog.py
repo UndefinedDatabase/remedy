@@ -3263,6 +3263,16 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
     CommandEntry(
+        command_id="config.show",
+        group_id="config",
+        subcommand="show",
+        description="Show all config keys (alias for list).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("config.list",),
+    ),
+    CommandEntry(
         command_id="config.get",
         group_id="config",
         subcommand="get",
@@ -3289,6 +3299,11 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="init",
         description="Create a remedy.toml template in the current directory.",
         action_class="write_metadata",
+        args=(
+            ArgDef("--path", "Target file path (default: ./remedy.toml)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="config.set",
@@ -3299,7 +3314,10 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("key", "Config key (e.g. ollama.host)"),
             ArgDef("value", "Value to set"),
+            ArgDef("--path", "Target file path (default: ./remedy.toml)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="config.validate",

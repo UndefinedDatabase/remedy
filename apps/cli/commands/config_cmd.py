@@ -12,6 +12,20 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
+def _redact_path(raw: str | None) -> str | None:
+    """Replace absolute paths with ~ prefix or <project> tag for public display."""
+    if raw is None:
+        return None
+    p = Path(raw)
+    if not p.is_absolute():
+        return raw
+    try:
+        relative = p.relative_to(Path.home())
+        return f"~/{relative}"
+    except ValueError:
+        return "<absolute-path-redacted>"
+
+
 def _cmd_config_list(args: argparse.Namespace) -> None:
     from packages.orchestration.config import all_key_specs, get_config
 
@@ -94,9 +108,9 @@ def _cmd_config_sources(args: argparse.Namespace) -> None:
 
     if use_json:
         json.dump({
-            "project_path": report.project_path,
+            "project_path": _redact_path(report.project_path),
             "project_loaded": report.project_loaded,
-            "user_path": report.user_path,
+            "user_path": _redact_path(report.user_path),
             "user_loaded": report.user_loaded,
             "warnings": report.warnings,
         }, sys.stdout, indent=2)
@@ -105,9 +119,9 @@ def _cmd_config_sources(args: argparse.Namespace) -> None:
 
     print("Config sources:")
     status = "loaded" if report.project_loaded else "not found"
-    print(f"  project: {report.project_path} ({status})")
+    print(f"  project: {_redact_path(report.project_path)} ({status})")
     status = "loaded" if report.user_loaded else "not found"
-    print(f"  user:    {report.user_path} ({status})")
+    print(f"  user:    {_redact_path(report.user_path)} ({status})")
     if report.warnings:
         print("\nWarnings:")
         for w in report.warnings:
@@ -117,29 +131,50 @@ def _cmd_config_sources(args: argparse.Namespace) -> None:
 def _cmd_config_init(args: argparse.Namespace) -> None:
     from packages.orchestration.config import write_toml_template
 
-    path = Path("remedy.toml")
+    path = Path(getattr(args, "path", None) or "remedy.toml")
+    use_json = getattr(args, "json", False)
+
     if path.exists():
-        print(f"{path} already exists. Not overwriting.", file=sys.stderr)
+        msg = f"{path} already exists. Not overwriting."
+        if use_json:
+            json.dump({"error": msg}, sys.stdout, indent=2)
+            sys.stdout.write("\n")
+        else:
+            print(msg, file=sys.stderr)
         sys.exit(1)
+
     write_toml_template(path)
-    print(f"Created {path}")
+    if use_json:
+        json.dump({"created": str(path)}, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+    else:
+        print(f"Created {path}")
 
 
 def _cmd_config_set(args: argparse.Namespace) -> None:
-    from packages.orchestration.config import get_key_spec, reset_config, set_config_value
+    from packages.orchestration.config import reset_config, set_config_value
 
     key = args.key
     value = args.value
-    spec = get_key_spec(key)
+    use_json = getattr(args, "json", False)
+    target = Path(getattr(args, "path", None) or "remedy.toml")
 
-    if spec and spec.env_only:
-        print(f"Key {key!r} is env-only. Set via {spec.env_var} environment variable.", file=sys.stderr)
+    try:
+        set_config_value(target, key, value)
+    except ValueError as exc:
+        if use_json:
+            json.dump({"error": str(exc)}, sys.stdout, indent=2)
+            sys.stdout.write("\n")
+        else:
+            print(str(exc), file=sys.stderr)
         sys.exit(1)
 
-    path = Path("remedy.toml")
-    set_config_value(path, key, value)
     reset_config()
-    print(f"Set {key} = {value} in {path}")
+    if use_json:
+        json.dump({"key": key, "value": value, "path": str(target)}, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+    else:
+        print(f"Set {key} = {value} in {target}")
 
 
 def _cmd_config_validate(args: argparse.Namespace) -> None:
@@ -164,6 +199,7 @@ def _cmd_config_validate(args: argparse.Namespace) -> None:
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "config.list": _cmd_config_list,
+    "config.show": _cmd_config_list,
     "config.get": _cmd_config_get,
     "config.sources": _cmd_config_sources,
     "config.init": _cmd_config_init,

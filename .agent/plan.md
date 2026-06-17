@@ -1,22 +1,20 @@
-# Plan — Steps 2366-2445: remedy.toml Configuration System v0 + Redaction Closure
+# Plan — Steps 2366-2445: Review Closure (R-0124..R-0130)
 
 ## Goal
-Add centralized remedy.toml config with safe source precedence, CLI visibility,
-backward-compatible env var overrides. Close carried Low findings R-0121/R-0122/R-0123.
+Fix 7 reviewer findings from PASS WITH RISKS verdict on PR #82. Expand config
+system with diagnostics, path redaction, CLI completeness, key registry 18+.
 
 ## Steps
-- [x] Phase 0: Close R-0121 (key=value redaction gap), R-0122 (dead variables), R-0123 (unused dataclass)
-- [x] Phase 1: Architecture doc (docs/remedy-toml-configuration-system-v0.md)
-- [x] Phase 2: Core config module (packages/orchestration/config.py)
-- [x] Phase 3: TOML loading with tomllib/tomli + precedence
-- [x] Phase 4: ConfigKeySpec registry (9 keys)
-- [x] Phase 5: Migrate resolvers (data_paths, ollama_builder, ollama_planner)
-- [x] Phase 6: CLI commands (config list/get/sources/init/set/validate)
-- [x] Phase 7: Command Catalog + handler registration (6 entries)
-- [x] Phase 8: Review Bundle config_summary.json section
-- [x] Phase 9: User guide doc
-- [x] Phase 10: Backlog update (5/30 strict)
-- [ ] Phase 11-13: Tests + coverage + lint + full suite + commit + PR
+- [x] Phase 0-10: Initial implementation (a0fda56)
+- [x] R-0124: Fix quoted key=value redaction in _SECRET_RE
+- [x] R-0125: Reject unknown/secret keys in set_config_value + CLI
+- [x] R-0126: Structured diagnostics for malformed TOML and unknown keys
+- [x] R-0127: Redact absolute paths in to_summary_dict + config sources CLI
+- [x] R-0128: Add config show, --json on init/set, --path on init/set, fix CLI test
+- [x] R-0129: Expand key registry to 18 keys (ui, tests, quality, logging, provider flags)
+- [x] R-0130: Changed Line Map (this commit)
+- [x] Full suite: 6677 passed, 0 failed (excl pre-existing), 8 skipped
+- [ ] Commit + push + reviewer re-evaluation
 
 ## Hard rules
 No provider execution; no shell=True; no auto-apply/approve/PR/git; no secret storage in config.

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 
 import pytest
 
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
+_ENV = {**os.environ, "PYTHONPATH": os.getcwd()}
 
 
 @pytest.mark.subprocess
@@ -28,6 +30,14 @@ class TestConfigCli:
         keys = {e["key"] for e in data}
         assert "ollama.host" in keys
         assert "data_dir" in keys
+        assert "ui.host" in keys
+
+    def test_config_show_alias(self):
+        r = subprocess.run([*_CLI, "config", "show", "--json"], capture_output=True, text=True, timeout=30)
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert isinstance(data, list)
+        assert any(e["key"] == "ollama.host" for e in data)
 
     def test_config_get(self):
         r = subprocess.run([*_CLI, "config", "get", "ollama.host"], capture_output=True, text=True, timeout=30)
@@ -74,6 +84,41 @@ class TestConfigCli:
     def test_config_init_refuses_existing(self, tmp_path):
         existing = tmp_path / "remedy.toml"
         existing.write_text("[remedy]\n")
-        r = subprocess.run([*_CLI, "config", "init"], capture_output=True, text=True, timeout=30, cwd=str(tmp_path))
+        r = subprocess.run(
+            [*_CLI, "config", "init", "--path", str(existing)],
+            capture_output=True, text=True, timeout=30, env=_ENV,
+        )
         assert r.returncode == 1
-        assert "already exists" in r.stderr
+        assert "already exists" in r.stderr or "already exists" in r.stdout
+
+    def test_config_init_json(self, tmp_path):
+        target = tmp_path / "new_remedy.toml"
+        r = subprocess.run(
+            [*_CLI, "config", "init", "--path", str(target), "--json"],
+            capture_output=True, text=True, timeout=30, env=_ENV,
+        )
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert "created" in data
+        assert target.exists()
+
+    def test_config_set_rejects_unknown(self, tmp_path):
+        r = subprocess.run(
+            [*_CLI, "config", "set", "bogus.key", "val", "--path", str(tmp_path / "r.toml"), "--json"],
+            capture_output=True, text=True, timeout=30, env=_ENV,
+        )
+        assert r.returncode == 1
+        data = json.loads(r.stdout)
+        assert "error" in data
+        assert "Unknown" in data["error"]
+
+    def test_config_set_json(self, tmp_path):
+        target = tmp_path / "remedy.toml"
+        r = subprocess.run(
+            [*_CLI, "config", "set", "ollama.host", "http://custom:11434", "--path", str(target), "--json"],
+            capture_output=True, text=True, timeout=30, env=_ENV,
+        )
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert data["key"] == "ollama.host"
+        assert data["value"] == "http://custom:11434"

@@ -142,6 +142,73 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=None,
     ),
+    ConfigKeySpec(
+        key="ui.host",
+        env_var="REMEDY_UI_HOST",
+        description="UI server bind host",
+        value_type=str,
+        default="127.0.0.1",
+    ),
+    ConfigKeySpec(
+        key="ui.port",
+        env_var="REMEDY_UI_PORT",
+        description="UI server port",
+        value_type=int,
+        default=8765,
+    ),
+    ConfigKeySpec(
+        key="tests.pytest_timeout_seconds",
+        env_var="REMEDY_PYTEST_TIMEOUT_SECONDS",
+        description="Default pytest timeout in seconds",
+        value_type=int,
+        default=300,
+    ),
+    ConfigKeySpec(
+        key="quality.coverage_fail_under",
+        env_var="REMEDY_COVERAGE_FAIL_UNDER",
+        description="Minimum test coverage percentage",
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="logging.level",
+        env_var="REMEDY_LOG_LEVEL",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR)",
+        value_type=str,
+        default="WARNING",
+    ),
+    ConfigKeySpec(
+        key="claude_enabled",
+        env_var="REMEDY_CLAUDE_ENABLED",
+        description="Enable Claude provider (env-only flag)",
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="opencode_enabled",
+        env_var="REMEDY_OPENCODE_ENABLED",
+        description="Enable OpenCode provider (env-only flag)",
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="pi_dev_enabled",
+        env_var="REMEDY_PI_DEV_ENABLED",
+        description="Enable Pi dev provider (env-only flag)",
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="external_memory_enabled",
+        env_var="REMEDY_EXTERNAL_MEMORY_ENABLED",
+        description="Enable external memory integration (env-only flag)",
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
 )
 
 _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}
@@ -163,16 +230,20 @@ _DEFAULT_PROJECT_PATH = Path("remedy.toml")
 _DEFAULT_USER_PATH = Path.home() / ".config" / "remedy" / "remedy.toml"
 
 
-def _load_toml(path: Path) -> dict[str, Any]:
+def _load_toml(path: Path, diagnostics: list[str] | None = None) -> dict[str, Any]:
     """Load a TOML file and return the parsed dict. Returns {} if missing or unparseable."""
     if tomllib is None:
+        if diagnostics is not None and path.is_file():
+            diagnostics.append(f"TOML parser unavailable (install tomli for Python <3.11): {path}")
         return {}
     if not path.is_file():
         return {}
     try:
         with open(path, "rb") as f:
             return tomllib.load(f)
-    except Exception:
+    except Exception as exc:
+        if diagnostics is not None:
+            diagnostics.append(f"Malformed TOML in {path}: {exc}")
         return {}
 
 
@@ -250,6 +321,20 @@ def _resolve_key(
     return ConfigValue(key=spec.key, value=spec.default, source=ConfigSource.DEFAULT)
 
 
+def _redact_abs_path(raw: str | None) -> str | None:
+    """Replace absolute private paths with ~ prefix for public export."""
+    if raw is None:
+        return None
+    p = Path(raw)
+    if not p.is_absolute():
+        return raw
+    try:
+        relative = p.relative_to(Path.home())
+        return f"~/{relative}"
+    except ValueError:
+        return "<absolute-path-redacted>"
+
+
 # ---------------------------------------------------------------------------
 # RemedyConfig
 # ---------------------------------------------------------------------------
@@ -288,7 +373,11 @@ class RemedyConfig:
         return cv.source if cv is not None else None
 
     def to_summary_dict(self) -> dict[str, Any]:
-        """Export config as safe summary dict for review bundle / diagnostics."""
+        """Export config as safe summary dict for review bundle / diagnostics.
+
+        Absolute paths are redacted with ~ prefix or tag to avoid leaking
+        private filesystem layout.
+        """
         entries = []
         for spec in _CONFIG_KEY_SPECS:
             cv = self.values.get(spec.key)
@@ -308,9 +397,9 @@ class RemedyConfig:
             "config_version": 0,
             "keys": entries,
             "load_report": {
-                "project_path": self.load_report.project_path,
+                "project_path": _redact_abs_path(self.load_report.project_path),
                 "project_loaded": self.load_report.project_loaded,
-                "user_path": self.load_report.user_path,
+                "user_path": _redact_abs_path(self.load_report.user_path),
                 "user_loaded": self.load_report.user_loaded,
                 "warnings": self.load_report.warnings,
             },
@@ -337,17 +426,27 @@ def load_config(
     p_path = project_path or _DEFAULT_PROJECT_PATH
     u_path = user_path or _DEFAULT_USER_PATH
 
-    project_raw = _load_toml(p_path)
-    user_raw = _load_toml(u_path)
+    diagnostics: list[str] = []
+
+    project_raw = _load_toml(p_path, diagnostics)
+    user_raw = _load_toml(u_path, diagnostics)
 
     project_flat = _flatten_toml(_extract_remedy_table(project_raw))
     user_flat = _flatten_toml(_extract_remedy_table(user_raw))
+
+    for key in project_flat:
+        if key not in _KEY_SPEC_MAP:
+            diagnostics.append(f"Unknown key in {p_path}: {key}")
+    for key in user_flat:
+        if key not in _KEY_SPEC_MAP:
+            diagnostics.append(f"Unknown key in {u_path}: {key}")
 
     report = ConfigLoadReport(
         project_path=str(p_path),
         project_loaded=bool(project_raw),
         user_path=str(u_path),
         user_loaded=bool(user_raw),
+        warnings=diagnostics,
     )
 
     values: dict[str, ConfigValue] = {}
@@ -394,6 +493,19 @@ def write_toml_template(path: Path) -> None:
 # model = "qwen3-coder-next"
 # temperature = 0.2
 # num_predict = 4096
+
+[remedy.ui]
+# host = "127.0.0.1"
+# port = 8765
+
+[remedy.tests]
+# pytest_timeout_seconds = 300
+
+[remedy.quality]
+# coverage_fail_under = 80
+
+[remedy.logging]
+# level = "WARNING"
 """
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(template, encoding="utf-8")
@@ -402,11 +514,16 @@ def write_toml_template(path: Path) -> None:
 def set_config_value(path: Path, key: str, value: str) -> None:
     """Set a key in a remedy.toml file.
 
-    Creates the file if it does not exist. Refuses env_only keys.
+    Creates the file if it does not exist. Rejects unknown keys, secret keys,
+    and env-only keys.
     """
     spec = get_key_spec(key)
-    if spec and spec.env_only:
+    if spec is None:
+        raise ValueError(f"Unknown config key: {key!r}. Use 'config list' to see valid keys.")
+    if spec.env_only:
         raise ValueError(f"Key {key!r} is env-only and cannot be set in config files")
+    if spec.secret:
+        raise ValueError(f"Key {key!r} is secret and cannot be stored in config files")
 
     existing = _load_toml(path)
     remedy_table = existing.setdefault("remedy", {})
