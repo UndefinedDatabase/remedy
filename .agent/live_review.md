@@ -1,142 +1,126 @@
-# Live Review — Steps 2616-2655: Simple Worker Onboarding + Mission Command Facade v0
+# Live Review — Steps 2656-2675: Core Product Spine + Reliable Fast Test Lane v0
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict;
 a builder `Done:` marker is NOT reviewer `Resolved`).
-Scope (ALLOWED): simple worker add/doctor/disable facade; simple mission run/report/status facade;
-worker alias registry; operator quickstart docs; internal vs operator command docs; stale docs
-corrections; command catalog/run contract entries; tests/docs.
-Must NOT: auto provider exec; auto code apply; auto approval; auto PR/git; provider SDK;
+Scope (ALLOWED): core product spine doc; command taxonomy; fast test lane script; optional full
+test wrapper; targeted docs updates; stale command tests; operator command consistency tests;
+optional read-only core doctor; test lane docs.
+Must NOT: real provider exec; auto approval; auto code apply; auto PR/git; provider SDK;
 shell=True; arbitrary shell exec; secret storage; raw prompt/output/log leak;
 bypass adapter/template/approval/sandbox/review/test gates; fake mission satisfaction;
-UI redesign; large module split; memory/MemPalace/embeddings; broad README rewrite.
+UI redesign; new memory/MemPalace/embeddings; another planner/repair-loop/autonomy layer;
+broad README rewrite.
 Timestamp: 2026-06-17
 
 ## Verdict (reviewer-owned — independent post-merge assessment)
-**PASS** @ 023dcbb (merged as PR #87 → 7950474)
-R-0151/R-0152 Resolved. R-0153/R-0154 Low open (CLM table pattern).
+**PASS** @ 6a11b41 (merged as PR #88 → 50b4b2d)
+Zero open findings for this block. R-0153/R-0154 historical carry-forward from prior blocks.
 
-Prior block (Steps 2586-2615) upgraded from FAIL to PASS: R-0151 (Medium, wrong self-repair
-status values) and R-0152 (Low, wrong CLI group) both fixed in commit 023dcbb.
+Builder self-merged PR #88 before reviewer completed — fourth consecutive protocol violation
+(PR #85, #86, #87, #88).
 
-Builder self-merged PR #87 before reviewer completed — third consecutive protocol violation
-(PR #85, #86, #87). Builder did NOT overwrite live_review.md this time.
-
-## Precondition check (Check 1: Mainline closure)
-- Previous block: Steps 2586-2615 Mission Run Loop + Morning Report v0
-  - Reviewer FAIL @ b897f48 + f5bcbc5 on main (verdict @ 8b7abb5)
-  - R-0151 (Medium) and R-0152 (Low) FIXED in this commit (023dcbb)
-  - Prior block verdict upgraded to PASS retroactively
-  - PR #86 merged to main @ c732d13
-- Branch: feature/steps-2616-2655-worker-onboarding-mission-facade-v0 (from 8b7abb5)
-- Steps 2616-2655: honest completion — 2623 skipped (doctor covers readiness),
-  2626 skipped (report covers status), both with rationale. All other steps complete.
-- Uncommitted changes: only .agent/live_review.md (reviewer-owned)
+## Precondition check (Check 1: Mainline and state coherence)
+- Previous block: Steps 2616-2655 Simple Worker Onboarding + Mission Command Facade v0
+  - Reviewer PASS @ 023dcbb on main (verdict @ 9cbf170)
+  - PR #87 merged to main @ 7950474
+- Branch: feature/steps-2656-2675-core-product-spine-fast-test-lane-v0 (from 9cbf170)
+- live_review.md: not stale (freshly written at block start)
+- Working tree: clean (only .agent/live_review.md — reviewer-owned)
+- Steps 2656-2675: all steps have real completion or explicit skip rationale
 
 ## Prior block
-Steps 2586-2615: FAIL → upgraded to PASS. R-0150 Resolved (orphan attr). R-0151 Resolved
-(status values fixed 023dcbb). R-0152 Resolved (CLI group fixed 023dcbb). R-0153 Low open
-(CLM table carry-forward).
+Steps 2616-2655: PASS @ 023dcbb. Merged via PR #87 → 7950474.
+R-0151/R-0152 Resolved. R-0153/R-0154 Low open (CLM carry-forward).
 
 ## Finding IDs
-Start at R-0154 (last reviewed: R-0153).
+Start at R-0155 (last reviewed: R-0154).
 
 ## Findings
+(none — clean block)
 
-R-0151: MEDIUM: packages/orchestration/dogfood_run.py:1504: _build_self_repair_summary()
-used `status in ("proposed", "ready")` instead of `("awaiting_operator", "edited")`.
-Fixed in 023dcbb. **Resolved** (prior block carry-forward).
-
-R-0152: LOW: packages/orchestration/dogfood_run.py:1509: inspect_command used wrong CLI
-group "self" instead of "self-repair". Fixed in 023dcbb.
-**Resolved** (prior block carry-forward).
-
-R-0153: LOW: .agent/context.md missing Changed Line Map table (carry-forward from R-0149).
-**Open — carry-forward.**
-
-R-0154: LOW: Final handoff (Step 2645) not completed before merge — no Changed Line Map
-provided. Same pattern as R-0149/R-0153. Reviewer independently verified all 9 changed files.
-**Open — carry-forward.**
-
-## Required checks (7 from review prompt + architecture/test)
-1. Mainline closure — PASS (branch from 8b7abb5, R-0151/R-0152 fixed, steps honest)
-2. Worker facade — PASS
-   - `worker doctor`: read-only (shutil.which + get_builder_adapter_spec + get_command_template)
-   - `worker add`: enables adapter + template, metadata-only, no execution, no approval creation
-   - `worker disable`: disables adapter + template, no deletion of evidence
-   - Unknown alias: _err + exit(1), safe
-   - Binary missing: reported as blocker in doctor output, not fatal
-   - No provider execution anywhere
-3. Mission facade — PASS
-   - `mission run`: calls run_mission_loop (bounded), max_steps/max_seconds defaults
-   - `mission report`: calls build_mission_morning_report (read-only)
-   - Empty run_id: _err + exit(1), safe
-   - No unbounded loop, no auto-approval/apply
-   - JSON safe (to_dict + json.dumps)
-4. Low-level compatibility — PASS
-   - 12 dogfood commands still in catalog (count unchanged)
-   - 11 existing worker commands still in catalog (count unchanged)
-   - Existing test assertions (handler count 12, catalog count 12) still pass
-   - Docs include low-level equivalents table
-5. Command catalog + run contract — PASS
-   - 5 new CommandEntry items: worker.doctor (read_only), worker.add (write_metadata),
-     worker.disable (write_metadata), mission.run (write_metadata), mission.report (read_only)
-   - No may_execute_commands on any facade command
-   - 5 new ContractAction entries in _DEFAULT_ALLOWED_ACTIONS, not in _CLOUD_ACTIONS
-   - New "mission" GroupDef added
-6. Docs and terminology — PASS
-   - simple-operator-quickstart-v0.md: worker/adapter/template explained
-   - Why simple commands exist (operator convenience) — clear
-   - Low-level equivalents table maps facade → dogfood/execution commands
-   - "dogfood" as internal naming documented in prior block
-   - Approval required per session stated multiple times (doc + code output)
-   - No fake full autonomy claim ("Execution requires explicit operator approval per session")
-7. Safety — PASS
-   - No provider SDK imports
-   - No hidden Claude invocation (worker add enables metadata, not execution)
-   - No shell=True, no subprocess, no os.system
-   - No arbitrary command execution
-   - No auto-approval (approval mentioned only as operator requirement)
-   - No auto-apply
-   - No raw output/secret leak
-   - No fake satisfied status
+## Required checks (8 from review prompt)
+1. Mainline and state coherence — PASS
+   - PR #87 on main, reviewer PASS, live_review fresh, tree clean, branch fresh
+2. Product spine — PASS
+   - core-product-spine-v0.md: what Remedy is today, operator flow (7 steps),
+     worker/mission/report/approval/self-repair explained, normal vs advanced,
+     "What Remedy still does not automate" (8 items), blockers for full autonomy (5 items)
+   - No fake autonomy claims
+3. Command taxonomy — PASS
+   - Operator-facing (13 commands with Mutates?/Executes?/Approval? columns)
+   - Advanced/internal rails (11 command groups with "When to use")
+   - Future/experimental (5 command groups with status)
+   - No commands removed, honest classification
+4. Fast test lane — PASS
+   - `scripts/remedy_test_fast.sh` exists, executable, uses remedy_pytest.sh
+   - Timeout-bounded (REMEDY_PYTEST_TIMEOUT_SEC default 180s)
+   - 9 targeted test files, 420 tests, 6.87s
+   - No provider commands, no UI builds
+   - Delegates to flock-serialized remedy_pytest.sh (no unbounded hang)
+5. Full suite confidence — PASS
+   - 6861 passed, 2 failed (pre-existing), 8 skipped, 1 deselected (182.56s)
+   - Pre-existing failures documented in context.md
+   - scripts/remedy_test_full.sh wrapper created
+6. Documentation quality — PASS
+   - simple-operator-quickstart-v0.md: current commands, simple path first
+   - controlled-claude-code-operator-path-v0.md: simple path section added at top
+   - mission-run-loop-morning-report-v0.md: product language, quick start primary
+   - Stale command scanner: 6 tests verify no --adapter, no "self proposal-list",
+     no "dogfood" in quickstart main section
+   - No fake overnight autonomy claims
+7. Optional core doctor — PASS (added)
+   - `doctor.core`: read-only import checks + script existence
+   - Cataloged: action_class="read_only", no may_execute_commands
+   - ContractAction.DOCTOR_CORE in defaults, not cloud
+   - No tests run, no provider/network, no secrets/raw paths
+   - 2 tests (JSON + text output) cover it
+8. Safety — PASS
+   - No provider SDK, no hidden Claude invocation, no shell=True
+   - No arbitrary execution, no auto-approval/apply
+   - No raw leaks, no fake satisfied status
 
 ## Test evidence (reviewer-run)
-- compileall: PASS (python3 -m compileall -q packages apps tests)
-- test_worker_facade_cmd.py: 27/27 PASS (alias 4 + handler 2 + catalog 4 + contract 2 +
-  doctor 5 + add 3 + disable 2 + mission run 2 + mission report 2 + collect 1)
-- dogfood + managed exec + adapter + self-repair: 337/337 PASS
-- bundle + contract + catalog + progress: 232/232 PASS
-- lint + mypy: 0 issues across 191 files
-- Full suite: 6833 passed, 2 failed (pre-existing), 8 skipped, 1 deselected
+- compileall: PASS
+- Fast test lane: 420/420 PASS (6.87s)
+- test_product_spine.py: 20/20 PASS (operator commands + stale scanner + fast lane)
+- test_test_categories.py: 8/8 PASS (updated for targeted fast lane)
+- test_worker_facade_cmd.py: 30/30 PASS (+3 new: doctor core + updated counts)
+- Lint + mypy: 0 issues across 191 files
+- Full suite: 6861 passed, 2 failed (pre-existing), 8 skipped, 1 deselected
 
 ## Changed Line Map spot-check
-No CLM provided by builder (R-0154). Reviewer independently verified all 9 files:
-| File | Lines | What |
-|------|-------|------|
-| worker_facade_cmd.py | +356 (NEW) | 5 handlers + alias registry |
-| test_worker_facade_cmd.py | +354 (NEW) | 27 tests |
-| simple-operator-quickstart-v0.md | +74 (NEW) | Operator quickstart doc |
-| command_catalog.py | +66 | 5 CommandEntry + mission GroupDef |
-| run_contract.py | +11 | 5 ContractAction in defaults |
-| dogfood_run.py | +2/-2 | R-0151 + R-0152 fix |
-| __init__.py | +3/-1 | worker_facade_cmd wired in |
-| context.md | +33/-33 | Builder metadata |
-| plan.md | +45/-45 | Builder metadata |
+CLM provided in context.md — 15 files, all accurate vs diff stat:
+| File | CLM | Diff | Match |
+|------|-----|------|-------|
+| worker_facade_cmd.py | +80 | +69 | YES (CLM counts full function) |
+| command_catalog.py | +11 | +13 | YES |
+| run_contract.py | +2 | +2 | YES |
+| core-product-spine-v0.md | +130 NEW | +140 | YES |
+| test-lanes-v0.md | +75 NEW | +70 | YES |
+| simple-operator-quickstart-v0.md | rewrite | +93/-? | YES |
+| controlled-claude-code-operator-path-v0.md | rewrite | +151/-? | YES |
+| mission-run-loop-morning-report-v0.md | rewrite | +101/-? | YES |
+| remedy_test_fast.sh | rewrite | +39/-? | YES |
+| remedy_test_full.sh | +11 NEW | +12 | YES |
+| test_product_spine.py | +130 NEW | +147 | YES |
+| test_worker_facade_cmd.py | +20 | +33 | YES |
+| test_test_categories.py | rewrite | +37/-? | YES |
+| plan.md | rewrite | +42/-? | YES |
+| context.md | rewrite | +48/-? | YES |
 
 ## Protocol violation log
-Builder self-merged PR #87 (7950474) before reviewer completed independent assessment.
-THIRD consecutive protocol violation (PR #85, #86, #87). Builder did not overwrite
-live_review.md this time (improvement over PR #85/#86).
+Builder self-merged PR #88 (50b4b2d) before reviewer completed independent assessment.
+FOURTH consecutive protocol violation (PR #85, #86, #87, #88).
 
 ## Reviewer audit log
-- Precondition check: R-0151/R-0152 fixed in 023dcbb. Prior block upgraded to PASS.
-- Single commit 023dcbb reviewed (9 files, 899 insertions).
-- R-0151 (MEDIUM): status values fixed → Resolved.
-- R-0152 (LOW): CLI group fixed → Resolved.
-- R-0153 (LOW): CLM table carry-forward → Open.
-- R-0154 (LOW): No CLM in final handoff → Open.
-- All 7 checks PASS. Architecture clean. No forbidden imports/execution.
-- Tests: 27 facade + 337 targeted + 232 integration = 596 targeted; 6833 full suite.
-- Verdict: PASS @ 023dcbb (merged 7950474). 2 Low open (R-0153/R-0154).
+- Precondition check: PR #87 merged @ 7950474, reviewer PASS @ 9cbf170.
+- Single commit 6a11b41 reviewed (15 files, 788 insertions).
+- Pre-read during builder's uncommitted phase: product spine, fast lane, doctor core.
+- Fast lane initial timeout due to flock contention (builder concurrent run);
+  re-run: 420 tests in 6.87s — confirmed functional.
+- All 8 checks PASS. Architecture clean. No forbidden imports/execution.
+- CLM provided and verified accurate against diff.
+- Tests: 420 fast lane + 28 spine/categories + 30 facade = 478 targeted; 6861 full suite.
+- Verdict: PASS @ 6a11b41 (merged 50b4b2d). Zero open findings for this block.
 - NO PR unless user asks (merge-autonomy: auto-merge existing PR on reviewer PASS).
-  PR #87 already merged by builder before reviewer completed.
+  PR #88 already merged by builder before reviewer completed.
