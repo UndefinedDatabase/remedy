@@ -48,6 +48,13 @@ _RAW_MARKERS = (
 
 _ABS_PATH_RE = re.compile(r"(?<![:/])/(?:home|Users|tmp|var|etc)/\S+")
 
+_SECRET_RE = re.compile(
+    r"(?i)"
+    r"(?:sk-ant-[A-Za-z0-9_-]+|sk-proj-[A-Za-z0-9_-]+"
+    r"|(?:api_key|password|secret_key|token|credential)\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s,;'\"]*)"
+    r"|-----BEGIN\s+[A-Z ]+-----[\s\S]*?-----END\s+[A-Z ]+-----)",
+)
+
 
 # ---------------------------------------------------------------------------
 # Status
@@ -79,6 +86,11 @@ _TERMINAL_STATUSES = frozenset({
     SelfRepairProposalStatus.CONVERTED_TO_WORKER_PROMPT,
 })
 
+_APPROVABLE_STATUSES = frozenset({
+    SelfRepairProposalStatus.AWAITING_OPERATOR,
+    SelfRepairProposalStatus.EDITED,
+})
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -91,6 +103,16 @@ def _now() -> str:
 
 def _safe(text: Any, limit: int = _MAX_SUMMARY) -> str:
     return _scrub_public(str(text or ""))[:limit]
+
+
+def _scrub_secret_markers(text: str) -> str:
+    """Remove secret-like patterns from text for public export."""
+    return _SECRET_RE.sub("<secret-redacted>", text)
+
+
+def _sanitize_prompt(text: str) -> str:
+    """Redact paths and secrets from prompt text for public export."""
+    return _scrub_secret_markers(_redact_abs_paths(text))
 
 
 def _redact_abs_paths(text: str) -> str:
@@ -175,15 +197,15 @@ class SelfRepairProposal:
             "problem_summary": _safe(self.problem_summary),
             "evidence_refs": list(self.evidence_refs[:_MAX_EVIDENCE_REFS]),
             "suspected_files": list(self.suspected_files[:_MAX_SUSPECTED_FILES]),
-            "suggested_worker_prompt": _redact_abs_paths(
+            "suggested_worker_prompt": _sanitize_prompt(
                 self.suggested_worker_prompt[:_MAX_PROMPT_LENGTH]
             ),
             "acceptance_criteria": [_safe(c) for c in self.acceptance_criteria],
             "required_tests": [_safe(t) for t in self.required_tests],
             "forbidden_actions": [_safe(a) for a in self.forbidden_actions],
-            "risk_summary": _safe(self.risk_summary),
+            "risk_summary": _safe(_scrub_secret_markers(self.risk_summary)),
             "operator_decision": self.operator_decision,
-            "operator_notes": _safe(self.operator_notes),
+            "operator_notes": _safe(_scrub_secret_markers(self.operator_notes)),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "schema_version": SCHEMA_VERSION,
@@ -280,6 +302,8 @@ def _gather_replay_signals(run_id: str, data_dir: Path) -> dict[str, Any]:
         "managed_execution_failures": [],
         "repeated_test_failures": False,
         "missing_proof_evidence": False,
+        "signal_collection_warnings": [],
+        "signal_collection_errors": [],
     }
 
     # Replay analysis signals.
@@ -303,8 +327,16 @@ def _gather_replay_signals(run_id: str, data_dir: Path) -> dict[str, Any]:
                 for reason in ep.reasons
             ))
             signals["anomalies"] = list(replay.anomalies)
-    except (ImportError, Exception):
-        pass
+        else:
+            signals["signal_collection_warnings"].append(
+                f"replay: run {run_id} not found in dogfood runs"
+            )
+    except ImportError:
+        signals["signal_collection_warnings"].append("replay: dogfood_run module not available")
+    except Exception as exc:
+        signals["signal_collection_errors"].append(
+            f"replay: {type(exc).__name__}: {_safe(str(exc), 120)}"
+        )
 
     # Integrity check signals.
     try:
@@ -315,8 +347,12 @@ def _gather_replay_signals(run_id: str, data_dir: Path) -> dict[str, Any]:
                 {"code": c.get("code", ""), "run_id": c.get("run_id", "")}
                 for c in integrity.get("checks", [])
             ]
-    except (ImportError, Exception):
-        pass
+    except ImportError:
+        signals["signal_collection_warnings"].append("integrity: dogfood_run module not available")
+    except Exception as exc:
+        signals["signal_collection_errors"].append(
+            f"integrity: {type(exc).__name__}: {_safe(str(exc), 120)}"
+        )
 
     # Config diagnostic signals.
     try:
@@ -324,8 +360,12 @@ def _gather_replay_signals(run_id: str, data_dir: Path) -> dict[str, Any]:
         cfg = get_config()
         if cfg.load_report and cfg.load_report.warnings:
             signals["config_warnings"] = list(cfg.load_report.warnings)
-    except (ImportError, Exception):
-        pass
+    except ImportError:
+        signals["signal_collection_warnings"].append("config: config module not available")
+    except Exception as exc:
+        signals["signal_collection_errors"].append(
+            f"config: {type(exc).__name__}: {_safe(str(exc), 120)}"
+        )
 
     return signals
 
@@ -348,6 +388,20 @@ def create_self_repair_proposal_from_replay(
         created_at=_now(),
     )
 
+    # R-0137: Signal collection errors → blocked proposal with diagnostic reason.
+    if signals.get("signal_collection_errors"):
+        proposal.status = SelfRepairProposalStatus.BLOCKED
+        proposal.title = "Signal collection failed"
+        proposal.problem_summary = (
+            f"Replay signal collection for run {run_id} encountered errors. "
+            "Cannot reliably assess internal issues."
+        )
+        proposal.risk_summary = "; ".join(
+            signals["signal_collection_errors"]
+        )[:_MAX_SUMMARY]
+        save_self_repair_proposal(proposal, data_dir=ddir)
+        return proposal
+
     issues: list[dict[str, str]] = []
     evidence_refs: list[str] = []
     suspected_files: set[str] = set()
@@ -357,17 +411,17 @@ def create_self_repair_proposal_from_replay(
     # Blocking reasons → suspected Remedy bugs.
     for reason in signals.get("blocking_reasons", []):
         issues.append({"type": "blocking", "detail": reason})
-        evidence_refs.append(f"replay:{run_id}")
 
     # Anomalies → potential issues.
     for anomaly in signals.get("anomalies", []):
         if anomaly.startswith("lane_never_activated:"):
             lane = anomaly.split(":", 1)[1]
             issues.append({"type": "anomaly", "detail": f"Lane {lane} never activated"})
-            evidence_refs.append(f"replay:{run_id}")
         elif anomaly in ("approaching_step_budget", "approaching_token_budget"):
             issues.append({"type": "budget_warning", "detail": anomaly})
-            evidence_refs.append(f"replay:{run_id}")
+
+    if signals.get("blocking_reasons") or signals.get("anomalies"):
+        evidence_refs.append(f"replay:{run_id}")
 
     # Integrity failures.
     for failure in signals.get("integrity_failures", []):
@@ -516,7 +570,12 @@ def approve_self_repair_proposal(
     proposal = load_self_repair_proposal(proposal_id, data_dir=ddir)
     if proposal is None:
         return None
-    if proposal.status in _TERMINAL_STATUSES:
+    if proposal.status not in _APPROVABLE_STATUSES:
+        return None
+    if (not proposal.evidence_refs
+            or not proposal.suggested_worker_prompt.strip()
+            or not proposal.acceptance_criteria
+            or not proposal.required_tests):
         return None
     proposal.status = SelfRepairProposalStatus.APPROVED
     proposal.operator_decision = f"approved by {operator_id}"
@@ -554,7 +613,7 @@ def edit_self_repair_proposal(
         return None
     if proposal.status in _TERMINAL_STATUSES:
         return None
-    proposal.suggested_worker_prompt = patch_or_text[:_MAX_PROMPT_LENGTH]
+    proposal.suggested_worker_prompt = _sanitize_prompt(patch_or_text[:_MAX_PROMPT_LENGTH])
     proposal.status = SelfRepairProposalStatus.AWAITING_OPERATOR
     proposal.operator_decision = f"edited by {operator_id}"
     if notes:
@@ -577,7 +636,12 @@ def convert_self_repair_proposal_to_worker_prompt(
         return None
     if proposal.status != SelfRepairProposalStatus.APPROVED:
         return None
-    prompt = proposal.suggested_worker_prompt
+    if (not proposal.evidence_refs
+            or not proposal.suggested_worker_prompt.strip()
+            or not proposal.acceptance_criteria
+            or not proposal.required_tests):
+        return None
+    prompt = _sanitize_prompt(proposal.suggested_worker_prompt)
     proposal.status = SelfRepairProposalStatus.CONVERTED_TO_WORKER_PROMPT
     save_self_repair_proposal(proposal, data_dir=ddir)
     return prompt
@@ -725,6 +789,9 @@ def self_repair_progress_summary(
 __all__ = [
     # Status.
     "SelfRepairProposalStatus", "_ALL_STATUSES", "_TERMINAL_STATUSES",
+    "_APPROVABLE_STATUSES",
+    # Helpers (for testing).
+    "_sanitize_prompt",
     # Model.
     "SelfRepairProposal",
     # Storage.

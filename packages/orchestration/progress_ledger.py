@@ -1395,6 +1395,51 @@ def merge_dogfood_run_items(ledger: ProgressLedger, runs: list[dict] | None) -> 
             seen.add(item.item_id)
 
 
+def extract_self_repair_items(summary: dict | None) -> list[ProgressItem]:
+    """Extract Self-Repair Proposal progress items (Step 2446) from a safe progress summary.
+    Read-only; fixed item_ids; no duplicates. Metadata only — no execution."""
+    if not summary:
+        return []
+    items: list[ProgressItem] = []
+    awaiting = summary.get("awaiting_operator_count", 0)
+    approved = summary.get("approved_count", 0)
+    denied = summary.get("denied_count", 0)
+    latest_id = summary.get("latest_proposal_id", "")
+    next_action = summary.get("next_safe_action", "")
+    if awaiting:
+        items.append(ProgressItem(
+            item_id="self-repair-awaiting", title=f"{awaiting} self-repair proposal(s) awaiting operator",
+            status=ProgressStatus.BLOCKED, source_type=ProgressSource.KNOWN_RISK, severity="Medium",
+            safe_summary=f"{awaiting} self-repair proposal(s) need operator review.",
+            next_action=next_action or "remedy self-repair proposal-list --json"))
+    if approved:
+        items.append(ProgressItem(
+            item_id="self-repair-approved", title=f"{approved} self-repair proposal(s) approved",
+            status=ProgressStatus.PLANNED, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary=f"{approved} approved proposal(s) ready for worker prompt conversion.",
+            next_action=next_action or "remedy self-repair proposal-list --json"))
+    if denied:
+        items.append(ProgressItem(
+            item_id="self-repair-denied", title=f"{denied} self-repair proposal(s) denied",
+            status=ProgressStatus.DONE, source_type=ProgressSource.KNOWN_RISK,
+            safe_summary=f"{denied} self-repair proposal(s) denied by operator."))
+    if latest_id and not items:
+        items.append(ProgressItem(
+            item_id="self-repair-exists", title="Self-repair proposals on record",
+            status=ProgressStatus.DONE, source_type=ProgressSource.FEATURE_SUGGESTION,
+            safe_summary=f"Latest proposal: {latest_id}."))
+    return items
+
+
+def merge_self_repair_items(ledger: ProgressLedger, summary: dict | None) -> None:
+    """Merge self-repair proposal items into a ledger, de-duplicated by item_id."""
+    seen = {i.item_id for i in ledger.items}
+    for item in extract_self_repair_items(summary):
+        if item.item_id not in seen:
+            ledger.items.append(item)
+            seen.add(item.item_id)
+
+
 def extract_candidate_quality_items(evals: list[dict] | None) -> list[ProgressItem]:
     """Extract Local Candidate Quality Evaluation v1 progress items (Step 1661) from persisted
     evaluations. Read-only; fixed item_ids → no duplicates. Evaluation never executes anything."""
@@ -2126,6 +2171,13 @@ def build_progress_ledger(
         except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
 
+    # Self-Repair Proposal v0 (Step 2446).
+    try:
+        from packages.orchestration.self_repair_proposal import self_repair_progress_summary
+        merge_self_repair_items(ledger, self_repair_progress_summary())
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass
+
     return ledger
 
 
@@ -2155,6 +2207,12 @@ def mark_progress_item_done(
 # ---------------------------------------------------------------------------
 
 
+def _redact_ledger_text(text: str) -> str:
+    """Scrub secret-like patterns from ledger text for safe export."""
+    from packages.orchestration.redaction_patterns import _SECRET_RE
+    return _SECRET_RE.sub("[REDACTED]", text)
+
+
 def export_progress_ledger_json(ledger: ProgressLedger) -> dict:
     """Export ledger as safe JSON dict."""
     return {
@@ -2171,15 +2229,15 @@ def export_progress_ledger_json(ledger: ProgressLedger) -> dict:
         "items": [
             {
                 "item_id": i.item_id,
-                "title": i.title,
+                "title": _redact_ledger_text(i.title),
                 "status": i.status.value,
                 "source_type": i.source_type.value,
                 "source_ref": i.source_ref,
                 "severity": i.severity,
                 "area": i.area,
                 "evidence_count": len(i.evidence_refs),
-                "next_action": i.next_action,
-                "safe_summary": i.safe_summary,
+                "next_action": _redact_ledger_text(i.next_action),
+                "safe_summary": _redact_ledger_text(i.safe_summary),
             }
             for i in ledger.items
         ],

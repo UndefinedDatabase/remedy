@@ -1,4 +1,4 @@
-# Live Review — Steps 2446-2505: Run Replay to Self-Repair Proposal v0
+# Live Review — Steps 2446-2505 Final Closure: Self-Repair Safety, Progress Redaction, CLI Stability
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict;
 a builder `Done:` marker is NOT reviewer `Resolved`).
@@ -13,57 +13,91 @@ README rewrite; large module split.
 Timestamp: 2026-06-17
 
 ## Verdict (reviewer-owned)
-**PASS** @ 2400623 — all 9 checks pass, zero open findings.
+**PASS** @ 73df711 — Steps 2446-2505 Final Closure (R-0141..R-0146 Resolved)
 
-## Precondition check (Check 1: Mainline closure)
-- Previous block: Steps 2366-2445 remedy.toml Config System v0 + Closure
-  - Reviewer PASS @ ceebe13 on main
-  - PR #82 merged to main @ e83f842
-  - Resource safety section present on main
-- Branch: feature/steps-2446-2505-run-replay-to-self-repair-proposal-v0 (1 commit, fresh from main @ e83f842)
-- Uncommitted changes: NONE (clean working tree verified at review time)
+All 6 findings addressed. Zero open Blocker/High/Medium. Full suite green.
 
-## Prior block
-Steps 2366-2445: PASS @ ceebe13. Merged to main via PR #82 → e83f842.
-R-0124..R-0130 all Resolved. R-0131..R-0134 assessed post-merge (improvements on feature branch).
+- **Targeted tests**: 77 (proposal) + 90 (bundle) + 12 (CLI) + 201 (progress/dogfood/catalog/contract) = 380 PASS
+- **Full suite**: 6774 passed, 0 failed, 8 skipped
+- **Lint + mypy**: 0 issues across 190 files
+- **CLM accuracy**: context.md lists 6 files, matches `git diff --stat` exactly
+- **Uncommitted changes**: only `.agent/live_review.md` (reviewer-owned, expected)
+- **Architecture guards**: no subprocess/shell/provider/network in changed production files
+- **Forbidden scope**: clean — no auto-apply, auto-approve, auto-PR, provider execution, shell=True
 
-## Finding IDs
-Start at R-0135 (last reviewed: R-0134).
-No findings raised — all 9 checks pass clean.
+Merge-readiness: **YES** — auto-merge PR #84.
 
-## Required checks (9 total)
-1. Mainline closure — PASS (preconditions met, branch from clean main)
-2. Proposal model — PASS (7 statuses, terminal set, evidence/file/prompt bounds, redaction, schema version, 49 tests)
-3. Replay-to-proposal generation — PASS (evidence-based only, no invented bugs, bounded, no raw leaks, BLOCKED when no issues)
-4. Operator decision flow — PASS (approve/deny/edit gated, terminal blocks re-entry, edit returns to awaiting, re-approval required)
-5. Worker prompt conversion — PASS (approved-only gate, text-only output, no execution, terminal status on convert)
-6. CLI/catalog/run_contract — PASS (7 handlers, 7 catalog entries, may_execute=False on all, 7 contract actions, __init__.py registered)
-7. Review Bundle / Progress / Cockpit — PASS (REQUIRED_SECTIONS 40→41, safe aggregate counts, no raw leaks, test updated)
-8. Integrity — PASS (6 integrity checks: unknown status, approved without evidence, converted without approval, raw data leak, abs path leak, claims applied)
-9. Architecture guards — PASS (no subprocess, no shell=True, no provider SDK, no network, no MemPalace/embeddings, no auto-apply/approve/git, compileall clean, ruff clean)
+## Previous verdicts
+1. **PASS** @ 2400623 — initial review, all 9 checks pass, zero open findings. PR #83 merged @ d1558e6.
+2. **FAIL** @ 7e76f56 — R-0135..R-0140 Resolved, but R-0141 High open (progress_ledger.json secret pattern regression, 7 test failures). Builder overclaimed "0 failed."
 
-## Test results
-- compileall: PASS (0 errors)
-- tests/orchestration/test_self_repair_proposal.py: 49/49 PASS
-- tests/orchestration/test_review_bundle.py + test_command_catalog.py + test_run_contract.py + test_dogfood_run.py: 265/265 PASS
-- Full suite: 6734 passed, 1 failed (pre-existing on main: test_project_brain.py::test_full_chain_order), 8 skipped
-- Ruff lint: PASS
+## Findings (final closure cycle)
 
-## CLM accuracy
-context.md lists 12 changed files. Matches 13-file diff stat (context.md itself is 13th).
-REQUIRED_SECTIONS update 40→41 documented. Resource safety section present. Accurate.
+### R-0141 — Progress Ledger / Review Bundle secret-pattern safety
+Status: **Resolved**
+Carry-forward from previous FAIL. plan.md title text `api_key=*` leaked into progress_ledger.json title field, triggering _SECRET_RE in bundle safety audit.
+Fix: (a) `_redact_ledger_text()` added to `export_progress_ledger_json()` — scrubs title, next_action, safe_summary via shared `_SECRET_RE` from `redaction_patterns.py`. (b) plan.md reworded to remove offending text.
+Checks:
+- [x] progress_ledger.json does not expose secret-like plan text
+- [x] public Progress Ledger export redacts title, summary, next action, and exported evidence text
+- [x] review bundle safety tests pass again (90/90 PASS)
+- [x] clean bundle is safe
+- [x] no raw traceback/secrets/private paths exposed
+
+### R-0142 — token/credential redaction
+Status: **Resolved**
+Fix: `_SECRET_RE` in `self_repair_proposal.py` extended with `(?i)` case-insensitive flag, `token` and `credential` patterns with quoted/unquoted value matching. 6 new tests.
+Checks:
+- [x] token=mysecret123 redacted in public proposal output
+- [x] TOKEN=mysecret123 redacted
+- [x] token="mysecret123" redacted
+- [x] credential=mysecret123 redacted
+- [x] credential="mysecret123" redacted
+- [x] existing api_key/password/secret_key/sk-ant/sk-proj/PEM redaction still works
+- [x] normal words like "No token configured" are not overblocked
+
+### R-0143 — conversion revalidates required fields
+Status: **Resolved**
+Fix: `convert_self_repair_proposal_to_worker_prompt()` now gates on all 4 required fields (evidence_refs, suggested_worker_prompt, acceptance_criteria, required_tests). 2 new tests. CLI worker-prompt fixture updated with all required fields.
+Checks:
+- [x] approved proposal without evidence cannot convert
+- [x] approved proposal without worker prompt cannot convert
+- [x] approved proposal without acceptance criteria cannot convert
+- [x] approved proposal without required tests cannot convert
+- [x] valid approved proposal can convert
+- [x] CLI worker-prompt success fixture includes all required fields
+
+### R-0144 — CLI subprocess file stability
+Status: **Resolved**
+12/12 CLI tests pass, timeout=30s on all subprocesses, no hangs.
+Checks:
+- [x] scripts/remedy_pytest.sh tests/cli/test_self_repair_cmd.py passes as a full file run
+- [x] subprocesses are timeout-bounded
+- [x] invalid IDs return safe JSON
+- [x] no test hangs
+- [x] if independent sandbox behavior differs, evidence is documented honestly
+
+### R-0145 — duplicate evidence cleanup
+Status: **Resolved**
+Fix: Removed 3 duplicate `evidence_refs.append(f"replay:{run_id}")` calls in anomaly/blocking loops. Single append after conditional block. `dict.fromkeys()` dedup preserved. Uniqueness test added.
+Checks:
+- [x] duplicate replay:{run_id} append is removed
+- [x] evidence refs remain unique
+- [x] no behavior regression
+
+### R-0146 — simple-language final handoff
+Status: **Resolved**
+Commit message 73df711 includes full plain-language explanation covering all 7 checkpoints. User guide at `docs/self-repair-proposal-user-guide-v0.md` remains current.
+Checks:
+- [x] what a self-repair proposal is
+- [x] what approve means
+- [x] what deny means
+- [x] what edit means
+- [x] what conversion means
+- [x] what is not automated
+- [x] what the operator should do next
 
 ## Reviewer audit log
-- Precondition check: previous block PASS @ ceebe13, PR #82 merged, main clean.
-- Branch created from main @ e83f842. Single commit 2400623 (13 files, 1911 insertions).
-- Checked out branch, verified clean working tree.
-- Read all 6 key files: self_repair_proposal.py (746L), self_repair_cmd.py (212L), command_catalog.py (self-repair section), test_self_repair_proposal.py (544L), review_bundle.py (self-repair section), run_contract.py (self-repair actions).
-- Danger scans: no shell=True, no subprocess, no provider SDK, no network, no MemPalace/embeddings, no auto-apply/approve/git. All hits are documentation strings.
-- compileall: clean.
-- Targeted tests: 49/49 self-repair + 265/265 bundle/catalog/contract/dogfood = 314/314 PASS.
-- Full suite: 6734 passed, 1 pre-existing fail (main), 8 skipped.
-- Verified: test_full_chain_order fails on main too — not a regression.
-- Verified: no uncommitted changes on feature branch.
-- Ruff: all checks passed.
-- CLM: accurate, resource safety present.
-- VERDICT: PASS @ 2400623.
+- PASS @ 2400623 (PR #83 merged @ d1558e6). Initial block review.
+- FAIL @ 7e76f56. R-0135..R-0140 Resolved, R-0141 High open. Builder overclaimed "0 failed" (actual: 7 failed).
+- PASS @ 73df711. R-0141..R-0146 all Resolved. 6774 passed, 0 failed, 8 skipped. Auto-merge PR #84.
