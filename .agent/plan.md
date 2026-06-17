@@ -1,20 +1,24 @@
-# Plan — Steps 2366-2445: Review Closure (R-0124..R-0130)
+# Plan — Steps 2446-2505: Run Replay to Self-Repair Proposal v0
 
 ## Goal
-Fix 7 reviewer findings from PASS WITH RISKS verdict on PR #82. Expand config
-system with diagnostics, path redaction, CLI completeness, key registry 18+.
+Turn run replay analysis into a safe self-repair proposal that a human operator
+can approve, deny, or edit before it becomes a Worker prompt.
 
 ## Steps
-- [x] Phase 0-10: Initial implementation (a0fda56)
-- [x] R-0124: Fix quoted key=value redaction in _SECRET_RE
-- [x] R-0125: Reject unknown/secret keys in set_config_value + CLI
-- [x] R-0126: Structured diagnostics for malformed TOML and unknown keys
-- [x] R-0127: Redact absolute paths in to_summary_dict + config sources CLI
-- [x] R-0128: Add config show, --json on init/set, --path on init/set, fix CLI test
-- [x] R-0129: Expand key registry to 18 keys (ui, tests, quality, logging, provider flags)
-- [x] R-0130: Changed Line Map (this commit)
-- [x] Full suite: 6677 passed, 0 failed (excl pre-existing), 8 skipped
-- [ ] Commit + push + reviewer re-evaluation
+- [x] Phase 1: Architecture doc (docs/run-replay-to-self-repair-proposal-v0.md)
+- [x] Phase 2: Core proposal module (packages/orchestration/self_repair_proposal.py)
+- [x] Phase 3: Proposal generation from replay (create_self_repair_proposal_from_replay)
+- [x] Phase 4: Operator decision flow (approve/deny/edit/convert)
+- [x] Phase 5: Storage (save/load/list with atomic writes)
+- [x] Phase 6: CLI surface (apps/cli/commands/self_repair_cmd.py)
+- [x] Phase 7: Command catalog + run contract (7 commands, 7 contract actions)
+- [x] Phase 8: Review bundle / progress / cockpit (self_repair_proposal_summary.json)
+- [x] Phase 9: Integrity checks (7 invariants in self_repair_proposal_integrity)
+- [x] Phase 10: User guide doc (docs/self-repair-proposal-user-guide-v0.md)
+- [x] Phase 11: Targeted tests + lint (49 proposal + 90 bundle + 18 catalog + 64 dogfood + 119 contract = all pass)
+- [x] Phase 12: Full suite (6734 passed, 0 failed, 8 skipped)
+- [ ] Self-review + commit + push + PR
 
 ## Hard rules
-No provider execution; no shell=True; no auto-apply/approve/PR/git; no secret storage in config.
+No provider execution; no auto-apply/approve/PR/git; no shell=True; no secret storage;
+no raw log/prompt/transcript leaks; no MemPalace/embeddings.

@@ -201,6 +201,17 @@ class ContractAction:
     DOGFOOD_RUN_REPLAY = "dogfood_run_replay"
     DOGFOOD_RUN_EVALUATE = "dogfood_run_evaluate"
 
+    # Self-Repair Proposal v0 (Step 2450) — METADATA + EVALUATION only. NOT provider/model/worker
+    # execution, NOT auto-apply/approve/git. proposal-create/approve/deny/edit/worker-prompt persist
+    # safe metadata; proposal-show/list are read-only. None execute code or apply changes.
+    SELF_REPAIR_PROPOSAL_CREATE = "self_repair_proposal_create"
+    SELF_REPAIR_PROPOSAL_SHOW = "self_repair_proposal_show"
+    SELF_REPAIR_PROPOSAL_LIST = "self_repair_proposal_list"
+    SELF_REPAIR_PROPOSAL_APPROVE = "self_repair_proposal_approve"
+    SELF_REPAIR_PROPOSAL_DENY = "self_repair_proposal_deny"
+    SELF_REPAIR_PROPOSAL_EDIT = "self_repair_proposal_edit"
+    SELF_REPAIR_WORKER_PROMPT = "self_repair_worker_prompt"
+
     # Apply actions (gated by stop_before_apply)
     APPLY = "apply"
     SOURCE_APPLY = "source_apply"
@@ -370,6 +381,13 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.DOGFOOD_RUN_SHOW,
     ContractAction.DOGFOOD_RUN_REPLAY,
     ContractAction.DOGFOOD_RUN_EVALUATE,
+    ContractAction.SELF_REPAIR_PROPOSAL_CREATE,
+    ContractAction.SELF_REPAIR_PROPOSAL_SHOW,
+    ContractAction.SELF_REPAIR_PROPOSAL_LIST,
+    ContractAction.SELF_REPAIR_PROPOSAL_APPROVE,
+    ContractAction.SELF_REPAIR_PROPOSAL_DENY,
+    ContractAction.SELF_REPAIR_PROPOSAL_EDIT,
+    ContractAction.SELF_REPAIR_WORKER_PROMPT,
     ContractAction.DISCOVER_COMMANDS,
     ContractAction.WRITE_METADATA,
     ContractAction.RUN_TEST,

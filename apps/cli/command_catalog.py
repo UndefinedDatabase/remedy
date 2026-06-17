@@ -127,6 +127,7 @@ GROUPS: dict[str, GroupDef] = {
     "execution": GroupDef("execution", "Execution", "Managed Builder Execution — bounded subprocess for external builders (command templates, operator approval, shell=False, sanitized env, timeout, output cap; output untrusted until sandbox/trust/quality/review gates)."),
     "dogfood": GroupDef("dogfood", "Dogfood", "Open-ended dogfood run orchestrator — step-at-a-time run loop, replay analyzer, brainstorm lane (metadata/evaluation only; no provider execution; no auto-apply; stops when done/blocked/budget)."),
     "config": GroupDef("config", "Config", "Configuration management — list, inspect, and set remedy.toml values."),
+    "self-repair": GroupDef("self-repair", "Self-Repair", "Self-repair proposals — inspect replay evidence, draft repair proposals, approve/deny/edit, convert to worker prompts (metadata only; no auto-apply; no auto-approval; no execution)."),
 }
 
 
@@ -3327,6 +3328,104 @@ CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
+    ),
+
+    # ── self-repair (self-repair proposals — metadata only) ──────────────
+    CommandEntry(
+        command_id="self-repair.proposal-create",
+        group_id="self-repair",
+        subcommand="proposal-create",
+        description="Create a self-repair proposal from a dogfood run replay.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("run_id", "Dogfood run ID to analyze"),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self-repair.proposal-show", "self-repair.proposal-list"),
+    ),
+    CommandEntry(
+        command_id="self-repair.proposal-show",
+        group_id="self-repair",
+        subcommand="proposal-show",
+        description="Show a self-repair proposal by ID.",
+        action_class="read_only",
+        args=(
+            ArgDef("proposal_id", "Proposal ID"),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self-repair.proposal-list", "self-repair.proposal-approve"),
+    ),
+    CommandEntry(
+        command_id="self-repair.proposal-list",
+        group_id="self-repair",
+        subcommand="proposal-list",
+        description="List self-repair proposals, optionally filtered by run ID.",
+        action_class="read_only",
+        args=(
+            ArgDef("--run-id", "Filter by dogfood run ID", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self-repair.proposal-show", "self-repair.proposal-create"),
+    ),
+    CommandEntry(
+        command_id="self-repair.proposal-approve",
+        group_id="self-repair",
+        subcommand="proposal-approve",
+        description="Approve a self-repair proposal (operator decision).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("proposal_id", "Proposal ID"),
+            ArgDef("--operator-id", "Operator identifier", required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self-repair.proposal-deny", "self-repair.worker-prompt"),
+    ),
+    CommandEntry(
+        command_id="self-repair.proposal-deny",
+        group_id="self-repair",
+        subcommand="proposal-deny",
+        description="Deny a self-repair proposal (operator decision).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("proposal_id", "Proposal ID"),
+            ArgDef("--operator-id", "Operator identifier", required=True, is_option=True),
+            ArgDef("--reason", "Denial reason", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self-repair.proposal-approve",),
+    ),
+    CommandEntry(
+        command_id="self-repair.proposal-edit",
+        group_id="self-repair",
+        subcommand="proposal-edit",
+        description="Edit a self-repair proposal worker prompt (returns to awaiting operator).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("proposal_id", "Proposal ID"),
+            ArgDef("--operator-id", "Operator identifier", required=True, is_option=True),
+            ArgDef("--text", "New worker prompt text", required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self-repair.proposal-approve",),
+    ),
+    CommandEntry(
+        command_id="self-repair.worker-prompt",
+        group_id="self-repair",
+        subcommand="worker-prompt",
+        description="Convert an approved proposal to a worker prompt (text only, no execution).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("proposal_id", "Proposal ID"),
+            _JSON_OPT,
+        ),
+        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
+        related=("self-repair.proposal-approve",),
     ),
 )
 
