@@ -50,6 +50,15 @@ env var  >  project config  >  user config  >  built-in default
 | `ollama.planner.model` | string | `REMEDY_OLLAMA_PLANNER_MODEL` | (falls back to `ollama.model`) | no |
 | `ollama.planner.temperature` | float | `REMEDY_OLLAMA_PLANNER_TEMPERATURE` | (none) | no |
 | `ollama.planner.num_predict` | int | `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` | (none) | no |
+| `ui.host` | string | `REMEDY_UI_HOST` | `127.0.0.1` | no |
+| `ui.port` | int | `REMEDY_UI_PORT` | `8765` | no |
+| `tests.pytest_timeout_seconds` | int | `REMEDY_PYTEST_TIMEOUT_SECONDS` | `300` | no |
+| `quality.coverage_fail_under` | int | `REMEDY_COVERAGE_FAIL_UNDER` | (none) | no |
+| `logging.level` | string | `REMEDY_LOG_LEVEL` | `WARNING` | no |
+| `claude_enabled` | bool | `REMEDY_CLAUDE_ENABLED` | `false` | yes |
+| `opencode_enabled` | bool | `REMEDY_OPENCODE_ENABLED` | `false` | yes |
+| `pi_dev_enabled` | bool | `REMEDY_PI_DEV_ENABLED` | `false` | yes |
+| `external_memory_enabled` | bool | `REMEDY_EXTERNAL_MEMORY_ENABLED` | `false` | yes |
 
 ### TOML file format
 
@@ -79,11 +88,12 @@ that may also use `remedy.toml`.
 | Command | Action | Description |
 |---------|--------|-------------|
 | `remedy config list` | read_only | List all known config keys with current values and sources |
+| `remedy config show` | read_only | Alias for `config list` |
 | `remedy config get <key>` | read_only | Show value and source for one key |
 | `remedy config sources` | read_only | Show which config files are loaded and their paths |
-| `remedy config init` | write_metadata | Create a `remedy.toml` template in the current directory |
-| `remedy config set <key> <value>` | write_metadata | Set a key in `./remedy.toml` (refuses env_only keys) |
-| `remedy config validate` | read_only | Validate loaded config against key specs |
+| `remedy config init [--path P]` | write_metadata | Create a `remedy.toml` template (default: `./remedy.toml`) |
+| `remedy config set <key> <value> [--path P]` | write_metadata | Set a key (refuses unknown/env_only/secret keys) |
+| `remedy config validate [--path P]` | read_only | Validate config against key specs |
 
 ### Module architecture
 

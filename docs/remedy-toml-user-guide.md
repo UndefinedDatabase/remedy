@@ -71,18 +71,23 @@ temperature = 0.2
 | `ollama.planner.model` | `REMEDY_OLLAMA_PLANNER_MODEL` | string | (falls back to `ollama.model`) | Model for planner role |
 | `ollama.planner.temperature` | `REMEDY_OLLAMA_PLANNER_TEMPERATURE` | float | (none) | Sampling temperature for planner |
 | `ollama.planner.num_predict` | `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` | int | (none) | Max tokens for planner |
+| `ui.host` | `REMEDY_UI_HOST` | string | `127.0.0.1` | UI server bind host |
+| `ui.port` | `REMEDY_UI_PORT` | int | `8765` | UI server port |
+| `tests.pytest_timeout_seconds` | `REMEDY_PYTEST_TIMEOUT_SECONDS` | int | `300` | Default pytest timeout |
+| `quality.coverage_fail_under` | `REMEDY_COVERAGE_FAIL_UNDER` | int | (none) | Min test coverage % |
+| `logging.level` | `REMEDY_LOG_LEVEL` | string | `WARNING` | Logging level |
 
 ## CLI commands
 
 | Command | Description |
 |---------|-------------|
-| `remedy config list` | List all keys with values and sources |
-| `remedy config list --json` | Same, as JSON |
-| `remedy config get <key>` | Show value, source, env var, type for one key |
-| `remedy config sources` | Show which config files are loaded |
-| `remedy config init` | Create a `remedy.toml` template |
-| `remedy config set <key> <value>` | Set a key in `./remedy.toml` |
-| `remedy config validate` | Validate config against key specs |
+| `remedy config list [--json]` | List all keys with values and sources |
+| `remedy config show [--json]` | Alias for `config list` |
+| `remedy config get <key> [--json]` | Show value, source, env var, type for one key |
+| `remedy config sources [--json]` | Show which config files are loaded |
+| `remedy config init [--path P] [--json]` | Create a `remedy.toml` template |
+| `remedy config set <key> <value> [--path P] [--json]` | Set a key (rejects unknown/env_only/secret) |
+| `remedy config validate [--path P] [--json]` | Validate config against key specs |
 
 ## Migration from environment variables
 

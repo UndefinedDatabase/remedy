@@ -122,3 +122,44 @@ class TestConfigCli:
         data = json.loads(r.stdout)
         assert data["key"] == "ollama.host"
         assert data["value"] == "http://custom:11434"
+
+    def test_config_validate_path_valid(self, tmp_path):
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text('[remedy.ollama]\nhost = "http://localhost:11434"\n')
+        r = subprocess.run(
+            [*_CLI, "config", "validate", "--path", str(toml_file), "--json"],
+            capture_output=True, text=True, timeout=30, env=_ENV,
+        )
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert data["valid"] is True
+
+    def test_config_validate_path_malformed(self, tmp_path):
+        bad = tmp_path / "bad.toml"
+        bad.write_text("this is not valid toml {{{")
+        r = subprocess.run(
+            [*_CLI, "config", "validate", "--path", str(bad), "--json"],
+            capture_output=True, text=True, timeout=30, env=_ENV,
+        )
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert data["valid"] is False
+        assert any("Malformed" in w for w in data["warnings"])
+        raw_path = str(tmp_path)
+        for w in data["warnings"]:
+            assert raw_path not in w
+
+    def test_config_validate_path_unknown_key(self, tmp_path):
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text('[remedy]\nbogus_unknown_key = "val"\n')
+        r = subprocess.run(
+            [*_CLI, "config", "validate", "--path", str(toml_file), "--json"],
+            capture_output=True, text=True, timeout=30, env=_ENV,
+        )
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert data["valid"] is False
+        assert any("Unknown key" in w for w in data["warnings"])
+        raw_path = str(tmp_path)
+        for w in data["warnings"]:
+            assert raw_path not in w

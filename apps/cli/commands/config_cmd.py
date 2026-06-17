@@ -100,10 +100,11 @@ def _cmd_config_get(args: argparse.Namespace) -> None:
 
 
 def _cmd_config_sources(args: argparse.Namespace) -> None:
-    from packages.orchestration.config import get_config
+    from packages.orchestration.config import _redact_warning_paths, get_config
 
     config = get_config()
     report = config.load_report
+    safe_warnings = _redact_warning_paths(report.warnings)
     use_json = getattr(args, "json", False)
 
     if use_json:
@@ -112,7 +113,7 @@ def _cmd_config_sources(args: argparse.Namespace) -> None:
             "project_loaded": report.project_loaded,
             "user_path": _redact_path(report.user_path),
             "user_loaded": report.user_loaded,
-            "warnings": report.warnings,
+            "warnings": safe_warnings,
         }, sys.stdout, indent=2)
         sys.stdout.write("\n")
         return
@@ -122,9 +123,9 @@ def _cmd_config_sources(args: argparse.Namespace) -> None:
     print(f"  project: {_redact_path(report.project_path)} ({status})")
     status = "loaded" if report.user_loaded else "not found"
     print(f"  user:    {_redact_path(report.user_path)} ({status})")
-    if report.warnings:
+    if safe_warnings:
         print("\nWarnings:")
-        for w in report.warnings:
+        for w in safe_warnings:
             print(f"  - {w}")
 
 
@@ -178,20 +179,34 @@ def _cmd_config_set(args: argparse.Namespace) -> None:
 
 
 def _cmd_config_validate(args: argparse.Namespace) -> None:
-    from packages.orchestration.config import get_config, validate_config
+    from packages.orchestration.config import (
+        _redact_warning_paths,
+        get_config,
+        load_config,
+        validate_config,
+    )
 
-    config = get_config()
-    warnings = validate_config(config)
+    path_arg = getattr(args, "path", None)
+    if path_arg:
+        config = load_config(project_path=Path(path_arg))
+    else:
+        config = get_config()
+
+    type_warnings = validate_config(config)
+    load_warnings = config.load_report.warnings
+    all_warnings = load_warnings + type_warnings
+    safe_warnings = _redact_warning_paths(all_warnings)
+
     use_json = getattr(args, "json", False)
 
     if use_json:
-        json.dump({"valid": len(warnings) == 0, "warnings": warnings}, sys.stdout, indent=2)
+        json.dump({"valid": len(safe_warnings) == 0, "warnings": safe_warnings}, sys.stdout, indent=2)
         sys.stdout.write("\n")
         return
 
-    if warnings:
+    if safe_warnings:
         print("Config validation warnings:")
-        for w in warnings:
+        for w in safe_warnings:
             print(f"  - {w}")
     else:
         print("Config validation: OK")

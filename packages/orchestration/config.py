@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import enum
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -335,6 +336,27 @@ def _redact_abs_path(raw: str | None) -> str | None:
         return "<absolute-path-redacted>"
 
 
+_ABS_PATH_IN_TEXT_RE = re.compile(
+    r"(?<![:/])"
+    r"/(?:[a-zA-Z0-9._\-]+/)+"
+    r"[a-zA-Z0-9._\-]+"
+)
+
+
+def _redact_warning_paths(warnings: list[str]) -> list[str]:
+    """Redact absolute paths inside warning strings for public export."""
+    home = str(Path.home())
+
+    def _replace(m: re.Match[str]) -> str:
+        path_str = m.group(0)
+        if path_str.startswith(home):
+            suffix = path_str[len(home):]
+            return f"~{suffix}"
+        return "<config-path-redacted>"
+
+    return [_ABS_PATH_IN_TEXT_RE.sub(_replace, w) for w in warnings]
+
+
 # ---------------------------------------------------------------------------
 # RemedyConfig
 # ---------------------------------------------------------------------------
@@ -401,7 +423,7 @@ class RemedyConfig:
                 "project_loaded": self.load_report.project_loaded,
                 "user_path": _redact_abs_path(self.load_report.user_path),
                 "user_loaded": self.load_report.user_loaded,
-                "warnings": self.load_report.warnings,
+                "warnings": _redact_warning_paths(self.load_report.warnings),
             },
         }
 

@@ -14,6 +14,7 @@ from packages.orchestration.config import (
     _coerce_value,
     _extract_remedy_table,
     _flatten_toml,
+    _redact_warning_paths,
     all_key_specs,
     get_config,
     get_key_spec,
@@ -368,6 +369,36 @@ class TestPathRedaction:
         )
         summary = config.to_summary_dict()
         assert summary["load_report"]["project_path"] == "remedy.toml"
+
+
+class TestWarningPathRedaction:
+    def test_redacts_tmp_path_in_malformed_warning(self, tmp_path):
+        bad = tmp_path / "bad.toml"
+        bad.write_text("this is [ not valid toml ugh")
+        config = load_config(project_path=bad, user_path=Path("/nonexistent/user.toml"))
+        safe = _redact_warning_paths(config.load_report.warnings)
+        for w in safe:
+            assert "/tmp" not in w or "~/" in w
+
+    def test_redacts_tmp_path_in_unknown_key_warning(self, tmp_path):
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text('[remedy]\nbogus_key = "val"\n')
+        config = load_config(project_path=toml_file, user_path=Path("/nonexistent/user.toml"))
+        safe = _redact_warning_paths(config.load_report.warnings)
+        for w in safe:
+            assert "/tmp" not in w or "~/" in w
+
+    def test_summary_dict_warnings_redacted(self, tmp_path):
+        bad = tmp_path / "bad.toml"
+        bad.write_text("not valid toml {{{")
+        config = load_config(project_path=bad, user_path=Path("/nonexistent/user.toml"))
+        summary = config.to_summary_dict()
+        for w in summary["load_report"]["warnings"]:
+            assert "/tmp" not in w or "~/" in w
+
+    def test_no_redaction_needed(self):
+        safe = _redact_warning_paths(["ollama.host: expected str, got int"])
+        assert safe == ["ollama.host: expected str, got int"]
 
 
 class TestValidateConfig:

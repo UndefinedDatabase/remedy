@@ -3325,7 +3325,10 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="validate",
         description="Validate loaded config against key specs.",
         action_class="read_only",
-        args=(_JSON_OPT,),
+        args=(
+            ArgDef("--path", "Config file path to validate (default: auto-detect)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
         supports_json=True,
     ),
 )
