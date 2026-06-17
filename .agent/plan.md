@@ -1,32 +1,28 @@
-# Plan — Steps 2656-2675: Core Product Spine + Reliable Fast Test Lane v0
+# Plan — Steps 2676-2695: Fast Lane Reality Closure + Review State Coherence v0
 
 ## Goal
-Consolidation block. Document core operator flow, create fast test lane,
-update docs to product language, add targeted consistency tests.
-No new features, no new autonomy, no new provider execution.
+Closure block. Make fast lane honest, reliable, documented.
+Scrub doctor core errors. Resolve R-0153/R-0154. No new features.
 
 ## Steps
-- [x] Step 2656: Mainline gate + stale review check
-- [x] Step 2657: Core product spine audit
-- [x] Step 2658: Command taxonomy audit
-- [x] Step 2659: Canonical flow map document (core-product-spine-v0.md)
-- [x] Step 2660: Fast test lane design (9 targeted suites)
-- [x] Step 2661: scripts/remedy_test_fast.sh (420 tests, ~7s)
-- [x] Step 2662: Test lanes manifest doc (test-lanes-v0.md)
-- [x] Step 2663: scripts/remedy_test_full.sh wrapper
-- [x] Step 2664: Full-suite hang risk — all subprocess tests use timeout+killpg
-- [x] Step 2665: remedy doctor core --json (read-only, importlib-based)
-- [x] Step 2666: Catalog + contract for doctor core
-- [x] Step 2667: Update simple operator quickstart
-- [x] Step 2668: Update controlled Claude operator docs (simple path primary)
-- [x] Step 2669: Update mission report docs (product language)
-- [x] Step 2670: Stale command scanner test (6 checks)
-- [x] Step 2671: Product spine consistency tests (7 checks)
-- [x] Step 2672: Fast lane self-test (7 checks)
-- [x] Step 2673: Architecture guard scan — clean
-- [x] Step 2674: Targeted (420 fast + 49 facade + 20 spine) + full (6863) tests
-- [ ] Step 2675: Final handoff
+- [x] Step 2676: Mainline gate — PR #88 merged, reviewer PASS, zero open findings
+- [x] Step 2677: Fast lane baseline — 420 passed, 6.85s, no timeout
+- [x] Step 2678: Audit fast lane — classified all 9 files (5 unit, 4 CLI integration)
+- [x] Step 2679: Split decision — no split needed (all 9 files run in ~7s)
+- [x] Step 2680: Honest timing claims — removed "7 seconds" claim, use "under 15 seconds"
+- [x] Step 2681: Subprocess comment — fixed to acknowledge bounded subprocess.run calls
+- [x] Step 2682: Lane self-tests — added heavy-runtime exclusion + product-spine inclusion
+- [x] Step 2683: Fast lane after changes — 443 passed, 6.86s
+- [x] Step 2684: Runtime lane — not added (no split needed)
+- [x] Step 2685: Test lane docs — updated with file classifications and honest timing
+- [x] Step 2686: Doctor core error scrub — _safe_err truncation + path redaction
+- [x] Step 2687: R-0153/R-0154 — resolved by pattern change (CLM in context.md)
+- [x] Step 2688: Product spine docs verified current
+- [x] Step 2689: Catalog + contract confirmed
+- [x] Step 2690: Architecture guard scan — clean
+- [x] Step 2691: Targeted tests — 443 fast + lint clean
+- [x] Step 2692: Full suite — 6866 passed, 0 failures
+- [ ] Step 2693: Final handoff
 
 ## Hard rules
-No auto-apply/approve/provider execution/shell=True/secret storage/raw leaks.
-Consolidation only — docs, scripts, tests. No new features.
+Closure only. No new features. No provider execution.
