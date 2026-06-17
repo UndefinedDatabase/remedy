@@ -145,10 +145,32 @@ class TestFastLaneSelfTest:
             "test_self_dogfood_execution_cli.py",
             "test_smoke_scripts.py",
             "test_overnight_executor_cli.py",
+            "test_review_bundle_runtime.py",
         ]
         for name in heavy:
             assert name not in text, \
                 f"Fast lane must not include heavy runtime file: {name}"
+
+    def test_fast_lane_no_subprocess_files(self):
+        p = _ROOT / "scripts" / "remedy_test_fast.sh"
+        text = p.read_text(encoding="utf-8")
+        subprocess_files = [
+            "test_command_catalog.py",
+            "test_contract_runtime.py",
+            "test_config_cmd.py",
+        ]
+        for name in subprocess_files:
+            assert name not in text, \
+                f"Fast lane must not include subprocess file: {name}"
+
+    def test_runtime_lane_script_exists(self):
+        p = _ROOT / "scripts" / "remedy_test_runtime.sh"
+        assert p.exists(), "scripts/remedy_test_runtime.sh must exist"
+
+    def test_runtime_lane_is_executable(self):
+        p = _ROOT / "scripts" / "remedy_test_runtime.sh"
+        st = os.stat(p)
+        assert st.st_mode & stat.S_IXUSR, "remedy_test_runtime.sh must be executable"
 
     def test_fast_lane_includes_product_spine(self):
         p = _ROOT / "scripts" / "remedy_test_fast.sh"
