@@ -1657,12 +1657,17 @@ def _build_dogfood_run_summary(job: Any) -> dict:
         blocked = sum(1 for r in runs if r.get("status") in ("blocked", "error"))
         total_steps = sum(r.get("step_count", 0) for r in runs)
         latest = runs[-1] if runs else {}
+        latest_stop = latest.get("stop_reason", "") if latest else ""
+        latest_next = latest.get("next_suggested_action", "") if latest else ""
         return {
             "run_count": len(runs), "active_count": active,
             "satisfied_count": satisfied, "blocked_count": blocked,
             "total_steps": total_steps,
             "latest_status": latest.get("status", "none"),
             "latest_run_id": latest.get("run_id", ""),
+            "latest_stop_reason": latest_stop,
+            "latest_next_safe_action": latest_next,
+            "morning_report_available": len(runs) > 0,
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"run_count": 0, "latest_status": "none", "error": "dogfood_run_unavailable"}

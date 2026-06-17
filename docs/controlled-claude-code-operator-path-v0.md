@@ -70,7 +70,7 @@ remedy execution template-update claude-code-repair-v0 --max-output-bytes 131072
 remedy builder package-create <job_id> --json
 
 # Create session bound to adapter
-remedy builder session-create <package_id> --adapter claude-code-v0 --json
+remedy builder session-create <package_id> --adapter-id claude-code-v0 --json
 ```
 
 ### 5. Approve the execution

@@ -3307,6 +3307,36 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("dogfood.show",),
     ),
+    CommandEntry(
+        command_id="dogfood.run-loop",
+        group_id="dogfood",
+        subcommand="run-loop",
+        description="Run a bounded mission/self-test loop (multi-step; stops on satisfied/blocked/budget/max; no auto-approval; no auto-apply).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("run_id", "Run ID"),
+            ArgDef("--job-id", "Job UUID", required=False, is_option=True),
+            ArgDef("--max-steps", "Max loop steps (default 10)", required=False, is_option=True),
+            ArgDef("--max-seconds", "Max wall-clock seconds (default 300)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("dogfood.step", "dogfood.morning-report"),
+    ),
+    CommandEntry(
+        command_id="dogfood.morning-report",
+        group_id="dogfood",
+        subcommand="morning-report",
+        description="Generate a safe morning report for operator inspection (read-only; no execution; no raw logs/output/secrets).",
+        action_class="read_only",
+        args=(
+            ArgDef("run_id", "Run ID"),
+            ArgDef("--job-id", "Job UUID", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("dogfood.show", "dogfood.run-loop"),
+    ),
 
     # ── config ──────────────────────────────────────────────────────────
     CommandEntry(

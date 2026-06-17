@@ -21,6 +21,7 @@ from packages.orchestration.dogfood_run import (
     DogfoodRunStatus,
     analyze_dogfood_run_replay,
     append_checkpoint,
+    build_mission_morning_report,
     create_dogfood_run,
     dogfood_run_integrity,
     evaluate_dogfood_run,
@@ -28,6 +29,7 @@ from packages.orchestration.dogfood_run import (
     list_dogfood_runs,
     load_checkpoints,
     load_dogfood_run,
+    run_mission_loop,
     save_brainstorm_idea,
     save_dogfood_run,
     step_dogfood_run,
@@ -434,7 +436,7 @@ class TestIntegrity:
 class TestCLIHandlers:
     def test_handlers_registered(self):
         from apps.cli.commands.dogfood_cmd import COMMAND_HANDLERS
-        assert len(COMMAND_HANDLERS) == 10
+        assert len(COMMAND_HANDLERS) == 12
         assert "dogfood.create" in COMMAND_HANDLERS
         assert "dogfood.step" in COMMAND_HANDLERS
         assert "dogfood.replay" in COMMAND_HANDLERS
@@ -449,7 +451,7 @@ class TestCatalogEntries:
     def test_dogfood_commands_in_catalog(self):
         from apps.cli.command_catalog import CATALOG
         dogfood_cmds = [c for c in CATALOG if c.group_id == "dogfood"]
-        assert len(dogfood_cmds) == 10
+        assert len(dogfood_cmds) == 12
         ids = {c.command_id for c in dogfood_cmds}
         assert "dogfood.create" in ids
         assert "dogfood.step" in ids
@@ -724,3 +726,219 @@ class TestR0117EvidenceGathering:
             run.started_at = "2026-01-01T00:00:00+00:00"
             ev = evaluate_dogfood_run(run, data_dir=Path(td))
             assert ev.satisfied is False
+
+
+# ---------------------------------------------------------------------------
+# Bounded Mission Run Loop Tests (Steps 2602-2605)
+# ---------------------------------------------------------------------------
+
+
+class TestMissionRunLoop:
+    def test_satisfied_run_stops_immediately(self):
+        """Loop stops immediately when run is already satisfied."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T01:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=10, max_seconds=60,
+                data_dir=Path(td),
+            )
+            assert result.stop_reason == "mission_satisfied"
+            assert result.steps_attempted == 0
+            assert result.final_status == DogfoodRunStatus.SATISFIED
+
+    def test_waiting_approval_stops(self):
+        """Loop stops when run needs approval."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.WAITING_FOR_APPROVAL
+            save_dogfood_run(run, data_dir=Path(td))
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=10, max_seconds=60,
+                data_dir=Path(td),
+            )
+            assert result.stop_reason == "waiting_for_approval"
+            assert result.steps_attempted == 0
+
+    def test_blocked_stops(self):
+        """Loop stops when run is blocked."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.BLOCKED
+            run.blocking_reasons = ["no_lanes_available"]
+            run.finished_at = "2026-01-01T01:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=10, max_seconds=60,
+                data_dir=Path(td),
+            )
+            assert result.stop_reason == "blocked"
+
+    def test_max_steps_stops_loop(self):
+        """Loop stops at max_steps."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=3, max_seconds=60,
+                data_dir=Path(td),
+            )
+            assert result.steps_attempted <= 3
+            assert result.stop_reason in (
+                "max_steps_reached", "no_safe_next_action",
+                "waiting_for_operator", "blocked",
+            )
+
+    def test_max_seconds_stops_loop(self):
+        """Loop stops at max_seconds (use 0 for immediate)."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=100, max_seconds=0,
+                data_dir=Path(td),
+            )
+            assert result.stop_reason == "max_seconds_reached"
+            assert result.steps_attempted == 0
+
+    def test_not_found_returns_error(self):
+        """Loop returns error for nonexistent run."""
+        with tempfile.TemporaryDirectory() as td:
+            result = run_mission_loop(
+                "nonexistent", job_id="fake-job",
+                max_steps=1, max_seconds=10,
+                data_dir=Path(td),
+            )
+            assert result.stop_reason == "internal_error"
+            assert len(result.errors) > 0
+
+    def test_result_is_json_safe(self):
+        """MissionRunLoopResult serializes to JSON."""
+        import json
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T01:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=1, max_seconds=10,
+                data_dir=Path(td),
+            )
+            d = result.to_dict()
+            s = json.dumps(d)
+            assert "run_id" in s
+            assert "stop_reason" in s
+
+    def test_no_unbounded_loop(self):
+        """Loop with NOT_STARTED run must terminate within max_steps."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            result = run_mission_loop(
+                run.run_id, job_id=run.job_id,
+                max_steps=5, max_seconds=30,
+                data_dir=Path(td),
+            )
+            assert result.steps_attempted <= 5
+            assert result.stop_reason != ""
+
+
+# ---------------------------------------------------------------------------
+# Morning Report Tests (Step 2606)
+# ---------------------------------------------------------------------------
+
+
+class TestMorningReport:
+    def test_partial_run_report(self):
+        """Report works for a run that has stepped but is not terminal."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            step_dogfood_run(run, data_dir=Path(td))
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            assert report.run_id == run.run_id
+            assert report.steps_completed >= 1
+            assert report.operator_summary != ""
+
+    def test_satisfied_run_report(self):
+        """Report for a satisfied run shows satisfaction."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.SATISFIED
+            run.finished_at = "2026-01-01T01:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            assert report.mission_status == "satisfied"
+
+    def test_blocked_run_report(self):
+        """Report for a blocked run shows blockers."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.status = DogfoodRunStatus.BLOCKED
+            run.blocking_reasons = ["no_lanes_available"]
+            run.finished_at = "2026-01-01T01:00:00+00:00"
+            save_dogfood_run(run, data_dir=Path(td))
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            assert len(report.blocked_items) > 0
+
+    def test_report_includes_core_readiness(self):
+        """Report includes core readiness summary."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            assert "mission_contract" in report.core_readiness
+            assert "run_exists" in report.core_readiness
+            assert "builder_adapter_available" in report.core_readiness
+
+    def test_report_includes_self_repair(self):
+        """Report includes self-repair proposal summary."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            assert "proposal_count" in report.self_repair_summary
+            assert "awaiting_approval" in report.self_repair_summary
+
+    def test_report_includes_builder_execution(self):
+        """Report includes builder/execution visibility."""
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            assert "latest_session_status" in report.builder_execution_summary
+            assert "output_ref_exists" in report.builder_execution_summary
+
+    def test_report_is_json_safe(self):
+        """MissionMorningReport serializes to JSON without error."""
+        import json
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            report = build_mission_morning_report(
+                run.run_id, job_id=run.job_id, data_dir=Path(td),
+            )
+            d = report.to_dict()
+            s = json.dumps(d)
+            assert "operator_summary" in s
+            assert "core_readiness" in s
+
+    def test_not_found_returns_summary(self):
+        """Report for nonexistent run returns operator summary with error."""
+        with tempfile.TemporaryDirectory() as td:
+            report = build_mission_morning_report(
+                "nonexistent", job_id="fake", data_dir=Path(td),
+            )
+            assert "not found" in report.operator_summary.lower()
