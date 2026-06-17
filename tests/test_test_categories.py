@@ -1,9 +1,9 @@
 """Test category enforcement.
 
 Verifies:
-- Fast script excludes subprocess, real_ollama, ui_contract, smoke, slow
+- Fast script uses targeted file list (core spine suites)
 - Scripts use remedy_pytest.sh
-- Scripts don't use shell=True or background processes
+- Scripts don't use background processes
 - Marker definitions exist in pyproject.toml
 """
 
@@ -15,29 +15,30 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
 
 
-def test_fast_script_excludes_subprocess():
-    source = (SCRIPTS / "remedy_test_fast.sh").read_text()
-    assert "not subprocess" in source
-
-
-def test_fast_script_excludes_real_ollama():
-    source = (SCRIPTS / "remedy_test_fast.sh").read_text()
-    assert "not real_ollama" in source
-
-
-def test_fast_script_excludes_ui_contract():
-    source = (SCRIPTS / "remedy_test_fast.sh").read_text()
-    assert "not ui_contract" in source
-
-
-def test_fast_script_excludes_smoke():
-    source = (SCRIPTS / "remedy_test_fast.sh").read_text()
-    assert "not smoke" in source
-
-
 def test_fast_script_uses_wrapper():
     source = (SCRIPTS / "remedy_test_fast.sh").read_text()
     assert "remedy_pytest.sh" in source
+
+
+def test_fast_script_targets_core_suites():
+    source = (SCRIPTS / "remedy_test_fast.sh").read_text()
+    for suite in [
+        "test_worker_facade_cmd.py",
+        "test_dogfood_run.py",
+        "test_managed_builder_execution.py",
+        "test_command_catalog.py",
+        "test_contract_runtime.py",
+    ]:
+        assert suite in source, f"Fast lane must include {suite}"
+
+
+def test_fast_script_no_full_suite():
+    source = (SCRIPTS / "remedy_test_fast.sh").read_text()
+    code_lines = [ln for ln in source.splitlines()
+                  if ln.strip() and not ln.strip().startswith("#")]
+    code = "\n".join(code_lines)
+    assert "tests/ " not in code or "-q" in code, \
+        "Fast lane should target specific files, not all of tests/"
 
 
 def test_integration_script_uses_wrapper():

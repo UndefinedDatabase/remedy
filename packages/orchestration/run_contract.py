@@ -215,6 +215,7 @@ class ContractAction:
     WORKER_DISABLE = "worker_disable"
     MISSION_RUN = "mission_run"
     MISSION_REPORT = "mission_report"
+    DOCTOR_CORE = "doctor_core"
 
     # Self-Repair Proposal v0 (Step 2450) — METADATA + EVALUATION only. NOT provider/model/worker
     # execution, NOT auto-apply/approve/git. proposal-create/approve/deny/edit/worker-prompt persist
@@ -408,6 +409,7 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.WORKER_DISABLE,
     ContractAction.MISSION_RUN,
     ContractAction.MISSION_REPORT,
+    ContractAction.DOCTOR_CORE,
     ContractAction.SELF_REPAIR_PROPOSAL_CREATE,
     ContractAction.SELF_REPAIR_PROPOSAL_SHOW,
     ContractAction.SELF_REPAIR_PROPOSAL_LIST,

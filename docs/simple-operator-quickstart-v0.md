@@ -1,30 +1,47 @@
 # Simple Operator Quickstart v0
 
-Operator-friendly commands for setting up a worker and running missions.
-These facades call existing safe low-level rails. No auto-approval.
-No auto-apply. No provider SDK integration.
+Start here. These are the main commands for working with Remedy.
 
-## 1. Add a worker
+## Quick start
 
 ```bash
+# 1. Check if your worker is ready
+remedy worker doctor claude --json
+
+# 2. Set up the worker (enables adapter + template)
 remedy worker add claude --json
+
+# 3. Run a bounded mission loop
+remedy mission run <run_id> --job-id <job_id> --json
+
+# 4. Read the morning report
+remedy mission report <run_id> --job-id <job_id> --json
 ```
 
-Enables the adapter + template for Claude Code.
-Execution still requires explicit approval per session.
+## What these commands do
 
-Known workers: `claude`, `claude-code`, `fixture`, `generic`.
-
-## 2. Check readiness
+### Check readiness
 
 ```bash
 remedy worker doctor claude --json
 ```
 
 Read-only check: binary on PATH, adapter enabled, template enabled.
-Reports blockers and next recommended command.
+Reports blockers and next recommended command if not ready.
 
-## 3. Run a bounded mission loop
+### Add a worker
+
+```bash
+remedy worker add claude --json
+```
+
+Enables the adapter and template metadata for Claude Code.
+This does NOT execute the worker. Execution still requires
+explicit approval per session.
+
+Known workers: `claude`, `claude-code`, `fixture`, `generic`.
+
+### Run a bounded mission loop
 
 ```bash
 remedy mission run <run_id> --job-id <job_id> --json
@@ -34,28 +51,49 @@ Options:
 - `--max-steps` (default 10)
 - `--max-seconds` (default 300)
 
-Stops on: mission satisfied, blocked, waiting for approval,
-budget exhausted, operator stop, max steps, max seconds,
-no safe next action, error, or not found.
+The loop stops when the mission is satisfied, blocked, waiting for
+approval, budget exhausted, operator stopped, max steps reached,
+max seconds elapsed, no safe next action, or on error.
 
-## 4. Approve execution when prompted
+### Approve execution when prompted
 
 ```bash
 remedy execution approve <session_id> --template claude-code-repair-v0 --json
 ```
 
-Execution requires explicit operator approval per session.
+Execution requires explicit operator approval per session. No blanket
+approval exists. Each session references a specific command template.
 
-## 5. Read the morning report
+### Read the morning report
 
 ```bash
 remedy mission report <run_id> --job-id <job_id> --json
 ```
 
-Read-only summary: what happened, is it done, what to do next.
-No raw logs. No raw output.
+Read-only summary: what happened, whether the mission is done, what
+is blocked, and what to do next. No raw logs or output.
 
-## 6. Disable a worker
+### Review self-repair proposals
+
+```bash
+remedy self-repair proposal-list --json
+remedy self-repair proposal-approve <id> --json
+remedy self-repair worker-prompt <id> --json
+```
+
+Proposals are structured suggestions. They never execute anything.
+Converting to a worker prompt creates a safe, bounded prompt for
+an operator to give to a worker manually.
+
+### Check core health
+
+```bash
+remedy doctor core --json
+```
+
+Read-only check: all core modules loadable, test lane scripts present.
+
+### Disable a worker
 
 ```bash
 remedy worker disable claude --json
@@ -63,7 +101,19 @@ remedy worker disable claude --json
 
 Disables adapter + template. Does not delete evidence or history.
 
-## Low-level equivalents
+## What Remedy does NOT do automatically
+
+- Apply code changes
+- Create PRs or commits
+- Execute providers (Claude, GPT, Ollama)
+- Approve sessions
+- Run tests without approval
+- Deploy anything
+
+## Advanced commands
+
+Low-level commands are available for debugging and advanced use.
+See `docs/core-product-spine-v0.md` for the full command taxonomy.
 
 | Facade command         | Low-level equivalent(s)                                    |
 |------------------------|------------------------------------------------------------|
@@ -72,3 +122,4 @@ Disables adapter + template. Does not delete evidence or history.
 | `worker disable claude`| `builder adapter-enable --disabled`, `execution template-disable` |
 | `mission run`          | `dogfood run-loop`                                         |
 | `mission report`       | `dogfood morning-report`                                   |
+| `doctor core`          | (no low-level equivalent — this is the check)              |
