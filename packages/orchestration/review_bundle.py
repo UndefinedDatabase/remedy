@@ -73,6 +73,7 @@ REQUIRED_SECTIONS = (
     "run_contract_summary.json",
     "test_execution_summary.json",
     "config_summary.json",
+    "self_repair_proposal_summary.json",
     "bundle_readme.md",
 )
 
@@ -1908,6 +1909,13 @@ def _build_config_summary() -> dict:
     return get_config().to_summary_dict()
 
 
+def _build_self_repair_proposal_summary() -> dict:
+    from packages.orchestration.self_repair_proposal import (
+        self_repair_proposal_summary_for_bundle,
+    )
+    return self_repair_proposal_summary_for_bundle()
+
+
 # ---------------------------------------------------------------------------
 # Section registry — deterministic, ordered list of all bundle sections.
 # Each spec maps a filename to its builder function and argument keys.
@@ -1953,6 +1961,7 @@ _REVIEW_BUNDLE_SECTION_SPECS: tuple[ReviewBundleSectionSpec, ...] = (
     ReviewBundleSectionSpec("run_contract_summary.json", _build_contract_summary, True, "Run contract", ("job_id",)),
     ReviewBundleSectionSpec("test_execution_summary.json", _build_test_execution_summary, True, "Test execution", ("job", "events")),
     ReviewBundleSectionSpec("config_summary.json", _build_config_summary, True, "Config system state", ()),
+    ReviewBundleSectionSpec("self_repair_proposal_summary.json", _build_self_repair_proposal_summary, True, "Self-repair proposal state", ()),
 )
 
 

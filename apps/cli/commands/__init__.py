@@ -68,6 +68,7 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
         review_cmd,
         route_policy_cmd,
         self_cmd,
+        self_repair_cmd,
         snapshot_cmds,
         test_cmds,
         token_cmd,
@@ -77,6 +78,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
     )
 
     table: dict[str, Callable[[argparse.Namespace], None]] = {}
-    for mod in (job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, overnight_cmd, overnight_mission_cmd, provider_cmd, review_cmd, self_cmd, orchestrator_cmd, local_advisor_cmd, builder_routing_cmd, local_candidate_cmd, candidate_quality_cmd, external_builder_cmd, route_policy_cmd, token_cmd, tournament_cmd, real_test_execution_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd, contract_cmd, snapshot_cmds, repair_loop_v2_cmd, main_builder_adapter_cmd, managed_builder_execution_cmd, dogfood_cmd, config_cmd):
+    for mod in (job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, overnight_cmd, overnight_mission_cmd, provider_cmd, review_cmd, self_cmd, self_repair_cmd, orchestrator_cmd, local_advisor_cmd, builder_routing_cmd, local_candidate_cmd, candidate_quality_cmd, external_builder_cmd, route_policy_cmd, token_cmd, tournament_cmd, real_test_execution_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd, contract_cmd, snapshot_cmds, repair_loop_v2_cmd, main_builder_adapter_cmd, managed_builder_execution_cmd, dogfood_cmd, config_cmd):
         table.update(mod.COMMAND_HANDLERS)
     return table
