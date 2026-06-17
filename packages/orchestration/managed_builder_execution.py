@@ -539,6 +539,59 @@ def get_command_template(template_id: str, data_dir: Path | None = None) -> dict
     return None
 
 
+def enable_command_template(template_id: str, data_dir: Path | None = None) -> CommandTemplate | None:
+    """Enable a command template. Validates safety before enabling. Returns None if not found or unsafe."""
+    ddir = _resolve_ddir(data_dir)
+    tmpl_d = get_command_template(template_id, ddir)
+    if not tmpl_d:
+        return None
+    tmpl = CommandTemplate.from_dict(tmpl_d)
+    ok, reason = _validate_argv_template(tmpl.argv_template)
+    if not ok:
+        return None
+    tmpl.enabled = True
+    if not save_command_template(tmpl, ddir):
+        return None
+    return tmpl
+
+
+def disable_command_template(template_id: str, data_dir: Path | None = None) -> CommandTemplate | None:
+    """Disable a command template. Returns None if not found."""
+    ddir = _resolve_ddir(data_dir)
+    tmpl_d = get_command_template(template_id, ddir)
+    if not tmpl_d:
+        return None
+    tmpl = CommandTemplate.from_dict(tmpl_d)
+    tmpl.enabled = False
+    if not save_command_template(tmpl, ddir):
+        return None
+    return tmpl
+
+
+def update_command_template(
+    template_id: str, *,
+    timeout_seconds: int | None = None,
+    max_output_bytes: int | None = None,
+    label: str | None = None,
+    data_dir: Path | None = None,
+) -> CommandTemplate | None:
+    """Update mutable fields of a command template. Returns None if not found or rejected."""
+    ddir = _resolve_ddir(data_dir)
+    tmpl_d = get_command_template(template_id, ddir)
+    if not tmpl_d:
+        return None
+    tmpl = CommandTemplate.from_dict(tmpl_d)
+    if timeout_seconds is not None:
+        tmpl.timeout_seconds = min(int(timeout_seconds), MAX_TIMEOUT_SECONDS)
+    if max_output_bytes is not None:
+        tmpl.max_output_bytes = min(int(max_output_bytes), MAX_OUTPUT_BYTES)
+    if label is not None:
+        tmpl.label = label
+    if not save_command_template(tmpl, ddir):
+        return None
+    return tmpl
+
+
 # ---------------------------------------------------------------------------
 # Operator approval gate
 # ---------------------------------------------------------------------------
@@ -906,6 +959,23 @@ def _build_sanitized_env(template: dict[str, Any]) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
+def _load_package(package_id: str, job_id: str, ddir: Path) -> dict[str, Any] | None:
+    """Load a BuilderRequestPackage by ID. Searches job workspace then global."""
+    if job_id:
+        p = ddir / "workspaces" / job_id / "main_builder_adapter" / "packages" / f"{package_id}.json"
+        d = _load_json(p)
+        if d:
+            return d
+    ws = ddir / "workspaces"
+    if ws.is_dir():
+        for child in sorted(ws.iterdir()):
+            p = child / "main_builder_adapter" / "packages" / f"{package_id}.json"
+            d = _load_json(p)
+            if d:
+                return d
+    return None
+
+
 def run_managed_builder(
     session_id: str, *, template_id: str = "",
     placeholder_values: dict[str, str] | None = None,
@@ -956,6 +1026,7 @@ def run_managed_builder(
         return result
 
     # 1b. R-0111: require real BuilderSession for managed execution.
+    # Also auto-source placeholder values from session + package (Phase 3).
     try:
         from packages.orchestration.main_builder_adapter import load_builder_session
         _session = load_builder_session(session_id, ddir)
@@ -968,6 +1039,20 @@ def run_managed_builder(
             _append_event(result.execution_id, session_id, job_id,
                            ExecutionEventKind.FAILED, "BuilderSession not found", ddir=ddir)
             return result
+        # Auto-source placeholder values from session + package.
+        ph.setdefault("session_id", _session.session_id)
+        if _session.job_id:
+            ph.setdefault("job_id", _session.job_id)
+            if not job_id:
+                job_id = _session.job_id
+                result.job_id = job_id
+        if _session.repair_id:
+            ph.setdefault("repair_id", _session.repair_id)
+        if _session.package_id:
+            _pkg = _load_package(_session.package_id, _session.job_id, ddir)
+            if _pkg:
+                ph.setdefault("goal_summary", _safe(str(_pkg.get("goal_summary", "")), 200))
+                ph.setdefault("task_type", str(_pkg.get("task_type", "")))
     except ImportError:
         pass  # graceful degradation if module unavailable
 
@@ -1543,6 +1628,8 @@ __all__ = [
     "ManagedExecutionResult", "ManagedExecutionStatus",
     "default_command_templates", "save_command_template",
     "list_command_templates", "get_command_template",
+    "enable_command_template", "disable_command_template",
+    "update_command_template",
     "approve_managed_execution", "get_execution_approval",
     "list_execution_approvals", "validate_execution_approval",
     "run_managed_builder",

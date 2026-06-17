@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -31,6 +32,9 @@ from packages.orchestration.managed_builder_execution import (
     audit_template_safety,
     build_debug_bundle,
     default_command_templates,
+    disable_command_template,
+    enable_command_template,
+    get_command_template,
     get_execution_approval,
     list_command_templates,
     list_execution_approvals,
@@ -39,6 +43,7 @@ from packages.orchestration.managed_builder_execution import (
     managed_execution_mission_signal,
     run_managed_builder,
     save_command_template,
+    update_command_template,
     validate_execution_approval,
 )
 
@@ -1453,6 +1458,257 @@ class TestArchitectureGuards(unittest.TestCase):
         src_path = Path(__file__).resolve().parent.parent.parent / "packages" / "orchestration" / "managed_builder_execution.py"
         src = src_path.read_text()
         assert '"execution_satisfies_mission": False' in src
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Template enable/disable/update (Step 2506)
+# ---------------------------------------------------------------------------
+
+
+class TestTemplateEnableDisable(unittest.TestCase):
+
+    def test_enable_default_claude_template(self):
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td)
+            for t in default_command_templates():
+                save_command_template(t, ddir)
+            tmpl = enable_command_template("claude-code-repair-v0", ddir)
+            assert tmpl is not None
+            assert tmpl.enabled is True
+            reloaded = get_command_template("claude-code-repair-v0", ddir)
+            assert reloaded["enabled"] is True
+
+    def test_disable_template(self):
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td)
+            for t in default_command_templates():
+                save_command_template(t, ddir)
+            enable_command_template("claude-code-repair-v0", ddir)
+            tmpl = disable_command_template("claude-code-repair-v0", ddir)
+            assert tmpl is not None
+            assert tmpl.enabled is False
+
+    def test_enable_nonexistent_returns_none(self):
+        with tempfile.TemporaryDirectory() as td:
+            assert enable_command_template("nope", Path(td)) is None
+
+    def test_update_timeout(self):
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td)
+            for t in default_command_templates():
+                save_command_template(t, ddir)
+            tmpl = update_command_template("claude-code-repair-v0", timeout_seconds=120, data_dir=ddir)
+            assert tmpl is not None
+            assert tmpl.timeout_seconds == 120
+            reloaded = get_command_template("claude-code-repair-v0", ddir)
+            assert reloaded["timeout_seconds"] == 120
+
+    def test_update_max_output_bytes(self):
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td)
+            for t in default_command_templates():
+                save_command_template(t, ddir)
+            tmpl = update_command_template("claude-code-repair-v0", max_output_bytes=100000, data_dir=ddir)
+            assert tmpl is not None
+            assert tmpl.max_output_bytes == 100000
+
+    def test_update_label(self):
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td)
+            for t in default_command_templates():
+                save_command_template(t, ddir)
+            tmpl = update_command_template("claude-code-repair-v0", label="Custom label", data_dir=ddir)
+            assert tmpl is not None
+            assert tmpl.label == "Custom label"
+
+    def test_update_nonexistent_returns_none(self):
+        with tempfile.TemporaryDirectory() as td:
+            assert update_command_template("nope", timeout_seconds=60, data_dir=Path(td)) is None
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Package-bound placeholder resolution (Step 2506)
+# ---------------------------------------------------------------------------
+
+
+class TestPackageBoundPlaceholders(unittest.TestCase):
+
+    def _setup_session_with_package(self, ddir):
+        """Create adapter, package, session for placeholder tests."""
+        from packages.orchestration.main_builder_adapter import (
+            BuilderAdapterKind,
+            BuilderAdapterMode,
+            BuilderAdapterSpec,
+            build_builder_request_package,
+            create_builder_session,
+            save_builder_adapter_spec,
+        )
+        spec = BuilderAdapterSpec(
+            adapter_id="fixture-v0",
+            kind=BuilderAdapterKind.FIXTURE_BUILDER,
+            enabled=True,
+            mode=BuilderAdapterMode.FIXTURE_ONLY,
+            requires_operator_approval=False,
+        )
+        save_builder_adapter_spec(spec, ddir)
+        pkg = build_builder_request_package(
+            "job-ph", adapter_id="fixture-v0",
+            context_pack={"goal_summary": "Fix the auth bug"},
+            data_dir=ddir,
+        )
+        session = create_builder_session(
+            pkg.package_id, "fixture-v0", job_id="job-ph", data_dir=ddir,
+        )
+        return pkg, session
+
+    def test_goal_summary_resolved_from_package(self):
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td)
+            pkg, session = self._setup_session_with_package(ddir)
+            tmpl = CommandTemplate(
+                template_id="test-ph-tmpl",
+                adapter_kind="fixture_builder",
+                argv_template=["echo", "{goal_summary}"],
+                allowed_placeholders=["goal_summary"],
+                requires_approval=False,
+                enabled=True,
+            )
+            save_command_template(tmpl, ddir)
+            result = run_managed_builder(
+                session.session_id, template_id="test-ph-tmpl", data_dir=ddir,
+            )
+            assert result.status == ManagedExecutionStatus.COMPLETED
+            assert "Fix the auth bug" in result.safe_summary
+
+    def test_missing_package_blocks_placeholder(self):
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td)
+            from packages.orchestration.main_builder_adapter import (
+                BuilderAdapterKind,
+                BuilderAdapterMode,
+                BuilderAdapterSpec,
+                create_builder_session,
+                save_builder_adapter_spec,
+            )
+            spec = BuilderAdapterSpec(
+                adapter_id="fixture-v0",
+                kind=BuilderAdapterKind.FIXTURE_BUILDER,
+                enabled=True,
+                mode=BuilderAdapterMode.FIXTURE_ONLY,
+                requires_operator_approval=False,
+            )
+            save_builder_adapter_spec(spec, ddir)
+            session = create_builder_session(
+                "fake-pkg", "fixture-v0", job_id="job-nopkg", data_dir=ddir,
+            )
+            tmpl = CommandTemplate(
+                template_id="test-nopkg-tmpl",
+                adapter_kind="fixture_builder",
+                argv_template=["echo", "{goal_summary}"],
+                allowed_placeholders=["goal_summary"],
+                requires_approval=False,
+                enabled=True,
+            )
+            save_command_template(tmpl, ddir)
+            result = run_managed_builder(
+                session.session_id, template_id="test-nopkg-tmpl", data_dir=ddir,
+            )
+            assert result.status == ManagedExecutionStatus.BLOCKED
+            assert "goal_summary" in str(result.blocking_reasons)
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: Fixture end-to-end path (Step 2506)
+# ---------------------------------------------------------------------------
+
+
+class TestFixtureEndToEnd(unittest.TestCase):
+
+    def test_full_flow_fixture(self):
+        """E2E: adapter → package → session → template → approve → run → output ref → intake."""
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td)
+            from packages.orchestration.main_builder_adapter import (
+                BuilderAdapterKind,
+                BuilderAdapterMode,
+                BuilderAdapterSpec,
+                BuilderSessionStatus,
+                build_builder_request_package,
+                create_builder_session,
+                load_builder_session,
+                record_builder_session_intake_complete,
+                record_builder_session_output,
+                save_builder_adapter_spec,
+            )
+            # 1. Enable fixture adapter.
+            spec = BuilderAdapterSpec(
+                adapter_id="fixture-v0",
+                kind=BuilderAdapterKind.FIXTURE_BUILDER,
+                enabled=True,
+                mode=BuilderAdapterMode.FIXTURE_ONLY,
+                requires_operator_approval=False,
+            )
+            save_builder_adapter_spec(spec, ddir)
+
+            # 2. Create request package.
+            pkg = build_builder_request_package(
+                "job-e2e", adapter_id="fixture-v0",
+                context_pack={"goal_summary": "E2E test goal"},
+                data_dir=ddir,
+            )
+            assert pkg.package_id
+
+            # 3. Create session.
+            session = create_builder_session(
+                pkg.package_id, "fixture-v0", job_id="job-e2e", data_dir=ddir,
+            )
+            assert session.session_id
+
+            # 4. Enable safe fixture command template.
+            tmpl = CommandTemplate(
+                template_id="e2e-fixture-tmpl",
+                adapter_kind="fixture_builder",
+                argv_template=["echo", "fixture-output"],
+                allowed_placeholders=[],
+                requires_approval=False,
+                enabled=True,
+            )
+            save_command_template(tmpl, ddir)
+
+            # 5-6. Run execution (no approval needed for fixture).
+            result = run_managed_builder(
+                session.session_id, template_id="e2e-fixture-tmpl",
+                job_id="job-e2e", data_dir=ddir,
+            )
+            assert result.status == ManagedExecutionStatus.COMPLETED
+            assert result.output_ref
+
+            # 7. Record output ref.
+            updated = record_builder_session_output(
+                session.session_id, candidate_artifact_ref=result.output_ref,
+                data_dir=ddir,
+            )
+            assert updated is not None
+            assert updated.status == BuilderSessionStatus.CANDIDATE_RECEIVED
+
+            # 8. Intake.
+            intake = record_builder_session_intake_complete(
+                session.session_id, sandbox_submission_id="e2e-sandbox",
+                data_dir=ddir,
+            )
+            assert intake is not None
+            assert intake.status == BuilderSessionStatus.COMPLETED_INTAKE_ONLY
+
+            # 9. Verify session.
+            final = load_builder_session(session.session_id, data_dir=ddir)
+            assert final is not None
+            assert final.candidate_artifact_ref
+
+            # 10. Debug bundle.
+            bundle = build_debug_bundle(result.execution_id, data_dir=ddir)
+            assert bundle is not None
+            assert bundle["status"] == "completed"
+            assert bundle["output_ref_present"] is True
 
 
 if __name__ == "__main__":
