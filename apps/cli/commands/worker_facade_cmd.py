@@ -494,6 +494,10 @@ def _cmd_approval_policy_enable(ns: argparse.Namespace) -> None:
     if not policy:
         _err(f"policy not found: {policy_id}")
 
+    now_ts = __import__("datetime").datetime.now(
+        __import__("datetime").timezone.utc,
+    ).isoformat()
+
     if not policy.requires_fixture_only and not policy.allow_real_provider:
         confirm = getattr(ns, "confirm_real_provider", False)
         if not confirm:
@@ -502,13 +506,14 @@ def _cmd_approval_policy_enable(ns: argparse.Namespace) -> None:
                 "Pass --confirm-real-provider to enable."
             )
         policy.allow_real_provider = True
+        policy.confirmed_real_provider_at = now_ts
+        policy.confirmed_by_operator = "cli_operator"
+        policy.real_provider_confirmation_reason = (
+            "Operator confirmed via --confirm-real-provider"
+        )
 
     policy.enabled = True
-    policy.updated_at = json.loads(json.dumps(
-        {"t": __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc,
-        ).isoformat()},
-    ))["t"]
+    policy.updated_at = now_ts
 
     ok = save_execution_approval_policy(policy)
     result: dict[str, Any] = {

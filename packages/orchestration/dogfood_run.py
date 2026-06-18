@@ -1622,10 +1622,20 @@ def build_mission_morning_report(
                 execution_approval_policy_summary,
             )
             pol_summary = execution_approval_policy_summary(ddir)
-            report.policy_considered = pol_summary.get("enabled_policy_count", 0) > 0
-            report.manual_approval_required = True
+            enabled_count = pol_summary.get("enabled_policy_count", 0)
+            report.policy_considered = enabled_count > 0
+            report.manual_approval_required = pol_summary.get(
+                "manual_approval_required", True,
+            )
+            report.policy_decision_code = pol_summary.get(
+                "latest_decision_code", "",
+            )
+            enabled_ids = pol_summary.get("enabled_policy_ids", [])
+            if enabled_ids:
+                report.policy_id = enabled_ids[0]
             report.policy_reason = (
-                f"{pol_summary.get('enabled_policy_count', 0)} enabled policies"
+                f"{enabled_count} enabled policies, "
+                f"{pol_summary.get('grant_count', 0)} grants"
             )
         except (ImportError, Exception):
             pass

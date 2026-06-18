@@ -74,6 +74,7 @@ REQUIRED_SECTIONS = (
     "test_execution_summary.json",
     "config_summary.json",
     "self_repair_proposal_summary.json",
+    "execution_approval_policy_summary.json",
     "bundle_readme.md",
 )
 
@@ -1935,6 +1936,17 @@ def _build_self_repair_proposal_summary() -> dict:
     return self_repair_proposal_summary_for_bundle()
 
 
+def _build_approval_policy_summary() -> dict:
+    """Safe execution approval policy summary for the review bundle."""
+    try:
+        from packages.orchestration.execution_approval_policy import (
+            execution_approval_policy_summary,
+        )
+        return execution_approval_policy_summary()
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {"status": "section_unavailable", "reason": "approval policy not available"}
+
+
 # ---------------------------------------------------------------------------
 # Section registry — deterministic, ordered list of all bundle sections.
 # Each spec maps a filename to its builder function and argument keys.
@@ -1981,6 +1993,7 @@ _REVIEW_BUNDLE_SECTION_SPECS: tuple[ReviewBundleSectionSpec, ...] = (
     ReviewBundleSectionSpec("test_execution_summary.json", _build_test_execution_summary, True, "Test execution", ("job", "events")),
     ReviewBundleSectionSpec("config_summary.json", _build_config_summary, True, "Config system state", ()),
     ReviewBundleSectionSpec("self_repair_proposal_summary.json", _build_self_repair_proposal_summary, True, "Self-repair proposal state", ()),
+    ReviewBundleSectionSpec("execution_approval_policy_summary.json", _build_approval_policy_summary, True, "Execution approval policy", ()),
 )
 
 

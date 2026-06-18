@@ -464,7 +464,10 @@ class TestEvaluationAllowed:
     @patch(_ADAPTER_PATCH, return_value={
         "adapter_id": "claude-code-v0", "kind": "claude_code", "enabled": True,
     })
-    @patch(_PACKAGE_PATCH, return_value=_fixture_package())
+    @patch(_PACKAGE_PATCH, return_value={
+        "package_id": "pkg-1", "task_type": "repair",
+        "token_budget_summary": {"estimated_token_band": "medium", "budget_status": "within_budget"},
+    })
     def test_real_provider_allowed_when_explicit(self, mock_pkg, mock_adap, mock_sess, mock_tmpl, tmp_path):
         p = ExecutionApprovalPolicy(
             policy_id="claude-explicit", enabled=True,
@@ -473,6 +476,8 @@ class TestEvaluationAllowed:
             allowed_task_types=["repair"],
             max_timeout_seconds=300, max_output_bytes=262144,
             max_uses=10, allow_real_provider=True,
+            confirmed_real_provider_at="2026-01-01T00:00:00+00:00",
+            confirmed_by_operator="test",
         )
         save_execution_approval_policy(p, tmp_path)
         d = evaluate_execution_approval_policy("s-1", "claude-code-repair-v0", data_dir=tmp_path)
@@ -702,3 +707,304 @@ class TestDefaultPolicies:
         for p in default_policies():
             assert not p.allow_real_provider, \
                 f"{p.policy_id} should not allow real provider by default"
+
+
+# ---------------------------------------------------------------------------
+# Closure tests: R-0157 redaction strengthening (Steps 2841-2842)
+# ---------------------------------------------------------------------------
+
+
+class TestRedactionStrengthened:
+    def test_redact_token_kv(self):
+        from packages.orchestration.execution_approval_policy import _safe
+        t = _safe('token=mysecret123 visible')
+        assert "mysecret123" not in t
+        assert "token=***" in t
+
+    def test_redact_quoted_token(self):
+        from packages.orchestration.execution_approval_policy import _safe
+        t = _safe('token="mysecret123" visible')
+        assert "mysecret123" not in t
+        assert "token=***" in t
+
+    def test_redact_credential_kv(self):
+        from packages.orchestration.execution_approval_policy import _safe
+        t = _safe('credential=abc123 visible')
+        assert "abc123" not in t
+
+    def test_redact_quoted_api_key(self):
+        from packages.orchestration.execution_approval_policy import _safe
+        t = _safe('api_key="sk-test-123456" visible')
+        assert "sk-test-123456" not in t
+
+    def test_redact_pem_block(self):
+        from packages.orchestration.execution_approval_policy import _safe
+        t = _safe('data -----BEGIN RSA PRIVATE KEY----- more')
+        assert "-----BEGIN" not in t
+        assert "[redacted-pem]" in t
+
+    def test_redact_tmp_path(self):
+        from packages.orchestration.execution_approval_policy import _safe
+        t = _safe('Error at /tmp/private/file.txt')
+        assert "/tmp/private" not in t
+
+    def test_redact_mnt_path(self):
+        from packages.orchestration.execution_approval_policy import _safe
+        t = _safe('Error at /mnt/data/private/file.txt')
+        assert "/mnt/data" not in t
+
+    def test_redact_root_path(self):
+        from packages.orchestration.execution_approval_policy import _safe
+        t = _safe('Error at /root/private/file.txt')
+        assert "/root/private" not in t
+
+    def test_save_rejects_token_marker(self, tmp_path):
+        p = ExecutionApprovalPolicy(
+            policy_id="tkn-test", label="token=abc123",
+        )
+        assert save_execution_approval_policy(p, tmp_path) is False
+
+    def test_save_rejects_credential_marker(self, tmp_path):
+        p = ExecutionApprovalPolicy(
+            policy_id="cred-test", notes="credential=secret",
+        )
+        assert save_execution_approval_policy(p, tmp_path) is False
+
+    def test_save_rejects_pem(self, tmp_path):
+        p = ExecutionApprovalPolicy(
+            policy_id="pem-test", notes="-----begin certificate-----",
+        )
+        assert save_execution_approval_policy(p, tmp_path) is False
+
+    def test_save_rejects_tmp_path(self, tmp_path):
+        p = ExecutionApprovalPolicy(
+            policy_id="tmp-test", notes="/tmp/secret/data",
+        )
+        assert save_execution_approval_policy(p, tmp_path) is False
+
+    def test_integrity_flags_token_in_data(self, tmp_path):
+        pol_dir = tmp_path / "approval_policies"
+        pol_dir.mkdir(parents=True)
+        import json
+        (pol_dir / "bad.json").write_text(
+            json.dumps({"policy_id": "bad", "reason": "token=secret123"}),
+            encoding="utf-8",
+        )
+        result = execution_approval_policy_integrity(tmp_path)
+        assert not result["healthy"]
+        assert any("secret marker" in e for e in result["errors"])
+
+
+# ---------------------------------------------------------------------------
+# Closure tests: R-0158 task type + token estimate (Steps 2844-2845)
+# ---------------------------------------------------------------------------
+
+
+class TestTaskTypeEnforcement:
+    @patch(_TEMPLATE_PATCH, return_value=_fixture_template())
+    @patch(_SESSION_PATCH, return_value=_fixture_session())
+    @patch(_ADAPTER_PATCH, return_value=_fixture_adapter())
+    @patch(_PACKAGE_PATCH, return_value={"package_id": "pkg-1"})
+    def test_missing_task_type_denied(self, mock_pkg, mock_adap, mock_sess, mock_tmpl, tmp_path):
+        """Policy with allowed_task_types denies when package has no task_type."""
+        p = ExecutionApprovalPolicy(
+            policy_id="fixture-echo-v0", enabled=True,
+            adapter_id="fixture-v0", adapter_kind="fixture_builder",
+            template_id="fixture-echo-v0", template_kind="fixture_builder",
+            allowed_task_types=["repair"],
+            max_timeout_seconds=60, max_output_bytes=65536,
+            max_uses=100, requires_fixture_only=True,
+        )
+        save_execution_approval_policy(p, tmp_path)
+        d = evaluate_execution_approval_policy("s-1", "fixture-echo-v0", data_dir=tmp_path)
+        assert not d.allowed
+        assert d.decision_code == "no_matching_policy"
+
+
+class TestTokenEstimateEnforcement:
+    @patch(_TEMPLATE_PATCH, return_value={
+        "template_id": "claude-code-repair-v0", "adapter_kind": "claude_code",
+        "enabled": True, "timeout_seconds": 300, "max_output_bytes": 262144,
+    })
+    @patch(_SESSION_PATCH, return_value={
+        "session_id": "s-1", "adapter_id": "claude-code-v0", "package_id": "pkg-1",
+    })
+    @patch(_ADAPTER_PATCH, return_value={
+        "adapter_id": "claude-code-v0", "kind": "claude_code", "enabled": True,
+    })
+    @patch(_PACKAGE_PATCH, return_value={
+        "package_id": "pkg-1", "task_type": "repair",
+        "token_budget_summary": {"estimated_token_band": "unknown", "budget_status": "unknown"},
+    })
+    def test_unknown_token_denied_real_provider(self, mock_pkg, mock_adap, mock_sess, mock_tmpl, tmp_path):
+        """Unknown token estimate requires manual approval for real provider."""
+        p = ExecutionApprovalPolicy(
+            policy_id="claude-1", enabled=True,
+            adapter_id="claude-code-v0", adapter_kind="claude_code",
+            template_id="claude-code-repair-v0", template_kind="claude_code",
+            allowed_task_types=["repair"],
+            max_timeout_seconds=300, max_output_bytes=262144,
+            max_uses=10, allow_real_provider=True,
+            confirmed_real_provider_at="2026-01-01T00:00:00+00:00",
+            confirmed_by_operator="test",
+        )
+        save_execution_approval_policy(p, tmp_path)
+        d = evaluate_execution_approval_policy("s-1", "claude-code-repair-v0", data_dir=tmp_path)
+        assert not d.allowed
+        assert d.decision_code == "no_matching_policy"
+
+    @patch(_TEMPLATE_PATCH, return_value=_fixture_template())
+    @patch(_SESSION_PATCH, return_value=_fixture_session())
+    @patch(_ADAPTER_PATCH, return_value=_fixture_adapter())
+    @patch(_PACKAGE_PATCH, return_value={
+        "package_id": "pkg-1", "task_type": "repair",
+        "token_budget_summary": {"estimated_token_band": "unknown", "budget_status": "unknown"},
+    })
+    def test_unknown_token_allowed_fixture(self, mock_pkg, mock_adap, mock_sess, mock_tmpl, tmp_path):
+        """Fixture policies bypass unknown token estimate check."""
+        _enabled_fixture_policy(tmp_path)
+        d = evaluate_execution_approval_policy("s-1", "fixture-echo-v0", data_dir=tmp_path)
+        assert d.allowed
+
+    @patch(_TEMPLATE_PATCH, return_value={
+        "template_id": "claude-code-repair-v0", "adapter_kind": "claude_code",
+        "enabled": True, "timeout_seconds": 300, "max_output_bytes": 262144,
+    })
+    @patch(_SESSION_PATCH, return_value={
+        "session_id": "s-1", "adapter_id": "claude-code-v0", "package_id": "pkg-1",
+    })
+    @patch(_ADAPTER_PATCH, return_value={
+        "adapter_id": "claude-code-v0", "kind": "claude_code", "enabled": True,
+    })
+    @patch(_PACKAGE_PATCH, return_value={
+        "package_id": "pkg-1", "task_type": "repair",
+        "token_budget_summary": {"estimated_token_band": "medium", "budget_status": "over_budget"},
+    })
+    def test_over_budget_token_denied(self, mock_pkg, mock_adap, mock_sess, mock_tmpl, tmp_path):
+        """Over-budget token estimate is denied."""
+        p = ExecutionApprovalPolicy(
+            policy_id="claude-1", enabled=True,
+            adapter_id="claude-code-v0", adapter_kind="claude_code",
+            template_id="claude-code-repair-v0", template_kind="claude_code",
+            allowed_task_types=["repair"],
+            max_timeout_seconds=300, max_output_bytes=262144,
+            max_uses=10, allow_real_provider=True,
+            confirmed_real_provider_at="2026-01-01T00:00:00+00:00",
+            confirmed_by_operator="test",
+        )
+        save_execution_approval_policy(p, tmp_path)
+        d = evaluate_execution_approval_policy("s-1", "claude-code-repair-v0", data_dir=tmp_path)
+        assert not d.allowed
+
+
+# ---------------------------------------------------------------------------
+# Closure tests: R-0159 real-provider confirmation (Step 2848)
+# ---------------------------------------------------------------------------
+
+
+class TestRealProviderConfirmation:
+    def test_confirmation_fields_roundtrip(self):
+        p = ExecutionApprovalPolicy(
+            policy_id="rp-1", allow_real_provider=True,
+            confirmed_real_provider_at="2026-01-01T00:00:00+00:00",
+            confirmed_by_operator="admin",
+            real_provider_confirmation_reason="Testing",
+        )
+        d = p.to_dict()
+        p2 = ExecutionApprovalPolicy.from_dict(d)
+        assert p2.confirmed_real_provider_at == "2026-01-01T00:00:00+00:00"
+        assert p2.confirmed_by_operator == "admin"
+
+    def test_integrity_error_unconfirmed_real_provider(self, tmp_path):
+        p = ExecutionApprovalPolicy(
+            policy_id="rp-unconf", enabled=True,
+            allow_real_provider=True, adapter_id="a",
+        )
+        save_execution_approval_policy(p, tmp_path)
+        result = execution_approval_policy_integrity(tmp_path)
+        assert any("confirmation" in e for e in result["errors"])
+        assert not result["healthy"]
+
+    @patch(_TEMPLATE_PATCH, return_value={
+        "template_id": "claude-code-repair-v0", "adapter_kind": "claude_code",
+        "enabled": True, "timeout_seconds": 300, "max_output_bytes": 262144,
+    })
+    @patch(_SESSION_PATCH, return_value={
+        "session_id": "s-1", "adapter_id": "claude-code-v0", "package_id": "pkg-1",
+    })
+    @patch(_ADAPTER_PATCH, return_value={
+        "adapter_id": "claude-code-v0", "kind": "claude_code", "enabled": True,
+    })
+    @patch(_PACKAGE_PATCH, return_value={
+        "package_id": "pkg-1", "task_type": "repair",
+        "token_budget_summary": {"estimated_token_band": "medium", "budget_status": "within_budget"},
+    })
+    def test_unconfirmed_real_provider_denied(self, mock_pkg, mock_adap, mock_sess, mock_tmpl, tmp_path):
+        """Real provider policy without confirmation metadata is denied."""
+        p = ExecutionApprovalPolicy(
+            policy_id="rp-noconf", enabled=True,
+            adapter_id="claude-code-v0", adapter_kind="claude_code",
+            template_id="claude-code-repair-v0", template_kind="claude_code",
+            allowed_task_types=["repair"],
+            max_timeout_seconds=300, max_output_bytes=262144,
+            max_uses=10, allow_real_provider=True,
+        )
+        save_execution_approval_policy(p, tmp_path)
+        d = evaluate_execution_approval_policy("s-1", "claude-code-repair-v0", data_dir=tmp_path)
+        assert not d.allowed
+
+
+# ---------------------------------------------------------------------------
+# Closure tests: R-0160 decision codes (Step 2847)
+# ---------------------------------------------------------------------------
+
+
+class TestDecisionCodeCompleteness:
+    def test_new_codes_in_all_codes(self):
+        assert "missing_task_type" in _ALL_DECISION_CODES
+        assert "token_estimate_unknown" in _ALL_DECISION_CODES
+        assert "real_provider_unconfirmed" in _ALL_DECISION_CODES
+
+    def test_code_count_at_least_23(self):
+        assert len(_ALL_DECISION_CODES) >= 23
+
+
+# ---------------------------------------------------------------------------
+# Closure tests: R-0161 uses decrement order (Step 2849)
+# ---------------------------------------------------------------------------
+
+
+class TestUsesDecrementOrder:
+    @patch(_TEMPLATE_PATCH, return_value=_fixture_template())
+    @patch(_SESSION_PATCH, return_value=_fixture_session())
+    @patch(_ADAPTER_PATCH, return_value=_fixture_adapter())
+    @patch(_PACKAGE_PATCH, return_value=_fixture_package())
+    def test_uses_not_decremented_when_approval_fails(
+        self, mock_pkg, mock_adap, mock_sess, mock_tmpl, tmp_path,
+    ):
+        """If approve_managed_execution returns None, uses stay unchanged."""
+        _enabled_fixture_policy(tmp_path)
+        with patch(
+            "packages.orchestration.managed_builder_execution.approve_managed_execution",
+            return_value=None,
+        ):
+            result = create_policy_granted_execution_approval(
+                "s-1", "fixture-echo-v0", data_dir=tmp_path,
+            )
+        assert result["granted"] is False
+        pol = load_execution_approval_policy("fixture-echo-v0", tmp_path)
+        assert pol.uses_consumed == 0
+
+
+# ---------------------------------------------------------------------------
+# Closure tests: R-0163 summary enrichment (Step 2853)
+# ---------------------------------------------------------------------------
+
+
+class TestSummaryEnriched:
+    def test_summary_includes_grant_count(self, tmp_path):
+        summary = execution_approval_policy_summary(tmp_path)
+        assert "grant_count" in summary
+        assert "latest_decision_code" in summary
+        assert "manual_approval_required" in summary
+        assert "next_safe_action" in summary
