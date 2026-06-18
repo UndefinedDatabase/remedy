@@ -69,9 +69,12 @@ All under the `approval` group:
    - output ≤ max_output_bytes
    - not expired
    - uses_consumed < max_uses
-   - real_provider allowed if needed
+   - real_provider allowed if needed (must be confirmed by operator)
    - fixture_only constraints
+   - token estimate known and within budget (real providers only)
+   - task_type present when allowed_task_types is set
 4. First matching policy wins. Return decision with specific denial code.
+   23 distinct decision codes provide diagnostic clarity.
 
 ## Mission loop integration
 
@@ -81,6 +84,11 @@ allowed, creates approval metadata. The run status transitions to RUNNING
 and the loop continues. If denied, the loop stops with
 `waiting_for_approval`.
 
+## Review bundle
+
+An `execution_approval_policy_summary.json` section is included in every
+review bundle, providing policy state visibility to reviewers.
+
 ## Morning report fields
 
 - `policy_considered`: whether enabled policies exist
@@ -89,12 +97,19 @@ and the loop continues. If denied, the loop stops with
 - `policy_id`: matched policy ID
 - `manual_approval_required`: always true by default
 - `policy_reason`: human-readable reason
+- `grant_count`: total grants issued
+- `latest_decision_code`: most recent evaluation result
+- `enabled_policy_ids`: list of enabled policies
 
 ## Safety constraints
 
 - Policy approval may only create bounded approval metadata
 - Policy approval must never execute anything by itself
 - No shell=True, no subprocess launch, no provider SDK calls
-- Secret-like values (sk-, api_key=, password=) rejected at save time
-- Private paths (/home/, /root/, /Users/) rejected at save time
+- Secret-like values (sk-, api_key=, token=, credential=) rejected at save time
+- PEM blocks (-----BEGIN ...) rejected at save time
+- Private paths (/home/, /root/, /Users/, /tmp/, /mnt/) rejected at save time
 - Caps are clamped to hardcoded maximums
+- Uses decremented only after approval is successfully created
+- Real-provider policies require explicit operator confirmation with audit trail
+- Token estimates must be known for real-provider policies (unknown → manual approval)

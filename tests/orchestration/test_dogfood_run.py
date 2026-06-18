@@ -1069,6 +1069,78 @@ class TestMissionLoopPolicyGrant:
 
 
 # ---------------------------------------------------------------------------
+# _try_policy_grant unit tests (R-0155 closure — Step 2838)
+# ---------------------------------------------------------------------------
+
+
+class TestTryPolicyGrant:
+    """Verify _try_policy_grant calls create_policy_granted_execution_approval correctly."""
+
+    def test_calls_source_with_correct_args(self):
+        """Mock at source module — verify session_id and template_id passed correctly."""
+        from unittest.mock import patch, MagicMock
+        from packages.orchestration.dogfood_run import _try_policy_grant
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.next_suggested_action = (
+                "remedy execution approve ses-abc123 --template tmpl-xyz789 --json"
+            )
+            mock_create = MagicMock(return_value={"granted": True, "approval_id": "apr-1"})
+            with patch(
+                "packages.orchestration.execution_approval_policy.create_policy_granted_execution_approval",
+                mock_create,
+            ):
+                result = _try_policy_grant(run, Path(td))
+            mock_create.assert_called_once_with(
+                "ses-abc123", "tmpl-xyz789", data_dir=Path(td),
+            )
+            assert result["granted"] is True
+
+    def test_missing_template_returns_not_granted(self):
+        """No --template in action → return not granted without calling source."""
+        from packages.orchestration.dogfood_run import _try_policy_grant
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.next_suggested_action = "remedy execution approve ses-001 --json"
+            result = _try_policy_grant(run, Path(td))
+            assert result.get("granted") is False
+
+    def test_missing_session_returns_not_granted(self):
+        """No session_id in action → return not granted."""
+        from packages.orchestration.dogfood_run import _try_policy_grant
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.next_suggested_action = "remedy execution status --template tmpl-001 --json"
+            result = _try_policy_grant(run, Path(td))
+            assert result.get("granted") is False
+
+    def test_empty_action_returns_not_granted(self):
+        """Empty next_suggested_action → return not granted."""
+        from packages.orchestration.dogfood_run import _try_policy_grant
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.next_suggested_action = ""
+            result = _try_policy_grant(run, Path(td))
+            assert result.get("granted") is False
+
+    def test_source_exception_returns_not_granted(self):
+        """If create_policy_granted_execution_approval raises, return not granted."""
+        from unittest.mock import patch
+        from packages.orchestration.dogfood_run import _try_policy_grant
+        with tempfile.TemporaryDirectory() as td:
+            run = _make_run(td)
+            run.next_suggested_action = (
+                "remedy execution approve ses-001 --template tmpl-001 --json"
+            )
+            with patch(
+                "packages.orchestration.execution_approval_policy.create_policy_granted_execution_approval",
+                side_effect=RuntimeError("boom"),
+            ):
+                result = _try_policy_grant(run, Path(td))
+            assert result.get("granted") is False
+
+
+# ---------------------------------------------------------------------------
 # Morning report policy fields (Steps 2779-2780)
 # ---------------------------------------------------------------------------
 

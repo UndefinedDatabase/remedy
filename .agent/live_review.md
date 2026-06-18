@@ -1,91 +1,86 @@
-# Live Review — Steps 2716-2835: Execution Approval Policy + Policy-Gated Mission Continuation v0
+# Live Review — Steps 2836-2875: Execution Approval Policy Closure + Truthful Mission Integration v0.1
 
 Reviewer: parallel reviewer (independent; owns verdict — builder self-report does not set verdict;
 a builder `Done:` marker is NOT reviewer `Resolved`).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
-Scope (ALLOWED): execution approval policy layer; policy storage/integrity; policy evaluation;
-policy grant (metadata-only); mission loop policy-gated continuation; CLI/catalog/contract;
-review/progress/report visibility; docs; tests.
-Must NOT: real provider exec; auto approval beyond explicit policy grant metadata; auto apply;
-auto PR/git; provider SDK; shell=True; arbitrary shell exec; secret storage;
-raw prompt/output/log leak; fake mission satisfied; UI redesign;
-new memory/MemPalace/embeddings; make .agent/live_review.md runtime product state.
+Scope (ALLOWED): policy package loading fixes; token estimate enforcement; denial code specificity;
+policy redaction hardening; uses decrement correctness; mission loop policy behavior hardening;
+review/progress/report policy visibility; runtime lane reproducibility fixes; tests/docs/handoff.
+Must NOT: real provider exec; auto apply; auto PR/git; auto merge; provider SDK; shell=True;
+arbitrary shell exec; secret storage; raw prompt/output/log leak; direct repo mutation;
+bypass sandbox/trust/review/test gates; fake mission satisfied; UI redesign;
+memory/MemPalace/embeddings; another planner/repair-loop/autonomy layer.
 Timestamp: 2026-06-18
 
 ## Verdict (reviewer-owned — independent post-merge assessment)
-**PASS** @ 785b79d
-13 files changed, +2428/-44. PR #91 open (builder did NOT self-merge — first protocol-compliant
-block in 7+ consecutive blocks). Builder did NOT write reviewer verdict.
+**PASS** @ 64ed1f7
+12 files changed, +679/-172. PR #92 open (builder did NOT self-merge — second consecutive
+protocol-compliant block). Builder did NOT write reviewer verdict.
 
-## Precondition check (Check 1: Protocol compliance + Check 3: Mainline preflight)
-- Previous block: Steps 2696-2715 Fast Lane Runtime Split + Doctor Core Safety Closure v0.1
-  - Reviewer PASS @ 9c68161 on main (verdict @ f7cbc04)
-  - PR #90 merged to main @ ae2c792
-- Branch: feature/steps-2716-2835-execution-approval-policy-v0 (from f7cbc04)
-- Builder committed @ 785b79d, pushed, opened PR #91
-- Builder did NOT write verdict — first protocol-compliant block
-- Builder did NOT self-merge — PR #91 open for reviewer
+## Precondition check (Check 1: Protocol compliance)
+- Previous block: Steps 2716-2835 Execution Approval Policy + Policy-Gated Mission Continuation v0
+  - Reviewer PASS @ 785b79d on main (verdict @ 26d0ac8)
+  - PR #91 merged to main @ e083bed
+- Branch: feature/steps-2836-2875-approval-policy-closure-v0.1 (from e083bed)
+- Builder committed @ 64ed1f7, pushed, opened PR #92
+- Builder did NOT write verdict — PENDING left intact
+- Builder did NOT self-merge — PR #92 open for reviewer
 - Compileall: 192 files clean
-- Fast lane: 472 passed, 0.72s (up from 395 — 77 new tests)
+- Fast lane: 502 passed, 0.78s (up from 472 — 30 new tests)
 - Runtime lane: 54 passed, 6.34s
-- Lint: ruff clean, mypy 192 files 0 issues
-- Full suite: 6961 passed, 1 failed (pre-existing), 8 skipped (203.51s)
+- Review bundle tests: 90 passed, 1.68s
+- Full suite: 6991 passed, 1 failed (pre-existing test_project_brain), 8 skipped (205.12s)
 
 ## Prior block
-Steps 2696-2715: PASS @ 9c68161. Merged via PR #90 → ae2c792.
-Zero open findings. Sixth consecutive builder self-merge + wrote verdict (protocol violation).
+Steps 2716-2835: PASS @ 785b79d. Merged via PR #91 → e083bed.
+R-0155 Low open (dogfood_run test mock path). First protocol-compliant block.
 
 ## Finding IDs
-Start at R-0155 (last reviewed: R-0154).
+Start at R-0164 (R-0155 through R-0163 status tracked below).
+
+## Prior findings status
+- R-0155: Low — dogfood_run policy test mocks at wrong module path. **CLOSED** this block.
+  New `TestTryPolicyGrant` class mocks at source module
+  (`packages.orchestration.execution_approval_policy.create_policy_granted_execution_approval`),
+  verifying session_id/template_id pass-through. 5 new tests.
+- R-0156 through R-0163: Not assigned (reserved IDs).
 
 ## Findings
+Zero new findings. All scope items verified.
 
-### R-0155 — Low: dogfood_run policy test mocks at wrong module path
-**File**: `tests/orchestration/test_dogfood_run.py`
-**Severity**: Low
-**Status**: Open
-
-`TestMissionLoopPolicyGrant` tests patch
-`packages.orchestration.dogfood_run.create_policy_granted_execution_approval`
-but `_try_policy_grant` does a lazy import from
-`packages.orchestration.execution_approval_policy`. The mocks are never
-invoked — tests pass because `_try_policy_grant` returns early (no checkpoints
-with session_id/template_id in the test fixture). Policy module itself has 52
-comprehensive tests covering all paths.
-
-**Fix**: Patch at source module and provide checkpoints with session_id/template_id.
-
-## Required checks (11 from review prompt)
-1. Protocol compliance — **PASS**
-2. Development artifact boundary — **PASS**
-3. Mainline and test lane preflight — **PASS**
-4. Policy model — **PASS**
-5. Policy storage and integrity — **PASS**
-6. Policy evaluation — **PASS**
-7. Policy grant — **PASS**
-8. Mission loop integration — **PASS**
-9. CLI/catalog/run contract — **PASS**
-10. Review/progress/report visibility — **PASS**
-11. Safety — **PASS**
+## Required checks (13 from review prompt)
+1. Protocol compliance — **PASS**. Builder left verdict PENDING, did not self-merge. live_review.md not referenced by runtime code. No German text.
+2. Runtime lane reproduction — **PASS**. 54 passed, 6.34s. No flaky failures.
+3. R-0155 mission-loop policy tests — **PASS (CLOSED)**. `TestTryPolicyGrant` (5 tests) mocks at source module, verifies arg passing, edge cases (missing template, missing session, empty action, exception).
+4. Policy redaction — **PASS**. `_safe()` expanded: `_SECRET_KV_PATTERN` handles `credential=`, quoted values. `_PEM_PATTERN` added. `_PATH_PATTERN` expanded for `/tmp/`, `/mnt/`, `/root/`. Save rejection expanded. 13 redaction tests pass.
+5. Correct package truth — **PASS**. `_load_package()` rewritten: searches workspace paths (`ddir / "workspaces" / job_id / "builder_adapter" / "packages"`), no `get_external_package`. Tests mock `_PACKAGE_PATCH` correctly.
+6. Token estimate truth — **PASS**. Unknown token band + unknown budget → `token_estimate_unknown` denial (real providers only). Over-budget → `token_estimate_exceeds_policy`. Fixture policies bypass check. 3 dedicated tests.
+7. Denial diagnostics — **PASS**. 23 decision codes (was 20). New: `MISSING_TASK_TYPE`, `TOKEN_ESTIMATE_UNKNOWN`, `REAL_PROVIDER_UNCONFIRMED`. `TestDecisionCodeCompleteness` verifies count ≥ 23.
+8. Real provider confirmation — **PASS**. 3 new fields: `confirmed_real_provider_at`, `confirmed_by_operator`, `real_provider_confirmation_reason`. Integrity check: real provider enabled without confirmation → error. Evaluation: unconfirmed → `real_provider_unconfirmed` denial. CLI: `--confirm-real-provider` flag sets all 3 fields with audit trail. 3 dedicated tests.
+9. Policy grant correctness — **PASS**. Uses decrement moved AFTER approval creation (R-0161). Failed approval → no use consumed. Approval binds `package_id`. `TestUsesDecrementOrder` verifies.
+10. Mission loop behavior — **PASS**. `_try_policy_grant` imports from source module. Morning report enriched with `manual_approval_required`, `policy_decision_code`, `policy_id`, `policy_reason` (includes grant count). Loop tests mock at `_try_policy_grant` level correctly.
+11. Report visibility — **PASS**. `execution_approval_policy_summary.json` added to REQUIRED_SECTIONS (now 42). `_build_approval_policy_summary()` registered in section specs. Summary includes `grant_count`, `latest_decision_code`, `manual_approval_required`, `next_safe_action`. Review bundle test updated (42 required sections).
+12. CLI/catalog/run contract — **PASS**. `_cmd_approval_policy_enable` sets confirmation fields on `--confirm-real-provider`. Simplified timestamp (removed JSON roundtrip). Test `TestApprovalPolicyEnableConfirmRealProvider` verifies.
+13. Safety — **PASS**. No shell=True, no subprocess, no provider SDK, no secret storage, no raw prompt leak. Save rejection expanded (token=, credential=, PEM, /tmp/). Integrity catches secret markers in stored data. Uses decrement after approval only.
 
 ## Test evidence (reviewer-run)
-- Compileall: 192 files, 0 errors
-- Fast lane: 472 passed, 0.72s (7 suites)
+- Compileall: 192 files clean
+- Fast lane: 502 passed, 0.78s
 - Runtime lane: 54 passed, 6.34s
-- Targeted (execution_approval_policy): 52 passed, 0.10s
-- Targeted (dogfood_run -k policy): 10 passed, 0.13s
-- Ruff: 0 issues
-- Mypy: 192 files, 0 issues
-- Full suite: 6961 passed, 1 failed (pre-existing), 8 skipped, 203.51s
+- Review bundle: 90 passed, 1.68s
+- Full suite: 6991 passed, 1 failed (pre-existing: test_project_brain::TestFileProvenanceChain::test_full_chain_order — confirmed same failure on base commit), 8 skipped, 205.12s
+- Decision codes: 23 verified at runtime
+- Pre-existing failure verified: same test fails on e083bed base
 
 ## Protocol violation log
-NONE this block — builder followed protocol for the first time in 7+ blocks.
+None. Builder compliant this block.
 
 ## Reviewer audit log
-- Precondition check: PR #90 merged @ ae2c792, reviewer PASS @ f7cbc04.
+- Precondition check: PR #91 merged @ e083bed, reviewer PASS @ 26d0ac8.
 - PENDING ledger written. Monitor armed for builder branch.
-- Pre-read all dirty files during builder work.
-- Builder committed @ 785b79d, pushed, opened PR #91.
-- Reviewer-run tests: all passing (1 pre-existing failure confirmed on f7cbc04).
-- R-0155 Low: dogfood_run test mock path (non-blocking).
-- VERDICT: PASS @ 785b79d — zero blocking findings.
+- Builder committed @ 64ed1f7 after ~17 min. PR #92 opened. 12 files changed, +679/-172.
+- Diff reading: 4 source files, 5 test/doc files — all reviewed.
+- Test suite: fast lane 502, runtime lane 54, review_bundle 90, full suite 6991 passed.
+- R-0155 verified CLOSED: new tests mock at source module.
+- All 13 checks PASS. Zero new findings.
+- Verdict: **PASS** @ 64ed1f7.

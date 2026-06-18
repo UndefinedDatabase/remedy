@@ -555,6 +555,29 @@ class TestApprovalPolicyEnable:
             ))
 
 
+class TestApprovalPolicyEnableConfirmRealProvider:
+    @patch(_POLICY_SAVE, return_value=True)
+    @patch(_POLICY_LOAD)
+    def test_enable_real_with_confirm_sets_fields(self, mock_load, mock_save, capsys):
+        from packages.orchestration.execution_approval_policy import ExecutionApprovalPolicy
+        mock_load.return_value = ExecutionApprovalPolicy(
+            policy_id="real-1", label="Real",
+            requires_fixture_only=False, allow_real_provider=False,
+        )
+        from apps.cli.commands.worker_facade_cmd import _cmd_approval_policy_enable
+        _cmd_approval_policy_enable(_ns(
+            policy_id="real-1", json=True, confirm_real_provider=True,
+        ))
+        saved_pol = mock_save.call_args[0][0]
+        assert saved_pol.allow_real_provider is True
+        assert saved_pol.confirmed_by_operator == "cli_operator"
+        assert saved_pol.confirmed_real_provider_at is not None
+        assert saved_pol.real_provider_confirmation_reason is not None
+        out = json.loads(capsys.readouterr().out)
+        assert out["enabled"] is True
+        assert out["allow_real_provider"] is True
+
+
 class TestApprovalPolicyDisable:
     @patch(_POLICY_SAVE, return_value=True)
     @patch(_POLICY_LOAD)
