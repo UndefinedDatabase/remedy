@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from packages.orchestration.execution_approval_policy import (
@@ -818,7 +819,7 @@ class TestTaskTypeEnforcement:
         save_execution_approval_policy(p, tmp_path)
         d = evaluate_execution_approval_policy("s-1", "fixture-echo-v0", data_dir=tmp_path)
         assert not d.allowed
-        assert d.decision_code == "no_matching_policy"
+        assert d.decision_code == "missing_task_type"
 
 
 class TestTokenEstimateEnforcement:
@@ -851,7 +852,7 @@ class TestTokenEstimateEnforcement:
         save_execution_approval_policy(p, tmp_path)
         d = evaluate_execution_approval_policy("s-1", "claude-code-repair-v0", data_dir=tmp_path)
         assert not d.allowed
-        assert d.decision_code == "no_matching_policy"
+        assert d.decision_code == "token_estimate_unknown"
 
     @patch(_TEMPLATE_PATCH, return_value=_fixture_template())
     @patch(_SESSION_PATCH, return_value=_fixture_session())
@@ -1008,3 +1009,189 @@ class TestSummaryEnriched:
         assert "latest_decision_code" in summary
         assert "manual_approval_required" in summary
         assert "next_safe_action" in summary
+
+
+# ---------------------------------------------------------------------------
+# Integration tests: R-0164 real builder package storage (Steps 2880-2886)
+# No _load_package mock — exercises real main_builder_adapter paths.
+# ---------------------------------------------------------------------------
+
+
+def _create_real_product_state(tmp_path, *, token_band="small", budget_status="within_budget"):
+    """Create real adapter, template, package, session, and policy on disk."""
+    from packages.orchestration.main_builder_adapter import (
+        BuilderAdapterSpec,
+        BuilderAdapterKind,
+        BuilderAdapterMode,
+        build_builder_request_package,
+        create_builder_session,
+        save_builder_adapter_spec,
+    )
+    from packages.orchestration.managed_builder_execution import (
+        CommandTemplate,
+        save_command_template,
+    )
+
+    # Save and enable fixture adapter.
+    spec = BuilderAdapterSpec(
+        adapter_id="fixture-v0",
+        label="Fixture Builder",
+        kind=BuilderAdapterKind.FIXTURE_BUILDER,
+        enabled=True,
+        mode=BuilderAdapterMode.FIXTURE_ONLY,
+        requires_operator_approval=False,
+        requires_external_sandbox_intake=False,
+    )
+    save_builder_adapter_spec(spec, data_dir=tmp_path)
+
+    # Save and enable fixture command template.
+    tmpl = CommandTemplate(
+        template_id="fixture-echo-v0",
+        adapter_kind=BuilderAdapterKind.FIXTURE_BUILDER,
+        label="Fixture echo",
+        argv_template=["echo", "hello"],
+        enabled=True,
+        requires_approval=True,
+        timeout_seconds=30,
+        max_output_bytes=1024,
+    )
+    save_command_template(tmpl, data_dir=tmp_path)
+
+    # Build a real package (persisted to main_builder_adapter/packages).
+    pkg = build_builder_request_package(
+        "job-integration-test",
+        adapter_id="fixture-v0",
+        token_hint={
+            "estimated_token_band": token_band,
+            "budget_status": budget_status,
+            "requires_human_approval": False,
+        },
+        data_dir=tmp_path,
+    )
+
+    # Create a real session (persisted to main_builder_adapter/sessions).
+    session = create_builder_session(
+        pkg.package_id, "fixture-v0",
+        job_id="job-integration-test",
+        data_dir=tmp_path,
+    )
+
+    # Save and enable a fixture policy matching the adapter/template.
+    policy = ExecutionApprovalPolicy(
+        policy_id="fixture-echo-v0",
+        label="Fixture echo policy",
+        enabled=True,
+        adapter_id="fixture-v0",
+        adapter_kind=BuilderAdapterKind.FIXTURE_BUILDER,
+        template_id="fixture-echo-v0",
+        template_kind=BuilderAdapterKind.FIXTURE_BUILDER,
+        requires_fixture_only=True,
+        max_uses=10,
+        max_timeout_seconds=60,
+        max_output_bytes=1024,
+    )
+    save_execution_approval_policy(policy, data_dir=tmp_path)
+
+    return pkg, session, policy
+
+
+class TestPolicyEvaluationRealBuilderPackageStorage:
+    """Prove package path truth without mocks (R-0164)."""
+
+    def test_evaluate_allowed_real_storage(self, tmp_path):
+        """Real package/session/template/policy — evaluate returns allowed."""
+        pkg, session, _policy = _create_real_product_state(tmp_path)
+        decision = evaluate_execution_approval_policy(
+            session.session_id, "fixture-echo-v0", data_dir=tmp_path,
+        )
+        assert decision.allowed is True
+        assert decision.decision_code == PolicyDecisionCode.ALLOWED
+        assert decision.matched_package_id == pkg.package_id
+        assert decision.matched_session_id == session.session_id
+
+    def test_missing_package_real_storage(self, tmp_path):
+        """Session exists but package file missing — returns missing_package."""
+        pkg, session, _policy = _create_real_product_state(tmp_path)
+        # Delete the real package file.
+        pkg_dir = (
+            tmp_path / "workspaces" / "job-integration-test"
+            / "main_builder_adapter" / "packages"
+        )
+        for f in pkg_dir.glob("*.json"):
+            f.unlink()
+        decision = evaluate_execution_approval_policy(
+            session.session_id, "fixture-echo-v0", data_dir=tmp_path,
+        )
+        assert decision.allowed is False
+        assert decision.decision_code == PolicyDecisionCode.MISSING_PACKAGE
+        assert decision.required_manual_approval is True
+
+    def test_missing_task_type_real_storage(self, tmp_path):
+        """Package has empty task_type, policy restricts task types — denied."""
+        pkg, session, _policy = _create_real_product_state(tmp_path)
+        # Overwrite package file with empty task_type.
+        pkg_path = (
+            tmp_path / "workspaces" / "job-integration-test"
+            / "main_builder_adapter" / "packages" / f"{pkg.package_id}.json"
+        )
+        import json as json_mod
+        data = json_mod.loads(pkg_path.read_text())
+        data["task_type"] = ""
+        pkg_path.write_text(json_mod.dumps(data))
+        # Update policy to restrict task types.
+        policy = load_execution_approval_policy("fixture-echo-v0", tmp_path)
+        policy.allowed_task_types = ["repair"]
+        save_execution_approval_policy(policy, data_dir=tmp_path)
+        decision = evaluate_execution_approval_policy(
+            session.session_id, "fixture-echo-v0", data_dir=tmp_path,
+        )
+        assert decision.allowed is False
+        assert decision.decision_code == PolicyDecisionCode.MISSING_TASK_TYPE
+
+
+class TestPolicyGrantRealStorage:
+    """Prove grant with real storage binds package/session (R-0166)."""
+
+    def test_grant_real_storage(self, tmp_path):
+        """Real storage grant — creates approval, binds IDs, no execution."""
+        pkg, session, _policy = _create_real_product_state(tmp_path)
+        result = create_policy_granted_execution_approval(
+            session.session_id, "fixture-echo-v0", data_dir=tmp_path,
+        )
+        assert result["granted"] is True
+        assert result.get("approval_id") or result.get("approval", {}).get("approval_id")
+        # Policy uses incremented.
+        pol = load_execution_approval_policy("fixture-echo-v0", tmp_path)
+        assert pol.uses_consumed == 1
+
+    def test_grant_denied_missing_package(self, tmp_path):
+        """Real session, missing package — grant denied, uses not consumed."""
+        _pkg, session, _policy = _create_real_product_state(tmp_path)
+        # Delete package files.
+        pkg_dir = (
+            tmp_path / "workspaces" / "job-integration-test"
+            / "main_builder_adapter" / "packages"
+        )
+        for f in pkg_dir.glob("*.json"):
+            f.unlink()
+        result = create_policy_granted_execution_approval(
+            session.session_id, "fixture-echo-v0", data_dir=tmp_path,
+        )
+        assert result["granted"] is False
+        pol = load_execution_approval_policy("fixture-echo-v0", tmp_path)
+        assert pol.uses_consumed == 0
+
+
+# ---------------------------------------------------------------------------
+# Architecture guard: no live_review.md dependency (R-0169 Step 2893)
+# ---------------------------------------------------------------------------
+
+
+class TestNoLiveReviewDependency:
+    """Approval policy must not depend on .agent/live_review.md."""
+
+    def test_no_live_review_in_policy_module(self):
+        import inspect
+        from packages.orchestration import execution_approval_policy as mod
+        source = inspect.getsource(mod)
+        assert "live_review" not in source

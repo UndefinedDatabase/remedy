@@ -1,13 +1,14 @@
 # Context
 
 ## Active Branch
-feature/steps-2836-2875-approval-policy-closure-v0.1
-(forked from main at e083bed after PR #91 merged).
+feature/steps-2876-2915-package-truth-runtime-closure-v0.2
+(forked from main at 0bc5a4f after PR #92 merged).
 
 ## Scope
-Steps 2836-2875: Execution Approval Policy closure + hardening.
-No new feature layer. Fix truthfulness, redaction, package loading, token awareness,
-denial codes, real-provider confirmation, uses decrement ordering, report visibility.
+Steps 2876-2915: Package path truth fix + runtime lane closure.
+Fix _load_package() to use main_builder_adapter/packages.
+Add unmocked integration tests. Propagate specific denial codes.
+Guard .agent/live_review.md artifact boundary.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.

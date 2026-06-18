@@ -514,7 +514,7 @@ def _load_package(package_id: str, ddir: Path, job_id: str = "") -> dict[str, An
     try:
         # Search within the job workspace for the package.
         if job_id:
-            pkg_path = ddir / "workspaces" / job_id / "builder_adapter" / "packages" / f"{package_id}.json"
+            pkg_path = ddir / "workspaces" / job_id / "main_builder_adapter" / "packages" / f"{package_id}.json"
             blob = _load_json(pkg_path)
             if blob:
                 return blob
@@ -522,7 +522,7 @@ def _load_package(package_id: str, ddir: Path, job_id: str = "") -> dict[str, An
         ws_root = ddir / "workspaces"
         if ws_root.is_dir():
             for ws in sorted(ws_root.iterdir()):
-                pkg_path = ws / "builder_adapter" / "packages" / f"{package_id}.json"
+                pkg_path = ws / "main_builder_adapter" / "packages" / f"{package_id}.json"
                 blob = _load_json(pkg_path)
                 if blob:
                     return blob
@@ -621,9 +621,15 @@ def evaluate_execution_approval_policy(
         if package:
             task_type = package.get("task_type", "")
             token_budget = package.get("token_budget_summary", {}) or {}
+        else:
+            decision.decision_code = PolicyDecisionCode.MISSING_PACKAGE
+            decision.reason = f"Package {package_id} not found on disk"
+            return decision
 
     template_kind = template.get("adapter_kind", "")
 
+    last_deny_reason = ""
+    last_deny_policy = ""
     for pol in enabled_policies:
         deny_reason = _evaluate_single_policy(
             pol, session_id, template_id, adapter_id, adapter_kind,
@@ -647,9 +653,19 @@ def evaluate_execution_approval_policy(
                 ),
             }
             return decision
+        last_deny_reason = deny_reason
+        last_deny_policy = pol.get("policy_id", "")
 
-    decision.decision_code = PolicyDecisionCode.NO_MATCHING_POLICY
-    decision.reason = "No policy matched all conditions"
+    # Propagate specific denial code if it maps to a PolicyDecisionCode.
+    specific = getattr(PolicyDecisionCode, last_deny_reason.upper(), None)
+    if specific and last_deny_reason not in ("policy_disabled", "adapter_mismatch",
+            "template_mismatch", "adapter_kind_mismatch", "template_kind_mismatch"):
+        decision.decision_code = specific
+        decision.policy_id = last_deny_policy
+        decision.reason = f"Policy {last_deny_policy}: {last_deny_reason}"
+    else:
+        decision.decision_code = PolicyDecisionCode.NO_MATCHING_POLICY
+        decision.reason = "No policy matched all conditions"
     return decision
 
 
