@@ -28,12 +28,12 @@ provider trust gate, tournament scoring, full event replay chain.
 ## Runtime lane
 
 **Script**: `scripts/remedy_test_runtime.sh`
-**Expected runtime**: under 30 seconds (depends on environment)
-**Tests**: ~70
+**Expected runtime**: under about 60 seconds on a normal dev machine
+**Tests**: ~54
 
-CLI integration tests that use bounded `subprocess.run` calls (30-second timeout).
-Separated from fast lane because `test_review_bundle_runtime.py` can hang in
-environments where stdin/tty behavior differs (e.g. review sandboxes).
+Runs subprocess-based CLI integration tests. Each suite runs in a separate bounded
+pytest invocation to isolate hangs. If one suite hangs or fails, the others still
+run and the failing suite is clearly identified.
 
 | Suite | Type | What it proves |
 |-------|------|----------------|
