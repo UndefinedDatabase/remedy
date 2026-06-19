@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from packages.orchestration.execution_approval_policy import (
@@ -1020,9 +1019,9 @@ class TestSummaryEnriched:
 def _create_real_product_state(tmp_path, *, token_band="small", budget_status="within_budget"):
     """Create real adapter, template, package, session, and policy on disk."""
     from packages.orchestration.main_builder_adapter import (
-        BuilderAdapterSpec,
         BuilderAdapterKind,
         BuilderAdapterMode,
+        BuilderAdapterSpec,
         build_builder_request_package,
         create_builder_session,
         save_builder_adapter_spec,
@@ -1192,6 +1191,7 @@ class TestNoLiveReviewDependency:
 
     def test_no_live_review_in_policy_module(self):
         import inspect
+
         from packages.orchestration import execution_approval_policy as mod
         source = inspect.getsource(mod)
         assert "live_review" not in source
