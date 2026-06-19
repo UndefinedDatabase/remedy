@@ -216,6 +216,28 @@ class TestFastLaneSelfTest:
         assert "test_review_bundle_runtime.py" in node_section, \
             "test_review_bundle_runtime.py must be in NODE_ISOLATED_FILES"
 
+    def test_runtime_lane_node_start_end_markers(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "START node:" in text, \
+            "Runtime lane must print START node marker"
+        assert "END node:" in text, \
+            "Runtime lane must print END node marker"
+
+    def test_runtime_lane_no_tail_pipe_on_nodes(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "| tail -1" not in text, \
+            "Runtime lane must not pipe node output to tail -1"
+
+    def test_runtime_lane_node_failure_summary(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "Failed nodes:" in text, \
+            "Runtime lane must print failed node summary"
+
+    def test_runtime_lane_stale_process_check(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "stale" in text.lower(), \
+            "Runtime lane must include stale process diagnostic"
+
     def test_runtime_lane_includes_review_bundle_runtime(self):
         text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
         assert "test_review_bundle_runtime.py" in text

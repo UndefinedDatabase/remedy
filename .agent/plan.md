@@ -1,18 +1,19 @@
 # Plan
 
 ## Goal
-Steps 3046-3095: Runtime Lane Per-Test Isolation + Real No-Agent Proof v0.2
+Steps 3096-3145: Runtime Lane Process Cleanup + Review Bundle Runtime Finalization v0.3
 
 ## Completed
-- Fast lane baseline: 535 passed
-- Runtime lane baseline: 54 tests, 4/4 suites
-- Per-node isolation for test_review_bundle_runtime.py (11 nodes run individually)
-- 5 new real no-.agent proofs (integrity, build_review_bundle, export_review_bundle_json, build_mission_morning_report, doctor core imports)
-- 3 new product spine tests (node isolation, collect-only, review_bundle in NODE_ISOLATED_FILES)
-- All lanes green: fast 535, runtime 54, lint clean
+- Gate: PR #96 merged, main synced, branch created
+- Baselines: fast 535, runtime 54, compile clean, no stale processes
+- Hardened _run_grouped_cli: start_new_session=True, killpg on timeout
+- 3 subprocess cleanup tests (source inspection + timeout proof)
+- Runtime script: START/END markers, wall-clock timing, no tail -1 pipe
+- Runtime script: stale process diagnostic at end
+- Two consecutive runtime lane passes, no orphans
+- 4 new spine self-tests (markers, no-tail, failure summary, stale check)
+- All targeted tests pass
+- Fast 539, runtime 57, lint clean, full 7031
 
 ## Current Step
 Commit, push, create PR, write handoff.
-
-## Next Steps
-None — block complete after PR creation.

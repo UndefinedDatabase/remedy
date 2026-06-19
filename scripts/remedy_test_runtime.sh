@@ -5,6 +5,9 @@
 # to isolate hangs at the individual test level. Other suites run as
 # whole-file invocations.
 #
+# Per-node diagnostics: START/END markers with wall-clock timing.
+# Stale process check at end to catch orphaned children.
+#
 # Expected runtime: under about 60 seconds on a normal dev machine.
 #
 # Does NOT run heavy smoke scripts, provider execution, or overnight tests.
@@ -43,12 +46,17 @@ for f in "${NODE_ISOLATED_FILES[@]}"; do
     suite_pass=0
     suite_fail=0
     while IFS= read -r node; do
-        if scripts/remedy_pytest.sh "$node" -q 2>&1 | tail -1; then
+        node_start=$SECONDS
+        echo "  START node: $node"
+        if scripts/remedy_pytest.sh "$node" -q; then
+            node_elapsed=$((SECONDS - node_start))
+            echo "  END node: $node status=PASS (${node_elapsed}s)"
             suite_pass=$((suite_pass + 1))
         else
+            node_elapsed=$((SECONDS - node_start))
+            echo "  END node: $node status=FAIL (${node_elapsed}s)"
             suite_fail=$((suite_fail + 1))
             failed_nodes+=("$node")
-            echo "  FAIL: $node"
         fi
     done <<< "$nodes"
     echo "  suite result: $suite_pass passed, $suite_fail failed"
@@ -77,6 +85,13 @@ if [ ${#failed_nodes[@]} -gt 0 ]; then
     for n in "${failed_nodes[@]}"; do
         echo "  - $n"
     done
+fi
+
+# --- Stale process diagnostic ---
+stale=$(ps -ef | grep -E 'pytest|apps\.cli\.grouped|remedy_pytest_runner' | grep -v grep | grep -v "$$" || true)
+if [ -n "$stale" ]; then
+    echo "WARNING: stale test processes detected after runtime lane:"
+    echo "$stale"
 fi
 
 if [ "$total_failed" -gt 0 ]; then
