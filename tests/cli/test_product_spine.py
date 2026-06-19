@@ -196,6 +196,26 @@ class TestFastLaneSelfTest:
         assert "for f in" in text or "for file in" in text, \
             "Runtime lane must run suites in separate invocations"
 
+    def test_runtime_lane_node_isolation_for_subprocess_heavy(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "NODE_ISOLATED_FILES" in text, \
+            "Runtime lane must define NODE_ISOLATED_FILES for per-node isolation"
+        assert "node-isolated suite" in text, \
+            "Runtime lane must label node-isolated suites"
+
+    def test_runtime_lane_collect_only_for_nodes(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "--collect-only" in text, \
+            "Runtime lane must use --collect-only to discover test nodes"
+
+    def test_runtime_lane_review_bundle_is_node_isolated(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        node_section_start = text.index("NODE_ISOLATED_FILES")
+        node_section_end = text.index(")", node_section_start)
+        node_section = text[node_section_start:node_section_end]
+        assert "test_review_bundle_runtime.py" in node_section, \
+            "test_review_bundle_runtime.py must be in NODE_ISOLATED_FILES"
+
     def test_runtime_lane_includes_review_bundle_runtime(self):
         text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
         assert "test_review_bundle_runtime.py" in text

@@ -1,13 +1,13 @@
 # Context
 
 ## Active Branch
-feature/steps-2916-2995-dev-artifact-boundary-v0
-(forked from main at f0b6cea after PR #93 merged).
+feature/steps-3046-3095-runtime-isolation-no-agent-proof-v0.2
+(forked from main at ea93771 after PR #95 merged).
 
 ## Scope
-Steps 2916-2995: Development Artifact Boundary + Product Truth Sources.
-Audit, classify, and guard .agent/live_review.md boundary.
-Document product truth sources. Add whitelist-based guard tests.
+Steps 3046-3095: Runtime Lane Per-Test Isolation + Real No-Agent Proof v0.2.
+Per-node isolation for subprocess-heavy runtime suites. Strengthen no-.agent
+functional proofs with real product function calls.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
