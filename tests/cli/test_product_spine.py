@@ -187,6 +187,34 @@ class TestFastLaneSelfTest:
         st = os.stat(p)
         assert st.st_mode & stat.S_IXUSR, "remedy_test_runtime.sh must be executable"
 
+    def test_runtime_lane_uses_remedy_pytest(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "remedy_pytest.sh" in text, "Runtime lane must use remedy_pytest.sh"
+
+    def test_runtime_lane_runs_suites_separately(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "for f in" in text or "for file in" in text, \
+            "Runtime lane must run suites in separate invocations"
+
+    def test_runtime_lane_includes_review_bundle_runtime(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "test_review_bundle_runtime.py" in text
+
+    def test_runtime_lane_includes_config_cmd(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "test_config_cmd.py" in text
+
+    def test_runtime_lane_no_provider_invocation(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "provider" not in text.lower() or "does not" in text.lower()
+        assert "claude" not in text.lower()
+        assert "ollama" not in text.lower()
+
+    def test_runtime_lane_no_ui_build(self):
+        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
+        assert "npm run build" not in text
+        assert "vite build" not in text
+
     def test_fast_lane_includes_product_spine(self):
         p = _ROOT / "scripts" / "remedy_test_fast.sh"
         text = p.read_text(encoding="utf-8")

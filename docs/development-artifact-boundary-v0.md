@@ -20,19 +20,19 @@ Normal Remedy users never need to read, edit, or depend on this file.
 
 ## Allowed development uses
 
-| Use | Module | Classification |
+| Use | Relative Path | Classification |
 |-----|--------|----------------|
-| Parse review verdict for self-dogfood gates | `self_dogfood.py` | development self-test |
-| Parse review findings for self-dogfood execution | `self_dogfood_execution.py` | development self-test |
-| Parse review findings for overnight self-dev | `overnight_executor.py` | development self-dev |
-| Parse review findings for overnight mission | `overnight_mission.py` | development self-dev |
-| Parse review findings for builder routing | `builder_routing.py` | development self-dev |
-| Parse review findings for repair loop | `repair_loop_v2.py` | development self-dev |
-| Orchestrator brain context | `orchestrator_brain.py` | development context |
-| Integrity gate checks | `integrity_gate.py` | development process health |
-| Review bundle artifact inclusion | `review_bundle.py` | development evidence |
-| Progress command display | `progress_cmd.py` | development progress display |
-| Feature command display | `feature_cmd.py` | development feature display |
+| Parse review verdict for self-dogfood gates | `packages/orchestration/self_dogfood.py` | development self-test |
+| Parse review findings for self-dogfood execution | `packages/orchestration/self_dogfood_execution.py` | development self-test |
+| Parse review findings for overnight self-dev | `packages/orchestration/overnight_executor.py` | development self-dev |
+| Parse review findings for overnight mission | `packages/orchestration/overnight_mission.py` | development self-dev |
+| Parse review findings for builder routing | `packages/orchestration/builder_routing.py` | development self-dev |
+| Parse review findings for repair loop | `packages/orchestration/repair_loop_v2.py` | development self-dev |
+| Orchestrator brain context | `packages/orchestration/orchestrator_brain.py` | development context |
+| Integrity gate checks | `packages/orchestration/integrity_gate.py` | development process health |
+| Review bundle artifact inclusion | `packages/orchestration/review_bundle.py` | development evidence |
+| Progress command display | `apps/cli/commands/progress_cmd.py` | development progress display |
+| Feature command display | `apps/cli/commands/feature_cmd.py` | development feature display |
 
 ## Disallowed product/runtime uses
 
@@ -68,7 +68,7 @@ These are classified as development commands, not core product operator commands
 
 Product questions must be answered from structured Remedy state:
 
-| Question | Structured Source | Module |
+| Question | Structured Source | Relative Path |
 |----------|------------------|--------|
 | Mission status | Mission/run records | `dogfood_run.py`, `overnight_mission.py` |
 | Execution status | Managed execution records, event ledger | `managed_builder_execution.py` |

@@ -18,3 +18,8 @@ Product code must NOT depend on `.agent/live_review.md`.
 - No auto-apply/PR/merge, no shell=True, no provider SDK
 - Legacy development reads are classified and whitelisted
 - New product paths must not introduce live_review.md dependency
+
+## Resource safety
+- All pytest tests must run within per-test resource limits
+- No subprocess spawning, no network calls, no filesystem mutations outside tmp_path
+- Use scripts/remedy_pytest.sh wrapper for bounded execution

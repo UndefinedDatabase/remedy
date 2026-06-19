@@ -1,41 +1,34 @@
-# Plan — Steps 2916-2995: Development Artifact Boundary + Product Truth Sources v0
+# Plan — Steps 2996-3045: Runtime Lane Determinism + Development Boundary Proof v0.1
 
 ## Goal
-Separate development-time coordination artifacts (.agent/live_review.md) from
-Remedy product/runtime truth. Audit, classify, guard, and document the boundary.
+Make runtime lane deterministic (separate invocations per suite).
+Strengthen boundary guard tests with relative paths, completeness assertions,
+and functional proofs that product paths work without .agent/.
 
 ## Steps
-- [x] 2916: PR #93 gate — merged @ f0b6cea, main synced
-- [x] 2917: Baseline — compileall clean, fast 508, runtime 54
-- [x] 2918: Audit — full source scan of live_review.md refs (30+ hits classified)
-- [x] 2919: Boundary doc — docs/development-artifact-boundary-v0.md
-- [x] 2920: Product truth source map — in same doc
-- [x] 2921: Module boundary decision — no new module needed (documented)
-- [x] 2922: Operator surfaces identified — worker/mission/approval are product
-- [x] 2923: progress_cmd.py audit — development progress display
-- [x] 2924: feature_cmd.py audit — development feature display
-- [x] 2925: orchestrator_brain.py — development context only
-- [x] 2926: overnight_executor.py — development self-dev gate
-- [x] 2927: repair_loop_v2.py — development repair loop only
-- [x] 2928: self_dogfood*.py — development self-dogfood paths
-- [x] 2929: review_bundle.py — development evidence inclusion
-- [x] 2930: integrity_gate.py — development process health
-- [x] 2931: Whitelist boundary test — TestWhitelistBoundary
-- [x] 2932: Product path guard — TestProductModulesNoLiveReview (4 modules)
-- [x] 2933: Doctor core guard — TestDoctorCoreNoDevTruth
-- [x] 2934: Mission report guard — TestMissionReportNoDevTruth
-- [x] 2935: Approval CLI guard — TestApprovalCLINoDevTruth
-- [x] 2936-2939: Docs updated (test-lanes-v0.md, boundary doc)
-- [x] 2940-2948: Guards cover all product paths
-- [x] 2949: Fast lane updated (boundary tests added, 516 pass)
-- [x] 2950: No runtime lane change needed
-- [x] 2951: Architecture guard — no shell=True, no provider SDK
-- [x] 2952-2958: Targeted tests all pass
-- [x] 2959: Fast lane: 516 pass
-- [x] 2960: Runtime lane: 54 pass
-- [x] 2961: Lint: ruff + mypy clean
-- [x] 2962: Full suite: 7005 passed, 1 pre-existing, 8 skipped
-- [x] 2963-2968: Final handoff
+- [x] 2996: Gate — PR #94 merged @ a1fc9fe, main synced
+- [x] 2997: Baseline compileall clean
+- [x] 2998: Fast lane baseline: 516 pass
+- [x] 2999: Runtime lane baseline: 54 pass (combined, 6.37s)
+- [x] 3000: Individual runtime files: 11+23+6+14 = 54
+- [x] 3001: Runtime script inspected (single invocation)
+- [x] 3002: Runtime lane made deterministic (separate invocations)
+- [x] 3003: Lock cleanup simplified (removed from script)
+- [x] 3004: Runtime lane re-run: 4/4 suites pass
+- [x] 3005: Runtime lane docs updated
+- [x] 3006: Product spine runtime lane tests added (7 new)
+- [x] 3007: Stale timing claims fixed
+- [x] 3008: Boundary allowlist uses relative paths
+- [x] 3009: Allowlist completeness assertion added
+- [x] 3010: Violation messages improved
+- [x] 3011: Functional proof: mission report without .agent
+- [x] 3012: Functional proof: worker doctor without .agent
+- [x] 3013: Functional proof: approval policy without .agent
+- [x] 3014: Functional proof: review bundle sections without .agent
+- [x] 3015: Review bundle dev artifact semantics documented
+- [x] 3016-3023: Re-audit, docs, arch guard — all clean
+- [x] 3024-3034: All test lanes + full suite
+- [x] 3035-3043: Final handoff
 
 ## Hard rules
 No execution. No auto-apply/PR/merge. No provider SDK. No shell=True.
