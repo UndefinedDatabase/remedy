@@ -1078,7 +1078,8 @@ class TestTryPolicyGrant:
 
     def test_calls_source_with_correct_args(self):
         """Mock at source module — verify session_id and template_id passed correctly."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
+
         from packages.orchestration.dogfood_run import _try_policy_grant
         with tempfile.TemporaryDirectory() as td:
             run = _make_run(td)
@@ -1126,6 +1127,7 @@ class TestTryPolicyGrant:
     def test_source_exception_returns_not_granted(self):
         """If create_policy_granted_execution_approval raises, return not granted."""
         from unittest.mock import patch
+
         from packages.orchestration.dogfood_run import _try_policy_grant
         with tempfile.TemporaryDirectory() as td:
             run = _make_run(td)

@@ -26,6 +26,7 @@ echo "=== Fast Test Lane (Core Product Spine — in-process only) ==="
 # self-repair proposal: create/approve/deny/edit/worker-prompt lifecycle
 # approval policy:      policy model, storage, integrity, evaluation, grant
 # product spine:        operator command consistency, stale doc scanner, lane self-test
+# artifact boundary:   dev artifact vs product truth guard tests
 exec scripts/remedy_pytest.sh \
     tests/cli/test_worker_facade_cmd.py \
     tests/orchestration/test_dogfood_run.py \
@@ -33,5 +34,6 @@ exec scripts/remedy_pytest.sh \
     tests/orchestration/test_main_builder_adapter.py \
     tests/orchestration/test_self_repair_proposal.py \
     tests/orchestration/test_execution_approval_policy.py \
+    tests/orchestration/test_development_artifact_boundary.py \
     tests/cli/test_product_spine.py \
     -q
