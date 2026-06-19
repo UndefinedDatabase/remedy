@@ -183,3 +183,71 @@ class TestFunctionalNoAgent:
         )
         summary = execution_approval_policy_summary(tmp_path)
         assert isinstance(summary, dict)
+
+    def test_policy_integrity_no_agent(self, tmp_path):
+        """Policy integrity scanner works with empty tmp data, no .agent/."""
+        from packages.orchestration.execution_approval_policy import (
+            execution_approval_policy_integrity,
+        )
+        result = execution_approval_policy_integrity(tmp_path)
+        assert isinstance(result, dict)
+        assert "healthy" in result
+
+    def test_real_review_bundle_build_no_agent(self, tmp_path):
+        """Real build_review_bundle returns error for missing job, no .agent/."""
+        import os
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        old = os.environ.get("REMEDY_DATA_DIR")
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            from packages.orchestration.review_bundle import build_review_bundle
+            result = build_review_bundle("00000000-0000-0000-0000-000000000000")
+            assert result.error
+            assert "not found" in result.error.lower()
+        finally:
+            if old:
+                os.environ["REMEDY_DATA_DIR"] = old
+            else:
+                os.environ.pop("REMEDY_DATA_DIR", None)
+
+    def test_real_review_bundle_export_no_agent(self, tmp_path):
+        """Real export_review_bundle_json works on error result, no .agent/."""
+        from packages.orchestration.review_bundle import (
+            ReviewBundleResult,
+            export_review_bundle_json,
+        )
+        result = ReviewBundleResult(
+            job_id="test-no-agent",
+            error="test error — no .agent/ needed",
+        )
+        exported = export_review_bundle_json(result)
+        assert isinstance(exported, dict)
+        assert exported["job_id"] == "test-no-agent"
+        assert exported["error"] == "test error — no .agent/ needed"
+        assert exported["safety"]["is_safe"] is True
+
+    def test_real_mission_morning_report_no_agent(self, tmp_path):
+        """Real build_mission_morning_report returns report for missing run."""
+        from packages.orchestration.dogfood_run import (
+            build_mission_morning_report,
+        )
+        report = build_mission_morning_report(
+            "nonexistent-run-id", data_dir=tmp_path,
+        )
+        assert report.run_id == "nonexistent-run-id"
+        assert "not found" in report.operator_summary.lower()
+
+    def test_real_doctor_core_imports_no_agent(self, tmp_path):
+        """Doctor core checks (import-based) pass without .agent/."""
+        import importlib
+        checks = [
+            ("apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS"),
+            ("apps.cli.command_catalog", "CATALOG"),
+            ("packages.orchestration.run_contract", "ContractAction"),
+            ("packages.orchestration.dogfood_run", "run_mission_loop"),
+        ]
+        for module, attr in checks:
+            mod = importlib.import_module(module)
+            val = getattr(mod, attr, None)
+            assert val is not None, f"{attr} not found in {module}"

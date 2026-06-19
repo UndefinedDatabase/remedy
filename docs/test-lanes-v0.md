@@ -4,7 +4,7 @@
 
 **Script**: `scripts/remedy_test_fast.sh`
 **Expected runtime**: under 10 seconds (depends on environment)
-**Tests**: ~520
+**Tests**: ~535
 
 Pure in-process tests only. No subprocess calls. Proves the core product spine is
 healthy without risk of environment-specific hangs.
@@ -31,9 +31,10 @@ provider trust gate, tournament scoring, full event replay chain.
 **Expected runtime**: under about 60 seconds on a normal dev machine
 **Tests**: ~54
 
-Runs subprocess-based CLI integration tests. Each suite runs in a separate bounded
-pytest invocation to isolate hangs. If one suite hangs or fails, the others still
-run and the failing suite is clearly identified.
+Runs subprocess-based CLI integration tests. Subprocess-heavy suites
+(`test_review_bundle_runtime.py`) run per-node — each test gets its own bounded
+pytest invocation with individual timeout. Other suites run as whole-file
+invocations. If one node or suite hangs, the others still run.
 
 | Suite | Type | What it proves |
 |-------|------|----------------|
