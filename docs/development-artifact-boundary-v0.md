@@ -9,7 +9,7 @@ compliance for the current development block.
 ## What `.agent/live_review.md` is NOT
 
 - NOT product runtime state
-- NOT mission evidence or mission report truth
+- NOT job/mission evidence or report truth
 - NOT approval policy input
 - NOT runtime decision input
 - NOT user-facing product truth

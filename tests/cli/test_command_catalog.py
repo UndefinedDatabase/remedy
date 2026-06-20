@@ -171,9 +171,9 @@ class TestCliHelpIncludesHappyPath:
             output = str(mock_print.call_args[0][0])
             assert "remedy do" in output
             assert "remedy ui" in output
-            assert "commit-readiness" in output
-            assert "worker unload" in output
-            assert "dev status" in output
+            assert "job status" in output
+            assert "job report" in output
+            assert "worker doctor" in output
 
     def test_repo_group_includes_commit_readiness(self):
         from apps.cli.grouped import main as grouped_main

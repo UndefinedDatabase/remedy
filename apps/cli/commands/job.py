@@ -727,6 +727,148 @@ def _cmd_resume(
         print(f"Resume blocked: mode '{cp.resume_mode}' not implemented yet.")
 
 
+
+def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+    """Job status -- safe read-only view of current job state."""
+    import json as _json
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        if json_output:
+            print(_json.dumps({'error': 'invalid_job_id', 'job_id': job_id_str}))
+        else:
+            print(f'Error: invalid job ID: {job_id_str!r}', file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        if json_output:
+            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
+        else:
+            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.timeline import load_run_events
+
+    data_dir = resolve_data_root()
+    events = load_run_events(data_dir, job.id)
+
+    state = job.state.value if hasattr(job.state, 'value') else str(job.state)
+    task_count = len(job.tasks)
+    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'completed')
+    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
+    event_count = len(events)
+
+    blockers: list[str] = []
+    if pending_count > 0 and state == 'pending':
+        blockers.append('job_not_started')
+    if state == 'blocked':
+        blockers.append('job_blocked')
+
+    next_action = 'remedy job run-loop <job_id> --json' if pending_count > 0 else 'no pending tasks'
+    if state in ('completed', 'failed'):
+        next_action = 'remedy job report <job_id> --json'
+
+    status = {
+        'job_id': str(job.id),
+        'name': job.name,
+        'state': state,
+        'task_count': task_count,
+        'done_count': done_count,
+        'pending_count': pending_count,
+        'event_count': event_count,
+        'blockers': blockers,
+        'next_safe_action': next_action,
+    }
+
+    if json_output:
+        print(_json.dumps(status, indent=2))
+    else:
+        print(f'Job {job.id}')
+        print(f'  Name:     {job.name}')
+        print(f'  State:    {state}')
+        print(f'  Tasks:    {done_count}/{task_count} done, {pending_count} pending')
+        print(f'  Events:   {event_count}')
+        if blockers:
+            bl = ', '.join(blockers)
+            print(f'  Blockers: {bl}')
+        print(f'  Next:     {next_action}')
+
+
+def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+    """Job report -- safe read-only report of job progress and evidence."""
+    import json as _json
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        if json_output:
+            print(_json.dumps({'error': 'invalid_job_id', 'job_id': job_id_str}))
+        else:
+            print(f'Error: invalid job ID: {job_id_str!r}', file=sys.stderr)
+        sys.exit(1)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        if json_output:
+            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
+        else:
+            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.timeline import load_run_events
+
+    data_dir = resolve_data_root()
+    events = load_run_events(data_dir, job.id)
+
+    state = job.state.value if hasattr(job.state, 'value') else str(job.state)
+    task_count = len(job.tasks)
+    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'completed')
+    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
+
+    task_details = []
+    for t in job.tasks:
+        t_state = t.status.value if hasattr(t.status, 'value') else str(t.status)
+        task_details.append({
+            'task_id': str(t.id),
+            'status': t_state,
+            'description': t.description[:120] if t.description else '',
+            'type': t.inputs.get('task_type', 'unknown') if t.inputs else 'unknown',
+        })
+
+    artifact_count = len(job.artifacts) if hasattr(job, 'artifacts') else 0
+
+    report = {
+        'job_id': str(job.id),
+        'name': job.name,
+        'state': state,
+        'task_count': task_count,
+        'done_count': done_count,
+        'pending_count': pending_count,
+        'event_count': len(events),
+        'artifact_count': artifact_count,
+        'tasks': task_details,
+    }
+
+    if json_output:
+        print(_json.dumps(report, indent=2))
+    else:
+        print(f'Job Report: {job.id}')
+        print(f'  Name:      {job.name}')
+        print(f'  State:     {state}')
+        print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
+        print(f'  Events:    {len(events)}')
+        print(f'  Artifacts: {artifact_count}')
+        if task_details:
+            print('  Task details:')
+            for td in task_details:
+                s = td['status']
+                ty = td['type']
+                desc = td['description']
+                print(f'    [{s:<10}] {ty}: {desc}')
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
@@ -761,6 +903,14 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         checkpoint_id=getattr(args, "checkpoint", ""),
         dry_run=getattr(args, "dry_run", False),
+        json_output=getattr(args, "json", False),
+    ),
+    "job.status": lambda args: _cmd_job_status(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.report": lambda args: _cmd_job_report(
+        args.job_id,
         json_output=getattr(args, "json", False),
     ),
     "job.enqueue": lambda args: _cmd_enqueue(args.job_id),

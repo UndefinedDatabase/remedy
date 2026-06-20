@@ -533,7 +533,7 @@ class TestDocsHelpReviewMemoryCommands:
     def test_quick_start_updated(self):
         from apps.cli.grouped import _QUICK_START
         assert "review" in _QUICK_START
-        assert "memory candidates" in _QUICK_START
+        assert "job status" in _QUICK_START
 
     def test_no_auto_commit_in_docs(self):
         """No docs suggesting automatic git commit."""

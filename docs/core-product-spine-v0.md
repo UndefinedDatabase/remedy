@@ -10,44 +10,61 @@ Remedy does NOT automatically execute repairs, approve changes, create PRs,
 or deploy code. Every action that changes the project requires explicit
 operator approval.
 
+## Product terminology
+
+| Term | Meaning |
+|------|---------|
+| **Job** | The thing the user wants done — primary work item. |
+| **Run** | One attempt to work on a job. |
+| **Worker** | An external tool (like Claude Code) that does the work. |
+| **Approval** | Human or policy permission to proceed with an action. |
+| **Policy** | Rules governing what can be approved automatically. |
+| **Evidence** | Structured proof of what happened during a run. |
+| **Review** | Checking the result of a run. |
+| **Report** | Summary of job state and next safe action. |
+| **Mission Contract** | Internal/advanced completion criteria for a job. |
+
 ## The main operator flow
 
 ```
-1. Add a worker       →  remedy worker add claude --json
-2. Check readiness    →  remedy worker doctor claude --json
-3. Run a mission      →  remedy mission run <run_id> --job-id <job_id> --json
-4. Read the report    →  remedy mission report <run_id> --job-id <job_id> --json
-5. Approve if safe    →  remedy execution approve <session_id> --template <id> --json
-6. Review proposals   →  remedy self-repair proposal-list --json
-7. Use as prompt      →  remedy self-repair worker-prompt <proposal_id> --json
+1. Create a job       →  remedy do "<goal>" --repo <path>
+2. Check job state    →  remedy job status <job_id> --json
+3. Read the report    →  remedy job report <job_id> --json
+4. Open the UI        →  remedy ui <job_id>
+5. Review results     →  remedy review run <job_id> --json
+6. Check worker       →  remedy worker doctor <name> --json
+7. Approve if needed  →  remedy approval summary --json
 ```
 
 Each step is explicit. No step runs automatically from the previous one.
 
+## What a job is
+
+A job is the primary user-facing work item. It holds the user’s goal,
+planned tasks, evidence, and completion state. All Remedy product flows
+start with a job.
+
 ## What a worker is
 
 A worker is an external tool (like Claude Code) that Remedy can delegate
-repair tasks to. Workers are not embedded in Remedy — they run as separate
+tasks to. Workers are not embedded in Remedy — they run as separate
 processes through bounded command templates.
 
 Adding a worker (`remedy worker add claude`) enables the adapter and template
 metadata. It does NOT execute the worker or create any sessions.
 
-## What a mission is
-
-A mission (internally called a "dogfood run") is a bounded repair loop.
-Each step evaluates the current state, decides the next safe action, and
-records evidence. The loop stops when the mission is satisfied, blocked,
-waiting for approval, budget-limited, or out of safe next actions.
-
-Running a mission (`remedy mission run`) calls the bounded loop with
-configurable max-steps and max-seconds limits.
-
 ## What a report is
 
-A morning report (`remedy mission report`) is a read-only summary of the
-current mission state. It shows what happened, whether the mission is done,
-what is blocked, and what to do next. It does not execute anything.
+A job report (`remedy job report`) is a read-only summary of the current
+job state. It shows tasks, progress, evidence, and what to do next.
+It does not execute anything.
+
+## What a mission contract is
+
+A mission contract is an internal/advanced "definition of done" for a job.
+It defines completion criteria that the bounded run loop evaluates.
+Normal users interact with jobs — mission contracts are an advanced concept
+used by the autonomy loop internally.
 
 ## What approval means
 
@@ -73,52 +90,45 @@ to give to a worker. The proposal itself never executes anything.
 
 ## Command taxonomy
 
-### Operator-facing (normal use)
+### Primary operator path
 
-| Command | What it does | Mutates? | Executes? | Approval? |
-|---------|-------------|----------|-----------|-----------|
-| `worker doctor <name>` | Check readiness | No | No | No |
-| `worker add <name>` | Enable adapter + template | Metadata | No | No |
-| `worker disable <name>` | Disable adapter + template | Metadata | No | No |
-| `mission run <id>` | Bounded repair loop | Metadata | No* | No |
-| `mission report <id>` | Morning report | No | No | No |
-| `execution approve <id>` | Approve a session | Metadata | No | Yes (this IS approval) |
-| `self-repair proposal-list` | List proposals | No | No | No |
-| `self-repair proposal-approve <id>` | Approve proposal | Metadata | No | No |
-| `self-repair proposal-deny <id>` | Deny proposal | Metadata | No | No |
-| `self-repair worker-prompt <id>` | Get worker prompt | No | No | No |
-| `config list/show/get` | View config | No | No | No |
-| `review bundle` | Review evidence | No | No | No |
-| `progress checklist` | See progress | No | No | No |
+| Command | What it does | Mutates? | Executes? |
+|---------|-------------|----------|-----------|
+| `do "<goal>" --repo <path>` | Create and start a job | Yes | No* |
+| `job status <id> --json` | Show job state | No | No |
+| `job report <id> --json` | Read job progress report | No | No |
+| `job run-loop <id> --json` | Contract-gated autonomy loop | Metadata | No* |
+| `ui <id>` | Open interactive UI | No | No |
+| `review run <id> --json` | Reviewer recommendations | No | No |
+| `worker doctor <name>` | Check worker readiness | No | No |
+| `worker add <name>` | Enable adapter + template | Metadata | No |
+| `config list/show/get` | View config | No | No |
+| `review bundle <id>` | Review evidence bundle | No | No |
 
-*`mission run` orchestrates steps but does not execute external processes
+*These commands orchestrate steps but do not execute external processes
 without prior explicit approval.
 
-### Advanced / internal rails
+### Advanced operator path
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
+| `approval summary/show/enable` | Execution approval policy | Advanced autonomy setting |
+| `mission run/report` | Mission contract facade | Internal bounded loops |
+| `execution approve/run/show` | Direct execution control | Debugging execution state |
 | `builder adapter-show/enable/list` | Direct adapter management | Debugging adapter state |
-| `execution template-show/enable/disable/update` | Direct template management | Debugging templates |
-| `execution run/show/list` | Direct execution control | Debugging execution |
-| `execution debug-bundle` | Execution debug info | Investigating failures |
-| `execution operator-runbook` | Runbook for approvals | Learning the approval flow |
-| `execution claude-doctor` | Claude-specific diagnostics | Claude Code troubleshooting |
-| `dogfood create/show/step/stop/replay` | Direct mission internals | Debugging mission state |
-| `dogfood run-loop/morning-report` | Low-level loop/report | Same as mission run/report |
-| `builder session-create/show/intake` | Direct session management | Debugging sessions |
+| `overnight *` | Bounded overnight preparation | Pre-run planning |
+
+### Developer / internal path
+
+| Command | What it does | When to use |
+|---------|-------------|-------------|
+| `dogfood create/step/show/stop/replay` | Mission internals | Debugging mission state |
 | `self inspect/plan/propose/reconcile` | Self-dogfood internals | Development |
-| `config set/init/validate` | Config mutations | Initial setup |
-
-### Future / experimental
-
-| Command | Status |
-|---------|--------|
-| `overnight *` | Overnight planning framework — not operator-ready |
-| `local-advisor *` | Optional Ollama advisory — disabled by default |
-| `local-candidate *` | Local model candidate gen — disabled by default |
-| `tournament *` | Model comparison harness — evaluation only |
-| `external-builder *` | External builder ingress — quarantine only |
+| `self-repair *` | Self-repair proposals | Development-time |
+| `local-advisor *` | Ollama advisory | Disabled by default |
+| `local-candidate *` | Local model candidate gen | Disabled by default |
+| `tournament *` | Model comparison harness | Evaluation only |
+| `external-builder *` | External builder ingress | Quarantine only |
 
 ## What Remedy still does not automate
 

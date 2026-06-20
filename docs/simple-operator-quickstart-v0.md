@@ -5,22 +5,52 @@ Start here. These are the main commands for working with Remedy.
 ## Quick start
 
 ```bash
-# 1. Check if your worker is ready
-remedy worker doctor claude --json
+# 1. Create and start a job
+remedy do "Fix the login bug" --repo /path/to/project
 
-# 2. Set up the worker (enables adapter + template)
-remedy worker add claude --json
+# 2. Check job state
+remedy job status <job_id> --json
 
-# 3. Run a bounded mission loop
-remedy mission run <run_id> --job-id <job_id> --json
+# 3. Read the job report
+remedy job report <job_id> --json
 
-# 4. Read the morning report
-remedy mission report <run_id> --job-id <job_id> --json
+# 4. Open the UI
+remedy ui <job_id>
+
+# 5. Review results
+remedy review run <job_id> --json
 ```
 
 ## What these commands do
 
-### Check readiness
+### Create a job
+
+```bash
+remedy do "<goal>" --repo <path>
+```
+
+Creates a new job from your goal and starts the first safe actions.
+This is the normal entry point for Remedy.
+
+### Check job status
+
+```bash
+remedy job status <job_id> --json
+```
+
+Read-only view of job state: tasks done, pending, blockers, and
+the next safe action. No execution, no side effects.
+
+### Read the job report
+
+```bash
+remedy job report <job_id> --json
+```
+
+Read-only report of job progress: task details, evidence count,
+artifact count. No raw logs or output.
+
+### Check worker readiness
 
 ```bash
 remedy worker doctor claude --json
@@ -40,50 +70,6 @@ This does NOT execute the worker. Execution still requires
 explicit approval per session.
 
 Known workers: `claude`, `claude-code`, `fixture`, `generic`.
-
-### Run a bounded mission loop
-
-```bash
-remedy mission run <run_id> --job-id <job_id> --json
-```
-
-Options:
-- `--max-steps` (default 10)
-- `--max-seconds` (default 300)
-
-The loop stops when the mission is satisfied, blocked, waiting for
-approval, budget exhausted, operator stopped, max steps reached,
-max seconds elapsed, no safe next action, or on error.
-
-### Approve execution when prompted
-
-```bash
-remedy execution approve <session_id> --template claude-code-repair-v0 --json
-```
-
-Execution requires explicit operator approval per session. No blanket
-approval exists. Each session references a specific command template.
-
-### Read the morning report
-
-```bash
-remedy mission report <run_id> --job-id <job_id> --json
-```
-
-Read-only summary: what happened, whether the mission is done, what
-is blocked, and what to do next. No raw logs or output.
-
-### Review self-repair proposals
-
-```bash
-remedy self-repair proposal-list --json
-remedy self-repair proposal-approve <id> --json
-remedy self-repair worker-prompt <id> --json
-```
-
-Proposals are structured suggestions. They never execute anything.
-Converting to a worker prompt creates a safe, bounded prompt for
-an operator to give to a worker manually.
 
 ### Check core health
 
@@ -112,14 +98,18 @@ Disables adapter + template. Does not delete evidence or history.
 
 ## Advanced commands
 
-Low-level commands are available for debugging and advanced use.
+Low-level and internal commands are available for debugging and advanced use.
 See `docs/core-product-spine-v0.md` for the full command taxonomy.
 
-| Facade command         | Low-level equivalent(s)                                    |
-|------------------------|------------------------------------------------------------|
-| `worker add claude`    | `builder adapter-enable`, `execution template-enable`      |
-| `worker doctor claude` | `builder adapter-show`, `execution template-show`          |
-| `worker disable claude`| `builder adapter-enable --disabled`, `execution template-disable` |
-| `mission run`          | `dogfood run-loop`                                         |
-| `mission report`       | `dogfood morning-report`                                   |
-| `doctor core`          | (no low-level equivalent — this is the check)              |
+| Normal command           | Advanced equivalent(s)                                     |
+|--------------------------|------------------------------------------------------------|
+| `job status <id>`        | `job summary <id> --json`, `job show <id>`                 |
+| `job report <id>`        | `mission report <run_id> --job-id <id>`                    |
+| `job run-loop <id>`      | `mission run <run_id> --job-id <id>`                       |
+| `worker add claude`      | `builder adapter-enable`, `execution template-enable`      |
+| `worker doctor claude`   | `builder adapter-show`, `execution template-show`          |
+| `worker disable claude`  | `builder adapter-enable --disabled`, `execution template-disable` |
+| `doctor core`            | (no low-level equivalent — this is the check)              |
+
+Note: `mission` commands are an advanced/internal facade for mission contract
+bounded loops. For normal operation, use `job` commands.
