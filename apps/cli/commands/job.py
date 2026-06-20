@@ -728,6 +728,47 @@ def _cmd_resume(
 
 
 
+def _extract_job_truth(job: Job) -> dict:
+    """Extract safe truth from job model for status/report views."""
+    artifact_count = len(job.artifacts) if hasattr(job, 'artifacts') else 0
+
+    # Find patch intents and approval status from artifact metadata
+    patch_intent_ids: list[str] = []
+    approval_required = False
+    latest_stop_reason = ''
+    for a in (job.artifacts if hasattr(job, 'artifacts') else []):
+        meta = a.metadata if hasattr(a, 'metadata') and a.metadata else {}
+        if meta.get('patch_intent_count'):
+            patch_intent_ids.append(str(a.id) + '-0')
+        if meta.get('patch_intent_count') and not meta.get('patch_applied'):
+            approval_required = True
+    # Check timeline for stop reason
+    from packages.orchestration.timeline import load_run_events
+    data_dir = resolve_data_root()
+    events = load_run_events(data_dir, job.id)
+    for ev in reversed(events):
+        ev_data = ev if isinstance(ev, dict) else (ev.data if hasattr(ev, 'data') else {})
+        if isinstance(ev_data, dict):
+            sr = ev_data.get('stop_reason', '')
+            if sr:
+                latest_stop_reason = sr
+                break
+            phase = ev_data.get('phase', '')
+            status_val = ev_data.get('status', '')
+            if phase == 'approval_required' or status_val == 'approval_required':
+                latest_stop_reason = 'approval_required'
+                approval_required = True
+                break
+
+    return {
+        'artifact_count': artifact_count,
+        'patch_intent_ids': patch_intent_ids,
+        'approval_required': approval_required,
+        'latest_stop_reason': latest_stop_reason,
+        'event_count': len(events),
+    }
+
+
 def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     """Job status -- safe read-only view of current job state."""
     import json as _json
@@ -749,26 +790,29 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
             print(f'Error: job not found: {job_id_str}', file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.id)
+    truth = _extract_job_truth(job)
 
     state = job.state.value if hasattr(job.state, 'value') else str(job.state)
     task_count = len(job.tasks)
     done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'completed')
     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
-    event_count = len(events)
 
     blockers: list[str] = []
-    if pending_count > 0 and state == 'pending':
+    if truth['approval_required']:
+        blockers.append('approval_required')
+    elif pending_count > 0 and state == 'pending':
         blockers.append('job_not_started')
     if state == 'blocked':
         blockers.append('job_blocked')
 
-    next_action = 'remedy job run-loop <job_id> --json' if pending_count > 0 else 'no pending tasks'
-    if state in ('completed', 'failed'):
+    if truth['approval_required']:
+        next_action = 'remedy patch approve <job_id> <patch_intent_id>'
+    elif pending_count > 0:
+        next_action = 'remedy job run-loop <job_id> --json'
+    elif state in ('completed', 'failed'):
         next_action = 'remedy job report <job_id> --json'
+    else:
+        next_action = 'no pending tasks'
 
     status = {
         'job_id': str(job.id),
@@ -777,7 +821,11 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         'task_count': task_count,
         'done_count': done_count,
         'pending_count': pending_count,
-        'event_count': event_count,
+        'event_count': truth['event_count'],
+        'artifact_count': truth['artifact_count'],
+        'patch_intent_ids': truth['patch_intent_ids'],
+        'approval_required': truth['approval_required'],
+        'latest_stop_reason': truth['latest_stop_reason'],
         'blockers': blockers,
         'next_safe_action': next_action,
     }
@@ -786,14 +834,17 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         print(_json.dumps(status, indent=2))
     else:
         print(f'Job {job.id}')
-        print(f'  Name:     {job.name}')
-        print(f'  State:    {state}')
-        print(f'  Tasks:    {done_count}/{task_count} done, {pending_count} pending')
-        print(f'  Events:   {event_count}')
+        print(f'  Name:      {job.name}')
+        print(f'  State:     {state}')
+        print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
+        print(f'  Events:    {truth["event_count"]}')
+        print(f'  Artifacts: {truth["artifact_count"]}')
+        if truth['approval_required']:
+            print('  Approval:  REQUIRED')
         if blockers:
             bl = ', '.join(blockers)
-            print(f'  Blockers: {bl}')
-        print(f'  Next:     {next_action}')
+            print(f'  Blockers:  {bl}')
+        print(f'  Next:      {next_action}')
 
 
 def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
@@ -817,10 +868,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             print(f'Error: job not found: {job_id_str}', file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.id)
+    truth = _extract_job_truth(job)
 
     state = job.state.value if hasattr(job.state, 'value') else str(job.state)
     task_count = len(job.tasks)
@@ -837,8 +885,6 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             'type': t.inputs.get('task_type', 'unknown') if t.inputs else 'unknown',
         })
 
-    artifact_count = len(job.artifacts) if hasattr(job, 'artifacts') else 0
-
     report = {
         'job_id': str(job.id),
         'name': job.name,
@@ -846,8 +892,12 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
         'task_count': task_count,
         'done_count': done_count,
         'pending_count': pending_count,
-        'event_count': len(events),
-        'artifact_count': artifact_count,
+        'event_count': truth['event_count'],
+        'artifact_count': truth['artifact_count'],
+        'patch_intent_ids': truth['patch_intent_ids'],
+        'approval_required': truth['approval_required'],
+        'latest_stop_reason': truth['latest_stop_reason'],
+        'code_applied': False,
         'tasks': task_details,
     }
 
@@ -858,8 +908,13 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
         print(f'  Name:      {job.name}')
         print(f'  State:     {state}')
         print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
-        print(f'  Events:    {len(events)}')
-        print(f'  Artifacts: {artifact_count}')
+        print(f'  Events:    {truth["event_count"]}')
+        print(f'  Artifacts: {truth["artifact_count"]}')
+        if truth['approval_required']:
+            print('  Approval:  REQUIRED')
+        if truth['latest_stop_reason']:
+            print(f'  Stop:      {truth["latest_stop_reason"]}')
+        print('  Applied:   No')
         if task_details:
             print('  Task details:')
             for td in task_details:

@@ -19,13 +19,13 @@ Each stage can stop the pipeline with an explicit `stop_reason`.
 ### Fixture smoke (CI-safe, no Ollama required)
 
 ```sh
-remedy do "fix the add function" --repo /tmp/myrepo --builder-provider fixture --autonomy-level 4 --max-cycles 1 --json
+remedy do run "fix the add function" --repo /tmp/myrepo --builder-provider fixture --autonomy-level 4 --max-cycles 1 --json
 ```
 
 ### Real Ollama via `remedy do` (requires running Ollama)
 
 ```sh
-remedy do "add a hello() function" --repo /tmp/myrepo --builder-provider ollama --autonomy-level 2 --max-cycles 1 --json
+remedy do run "add a hello() function" --repo /tmp/myrepo --builder-provider ollama --autonomy-level 2 --max-cycles 1 --json
 ```
 
 ### Real Ollama smoke via pytest (opt-in)
@@ -73,7 +73,7 @@ Legacy `--fixture-builder true|repair-loop` still works but `--builder-provider`
 ### Job summary (JSON output)
 
 ```sh
-remedy do "fix the bug" --repo ./myrepo --builder-provider fixture --json
+remedy do run "fix the bug" --repo ./myrepo --builder-provider fixture --json
 ```
 
 Output (version 2) includes:
@@ -89,7 +89,7 @@ Output (version 2) includes:
 ### Dashboard JSON
 
 ```sh
-remedy do "fix the bug" --repo ./myrepo --builder-provider fixture --ui
+remedy do run "fix the bug" --repo ./myrepo --builder-provider fixture --ui
 ```
 
 Dashboard shows:

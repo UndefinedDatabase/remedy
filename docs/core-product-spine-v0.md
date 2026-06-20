@@ -27,7 +27,7 @@ operator approval.
 ## The main operator flow
 
 ```
-1. Create a job       →  remedy do "<goal>" --repo <path>
+1. Create a job       →  remedy do run "<goal>" --repo <path>
 2. Check job state    →  remedy job status <job_id> --json
 3. Read the report    →  remedy job report <job_id> --json
 4. Open the UI        →  remedy ui <job_id>
