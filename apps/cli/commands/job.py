@@ -760,12 +760,32 @@ def _extract_job_truth(job: Job) -> dict:
                 approval_required = True
                 break
 
+    # Check if any patch was actually applied
+    code_applied = False
+    for a in (job.artifacts if hasattr(job, 'artifacts') else []):
+        meta = a.metadata if hasattr(a, 'metadata') and a.metadata else {}
+        apply_records = meta.get('patch_intent_apply_records', {})
+        for rec in apply_records.values():
+            if isinstance(rec, dict) and rec.get('state') == 'applied':
+                code_applied = True
+                break
+        if code_applied:
+            break
+    # Also check fulfillment events
+    if not code_applied:
+        for ev in events:
+            ev_data = ev if isinstance(ev, dict) else {}
+            if isinstance(ev_data, dict) and ev_data.get('event') == 'fulfillment_applied':
+                code_applied = True
+                break
+
     return {
         'artifact_count': artifact_count,
         'patch_intent_ids': patch_intent_ids,
         'approval_required': approval_required,
         'latest_stop_reason': latest_stop_reason,
         'event_count': len(events),
+        'code_applied': code_applied,
     }
 
 
@@ -897,7 +917,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
         'patch_intent_ids': truth['patch_intent_ids'],
         'approval_required': truth['approval_required'],
         'latest_stop_reason': truth['latest_stop_reason'],
-        'code_applied': False,
+        'code_applied': truth['code_applied'],
         'tasks': task_details,
     }
 
@@ -914,7 +934,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             print('  Approval:  REQUIRED')
         if truth['latest_stop_reason']:
             print(f'  Stop:      {truth["latest_stop_reason"]}')
-        print('  Applied:   No')
+        print(f'  Applied:   {"Yes" if truth["code_applied"] else "No"}')
         if task_details:
             print('  Task details:')
             for td in task_details:
@@ -922,6 +942,67 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
                 ty = td['type']
                 desc = td['description']
                 print(f'    [{s:<10}] {ty}: {desc}')
+
+
+def _cmd_job_fulfill(
+    job_id_str: str,
+    *,
+    fixture_demo: bool = False,
+    json_output: bool = False,
+) -> None:
+    """Run job fulfillment spine — fixture-demo mode only in v0."""
+    import json as _json
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        if json_output:
+            print(_json.dumps({'error': 'invalid_job_id', 'job_id': job_id_str}))
+        else:
+            print(f'Error: invalid job ID: {job_id_str!r}', file=sys.stderr)
+        sys.exit(1)
+
+    if not fixture_demo:
+        if json_output:
+            print(_json.dumps({'error': 'fixture_demo_required',
+                               'message': 'v0 fulfillment requires --fixture-demo flag'}))
+        else:
+            print('Error: v0 fulfillment requires --fixture-demo flag', file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        if json_output:
+            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
+        else:
+            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+        sys.exit(1)
+
+    repo_str = job.metadata.get('target_repo', '')
+    if not repo_str:
+        if json_output:
+            print(_json.dumps({'error': 'no_repo_attached',
+                               'message': 'Attach a repo first: remedy job attach-repo <id> <path>'}))
+        else:
+            print('Error: no repo attached to job', file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path as _Path
+    repo_root = _Path(repo_str)
+
+    from packages.orchestration.job_fulfillment import (
+        export_job_fulfillment_json,
+        run_job_fulfill,
+        summarize_job_fulfillment,
+    )
+
+    record = run_job_fulfill(str(job_id), repo_root, data_dir=resolve_data_root())
+
+    if json_output:
+        print(_json.dumps(export_job_fulfillment_json(record), indent=2))
+    else:
+        print(summarize_job_fulfillment(record))
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
@@ -966,6 +1047,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "job.report": lambda args: _cmd_job_report(
         args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.fulfill": lambda args: _cmd_job_fulfill(
+        args.job_id,
+        fixture_demo=getattr(args, "fixture_demo", False),
         json_output=getattr(args, "json", False),
     ),
     "job.enqueue": lambda args: _cmd_enqueue(args.job_id),

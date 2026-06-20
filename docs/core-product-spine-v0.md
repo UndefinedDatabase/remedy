@@ -104,6 +104,7 @@ to give to a worker. The proposal itself never executes anything.
 | `worker add <name>` | Enable adapter + template | Metadata | No |
 | `config list/show/get` | View config | No | No |
 | `review bundle <id>` | Review evidence bundle | No | No |
+| `job fulfill <id> --fixture-demo` | Run fixture fulfillment demo | Metadata+repo | No* |
 
 *These commands orchestrate steps but do not execute external processes
 without prior explicit approval.
