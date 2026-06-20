@@ -1,25 +1,25 @@
 # Context
 
 ## Active Branch
-feature/steps-3096-3145-runtime-cleanup-finalization-v0.3
-(forked from main at b82d961 after PR #96 merged).
+feature/steps-3146-3215-job-centric-core-v0
+(forked from main at 462121e after PR #97 merged).
 
 ## Scope
-Steps 3096-3145: Runtime Lane Process Cleanup + Review Bundle Runtime Finalization v0.3.
-Harden subprocess helper with process-group isolation. Add diagnostics to runtime
-script. Verify no orphan processes after test runs.
+Steps 3146-3215: Job-Centric Core Finalization v0.
+Make job the primary user-facing concept. Add job status/report facades.
+Update docs and Happy Path. Keep mission as advanced/internal.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
 Product code must NOT depend on `.agent/live_review.md`.
 
 ## Constraints
-- No new feature layer, no provider execution
-- No auto-apply/PR/merge, no shell=True, no provider SDK
-- Legacy development reads are classified and whitelisted
-- New product paths must not introduce live_review.md dependency
+- No new execution capability, no provider SDK, no shell=True
+- No auto-apply/PR/merge
+- Job facades are read-only wrappers over existing state
+- Mission remains as compatibility/advanced facade
 
 ## Resource safety
-- All pytest tests must run within per-test resource limits
+- All pytest tests run within per-test resource limits
 - No subprocess spawning, no network calls, no filesystem mutations outside tmp_path
 - Use scripts/remedy_pytest.sh wrapper for bounded execution

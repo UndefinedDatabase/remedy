@@ -1,19 +1,19 @@
 # Plan
 
 ## Goal
-Steps 3096-3145: Runtime Lane Process Cleanup + Review Bundle Runtime Finalization v0.3
+Steps 3146-3215: Job-Centric Core Finalization v0
 
 ## Completed
-- Gate: PR #96 merged, main synced, branch created
-- Baselines: fast 535, runtime 54, compile clean, no stale processes
-- Hardened _run_grouped_cli: start_new_session=True, killpg on timeout
-- 3 subprocess cleanup tests (source inspection + timeout proof)
-- Runtime script: START/END markers, wall-clock timing, no tail -1 pipe
-- Runtime script: stale process diagnostic at end
-- Two consecutive runtime lane passes, no orphans
-- 4 new spine self-tests (markers, no-tail, failure summary, stale check)
-- All targeted tests pass
-- Fast 539, runtime 57, lint clean, full 7031
+- PR #97 merged, main synced, branch created
+- CLI help audit: job already has 16 commands, mission has run/report
+- Added job.status and job.report facades (read-only, safe JSON, no .agent dep)
+- Updated Happy Path to job-first (do → status → report → UI → review)
+- Updated mission group description to "Advanced/internal"
+- Updated command catalog with job.status + job.report entries
+- Updated all docs: spine, quickstart, approval, boundary to job-first
+- 18 new tests: catalog, happy path, taxonomy docs, no-agent, invalid-id safety
+- Fixed test_command_catalog and test_cli_execution_loop_closure assertions
+- Fast 557, runtime 57, full 7047 (2 pre-existing failures), lint clean
 
 ## Current Step
 Commit, push, create PR, write handoff.

@@ -271,3 +271,164 @@ class TestFastLaneSelfTest:
         p = _ROOT / "scripts" / "remedy_test_full.sh"
         st = os.stat(p)
         assert st.st_mode & stat.S_IXUSR, "remedy_test_full.sh must be executable"
+
+# ---------------------------------------------------------------------------
+# Step 3167-3174: Job-centric core tests
+# ---------------------------------------------------------------------------
+
+
+class TestJobCentricCatalog:
+    """Job commands are primary; mission is advanced."""
+
+    def test_job_status_in_catalog(self):
+        from apps.cli.command_catalog import get_command
+        cmd = get_command("job.status")
+        assert cmd is not None
+        assert cmd.action_class == "read_only"
+        assert cmd.supports_json
+
+    def test_job_report_in_catalog(self):
+        from apps.cli.command_catalog import get_command
+        cmd = get_command("job.report")
+        assert cmd is not None
+        assert cmd.action_class == "read_only"
+        assert cmd.supports_json
+
+    def test_job_status_has_handler(self):
+        from apps.cli.commands import collect_all_handlers
+        handlers = collect_all_handlers()
+        assert "job.status" in handlers
+
+    def test_job_report_has_handler(self):
+        from apps.cli.commands import collect_all_handlers
+        handlers = collect_all_handlers()
+        assert "job.report" in handlers
+
+    def test_mission_group_is_advanced(self):
+        from apps.cli.command_catalog import GROUPS
+        desc = GROUPS["mission"].description.lower()
+        assert "advanced" in desc or "internal" in desc, \
+            "Mission group description must indicate advanced/internal"
+
+    def test_mission_not_primary_path(self):
+        from apps.cli.command_catalog import GROUPS
+        desc = GROUPS["mission"].description.lower()
+        assert "normal" not in desc or "use \'job\'" in desc, \
+            "Mission must not be described as normal primary path"
+
+
+class TestJobFirstHappyPath:
+    """Top-level help uses job-first language."""
+
+    def test_happy_path_starts_with_do(self):
+        from apps.cli.grouped import _QUICK_START
+        lines = _QUICK_START.strip().splitlines()
+        first_cmd_line = [l for l in lines if l.strip().startswith("1.")][0]
+        assert "remedy do" in first_cmd_line
+
+    def test_happy_path_has_job_status(self):
+        from apps.cli.grouped import _QUICK_START
+        assert "job status" in _QUICK_START
+
+    def test_happy_path_has_job_report(self):
+        from apps.cli.grouped import _QUICK_START
+        assert "job report" in _QUICK_START
+
+    def test_happy_path_no_mission_as_primary(self):
+        from apps.cli.grouped import _QUICK_START
+        assert "mission run" not in _QUICK_START, \
+            "Happy path must not use mission run as primary"
+
+
+class TestCommandTaxonomyDocs:
+    """Docs use job-first language."""
+
+    def _read_doc(self, name: str) -> str:
+        p = _ROOT / "docs" / name
+        if not p.exists():
+            return ""
+        return p.read_text(encoding="utf-8", errors="replace")
+
+    def test_spine_doc_has_job_first_flow(self):
+        text = self._read_doc("core-product-spine-v0.md")
+        assert "job status" in text
+        assert "job report" in text
+
+    def test_spine_doc_mission_is_advanced(self):
+        text = self._read_doc("core-product-spine-v0.md")
+        assert "mission contract" in text.lower() or "internal" in text.lower()
+
+    def test_quickstart_doc_job_first(self):
+        text = self._read_doc("simple-operator-quickstart-v0.md")
+        assert "job status" in text
+        assert "job report" in text
+
+    def test_quickstart_no_mission_as_primary(self):
+        text = self._read_doc("simple-operator-quickstart-v0.md")
+        lines = text.split("\n")
+        quick_start_lines = []
+        in_quick = False
+        for line in lines:
+            if "## Quick start" in line:
+                in_quick = True
+                continue
+            if in_quick and line.startswith("## "):
+                break
+            if in_quick:
+                quick_start_lines.append(line)
+        quick_text = "\n".join(quick_start_lines)
+        assert "mission" not in quick_text.lower(), \
+            "Quick start section must not reference mission commands"
+
+    def test_boundary_doc_no_product_dependency(self):
+        text = self._read_doc("development-artifact-boundary-v0.md")
+        assert "NOT product runtime state" in text
+
+
+class TestJobFacadeNoAgent:
+    """Job status/report work without .agent directory."""
+
+    def test_job_status_handler_no_agent(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        import contextlib
+        import io
+
+        from apps.cli.commands.job import _cmd_job_status
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            try:
+                _cmd_job_status("00000000-0000-0000-0000-000000000000", json_output=True)
+            except SystemExit:
+                pass
+        output = buf.getvalue()
+        assert "job_not_found" in output or "error" in output
+
+    def test_job_report_handler_no_agent(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        import contextlib
+        import io
+
+        from apps.cli.commands.job import _cmd_job_report
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            try:
+                _cmd_job_report("00000000-0000-0000-0000-000000000000", json_output=True)
+            except SystemExit:
+                pass
+        output = buf.getvalue()
+        assert "job_not_found" in output or "error" in output
+
+    def test_job_status_invalid_id_safe(self):
+        import contextlib
+        import io
+
+        from apps.cli.commands.job import _cmd_job_status
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            try:
+                _cmd_job_status("not-a-uuid", json_output=True)
+            except SystemExit:
+                pass
+        output = buf.getvalue()
+        assert "invalid_job_id" in output
+        assert "Traceback" not in output

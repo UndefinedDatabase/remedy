@@ -247,13 +247,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 _QUICK_START = """\
  Happy path:
-   1. remedy do "<goal>" --repo <path>     — create + run job
-   2. remedy ui <job_id>                   — open UI
-   3. remedy repo commit-readiness <id>    — inspect readiness
-   4. remedy review run <id> --json        — reviewer recommendations (human approval)
-   5. remedy memory candidates <id> --json — memory candidates (human approval)
-   6. remedy worker unload --all           — free VRAM
-   7. remedy dev status                    — check everything"""
+   1. remedy do "<goal>" --repo <path>     — create and start a job
+   2. remedy job status <job_id> --json    — inspect job state
+   3. remedy job report <job_id> --json    — read the job report
+   4. remedy ui <job_id>                   — open UI
+   5. remedy review run <job_id> --json    — reviewer recommendations (human approval)
+   6. remedy worker doctor <name> --json   — check worker readiness
+   7. remedy approval summary --json       — advanced approval policy"""
 
 
 def _print_root_help() -> None:

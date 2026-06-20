@@ -87,7 +87,7 @@ GROUPS: dict[str, GroupDef] = {
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph."),
     "policy": GroupDef("policy", "Policy", "Inspect execution policies."),
     "worker": GroupDef("worker", "Worker", "Worker management — add, doctor, disable workers + list provider specs."),
-    "mission": GroupDef("mission", "Mission", "Mission run facade — bounded run loop + morning report (calls existing dogfood/execution rails; no auto-approval; no auto-apply)."),
+    "mission": GroupDef("mission", "Mission", "Advanced/internal — mission contract facade for bounded run loops (use 'job' for normal operation)."),
     "doctor": GroupDef("doctor", "Doctor", "Product spine health checks (read-only; no execution; no network)."),
     "approval": GroupDef("approval", "Approval", "Execution approval policy — advanced autonomy setting (metadata only; no execution; disabled by default)."),
     "memory": GroupDef("memory", "Memory", "Store and recall project memory."),
@@ -264,6 +264,27 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
         related=("job.show",),
+    ),
+
+    CommandEntry(
+        command_id="job.status",
+        group_id="job",
+        subcommand="status",
+        description="Show job status — state, tasks, blockers, next safe action.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.summary", "job.show"),
+    ),
+    CommandEntry(
+        command_id="job.report",
+        group_id="job",
+        subcommand="report",
+        description="Read-only report of job progress, tasks, and evidence.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.status", "job.summary"),
     ),
 
     # ── project ──────────────────────────────────────────────────────────

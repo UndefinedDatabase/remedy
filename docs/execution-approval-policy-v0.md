@@ -5,7 +5,7 @@
 An operator-configured policy layer that can grant bounded execution approval
 metadata for known worker/template/task combinations. Policy approval is
 **disabled by default** and creates **metadata only** — it never executes
-anything, applies code, creates PRs, or marks missions done.
+anything, applies code, creates PRs, or completes jobs.
 
 ## Architecture
 
