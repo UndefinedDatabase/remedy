@@ -29,12 +29,16 @@ provider trust gate, tournament scoring, full event replay chain.
 
 **Script**: `scripts/remedy_test_runtime.sh`
 **Expected runtime**: under about 60 seconds on a normal dev machine
-**Tests**: ~54
+**Tests**: ~57
 
 Runs subprocess-based CLI integration tests. Subprocess-heavy suites
 (`test_review_bundle_runtime.py`) run per-node — each test gets its own bounded
-pytest invocation with individual timeout. Other suites run as whole-file
-invocations. If one node or suite hangs, the others still run.
+pytest invocation with process-group isolation (`start_new_session=True`,
+`killpg` on timeout). Other suites run as whole-file invocations.
+
+Diagnostics: each node prints `START node:` / `END node:` markers with
+wall-clock timing. Stale process check runs at end. If a node hangs,
+the exact node ID is visible in output.
 
 | Suite | Type | What it proves |
 |-------|------|----------------|

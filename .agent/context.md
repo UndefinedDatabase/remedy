@@ -1,13 +1,13 @@
 # Context
 
 ## Active Branch
-feature/steps-3046-3095-runtime-isolation-no-agent-proof-v0.2
-(forked from main at ea93771 after PR #95 merged).
+feature/steps-3096-3145-runtime-cleanup-finalization-v0.3
+(forked from main at b82d961 after PR #96 merged).
 
 ## Scope
-Steps 3046-3095: Runtime Lane Per-Test Isolation + Real No-Agent Proof v0.2.
-Per-node isolation for subprocess-heavy runtime suites. Strengthen no-.agent
-functional proofs with real product function calls.
+Steps 3096-3145: Runtime Lane Process Cleanup + Review Bundle Runtime Finalization v0.3.
+Harden subprocess helper with process-group isolation. Add diagnostics to runtime
+script. Verify no orphan processes after test runs.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.

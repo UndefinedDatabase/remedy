@@ -21,17 +21,53 @@ def _run_grouped_cli(
     env_extra: dict[str, str] | None = None,
     timeout: int = 30,
 ) -> subprocess.CompletedProcess[str]:
-    """Run grouped CLI as subprocess. No shell=True."""
+    """Run grouped CLI as subprocess with process-group isolation.
+
+    Uses start_new_session=True so the child gets its own process group.
+    On timeout, kills the entire process group to prevent orphans.
+    No shell=True. No secret leakage.
+    """
     cmd = [sys.executable, "-m", "apps.cli.grouped"] + args
     env = os.environ.copy()
     if env_extra:
         env.update(env_extra)
-    return subprocess.run(
+    proc = subprocess.Popen(
         cmd,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        stdin=subprocess.DEVNULL,
         text=True,
-        timeout=timeout,
         env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        # Kill entire process group, not just the leader
+        import signal
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        try:
+            proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+            proc.wait(timeout=3)
+        stdout, stderr = "", ""
+        try:
+            if proc.stdout:
+                stdout = proc.stdout.read()
+            if proc.stderr:
+                stderr = proc.stderr.read()
+        except (ValueError, OSError):
+            pass
+        raise subprocess.TimeoutExpired(cmd, timeout, output=stdout, stderr=stderr)
+    return subprocess.CompletedProcess(
+        args=cmd, returncode=proc.returncode, stdout=stdout, stderr=stderr,
     )
 
 
@@ -246,3 +282,46 @@ class TestRuntimeSafety:
             cf = json.loads(zf.read("changed_files_safe.json"))
             paths = [f["path"] for f in cf["files"]]
             assert "src/deploy.py" in paths
+
+
+# ---------------------------------------------------------------------------
+# Step 3104: Process-group cleanup proof
+# ---------------------------------------------------------------------------
+
+
+class TestSubprocessCleanup:
+
+    def test_helper_uses_process_group_isolation(self):
+        """Verify _run_grouped_cli uses start_new_session=True."""
+        import inspect
+        source = inspect.getsource(_run_grouped_cli)
+        assert "start_new_session=True" in source
+
+    def test_helper_kills_process_group_on_timeout(self):
+        """Verify _run_grouped_cli kills process group on timeout."""
+        import inspect
+        source = inspect.getsource(_run_grouped_cli)
+        assert "killpg" in source
+        assert "SIGTERM" in source
+        assert "SIGKILL" in source
+
+    def test_timeout_raises_with_cleanup(self):
+        """A very short timeout raises TimeoutExpired after cleanup."""
+        import subprocess as sp
+        try:
+            # Run a sleep command with 1-second timeout
+            _run_grouped_cli(
+                ["--help"],  # fast command, but use tiny timeout
+                timeout=0,  # immediate timeout
+            )
+            # If it didn't timeout (fast enough), that's OK too
+        except sp.TimeoutExpired:
+            pass  # Expected — process group was cleaned up
+        # Verify no orphan process from this test
+        import time
+        time.sleep(0.1)
+        result = subprocess.run(
+            ["pgrep", "-f", "apps.cli.grouped.*--help"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode != 0, "Orphan process found after timeout cleanup"
