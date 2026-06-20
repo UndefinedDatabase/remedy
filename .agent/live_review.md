@@ -1,81 +1,100 @@
-# Live Review — Steps 3216-3275: First Perfect Job Demo + Core Truth Closure v0
+# Live Review — Steps 3276-3355: Job Fulfillment Spine v0 — First Completed Fixture Job
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
 Timestamp: 2026-06-20
 
 ## Verdict (reviewer-owned)
-**PASS** @ adc89c0
+**FAIL** @ cdc6950
 
-9 files changed, +397/-48. PR #99 open (builder did NOT self-merge — TENTH consecutive
-protocol-compliant block). Builder did NOT write reviewer verdict.
+9 files changed, +1447/-2. PR #100 open (builder did NOT self-merge).
+Builder did NOT write reviewer verdict. Working tree clean.
 
-Uncommitted changes: none (working tree clean).
+## Reason for FAIL
 
-## Precondition check
-- Previous block: Steps 3146-3215 Job-Centric Core Finalization v0
-  - Reviewer PASS @ 2f8966b (verdict @ cfae896)
-  - PR #98 merged to main @ cc8b0e2
-- Branch: feature/steps-3216-3275-first-perfect-job-demo-v0 (from cfae896)
-- Builder committed @ adc89c0, pushed, opened PR #99
-
-## Prior block
-Steps 3146-3215: PASS @ 2f8966b. Merged via PR #98 -> cc8b0e2.
-R-0189 Low (pre-existing flaky). Zero blocking findings.
+5 Medium findings remain open. Per verdict rules: PASS requires zero Medium.
+These findings are explicitly tracked for closure in the next block (Steps 3356-3435).
 
 ## Findings
-- Zero new findings. All checks PASS.
 
-## Required checks (8 from review prompt)
-1. Protocol compliance — **PASS**. Builder did not self-merge. Builder did not write verdict. Working tree clean.
-2. Command truth — **PASS**. Happy Path uses `remedy do run "<goal>"` (valid). `do run --help`, `job status --help`, `job report --help` all work. Docs consistent.
-3. First demo — **PASS**. `first-perfect-job-demo-v0.md` with exact fixture-builder commands. Tests prove: job_id produced, status/report work, artifact/approval visible, next_safe_action visible, no mutation, no provider, code_applied=false.
-4. Job status/report truth — **PASS**. `_extract_job_truth` checks artifact metadata for patch_intent_count, timeline for stop_reason/approval_required. Status shows `approval_required` blocker + `patch approve` next action. Report shows `code_applied: false` always.
-5. Runtime nested-lock safety — **PASS**. No new nested lock. Runtime lane 4/4 pass.
-6. Demo docs — **PASS**. Exact commands, expected output table, what it proves, what it does NOT prove, no fake autonomy.
-7. Catalog and contract — **PASS**. `job.status` and `job.report` cataloged as `read_only`. No new unsafe permissions.
-8. Safety — **PASS**. No shell=True, no provider SDK (test_job_py_no_provider_import), no subprocess in job.py (test_job_py_no_subprocess), code_applied always false (test_report_always_code_applied_false).
+### R-0189 Medium — Direct repo write bypass
+Lines 621-625 of `job_fulfillment.py` write secondary artifacts directly to repo with
+`sec_path.write_text(wo["content"])` instead of routing through `apply_patch_intent`.
+All repo writes must go through existing patch apply gate.
+
+### R-0190 Low — Catalog classification
+`job.fulfill` cataloged as `write_metadata` but actually mutates repo through patch apply
++ direct writes. Should be `write_data` or `repo_write` classification.
+
+### R-0191 Medium — Contract not used
+`JobFulfillmentContract.check()` is defined but never called in `run_job_fulfill`.
+The final_pass check at line 699-705 is a hand-written shortcut that duplicates
+(and deviates from) the contract model. `completed_verified` should come from contract.
+
+### R-0192 Medium — Blocked tests accepted as pass
+Line 657: `test_res.status in ('passed', 'blocked')` accepts `blocked` as test pass.
+Blocked means test runner had no scripts — not that tests passed.
+
+### R-0193 Medium — Test exception swallowed
+Lines 659-662: Exception in test runner sets `test_passed = True`. Any test runner
+failure should NOT count as pass.
+
+### R-0194 Medium — Incomplete proof accepted
+Line 704: `record.proof_status in ("verified", "accepted", "incomplete")` allows
+`incomplete` proof for final pass. Incomplete proof should block completion.
+
+### R-0195 Low — Proposed task command syntax
+Line 718: `remedy propose list --job-id {job_id}` — the `--job-id` flag syntax
+may not match actual CLI argument parsing. Needs verification.
+
+## Required checks (10 from review prompt)
+1. Protocol compliance — **PASS**. Builder did not self-merge. Did not write verdict. Working tree clean.
+2. Fulfillment status truth — **FAIL**. Contract not used (R-0191). Blocked tests accepted (R-0192). Exceptions swallowed (R-0193). Incomplete proof accepted (R-0194).
+3. Task loop — **PASS**. 2 tasks (docs_update + evidence_summary). Repair task from finding visible.
+4. Worker and review loop — **PASS**. Deterministic fixture worker/reviewer. One-finding mode works.
+5. Approval/apply/test/proof — **FAIL**. Direct repo write bypass (R-0189). Blocked tests as pass (R-0192).
+6. Report/status truth — **PASS**. Status shows completed, report shows code_applied=true after fulfillment.
+7. Proposed next tasks — **PASS** (with R-0195 Low risk). 3 suggestions generated.
+8. CLI and docs — **PASS**. `job fulfill` exists, requires `--fixture-demo`. Demo guide exists.
+9. Command catalog and run contract — **PASS** (with R-0190 Low risk). Cataloged but classification debatable.
+10. Safety — **FAIL**. Direct repo write outside patch apply (R-0189).
 
 ## Test evidence (reviewer-run)
-- Compileall: 192 files clean
-- Product spine: 72 passed, 0.15s
+- Compileall: 193 files clean
+- Fulfillment tests: 34 passed, 0.18s
+- Product spine: 72 passed, 0.12s
 - Command catalog: 23 passed, 0.42s
 - Run contract: 88 passed, 0.13s
-- Worker facade: 49 passed, 0.14s
-- Approval policy: 82 passed, 0.14s
 - Boundary guard: 18 passed, 0.19s
-- Dogfood run: 93 passed, 0.20s
-- Review bundle: 90 passed, 1.72s
-- Help outputs: `remedy --help`, `do run --help`, `job status --help`, `job report --help` all work
-- Fast lane: 571 passed, 0.90s
+- Review bundle: 90 passed, 1.69s
+- Fast lane: 571 passed, 0.93s
 - Runtime lane: 4/4 suites passed
-- Lint: ruff clean, mypy clean (192 files)
-- Full suite: 7063 passed, 0 failed, 8 skipped, 1 deselected, 208.42s
+- Lint: ruff clean, mypy clean (193 files)
+- Full suite: 7097 passed, 0 failed, 8 skipped, 1 deselected, 200.18s
 
 ## Changed Line Map spot-check
-- apps/cli/commands/job.py (+105): `_extract_job_truth` helper, enriched `_cmd_job_status` and `_cmd_job_report` with approval_required, patch_intent_ids, latest_stop_reason, code_applied. Verified.
-- apps/cli/grouped.py (+2/-2): Happy Path uses `remedy do run` instead of `remedy do`. Verified.
-- docs/first-perfect-job-demo-v0.md (+82): New demo doc with commands, expected output, what it proves/doesn't prove. Verified.
-- docs/simple-operator-quickstart-v0.md (+4/-4): Uses `do run` syntax. Verified.
-- docs/core-product-spine-v0.md (+2/-2): Uses `do run` syntax. Verified.
-- docs/autocoder-usage.md (+8/-8): Uses `do run` syntax. Verified.
-- docs/do-run-v1.md (+2/-2): Uses `do run` syntax. Verified.
-- tests/cli/test_product_spine.py (+205): 14 new tests: truth extraction (4), status/report truth fields (3), no-provider/no-apply proof (4), do-run help alignment (3). Verified.
+- packages/orchestration/job_fulfillment.py (+731, NEW): Full fulfillment engine, model, contract, fixture components, storage, export. Verified.
+- tests/orchestration/test_job_fulfillment.py (+495, NEW): 34 tests across model, planner, reviewer, contract, integration, CLI, docs, boundary. Verified.
+- apps/cli/commands/job.py (+90): `_cmd_job_fulfill`, `_extract_job_truth` enriched with `code_applied`. Verified.
+- apps/cli/command_catalog.py (+15): `job.fulfill` entry. Verified.
+- docs/first-fulfilled-job-demo-v0.md (+94, NEW): Demo guide. Verified.
+- docs updates: spine, quickstart, perfect demo doc. Verified.
 
 ## Top risks
-None. Zero open findings.
+5 Medium findings (R-0189, R-0191, R-0192, R-0193, R-0194) prevent PASS.
+2 Low findings (R-0190, R-0195) are non-blocking.
+All findings tracked in Steps 3356-3435 closure prompt.
 
 ## Merge readiness
-Ready to merge. Zero open Blocker/High/Medium/Low.
-Protocol compliant. First demo documented and tested.
-Job status/report show truthful approval state.
-Full suite clean (7063 passed, 0 failed).
+NOT ready to merge. 5 Medium findings open.
+Closure block (Steps 3356-3435) is expected to address these.
+Do NOT merge PR #100 until closure block resolves findings.
 
-Merge-autonomy applies: auto-merge PR #99.
+NO PR unless user asks.
 
 ## Reviewer audit log
-- Builder committed @ adc89c0. PR #99 opened. 9 files changed, +397/-48.
-- Diff reading: job.py, grouped.py, demo doc, quickstart, spine, autocoder, do-run, product spine tests.
-- Test suite: spine 72, catalog 23, contract 88, facade 49, policy 82, boundary 18, dogfood 93, bundle 90, fast 571, runtime 4/4, full 7063.
-- All 8 checks PASS. Zero findings.
-- Verdict: **PASS** @ adc89c0.
+- Builder committed @ cdc6950. PR #100 opened. 9 files changed, +1447/-2.
+- Diff reading: job_fulfillment.py (731 lines), test_job_fulfillment.py (495), job.py (+90), catalog (+15), demo doc (+94).
+- All tests pass (7097 passed, 0 failed).
+- Code review found 5 Medium + 2 Low findings.
+- Verdict: **FAIL** @ cdc6950 — 5 open Medium findings.
