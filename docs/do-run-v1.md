@@ -16,7 +16,7 @@ mutate repo files or execute external commands.
 ## Usage
 
 ```
-remedy do "add a safe docs change" --repo . --autonomy-level 3 --json
+remedy do run "add a safe docs change" --repo . --autonomy-level 3 --json
 ```
 
 Flags:

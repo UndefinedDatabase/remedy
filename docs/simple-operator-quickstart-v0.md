@@ -6,7 +6,7 @@ Start here. These are the main commands for working with Remedy.
 
 ```bash
 # 1. Create and start a job
-remedy do "Fix the login bug" --repo /path/to/project
+remedy do run "Fix the login bug" --repo /path/to/project
 
 # 2. Check job state
 remedy job status <job_id> --json
@@ -26,7 +26,7 @@ remedy review run <job_id> --json
 ### Create a job
 
 ```bash
-remedy do "<goal>" --repo <path>
+remedy do run "<goal>" --repo <path>
 ```
 
 Creates a new job from your goal and starts the first safe actions.

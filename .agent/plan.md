@@ -1,19 +1,26 @@
-# Plan
+# Plan — Steps 3216-3275: First Perfect Job Demo + Core Truth Closure v0
 
 ## Goal
-Steps 3146-3215: Job-Centric Core Finalization v0
-
-## Completed
-- PR #97 merged, main synced, branch created
-- CLI help audit: job already has 16 commands, mission has run/report
-- Added job.status and job.report facades (read-only, safe JSON, no .agent dep)
-- Updated Happy Path to job-first (do → status → report → UI → review)
-- Updated mission group description to "Advanced/internal"
-- Updated command catalog with job.status + job.report entries
-- Updated all docs: spine, quickstart, approval, boundary to job-first
-- 18 new tests: catalog, happy path, taxonomy docs, no-agent, invalid-id safety
-- Fixed test_command_catalog and test_cli_execution_loop_closure assertions
-- Fast 557, runtime 57, full 7047 (2 pre-existing failures), lint clean
+Fix `do` vs `do run` command shape mismatch, enrich `job status` and `job report`
+with artifact/patch_intent/approval truth, create first demo guide, investigate
+runtime nested-lock, add comprehensive tests.
 
 ## Current Step
-Commit, push, create PR, write handoff.
+Running test lanes (fast + runtime). All code changes complete.
+
+## Completed
+- Steps 3216-3220: Gate + baselines captured
+- Steps 3221-3224: Fixed Happy Path `do "<goal>"` → `do run "<goal>"` in help + all docs
+- Steps 3225-3228: Added `_extract_job_truth()` helper, enriched `_cmd_job_status` and `_cmd_job_report`
+- Steps 3229-3237: Added 14 new tests (truth extraction, truth fields, no-provider/no-apply proofs, help alignment)
+- Steps 3238-3244: Created demo guide (`docs/first-perfect-job-demo-v0.md`), all docs updated
+- Steps 3245-3249: Runtime nested-lock investigation — no issue found (sequential lock, no nesting)
+- Steps 3250-3260: Running test lanes
+
+## Next Steps
+- Complete test lanes
+- Self-review, lint, commit
+- PR + handoff
+
+## Risks
+- Hook revert pattern: all file edits must use `python3 pathlib.write_text()`

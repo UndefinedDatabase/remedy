@@ -432,3 +432,208 @@ class TestJobFacadeNoAgent:
         output = buf.getvalue()
         assert "invalid_job_id" in output
         assert "Traceback" not in output
+
+# ---------------------------------------------------------------------------
+# Steps 3229-3237: Enriched truth, demo integration, safety proofs
+# ---------------------------------------------------------------------------
+
+
+class TestJobTruthExtraction:
+    """_extract_job_truth returns correct fields from Job model."""
+
+    def test_empty_job_truth(self, tmp_path, monkeypatch):
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        from apps.cli.commands.job import _extract_job_truth
+        from packages.core.models import Job
+        job = Job(name='empty test')
+        truth = _extract_job_truth(job)
+        assert truth['artifact_count'] == 0
+        assert truth['patch_intent_ids'] == []
+        assert truth['approval_required'] is False
+        assert truth['latest_stop_reason'] == ''
+        assert truth['event_count'] == 0
+
+    def test_job_with_artifact_counts(self, tmp_path, monkeypatch):
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        from apps.cli.commands.job import _extract_job_truth
+        from packages.core.models import Artifact, Job
+        job = Job(name='artifact test', artifacts=[
+            Artifact(name='plan', content='plan output'),
+            Artifact(name='build', content='build output'),
+        ])
+        truth = _extract_job_truth(job)
+        assert truth['artifact_count'] == 2
+        assert truth['patch_intent_ids'] == []
+
+    def test_job_with_patch_intent(self, tmp_path, monkeypatch):
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        from apps.cli.commands.job import _extract_job_truth
+        from packages.core.models import Artifact, Job
+        art = Artifact(
+            name='patch',
+            content='diff output',
+            metadata={'patch_intent_count': 1},
+        )
+        job = Job(name='patch test', artifacts=[art])
+        truth = _extract_job_truth(job)
+        assert truth['artifact_count'] == 1
+        assert len(truth['patch_intent_ids']) == 1
+        assert truth['approval_required'] is True
+
+    def test_patch_applied_clears_approval(self, tmp_path, monkeypatch):
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        from apps.cli.commands.job import _extract_job_truth
+        from packages.core.models import Artifact, Job
+        art = Artifact(
+            name='patch',
+            content='diff output',
+            metadata={'patch_intent_count': 1, 'patch_applied': True},
+        )
+        job = Job(name='applied test', artifacts=[art])
+        truth = _extract_job_truth(job)
+        assert truth['approval_required'] is False
+
+
+class TestJobStatusReportTruthFields:
+    """Status and report JSON include enriched truth fields."""
+
+    def _make_job_and_save(self, tmp_path):
+        from packages.core.models import Artifact, Job, RunState, Task
+        from packages.orchestration.storage import save_job
+        art = Artifact(
+            name='builder output',
+            content='diff --git a/foo.py',
+            metadata={'patch_intent_count': 1},
+        )
+        task = Task(description='Fix the bug', inputs={'task_type': 'code_repair'})
+        job = Job(
+            name='Demo fix',
+            state=RunState.PAUSED,
+            tasks=[task],
+            artifacts=[art],
+        )
+        save_job(job, root=tmp_path)
+        return job
+
+    def test_status_json_has_truth_fields(self, tmp_path, monkeypatch):
+        import contextlib
+        import io
+        import json
+
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        job = self._make_job_and_save(tmp_path)
+        from apps.cli.commands.job import _cmd_job_status
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _cmd_job_status(str(job.id), json_output=True)
+        data = json.loads(buf.getvalue())
+        assert data['artifact_count'] == 1
+        assert data['approval_required'] is True
+        assert 'patch_intent_ids' in data
+        assert 'next_safe_action' in data
+
+    def test_report_json_has_truth_fields(self, tmp_path, monkeypatch):
+        import contextlib
+        import io
+        import json
+
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        job = self._make_job_and_save(tmp_path)
+        from apps.cli.commands.job import _cmd_job_report
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _cmd_job_report(str(job.id), json_output=True)
+        data = json.loads(buf.getvalue())
+        assert data['artifact_count'] == 1
+        assert data['approval_required'] is True
+        assert data['code_applied'] is False
+        assert 'tasks' in data
+        assert len(data['tasks']) == 1
+
+    def test_report_invalid_id_safe(self):
+        import contextlib
+        import io
+
+        from apps.cli.commands.job import _cmd_job_report
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            try:
+                _cmd_job_report('not-a-uuid', json_output=True)
+            except SystemExit:
+                pass
+        output = buf.getvalue()
+        assert 'invalid_job_id' in output
+        assert 'Traceback' not in output
+
+
+class TestNoProviderNoApplyProof:
+    """Job commands never import provider SDKs or apply code."""
+
+    def test_job_py_no_provider_import(self):
+        from pathlib import Path
+        src = Path(__file__).resolve().parent.parent.parent / 'apps' / 'cli' / 'commands' / 'job.py'
+        text = src.read_text()
+        for pattern in ['import anthropic', 'import openai', 'from anthropic', 'from openai']:
+            assert pattern not in text, f'job.py must not import provider SDK: {pattern}'
+
+    def test_job_py_no_subprocess(self):
+        from pathlib import Path
+        src = Path(__file__).resolve().parent.parent.parent / 'apps' / 'cli' / 'commands' / 'job.py'
+        text = src.read_text()
+        assert 'subprocess.run' not in text
+        assert 'subprocess.Popen' not in text
+        assert 'shell=True' not in text
+
+    def test_report_always_code_applied_false(self, tmp_path, monkeypatch):
+        import contextlib
+        import io
+        import json
+
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.storage import save_job
+        job = Job(name='no-apply proof')
+        save_job(job, root=tmp_path)
+        from apps.cli.commands.job import _cmd_job_report
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _cmd_job_report(str(job.id), json_output=True)
+        data = json.loads(buf.getvalue())
+        assert data['code_applied'] is False, 'v1 must never report code_applied=True'
+
+    def test_status_next_action_never_apply(self, tmp_path, monkeypatch):
+        import contextlib
+        import io
+        import json
+
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.storage import save_job
+        job = Job(name='no-apply-action proof')
+        save_job(job, root=tmp_path)
+        from apps.cli.commands.job import _cmd_job_status
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _cmd_job_status(str(job.id), json_output=True)
+        data = json.loads(buf.getvalue())
+        nsa = data.get('next_safe_action', '')
+        assert 'apply' not in nsa.lower() or 'patch approve' in nsa.lower(), \
+            'Next safe action must not suggest applying code directly'
+
+
+class TestDoRunHelpAlignment:
+    """Happy path and docs use do run syntax consistently."""
+
+    def test_happy_path_uses_do_run(self):
+        from apps.cli.grouped import _QUICK_START
+        lines = _QUICK_START.strip().splitlines()
+        first = [l for l in lines if l.strip().startswith('1.')][0]
+        assert 'do run' in first or 'remedy do' in first
+
+    def test_spine_doc_uses_do_run(self):
+        text = (_ROOT / 'docs' / 'core-product-spine-v0.md').read_text()
+        assert 'do run' in text
+
+    def test_quickstart_doc_uses_do_run(self):
+        text = (_ROOT / 'docs' / 'simple-operator-quickstart-v0.md').read_text()
+        assert 'do run' in text

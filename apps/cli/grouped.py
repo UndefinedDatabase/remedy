@@ -247,7 +247,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 _QUICK_START = """\
  Happy path:
-   1. remedy do "<goal>" --repo <path>     — create and start a job
+   1. remedy do run "<goal>" --repo <path>  — create and start a job
    2. remedy job status <job_id> --json    — inspect job state
    3. remedy job report <job_id> --json    — read the job report
    4. remedy ui <job_id>                   — open UI
