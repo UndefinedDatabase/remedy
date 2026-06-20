@@ -32,7 +32,7 @@ remedy job status "$JOB_ID" --json
 remedy job report "$JOB_ID" --json
 
 # 5. List proposed next tasks
-remedy propose list --job-id "$JOB_ID" --json
+remedy propose list "$JOB_ID" --json
 
 # 6. User decides on suggestions
 remedy propose approve "$JOB_ID" <task_id> --json
@@ -63,6 +63,7 @@ remedy propose defer "$JOB_ID" <task_id> --json
 | `state` | `completed` | Job is done |
 | `approval_required` | `false` | No pending approvals |
 | `code_applied` | `true` | Changes were applied |
+| `fulfillment_status` | `completed_verified` | Fulfillment completed |
 
 ### `job report --json` (after fulfill)
 
@@ -74,7 +75,7 @@ remedy propose defer "$JOB_ID" <task_id> --json
 ## What this demo does NOT prove
 
 - Real provider execution (uses fixture builder/reviewer)
-- Real test execution (may use fixture fallback)
+- Real test execution (tests run through Test Execution Service but in demo repo only)
 - Git operations (no commits, branches, or PRs)
 - Multi-repo support
 - Rollback on failure

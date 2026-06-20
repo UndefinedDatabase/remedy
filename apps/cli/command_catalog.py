@@ -292,7 +292,7 @@ CATALOG: tuple[CommandEntry, ...] = (
         group_id="job",
         subcommand="fulfill",
         description="Run job fulfillment spine (fixture-demo mode in v0).",
-        action_class="write_metadata",
+        action_class="apply_write",
         args=(
             _JOB_ID,
             ArgDef("--fixture-demo", "Require fixture-demo mode (v0 only)", required=False, is_option=True),

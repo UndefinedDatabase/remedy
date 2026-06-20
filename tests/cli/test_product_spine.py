@@ -484,10 +484,16 @@ class TestJobTruthExtraction:
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
         from packages.core.models import Artifact, Job
+        intent_id = 'abcd1234-0'
         art = Artifact(
             name='patch',
             content='diff output',
-            metadata={'patch_intent_count': 1, 'patch_applied': True},
+            metadata={
+                'patch_intent_count': 1,
+                'patch_intent_apply_records': {
+                    intent_id: {'state': 'applied'},
+                },
+            },
         )
         job = Job(name='applied test', artifacts=[art])
         truth = _extract_job_truth(job)

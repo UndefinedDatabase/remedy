@@ -1,8 +1,10 @@
-"""Job Fulfillment Spine v0 tests.
+"""Job Fulfillment Spine v0 tests — Truth Closure v0.1.
 
 Unit tests for model, fixture components, and contract.
 Integration tests for full fulfillment lifecycle.
 CLI tests for job fulfill command.
+Failure path tests.
+Strengthened truth assertions.
 """
 from __future__ import annotations
 
@@ -39,6 +41,15 @@ class TestFulfillmentModel:
         assert "sk-" not in raw
         assert "/home/" not in raw
         assert "api_key" not in raw
+
+    def test_record_export_has_contract_id(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentRecord,
+            export_job_fulfillment_json,
+        )
+        rec = JobFulfillmentRecord(job_id="test-123", contract_id="rc-abc")
+        data = export_job_fulfillment_json(rec)
+        assert data["contract_id"] == "rc-abc"
 
     def test_contract_check_empty(self):
         from packages.orchestration.job_fulfillment import (
@@ -90,10 +101,11 @@ class TestFulfillmentModel:
             JobFulfillmentRecord,
             summarize_job_fulfillment,
         )
-        rec = JobFulfillmentRecord(job_id="job-xyz", mode="fixture_demo")
+        rec = JobFulfillmentRecord(job_id="job-xyz", mode="fixture_demo", contract_id="rc-1")
         text = summarize_job_fulfillment(rec)
         assert "fixture_demo" in text
         assert "job-xyz" in text
+        assert "rc-1" in text
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +134,35 @@ class TestFixturePlanner:
         types = {t["task_type"] for t in tasks}
         assert "docs_update" in types
         assert "evidence_summary" in types
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: fixture worker output format (Steps 3362-3363)
+# ---------------------------------------------------------------------------
+
+
+class TestFixtureWorkerOutput:
+
+    def test_artifact_content_has_proposed_changes(self):
+        from packages.orchestration.job_fulfillment import fixture_worker_output
+        wo = fixture_worker_output({"task_id": "t1", "task_type": "docs_update",
+                                     "inputs": {"target_file": "CHANGELOG.md"}})
+        assert "Proposed Changes:" in wo["content"]
+        assert "Summary:" in wo["content"]
+
+    def test_content_has_meaningful_lines(self):
+        from packages.orchestration.job_fulfillment import fixture_worker_output
+        wo = fixture_worker_output({"task_id": "t1", "task_type": "docs_update",
+                                     "inputs": {"target_file": "CHANGELOG.md"}})
+        assert "Changelog" in wo["content"]
+        assert "Initial project setup" in wo["content"]
+
+    def test_verification_content_has_evidence(self):
+        from packages.orchestration.job_fulfillment import fixture_worker_output
+        wo = fixture_worker_output({"task_id": "t2", "task_type": "evidence_summary",
+                                     "inputs": {"target_file": "docs/VERIFICATION.md"}})
+        assert "Verification" in wo["content"]
+        assert "Proposed Changes:" in wo["content"]
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +203,7 @@ class TestFixtureReviewer:
 
 
 # ---------------------------------------------------------------------------
-# Unit tests: completion contract (Step 3314)
+# Unit tests: completion contract (Steps 3314, 3370, 3373-3374)
 # ---------------------------------------------------------------------------
 
 
@@ -174,10 +215,8 @@ class TestCompletionContract:
             JobFulfillmentRecord,
         )
         rec = JobFulfillmentRecord(
-            task_ids=["t1"],
-            test_passed=True,
-            proof_status="verified",
-            final_review_status="pass",
+            task_ids=["t1"], test_passed=True,
+            proof_status="verified", final_review_status="pass",
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert not passed
@@ -189,35 +228,84 @@ class TestCompletionContract:
             JobFulfillmentRecord,
         )
         rec = JobFulfillmentRecord(
-            task_ids=["t1"],
-            apply_ids=["a1"],
-            test_passed=False,
-            proof_status="verified",
-            final_review_status="pass",
+            task_ids=["t1"], apply_ids=["a1"], test_passed=False,
+            proof_status="verified", final_review_status="pass",
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert not passed
         assert "test_not_passed" in blockers
 
-    def test_missing_proof_blocks(self):
+    def test_incomplete_proof_blocks(self):
         from packages.orchestration.job_fulfillment import (
             JobFulfillmentContract,
             JobFulfillmentRecord,
         )
         rec = JobFulfillmentRecord(
-            task_ids=["t1"],
-            apply_ids=["a1"],
-            test_passed=True,
-            proof_status="unknown",
+            task_ids=["t1"], apply_ids=["a1"], test_passed=True,
+            proof_status="incomplete", final_review_status="pass",
+        )
+        passed, blockers = JobFulfillmentContract().check(rec)
+        assert not passed
+        assert any("proof" in b for b in blockers)
+
+    def test_accepted_proof_without_reason_blocks(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentContract,
+            JobFulfillmentRecord,
+        )
+        rec = JobFulfillmentRecord(
+            task_ids=["t1"], apply_ids=["a1"], test_passed=True,
+            proof_status="accepted", proof_accepted_reason="",
             final_review_status="pass",
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert not passed
-        assert "proof_not_verified" in blockers
+        assert any("proof" in b for b in blockers)
+
+    def test_accepted_proof_with_reason_passes(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentContract,
+            JobFulfillmentRecord,
+        )
+        rec = JobFulfillmentRecord(
+            task_ids=["t1"], apply_ids=["a1"], test_passed=True,
+            proof_status="accepted",
+            proof_accepted_reason="Fixture demo: explicit acceptance",
+            final_review_status="pass",
+        )
+        passed, blockers = JobFulfillmentContract().check(rec)
+        assert passed
+
+    def test_mode_mismatch_blocks(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentContract,
+            JobFulfillmentRecord,
+        )
+        rec = JobFulfillmentRecord(
+            mode="unknown_mode",
+            task_ids=["t1"], apply_ids=["a1"], test_passed=True,
+            proof_status="verified", final_review_status="pass",
+        )
+        passed, blockers = JobFulfillmentContract().check(rec)
+        assert not passed
+        assert any("mode_mismatch" in b for b in blockers)
+
+    def test_all_gates_pass(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentContract,
+            JobFulfillmentRecord,
+        )
+        rec = JobFulfillmentRecord(
+            task_ids=["t1"], apply_ids=["a1"], test_passed=True,
+            proof_status="verified", final_review_status="pass",
+        )
+        passed, blockers = JobFulfillmentContract().check(rec)
+        assert passed
+        assert blockers == []
 
 
 # ---------------------------------------------------------------------------
-# Integration test: fixture pass (Step 3315)
+# Integration test: fixture pass with truth (Steps 3315, 3386)
 # ---------------------------------------------------------------------------
 
 
@@ -243,11 +331,15 @@ class TestJobFulfillFixturePass:
         assert record.status.value == "completed_verified"
         assert len(record.task_ids) >= 2
         assert record.review_round_count >= 1
-        assert len(record.apply_ids) > 0
-        assert record.test_passed
-        assert record.proof_status in ("verified", "accepted", "incomplete")
+        assert len(record.apply_ids) >= 2  # both outputs applied
+        assert record.test_passed is True
+        assert record.proof_status in ("verified", "accepted")
+        if record.proof_status == "accepted":
+            assert record.proof_accepted_reason != ""
         assert record.final_review_status == "pass"
         assert len(record.next_suggestion_ids) >= 2
+        assert record.contract_id != ""
+        assert record.contract_blockers == []
 
     def test_repo_file_changed(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -256,9 +348,37 @@ class TestJobFulfillFixturePass:
         job, repo = self._setup_job(tmp_path)
         record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
 
-        assert len(record.changed_files) > 0
+        assert len(record.changed_files) >= 2
         for f in record.changed_files:
             assert (repo / f).exists()
+
+    def test_applied_content_is_meaningful(self, tmp_path, monkeypatch):
+        """R-0190: Applied files must not contain placeholder text."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import run_job_fulfill
+
+        job, repo = self._setup_job(tmp_path)
+        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        cl = (repo / "CHANGELOG.md").read_text()
+        assert "(no proposed changes found in artifact)" not in cl
+        assert "Changelog" in cl
+
+        vf = (repo / "docs" / "VERIFICATION.md").read_text()
+        assert "(no proposed changes found in artifact)" not in vf
+        assert "Verification" in vf
+
+    def test_real_test_execution(self, tmp_path, monkeypatch):
+        """R-0192: Tests must actually pass, not be accepted as blocked."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import run_job_fulfill
+
+        job, repo = self._setup_job(tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        assert record.test_passed is True
+        assert len(record.test_run_ids) > 0
+        assert record.test_run_ids[0] != ""
 
 
 # ---------------------------------------------------------------------------
@@ -292,7 +412,7 @@ class TestOneFindingRepairLoop:
 
 
 # ---------------------------------------------------------------------------
-# Integration test: no provider execution (Step 3318)
+# Integration test: no provider execution (Step 3318, 3388-3391)
 # ---------------------------------------------------------------------------
 
 
@@ -311,9 +431,26 @@ class TestNoProviderExecution:
         assert "subprocess.Popen" not in text
         assert "shell=True" not in text
 
+    def test_no_live_review_dependency(self):
+        src = _ROOT / "packages" / "orchestration" / "job_fulfillment.py"
+        text = src.read_text()
+        assert "live_review" not in text
+        assert ".agent/" not in text
+
+    def test_no_direct_repo_write_in_engine(self):
+        """R-0189: run_job_fulfill must not write directly to repo_root."""
+        src = _ROOT / "packages" / "orchestration" / "job_fulfillment.py"
+        text = src.read_text()
+        # Find run_job_fulfill function body
+        start = text.index("def run_job_fulfill(")
+        engine_body = text[start:]
+        # Should not contain direct file writes (write_text, open(..., 'w'))
+        assert ".write_text(" not in engine_body
+        assert "open(" not in engine_body
+
 
 # ---------------------------------------------------------------------------
-# Integration test: job report after fulfilled (Step 3320)
+# Integration test: job report after fulfilled (Step 3320, 3375, 3392)
 # ---------------------------------------------------------------------------
 
 
@@ -341,10 +478,12 @@ class TestJobReportAfterFulfilled:
         data = json.loads(buf.getvalue())
         assert data["state"] == "completed"
         assert data["code_applied"] is True
+        assert data["approval_required"] is False
+        assert data["fulfillment_status"] == "completed_verified"
 
 
 # ---------------------------------------------------------------------------
-# Integration test: job status after fulfilled (Step 3321)
+# Integration test: job status after fulfilled (Step 3321, 3375-3377, 3393)
 # ---------------------------------------------------------------------------
 
 
@@ -371,7 +510,110 @@ class TestJobStatusAfterFulfilled:
             _cmd_job_status(str(job.id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data["state"] == "completed"
-        # Secondary fixture artifacts may have pending intents; only check state.
+        assert data["approval_required"] is False
+        assert data["code_applied"] is True
+        assert data["fulfillment_status"] == "completed_verified"
+
+
+# ---------------------------------------------------------------------------
+# Failure path tests (Steps 3384-3385)
+# ---------------------------------------------------------------------------
+
+
+class TestFailurePaths:
+
+    def test_failing_test_blocks_completion(self, tmp_path, monkeypatch):
+        """R-0199: Failing tests must block completed_verified."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        # Create demo repo with failing test
+        repo = tmp_path / "fail_repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test\n")
+        (repo / "pyproject.toml").write_text(
+            "[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n"
+        )
+        tests_dir = repo / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "__init__.py").write_text("")
+        (tests_dir / "test_fail.py").write_text(
+            "def test_always_fails():\n"
+            "    assert False, \"intentional failure\"\n"
+        )
+
+        job = Job(name="Fail test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        assert record.status.value != "completed_verified"
+        assert record.test_passed is False
+        assert "test_not_passed" in record.stop_reason
+
+    def test_apply_blocked_stops_completion(self, tmp_path, monkeypatch):
+        """R-0199: Apply blocked must stop fulfillment."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        # Pre-create CHANGELOG.md so apply sees target_exists for create action
+        (repo / "CHANGELOG.md").write_text("# Existing\n")
+
+        job = Job(name="Apply blocked test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        assert record.status.value != "completed_verified"
+        assert "apply_blocked" in record.stop_reason
+
+
+# ---------------------------------------------------------------------------
+# Proposed task lifecycle test (Step 3379)
+# ---------------------------------------------------------------------------
+
+
+class TestProposedTaskLifecycle:
+
+    def test_proposed_tasks_accessible(self, tmp_path, monkeypatch):
+        """R-0196: Proposed tasks can be listed and acted on after fulfillment."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.proposed_tasks import (
+            approve_proposed_task,
+            defer_proposed_task,
+            load_proposed_tasks,
+            reject_proposed_task,
+        )
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        job = Job(name="Propose test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        assert record.status.value == "completed_verified"
+        assert len(record.next_suggestion_ids) >= 3
+
+        # Load and verify
+        tasks = load_proposed_tasks(str(job.id), root=tmp_path)
+        assert len(tasks) >= 3
+
+        # Approve/reject/defer
+        ids = [t.id for t in tasks]
+        approve_proposed_task(str(job.id), ids[0], root=tmp_path)
+        reject_proposed_task(str(job.id), ids[1], reason="not needed", root=tmp_path)
+        defer_proposed_task(str(job.id), ids[2], reason="later", root=tmp_path)
+
+        updated = load_proposed_tasks(str(job.id), root=tmp_path)
+        statuses = {t.id: t.status.value for t in updated}
+        assert statuses[ids[0]] == "approved_for_build"
+        assert statuses[ids[1]] == "rejected"
+        assert statuses[ids[2]] == "deferred"
 
 
 # ---------------------------------------------------------------------------
@@ -428,7 +670,7 @@ class TestJobFulfillCLI:
 
 
 # ---------------------------------------------------------------------------
-# Docs tests (Step 3327)
+# Docs tests (Step 3327, 3378, 3381, 3396-3398)
 # ---------------------------------------------------------------------------
 
 
@@ -460,9 +702,21 @@ class TestFulfilledDemoGuide:
         text = path.read_text()
         assert "No real provider" in text
 
+    def test_guide_no_invalid_job_id_syntax(self):
+        """R-0196: No --job-id syntax in demo guide."""
+        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
+        text = path.read_text()
+        assert "--job-id" not in text
+
+    def test_quickstart_no_invalid_propose_syntax(self):
+        """R-0196: No --job-id in propose command in quickstart."""
+        path = _ROOT / "docs" / "simple-operator-quickstart-v0.md"
+        text = path.read_text()
+        assert "propose list --job-id" not in text
+
 
 # ---------------------------------------------------------------------------
-# Command catalog tests (Step 3329)
+# Command catalog tests (Step 3329, 3382)
 # ---------------------------------------------------------------------------
 
 
@@ -472,7 +726,7 @@ class TestFulfillCatalog:
         from apps.cli.command_catalog import get_command
         cmd = get_command("job.fulfill")
         assert cmd is not None
-        assert cmd.action_class == "write_metadata"
+        assert cmd.action_class == "apply_write"
         assert cmd.supports_json
 
     def test_job_fulfill_has_handler(self):

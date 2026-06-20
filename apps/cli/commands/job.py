@@ -732,16 +732,33 @@ def _extract_job_truth(job: Job) -> dict:
     """Extract safe truth from job model for status/report views."""
     artifact_count = len(job.artifacts) if hasattr(job, 'artifacts') else 0
 
-    # Find patch intents and approval status from artifact metadata
+    # Find patch intents and approval/apply status from artifact metadata
     patch_intent_ids: list[str] = []
-    approval_required = False
-    latest_stop_reason = ''
+    pending_intents = 0
+    code_applied = False
     for a in (job.artifacts if hasattr(job, 'artifacts') else []):
         meta = a.metadata if hasattr(a, 'metadata') and a.metadata else {}
         if meta.get('patch_intent_count'):
-            patch_intent_ids.append(str(a.id) + '-0')
-        if meta.get('patch_intent_count') and not meta.get('patch_applied'):
-            approval_required = True
+            intent_id = str(a.id) + '-0'
+            patch_intent_ids.append(intent_id)
+            # Check if this intent has been applied
+            apply_records = meta.get('patch_intent_apply_records', {})
+            intent_applied = False
+            for rec in apply_records.values():
+                if isinstance(rec, dict) and rec.get('state') == 'applied':
+                    code_applied = True
+                    intent_applied = True
+                    break
+            # Check approval state
+            approvals = meta.get('patch_intent_approvals', {})
+            intent_approved = approvals.get(intent_id, {}).get('state') == 'approved'
+            # Only pending if not yet applied and not approved
+            if not intent_applied and not intent_approved:
+                pending_intents += 1
+
+    approval_required = pending_intents > 0
+    latest_stop_reason = ''
+
     # Check timeline for stop reason
     from packages.orchestration.timeline import load_run_events
     data_dir = resolve_data_root()
@@ -757,27 +774,30 @@ def _extract_job_truth(job: Job) -> dict:
             status_val = ev_data.get('status', '')
             if phase == 'approval_required' or status_val == 'approval_required':
                 latest_stop_reason = 'approval_required'
-                approval_required = True
+                if not code_applied:
+                    approval_required = True
                 break
 
-    # Check if any patch was actually applied
-    code_applied = False
-    for a in (job.artifacts if hasattr(job, 'artifacts') else []):
-        meta = a.metadata if hasattr(a, 'metadata') and a.metadata else {}
-        apply_records = meta.get('patch_intent_apply_records', {})
-        for rec in apply_records.values():
-            if isinstance(rec, dict) and rec.get('state') == 'applied':
-                code_applied = True
-                break
-        if code_applied:
-            break
-    # Also check fulfillment events
+    # Also check fulfillment events for code_applied
     if not code_applied:
         for ev in events:
             ev_data = ev if isinstance(ev, dict) else {}
             if isinstance(ev_data, dict) and ev_data.get('event') == 'fulfillment_applied':
                 code_applied = True
                 break
+
+    # Load fulfillment record if available
+    fulfillment_status = ''
+    fulfillment_id = ''
+    try:
+        from packages.orchestration.job_fulfillment import list_fulfillment_records
+        records = list_fulfillment_records(str(job.id), data_dir)
+        if records:
+            latest = records[-1]
+            fulfillment_status = latest.status.value
+            fulfillment_id = latest.fulfillment_id
+    except Exception:
+        pass
 
     return {
         'artifact_count': artifact_count,
@@ -786,6 +806,8 @@ def _extract_job_truth(job: Job) -> dict:
         'latest_stop_reason': latest_stop_reason,
         'event_count': len(events),
         'code_applied': code_applied,
+        'fulfillment_status': fulfillment_status,
+        'fulfillment_id': fulfillment_id,
     }
 
 
@@ -827,6 +849,8 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
 
     if truth['approval_required']:
         next_action = 'remedy patch approve <job_id> <patch_intent_id>'
+    elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
+        next_action = f'remedy propose list {job_id_str} --json'
     elif pending_count > 0:
         next_action = 'remedy job run-loop <job_id> --json'
     elif state in ('completed', 'failed'):
@@ -845,7 +869,9 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         'artifact_count': truth['artifact_count'],
         'patch_intent_ids': truth['patch_intent_ids'],
         'approval_required': truth['approval_required'],
+        'code_applied': truth['code_applied'],
         'latest_stop_reason': truth['latest_stop_reason'],
+        'fulfillment_status': truth.get('fulfillment_status', ''),
         'blockers': blockers,
         'next_safe_action': next_action,
     }
@@ -905,6 +931,20 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             'type': t.inputs.get('task_type', 'unknown') if t.inputs else 'unknown',
         })
 
+    # Include fulfillment data if available
+    fulfillment_data: dict = {}
+    try:
+        from packages.orchestration.job_fulfillment import (
+            export_job_fulfillment_json,
+            list_fulfillment_records,
+        )
+        data_dir = resolve_data_root()
+        records = list_fulfillment_records(str(job.id), data_dir)
+        if records:
+            fulfillment_data = export_job_fulfillment_json(records[-1])
+    except Exception:
+        pass
+
     report = {
         'job_id': str(job.id),
         'name': job.name,
@@ -918,8 +958,11 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
         'approval_required': truth['approval_required'],
         'latest_stop_reason': truth['latest_stop_reason'],
         'code_applied': truth['code_applied'],
+        'fulfillment_status': truth.get('fulfillment_status', ''),
         'tasks': task_details,
     }
+    if fulfillment_data:
+        report['fulfillment'] = fulfillment_data
 
     if json_output:
         print(_json.dumps(report, indent=2))

@@ -125,7 +125,7 @@ remedy job fulfill <job_id> --fixture-demo --json
 # Check result
 remedy job status <job_id> --json
 remedy job report <job_id> --json
-remedy propose list --job-id <job_id> --json
+remedy propose list <job_id> --json
 ```
 
 This demo uses fixture mode (no real provider). See `docs/first-fulfilled-job-demo-v0.md`.
