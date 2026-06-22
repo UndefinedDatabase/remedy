@@ -37,7 +37,7 @@ No artifact content, approval reasons, diff text, or exception text is stored in
 any apply record, run-log event, or summary output.
 
 Public API::
-  apply_patch_intent(job, intent_id, *, data_dir=None) -> PatchApplyResult
+  apply_patch_intent(job, intent_id, *, data_dir=None, target_repo_override=None) -> PatchApplyResult
   format_apply_result(result) -> str
 """
 
@@ -102,6 +102,7 @@ def apply_patch_intent(
     intent_id: str,
     *,
     data_dir: Path | None = None,
+    target_repo_override: Path | None = None,
 ) -> PatchApplyResult:
     """Apply an approved PatchIntent to the attached target repository.
 
@@ -137,11 +138,14 @@ def apply_patch_intent(
         _emit_run_log(job, result, data_dir)
         return result
 
-    # ── 1/2. Target repo from job metadata ──────────────────────────────
-    target_repo_str: str = job.metadata.get("target_repo", "") or ""
-    if not target_repo_str:
-        return _blocked("repo_missing")
-    repo_root = Path(target_repo_str)
+    # ── 1/2. Target repo from override or job metadata ─────────────────
+    if target_repo_override is not None:
+        repo_root = Path(target_repo_override)
+    else:
+        target_repo_str: str = job.metadata.get("target_repo", "") or ""
+        if not target_repo_str:
+            return _blocked("repo_missing")
+        repo_root = Path(target_repo_str)
     if not repo_root.exists() or not repo_root.is_dir():
         return _blocked("repo_missing")
 

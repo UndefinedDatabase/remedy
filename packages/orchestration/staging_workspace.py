@@ -5,11 +5,12 @@ and promotes changed files to the real target only after all gates pass.
 
 Design:
   - Filtered copy excludes: .git, .env*, node_modules, venv, __pycache__, .data
-  - Apply uses patch_apply with target_repo overridden to staging dir
+  - Symlinks resolving outside repo root are excluded (escape detection)
+  - Apply uses patch_apply with target_repo_override (no metadata mutation)
   - Tests run with cwd=staging dir
   - Proof built against staging artifacts
-  - Promotion: copy only changed files from staging to target
-  - Markdown append-only for existing target files (no overwrite, no delete)
+  - Promotion: Markdown-only, prefix-based append-only for existing files
+  - Non-markdown files blocked during promotion with blockers recorded
   - Failure discards staging dir entirely — target untouched
 """
 from __future__ import annotations
@@ -20,16 +21,55 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# Directories/patterns excluded from filtered copy
+# Directories excluded from filtered copy
 _EXCLUDE_DIRS: frozenset[str] = frozenset({
     ".git", "node_modules", "venv", ".venv", "__pycache__",
     ".data", ".mypy_cache", ".pytest_cache", ".ruff_cache",
     ".tox", "dist", "build", ".eggs",
 })
 
-_EXCLUDE_PATTERNS: frozenset[str] = frozenset({
-    ".env", ".env.local", ".env.production",
-})
+
+# ---------------------------------------------------------------------------
+# Safety helpers
+# ---------------------------------------------------------------------------
+
+def _is_env_file(name: str) -> bool:
+    """Return True for .env, .env.*, .env-* files."""
+    if name == ".env":
+        return True
+    if name.startswith(".env.") or name.startswith(".env-"):
+        return True
+    return False
+
+
+def _should_exclude_dir(name: str) -> bool:
+    """Check if a directory name should be excluded from filtered copy."""
+    if name in _EXCLUDE_DIRS:
+        return True
+    # Skip hidden dot-directories
+    if name.startswith(".") and name != ".":
+        return True
+    return False
+
+
+def _is_symlink_escape(item: Path, repo_root: Path) -> bool:
+    """Return True if item is a symlink resolving outside repo_root."""
+    if not item.is_symlink():
+        return False
+    try:
+        resolved = item.resolve()
+        root_resolved = repo_root.resolve()
+        return not resolved.is_relative_to(root_resolved)
+    except (OSError, ValueError):
+        return True  # Cannot resolve — treat as escape
+
+
+def _check_path_containment(path: Path, root: Path) -> bool:
+    """Return True if resolved path is inside resolved root."""
+    try:
+        return path.resolve().is_relative_to(root.resolve())
+    except (OSError, ValueError):
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -42,10 +82,13 @@ class StagingWorkspace:
     staging_dir: Path
     target_repo: Path
     job_id: str
+    fulfillment_id: str = ""
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     files_copied: int = 0
     dirs_copied: int = 0
     excluded_dirs: list[str] = field(default_factory=list)
+    excluded_symlinks: list[str] = field(default_factory=list)
+    excluded_env_files: list[str] = field(default_factory=list)
     active: bool = True
 
 
@@ -54,6 +97,7 @@ class StagingApplyRecord:
     """Record of a file applied in staging."""
     relative_path: str
     action: str  # "create" | "modify"
+    scope: str = "staged"  # "staged" | "target"
     bytes_written: int = 0
     staged: bool = True
     promoted: bool = False
@@ -66,6 +110,8 @@ class PromotionResult:
     promoted: bool = False
     files_promoted: list[str] = field(default_factory=list)
     files_skipped: list[str] = field(default_factory=list)
+    files_blocked: list[str] = field(default_factory=list)
+    blockers: list[str] = field(default_factory=list)
     reason: str = ""
     promoted_at: str = ""
 
@@ -86,28 +132,18 @@ class StagingResult:
 # Filtered copy
 # ---------------------------------------------------------------------------
 
-def _should_exclude(path: Path) -> bool:
-    """Check if a path should be excluded from filtered copy."""
-    name = path.name
-    if name in _EXCLUDE_DIRS:
-        return True
-    if name in _EXCLUDE_PATTERNS:
-        return True
-    # Skip hidden dot-directories (but not dot-files like .gitignore)
-    if path.is_dir() and name.startswith(".") and name not in ("."):
-        return True
-    return False
-
-
 def create_staging_workspace(
     target_repo: Path,
     staging_parent: Path,
     job_id: str,
+    *,
+    fulfillment_id: str = "",
 ) -> StagingWorkspace:
     """Create a filtered copy of target_repo in an isolated staging directory.
 
     Copies all files except excluded dirs/patterns. Preserves directory structure.
-    staging_parent should be a tmpdir or workspace-scoped directory.
+    Excludes symlinks that resolve outside repo root and .env* files.
+    staging_parent should be a Remedy workspace-scoped directory.
     """
     staging_dir = staging_parent / f"staging_{job_id[:16]}"
     if staging_dir.exists():
@@ -117,6 +153,10 @@ def create_staging_workspace(
     files_copied = 0
     dirs_copied = 0
     excluded: list[str] = []
+    excluded_symlinks: list[str] = []
+    excluded_env_files: list[str] = []
+
+    repo_root_resolved = target_repo.resolve()
 
     def _copy_tree(src: Path, dst: Path) -> None:
         nonlocal files_copied, dirs_copied
@@ -124,14 +164,23 @@ def create_staging_workspace(
         dirs_copied += 1
 
         for item in sorted(src.iterdir()):
-            if _should_exclude(item):
-                excluded.append(str(item.relative_to(target_repo)))
+            rel = str(item.relative_to(target_repo))
+
+            # Symlink escape check
+            if _is_symlink_escape(item, target_repo):
+                excluded_symlinks.append(rel)
                 continue
-            dest_item = dst / item.name
+
             if item.is_dir():
-                _copy_tree(item, dest_item)
+                if _should_exclude_dir(item.name):
+                    excluded.append(rel)
+                    continue
+                _copy_tree(item, dst / item.name)
             elif item.is_file():
-                shutil.copy2(str(item), str(dest_item))
+                if _is_env_file(item.name):
+                    excluded_env_files.append(rel)
+                    continue
+                shutil.copy2(str(item), str(dst / item.name))
                 files_copied += 1
 
     _copy_tree(target_repo, staging_dir)
@@ -140,9 +189,12 @@ def create_staging_workspace(
         staging_dir=staging_dir,
         target_repo=target_repo,
         job_id=job_id,
+        fulfillment_id=fulfillment_id,
         files_copied=files_copied,
         dirs_copied=dirs_copied,
         excluded_dirs=excluded,
+        excluded_symlinks=excluded_symlinks,
+        excluded_env_files=excluded_env_files,
     )
 
 
@@ -166,16 +218,17 @@ def find_staged_changes(workspace: StagingWorkspace) -> list[StagingApplyRecord]
             records.append(StagingApplyRecord(
                 relative_path=str(rel),
                 action="create",
+                scope="staged",
                 bytes_written=staged_file.stat().st_size,
             ))
         else:
-            # Compare content
             staged_content = staged_file.read_bytes()
             target_content = target_file.read_bytes()
             if staged_content != target_content:
                 records.append(StagingApplyRecord(
                     relative_path=str(rel),
                     action="modify",
+                    scope="staged",
                     bytes_written=len(staged_content),
                 ))
 
@@ -194,11 +247,13 @@ def promote_staged_changes(
 ) -> PromotionResult:
     """Promote staged changes to target repo.
 
-    Only runs if gates_passed=True. For each changed file:
-    - New files: copy from staging to target
-    - Modified .md files: append new content (never overwrite)
-    - Modified non-.md files: copy from staging (only .md expected in v0)
-    No file deletions. No overwrites of existing content.
+    Only runs if gates_passed=True. Rules:
+    - New .md files: copy from staging to target
+    - Modified .md files: prefix-based append-only (staged must start with
+      exact target content; only the suffix is appended)
+    - Non-.md files: BLOCKED (not promoted, recorded in blockers)
+    - No file deletions. No overwrites of existing content.
+    - Path containment verified for all operations.
     """
     if not gates_passed:
         return PromotionResult(
@@ -214,6 +269,8 @@ def promote_staged_changes(
 
     promoted_files: list[str] = []
     skipped_files: list[str] = []
+    blocked_files: list[str] = []
+    blockers: list[str] = []
     now = datetime.now(timezone.utc).isoformat()
 
     for rec in apply_records:
@@ -224,50 +281,64 @@ def promote_staged_changes(
             skipped_files.append(rec.relative_path)
             continue
 
+        # Path containment check
+        if not _check_path_containment(staged_path, workspace.staging_dir):
+            blocked_files.append(rec.relative_path)
+            blockers.append(f"path_escape:{rec.relative_path}")
+            continue
+        if not _check_path_containment(target_path, workspace.target_repo):
+            blocked_files.append(rec.relative_path)
+            blockers.append(f"target_path_escape:{rec.relative_path}")
+            continue
+
+        # Non-markdown files are blocked
+        if not rec.relative_path.endswith(".md"):
+            blocked_files.append(rec.relative_path)
+            blockers.append(f"non_markdown:{rec.relative_path}")
+            continue
+
         if rec.action == "create":
             if target_path.exists():
-                # Target already has this file — skip (safety)
                 skipped_files.append(rec.relative_path)
                 continue
             target_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(str(staged_path), str(target_path))
             rec.promoted = True
             rec.promoted_at = now
+            rec.scope = "target"
             promoted_files.append(rec.relative_path)
 
         elif rec.action == "modify":
             if not target_path.exists():
-                # Target file was deleted between staging and promotion — skip
                 skipped_files.append(rec.relative_path)
                 continue
-            # For .md files: append-only (no overwrite)
-            if rec.relative_path.endswith(".md"):
-                staged_content = staged_path.read_text(encoding="utf-8")
-                target_content = target_path.read_text(encoding="utf-8")
-                # Find new content (lines in staged not in target)
-                new_lines = []
-                target_lines_set = set(target_content.splitlines())
-                for line in staged_content.splitlines():
-                    if line not in target_lines_set:
-                        new_lines.append(line)
-                if new_lines:
-                    append_text = "\n" + "\n".join(new_lines) + "\n"
-                    with open(target_path, "a", encoding="utf-8") as f:
-                        f.write(append_text)
-                rec.promoted = True
-                rec.promoted_at = now
-                promoted_files.append(rec.relative_path)
-            else:
-                # Non-md: direct copy (v0 only expects .md)
-                shutil.copy2(str(staged_path), str(target_path))
-                rec.promoted = True
-                rec.promoted_at = now
-                promoted_files.append(rec.relative_path)
+            # Prefix-based append-only: staged content must start with
+            # exact target content. Only the new suffix is appended.
+            staged_content = staged_path.read_text(encoding="utf-8")
+            target_content = target_path.read_text(encoding="utf-8")
+
+            if not staged_content.startswith(target_content):
+                # Staged content doesn't preserve target prefix — blocked
+                blocked_files.append(rec.relative_path)
+                blockers.append(f"prefix_mismatch:{rec.relative_path}")
+                continue
+
+            new_suffix = staged_content[len(target_content):]
+            if new_suffix:
+                with open(target_path, "a", encoding="utf-8") as f:
+                    f.write(new_suffix)
+
+            rec.promoted = True
+            rec.promoted_at = now
+            rec.scope = "target"
+            promoted_files.append(rec.relative_path)
 
     return PromotionResult(
         promoted=len(promoted_files) > 0,
         files_promoted=promoted_files,
         files_skipped=skipped_files,
+        files_blocked=blocked_files,
+        blockers=blockers,
         reason="promoted" if promoted_files else "no_changes",
         promoted_at=now,
     )
@@ -297,12 +368,16 @@ def export_staging_result_json(result: StagingResult) -> dict[str, Any]:
         "files_copied": ws.files_copied if ws else 0,
         "dirs_copied": ws.dirs_copied if ws else 0,
         "excluded_count": len(ws.excluded_dirs) if ws else 0,
+        "excluded_symlinks": len(ws.excluded_symlinks) if ws else 0,
+        "excluded_env_files": len(ws.excluded_env_files) if ws else 0,
         "apply_count": len(result.apply_records),
         "test_passed": result.test_passed,
         "proof_status": result.proof_status,
         "promoted": promo.promoted if promo else False,
         "files_promoted": promo.files_promoted if promo else [],
         "files_skipped": promo.files_skipped if promo else [],
+        "files_blocked": promo.files_blocked if promo else [],
+        "blockers": promo.blockers if promo else [],
         "discarded": result.discarded,
         "discard_reason": result.discard_reason,
     }
