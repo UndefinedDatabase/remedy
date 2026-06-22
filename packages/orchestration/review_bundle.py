@@ -75,6 +75,7 @@ REQUIRED_SECTIONS = (
     "config_summary.json",
     "self_repair_proposal_summary.json",
     "execution_approval_policy_summary.json",
+    "fulfillment_summary.json",
     "bundle_readme.md",
 )
 
@@ -1953,6 +1954,33 @@ def _build_approval_policy_summary() -> dict:
 # Argument keys are resolved against a context dict at build time.
 # ---------------------------------------------------------------------------
 
+def _build_fulfillment_summary(job_id: str, data_dir: Path) -> dict:
+    """Build fulfillment summary including staging/promotion truth."""
+    try:
+        from packages.orchestration.job_fulfillment import list_fulfillment_records
+        records = list_fulfillment_records(job_id, data_dir)
+        if not records:
+            return {"status": "no_fulfillment_records", "records": []}
+        summaries = []
+        for r in records:
+            summaries.append({
+                "fulfillment_id": r.fulfillment_id,
+                "status": r.status.value,
+                "mode": r.mode,
+                "staging_used": r.staging_used,
+                "staging_promoted": r.staging_promoted,
+                "promotion_files": r.promotion_files,
+                "test_passed": r.test_passed,
+                "proof_status": r.proof_status,
+                "contract_blockers": r.contract_blockers,
+                "stop_reason": r.stop_reason,
+                "next_safe_action": r.next_safe_action,
+            })
+        return {"status": "ok", "record_count": len(records), "records": summaries}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 _REVIEW_BUNDLE_SECTION_SPECS: tuple[ReviewBundleSectionSpec, ...] = (
     ReviewBundleSectionSpec("job_summary.json", _build_job_summary, True, "Safe job summary", ("job",)),
     ReviewBundleSectionSpec("proof_chains.json", _build_proof_chains_safe, True, "Proof chains", ("job", "events")),
@@ -1994,6 +2022,7 @@ _REVIEW_BUNDLE_SECTION_SPECS: tuple[ReviewBundleSectionSpec, ...] = (
     ReviewBundleSectionSpec("config_summary.json", _build_config_summary, True, "Config system state", ()),
     ReviewBundleSectionSpec("self_repair_proposal_summary.json", _build_self_repair_proposal_summary, True, "Self-repair proposal state", ()),
     ReviewBundleSectionSpec("execution_approval_policy_summary.json", _build_approval_policy_summary, True, "Execution approval policy", ()),
+    ReviewBundleSectionSpec("fulfillment_summary.json", _build_fulfillment_summary, True, "Fulfillment summary", ("job_id", "data_dir")),
 )
 
 

@@ -90,6 +90,7 @@ class PatchApplyResult:
     line_count: int
     blocked_reason: str | None  # set when state == "blocked"
     snapshot_id: str = ""       # populated on "applied" state
+    scope: str = "target"        # "target" | "staged"
 
 
 # ---------------------------------------------------------------------------
@@ -292,10 +293,11 @@ def apply_patch_intent(
         "proof": proof,
         "snapshot_id": _snapshot_id,
         "snapshot_verified": True,
+        "scope": "staged" if target_repo_override is not None else "target",
     }
 
     # ── 11. Save job ──────────────────────────────────────────────────────
-    save_job(job)
+    save_job(job, root=data_dir)
 
     # ── 11b. Durable apply record (Step 1124) ─────────────────────────────
     _snap_meta = _load_snapshot(_snapshot_id, _job_id_str, _data_dir_path)
@@ -341,6 +343,7 @@ def apply_patch_intent(
         line_count=line_count,
         blocked_reason=None,
         snapshot_id=_snapshot_id,
+        scope="staged" if target_repo_override is not None else "target",
     )
 
     # ── 12. Run-log events ────────────────────────────────────────────────

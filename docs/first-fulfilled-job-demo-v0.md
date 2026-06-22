@@ -19,8 +19,7 @@ No real provider. No network. No git operations. No hidden execution.
 
 ```bash
 # 1. Create a job with a repo attached
-remedy job create "Improve the project docs" --json
-JOB_ID=<job_id from output>
+JOB_ID=$(remedy job create "Improve the project docs")
 remedy job attach-repo "$JOB_ID" /path/to/demo/repo
 
 # 2. Run fulfillment in fixture-demo mode

@@ -791,6 +791,8 @@ def _extract_job_truth(job: Job) -> dict:
     fulfillment_id = ''
     staging_used = False
     staging_promoted = False
+    fulfillment_blockers: list[str] = []
+    fulfillment_next_action = ''
     try:
         from packages.orchestration.job_fulfillment import list_fulfillment_records
         records = list_fulfillment_records(str(job.id), data_dir)
@@ -800,8 +802,18 @@ def _extract_job_truth(job: Job) -> dict:
             fulfillment_id = latest.fulfillment_id
             staging_used = latest.staging_used
             staging_promoted = latest.staging_promoted
+            fulfillment_blockers = latest.contract_blockers or []
+            fulfillment_next_action = latest.next_safe_action or ''
     except Exception:
         pass
+
+    # When staging was used, staging_promoted is authoritative for code_applied
+    if staging_used:
+        code_applied = staging_promoted
+
+    # Filter out staged-scope apply records from code_applied
+    if code_applied and not staging_promoted and staging_used:
+        code_applied = False
 
     return {
         'artifact_count': artifact_count,
@@ -814,6 +826,8 @@ def _extract_job_truth(job: Job) -> dict:
         'fulfillment_id': fulfillment_id,
         'staging_used': staging_used,
         'staging_promoted': staging_promoted,
+        'fulfillment_blockers': fulfillment_blockers,
+        'fulfillment_next_action': fulfillment_next_action,
     }
 
 
@@ -852,17 +866,22 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         blockers.append('job_not_started')
     if state == 'blocked':
         blockers.append('job_blocked')
+    # Surface fulfillment blockers
+    if truth.get('fulfillment_blockers'):
+        blockers.extend(truth['fulfillment_blockers'])
 
     if truth['approval_required']:
         next_action = 'remedy patch approve <job_id> <patch_intent_id>'
+    elif truth.get('fulfillment_next_action'):
+        next_action = truth['fulfillment_next_action']
     elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
         next_action = f'remedy propose list {job_id_str} --json'
     elif pending_count > 0:
         next_action = 'remedy job run-loop <job_id> --json'
     elif state in ('completed', 'failed'):
-        next_action = 'remedy job report <job_id> --json'
+        next_action = f'remedy job report {job_id_str} --json'
     else:
-        next_action = 'no pending tasks'
+        next_action = f'remedy job report {job_id_str} --json'
 
     status = {
         'job_id': str(job.id),

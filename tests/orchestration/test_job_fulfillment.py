@@ -76,6 +76,8 @@ class TestFulfillmentModel:
             proof_status="verified",
             final_review_status="pass",
             staging_used=True,
+            staging_promoted=True,
+            promotion_files=["CHANGELOG.md"],
             status=JobFulfillmentStatus.COMPLETED_VERIFIED,
         )
         passed, blockers = contract.check(record)
@@ -274,6 +276,8 @@ class TestCompletionContract:
             proof_accepted_reason="Fixture demo: explicit acceptance",
             final_review_status="pass",
             staging_used=True,
+            staging_promoted=True,
+            promotion_files=["CHANGELOG.md"],
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert passed
@@ -301,6 +305,8 @@ class TestCompletionContract:
             task_ids=["t1"], apply_ids=["a1"], test_passed=True,
             proof_status="verified", final_review_status="pass",
             staging_used=True,
+            staging_promoted=True,
+            promotion_files=["CHANGELOG.md"],
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert passed
@@ -572,23 +578,24 @@ class TestFailurePaths:
         assert record.test_passed is False
         assert "test_not_passed" in record.stop_reason
 
-    def test_apply_blocked_stops_completion(self, tmp_path, monkeypatch):
-        """R-0199: Apply blocked must stop fulfillment."""
+    def test_existing_md_uses_modify_intent(self, tmp_path, monkeypatch):
+        """R-0199: Existing MD files use modify intent and succeed (not blocked)."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
         from packages.orchestration.storage import save_job
 
         repo = create_demo_repo(tmp_path)
-        # Pre-create CHANGELOG.md so apply sees target_exists for create action
+        # Pre-create CHANGELOG.md — should trigger modify intent, not create
         (repo / "CHANGELOG.md").write_text("# Existing\n")
 
-        job = Job(name="Apply blocked test", metadata={"target_repo": str(repo)})
+        job = Job(name="Existing MD test", metadata={"target_repo": str(repo)})
         save_job(job, root=tmp_path)
         record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
 
-        assert record.status.value != "completed_verified"
-        assert "apply_blocked" in record.stop_reason
+        # With modify intent, apply succeeds and fulfillment completes
+        assert record.status.value == "completed_verified"
+        assert record.staging_promoted
 
 
 # ---------------------------------------------------------------------------
@@ -1320,3 +1327,286 @@ class TestCodeAppliedTruth:
             part in f for part in ("__pycache__", ".pytest_cache")
         )}
         assert not new_files, f"New files appeared in target despite test failure: {new_files}"
+
+
+# ---------------------------------------------------------------------------
+# v0.4 Regression Tests — Staged Tests, Target Truth, Promotion Contract
+# ---------------------------------------------------------------------------
+
+
+class TestStagedTestExecution:
+    """Tests must run against staging dir, not target repo."""
+
+    def test_target_repo_has_no_pytest_cache(self, tmp_path, monkeypatch):
+        """After fulfillment, target repo must not contain .pytest_cache."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        job = Job(name="Cache test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        # Target should not have .pytest_cache
+        pytest_cache = repo / ".pytest_cache"
+        assert not pytest_cache.exists(), f"Target repo has .pytest_cache after fulfillment"
+
+    def test_target_repo_has_no_pycache(self, tmp_path, monkeypatch):
+        """After fulfillment, target repo must not contain test __pycache__."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        # Remove any pre-existing __pycache__
+        import shutil
+        for pc in repo.rglob("__pycache__"):
+            shutil.rmtree(pc)
+
+        job = Job(name="Pycache test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        # No new __pycache__ in target
+        pycache_dirs = list(repo.rglob("__pycache__"))
+        assert not pycache_dirs, f"Target repo has __pycache__ after fulfillment: {pycache_dirs}"
+
+
+class TestCodeAppliedTruthV04:
+    """code_applied must reflect target promotion truth, not staged apply."""
+
+    def test_successful_fulfillment_code_applied_true(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import (
+            create_demo_repo,
+            list_fulfillment_records,
+            run_job_fulfill,
+        )
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        job = Job(name="Applied test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        assert record.staging_promoted is True
+        assert len(record.promotion_files) > 0
+
+    def test_failing_test_code_applied_false(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import (
+            create_demo_repo,
+            list_fulfillment_records,
+            run_job_fulfill,
+        )
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
+        job = Job(name="Blocked test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        assert record.staging_promoted is False
+        assert record.status.value == "blocked"
+
+
+class TestBlockedFulfillmentStatus:
+    """Blocked fulfillment must expose blockers and useful next action."""
+
+    def test_blocked_has_stop_reason(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
+        job = Job(name="Stop reason test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        assert record.stop_reason, "Blocked fulfillment must have stop_reason"
+        assert "test_not_passed" in record.stop_reason
+
+    def test_blocked_has_next_action(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
+        job = Job(name="Next action test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        assert record.next_safe_action, "Blocked fulfillment must have next_safe_action"
+        assert "remedy" in record.next_safe_action
+        assert "no pending tasks" not in record.next_safe_action
+
+
+class TestApplyScope:
+    """Apply records must distinguish staged vs target scope."""
+
+    def test_staged_apply_has_staged_scope(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import load_job, save_job
+
+        repo = create_demo_repo(tmp_path)
+        job = Job(name="Scope test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        reloaded = load_job(job.id, tmp_path)
+        for art in reloaded.artifacts:
+            records = art.metadata.get("patch_intent_apply_records", {})
+            for rec in records.values():
+                if isinstance(rec, dict) and rec.get("state") == "applied":
+                    assert rec.get("scope") == "staged", (
+                        f"Apply record scope should be 'staged', got {rec.get('scope')}"
+                    )
+
+
+class TestPromotionContract:
+    """Contract must require target promotion for completed_verified."""
+
+    def test_requires_target_promotion(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentContract,
+            JobFulfillmentRecord,
+        )
+
+        record = JobFulfillmentRecord(
+            job_id="test",
+            mode="fixture_demo",
+            task_ids=["t1"],
+            apply_ids=["a1"],
+            test_passed=True,
+            proof_status="accepted",
+            proof_accepted_reason="fixture demo",
+            final_review_status="pass",
+            staging_used=True,
+            staging_promoted=False,  # NOT promoted
+            promotion_files=[],
+        )
+        contract = JobFulfillmentContract()
+        passed, blockers = contract.check(record)
+        assert not passed
+        assert "target_not_promoted" in blockers or "no_promotion_files" in blockers
+
+    def test_promoted_allows_completion(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentContract,
+            JobFulfillmentRecord,
+        )
+
+        record = JobFulfillmentRecord(
+            job_id="test",
+            mode="fixture_demo",
+            task_ids=["t1"],
+            apply_ids=["a1"],
+            test_passed=True,
+            proof_status="accepted",
+            proof_accepted_reason="fixture demo",
+            final_review_status="pass",
+            staging_used=True,
+            staging_promoted=True,
+            promotion_files=["CHANGELOG.md"],
+        )
+        contract = JobFulfillmentContract()
+        passed, blockers = contract.check(record)
+        assert passed, f"Contract should pass with promotion, got blockers: {blockers}"
+
+
+class TestExistingMarkdownFulfillment:
+    """Existing Markdown files must work via append-only in actual fulfillment."""
+
+    def test_existing_changelog_appended(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        # Pre-create CHANGELOG.md (fixture normally creates it)
+        changelog = repo / "CHANGELOG.md"
+        original_content = "# Existing Changelog\n\nPrevious entries.\n"
+        changelog.write_text(original_content)
+
+        job = Job(name="Append test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        assert record.status.value == "completed_verified", (
+            f"Expected completed_verified, got {record.status.value}: {record.stop_reason}"
+        )
+
+        # Original content must be preserved
+        final_content = changelog.read_text()
+        assert final_content.startswith(original_content), (
+            "Original changelog content was not preserved"
+        )
+
+
+class TestReviewBundleFulfillment:
+    """Review bundle must include fulfillment/staging/promotion truth."""
+
+    def test_fulfillment_summary_in_bundle(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.review_bundle import build_review_bundle
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        job = Job(name="Bundle test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+
+        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        result = build_review_bundle(str(job.id))
+        section_names = [s.filename for s in result.sections]
+        assert "fulfillment_summary.json" in section_names
+
+        # Check the section was included (not degraded)
+        for s in result.sections:
+            if s.filename == "fulfillment_summary.json":
+                assert s.status == "included", f"Fulfillment section status: {s.status}"
+
+
+class TestDemoDocsCommands:
+    """Demo docs commands must match actual CLI support."""
+
+    def test_job_create_no_json_flag(self):
+        """job create does not support --json — docs must not claim it."""
+        from pathlib import Path as P
+        docs = P("/home/decodeux/Repos/remedy/docs/first-fulfilled-job-demo-v0.md").read_text()
+        # Should NOT have 'job create' with --json
+        import re
+        create_lines = [l for l in docs.splitlines() if "job create" in l and "remedy" in l]
+        for line in create_lines:
+            assert "--json" not in line, f"job create should not use --json: {line}"
+
+    def test_fulfill_command_exists(self):
+        """job fulfill --fixture-demo must be a valid CLI subcommand."""
+        from apps.cli.commands.job import COMMAND_HANDLERS
+        assert "job.fulfill" in COMMAND_HANDLERS, "job.fulfill not in CLI COMMAND_HANDLERS"
+
+    def test_status_command_exists(self):
+        from apps.cli.commands.job import COMMAND_HANDLERS
+        assert "job.status" in COMMAND_HANDLERS
+
+    def test_report_command_exists(self):
+        from apps.cli.commands.job import COMMAND_HANDLERS
+        assert "job.report" in COMMAND_HANDLERS
