@@ -12,6 +12,7 @@ Completion decided by JobFulfillmentContract.check().
 from __future__ import annotations
 
 import json
+import shutil as _shutil
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -765,8 +766,6 @@ def run_job_fulfill(
         return record
 
     # ── STAGING WORKSPACE ─────────────────────────────────────────────
-    import shutil as _shutil  # noqa: E402
-
     from packages.orchestration.staging_workspace import (
         StagingResult,
         create_staging_workspace,
@@ -906,32 +905,36 @@ def run_job_fulfill(
         )
         record.final_review_status = "pass" if final_pass else "blocked"
 
-        # ── PROMOTION (staging -> target) ─────────────────────────────
-        promotion = promote_staged_changes(
-            staging_ws, staged_changes, gates_passed=True,
-        )
-        staging_result.promotion = promotion
-        record.staging_promoted = promotion.promoted
-        record.promotion_files = promotion.files_promoted
-        record.changed_target_files = promotion.files_promoted if promotion.promoted else []
+        # ── PROMOTION (staging -> target, only if final_pass) ─────────
+        if final_pass:
+            promotion = promote_staged_changes(
+                staging_ws, staged_changes, gates_passed=True,
+            )
+            staging_result.promotion = promotion
+            record.staging_promoted = promotion.promoted
+            record.promotion_files = promotion.files_promoted
+            record.changed_target_files = promotion.files_promoted if promotion.promoted else []
 
-        if promotion.blockers:
-            record.contract_blockers = list(promotion.blockers)
+            if promotion.blockers:
+                record.contract_blockers = list(promotion.blockers)
 
-        append_run_event(data_dir, UUID(job_id), event="staging_promoted", metadata={
-            "fulfillment_id": record.fulfillment_id,
-            "promoted": promotion.promoted,
-            "files_promoted": promotion.files_promoted,
-            "files_skipped": promotion.files_skipped,
-            "files_blocked": promotion.files_blocked,
-        })
+            append_run_event(data_dir, UUID(job_id), event="staging_promoted", metadata={
+                "fulfillment_id": record.fulfillment_id,
+                "promoted": promotion.promoted,
+                "files_promoted": promotion.files_promoted,
+                "files_skipped": promotion.files_skipped,
+                "files_blocked": promotion.files_blocked,
+            })
+        else:
+            record.staging_promoted = False
+            record.changed_target_files = []
 
         # ── CONTRACT CHECK (after promotion truth known) ──────────────
         contract = JobFulfillmentContract()
         passed, blockers = contract.check(record)
         record.contract_blockers = (record.contract_blockers or []) + blockers
 
-        if passed and promotion.promoted:
+        if passed and record.staging_promoted:
             discard_staging(staging_ws, "promoted")
 
             record.status = JobFulfillmentStatus.COMPLETED_VERIFIED
