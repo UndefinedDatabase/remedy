@@ -75,6 +75,7 @@ class TestFulfillmentModel:
             test_passed=True,
             proof_status="verified",
             final_review_status="pass",
+            staging_used=True,
             status=JobFulfillmentStatus.COMPLETED_VERIFIED,
         )
         passed, blockers = contract.check(record)
@@ -272,6 +273,7 @@ class TestCompletionContract:
             proof_status="accepted",
             proof_accepted_reason="Fixture demo: explicit acceptance",
             final_review_status="pass",
+            staging_used=True,
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert passed
@@ -298,10 +300,26 @@ class TestCompletionContract:
         rec = JobFulfillmentRecord(
             task_ids=["t1"], apply_ids=["a1"], test_passed=True,
             proof_status="verified", final_review_status="pass",
+            staging_used=True,
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert passed
         assert blockers == []
+
+
+    def test_staging_not_used_blocks(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentContract,
+            JobFulfillmentRecord,
+        )
+        rec = JobFulfillmentRecord(
+            task_ids=["t1"], apply_ids=["a1"], test_passed=True,
+            proof_status="verified", final_review_status="pass",
+            staging_used=False,
+        )
+        passed, blockers = JobFulfillmentContract().check(rec)
+        assert not passed
+        assert "staging_not_used" in blockers
 
 
 # ---------------------------------------------------------------------------
@@ -513,6 +531,8 @@ class TestJobStatusAfterFulfilled:
         assert data["approval_required"] is False
         assert data["code_applied"] is True
         assert data["fulfillment_status"] == "completed_verified"
+        assert data["staging_used"] is True
+        assert data["staging_promoted"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -747,3 +767,309 @@ class TestFulfillmentNoDevelopmentDependency:
         text = src.read_text()
         assert "live_review" not in text
         assert ".agent/" not in text
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: staging workspace (Steps 3524-3527)
+# ---------------------------------------------------------------------------
+
+
+class TestStagingWorkspace:
+
+    def test_filtered_copy_excludes_git(self, tmp_path):
+        from packages.orchestration.staging_workspace import create_staging_workspace
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Hi")
+        (repo / ".git").mkdir()
+        (repo / ".git" / "config").write_text("[core]")
+        (repo / "__pycache__").mkdir()
+        (repo / "__pycache__" / "foo.pyc").write_text("bytecode")
+
+        staging_parent = tmp_path / "staging"
+        staging_parent.mkdir()
+        ws = create_staging_workspace(repo, staging_parent, "job-123")
+
+        assert (ws.staging_dir / "README.md").exists()
+        assert not (ws.staging_dir / ".git").exists()
+        assert not (ws.staging_dir / "__pycache__").exists()
+        assert ws.files_copied == 1  # only README.md
+
+    def test_filtered_copy_preserves_structure(self, tmp_path):
+        from packages.orchestration.staging_workspace import create_staging_workspace
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "src").mkdir()
+        (repo / "src" / "main.py").write_text("x = 1")
+        (repo / "docs").mkdir()
+        (repo / "docs" / "guide.md").write_text("# Guide")
+
+        staging_parent = tmp_path / "staging"
+        staging_parent.mkdir()
+        ws = create_staging_workspace(repo, staging_parent, "job-456")
+
+        assert (ws.staging_dir / "src" / "main.py").exists()
+        assert (ws.staging_dir / "docs" / "guide.md").exists()
+
+    def test_discard_removes_staging(self, tmp_path):
+        from packages.orchestration.staging_workspace import (
+            create_staging_workspace,
+            discard_staging,
+        )
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "f.txt").write_text("data")
+
+        staging_parent = tmp_path / "staging"
+        staging_parent.mkdir()
+        ws = create_staging_workspace(repo, staging_parent, "job-789")
+        assert ws.staging_dir.exists()
+
+        discard_staging(ws, "test")
+        assert not ws.staging_dir.exists()
+        assert not ws.active
+
+    def test_find_staged_changes(self, tmp_path):
+        from packages.orchestration.staging_workspace import (
+            create_staging_workspace,
+            find_staged_changes,
+        )
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "existing.md").write_text("old content")
+
+        staging_parent = tmp_path / "staging"
+        staging_parent.mkdir()
+        ws = create_staging_workspace(repo, staging_parent, "job-abc")
+
+        # Modify a file in staging
+        (ws.staging_dir / "existing.md").write_text("new content")
+        # Create a new file in staging
+        (ws.staging_dir / "new_file.md").write_text("brand new")
+
+        changes = find_staged_changes(ws)
+        rel_paths = [r.relative_path for r in changes]
+        assert "existing.md" in rel_paths
+        assert "new_file.md" in rel_paths
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: promotion gate (Steps 3534-3536)
+# ---------------------------------------------------------------------------
+
+
+class TestPromotionGate:
+
+    def test_promotion_requires_gates_passed(self, tmp_path):
+        from packages.orchestration.staging_workspace import (
+            StagingApplyRecord,
+            StagingWorkspace,
+            promote_staged_changes,
+        )
+
+        ws = StagingWorkspace(
+            staging_dir=tmp_path / "staging",
+            target_repo=tmp_path / "target",
+            job_id="j1",
+        )
+        records = [StagingApplyRecord(relative_path="f.md", action="create")]
+        result = promote_staged_changes(ws, records, gates_passed=False)
+        assert not result.promoted
+        assert result.reason == "gates_not_passed"
+
+    def test_promotion_creates_new_files(self, tmp_path):
+        from packages.orchestration.staging_workspace import (
+            StagingApplyRecord,
+            StagingWorkspace,
+            promote_staged_changes,
+        )
+
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "new.md").write_text("# New File\n")
+
+        target = tmp_path / "target"
+        target.mkdir()
+
+        ws = StagingWorkspace(staging_dir=staging, target_repo=target, job_id="j2")
+        records = [StagingApplyRecord(relative_path="new.md", action="create")]
+        result = promote_staged_changes(ws, records, gates_passed=True)
+
+        assert result.promoted
+        assert "new.md" in result.files_promoted
+        assert (target / "new.md").exists()
+
+    def test_promotion_skips_existing_target_for_create(self, tmp_path):
+        from packages.orchestration.staging_workspace import (
+            StagingApplyRecord,
+            StagingWorkspace,
+            promote_staged_changes,
+        )
+
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "exists.md").write_text("staged version")
+
+        target = tmp_path / "target"
+        target.mkdir()
+        (target / "exists.md").write_text("original")
+
+        ws = StagingWorkspace(staging_dir=staging, target_repo=target, job_id="j3")
+        records = [StagingApplyRecord(relative_path="exists.md", action="create")]
+        result = promote_staged_changes(ws, records, gates_passed=True)
+
+        assert "exists.md" in result.files_skipped
+        # Original content preserved
+        assert (target / "exists.md").read_text() == "original"
+
+
+# ---------------------------------------------------------------------------
+# Integration: staging in fulfillment (Steps 3531-3533)
+# ---------------------------------------------------------------------------
+
+
+class TestStagedFulfillment:
+
+    def _setup_job(self, tmp_path):
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        job = Job(name="Staged test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+        return job, repo
+
+    def test_staging_used_in_fulfillment(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import run_job_fulfill
+
+        job, repo = self._setup_job(tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        assert record.staging_used is True
+        assert record.status.value == "completed_verified"
+
+    def test_staging_promoted_on_success(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import run_job_fulfill
+
+        job, repo = self._setup_job(tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        assert record.staging_promoted is True
+        assert len(record.promotion_files) > 0
+
+    def test_target_repo_restored_after_staging(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import run_job_fulfill
+        from packages.orchestration.storage import load_job
+        from uuid import UUID
+
+        job, repo = self._setup_job(tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        # After fulfillment, target_repo should point to real repo, not staging
+        final_job = load_job(UUID(str(job.id)), tmp_path)
+        assert final_job.metadata["target_repo"] == str(repo.resolve())
+        assert "staging" not in final_job.metadata["target_repo"]
+
+    def test_files_exist_in_real_repo_after_promotion(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import run_job_fulfill
+
+        job, repo = self._setup_job(tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        # Files should exist in real repo after promotion
+        for f in record.changed_files:
+            assert (repo / f).exists(), f"File {f} not in target repo after promotion"
+
+    def test_staging_discarded_on_test_failure(self, tmp_path, monkeypatch):
+        """Target repo must be untouched when tests fail in staging."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import run_job_fulfill
+        from packages.orchestration.storage import load_job, save_job
+        from uuid import UUID
+
+        # Create repo with failing test
+        repo = tmp_path / "fail_repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test\n")
+        (repo / "pyproject.toml").write_text(
+            "[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n"
+        )
+        tests_dir = repo / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "__init__.py").write_text("")
+        (tests_dir / "test_fail.py").write_text(
+            "def test_always_fails():\n"
+            "    assert False, \"intentional\"\n"
+        )
+
+        job = Job(name="Staging fail test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        # Should not be completed
+        assert record.status.value != "completed_verified"
+        assert record.staging_used is True
+        assert record.staging_promoted is False
+
+        # target_repo restored to real repo
+        final_job = load_job(UUID(str(job.id)), tmp_path)
+        assert final_job.metadata["target_repo"] == str(repo.resolve())
+
+    def test_export_includes_staging_fields(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import (
+            export_job_fulfillment_json,
+            run_job_fulfill,
+        )
+
+        job, repo = self._setup_job(tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        data = export_job_fulfillment_json(record)
+
+        assert "staging_used" in data
+        assert "staging_promoted" in data
+        assert "staged_files" in data
+        assert "promotion_files" in data
+        assert data["staging_used"] is True
+        assert data["staging_promoted"] is True
+
+
+# ---------------------------------------------------------------------------
+# No staging dir leaked (Step 3538)
+# ---------------------------------------------------------------------------
+
+
+class TestStagingCleanup:
+
+    def test_no_staging_dir_after_success(self, tmp_path, monkeypatch):
+        """Staging dir must be cleaned up after successful promotion."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        import glob as glob_mod
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        job = Job(name="Cleanup test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        # No staging_* dirs should remain in /tmp
+        import tempfile
+        staging_dirs = glob_mod.glob(
+            str(Path(tempfile.gettempdir()) / "remedy_staging_*" / "staging_*")
+        )
+        # Filter to only dirs for this job (they should be cleaned up)
+        for d in staging_dirs:
+            if str(job.id)[:16] in d:
+                assert False, f"Staging dir not cleaned up: {d}"

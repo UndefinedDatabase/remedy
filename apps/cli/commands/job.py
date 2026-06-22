@@ -789,6 +789,8 @@ def _extract_job_truth(job: Job) -> dict:
     # Load fulfillment record if available
     fulfillment_status = ''
     fulfillment_id = ''
+    staging_used = False
+    staging_promoted = False
     try:
         from packages.orchestration.job_fulfillment import list_fulfillment_records
         records = list_fulfillment_records(str(job.id), data_dir)
@@ -796,6 +798,8 @@ def _extract_job_truth(job: Job) -> dict:
             latest = records[-1]
             fulfillment_status = latest.status.value
             fulfillment_id = latest.fulfillment_id
+            staging_used = latest.staging_used
+            staging_promoted = latest.staging_promoted
     except Exception:
         pass
 
@@ -808,6 +812,8 @@ def _extract_job_truth(job: Job) -> dict:
         'code_applied': code_applied,
         'fulfillment_status': fulfillment_status,
         'fulfillment_id': fulfillment_id,
+        'staging_used': staging_used,
+        'staging_promoted': staging_promoted,
     }
 
 
@@ -872,6 +878,8 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         'code_applied': truth['code_applied'],
         'latest_stop_reason': truth['latest_stop_reason'],
         'fulfillment_status': truth.get('fulfillment_status', ''),
+        'staging_used': truth.get('staging_used', False),
+        'staging_promoted': truth.get('staging_promoted', False),
         'blockers': blockers,
         'next_safe_action': next_action,
     }

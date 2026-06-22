@@ -1,26 +1,22 @@
-# Plan — Steps 3216-3275: First Perfect Job Demo + Core Truth Closure v0
+# Plan — Steps 3519-3555: Workspace-Staged Fulfillment Safety Closure v0.2
 
 ## Goal
-Fix `do` vs `do run` command shape mismatch, enrich `job status` and `job report`
-with artifact/patch_intent/approval truth, create first demo guide, investigate
-runtime nested-lock, add comprehensive tests.
+Make fixture job fulfillment safe to run against an attached target repo by implementing
+isolated staging workspace. Apply/test/proof in staging first, promote to target only
+after all gates pass.
 
 ## Current Step
-Running test lanes (fast + runtime). All code changes complete.
+Complete. All implementation, tests, docs, and scan done.
 
 ## Completed
-- Steps 3216-3220: Gate + baselines captured
-- Steps 3221-3224: Fixed Happy Path `do "<goal>"` → `do run "<goal>"` in help + all docs
-- Steps 3225-3228: Added `_extract_job_truth()` helper, enriched `_cmd_job_status` and `_cmd_job_report`
-- Steps 3229-3237: Added 14 new tests (truth extraction, truth fields, no-provider/no-apply proofs, help alignment)
-- Steps 3238-3244: Created demo guide (`docs/first-perfect-job-demo-v0.md`), all docs updated
-- Steps 3245-3249: Runtime nested-lock investigation — no issue found (sequential lock, no nesting)
-- Steps 3250-3260: Running test lanes
-
-## Next Steps
-- Complete test lanes
-- Self-review, lint, commit
-- PR + handoff
+- Steps 3519-3520: Baseline green (compile OK, 51 fulfillment tests pass)
+- Steps 3521-3523: Lock investigation — no hang risk found
+- Steps 3524-3527: Staging models + filtered copy workspace
+- Steps 3528-3536: Wired staging into fulfillment engine + promotion gate
+- Steps 3537-3541: Failure safety tests + contract staging requirement
+- Steps 3542-3544: Status/report truth updates for staging fields
+- Steps 3546-3547: Demo docs updated for staging
+- Steps 3548-3554: Full test suite (66 fulfillment, 7123 total), architecture scan, lint
 
 ## Risks
-- Hook revert pattern: all file edits must use `python3 pathlib.write_text()`
+- None remaining

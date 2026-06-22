@@ -81,6 +81,12 @@ class JobFulfillmentRecord(BaseModel):
     apply_result: str = ""
     changed_files: list[str] = Field(default_factory=list)
 
+    # Staging workspace fields
+    staging_used: bool = False
+    staging_promoted: bool = False
+    staged_files: list[str] = Field(default_factory=list)
+    promotion_files: list[str] = Field(default_factory=list)
+
 
 # ---------------------------------------------------------------------------
 # JobFulfillmentContract
@@ -96,6 +102,7 @@ class JobFulfillmentContract(BaseModel):
     max_review_rounds: int = 3
     max_repair_rounds: int = 2
     allowed_mode: str = "fixture_demo"
+    requires_staging: bool = True
 
     def check(self, record: JobFulfillmentRecord) -> tuple[bool, list[str]]:
         """Check if fulfillment contract is satisfied. Returns (passed, blockers)."""
@@ -117,6 +124,8 @@ class JobFulfillmentContract(BaseModel):
                 pass  # explicit accept with reason
             else:
                 blockers.append(f"proof_not_verified:{record.proof_status}")
+        if self.requires_staging and not record.staging_used:
+            blockers.append("staging_not_used")
         if len(record.repair_task_ids) > 0:
             # All repair tasks must be completed (tracked via task_ids)
             pass
@@ -198,6 +207,10 @@ def export_job_fulfillment_json(record: JobFulfillmentRecord) -> dict[str, Any]:
         "contract_blockers": record.contract_blockers,
         "changed_files": record.changed_files,
         "permissions_granted": record.permissions_granted,
+        "staging_used": record.staging_used,
+        "staging_promoted": record.staging_promoted,
+        "staged_files": record.staged_files,
+        "promotion_files": record.promotion_files,
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat(),
     }
@@ -216,6 +229,7 @@ def summarize_job_fulfillment(record: JobFulfillmentRecord) -> str:
         f"  Applied:    {len(record.apply_ids)}",
         f"  Tests:      {len(record.test_run_ids)} (passed={record.test_passed})",
         f"  Proof:      {record.proof_status}",
+        f"  Staged:     {record.staging_used} (promoted={record.staging_promoted})",
         f"  Final:      {record.final_review_status}",
     ]
     if record.next_safe_action:
@@ -740,7 +754,41 @@ def run_job_fulfill(
         save_fulfillment_record(record, data_dir)
         return record
 
-    # ── APPROVAL + APPLY (all outputs through patch_apply) ───────────────
+    # ── STAGING WORKSPACE ─────────────────────────────────────────────────
+    import tempfile
+    from packages.orchestration.staging_workspace import (
+        StagingResult,
+        create_staging_workspace,
+        discard_staging,
+        find_staged_changes,
+        promote_staged_changes,
+    )
+
+    staging_parent = Path(tempfile.mkdtemp(prefix="remedy_staging_"))
+    staging_ws = create_staging_workspace(repo_root, staging_parent, job_id)
+    record.staging_used = True
+    staging_result = StagingResult(workspace=staging_ws)
+
+    # Point target_repo to staging dir for apply phase
+    real_target_repo = str(repo_root.resolve())
+    job.metadata["target_repo"] = str(staging_ws.staging_dir.resolve())
+    save_job(job, root=data_dir)
+
+    append_run_event(data_dir, UUID(job_id), event="staging_created", metadata={
+        "fulfillment_id": record.fulfillment_id,
+        "files_copied": staging_ws.files_copied,
+        "excluded_count": len(staging_ws.excluded_dirs),
+    })
+
+    # Safety net: ensure staging_parent is cleaned up on any uncaught exception
+    import atexit
+    import shutil as _shutil
+
+    def _cleanup_staging():
+        _shutil.rmtree(staging_parent, ignore_errors=True)
+    atexit.register(_cleanup_staging)
+
+    # ── APPROVAL + APPLY (in staging through patch_apply) ─────────────
     record.status = JobFulfillmentStatus.APPROVAL_READY
 
     for wo in worker_outputs:
@@ -749,16 +797,25 @@ def run_job_fulfill(
             continue
         job, success = _approve_and_apply_intent(job, art_id, 0, record, data_dir)
         if not success:
+            discard_staging(staging_ws, "apply_blocked")
+            staging_result.discarded = True
+            staging_result.discard_reason = "apply_blocked"
             return record
 
-    append_run_event(data_dir, UUID(job_id), event="fulfillment_applied", metadata={
+    # Track staged files
+    staged_changes = find_staged_changes(staging_ws)
+    record.staged_files = [r.relative_path for r in staged_changes]
+    staging_result.apply_records = staged_changes
+
+    append_run_event(data_dir, UUID(job_id), event="fulfillment_staged_apply", metadata={
         "fulfillment_id": record.fulfillment_id,
         "changed_files": record.changed_files,
+        "staged_files": record.staged_files,
         "apply_ids": record.apply_ids,
     })
     save_fulfillment_record(record, data_dir)
 
-    # ── TESTING ──────────────────────────────────────────────────────────
+    # ── TESTING (in staging) ─────────────────────────────────────────────
     record.status = JobFulfillmentStatus.TESTING
     test_passed = False
     test_run_id = ""
@@ -779,15 +836,23 @@ def run_job_fulfill(
 
     record.test_run_ids.append(test_run_id)
     record.test_passed = test_passed
+    staging_result.test_passed = test_passed
 
     if not test_passed:
         record.status = JobFulfillmentStatus.BLOCKED
-        record.stop_reason = f"test_not_passed:{test_res.status}:{test_res.stop_reason}"
-        record.next_safe_action = f"remedy job report {job_id} --json"
+        record.stop_reason = "test_not_passed:{}:{}".format(test_res.status, test_res.stop_reason)
+        record.next_safe_action = "remedy job report {} --json".format(job_id)
+        # Discard staging — target untouched
+        discard_staging(staging_ws, "test_failed")
+        staging_result.discarded = True
+        staging_result.discard_reason = "test_failed"
+        # Restore target_repo to real repo
+        job.metadata["target_repo"] = real_target_repo
+        save_job(job, root=data_dir)
         save_fulfillment_record(record, data_dir)
         return record
 
-    # ── PROVING ──────────────────────────────────────────────────────────
+    # ── PROVING (against staging) ────────────────────────────────────────
     record.status = JobFulfillmentStatus.PROVING
     try:
         from packages.orchestration.proof_chain import build_proof_chain
@@ -807,6 +872,8 @@ def run_job_fulfill(
             "Proof chain incomplete because fixture mode does not emit "
             "all proof_chain required events. Accepted with reason."
         )
+
+    staging_result.proof_status = record.proof_status
 
     append_run_event(data_dir, UUID(job_id), event="fulfillment_proof_built", metadata={
         "fulfillment_id": record.fulfillment_id,
@@ -832,32 +899,68 @@ def run_job_fulfill(
     )
     record.final_review_status = "pass" if final_pass else "blocked"
 
-    # ── COMPLETION (decided by contract) ─────────────────────────────────
+    # ── PROMOTION (staging -> target) ────────────────────────────────────
     contract = JobFulfillmentContract()
     passed, blockers = contract.check(record)
     record.contract_blockers = blockers
 
     if passed:
+        # All gates passed — promote staged changes to real target
+        promotion = promote_staged_changes(
+            staging_ws, staged_changes, gates_passed=True,
+        )
+        staging_result.promotion = promotion
+        record.staging_promoted = promotion.promoted
+        record.promotion_files = promotion.files_promoted
+
+        # Restore target_repo to real repo
+        job = load_job(UUID(job_id), data_dir)
+        job.metadata["target_repo"] = real_target_repo
+        save_job(job, root=data_dir)
+
+        append_run_event(data_dir, UUID(job_id), event="staging_promoted", metadata={
+            "fulfillment_id": record.fulfillment_id,
+            "files_promoted": promotion.files_promoted,
+            "files_skipped": promotion.files_skipped,
+        })
+
+        # Clean up staging
+        discard_staging(staging_ws, "promoted")
+        _shutil.rmtree(staging_parent, ignore_errors=True)
+        atexit.unregister(_cleanup_staging)
+
         record.status = JobFulfillmentStatus.COMPLETED_VERIFIED
         record.stop_reason = "completed_verified"
 
+        job = load_job(UUID(job_id), data_dir)
         job.state = RunState.COMPLETED
         save_job(job, root=data_dir)
 
         suggestion_ids = _generate_next_suggestions(job_id, data_dir)
         record.next_suggestion_ids = suggestion_ids
-        record.next_safe_action = f"remedy propose list {job_id} --json"
+        record.next_safe_action = "remedy propose list {} --json".format(job_id)
 
         append_run_event(data_dir, UUID(job_id), event="fulfillment_completed", metadata={
             "fulfillment_id": record.fulfillment_id,
             "status": "completed_verified",
             "contract_id": record.contract_id,
             "suggestion_count": len(suggestion_ids),
+            "staging_promoted": True,
         })
     else:
+        # Contract failed — discard staging, target untouched
+        discard_staging(staging_ws, "contract_failed:{}".format(blockers))
+        staging_result.discarded = True
+        staging_result.discard_reason = "contract_failed"
+
+        # Restore target_repo to real repo
+        job = load_job(UUID(job_id), data_dir)
+        job.metadata["target_repo"] = real_target_repo
+        save_job(job, root=data_dir)
+
         record.status = JobFulfillmentStatus.BLOCKED
-        record.stop_reason = f"contract_not_satisfied:{blockers}"
-        record.next_safe_action = f"remedy job report {job_id} --json"
+        record.stop_reason = "contract_not_satisfied:{}".format(blockers)
+        record.next_safe_action = "remedy job report {} --json".format(job_id)
 
     save_fulfillment_record(record, data_dir)
     return record
