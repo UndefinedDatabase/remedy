@@ -1,24 +1,22 @@
-# Plan — Steps 3606-3655: Staged Test + Promotion Truth Closure v0.4
+# Plan — Steps 3656-3695: Fulfillment Test-Lane + Status Truth Closure v0.5
 
 ## Goal
-Close remaining staging safety gaps: tests run against staging dir (not target),
-code_applied truth tied to promotion, blocked jobs expose blockers, promotion-first
-contract ordering, existing MD files use modify intent, review bundle includes
-fulfillment summary, demo docs commands valid, data_dir threaded consistently.
+Close test-lane and product-truth gaps: whole file stability, blocked status
+truth, changed_files semantics, demo docs fixes, review bundle safety, lint.
 
 ## Current Step
-Complete. All implementation, tests (90 fulfillment, 2127+ total), and fixes done.
+Complete. All implementation, tests (99 fulfillment, 7160+ total), lint clean.
 
 ## Completed
-- Contract: requires_target_promotion field + target_not_promoted/no_promotion_files blockers
-- Promotion-first ordering: promote → record result → contract check → completion decision
-- Existing MD detection: fixture worker checks (repo_root / target_file).exists() → modify vs create
-- CLI truth: staging_promoted authoritative for code_applied; fulfillment_blockers + next_action surfaced
-- Review bundle: fulfillment_summary.json section with staging/promotion/contract truth
-- Demo docs: job create --json → JOB_ID=$(remedy job create "...")
-- test_execution_service: data_dir threaded through _persist_test_record, _create_failure_artifact, finalize_test_outcome
-- Tests: updated contract tests for requires_target_promotion, fixed COMMANDS→COMMAND_HANDLERS import, updated apply_blocked test to reflect modify intent fix
-- Full suite: 2127+ passed (1 pre-existing failure in test_project_brain unrelated)
+- Fixture demo timeout: 30s requested_timeout_seconds for bounded test runs
+- Blocked stop_reason surfaced in latest_stop_reason and fulfillment_blockers
+- changed_target_files field: empty for blocked, equals promotion_files for success
+- Report includes staging_used, staging_promoted, fulfillment_blockers, next_safe_action
+- Demo docs: hard-coded path removed, repo requirements section, blocked behavior table
+- Review bundle: sanitized error path (no raw str(exc)), staged vs target distinction
+- Lint: all I001, UP032, F401 fixed. Lint clean.
+- Tests: 99 fulfillment, 571 fast, runtime 4/4, 7160 full (2 pre-existing unrelated)
+- Architecture guard: clean
 
 ## Risks
 - None remaining

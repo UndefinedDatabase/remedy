@@ -1969,7 +1969,9 @@ def _build_fulfillment_summary(job_id: str, data_dir: Path) -> dict:
                 "mode": r.mode,
                 "staging_used": r.staging_used,
                 "staging_promoted": r.staging_promoted,
+                "staged_files": r.staged_files,
                 "promotion_files": r.promotion_files,
+                "changed_target_files": getattr(r, "changed_target_files", []),
                 "test_passed": r.test_passed,
                 "proof_status": r.proof_status,
                 "contract_blockers": r.contract_blockers,
@@ -1977,8 +1979,8 @@ def _build_fulfillment_summary(job_id: str, data_dir: Path) -> dict:
                 "next_safe_action": r.next_safe_action,
             })
         return {"status": "ok", "record_count": len(records), "records": summaries}
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
+    except Exception:
+        return {"status": "error", "error_type": "fulfillment_load_failed"}
 
 
 _REVIEW_BUNDLE_SECTION_SPECS: tuple[ReviewBundleSectionSpec, ...] = (
