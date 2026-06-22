@@ -828,7 +828,7 @@ class TestApplyRecord:
         # record should only have schema-defined keys (proof is a nested dict, not raw content)
         allowed_keys = {"state", "applied_at", "target_path", "action",
                         "bytes_written", "line_count", "reason", "proof",
-                        "snapshot_id", "snapshot_verified"}
+                        "snapshot_id", "snapshot_verified", "scope"}
         unexpected = set(record.keys()) - allowed_keys
         assert not unexpected, f"unexpected keys in record: {unexpected}"
         # proof must not contain raw file content, only structural hashes and counts
@@ -847,7 +847,7 @@ class TestApplyRecord:
         result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
         assert result.state == "applied"
         # Reload and check record
-        job2 = load_job(job.id)
+        job2 = load_job(job.id, tmp_path)
         record = None
         for art in job2.artifacts:
             records = art.metadata.get("patch_intent_apply_records", {})
