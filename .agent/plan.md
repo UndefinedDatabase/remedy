@@ -1,26 +1,24 @@
-# Plan — Steps 3216-3275: First Perfect Job Demo + Core Truth Closure v0
+# Plan — Steps 3606-3655: Staged Test + Promotion Truth Closure v0.4
 
 ## Goal
-Fix `do` vs `do run` command shape mismatch, enrich `job status` and `job report`
-with artifact/patch_intent/approval truth, create first demo guide, investigate
-runtime nested-lock, add comprehensive tests.
+Close remaining staging safety gaps: tests run against staging dir (not target),
+code_applied truth tied to promotion, blocked jobs expose blockers, promotion-first
+contract ordering, existing MD files use modify intent, review bundle includes
+fulfillment summary, demo docs commands valid, data_dir threaded consistently.
 
 ## Current Step
-Running test lanes (fast + runtime). All code changes complete.
+Complete. All implementation, tests (90 fulfillment, 2127+ total), and fixes done.
 
 ## Completed
-- Steps 3216-3220: Gate + baselines captured
-- Steps 3221-3224: Fixed Happy Path `do "<goal>"` → `do run "<goal>"` in help + all docs
-- Steps 3225-3228: Added `_extract_job_truth()` helper, enriched `_cmd_job_status` and `_cmd_job_report`
-- Steps 3229-3237: Added 14 new tests (truth extraction, truth fields, no-provider/no-apply proofs, help alignment)
-- Steps 3238-3244: Created demo guide (`docs/first-perfect-job-demo-v0.md`), all docs updated
-- Steps 3245-3249: Runtime nested-lock investigation — no issue found (sequential lock, no nesting)
-- Steps 3250-3260: Running test lanes
-
-## Next Steps
-- Complete test lanes
-- Self-review, lint, commit
-- PR + handoff
+- Contract: requires_target_promotion field + target_not_promoted/no_promotion_files blockers
+- Promotion-first ordering: promote → record result → contract check → completion decision
+- Existing MD detection: fixture worker checks (repo_root / target_file).exists() → modify vs create
+- CLI truth: staging_promoted authoritative for code_applied; fulfillment_blockers + next_action surfaced
+- Review bundle: fulfillment_summary.json section with staging/promotion/contract truth
+- Demo docs: job create --json → JOB_ID=$(remedy job create "...")
+- test_execution_service: data_dir threaded through _persist_test_record, _create_failure_artifact, finalize_test_outcome
+- Tests: updated contract tests for requires_target_promotion, fixed COMMANDS→COMMAND_HANDLERS import, updated apply_blocked test to reflect modify intent fix
+- Full suite: 2127+ passed (1 pre-existing failure in test_project_brain unrelated)
 
 ## Risks
-- Hook revert pattern: all file edits must use `python3 pathlib.write_text()`
+- None remaining

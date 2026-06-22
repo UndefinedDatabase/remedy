@@ -4,7 +4,8 @@
 
 A job is created, tasks are planned, a fixture worker produces artifacts,
 a review catches one finding, a repair task fixes it, approval is granted,
-the patch is applied to the repo, tests pass, proof is built, the job
+the patch is applied in an isolated staging workspace, tests pass in staging,
+proof is built, staged changes are promoted to the target repo, the job
 reaches completed_verified, and next suggestions are generated.
 
 All of this happens through existing safe gates:
@@ -18,8 +19,7 @@ No real provider. No network. No git operations. No hidden execution.
 
 ```bash
 # 1. Create a job with a repo attached
-remedy job create "Improve the project docs" --json
-JOB_ID=<job_id from output>
+JOB_ID=$(remedy job create "Improve the project docs")
 remedy job attach-repo "$JOB_ID" /path/to/demo/repo
 
 # 2. Run fulfillment in fixture-demo mode
@@ -54,6 +54,8 @@ remedy propose defer "$JOB_ID" <task_id> --json
 | `test_passed` | `true` | Tests passed |
 | `proof_status` | `verified` or `accepted` | Proof confirmed |
 | `final_review_status` | `pass` | All contract gates passed |
+| `staging_used` | `true` | Apply/test ran in isolated staging |
+| `staging_promoted` | `true` | Staged changes promoted to target |
 | `next_suggestion_ids` | 3 items | Proposed next steps |
 
 ### `job status --json` (after fulfill)
@@ -64,6 +66,8 @@ remedy propose defer "$JOB_ID" <task_id> --json
 | `approval_required` | `false` | No pending approvals |
 | `code_applied` | `true` | Changes were applied |
 | `fulfillment_status` | `completed_verified` | Fulfillment completed |
+| `staging_used` | `true` | Staging workspace was used |
+| `staging_promoted` | `true` | Changes promoted to target |
 
 ### `job report --json` (after fulfill)
 
@@ -78,18 +82,25 @@ remedy propose defer "$JOB_ID" <task_id> --json
 - Real test execution (tests run through Test Execution Service but in demo repo only)
 - Git operations (no commits, branches, or PRs)
 - Multi-repo support
-- Rollback on failure
 - Budget-aware stopping
 
 ## Safety invariants demonstrated
 
-1. **Bounded write**: only `.md` files written through patch apply gate
-2. **No provider call**: fixture mode, no API key needed
-3. **No git operations**: no commits, no branches, no PRs
-4. **Review required**: job cannot complete without review pass
-5. **Repair loop**: finding creates repair task, second review confirms fix
-6. **Approval gate**: patch intent must be approved before apply
-7. **Test gate**: tests must pass (or be accepted) before completion
-8. **Proof gate**: proof chain built after apply/test
-9. **Contract enforcement**: `completed_verified` only when all gates pass
-10. **Honest failure**: test failure stops fulfillment with clear next action
+1. **Isolated staging**: apply/test/proof run in staging workspace, not target repo
+2. **No metadata mutation**: `target_repo` in saved job never points to staging
+3. **Explicit override**: staging apply uses `target_repo_override`, not metadata mutation
+4. **Scoped cleanup**: staging parent always removed via try/finally, not atexit
+5. **Bounded write**: only `.md` files written through patch apply gate
+6. **MD-only promotion**: non-markdown files blocked during promotion with blockers recorded
+7. **Prefix-based append**: modify promotion requires staged content to start with exact target content
+8. **Env file exclusion**: `.env`, `.env.*`, `.env-*` files excluded from staging copy
+9. **Symlink escape detection**: symlinks resolving outside repo root excluded from staging
+10. **No provider call**: fixture mode, no API key needed
+11. **No git operations**: no commits, no branches, no PRs
+12. **Review required**: job cannot complete without review pass
+13. **Repair loop**: finding creates repair task, second review confirms fix
+14. **Approval gate**: patch intent must be approved before apply
+15. **Test gate**: tests must pass (or be accepted) before completion
+16. **Proof gate**: proof chain built after apply/test
+17. **Contract enforcement**: `completed_verified` only when all gates pass
+18. **Honest failure**: test failure stops fulfillment with clear next action

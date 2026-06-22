@@ -86,6 +86,11 @@ class TestExecutionRequest:
     # Optional explicit discovered-command id. When set, the runner executes that exact
     # discovered candidate instead of self-selecting the best one. Empty = runner selects.
     command_id: str = ""
+    # Optional override for test execution target. When set, tests run against this
+    # path instead of job.metadata["target_repo"]. Used for staged fulfillment.
+    repo_root_override: str = ""
+    # Scope indicator: "target" (default) or "staged" (running against staging workspace).
+    scope: str = "target"
 
 
 @dataclass
@@ -536,13 +541,21 @@ def _safe_event_meta(
 # ---------------------------------------------------------------------------
 
 
-def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
+def execute_test_run(
+    request: TestExecutionRequest,
+    *,
+    data_dir: Path | None = None,
+) -> TestExecutionResult:
     """Run a test for a job. Enforces all gates. Returns a safe result.
 
     This is the single entry point. CLI, repair_loop, and future flows all
     call here. No raw output returned.
+
+    Args:
+        request: Test execution request.
+        data_dir: Explicit data root. Defaults to env-var resolution.
     """
-    data_dir = resolve_data_root()
+    data_dir = data_dir or resolve_data_root()
     test_run_id = uuid4().hex[:16]
     created_at = datetime.now(timezone.utc).isoformat()
 
@@ -565,7 +578,7 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
         return result
 
     try:
-        job = load_job(job_id_parsed)
+        job = load_job(job_id_parsed, data_dir)
     except JobNotFoundError:
         result.status = "blocked"
         result.stop_reason = "job_not_found"
@@ -588,15 +601,17 @@ def execute_test_run(request: TestExecutionRequest) -> TestExecutionResult:
         return result
 
     # ── Gate 3: Validate target repository ──────────────────────────────────
-    target_repo_str: str | None = job.metadata.get("target_repo")
-    if not target_repo_str:
-        result.status = "blocked"
-        result.stop_reason = "no_target_repo"
-        result.safe_summary = "No target repository attached to job."
-        result.next_safe_action = f"remedy job attach-repo {job.id} <repo_path>"
-        return result
-
-    repo_root = Path(target_repo_str).resolve()
+    if request.repo_root_override:
+        repo_root = Path(request.repo_root_override).resolve()
+    else:
+        target_repo_str: str | None = job.metadata.get("target_repo")
+        if not target_repo_str:
+            result.status = "blocked"
+            result.stop_reason = "no_target_repo"
+            result.safe_summary = "No target repository attached to job."
+            result.next_safe_action = f"remedy job attach-repo {job.id} <repo_path>"
+            return result
+        repo_root = Path(target_repo_str).resolve()
     if not repo_root.is_dir():
         result.status = "blocked"
         result.stop_reason = "target_repo_not_a_directory"
@@ -854,6 +869,7 @@ def _persist_test_record(
     output_truncated: bool = False,
     original_output_bytes: int = 0,
     persisted_output_bytes: int = 0,
+    data_dir: Path | None = None,
 ) -> bool:
     """Store a safe test record in job metadata. Returns True on success.
 
@@ -861,7 +877,7 @@ def _persist_test_record(
     Idempotent: no-op if test_run_id already present.
     """
     try:
-        job = load_job(job_id)
+        job = load_job(job_id, data_dir)
         if "test_runs" not in job.metadata:
             job.metadata["test_runs"] = []
         # Idempotency: skip if already recorded (Step 1117)
@@ -888,7 +904,7 @@ def _persist_test_record(
             "linked_apply_id": result.linked_apply_id,
             "created_at": created_at,
         })
-        save_job(job)
+        save_job(job, root=data_dir)
         return True
     except (OSError, ValueError, KeyError):
         return False
@@ -915,7 +931,7 @@ def _create_failure_artifact(
             persist_failure_artifact,
         )
         from packages.orchestration.test_runner import TestRunRecord
-        job = load_job(job_id)
+        job = load_job(job_id, data_dir)
 
         # Idempotency: check for existing artifact for this test_run_id (Step 1117)
         for art in (job.artifacts or []):
@@ -947,7 +963,7 @@ def _create_failure_artifact(
             related_apply_id=apply_id,
         )
         persist_failure_artifact(job, artifact)
-        save_job(job)
+        save_job(job, root=data_dir)
 
         result.failure_artifact_id = artifact.artifact_id
         _emit(data_dir, job_id, "test_failure_artifact_created", {
@@ -991,7 +1007,7 @@ def finalize_test_outcome(
     usage_ok = False
     record_ok = False
     try:
-        job = load_job(job_id)
+        job = load_job(job_id, data_dir)
         usage = load_usage(job)
         # Idempotency: don't double-count if test_run_id already recorded
         existing_ids = {r.get("test_run_id") for r in job.metadata.get("test_runs", [])}
@@ -1000,7 +1016,7 @@ def finalize_test_outcome(
             usage.runtime_seconds_used += result.duration_ms / 1000.0
         save_usage(job, usage)
         result.usage_after = export_usage_json(usage)
-        save_job(job)
+        save_job(job, root=data_dir)
         usage_ok = True
     except (OSError, ValueError):
         warnings.append("usage_persist_failed")
@@ -1012,6 +1028,7 @@ def finalize_test_outcome(
         output_truncated=output_truncated,
         original_output_bytes=original_output_bytes,
         persisted_output_bytes=persisted_output_bytes,
+        data_dir=data_dir,
     )
     if not record_ok:
         warnings.append("test_record_persist_failed")
