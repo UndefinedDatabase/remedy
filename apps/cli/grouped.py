@@ -107,6 +107,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--ui", action="store_true", dest="ui", help=arg.help)
             elif arg.name == "--fixture-reviewer":
                 parser.add_argument("--fixture-reviewer", action="store_true", dest="fixture_reviewer", help=arg.help)
+            elif arg.name == "--fixture-demo":
+                parser.add_argument("--fixture-demo", action="store_true", dest="fixture_demo", help=arg.help)
             elif arg.name == "--after-task":
                 parser.add_argument("--after-task", default=None, dest="after_task", help=arg.help)
             elif arg.name == "--provider":

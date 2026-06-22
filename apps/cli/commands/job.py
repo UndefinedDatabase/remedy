@@ -732,16 +732,33 @@ def _extract_job_truth(job: Job) -> dict:
     """Extract safe truth from job model for status/report views."""
     artifact_count = len(job.artifacts) if hasattr(job, 'artifacts') else 0
 
-    # Find patch intents and approval status from artifact metadata
+    # Find patch intents and approval/apply status from artifact metadata
     patch_intent_ids: list[str] = []
-    approval_required = False
-    latest_stop_reason = ''
+    pending_intents = 0
+    code_applied = False
     for a in (job.artifacts if hasattr(job, 'artifacts') else []):
         meta = a.metadata if hasattr(a, 'metadata') and a.metadata else {}
         if meta.get('patch_intent_count'):
-            patch_intent_ids.append(str(a.id) + '-0')
-        if meta.get('patch_intent_count') and not meta.get('patch_applied'):
-            approval_required = True
+            intent_id = str(a.id) + '-0'
+            patch_intent_ids.append(intent_id)
+            # Check if this intent has been applied
+            apply_records = meta.get('patch_intent_apply_records', {})
+            intent_applied = False
+            for rec in apply_records.values():
+                if isinstance(rec, dict) and rec.get('state') == 'applied':
+                    code_applied = True
+                    intent_applied = True
+                    break
+            # Check approval state
+            approvals = meta.get('patch_intent_approvals', {})
+            intent_approved = approvals.get(intent_id, {}).get('state') == 'approved'
+            # Only pending if not yet applied and not approved
+            if not intent_applied and not intent_approved:
+                pending_intents += 1
+
+    approval_required = pending_intents > 0
+    latest_stop_reason = ''
+
     # Check timeline for stop reason
     from packages.orchestration.timeline import load_run_events
     data_dir = resolve_data_root()
@@ -757,8 +774,30 @@ def _extract_job_truth(job: Job) -> dict:
             status_val = ev_data.get('status', '')
             if phase == 'approval_required' or status_val == 'approval_required':
                 latest_stop_reason = 'approval_required'
-                approval_required = True
+                if not code_applied:
+                    approval_required = True
                 break
+
+    # Also check fulfillment events for code_applied
+    if not code_applied:
+        for ev in events:
+            ev_data = ev if isinstance(ev, dict) else {}
+            if isinstance(ev_data, dict) and ev_data.get('event') == 'fulfillment_applied':
+                code_applied = True
+                break
+
+    # Load fulfillment record if available
+    fulfillment_status = ''
+    fulfillment_id = ''
+    try:
+        from packages.orchestration.job_fulfillment import list_fulfillment_records
+        records = list_fulfillment_records(str(job.id), data_dir)
+        if records:
+            latest = records[-1]
+            fulfillment_status = latest.status.value
+            fulfillment_id = latest.fulfillment_id
+    except Exception:
+        pass
 
     return {
         'artifact_count': artifact_count,
@@ -766,6 +805,9 @@ def _extract_job_truth(job: Job) -> dict:
         'approval_required': approval_required,
         'latest_stop_reason': latest_stop_reason,
         'event_count': len(events),
+        'code_applied': code_applied,
+        'fulfillment_status': fulfillment_status,
+        'fulfillment_id': fulfillment_id,
     }
 
 
@@ -807,6 +849,8 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
 
     if truth['approval_required']:
         next_action = 'remedy patch approve <job_id> <patch_intent_id>'
+    elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
+        next_action = f'remedy propose list {job_id_str} --json'
     elif pending_count > 0:
         next_action = 'remedy job run-loop <job_id> --json'
     elif state in ('completed', 'failed'):
@@ -825,7 +869,9 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         'artifact_count': truth['artifact_count'],
         'patch_intent_ids': truth['patch_intent_ids'],
         'approval_required': truth['approval_required'],
+        'code_applied': truth['code_applied'],
         'latest_stop_reason': truth['latest_stop_reason'],
+        'fulfillment_status': truth.get('fulfillment_status', ''),
         'blockers': blockers,
         'next_safe_action': next_action,
     }
@@ -885,6 +931,20 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             'type': t.inputs.get('task_type', 'unknown') if t.inputs else 'unknown',
         })
 
+    # Include fulfillment data if available
+    fulfillment_data: dict = {}
+    try:
+        from packages.orchestration.job_fulfillment import (
+            export_job_fulfillment_json,
+            list_fulfillment_records,
+        )
+        data_dir = resolve_data_root()
+        records = list_fulfillment_records(str(job.id), data_dir)
+        if records:
+            fulfillment_data = export_job_fulfillment_json(records[-1])
+    except Exception:
+        pass
+
     report = {
         'job_id': str(job.id),
         'name': job.name,
@@ -897,9 +957,12 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
         'patch_intent_ids': truth['patch_intent_ids'],
         'approval_required': truth['approval_required'],
         'latest_stop_reason': truth['latest_stop_reason'],
-        'code_applied': False,
+        'code_applied': truth['code_applied'],
+        'fulfillment_status': truth.get('fulfillment_status', ''),
         'tasks': task_details,
     }
+    if fulfillment_data:
+        report['fulfillment'] = fulfillment_data
 
     if json_output:
         print(_json.dumps(report, indent=2))
@@ -914,7 +977,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             print('  Approval:  REQUIRED')
         if truth['latest_stop_reason']:
             print(f'  Stop:      {truth["latest_stop_reason"]}')
-        print('  Applied:   No')
+        print(f'  Applied:   {"Yes" if truth["code_applied"] else "No"}')
         if task_details:
             print('  Task details:')
             for td in task_details:
@@ -922,6 +985,67 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
                 ty = td['type']
                 desc = td['description']
                 print(f'    [{s:<10}] {ty}: {desc}')
+
+
+def _cmd_job_fulfill(
+    job_id_str: str,
+    *,
+    fixture_demo: bool = False,
+    json_output: bool = False,
+) -> None:
+    """Run job fulfillment spine — fixture-demo mode only in v0."""
+    import json as _json
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError:
+        if json_output:
+            print(_json.dumps({'error': 'invalid_job_id', 'job_id': job_id_str}))
+        else:
+            print(f'Error: invalid job ID: {job_id_str!r}', file=sys.stderr)
+        sys.exit(1)
+
+    if not fixture_demo:
+        if json_output:
+            print(_json.dumps({'error': 'fixture_demo_required',
+                               'message': 'v0 fulfillment requires --fixture-demo flag'}))
+        else:
+            print('Error: v0 fulfillment requires --fixture-demo flag', file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        if json_output:
+            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
+        else:
+            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+        sys.exit(1)
+
+    repo_str = job.metadata.get('target_repo', '')
+    if not repo_str:
+        if json_output:
+            print(_json.dumps({'error': 'no_repo_attached',
+                               'message': 'Attach a repo first: remedy job attach-repo <id> <path>'}))
+        else:
+            print('Error: no repo attached to job', file=sys.stderr)
+        sys.exit(1)
+
+    from pathlib import Path as _Path
+    repo_root = _Path(repo_str)
+
+    from packages.orchestration.job_fulfillment import (
+        export_job_fulfillment_json,
+        run_job_fulfill,
+        summarize_job_fulfillment,
+    )
+
+    record = run_job_fulfill(str(job_id), repo_root, data_dir=resolve_data_root())
+
+    if json_output:
+        print(_json.dumps(export_job_fulfillment_json(record), indent=2))
+    else:
+        print(summarize_job_fulfillment(record))
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
@@ -966,6 +1090,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "job.report": lambda args: _cmd_job_report(
         args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.fulfill": lambda args: _cmd_job_fulfill(
+        args.job_id,
+        fixture_demo=getattr(args, "fixture_demo", False),
         json_output=getattr(args, "json", False),
     ),
     "job.enqueue": lambda args: _cmd_enqueue(args.job_id),

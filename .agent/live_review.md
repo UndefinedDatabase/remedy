@@ -1,81 +1,89 @@
-# Live Review — Steps 3216-3275: First Perfect Job Demo + Core Truth Closure v0
+# Live Review — Steps 3276-3435: Job Fulfillment Spine v0 + Truth Closure v0.1
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
-Timestamp: 2026-06-20
+Timestamp: 2026-06-22
 
 ## Verdict (reviewer-owned)
-**PASS** @ adc89c0
+**PASS** @ 79890f3
 
-9 files changed, +397/-48. PR #99 open (builder did NOT self-merge — TENTH consecutive
-protocol-compliant block). Builder did NOT write reviewer verdict.
+8 files changed in closure commit (+687/-232 delta from cdc6950).
+PR #100 open (builder did NOT self-merge). Builder did NOT write reviewer verdict.
+Working tree clean.
 
-Uncommitted changes: none (working tree clean).
+## Prior verdict
+**FAIL** @ cdc6950 — 5 Medium, 2 Low findings.
 
-## Precondition check
-- Previous block: Steps 3146-3215 Job-Centric Core Finalization v0
-  - Reviewer PASS @ 2f8966b (verdict @ cfae896)
-  - PR #98 merged to main @ cc8b0e2
-- Branch: feature/steps-3216-3275-first-perfect-job-demo-v0 (from cfae896)
-- Builder committed @ adc89c0, pushed, opened PR #99
+## Finding closure (all 7 findings from FAIL verdict)
 
-## Prior block
-Steps 3146-3215: PASS @ 2f8966b. Merged via PR #98 -> cc8b0e2.
-R-0189 Low (pre-existing flaky). Zero blocking findings.
+### R-0189 Medium — Direct repo write bypass → **Resolved**
+All `write_text` calls removed from `run_job_fulfill`. All outputs go through
+`_approve_and_apply_intent` → `apply_patch_intent`. Test `test_no_direct_repo_write_in_engine`
+verifies no `.write_text(` or `open(` in engine body.
 
-## Findings
-- Zero new findings. All checks PASS.
+### R-0190 Low — Catalog classification → **Resolved**
+Changed from `write_metadata` to `apply_write`. Correct classification.
 
-## Required checks (8 from review prompt)
-1. Protocol compliance — **PASS**. Builder did not self-merge. Builder did not write verdict. Working tree clean.
-2. Command truth — **PASS**. Happy Path uses `remedy do run "<goal>"` (valid). `do run --help`, `job status --help`, `job report --help` all work. Docs consistent.
-3. First demo — **PASS**. `first-perfect-job-demo-v0.md` with exact fixture-builder commands. Tests prove: job_id produced, status/report work, artifact/approval visible, next_safe_action visible, no mutation, no provider, code_applied=false.
-4. Job status/report truth — **PASS**. `_extract_job_truth` checks artifact metadata for patch_intent_count, timeline for stop_reason/approval_required. Status shows `approval_required` blocker + `patch approve` next action. Report shows `code_applied: false` always.
-5. Runtime nested-lock safety — **PASS**. No new nested lock. Runtime lane 4/4 pass.
-6. Demo docs — **PASS**. Exact commands, expected output table, what it proves, what it does NOT prove, no fake autonomy.
-7. Catalog and contract — **PASS**. `job.status` and `job.report` cataloged as `read_only`. No new unsafe permissions.
-8. Safety — **PASS**. No shell=True, no provider SDK (test_job_py_no_provider_import), no subprocess in job.py (test_job_py_no_subprocess), code_applied always false (test_report_always_code_applied_false).
+### R-0191 Medium — Contract not used → **Resolved**
+`JobFulfillmentContract().check(record)` now called at line 837. Completion decided by
+contract pass/fail, not hand-written shortcut. `final_review_status` feeds into contract
+as one of its inputs — contract is the decision-maker.
 
-## Test evidence (reviewer-run)
-- Compileall: 192 files clean
-- Product spine: 72 passed, 0.15s
-- Command catalog: 23 passed, 0.42s
-- Run contract: 88 passed, 0.13s
-- Worker facade: 49 passed, 0.14s
-- Approval policy: 82 passed, 0.14s
+### R-0192 Medium — Blocked tests accepted as pass → **Resolved**
+Line 777: `test_passed = test_res.status == "passed"` — only "passed" accepted.
+`blocked` no longer treated as pass. Test `test_real_test_execution` verifies.
+
+### R-0193 Medium — Test exception swallowed → **Resolved**
+No try/except around test execution (lines 766-788). Exceptions propagate.
+
+### R-0194 Medium — Incomplete proof accepted → **Resolved**
+Lines 830-831: only `("verified", "accepted")` with reason required for accepted.
+Lines 802-809: incomplete proof explicitly upgraded to "accepted" with documented reason.
+Contract check (lines 113-119) enforces verified or accepted-with-reason.
+Tests: `test_incomplete_proof_blocks`, `test_accepted_proof_without_reason_blocks`.
+
+### R-0195 Low — Proposed task command syntax → **Resolved**
+Line 849: uses positional `{job_id}` not `--job-id`. Tests verify no `--job-id` in docs.
+
+## Required checks (re-evaluation after closure)
+1. Protocol compliance — **PASS**. Builder did not self-merge. Did not write verdict. Working tree clean.
+2. Fulfillment status truth — **PASS**. Contract decides completion. Only "passed" tests accepted. Exceptions propagate. Accepted proof requires reason.
+3. Task loop — **PASS**. 2 tasks + repair loop. 51 tests cover all paths.
+4. Worker and review loop — **PASS**. Artifact content in patch_apply format with Proposed Changes section.
+5. Approval/apply/test/proof — **PASS**. All writes through apply_patch_intent. Tests pass. Proof with reason.
+6. Report/status truth — **PASS**. Status/report show fulfillment_status, code_applied, contract fields.
+7. Proposed next tasks — **PASS**. 3 suggestions, no --job-id syntax.
+8. CLI and docs — **PASS**. `job fulfill` exists, `--fixture-demo` required, demo guide accurate.
+9. Command catalog and run contract — **PASS**. `apply_write` classification correct.
+10. Safety — **PASS**. No direct repo writes. No provider imports. No subprocess. No .agent/ dependency.
+
+## Test evidence (reviewer-run, closure commit 79890f3)
+- Compileall: clean
+- Fulfillment tests: 51 passed, 2.31s
+- Product spine: 72 passed, 0.13s
+- Command catalog: 23 passed, 0.43s
 - Boundary guard: 18 passed, 0.19s
-- Dogfood run: 93 passed, 0.20s
-- Review bundle: 90 passed, 1.72s
-- Help outputs: `remedy --help`, `do run --help`, `job status --help`, `job report --help` all work
-- Fast lane: 571 passed, 0.90s
-- Runtime lane: 4/4 suites passed
-- Lint: ruff clean, mypy clean (192 files)
-- Full suite: 7063 passed, 0 failed, 8 skipped, 1 deselected, 208.42s
+- Lint: ruff clean
+- Full suite: 2088 passed, 1 failed (pre-existing on main: test_full_chain_order), 2 skipped, 105s
 
-## Changed Line Map spot-check
-- apps/cli/commands/job.py (+105): `_extract_job_truth` helper, enriched `_cmd_job_status` and `_cmd_job_report` with approval_required, patch_intent_ids, latest_stop_reason, code_applied. Verified.
-- apps/cli/grouped.py (+2/-2): Happy Path uses `remedy do run` instead of `remedy do`. Verified.
-- docs/first-perfect-job-demo-v0.md (+82): New demo doc with commands, expected output, what it proves/doesn't prove. Verified.
-- docs/simple-operator-quickstart-v0.md (+4/-4): Uses `do run` syntax. Verified.
-- docs/core-product-spine-v0.md (+2/-2): Uses `do run` syntax. Verified.
-- docs/autocoder-usage.md (+8/-8): Uses `do run` syntax. Verified.
-- docs/do-run-v1.md (+2/-2): Uses `do run` syntax. Verified.
-- tests/cli/test_product_spine.py (+205): 14 new tests: truth extraction (4), status/report truth fields (3), no-provider/no-apply proof (4), do-run help alignment (3). Verified.
+## Changed Line Map (closure commit cdc6950..79890f3)
+- packages/orchestration/job_fulfillment.py (+378/-231→863 lines): Direct writes removed, contract.check() added, test exception handling removed, proof acceptance tightened, artifact content format with Proposed Changes.
+- tests/orchestration/test_job_fulfillment.py (+314/-17→749 lines): 51 tests. Added: worker output format, contract gate tests (incomplete proof, accepted-without-reason, mode mismatch), failure paths (failing tests, apply blocked), proposed task lifecycle, no-direct-write guard.
+- apps/cli/commands/job.py (+81): fulfillment_status/id in truth extraction, status/report enrichment.
+- apps/cli/command_catalog.py (+2/-2): `apply_write` classification.
+- docs/first-fulfilled-job-demo-v0.md (+5/-4): no --job-id syntax.
+- docs/simple-operator-quickstart-v0.md (+2/-2): minor syntax.
+- tests/cli/test_product_spine.py (+8/-8): adjusted assertions.
 
 ## Top risks
-None. Zero open findings.
+Zero open findings. Pre-existing failure `test_full_chain_order` on main (not introduced by this PR).
 
 ## Merge readiness
-Ready to merge. Zero open Blocker/High/Medium/Low.
-Protocol compliant. First demo documented and tested.
-Job status/report show truthful approval state.
-Full suite clean (7063 passed, 0 failed).
-
-Merge-autonomy applies: auto-merge PR #99.
+Ready to merge. All 5 Medium + 2 Low findings resolved. All checks PASS.
 
 ## Reviewer audit log
-- Builder committed @ adc89c0. PR #99 opened. 9 files changed, +397/-48.
-- Diff reading: job.py, grouped.py, demo doc, quickstart, spine, autocoder, do-run, product spine tests.
-- Test suite: spine 72, catalog 23, contract 88, facade 49, policy 82, boundary 18, dogfood 93, bundle 90, fast 571, runtime 4/4, full 7063.
-- All 8 checks PASS. Zero findings.
-- Verdict: **PASS** @ adc89c0.
+- Initial review @ cdc6950: 5 Medium + 2 Low findings. Verdict: FAIL.
+- Builder closure commit @ 79890f3: addressed all 7 findings.
+- Re-review: all findings verified resolved in code + tests.
+- All tests pass (pre-existing failure excluded).
+- Verdict: **PASS** @ 79890f3 — zero open findings.

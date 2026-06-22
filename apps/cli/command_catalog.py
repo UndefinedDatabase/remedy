@@ -287,6 +287,21 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("job.status", "job.summary"),
     ),
 
+    CommandEntry(
+        command_id="job.fulfill",
+        group_id="job",
+        subcommand="fulfill",
+        description="Run job fulfillment spine (fixture-demo mode in v0).",
+        action_class="apply_write",
+        args=(
+            _JOB_ID,
+            ArgDef("--fixture-demo", "Require fixture-demo mode (v0 only)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.status", "job.report"),
+    ),
+
     # ── project ──────────────────────────────────────────────────────────
     CommandEntry(
         command_id="project.create",

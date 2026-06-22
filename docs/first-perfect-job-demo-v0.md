@@ -80,3 +80,8 @@ rm -rf "$DEMO_REPO"
 3. **No repo mutation**: working directory unchanged after `do run`
 4. **Explicit stop**: job stops at approval boundary with clear reason
 5. **Structured truth**: all state is JSON, testable, no `.agent/` dependency
+
+## See also
+
+For the full fulfilled job demo (apply + test + proof + completed_verified):
+see `docs/first-fulfilled-job-demo-v0.md`.
