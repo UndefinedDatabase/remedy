@@ -1,4 +1,4 @@
-# Live Review — Steps 3816-3855: Wrapper Timeout + Full-Lane Repro Closure v0.9
+# Live Review — Steps 3856-3885: Final Provenance + Forced Timeout Proof + PR Merge Readiness v1.0
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
@@ -6,21 +6,26 @@ Builder must NOT mark findings as resolved.
 Timestamp: 2026-06-23
 
 ## Verdict (reviewer-owned)
-**PASS WITH RISKS** @ 2a709ad
+**PASS** @ 0315496
 
-Zero open Blocker/High/Medium. 2 Low carry-forward risks documented.
-All required findings R-0271 through R-0279 resolved or downgraded.
-10-minute quiet window observed. Double-run reproducibility confirmed.
+Zero open Blocker/High/Medium findings. All v1.0 required findings verified.
+Forced timeout cleanup directly tested and proven. Double-run reproducibility confirmed.
+10-minute quiet window observed. Merge-ready.
 
 ## Commit reviewed
-2a709ad Steps 3816-3838: Wrapper timeout + full-lane repro closure v0.9
-(includes v0.8 commit 92ef76c: Full-lane repro + lock resilience closure v0.8)
+0315496 Steps 3856-3885: Final safety closure v1.0
 
 ## PR reviewed
 No open PR. Builder on `feature/steps-3276-3355-job-fulfillment-spine-v0`.
 
-## Uncommitted changes
-None. Clean working tree.
+## Artifact provenance assessment — PASS
+- `git rev-parse HEAD` = 03154961b5ce59046a69534d28f5be18c65daef2
+- `origin/feature/steps-3276-3355-job-fulfillment-spine-v0` = same
+- No `.review_zip_manifest.json` (not applicable — no review bundle generated)
+- All references unambiguous
+
+## Uncommitted changes status
+None. Clean working tree at time of verdict.
 
 ## Protocol compliance
 - Builder did NOT write reviewer verdict: PASS
@@ -29,170 +34,163 @@ None. Clean working tree.
 - No German in project-facing content: PASS
 
 ## Worker 5-minute quiet-window assessment
-Builder last commit 2a709ad pushed before reviewer started testing.
+Builder last commit 0315496 pushed well before reviewer testing began.
 No new commits during entire review cycle. PASS.
 
 ## Reviewer 10-minute quiet-window assessment
-- Quiet window started: after runtime lane run #2 completed
-- Quiet window ended: 5 consecutive checks (~10 min) with no builder activity
+- Quiet window started: after full suite completed (~18:05 UTC)
+- Quiet window ended: 5 consecutive checks (~10 min, ~18:15 UTC)
 - Activity during window: none
-- Re-verified findings: R-0271 through R-0278 all confirmed via code inspection and test runs
-- Findings remaining open: none at Medium or above
+- Re-verified findings: R-0281 through R-0291 all confirmed
+- Findings remaining open: none
 
 ## Finding status
 
-### R-0271 Blocker — Fulfillment wrapper command not reproducible → **Resolved @ 2a709ad**
-Run #1: `scripts/remedy_pytest.sh tests/orchestration/test_job_fulfillment.py -q` → 109 passed, 8.65s
-Run #2: same command → 109 passed, 9.26s
-Both pass. No hang. No stale processes. No lock blocked second run.
+### R-0281 Blocker — Artifact provenance mismatch → **Resolved @ 0315496**
+HEAD, branch tip, and review all reference 0315496. No ambiguity.
 
-### R-0272 Blocker — Runtime lane not reproducible → **Resolved @ 2a709ad**
-Run #1: `scripts/remedy_test_runtime.sh` → 4/4 suites passed
-Run #2: same command → 4/4 suites passed
-Both pass. Every START has END. No hang. No stale processes.
+### R-0282 Blocker — PR status mismatch → **Resolved**
+No open PR. `.agent/live_review.md` says no open PR. Consistent.
 
-### R-0273 Blocker — Outer timeout can orphan child pytest → **Resolved @ 2a709ad** (Low residual)
-`timeout --signal=TERM --kill-after=5` used for all nodes and suites (lines 69, 96).
-Inner timeout (80s) < outer timeout (90s) with 10s safety margin (lines 23-32).
-Inner runner fires `_ensure_pg_dead()` before outer timeout.
-Low residual: if runner hangs during cleanup, `_ensure_pg_dead()` is not in `finally` block.
-In practice, tests complete in <10s; safety margin makes orphans unlikely.
+### R-0283 Blocker — Forced timeout cleanup not directly tested → **Resolved @ 0315496**
+`TestRunnerProcessGroupCleanup::test_timeout_kills_process_group` creates a slow test
+(sleep 300s), runs runner with 2s timeout. Verifies exit code 124 and no orphan processes
+via `pgrep`. Test passes (test_resource_safety.py:137-185).
 
-### R-0274 High — Inner timeout longer than outer node timeout → **Resolved @ 2a709ad**
-`INNER_TIMEOUT=$((NODE_TIMEOUT - 10))` (line 28). Default: inner=80s, outer=90s.
-Guard: `if [ "$INNER_TIMEOUT" -lt 10 ]; then INNER_TIMEOUT=10; fi` (lines 29-31).
-Comment documents timeout model (lines 11-15).
+### R-0284 Blocker — Wrapper timeout failure leaves orphan process → **Resolved @ 0315496**
+Same test as R-0283 proves no orphans remain after forced timeout.
+Runner `_ensure_pg_dead()` now in `finally` block guarantees cleanup.
 
-### R-0275 High — Lock cleanup claim misleading → **Resolved @ 2a709ad**
-Dead `_clear_stale_lock()` function removed entirely. Lock contention handled via
-`REMEDY_PYTEST_LOCK_WAIT` (default 10s wait in runtime lane, 0 for direct usage).
-Honest and deterministic.
+### R-0285 High — Pytest runner cleanup not guaranteed → **Resolved @ 0315496**
+`remedy_pytest_runner.py` restructured: inner try/except wrapped in outer try/finally
+with `_ensure_pg_dead(pgid)` in finally block (lines 83-98).
+`TestRunnerTryFinallyGuarantee::test_ensure_pg_dead_in_finally` verifies structurally.
 
-### R-0276 High — Nested pytest environment unstable → **Resolved @ 2a709ad**
-Wrapper/quiet mode passes twice. `requested_timeout_seconds` reduced from 30s to 15s
-(job_fulfillment.py line 840). Inner/outer timeout model prevents nested hangs.
+### R-0286 High — Runtime timeout model unsafe for custom values → **Resolved @ 0315496**
+`remedy_test_runtime.sh` adds guard (lines 32-36):
+`if [ "$INNER_TIMEOUT" -ge "$NODE_TIMEOUT" ]; then` → exit 1 with error.
+`TestRuntimeTimeoutEdgeCase::test_too_small_timeout_fails_fast` verifies NODE_TIMEOUT=5
+produces non-zero exit with "too small" error message.
 
-### R-0277 Medium — Read-only integrity regression → **Resolved @ 92ef76c**
-`_integrity_status()` uses `export_readonly_integrity_status()` (overnight_readiness.py:487-488).
-`_build_integrity_summary()` uses `export_readonly_integrity_status()` (review_bundle.py:1808-1809).
-No `run_integrity_checks()` in either path.
-Tests: `TestIntegrityReadOnlyV07` (5 tests) verify no subprocess, no run_integrity_checks,
-no .agent dependency with monkeypatch bombs.
+### R-0287 High — Full wrapper lane not reproducible → **Resolved @ 0315496**
+Run #1: 109 passed, 8.77s. Run #2: 109 passed, 9.28s. No hang, no lock contention.
 
-### R-0278 Medium — Public changed-files truth regression → **Resolved (carried from v0.6)**
-`changed_files` = `changed_target_files` in export.
-Blocked: `changed_files=[]`, `changed_target_files=[]`.
-Success: `changed_files == changed_target_files == promotion_files`.
-`changed_files_safe.json` has `scope: "artifact_intent"` with note.
+### R-0288 High — Runtime lane not reproducible → **Resolved @ 0315496**
+Run #1: 4/4 suites passed. Run #2: 4/4 suites passed. No hang, no stale processes.
 
-### R-0279 Medium — Quiet-window protocol violated → **Resolved**
-10-minute quiet window observed and documented above.
-Builder had no commits during review. Protocol followed.
+### R-0289 Medium — Read-only integrity regression → **Resolved (carried)**
+`_integrity_status()` and `_build_integrity_summary()` use `export_readonly_integrity_status()`.
+No `run_integrity_checks()`, no subprocess, no `.agent` reads. Tests with monkeypatch bombs confirm.
+
+### R-0290 Medium — Public changed-files truth regression → **Resolved (carried)**
+`changed_files == changed_target_files` in export. Blocked = empty. Scope annotations present.
+
+### R-0291 Medium — Quiet-window protocol violated → **Resolved**
+10-minute quiet window documented above. No activity during window.
+
+## Forced timeout cleanup result — PASS
+`test_timeout_kills_process_group`: creates temp slow test (sleep 300s), runs runner
+with REMEDY_PYTEST_TIMEOUT_SEC=2. Runner exits 124. `pgrep` confirms no orphan with
+test filename. Test passes.
+
+## Pytest runner cleanup assessment — PASS
+`_ensure_pg_dead(pgid)` now in `finally` block (line 96-98 of runner).
+Guarantees cleanup on normal exit, timeout, and external signal paths.
+Structural test `test_ensure_pg_dead_in_finally` confirms.
+
+## Runtime timeout edge-case assessment — PASS
+- Default (NODE_TIMEOUT=90): inner=80 < outer=90. Safe.
+- Too small (NODE_TIMEOUT=5): inner=10 (floor), 10 >= 5 → error exit. Tested.
+- Guard: `INNER_TIMEOUT -ge NODE_TIMEOUT` check prevents unsafe config.
+
+## Lock wait semantics assessment — PASS
+Runtime lane: `REMEDY_PYTEST_LOCK_WAIT=10` (flock -w 10). Direct usage: flock -n.
+No dead `_clear_stale_lock()` code. Deterministic behavior.
 
 ## Fulfillment wrapper run #1
 `scripts/remedy_pytest.sh tests/orchestration/test_job_fulfillment.py -q`
-→ **109 passed, 8.65s**. No hang.
+→ **109 passed, 8.77s**
 
 ## Fulfillment wrapper run #2
-Same command → **109 passed, 9.26s**. No hang. No lock contention.
+Same → **109 passed, 9.28s**
 
 ## Runtime lane run #1
-`scripts/remedy_test_runtime.sh`
-→ **4/4 suites passed**. node_timeout=90s, inner_pytest_timeout=80s.
-14 node-isolated + 3 whole-file suites. All START/END paired.
+`scripts/remedy_test_runtime.sh` → **4/4 suites passed**
 
 ## Runtime lane run #2
-Same command → **4/4 suites passed**. No stale processes. No lock blocked.
+Same → **4/4 suites passed**
 
-## Forced wrapper timeout cleanup result
-Not directly tested (would require injecting a slow test). Mitigated by:
-- Inner timeout (80s) < outer (90s) — 10s margin
-- `_ensure_pg_dead()` kills process group with SIGTERM+SIGKILL
-- `timeout --kill-after=5` as last resort
-- Residual Low: `_ensure_pg_dead()` not in `finally` block (pre-existing pattern)
+## Direct verbose fulfillment run
+Not separately run — wrapper mode proven stable across double-run.
+109 tests pass consistently. No hang evidence.
 
 ## Process/lock cleanup assessment — PASS
-Post-test: no stale pytest/runner/grouped processes. Lock file exists but no holder.
-
-## Lock wait/cleanup semantics assessment — PASS
-`REMEDY_PYTEST_LOCK_WAIT=10` in runtime lane. `flock -w 10` waits briefly for contention.
-Direct usage: `flock -n` (non-blocking, fail fast). Dead `_clear_stale_lock()` removed.
+Post-test: no stale pytest/runner/grouped processes. Lock file no holder.
 
 ## Read-only integrity regression assessment — PASS
-`_integrity_status()`: `export_readonly_integrity_status()` only. No subprocess. No .agent.
-`_build_integrity_summary()`: same. Tests with monkeypatch bombs confirm.
+Unchanged from v0.9. `export_readonly_integrity_status()` only. No subprocess. No `.agent`.
 
 ## Public changed-files truth assessment — PASS
-`changed_files == changed_target_files` in export. Blocked = empty. Scoped correctly.
+Unchanged from v0.9. Blocked=empty, success=target-only, scoped correctly.
 
 ## Staged fulfillment safety regression assessment — PASS
-No regression: staging, promotion, append-only, target mutation safety all intact.
-`requested_timeout_seconds` reduced 30→15s. No impact on safety gates.
+No regression. `requested_timeout_seconds=15` (reduced from 30). Safety gates intact.
 
 ## Docs command-shape assessment — PASS
-No doc changes in v0.8/v0.9. Prior fixes (no `job create --json`) still intact.
+No doc changes in v1.0. Prior fixes still valid.
 
-## Test evidence (reviewer-run, commit 2a709ad)
+## Test evidence (reviewer-run, commit 0315496)
 
 ### Targeted tests
-- Fulfillment wrapper: 109 passed × 2 runs (8.65s, 9.26s)
-- Compile check: `python3 -m compileall -q packages apps tests` → clean
+- Regression safety: 17 passed, 2.11s (includes 4 new v1.0 tests)
+- Fulfillment wrapper: 109 passed × 2 runs (8.77s, 9.28s)
+- Compile: `python3 -m compileall -q packages apps tests scripts` → clean
 
 ### Lanes
-- Fast lane: `scripts/remedy_test_fast.sh` → **571 passed, 0.90s**
-- Runtime lane: `scripts/remedy_test_runtime.sh` → **4/4 suites × 2 runs**
-- Lint: `scripts/remedy_lint.sh` → **ruff clean, mypy clean (194 files)**
+- Fast lane: **571 passed, 0.93s**
+- Runtime lane: **4/4 suites × 2 runs**
+- Lint: **ruff clean, mypy clean (194 files)**
 
 ### Full suite
-- `scripts/remedy_pytest.sh -q -k "not test_full_chain_order"` → **7172 passed, 0 failed, 8 skipped** (203.43s)
-- Pre-existing failure: `test_project_brain::test_full_chain_order` (same on main, deselected)
+- `scripts/remedy_pytest.sh -q -k "not test_full_chain_order"` → **7176 passed, 0 failed, 8 skipped** (220.95s)
+- Pre-existing failure: `test_full_chain_order` (deselected, same on main)
 
 ### Post-test process/lock check
-- No stale pytest processes
-- No stale runner processes
-- Lock file: no holder
+- No stale processes
+- Lock: no holder
 - Clean
 
-## Architecture guard scan (2a709ad)
+## Architecture guard scan (0315496)
 - `shell=True`: none
 - Provider SDK imports: none
 - Network calls: none
-- Subprocess in readiness path: none (uses `export_readonly_integrity_status()`)
-- Subprocess in review bundle path: none (uses `export_readonly_integrity_status()`)
-- Hidden pytest/collect-only: none from readiness/bundle. Runtime lane uses explicit collect-only.
+- Subprocess in readiness/bundle path: none
+- Hidden pytest/collect-only from readiness/bundle: none
 - `.agent` reads from readiness/bundle: none
 - Git push/commit/merge: none
 - Direct target writes before promotion: none
 - Metadata mutation to staging: none
 - Raw absolute staging path leaks: none
 - Secret/raw file content leaks: none
-- Timeout orphan: Low residual — `_ensure_pg_dead()` not in finally (pre-existing)
+- Timeout orphan risk: mitigated — `_ensure_pg_dead` in finally, inner < outer enforced
 
-## Edited-file line-range map (reviewer-constructed, fd4daa5→2a709ad)
+## Edited-file line-range map (reviewer-constructed, v0.9→v1.0)
 
 | File | Lines | What changed | Tests |
 |------|-------|-------------|-------|
-| `packages/orchestration/integrity_gate.py` | 337-356 | New `export_readonly_integrity_status()` | TestIntegrityReadOnlyV07 (5) |
-| `packages/orchestration/overnight_readiness.py` | 478-494 | `_integrity_status()` → read-only helper | TestIntegrityReadOnlyV07 |
-| `packages/orchestration/review_bundle.py` | 1801-1811 | `_build_integrity_summary()` → read-only helper | TestIntegrityReadOnlyV07 |
-| `packages/orchestration/review_bundle.py` | 558-559 | `scope`/`scope_note` on changed_files_safe | TestChangedFilesSafeScope |
-| `packages/orchestration/job_fulfillment.py` | 840 | `requested_timeout_seconds` 30→15 | TestStagedTestExecution |
-| `packages/orchestration/job_fulfillment.py` | 89, 216, 916 | `changed_target_files` field + export | TestChangedFilesPublicTruth |
-| `scripts/remedy_pytest.sh` | 30-40 | `REMEDY_PYTEST_LOCK_WAIT` flock wait | TestPytestWrapper |
-| `scripts/remedy_test_runtime.sh` | 11-38, 56-96 | Timeout model, inner<outer, --kill-after, stale detect | Runtime lane double-run |
-| `tests/orchestration/test_job_fulfillment.py` | 1718-1826 | TestIntegrityReadOnlyV07, TestChangedFiles*, TestDocs* | Self-covering |
-| `tests/regression/test_resource_safety.py` | 24-25 | Updated flock assertion for new syntax | Self-covering |
-| `apps/cli/commands/job.py` | 807-815, 991-997 | Blocker truth, report fields | TestBlockedFulfillmentTruthV05 |
-| `docs/simple-operator-quickstart-v0.md` | 121-127 | Fix job create --json | TestDocsCommandShapesV06 |
-| `docs/first-fulfilled-job-demo-v0.md` | 79-112 | Repo requirements, blocked behavior | TestDemoDocsCommands |
+| `scripts/remedy_pytest_runner.py` | 83-98 | `_ensure_pg_dead(pgid)` moved to `finally` block | TestRunnerTryFinallyGuarantee, TestRunnerProcessGroupCleanup |
+| `scripts/remedy_test_runtime.sh` | 32-36 | `INNER_TIMEOUT >= NODE_TIMEOUT` guard with error exit | TestRuntimeTimeoutEdgeCase |
+| `tests/regression/test_resource_safety.py` | 85-194 | 4 new test classes: TryFinally, TimeoutEdge, ProcessGroupCleanup | Self-covering |
 
 ## Top risks
-1. **Low** — `_ensure_pg_dead()` not in `finally` block of `remedy_pytest_runner.py`. If outer timeout fires during cleanup, pytest process group could survive. Mitigated by 10s inner/outer margin.
-2. **Low** — Runtime lane stale-process detection uses `grep -v "$$"` which may miss parent shell PID. Cosmetic false-positive only.
+None at Medium or above. Two Low carry-forward:
+1. Low — Runtime stale-process detection may false-positive on parent shell
+2. Low — `export_readonly_integrity_status()` always returns `unknown` (no persisted state in v0)
 
 ## Merge readiness
-**READY.** Zero Blocker/High/Medium open. Double-run reproducibility confirmed.
-All lanes pass. Read-only integrity verified. Staged fulfillment safety intact.
+**READY.** Zero Blocker/High/Medium open. All required behavioral checks pass.
+Forced timeout cleanup directly tested. Double-run reproducibility confirmed.
+Read-only integrity intact. Staged fulfillment safety intact.
 
 Once PR is created, merge-autonomy applies per memory/merge-autonomy.md.
 
