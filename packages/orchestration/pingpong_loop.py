@@ -12,8 +12,11 @@ All repo mutation happens in staging. Target repo is never modified.
 """
 from __future__ import annotations
 
+import json as _json
 import os
+import shlex
 import shutil
+import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -322,6 +325,8 @@ def run_pingpong(
     timeout_sec: int = 120,
     max_output_chars: int = 50000,
     mentioned_files: list[str] | None = None,
+    test_command: str = "",
+    keep_staging: bool = False,
 ) -> PingPongResult:
     """Run the Builder ↔ Reviewer ping-pong loop.
 
@@ -402,8 +407,12 @@ def run_pingpong(
             # Track staged files
             result.staged_files = _find_staging_changes(staging, original)
 
-            # --- Test phase (simplified: check staging has changes) ---
-            if result.staged_files:
+            # --- Test phase ---
+            if test_command:
+                rd.test_passed, rd.test_summary = _run_test_command(
+                    test_command, staging, timeout_sec=timeout_sec,
+                )
+            elif result.staged_files:
                 rd.test_passed = True
                 rd.test_summary = f"Staged changes detected: {len(result.staged_files)} files"
             else:
@@ -464,12 +473,123 @@ def run_pingpong(
             result.final_status = "max_rounds_reached"
 
     finally:
-        _discard_staging(staging)
+        if not keep_staging:
+            _discard_staging(staging)
+        else:
+            result.error = (result.error + f" staging_dir={staging}" if result.error
+                            else f"staging_dir={staging}")
 
     result.changed_target_files = []  # Staged mode: target never modified
     result.target_mutated = False
     result.finished_at = datetime.now(timezone.utc).isoformat()
+
+    # Persist durable run record
+    _persist_run(result, repo_path)
+
     return result
+
+
+# ---------------------------------------------------------------------------
+# Test command execution
+# ---------------------------------------------------------------------------
+
+_TEST_OUTPUT_CAP = 10000
+
+
+def _run_test_command(
+    command: str,
+    staging: Path,
+    *,
+    timeout_sec: int = 120,
+) -> tuple[bool, str]:
+    """Run a test command in the staging workspace.
+
+    Returns (passed, summary). Uses shlex.split — no shell=True.
+    """
+    try:
+        argv = shlex.split(command)
+    except ValueError as exc:
+        return False, f"Invalid test command: {exc}"
+    try:
+        proc = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=timeout_sec,
+            cwd=str(staging),
+        )
+    except FileNotFoundError:
+        return False, f"Test command not found: {argv[0]}"
+    except subprocess.TimeoutExpired:
+        return False, f"Test command timed out after {timeout_sec}s"
+
+    output = (proc.stdout or "") + (proc.stderr or "")
+    if len(output) > _TEST_OUTPUT_CAP:
+        output = output[:_TEST_OUTPUT_CAP] + "\n[OUTPUT TRUNCATED]"
+    passed = proc.returncode == 0
+    summary = f"exit={proc.returncode}"
+    if output.strip():
+        # Last few lines for summary
+        last_lines = output.strip().splitlines()[-5:]
+        summary += " | " + " ".join(last_lines)
+    return passed, summary
+
+
+# ---------------------------------------------------------------------------
+# Durable run storage
+# ---------------------------------------------------------------------------
+
+_DATA_DIR = ".data/pingpong_runs"
+
+
+def _persist_run(result: PingPongResult, repo_path: str) -> Path | None:
+    """Persist run result as JSON under .data/pingpong_runs/<run_id>/."""
+    try:
+        root = Path(repo_path).resolve()
+        run_dir = root / _DATA_DIR / result.run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        data = export_pingpong_json(result)
+        out_file = run_dir / "result.json"
+        out_file.write_text(_json.dumps(data, indent=2) + "\n")
+        return out_file
+    except OSError:
+        return None
+
+
+def load_run(repo_path: str, run_id: str) -> dict[str, Any] | None:
+    """Load a persisted run result by ID. Returns None if not found."""
+    root = Path(repo_path).resolve()
+    result_file = root / _DATA_DIR / run_id / "result.json"
+    if not result_file.exists():
+        return None
+    try:
+        return _json.loads(result_file.read_text())
+    except (OSError, _json.JSONDecodeError):
+        return None
+
+
+def list_runs(repo_path: str) -> list[dict[str, str]]:
+    """List all persisted run IDs with basic info."""
+    root = Path(repo_path).resolve()
+    runs_dir = root / _DATA_DIR
+    if not runs_dir.exists():
+        return []
+    results: list[dict[str, str]] = []
+    for entry in sorted(runs_dir.iterdir()):
+        if entry.is_dir():
+            result_file = entry / "result.json"
+            if result_file.exists():
+                try:
+                    data = _json.loads(result_file.read_text())
+                    results.append({
+                        "run_id": data.get("run_id", entry.name),
+                        "goal": data.get("goal", "")[:80],
+                        "status": data.get("final_status", ""),
+                        "finished_at": data.get("finished_at", ""),
+                    })
+                except (OSError, _json.JSONDecodeError):
+                    results.append({"run_id": entry.name, "goal": "", "status": "corrupt", "finished_at": ""})
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -580,5 +700,5 @@ def summarize_pingpong(result: PingPongResult) -> str:
     else:
         lines.append(f"\nResult: {result.final_status}")
 
-    lines.append(f"\nReport: remedy job report {result.job_id}" if result.job_id else "")
+    lines.append(f"\nReport: remedy do report {result.run_id}")
     return "\n".join(lines)

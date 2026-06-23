@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -340,7 +342,9 @@ class ClaudeProvider:
             )
 
 
-def _parse_reviewer_json(text: str, duration_ms: int, tokens_used: int) -> ReviewerOutput:
+def _parse_reviewer_json(
+    text: str, duration_ms: int, tokens_used: int, *, provider: str = "claude",
+) -> ReviewerOutput:
     """Parse reviewer JSON from Claude response. Block on parse failure."""
     # Try to find JSON in the response
     json_start = text.find("{")
@@ -350,7 +354,7 @@ def _parse_reviewer_json(text: str, duration_ms: int, tokens_used: int) -> Revie
             verdict="blocked",
             error="malformed_output: no JSON found in reviewer response",
             raw_text=text[:1000],
-            provider="claude",
+            provider=provider,
             duration_ms=duration_ms,
             tokens_used=tokens_used,
         )
@@ -361,7 +365,7 @@ def _parse_reviewer_json(text: str, duration_ms: int, tokens_used: int) -> Revie
             verdict="blocked",
             error=f"malformed_output: JSON parse error: {exc}",
             raw_text=text[:1000],
-            provider="claude",
+            provider=provider,
             duration_ms=duration_ms,
             tokens_used=tokens_used,
         )
@@ -371,7 +375,7 @@ def _parse_reviewer_json(text: str, duration_ms: int, tokens_used: int) -> Revie
         return ReviewerOutput(
             verdict="blocked",
             error=f"malformed_output: invalid verdict '{verdict}'",
-            provider="claude",
+            provider=provider,
             duration_ms=duration_ms,
             tokens_used=tokens_used,
         )
@@ -392,10 +396,122 @@ def _parse_reviewer_json(text: str, duration_ms: int, tokens_used: int) -> Revie
         findings=findings,
         confidence=data.get("confidence", "medium"),
         summary=data.get("summary", ""),
-        provider="claude",
+        provider=provider,
         duration_ms=duration_ms,
         tokens_used=tokens_used,
     )
+
+
+# ---------------------------------------------------------------------------
+# Claude CLI provider (local `claude -p` subprocess)
+# ---------------------------------------------------------------------------
+
+class ClaudeCliProvider:
+    """Provider using local `claude` CLI via `claude -p "<prompt>"`.
+
+    Requires `claude` binary on PATH. No API key needed (CLI handles auth).
+    Runs as subprocess with timeout and output cap.
+    """
+
+    def __init__(
+        self,
+        *,
+        cwd: str | None = None,
+        max_tokens: int = 4096,
+    ) -> None:
+        self._cwd = cwd
+        self._max_tokens = max_tokens
+        self._claude_path: str | None = None
+
+    @property
+    def name(self) -> str:
+        return "claude-cli"
+
+    def _get_claude_path(self) -> str:
+        if self._claude_path is not None:
+            return self._claude_path
+        path = shutil.which("claude")
+        if not path:
+            raise RuntimeError(
+                "claude CLI not found on PATH. "
+                "Install Claude Code CLI to use --builder claude-cli or --reviewer claude-cli."
+            )
+        self._claude_path = path
+        return path
+
+    def _call(self, prompt: str, *, timeout_sec: int, max_output_chars: int) -> tuple[str, int, int]:
+        """Call claude CLI. Returns (text, duration_ms, tokens_used=0)."""
+        claude = self._get_claude_path()
+        start = time.monotonic()
+        try:
+            proc = subprocess.run(
+                [claude, "-p", prompt, "--output-format", "text"],
+                capture_output=True,
+                text=True,
+                timeout=timeout_sec,
+                cwd=self._cwd,
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"claude CLI timed out after {timeout_sec}s")
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        if proc.returncode != 0:
+            stderr = proc.stderr[:500] if proc.stderr else ""
+            raise RuntimeError(f"claude CLI exited {proc.returncode}: {stderr}")
+        text = proc.stdout or ""
+        if len(text) > max_output_chars:
+            text = text[:max_output_chars] + "\n[OUTPUT TRUNCATED]"
+        return text, elapsed_ms, 0
+
+    def build(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+    ) -> BuilderOutput:
+        try:
+            text, dur, tokens = self._call(
+                prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+            )
+            files = []
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("- ") and "/" in stripped:
+                    candidate = stripped[2:].split()[0].strip("`")
+                    if "." in candidate:
+                        files.append(candidate)
+            return BuilderOutput(
+                summary=text[:500],
+                files_changed=files,
+                raw_text=text,
+                provider="claude-cli",
+                duration_ms=dur,
+                tokens_used=tokens,
+            )
+        except Exception as exc:
+            return BuilderOutput(
+                error=f"provider_error: {type(exc).__name__}: {exc}",
+                provider="claude-cli",
+            )
+
+    def review(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+    ) -> ReviewerOutput:
+        full_prompt = prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
+        try:
+            text, dur, tokens = self._call(
+                full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+            )
+            return _parse_reviewer_json(text, dur, tokens, provider="claude-cli")
+        except Exception as exc:
+            return ReviewerOutput(
+                error=f"provider_error: {type(exc).__name__}: {exc}",
+                provider="claude-cli",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -408,4 +524,6 @@ def create_provider(name: str) -> PingPongProvider:
         return FakeProvider()
     if name == "claude":
         return ClaudeProvider()
-    raise RuntimeError(f"Unknown provider: {name!r}. Available: fake, claude")
+    if name == "claude-cli":
+        return ClaudeCliProvider()
+    raise RuntimeError(f"Unknown provider: {name!r}. Available: fake, claude, claude-cli")
