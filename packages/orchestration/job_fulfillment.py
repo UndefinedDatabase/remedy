@@ -837,7 +837,7 @@ def run_job_fulfill(
             source="job_fulfill_fixture_v0",
             task_id=record.task_ids[0] if record.task_ids else "",
             apply_id=record.apply_ids[0] if record.apply_ids else "",
-            requested_timeout_seconds=30.0,
+            requested_timeout_seconds=15.0,
             repo_root_override=str(staging_ws.staging_dir),
             scope="staged",
         )

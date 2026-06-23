@@ -22,7 +22,8 @@ class TestPytestWrapper:
         assert (REPO_ROOT / "scripts" / "remedy_pytest.sh").exists()
 
     def test_wrapper_uses_flock(self):
-        assert "flock -n" in self._wrapper_text()
+        text = self._wrapper_text()
+        assert "flock" in text and '"-n"' in text
 
     def test_wrapper_uses_timeout(self):
         assert "timeout" in self._wrapper_text()

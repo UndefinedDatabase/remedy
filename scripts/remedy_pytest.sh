@@ -27,7 +27,15 @@ RUNNER="${SCRIPT_DIR}/remedy_pytest_runner.py"
 
 exec 200>"${LOCK_FILE}"
 
-if ! flock -n 200; then
+# REMEDY_PYTEST_LOCK_WAIT: seconds to wait for lock (0 = non-blocking).
+# Default 0 for direct usage; remedy_test_runtime.sh sets a wait.
+LOCK_WAIT="${REMEDY_PYTEST_LOCK_WAIT:-0}"
+if [ "${LOCK_WAIT}" -gt 0 ]; then
+    FLOCK_ARGS="-w ${LOCK_WAIT}"
+else
+    FLOCK_ARGS="-n"
+fi
+if ! flock ${FLOCK_ARGS} 200; then
     echo "ERROR: Another pytest run is already active. Refusing to start a parallel run." >&2
     echo "Lock file: ${LOCK_FILE}" >&2
     echo "To find the active process: pgrep -af 'pytest|python.*pytest'" >&2

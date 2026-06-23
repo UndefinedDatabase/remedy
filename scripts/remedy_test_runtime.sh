@@ -16,6 +16,7 @@
 set -euo pipefail
 
 export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-120}"
+export REMEDY_PYTEST_LOCK_WAIT="${REMEDY_PYTEST_LOCK_WAIT:-10}"
 
 echo "=== Runtime Test Lane (CLI Integration — bounded subprocess) ==="
 
