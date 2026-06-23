@@ -13,6 +13,8 @@ Target snapshot guard enforces this invariant.
 """
 from __future__ import annotations
 
+import difflib
+import hashlib
 import json as _json
 import os
 import shlex
@@ -65,11 +67,14 @@ class PingPongResult:
     rounds: list[PingPongRound] = field(default_factory=list)
     final_status: str = ""  # staged_review_passed, staged_blocked, max_rounds_reached,
                              # provider_unavailable, test_failed, review_failed,
-                             # target_mutation_blocked
+                             # target_mutation_blocked, builder_no_changes
     staged_files: list[str] = field(default_factory=list)
     changed_target_files: list[str] = field(default_factory=list)
     target_mutated: bool = False
     tests_not_run: bool = False
+    safe_diff_summary: str = ""
+    safe_diff_files: list[str] = field(default_factory=list)
+    safe_diff_truncated: bool = False
     context_categories: list[str] = field(default_factory=list)
     error: str = ""
     started_at: str = ""
@@ -293,6 +298,83 @@ def _discard_staging(staging: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Safe diff summary
+# ---------------------------------------------------------------------------
+
+_SAFE_DIFF_CAP = 50000
+_BINARY_EXTENSIONS = frozenset({
+    ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp", ".bmp",
+    ".zip", ".gz", ".tar", ".bz2", ".xz", ".7z",
+    ".whl", ".pyc", ".pyo", ".so", ".dll", ".dylib",
+    ".pdf", ".woff", ".woff2", ".ttf", ".eot",
+})
+
+
+def _compute_safe_diff(
+    staging: Path,
+    original: Path,
+    changed_files: list[str],
+) -> tuple[str, list[str], bool]:
+    """Compute a safe, capped unified diff between original and staging.
+
+    Excludes secret files, binary files, and absolute paths.
+    Returns (diff_text, diff_files, truncated).
+    """
+    if not changed_files:
+        return "", [], False
+
+    diff_lines: list[str] = []
+    diff_files: list[str] = []
+    total_chars = 0
+    truncated = False
+
+    for rel in sorted(changed_files):
+        if _is_secret_file(os.path.basename(rel)):
+            continue
+        ext = os.path.splitext(rel)[1].lower()
+        if ext in _BINARY_EXTENSIONS:
+            diff_lines.append(f"--- a/{rel}\n+++ b/{rel}\n[binary file]\n")
+            diff_files.append(rel)
+            continue
+
+        orig_file = original / rel
+        staged_file = staging / rel
+
+        try:
+            if orig_file.exists():
+                orig_text = orig_file.read_text(errors="replace").splitlines(keepends=True)
+            else:
+                orig_text = []
+            if staged_file.exists():
+                staged_text = staged_file.read_text(errors="replace").splitlines(keepends=True)
+            else:
+                staged_text = []
+        except OSError:
+            continue
+
+        file_diff = list(difflib.unified_diff(
+            orig_text, staged_text,
+            fromfile=f"a/{rel}", tofile=f"b/{rel}",
+        ))
+        if not file_diff:
+            continue
+
+        diff_files.append(rel)
+        chunk = "".join(file_diff)
+        if total_chars + len(chunk) > _SAFE_DIFF_CAP:
+            remaining = _SAFE_DIFF_CAP - total_chars
+            if remaining > 0:
+                diff_lines.append(chunk[:remaining])
+            diff_lines.append("\n[DIFF TRUNCATED]\n")
+            truncated = True
+            break
+        diff_lines.append(chunk)
+        total_chars += len(chunk)
+
+    return "".join(diff_lines), diff_files, truncated
+
+
+# ---------------------------------------------------------------------------
 # Target snapshot guard
 # ---------------------------------------------------------------------------
 
@@ -303,7 +385,6 @@ _TARGET_IGNORE = frozenset({
 
 def _snapshot_target(repo_path: Path) -> dict[str, bytes]:
     """Take a lightweight snapshot of target repo: {rel_path: content_hash}."""
-    import hashlib
     snap: dict[str, bytes] = {}
     for dirpath, dirnames, filenames in os.walk(repo_path):
         dirnames[:] = [
@@ -387,6 +468,7 @@ def run_pingpong(
     mentioned_files: list[str] | None = None,
     test_command: str = "",
     keep_staging: bool = False,
+    claude_cli_write_mode: str = "none",
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -415,6 +497,7 @@ def run_pingpong(
         try:
             builder_provider = _create_provider_with_cwd(
                 builder_name, role="builder", staging_dir=str(staging),
+                write_mode=claude_cli_write_mode,
             )
         except RuntimeError as exc:
             result.final_status = "provider_unavailable"
@@ -492,6 +575,14 @@ def run_pingpong(
 
             # Track staged files
             result.staged_files = _find_staging_changes(staging, original)
+
+            # --- Builder no-changes check ---
+            if not result.staged_files and round_num == 1 and not is_fake:
+                rd.finished_at = datetime.now(timezone.utc).isoformat()
+                result.rounds.append(rd)
+                result.final_status = "builder_no_changes"
+                result.error = "Builder produced no file changes in staging"
+                break
 
             # --- Test phase ---
             if has_test_command:
@@ -603,6 +694,15 @@ def run_pingpong(
                 result.changed_target_files = target_changes
                 result.error = f"Target mutated during run: {target_changes}"
 
+        # --- Safe diff (before staging is discarded) ---
+        if result.staged_files and staging.exists():
+            diff_text, diff_files, diff_trunc = _compute_safe_diff(
+                staging, original, result.staged_files,
+            )
+            result.safe_diff_summary = diff_text
+            result.safe_diff_files = diff_files
+            result.safe_diff_truncated = diff_trunc
+
         if not keep_staging:
             _discard_staging(staging)
 
@@ -617,17 +717,21 @@ def run_pingpong(
 
 
 def _create_provider_with_cwd(
-    name: str, *, role: str, staging_dir: str | None,
+    name: str,
+    *,
+    role: str,
+    staging_dir: str | None,
+    write_mode: str = "none",
 ) -> PingPongProvider:
-    """Create provider with role-appropriate cwd.
+    """Create provider with role-appropriate cwd and write mode.
 
-    Builder claude-cli gets cwd=staging_dir.
-    Reviewer claude-cli gets cwd=None (read-only).
+    Builder claude-cli gets cwd=staging_dir and write_mode from CLI.
+    Reviewer claude-cli gets cwd=None and write_mode="none" (read-only).
     """
     if name == "claude-cli":
         if role == "builder" and staging_dir:
-            return ClaudeCliProvider(cwd=staging_dir)
-        # Reviewer: no cwd (runs outside staging)
+            return ClaudeCliProvider(cwd=staging_dir, write_mode=write_mode)
+        # Reviewer: no cwd, no write permissions
         return ClaudeCliProvider()
     return create_provider(name)
 
@@ -801,6 +905,9 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "rounds": rounds,
         "started_at": result.started_at,
         "finished_at": result.finished_at,
+        "safe_diff_files": result.safe_diff_files,
+        "safe_diff_truncated": result.safe_diff_truncated,
+        "safe_diff_summary": result.safe_diff_summary,
         "report_command": f"remedy do report {result.run_id}",
         "report_json_command": f"remedy do report {result.run_id} --json",
         "report_path": report_path,
@@ -848,6 +955,13 @@ def summarize_pingpong(result: PingPongResult) -> str:
     lines.append(f"Staged files: {result.staged_files}")
     lines.append(f"Target mutated: {result.target_mutated}")
     lines.append(f"Changed target files: {result.changed_target_files}")
+
+    if result.safe_diff_files:
+        lines.append(f"\nDiff files ({len(result.safe_diff_files)}): {', '.join(result.safe_diff_files)}")
+        if result.safe_diff_truncated:
+            lines.append("[diff truncated]")
+        if result.safe_diff_summary:
+            lines.append("\n" + result.safe_diff_summary)
 
     if result.final_status == "staged_review_passed":
         lines.append("\nResult: STAGED REVIEW PASSED — target not modified (staged mode).")

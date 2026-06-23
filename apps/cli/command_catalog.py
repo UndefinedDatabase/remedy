@@ -2250,6 +2250,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--provider-timeout-sec", "Provider call timeout in seconds (default: 120)", required=False, is_option=True, default="120"),
             ArgDef("--max-output-chars", "Max provider output chars (default: 50000)", required=False, is_option=True, default="50000"),
             ArgDef("--keep-staging", "Keep staging workspace after run", required=False, is_option=True, default="false"),
+            ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none)", required=False, is_option=True, default="none"),
         ),
         may_mutate_repo=False,
         may_execute_commands=False,

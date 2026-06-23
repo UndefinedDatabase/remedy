@@ -1,27 +1,37 @@
-# Plan — Steps 4076-4145: Claude CLI Safety Closure v1
+# Plan — Steps 4146-4215: Claude CLI Write-Enabled Staged Self-Run v1
 
 ## Goal
-Make first real local Claude CLI staged self-run safe. Fix staging-cwd blocker,
-add target snapshot guard, external run storage, no-test honesty, JSON UX.
+Make real local Claude CLI Builder edits work safely in staging via
+`--claude-cli-write-mode none|allowed-tools|dangerous-skip`. Add safe diff
+report artifact. Add `builder_no_changes` status.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- Builder ClaudeCliProvider runs with cwd=staging_dir (not target repo)
-- Reviewer ClaudeCliProvider runs without cwd (read-only, prompt-only)
-- Target snapshot guard: before/after hash comparison blocks any target mutation
-- Run storage moved to Remedy data root (resolve_data_root()/pingpong_runs/)
-- No-test behavior: test_passed=None, test_summary="tests_not_run", tests_not_run=true
-- JSON export includes report_command, report_json_command, report_path, tests_not_run
-- Reviewer staging mutation detection
-- 34 E2E tests covering all 23 required cases + regression reproduction
-- Real Claude CLI smoke: ran on temp repo, target_mutated=false
-- Full suite: 7247 passed, 0 failed, 8 skipped
+- `--claude-cli-write-mode` wired through CLI (command_catalog, do_cmd, run_pingpong)
+- `build_claude_cli_args()` produces correct argv for all 3 write modes
+- Builder gets write_mode from CLI; Reviewer ALWAYS gets write_mode="none"
+- `_compute_safe_diff()`: unified diff, excludes secrets/binaries, capped at 50K chars
+- Safe diff fields in PingPongResult, export JSON, summary text, and report output
+- `builder_no_changes` status when Claude CLI builder produces no file changes
+- 25 new E2E tests (total 63 in test_pingpong_cli.py)
+- Real Claude CLI smoke: builder edited main.py in staging, target untouched
+  - staged_files=["main.py"], safe_diff shows actual code change
+  - target_mutated=false confirmed
+- Full suite: 7276 passed, 0 failed, 8 skipped
 - Fast lane: 571 passed
 - Runtime lane: 4/4 suites
 - Lint: ruff clean, mypy clean (196 files)
-- Fulfillment: 109 passed x2
+
+## Dogfood command
+```
+remedy do run "Add docstring to greet() in main.py" \
+  --builder claude-cli --reviewer claude-cli \
+  --claude-cli-write-mode allowed-tools \
+  --max-rounds 3 --keep-staging --json
+```
 
 ## Risks
-- Real Claude CLI builder could not write in non-interactive mode (expected)
+- Reviewer runs without staging cwd (prompt-only), may not see builder edits
+- `dangerous-skip` requires explicit user opt-in (intentional friction)

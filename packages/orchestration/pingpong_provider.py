@@ -406,26 +406,60 @@ def _parse_reviewer_json(
 # Claude CLI provider (local `claude -p` subprocess)
 # ---------------------------------------------------------------------------
 
+_VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
+
+_ALLOWED_TOOLS_ARGS = ["--allowedTools", "Edit,Write,MultiEdit"]
+_DANGEROUS_SKIP_ARGS = ["--dangerously-skip-permissions"]
+
+
+def build_claude_cli_args(
+    claude_path: str,
+    prompt: str,
+    *,
+    write_mode: str = "none",
+) -> list[str]:
+    """Build safe CLI argv for claude invocation.
+
+    write_mode:
+      none: no write tools (reviewer mode, or builder without permission)
+      allowed-tools: --allowedTools Edit,Write,MultiEdit
+      dangerous-skip: --dangerously-skip-permissions (explicit opt-in only)
+    """
+    argv = [claude_path, "-p", prompt, "--output-format", "text"]
+    if write_mode == "allowed-tools":
+        argv.extend(_ALLOWED_TOOLS_ARGS)
+    elif write_mode == "dangerous-skip":
+        argv.extend(_DANGEROUS_SKIP_ARGS)
+    return argv
+
+
 class ClaudeCliProvider:
     """Provider using local `claude` CLI via `claude -p "<prompt>"`.
 
     Requires `claude` binary on PATH. No API key needed (CLI handles auth).
     Runs as subprocess with timeout and output cap.
+    write_mode controls file edit permissions (none/allowed-tools/dangerous-skip).
     """
 
     def __init__(
         self,
         *,
         cwd: str | None = None,
+        write_mode: str = "none",
         max_tokens: int = 4096,
     ) -> None:
         self._cwd = cwd
+        self._write_mode = write_mode
         self._max_tokens = max_tokens
         self._claude_path: str | None = None
 
     @property
     def name(self) -> str:
         return "claude-cli"
+
+    @property
+    def write_mode(self) -> str:
+        return self._write_mode
 
     def _get_claude_path(self) -> str:
         if self._claude_path is not None:
@@ -442,10 +476,11 @@ class ClaudeCliProvider:
     def _call(self, prompt: str, *, timeout_sec: int, max_output_chars: int) -> tuple[str, int, int]:
         """Call claude CLI. Returns (text, duration_ms, tokens_used=0)."""
         claude = self._get_claude_path()
+        argv = build_claude_cli_args(claude, prompt, write_mode=self._write_mode)
         start = time.monotonic()
         try:
             proc = subprocess.run(
-                [claude, "-p", prompt, "--output-format", "text"],
+                argv,
                 capture_output=True,
                 text=True,
                 timeout=timeout_sec,

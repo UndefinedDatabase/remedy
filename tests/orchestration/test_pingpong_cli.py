@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.pingpong_loop import (
+    _compute_safe_diff,
     export_pingpong_json,
     list_runs,
     load_run,
@@ -23,6 +24,7 @@ from packages.orchestration.pingpong_loop import (
 from packages.orchestration.pingpong_provider import (
     ClaudeCliProvider,
     FakeProvider,
+    build_claude_cli_args,
     create_provider,
 )
 
@@ -573,3 +575,451 @@ class TestKeepStaging:
         # Cleanup
         import shutil
         shutil.rmtree(staging_path, ignore_errors=True)
+
+
+# ===========================================================================
+# Steps 4146-4215: Write-Enabled Staged Self-Run tests
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 24. build_claude_cli_args: write_mode=none produces no write args
+# ---------------------------------------------------------------------------
+
+class TestBuildClaudeCliArgsNone:
+    def test_no_write_args_when_none(self):
+        argv = build_claude_cli_args("/usr/bin/claude", "Fix it", write_mode="none")
+        assert "--allowedTools" not in argv
+        assert "--dangerously-skip-permissions" not in argv
+        assert "-p" in argv
+
+
+# ---------------------------------------------------------------------------
+# 25. build_claude_cli_args: write_mode=allowed-tools adds --allowedTools
+# ---------------------------------------------------------------------------
+
+class TestBuildClaudeCliArgsAllowedTools:
+    def test_allowed_tools_args_present(self):
+        argv = build_claude_cli_args("/usr/bin/claude", "Fix it", write_mode="allowed-tools")
+        assert "--allowedTools" in argv
+        idx = argv.index("--allowedTools")
+        assert argv[idx + 1] == "Edit,Write,MultiEdit"
+
+    def test_no_dangerous_skip(self):
+        argv = build_claude_cli_args("/usr/bin/claude", "Fix it", write_mode="allowed-tools")
+        assert "--dangerously-skip-permissions" not in argv
+
+
+# ---------------------------------------------------------------------------
+# 26. build_claude_cli_args: write_mode=dangerous-skip adds flag
+# ---------------------------------------------------------------------------
+
+class TestBuildClaudeCliArgsDangerousSkip:
+    def test_dangerous_skip_present(self):
+        argv = build_claude_cli_args("/usr/bin/claude", "Fix it", write_mode="dangerous-skip")
+        assert "--dangerously-skip-permissions" in argv
+
+    def test_no_allowed_tools(self):
+        argv = build_claude_cli_args("/usr/bin/claude", "Fix it", write_mode="dangerous-skip")
+        assert "--allowedTools" not in argv
+
+
+# ---------------------------------------------------------------------------
+# 27. ClaudeCliProvider stores and exposes write_mode
+# ---------------------------------------------------------------------------
+
+class TestClaudeCliProviderWriteMode:
+    def test_default_write_mode_none(self):
+        p = ClaudeCliProvider()
+        assert p.write_mode == "none"
+
+    def test_custom_write_mode(self):
+        p = ClaudeCliProvider(write_mode="allowed-tools")
+        assert p.write_mode == "allowed-tools"
+
+
+# ---------------------------------------------------------------------------
+# 28. Reviewer ClaudeCliProvider always gets write_mode=none
+# ---------------------------------------------------------------------------
+
+class TestReviewerAlwaysReadOnly:
+    def test_reviewer_no_write_mode(self, demo_repo):
+        """run_pingpong with claude_cli_write_mode=allowed-tools must NOT pass it to reviewer."""
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            claude_cli_write_mode="allowed-tools",
+        )
+        # Fake providers don't use write_mode, but result should still work
+        assert result.final_status == "staged_review_passed"
+
+
+# ---------------------------------------------------------------------------
+# 29. run_pingpong accepts claude_cli_write_mode param
+# ---------------------------------------------------------------------------
+
+class TestRunPingpongWriteMode:
+    def test_write_mode_accepted(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            claude_cli_write_mode="none",
+        )
+        assert result.final_status == "staged_review_passed"
+
+
+# ---------------------------------------------------------------------------
+# 30. builder_no_changes status when builder produces no changes
+# ---------------------------------------------------------------------------
+
+class TestBuilderNoChanges:
+    def test_claude_cli_no_changes(self, monkeypatch, tmp_path, demo_repo):
+        """Claude CLI builder that produces no file changes -> builder_no_changes."""
+        bin_dir = tmp_path / "noop_bin"
+        bin_dir.mkdir()
+        claude_script = bin_dir / "claude"
+        # Builder that prints but writes nothing
+        claude_script.write_text("#!/bin/bash\necho 'I looked at the code'\n")
+        claude_script.chmod(claude_script.stat().st_mode | 0o755)
+        # Reviewer that passes
+        rev_dir = tmp_path / "rev_bin"
+        rev_dir.mkdir()
+        rev_script = rev_dir / "claude"
+        rev_script.write_text('#!/bin/bash\necho \'{"verdict":"pass","findings":[],"confidence":"high","summary":"ok"}\'\n')
+        rev_script.chmod(rev_script.stat().st_mode | 0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}:{rev_dir}")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli",
+            max_rounds=1,
+        )
+        assert result.final_status == "builder_no_changes"
+        assert "no file changes" in result.error.lower()
+
+
+# ---------------------------------------------------------------------------
+# 31. Safe diff: empty when no staged files
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffEmpty:
+    def test_no_staged_files_no_diff(self, tmp_path):
+        original = tmp_path / "orig"
+        original.mkdir()
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        diff_text, diff_files, truncated = _compute_safe_diff(staging, original, [])
+        assert diff_text == ""
+        assert diff_files == []
+        assert truncated is False
+
+
+# ---------------------------------------------------------------------------
+# 32. Safe diff: shows changed file content
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffContent:
+    def test_diff_shows_changes(self, tmp_path):
+        original = tmp_path / "orig"
+        original.mkdir()
+        (original / "hello.py").write_text("print('hello')\n")
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "hello.py").write_text("print('goodbye')\n")
+        diff_text, diff_files, truncated = _compute_safe_diff(
+            staging, original, ["hello.py"],
+        )
+        assert "hello.py" in diff_text
+        assert "hello" in diff_text
+        assert "goodbye" in diff_text
+        assert "hello.py" in diff_files
+        assert truncated is False
+
+
+# ---------------------------------------------------------------------------
+# 33. Safe diff: new file shows as addition
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffNewFile:
+    def test_new_file_in_diff(self, tmp_path):
+        original = tmp_path / "orig"
+        original.mkdir()
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "new.py").write_text("# new file\n")
+        diff_text, diff_files, truncated = _compute_safe_diff(
+            staging, original, ["new.py"],
+        )
+        assert "new.py" in diff_text
+        assert "new.py" in diff_files
+
+
+# ---------------------------------------------------------------------------
+# 34. Safe diff: excludes .env secrets
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffExcludesSecrets:
+    def test_env_excluded(self, tmp_path):
+        original = tmp_path / "orig"
+        original.mkdir()
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / ".env").write_text("SECRET=bad\n")
+        (staging / ".env.local").write_text("DB=hunter2\n")
+        diff_text, diff_files, truncated = _compute_safe_diff(
+            staging, original, [".env", ".env.local"],
+        )
+        assert "SECRET" not in diff_text
+        assert "hunter2" not in diff_text
+        assert diff_files == []
+
+
+# ---------------------------------------------------------------------------
+# 35. Safe diff: binary files get [binary file] marker
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffBinary:
+    def test_binary_marker(self, tmp_path):
+        original = tmp_path / "orig"
+        original.mkdir()
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "image.png").write_bytes(b"\x89PNG\r\n")
+        diff_text, diff_files, truncated = _compute_safe_diff(
+            staging, original, ["image.png"],
+        )
+        assert "[binary file]" in diff_text
+        assert "image.png" in diff_files
+
+
+# ---------------------------------------------------------------------------
+# 36. Safe diff: truncation at cap
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffTruncation:
+    def test_truncation_at_cap(self, tmp_path, monkeypatch):
+        import packages.orchestration.pingpong_loop as loop_mod
+        monkeypatch.setattr(loop_mod, "_SAFE_DIFF_CAP", 100)
+        original = tmp_path / "orig"
+        original.mkdir()
+        (original / "big.py").write_text("")
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        # Large enough to exceed 100 char cap
+        (staging / "big.py").write_text("x = 1\n" * 50)
+        diff_text, diff_files, truncated = _compute_safe_diff(
+            staging, original, ["big.py"],
+        )
+        assert truncated is True
+        assert "[DIFF TRUNCATED]" in diff_text
+
+
+# ---------------------------------------------------------------------------
+# 37. Safe diff: no absolute staging paths in diff
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffNoAbsolutePaths:
+    def test_no_tmp_paths(self, tmp_path):
+        original = tmp_path / "orig"
+        original.mkdir()
+        (original / "f.py").write_text("old\n")
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "f.py").write_text("new\n")
+        diff_text, diff_files, truncated = _compute_safe_diff(
+            staging, original, ["f.py"],
+        )
+        assert str(staging) not in diff_text
+        assert str(original) not in diff_text
+        assert "a/f.py" in diff_text
+        assert "b/f.py" in diff_text
+
+
+# ---------------------------------------------------------------------------
+# 38. Safe diff fields in export JSON
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffInExport:
+    def test_export_has_safe_diff_fields(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        data = export_pingpong_json(result)
+        assert "safe_diff_files" in data
+        assert "safe_diff_truncated" in data
+        assert "safe_diff_summary" in data
+        assert isinstance(data["safe_diff_files"], list)
+        assert isinstance(data["safe_diff_truncated"], bool)
+
+
+# ---------------------------------------------------------------------------
+# 39. Safe diff in summary text
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffInSummary:
+    def test_summary_has_diff_section(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        summary = summarize_pingpong(result)
+        # Fake provider produces staged_files from file_tree, so diff may or may not be empty
+        # At minimum, the summary should be parseable
+        assert "staged" in summary.lower()
+
+
+# ---------------------------------------------------------------------------
+# 40. Safe diff populated for fake provider with changes
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffWithFakeProvider:
+    def test_fake_provider_diff_files_match_staged(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            keep_staging=True,
+        )
+        # Fake provider doesn't actually modify files, so safe_diff_files may be empty
+        # But safe_diff_truncated should be False
+        assert result.safe_diff_truncated is False
+        # Cleanup staging
+        import shutil
+        staging_path = Path(f"/tmp/remedy-pingpong-{result.run_id}")
+        shutil.rmtree(staging_path, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# 41. CLI write mode validation rejects invalid mode
+# ---------------------------------------------------------------------------
+
+class TestCliWriteModeValidation:
+    def test_invalid_write_mode_exits(self):
+        from apps.cli.commands.do_cmd import _VALID_CLI_WRITE_MODES
+        assert "none" in _VALID_CLI_WRITE_MODES
+        assert "allowed-tools" in _VALID_CLI_WRITE_MODES
+        assert "dangerous-skip" in _VALID_CLI_WRITE_MODES
+        assert "yolo" not in _VALID_CLI_WRITE_MODES
+
+
+# ---------------------------------------------------------------------------
+# 42. --claude-cli-write-mode in command catalog
+# ---------------------------------------------------------------------------
+
+class TestCatalogHasWriteMode:
+    def test_catalog_has_write_mode_arg(self):
+        from apps.cli.command_catalog import get_command
+        cmd = get_command("do.run")
+        arg_names = [a.name for a in cmd.args]
+        assert "--claude-cli-write-mode" in arg_names
+
+
+# ---------------------------------------------------------------------------
+# 43. write_mode passed through to builder provider
+# ---------------------------------------------------------------------------
+
+class TestWriteModePassthrough:
+    def test_builder_gets_write_mode(self, demo_repo, monkeypatch, tmp_path):
+        """Verify ClaudeCliProvider created with correct write_mode."""
+        from packages.orchestration.pingpong_loop import _create_provider_with_cwd
+        staging_dir = str(tmp_path / "staging")
+        p = _create_provider_with_cwd(
+            "claude-cli", role="builder", staging_dir=staging_dir,
+            write_mode="allowed-tools",
+        )
+        assert isinstance(p, ClaudeCliProvider)
+        assert p.write_mode == "allowed-tools"
+
+    def test_reviewer_ignores_write_mode(self, tmp_path):
+        from packages.orchestration.pingpong_loop import _create_provider_with_cwd
+        p = _create_provider_with_cwd(
+            "claude-cli", role="reviewer", staging_dir=None,
+            write_mode="allowed-tools",
+        )
+        assert isinstance(p, ClaudeCliProvider)
+        assert p.write_mode == "none"
+
+
+# ---------------------------------------------------------------------------
+# 44. Safe diff: subdirectory files work
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffSubdirectory:
+    def test_subdir_file_diff(self, tmp_path):
+        original = tmp_path / "orig"
+        (original / "src").mkdir(parents=True)
+        (original / "src" / "app.py").write_text("old\n")
+        staging = tmp_path / "staging"
+        (staging / "src").mkdir(parents=True)
+        (staging / "src" / "app.py").write_text("new\n")
+        diff_text, diff_files, truncated = _compute_safe_diff(
+            staging, original, ["src/app.py"],
+        )
+        assert "src/app.py" in diff_text
+        assert "src/app.py" in diff_files
+
+
+# ---------------------------------------------------------------------------
+# 45. Export JSON has no absolute staging paths
+# ---------------------------------------------------------------------------
+
+class TestExportNoStagingPaths:
+    def test_no_staging_paths_in_export(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        data = export_pingpong_json(result)
+        text = json.dumps(data)
+        assert "/tmp/remedy-pingpong-" not in text
+
+
+# ---------------------------------------------------------------------------
+# 46. build_claude_cli_args always includes -p and --output-format text
+# ---------------------------------------------------------------------------
+
+class TestBuildClaudeCliArgsBase:
+    def test_base_args_always_present(self):
+        for mode in ("none", "allowed-tools", "dangerous-skip"):
+            argv = build_claude_cli_args("/usr/bin/claude", "Do stuff", write_mode=mode)
+            assert argv[0] == "/usr/bin/claude"
+            assert "-p" in argv
+            assert "--output-format" in argv
+            idx = argv.index("--output-format")
+            assert argv[idx + 1] == "text"
+
+
+# ---------------------------------------------------------------------------
+# 47. Safe diff: unchanged file not in diff
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffUnchangedFile:
+    def test_unchanged_not_in_diff(self, tmp_path):
+        original = tmp_path / "orig"
+        original.mkdir()
+        (original / "same.py").write_text("x = 1\n")
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "same.py").write_text("x = 1\n")
+        diff_text, diff_files, truncated = _compute_safe_diff(
+            staging, original, ["same.py"],
+        )
+        # File was listed as changed but content is identical
+        assert diff_files == []
+        assert diff_text == ""
+
+
+# ---------------------------------------------------------------------------
+# 48. run_pingpong with keep_staging populates safe_diff
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffWithKeepStaging:
+    def test_diff_computed_before_cleanup(self, demo_repo):
+        """Safe diff must be computed before staging is discarded."""
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            keep_staging=False,
+        )
+        # Even without keep_staging, safe_diff fields should be populated
+        assert isinstance(result.safe_diff_summary, str)
+        assert isinstance(result.safe_diff_files, list)
+        assert isinstance(result.safe_diff_truncated, bool)

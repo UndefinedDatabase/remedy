@@ -27,6 +27,9 @@ def _parse_builder_provider(val: object) -> str:
     sys.exit(2)
 
 
+_VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
+
+
 def _cmd_do(
     goal: str,
     *,
@@ -47,6 +50,7 @@ def _cmd_do(
     provider_timeout_sec: int = 120,
     max_output_chars_val: int = 50000,
     keep_staging: bool = False,
+    claude_cli_write_mode: str = "none",
 ) -> None:
     # Ping-pong mode: --builder and/or --reviewer set to a real provider
     if builder != "none" or reviewer != "none":
@@ -55,6 +59,7 @@ def _cmd_do(
             max_rounds=max_rounds, mode=mode, json_output=json_output,
             test_command=test_command, provider_timeout_sec=provider_timeout_sec,
             max_output_chars=max_output_chars_val, keep_staging=keep_staging,
+            claude_cli_write_mode=claude_cli_write_mode,
         )
         return
 
@@ -149,6 +154,7 @@ def _cmd_do_pingpong(
     provider_timeout_sec: int = 120,
     max_output_chars: int = 50000,
     keep_staging: bool = False,
+    claude_cli_write_mode: str = "none",
 ) -> None:
     """Run Builder ↔ Reviewer ping-pong loop."""
     if builder not in _VALID_PINGPONG_PROVIDERS:
@@ -159,6 +165,13 @@ def _cmd_do_pingpong(
         sys.exit(2)
     if mode != "staged":
         print("Error: only --mode staged is supported.", file=sys.stderr)
+        sys.exit(2)
+    if claude_cli_write_mode not in _VALID_CLI_WRITE_MODES:
+        print(
+            f"Error: invalid --claude-cli-write-mode: {claude_cli_write_mode!r}. "
+            f"Allowed: {', '.join(sorted(_VALID_CLI_WRITE_MODES))}.",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     # Default: if only one side set, use fake for the other
@@ -191,6 +204,7 @@ def _cmd_do_pingpong(
         max_output_chars=max_output_chars,
         test_command=test_command,
         keep_staging=keep_staging,
+        claude_cli_write_mode=claude_cli_write_mode,
     )
 
     if json_output:
@@ -251,6 +265,14 @@ def _cmd_do_report(
                 for f in rv.get("findings", []):
                     print(f"    [{f.get('severity', '')}] {f.get('id', '')}: {f.get('summary', '')}")
         print(f"\nStaged files: {data.get('staged_files', [])}")
+        diff_files = data.get("safe_diff_files", [])
+        if diff_files:
+            print(f"Diff files ({len(diff_files)}): {', '.join(diff_files)}")
+            if data.get("safe_diff_truncated"):
+                print("[diff truncated]")
+            diff_text = data.get("safe_diff_summary", "")
+            if diff_text:
+                print(f"\n{diff_text}")
 
 
 _VALID_FIXTURE_MODES = frozenset({"true", "false", "repair-loop"})
@@ -300,6 +322,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         provider_timeout_sec=int(getattr(args, "provider_timeout_sec", None) or 120),
         max_output_chars_val=int(getattr(args, "max_output_chars", None) or 50000),
         keep_staging=getattr(args, "keep_staging", False),
+        claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
     ),
     "do.report": lambda args: _cmd_do_report(
         args.run_id,
