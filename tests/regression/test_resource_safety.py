@@ -8,9 +8,41 @@ infrastructure.
 import os
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+WRAPPER = str(REPO_ROOT / "scripts" / "remedy_pytest.sh")
+
+
+def _find_processes_by_filename(filename: str) -> str:
+    """Find processes matching a unique test filename marker.
+
+    Returns pgrep stdout (empty if no match). Uses the basename to avoid
+    matching unrelated paths.
+    """
+    basename = os.path.basename(filename)
+    result = subprocess.run(
+        ["pgrep", "-af", basename],
+        capture_output=True,
+        text=True,
+    )
+    # Filter out the pgrep process itself
+    lines = [
+        ln for ln in result.stdout.splitlines()
+        if "pgrep" not in ln
+    ]
+    return "\n".join(lines)
+
+
+def _assert_no_orphans(filename: str, retries: int = 5) -> None:
+    """Assert no processes matching filename remain, with brief retry for cleanup."""
+    for _ in range(retries):
+        procs = _find_processes_by_filename(filename)
+        if not procs:
+            return
+        time.sleep(0.5)
+    raise AssertionError(f"Orphan processes still running for {filename}:\n{procs}")
 
 
 class TestPytestWrapper:
@@ -190,6 +222,244 @@ class TestRunnerProcessGroupCleanup:
                 os.unlink(slow_test.name)
             except OSError:
                 pass
+
+
+class TestWrapperPathForcedTimeout:
+    """Full wrapper path (remedy_pytest.sh) forced timeout cleanup.
+
+    Exercises the actual chain: remedy_pytest.sh → flock → remedy_pytest_runner.py → child pytest.
+    Uses a separate lock file to avoid contention with the outer test runner.
+    """
+
+    def _make_slow_test(self) -> str:
+        """Create a temporary slow test file with unique name."""
+        f = tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".py",
+            prefix=f"test_wrapper_slow_{os.getpid()}_",
+            dir=str(REPO_ROOT / "tests" / "regression"),
+            delete=False,
+        )
+        f.write(
+            "import time\n"
+            "def test_slow_wrapper_target():\n"
+            "    time.sleep(300)\n"
+        )
+        f.close()
+        return f.name
+
+    def _wrapper_env(self, timeout_sec: int = 2) -> dict:
+        """Build env for wrapper with isolated lock and short timeout."""
+        env = os.environ.copy()
+        env["REMEDY_PYTEST_TIMEOUT_SEC"] = str(timeout_sec)
+        env["REMEDY_PYTEST_LOCK"] = f"/tmp/remedy-pytest-test-{os.getpid()}.lock"
+        env["REMEDY_PYTEST_LOCK_WAIT"] = "0"
+        return env
+
+    def test_wrapper_timeout_cleanup_no_orphans(self):
+        """Wrapper timeout kills child pytest; no orphan remains."""
+        slow_file = self._make_slow_test()
+        lock_file = f"/tmp/remedy-pytest-test-{os.getpid()}.lock"
+        try:
+            env = self._wrapper_env(timeout_sec=2)
+            result = subprocess.run(
+                [WRAPPER, slow_file, "-q"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env=env,
+            )
+            # Wrapper should exit with timeout (124) or non-zero
+            assert result.returncode != 0, (
+                f"Expected non-zero exit (timeout), got {result.returncode}"
+            )
+            # No orphan pytest processes for our slow test file
+            _assert_no_orphans(slow_file)
+            # No remedy_pytest_runner.py orphan
+            runner_procs = _find_processes_by_filename("remedy_pytest_runner.py")
+            # Filter to only processes related to our slow test
+            related = [ln for ln in runner_procs.splitlines() if slow_file in ln]
+            assert not related, f"Runner orphan found: {runner_procs}"
+        finally:
+            try:
+                os.unlink(slow_file)
+            except OSError:
+                pass
+            try:
+                os.unlink(lock_file)
+            except OSError:
+                pass
+
+    def test_lock_released_after_timeout(self):
+        """Lock must not be held after wrapper timeout."""
+        slow_file = self._make_slow_test()
+        lock_file = f"/tmp/remedy-pytest-test-{os.getpid()}.lock"
+        try:
+            env = self._wrapper_env(timeout_sec=2)
+            subprocess.run(
+                [WRAPPER, slow_file, "-q"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env=env,
+            )
+            # Lock should be available (flock -n should succeed)
+            lock_check = subprocess.run(
+                ["flock", "-n", lock_file, "echo", "unlocked"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            assert lock_check.returncode == 0, (
+                f"Lock still held after wrapper timeout: {lock_check.stderr}"
+            )
+        finally:
+            try:
+                os.unlink(slow_file)
+            except OSError:
+                pass
+            try:
+                os.unlink(lock_file)
+            except OSError:
+                pass
+
+    def test_subsequent_wrapper_succeeds_after_timeout(self):
+        """After forced timeout, a normal wrapper run must succeed immediately."""
+        slow_file = self._make_slow_test()
+        lock_file = f"/tmp/remedy-pytest-test-{os.getpid()}.lock"
+        try:
+            env = self._wrapper_env(timeout_sec=2)
+            # First: timeout run
+            subprocess.run(
+                [WRAPPER, slow_file, "-q"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env=env,
+            )
+            _assert_no_orphans(slow_file)
+
+            # Second: normal run with generous timeout must pass
+            passing_test = tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".py",
+                prefix=f"test_wrapper_pass_{os.getpid()}_",
+                dir=str(REPO_ROOT / "tests" / "regression"),
+                delete=False,
+            )
+            passing_test.write("def test_pass(): assert True\n")
+            passing_test.close()
+
+            env2 = self._wrapper_env(timeout_sec=30)
+            result = subprocess.run(
+                [WRAPPER, passing_test.name, "-q"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env=env2,
+            )
+            assert result.returncode == 0, (
+                f"Subsequent wrapper run failed: rc={result.returncode}\n"
+                f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+        finally:
+            try:
+                os.unlink(slow_file)
+            except OSError:
+                pass
+            try:
+                os.unlink(passing_test.name)
+            except OSError:
+                pass
+            try:
+                os.unlink(lock_file)
+            except OSError:
+                pass
+
+
+class TestRuntimeLikeTimeoutChain:
+    """Simulates runtime lane outer/inner timeout structure.
+
+    Outer timeout > inner timeout. Slow test exceeds inner.
+    Inner cleanup fires before outer. No orphans. Subsequent run succeeds.
+    """
+
+    def test_inner_cleanup_before_outer(self):
+        """Inner timeout (2s) fires before outer timeout (12s). No orphans."""
+        slow_file = tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".py",
+            prefix=f"test_runtime_chain_{os.getpid()}_",
+            dir=str(REPO_ROOT / "tests" / "regression"),
+            delete=False,
+        )
+        slow_file.write(
+            "import time\n"
+            "def test_slow_runtime_chain():\n"
+            "    time.sleep(300)\n"
+        )
+        slow_file.close()
+        lock_file = f"/tmp/remedy-pytest-chain-{os.getpid()}.lock"
+
+        try:
+            env = os.environ.copy()
+            env["REMEDY_PYTEST_TIMEOUT_SEC"] = "2"  # inner
+            env["REMEDY_PYTEST_LOCK"] = lock_file
+            env["REMEDY_PYTEST_LOCK_WAIT"] = "0"
+
+            # Simulate runtime lane: outer timeout wraps wrapper call
+            outer_timeout = 12  # outer > inner (2s) + safety margin
+            result = subprocess.run(
+                ["timeout", "--signal=TERM", "--kill-after=5", str(outer_timeout),
+                 WRAPPER, slow_file.name, "-q"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env=env,
+            )
+
+            # Inner timeout (2s) should have fired, not outer (12s)
+            # Exit code 124 = inner runner timeout
+            assert result.returncode != 0, (
+                f"Expected non-zero exit, got {result.returncode}"
+            )
+
+            # No orphan processes
+            _assert_no_orphans(slow_file.name)
+
+            # Subsequent wrapper run succeeds
+            pass_file = tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".py",
+                prefix=f"test_chain_pass_{os.getpid()}_",
+                dir=str(REPO_ROOT / "tests" / "regression"),
+                delete=False,
+            )
+            pass_file.write("def test_pass(): assert True\n")
+            pass_file.close()
+
+            env2 = os.environ.copy()
+            env2["REMEDY_PYTEST_TIMEOUT_SEC"] = "30"
+            env2["REMEDY_PYTEST_LOCK"] = lock_file
+            env2["REMEDY_PYTEST_LOCK_WAIT"] = "0"
+
+            result2 = subprocess.run(
+                [WRAPPER, pass_file.name, "-q"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                env=env2,
+            )
+            assert result2.returncode == 0, (
+                f"Subsequent run after timeout failed: rc={result2.returncode}\n"
+                f"stderr: {result2.stderr}"
+            )
+        finally:
+            for f in [slow_file.name, pass_file.name, lock_file]:
+                try:
+                    os.unlink(f)
+                except (OSError, NameError):
+                    pass
 
 
 class TestNoBackgroundPytestInDocs:
