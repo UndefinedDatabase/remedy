@@ -202,7 +202,6 @@ def _cmd_do_pingpong(
 def _cmd_do_report(
     run_id: str,
     *,
-    repo: str = ".",
     json_output: bool = False,
 ) -> None:
     """Show a persisted ping-pong run report."""
@@ -212,7 +211,7 @@ def _cmd_do_report(
     )
 
     if run_id == "list":
-        runs = list_runs(repo)
+        runs = list_runs()
         if not runs:
             print("No ping-pong runs found.")
             return
@@ -223,7 +222,7 @@ def _cmd_do_report(
                 print(f"  {r['run_id']}  {r['status']:<24s}  {r['goal']}")
         return
 
-    data = load_run(repo, run_id)
+    data = load_run(run_id)
     if data is None:
         print(f"Error: run {run_id!r} not found.", file=sys.stderr)
         sys.exit(1)
@@ -304,7 +303,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.report": lambda args: _cmd_do_report(
         args.run_id,
-        repo=getattr(args, "repo", None) or ".",
         json_output=getattr(args, "json", False),
     ),
     "do.continue": lambda args: _cmd_do_continue(

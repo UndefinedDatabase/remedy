@@ -1,14 +1,15 @@
-"""Ping-pong loop — Builder ↔ Reviewer repair cycle orchestrator.
+"""Ping-pong loop — Builder <> Reviewer repair cycle orchestrator.
 
 Runs the core loop:
-  1. Builder works (in staging)
+  1. Builder works (in staging cwd)
   2. Tests run (in staging)
-  3. Reviewer reviews
-  4. If pass → done
-  5. If findings → Builder repairs
+  3. Reviewer reviews (read-only, no staging cwd)
+  4. If pass -> done
+  5. If findings -> Builder repairs
   6. Repeat until pass, max rounds, timeout, or blocker
 
 All repo mutation happens in staging. Target repo is never modified.
+Target snapshot guard enforces this invariant.
 """
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ from uuid import uuid4
 
 from packages.orchestration.pingpong_provider import (
     BuilderOutput,
+    ClaudeCliProvider,
     FakeProvider,
     PingPongProvider,
     ReviewerOutput,
@@ -38,7 +40,7 @@ from packages.orchestration.pingpong_provider import (
 
 @dataclass
 class PingPongRound:
-    """One round of the Builder → Test → Reviewer cycle."""
+    """One round of the Builder -> Test -> Reviewer cycle."""
     round_number: int = 0
     builder_output: BuilderOutput | None = None
     test_passed: bool | None = None
@@ -62,10 +64,12 @@ class PingPongResult:
     max_rounds: int = 3
     rounds: list[PingPongRound] = field(default_factory=list)
     final_status: str = ""  # staged_review_passed, staged_blocked, max_rounds_reached,
-                             # provider_unavailable, test_failed, review_failed
+                             # provider_unavailable, test_failed, review_failed,
+                             # target_mutation_blocked
     staged_files: list[str] = field(default_factory=list)
     changed_target_files: list[str] = field(default_factory=list)
     target_mutated: bool = False
+    tests_not_run: bool = False
     context_categories: list[str] = field(default_factory=list)
     error: str = ""
     started_at: str = ""
@@ -289,6 +293,62 @@ def _discard_staging(staging: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Target snapshot guard
+# ---------------------------------------------------------------------------
+
+_TARGET_IGNORE = frozenset({
+    ".pytest_cache", "__pycache__", ".mypy_cache", ".ruff_cache",
+})
+
+
+def _snapshot_target(repo_path: Path) -> dict[str, bytes]:
+    """Take a lightweight snapshot of target repo: {rel_path: content_hash}."""
+    import hashlib
+    snap: dict[str, bytes] = {}
+    for dirpath, dirnames, filenames in os.walk(repo_path):
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in _EXCLUDE_DIRS and d not in _TARGET_IGNORE and not d.startswith(".")
+        ]
+        rel_dir = os.path.relpath(dirpath, repo_path)
+        for fn in filenames:
+            rel = os.path.join(rel_dir, fn) if rel_dir != "." else fn
+            fp = Path(dirpath) / fn
+            try:
+                snap[rel] = hashlib.sha256(fp.read_bytes()).digest()
+            except OSError:
+                pass
+    return snap
+
+
+def _check_target_mutation(
+    repo_path: Path, before: dict[str, bytes],
+) -> list[str]:
+    """Compare current target state against snapshot. Returns list of changed relative paths."""
+    after = _snapshot_target(repo_path)
+    changed: list[str] = []
+
+    # Check for modified or new files
+    for rel, digest in after.items():
+        if rel not in before:
+            changed.append(rel)
+        elif before[rel] != digest:
+            changed.append(rel)
+
+    # Check for deleted files
+    for rel in before:
+        if rel not in after:
+            changed.append(rel)
+
+    # Also check for artifacts that snapshot ignores
+    for artifact_dir in _TARGET_IGNORE:
+        if (repo_path / artifact_dir).exists():
+            changed.append(artifact_dir + "/")
+
+    return sorted(changed)
+
+
+# ---------------------------------------------------------------------------
 # Fake staging mutation (for FakeProvider)
 # ---------------------------------------------------------------------------
 
@@ -328,9 +388,10 @@ def run_pingpong(
     test_command: str = "",
     keep_staging: bool = False,
 ) -> PingPongResult:
-    """Run the Builder ↔ Reviewer ping-pong loop.
+    """Run the Builder <> Reviewer ping-pong loop.
 
     All mutation happens in staging. Target repo is never modified.
+    Target snapshot guard enforces this.
     """
     result = PingPongResult(
         goal=goal,
@@ -341,22 +402,38 @@ def run_pingpong(
         started_at=datetime.now(timezone.utc).isoformat(),
     )
 
-    # Create providers
+    original = Path(repo_path).resolve()
+
+    # --- Target snapshot BEFORE anything runs ---
+    target_snap = _snapshot_target(original)
+
+    # Create staging BEFORE providers (so Builder cwd can be set)
+    staging = _create_staging(repo_path, result.run_id)
+
+    # Create providers — ClaudeCliProvider Builder gets cwd=staging
     if builder_provider is None:
         try:
-            builder_provider = create_provider(builder_name)
+            builder_provider = _create_provider_with_cwd(
+                builder_name, role="builder", staging_dir=str(staging),
+            )
         except RuntimeError as exc:
             result.final_status = "provider_unavailable"
             result.error = str(exc)
             result.finished_at = datetime.now(timezone.utc).isoformat()
+            _discard_staging(staging)
             return result
+
+    # Reviewer: no staging cwd (read-only, prompt-only)
     if reviewer_provider is None:
         try:
-            reviewer_provider = create_provider(reviewer_name)
+            reviewer_provider = _create_provider_with_cwd(
+                reviewer_name, role="reviewer", staging_dir=None,
+            )
         except RuntimeError as exc:
             result.final_status = "provider_unavailable"
             result.error = str(exc)
             result.finished_at = datetime.now(timezone.utc).isoformat()
+            _discard_staging(staging)
             return result
 
     # Build context
@@ -365,10 +442,8 @@ def run_pingpong(
     )
     result.context_categories = categories
 
-    # Create staging
-    staging = _create_staging(repo_path, result.run_id)
-    original = Path(repo_path).resolve()
     is_fake = isinstance(builder_provider, FakeProvider)
+    has_test_command = bool(test_command)
 
     try:
         findings: list[ReviewFinding] = []
@@ -404,26 +479,47 @@ def run_pingpong(
             if is_fake:
                 _apply_fake_builder_changes(staging, builder_out, goal)
 
+            # --- Target snapshot check after Builder ---
+            target_changes = _check_target_mutation(original, target_snap)
+            if target_changes:
+                rd.finished_at = datetime.now(timezone.utc).isoformat()
+                result.rounds.append(rd)
+                result.final_status = "target_mutation_blocked"
+                result.target_mutated = True
+                result.changed_target_files = target_changes
+                result.error = f"Builder mutated target repo: {target_changes}"
+                break
+
             # Track staged files
             result.staged_files = _find_staging_changes(staging, original)
 
             # --- Test phase ---
-            if test_command:
+            if has_test_command:
                 rd.test_passed, rd.test_summary = _run_test_command(
                     test_command, staging, timeout_sec=timeout_sec,
                 )
-            elif result.staged_files:
-                rd.test_passed = True
-                rd.test_summary = f"Staged changes detected: {len(result.staged_files)} files"
             else:
-                rd.test_passed = False
-                rd.test_summary = "No staged changes detected"
+                rd.test_passed = None
+                rd.test_summary = "tests_not_run"
+                result.tests_not_run = True
 
-            if not rd.test_passed:
+            # If explicit test command failed, stop
+            if has_test_command and not rd.test_passed:
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
                 result.final_status = "test_failed"
-                result.error = "No changes produced by builder"
+                result.error = rd.test_summary
+                break
+
+            # --- Target snapshot check after tests ---
+            target_changes = _check_target_mutation(original, target_snap)
+            if target_changes:
+                rd.finished_at = datetime.now(timezone.utc).isoformat()
+                result.rounds.append(rd)
+                result.final_status = "target_mutation_blocked"
+                result.target_mutated = True
+                result.changed_target_files = target_changes
+                result.error = f"Test execution mutated target repo: {target_changes}"
                 break
 
             # --- Reviewer phase ---
@@ -435,12 +531,37 @@ def run_pingpong(
                 test_result=rd.test_summary,
                 files_changed=result.staged_files,
             )
+
+            # Snapshot staging before reviewer (to detect reviewer mutation)
+            staging_snap_before = _find_staging_changes(staging, original)
+
             reviewer_out = reviewer_provider.review(
                 reviewer_prompt,
                 timeout_sec=timeout_sec,
                 max_output_chars=max_output_chars,
             )
             rd.reviewer_output = reviewer_out
+
+            # --- Target snapshot check after Reviewer ---
+            target_changes = _check_target_mutation(original, target_snap)
+            if target_changes:
+                rd.finished_at = datetime.now(timezone.utc).isoformat()
+                result.rounds.append(rd)
+                result.final_status = "target_mutation_blocked"
+                result.target_mutated = True
+                result.changed_target_files = target_changes
+                result.error = f"Reviewer mutated target repo: {target_changes}"
+                break
+
+            # Detect reviewer staging mutation
+            staging_snap_after = _find_staging_changes(staging, original)
+            reviewer_staging_changes = set(staging_snap_after) - set(staging_snap_before)
+            if reviewer_staging_changes:
+                rd.finished_at = datetime.now(timezone.utc).isoformat()
+                result.rounds.append(rd)
+                result.final_status = "review_failed"
+                result.error = f"Reviewer mutated staging: {sorted(reviewer_staging_changes)}"
+                break
 
             if reviewer_out.error:
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
@@ -473,20 +594,42 @@ def run_pingpong(
             result.final_status = "max_rounds_reached"
 
     finally:
+        # --- Final target snapshot check ---
+        if not result.target_mutated:
+            target_changes = _check_target_mutation(original, target_snap)
+            if target_changes:
+                result.final_status = "target_mutation_blocked"
+                result.target_mutated = True
+                result.changed_target_files = target_changes
+                result.error = f"Target mutated during run: {target_changes}"
+
         if not keep_staging:
             _discard_staging(staging)
-        else:
-            result.error = (result.error + f" staging_dir={staging}" if result.error
-                            else f"staging_dir={staging}")
 
-    result.changed_target_files = []  # Staged mode: target never modified
-    result.target_mutated = False
+    if not result.target_mutated:
+        result.changed_target_files = []
     result.finished_at = datetime.now(timezone.utc).isoformat()
 
-    # Persist durable run record
-    _persist_run(result, repo_path)
+    # Persist durable run record (outside target repo)
+    _persist_run(result)
 
     return result
+
+
+def _create_provider_with_cwd(
+    name: str, *, role: str, staging_dir: str | None,
+) -> PingPongProvider:
+    """Create provider with role-appropriate cwd.
+
+    Builder claude-cli gets cwd=staging_dir.
+    Reviewer claude-cli gets cwd=None (read-only).
+    """
+    if name == "claude-cli":
+        if role == "builder" and staging_dir:
+            return ClaudeCliProvider(cwd=staging_dir)
+        # Reviewer: no cwd (runs outside staging)
+        return ClaudeCliProvider()
+    return create_provider(name)
 
 
 # ---------------------------------------------------------------------------
@@ -536,17 +679,19 @@ def _run_test_command(
 
 
 # ---------------------------------------------------------------------------
-# Durable run storage
+# Durable run storage (Remedy data root, NOT target repo)
 # ---------------------------------------------------------------------------
 
-_DATA_DIR = ".data/pingpong_runs"
+def _pingpong_runs_dir() -> Path:
+    """Return the ping-pong runs storage directory (Remedy data root)."""
+    from packages.orchestration.data_paths import resolve_data_root
+    return resolve_data_root() / "pingpong_runs"
 
 
-def _persist_run(result: PingPongResult, repo_path: str) -> Path | None:
-    """Persist run result as JSON under .data/pingpong_runs/<run_id>/."""
+def _persist_run(result: PingPongResult) -> Path | None:
+    """Persist run result as JSON under <remedy_data_root>/pingpong_runs/<run_id>/."""
     try:
-        root = Path(repo_path).resolve()
-        run_dir = root / _DATA_DIR / result.run_id
+        run_dir = _pingpong_runs_dir() / result.run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         data = export_pingpong_json(result)
         out_file = run_dir / "result.json"
@@ -556,10 +701,9 @@ def _persist_run(result: PingPongResult, repo_path: str) -> Path | None:
         return None
 
 
-def load_run(repo_path: str, run_id: str) -> dict[str, Any] | None:
-    """Load a persisted run result by ID. Returns None if not found."""
-    root = Path(repo_path).resolve()
-    result_file = root / _DATA_DIR / run_id / "result.json"
+def load_run(run_id: str) -> dict[str, Any] | None:
+    """Load a persisted run result by ID from Remedy data root."""
+    result_file = _pingpong_runs_dir() / run_id / "result.json"
     if not result_file.exists():
         return None
     try:
@@ -568,10 +712,9 @@ def load_run(repo_path: str, run_id: str) -> dict[str, Any] | None:
         return None
 
 
-def list_runs(repo_path: str) -> list[dict[str, str]]:
-    """List all persisted run IDs with basic info."""
-    root = Path(repo_path).resolve()
-    runs_dir = root / _DATA_DIR
+def list_runs() -> list[dict[str, str]]:
+    """List all persisted run IDs from Remedy data root."""
+    runs_dir = _pingpong_runs_dir()
     if not runs_dir.exists():
         return []
     results: list[dict[str, str]] = []
@@ -637,6 +780,8 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
             }
         rounds.append(round_data)
 
+    report_path = str(_pingpong_runs_dir() / result.run_id / "result.json")
+
     return {
         "run_id": result.run_id,
         "job_id": result.job_id,
@@ -650,11 +795,15 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "staged_files": result.staged_files,
         "changed_target_files": result.changed_target_files,
         "target_mutated": result.target_mutated,
+        "tests_not_run": result.tests_not_run,
         "context_categories": result.context_categories,
         "error": result.error,
         "rounds": rounds,
         "started_at": result.started_at,
         "finished_at": result.finished_at,
+        "report_command": f"remedy do report {result.run_id}",
+        "report_json_command": f"remedy do report {result.run_id} --json",
+        "report_path": report_path,
     }
 
 
@@ -669,6 +818,10 @@ def summarize_pingpong(result: PingPongResult) -> str:
         f"Rounds: {len(result.rounds)}/{result.max_rounds}",
         f"Status: {result.final_status}",
     ]
+    if result.tests_not_run:
+        lines.append("Tests: not run (no --test-command)")
+    if result.target_mutated:
+        lines.append(f"TARGET MUTATED: {result.changed_target_files}")
     if result.error:
         lines.append(f"Error: {result.error}")
     lines.append("")
@@ -679,7 +832,10 @@ def summarize_pingpong(result: PingPongResult) -> str:
             lines.append(f"  Builder: {rd.builder_output.summary[:200]}")
             if rd.builder_output.files_changed:
                 lines.append(f"  Files: {', '.join(rd.builder_output.files_changed)}")
-        lines.append(f"  Tests: {'passed' if rd.test_passed else 'failed'} — {rd.test_summary}")
+        if rd.test_passed is None:
+            lines.append("  Tests: not run")
+        else:
+            lines.append(f"  Tests: {'passed' if rd.test_passed else 'failed'} — {rd.test_summary}")
         if rd.reviewer_output:
             lines.append(f"  Reviewer: {rd.reviewer_output.verdict}")
             if rd.reviewer_output.findings:
@@ -697,6 +853,8 @@ def summarize_pingpong(result: PingPongResult) -> str:
         lines.append("\nResult: STAGED REVIEW PASSED — target not modified (staged mode).")
     elif result.final_status == "max_rounds_reached":
         lines.append(f"\nResult: MAX ROUNDS REACHED ({result.max_rounds}) — review not passed.")
+    elif result.final_status == "target_mutation_blocked":
+        lines.append("\nResult: TARGET MUTATION BLOCKED — safety guard caught target modification.")
     else:
         lines.append(f"\nResult: {result.final_status}")
 

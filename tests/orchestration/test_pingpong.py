@@ -26,6 +26,15 @@ from packages.orchestration.pingpong_provider import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+@pytest.fixture(autouse=True)
+def isolate_data_root(tmp_path: Path, monkeypatch):
+    """Redirect REMEDY_DATA_DIR to tmp so tests don't write to real data root."""
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    return data_dir
+
+
 @pytest.fixture
 def demo_repo(tmp_path: Path) -> Path:
     """Create a minimal demo repo for testing."""
@@ -223,8 +232,9 @@ class TestStagingTestExecution:
     def test_test_result_in_round(self, demo_repo: Path):
         result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
         for rd in result.rounds:
-            assert rd.test_passed is not None
-            assert rd.test_summary
+            # Without --test-command, test_passed is None and summary is "tests_not_run"
+            assert rd.test_passed is None
+            assert rd.test_summary == "tests_not_run"
 
 
 # ---------------------------------------------------------------------------
