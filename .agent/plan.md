@@ -1,22 +1,23 @@
-# Plan — Steps 3656-3695: Fulfillment Test-Lane + Status Truth Closure v0.5
+# Plan — Steps 3856-3885: Final Safety Closure v1.0
 
 ## Goal
-Close test-lane and product-truth gaps: whole file stability, blocked status
-truth, changed_files semantics, demo docs fixes, review bundle safety, lint.
+Close last proof gaps: process group cleanup guarantee, runtime timeout edge
+case, forced timeout regression test. Make PR #101 merge-ready.
 
 ## Current Step
-Complete. All implementation, tests (99 fulfillment, 7160+ total), lint clean.
+Complete. All implementation, tests, verification done.
 
 ## Completed
-- Fixture demo timeout: 30s requested_timeout_seconds for bounded test runs
-- Blocked stop_reason surfaced in latest_stop_reason and fulfillment_blockers
-- changed_target_files field: empty for blocked, equals promotion_files for success
-- Report includes staging_used, staging_promoted, fulfillment_blockers, next_safe_action
-- Demo docs: hard-coded path removed, repo requirements section, blocked behavior table
-- Review bundle: sanitized error path (no raw str(exc)), staged vs target distinction
-- Lint: all I001, UP032, F401 fixed. Lint clean.
-- Tests: 99 fulfillment, 571 fast, runtime 4/4, 7160 full (2 pre-existing unrelated)
+- remedy_pytest_runner.py: _ensure_pg_dead(pgid) moved to try/finally (line 97)
+- remedy_test_runtime.sh: fail-fast guard for inner >= outer timeout (lines 33-37)
+- 4 new regression tests: try/finally guarantee, timeout edge case, forced timeout cleanup
+- Fulfillment wrapper: 109 passed × 2 runs
+- Runtime lane: 4/4 suites × 2 runs
+- Fast lane: 571 passed
+- Full suite: 7176 passed, 0 failed, 8 skipped
+- Lint: ruff clean, mypy clean (194 files)
 - Architecture guard: clean
+- No stale processes
 
 ## Risks
 - None remaining

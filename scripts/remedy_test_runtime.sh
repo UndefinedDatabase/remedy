@@ -29,6 +29,11 @@ INNER_TIMEOUT=$((NODE_TIMEOUT - 10))
 if [ "$INNER_TIMEOUT" -lt 10 ]; then
     INNER_TIMEOUT=10
 fi
+if [ "$INNER_TIMEOUT" -ge "$NODE_TIMEOUT" ]; then
+    echo "ERROR: NODE_TIMEOUT=${NODE_TIMEOUT}s is too small. Minimum is 15s." >&2
+    echo "  inner_timeout=${INNER_TIMEOUT}s must be < node_timeout=${NODE_TIMEOUT}s" >&2
+    exit 1
+fi
 export REMEDY_PYTEST_TIMEOUT_SEC="$INNER_TIMEOUT"
 
 # Lock: wait briefly for contention from prior node.
