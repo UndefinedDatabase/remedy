@@ -35,10 +35,26 @@ total_passed=0
 total_failed=0
 failed_nodes=()
 
+# Outer timeout per node/suite (seconds). Prevents indefinite hangs.
+NODE_TIMEOUT="${REMEDY_NODE_TIMEOUT_SEC:-90}"
+
+# Clear stale lock before starting
+_clear_stale_lock() {
+    local lockfile="/tmp/remedy-pytest.lock"
+    if [ -f "$lockfile" ]; then
+        local holder
+        holder=$(cat "$lockfile" 2>/dev/null || true)
+        if [ -n "$holder" ]; then
+            kill -0 "$holder" 2>/dev/null || rm -f "$lockfile"
+        fi
+    fi
+}
+
 # --- Per-node isolation for subprocess-heavy suites ---
 for f in "${NODE_ISOLATED_FILES[@]}"; do
     echo "--- node-isolated suite: $f ---"
-    nodes=$(scripts/remedy_pytest.sh "$f" --collect-only -q 2>/dev/null | grep "::" || true)
+    _clear_stale_lock
+    nodes=$(timeout 30 scripts/remedy_pytest.sh "$f" --collect-only -q 2>/dev/null | grep "::" || true)
     if [ -z "$nodes" ]; then
         echo "  (no test nodes collected, skipping)"
         continue
@@ -46,9 +62,10 @@ for f in "${NODE_ISOLATED_FILES[@]}"; do
     suite_pass=0
     suite_fail=0
     while IFS= read -r node; do
+        _clear_stale_lock
         node_start=$SECONDS
         echo "  START node: $node"
-        if scripts/remedy_pytest.sh "$node" -q; then
+        if timeout "$NODE_TIMEOUT" scripts/remedy_pytest.sh "$node" -q; then
             node_elapsed=$((SECONDS - node_start))
             echo "  END node: $node status=PASS (${node_elapsed}s)"
             suite_pass=$((suite_pass + 1))
@@ -70,7 +87,8 @@ done
 # --- Whole-file suites ---
 for f in "${WHOLE_FILE_SUITES[@]}"; do
     echo "--- runtime suite: $f ---"
-    if scripts/remedy_pytest.sh "$f" -q; then
+    _clear_stale_lock
+    if timeout "$NODE_TIMEOUT" scripts/remedy_pytest.sh "$f" -q; then
         total_passed=$((total_passed + 1))
     else
         total_failed=$((total_failed + 1))

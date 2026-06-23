@@ -1799,20 +1799,14 @@ def _build_progress_ledger_safe(job: Any, events: list[dict]) -> dict:
 
 
 def _build_integrity_summary() -> dict:
-    """Safe integrity summary — no raw command output."""
+    """Read-only integrity summary — no subprocess, no pytest, no .agent reads.
+
+    Uses the read-only persisted integrity status helper.
+    For active integrity checks, use explicit CLI commands.
+    """
     try:
-        from packages.orchestration.integrity_gate import (
-            export_integrity_json,
-            run_integrity_checks,
-        )
-        result = run_integrity_checks(collect_only=False)
-        exported = export_integrity_json(result)
-        # Strip any message content that might leak paths/secrets
-        for check in exported.get("checks", []):
-            msg = check.get("message", "")
-            safe_msg, _ = redact_safe_text(msg, max_len=200)
-            check["message"] = safe_msg
-        return exported
+        from packages.orchestration.integrity_gate import export_readonly_integrity_status
+        return export_readonly_integrity_status()
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "integrity gate not available"}
 

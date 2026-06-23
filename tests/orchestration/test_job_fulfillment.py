@@ -1718,43 +1718,77 @@ class TestReviewBundleSafeError:
 # ---------------------------------------------------------------------------
 
 
-class TestOvernightReadinessNoHiddenCollect:
-    """_integrity_status() must not spawn pytest or collect-only subprocess."""
+class TestIntegrityReadOnlyV07:
+    """_integrity_status() and _build_integrity_summary() must be truly read-only.
 
-    def test_no_collect_only_call(self, monkeypatch):
-        """Monkeypatch run_integrity_checks to fail if collect_only=True."""
+    No subprocess. No run_integrity_checks(). No .agent file reads.
+    """
+
+    def test_integrity_status_no_run_integrity_checks(self, monkeypatch):
+        """run_integrity_checks must not be called at all."""
         import packages.orchestration.integrity_gate as ig
 
-        original = ig.run_integrity_checks
+        def bomb(**kwargs):
+            raise AssertionError("run_integrity_checks must not be called from readiness")
 
-        def guarded(*, collect_only: bool = False):
-            assert not collect_only, "collect_only=True must not be called from readiness"
-            return original(collect_only=False)
-
-        monkeypatch.setattr(ig, "run_integrity_checks", guarded)
+        monkeypatch.setattr(ig, "run_integrity_checks", bomb)
 
         from packages.orchestration.overnight_readiness import _integrity_status
         result = _integrity_status()
-        assert result in ("pass", "fail", "unknown")
+        assert result == "unknown"
 
+    def test_integrity_status_no_subprocess(self, monkeypatch):
+        """No subprocess.run from _integrity_status."""
+        import subprocess as sp
 
-class TestReviewBundleNoHiddenCollect:
-    """Review bundle must not spawn pytest --collect-only."""
+        original_run = sp.run
 
-    def test_no_collect_only_in_integrity_summary(self, monkeypatch):
+        def bomb(*args, **kwargs):
+            raise AssertionError(f"subprocess.run called: {args}")
+
+        monkeypatch.setattr(sp, "run", bomb)
+
+        from packages.orchestration.overnight_readiness import _integrity_status
+        result = _integrity_status()
+        assert result == "unknown"
+
+    def test_build_integrity_summary_no_run_integrity_checks(self, monkeypatch):
+        """Review bundle integrity must not call run_integrity_checks."""
         import packages.orchestration.integrity_gate as ig
 
-        original = ig.run_integrity_checks
+        def bomb(**kwargs):
+            raise AssertionError("run_integrity_checks must not be called from bundle")
 
-        def guarded(*, collect_only: bool = False):
-            assert not collect_only, "collect_only=True must not be called from bundle"
-            return original(collect_only=False)
-
-        monkeypatch.setattr(ig, "run_integrity_checks", guarded)
+        monkeypatch.setattr(ig, "run_integrity_checks", bomb)
 
         from packages.orchestration.review_bundle import _build_integrity_summary
         result = _build_integrity_summary()
-        assert "passed" in result or "status" in result
+        assert result.get("status") == "unknown"
+
+    def test_build_integrity_summary_no_subprocess(self, monkeypatch):
+        """No subprocess.run from _build_integrity_summary."""
+        import subprocess as sp
+
+        def bomb(*args, **kwargs):
+            raise AssertionError(f"subprocess.run called: {args}")
+
+        monkeypatch.setattr(sp, "run", bomb)
+
+        from packages.orchestration.review_bundle import _build_integrity_summary
+        result = _build_integrity_summary()
+        assert result.get("status") == "unknown"
+
+    def test_no_agent_dependency(self, tmp_path, monkeypatch):
+        """Read-only integrity works without .agent directory."""
+        monkeypatch.chdir(tmp_path)
+
+        from packages.orchestration.integrity_gate import export_readonly_integrity_status
+        result = export_readonly_integrity_status()
+        assert result["status"] == "unknown"
+        assert result["passed"] is None
+
+        from packages.orchestration.overnight_readiness import _integrity_status
+        assert _integrity_status() == "unknown"
 
 
 class TestChangedFilesPublicTruth:
