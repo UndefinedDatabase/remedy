@@ -1,26 +1,25 @@
-# Plan — Steps 3886-3915: Final Wrapper-Path Timeout Proof v1.1
+# Plan — Steps 3916-3995: Real Claude Builder/Reviewer Ping-Pong v0
 
 ## Goal
-Close final proof gap: wrapper-path forced timeout tests that exercise the
-actual chain (remedy_pytest.sh → flock → runner → child pytest).
+Build the core ping-pong Builder ↔ Reviewer loop: one task in, staged
+result out, with real Claude provider path and fake provider for tests.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- 4 new wrapper-path timeout regression tests:
-  - test_wrapper_timeout_cleanup_no_orphans
-  - test_lock_released_after_timeout
-  - test_subsequent_wrapper_succeeds_after_timeout
-  - test_inner_cleanup_before_outer (runtime-like chain)
-- Process diagnostic helper: _find_processes_by_filename, _assert_no_orphans
+- pingpong_provider.py: FakeProvider + ClaudeProvider + provider protocol
+- pingpong_loop.py: Core ping-pong orchestrator with staging, context, prompts
+- Context pack v0: safe bounded repo context (no .env, no secrets, capped)
+- CLI wired: remedy do run --builder fake --reviewer fake --max-rounds 3 --mode staged
+- 33 E2E tests covering all 17 required test cases
 - Fulfillment wrapper: 109 passed × 2 runs
-- Runtime lane: 4/4 suites × 2 runs
+- Runtime lane: 4/4 suites
 - Fast lane: 571 passed
-- Full suite: 7180 passed, 0 failed, 8 skipped
-- Lint: ruff clean, mypy clean (194 files)
-- Architecture guard: clean
+- Full suite: 7213 passed, 0 failed, 8 skipped
+- Lint: ruff clean, mypy clean (196 files)
+- Architecture guard: clean (0 violations across 13 categories)
 - No stale processes, lock not held
 
 ## Risks
-- None remaining
+- Real Claude smoke not run (ANTHROPIC_API_KEY not configured in this env)

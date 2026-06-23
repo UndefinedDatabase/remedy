@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 
 _VALID_PROVIDERS = frozenset({"none", "fixture", "ollama"})
+_VALID_PINGPONG_PROVIDERS = frozenset({"none", "fake", "claude"})
 
 
 def _parse_builder_provider(val: object) -> str:
@@ -38,7 +39,19 @@ def _cmd_do(
     json_output: bool = False,
     fixture_builder: bool | str = False,
     builder_provider: str = "none",
+    builder: str = "none",
+    reviewer: str = "none",
+    max_rounds: int = 3,
+    mode: str = "staged",
 ) -> None:
+    # Ping-pong mode: --builder and/or --reviewer set to a real provider
+    if builder != "none" or reviewer != "none":
+        _cmd_do_pingpong(
+            goal, repo=repo, builder=builder, reviewer=reviewer,
+            max_rounds=max_rounds, mode=mode, json_output=json_output,
+        )
+        return
+
     if dry_run:
         from packages.orchestration.autorun import dry_run_autorun
         plan = dry_run_autorun(
@@ -117,6 +130,58 @@ def _cmd_do_continue(
         print(summarize_continue_result(result))
 
 
+def _cmd_do_pingpong(
+    goal: str,
+    *,
+    repo: str = ".",
+    builder: str = "fake",
+    reviewer: str = "fake",
+    max_rounds: int = 3,
+    mode: str = "staged",
+    json_output: bool = False,
+) -> None:
+    """Run Builder ↔ Reviewer ping-pong loop."""
+    if builder not in _VALID_PINGPONG_PROVIDERS:
+        print(f"Error: invalid --builder: {builder!r}. Allowed: none, fake, claude.", file=sys.stderr)
+        sys.exit(2)
+    if reviewer not in _VALID_PINGPONG_PROVIDERS:
+        print(f"Error: invalid --reviewer: {reviewer!r}. Allowed: none, fake, claude.", file=sys.stderr)
+        sys.exit(2)
+    if mode != "staged":
+        print("Error: only --mode staged is supported.", file=sys.stderr)
+        sys.exit(2)
+
+    # Default: if only one side set, use fake for the other
+    effective_builder = builder if builder != "none" else "fake"
+    effective_reviewer = reviewer if reviewer != "none" else "fake"
+
+    from packages.orchestration.pingpong_loop import (
+        export_pingpong_json,
+        run_pingpong,
+        summarize_pingpong,
+    )
+
+    print("Job: ping-pong run")
+    print(f"Mode: {mode}")
+    print(f"Builder: {effective_builder}")
+    print(f"Reviewer: {effective_reviewer}")
+    print(f"Max rounds: {max_rounds}")
+    print()
+
+    result = run_pingpong(
+        goal,
+        repo,
+        builder_name=effective_builder,
+        reviewer_name=effective_reviewer,
+        max_rounds=max_rounds,
+    )
+
+    if json_output:
+        print(json.dumps(export_pingpong_json(result), indent=2))
+    else:
+        print(summarize_pingpong(result))
+
+
 _VALID_FIXTURE_MODES = frozenset({"true", "false", "repair-loop"})
 
 
@@ -156,6 +221,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
         fixture_builder=_parse_fixture_builder(getattr(args, "fixture_builder", "false")),
         builder_provider=_parse_builder_provider(getattr(args, "builder_provider", "none")),
+        builder=getattr(args, "builder", None) or "none",
+        reviewer=getattr(args, "reviewer", None) or "none",
+        max_rounds=int(getattr(args, "max_rounds", None) or 3),
+        mode=getattr(args, "mode", None) or "staged",
     ),
     "do.continue": lambda args: _cmd_do_continue(
         args.job_id,
