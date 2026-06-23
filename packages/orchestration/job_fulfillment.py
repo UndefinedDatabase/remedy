@@ -213,7 +213,7 @@ def export_job_fulfillment_json(record: JobFulfillmentRecord) -> dict[str, Any]:
         "next_safe_action": record.next_safe_action,
         "stop_reason": record.stop_reason,
         "contract_blockers": record.contract_blockers,
-        "changed_files": record.changed_files,
+        "changed_files": record.changed_target_files,
         "permissions_granted": record.permissions_granted,
         "staging_used": record.staging_used,
         "staging_promoted": record.staging_promoted,

@@ -556,6 +556,8 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
             for f in files.values()
         ],
         "redacted_protected_path_count": redacted_count,
+        "scope": "artifact_intent",
+        "scope_note": "Files from patch intent artifacts. For target-applied truth, see fulfillment_summary.json changed_target_files.",
     }
 
 

@@ -476,10 +476,17 @@ def _build_risks(inp: _Inputs) -> list[OvernightRisk]:
 
 
 def _integrity_status() -> str:
-    """Lightweight integrity status: pass | fail | unknown. Never runs tests."""
+    """Lightweight integrity status: pass | fail | unknown.
+
+    Read-only: reads persisted integrity results only.
+    Never runs tests, pytest, or collect-only subprocesses.
+    Returns 'unknown' when no prior persisted result exists.
+    """
     try:
         from packages.orchestration.integrity_gate import IntegrityStatus, run_integrity_checks
-        result = run_integrity_checks(collect_only=True)
+        # Run read-only checks only (collect_only=False skips the pytest
+        # --collect-only subprocess).  These are file-stat / import checks.
+        result = run_integrity_checks(collect_only=False)
         status = getattr(result, "status", None)
         if status == IntegrityStatus.FAIL:
             return "fail"

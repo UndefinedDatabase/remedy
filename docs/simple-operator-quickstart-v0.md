@@ -118,14 +118,14 @@ bounded loops. For normal operation, use `job` commands.
 
 ```bash
 # Create a job, attach a repo, and run fixture fulfillment
-remedy job create "Improve docs" --json
-remedy job attach-repo <job_id> /path/to/repo
-remedy job fulfill <job_id> --fixture-demo --json
+JOB_ID=$(remedy job create "Improve docs")
+remedy job attach-repo "$JOB_ID" /path/to/repo
+remedy job fulfill "$JOB_ID" --fixture-demo --json
 
 # Check result
-remedy job status <job_id> --json
-remedy job report <job_id> --json
-remedy propose list <job_id> --json
+remedy job status "$JOB_ID" --json
+remedy job report "$JOB_ID" --json
+remedy propose list "$JOB_ID" --json
 ```
 
 This demo uses fixture mode (no real provider). See `docs/first-fulfilled-job-demo-v0.md`.

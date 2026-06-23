@@ -1711,3 +1711,116 @@ class TestReviewBundleSafeError:
         if result["status"] == "error":
             assert "error_type" in result
             assert "error" not in result  # no raw str(exc)
+
+
+# ---------------------------------------------------------------------------
+# v0.6 — Review bundle side-effect + public truth (Steps 3696-3714)
+# ---------------------------------------------------------------------------
+
+
+class TestOvernightReadinessNoHiddenCollect:
+    """_integrity_status() must not spawn pytest or collect-only subprocess."""
+
+    def test_no_collect_only_call(self, monkeypatch):
+        """Monkeypatch run_integrity_checks to fail if collect_only=True."""
+        import packages.orchestration.integrity_gate as ig
+
+        original = ig.run_integrity_checks
+
+        def guarded(*, collect_only: bool = False):
+            assert not collect_only, "collect_only=True must not be called from readiness"
+            return original(collect_only=False)
+
+        monkeypatch.setattr(ig, "run_integrity_checks", guarded)
+
+        from packages.orchestration.overnight_readiness import _integrity_status
+        result = _integrity_status()
+        assert result in ("pass", "fail", "unknown")
+
+
+class TestReviewBundleNoHiddenCollect:
+    """Review bundle must not spawn pytest --collect-only."""
+
+    def test_no_collect_only_in_integrity_summary(self, monkeypatch):
+        import packages.orchestration.integrity_gate as ig
+
+        original = ig.run_integrity_checks
+
+        def guarded(*, collect_only: bool = False):
+            assert not collect_only, "collect_only=True must not be called from bundle"
+            return original(collect_only=False)
+
+        monkeypatch.setattr(ig, "run_integrity_checks", guarded)
+
+        from packages.orchestration.review_bundle import _build_integrity_summary
+        result = _build_integrity_summary()
+        assert "passed" in result or "status" in result
+
+
+class TestChangedFilesPublicTruth:
+    """Public changed_files must equal changed_target_files, not staged files."""
+
+    def test_export_changed_files_equals_target(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentRecord,
+            export_job_fulfillment_json,
+        )
+        rec = JobFulfillmentRecord(job_id="test-123", mode="fixture_demo")
+        rec.changed_files = ["staged_only.md"]
+        rec.changed_target_files = ["promoted.md"]
+        rec.staged_files = ["staged_only.md"]
+        exported = export_job_fulfillment_json(rec)
+        assert exported["changed_files"] == ["promoted.md"], \
+            "Public changed_files must equal changed_target_files"
+        assert exported["changed_target_files"] == ["promoted.md"]
+        assert exported["staged_files"] == ["staged_only.md"]
+
+    def test_blocked_export_changed_files_empty(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentRecord,
+            export_job_fulfillment_json,
+        )
+        rec = JobFulfillmentRecord(job_id="test-123", mode="fixture_demo")
+        rec.changed_files = ["staged_only.md"]
+        rec.changed_target_files = []
+        exported = export_job_fulfillment_json(rec)
+        assert exported["changed_files"] == [], \
+            "Blocked job changed_files must be empty"
+
+
+class TestChangedFilesSafeScope:
+    """changed_files_safe.json must include scope metadata."""
+
+    def test_scope_field_present(self):
+        from unittest.mock import MagicMock
+
+        from packages.orchestration.review_bundle import _build_changed_files_safe
+        job = MagicMock()
+        job.artifacts = []
+        result = _build_changed_files_safe(job, [])
+        assert result["scope"] == "artifact_intent"
+        assert "scope_note" in result
+
+
+class TestDocsCommandShapesV06:
+    """Docs must not contain invalid job create --json."""
+
+    def test_no_job_create_json_in_quickstart(self):
+        path = _ROOT / "docs" / "simple-operator-quickstart-v0.md"
+        if not path.exists():
+            return
+        content = path.read_text()
+        assert "job create" not in content or "--json" not in content.split("job create")[1].split("\n")[0], \
+            "simple-operator-quickstart must not use 'job create --json'"
+
+    def test_no_job_create_json_in_any_doc(self):
+        docs_dir = _ROOT / "docs"
+        if not docs_dir.exists():
+            return
+        for md in docs_dir.glob("*.md"):
+            content = md.read_text()
+            for i, line in enumerate(content.splitlines(), 1):
+                if "job create" in line and "--json" in line:
+                    raise AssertionError(
+                        f"{md.name}:{i} contains invalid 'job create --json'"
+                    )
