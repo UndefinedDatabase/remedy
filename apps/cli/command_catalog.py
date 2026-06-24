@@ -2234,7 +2234,9 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.show", "context.inspect", "change.proof"),
         args=(
-            ArgDef("goal", "The goal to accomplish", required=True),
+            ArgDef("goal", "Goal to accomplish (title when large prompt file used)", required=False),
+            ArgDef("--task-file", "Path to large prompt file", required=False, is_option=True, default=""),
+            ArgDef("--task-stdin", "Read large prompt from stdin", required=False, is_option=True, default="false"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             ArgDef("--project", "Project ID to use or create", required=False, is_option=True),
             ArgDef("--autonomy-level", "Autonomy level 0-7 (default: 2)", required=False, is_option=True, default="2"),

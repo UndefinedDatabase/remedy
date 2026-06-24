@@ -51,7 +51,41 @@ def _cmd_do(
     max_output_chars_val: int = 50000,
     keep_staging: bool = False,
     claude_cli_write_mode: str = "none",
+    task_file: str = "",
+    task_stdin: bool = False,
 ) -> None:
+    # --- Task input loading ---
+    task_input = None
+    if task_file and task_stdin:
+        print("Error: cannot use both --task-file and --task-stdin.", file=sys.stderr)
+        sys.exit(2)
+    if task_file:
+        from packages.orchestration.pingpong_loop import load_task_file
+        try:
+            task_input = load_task_file(task_file)
+        except ValueError as exc:
+            if json_output:
+                print(json.dumps({"error": str(exc)}, indent=2))
+            else:
+                print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+    elif task_stdin:
+        from packages.orchestration.pingpong_loop import load_task_stdin
+        stdin_text = sys.stdin.read()
+        try:
+            task_input = load_task_stdin(stdin_text)
+        except ValueError as exc:
+            if json_output:
+                print(json.dumps({"error": str(exc)}, indent=2))
+            else:
+                print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+
+    # Require at least goal or task input
+    if not goal and not task_input:
+        print("Error: provide a goal or --task-file/--task-stdin.", file=sys.stderr)
+        sys.exit(2)
+
     # Ping-pong mode: --builder and/or --reviewer set to a real provider
     if builder != "none" or reviewer != "none":
         _cmd_do_pingpong(
@@ -60,6 +94,7 @@ def _cmd_do(
             test_command=test_command, provider_timeout_sec=provider_timeout_sec,
             max_output_chars=max_output_chars_val, keep_staging=keep_staging,
             claude_cli_write_mode=claude_cli_write_mode,
+            task_input=task_input,
         )
         return
 
@@ -155,6 +190,7 @@ def _cmd_do_pingpong(
     max_output_chars: int = 50000,
     keep_staging: bool = False,
     claude_cli_write_mode: str = "none",
+    task_input: object = None,
 ) -> None:
     """Run Builder ↔ Reviewer ping-pong loop."""
     if builder not in _VALID_PINGPONG_PROVIDERS:
@@ -205,6 +241,7 @@ def _cmd_do_pingpong(
         test_command=test_command,
         keep_staging=keep_staging,
         claude_cli_write_mode=claude_cli_write_mode,
+        task_input=task_input,
     )
 
     if json_output:
@@ -258,6 +295,18 @@ def _print_text_report(run_id: str, data: dict) -> None:
     print(f"Goal: {data.get('goal', '')}")
     print(f"Status: {data.get('final_status', '')}")
     print()
+
+    # Task input info
+    ti = data.get("task_input")
+    if ti:
+        kind_label = ti.get("kind", "")
+        title = ti.get("title", "")
+        sha = ti.get("sha256", "")[:12]
+        tokens = ti.get("tokens_estimated", 0)
+        print(f"Task input: {kind_label}" + (f" ({title})" if title else ""))
+        print(f"Task size: ~{tokens} tokens")
+        print(f"Task hash: {sha}...")
+        print()
 
     # Provider evidence
     pe = data.get("provider_evidence", {})
@@ -406,7 +455,7 @@ def _cmd_do_promote(
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.run": lambda args: _cmd_do(
-        args.goal,
+        getattr(args, "goal", None) or "",
         repo=getattr(args, "repo", None) or ".",
         project=getattr(args, "project", None),
         autonomy_level=int(getattr(args, "autonomy_level", None) or 2),
@@ -428,6 +477,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_output_chars_val=int(getattr(args, "max_output_chars", None) or 50000),
         keep_staging=getattr(args, "keep_staging", False),
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
+        task_file=getattr(args, "task_file", None) or "",
+        task_stdin=getattr(args, "task_stdin", False),
     ),
     "do.promote": lambda args: _cmd_do_promote(
         args.run_id,

@@ -198,6 +198,10 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--max-output-chars", default=arg.default, dest="max_output_chars", help=arg.help)
             elif arg.name == "--claude-cli-write-mode":
                 parser.add_argument("--claude-cli-write-mode", default=arg.default, dest="claude_cli_write_mode", help=arg.help)
+            elif arg.name == "--task-file":
+                parser.add_argument("--task-file", default="", dest="task_file", help=arg.help)
+            elif arg.name == "--task-stdin":
+                parser.add_argument("--task-stdin", action="store_true", dest="task_stdin", help=arg.help)
             elif arg.name == "--user-requested":
                 parser.add_argument("--user-requested", action="store_true", dest="user_requested", help=arg.help)
             elif arg.name == "--prefer-local-for-cheap-tasks":
