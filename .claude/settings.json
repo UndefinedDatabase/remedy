@@ -5,10 +5,7 @@
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./.data/**)",
-      "Read(./.claude/settings.local.json)",
-      "Bash(pytest *)",
-      "Bash(python -m pytest *)",
-      "Bash(python3 -m pytest *)"
+      "Read(./.claude/settings.local.json)"
     ]
   },
   "disableSkillShellExecution": true
