@@ -816,6 +816,15 @@ def run_pingpong(
             result.safe_diff_files = diff_files
             result.safe_diff_truncated = diff_trunc
 
+        # --- Persist artifacts for promotion (before discard) ---
+        if (result.staged_files
+                and staging.exists()
+                and result.final_status == "staged_review_passed"):
+            from packages.orchestration.pingpong_promote import persist_artifacts
+            run_dir = _pingpong_runs_dir() / result.run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            persist_artifacts(run_dir, staging, original, result.staged_files)
+
         # Record staging path if retained
         if keep_staging:
             result.staging_path = str(staging)

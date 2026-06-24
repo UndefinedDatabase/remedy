@@ -2290,6 +2290,26 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
     ),
 
+    CommandEntry(
+        command_id="do.promote",
+        group_id="do",
+        subcommand="promote",
+        description="Promote reviewed staged artifacts into target repo (requires --approve).",
+        action_class="apply_write",
+        supports_json=True,
+        related=("do.run", "do.report"),
+        args=(
+            ArgDef("run_id", "Run ID of the reviewed staged run to promote"),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            ArgDef("--approve", "Approve promotion (required to apply changes)", required=False, is_option=True, default="false"),
+            ArgDef("--dry-run", "Preview promotion without applying", required=False, is_option=True, default="false"),
+            ArgDef("--test-command", "Post-promotion test command to run in target", required=False, is_option=True, default=""),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=True,
+        may_execute_commands=True,
+    ),
+
     # ── repair ──────────────────────────────────────────────────────────
     CommandEntry(
         command_id="repair.start",

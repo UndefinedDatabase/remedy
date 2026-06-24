@@ -73,6 +73,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--keyword", default=None, help=arg.help)
             elif arg.name == "--approved":
                 parser.add_argument("--approved", action="store_true", help=arg.help)
+            elif arg.name == "--approve":
+                parser.add_argument("--approve", action="store_true", dest="approve", help=arg.help)
             elif arg.name == "--max-cycles":
                 parser.add_argument("--max-cycles", default="3", dest="max_cycles", help=arg.help)
             elif arg.name == "--auto-approve-low-risk":

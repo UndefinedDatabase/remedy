@@ -242,6 +242,10 @@ def _cmd_do_report(
         sys.exit(1)
 
     if json_output:
+        from packages.orchestration.pingpong_promote import load_promotion
+        promo = load_promotion(run_id)
+        if promo:
+            data["promotion"] = promo
         print(json.dumps(data, indent=2))
     else:
         # Human-readable summary from stored data
@@ -283,6 +287,24 @@ def _cmd_do_report(
             if diff_text:
                 print(f"\n{diff_text}")
 
+        # Promotion status
+        from packages.orchestration.pingpong_promote import load_promotion
+        promo = load_promotion(run_id)
+        if promo:
+            print(f"\nPromotion: {promo.get('status', 'unknown')}")
+            if promo.get("applied_files"):
+                print(f"Applied files: {', '.join(promo['applied_files'])}")
+            if promo.get("changed_target_files"):
+                print(f"Changed target files: {', '.join(promo['changed_target_files'])}")
+            if promo.get("post_test_passed") is not None:
+                print(f"Post-test: {'passed' if promo['post_test_passed'] else 'FAILED'}")
+            if promo.get("blocked_reason"):
+                print(f"Blocked: {promo['blocked_reason']}")
+        else:
+            print("\nPromotion: not promoted")
+            if data.get("final_status") == "staged_review_passed":
+                print(f"To promote: remedy do promote {run_id} --repo . --approve")
+
 
 _VALID_FIXTURE_MODES = frozenset({"true", "false", "repair-loop"})
 
@@ -306,6 +328,36 @@ def _parse_fixture_builder(val: object) -> bool | str:
         file=sys.stderr,
     )
     sys.exit(2)
+
+
+def _cmd_do_promote(
+    run_id: str,
+    *,
+    repo: str = ".",
+    approve: bool = False,
+    dry_run: bool = False,
+    test_command: str = "",
+    json_output: bool = False,
+) -> None:
+    """Promote reviewed staged artifacts into target repo."""
+    from packages.orchestration.pingpong_promote import (
+        export_promotion_json,
+        promote_run,
+        summarize_promotion,
+    )
+
+    result = promote_run(
+        run_id,
+        target_repo=repo,
+        approve=approve,
+        dry_run=dry_run,
+        test_command=test_command,
+    )
+
+    if json_output:
+        print(json.dumps(export_promotion_json(result), indent=2))
+    else:
+        print(summarize_promotion(result))
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
@@ -332,6 +384,14 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_output_chars_val=int(getattr(args, "max_output_chars", None) or 50000),
         keep_staging=getattr(args, "keep_staging", False),
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
+    ),
+    "do.promote": lambda args: _cmd_do_promote(
+        args.run_id,
+        repo=getattr(args, "repo", None) or ".",
+        approve=getattr(args, "approve", False),
+        dry_run=getattr(args, "dry_run", False),
+        test_command=getattr(args, "test_command", None) or "",
+        json_output=getattr(args, "json", False),
     ),
     "do.report": lambda args: _cmd_do_report(
         args.run_id,

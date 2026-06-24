@@ -1,44 +1,25 @@
-# Plan — Steps 4266-4315: Reviewer JSON Reliability + Real Dogfood Pass Closure v3
+# Plan — Steps 4316-4395: Human-Approved Ping-Pong Promotion v0
 
 ## Goal
-Fix reviewer parse failures preventing real dogfood success. Reviewer must receive
-actual safe diff. Add JSON-only hardening to reviewer prompt. Add one bounded parse
-retry. Handle Claude CLI JSON envelope formats. Repair prompt must include findings
-+ safe diff. Report must expose parse retry metadata.
+Implement `remedy do promote <run_id>` — safe human-approved promotion from
+reviewed staging into real target repo. No auto-promotion. No git commit/push.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- _REVIEWER_JSON_SCHEMA: strict JSON-only contract in reviewer prompt
-- _REVIEWER_RETRY_PROMPT: compact correction prompt for parse retry
-- _unwrap_envelope(): handle result/content/message/text envelope wrappers
-- _parse_reviewer_json: strip markdown code fences, envelope unwrap, raw_text cap 500
-- _REVIEWER_SYSTEM: JSON-only instructions
-- _build_reviewer_prompt: accepts safe_diff with 30K cap (_REVIEWER_DIFF_CAP)
-- Reviewer call site computes safe diff before reviewer runs
-- Bounded parse retry: one retry on malformed_output:, no fake pass
-- ReviewerOutput: parse_retried, parse_retry_recovered fields
-- PingPongResult: reviewer_parse_retry_count, reviewer_parse_error,
-  reviewer_malformed_excerpt, reviewer_json_recovered
-- FakeProvider: malformed_review_recoverable option for testing
-- _build_builder_prompt: safe_diff param with 20K cap for repair rounds
-- Repair diff computed before builder call in round > 1
-- export_pingpong_json: parse metadata + per-round parse_retried/recovered
-- summarize_pingpong: shows retry count and recovered status
-- _cmd_do_report: shows parse retry info
-- 32 new tests (73-104), total 124 in test_pingpong_cli.py
-- Ruff lint: clean
-- Full suite: 7254 passed, 0 failed (pre-existing test_project_brain unrelated)
-- Architecture guard: CLEAN
-- Dogfood smoke: 3/3 scenarios pass
-
-## Dogfood command
-```
-remedy do run "Add docs note about ping-pong reports" \
-  --repo . --builder claude-cli --reviewer claude-cli \
-  --claude-cli-write-mode allowed-tools \
-  --max-rounds 2 --mode staged \
-  --test-command "python3 -m pytest tests/orchestration/test_pingpong.py -q" \
-  --keep-staging --json
-```
+- New module: packages/orchestration/pingpong_promote.py
+  - _is_blocked_path(): blocks .git, .env, caches, binary, traversal, absolute
+  - persist_artifacts(): save staged file contents + manifest under run dir
+  - load_artifacts(): load manifest and artifact dir
+  - promote_run(): full promotion with eligibility, baseline, apply, post-test
+  - _persist_promotion() / load_promotion(): promotion result persistence
+  - export_promotion_json() / summarize_promotion(): output formatting
+- Artifact persistence in run_pingpong finally block (staged_review_passed only)
+- CLI: do promote command in do_cmd.py, catalog, grouped.py
+- Report integration: promotion status in text and JSON reports
+- 33 new tests in test_pingpong_promote.py
+- Full suite: 7287 passed, 0 failed
+- Lint: clean
+- Architecture guard: clean (comments-only matches, no real violations)
+- Dogfood smoke: 6/6 scenarios pass (run, dry-run, unapproved, approved+test, persist, JSON)
