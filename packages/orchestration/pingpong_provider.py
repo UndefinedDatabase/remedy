@@ -58,6 +58,8 @@ class ReviewerOutput:
     provider: str = ""
     duration_ms: int = 0
     tokens_used: int = 0
+    parse_retried: bool = False
+    parse_retry_recovered: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +111,7 @@ class FakeProvider:
         builder_error: str = "",
         reviewer_error: str = "",
         malformed_review: bool = False,
+        malformed_review_recoverable: bool = False,
     ) -> None:
         self._builder_files = builder_files or ["docs/README.md"]
         self._fail_round = fail_on_round
@@ -117,6 +120,7 @@ class FakeProvider:
         self._builder_error = builder_error
         self._reviewer_error = reviewer_error
         self._malformed_review = malformed_review
+        self._malformed_review_recoverable = malformed_review_recoverable
         self._build_count = 0
         self._review_count = 0
 
@@ -165,7 +169,14 @@ class FakeProvider:
             return ReviewerOutput(
                 verdict="",
                 raw_text="not valid json {{{",
-                error="malformed_output",
+                error="malformed_output: no JSON found in reviewer response",
+                provider="fake",
+            )
+        if self._malformed_review_recoverable and self._review_count == 1:
+            return ReviewerOutput(
+                verdict="",
+                raw_text="Here is my review:\n{bad json",
+                error="malformed_output: JSON parse error",
                 provider="fake",
             )
         if self._review_count >= self._max_block:
@@ -209,22 +220,29 @@ class FakeProvider:
 # ---------------------------------------------------------------------------
 
 _REVIEWER_JSON_SCHEMA = """\
-Return your review as JSON with this exact structure:
-{
-  "verdict": "pass|fail|needs_repair|blocked",
-  "findings": [
-    {
-      "id": "R-0001",
-      "severity": "blocker|high|medium|low",
-      "file": "optional/path",
-      "summary": "short",
-      "details": "clear explanation",
-      "required_fix": "what builder must do"
-    }
-  ],
-  "confidence": "low|medium|high",
-  "summary": "human readable"
-}
+Return ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.
+Your entire response must be exactly one JSON object with this structure:
+
+{"verdict":"pass","findings":[],"confidence":"high","summary":"All changes correct."}
+
+Fields:
+- verdict: exactly one of "pass", "fail", "needs_repair", "blocked"
+- findings: array of objects, each with "id", "severity" (blocker|high|medium|low), "file", "summary", "required_fix"
+- confidence: "low", "medium", or "high"
+- summary: one sentence
+
+IMPORTANT: Output ONLY the JSON object. No other text.
+"""
+
+_REVIEWER_RETRY_PROMPT = """\
+Your previous response was not valid JSON. Here is what you returned (excerpt):
+
+{excerpt}
+
+Return ONLY valid JSON with this exact shape:
+{{"verdict":"pass|fail|needs_repair|blocked","findings":[],"confidence":"high","summary":"..."}}
+
+No markdown. No code fence. No explanation. ONLY the JSON object.
 """
 
 
@@ -342,39 +360,83 @@ class ClaudeProvider:
             )
 
 
+def _unwrap_envelope(data: dict) -> dict:
+    """Unwrap common Claude CLI JSON envelope formats.
+
+    Handles: direct reviewer JSON, {"result": {...}}, {"content": {...}},
+    {"message": {...}}, {"text": "json_string"}.
+    """
+    if "verdict" in data:
+        return data
+    for key in ("result", "content", "message"):
+        inner = data.get(key)
+        if isinstance(inner, dict) and "verdict" in inner:
+            return inner
+    # text field containing JSON string
+    text_field = data.get("text", "")
+    if isinstance(text_field, str) and "{" in text_field:
+        try:
+            inner = json.loads(text_field[text_field.find("{"):text_field.rfind("}") + 1])
+            if isinstance(inner, dict) and "verdict" in inner:
+                return inner
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return data
+
+
 def _parse_reviewer_json(
     text: str, duration_ms: int, tokens_used: int, *, provider: str = "claude",
 ) -> ReviewerOutput:
     """Parse reviewer JSON from Claude response. Block on parse failure."""
-    # Try to find JSON in the response
-    json_start = text.find("{")
-    json_end = text.rfind("}") + 1
+    # Strip markdown code fences if present
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        lines = stripped.split("\n")
+        # Remove first line (```json or ```) and last line (```)
+        inner_lines = []
+        started = False
+        for line in lines:
+            if not started:
+                started = True
+                continue
+            if line.strip() == "```":
+                break
+            inner_lines.append(line)
+        if inner_lines:
+            stripped = "\n".join(inner_lines)
+
+    json_start = stripped.find("{")
+    json_end = stripped.rfind("}") + 1
     if json_start < 0 or json_end <= json_start:
         return ReviewerOutput(
             verdict="blocked",
             error="malformed_output: no JSON found in reviewer response",
-            raw_text=text[:1000],
+            raw_text=text[:500],
             provider=provider,
             duration_ms=duration_ms,
             tokens_used=tokens_used,
         )
     try:
-        data = json.loads(text[json_start:json_end])
+        data = json.loads(stripped[json_start:json_end])
     except json.JSONDecodeError as exc:
         return ReviewerOutput(
             verdict="blocked",
             error=f"malformed_output: JSON parse error: {exc}",
-            raw_text=text[:1000],
+            raw_text=text[:500],
             provider=provider,
             duration_ms=duration_ms,
             tokens_used=tokens_used,
         )
+
+    # Unwrap envelope formats
+    data = _unwrap_envelope(data)
 
     verdict = data.get("verdict", "")
     if verdict not in ("pass", "fail", "needs_repair", "blocked"):
         return ReviewerOutput(
             verdict="blocked",
             error=f"malformed_output: invalid verdict '{verdict}'",
+            raw_text=text[:500],
             provider=provider,
             duration_ms=duration_ms,
             tokens_used=tokens_used,

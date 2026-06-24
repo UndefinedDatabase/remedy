@@ -269,6 +269,11 @@ def _cmd_do_report(
             noise = data.get("ignored_target_noise_files", [])
             print("Target mutation: no meaningful target changes")
             print(f"Ignored target noise: {', '.join(noise)}")
+        if data.get("reviewer_parse_retry_count", 0) > 0:
+            recovered = data.get("reviewer_json_recovered", False)
+            print(f"Reviewer parse retry: {'recovered' if recovered else 'NOT recovered'}")
+            if data.get("reviewer_parse_error"):
+                print(f"Parse error: {data['reviewer_parse_error']}")
         diff_files = data.get("safe_diff_files", [])
         if diff_files:
             print(f"Diff files ({len(diff_files)}): {', '.join(diff_files)}")

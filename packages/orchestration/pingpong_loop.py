@@ -27,6 +27,7 @@ from typing import Any
 from uuid import uuid4
 
 from packages.orchestration.pingpong_provider import (
+    _REVIEWER_RETRY_PROMPT,
     BuilderOutput,
     ClaudeCliProvider,
     FakeProvider,
@@ -79,6 +80,10 @@ class PingPongResult:
     safe_diff_truncated: bool = False
     staging_path: str = ""
     context_categories: list[str] = field(default_factory=list)
+    reviewer_parse_retry_count: int = 0
+    reviewer_parse_error: str = ""
+    reviewer_malformed_excerpt: str = ""
+    reviewer_json_recovered: bool = False
     error: str = ""
     started_at: str = ""
     finished_at: str = ""
@@ -199,8 +204,11 @@ _REVIEWER_SYSTEM = """\
 You are a code Reviewer.
 Review the builder's changes against the original goal.
 Be strict but fair. Only flag real issues.
-Return structured JSON with your verdict and findings.
+Return ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.
 """
+
+
+_REPAIR_DIFF_CAP = 20000
 
 
 def _build_builder_prompt(
@@ -210,11 +218,17 @@ def _build_builder_prompt(
     round_number: int = 1,
     findings: list[ReviewFinding] | None = None,
     staged_state: str = "",
+    safe_diff: str = "",
 ) -> str:
     parts = [_BUILDER_SYSTEM, "\n", context, "\n"]
     parts.append(f"## Task (Round {round_number})\n{goal}\n")
     if staged_state:
         parts.append(f"## Current Staged State\n{staged_state}\n")
+    if safe_diff and findings:
+        capped = safe_diff[:_REPAIR_DIFF_CAP]
+        if len(safe_diff) > _REPAIR_DIFF_CAP:
+            capped += "\n[DIFF TRUNCATED]"
+        parts.append(f"## Current Staged Diff\n```diff\n{capped}\n```\n")
     if findings:
         parts.append("## Reviewer Findings to Fix\n")
         for f in findings:
@@ -226,23 +240,32 @@ def _build_builder_prompt(
     return "\n".join(parts)
 
 
+_REVIEWER_DIFF_CAP = 30000
+
+
 def _build_reviewer_prompt(
     goal: str,
     builder_summary: str,
     *,
     diff_summary: str = "",
+    safe_diff: str = "",
     test_result: str = "",
     files_changed: list[str] | None = None,
 ) -> str:
     parts = [_REVIEWER_SYSTEM, "\n"]
     parts.append(f"## Original Goal\n{goal}\n")
     parts.append(f"## Builder Summary\n{builder_summary}\n")
-    if diff_summary:
+    if files_changed:
+        parts.append("## Files Changed\n" + "\n".join(f"- {f}" for f in files_changed) + "\n")
+    if safe_diff:
+        capped = safe_diff[:_REVIEWER_DIFF_CAP]
+        if len(safe_diff) > _REVIEWER_DIFF_CAP:
+            capped += "\n[DIFF TRUNCATED]"
+        parts.append(f"## Staged Unified Diff\n```diff\n{capped}\n```\n")
+    elif diff_summary:
         parts.append(f"## Staged Diff\n```\n{diff_summary}\n```\n")
     if test_result:
         parts.append(f"## Test Result\n{test_result}\n")
-    if files_changed:
-        parts.append("## Files Changed\n" + "\n".join(f"- {f}" for f in files_changed) + "\n")
     return "\n".join(parts)
 
 
@@ -576,11 +599,19 @@ def run_pingpong(
             )
 
             # --- Builder phase ---
+            # Compute repair diff for builder (from previous round)
+            repair_diff = ""
+            if round_num > 1 and result.staged_files and staging.exists():
+                rd_repair, _, _ = _compute_safe_diff(
+                    staging, original, result.staged_files,
+                )
+                repair_diff = rd_repair
             builder_prompt = _build_builder_prompt(
                 goal, context,
                 round_number=round_num,
                 findings=findings if round_num > 1 else None,
                 staged_state="" if round_num == 1 else f"Files changed: {result.staged_files}",
+                safe_diff=repair_diff,
             )
             builder_out = builder_provider.build(
                 builder_prompt,
@@ -661,10 +692,18 @@ def run_pingpong(
 
             # --- Reviewer phase ---
             diff_summary = "\n".join(f"M {f}" for f in result.staged_files)
+            # Compute safe diff for reviewer (before reviewer runs)
+            reviewer_safe_diff = ""
+            if result.staged_files and staging.exists():
+                rd_diff, _, _ = _compute_safe_diff(
+                    staging, original, result.staged_files,
+                )
+                reviewer_safe_diff = rd_diff
             reviewer_prompt = _build_reviewer_prompt(
                 goal,
                 builder_out.summary,
                 diff_summary=diff_summary,
+                safe_diff=reviewer_safe_diff,
                 test_result=rd.test_summary,
                 files_changed=result.staged_files,
             )
@@ -677,6 +716,26 @@ def run_pingpong(
                 timeout_sec=timeout_sec,
                 max_output_chars=max_output_chars,
             )
+
+            # --- Bounded parse retry (one attempt) ---
+            if reviewer_out.error and reviewer_out.error.startswith("malformed_output:"):
+                result.reviewer_parse_retry_count += 1
+                result.reviewer_parse_error = reviewer_out.error
+                result.reviewer_malformed_excerpt = reviewer_out.raw_text[:300]
+                retry_prompt = _REVIEWER_RETRY_PROMPT.format(
+                    excerpt=reviewer_out.raw_text[:500],
+                )
+                retry_out = reviewer_provider.review(
+                    retry_prompt,
+                    timeout_sec=timeout_sec,
+                    max_output_chars=max_output_chars,
+                )
+                retry_out.parse_retried = True
+                if not retry_out.error:
+                    retry_out.parse_retry_recovered = True
+                    result.reviewer_json_recovered = True
+                reviewer_out = retry_out
+
             rd.reviewer_output = reviewer_out
 
             # --- Target snapshot check after Reviewer ---
@@ -938,6 +997,8 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
                 "provider": rd.reviewer_output.provider,
                 "duration_ms": rd.reviewer_output.duration_ms,
                 "error": rd.reviewer_output.error,
+                "parse_retried": rd.reviewer_output.parse_retried,
+                "parse_retry_recovered": rd.reviewer_output.parse_retry_recovered,
             }
         rounds.append(round_data)
 
@@ -960,6 +1021,10 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "target_mutated": result.target_mutated,
         "tests_not_run": result.tests_not_run,
         "context_categories": result.context_categories,
+        "reviewer_parse_retry_count": result.reviewer_parse_retry_count,
+        "reviewer_parse_error": result.reviewer_parse_error,
+        "reviewer_malformed_excerpt": result.reviewer_malformed_excerpt,
+        "reviewer_json_recovered": result.reviewer_json_recovered,
         "error": result.error,
         "rounds": rounds,
         "started_at": result.started_at,
@@ -993,6 +1058,13 @@ def summarize_pingpong(result: PingPongResult) -> str:
     elif result.target_noise_detected:
         lines.append("Target mutation: no meaningful target changes")
         lines.append(f"Ignored target noise: {', '.join(result.ignored_target_noise_files)}")
+    if result.reviewer_parse_retry_count > 0:
+        if result.reviewer_json_recovered:
+            lines.append(f"Reviewer parse: retried {result.reviewer_parse_retry_count}x, recovered")
+        else:
+            lines.append(f"Reviewer parse: retried {result.reviewer_parse_retry_count}x, NOT recovered")
+            if result.reviewer_parse_error:
+                lines.append(f"Parse error: {result.reviewer_parse_error}")
     if result.error:
         lines.append(f"Error: {result.error}")
     lines.append("")

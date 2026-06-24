@@ -14,6 +14,8 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.pingpong_loop import (
+    _build_builder_prompt,
+    _build_reviewer_prompt,
     _compute_safe_diff,
     _is_target_noise,
     export_pingpong_json,
@@ -23,8 +25,12 @@ from packages.orchestration.pingpong_loop import (
     summarize_pingpong,
 )
 from packages.orchestration.pingpong_provider import (
+    _REVIEWER_RETRY_PROMPT,
     ClaudeCliProvider,
     FakeProvider,
+    ReviewFinding,
+    _parse_reviewer_json,
+    _unwrap_envelope,
     build_claude_cli_args,
     create_provider,
 )
@@ -1466,3 +1472,478 @@ class TestDogfoodRegression:
         assert len(result.safe_diff_files) > 0
         assert result.safe_diff_summary != ""
         assert "report-guide" in result.safe_diff_summary
+
+
+# ===========================================================================
+# Block v3 — Reviewer JSON Reliability tests (Steps 4266-4315)
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# 73. _parse_reviewer_json strips markdown code fences
+# ---------------------------------------------------------------------------
+
+class TestParseReviewerJsonCodeFence:
+    def test_code_fence_stripped(self):
+        text = '```json\n{"verdict":"pass","findings":[],"confidence":"high","summary":"ok"}\n```'
+        out = _parse_reviewer_json(text, 100, 50)
+        assert out.verdict == "pass"
+        assert out.error == ""
+
+
+# ---------------------------------------------------------------------------
+# 74. _parse_reviewer_json handles bare JSON
+# ---------------------------------------------------------------------------
+
+class TestParseReviewerJsonBare:
+    def test_bare_json(self):
+        text = '{"verdict":"needs_repair","findings":[{"id":"R1","severity":"high","file":"a.py","summary":"bug"}],"confidence":"medium","summary":"fix needed"}'
+        out = _parse_reviewer_json(text, 100, 50)
+        assert out.verdict == "needs_repair"
+        assert len(out.findings) == 1
+        assert out.findings[0].id == "R1"
+
+
+# ---------------------------------------------------------------------------
+# 75. _parse_reviewer_json rejects no-JSON text
+# ---------------------------------------------------------------------------
+
+class TestParseReviewerJsonNoJson:
+    def test_no_json_returns_malformed(self):
+        out = _parse_reviewer_json("This is just prose with no JSON.", 100, 50)
+        assert out.error.startswith("malformed_output:")
+        assert out.verdict == "blocked"
+
+
+# ---------------------------------------------------------------------------
+# 76. _parse_reviewer_json rejects invalid verdict
+# ---------------------------------------------------------------------------
+
+class TestParseReviewerJsonInvalidVerdict:
+    def test_invalid_verdict(self):
+        text = '{"verdict":"approve","findings":[],"confidence":"high","summary":"ok"}'
+        out = _parse_reviewer_json(text, 100, 50)
+        assert out.error.startswith("malformed_output:")
+        assert "approve" in out.error
+
+
+# ---------------------------------------------------------------------------
+# 77. _unwrap_envelope direct verdict
+# ---------------------------------------------------------------------------
+
+class TestUnwrapEnvelopeDirect:
+    def test_direct_verdict(self):
+        data = {"verdict": "pass", "findings": [], "summary": "ok"}
+        assert _unwrap_envelope(data) is data
+
+
+# ---------------------------------------------------------------------------
+# 78. _unwrap_envelope result wrapper
+# ---------------------------------------------------------------------------
+
+class TestUnwrapEnvelopeResult:
+    def test_result_wrapper(self):
+        inner = {"verdict": "fail", "findings": []}
+        data = {"result": inner}
+        assert _unwrap_envelope(data) is inner
+
+
+# ---------------------------------------------------------------------------
+# 79. _unwrap_envelope content wrapper
+# ---------------------------------------------------------------------------
+
+class TestUnwrapEnvelopeContent:
+    def test_content_wrapper(self):
+        inner = {"verdict": "pass", "findings": []}
+        data = {"content": inner}
+        assert _unwrap_envelope(data) is inner
+
+
+# ---------------------------------------------------------------------------
+# 80. _unwrap_envelope message wrapper
+# ---------------------------------------------------------------------------
+
+class TestUnwrapEnvelopeMessage:
+    def test_message_wrapper(self):
+        inner = {"verdict": "blocked", "findings": []}
+        data = {"message": inner}
+        assert _unwrap_envelope(data) is inner
+
+
+# ---------------------------------------------------------------------------
+# 81. _unwrap_envelope text field with JSON string
+# ---------------------------------------------------------------------------
+
+class TestUnwrapEnvelopeTextField:
+    def test_text_field_json(self):
+        import json as _json
+        inner = {"verdict": "pass", "findings": [], "summary": "ok"}
+        data = {"text": _json.dumps(inner)}
+        assert _unwrap_envelope(data)["verdict"] == "pass"
+
+
+# ---------------------------------------------------------------------------
+# 82. _unwrap_envelope returns data unchanged when no verdict
+# ---------------------------------------------------------------------------
+
+class TestUnwrapEnvelopeNoVerdict:
+    def test_no_verdict_passthrough(self):
+        data = {"foo": "bar"}
+        assert _unwrap_envelope(data) is data
+
+
+# ---------------------------------------------------------------------------
+# 83. Malformed review triggers retry (FakeProvider always malformed)
+# ---------------------------------------------------------------------------
+
+class TestMalformedReviewRetryPersistent:
+    def test_malformed_retry_still_fails(self, demo_repo):
+        """Both first and retry calls return malformed — result stays review_failed."""
+        provider = FakeProvider(malformed_review=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        assert result.final_status == "review_failed"
+        assert result.reviewer_parse_retry_count == 1
+        assert result.reviewer_json_recovered is False
+        assert result.reviewer_parse_error.startswith("malformed_output:")
+
+
+# ---------------------------------------------------------------------------
+# 84. Recoverable malformed review — retry passes
+# ---------------------------------------------------------------------------
+
+class TestMalformedReviewRecoverable:
+    def test_recoverable_retry_passes(self, demo_repo):
+        """First review malformed, retry returns valid pass."""
+        provider = FakeProvider(malformed_review_recoverable=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        assert result.final_status == "staged_review_passed"
+        assert result.reviewer_parse_retry_count == 1
+        assert result.reviewer_json_recovered is True
+
+
+# ---------------------------------------------------------------------------
+# 85. parse_retried flag set on ReviewerOutput after retry
+# ---------------------------------------------------------------------------
+
+class TestParseRetriedFlag:
+    def test_parse_retried_set(self, demo_repo):
+        provider = FakeProvider(malformed_review_recoverable=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        rd = result.rounds[0]
+        assert rd.reviewer_output is not None
+        assert rd.reviewer_output.parse_retried is True
+        assert rd.reviewer_output.parse_retry_recovered is True
+
+
+# ---------------------------------------------------------------------------
+# 86. parse_retried flag NOT set on normal review
+# ---------------------------------------------------------------------------
+
+class TestParseRetriedFlagNotSet:
+    def test_no_retry_on_normal(self, demo_repo):
+        provider = FakeProvider()
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        rd = result.rounds[0]
+        assert rd.reviewer_output is not None
+        assert rd.reviewer_output.parse_retried is False
+        assert rd.reviewer_output.parse_retry_recovered is False
+
+
+# ---------------------------------------------------------------------------
+# 87. Retry does NOT fake a pass — malformed stays blocked
+# ---------------------------------------------------------------------------
+
+class TestRetryCannotFakePass:
+    def test_retry_no_fake_pass(self, demo_repo):
+        provider = FakeProvider(malformed_review=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        assert result.final_status != "staged_review_passed"
+        assert result.reviewer_json_recovered is False
+
+
+# ---------------------------------------------------------------------------
+# 88. reviewer_malformed_excerpt captured in result
+# ---------------------------------------------------------------------------
+
+class TestMalformedExcerptCaptured:
+    def test_excerpt_captured(self, demo_repo):
+        provider = FakeProvider(malformed_review=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        assert result.reviewer_malformed_excerpt != ""
+        assert "not valid json" in result.reviewer_malformed_excerpt
+
+
+# ---------------------------------------------------------------------------
+# 89. Parse metadata exported in JSON
+# ---------------------------------------------------------------------------
+
+class TestParseMetadataInExport:
+    def test_parse_fields_in_json(self, demo_repo):
+        provider = FakeProvider(malformed_review=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        data = export_pingpong_json(result)
+        assert "reviewer_parse_retry_count" in data
+        assert data["reviewer_parse_retry_count"] == 1
+        assert "reviewer_json_recovered" in data
+        assert data["reviewer_json_recovered"] is False
+        assert "reviewer_parse_error" in data
+        assert "reviewer_malformed_excerpt" in data
+
+
+# ---------------------------------------------------------------------------
+# 90. Parse metadata in summarize output
+# ---------------------------------------------------------------------------
+
+class TestParseMetadataInSummary:
+    def test_parse_info_in_summary(self, demo_repo):
+        provider = FakeProvider(malformed_review=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        summary = summarize_pingpong(result)
+        assert "retried" in summary.lower()
+        assert "NOT recovered" in summary
+
+
+# ---------------------------------------------------------------------------
+# 91. Recovered parse metadata in summarize
+# ---------------------------------------------------------------------------
+
+class TestRecoveredParseInSummary:
+    def test_recovered_in_summary(self, demo_repo):
+        provider = FakeProvider(malformed_review_recoverable=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        summary = summarize_pingpong(result)
+        assert "recovered" in summary.lower()
+
+
+# ---------------------------------------------------------------------------
+# 92. parse_retried exported per-round in JSON
+# ---------------------------------------------------------------------------
+
+class TestParseRetriedInRoundExport:
+    def test_per_round_parse_retried(self, demo_repo):
+        provider = FakeProvider(malformed_review_recoverable=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        data = export_pingpong_json(result)
+        reviewer_data = data["rounds"][0]["reviewer"]
+        assert reviewer_data["parse_retried"] is True
+        assert reviewer_data["parse_retry_recovered"] is True
+
+
+# ---------------------------------------------------------------------------
+# 93. _REVIEWER_RETRY_PROMPT has excerpt placeholder
+# ---------------------------------------------------------------------------
+
+class TestRetryPromptTemplate:
+    def test_retry_prompt_has_excerpt(self):
+        assert "{excerpt}" in _REVIEWER_RETRY_PROMPT
+        formatted = _REVIEWER_RETRY_PROMPT.format(excerpt="some bad text")
+        assert "some bad text" in formatted
+        assert "ONLY valid JSON" in formatted
+
+
+# ---------------------------------------------------------------------------
+# 94. Reviewer prompt includes safe diff
+# ---------------------------------------------------------------------------
+
+class TestReviewerPromptSafeDiff:
+    def test_safe_diff_in_reviewer_prompt(self):
+        prompt = _build_reviewer_prompt(
+            "Fix bug", "Builder fixed it",
+            safe_diff="--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-old\n+new",
+            test_result="passed",
+            files_changed=["foo.py"],
+        )
+        assert "Staged Unified Diff" in prompt
+        assert "+new" in prompt
+        assert "-old" in prompt
+
+
+# ---------------------------------------------------------------------------
+# 95. Reviewer prompt caps safe diff at 30K
+# ---------------------------------------------------------------------------
+
+class TestReviewerPromptDiffCap:
+    def test_safe_diff_capped(self):
+        long_diff = "x" * 35000
+        prompt = _build_reviewer_prompt(
+            "Fix bug", "Builder fixed it",
+            safe_diff=long_diff,
+        )
+        assert "[DIFF TRUNCATED]" in prompt
+
+
+# ---------------------------------------------------------------------------
+# 96. Builder repair prompt includes safe diff
+# ---------------------------------------------------------------------------
+
+class TestBuilderRepairPromptDiff:
+    def test_safe_diff_in_repair_prompt(self):
+        findings = [ReviewFinding(id="R1", severity="high", summary="bug")]
+        prompt = _build_builder_prompt(
+            "Fix bug", "context here",
+            round_number=2,
+            findings=findings,
+            staged_state="Files changed: [foo.py]",
+            safe_diff="--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-old\n+new",
+        )
+        assert "Current Staged Diff" in prompt
+        assert "+new" in prompt
+
+
+# ---------------------------------------------------------------------------
+# 97. Builder repair prompt caps diff at 20K
+# ---------------------------------------------------------------------------
+
+class TestBuilderRepairPromptDiffCap:
+    def test_repair_diff_capped(self):
+        findings = [ReviewFinding(id="R1", severity="high", summary="bug")]
+        long_diff = "y" * 25000
+        prompt = _build_builder_prompt(
+            "Fix bug", "context",
+            round_number=2,
+            findings=findings,
+            safe_diff=long_diff,
+        )
+        assert "[DIFF TRUNCATED]" in prompt
+
+
+# ---------------------------------------------------------------------------
+# 98. Builder prompt round 1 has no diff section
+# ---------------------------------------------------------------------------
+
+class TestBuilderPromptRound1NoDiff:
+    def test_no_diff_round_1(self):
+        prompt = _build_builder_prompt(
+            "Fix bug", "context",
+            round_number=1,
+            safe_diff="some diff",
+        )
+        # No findings = no diff shown (safe_diff only shown with findings)
+        assert "Current Staged Diff" not in prompt
+
+
+# ---------------------------------------------------------------------------
+# 99. _parse_reviewer_json handles JSON with surrounding prose
+# ---------------------------------------------------------------------------
+
+class TestParseReviewerJsonSurroundingProse:
+    def test_json_with_prose(self):
+        text = 'Here is my review:\n{"verdict":"pass","findings":[],"confidence":"high","summary":"ok"}\nEnd.'
+        out = _parse_reviewer_json(text, 100, 50)
+        assert out.verdict == "pass"
+        assert out.error == ""
+
+
+# ---------------------------------------------------------------------------
+# 100. _parse_reviewer_json raw_text capped at 500
+# ---------------------------------------------------------------------------
+
+class TestParseReviewerJsonRawTextCap:
+    def test_raw_text_capped(self):
+        text = "x" * 1000  # No JSON
+        out = _parse_reviewer_json(text, 100, 50)
+        assert len(out.raw_text) <= 500
+
+
+# ---------------------------------------------------------------------------
+# 101. Reviewer prompt falls back to diff_summary when no safe_diff
+# ---------------------------------------------------------------------------
+
+class TestReviewerPromptFallbackDiffSummary:
+    def test_fallback_diff_summary(self):
+        prompt = _build_reviewer_prompt(
+            "Fix bug", "Builder fixed it",
+            diff_summary="M foo.py\nM bar.py",
+        )
+        assert "Staged Diff" in prompt
+        assert "M foo.py" in prompt
+        assert "Staged Unified Diff" not in prompt
+
+
+# ---------------------------------------------------------------------------
+# 102. _unwrap_envelope handles nested text with extra whitespace
+# ---------------------------------------------------------------------------
+
+class TestUnwrapEnvelopeTextWhitespace:
+    def test_text_with_whitespace(self):
+        import json as _json
+        inner = {"verdict": "pass", "findings": [], "summary": "ok"}
+        data = {"text": f"  {_json.dumps(inner)}  "}
+        result = _unwrap_envelope(data)
+        assert result["verdict"] == "pass"
+
+
+# ---------------------------------------------------------------------------
+# 103. E2E: reviewer safe diff passed to reviewer (fake provider)
+# ---------------------------------------------------------------------------
+
+class TestReviewerReceivesSafeDiff:
+    def test_reviewer_gets_diff(self, demo_repo):
+        """Verify run completes and safe diff is computed before reviewer."""
+        provider = FakeProvider()
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+        )
+        # If reviewer pass, safe diff was available
+        assert result.final_status in ("staged_review_passed", "max_rounds_reached")
+        assert result.safe_diff_summary != "" or result.safe_diff_files != []
+
+
+# ---------------------------------------------------------------------------
+# 104. E2E: repair round gets safe diff context
+# ---------------------------------------------------------------------------
+
+class TestRepairRoundGetsDiff:
+    def test_two_round_repair(self, demo_repo):
+        """Two-round run: round 2 builder gets findings + diff context."""
+        provider = FakeProvider(fail_on_round=1, pass_on_round=2)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider,
+            reviewer_provider=provider,
+            max_rounds=2,
+        )
+        assert len(result.rounds) == 2
+        assert result.final_status == "staged_review_passed"
