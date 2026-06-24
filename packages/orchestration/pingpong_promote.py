@@ -79,6 +79,21 @@ def _is_blocked_path(rel_path: str) -> str:
     return ""
 
 
+def _normalize_rel_path(rel_path: str) -> str:
+    """Normalize a relative path for consistent comparison.
+
+    Forward slashes, no leading './', no trailing '/'.
+    Does NOT resolve '..' — that is caught by _is_blocked_path.
+    """
+    norm = rel_path.replace("\\", "/")
+    # Strip leading './'
+    while norm.startswith("./"):
+        norm = norm[2:]
+    # Strip trailing '/'
+    norm = norm.rstrip("/")
+    return norm
+
+
 def _hash_file(path: Path) -> str:
     """SHA-256 hash of file contents."""
     h = hashlib.sha256()
@@ -276,6 +291,11 @@ class PromotionResult:
     artifact_hash_mismatches: list[str] = field(default_factory=list)
     missing_artifacts: list[str] = field(default_factory=list)
     skipped_artifacts: list[str] = field(default_factory=list)
+    unexpected_artifacts: list[str] = field(default_factory=list)
+    duplicate_artifacts: list[str] = field(default_factory=list)
+    run_repo: str = ""
+    requested_target_repo: str = ""
+    target_repo_mismatch: bool = False
     post_test_command: str = ""
     post_test_passed: bool | None = None
     post_test_summary: str = ""
@@ -352,6 +372,7 @@ def promote_run(
 
     Without --approve, returns preview only. Never auto-promotes.
     All validation completes before any target write.
+    Artifact set must exactly match reviewed staged files.
     """
     from packages.orchestration.pingpong_loop import _pingpong_runs_dir, load_run
 
@@ -360,6 +381,7 @@ def promote_run(
         approved=approve,
         dry_run=dry_run,
         target_repo=target_repo,
+        requested_target_repo=str(Path(target_repo).resolve()),
         post_test_command=test_command,
         started_at=datetime.now(timezone.utc).isoformat(),
     )
@@ -370,6 +392,23 @@ def promote_run(
         return _block(result, f"run_not_found: {run_id}")
 
     run_dir = _pingpong_runs_dir() / run_id
+
+    # --- Target repo binding ---
+    run_repo = run_data.get("repo_path", "")
+    result.run_repo = run_repo
+    if not run_repo:
+        return _block(result, "missing_run_repo_path", run_dir)
+
+    resolved_run_repo = str(Path(run_repo).resolve())
+    resolved_target = str(Path(target_repo).resolve())
+    if resolved_run_repo != resolved_target:
+        result.target_repo_mismatch = True
+        return _block(
+            result,
+            f"target_repo_mismatch: run_repo={resolved_run_repo} "
+            f"target={resolved_target}",
+            run_dir,
+        )
 
     # --- Eligibility checks ---
     final_status = run_data.get("final_status", "")
@@ -416,14 +455,41 @@ def promote_run(
             run_dir,
         )
 
-    # --- Check staged-file/artifact completeness ---
-    artifact_paths = {e.relative_path for e in entries}
-    missing = [f for f in staged_files if f not in artifact_paths]
+    # --- Normalize paths for exact-set comparison ---
+    staged_set = {_normalize_rel_path(f) for f in staged_files}
+    artifact_paths = {_normalize_rel_path(e.relative_path) for e in entries}
+
+    # Check for duplicate artifact paths after normalization
+    seen: dict[str, int] = {}
+    for e in entries:
+        norm = _normalize_rel_path(e.relative_path)
+        seen[norm] = seen.get(norm, 0) + 1
+    duplicates = sorted(p for p, count in seen.items() if count > 1)
+    if duplicates:
+        result.duplicate_artifacts = duplicates
+        return _block(
+            result,
+            f"duplicate_artifacts: {duplicates}",
+            run_dir,
+        )
+
+    # Check for missing artifacts (in staged_files but not in manifest)
+    missing = sorted(f for f in staged_set if f not in artifact_paths)
     if missing:
         result.missing_artifacts = missing
         return _block(
             result,
             f"missing_artifacts: {missing}",
+            run_dir,
+        )
+
+    # Check for unexpected artifacts (in manifest but not in staged_files)
+    unexpected = sorted(p for p in artifact_paths if p not in staged_set)
+    if unexpected:
+        result.unexpected_artifacts = unexpected
+        return _block(
+            result,
+            f"unexpected_artifacts: {unexpected}",
             run_dir,
         )
 
@@ -632,6 +698,11 @@ def export_promotion_json(result: PromotionResult) -> dict[str, Any]:
         "artifact_hash_mismatches": result.artifact_hash_mismatches,
         "missing_artifacts": result.missing_artifacts,
         "skipped_artifacts": result.skipped_artifacts,
+        "unexpected_artifacts": result.unexpected_artifacts,
+        "duplicate_artifacts": result.duplicate_artifacts,
+        "run_repo": result.run_repo,
+        "requested_target_repo": result.requested_target_repo,
+        "target_repo_mismatch": result.target_repo_mismatch,
         "post_test_command": result.post_test_command,
         "post_test_passed": result.post_test_passed,
         "post_test_summary": result.post_test_summary,
@@ -705,5 +776,16 @@ def summarize_promotion(result: PromotionResult) -> str:
             lines.append(
                 f"Skipped artifacts: {', '.join(result.skipped_artifacts)}"
             )
+        if result.unexpected_artifacts:
+            lines.append(
+                f"Unexpected artifacts: {', '.join(result.unexpected_artifacts)}"
+            )
+        if result.duplicate_artifacts:
+            lines.append(
+                f"Duplicate artifacts: {', '.join(result.duplicate_artifacts)}"
+            )
+        if result.target_repo_mismatch:
+            lines.append(f"Run repo: {result.run_repo}")
+            lines.append(f"Requested target: {result.requested_target_repo}")
 
     return "\n".join(lines)

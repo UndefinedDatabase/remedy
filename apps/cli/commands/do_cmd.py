@@ -300,6 +300,13 @@ def _cmd_do_report(
                 print(f"Post-test: {'passed' if promo['post_test_passed'] else 'FAILED'}")
             if promo.get("blocked_reason"):
                 print(f"Blocked: {promo['blocked_reason']}")
+            if promo.get("unexpected_artifacts"):
+                print(f"Unexpected artifacts: {', '.join(promo['unexpected_artifacts'])}")
+            if promo.get("duplicate_artifacts"):
+                print(f"Duplicate artifacts: {', '.join(promo['duplicate_artifacts'])}")
+            if promo.get("target_repo_mismatch"):
+                print(f"Run repo: {promo.get('run_repo', '')}")
+                print(f"Requested target: {promo.get('requested_target_repo', '')}")
         else:
             print("\nPromotion: not promoted")
             if data.get("final_status") == "staged_review_passed":

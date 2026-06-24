@@ -1,4 +1,4 @@
-# Live Review — Steps 4396-4445: Promotion Integrity Closure v1
+# Live Review — Steps 4446-4495: Promotion Exactness Closure v2
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
@@ -19,10 +19,10 @@ Pending.
 
 ## Finding status
 
-### R-1101 Blocker — Artifact hash not verified → **Open**
-### R-1102 Blocker — Missing artifacts ignored → **Open**
-### R-1103 Blocker — Unsafe skipped staged files ignored → **Open**
-### R-1104 High — Partial subset promotion possible → **Open**
-### R-1105 High — Promotion attempts not persisted → **Open**
-### R-1106 Medium — Dry-run/no-approve status confusing → **Open**
-### R-1107 Medium — Existing promotion safety regresses → **Open**
+### R-1201 Blocker — Unexpected artifacts can promote → **Open**
+### R-1202 Blocker — Artifact set not exact → **Open**
+### R-1203 Blocker — Duplicate artifact paths ignored → **Open**
+### R-1204 High — Target repo mismatch allowed → **Open**
+### R-1205 Medium — Legacy/missing repo path silently promotes → **Open**
+### R-1206 Medium — New blocked attempts not persisted → **Open**
+### R-1207 Medium — Existing promotion safety regresses → **Open**

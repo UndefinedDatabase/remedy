@@ -7,6 +7,7 @@ post-promotion tests, report integration.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ from packages.orchestration.pingpong_loop import (
 )
 from packages.orchestration.pingpong_promote import (
     _is_blocked_path,
+    _normalize_rel_path,
     export_promotion_json,
     load_artifacts,
     load_promotion,
@@ -169,6 +171,7 @@ class TestBlockedNoStagedFiles:
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": [],
@@ -194,6 +197,7 @@ class TestBlockedTargetMutated:
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": ["README.md"],
@@ -219,6 +223,7 @@ class TestBlockedChangedTargetFiles:
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": ["README.md"],
@@ -317,6 +322,7 @@ class TestBlockedDeletes:
         # Create run data
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": ["README.md"],
@@ -583,6 +589,7 @@ class TestArtifactHashMismatch:
         # Create run data
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": ["src/main.py"],
@@ -629,6 +636,7 @@ class TestMissingArtifact:
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": ["src/main.py", "src/extra.py"],
@@ -676,6 +684,7 @@ class TestSkippedUnsafeBlocks:
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": ["src/main.py"],
@@ -723,6 +732,7 @@ class TestAllValidationBeforeWrites:
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": ["src/main.py", "docs/new.md"],
@@ -814,6 +824,7 @@ class TestBlockedAttemptPersisted:
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
+            "repo_path": str(demo_repo),
             "final_status": "staged_review_passed",
             "mode": "staged",
             "staged_files": [],
@@ -842,6 +853,11 @@ class TestJsonIntegrityFields:
         assert "artifact_hash_mismatches" in data
         assert "missing_artifacts" in data
         assert "skipped_artifacts" in data
+        assert "unexpected_artifacts" in data
+        assert "duplicate_artifacts" in data
+        assert "run_repo" in data
+        assert "requested_target_repo" in data
+        assert "target_repo_mismatch" in data
 
 
 # ---------------------------------------------------------------------------
@@ -908,3 +924,521 @@ class TestOldManifestCompat:
         assert len(entries) == 1
         assert entries[0].relative_path == "foo.py"
         assert skipped == []
+
+
+# ---------------------------------------------------------------------------
+# Helper for manual run data creation
+# ---------------------------------------------------------------------------
+
+def _make_run_data(run_id, demo_repo, **overrides):
+    """Build standard run data dict with repo_path set."""
+    data = {
+        "run_id": run_id,
+        "repo_path": str(demo_repo),
+        "final_status": "staged_review_passed",
+        "mode": "staged",
+        "staged_files": ["README.md"],
+        "target_mutated": False,
+        "changed_target_files": [],
+        "rounds": [{"reviewer": {"verdict": "pass"}}],
+    }
+    data.update(overrides)
+    return data
+
+
+def _make_artifact(run_dir, rel_path, content, operation="create",
+                   baseline_hash="", staged_hash=None):
+    """Create artifact file and return manifest entry dict."""
+    import hashlib
+    artifacts_dir = run_dir / "artifacts" / "staged"
+    dest = artifacts_dir / rel_path
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(content, str):
+        content = content.encode()
+    dest.write_bytes(content)
+    if staged_hash is None:
+        staged_hash = hashlib.sha256(content).hexdigest()
+    return {
+        "relative_path": rel_path,
+        "operation": operation,
+        "file_type": os.path.splitext(rel_path)[1].lower(),
+        "target_baseline_hash": baseline_hash,
+        "staged_hash": staged_hash,
+        "size": len(content),
+    }
+
+
+def _write_manifest(run_dir, artifacts, skipped=None):
+    """Write manifest.json with artifacts and optional skipped."""
+    manifest = {"artifacts": artifacts, "skipped": skipped or []}
+    mf = run_dir / "artifacts" / "manifest.json"
+    mf.parent.mkdir(parents=True, exist_ok=True)
+    mf.write_text(json.dumps(manifest))
+
+
+# ---------------------------------------------------------------------------
+# 45. Unexpected extra artifact blocks (primary-review regression)
+# ---------------------------------------------------------------------------
+
+class TestUnexpectedArtifactBlocks:
+    def test_extra_artifact_blocks(self, demo_repo, isolate_data_root):
+        """Exact primary-review reproduction: MALICIOUS.md in manifest but not in staged_files."""
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_unexpected"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        # staged_files only has README.md
+        data = _make_run_data(run_id, demo_repo, staged_files=["README.md"])
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        # Manifest has README.md AND MALICIOUS.md
+        readme_content = b"# Updated README\n"
+        malicious_content = b"# MALICIOUS\n"
+        a1 = _make_artifact(run_dir, "README.md", readme_content, operation="modify",
+                            baseline_hash=_hash_file_helper(demo_repo / "README.md"))
+        a2 = _make_artifact(run_dir, "MALICIOUS.md", malicious_content)
+        _write_manifest(run_dir, [a1, a2])
+
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+
+        # Must block
+        assert result.status == "blocked"
+        assert "unexpected_artifacts" in result.blocked_reason
+        assert "MALICIOUS.md" in result.unexpected_artifacts
+
+        # Target NOT modified
+        assert not (demo_repo / "MALICIOUS.md").exists()
+        assert (demo_repo / "README.md").read_text() == "# Demo\nA demo project.\n"
+
+        # Persisted
+        promo = load_promotion(run_id)
+        assert promo is not None
+        assert "unexpected_artifacts" in promo
+        assert "MALICIOUS.md" in promo["unexpected_artifacts"]
+
+    def test_extra_code_artifact_not_written(self, demo_repo, isolate_data_root):
+        """Extra code artifact not in staged_files does not get written."""
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_unexpected_code"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        data = _make_run_data(run_id, demo_repo, staged_files=["src/main.py"])
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        a1 = _make_artifact(run_dir, "src/main.py", b"def updated(): pass",
+                            operation="modify",
+                            baseline_hash=_hash_file_helper(demo_repo / "src" / "main.py"))
+        a2 = _make_artifact(run_dir, "src/backdoor.py", b"import os; os.system('rm -rf /')")
+        _write_manifest(run_dir, [a1, a2])
+
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "src/backdoor.py" in result.unexpected_artifacts
+        assert not (demo_repo / "src" / "backdoor.py").exists()
+        assert (demo_repo / "src" / "main.py").read_text() == "def hello():\n    return 'hello'\n"
+
+
+# ---------------------------------------------------------------------------
+# 46. Exact artifact set promotes successfully
+# ---------------------------------------------------------------------------
+
+class TestExactArtifactSetPromotes:
+    def test_exact_set_promotes(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "promoted"
+        assert len(result.applied_files) > 0
+        assert result.unexpected_artifacts == []
+        assert result.missing_artifacts == []
+        assert result.duplicate_artifacts == []
+
+
+# ---------------------------------------------------------------------------
+# 47. Missing artifact still blocks
+# ---------------------------------------------------------------------------
+
+class TestMissingArtifactStillBlocks:
+    def test_missing_still_blocks(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_missing_still"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        data = _make_run_data(run_id, demo_repo,
+                              staged_files=["src/main.py", "src/other.py"])
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        a1 = _make_artifact(run_dir, "src/main.py", b"print('ok')",
+                            operation="modify",
+                            baseline_hash=_hash_file_helper(demo_repo / "src" / "main.py"))
+        _write_manifest(run_dir, [a1])
+
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "missing_artifacts" in result.blocked_reason
+        assert "src/other.py" in result.missing_artifacts
+
+
+# ---------------------------------------------------------------------------
+# 48. Duplicate artifact paths after normalization block
+# ---------------------------------------------------------------------------
+
+class TestDuplicateArtifacts:
+    def test_duplicate_blocks(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_duplicate"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        data = _make_run_data(run_id, demo_repo, staged_files=["src/main.py"])
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        content = b"print('ok')"
+        import hashlib
+        h = hashlib.sha256(content).hexdigest()
+        baseline = _hash_file_helper(demo_repo / "src" / "main.py")
+
+        # Two entries with same normalized path (./src/main.py and src/main.py)
+        manifest = {
+            "artifacts": [
+                {"relative_path": "src/main.py", "operation": "modify",
+                 "file_type": ".py", "target_baseline_hash": baseline,
+                 "staged_hash": h, "size": len(content)},
+                {"relative_path": "./src/main.py", "operation": "modify",
+                 "file_type": ".py", "target_baseline_hash": baseline,
+                 "staged_hash": h, "size": len(content)},
+            ],
+            "skipped": [],
+        }
+        (run_dir / "artifacts").mkdir(parents=True, exist_ok=True)
+        (run_dir / "artifacts" / "manifest.json").write_text(json.dumps(manifest))
+        (run_dir / "artifacts" / "staged" / "src").mkdir(parents=True)
+        (run_dir / "artifacts" / "staged" / "src" / "main.py").write_bytes(content)
+
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "duplicate_artifacts" in result.blocked_reason
+        assert "src/main.py" in result.duplicate_artifacts
+
+    def test_duplicate_listed(self, demo_repo, isolate_data_root):
+        """duplicate_artifacts field lists affected paths."""
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_dup_listed"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        data = _make_run_data(run_id, demo_repo, staged_files=["src/main.py"])
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        content = b"print('ok')"
+        import hashlib
+        h = hashlib.sha256(content).hexdigest()
+        baseline = _hash_file_helper(demo_repo / "src" / "main.py")
+
+        manifest = {
+            "artifacts": [
+                {"relative_path": "src/main.py", "operation": "modify",
+                 "file_type": ".py", "target_baseline_hash": baseline,
+                 "staged_hash": h, "size": len(content)},
+                {"relative_path": "src/main.py", "operation": "modify",
+                 "file_type": ".py", "target_baseline_hash": baseline,
+                 "staged_hash": h, "size": len(content)},
+            ],
+            "skipped": [],
+        }
+        (run_dir / "artifacts").mkdir(parents=True, exist_ok=True)
+        (run_dir / "artifacts" / "manifest.json").write_text(json.dumps(manifest))
+        (run_dir / "artifacts" / "staged" / "src").mkdir(parents=True)
+        (run_dir / "artifacts" / "staged" / "src" / "main.py").write_bytes(content)
+
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert len(result.duplicate_artifacts) == 1
+
+
+# ---------------------------------------------------------------------------
+# 49. Path normalization
+# ---------------------------------------------------------------------------
+
+class TestPathNormalization:
+    def test_leading_dot_slash_normalized(self):
+        assert _normalize_rel_path("./src/main.py") == "src/main.py"
+        assert _normalize_rel_path("././foo.py") == "foo.py"
+        assert _normalize_rel_path("src/main.py") == "src/main.py"
+
+    def test_backslash_normalized(self):
+        assert _normalize_rel_path("src\\main.py") == "src/main.py"
+
+    def test_trailing_slash_normalized(self):
+        assert _normalize_rel_path("src/dir/") == "src/dir"
+
+    def test_dotdot_still_blocked(self):
+        assert _is_blocked_path("../etc/passwd") == "path_traversal"
+
+    def test_absolute_still_blocked(self):
+        assert _is_blocked_path("/etc/passwd") == "absolute_path"
+
+
+# ---------------------------------------------------------------------------
+# 50. Target repo mismatch blocks
+# ---------------------------------------------------------------------------
+
+class TestTargetRepoMismatch:
+    def test_mismatch_blocks(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_repo_mismatch"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        # Run was for demo_repo, but promote targets /tmp/other
+        other_repo = demo_repo.parent / "other_repo"
+        other_repo.mkdir()
+        data = _make_run_data(run_id, demo_repo)
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        result = promote_run(run_id, target_repo=str(other_repo), approve=True)
+        assert result.status == "blocked"
+        assert "target_repo_mismatch" in result.blocked_reason
+        assert result.target_repo_mismatch is True
+        assert result.run_repo == str(demo_repo)
+
+    def test_mismatch_persisted(self, demo_repo, isolate_data_root):
+        """Target repo mismatch persists promotion attempt."""
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_repo_mismatch_persist"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        other_repo = demo_repo.parent / "other_repo2"
+        other_repo.mkdir()
+        data = _make_run_data(run_id, demo_repo)
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        promote_run(run_id, target_repo=str(other_repo), approve=True)
+        promo = load_promotion(run_id)
+        assert promo is not None
+        assert promo["status"] == "blocked"
+        assert "target_repo_mismatch" in promo["blocked_reason"]
+        assert promo["target_repo_mismatch"] is True
+
+    def test_same_repo_different_spelling(self, demo_repo):
+        """'.' vs absolute path resolves and passes."""
+        run_id = _run_passing(demo_repo)
+        # promote with absolute path — run was also for demo_repo (resolved)
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "promoted"
+        assert result.target_repo_mismatch is False
+
+
+# ---------------------------------------------------------------------------
+# 51. Missing run repo path blocks legacy promotion
+# ---------------------------------------------------------------------------
+
+class TestMissingRunRepoPath:
+    def test_missing_repo_path_blocks(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_no_repo_path"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        # Old run data without repo_path
+        data = {
+            "run_id": run_id,
+            "final_status": "staged_review_passed",
+            "mode": "staged",
+            "staged_files": ["README.md"],
+            "target_mutated": False,
+            "changed_target_files": [],
+            "rounds": [{"reviewer": {"verdict": "pass"}}],
+        }
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "missing_run_repo_path" in result.blocked_reason
+
+    def test_empty_repo_path_blocks(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_empty_repo_path"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        data = _make_run_data(run_id, demo_repo, repo_path="")
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "missing_run_repo_path" in result.blocked_reason
+
+
+# ---------------------------------------------------------------------------
+# 52. Dry-run with exact artifact set still does not mutate
+# ---------------------------------------------------------------------------
+
+class TestDryRunExactSetNoMutation:
+    def test_dry_run_exact_no_mutation(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        original = (demo_repo / "README.md").read_text()
+        result = promote_run(run_id, target_repo=str(demo_repo), dry_run=True)
+        assert result.status == "dry_run"
+        assert (demo_repo / "README.md").read_text() == original
+
+
+# ---------------------------------------------------------------------------
+# 53. No-approve with exact artifact set still does not mutate
+# ---------------------------------------------------------------------------
+
+class TestNoApproveExactSetNoMutation:
+    def test_no_approve_exact_no_mutation(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        original = (demo_repo / "README.md").read_text()
+        result = promote_run(run_id, target_repo=str(demo_repo))
+        assert result.status == "dry_run"
+        assert result.approved is False
+        assert (demo_repo / "README.md").read_text() == original
+
+
+# ---------------------------------------------------------------------------
+# 54. Approved promotion with exact artifact set applies new text file
+# ---------------------------------------------------------------------------
+
+class TestApprovedExactNewFile:
+    def test_exact_new_file(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "promoted"
+        for f in result.applied_files:
+            assert (demo_repo / f).exists()
+
+
+# ---------------------------------------------------------------------------
+# 55. Approved promotion with exact artifact set applies code modification
+# ---------------------------------------------------------------------------
+
+class TestApprovedExactModify:
+    def test_exact_modify(self, demo_repo):
+        run_id = _run_passing(demo_repo, builder_files=["README.md"])
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "promoted"
+        assert "README.md" in result.applied_files
+
+
+# ---------------------------------------------------------------------------
+# 56. Artifact hash mismatch still blocks
+# ---------------------------------------------------------------------------
+
+class TestHashMismatchStillBlocks:
+    def test_hash_still_blocks(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_hash_still"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        data = _make_run_data(run_id, demo_repo, staged_files=["src/main.py"])
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        a1 = _make_artifact(run_dir, "src/main.py", b"print('ok')",
+                            operation="modify",
+                            baseline_hash=_hash_file_helper(demo_repo / "src" / "main.py"),
+                            staged_hash="bad_hash")
+        _write_manifest(run_dir, [a1])
+
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "artifact_hash_mismatch" in result.blocked_reason
+
+
+# ---------------------------------------------------------------------------
+# 57. Baseline mismatch still blocks
+# ---------------------------------------------------------------------------
+
+class TestBaselineMismatchStillBlocks:
+    def test_baseline_still_blocks(self, demo_repo):
+        run_id = _run_passing(demo_repo, builder_files=["README.md"])
+        (demo_repo / "README.md").write_text("# Modified after run\n")
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "baseline_mismatch" in result.blocked_reason
+
+
+# ---------------------------------------------------------------------------
+# 58. Post-promotion test still runs after approved apply
+# ---------------------------------------------------------------------------
+
+class TestPostTestStillRuns:
+    def test_post_test_runs(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        result = promote_run(
+            run_id, target_repo=str(demo_repo), approve=True,
+            test_command="python3 -c \"print('ok')\"",
+        )
+        assert result.status == "promoted"
+        assert result.post_test_passed is True
+
+
+# ---------------------------------------------------------------------------
+# 59. Failing post-promotion test still reports honestly
+# ---------------------------------------------------------------------------
+
+class TestPostTestStillFails:
+    def test_post_test_failure(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        result = promote_run(
+            run_id, target_repo=str(demo_repo), approve=True,
+            test_command="python3 -c \"import sys; sys.exit(1)\"",
+        )
+        assert result.status == "promoted_test_failed"
+        assert result.post_test_passed is False
+
+
+# ---------------------------------------------------------------------------
+# 60. Report shows unexpected artifact block
+# ---------------------------------------------------------------------------
+
+class TestReportShowsUnexpected:
+    def test_report_unexpected(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_report_unexp"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        data = _make_run_data(run_id, demo_repo, staged_files=["README.md"])
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        a1 = _make_artifact(run_dir, "README.md", b"# Updated\n",
+                            operation="modify",
+                            baseline_hash=_hash_file_helper(demo_repo / "README.md"))
+        a2 = _make_artifact(run_dir, "extra.txt", b"extra")
+        _write_manifest(run_dir, [a1, a2])
+
+        promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        promo = load_promotion(run_id)
+        assert promo is not None
+        assert promo["status"] == "blocked"
+        assert "extra.txt" in promo["unexpected_artifacts"]
+
+        summary = summarize_promotion(promote_run(run_id, target_repo=str(demo_repo)))
+        assert "unexpected" in summary.lower() or "Unexpected" in summary
+
+
+# ---------------------------------------------------------------------------
+# 61. Report shows target repo mismatch block
+# ---------------------------------------------------------------------------
+
+class TestReportShowsRepoMismatch:
+    def test_report_repo_mismatch(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_report_mismatch"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+
+        other = demo_repo.parent / "other_for_report"
+        other.mkdir()
+        data = _make_run_data(run_id, demo_repo)
+        (run_dir / "result.json").write_text(json.dumps(data))
+
+        result = promote_run(run_id, target_repo=str(other), approve=True)
+        summary = summarize_promotion(result)
+        assert "Run repo:" in summary or "target_repo_mismatch" in summary

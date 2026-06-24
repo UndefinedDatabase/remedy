@@ -1,27 +1,35 @@
-# Plan — Steps 4396-4445: Promotion Integrity Closure v1
+# Plan — Steps 4446-4495: Promotion Exactness Closure v2
 
 ## Goal
-Fix 6 promotion-integrity gaps found by review. All validation before
-any target write. Universal persistence. Hash verification. Completeness
-check. Skipped tracking. No partial apply.
+Block unexpected artifacts, enforce exact reviewed artifact set,
+normalize paths, bind promotion target to original run repo.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- Artifact hash verification: SHA-256 of artifact bytes checked against manifest staged_hash
-- Staged-file/artifact completeness: all staged_files must appear in manifest
-- Skipped artifact tracking: persist_artifacts records skipped files with reasons
-- Manifest format: {"artifacts": [...], "skipped": [...]} with old flat-list backward compat
-- load_artifacts returns 3-tuple (entries, skipped, staged_dir)
-- Universal persistence: every return path (_block, dry_run, promoted) calls _persist_promotion
-- No partial apply: all validation (hash, blocked, baseline, unsupported) before any target write
-- New PromotionResult fields: artifact_hash_mismatches, missing_artifacts, skipped_artifacts
-- _block() helper centralizes blocked status + persistence
-- 44 promotion tests (11 new): hash mismatch, missing artifact, skipped unsafe, no partial apply,
-  dry-run persisted, no-approve persisted, blocked persisted, JSON integrity fields,
-  skipped tracking, load_artifacts skipped, old manifest compat
-- Full suite: 7381 passed, 0 failed (1 pre-existing deselected)
-- Lint: clean
-- Architecture guard: clean (subprocess.run in _run_post_test only, intentional)
-- Dogfood smoke: 6/6 scenarios pass
+- Unexpected artifact check: manifest entries not in staged_files block
+- Duplicate artifact check: same normalized path appearing twice blocks
+- Path normalization: _normalize_rel_path strips ./ prefix, backslash, trailing /
+- Repo binding: resolved run_data.repo_path must match resolved --repo target
+- Missing run repo_path blocks legacy runs (no silent promotion)
+- repo_path added to export_pingpong_json for persistence in result.json
+- New PromotionResult fields: unexpected_artifacts, duplicate_artifacts,
+  run_repo, requested_target_repo, target_repo_mismatch
+- export_promotion_json and summarize_promotion updated with new fields
+- do_cmd.py report shows unexpected artifacts, duplicates, repo mismatch
+- 70 promotion tests (26 new): unexpected artifact regression, extra code artifact,
+  exact set promotes, missing still blocks, duplicate blocks, duplicate listed,
+  path normalization (3), repo mismatch blocks, mismatch persisted, same repo resolves,
+  missing repo_path blocks, empty repo_path blocks, dry-run exact no mutation,
+  no-approve exact no mutation, approved new file, approved modify,
+  hash still blocks, baseline still blocks, post-test runs, post-test fails,
+  report unexpected, report repo mismatch
+- Full suite: 7407 passed, 0 failed (1 pre-existing deselected)
+- Fast lane: 571 passed
+- Runtime lane: 4/4 suites passed
+- Lint: all checks passed (ruff + mypy)
+- Architecture guard: clean
+- Dogfood smoke: 6/6 scenarios pass (run, dry-run, approved, JSON fields,
+  repo mismatch, unexpected artifact injection)
+- Job fulfillment: 109 passed

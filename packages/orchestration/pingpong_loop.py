@@ -1017,6 +1017,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "run_id": result.run_id,
         "job_id": result.job_id,
         "goal": result.goal,
+        "repo_path": result.repo_path,
         "mode": result.mode,
         "builder_provider": result.builder_provider,
         "reviewer_provider": result.reviewer_provider,
