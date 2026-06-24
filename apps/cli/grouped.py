@@ -178,6 +178,24 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--attempt-id", default=None, dest="attempt_id", help=arg.help)
             elif arg.name == "--use-local-advisor":
                 parser.add_argument("--use-local-advisor", action="store_true", dest="use_local_advisor", help=arg.help)
+            elif arg.name == "--keep-staging":
+                parser.add_argument("--keep-staging", action="store_true", dest="keep_staging", help=arg.help)
+            elif arg.name == "--builder":
+                parser.add_argument("--builder", default=arg.default, help=arg.help)
+            elif arg.name == "--reviewer":
+                parser.add_argument("--reviewer", default=arg.default, help=arg.help)
+            elif arg.name == "--max-rounds":
+                parser.add_argument("--max-rounds", default=arg.default, dest="max_rounds", help=arg.help)
+            elif arg.name == "--mode":
+                parser.add_argument("--mode", default=arg.default, help=arg.help)
+            elif arg.name == "--test-command":
+                parser.add_argument("--test-command", default=arg.default, dest="test_command", help=arg.help)
+            elif arg.name == "--provider-timeout-sec":
+                parser.add_argument("--provider-timeout-sec", default=arg.default, dest="provider_timeout_sec", help=arg.help)
+            elif arg.name == "--max-output-chars":
+                parser.add_argument("--max-output-chars", default=arg.default, dest="max_output_chars", help=arg.help)
+            elif arg.name == "--claude-cli-write-mode":
+                parser.add_argument("--claude-cli-write-mode", default=arg.default, dest="claude_cli_write_mode", help=arg.help)
             elif arg.name == "--user-requested":
                 parser.add_argument("--user-requested", action="store_true", dest="user_requested", help=arg.help)
             elif arg.name == "--prefer-local-for-cheap-tasks":

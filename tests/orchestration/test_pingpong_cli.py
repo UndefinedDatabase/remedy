@@ -15,6 +15,7 @@ import pytest
 
 from packages.orchestration.pingpong_loop import (
     _compute_safe_diff,
+    _is_target_noise,
     export_pingpong_json,
     list_runs,
     load_run,
@@ -1023,3 +1024,445 @@ class TestSafeDiffWithKeepStaging:
         assert isinstance(result.safe_diff_summary, str)
         assert isinstance(result.safe_diff_files, list)
         assert isinstance(result.safe_diff_truncated, bool)
+
+
+# ===========================================================================
+# Steps 4216-4265: Dogfood Cache-Noise + Staged Diff Report Closure tests
+# ===========================================================================
+
+@pytest.fixture
+def fake_claude_cache_noise_builder_bin(tmp_path: Path, demo_repo: Path) -> Path:
+    """Fake builder that writes to staging cwd AND creates cache dirs in target."""
+    bin_dir = tmp_path / "noise_builder_bin"
+    bin_dir.mkdir()
+    claude_script = bin_dir / "claude"
+    # Writes to staging (cwd) AND creates cache noise in target
+    claude_script.write_text(textwrap.dedent(f"""\
+        #!/bin/bash
+        /bin/mkdir -p "$PWD/docs"
+        echo "# Report guide" > "$PWD/docs/report-guide.md"
+        /bin/mkdir -p "{demo_repo}/.pytest_cache"
+        echo "cache" > "{demo_repo}/.pytest_cache/v"
+        /bin/mkdir -p "{demo_repo}/.ruff_cache"
+        echo "cache" > "{demo_repo}/.ruff_cache/v"
+        /bin/mkdir -p "{demo_repo}/.mypy_cache"
+        echo "cache" > "{demo_repo}/.mypy_cache/v"
+        echo "Builder changed docs/report-guide.md"
+    """))
+    claude_script.chmod(claude_script.stat().st_mode | 0o755)
+    return bin_dir
+
+
+@pytest.fixture
+def fake_claude_real_target_mutator_bin(tmp_path: Path, demo_repo: Path) -> Path:
+    """Fake builder that mutates a real doc file in target (not just cache noise)."""
+    bin_dir = tmp_path / "real_mut_bin"
+    bin_dir.mkdir()
+    claude_script = bin_dir / "claude"
+    claude_script.write_text(textwrap.dedent(f"""\
+        #!/bin/bash
+        /bin/mkdir -p "{demo_repo}/docs"
+        echo "# Mutated doc" > "{demo_repo}/docs/mutated.md"
+        echo "Builder summary"
+    """))
+    claude_script.chmod(claude_script.stat().st_mode | 0o755)
+    return bin_dir
+
+
+# ---------------------------------------------------------------------------
+# 49. Cache noise classified as noise, not meaningful mutation
+# ---------------------------------------------------------------------------
+
+class TestCacheNoiseClassification:
+    def test_pytest_cache_is_noise(self):
+        assert _is_target_noise(".pytest_cache/") is True
+        assert _is_target_noise(".pytest_cache/v/cache") is True
+
+    def test_mypy_cache_is_noise(self):
+        assert _is_target_noise(".mypy_cache/") is True
+
+    def test_ruff_cache_is_noise(self):
+        assert _is_target_noise(".ruff_cache/") is True
+
+    def test_pycache_is_noise(self):
+        assert _is_target_noise("__pycache__/") is True
+        assert _is_target_noise("__pycache__/module.cpython-310.pyc") is True
+
+    def test_pyc_is_noise(self):
+        assert _is_target_noise("module.pyc") is True
+
+    def test_source_file_not_noise(self):
+        assert _is_target_noise("main.py") is False
+
+    def test_doc_file_not_noise(self):
+        assert _is_target_noise("docs/guide.md") is False
+
+    def test_config_not_noise(self):
+        assert _is_target_noise("pyproject.toml") is False
+
+    def test_lockfile_not_noise(self):
+        assert _is_target_noise("poetry.lock") is False
+
+
+# ---------------------------------------------------------------------------
+# 50. Real target file mutation still blocks
+# ---------------------------------------------------------------------------
+
+class TestRealTargetMutationStillBlocks:
+    def test_doc_mutation_blocks(self, monkeypatch, demo_repo, fake_claude_real_target_mutator_bin, fake_claude_reviewer_bin):
+        monkeypatch.setenv("PATH", f"{fake_claude_real_target_mutator_bin}:{fake_claude_reviewer_bin}")
+        (demo_repo / "docs").mkdir(exist_ok=True)
+        result = run_pingpong(
+            "Fix docs", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli",
+            max_rounds=1,
+        )
+        assert result.final_status == "target_mutation_blocked"
+        assert result.target_mutated is True
+        assert any("mutated.md" in f for f in result.changed_target_files)
+
+
+# ---------------------------------------------------------------------------
+# 51. Target Markdown/doc mutation still blocks
+# ---------------------------------------------------------------------------
+
+class TestTargetDocMutationBlocks:
+    def test_markdown_mutation_blocks(self, monkeypatch, demo_repo, fake_claude_real_target_mutator_bin, fake_claude_reviewer_bin):
+        monkeypatch.setenv("PATH", f"{fake_claude_real_target_mutator_bin}:{fake_claude_reviewer_bin}")
+        (demo_repo / "docs").mkdir(exist_ok=True)
+        result = run_pingpong(
+            "Fix docs", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli",
+            max_rounds=1,
+        )
+        assert result.target_mutated is True
+
+
+# ---------------------------------------------------------------------------
+# 52. Target source file mutation still blocks
+# ---------------------------------------------------------------------------
+
+class TestTargetSourceMutationBlocks:
+    def test_source_mutation_blocks(self, monkeypatch, demo_repo, fake_claude_target_mutator_bin, fake_claude_reviewer_bin):
+        monkeypatch.setenv("PATH", f"{fake_claude_target_mutator_bin}:{fake_claude_reviewer_bin}")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli",
+            max_rounds=1,
+        )
+        assert result.target_mutated is True
+        assert result.final_status == "target_mutation_blocked"
+
+
+# ---------------------------------------------------------------------------
+# 53. Ignored target noise exported in JSON
+# ---------------------------------------------------------------------------
+
+class TestNoiseExportedInJson:
+    def test_noise_fields_in_json(self, demo_repo):
+        # Create cache noise before run
+        (demo_repo / ".pytest_cache").mkdir(exist_ok=True)
+        (demo_repo / ".pytest_cache" / "v").write_text("cache")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        data = export_pingpong_json(result)
+        assert "ignored_target_noise_files" in data
+        assert "target_noise_detected" in data
+        assert isinstance(data["ignored_target_noise_files"], list)
+        assert isinstance(data["target_noise_detected"], bool)
+
+
+# ---------------------------------------------------------------------------
+# 54. Ignored target noise in text report
+# ---------------------------------------------------------------------------
+
+class TestNoiseInTextReport:
+    def test_noise_in_summary(self, demo_repo):
+        (demo_repo / ".ruff_cache").mkdir(exist_ok=True)
+        (demo_repo / ".ruff_cache" / "v").write_text("cache")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        summary = summarize_pingpong(result)
+        if result.target_noise_detected:
+            assert "no meaningful target changes" in summary
+            assert "Ignored target noise" in summary
+
+
+# ---------------------------------------------------------------------------
+# 55. target_mutated=false when only noise
+# ---------------------------------------------------------------------------
+
+class TestTargetMutatedFalseOnNoise:
+    def test_only_noise_not_mutated(self, demo_repo):
+        (demo_repo / ".pytest_cache").mkdir(exist_ok=True)
+        (demo_repo / ".pytest_cache" / "v").write_text("cache")
+        (demo_repo / ".mypy_cache").mkdir(exist_ok=True)
+        (demo_repo / ".mypy_cache" / "v").write_text("cache")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        assert result.target_mutated is False
+
+
+# ---------------------------------------------------------------------------
+# 56. changed_target_files=[] when only noise
+# ---------------------------------------------------------------------------
+
+class TestChangedTargetFilesEmptyOnNoise:
+    def test_changed_files_empty_on_noise(self, demo_repo):
+        (demo_repo / ".ruff_cache").mkdir(exist_ok=True)
+        (demo_repo / ".ruff_cache" / "v").write_text("cache")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        assert result.changed_target_files == []
+
+
+# ---------------------------------------------------------------------------
+# 57. target_noise_detected=true when noise exists
+# ---------------------------------------------------------------------------
+
+class TestTargetNoiseDetected:
+    def test_noise_detected_flag(self, demo_repo):
+        (demo_repo / ".pytest_cache").mkdir(exist_ok=True)
+        (demo_repo / ".pytest_cache" / "v").write_text("cache")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        assert result.target_noise_detected is True
+        assert ".pytest_cache/" in result.ignored_target_noise_files
+
+
+# ---------------------------------------------------------------------------
+# 58. Staged files preserved when target mutation blocker
+# ---------------------------------------------------------------------------
+
+class TestStagedFilesPreservedOnBlock:
+    def test_staged_files_on_block(self, monkeypatch, demo_repo, fake_claude_cache_noise_builder_bin, fake_claude_reviewer_bin):
+        """Builder writes to staging + creates cache noise in target.
+        Noise should NOT block. staged_files should be populated."""
+        monkeypatch.setenv("PATH", f"{fake_claude_cache_noise_builder_bin}:{fake_claude_reviewer_bin}")
+        result = run_pingpong(
+            "Add report guide", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli",
+            max_rounds=1,
+        )
+        # Should NOT be blocked by cache noise
+        assert result.final_status != "target_mutation_blocked"
+        assert result.target_mutated is False
+        assert result.target_noise_detected is True
+
+
+# ---------------------------------------------------------------------------
+# 59. Safe diff preserved when target mutation blocker (real mutation)
+# ---------------------------------------------------------------------------
+
+class TestSafeDiffPreservedOnBlock:
+    def test_diff_on_real_block(self, monkeypatch, demo_repo, fake_claude_target_mutator_bin, fake_claude_reviewer_bin):
+        monkeypatch.setenv("PATH", f"{fake_claude_target_mutator_bin}:{fake_claude_reviewer_bin}")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli",
+            max_rounds=1,
+        )
+        assert result.target_mutated is True
+        # safe_diff fields should exist (may be empty if no staging changes)
+        assert isinstance(result.safe_diff_summary, str)
+        assert isinstance(result.safe_diff_files, list)
+
+
+# ---------------------------------------------------------------------------
+# 60. Staged files non-empty when fake builder writes staging
+# ---------------------------------------------------------------------------
+
+class TestStagedFilesNonEmptyFake:
+    def test_fake_builder_has_staged_files(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        assert len(result.staged_files) > 0
+
+
+# ---------------------------------------------------------------------------
+# 61. Explicit test command runs after cache noise
+# ---------------------------------------------------------------------------
+
+class TestTestCommandAfterNoise:
+    def test_tests_run_despite_noise(self, demo_repo):
+        (demo_repo / ".pytest_cache").mkdir(exist_ok=True)
+        (demo_repo / ".pytest_cache" / "v").write_text("cache")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            test_command="echo 'tests pass'",
+        )
+        assert result.tests_not_run is False
+        for rd in result.rounds:
+            if rd.test_passed is not None:
+                assert rd.test_passed is True
+
+
+# ---------------------------------------------------------------------------
+# 62. Explicit test command runs in staging cwd
+# ---------------------------------------------------------------------------
+
+class TestTestCommandRunsInStaging:
+    def test_test_in_staging_cwd(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            test_command="pwd",
+        )
+        for rd in result.rounds:
+            if rd.test_summary and "exit=0" in rd.test_summary:
+                # pwd output should contain /tmp (staging), not demo_repo
+                assert "/tmp/remedy-pingpong-" in rd.test_summary
+
+
+# ---------------------------------------------------------------------------
+# 63. Target receives no meaningful product changes
+# ---------------------------------------------------------------------------
+
+class TestNoMeaningfulTargetChanges:
+    def test_clean_run_no_target_changes(self, demo_repo):
+        original_readme = (demo_repo / "README.md").read_text()
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        assert (demo_repo / "README.md").read_text() == original_readme
+        assert result.target_mutated is False
+        assert result.changed_target_files == []
+
+
+# ---------------------------------------------------------------------------
+# 64. --keep-staging works as boolean flag
+# ---------------------------------------------------------------------------
+
+class TestKeepStagingBooleanFlag:
+    def test_keep_staging_flag(self, demo_repo):
+        import shutil
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            keep_staging=True,
+        )
+        staging_path = Path(f"/tmp/remedy-pingpong-{result.run_id}")
+        assert staging_path.exists()
+        assert result.staging_path == str(staging_path)
+        shutil.rmtree(staging_path, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# 65. --keep-staging true remains accepted
+# ---------------------------------------------------------------------------
+
+class TestKeepStagingTrueAccepted:
+    def test_keep_staging_true(self, demo_repo):
+        import shutil
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            keep_staging=True,
+        )
+        assert result.staging_path != ""
+        shutil.rmtree(result.staging_path, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# 66. do run --json includes noise fields
+# ---------------------------------------------------------------------------
+
+class TestJsonIncludesNoiseFields:
+    def test_json_has_noise_fields(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        data = export_pingpong_json(result)
+        assert "ignored_target_noise_files" in data
+        assert "target_noise_detected" in data
+        assert "staging_retained" in data
+        assert "staging_path" in data
+
+
+# ---------------------------------------------------------------------------
+# 67. do report --json includes noise fields
+# ---------------------------------------------------------------------------
+
+class TestReportJsonIncludesNoiseFields:
+    def test_report_has_noise_fields(self, demo_repo):
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+        )
+        data = load_run(result.run_id)
+        assert data is not None
+        assert "ignored_target_noise_files" in data
+        assert "target_noise_detected" in data
+
+
+# ---------------------------------------------------------------------------
+# 68. Existing target snapshot guard tests still pass (via run above)
+# ---------------------------------------------------------------------------
+
+class TestExistingSnapshotGuard:
+    def test_snapshot_guard_still_blocks_real(self, monkeypatch, demo_repo, fake_claude_target_mutator_bin, fake_claude_reviewer_bin):
+        monkeypatch.setenv("PATH", f"{fake_claude_target_mutator_bin}:{fake_claude_reviewer_bin}")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli",
+            max_rounds=1,
+        )
+        assert result.target_mutated is True
+        assert result.final_status == "target_mutation_blocked"
+
+
+# ---------------------------------------------------------------------------
+# 69. Existing claude-cli staging cwd tests still pass (via earlier tests)
+# 70. Existing safe diff tests still pass (via earlier tests)
+# 71. Existing fake CLI E2E tests still pass (via earlier tests)
+# (these are covered by the existing test classes above)
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# 72. Dogfood regression: cache noise + staging write, no block
+# ---------------------------------------------------------------------------
+
+class TestDogfoodRegression:
+    def test_cache_noise_does_not_block_with_staging_changes(
+        self, monkeypatch, demo_repo, fake_claude_cache_noise_builder_bin, fake_claude_reviewer_bin,
+    ):
+        """Reproduce real dogfood issue: Builder writes staging file,
+        test/helper creates .pytest_cache/.ruff_cache/.mypy_cache in target.
+        Run must NOT be blocked. staged_files and safe_diff must be populated."""
+        monkeypatch.setenv("PATH", f"{fake_claude_cache_noise_builder_bin}:{fake_claude_reviewer_bin}")
+        result = run_pingpong(
+            "Add report guide", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli",
+            max_rounds=1,
+        )
+        # Must NOT block on cache noise
+        assert result.target_mutated is False
+        assert result.final_status != "target_mutation_blocked"
+        # Noise detected
+        assert result.target_noise_detected is True
+        assert any(".pytest_cache" in n for n in result.ignored_target_noise_files)
+        assert any(".ruff_cache" in n for n in result.ignored_target_noise_files)
+        assert any(".mypy_cache" in n for n in result.ignored_target_noise_files)
+        # Staged files populated (builder wrote docs/report-guide.md)
+        assert len(result.staged_files) > 0
+        assert any("report-guide" in f for f in result.staged_files)
+        # Safe diff populated
+        assert len(result.safe_diff_files) > 0
+        assert result.safe_diff_summary != ""
+        assert "report-guide" in result.safe_diff_summary

@@ -265,6 +265,10 @@ def _cmd_do_report(
                 for f in rv.get("findings", []):
                     print(f"    [{f.get('severity', '')}] {f.get('id', '')}: {f.get('summary', '')}")
         print(f"\nStaged files: {data.get('staged_files', [])}")
+        if data.get("target_noise_detected"):
+            noise = data.get("ignored_target_noise_files", [])
+            print("Target mutation: no meaningful target changes")
+            print(f"Ignored target noise: {', '.join(noise)}")
         diff_files = data.get("safe_diff_files", [])
         if diff_files:
             print(f"Diff files ({len(diff_files)}): {', '.join(diff_files)}")

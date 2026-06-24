@@ -1,37 +1,38 @@
-# Plan — Steps 4146-4215: Claude CLI Write-Enabled Staged Self-Run v1
+# Plan — Steps 4216-4265: Dogfood Cache-Noise + Staged Diff Report Closure v2
 
 ## Goal
-Make real local Claude CLI Builder edits work safely in staging via
-`--claude-cli-write-mode none|allowed-tools|dangerous-skip`. Add safe diff
-report artifact. Add `builder_no_changes` status.
+Fix real dogfood blocker: cache dirs (.pytest_cache, .ruff_cache, .mypy_cache)
+falsely triggering target_mutation_blocked. Preserve staged evidence on block.
+Fix --keep-staging as boolean flag.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- `--claude-cli-write-mode` wired through CLI (command_catalog, do_cmd, run_pingpong)
-- `build_claude_cli_args()` produces correct argv for all 3 write modes
-- Builder gets write_mode from CLI; Reviewer ALWAYS gets write_mode="none"
-- `_compute_safe_diff()`: unified diff, excludes secrets/binaries, capped at 50K chars
-- Safe diff fields in PingPongResult, export JSON, summary text, and report output
-- `builder_no_changes` status when Claude CLI builder produces no file changes
-- 25 new E2E tests (total 63 in test_pingpong_cli.py)
-- Real Claude CLI smoke: builder edited main.py in staging, target untouched
-  - staged_files=["main.py"], safe_diff shows actual code change
-  - target_mutated=false confirmed
-- Full suite: 7276 passed, 0 failed, 8 skipped
-- Fast lane: 571 passed
-- Runtime lane: 4/4 suites
-- Lint: ruff clean, mypy clean (196 files)
+- Target noise classification: _is_target_noise() + _TARGET_NOISE_DIRS
+  - Cache dirs classified as noise, not meaningful mutation
+  - Source/doc/config/lock files still trigger block
+- _check_target_mutation returns (meaningful, noise) tuple
+- All 4 call sites updated (after builder, tests, reviewer, finally)
+- Staged evidence preserved even on target_mutation_blocked
+- New fields: ignored_target_noise_files, target_noise_detected, staging_path
+- staging_retained + staging_path in export JSON
+- summarize_pingpong shows noise info
+- _cmd_do_report shows noise info
+- --keep-staging as store_true in grouped.py
+- --builder/--reviewer/--max-rounds/--mode/--test-command/etc. proper argparse mappings
+- 29 new tests (92 total in test_pingpong_cli.py)
+- Real smoke: builder edited README.md, target clean, diff preserved, no noise block
+- Architecture guard: CLEAN
+- Full suite: 7305 passed, 0 failed
+- Fast: 571, Runtime: 4/4, Lint: clean
 
 ## Dogfood command
 ```
-remedy do run "Add docstring to greet() in main.py" \
-  --builder claude-cli --reviewer claude-cli \
+remedy do run "Add docs note about ping-pong reports" \
+  --repo . --builder claude-cli --reviewer claude-cli \
   --claude-cli-write-mode allowed-tools \
-  --max-rounds 3 --keep-staging --json
+  --max-rounds 2 --mode staged \
+  --test-command "python3 -m pytest tests/orchestration/test_pingpong.py -q" \
+  --keep-staging --json
 ```
-
-## Risks
-- Reviewer runs without staging cwd (prompt-only), may not see builder edits
-- `dangerous-skip` requires explicit user opt-in (intentional friction)

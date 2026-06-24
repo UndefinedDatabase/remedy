@@ -70,11 +70,14 @@ class PingPongResult:
                              # target_mutation_blocked, builder_no_changes
     staged_files: list[str] = field(default_factory=list)
     changed_target_files: list[str] = field(default_factory=list)
+    ignored_target_noise_files: list[str] = field(default_factory=list)
+    target_noise_detected: bool = False
     target_mutated: bool = False
     tests_not_run: bool = False
     safe_diff_summary: str = ""
     safe_diff_files: list[str] = field(default_factory=list)
     safe_diff_truncated: bool = False
+    staging_path: str = ""
     context_categories: list[str] = field(default_factory=list)
     error: str = ""
     started_at: str = ""
@@ -382,6 +385,30 @@ _TARGET_IGNORE = frozenset({
     ".pytest_cache", "__pycache__", ".mypy_cache", ".ruff_cache",
 })
 
+# Volatile tool-cache directories/patterns — never meaningful target mutations.
+_TARGET_NOISE_DIRS = frozenset({
+    ".mypy_cache", ".pytest_cache", ".ruff_cache", "__pycache__",
+    ".coverage", "htmlcov", "node_modules", "dist", "build", ".cache",
+})
+_TARGET_NOISE_EXTENSIONS = frozenset({".pyc"})
+
+
+def _is_target_noise(rel_path: str) -> bool:
+    """Return True if rel_path is volatile tool-cache noise, not a real product file."""
+    # Directory entries (e.g. ".pytest_cache/")
+    stripped = rel_path.rstrip("/")
+    if stripped in _TARGET_NOISE_DIRS:
+        return True
+    # Files inside noise dirs (e.g. ".pytest_cache/v/cache/...")
+    top = rel_path.split("/")[0] if "/" in rel_path else ""
+    if top in _TARGET_NOISE_DIRS:
+        return True
+    # Noise file extensions
+    ext = os.path.splitext(rel_path)[1].lower()
+    if ext in _TARGET_NOISE_EXTENSIONS:
+        return True
+    return False
+
 
 def _snapshot_target(repo_path: Path) -> dict[str, bytes]:
     """Take a lightweight snapshot of target repo: {rel_path: content_hash}."""
@@ -404,29 +431,40 @@ def _snapshot_target(repo_path: Path) -> dict[str, bytes]:
 
 def _check_target_mutation(
     repo_path: Path, before: dict[str, bytes],
-) -> list[str]:
-    """Compare current target state against snapshot. Returns list of changed relative paths."""
-    after = _snapshot_target(repo_path)
-    changed: list[str] = []
+) -> tuple[list[str], list[str]]:
+    """Compare current target state against snapshot.
 
-    # Check for modified or new files
+    Returns (meaningful_changes, noise_changes).
+    Noise = volatile cache dirs/files that don't indicate real product mutation.
+    """
+    after = _snapshot_target(repo_path)
+    all_changes: list[str] = []
+
     for rel, digest in after.items():
         if rel not in before:
-            changed.append(rel)
+            all_changes.append(rel)
         elif before[rel] != digest:
-            changed.append(rel)
+            all_changes.append(rel)
 
-    # Check for deleted files
     for rel in before:
         if rel not in after:
-            changed.append(rel)
+            all_changes.append(rel)
 
-    # Also check for artifacts that snapshot ignores
+    # Also check for artifact dirs that snapshot ignores
     for artifact_dir in _TARGET_IGNORE:
-        if (repo_path / artifact_dir).exists():
-            changed.append(artifact_dir + "/")
+        entry = artifact_dir + "/"
+        if (repo_path / artifact_dir).exists() and entry not in all_changes:
+            all_changes.append(entry)
 
-    return sorted(changed)
+    meaningful: list[str] = []
+    noise: list[str] = []
+    for rel in sorted(all_changes):
+        if _is_target_noise(rel):
+            noise.append(rel)
+        else:
+            meaningful.append(rel)
+
+    return meaningful, noise
 
 
 # ---------------------------------------------------------------------------
@@ -563,14 +601,19 @@ def run_pingpong(
                 _apply_fake_builder_changes(staging, builder_out, goal)
 
             # --- Target snapshot check after Builder ---
-            target_changes = _check_target_mutation(original, target_snap)
-            if target_changes:
+            meaningful, noise = _check_target_mutation(original, target_snap)
+            if noise:
+                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
+                result.target_noise_detected = True
+            if meaningful:
+                # Compute staged evidence before blocking
+                result.staged_files = _find_staging_changes(staging, original)
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
                 result.final_status = "target_mutation_blocked"
                 result.target_mutated = True
-                result.changed_target_files = target_changes
-                result.error = f"Builder mutated target repo: {target_changes}"
+                result.changed_target_files = meaningful
+                result.error = f"Builder mutated target repo: {meaningful}"
                 break
 
             # Track staged files
@@ -603,14 +646,17 @@ def run_pingpong(
                 break
 
             # --- Target snapshot check after tests ---
-            target_changes = _check_target_mutation(original, target_snap)
-            if target_changes:
+            meaningful, noise = _check_target_mutation(original, target_snap)
+            if noise:
+                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
+                result.target_noise_detected = True
+            if meaningful:
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
                 result.final_status = "target_mutation_blocked"
                 result.target_mutated = True
-                result.changed_target_files = target_changes
-                result.error = f"Test execution mutated target repo: {target_changes}"
+                result.changed_target_files = meaningful
+                result.error = f"Test execution mutated target repo: {meaningful}"
                 break
 
             # --- Reviewer phase ---
@@ -634,14 +680,17 @@ def run_pingpong(
             rd.reviewer_output = reviewer_out
 
             # --- Target snapshot check after Reviewer ---
-            target_changes = _check_target_mutation(original, target_snap)
-            if target_changes:
+            meaningful, noise = _check_target_mutation(original, target_snap)
+            if noise:
+                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
+                result.target_noise_detected = True
+            if meaningful:
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
                 result.final_status = "target_mutation_blocked"
                 result.target_mutated = True
-                result.changed_target_files = target_changes
-                result.error = f"Reviewer mutated target repo: {target_changes}"
+                result.changed_target_files = meaningful
+                result.error = f"Reviewer mutated target repo: {meaningful}"
                 break
 
             # Detect reviewer staging mutation
@@ -687,14 +736,19 @@ def run_pingpong(
     finally:
         # --- Final target snapshot check ---
         if not result.target_mutated:
-            target_changes = _check_target_mutation(original, target_snap)
-            if target_changes:
+            meaningful, noise = _check_target_mutation(original, target_snap)
+            if noise:
+                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
+                result.target_noise_detected = True
+            if meaningful:
                 result.final_status = "target_mutation_blocked"
                 result.target_mutated = True
-                result.changed_target_files = target_changes
-                result.error = f"Target mutated during run: {target_changes}"
+                result.changed_target_files = meaningful
+                result.error = f"Target mutated during run: {meaningful}"
 
-        # --- Safe diff (before staging is discarded) ---
+        # --- Staged evidence (always compute before discard, even on block) ---
+        if not result.staged_files:
+            result.staged_files = _find_staging_changes(staging, original)
         if result.staged_files and staging.exists():
             diff_text, diff_files, diff_trunc = _compute_safe_diff(
                 staging, original, result.staged_files,
@@ -703,7 +757,10 @@ def run_pingpong(
             result.safe_diff_files = diff_files
             result.safe_diff_truncated = diff_trunc
 
-        if not keep_staging:
+        # Record staging path if retained
+        if keep_staging:
+            result.staging_path = str(staging)
+        else:
             _discard_staging(staging)
 
     if not result.target_mutated:
@@ -898,6 +955,8 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "final_status": result.final_status,
         "staged_files": result.staged_files,
         "changed_target_files": result.changed_target_files,
+        "ignored_target_noise_files": result.ignored_target_noise_files,
+        "target_noise_detected": result.target_noise_detected,
         "target_mutated": result.target_mutated,
         "tests_not_run": result.tests_not_run,
         "context_categories": result.context_categories,
@@ -908,6 +967,8 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "safe_diff_files": result.safe_diff_files,
         "safe_diff_truncated": result.safe_diff_truncated,
         "safe_diff_summary": result.safe_diff_summary,
+        "staging_retained": bool(result.staging_path),
+        "staging_path": result.staging_path,
         "report_command": f"remedy do report {result.run_id}",
         "report_json_command": f"remedy do report {result.run_id} --json",
         "report_path": report_path,
@@ -929,6 +990,9 @@ def summarize_pingpong(result: PingPongResult) -> str:
         lines.append("Tests: not run (no --test-command)")
     if result.target_mutated:
         lines.append(f"TARGET MUTATED: {result.changed_target_files}")
+    elif result.target_noise_detected:
+        lines.append("Target mutation: no meaningful target changes")
+        lines.append(f"Ignored target noise: {', '.join(result.ignored_target_noise_files)}")
     if result.error:
         lines.append(f"Error: {result.error}")
     lines.append("")
