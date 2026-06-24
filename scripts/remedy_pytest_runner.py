@@ -81,21 +81,22 @@ def run(pytest_args: list[str]) -> int:
 
         timed_out = False
         try:
-            proc.wait(timeout=timeout_sec)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            _kill_pg(pgid, signal.SIGTERM)
             try:
-                proc.wait(timeout=5)
+                proc.wait(timeout=timeout_sec)
             except subprocess.TimeoutExpired:
-                _kill_pg(pgid, signal.SIGKILL)
+                timed_out = True
+                _kill_pg(pgid, signal.SIGTERM)
                 try:
                     proc.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    pass
-
-        # Clean up process group after normal or timeout exit
-        _ensure_pg_dead(pgid)
+                    _kill_pg(pgid, signal.SIGKILL)
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
+        finally:
+            # Guarantee process group cleanup on any exit path
+            _ensure_pg_dead(pgid)
 
         # Read bounded output from temp files
         stdout_f.seek(0)

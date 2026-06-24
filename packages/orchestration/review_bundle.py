@@ -556,6 +556,8 @@ def _build_changed_files_safe(job: Any, events: list[dict]) -> dict:
             for f in files.values()
         ],
         "redacted_protected_path_count": redacted_count,
+        "scope": "artifact_intent",
+        "scope_note": "Files from patch intent artifacts. For target-applied truth, see fulfillment_summary.json changed_target_files.",
     }
 
 
@@ -1797,20 +1799,14 @@ def _build_progress_ledger_safe(job: Any, events: list[dict]) -> dict:
 
 
 def _build_integrity_summary() -> dict:
-    """Safe integrity summary — no raw command output."""
+    """Read-only integrity summary — no subprocess, no pytest, no .agent reads.
+
+    Uses the read-only persisted integrity status helper.
+    For active integrity checks, use explicit CLI commands.
+    """
     try:
-        from packages.orchestration.integrity_gate import (
-            export_integrity_json,
-            run_integrity_checks,
-        )
-        result = run_integrity_checks(collect_only=False)
-        exported = export_integrity_json(result)
-        # Strip any message content that might leak paths/secrets
-        for check in exported.get("checks", []):
-            msg = check.get("message", "")
-            safe_msg, _ = redact_safe_text(msg, max_len=200)
-            check["message"] = safe_msg
-        return exported
+        from packages.orchestration.integrity_gate import export_readonly_integrity_status
+        return export_readonly_integrity_status()
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return {"status": "section_unavailable", "reason": "integrity gate not available"}
 
@@ -1969,7 +1965,9 @@ def _build_fulfillment_summary(job_id: str, data_dir: Path) -> dict:
                 "mode": r.mode,
                 "staging_used": r.staging_used,
                 "staging_promoted": r.staging_promoted,
+                "staged_files": r.staged_files,
                 "promotion_files": r.promotion_files,
+                "changed_target_files": getattr(r, "changed_target_files", []),
                 "test_passed": r.test_passed,
                 "proof_status": r.proof_status,
                 "contract_blockers": r.contract_blockers,
@@ -1977,8 +1975,8 @@ def _build_fulfillment_summary(job_id: str, data_dir: Path) -> dict:
                 "next_safe_action": r.next_safe_action,
             })
         return {"status": "ok", "record_count": len(records), "records": summaries}
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
+    except Exception:
+        return {"status": "error", "error_type": "fulfillment_load_failed"}
 
 
 _REVIEW_BUNDLE_SECTION_SPECS: tuple[ReviewBundleSectionSpec, ...] = (

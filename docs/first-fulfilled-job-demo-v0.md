@@ -20,7 +20,7 @@ No real provider. No network. No git operations. No hidden execution.
 ```bash
 # 1. Create a job with a repo attached
 JOB_ID=$(remedy job create "Improve the project docs")
-remedy job attach-repo "$JOB_ID" /path/to/demo/repo
+remedy job attach-repo "$JOB_ID" /path/to/demo/repo  # see Repo Requirements below
 
 # 2. Run fulfillment in fixture-demo mode
 remedy job fulfill "$JOB_ID" --fixture-demo --json
@@ -75,6 +75,37 @@ remedy propose defer "$JOB_ID" <task_id> --json
 |-------|----------|---------|
 | `code_applied` | `true` | Changes were applied |
 | `tasks` | all completed | Every task finished |
+
+## Repo requirements
+
+The target repo must contain a discoverable test command (e.g. `pytest`, a
+`Makefile` test target, or a `scripts/` test runner). The test execution
+service discovers and runs tests automatically.
+
+- **No-test repos** block honestly with `stop_reason=no_test_command`.
+- **Failing-test repos** block honestly with `stop_reason=test_not_passed:failed`.
+- **Target repo is unchanged** until promotion succeeds. Blocked jobs leave
+  target untouched.
+- **Proof** may be `accepted` with reason in fixture mode because fixture
+  workers do not emit all proof chain events.
+
+Use `create_demo_repo()` from `packages.orchestration.job_fulfillment` to
+generate a valid demo repo for testing.
+
+## Blocked fulfillment behavior
+
+When fulfillment is blocked:
+
+| Field | Value | Meaning |
+|-------|-------|---------|
+| `status` | `blocked` | Fulfillment stopped |
+| `code_applied` | `false` | Target was not modified |
+| `staging_promoted` | `false` | Staged changes not promoted |
+| `changed_target_files` | `[]` | No target files changed |
+| `stop_reason` | descriptive | Why it blocked |
+| `next_safe_action` | command | What to do next |
+
+Staged files are listed in `staged_files` but are NOT target changes.
 
 ## What this demo does NOT prove
 

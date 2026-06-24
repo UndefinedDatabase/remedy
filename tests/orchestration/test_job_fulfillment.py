@@ -973,9 +973,10 @@ class TestStagedFulfillment:
 
     def test_target_repo_restored_after_staging(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from uuid import UUID
+
         from packages.orchestration.job_fulfillment import run_job_fulfill
         from packages.orchestration.storage import load_job
-        from uuid import UUID
 
         job, repo = self._setup_job(tmp_path)
         record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
@@ -999,10 +1000,11 @@ class TestStagedFulfillment:
     def test_staging_discarded_on_test_failure(self, tmp_path, monkeypatch):
         """Target repo must be untouched when tests fail in staging."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from uuid import UUID
+
         from packages.core.models import Job
         from packages.orchestration.job_fulfillment import run_job_fulfill
         from packages.orchestration.storage import load_job, save_job
-        from uuid import UUID
 
         # Create repo with failing test
         repo = tmp_path / "fail_repo"
@@ -1062,6 +1064,7 @@ class TestStagingCleanup:
         """Staging dir must be cleaned up after successful promotion."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import glob as glob_mod
+
         from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
         from packages.orchestration.storage import save_job
@@ -1352,7 +1355,7 @@ class TestStagedTestExecution:
 
         # Target should not have .pytest_cache
         pytest_cache = repo / ".pytest_cache"
-        assert not pytest_cache.exists(), f"Target repo has .pytest_cache after fulfillment"
+        assert not pytest_cache.exists(), "Target repo has .pytest_cache after fulfillment"
 
     def test_target_repo_has_no_pycache(self, tmp_path, monkeypatch):
         """After fulfillment, target repo must not contain test __pycache__."""
@@ -1385,7 +1388,6 @@ class TestCodeAppliedTruthV04:
         from packages.core.models import Job
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
-            list_fulfillment_records,
             run_job_fulfill,
         )
         from packages.orchestration.storage import save_job
@@ -1403,7 +1405,6 @@ class TestCodeAppliedTruthV04:
         from packages.core.models import Job
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
-            list_fulfillment_records,
             run_job_fulfill,
         )
         from packages.orchestration.storage import save_job
@@ -1590,10 +1591,8 @@ class TestDemoDocsCommands:
 
     def test_job_create_no_json_flag(self):
         """job create does not support --json — docs must not claim it."""
-        from pathlib import Path as P
-        docs = P("/home/decodeux/Repos/remedy/docs/first-fulfilled-job-demo-v0.md").read_text()
+        docs = (_ROOT / "docs" / "first-fulfilled-job-demo-v0.md").read_text()
         # Should NOT have 'job create' with --json
-        import re
         create_lines = [l for l in docs.splitlines() if "job create" in l and "remedy" in l]
         for line in create_lines:
             assert "--json" not in line, f"job create should not use --json: {line}"
@@ -1610,3 +1609,252 @@ class TestDemoDocsCommands:
     def test_report_command_exists(self):
         from apps.cli.commands.job import COMMAND_HANDLERS
         assert "job.report" in COMMAND_HANDLERS
+
+    def test_demo_docs_command_shapes(self):
+        """All remedy commands in demo docs must be valid shapes."""
+        docs = (_ROOT / "docs" / "first-fulfilled-job-demo-v0.md").read_text()
+        cmd_lines = [l.strip() for l in docs.splitlines()
+                     if l.strip().startswith("remedy ") or l.strip().startswith("JOB_ID=$(remedy ")]
+        assert len(cmd_lines) >= 4, f"Expected >=4 commands, got {len(cmd_lines)}"
+        for line in cmd_lines:
+            # No --json on job create
+            if "job create" in line:
+                assert "--json" not in line, f"job create must not use --json: {line}"
+
+
+# ---------------------------------------------------------------------------
+# v0.5 regression tests (Steps 3660-3668)
+# ---------------------------------------------------------------------------
+
+
+class TestBlockedFulfillmentTruthV05:
+    """Blocked fulfillment must expose honest stop_reason and changed_files."""
+
+    def _run_blocked(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        # Create a conftest that makes tests fail
+        (repo / "conftest.py").write_text("def pytest_collection_modifyitems(items):\n    raise SystemExit(1)\n")
+        job = Job(name="Blocked test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        return job, record
+
+    def test_blocked_has_stop_reason(self, tmp_path, monkeypatch):
+        _, record = self._run_blocked(tmp_path, monkeypatch)
+        assert record.status.value != "completed_verified"
+        assert record.stop_reason != ""
+
+    def test_blocked_has_empty_changed_target_files(self, tmp_path, monkeypatch):
+        _, record = self._run_blocked(tmp_path, monkeypatch)
+        assert record.changed_target_files == []
+
+    def test_blocked_staging_not_promoted(self, tmp_path, monkeypatch):
+        _, record = self._run_blocked(tmp_path, monkeypatch)
+        assert record.staging_promoted is False
+
+    def test_blocked_code_applied_false(self, tmp_path, monkeypatch):
+        job, _ = self._run_blocked(tmp_path, monkeypatch)
+        from apps.cli.commands.job import _extract_job_truth
+        truth = _extract_job_truth(job)
+        assert truth['code_applied'] is False
+
+    def test_blocked_latest_stop_reason_not_empty(self, tmp_path, monkeypatch):
+        job, _ = self._run_blocked(tmp_path, monkeypatch)
+        from apps.cli.commands.job import _extract_job_truth
+        truth = _extract_job_truth(job)
+        assert truth['latest_stop_reason'] != ''
+
+    def test_blocked_has_fulfillment_blockers(self, tmp_path, monkeypatch):
+        job, _ = self._run_blocked(tmp_path, monkeypatch)
+        from apps.cli.commands.job import _extract_job_truth
+        truth = _extract_job_truth(job)
+        assert truth['fulfillment_blockers']
+
+
+class TestSuccessfulFulfillmentTruthV05:
+    """Successful fulfillment must show promoted target files."""
+
+    def test_changed_target_files_match_promotion(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import Job
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import save_job
+
+        repo = create_demo_repo(tmp_path)
+        job = Job(name="Success test", metadata={"target_repo": str(repo)})
+        save_job(job, root=tmp_path)
+        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+
+        assert record.status.value == "completed_verified"
+        assert record.changed_target_files == record.promotion_files
+        assert len(record.changed_target_files) > 0
+        # staged_files may be broader than changed_target_files
+        for f in record.changed_target_files:
+            assert f in record.staged_files
+
+
+class TestReviewBundleSafeError:
+    """Review bundle must not leak raw exception text."""
+
+    def test_error_no_raw_traceback(self):
+        from pathlib import Path
+
+        from packages.orchestration.review_bundle import _build_fulfillment_summary
+        # Non-existent data_dir triggers error path
+        result = _build_fulfillment_summary("nonexistent-job", Path("/tmp/no-such-dir"))
+        assert result["status"] in ("no_fulfillment_records", "error")
+        if result["status"] == "error":
+            assert "error_type" in result
+            assert "error" not in result  # no raw str(exc)
+
+
+# ---------------------------------------------------------------------------
+# v0.6 — Review bundle side-effect + public truth (Steps 3696-3714)
+# ---------------------------------------------------------------------------
+
+
+class TestIntegrityReadOnlyV07:
+    """_integrity_status() and _build_integrity_summary() must be truly read-only.
+
+    No subprocess. No run_integrity_checks(). No .agent file reads.
+    """
+
+    def test_integrity_status_no_run_integrity_checks(self, monkeypatch):
+        """run_integrity_checks must not be called at all."""
+        import packages.orchestration.integrity_gate as ig
+
+        def bomb(**kwargs):
+            raise AssertionError("run_integrity_checks must not be called from readiness")
+
+        monkeypatch.setattr(ig, "run_integrity_checks", bomb)
+
+        from packages.orchestration.overnight_readiness import _integrity_status
+        result = _integrity_status()
+        assert result == "unknown"
+
+    def test_integrity_status_no_subprocess(self, monkeypatch):
+        """No subprocess.run from _integrity_status."""
+        import subprocess as sp
+
+        original_run = sp.run
+
+        def bomb(*args, **kwargs):
+            raise AssertionError(f"subprocess.run called: {args}")
+
+        monkeypatch.setattr(sp, "run", bomb)
+
+        from packages.orchestration.overnight_readiness import _integrity_status
+        result = _integrity_status()
+        assert result == "unknown"
+
+    def test_build_integrity_summary_no_run_integrity_checks(self, monkeypatch):
+        """Review bundle integrity must not call run_integrity_checks."""
+        import packages.orchestration.integrity_gate as ig
+
+        def bomb(**kwargs):
+            raise AssertionError("run_integrity_checks must not be called from bundle")
+
+        monkeypatch.setattr(ig, "run_integrity_checks", bomb)
+
+        from packages.orchestration.review_bundle import _build_integrity_summary
+        result = _build_integrity_summary()
+        assert result.get("status") == "unknown"
+
+    def test_build_integrity_summary_no_subprocess(self, monkeypatch):
+        """No subprocess.run from _build_integrity_summary."""
+        import subprocess as sp
+
+        def bomb(*args, **kwargs):
+            raise AssertionError(f"subprocess.run called: {args}")
+
+        monkeypatch.setattr(sp, "run", bomb)
+
+        from packages.orchestration.review_bundle import _build_integrity_summary
+        result = _build_integrity_summary()
+        assert result.get("status") == "unknown"
+
+    def test_no_agent_dependency(self, tmp_path, monkeypatch):
+        """Read-only integrity works without .agent directory."""
+        monkeypatch.chdir(tmp_path)
+
+        from packages.orchestration.integrity_gate import export_readonly_integrity_status
+        result = export_readonly_integrity_status()
+        assert result["status"] == "unknown"
+        assert result["passed"] is None
+
+        from packages.orchestration.overnight_readiness import _integrity_status
+        assert _integrity_status() == "unknown"
+
+
+class TestChangedFilesPublicTruth:
+    """Public changed_files must equal changed_target_files, not staged files."""
+
+    def test_export_changed_files_equals_target(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentRecord,
+            export_job_fulfillment_json,
+        )
+        rec = JobFulfillmentRecord(job_id="test-123", mode="fixture_demo")
+        rec.changed_files = ["staged_only.md"]
+        rec.changed_target_files = ["promoted.md"]
+        rec.staged_files = ["staged_only.md"]
+        exported = export_job_fulfillment_json(rec)
+        assert exported["changed_files"] == ["promoted.md"], \
+            "Public changed_files must equal changed_target_files"
+        assert exported["changed_target_files"] == ["promoted.md"]
+        assert exported["staged_files"] == ["staged_only.md"]
+
+    def test_blocked_export_changed_files_empty(self):
+        from packages.orchestration.job_fulfillment import (
+            JobFulfillmentRecord,
+            export_job_fulfillment_json,
+        )
+        rec = JobFulfillmentRecord(job_id="test-123", mode="fixture_demo")
+        rec.changed_files = ["staged_only.md"]
+        rec.changed_target_files = []
+        exported = export_job_fulfillment_json(rec)
+        assert exported["changed_files"] == [], \
+            "Blocked job changed_files must be empty"
+
+
+class TestChangedFilesSafeScope:
+    """changed_files_safe.json must include scope metadata."""
+
+    def test_scope_field_present(self):
+        from unittest.mock import MagicMock
+
+        from packages.orchestration.review_bundle import _build_changed_files_safe
+        job = MagicMock()
+        job.artifacts = []
+        result = _build_changed_files_safe(job, [])
+        assert result["scope"] == "artifact_intent"
+        assert "scope_note" in result
+
+
+class TestDocsCommandShapesV06:
+    """Docs must not contain invalid job create --json."""
+
+    def test_no_job_create_json_in_quickstart(self):
+        path = _ROOT / "docs" / "simple-operator-quickstart-v0.md"
+        if not path.exists():
+            return
+        content = path.read_text()
+        assert "job create" not in content or "--json" not in content.split("job create")[1].split("\n")[0], \
+            "simple-operator-quickstart must not use 'job create --json'"
+
+    def test_no_job_create_json_in_any_doc(self):
+        docs_dir = _ROOT / "docs"
+        if not docs_dir.exists():
+            return
+        for md in docs_dir.glob("*.md"):
+            content = md.read_text()
+            for i, line in enumerate(content.splitlines(), 1):
+                if "job create" in line and "--json" in line:
+                    raise AssertionError(
+                        f"{md.name}:{i} contains invalid 'job create --json'"
+                    )

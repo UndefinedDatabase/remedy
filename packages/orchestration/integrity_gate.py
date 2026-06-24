@@ -334,3 +334,23 @@ def summarize_integrity(result: IntegrityGateResult) -> str:
         lines.append(f"  {icon} {c.name}: {c.message}")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Read-only integrity status (no subprocess, no .agent, no pytest)
+# ---------------------------------------------------------------------------
+
+
+def export_readonly_integrity_status() -> dict:
+    """Return read-only integrity status for use by readiness/report/bundle.
+
+    No subprocess. No .agent file reads. No pytest. No git.
+    Returns 'unknown' when no persisted integrity record exists.
+    Suitable for embedding in overnight readiness and review bundle output.
+    """
+    return {
+        "status": "unknown",
+        "source": "no_persisted_integrity_status",
+        "passed": None,
+        "checks": [],
+    }

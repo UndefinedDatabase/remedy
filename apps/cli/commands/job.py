@@ -804,16 +804,21 @@ def _extract_job_truth(job: Job) -> dict:
             staging_promoted = latest.staging_promoted
             fulfillment_blockers = latest.contract_blockers or []
             fulfillment_next_action = latest.next_safe_action or ''
+            # Surface fulfillment stop_reason as latest_stop_reason
+            if latest.stop_reason and not latest_stop_reason:
+                latest_stop_reason = latest.stop_reason
+            # Derive blocker from stop_reason if contract_blockers empty
+            if latest.status.value == 'blocked' and not fulfillment_blockers:
+                sr = latest.stop_reason or 'unknown'
+                # Extract first colon-delimited part as safe blocker
+                safe_reason = sr.split(':')[0] if ':' in sr else sr
+                fulfillment_blockers = [f'fulfillment_blocked:{safe_reason}']
     except Exception:
         pass
 
     # When staging was used, staging_promoted is authoritative for code_applied
     if staging_used:
         code_applied = staging_promoted
-
-    # Filter out staged-scope apply records from code_applied
-    if code_applied and not staging_promoted and staging_used:
-        code_applied = False
 
     return {
         'artifact_count': artifact_count,
@@ -986,6 +991,10 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
         'latest_stop_reason': truth['latest_stop_reason'],
         'code_applied': truth['code_applied'],
         'fulfillment_status': truth.get('fulfillment_status', ''),
+        'staging_used': truth.get('staging_used', False),
+        'staging_promoted': truth.get('staging_promoted', False),
+        'fulfillment_blockers': truth.get('fulfillment_blockers', []),
+        'next_safe_action': truth.get('fulfillment_next_action', ''),
         'tasks': task_details,
     }
     if fulfillment_data:

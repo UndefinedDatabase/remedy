@@ -1,24 +1,44 @@
-# Plan — Steps 3606-3655: Staged Test + Promotion Truth Closure v0.4
+# Plan — Steps 4266-4315: Reviewer JSON Reliability + Real Dogfood Pass Closure v3
 
 ## Goal
-Close remaining staging safety gaps: tests run against staging dir (not target),
-code_applied truth tied to promotion, blocked jobs expose blockers, promotion-first
-contract ordering, existing MD files use modify intent, review bundle includes
-fulfillment summary, demo docs commands valid, data_dir threaded consistently.
+Fix reviewer parse failures preventing real dogfood success. Reviewer must receive
+actual safe diff. Add JSON-only hardening to reviewer prompt. Add one bounded parse
+retry. Handle Claude CLI JSON envelope formats. Repair prompt must include findings
++ safe diff. Report must expose parse retry metadata.
 
 ## Current Step
-Complete. All implementation, tests (90 fulfillment, 2127+ total), and fixes done.
+Complete. All implementation, tests, verification done.
 
 ## Completed
-- Contract: requires_target_promotion field + target_not_promoted/no_promotion_files blockers
-- Promotion-first ordering: promote → record result → contract check → completion decision
-- Existing MD detection: fixture worker checks (repo_root / target_file).exists() → modify vs create
-- CLI truth: staging_promoted authoritative for code_applied; fulfillment_blockers + next_action surfaced
-- Review bundle: fulfillment_summary.json section with staging/promotion/contract truth
-- Demo docs: job create --json → JOB_ID=$(remedy job create "...")
-- test_execution_service: data_dir threaded through _persist_test_record, _create_failure_artifact, finalize_test_outcome
-- Tests: updated contract tests for requires_target_promotion, fixed COMMANDS→COMMAND_HANDLERS import, updated apply_blocked test to reflect modify intent fix
-- Full suite: 2127+ passed (1 pre-existing failure in test_project_brain unrelated)
+- _REVIEWER_JSON_SCHEMA: strict JSON-only contract in reviewer prompt
+- _REVIEWER_RETRY_PROMPT: compact correction prompt for parse retry
+- _unwrap_envelope(): handle result/content/message/text envelope wrappers
+- _parse_reviewer_json: strip markdown code fences, envelope unwrap, raw_text cap 500
+- _REVIEWER_SYSTEM: JSON-only instructions
+- _build_reviewer_prompt: accepts safe_diff with 30K cap (_REVIEWER_DIFF_CAP)
+- Reviewer call site computes safe diff before reviewer runs
+- Bounded parse retry: one retry on malformed_output:, no fake pass
+- ReviewerOutput: parse_retried, parse_retry_recovered fields
+- PingPongResult: reviewer_parse_retry_count, reviewer_parse_error,
+  reviewer_malformed_excerpt, reviewer_json_recovered
+- FakeProvider: malformed_review_recoverable option for testing
+- _build_builder_prompt: safe_diff param with 20K cap for repair rounds
+- Repair diff computed before builder call in round > 1
+- export_pingpong_json: parse metadata + per-round parse_retried/recovered
+- summarize_pingpong: shows retry count and recovered status
+- _cmd_do_report: shows parse retry info
+- 32 new tests (73-104), total 124 in test_pingpong_cli.py
+- Ruff lint: clean
+- Full suite: 7254 passed, 0 failed (pre-existing test_project_brain unrelated)
+- Architecture guard: CLEAN
+- Dogfood smoke: 3/3 scenarios pass
 
-## Risks
-- None remaining
+## Dogfood command
+```
+remedy do run "Add docs note about ping-pong reports" \
+  --repo . --builder claude-cli --reviewer claude-cli \
+  --claude-cli-write-mode allowed-tools \
+  --max-rounds 2 --mode staged \
+  --test-command "python3 -m pytest tests/orchestration/test_pingpong.py -q" \
+  --keep-staging --json
+```

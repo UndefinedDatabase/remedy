@@ -1,115 +1,242 @@
-# Live Review — Steps 3519-3655: Workspace-Staged Fulfillment v0.2-v0.4
+# Live Review — Steps 4266-4315: Reviewer JSON Reliability + Real Dogfood Pass Closure v3
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
-Timestamp: 2026-06-22
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-24
 
 ## Verdict (reviewer-owned)
-**FAIL** @ 02989df
+**PASS WITH RISKS** @ working tree (parent b1d10f4, no commit yet)
 
-Closure commit 8190c73 (Steps 3606-3655) submitted. Awaiting re-review.
+Zero open Blocker/High. One open Medium (lint). All functional requirements met.
+Real Claude CLI dogfood achieved first `staged_review_passed`: builder edited staging,
+test ran in staging, reviewer parsed JSON first attempt, target unchanged, safe diff preserved.
+Reviewer sees actual unified diff. Bounded retry works. Parse metadata in reports.
+124 CLI tests. 7337 full suite pass. **Builder must commit after fixing lint import sort.**
 
-## Prior verdicts
-- **FAIL** @ 2d52bca — 2 Blocker, 4 High, 5 Medium, 2 Low (Steps 3519-3555)
-- **FAIL** @ 02989df — 3 Blocker, 3 High, 4 Medium (Steps 3556-3605)
-- **PASS** @ 79890f3 — Steps 3276-3435 (merged as PR #100)
+## Commit reviewed
+Working tree changes on parent b1d10f4. Builder has not committed yet.
 
-## Finding status from prior FAIL (02989df → 8190c73 closure)
+## PR reviewed
+No open PR. Builder on `feature/steps-3276-3355-job-fulfillment-spine-v0`.
 
-### R-0214 Blocker — Tests run against target repo instead of staging → **Resolved @ 8190c73**
-`test_execution_service.py` now has `repo_root_override` field on `TestExecutionRequest`.
-`execute_test_run()` accepts `data_dir` param and uses `repo_root_override` when set.
-Fulfillment wires `repo_root_override=str(staging_ws.staging_dir)` and `scope="staged"`.
-Tests: `TestStagedTestExecution` (2 tests) verify no .pytest_cache or __pycache__ in target.
+## Protocol compliance
+- Builder did NOT write reviewer verdict: PASS
+- Builder did NOT self-merge: PASS
+- Builder did NOT mark findings as resolved: PASS
+- No German in project-facing content: PASS
 
-### R-0215 Blocker — Target repo test artifact mutation → **Resolved @ 8190c73**
-Tests now run in staging dir via `repo_root_override`. Test artifacts created in staging,
-not target. Staging is discarded after fulfillment. `TestStagedTestExecution` verifies.
+## Worker 5-minute quiet-window assessment
+Builder code stable since ~14:17 UTC (45+ min). No new changes. Builder stalled — did not commit.
+Code is feature-complete with all tests passing. PASS (builder idle).
 
-### R-0218 Blocker — Completion without promotion contract → **Resolved @ 8190c73**
-Contract now has `requires_target_promotion: bool = True`. `check()` adds blockers
-`target_not_promoted` and `no_promotion_files` when promotion didn't succeed.
-Promotion-first ordering: promote → record result → contract check → completion decision.
-Tests: `TestPromotionContract` (2 tests) verify blocked/allowed.
+## Reviewer 10-minute quiet-window assessment
+- Quiet window started: 15:00:15 UTC
+- Quiet window ended: 15:08:31 UTC (5 checks, ~10 min)
+- Activity during window: none (same 5 files, same stats)
+- Re-verified findings: R-0901 through R-0907 all confirmed
+- Findings remaining open: R-0907a (lint, Medium)
 
-### R-0202 Blocker (prior) — Completion without promotion truth → **Resolved @ 8190c73**
-Same fix as R-0218. Contract gates on `staging_promoted` and `promotion_files`.
-Promotion happens BEFORE contract check. Contract has full truth when checking.
+## Finding status
 
-### R-0216 High — code_applied truth still counts staged apply → **Resolved @ 8190c73**
-`_extract_job_truth()` in job.py now uses `staging_promoted` as authoritative for
-`code_applied` when `staging_used=True`. Staged-scope apply records don't count.
-Tests: `TestCodeAppliedTruthV04` (2 tests) verify.
+### R-0901 Blocker — Real Reviewer still fails due malformed JSON → **Resolved (working tree)**
+Three-layer fix:
+1. **Reviewer prompt rewritten** (`pingpong_provider.py`): "Return ONLY valid JSON. No markdown.
+   No code fence." Clear, explicit instruction.
+2. **Code fence stripping** in `_parse_reviewer_json()`: strips ```json...``` wrappers before parsing.
+3. **`_unwrap_envelope()`**: handles Claude CLI envelopes (`{"result":...}`, `{"content":...}`,
+   `{"message":...}`, `{"text":"json_string"}`).
+4. **Bounded retry**: one retry on malformed output with `_REVIEWER_RETRY_PROMPT`.
+**Real smoke**: reviewer JSON parsed first attempt, `verdict=pass`, `parse_retry=0`.
+Status: `staged_review_passed` — first real end-to-end dogfood pass.
+Tests: `TestParseReviewerJsonCodeFence`, `TestParseReviewerJsonBare`, `TestParseReviewerJsonNoJson`,
+`TestParseReviewerJsonSurroundingProse`, `TestParseReviewerJsonRawTextCap`.
 
-### R-0219 High — Promotion blockers ignored → **Resolved @ 8190c73**
-Promotion-first ordering means blockers are known before contract check. Contract
-`requires_target_promotion` gates on `staging_promoted`. If promotion has blockers
-and files aren't promoted, contract fails. Tests verify via `TestPromotionContract`.
+### R-0902 High — Reviewer does not see actual safe diff → **Resolved (working tree)**
+`_build_reviewer_prompt()` now takes `safe_diff` parameter. `_REVIEWER_DIFF_CAP = 30000`.
+Safe diff computed BEFORE reviewer call at `pingpong_loop.py` lines 673-677:
+`_compute_safe_diff(staging, original, result.staged_files)` → passed as `safe_diff`.
+Prompt section: `## Staged Unified Diff` with ```diff...``` block.
+Fallback: if no safe_diff, uses `diff_summary` (file names only).
+No absolute staging paths in diff (relative `a/`/`b/` paths from `_compute_safe_diff`).
+Tests: `TestReviewerPromptSafeDiff`, `TestReviewerPromptDiffCap`, `TestReviewerPromptFallbackDiffSummary`,
+`TestReviewerReceivesSafeDiff`.
 
-### R-0203 High (prior) — Blocked jobs report code_applied=true → **Resolved @ 8190c73**
-Same fix as R-0216. `staging_promoted` is authoritative. Blocked jobs show
-`code_applied=false`. Fulfillment blockers and next_safe_action surfaced in status.
-Tests: `TestBlockedFulfillmentStatus` (2 tests) verify.
+### R-0903 High — Malformed Reviewer output can pass → **Resolved (working tree)**
+`_parse_reviewer_json()`: malformed output → `verdict="blocked"`, `error="malformed_output:..."`.
+Invalid verdict → `verdict="blocked"`. No JSON → `verdict="blocked"`.
+`FakeProvider(malformed_review=True)`: both calls malformed → `review_failed`, not pass.
+`TestRetryCannotFakePass`: asserts `final_status != "staged_review_passed"`.
+`TestMalformedReviewRetryPersistent`: `review_failed`, `reviewer_json_recovered=False`.
 
-### R-0222 Medium — Review bundle missing staging truth → **Resolved @ 8190c73**
-`review_bundle.py` now has `_build_fulfillment_summary()` function and
-`fulfillment_summary.json` in `REQUIRED_SECTIONS` and `_REVIEW_BUNDLE_SECTION_SPECS`.
-Tests: `TestReviewBundleFulfillment` verifies section in bundle.
+### R-0904 High — Reviewer retry is unbounded or unsafe → **Resolved (working tree)**
+Retry at `pingpong_loop.py` lines 699-720:
+- **Bounded**: exactly one retry (`if reviewer_out.error.startswith("malformed_output:")`).
+  No loop, no recursion. Counter incremented once.
+- **Read-only**: `reviewer_provider.review()` — reviewer has `write_mode="none"` (double safety from v1).
+- **Timeout-limited**: same `timeout_sec` as original call.
+- **Output-capped**: same `max_output_chars`.
+- **Documented**: `parse_retried`, `parse_retry_recovered` on ReviewerOutput.
+  `reviewer_parse_retry_count`, `reviewer_parse_error`, `reviewer_malformed_excerpt` on result.
+Tests: `TestMalformedReviewRetryPersistent`, `TestMalformedReviewRecoverable`, `TestParseRetriedFlag`.
 
-### R-0223 Medium — Demo docs invalid command → **Resolved @ 8190c73**
-`docs/first-fulfilled-job-demo-v0.md` changed from `remedy job create "..." --json`
-to `JOB_ID=$(remedy job create "...")`. Tests: `TestDemoDocsCommands` (3 tests).
+### R-0905 Medium — Repair prompt lacks enough context → **Resolved (working tree)**
+`_build_builder_prompt()` takes `safe_diff` parameter. `_REPAIR_DIFF_CAP = 20000`.
+Repair rounds (round_num > 1): safe diff computed before builder call (lines ~651-656).
+Builder gets: goal, context, `## Current Staged State`, `## Current Staged Diff`, `## Reviewer Findings to Fix`.
+Diff only shown when findings present (repair rounds only, not round 1).
+Tests: `TestBuilderRepairPromptDiff`, `TestBuilderRepairPromptDiffCap`, `TestBuilderPromptRound1NoDiff`,
+`TestRepairRoundGetsDiff`.
 
-### R-0225 Medium — 5 introduced test failures → **Resolved @ 8190c73**
-- 3 contract tests: updated to include `staging_promoted=True, promotion_files=[...]`
-- `test_apply_blocked_stops_completion`: renamed to `test_existing_md_uses_modify_intent`
-  (existing MD now uses modify intent, so apply succeeds — this is correct behavior)
-- `TestApplyRecord` tests: `scope` field properly added to `PatchApplyResult`
+### R-0906 Medium — Report lacks parse metadata → **Resolved (working tree)**
+`PingPongResult` fields: `reviewer_parse_retry_count`, `reviewer_parse_error`,
+`reviewer_malformed_excerpt`, `reviewer_json_recovered`.
+`ReviewerOutput` fields: `parse_retried`, `parse_retry_recovered`.
+`export_pingpong_json()`: all fields exported including per-round `parse_retried`/`parse_retry_recovered`.
+`summarize_pingpong()`: "Reviewer parse: retried Nx, recovered/NOT recovered".
+`_cmd_do_report()`: shows retry status and parse error.
+Tests: `TestParseMetadataInExport`, `TestParseMetadataInSummary`, `TestRecoveredParseInSummary`,
+`TestParseRetriedInRoundExport`.
 
-### R-0221 Medium — data_dir inconsistency → **Resolved @ 8190c73**
-`_persist_test_record`, `_create_failure_artifact`, `finalize_test_outcome` all now
-accept and use `data_dir` parameter. `load_job(job_id, data_dir)` and
-`save_job(job, root=data_dir)` used consistently.
+### R-0907 Medium — Existing dogfood safety regresses → **Resolved (working tree)**
+- Cache noise: all 29 noise tests pass
+- Target mutation: blocking tests pass
+- Staged evidence: preserved even on block
+- Keep-staging: boolean flag works
+- JSON/report: all fields present
+- Fulfillment: 109 x 2 pass
+- Pingpong E2E: 33 pass
+- Full suite: 7337 passed, 0 failed
 
-### R-0208 Medium (prior) — Review bundle missing staging truth → **Resolved @ 8190c73**
-Same as R-0222. Fulfillment summary section added.
+### R-0907a Medium — Lint import sort failure → **OPEN**
+`ruff check` reports I001 (import block unsorted) in two files:
+- `packages/orchestration/pingpong_loop.py`: `_REVIEWER_RETRY_PROMPT` private import
+- `tests/orchestration/test_pingpong_cli.py`: private imports (`_REVIEWER_RETRY_PROMPT`, etc.)
+Fix: `ruff --fix` or manually sort. Mypy passes. All tests pass.
+**Builder must fix before commit.**
 
-### R-0209 Medium (prior) — Missing target unchanged proof → **Resolved @ 8190c73**
-Tests now run in staging via `repo_root_override`. No .pytest_cache or __pycache__
-created in target repo. Test `TestStagedTestExecution` verifies clean target.
+## Real dogfood smoke result — PASS
+- Claude CLI at `/home/decodeux/.local/bin/claude`
+- Temp repo with `main.py` + 3 cache dirs
+- `claude_cli_write_mode="allowed-tools"`, `test_command="python3 -c 'import main'"`
+- **Result: `staged_review_passed`** — first real end-to-end dogfood pass!
+  - Builder added docstring to `greet()` in staging
+  - Test passed in staging (exit=0)
+  - Reviewer parsed JSON first attempt (`parse_retry=0`)
+  - Reviewer verdict: `pass`
+  - Target unchanged: `"def greet(): pass\n"`
+  - Cache noise classified: all 3 dirs
+  - Safe diff: unified diff shows docstring addition
+  - Status: `staged_review_passed`
 
-### R-0226 Low — Mid-function import → Deferred
-`import shutil as _shutil` at line 760. Low priority, not a correctness issue.
+## Reviewer JSON parse assessment — PASS
+- Prompt rewritten: explicit "Return ONLY valid JSON" instruction
+- Code fence stripping before parse
+- Envelope unwrapping for Claude CLI output formats
+- Invalid verdict → blocked
+- No JSON → blocked
+- Real smoke: parsed first attempt
 
-### R-0212 Low — Branch reuse → Same. Low.
+## Reviewer retry assessment — PASS
+- Bounded: exactly one retry on `malformed_output:` error
+- Read-only: reviewer has no write permissions
+- Same timeout/output cap
+- Parse metadata tracked on result and per-round
+- Fake tests: persistent malformed → `review_failed`; recoverable → `staged_review_passed`
 
-### R-0213 Low — Lint → Deferred. I001 import sort.
+## Safe diff in Reviewer prompt assessment — PASS
+- `_build_reviewer_prompt()` includes `## Staged Unified Diff` with bounded content
+- Capped at 30K (`_REVIEWER_DIFF_CAP`)
+- Relative paths, no secrets
+- Computed BEFORE reviewer call
 
-## Test evidence (builder-run, commit 8190c73)
-- Fulfillment tests: 90 passed, 7.47s
-- Full suite: 2127 passed, 1 failed (pre-existing test_project_brain::test_full_chain_order), 2 skipped
-- Pre-existing failure verified: same test fails on stashed/clean HEAD
+## Repair prompt context assessment — PASS
+- Builder repair round gets: findings + safe diff + staged state
+- Diff capped at 20K (`_REPAIR_DIFF_CAP`)
+- Only shown when findings present (round 2+)
+- Two-round repair tested: `TestRepairRoundGetsDiff`
 
-## Architecture guard scan (8190c73)
-- No `shell=True`
-- No provider SDK imports
-- No network calls
-- No subprocess in staging/fulfillment engine
-- No git operations
-- No metadata mutation
-- `repo_root_override` on both apply and test execution
-- `data_dir` threaded through all persist helpers
+## Cache-noise regression assessment — PASS
+All 29 cache-noise tests pass. Noise dirs don't block.
+
+## Meaningful target mutation assessment — PASS
+Real mutations still block. `TestRealTargetMutationStillBlocks`, `TestExistingSnapshotGuard` pass.
+
+## Staged evidence assessment — PASS
+Staged files + safe diff preserved in finally block, even on block.
+
+## Explicit test-command assessment — PASS
+Test ran in staging cwd. Real smoke: `python3 -c "import main"` exit=0.
+
+## JSON/report assessment — PASS
+All metadata fields exported. Parse retry info in report.
+
+## Target mutation assessment — PASS
+Target unchanged in both smoke runs. Cache noise classified, not blocking.
+
+## Test evidence (reviewer-run, working tree on b1d10f4)
+
+### Targeted tests
+- Pingpong CLI: **124 passed, 0.57s** (92 existing + 32 new)
+- Pingpong E2E: **33 passed, 0.13s**
+- Fulfillment: **109 passed x 2** (8.63s, 9.01s)
+- Compile: clean
+
+### Lanes
+- Runtime lane: NOT re-run (no runtime changes this block)
+- Lint: **ruff I001 failure** (import sort in 2 files), **mypy clean**
+
+### Full suite
+- **7337 passed, 0 failed, 8 skipped** (230.56s)
+
+### Post-test process/lock check
+- Lock: free
+- No stale processes
+
+## Architecture guard scan
+- `shell=True`: none
+- Provider timeout/output cap: enforced on retry too
+- API key logging: none
+- `.env` leakage: excluded
+- Unbounded retries: exactly one retry, no loop
+- Reviewer write permissions: never (unchanged)
+- Target test execution: in staging cwd
+- Malformed accepted as pass: no (blocked)
+- Meaningful mutations as noise: no
+- JSON pollution: clean
+
+## Edited-file line-range map (reviewer-constructed, v2→v3 working tree)
+
+| File | Lines | What changed | Tests |
+|------|-------|-------------|-------|
+| `packages/orchestration/pingpong_provider.py` | 211-240, 349-400, 412-455 | Reviewer prompt rewrite, `_REVIEWER_RETRY_PROMPT`, `_unwrap_envelope()`, code fence strip, envelope unwrap, `parse_retried`/`parse_retry_recovered` fields | 10 parse/envelope tests |
+| `packages/orchestration/pingpong_loop.py` | 33-38, 80-87, 199-204, 215-218, 231-270, 651-677, 699-720, 960-975, 1021-1024, 1058-1065 | Parse metadata fields, reviewer prompt diff, repair diff, bounded retry, export, summary | 22 tests |
+| `apps/cli/commands/do_cmd.py` | 269-273 | Report shows parse retry metadata | TestParseMetadataInSummary |
+| `tests/orchestration/test_pingpong_cli.py` | 1472-1949 | 32 new tests for parse, retry, diff, repair | Self-covering |
+
+## Top risks
+- **Medium (OPEN)**: R-0907a — ruff I001 import sort in 2 files. Builder must fix before commit.
+- Low — `BUILDER_WAS_HERE.txt` + `docs/report-guide.md` stale test artifacts
+- Low — `_TARGET_NOISE_DIRS` hardcoded
+- Low — Claude CLI output parsing heuristic
+
+## Final recommendation
+**READY TO DOGFOOD.** First real `staged_review_passed` achieved with Claude CLI builder + reviewer.
+Builder must fix lint (import sort) and commit. Once committed and lint clean, merge-ready.
+
+Exact dogfood command:
+```bash
+REMEDY_DATA_DIR=/tmp/remedy-data remedy do run "Add docstring to main.py:greet" \
+  --builder claude-cli --reviewer claude-cli \
+  --claude-cli-write-mode allowed-tools \
+  --max-rounds 2 --mode staged \
+  --test-command "python3 -c 'import main'" --json
+```
 
 ## Merge readiness
-Awaiting reviewer re-review @ 8190c73. All 3 Blockers, 3 High, 4 Medium resolved.
-2 Low deferred (import sort, branch reuse).
+**CONDITIONAL READY.** Builder must:
+1. Fix ruff I001 import sort (2 files)
+2. Commit
+Then merge-autonomy applies.
 
-NO PR merge unless reviewer passes and user asks.
-
-## Reviewer audit log
-- PR #101 @ 2d52bca (Steps 3519-3555): FAIL with 2B/4H/5M/2L.
-- Closure @ 02989df (Steps 3556-3605): addressed R-0201, R-0204, R-0205, R-0206, R-0211.
-- Verdict FAIL @ 02989df — 3B/3H/4M remaining.
-- Closure @ 8190c73 (Steps 3606-3655): addressed R-0214, R-0215, R-0218, R-0216, R-0219,
-  R-0203, R-0222, R-0223, R-0225, R-0221, R-0208, R-0209. All Blocker/High/Medium resolved.
-- Awaiting reviewer re-review.
+NO PR unless user asks.
