@@ -473,7 +473,7 @@ def _check_target_mutation(
         if rel not in after:
             all_changes.append(rel)
 
-    # Also check for artifact dirs that snapshot ignores
+    # Snapshot skips _TARGET_IGNORE dirs, so flag any that exist now as changes
     for artifact_dir in _TARGET_IGNORE:
         entry = artifact_dir + "/"
         if (repo_path / artifact_dir).exists() and entry not in all_changes:
@@ -968,6 +968,82 @@ def list_runs() -> list[dict[str, str]]:
 # Export / report helpers
 # ---------------------------------------------------------------------------
 
+
+def _build_next_commands(result: PingPongResult) -> dict[str, str]:
+    """Build copy-paste next commands with actual run_id."""
+    rid = result.run_id
+    cmds: dict[str, str] = {
+        "report": f"remedy do report {rid}",
+        "report_json": f"remedy do report {rid} --json",
+        "promote_dry_run": f"remedy do promote {rid} --repo . --dry-run",
+        "promote_dry_run_json": f"remedy do promote {rid} --repo . --dry-run --json",
+        "promote_approve": f"remedy do promote {rid} --repo . --approve",
+        "promote_approve_json": f"remedy do promote {rid} --repo . --approve --json",
+    }
+    return cmds
+
+
+def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
+    """Build provider identity evidence."""
+    evidence: dict[str, Any] = {
+        "builder_provider": result.builder_provider,
+        "reviewer_provider": result.reviewer_provider,
+    }
+    # Extract per-round provider details from first round if available
+    for rd in result.rounds:
+        if rd.builder_output and rd.builder_output.provider:
+            evidence["builder_provider_kind"] = (
+                "external_cli" if "cli" in rd.builder_output.provider else "internal"
+            )
+            break
+    for rd in result.rounds:
+        if rd.reviewer_output and rd.reviewer_output.provider:
+            evidence["reviewer_provider_kind"] = (
+                "external_cli" if "cli" in rd.reviewer_output.provider else "internal"
+            )
+            break
+    return evidence
+
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate: ~4 chars per token."""
+    return max(1, len(text) // 4)
+
+
+def _build_token_accounting(result: PingPongResult) -> dict[str, Any]:
+    """Build honest token accounting — estimated unless actual data available."""
+    # Check if any round has actual token usage
+    actual_available = False
+    total_builder_tokens = 0
+    total_reviewer_tokens = 0
+    for rd in result.rounds:
+        if rd.builder_output and rd.builder_output.tokens_used and rd.builder_output.tokens_used > 0:
+            actual_available = True
+            total_builder_tokens += rd.builder_output.tokens_used
+        if rd.reviewer_output and rd.reviewer_output.tokens_used and rd.reviewer_output.tokens_used > 0:
+            actual_available = True
+            total_reviewer_tokens += rd.reviewer_output.tokens_used
+
+    diff_tokens = _estimate_tokens(result.safe_diff_summary) if result.safe_diff_summary else 0
+
+    accounting: dict[str, Any] = {
+        "kind": "actual" if actual_available else "estimated",
+        "actual_tokens_available": actual_available,
+        "context_categories": result.context_categories,
+        "safe_diff_tokens_estimated": diff_tokens,
+    }
+
+    if actual_available:
+        accounting["builder_tokens_actual"] = total_builder_tokens
+        accounting["reviewer_tokens_actual"] = total_reviewer_tokens
+    else:
+        accounting["token_note"] = (
+            "Claude CLI did not expose actual token usage; values are estimates."
+        )
+
+    return accounting
+
+
 def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
     """Export result as safe JSON (no raw prompts, no secrets)."""
     rounds = []
@@ -1047,6 +1123,9 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "report_command": f"remedy do report {result.run_id}",
         "report_json_command": f"remedy do report {result.run_id} --json",
         "report_path": report_path,
+        "next_commands": _build_next_commands(result),
+        "provider_evidence": _build_provider_evidence(result),
+        "token_accounting": _build_token_accounting(result),
     }
 
 

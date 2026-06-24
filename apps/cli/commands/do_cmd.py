@@ -248,69 +248,89 @@ def _cmd_do_report(
             data["promotion"] = promo
         print(json.dumps(data, indent=2))
     else:
-        # Human-readable summary from stored data
-        print(f"Run: {data.get('run_id', '')}")
-        print(f"Goal: {data.get('goal', '')}")
-        print(f"Status: {data.get('final_status', '')}")
-        print(f"Rounds: {data.get('total_rounds', 0)}/{data.get('max_rounds', 0)}")
-        print(f"Builder: {data.get('builder_provider', '')}")
-        print(f"Reviewer: {data.get('reviewer_provider', '')}")
-        if data.get("error"):
-            print(f"Error: {data['error']}")
-        for rd in data.get("rounds", []):
-            print(f"\n--- Round {rd.get('round', '?')} ---")
-            b = rd.get("builder", {})
-            if b:
-                print(f"  Builder: {b.get('summary', '')[:200]}")
-            print(f"  Tests: {'passed' if rd.get('test_passed') else 'failed'} — {rd.get('test_summary', '')}")
-            rv = rd.get("reviewer", {})
-            if rv:
-                print(f"  Reviewer: {rv.get('verdict', '')}")
-                for f in rv.get("findings", []):
-                    print(f"    [{f.get('severity', '')}] {f.get('id', '')}: {f.get('summary', '')}")
-        print(f"\nStaged files: {data.get('staged_files', [])}")
-        if data.get("target_noise_detected"):
-            noise = data.get("ignored_target_noise_files", [])
-            print("Target mutation: no meaningful target changes")
-            print(f"Ignored target noise: {', '.join(noise)}")
-        if data.get("reviewer_parse_retry_count", 0) > 0:
-            recovered = data.get("reviewer_json_recovered", False)
-            print(f"Reviewer parse retry: {'recovered' if recovered else 'NOT recovered'}")
-            if data.get("reviewer_parse_error"):
-                print(f"Parse error: {data['reviewer_parse_error']}")
-        diff_files = data.get("safe_diff_files", [])
-        if diff_files:
-            print(f"Diff files ({len(diff_files)}): {', '.join(diff_files)}")
-            if data.get("safe_diff_truncated"):
-                print("[diff truncated]")
-            diff_text = data.get("safe_diff_summary", "")
-            if diff_text:
-                print(f"\n{diff_text}")
+        _print_text_report(run_id, data)
 
-        # Promotion status
-        from packages.orchestration.pingpong_promote import load_promotion
-        promo = load_promotion(run_id)
-        if promo:
-            print(f"\nPromotion: {promo.get('status', 'unknown')}")
-            if promo.get("applied_files"):
-                print(f"Applied files: {', '.join(promo['applied_files'])}")
-            if promo.get("changed_target_files"):
-                print(f"Changed target files: {', '.join(promo['changed_target_files'])}")
-            if promo.get("post_test_passed") is not None:
-                print(f"Post-test: {'passed' if promo['post_test_passed'] else 'FAILED'}")
-            if promo.get("blocked_reason"):
-                print(f"Blocked: {promo['blocked_reason']}")
-            if promo.get("unexpected_artifacts"):
-                print(f"Unexpected artifacts: {', '.join(promo['unexpected_artifacts'])}")
-            if promo.get("duplicate_artifacts"):
-                print(f"Duplicate artifacts: {', '.join(promo['duplicate_artifacts'])}")
-            if promo.get("target_repo_mismatch"):
-                print(f"Run repo: {promo.get('run_repo', '')}")
-                print(f"Requested target: {promo.get('requested_target_repo', '')}")
-        else:
-            print("\nPromotion: not promoted")
-            if data.get("final_status") == "staged_review_passed":
-                print(f"To promote: remedy do promote {run_id} --repo . --approve")
+
+def _print_text_report(run_id: str, data: dict) -> None:
+    """Print concise user-facing text report."""
+    # Header
+    print(f"Remedy Run {run_id}")
+    print(f"Goal: {data.get('goal', '')}")
+    print(f"Status: {data.get('final_status', '')}")
+    print()
+
+    # Provider identity
+    print(f"Worker: {data.get('builder_provider', 'unknown')}")
+    print(f"Reviewer: {data.get('reviewer_provider', 'unknown')}")
+
+    # Rounds summary
+    rounds = data.get("rounds", [])
+    total = data.get("total_rounds", len(rounds))
+    max_r = data.get("max_rounds", 0)
+    print(f"Rounds: {total}/{max_r}")
+
+    # Test summary from last round
+    if rounds:
+        last = rounds[-1]
+        test_status = "passed" if last.get("test_passed") else "failed"
+        print(f"Tests: {test_status}")
+        rv = last.get("reviewer", {})
+        if rv:
+            print(f"Reviewer verdict: {rv.get('verdict', 'none')}")
+
+    # Target mutation
+    mutated = data.get("target_mutated", False)
+    print(f"Target touched during run: {'yes' if mutated else 'no'}")
+
+    if data.get("error"):
+        print(f"Error: {data['error']}")
+
+    # Staged files
+    staged = data.get("staged_files", [])
+    if staged:
+        print("\nChanged in staging:")
+        for f in staged:
+            print(f"  - {f}")
+
+    # Promotion
+    from packages.orchestration.pingpong_promote import load_promotion
+    promo = load_promotion(run_id)
+    if promo:
+        print(f"\nPromotion: {promo.get('status', 'unknown')}")
+        if promo.get("applied_files"):
+            print("Promoted to repo:")
+            for f in promo["applied_files"]:
+                print(f"  - {f}")
+        if promo.get("post_test_passed") is not None:
+            print(f"Post-promotion tests: {'passed' if promo['post_test_passed'] else 'FAILED'}")
+        if promo.get("blocked_reason"):
+            print(f"Blocked: {promo['blocked_reason']}")
+        if promo.get("unexpected_artifacts"):
+            print(f"Unexpected artifacts: {', '.join(promo['unexpected_artifacts'])}")
+        if promo.get("duplicate_artifacts"):
+            print(f"Duplicate artifacts: {', '.join(promo['duplicate_artifacts'])}")
+        if promo.get("target_repo_mismatch"):
+            print(f"Run repo: {promo.get('run_repo', '')}")
+            print(f"Requested target: {promo.get('requested_target_repo', '')}")
+    else:
+        print("\nPromotion: not promoted")
+        if data.get("final_status") == "staged_review_passed":
+            print("\nNext steps:")
+            print(f"  remedy do promote {run_id} --repo . --dry-run")
+            print(f"  remedy do promote {run_id} --repo . --approve")
+
+    # Token accounting
+    ta = data.get("token_accounting", {})
+    if ta:
+        kind = ta.get("kind", "estimated")
+        print(f"\nToken accounting: {kind}")
+        cats = ta.get("context_categories", [])
+        if cats:
+            print(f"  Context sent: {', '.join(cats)}")
+        if ta.get("safe_diff_tokens_estimated"):
+            print(f"  Diff tokens (est): ~{ta['safe_diff_tokens_estimated']}")
+        if ta.get("token_note"):
+            print(f"  Note: {ta['token_note']}")
 
 
 _VALID_FIXTURE_MODES = frozenset({"true", "false", "repair-loop"})

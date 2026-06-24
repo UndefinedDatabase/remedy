@@ -169,11 +169,12 @@ class TestCliHelpIncludesHappyPath:
         with patch("builtins.print") as mock_print:
             grouped_main(["--help"])
             output = str(mock_print.call_args[0][0])
-            assert "remedy do" in output
-            assert "remedy ui" in output
-            assert "job status" in output
-            assert "job report" in output
-            assert "worker doctor" in output
+            # Root help shows group names (not subcommands)
+            assert "do" in output
+            assert "ui" in output
+            assert "job" in output
+            assert "worker" in output
+            assert "doctor" in output
 
     def test_repo_group_includes_commit_readiness(self):
         from apps.cli.grouped import main as grouped_main
