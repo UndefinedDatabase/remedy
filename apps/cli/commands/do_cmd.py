@@ -259,9 +259,20 @@ def _print_text_report(run_id: str, data: dict) -> None:
     print(f"Status: {data.get('final_status', '')}")
     print()
 
-    # Provider identity
-    print(f"Worker: {data.get('builder_provider', 'unknown')}")
-    print(f"Reviewer: {data.get('reviewer_provider', 'unknown')}")
+    # Provider evidence
+    pe = data.get("provider_evidence", {})
+    if pe:
+        b_kind = pe.get("builder_provider_kind", "")
+        r_kind = pe.get("reviewer_provider_kind", "")
+        b_wm = pe.get("builder_write_mode", "none")
+        r_wm = pe.get("reviewer_write_mode", "none")
+        b_label = f"{data.get('builder_provider', 'unknown')} ({b_kind}, write mode: {b_wm})" if b_kind else data.get("builder_provider", "unknown")
+        r_label = f"{data.get('reviewer_provider', 'unknown')} ({r_kind}, write mode: {r_wm})" if r_kind else data.get("reviewer_provider", "unknown")
+        print(f"Worker: {b_label}")
+        print(f"Reviewer: {r_label}")
+    else:
+        print(f"Worker: {data.get('builder_provider', 'unknown')}")
+        print(f"Reviewer: {data.get('reviewer_provider', 'unknown')}")
 
     # Rounds summary
     rounds = data.get("rounds", [])
@@ -324,11 +335,17 @@ def _print_text_report(run_id: str, data: dict) -> None:
     if ta:
         kind = ta.get("kind", "estimated")
         print(f"\nToken accounting: {kind}")
-        cats = ta.get("context_categories", [])
-        if cats:
-            print(f"  Context sent: {', '.join(cats)}")
-        if ta.get("safe_diff_tokens_estimated"):
-            print(f"  Diff tokens (est): ~{ta['safe_diff_tokens_estimated']}")
+        ctx_est = ta.get("context_tokens_estimated", 0)
+        if ctx_est:
+            print(f"  Context sent: ~{ctx_est} tokens")
+        full_est = ta.get("full_repo_tokens_estimated", 0)
+        if full_est:
+            print(f"  Full repo estimate: ~{full_est} tokens")
+        savings = ta.get("estimated_context_savings_tokens", 0)
+        ratio = ta.get("estimated_context_savings_ratio", 0.0)
+        if savings > 0:
+            pct = int(ratio * 100)
+            print(f"  Estimated saved: ~{savings} tokens (~{pct}%)")
         if ta.get("token_note"):
             print(f"  Note: {ta['token_note']}")
 

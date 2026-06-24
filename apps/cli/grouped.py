@@ -269,10 +269,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 _QUICK_START = """\
  Quick start:
-   1. remedy do run "<goal>" --repo . --builder claude-cli --reviewer claude-cli
-   2. remedy do report <run_id> --json
-   3. remedy do promote <run_id> --repo . --dry-run
-   4. remedy do promote <run_id> --repo . --approve
+   1. remedy do run "<goal>" --repo . --builder claude-cli --reviewer claude-cli --json | tee /tmp/remedy-run.json
+   2. RUN_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['run_id'])")
+   3. remedy do report $RUN_ID --json
+   4. remedy do promote $RUN_ID --repo . --dry-run --json
+   5. remedy do promote $RUN_ID --repo . --approve
 
  Show all commands:  remedy --all-commands"""
 

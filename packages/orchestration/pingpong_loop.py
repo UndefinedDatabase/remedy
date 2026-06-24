@@ -87,6 +87,15 @@ class PingPongResult:
     error: str = ""
     started_at: str = ""
     finished_at: str = ""
+    # Prompt size tracking (chars, for token estimation)
+    builder_prompt_chars: int = 0
+    reviewer_prompt_chars: int = 0
+    repair_prompt_chars: int = 0
+    context_chars: int = 0
+    # Run metadata for next_commands
+    original_repo_arg: str = ""
+    test_command: str = ""
+    claude_cli_write_mode: str = "none"
 
 
 # ---------------------------------------------------------------------------
@@ -543,6 +552,9 @@ def run_pingpong(
         reviewer_provider=reviewer_name,
         max_rounds=max_rounds,
         started_at=datetime.now(timezone.utc).isoformat(),
+        original_repo_arg=repo_path,
+        test_command=test_command,
+        claude_cli_write_mode=claude_cli_write_mode,
     )
 
     original = Path(repo_path).resolve()
@@ -585,6 +597,7 @@ def run_pingpong(
         repo_path, goal, mentioned_files=mentioned_files,
     )
     result.context_categories = categories
+    result.context_chars = len(context)
 
     is_fake = isinstance(builder_provider, FakeProvider)
     has_test_command = bool(test_command)
@@ -613,6 +626,12 @@ def run_pingpong(
                 staged_state="" if round_num == 1 else f"Files changed: {result.staged_files}",
                 safe_diff=repair_diff,
             )
+            # Track prompt sizes for token accounting
+            if round_num == 1:
+                result.builder_prompt_chars = len(builder_prompt)
+            else:
+                result.repair_prompt_chars += len(builder_prompt)
+
             builder_out = builder_provider.build(
                 builder_prompt,
                 timeout_sec=timeout_sec,
@@ -707,6 +726,9 @@ def run_pingpong(
                 test_result=rd.test_summary,
                 files_changed=result.staged_files,
             )
+
+            # Track reviewer prompt size
+            result.reviewer_prompt_chars += len(reviewer_prompt)
 
             # Snapshot staging before reviewer (to detect reviewer mutation)
             staging_snap_before = _find_staging_changes(staging, original)
@@ -969,39 +991,82 @@ def list_runs() -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-def _build_next_commands(result: PingPongResult) -> dict[str, str]:
+def _build_next_commands(result: PingPongResult) -> dict[str, Any]:
     """Build copy-paste next commands with actual run_id."""
     rid = result.run_id
-    cmds: dict[str, str] = {
+    repo = result.original_repo_arg or "."
+    cmds: dict[str, Any] = {
         "report": f"remedy do report {rid}",
         "report_json": f"remedy do report {rid} --json",
-        "promote_dry_run": f"remedy do promote {rid} --repo . --dry-run",
-        "promote_dry_run_json": f"remedy do promote {rid} --repo . --dry-run --json",
-        "promote_approve": f"remedy do promote {rid} --repo . --approve",
-        "promote_approve_json": f"remedy do promote {rid} --repo . --approve --json",
+        "promote_dry_run": f"remedy do promote {rid} --repo {shlex.quote(repo)} --dry-run",
+        "promote_dry_run_json": f"remedy do promote {rid} --repo {shlex.quote(repo)} --dry-run --json",
+        "promote_approve": f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve",
+        "promote_approve_json": f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve --json",
     }
+    # Include promote with test command if one was used
+    if result.test_command:
+        tc = shlex.quote(result.test_command)
+        cmds["promote_approve_with_test"] = (
+            f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve"
+            f" --test-command {tc}"
+        )
+        cmds["promote_approve_with_test_json"] = (
+            f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve"
+            f" --test-command {tc} --json"
+        )
+
+    # Shell flow: complete copy-paste block with automatic RUN_ID
+    flow_lines = [
+        "# Remedy post-run flow — copy-paste this block",
+        f'RUN_ID="{rid}"',
+        "",
+        "# 1. Review the run report",
+        "remedy do report $RUN_ID --json",
+        "",
+        "# 2. Dry-run promotion (no mutation)",
+        f"remedy do promote $RUN_ID --repo {shlex.quote(repo)} --dry-run --json",
+        "",
+        "# 3. Review dry-run output first. Then run the approve line:",
+        f"remedy do promote $RUN_ID --repo {shlex.quote(repo)} --approve"
+        + (f" --test-command {shlex.quote(result.test_command)}" if result.test_command else "")
+        + " --json",
+        "",
+        "# 4. Final report",
+        "remedy do report $RUN_ID",
+    ]
+    cmds["shell_flow"] = "\n".join(flow_lines)
+
     return cmds
 
 
+def _provider_kind(provider_name: str) -> str:
+    """Classify provider kind from name."""
+    if "cli" in provider_name:
+        return "external_cli"
+    if provider_name == "fake":
+        return "synthetic_test"
+    return "internal"
+
+
 def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
-    """Build provider identity evidence."""
+    """Build provider identity evidence with write mode info."""
+    builder_kind = _provider_kind(result.builder_provider)
+    reviewer_kind = _provider_kind(result.reviewer_provider)
+
+    # Builder write mode from run config; reviewer is always none
+    builder_write_mode = result.claude_cli_write_mode or "none"
+    reviewer_write_mode = "none"
+
     evidence: dict[str, Any] = {
         "builder_provider": result.builder_provider,
         "reviewer_provider": result.reviewer_provider,
+        "builder_provider_kind": builder_kind,
+        "reviewer_provider_kind": reviewer_kind,
+        "builder_write_mode": builder_write_mode,
+        "reviewer_write_mode": reviewer_write_mode,
+        "builder_can_write_staging": builder_write_mode != "none",
+        "reviewer_can_write_staging": False,
     }
-    # Extract per-round provider details from first round if available
-    for rd in result.rounds:
-        if rd.builder_output and rd.builder_output.provider:
-            evidence["builder_provider_kind"] = (
-                "external_cli" if "cli" in rd.builder_output.provider else "internal"
-            )
-            break
-    for rd in result.rounds:
-        if rd.reviewer_output and rd.reviewer_output.provider:
-            evidence["reviewer_provider_kind"] = (
-                "external_cli" if "cli" in rd.reviewer_output.provider else "internal"
-            )
-            break
     return evidence
 
 
@@ -1010,35 +1075,157 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
+# ---------------------------------------------------------------------------
+# Full repo token estimator
+# ---------------------------------------------------------------------------
+
+_REPO_ESTIMATE_EXCLUDE_DIRS = frozenset({
+    ".git", "node_modules", "venv", ".venv", "__pycache__",
+    ".data", ".mypy_cache", ".pytest_cache", ".ruff_cache",
+    ".tox", "dist", "build", ".eggs", ".agent",
+    ".cache", ".npm", ".yarn", "coverage", "htmlcov",
+})
+
+_REPO_ESTIMATE_SKIP_EXTENSIONS = frozenset({
+    ".pyc", ".pyo", ".so", ".dll", ".exe", ".bin",
+    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z",
+    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg",
+    ".woff", ".woff2", ".ttf", ".eot",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+    ".db", ".sqlite", ".sqlite3",
+    ".jar", ".war", ".class",
+    ".o", ".a", ".lib",
+    ".lock",
+})
+
+_REPO_ESTIMATE_CAP_BYTES = 50000
+
+
+def _estimate_full_repo_tokens(repo_path: str) -> dict[str, Any]:
+    """Walk repo and estimate total token count for all text files.
+
+    Excludes .git, caches, node_modules, binary files, env files, keys.
+    Caps per-file read at _REPO_ESTIMATE_CAP_BYTES.
+    Never leaks file contents — only counts.
+    """
+    root = Path(repo_path).resolve()
+    total_chars = 0
+    files_counted = 0
+    files_skipped = 0
+
+    if not root.is_dir():
+        return {
+            "full_repo_tokens_estimated": 0,
+            "full_repo_files_estimated": 0,
+            "full_repo_files_skipped": 0,
+            "full_repo_estimate_cap_bytes_per_file": _REPO_ESTIMATE_CAP_BYTES,
+        }
+
+    for dirpath, dirnames, filenames in os.walk(root):
+        # Prune excluded directories
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in _REPO_ESTIMATE_EXCLUDE_DIRS and not d.startswith(".")
+        ]
+        for fn in filenames:
+            # Skip secret files
+            if _is_secret_file(fn):
+                files_skipped += 1
+                continue
+            # Skip by extension
+            ext = os.path.splitext(fn)[1].lower()
+            if ext in _REPO_ESTIMATE_SKIP_EXTENSIONS:
+                files_skipped += 1
+                continue
+            # Skip env files
+            if fn.startswith(".env"):
+                files_skipped += 1
+                continue
+            fp = Path(dirpath) / fn
+            try:
+                size = fp.stat().st_size
+                if size > 1_000_000:  # Skip files > 1MB
+                    files_skipped += 1
+                    continue
+                capped = min(size, _REPO_ESTIMATE_CAP_BYTES)
+                total_chars += capped
+                files_counted += 1
+            except OSError:
+                files_skipped += 1
+
+    return {
+        "full_repo_tokens_estimated": max(1, total_chars // 4) if total_chars > 0 else 0,
+        "full_repo_files_estimated": files_counted,
+        "full_repo_files_skipped": files_skipped,
+        "full_repo_estimate_cap_bytes_per_file": _REPO_ESTIMATE_CAP_BYTES,
+    }
+
+
 def _build_token_accounting(result: PingPongResult) -> dict[str, Any]:
-    """Build honest token accounting — estimated unless actual data available."""
-    # Check if any round has actual token usage
+    """Build honest token accounting — estimated unless actual data available.
+
+    Claude CLI tokens_used=0 means 'unavailable', not 'zero tokens used'.
+    FakeProvider synthetic tokens are not treated as Claude CLI actual usage.
+    """
+    # Check if any round has actual token usage from a real provider
+    # FakeProvider tokens are synthetic — only treat as actual if provider is not fake
+    is_fake = result.builder_provider == "fake"
     actual_available = False
     total_builder_tokens = 0
     total_reviewer_tokens = 0
+
     for rd in result.rounds:
         if rd.builder_output and rd.builder_output.tokens_used and rd.builder_output.tokens_used > 0:
-            actual_available = True
+            if not is_fake:
+                actual_available = True
             total_builder_tokens += rd.builder_output.tokens_used
         if rd.reviewer_output and rd.reviewer_output.tokens_used and rd.reviewer_output.tokens_used > 0:
-            actual_available = True
+            if not is_fake:
+                actual_available = True
             total_reviewer_tokens += rd.reviewer_output.tokens_used
 
-    diff_tokens = _estimate_tokens(result.safe_diff_summary) if result.safe_diff_summary else 0
+    # Prompt token estimates (from captured char counts)
+    builder_prompt_est = _estimate_tokens("x" * result.builder_prompt_chars) if result.builder_prompt_chars else 0
+    reviewer_prompt_est = _estimate_tokens("x" * result.reviewer_prompt_chars) if result.reviewer_prompt_chars else 0
+    repair_prompt_est = _estimate_tokens("x" * result.repair_prompt_chars) if result.repair_prompt_chars else 0
+    context_est = _estimate_tokens("x" * result.context_chars) if result.context_chars else 0
+    diff_est = _estimate_tokens(result.safe_diff_summary) if result.safe_diff_summary else 0
+
+    # Full repo estimate
+    repo_est = _estimate_full_repo_tokens(result.repo_path) if result.repo_path else {}
+    full_repo_tokens = repo_est.get("full_repo_tokens_estimated", 0)
+
+    # Savings calculation
+    if full_repo_tokens > 0:
+        savings = max(0, full_repo_tokens - context_est)
+        savings_ratio = round(savings / full_repo_tokens, 4)
+    else:
+        savings = 0
+        savings_ratio = 0.0
 
     accounting: dict[str, Any] = {
         "kind": "actual" if actual_available else "estimated",
         "actual_tokens_available": actual_available,
+        "builder_prompt_tokens_estimated": builder_prompt_est,
+        "reviewer_prompt_tokens_estimated": reviewer_prompt_est,
+        "repair_prompt_tokens_estimated": repair_prompt_est,
+        "context_tokens_estimated": context_est,
+        "safe_diff_tokens_estimated": diff_est,
         "context_categories": result.context_categories,
-        "safe_diff_tokens_estimated": diff_tokens,
+        "context_strategy": "bounded_task_context",
     }
+
+    # Full repo estimates
+    accounting.update(repo_est)
+    accounting["estimated_context_savings_tokens"] = savings
+    accounting["estimated_context_savings_ratio"] = savings_ratio
 
     if actual_available:
         accounting["builder_tokens_actual"] = total_builder_tokens
         accounting["reviewer_tokens_actual"] = total_reviewer_tokens
     else:
         accounting["token_note"] = (
-            "Claude CLI did not expose actual token usage; values are estimates."
+            "Claude CLI did not expose actual token usage; values are deterministic estimates."
         )
 
     return accounting
