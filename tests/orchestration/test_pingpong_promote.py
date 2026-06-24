@@ -25,6 +25,12 @@ from packages.orchestration.pingpong_promote import (
 )
 from packages.orchestration.pingpong_provider import FakeProvider
 
+
+def _hash_file_helper(path: Path) -> str:
+    """SHA-256 hash of file for test setup."""
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -472,7 +478,10 @@ class TestArtifactPersistence:
         run_dir = _pingpong_runs_dir() / run_id
         manifest = run_dir / "artifacts" / "manifest.json"
         assert manifest.exists()
-        entries = json.loads(manifest.read_text())
+        data = json.loads(manifest.read_text())
+        # New format: dict with "artifacts" and "skipped" keys
+        assert isinstance(data, dict)
+        entries = data["artifacts"]
         assert len(entries) > 0
         # Artifact file exists
         for e in entries:
@@ -485,7 +494,10 @@ class TestArtifactManifestFields:
         from packages.orchestration.pingpong_loop import _pingpong_runs_dir
         run_id = _run_passing(demo_repo)
         run_dir = _pingpong_runs_dir() / run_id
-        entries = json.loads((run_dir / "artifacts" / "manifest.json").read_text())
+        data = json.loads((run_dir / "artifacts" / "manifest.json").read_text())
+        assert "artifacts" in data
+        assert "skipped" in data
+        entries = data["artifacts"]
         for e in entries:
             assert "relative_path" in e
             assert "operation" in e
@@ -514,8 +526,9 @@ class TestPersistArtifactsSkipsSecrets:
 
 class TestLoadArtifactsMissing:
     def test_no_manifest(self, tmp_path):
-        entries, _ = load_artifacts(tmp_path)
+        entries, skipped, _ = load_artifacts(tmp_path)
         assert entries == []
+        assert skipped == []
 
 
 class TestPromotionRunNotFound:
@@ -554,3 +567,344 @@ class TestAllowedPaths:
 class TestAbsolutePathBlocked:
     def test_absolute_path(self):
         assert _is_blocked_path("/etc/passwd") == "absolute_path"
+
+
+# ---------------------------------------------------------------------------
+# 34. Artifact hash mismatch blocks before any target write
+# ---------------------------------------------------------------------------
+
+class TestArtifactHashMismatch:
+    def test_hash_mismatch_blocks(self, demo_repo, isolate_data_root):
+        """Tampered artifact blocks promotion, lists affected files."""
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_hash_mismatch"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+        # Create run data
+        data = {
+            "run_id": run_id,
+            "final_status": "staged_review_passed",
+            "mode": "staged",
+            "staged_files": ["src/main.py"],
+            "target_mutated": False,
+            "changed_target_files": [],
+            "rounds": [{"reviewer": {"verdict": "pass"}}],
+        }
+        (run_dir / "result.json").write_text(json.dumps(data))
+        # Create artifact with wrong hash in manifest
+        artifacts_dir = run_dir / "artifacts"
+        staged_dir = artifacts_dir / "staged" / "src"
+        staged_dir.mkdir(parents=True)
+        (staged_dir / "main.py").write_text("print('tampered')")
+        manifest = {
+            "artifacts": [{
+                "relative_path": "src/main.py",
+                "operation": "modify",
+                "file_type": ".py",
+                "target_baseline_hash": _hash_file_helper(demo_repo / "src" / "main.py"),
+                "staged_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+                "size": 18,
+            }],
+            "skipped": [],
+        }
+        (artifacts_dir / "manifest.json").write_text(json.dumps(manifest))
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "artifact_hash_mismatch" in result.blocked_reason
+        assert "src/main.py" in result.artifact_hash_mismatches
+        # Target not modified
+        assert (demo_repo / "src" / "main.py").read_text() == "def hello():\n    return 'hello'\n"
+
+
+# ---------------------------------------------------------------------------
+# 35. Missing artifact blocks before any target write
+# ---------------------------------------------------------------------------
+
+class TestMissingArtifact:
+    def test_missing_artifact_blocks(self, demo_repo, isolate_data_root):
+        """Staged file not in manifest blocks promotion."""
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_missing_artifact"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+        data = {
+            "run_id": run_id,
+            "final_status": "staged_review_passed",
+            "mode": "staged",
+            "staged_files": ["src/main.py", "src/extra.py"],
+            "target_mutated": False,
+            "changed_target_files": [],
+            "rounds": [{"reviewer": {"verdict": "pass"}}],
+        }
+        (run_dir / "result.json").write_text(json.dumps(data))
+        # Manifest only has src/main.py, missing src/extra.py
+        artifacts_dir = run_dir / "artifacts"
+        staged_dir = artifacts_dir / "staged" / "src"
+        staged_dir.mkdir(parents=True)
+        content = b"def hello():\n    return 'hello'\n"
+        (staged_dir / "main.py").write_bytes(content)
+        import hashlib
+        h = hashlib.sha256(content).hexdigest()
+        manifest = {
+            "artifacts": [{
+                "relative_path": "src/main.py",
+                "operation": "modify",
+                "file_type": ".py",
+                "target_baseline_hash": _hash_file_helper(demo_repo / "src" / "main.py"),
+                "staged_hash": h,
+                "size": len(content),
+            }],
+            "skipped": [],
+        }
+        (artifacts_dir / "manifest.json").write_text(json.dumps(manifest))
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "missing_artifacts" in result.blocked_reason
+        assert "src/extra.py" in result.missing_artifacts
+
+
+# ---------------------------------------------------------------------------
+# 36. Skipped unsafe staged files block promotion
+# ---------------------------------------------------------------------------
+
+class TestSkippedUnsafeBlocks:
+    def test_skipped_blocks(self, demo_repo, isolate_data_root):
+        """Skipped files in manifest block promotion."""
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_skipped"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+        data = {
+            "run_id": run_id,
+            "final_status": "staged_review_passed",
+            "mode": "staged",
+            "staged_files": ["src/main.py"],
+            "target_mutated": False,
+            "changed_target_files": [],
+            "rounds": [{"reviewer": {"verdict": "pass"}}],
+        }
+        (run_dir / "result.json").write_text(json.dumps(data))
+        # Manifest with a skipped entry
+        artifacts_dir = run_dir / "artifacts"
+        staged_dir = artifacts_dir / "staged" / "src"
+        staged_dir.mkdir(parents=True)
+        content = b"print('ok')"
+        (staged_dir / "main.py").write_bytes(content)
+        import hashlib
+        h = hashlib.sha256(content).hexdigest()
+        manifest = {
+            "artifacts": [{
+                "relative_path": "src/main.py",
+                "operation": "modify",
+                "file_type": ".py",
+                "target_baseline_hash": _hash_file_helper(demo_repo / "src" / "main.py"),
+                "staged_hash": h,
+                "size": len(content),
+            }],
+            "skipped": [{"relative_path": "node_modules/pkg/index.js", "reason": "blocked_path: node_modules"}],
+        }
+        (artifacts_dir / "manifest.json").write_text(json.dumps(manifest))
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        assert "skipped_unsafe" in result.blocked_reason
+        assert len(result.skipped_artifacts) > 0
+
+
+# ---------------------------------------------------------------------------
+# 37. All validation before any target writes
+# ---------------------------------------------------------------------------
+
+class TestAllValidationBeforeWrites:
+    def test_no_partial_apply(self, demo_repo, isolate_data_root):
+        """Multiple files: one bad hash. No files written to target."""
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_no_partial"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+        data = {
+            "run_id": run_id,
+            "final_status": "staged_review_passed",
+            "mode": "staged",
+            "staged_files": ["src/main.py", "docs/new.md"],
+            "target_mutated": False,
+            "changed_target_files": [],
+            "rounds": [{"reviewer": {"verdict": "pass"}}],
+        }
+        (run_dir / "result.json").write_text(json.dumps(data))
+        artifacts_dir = run_dir / "artifacts"
+
+        # Good file
+        import hashlib
+        good_content = b"def updated():\n    return 'updated'\n"
+        good_hash = hashlib.sha256(good_content).hexdigest()
+        (artifacts_dir / "staged" / "src").mkdir(parents=True)
+        (artifacts_dir / "staged" / "src" / "main.py").write_bytes(good_content)
+
+        # Bad file (hash won't match)
+        bad_content = b"# New doc\n"
+        (artifacts_dir / "staged" / "docs").mkdir(parents=True)
+        (artifacts_dir / "staged" / "docs" / "new.md").write_bytes(bad_content)
+
+        manifest = {
+            "artifacts": [
+                {
+                    "relative_path": "src/main.py",
+                    "operation": "modify",
+                    "file_type": ".py",
+                    "target_baseline_hash": _hash_file_helper(demo_repo / "src" / "main.py"),
+                    "staged_hash": good_hash,
+                    "size": len(good_content),
+                },
+                {
+                    "relative_path": "docs/new.md",
+                    "operation": "create",
+                    "file_type": ".md",
+                    "target_baseline_hash": "",
+                    "staged_hash": "bad_hash_value",
+                    "size": len(bad_content),
+                },
+            ],
+            "skipped": [],
+        }
+        (artifacts_dir / "manifest.json").write_text(json.dumps(manifest))
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        # Neither file written to target
+        assert (demo_repo / "src" / "main.py").read_text() == "def hello():\n    return 'hello'\n"
+        assert not (demo_repo / "docs" / "new.md").exists()
+
+
+# ---------------------------------------------------------------------------
+# 38. Dry-run persists promotion.json
+# ---------------------------------------------------------------------------
+
+class TestDryRunPersisted:
+    def test_dry_run_persisted(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        promote_run(run_id, target_repo=str(demo_repo), dry_run=True)
+        promo = load_promotion(run_id)
+        assert promo is not None
+        assert promo["status"] == "dry_run"
+        assert promo["dry_run"] is True
+
+
+# ---------------------------------------------------------------------------
+# 39. No-approve persists promotion.json
+# ---------------------------------------------------------------------------
+
+class TestNoApprovePersisted:
+    def test_no_approve_persisted(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        promote_run(run_id, target_repo=str(demo_repo))
+        promo = load_promotion(run_id)
+        assert promo is not None
+        assert promo["status"] == "dry_run"
+        assert promo["approved"] is False
+
+
+# ---------------------------------------------------------------------------
+# 40. Blocked attempts persist promotion.json
+# ---------------------------------------------------------------------------
+
+class TestBlockedAttemptPersisted:
+    def test_blocked_persisted(self, demo_repo, isolate_data_root):
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        run_id = "test_blocked_persist"
+        run_dir = _pingpong_runs_dir() / run_id
+        run_dir.mkdir(parents=True)
+        data = {
+            "run_id": run_id,
+            "final_status": "staged_review_passed",
+            "mode": "staged",
+            "staged_files": [],
+            "target_mutated": False,
+            "changed_target_files": [],
+            "rounds": [{"reviewer": {"verdict": "pass"}}],
+        }
+        (run_dir / "result.json").write_text(json.dumps(data))
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        assert result.status == "blocked"
+        promo = load_promotion(run_id)
+        assert promo is not None
+        assert promo["status"] == "blocked"
+        assert "no_staged_files" in promo["blocked_reason"]
+
+
+# ---------------------------------------------------------------------------
+# 41. JSON export includes new integrity fields
+# ---------------------------------------------------------------------------
+
+class TestJsonIntegrityFields:
+    def test_json_has_integrity_fields(self, demo_repo):
+        run_id = _run_passing(demo_repo)
+        result = promote_run(run_id, target_repo=str(demo_repo), approve=True)
+        data = export_promotion_json(result)
+        assert "artifact_hash_mismatches" in data
+        assert "missing_artifacts" in data
+        assert "skipped_artifacts" in data
+
+
+# ---------------------------------------------------------------------------
+# 42. persist_artifacts records skipped with reasons
+# ---------------------------------------------------------------------------
+
+class TestPersistArtifactsSkippedTracking:
+    def test_skipped_recorded(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+        (staging / "ok.py").write_text("print('ok')")
+        (staging / "image.png").write_bytes(b"\x89PNG")
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
+        entries = persist_artifacts(run_dir, staging, original, ["ok.py", "image.png"])
+        assert len(entries) == 1
+        assert entries[0].relative_path == "ok.py"
+        # Check manifest has skipped
+        data = json.loads((run_dir / "artifacts" / "manifest.json").read_text())
+        assert len(data["skipped"]) == 1
+        assert data["skipped"][0]["relative_path"] == "image.png"
+        assert "binary_file" in data["skipped"][0]["reason"]
+
+
+# ---------------------------------------------------------------------------
+# 43. load_artifacts returns skipped entries
+# ---------------------------------------------------------------------------
+
+class TestLoadArtifactsSkipped:
+    def test_load_skipped(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+        (staging / "ok.py").write_text("print('ok')")
+        (staging / "image.png").write_bytes(b"\x89PNG")
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
+        persist_artifacts(run_dir, staging, original, ["ok.py", "image.png"])
+        entries, skipped, staged_dir = load_artifacts(run_dir)
+        assert len(entries) == 1
+        assert len(skipped) == 1
+        assert skipped[0].relative_path == "image.png"
+        assert skipped[0].reason == "binary_file"
+
+
+# ---------------------------------------------------------------------------
+# 44. Old flat manifest backward compatibility
+# ---------------------------------------------------------------------------
+
+class TestOldManifestCompat:
+    def test_flat_list_manifest(self, tmp_path):
+        """load_artifacts handles old flat-list manifest format."""
+        artifacts_dir = tmp_path / "artifacts"
+        artifacts_dir.mkdir()
+        (artifacts_dir / "staged").mkdir()
+        flat = [{"relative_path": "foo.py", "operation": "create",
+                 "file_type": ".py", "target_baseline_hash": "",
+                 "staged_hash": "abc", "size": 10}]
+        (artifacts_dir / "manifest.json").write_text(json.dumps(flat))
+        entries, skipped, _ = load_artifacts(tmp_path)
+        assert len(entries) == 1
+        assert entries[0].relative_path == "foo.py"
+        assert skipped == []

@@ -34,8 +34,6 @@ _BLOCKED_EXACT = frozenset({
     ".git", ".env", ".gitignore",
 })
 
-_SECRET_PATTERNS = (".env", ".env.", ".env-")
-
 _BINARY_EXTENSIONS = frozenset({
     ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp", ".bmp",
     ".zip", ".gz", ".tar", ".bz2", ".xz", ".7z",
@@ -91,6 +89,11 @@ def _hash_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def _hash_bytes(data: bytes) -> str:
+    """SHA-256 hash of bytes."""
+    return hashlib.sha256(data).hexdigest()
+
+
 # ---------------------------------------------------------------------------
 # Artifact persistence (called during run_pingpong)
 # ---------------------------------------------------------------------------
@@ -106,6 +109,13 @@ class ArtifactEntry:
     size: int = 0
 
 
+@dataclass
+class SkippedEntry:
+    """One skipped staged file."""
+    relative_path: str = ""
+    reason: str = ""
+
+
 def persist_artifacts(
     run_dir: Path,
     staging: Path,
@@ -115,28 +125,35 @@ def persist_artifacts(
     """Persist staged file contents and manifest under run_dir/artifacts/.
 
     Returns list of ArtifactEntry for each persisted file.
-    Skips blocked paths, binary files, oversized files.
+    Records skipped files with reasons in skipped.json.
     """
     artifacts_dir = run_dir / "artifacts" / "staged"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     entries: list[ArtifactEntry] = []
+    skipped: list[SkippedEntry] = []
 
     for rel in sorted(staged_files):
         block_reason = _is_blocked_path(rel)
         if block_reason:
+            skipped.append(SkippedEntry(relative_path=rel, reason=block_reason))
             continue
 
         staged_file = staging / rel
         if not staged_file.is_file():
+            skipped.append(SkippedEntry(relative_path=rel, reason="not_a_file"))
             continue
 
         try:
             size = staged_file.stat().st_size
         except OSError:
+            skipped.append(SkippedEntry(relative_path=rel, reason="unreadable"))
             continue
 
         if size > _MAX_FILE_SIZE:
+            skipped.append(SkippedEntry(
+                relative_path=rel, reason=f"too_large ({size})",
+            ))
             continue
 
         # Determine operation
@@ -155,6 +172,7 @@ def persist_artifacts(
             content = staged_file.read_bytes()
             dest.write_bytes(content)
         except OSError:
+            skipped.append(SkippedEntry(relative_path=rel, reason="copy_failed"))
             continue
 
         staged_hash = hashlib.sha256(content).hexdigest()
@@ -170,38 +188,54 @@ def persist_artifacts(
         ))
 
     # Write manifest
-    manifest = [
-        {
-            "relative_path": e.relative_path,
-            "operation": e.operation,
-            "file_type": e.file_type,
-            "target_baseline_hash": e.target_baseline_hash,
-            "staged_hash": e.staged_hash,
-            "size": e.size,
-        }
-        for e in entries
-    ]
+    manifest_data = {
+        "artifacts": [
+            {
+                "relative_path": e.relative_path,
+                "operation": e.operation,
+                "file_type": e.file_type,
+                "target_baseline_hash": e.target_baseline_hash,
+                "staged_hash": e.staged_hash,
+                "size": e.size,
+            }
+            for e in entries
+        ],
+        "skipped": [
+            {"relative_path": s.relative_path, "reason": s.reason}
+            for s in skipped
+        ],
+    }
     manifest_file = run_dir / "artifacts" / "manifest.json"
-    manifest_file.write_text(json.dumps(manifest, indent=2) + "\n")
+    manifest_file.write_text(json.dumps(manifest_data, indent=2) + "\n")
 
     return entries
 
 
-def load_artifacts(run_dir: Path) -> tuple[list[ArtifactEntry], Path]:
-    """Load artifact manifest and return (entries, artifacts_staged_dir)."""
+def load_artifacts(
+    run_dir: Path,
+) -> tuple[list[ArtifactEntry], list[SkippedEntry], Path]:
+    """Load artifact manifest and return (entries, skipped, artifacts_staged_dir)."""
     manifest_file = run_dir / "artifacts" / "manifest.json"
     staged_dir = run_dir / "artifacts" / "staged"
 
     if not manifest_file.exists():
-        return [], staged_dir
+        return [], [], staged_dir
 
     try:
         data = json.loads(manifest_file.read_text())
     except (OSError, json.JSONDecodeError):
-        return [], staged_dir
+        return [], [], staged_dir
+
+    # Support both old (list) and new (dict with artifacts/skipped) formats
+    if isinstance(data, list):
+        artifact_list = data
+        skipped_list: list[dict[str, str]] = []
+    else:
+        artifact_list = data.get("artifacts", [])
+        skipped_list = data.get("skipped", [])
 
     entries = []
-    for item in data:
+    for item in artifact_list:
         entries.append(ArtifactEntry(
             relative_path=item.get("relative_path", ""),
             operation=item.get("operation", ""),
@@ -210,7 +244,15 @@ def load_artifacts(run_dir: Path) -> tuple[list[ArtifactEntry], Path]:
             staged_hash=item.get("staged_hash", ""),
             size=item.get("size", 0),
         ))
-    return entries, staged_dir
+
+    skipped = []
+    for item in skipped_list:
+        skipped.append(SkippedEntry(
+            relative_path=item.get("relative_path", ""),
+            reason=item.get("reason", ""),
+        ))
+
+    return entries, skipped, staged_dir
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +273,9 @@ class PromotionResult:
     blocked_reason: str = ""
     baseline_mismatches: list[str] = field(default_factory=list)
     unsupported_files: list[str] = field(default_factory=list)
+    artifact_hash_mismatches: list[str] = field(default_factory=list)
+    missing_artifacts: list[str] = field(default_factory=list)
+    skipped_artifacts: list[str] = field(default_factory=list)
     post_test_command: str = ""
     post_test_passed: bool | None = None
     post_test_summary: str = ""
@@ -281,6 +326,20 @@ def _run_post_test(
     return passed, summary
 
 
+def _block(
+    result: PromotionResult,
+    reason: str,
+    run_dir: Path | None = None,
+) -> PromotionResult:
+    """Set blocked status, persist, and return."""
+    result.status = "blocked"
+    result.blocked_reason = reason
+    result.finished_at = datetime.now(timezone.utc).isoformat()
+    if run_dir:
+        _persist_promotion(run_dir, result)
+    return result
+
+
 def promote_run(
     run_id: str,
     *,
@@ -292,6 +351,7 @@ def promote_run(
     """Promote reviewed staged artifacts into target repo.
 
     Without --approve, returns preview only. Never auto-promotes.
+    All validation completes before any target write.
     """
     from packages.orchestration.pingpong_loop import _pingpong_runs_dir, load_run
 
@@ -307,43 +367,27 @@ def promote_run(
     # --- Load run ---
     run_data = load_run(run_id)
     if run_data is None:
-        result.status = "blocked"
-        result.blocked_reason = f"run_not_found: {run_id}"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, f"run_not_found: {run_id}")
+
+    run_dir = _pingpong_runs_dir() / run_id
 
     # --- Eligibility checks ---
     final_status = run_data.get("final_status", "")
     if final_status != "staged_review_passed":
-        result.status = "blocked"
-        result.blocked_reason = f"ineligible_status: {final_status}"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, f"ineligible_status: {final_status}", run_dir)
 
     if run_data.get("mode", "") != "staged":
-        result.status = "blocked"
-        result.blocked_reason = "mode_not_staged"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, "mode_not_staged", run_dir)
 
     staged_files = run_data.get("staged_files", [])
     if not staged_files:
-        result.status = "blocked"
-        result.blocked_reason = "no_staged_files"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, "no_staged_files", run_dir)
 
     if run_data.get("target_mutated", False):
-        result.status = "blocked"
-        result.blocked_reason = "target_mutated_during_run"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, "target_mutated_during_run", run_dir)
 
     if run_data.get("changed_target_files", []):
-        result.status = "blocked"
-        result.blocked_reason = "changed_target_files_during_run"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, "changed_target_files_during_run", run_dir)
 
     # Check reviewer verdict from rounds
     rounds = run_data.get("rounds", [])
@@ -354,32 +398,45 @@ def promote_run(
             last_reviewer = rv
             break
     if not last_reviewer or last_reviewer.get("verdict") != "pass":
-        result.status = "blocked"
-        result.blocked_reason = "reviewer_verdict_not_pass"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, "reviewer_verdict_not_pass", run_dir)
 
     # --- Load artifacts ---
-    run_dir = _pingpong_runs_dir() / run_id
-    entries, artifacts_dir = load_artifacts(run_dir)
+    entries, skipped, artifacts_dir = load_artifacts(run_dir)
     if not entries:
-        result.status = "blocked"
-        result.blocked_reason = "no_artifacts"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, "no_artifacts", run_dir)
+
+    # --- Check skipped artifacts ---
+    if skipped:
+        result.skipped_artifacts = [
+            f"{s.relative_path}: {s.reason}" for s in skipped
+        ]
+        return _block(
+            result,
+            f"skipped_unsafe_staged_files: {result.skipped_artifacts}",
+            run_dir,
+        )
+
+    # --- Check staged-file/artifact completeness ---
+    artifact_paths = {e.relative_path for e in entries}
+    missing = [f for f in staged_files if f not in artifact_paths]
+    if missing:
+        result.missing_artifacts = missing
+        return _block(
+            result,
+            f"missing_artifacts: {missing}",
+            run_dir,
+        )
 
     # --- Validate target repo path ---
     target = Path(target_repo).resolve()
     if not target.is_dir():
-        result.status = "blocked"
-        result.blocked_reason = f"target_not_directory: {target_repo}"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, f"target_not_directory: {target_repo}", run_dir)
 
-    # --- Validate each artifact ---
+    # --- Full validation pass (before any writes) ---
     blocked_files: list[str] = []
     unsupported: list[str] = []
     baseline_mismatches: list[str] = []
+    hash_mismatches: list[str] = []
     valid_entries: list[ArtifactEntry] = []
 
     for entry in entries:
@@ -397,7 +454,7 @@ def promote_run(
             blocked_files.append(f"{entry.relative_path}: path_escape")
             continue
 
-        # Delete check (v0: no deletes)
+        # Artifact file existence (no deletes in v0)
         artifact_file = artifacts_dir / entry.relative_path
         if not artifact_file.exists():
             unsupported.append(f"{entry.relative_path}: delete_not_supported")
@@ -413,22 +470,35 @@ def promote_run(
             unsupported.append(f"{entry.relative_path}: too_large ({size})")
             continue
 
+        # Artifact hash verification
+        try:
+            artifact_content = artifact_file.read_bytes()
+        except OSError:
+            unsupported.append(f"{entry.relative_path}: read_failed")
+            continue
+        actual_hash = _hash_bytes(artifact_content)
+        if actual_hash != entry.staged_hash:
+            hash_mismatches.append(entry.relative_path)
+            continue
+
         # Baseline validation
         target_file = target / entry.relative_path
         if entry.operation == "modify":
             if not target_file.exists():
-                baseline_mismatches.append(f"{entry.relative_path}: target_file_missing")
+                baseline_mismatches.append(
+                    f"{entry.relative_path}: target_file_missing",
+                )
                 continue
             current_hash = _hash_file(target_file)
             if current_hash != entry.target_baseline_hash:
                 baseline_mismatches.append(
-                    f"{entry.relative_path}: target_changed_since_run"
+                    f"{entry.relative_path}: target_changed_since_run",
                 )
                 continue
         elif entry.operation == "create":
             if target_file.exists():
                 baseline_mismatches.append(
-                    f"{entry.relative_path}: target_file_now_exists"
+                    f"{entry.relative_path}: target_file_now_exists",
                 )
                 continue
 
@@ -436,39 +506,48 @@ def promote_run(
 
     result.unsupported_files = unsupported
     result.baseline_mismatches = baseline_mismatches
+    result.artifact_hash_mismatches = hash_mismatches
+
+    if hash_mismatches:
+        return _block(
+            result,
+            f"artifact_hash_mismatch: {hash_mismatches}",
+            run_dir,
+        )
 
     if blocked_files:
-        result.status = "blocked"
-        result.blocked_reason = f"blocked_paths: {blocked_files}"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(
+            result,
+            f"blocked_paths: {blocked_files}",
+            run_dir,
+        )
 
     if baseline_mismatches:
-        result.status = "blocked"
-        result.blocked_reason = f"baseline_mismatch: {baseline_mismatches}"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(
+            result,
+            f"baseline_mismatch: {baseline_mismatches}",
+            run_dir,
+        )
 
     if unsupported:
-        result.status = "blocked"
-        result.blocked_reason = f"unsupported: {unsupported}"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(
+            result,
+            f"unsupported: {unsupported}",
+            run_dir,
+        )
 
     if not valid_entries:
-        result.status = "blocked"
-        result.blocked_reason = "no_valid_artifacts"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        return result
+        return _block(result, "no_valid_artifacts", run_dir)
 
     # --- Dry-run or unapproved: preview only ---
     if dry_run or not approve:
         result.status = "dry_run"
         result.applied_files = [e.relative_path for e in valid_entries]
         result.finished_at = datetime.now(timezone.utc).isoformat()
+        _persist_promotion(run_dir, result)
         return result
 
-    # --- Apply artifacts ---
+    # --- Apply artifacts (all validation passed) ---
     applied: list[str] = []
     for entry in valid_entries:
         artifact_file = artifacts_dir / entry.relative_path
@@ -483,6 +562,7 @@ def promote_run(
             result.blocked_reason = f"write_failed: {entry.relative_path}: {exc}"
             result.applied_files = applied
             result.finished_at = datetime.now(timezone.utc).isoformat()
+            _persist_promotion(run_dir, result)
             return result
 
     result.applied_files = applied
@@ -500,18 +580,18 @@ def promote_run(
             return result
 
     result.status = "promoted"
-    result.git_status_hint = f"Run 'git status --short' in {target_repo} to see changes."
+    result.git_status_hint = (
+        f"Run 'git status --short' in {target_repo} to see changes."
+    )
     result.finished_at = datetime.now(timezone.utc).isoformat()
-
-    # Persist promotion result
     _persist_promotion(run_dir, result)
-
     return result
 
 
 def _persist_promotion(run_dir: Path, result: PromotionResult) -> None:
     """Persist promotion result under the run directory."""
     try:
+        run_dir.mkdir(parents=True, exist_ok=True)
         promo_file = run_dir / "promotion.json"
         data = export_promotion_json(result)
         promo_file.write_text(json.dumps(data, indent=2) + "\n")
@@ -549,6 +629,9 @@ def export_promotion_json(result: PromotionResult) -> dict[str, Any]:
         "blocked_reason": result.blocked_reason,
         "baseline_mismatches": result.baseline_mismatches,
         "unsupported_files": result.unsupported_files,
+        "artifact_hash_mismatches": result.artifact_hash_mismatches,
+        "missing_artifacts": result.missing_artifacts,
+        "skipped_artifacts": result.skipped_artifacts,
         "post_test_command": result.post_test_command,
         "post_test_passed": result.post_test_passed,
         "post_test_summary": result.post_test_summary,
@@ -574,13 +657,20 @@ def summarize_promotion(result: PromotionResult) -> str:
         lines.append("No target files changed.")
         if result.applied_files:
             lines.append(f"Would apply: {', '.join(result.applied_files)}")
-        lines.append(f"To apply: remedy do promote {result.run_id} --repo {result.target_repo} --approve")
+        lines.append(
+            f"To apply: remedy do promote {result.run_id}"
+            f" --repo {result.target_repo} --approve"
+        )
 
     elif result.status == "promoted":
         lines.append(f"Applied files: {', '.join(result.applied_files)}")
-        lines.append(f"Changed target files: {', '.join(result.changed_target_files)}")
+        lines.append(
+            f"Changed target files: {', '.join(result.changed_target_files)}"
+        )
         if result.post_test_passed is not None:
-            lines.append(f"Post-test: {'passed' if result.post_test_passed else 'FAILED'}")
+            lines.append(
+                f"Post-test: {'passed' if result.post_test_passed else 'FAILED'}"
+            )
             if result.post_test_summary:
                 lines.append(f"  {result.post_test_summary}")
         lines.append(result.git_status_hint)
@@ -595,8 +685,25 @@ def summarize_promotion(result: PromotionResult) -> str:
     elif result.status == "blocked":
         lines.append(f"Blocked: {result.blocked_reason}")
         if result.baseline_mismatches:
-            lines.append(f"Baseline mismatches: {', '.join(result.baseline_mismatches)}")
+            lines.append(
+                f"Baseline mismatches: {', '.join(result.baseline_mismatches)}"
+            )
         if result.unsupported_files:
-            lines.append(f"Unsupported: {', '.join(result.unsupported_files)}")
+            lines.append(
+                f"Unsupported: {', '.join(result.unsupported_files)}"
+            )
+        if result.artifact_hash_mismatches:
+            lines.append(
+                "Artifact hash mismatches: "
+                + ", ".join(result.artifact_hash_mismatches)
+            )
+        if result.missing_artifacts:
+            lines.append(
+                f"Missing artifacts: {', '.join(result.missing_artifacts)}"
+            )
+        if result.skipped_artifacts:
+            lines.append(
+                f"Skipped artifacts: {', '.join(result.skipped_artifacts)}"
+            )
 
     return "\n".join(lines)

@@ -1,25 +1,27 @@
-# Plan — Steps 4316-4395: Human-Approved Ping-Pong Promotion v0
+# Plan — Steps 4396-4445: Promotion Integrity Closure v1
 
 ## Goal
-Implement `remedy do promote <run_id>` — safe human-approved promotion from
-reviewed staging into real target repo. No auto-promotion. No git commit/push.
+Fix 6 promotion-integrity gaps found by review. All validation before
+any target write. Universal persistence. Hash verification. Completeness
+check. Skipped tracking. No partial apply.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- New module: packages/orchestration/pingpong_promote.py
-  - _is_blocked_path(): blocks .git, .env, caches, binary, traversal, absolute
-  - persist_artifacts(): save staged file contents + manifest under run dir
-  - load_artifacts(): load manifest and artifact dir
-  - promote_run(): full promotion with eligibility, baseline, apply, post-test
-  - _persist_promotion() / load_promotion(): promotion result persistence
-  - export_promotion_json() / summarize_promotion(): output formatting
-- Artifact persistence in run_pingpong finally block (staged_review_passed only)
-- CLI: do promote command in do_cmd.py, catalog, grouped.py
-- Report integration: promotion status in text and JSON reports
-- 33 new tests in test_pingpong_promote.py
-- Full suite: 7287 passed, 0 failed
+- Artifact hash verification: SHA-256 of artifact bytes checked against manifest staged_hash
+- Staged-file/artifact completeness: all staged_files must appear in manifest
+- Skipped artifact tracking: persist_artifacts records skipped files with reasons
+- Manifest format: {"artifacts": [...], "skipped": [...]} with old flat-list backward compat
+- load_artifacts returns 3-tuple (entries, skipped, staged_dir)
+- Universal persistence: every return path (_block, dry_run, promoted) calls _persist_promotion
+- No partial apply: all validation (hash, blocked, baseline, unsupported) before any target write
+- New PromotionResult fields: artifact_hash_mismatches, missing_artifacts, skipped_artifacts
+- _block() helper centralizes blocked status + persistence
+- 44 promotion tests (11 new): hash mismatch, missing artifact, skipped unsafe, no partial apply,
+  dry-run persisted, no-approve persisted, blocked persisted, JSON integrity fields,
+  skipped tracking, load_artifacts skipped, old manifest compat
+- Full suite: 7381 passed, 0 failed (1 pre-existing deselected)
 - Lint: clean
-- Architecture guard: clean (comments-only matches, no real violations)
-- Dogfood smoke: 6/6 scenarios pass (run, dry-run, unapproved, approved+test, persist, JSON)
+- Architecture guard: clean (subprocess.run in _run_post_test only, intentional)
+- Dogfood smoke: 6/6 scenarios pass
