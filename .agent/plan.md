@@ -1,21 +1,24 @@
-# Plan — Steps 4857-4868: Job Runner Completion Gate + Continuation Config Closure v3
+# Plan — Steps 4869-4878: Job Runner Continuation Config Truth Closure v4
 
 ## Goal
-Fix completion gate (don't trust final_status alone) and persist execution config across paused continuation.
+Fix two continuation-config bugs:
+1. max_rounds not restored on paused continuation
+2. Explicit --builder fake / --reviewer fake ignored after persisted non-fake
+
+Root cause: CLI handler collapses omitted options to default values, making
+omitted indistinguishable from explicitly-set-to-default.
 
 ## Current Step
-Implementing all steps.
+Implementing Steps 4869-4878.
 
 ## Steps
-- Step 4857: Deterministic job task completion gate (validate_job_task_result)
-- Step 4858: Corrupted-result completion gate tests
-- Step 4859: Durable job execution config model
-- Step 4860: Preserve config across paused continuation
-- Step 4861: Make next_command safe for paused jobs
-- Step 4862: Real CLI pause/continue config tests
-- Step 4863: Explicit config override tests
-- Step 4864: Job report execution-config section
-- Step 4865: Preserve token-bounded job context
-- Step 4866: Preserve job workspace and target safety
-- Step 4867: Real CLI smoke command-path proof
-- Step 4868: Architecture guard and handoff
+- Step 4869: Omitted-vs-explicit handling (None flow for CLI args)
+- Step 4870: Restore persisted max_rounds on continuation
+- Step 4871: Allow explicit provider override back to fake
+- Step 4872: Preserve and override test command correctly
+- Step 4873: Preserve and override write mode correctly
+- Step 4874: Execution config source/audit fields
+- Step 4875: Real command-path pause/continue tests
+- Step 4876: Explicit override tests
+- Step 4877: Preserve completion gate and job safety
+- Step 4878: Architecture guard and handoff

@@ -123,12 +123,17 @@ class TargetGuard:
 class ExecutionConfig:
     """Durable execution config for job continuation."""
     builder: str = "fake"
+    builder_source: str = "default"
     reviewer: str = "fake"
+    reviewer_source: str = "default"
     max_rounds: int = 3
+    max_rounds_source: str = "default"
     repair_rounds_allowed: int = 2
     repair_rounds_source: str = "default"
     test_command: str = ""
+    test_command_source: str = "default"
     claude_cli_write_mode: str = "none"
+    claude_cli_write_mode_source: str = "default"
     context_strategy: str = "task_bounded_sequential_job"
 
 
@@ -250,12 +255,18 @@ def _export_execution_config(c: ExecutionConfig | None) -> dict[str, Any] | None
         return None
     return {
         "builder": c.builder,
+        "builder_source": c.builder_source,
         "reviewer": c.reviewer,
+        "reviewer_source": c.reviewer_source,
         "max_rounds": c.max_rounds,
+        "max_rounds_source": c.max_rounds_source,
         "repair_rounds_allowed": c.repair_rounds_allowed,
         "repair_rounds_source": c.repair_rounds_source,
         "test_command": c.test_command,
+        "test_command_present": bool(c.test_command),
+        "test_command_source": c.test_command_source,
         "claude_cli_write_mode": c.claude_cli_write_mode,
+        "claude_cli_write_mode_source": c.claude_cli_write_mode_source,
         "context_strategy": c.context_strategy,
     }
 
@@ -265,12 +276,17 @@ def _import_execution_config(d: dict[str, Any] | None) -> ExecutionConfig | None
         return None
     return ExecutionConfig(
         builder=d.get("builder", "fake"),
+        builder_source=d.get("builder_source", "default"),
         reviewer=d.get("reviewer", "fake"),
+        reviewer_source=d.get("reviewer_source", "default"),
         max_rounds=d.get("max_rounds", 3),
+        max_rounds_source=d.get("max_rounds_source", "default"),
         repair_rounds_allowed=d.get("repair_rounds_allowed", 2),
         repair_rounds_source=d.get("repair_rounds_source", "default"),
         test_command=d.get("test_command", ""),
+        test_command_source=d.get("test_command_source", "default"),
         claude_cli_write_mode=d.get("claude_cli_write_mode", "none"),
+        claude_cli_write_mode_source=d.get("claude_cli_write_mode_source", "default"),
         context_strategy=d.get("context_strategy", "task_bounded_sequential_job"),
     )
 
@@ -710,24 +726,33 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
     return (len(reasons) == 0, reasons)
 
 
+def _resolve_cfg(cli_val: Any, persisted_val: Any, default: Any) -> tuple[Any, str]:
+    """Resolve config field: explicit CLI > persisted > product default."""
+    if cli_val is not None:
+        return cli_val, "cli"
+    if persisted_val is not None:
+        return persisted_val, "persisted"
+    return default, "default"
+
+
 # ---------------------------------------------------------------------------
-# Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4860)
+# Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------
 
 def run_job(
     job_id: str,
     *,
-    builder_name: str = "fake",
-    reviewer_name: str = "fake",
+    builder_name: str | None = None,
+    reviewer_name: str | None = None,
     builder_provider: Any = None,
     reviewer_provider: Any = None,
-    max_rounds: int = 3,
-    repair_rounds: int = 2,
-    repair_rounds_source: str = "default",
-    test_command: str = "",
+    max_rounds: int | None = None,
+    repair_rounds: int | None = None,
+    repair_rounds_source: str | None = None,
+    test_command: str | None = None,
     timeout_sec: int = 120,
     max_output_chars: int = 50000,
-    claude_cli_write_mode: str = "none",
+    claude_cli_write_mode: str | None = None,
     max_tasks: int = 0,
 ) -> JobPlan:
     """Execute pending tasks sequentially through the ping-pong loop.
@@ -738,6 +763,9 @@ def run_job(
 
     The real target repo is never mutated — a snapshot guard verifies this
     after each task.
+
+    None parameters mean "omitted by caller". Resolution order:
+    explicit CLI value > persisted config > product default.
     """
     from packages.orchestration.pingpong_loop import (
         TaskInput,
@@ -752,36 +780,48 @@ def run_job(
             error=f"job_not_found: {job_id}",
         )
 
-    # Step 4859-4860: Restore or create execution config
-    # On continuation, CLI-omitted values come as defaults. If persisted
-    # config exists, use it as fallback for omitted values.
-    if job.execution_config is not None:
-        ec = job.execution_config
-        if builder_name == "fake" and ec.builder != "fake":
-            builder_name = ec.builder
-        if reviewer_name == "fake" and ec.reviewer != "fake":
-            reviewer_name = ec.reviewer
-        if test_command == "" and ec.test_command != "":
-            test_command = ec.test_command
-        if claude_cli_write_mode == "none" and ec.claude_cli_write_mode != "none":
-            claude_cli_write_mode = ec.claude_cli_write_mode
-        if repair_rounds_source == "default" and ec.repair_rounds_source == "cli":
-            repair_rounds = ec.repair_rounds_allowed
-            repair_rounds_source = ec.repair_rounds_source
+    # Step 4869: Resolve each config field — explicit > persisted > default
+    ec = job.execution_config
+
+    builder_name, builder_src = _resolve_cfg(
+        builder_name, ec.builder if ec else None, "fake")
+    reviewer_name, reviewer_src = _resolve_cfg(
+        reviewer_name, ec.reviewer if ec else None, "fake")
+    max_rounds, max_rounds_src = _resolve_cfg(
+        max_rounds, ec.max_rounds if ec else None, 3)
+    test_command, test_cmd_src = _resolve_cfg(
+        test_command, ec.test_command if ec else None, "")
+    claude_cli_write_mode, write_mode_src = _resolve_cfg(
+        claude_cli_write_mode,
+        ec.claude_cli_write_mode if ec else None, "none")
+
+    if repair_rounds is not None:
+        rr_src = repair_rounds_source or "cli"
+    elif ec is not None:
+        repair_rounds = ec.repair_rounds_allowed
+        rr_src = "persisted"
+    else:
+        repair_rounds = 2
+        rr_src = "default"
 
     job.execution_config = ExecutionConfig(
         builder=builder_name,
+        builder_source=builder_src,
         reviewer=reviewer_name,
+        reviewer_source=reviewer_src,
         max_rounds=max_rounds,
+        max_rounds_source=max_rounds_src,
         repair_rounds_allowed=repair_rounds,
-        repair_rounds_source=repair_rounds_source,
+        repair_rounds_source=rr_src,
         test_command=test_command,
+        test_command_source=test_cmd_src,
         claude_cli_write_mode=claude_cli_write_mode,
+        claude_cli_write_mode_source=write_mode_src,
     )
 
     # Record repair-round metadata at job level
     job.repair_rounds_allowed = repair_rounds
-    job.repair_rounds_source = repair_rounds_source
+    job.repair_rounds_source = rr_src
 
     # Create job workspace if not yet created
     if not job.job_workspace_path:
@@ -851,7 +891,7 @@ def run_job(
                 claude_cli_write_mode=claude_cli_write_mode,
                 task_input=task_input,
                 repair_rounds=repair_rounds,
-                repair_rounds_source=repair_rounds_source,
+                repair_rounds_source=rr_src,
                 keep_staging=True,
             )
         except Exception as exc:
@@ -1128,14 +1168,18 @@ def format_job_report_text(job: JobPlan) -> str:
 
     ec = job.execution_config
     if ec:
-        lines.append(f"Builder: {ec.builder}")
-        lines.append(f"Reviewer: {ec.reviewer}")
+        lines.append(f"Builder: {ec.builder} (source: {ec.builder_source})")
+        lines.append(f"Reviewer: {ec.reviewer} (source: {ec.reviewer_source})")
+        lines.append(f"Max rounds: {ec.max_rounds} (source: {ec.max_rounds_source})")
         tc = ec.test_command
         if tc:
             tc_display = tc[:80] + "..." if len(tc) > 80 else tc
-            lines.append(f"Test command: {tc_display}")
+            lines.append(f"Test command: {tc_display} (source: {ec.test_command_source})")
         if ec.claude_cli_write_mode != "none":
-            lines.append(f"Write mode: {ec.claude_cli_write_mode}")
+            lines.append(
+                f"Write mode: {ec.claude_cli_write_mode}"
+                f" (source: {ec.claude_cli_write_mode_source})"
+            )
         if job.status == JOB_PAUSED:
             lines.append("Continuation config: persisted from previous run")
 

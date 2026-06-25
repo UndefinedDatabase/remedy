@@ -766,20 +766,21 @@ class TestRepairRoundsCoercion:
 
 
 def _make_args(**kwargs):
-    """Build a namespace that mimics argparse output for do.job-run."""
+    """Build a namespace that mimics argparse output for do.job-run.
+
+    Continuation-critical args default to None (omitted). Pass explicit
+    values to simulate CLI flags. This matches catalog default=None.
+    """
     ns = types.SimpleNamespace()
     ns.job_id = kwargs.get("job_id", "test_job")
-    ns.builder = kwargs.get("builder", "fake")
-    ns.reviewer = kwargs.get("reviewer", "fake")
-    ns.max_rounds = kwargs.get("max_rounds", "3")
-    ns.test_command = kwargs.get("test_command", "")
-    ns.claude_cli_write_mode = kwargs.get("claude_cli_write_mode", "none")
+    ns.builder = kwargs.get("builder", None)
+    ns.reviewer = kwargs.get("reviewer", None)
+    ns.max_rounds = kwargs.get("max_rounds", None)
+    ns.repair_rounds = kwargs.get("repair_rounds", None)
+    ns.test_command = kwargs.get("test_command", None)
+    ns.claude_cli_write_mode = kwargs.get("claude_cli_write_mode", None)
     ns.max_tasks = kwargs.get("max_tasks", "0")
     ns.json = kwargs.get("json", True)
-    if "repair_rounds" in kwargs:
-        ns.repair_rounds = kwargs["repair_rounds"]
-    else:
-        ns.repair_rounds = None
     return ns
 
 
@@ -1382,7 +1383,7 @@ class TestContinuationConfig:
         )
         # Must NOT fall back to default repair_rounds=2
         assert result2.repair_rounds_allowed == 0
-        assert result2.repair_rounds_source == "cli"
+        assert result2.repair_rounds_source == "persisted"
 
 
 class TestConfigOverride:
@@ -1524,3 +1525,584 @@ class TestCliPauseContinueSmoke:
 
         assert (demo_repo / "README.md").read_text() == readme_before
         assert (demo_repo / "src" / "main.py").read_text() == main_before
+
+
+# ---------------------------------------------------------------------------
+# Step 4870 — max_rounds continuation (the bug fix)
+# ---------------------------------------------------------------------------
+
+
+class TestMaxRoundsContinuation:
+    def test_max_rounds_persisted_on_pause(self, isolate_data_root, demo_repo):
+        """max_rounds=7 persists when job is paused with --max-tasks 1."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="fake",
+            reviewer_name="fake",
+            max_rounds=7,
+            max_tasks=1,
+        )
+        assert result.status == JOB_PAUSED
+        assert result.execution_config.max_rounds == 7
+        assert result.execution_config.max_rounds_source == "cli"
+
+    def test_max_rounds_restored_on_continuation(self, isolate_data_root, demo_repo):
+        """Continuation with omitted --max-rounds restores persisted 7."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            max_rounds=7,
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        assert result2.status == JOB_COMPLETED
+        assert result2.execution_config.max_rounds == 7
+        assert result2.execution_config.max_rounds_source == "persisted"
+
+    def test_max_rounds_explicit_override(self, isolate_data_root, demo_repo):
+        """Explicit --max-rounds 3 overrides persisted 7."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            max_rounds=7,
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            max_rounds=3,
+        )
+        assert result2.execution_config.max_rounds == 3
+        assert result2.execution_config.max_rounds_source == "cli"
+
+    def test_cli_handler_max_rounds_continuation(
+        self, isolate_data_root, demo_repo, capsys
+    ):
+        """Handler-level: max_rounds persists through pause/continue."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args1 = _make_args(
+            job_id=job.job_id, max_rounds="7", max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        out1 = json.loads(capsys.readouterr().out)
+        assert out1["status"] == "paused"
+        assert out1["execution_config"]["max_rounds"] == 7
+
+        args2 = _make_args(job_id=job.job_id)
+        COMMAND_HANDLERS["do.job-run"](args2)
+        out2 = json.loads(capsys.readouterr().out)
+        assert out2["status"] == "completed"
+        assert out2["execution_config"]["max_rounds"] == 7
+        assert out2["execution_config"]["max_rounds_source"] == "persisted"
+
+
+# ---------------------------------------------------------------------------
+# Step 4871 — Explicit provider override back to fake (the bug fix)
+# ---------------------------------------------------------------------------
+
+
+class TestProviderOverrideToFake:
+    def test_provider_persisted_on_pause(self, isolate_data_root, demo_repo):
+        """builder=claude-cli persists when job is paused."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            reviewer_name="claude-cli",
+            max_tasks=1,
+        )
+        assert result.status == JOB_PAUSED
+        assert result.execution_config.builder == "claude-cli"
+        assert result.execution_config.reviewer == "claude-cli"
+
+    def test_provider_restored_on_continuation(self, isolate_data_root, demo_repo):
+        """Omitted --builder/--reviewer restores persisted claude-cli."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            reviewer_name="claude-cli",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        assert result2.execution_config.builder == "claude-cli"
+        assert result2.execution_config.builder_source == "persisted"
+        assert result2.execution_config.reviewer == "claude-cli"
+        assert result2.execution_config.reviewer_source == "persisted"
+
+    def test_explicit_fake_overrides_persisted_provider(
+        self, isolate_data_root, demo_repo
+    ):
+        """Explicit --builder fake overrides persisted claude-cli."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            reviewer_name="claude-cli",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="fake",
+            reviewer_name="fake",
+        )
+        assert result2.execution_config.builder == "fake"
+        assert result2.execution_config.builder_source == "cli"
+        assert result2.execution_config.reviewer == "fake"
+        assert result2.execution_config.reviewer_source == "cli"
+
+    def test_cli_handler_provider_override(
+        self, isolate_data_root, demo_repo, capsys
+    ):
+        """Handler-level: explicit --builder fake overrides persisted."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args1 = _make_args(
+            job_id=job.job_id,
+            builder="claude-cli",
+            reviewer="claude-cli",
+            max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        out1 = json.loads(capsys.readouterr().out)
+        assert out1["execution_config"]["builder"] == "claude-cli"
+
+        args2 = _make_args(
+            job_id=job.job_id,
+            builder="fake",
+            reviewer="fake",
+        )
+        COMMAND_HANDLERS["do.job-run"](args2)
+        out2 = json.loads(capsys.readouterr().out)
+        assert out2["execution_config"]["builder"] == "fake"
+        assert out2["execution_config"]["builder_source"] == "cli"
+        assert out2["execution_config"]["reviewer"] == "fake"
+        assert out2["execution_config"]["reviewer_source"] == "cli"
+
+
+# ---------------------------------------------------------------------------
+# Step 4872-4873 — Test command and write mode continuation
+# ---------------------------------------------------------------------------
+
+
+class TestTestCommandContinuation:
+    def test_test_command_persisted(self, isolate_data_root, demo_repo):
+        """test_command persisted on pause."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            test_command="true",
+            max_tasks=1,
+        )
+        assert result.execution_config.test_command == "true"
+        assert result.execution_config.test_command_source == "cli"
+
+    def test_test_command_restored(self, isolate_data_root, demo_repo):
+        """Omitted --test-command restores persisted value."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            test_command="true",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        assert result2.execution_config.test_command == "true"
+        assert result2.execution_config.test_command_source == "persisted"
+
+    def test_test_command_override(self, isolate_data_root, demo_repo):
+        """Explicit --test-command overrides persisted."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            test_command="true",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            test_command="echo ok",
+        )
+        assert result2.execution_config.test_command == "echo ok"
+        assert result2.execution_config.test_command_source == "cli"
+
+
+class TestWriteModeContinuation:
+    def test_write_mode_persisted(self, isolate_data_root, demo_repo):
+        """write_mode persisted on pause."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            claude_cli_write_mode="allowed-tools",
+            max_tasks=1,
+        )
+        assert result.execution_config.claude_cli_write_mode == "allowed-tools"
+        assert result.execution_config.claude_cli_write_mode_source == "cli"
+
+    def test_write_mode_restored(self, isolate_data_root, demo_repo):
+        """Omitted --claude-cli-write-mode restores persisted."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            claude_cli_write_mode="allowed-tools",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        assert result2.execution_config.claude_cli_write_mode == "allowed-tools"
+        assert result2.execution_config.claude_cli_write_mode_source == "persisted"
+
+    def test_write_mode_override(self, isolate_data_root, demo_repo):
+        """Explicit --claude-cli-write-mode overrides persisted."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            claude_cli_write_mode="allowed-tools",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            claude_cli_write_mode="none",
+        )
+        assert result2.execution_config.claude_cli_write_mode == "none"
+        assert result2.execution_config.claude_cli_write_mode_source == "cli"
+
+
+# ---------------------------------------------------------------------------
+# Step 4874 — Execution config source/audit fields
+# ---------------------------------------------------------------------------
+
+
+class TestConfigSourceAudit:
+    def test_first_run_sources_all_cli(self, isolate_data_root, demo_repo):
+        """First run with explicit args: all sources are 'cli'."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="fake",
+            reviewer_name="fake",
+            max_rounds=5,
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            test_command="true",
+            claude_cli_write_mode="none",
+        )
+        ec = result.execution_config
+        assert ec.builder_source == "cli"
+        assert ec.reviewer_source == "cli"
+        assert ec.max_rounds_source == "cli"
+        assert ec.repair_rounds_source == "cli"
+        assert ec.test_command_source == "cli"
+        assert ec.claude_cli_write_mode_source == "cli"
+
+    def test_first_run_sources_all_default(self, isolate_data_root, demo_repo):
+        """First run with no args: all sources are 'default'."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        ec = result.execution_config
+        assert ec.builder_source == "default"
+        assert ec.reviewer_source == "default"
+        assert ec.max_rounds_source == "default"
+        assert ec.repair_rounds_source == "default"
+        assert ec.test_command_source == "default"
+        assert ec.claude_cli_write_mode_source == "default"
+
+    def test_continuation_sources_persisted(self, isolate_data_root, demo_repo):
+        """Continuation with omitted args: sources are 'persisted'."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            reviewer_name="claude-cli",
+            max_rounds=7,
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            test_command="true",
+            claude_cli_write_mode="allowed-tools",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        ec = result2.execution_config
+        assert ec.builder_source == "persisted"
+        assert ec.reviewer_source == "persisted"
+        assert ec.max_rounds_source == "persisted"
+        assert ec.repair_rounds_source == "persisted"
+        assert ec.test_command_source == "persisted"
+        assert ec.claude_cli_write_mode_source == "persisted"
+
+    def test_source_in_json_report(self, isolate_data_root, demo_repo):
+        """JSON report includes source fields."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="fake",
+            max_rounds=5,
+        )
+        report = export_job_report(result)
+        ec_data = report["execution_config"]
+        assert ec_data["builder_source"] == "cli"
+        assert ec_data["max_rounds_source"] == "cli"
+        assert "test_command_present" in ec_data
+        assert "test_command_source" in ec_data
+
+    def test_source_in_text_report(self, isolate_data_root, demo_repo):
+        """Text report shows source info."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="fake",
+            max_rounds=5,
+        )
+        text = format_job_report_text(result)
+        assert "(source: cli)" in text
+        assert "Max rounds: 5" in text
+
+
+# ---------------------------------------------------------------------------
+# Step 4875 — Real command-path pause/continue full config test
+# ---------------------------------------------------------------------------
+
+
+class TestCommandPathFullConfigContinuation:
+    def test_full_config_preserved_through_pause(
+        self, isolate_data_root, demo_repo, capsys
+    ):
+        """All config fields survive pause/continue through handler path."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        args1 = _make_args(
+            job_id=job.job_id,
+            builder="fake",
+            reviewer="fake",
+            max_rounds="7",
+            repair_rounds=1,
+            test_command="true",
+            claude_cli_write_mode="none",
+            max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        out1 = json.loads(capsys.readouterr().out)
+
+        assert out1["status"] == "paused"
+        ec1 = out1["execution_config"]
+        assert ec1["max_rounds"] == 7
+        assert ec1["repair_rounds_allowed"] == 1
+        assert ec1["builder"] == "fake"
+        assert ec1["test_command_present"] is True
+
+        # Continue without restating any flags
+        args2 = _make_args(job_id=job.job_id)
+        COMMAND_HANDLERS["do.job-run"](args2)
+        out2 = json.loads(capsys.readouterr().out)
+
+        assert out2["status"] == "completed"
+        ec2 = out2["execution_config"]
+        assert ec2["max_rounds"] == 7
+        assert ec2["max_rounds_source"] == "persisted"
+        assert ec2["repair_rounds_allowed"] == 1
+        assert ec2["repair_rounds_source"] == "persisted"
+        assert ec2["builder"] == "fake"
+        assert ec2["builder_source"] == "persisted"
+        assert ec2["test_command_present"] is True
+        assert ec2["test_command_source"] == "persisted"
+
+    def test_no_config_drift_in_report(
+        self, isolate_data_root, demo_repo, capsys
+    ):
+        """Report after continuation shows no drift from original config."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        args1 = _make_args(
+            job_id=job.job_id, max_rounds="7", max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        capsys.readouterr()
+
+        args2 = _make_args(job_id=job.job_id)
+        COMMAND_HANDLERS["do.job-run"](args2)
+        capsys.readouterr()
+
+        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
+        COMMAND_HANDLERS["do.job-report"](args_report)
+        report = json.loads(capsys.readouterr().out)
+
+        assert report["execution_config"]["max_rounds"] == 7
+        applied = [t for t in report["tasks"] if t["status"] == TASK_APPLIED]
+        assert len(applied) == 2
+
+
+# ---------------------------------------------------------------------------
+# Step 4876 — Explicit override tests through command path
+# ---------------------------------------------------------------------------
+
+
+class TestCommandPathExplicitOverrides:
+    def test_provider_override_to_fake(
+        self, isolate_data_root, demo_repo, capsys
+    ):
+        """Persisted claude-cli overridden by explicit --builder fake."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args1 = _make_args(
+            job_id=job.job_id,
+            builder="claude-cli",
+            reviewer="claude-cli",
+            max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        out1 = json.loads(capsys.readouterr().out)
+        assert out1["execution_config"]["builder"] == "claude-cli"
+
+        args2 = _make_args(
+            job_id=job.job_id,
+            builder="fake",
+            reviewer="fake",
+        )
+        COMMAND_HANDLERS["do.job-run"](args2)
+        out2 = json.loads(capsys.readouterr().out)
+        assert out2["execution_config"]["builder"] == "fake"
+        assert out2["execution_config"]["builder_source"] == "cli"
+        assert out2["execution_config"]["reviewer"] == "fake"
+        assert out2["execution_config"]["reviewer_source"] == "cli"
+
+    def test_max_rounds_override(self, isolate_data_root, demo_repo, capsys):
+        """Persisted max_rounds=7 overridden by explicit --max-rounds 3."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args1 = _make_args(
+            job_id=job.job_id, max_rounds="7", max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        capsys.readouterr()
+
+        args2 = _make_args(job_id=job.job_id, max_rounds="3")
+        COMMAND_HANDLERS["do.job-run"](args2)
+        out2 = json.loads(capsys.readouterr().out)
+        assert out2["execution_config"]["max_rounds"] == 3
+        assert out2["execution_config"]["max_rounds_source"] == "cli"
+
+    def test_repair_rounds_override_to_zero(
+        self, isolate_data_root, demo_repo, capsys
+    ):
+        """Persisted repair_rounds=1 overridden by explicit --repair-rounds 0."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args1 = _make_args(
+            job_id=job.job_id, repair_rounds=1, max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        capsys.readouterr()
+
+        args2 = _make_args(job_id=job.job_id, repair_rounds=0)
+        COMMAND_HANDLERS["do.job-run"](args2)
+        out2 = json.loads(capsys.readouterr().out)
+        assert out2["execution_config"]["repair_rounds_allowed"] == 0
+        assert out2["execution_config"]["repair_rounds_source"] == "cli"
+
+    def test_test_command_override(self, isolate_data_root, demo_repo, capsys):
+        """Persisted test_command overridden by explicit --test-command."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args1 = _make_args(
+            job_id=job.job_id, test_command="true", max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        capsys.readouterr()
+
+        args2 = _make_args(job_id=job.job_id, test_command="echo ok")
+        COMMAND_HANDLERS["do.job-run"](args2)
+        out2 = json.loads(capsys.readouterr().out)
+        assert out2["execution_config"]["test_command_source"] == "cli"
+
+    def test_report_shows_override(self, isolate_data_root, demo_repo, capsys):
+        """Report after override shows new active config, not original."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args1 = _make_args(
+            job_id=job.job_id, max_rounds="7", max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        capsys.readouterr()
+
+        args2 = _make_args(job_id=job.job_id, max_rounds="3")
+        COMMAND_HANDLERS["do.job-run"](args2)
+        capsys.readouterr()
+
+        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
+        COMMAND_HANDLERS["do.job-report"](args_report)
+        report = json.loads(capsys.readouterr().out)
+        assert report["execution_config"]["max_rounds"] == 3
+        assert report["execution_config"]["max_rounds_source"] == "cli"

@@ -697,22 +697,43 @@ def _cmd_do_job_plan(
 def _cmd_do_job_run(
     job_id: str,
     *,
-    builder: str = "fake",
-    reviewer: str = "fake",
-    max_rounds: int = 3,
+    builder: str | None = None,
+    reviewer: str | None = None,
+    max_rounds: int | None = None,
     repair_rounds: int | None = None,
-    test_command: str = "",
-    claude_cli_write_mode: str = "none",
+    test_command: str | None = None,
+    claude_cli_write_mode: str | None = None,
     max_tasks: int = 0,
     json_output: bool = False,
 ) -> None:
-    """Run pending tasks sequentially through the ping-pong loop."""
-    from packages.orchestration.pingpong_loop import resolve_repair_rounds
-    try:
-        repair_rounds_val, repair_rounds_source = resolve_repair_rounds(repair_rounds)
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+    """Run pending tasks sequentially through the ping-pong loop.
+
+    None means "omitted by CLI". Resolution in run_job():
+    explicit CLI value > persisted config > product default.
+    """
+    if builder is not None and builder not in _VALID_PINGPONG_PROVIDERS:
+        print(f"Error: invalid --builder: {builder!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
         sys.exit(2)
+    if reviewer is not None and reviewer not in _VALID_PINGPONG_PROVIDERS:
+        print(f"Error: invalid --reviewer: {reviewer!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
+        sys.exit(2)
+    if claude_cli_write_mode is not None and claude_cli_write_mode not in _VALID_CLI_WRITE_MODES:
+        print(
+            f"Error: invalid --claude-cli-write-mode: {claude_cli_write_mode!r}. "
+            f"Allowed: {', '.join(sorted(_VALID_CLI_WRITE_MODES))}.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    repair_rounds_val: int | None = None
+    repair_source: str | None = None
+    if repair_rounds is not None:
+        from packages.orchestration.pingpong_loop import resolve_repair_rounds
+        try:
+            repair_rounds_val, repair_source = resolve_repair_rounds(repair_rounds)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
 
     from packages.orchestration.pingpong_job import (
         export_job_report,
@@ -725,7 +746,7 @@ def _cmd_do_job_run(
         reviewer_name=reviewer,
         max_rounds=max_rounds,
         repair_rounds=repair_rounds_val,
-        repair_rounds_source=repair_rounds_source,
+        repair_rounds_source=repair_source,
         test_command=test_command,
         claude_cli_write_mode=claude_cli_write_mode,
         max_tasks=max_tasks,
@@ -825,12 +846,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.job-run": lambda args: _cmd_do_job_run(
         args.job_id,
-        builder=getattr(args, "builder", None) or "fake",
-        reviewer=getattr(args, "reviewer", None) or "fake",
-        max_rounds=int(getattr(args, "max_rounds", None) or 3),
-        repair_rounds=getattr(args, "repair_rounds", None),
-        test_command=getattr(args, "test_command", None) or "",
-        claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
+        builder=getattr(args, "builder", None),
+        reviewer=getattr(args, "reviewer", None),
+        max_rounds=int(getattr(args, "max_rounds")) if getattr(args, "max_rounds", None) is not None else None,
+        repair_rounds=int(getattr(args, "repair_rounds")) if getattr(args, "repair_rounds", None) is not None else None,
+        test_command=getattr(args, "test_command", None),
+        claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None),
         max_tasks=int(getattr(args, "max_tasks", None) or 0),
         json_output=getattr(args, "json", False),
     ),
