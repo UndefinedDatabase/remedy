@@ -486,9 +486,9 @@ def export_evidence(
     bundle = build_evidence_bundle(run_data, promotion_data)
     written = write_evidence_bundle(bundle, out_dir)
 
-    return {
+    return _redact_json_value({
         "run_id": run_id,
         "out_dir": str(Path(out_dir).resolve()),
         "files": written,
         "manifest": bundle["manifest"],
-    }
+    })

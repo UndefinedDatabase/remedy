@@ -879,3 +879,104 @@ class TestUsefulnessPreservation:
         assert "# Remedy Run Evidence" in summary
         assert "## Providers" in summary
         assert "staged_review_passed" in summary
+
+
+# ---------------------------------------------------------------------------
+# Step 4822: CLI stdout JSON leak regression test
+# ---------------------------------------------------------------------------
+
+class TestCliStdoutRedaction:
+    """CLI --json output must not leak secrets."""
+
+    def test_cli_json_stdout_redacted(self, isolate_data_root, tmp_path):
+        """do evidence --json stdout does not leak secrets."""
+        data = _make_run_data(has_task=True)
+        data["goal"] = "Fix API_KEY=supersecretvalue123 leak"
+        data["task_input"]["excerpt"] = "Use sk-ant-abcdef1234567890abcdef1234567890"
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("test_run_001", str(out_dir))
+        # Simulate what CLI does: json.dumps(result)
+        stdout = json.dumps(result, indent=2)
+        assert "supersecretvalue123" not in stdout
+        assert "sk-ant-abcdef" not in stdout
+        # Useful fields preserved
+        assert "test_run_001" in stdout
+        assert "staged_review_passed" in stdout
+
+
+# ---------------------------------------------------------------------------
+# Step 4823: export_evidence return-value regression test
+# ---------------------------------------------------------------------------
+
+class TestExportReturnRedaction:
+    """export_evidence() return value must be redacted."""
+
+    def test_return_manifest_redacted(self, isolate_data_root, tmp_path):
+        """Return manifest does not contain raw secrets."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("test_run_001", str(out_dir))
+        result_str = json.dumps(result)
+        for marker in _LEAK_MARKERS:
+            assert marker not in result_str, (
+                f"Secret leaked in export_evidence return: {marker!r}"
+            )
+
+    def test_return_preserves_useful_fields(self, isolate_data_root, tmp_path):
+        """Return value still has run_id, out_dir, manifest identity."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("test_run_001", str(out_dir))
+        assert result["run_id"] == "test_run_001"
+        assert "out_dir" in result
+        assert result["manifest"]["final_status"] == "staged_review_passed"
+        assert result["manifest"]["run_id"] == "test_run_001"
+
+    def test_return_has_redacted_placeholder(self, isolate_data_root, tmp_path):
+        """Return value contains [REDACTED] where secrets were."""
+        data = _make_run_data(has_task=True)
+        data["goal"] = "Fix API_KEY=supersecretvalue123"
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("test_run_001", str(out_dir))
+        result_str = json.dumps(result)
+        assert "[REDACTED]" in result_str
+
+
+# ---------------------------------------------------------------------------
+# Step 4824: Extended full-output scanner (files + CLI/API payload)
+# ---------------------------------------------------------------------------
+
+class TestFullOutputScannerExtended:
+    """Scan files AND CLI/API return for known secrets."""
+
+    def test_no_leaks_in_files_or_api_return(self, isolate_data_root, tmp_path):
+        """Neither output files nor API return contain secrets."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        promo = {
+            "run_id": "test_run_001",
+            "status": "dry_run_ready",
+            "note": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdefghijk",
+        }
+        _persist_fake_promotion(isolate_data_root, "test_run_001", promo)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("test_run_001", str(out_dir))
+
+        # Scan files
+        for fpath in out_dir.iterdir():
+            content = fpath.read_text()
+            for marker in _LEAK_MARKERS:
+                assert marker not in content, (
+                    f"Secret leaked in {fpath.name}: {marker!r}"
+                )
+
+        # Scan API return (simulates CLI --json stdout)
+        api_str = json.dumps(result, indent=2)
+        for marker in _LEAK_MARKERS:
+            assert marker not in api_str, (
+                f"Secret leaked in API return: {marker!r}"
+            )
