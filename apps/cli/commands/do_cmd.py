@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
@@ -53,6 +53,8 @@ def _cmd_do(
     claude_cli_write_mode: str = "none",
     task_file: str = "",
     task_stdin: bool = False,
+    scope_file: str = "",
+    approve_scope: bool = False,
 ) -> None:
     # --- Task input loading ---
     task_input = None
@@ -86,6 +88,35 @@ def _cmd_do(
         print("Error: provide a goal or --task-file/--task-stdin.", file=sys.stderr)
         sys.exit(2)
 
+    # --- Scope file validation ---
+    scope_validation = None
+    scope_data = None
+    if scope_file and not approve_scope:
+        print("Error: --scope-file requires --approve-scope to confirm decisions.", file=sys.stderr)
+        sys.exit(2)
+    if scope_file and approve_scope:
+        from packages.orchestration.scope_plan import load_scope_plan, validate_scope_plan
+        try:
+            scope_data = load_scope_plan(scope_file)
+        except ValueError as exc:
+            if json_output:
+                print(json.dumps({"error": str(exc)}, indent=2))
+            else:
+                print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+        scope_validation = validate_scope_plan(
+            scope_data,
+            task_sha256=task_input.sha256 if task_input else "",
+            repo_path=repo,
+        )
+        if not scope_validation.valid:
+            msg = "Scope validation failed:\n" + "\n".join(f"  - {e}" for e in scope_validation.errors)
+            if json_output:
+                print(json.dumps({"error": msg, "scope_errors": scope_validation.errors}, indent=2))
+            else:
+                print(f"Error: {msg}", file=sys.stderr)
+            sys.exit(2)
+
     # Ping-pong mode: --builder and/or --reviewer set to a real provider
     if builder != "none" or reviewer != "none":
         _cmd_do_pingpong(
@@ -95,6 +126,8 @@ def _cmd_do(
             max_output_chars=max_output_chars_val, keep_staging=keep_staging,
             claude_cli_write_mode=claude_cli_write_mode,
             task_input=task_input,
+            scope_data=scope_data,
+            scope_validation=scope_validation,
         )
         return
 
@@ -190,7 +223,9 @@ def _cmd_do_pingpong(
     max_output_chars: int = 50000,
     keep_staging: bool = False,
     claude_cli_write_mode: str = "none",
-    task_input: object = None,
+    task_input: Any = None,
+    scope_data: dict[str, Any] | None = None,
+    scope_validation: Any = None,
 ) -> None:
     """Run Builder ↔ Reviewer ping-pong loop."""
     if builder not in _VALID_PINGPONG_PROVIDERS:
@@ -242,12 +277,39 @@ def _cmd_do_pingpong(
         keep_staging=keep_staging,
         claude_cli_write_mode=claude_cli_write_mode,
         task_input=task_input,
+        scope_data=scope_data,
+        scope_validation=scope_validation,
     )
 
+    data = export_pingpong_json(result)
+
+    # Inject scope plan data into report
+    if scope_data and scope_validation:
+        from packages.orchestration.scope_plan import (
+            build_scope_report_data,
+            check_scope_hints,
+        )
+        hints = check_scope_hints(
+            result.staged_files,
+            result.safe_diff_summary,
+            approved_features=scope_validation.approved_features,
+            denied_features=scope_validation.denied_features,
+            deferred_features=scope_validation.deferred_features,
+            backlog_features=scope_validation.backlog_features,
+        )
+        data["scope_plan"] = build_scope_report_data(
+            scope_data, scope_validation, scope_hints=hints,
+        )
+    else:
+        data["scope_plan"] = None
+
     if json_output:
-        print(json.dumps(export_pingpong_json(result), indent=2))
+        print(json.dumps(data, indent=2))
     else:
         print(summarize_pingpong(result))
+        # Scope summary in text report
+        if scope_validation:
+            _print_scope_summary(scope_validation)
 
 
 def _cmd_do_report(
@@ -329,14 +391,36 @@ def _print_text_report(run_id: str, data: dict) -> None:
     max_r = data.get("max_rounds", 0)
     print(f"Rounds: {total}/{max_r}")
 
-    # Test summary from last round
+    # Worker self-report vs Remedy verification (Step 4718)
     if rounds:
         last = rounds[-1]
+        builder_info = last.get("builder", {})
+        if builder_info:
+            summary = builder_info.get("summary", "")
+            if summary:
+                print(f"\nWorker self-report: {summary[:200]}")
+
+        # Remedy verification
         test_status = "passed" if last.get("test_passed") else "failed"
-        print(f"Tests: {test_status}")
+        print(f"Remedy verification: tests {test_status}")
         rv = last.get("reviewer", {})
         if rv:
             print(f"Reviewer verdict: {rv.get('verdict', 'none')}")
+
+    # Scope summary (Step 4717)
+    sp = data.get("scope_plan")
+    if sp:
+        approved = [f["id"] for f in sp.get("approved_features", [])]
+        denied = [f["id"] for f in sp.get("denied_features", [])]
+        deferred = [f["id"] for f in sp.get("deferred_features", [])]
+        backlog = [f["id"] for f in sp.get("backlog_features", [])]
+        pending = [f["id"] for f in sp.get("pending_features", [])]
+        print("\nScope:")
+        print(f"  Approved: {', '.join(approved) if approved else 'none'}")
+        print(f"  Denied: {', '.join(denied) if denied else 'none'}")
+        print(f"  Deferred: {', '.join(deferred) if deferred else 'none'}")
+        print(f"  Backlog: {', '.join(backlog) if backlog else 'none'}")
+        print(f"  Pending: {', '.join(pending) if pending else 'none'}")
 
     # Target mutation
     mutated = data.get("target_mutated", False)
@@ -453,6 +537,76 @@ def _cmd_do_promote(
         print(summarize_promotion(result))
 
 
+def _print_scope_summary(validation: Any) -> None:
+    """Print concise scope summary for text report."""
+    print("\nScope:")
+    approved = [f.id for f in validation.approved_features]
+    denied = [f.id for f in validation.denied_features]
+    deferred = [f.id for f in validation.deferred_features]
+    backlog = [f.id for f in validation.backlog_features]
+    pending = [f.id for f in validation.pending_features]
+    print(f"  Approved: {', '.join(approved) if approved else 'none'}")
+    print(f"  Denied: {', '.join(denied) if denied else 'none'}")
+    print(f"  Deferred: {', '.join(deferred) if deferred else 'none'}")
+    print(f"  Backlog: {', '.join(backlog) if backlog else 'none'}")
+    print(f"  Pending: {', '.join(pending) if pending else 'none'}")
+
+
+def _cmd_do_plan(
+    *,
+    task_file: str = "",
+    repo: str = ".",
+    json_output: bool = False,
+) -> None:
+    """Create a deterministic scope plan from a task file."""
+    if not task_file:
+        print("Error: --task-file is required for planning.", file=sys.stderr)
+        sys.exit(2)
+
+    from packages.orchestration.pingpong_loop import load_task_file
+    try:
+        task_input = load_task_file(task_file)
+    except ValueError as exc:
+        if json_output:
+            print(json.dumps({"error": str(exc)}, indent=2))
+        else:
+            print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    from packages.orchestration.scope_plan import (
+        export_scope_plan,
+        extract_scope_plan,
+        persist_scope_plan,
+    )
+
+    plan = extract_scope_plan(
+        task_input.body,
+        task_sha256=task_input.sha256,
+        repo_path=repo,
+        task_title=task_input.title,
+        task_input_kind=task_input.kind,
+        task_tokens_estimated=task_input.tokens_estimated,
+    )
+    scope_file = persist_scope_plan(plan)
+    data = export_scope_plan(plan)
+
+    if json_output:
+        print(json.dumps(data, indent=2))
+    else:
+        print(f"Scope plan created: {plan.plan_id}")
+        print(f"Task: {plan.task_title}")
+        print(f"Features: {len(plan.features)}")
+        for f in plan.features:
+            marker = "*" if f.default_selected else " "
+            print(f"  [{marker}] {f.id}: {f.title} ({f.status})")
+        if plan.warnings:
+            for w in plan.warnings:
+                print(f"  Warning: {w}")
+        print(f"\nScope file: {scope_file}")
+        print("Edit user_decision in the scope file, then run:")
+        print(f"  remedy do run --task-file {task_file} --scope-file {scope_file} --approve-scope --repo {repo}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.run": lambda args: _cmd_do(
         getattr(args, "goal", None) or "",
@@ -479,6 +633,13 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
         task_file=getattr(args, "task_file", None) or "",
         task_stdin=getattr(args, "task_stdin", False),
+        scope_file=getattr(args, "scope_file", None) or "",
+        approve_scope=getattr(args, "approve_scope", False),
+    ),
+    "do.plan": lambda args: _cmd_do_plan(
+        task_file=getattr(args, "task_file", None) or "",
+        repo=getattr(args, "repo", None) or ".",
+        json_output=getattr(args, "json", False),
     ),
     "do.promote": lambda args: _cmd_do_promote(
         args.run_id,

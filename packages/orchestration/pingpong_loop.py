@@ -373,8 +373,11 @@ def _build_builder_prompt(
     staged_state: str = "",
     safe_diff: str = "",
     task_body: str = "",
+    scope_contract: str = "",
 ) -> str:
     parts = [_BUILDER_SYSTEM, "\n", context, "\n"]
+    if scope_contract:
+        parts.append(f"{scope_contract}\n\n")
     parts.append(f"## Task (Round {round_number})\n{goal}\n")
     if task_body:
         parts.append(
@@ -419,9 +422,12 @@ def _build_reviewer_prompt(
     task_excerpt: str = "",
     task_sha256: str = "",
     task_tokens_estimated: int = 0,
+    scope_contract: str = "",
 ) -> str:
     parts = [_REVIEWER_SYSTEM, "\n"]
     parts.append(f"## Original Goal\n{goal}\n")
+    if scope_contract:
+        parts.append(f"{scope_contract}\n\n")
     if task_excerpt:
         parts.append(
             f"## Task Input Summary\n"
@@ -706,6 +712,8 @@ def run_pingpong(
     keep_staging: bool = False,
     claude_cli_write_mode: str = "none",
     task_input: TaskInput | None = None,
+    scope_data: dict[str, Any] | None = None,
+    scope_validation: Any | None = None,
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -804,6 +812,12 @@ def run_pingpong(
                     staging, original, result.staged_files,
                 )
                 repair_diff = rd_repair
+            # Build scope contract text if scope is active
+            scope_contract_text = ""
+            if scope_validation:
+                from packages.orchestration.scope_plan import build_scope_contract_for_builder
+                scope_contract_text = build_scope_contract_for_builder(scope_validation)
+
             builder_prompt = _build_builder_prompt(
                 effective_goal, context,
                 round_number=round_num,
@@ -811,6 +825,7 @@ def run_pingpong(
                 staged_state="" if round_num == 1 else f"Files changed: {result.staged_files}",
                 safe_diff=repair_diff,
                 task_body=task_input.body if task_input and round_num == 1 else "",
+                scope_contract=scope_contract_text,
             )
             # Track prompt sizes for token accounting
             if round_num == 1:
@@ -904,6 +919,20 @@ def run_pingpong(
                     staging, original, result.staged_files,
                 )
                 reviewer_safe_diff = rd_diff
+            # Build reviewer scope contract if scope is active
+            reviewer_scope_text = ""
+            if scope_validation:
+                from packages.orchestration.scope_plan import build_scope_contract_for_reviewer
+                reviewer_scope_text = build_scope_contract_for_reviewer(
+                    scope_validation,
+                    staged_files=result.staged_files,
+                    safe_diff=reviewer_safe_diff,
+                    test_result=rd.test_summary,
+                    task_title=task_input.title if task_input else "",
+                    task_sha256=task_input.sha256 if task_input else "",
+                    task_excerpt=task_input.excerpt if task_input else "",
+                )
+
             reviewer_prompt = _build_reviewer_prompt(
                 effective_goal,
                 builder_out.summary,
@@ -914,6 +943,7 @@ def run_pingpong(
                 task_excerpt=task_input.excerpt if task_input else "",
                 task_sha256=task_input.sha256 if task_input else "",
                 task_tokens_estimated=task_input.tokens_estimated if task_input else 0,
+                scope_contract=reviewer_scope_text,
             )
 
             # Track reviewer prompt size

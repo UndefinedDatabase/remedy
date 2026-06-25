@@ -1,23 +1,23 @@
 # Context
 
 ## Active Branch
-feature/steps-3146-3215-job-centric-core-v0
-(forked from main at 462121e after PR #97 merged).
+feature/steps-3276-3355-job-fulfillment-spine-v0
 
 ## Scope
-Steps 3146-3215: Job-Centric Core Finalization v0.
-Make job the primary user-facing concept. Add job status/report facades.
-Update docs and Happy Path. Keep mission as advanced/internal.
+Steps 4706-4723: Scope Plan Approval Gate v0.
+Add deterministic scope planning, user decision editing, validated execution,
+scope contracts in Builder/Reviewer prompts, scope data in reports.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
 Product code must NOT depend on `.agent/live_review.md`.
 
 ## Constraints
-- No new execution capability, no provider SDK, no shell=True
-- No auto-apply/PR/merge
-- Job facades are read-only wrappers over existing state
-- Mission remains as compatibility/advanced facade
+- No provider calls during planning
+- No auto-execution from plan
+- No auto-promotion from run
+- No git commit/push/reset in product code
+- Existing task-file/short-goal flows must not regress
 
 ## Resource safety
 - All pytest tests run within per-test resource limits

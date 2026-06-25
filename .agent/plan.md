@@ -1,35 +1,29 @@
-# Plan — Steps 4446-4495: Promotion Exactness Closure v2
+# Plan — Steps 4706-4723: Scope Plan Approval Gate v0
 
 ## Goal
-Block unexpected artifacts, enforce exact reviewed artifact set,
-normalize paths, bind promotion target to original run repo.
+Add human-approved scope planning before executing large task-file prompts.
+Deterministic scope extraction, editable scope file, validated decisions,
+scope contract in Builder/Reviewer prompts, scope data in reports.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- Unexpected artifact check: manifest entries not in staged_files block
-- Duplicate artifact check: same normalized path appearing twice blocks
-- Path normalization: _normalize_rel_path strips ./ prefix, backslash, trailing /
-- Repo binding: resolved run_data.repo_path must match resolved --repo target
-- Missing run repo_path blocks legacy runs (no silent promotion)
-- repo_path added to export_pingpong_json for persistence in result.json
-- New PromotionResult fields: unexpected_artifacts, duplicate_artifacts,
-  run_repo, requested_target_repo, target_repo_mismatch
-- export_promotion_json and summarize_promotion updated with new fields
-- do_cmd.py report shows unexpected artifacts, duplicates, repo mismatch
-- 70 promotion tests (26 new): unexpected artifact regression, extra code artifact,
-  exact set promotes, missing still blocks, duplicate blocks, duplicate listed,
-  path normalization (3), repo mismatch blocks, mismatch persisted, same repo resolves,
-  missing repo_path blocks, empty repo_path blocks, dry-run exact no mutation,
-  no-approve exact no mutation, approved new file, approved modify,
-  hash still blocks, baseline still blocks, post-test runs, post-test fails,
-  report unexpected, report repo mismatch
-- Full suite: 7407 passed, 0 failed (1 pre-existing deselected)
+- ScopePlan, ScopeFeature, ScopeRisk, ScopePlanValidationResult data model
+- Deterministic Markdown parser (headings + bare label sections)
+- Scope plan persistence under data_root/scope_plans/<plan_id>/
+- Editable scope file with user_decision per feature
+- Scope validation: hash, repo, duplicates, invalid decisions, min 1 approved
+- `remedy do plan --task-file ... --repo . --json` CLI command
+- `--scope-file` and `--approve-scope` on `remedy do run`
+- Builder prompt scope contract (APPROVED/OUT OF SCOPE sections)
+- Reviewer prompt scope contract with review rules
+- Out-of-scope detection helper (expected_files + diff keyword check)
+- Scope data in JSON report (scope_plan field)
+- Scope summary in text report (Approved/Denied/Deferred/Backlog/Pending)
+- Worker self-report vs Remedy verification separation in text report
+- 47 new tests: extraction, persistence, validation, CLI, prompts, detection, reports
+- Full suite: 7546 passed, 0 failed
 - Fast lane: 571 passed
 - Runtime lane: 4/4 suites passed
 - Lint: all checks passed (ruff + mypy)
-- Architecture guard: clean
-- Dogfood smoke: 6/6 scenarios pass (run, dry-run, approved, JSON fields,
-  repo mismatch, unexpected artifact injection)
-- Job fulfillment: 109 passed
