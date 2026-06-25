@@ -4,8 +4,8 @@
 feature/steps-3276-3355-job-fulfillment-spine-v0
 
 ## Scope
-Steps 4807-4811: Run Evidence Bundle v0.
-Export a self-contained, safe proof bundle for any Remedy run.
+Steps 4812-4819: Evidence Bundle Redaction Closure v1.
+Fix JSON output leaking secrets in evidence bundles.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
@@ -23,7 +23,8 @@ Product code must NOT depend on `.agent/live_review.md`.
 - Promotion blocked when final tests failed
 - All repair loops bounded by hard cap (10)
 - Evidence export: no provider calls, no target mutation
-- Evidence export: no raw task body, no secrets/env/keys
+- Evidence export: all JSON output recursively redacted
+- Evidence export: no raw task body, no secrets/env/keys in any file
 - Evidence export: path traversal blocked, output inside requested dir only
 
 ## Resource safety

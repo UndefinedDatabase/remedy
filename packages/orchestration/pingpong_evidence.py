@@ -41,6 +41,23 @@ def _redact_secrets(text: str) -> str:
     return text
 
 
+def _redact_json_value(value: Any) -> Any:
+    """Recursively redact secrets from arbitrary JSON-like data.
+
+    Walks dicts, lists, and strings. Preserves non-string types and shape.
+    Returns a new object — does not mutate the original.
+    """
+    if isinstance(value, str):
+        return _redact_secrets(value)
+    if isinstance(value, dict):
+        return {k: _redact_json_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        result = [_redact_json_value(item) for item in value]
+        return type(value)(result) if isinstance(value, tuple) else result
+    # int, float, bool, None — pass through
+    return value
+
+
 def _sanitize_path(path_str: str) -> str:
     """Replace absolute home paths with ~ for safe output."""
     home = os.path.expanduser("~")
@@ -116,8 +133,8 @@ def _build_manifest(
             "bytes": task_input.get("bytes", 0),
             "chars": task_input.get("chars", 0),
             "tokens_estimated": task_input.get("tokens_estimated", 0),
-            # Excerpt only, not full body
-            "excerpt": (task_input.get("excerpt", "") or "")[:200],
+            # Excerpt only, not full body — redacted for safety
+            "excerpt": _redact_secrets((task_input.get("excerpt", "") or "")[:200]),
         }
 
     # Scope plan summary
@@ -304,14 +321,18 @@ def _build_review_json(run_data: dict[str, Any]) -> dict[str, Any]:
     for rd in run_data.get("rounds", []):
         rv = rd.get("reviewer")
         if rv:
+            # Redact reviewer text fields for safety
+            redacted_findings = []
+            for f in rv.get("findings", []):
+                redacted_findings.append(_redact_json_value(f))
             reviews.append({
                 "round": rd.get("round", 0),
                 "kind": rd.get("kind", "initial"),
                 "verdict": rv.get("verdict", ""),
                 "confidence": rv.get("confidence", ""),
-                "summary": rv.get("summary", ""),
+                "summary": _redact_secrets(rv.get("summary", "")),
                 "finding_count": rv.get("finding_count", 0),
-                "findings": rv.get("findings", []),
+                "findings": redacted_findings,
             })
 
     last_verdict = reviews[-1]["verdict"] if reviews else ""
@@ -326,7 +347,7 @@ def _build_repair_loop_json(run_data: dict[str, Any]) -> dict[str, Any]:
     """Build repair_loop.json from run data."""
     rl = run_data.get("repair_loop")
     if rl:
-        return dict(rl)
+        return _redact_json_value(dict(rl))
     # Fallback if repair_loop not in export
     return {
         "enabled": False,
@@ -342,8 +363,8 @@ def _build_promotion_json(
     """Build promotion.json from promotion data."""
     if promotion_data is None:
         return None
-    # Return safe copy without staging paths
-    safe = dict(promotion_data)
+    # Return safe copy — redacted and path-sanitized
+    safe = _redact_json_value(dict(promotion_data))
     # Sanitize any absolute paths
     for key in ("staging_path", "target_repo", "run_repo", "requested_target_repo"):
         if key in safe and isinstance(safe[key], str):
@@ -355,7 +376,7 @@ def _build_token_accounting_json(run_data: dict[str, Any]) -> dict[str, Any]:
     """Build token_accounting.json from run data."""
     ta = run_data.get("token_accounting")
     if ta:
-        return dict(ta)
+        return _redact_json_value(dict(ta))
     return {"kind": "unavailable"}
 
 
@@ -363,7 +384,7 @@ def _build_provider_evidence_json(run_data: dict[str, Any]) -> dict[str, Any]:
     """Build provider_evidence.json from run data."""
     pe = run_data.get("provider_evidence")
     if pe:
-        return dict(pe)
+        return _redact_json_value(dict(pe))
     return {
         "builder_provider": run_data.get("builder_provider", ""),
         "reviewer_provider": run_data.get("reviewer_provider", ""),
@@ -394,7 +415,7 @@ def write_evidence_bundle(
         written[filename] = str(target)
 
     def _write_json(filename: str, data: Any) -> None:
-        _write(filename, json.dumps(data, indent=2) + "\n")
+        _write(filename, json.dumps(_redact_json_value(data), indent=2) + "\n")
 
     # manifest.json
     _write_json("manifest.json", bundle["manifest"])

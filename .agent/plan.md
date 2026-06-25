@@ -1,16 +1,19 @@
-# Plan — Steps 4807-4811: Run Evidence Bundle v0
+# Plan — Steps 4812-4819: Evidence Bundle Redaction Closure v1
 
 ## Goal
-Export a self-contained, safe proof bundle for any Remedy run.
+Fix JSON output leaking secrets in evidence bundles.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- Step 4807: Evidence bundle builder (pingpong_evidence.py)
-- Step 4808: CLI command `remedy do evidence <run_id> --out <dir> --json`
-- Step 4809: Redaction rules (API keys, env vars, staging paths, path traversal)
-- Step 4810: 35 tests covering bundle, CLI, redaction, safety
-- Step 4811: Architecture guard clean, full suite 7712 passed
-- Lint: ruff clean, mypy clean
-- No provider calls, no target mutation, no task body dump
+- Step 4812: Recursive `_redact_json_value()` for arbitrary JSON-like data
+- Step 4813: `_write_json` applies `_redact_json_value` to all JSON output
+- Step 4814: Defense-in-depth: manifest excerpt, reviewer summary/findings, repair loop, promotion, token accounting, provider evidence all redacted at build time
+- Step 4815: 7 explicit JSON leak regression tests (one per output file)
+- Step 4816: Full-output scanner test (scans all files for 7 secret patterns)
+- Step 4817: 6 usefulness preservation tests (structure survives redaction)
+- Step 4818: All existing tests pass — 7737 total
+- Step 4819: Architecture guard clean, lint clean
+- 60 evidence bundle tests total (25 new)
+- Full suite: 7737 passed, 0 failed

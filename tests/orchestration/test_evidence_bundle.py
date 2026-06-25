@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.pingpong_evidence import (
+    _redact_json_value,
     _redact_secrets,
     _sanitize_path,
     _validate_output_path,
@@ -569,3 +570,312 @@ class TestCliDispatch:
         assert entry.action_class == "read_only"
         assert entry.may_mutate_repo is False
         assert entry.may_execute_commands is False
+
+
+# ---------------------------------------------------------------------------
+# Test secret strings used across Steps 4815-4816
+# ---------------------------------------------------------------------------
+
+_TEST_SECRETS = {
+    "api_key_env": "API_KEY=supersecretvalue123",
+    "secret_env": "SECRET=hunter2password",
+    "bearer": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdefghijk",
+    "sk_ant": "sk-ant-abcdef1234567890abcdef1234567890",
+    "sk_openai": "sk-abcdefghijklmnopqrstuvwxyz1234567890",
+    "ghp": "ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+    "akia": "AKIAIOSFODNN7EXAMPLE1",
+}
+
+# Substrings that must NOT appear in output after redaction
+_LEAK_MARKERS = [
+    "supersecretvalue123",
+    "hunter2password",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+    "sk-ant-abcdef1234567890abcdef1234567890",
+    "sk-abcdefghijklmnopqrstuvwxyz1234567890",
+    "ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+    "AKIAIOSFODNN7EXAMPLE1",
+]
+
+
+def _make_poisoned_run_data() -> dict:
+    """Build run data with secrets injected into many fields."""
+    data = _make_run_data(has_task=True)
+    # Poison task excerpt
+    data["task_input"]["excerpt"] = "Fix the bug. Use API_KEY=supersecretvalue123 to auth."
+    # Poison reviewer summary
+    data["rounds"][0]["reviewer"]["summary"] = (
+        "Code uses sk-ant-abcdef1234567890abcdef1234567890 directly"
+    )
+    # Poison reviewer finding
+    data["rounds"][0]["reviewer"]["findings"] = [
+        {
+            "id": "F-001",
+            "severity": "high",
+            "file": "main.py",
+            "summary": "Hardcoded ghp_abcdefghijklmnopqrstuvwxyz1234567890 in source",
+        },
+    ]
+    data["rounds"][0]["reviewer"]["finding_count"] = 1
+    # Poison test summary
+    data["rounds"][0]["test_summary"] = (
+        "Test passed. SECRET=hunter2password leaked in output."
+    )
+    # Poison token accounting note
+    data["token_accounting"]["token_note"] = (
+        "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdefghijk was used"
+    )
+    # Poison provider evidence
+    data["provider_evidence"]["debug_note"] = (
+        "Used AKIAIOSFODNN7EXAMPLE1 for auth"
+    )
+    # Poison repair_loop
+    data["repair_loop"]["debug_reason"] = (
+        "Repair because sk-abcdefghijklmnopqrstuvwxyz1234567890 exposed"
+    )
+    return data
+
+
+# ---------------------------------------------------------------------------
+# Step 4812: Recursive JSON redaction
+# ---------------------------------------------------------------------------
+
+class TestRecursiveRedaction:
+    """_redact_json_value recursively sanitizes all string values."""
+
+    def test_redacts_string(self):
+        assert "[REDACTED]" in _redact_json_value("key: sk-ant-abcdef1234567890abcdef1234567890")
+
+    def test_preserves_int(self):
+        assert _redact_json_value(42) == 42
+
+    def test_preserves_bool(self):
+        assert _redact_json_value(True) is True
+
+    def test_preserves_none(self):
+        assert _redact_json_value(None) is None
+
+    def test_preserves_float(self):
+        assert _redact_json_value(3.14) == 3.14
+
+    def test_redacts_dict_values(self):
+        result = _redact_json_value({"key": "API_KEY=secret123"})
+        assert "secret123" not in result["key"]
+        assert "[REDACTED]" in result["key"]
+
+    def test_redacts_list_items(self):
+        result = _redact_json_value(["safe", "sk-ant-abcdef1234567890abcdef1234567890"])
+        assert result[0] == "safe"
+        assert "[REDACTED]" in result[1]
+
+    def test_redacts_nested(self):
+        result = _redact_json_value({
+            "outer": {
+                "inner": ["ghp_abcdefghijklmnopqrstuvwxyz1234567890"],
+            },
+        })
+        assert "[REDACTED]" in result["outer"]["inner"][0]
+
+    def test_preserves_dict_shape(self):
+        original = {"a": 1, "b": "safe", "c": [1, 2]}
+        result = _redact_json_value(original)
+        assert result == original
+
+    def test_does_not_mutate_original(self):
+        original = {"key": "API_KEY=secret123"}
+        result = _redact_json_value(original)
+        assert "secret123" in original["key"]
+        assert "secret123" not in result["key"]
+
+    def test_tuple_preserved(self):
+        result = _redact_json_value(("safe", "API_KEY=x"))
+        assert isinstance(result, tuple)
+        assert result[0] == "safe"
+
+
+# ---------------------------------------------------------------------------
+# Step 4815: Explicit JSON leak regression tests
+# ---------------------------------------------------------------------------
+
+class TestJsonLeakRegression:
+    """Secrets must be redacted from every JSON output file."""
+
+    def test_manifest_task_excerpt_redacted(self, isolate_data_root, tmp_path):
+        """manifest.json task excerpt does not leak API_KEY."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        content = (out_dir / "manifest.json").read_text()
+        assert "supersecretvalue123" not in content
+
+    def test_review_summary_redacted(self, isolate_data_root, tmp_path):
+        """review.json reviewer summary does not leak sk-ant key."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        content = (out_dir / "review.json").read_text()
+        assert "sk-ant-abcdef" not in content
+
+    def test_review_finding_redacted(self, isolate_data_root, tmp_path):
+        """review.json finding summary does not leak ghp token."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        content = (out_dir / "review.json").read_text()
+        assert "ghp_abcdefghijklmnopqrstuvwxyz" not in content
+
+    def test_token_accounting_redacted(self, isolate_data_root, tmp_path):
+        """token_accounting.json does not leak Bearer token."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        content = (out_dir / "token_accounting.json").read_text()
+        assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in content
+
+    def test_provider_evidence_redacted(self, isolate_data_root, tmp_path):
+        """provider_evidence.json does not leak AWS key."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        content = (out_dir / "provider_evidence.json").read_text()
+        assert "AKIAIOSFODNN7EXAMPLE1" not in content
+
+    def test_repair_loop_redacted(self, isolate_data_root, tmp_path):
+        """repair_loop.json does not leak sk- key."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        content = (out_dir / "repair_loop.json").read_text()
+        assert "sk-abcdefghijklmnopqrstuvwxyz" not in content
+
+    def test_promotion_redacted(self, isolate_data_root, tmp_path):
+        """promotion.json does not leak secrets."""
+        data = _make_run_data(run_id="promo_leak")
+        _persist_fake_run(isolate_data_root, data)
+        promo = {
+            "run_id": "promo_leak",
+            "status": "dry_run_ready",
+            "note": "Used API_KEY=supersecretvalue123 for auth",
+        }
+        _persist_fake_promotion(isolate_data_root, "promo_leak", promo)
+        out_dir = tmp_path / "bundle"
+        export_evidence("promo_leak", str(out_dir))
+        content = (out_dir / "promotion.json").read_text()
+        assert "supersecretvalue123" not in content
+
+
+# ---------------------------------------------------------------------------
+# Step 4816: Full-output scanner test
+# ---------------------------------------------------------------------------
+
+class TestFullOutputScanner:
+    """Scan every emitted file for known secret strings."""
+
+    def test_no_secret_leaks_in_any_file(self, isolate_data_root, tmp_path):
+        """No output file may contain unredacted known secret strings."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        # Also add promotion with secret
+        promo = {
+            "run_id": "test_run_001",
+            "status": "dry_run_ready",
+            "note": "Used Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdefghijk for auth",
+        }
+        _persist_fake_promotion(isolate_data_root, "test_run_001", promo)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+
+        # Scan all emitted files
+        for fpath in out_dir.iterdir():
+            content = fpath.read_text()
+            for marker in _LEAK_MARKERS:
+                assert marker not in content, (
+                    f"Secret leaked in {fpath.name}: found {marker!r}"
+                )
+
+
+# ---------------------------------------------------------------------------
+# Step 4817: Preserve useful proof while redacting
+# ---------------------------------------------------------------------------
+
+class TestUsefulnessPreservation:
+    """Redaction must not destroy evidence usefulness."""
+
+    def test_manifest_preserves_identity(self, isolate_data_root, tmp_path):
+        """Manifest still has run_id, final_status, sections."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        manifest = json.loads((out_dir / "manifest.json").read_text())
+        assert manifest["run_id"] == "test_run_001"
+        assert manifest["final_status"] == "staged_review_passed"
+        assert "manifest.json" in manifest["sections"]
+        assert manifest["sections"]["manifest.json"] == "present"
+
+    def test_review_preserves_verdict_and_count(self, isolate_data_root, tmp_path):
+        """review.json still has verdict and finding count."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        review = json.loads((out_dir / "review.json").read_text())
+        assert review["total_reviews"] == 1
+        # Verdict preserved (not a secret)
+        assert review["reviews"][0]["verdict"] == "pass"
+        assert review["reviews"][0]["finding_count"] == 1
+
+    def test_promotion_preserves_status(self, isolate_data_root, tmp_path):
+        """promotion.json still has status."""
+        data = _make_run_data(run_id="useful_promo")
+        _persist_fake_run(isolate_data_root, data)
+        promo = {
+            "run_id": "useful_promo",
+            "status": "dry_run_ready",
+            "approved": False,
+            "note": "API_KEY=leaked here",
+        }
+        _persist_fake_promotion(isolate_data_root, "useful_promo", promo)
+        out_dir = tmp_path / "bundle"
+        export_evidence("useful_promo", str(out_dir))
+        pdata = json.loads((out_dir / "promotion.json").read_text())
+        assert pdata["status"] == "dry_run_ready"
+        assert pdata["approved"] is False
+
+    def test_token_accounting_preserves_kind(self, isolate_data_root, tmp_path):
+        """token_accounting.json still has kind and estimates."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        ta = json.loads((out_dir / "token_accounting.json").read_text())
+        assert ta["kind"] == "estimated"
+        assert "builder_prompt_tokens_estimated" in ta
+
+    def test_provider_evidence_preserves_names(self, isolate_data_root, tmp_path):
+        """provider_evidence.json still has provider names and kinds."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        pe = json.loads((out_dir / "provider_evidence.json").read_text())
+        assert pe["builder_provider"] == "fake"
+        assert pe["reviewer_provider"] == "fake"
+        assert pe["builder_provider_kind"] == "synthetic_test"
+
+    def test_summary_md_still_readable(self, isolate_data_root, tmp_path):
+        """summary.md is still human-readable markdown."""
+        data = _make_poisoned_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        summary = (out_dir / "summary.md").read_text()
+        assert "# Remedy Run Evidence" in summary
+        assert "## Providers" in summary
+        assert "staged_review_passed" in summary
