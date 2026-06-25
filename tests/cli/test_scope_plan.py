@@ -709,7 +709,7 @@ class TestExistingFlows:
         repo.mkdir()
         (repo / "README.md").write_text("# Test\n")
         p = FakeProvider()
-        result = run_pingpong("Fix README", str(repo), builder_provider=p, reviewer_provider=p)
+        result = run_pingpong("Fix README", str(repo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
         assert result.final_status == "staged_review_passed"
         data = export_pingpong_json(result)
         assert data["task_input"] is None
@@ -734,6 +734,7 @@ class TestExistingFlows:
             "", str(repo),
             builder_provider=p, reviewer_provider=p,
             task_input=ti,
+            repair_rounds=2,
         )
         assert result.final_status == "staged_review_passed"
         data = export_pingpong_json(result)

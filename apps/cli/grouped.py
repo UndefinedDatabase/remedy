@@ -206,6 +206,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--scope-file", default="", dest="scope_file", help=arg.help)
             elif arg.name == "--approve-scope":
                 parser.add_argument("--approve-scope", action="store_true", dest="approve_scope", help=arg.help)
+            elif arg.name == "--repair-rounds":
+                parser.add_argument("--repair-rounds", type=int, default=None, dest="repair_rounds", help=arg.help)
             elif arg.name == "--user-requested":
                 parser.add_argument("--user-requested", action="store_true", dest="user_requested", help=arg.help)
             elif arg.name == "--prefer-local-for-cheap-tasks":

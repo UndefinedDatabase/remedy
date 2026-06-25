@@ -2258,6 +2258,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none)", required=False, is_option=True, default="none"),
             ArgDef("--scope-file", "Path to approved scope plan JSON file", required=False, is_option=True, default=""),
             ArgDef("--approve-scope", "Confirm scope file decisions before execution", required=False, is_option=True, default="false"),
+            ArgDef("--repair-rounds", "Max repair attempts after reviewer findings (default: 2, cap: 10; 0 disables repair)", required=False, is_option=True, default=""),
         ),
         may_mutate_repo=False,
         may_execute_commands=False,

@@ -1,29 +1,27 @@
-# Plan — Steps 4706-4723: Scope Plan Approval Gate v0
+# Plan — Steps 4773-4787: Repair Governance Correctness Closure v3
 
 ## Goal
-Add human-approved scope planning before executing large task-file prompts.
-Deterministic scope extraction, editable scope file, validated decisions,
-scope contract in Builder/Reviewer prompts, scope data in reports.
+Fix 5 real correctness bugs found by review in repair governance v2.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- ScopePlan, ScopeFeature, ScopeRisk, ScopePlanValidationResult data model
-- Deterministic Markdown parser (headings + bare label sections)
-- Scope plan persistence under data_root/scope_plans/<plan_id>/
-- Editable scope file with user_decision per feature
-- Scope validation: hash, repo, duplicates, invalid decisions, min 1 approved
-- `remedy do plan --task-file ... --repo . --json` CLI command
-- `--scope-file` and `--approve-scope` on `remedy do run`
-- Builder prompt scope contract (APPROVED/OUT OF SCOPE sections)
-- Reviewer prompt scope contract with review rules
-- Out-of-scope detection helper (expected_files + diff keyword check)
-- Scope data in JSON report (scope_plan field)
-- Scope summary in text report (Approved/Denied/Deferred/Backlog/Pending)
-- Worker self-report vs Remedy verification separation in text report
-- 47 new tests: extraction, persistence, validation, CLI, prompts, detection, reports
-- Full suite: 7546 passed, 0 failed
-- Fast lane: 571 passed
-- Runtime lane: 4/4 suites passed
-- Lint: all checks passed (ruff + mypy)
+- Step 4773: repair_rounds=0 truly disables repair (removed legacy_max_rounds_behavior)
+- Step 4774: CLI argparse default=None → resolve_repair_rounds(None) returns 2
+- Step 4775: repair_rounds_source (cli/default) persisted in PingPongResult + JSON
+- Step 4776: validate_reviewer_output receives test_passed — test failure is evidence
+- Step 4777: review_inconsistent always adjudicates as needs_human_review (never ready)
+- Step 4778: Open findings flow into final adjudication (already correct, verified)
+- Step 4779: Re-review round label fixed (repair_rounds_used not +1)
+- Step 4780: Promotion readiness proof tightened (already correct, verified)
+- Step 4781: 5 explicit repair_rounds=0 regression tests
+- Step 4782: 5 CLI default + source tracking tests
+- Step 4783: 4 inconsistent-review adjudication tests (including E2E)
+- Step 4784: 4 test-failure coherence tests + 1 re-review label test
+- Step 4785: JSON/text reports updated with repair_rounds_source
+- Step 4786: Existing safety preserved (455 related tests pass)
+- Step 4787: Architecture guard clean, full suite 7655 passed
+- 19 new tests (109 total in test_repair_loop.py)
+- Full suite: 7655 passed, 0 failed
+- Lint: ruff clean, compileall clean

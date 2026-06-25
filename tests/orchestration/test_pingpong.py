@@ -124,7 +124,7 @@ class TestFakeBuilderAndReviewer:
 class TestRepairLoop:
     def test_findings_become_repair_input(self, demo_repo: Path):
         """Round 1 findings lead to round 2 repair."""
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake", repair_rounds=2)
         assert len(result.rounds) >= 2
         # Round 2 builder should have received findings
         rd2 = result.rounds[1]
@@ -133,14 +133,14 @@ class TestRepairLoop:
 
     def test_reviewer_passes_after_repair(self, demo_repo: Path):
         """Fake provider passes on round 2 by default."""
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake", repair_rounds=2)
         assert len(result.rounds) >= 2
         last = result.rounds[-1]
         assert last.reviewer_output is not None
         assert last.reviewer_output.verdict == "pass"
 
     def test_final_status_is_staged_review_passed(self, demo_repo: Path):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake", repair_rounds=2)
         assert result.final_status == "staged_review_passed"
 
 
@@ -150,7 +150,7 @@ class TestRepairLoop:
 
 class TestReportShowsRounds:
     def test_report_json_has_rounds(self, demo_repo: Path):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake", repair_rounds=2)
         data = export_pingpong_json(result)
         assert data["total_rounds"] >= 2
         assert len(data["rounds"]) >= 2
@@ -158,7 +158,7 @@ class TestReportShowsRounds:
         assert data["rounds"][1]["round"] == 2
 
     def test_summary_shows_rounds(self, demo_repo: Path):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake", repair_rounds=2)
         summary = summarize_pingpong(result)
         assert "Round 1" in summary
         assert "Round 2" in summary
@@ -176,7 +176,7 @@ class TestMaxRounds:
             "Fix README", str(demo_repo),
             builder_provider=provider,
             reviewer_provider=provider,
-            max_rounds=2,
+            max_rounds=2, repair_rounds=5,
         )
         assert result.final_status == "max_rounds_reached"
         assert len(result.rounds) == 2

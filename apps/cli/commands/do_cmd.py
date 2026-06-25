@@ -55,6 +55,7 @@ def _cmd_do(
     task_stdin: bool = False,
     scope_file: str = "",
     approve_scope: bool = False,
+    repair_rounds: int | None = None,
 ) -> None:
     # --- Task input loading ---
     task_input = None
@@ -117,6 +118,15 @@ def _cmd_do(
                 print(f"Error: {msg}", file=sys.stderr)
             sys.exit(2)
 
+    # Resolve and validate repair_rounds
+    from packages.orchestration.pingpong_loop import resolve_repair_rounds
+    try:
+        repair_rounds_val, repair_rounds_source = resolve_repair_rounds(repair_rounds)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+    repair_rounds = repair_rounds_val
+
     # Ping-pong mode: --builder and/or --reviewer set to a real provider
     if builder != "none" or reviewer != "none":
         _cmd_do_pingpong(
@@ -128,6 +138,8 @@ def _cmd_do(
             task_input=task_input,
             scope_data=scope_data,
             scope_validation=scope_validation,
+            repair_rounds=repair_rounds,
+            repair_rounds_source=repair_rounds_source,
         )
         return
 
@@ -226,6 +238,8 @@ def _cmd_do_pingpong(
     task_input: Any = None,
     scope_data: dict[str, Any] | None = None,
     scope_validation: Any = None,
+    repair_rounds: int = 0,
+    repair_rounds_source: str = "",
 ) -> None:
     """Run Builder ↔ Reviewer ping-pong loop."""
     if builder not in _VALID_PINGPONG_PROVIDERS:
@@ -263,6 +277,8 @@ def _cmd_do_pingpong(
         print(f"Max rounds: {max_rounds}")
         if test_command:
             print(f"Test command: {test_command}")
+        if repair_rounds > 0:
+            print(f"Repair rounds: {repair_rounds}")
         print()
 
     result = run_pingpong(
@@ -279,6 +295,8 @@ def _cmd_do_pingpong(
         task_input=task_input,
         scope_data=scope_data,
         scope_validation=scope_validation,
+        repair_rounds=repair_rounds,
+        repair_rounds_source=repair_rounds_source,
     )
 
     data = export_pingpong_json(result)
@@ -635,6 +653,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         task_stdin=getattr(args, "task_stdin", False),
         scope_file=getattr(args, "scope_file", None) or "",
         approve_scope=getattr(args, "approve_scope", False),
+        repair_rounds=int(getattr(args, "repair_rounds", None) or 0),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",

@@ -489,7 +489,7 @@ class TestContextSafety:
 
 class TestFakeProviderE2E:
     def test_fake_provider_full_loop(self, demo_repo):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake", repair_rounds=2)
         assert result.final_status == "staged_review_passed"
         assert len(result.rounds) >= 2
         assert result.target_mutated is False
@@ -651,9 +651,10 @@ class TestClaudeCliProviderWriteMode:
 class TestReviewerAlwaysReadOnly:
     def test_reviewer_no_write_mode(self, demo_repo):
         """run_pingpong with claude_cli_write_mode=allowed-tools must NOT pass it to reviewer."""
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
         result = run_pingpong(
             "Fix README", str(demo_repo),
-            builder_name="fake", reviewer_name="fake",
+            builder_provider=provider, reviewer_provider=provider,
             claude_cli_write_mode="allowed-tools",
         )
         # Fake providers don't use write_mode, but result should still work
@@ -666,9 +667,10 @@ class TestReviewerAlwaysReadOnly:
 
 class TestRunPingpongWriteMode:
     def test_write_mode_accepted(self, demo_repo):
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
         result = run_pingpong(
             "Fix README", str(demo_repo),
-            builder_name="fake", reviewer_name="fake",
+            builder_provider=provider, reviewer_provider=provider,
             claude_cli_write_mode="none",
         )
         assert result.final_status == "staged_review_passed"
@@ -1920,14 +1922,13 @@ class TestUnwrapEnvelopeTextWhitespace:
 class TestReviewerReceivesSafeDiff:
     def test_reviewer_gets_diff(self, demo_repo):
         """Verify run completes and safe diff is computed before reviewer."""
-        provider = FakeProvider()
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
         result = run_pingpong(
             "Fix README", str(demo_repo),
             builder_provider=provider,
             reviewer_provider=provider,
         )
-        # If reviewer pass, safe diff was available
-        assert result.final_status in ("staged_review_passed", "max_rounds_reached")
+        assert result.final_status == "staged_review_passed"
         assert result.safe_diff_summary != "" or result.safe_diff_files != []
 
 
@@ -1943,7 +1944,7 @@ class TestRepairRoundGetsDiff:
             "Fix README", str(demo_repo),
             builder_provider=provider,
             reviewer_provider=provider,
-            max_rounds=2,
+            max_rounds=2, repair_rounds=2,
         )
         assert len(result.rounds) == 2
         assert result.final_status == "staged_review_passed"

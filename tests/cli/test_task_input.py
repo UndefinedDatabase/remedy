@@ -10,7 +10,7 @@ import pytest
 # Helper: create a task file and run with FakeProvider
 # ---------------------------------------------------------------------------
 
-def _make_task_run(tmp_path, monkeypatch, *, task_text="", task_file=True, goal=""):
+def _make_task_run(tmp_path, monkeypatch, *, task_text="", task_file=True, goal="", repair_rounds=0):
     """Create a task-file run with FakeProvider. Returns (result, data)."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     from packages.orchestration.pingpong_loop import (
@@ -36,6 +36,7 @@ def _make_task_run(tmp_path, monkeypatch, *, task_text="", task_file=True, goal=
         goal, str(demo),
         builder_provider=p, reviewer_provider=p,
         task_input=ti,
+        repair_rounds=repair_rounds,
     )
     data = export_pingpong_json(result)
     return result, data, ti
@@ -334,7 +335,8 @@ Improve the README.md file.
 """
         result, data, _ = _make_task_run(
             tmp_path, monkeypatch,
-            task_text=task_text, goal="Large prompt test"
+            task_text=task_text, goal="Large prompt test",
+            repair_rounds=2,
         )
         assert result.final_status == "staged_review_passed"
         assert data["task_input"]["sha256"]
@@ -351,7 +353,7 @@ class TestExistingFlowsUnbroken:
         demo = tmp_path / "repo"
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
-        result = run_pingpong("Fix README", str(demo), builder_provider=p, reviewer_provider=p)
+        result = run_pingpong("Fix README", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
         assert result.final_status == "staged_review_passed"
         data = export_pingpong_json(result)
         assert data["task_input"] is None  # no task file used

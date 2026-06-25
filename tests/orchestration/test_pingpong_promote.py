@@ -63,7 +63,7 @@ def _run_passing(demo_repo: Path, **kwargs) -> str:
         "Fix README", str(demo_repo),
         builder_provider=provider,
         reviewer_provider=provider,
-        max_rounds=2,
+        max_rounds=2, repair_rounds=2,
     )
     assert result.final_status == "staged_review_passed"
     return result.run_id
@@ -464,7 +464,7 @@ class TestNoAutoPromote:
             "Fix README", str(demo_repo),
             builder_provider=provider,
             reviewer_provider=provider,
-            max_rounds=2,
+            max_rounds=2, repair_rounds=2,
         )
         assert result.final_status == "staged_review_passed"
         # No target changes
