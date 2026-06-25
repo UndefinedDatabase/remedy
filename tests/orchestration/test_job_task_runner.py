@@ -1,10 +1,11 @@
-"""Tests for the Job Task Runner (Steps 4827-4868).
+"""Tests for the Job Task Runner (Steps 4827-4895).
 
 Covers: job plan parsing, deterministic task IDs, strict workspace apply,
 sequential execution, target repo guard, token-bounded context, report output,
 blocking-path E2E, CLI dispatch, existing flow preservation, repair-round
 CLI control, execution metadata, partial-run status, target mutation
-negative guard, deterministic completion gate, and continuation config.
+negative guard, deterministic completion gate, continuation config,
+pre-apply target guard, and post-apply target guard.
 """
 
 from __future__ import annotations
@@ -2429,3 +2430,404 @@ class TestCommandPathGateSmoke:
         ec = out["execution_config"]
         assert ec["max_rounds"] == 7
         assert ec["repair_rounds_allowed"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Steps 4887-4889 — Pre-apply target guard and post-apply defense-in-depth
+# ---------------------------------------------------------------------------
+
+
+class TestPreApplyTargetGuard:
+    """Step 4890: target mutation before apply blocks without workspace apply."""
+
+    def test_mutation_before_apply_blocks_job(self, isolate_data_root, demo_repo, monkeypatch):
+        """Target mutation during pingpong blocks job before workspace apply."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert result.status == JOB_BLOCKED
+        assert result.tasks[0].status == TASK_BLOCKED
+        assert "target_repo_mutated" in result.tasks[0].error
+        assert result.target_guard.target_mutated is True
+        assert "INJECTED.txt" in result.target_guard.changed_target_files
+
+    def test_no_workspace_apply_after_mutation(self, isolate_data_root, demo_repo, monkeypatch):
+        """Workspace apply must not happen when target is mutated."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        task = result.tasks[0]
+        assert task.apply_manifest is None
+        assert task.status == TASK_BLOCKED
+
+    def test_workspace_unchanged_after_mutation(self, isolate_data_root, demo_repo, monkeypatch):
+        """Job workspace must not receive task's staged artifacts after target mutation."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert result.tasks[0].apply_manifest is None
+        assert result.tasks[0].status == TASK_BLOCKED
+        assert not any(t.status == TASK_APPLIED for t in result.tasks)
+
+    def test_task2_does_not_start_after_mutation(self, isolate_data_root, demo_repo, monkeypatch):
+        """Task 2 must not start when task 1 is blocked by target mutation."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert result.tasks[1].status in (TASK_SKIPPED, TASK_PENDING)
+
+    def test_no_proof_summary_after_mutation(self, isolate_data_root, demo_repo, monkeypatch):
+        """Proof summary must be absent for task blocked by target mutation."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert result.tasks[0].proof_summary is None
+
+    def test_guard_runs_before_apply_not_after(self, isolate_data_root, demo_repo, monkeypatch):
+        """Pre-apply guard must catch mutation. Error must not say 'after_apply'."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert "target_repo_mutated" in result.tasks[0].error
+        assert "after_apply" not in result.tasks[0].error
+
+
+class TestPreApplyTargetGuardReport:
+    """Step 4891: report does not claim apply after target mutation."""
+
+    def test_json_report_shows_blocked(self, isolate_data_root, demo_repo, monkeypatch):
+        """JSON report must show task blocked, not applied."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        report = export_job_report(result)
+        task_report = report["tasks"][0]
+        assert task_report["status"] == TASK_BLOCKED
+        assert "target_repo_mutated" in task_report["error"]
+
+    def test_json_report_no_applied_manifest(self, isolate_data_root, demo_repo, monkeypatch):
+        """JSON report must not show apply_manifest.status='applied'."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        report = export_job_report(result)
+        manifest = report["tasks"][0]["apply_manifest"]
+        if manifest is not None:
+            assert manifest.get("status") != "applied"
+            assert manifest.get("applied_files", []) == []
+
+    def test_text_report_shows_blocked(self, isolate_data_root, demo_repo, monkeypatch):
+        """Text report must show blocked task, not applied."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        text = format_job_report_text(result)
+        assert "blocked" in text.lower()
+        assert "target_repo_mutated" in text
+
+    def test_no_proof_summary_in_report(self, isolate_data_root, demo_repo, monkeypatch):
+        """Proof summary must be absent in JSON report for mutation-blocked task."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        report = export_job_report(result)
+        assert report["tasks"][0]["proof_summary"] is None
+
+
+class TestPostApplyTargetGuard:
+    """Step 4889: post-apply defense-in-depth target guard."""
+
+    def test_post_apply_mutation_blocks(self, isolate_data_root, demo_repo, monkeypatch):
+        """If target mutates during workspace apply, post-apply guard catches it."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_job as job_mod
+        real_apply = job_mod._strict_apply_to_workspace
+
+        def mutating_apply(*args, **kwargs):
+            manifest = real_apply(*args, **kwargs)
+            (demo_repo / "LATE_INJECT.txt").write_text("late mutation")
+            return manifest
+
+        monkeypatch.setattr(job_mod, "_strict_apply_to_workspace", mutating_apply)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert result.status == JOB_BLOCKED
+        blocked_task = next(t for t in result.tasks if t.status == TASK_BLOCKED)
+        assert "target_repo_mutated_after_apply" in blocked_task.error
+
+    def test_post_apply_guard_reports_changed_files(self, isolate_data_root, demo_repo, monkeypatch):
+        """Post-apply guard must report which files changed."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_job as job_mod
+        real_apply = job_mod._strict_apply_to_workspace
+
+        def mutating_apply(*args, **kwargs):
+            manifest = real_apply(*args, **kwargs)
+            (demo_repo / "LATE_INJECT.txt").write_text("late mutation")
+            return manifest
+
+        monkeypatch.setattr(job_mod, "_strict_apply_to_workspace", mutating_apply)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert result.target_guard.target_mutated is True
+        assert "LATE_INJECT.txt" in result.target_guard.changed_target_files
+
+
+class TestTargetMutatedResultGatePreserved:
+    """Step 4892: result.target_mutated=True still blocks at completion gate."""
+
+    def test_target_mutated_result_blocks_at_gate(self, isolate_data_root, demo_repo, monkeypatch):
+        """result.target_mutated=True blocks at completion gate, before target guard."""
+        result_obj = self._run_with_target_mutated_result(demo_repo, monkeypatch)
+        assert result_obj.status == JOB_BLOCKED
+        assert result_obj.tasks[0].status == TASK_BLOCKED
+        assert "target_mutated" in result_obj.tasks[0].error
+        assert "completion_gate_failed" in result_obj.tasks[0].error
+
+    def test_no_workspace_apply_on_result_target_mutated(self, isolate_data_root, demo_repo, monkeypatch):
+        """Workspace apply must not happen when result reports target_mutated."""
+        result_obj = self._run_with_target_mutated_result(demo_repo, monkeypatch)
+        assert result_obj.tasks[0].apply_manifest is None
+
+    def test_no_proof_summary_on_result_target_mutated(self, isolate_data_root, demo_repo, monkeypatch):
+        """Proof summary must be absent when result reports target_mutated."""
+        result_obj = self._run_with_target_mutated_result(demo_repo, monkeypatch)
+        assert result_obj.tasks[0].proof_summary is None
+
+    def test_task2_skipped_on_result_target_mutated(self, isolate_data_root, demo_repo, monkeypatch):
+        """Task 2 must not start when result target_mutated blocks task 1."""
+        result_obj = self._run_with_target_mutated_result(demo_repo, monkeypatch)
+        assert result_obj.tasks[1].status in (TASK_SKIPPED, TASK_PENDING)
+
+    def _run_with_target_mutated_result(self, demo_repo, monkeypatch):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def corrupt_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            result.target_mutated = True
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", corrupt_run)
+
+        return run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+
+class TestCommandPathPreApplySmoke:
+    """Step 4895: handler-level smoke tests for pre-apply target guard."""
+
+    def test_handler_mutation_blocks(self, isolate_data_root, demo_repo, monkeypatch, capsys):
+        """Target mutation blocks through full CLI handler path."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "INJECTED.txt").write_text("side effect")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        args = _make_args(job_id=job.job_id)
+        COMMAND_HANDLERS["do.job-run"](args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["status"] == "blocked"
+        assert out["tasks"][0]["status"] == TASK_BLOCKED
+        assert "target_repo_mutated" in out["tasks"][0]["error"]
+
+    def test_handler_clean_run_unaffected(self, isolate_data_root, demo_repo, capsys):
+        """Normal clean run still completes with pre-apply guard present."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args = _make_args(job_id=job.job_id)
+        COMMAND_HANDLERS["do.job-run"](args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["status"] == "completed"
+        applied = [t for t in out["tasks"] if t["status"] == TASK_APPLIED]
+        assert len(applied) == 2

@@ -1,18 +1,20 @@
-# Plan — Steps 4879-4886: Job Completion Gate Reviewer Evidence Closure v5
+# Plan — Steps 4887-4895: Job Target Guard Pre-Apply Closure v6
 
 ## Goal
-Require reviewer evidence in job completion gate. Missing reviewer_output
-must block task apply.
+Move job-level target repo guard before workspace apply. Add post-apply
+defense-in-depth guard. Ensure target mutation blocks task without copying
+staged files into job workspace.
 
 ## Current Step
 Implementing all steps.
 
 ## Steps
-- Step 4879: Require final reviewer output in completion gate
-- Step 4880: Direct completion-gate unit tests for missing reviewer
-- Step 4881: run_job corrupted-result E2E regression test
-- Step 4882: Preserve valid no-test-command behavior
-- Step 4883: Strengthen task proof summary/report for missing reviewer
-- Step 4884: Preserve continuation config and job safety
-- Step 4885: Command-path smoke for fixed gate
-- Step 4886: Architecture guard and handoff
+- Step 4887: Move job-level target guard before workspace apply
+- Step 4888: Add explicit pre-apply guard block manifest/evidence
+- Step 4889: Add post-apply target guard sanity check
+- Step 4890: Regression test: target mutation before apply blocks without workspace apply
+- Step 4891: Regression test: report does not claim apply after target mutation
+- Step 4892: Preserve result.target_mutated=True completion gate behavior
+- Step 4893: Preserve continuation config, reviewer evidence gate, token policy
+- Step 4894: Preserve successful job flow and existing safety
+- Step 4895: Final architecture guard and handoff

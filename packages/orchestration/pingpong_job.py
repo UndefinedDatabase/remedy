@@ -928,6 +928,15 @@ def run_job(
 
         task.status = TASK_PASSED
 
+        # Step 4887: Pre-apply target repo guard — blocks before workspace apply
+        pre_guard = _check_target_repo_guard(job.repo_path, target_snap)
+        job.target_guard = pre_guard
+        if pre_guard.target_mutated:
+            task.status = TASK_BLOCKED
+            task.error = f"target_repo_mutated: {pre_guard.changed_target_files}"
+            _block_job(job, idx, "target_repo_mutated_during_job")
+            return job
+
         # Step 4835: Strict workspace apply
         manifest = _strict_apply_to_workspace(task, result, job.job_workspace_path)
         task.apply_manifest = manifest
@@ -940,13 +949,13 @@ def run_job(
 
         task.status = TASK_APPLIED
 
-        # Step 4837: Check target repo guard after each task
-        guard = _check_target_repo_guard(job.repo_path, target_snap)
-        job.target_guard = guard
-        if guard.target_mutated:
+        # Step 4889: Post-apply target guard — defense-in-depth sanity check
+        post_guard = _check_target_repo_guard(job.repo_path, target_snap)
+        job.target_guard = post_guard
+        if post_guard.target_mutated:
             task.status = TASK_BLOCKED
-            task.error = f"target_repo_mutated: {guard.changed_target_files}"
-            _block_job(job, idx, "target_repo_mutated_during_job")
+            task.error = f"target_repo_mutated_after_apply: {post_guard.changed_target_files}"
+            _block_job(job, idx, "target_repo_mutated_after_apply")
             return job
 
         # Step 4839: Build proof summary

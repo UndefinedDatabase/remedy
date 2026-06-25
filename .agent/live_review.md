@@ -1,4 +1,4 @@
-# Live Review — Steps 4879-4886: Job Completion Gate Reviewer Evidence Closure v5
+# Live Review — Steps 4887-4895: Job Target Guard Pre-Apply Closure v6
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
@@ -25,22 +25,22 @@ Timestamp: 2026-06-25
 
 ## Findings
 
-### R-3101 Blocker — Missing reviewer output can apply task
+### R-3201 Blocker — Workspace apply happens before job-level target guard
 (pending — awaiting reviewer)
 
-### R-3102 High — Completion gate still relies on status string
+### R-3202 Blocker — Target mutation block leaves applied manifest
 (pending — awaiting reviewer)
 
-### R-3103 Medium — No-test-command behavior regresses
+### R-3203 High — Workspace receives staged files after target mutation
 (pending — awaiting reviewer)
 
-### R-3104 Medium — Report hides missing-reviewer block reason
+### R-3204 Medium — Report implies blocked task was applied
 (pending — awaiting reviewer)
 
-### R-3105 Medium — Continuation config regresses
+### R-3205 Medium — Post-apply guard missing
 (pending — awaiting reviewer)
 
-### R-3106 Medium — Existing safety regresses
+### R-3206 Medium — Existing safety regresses
 (pending — awaiting reviewer)
 
 ## Step assessments
@@ -57,7 +57,7 @@ Timestamp: 2026-06-25
 
 ---
 
-## Builder Handoff — Steps 4879-4886
+## Builder Handoff — Steps 4887-4895
 
 **Builder**: Claude (agent)
 **Handoff timestamp**: 2026-06-25
@@ -65,87 +65,123 @@ Timestamp: 2026-06-25
 
 ### What changed
 
-**Root cause**: `validate_job_task_result()` line 709 used `if last_round.reviewer_output:` which silently skipped all reviewer checks when `reviewer_output` was `None`. A corrupted result with `final_status=staged_review_passed, test_passed=True, reviewer_output=None` could pass the gate and be applied to job workspace without reviewer proof.
+**Production code** (1 file, 1 function):
 
-**Fix**: Added `else: reasons.append("missing_reviewer_output")` after the reviewer_output check block. Gate now requires reviewer evidence to exist with a clean pass verdict.
+- `packages/orchestration/pingpong_job.py` — `run_job()`:
+  - L931-938: Added pre-apply target repo guard (Step 4887). Runs `_check_target_repo_guard()` after completion gate passes but BEFORE `_strict_apply_to_workspace()`. If target mutated, task blocked with `target_repo_mutated:` error, no workspace apply, no proof summary.
+  - L952-958: Converted existing post-workspace-apply target guard to defense-in-depth (Step 4889). Error string changed from `target_repo_mutated` to `target_repo_mutated_after_apply` to distinguish from pre-apply detection.
 
-#### Production code
+**Correct order now**:
+1. Completion gate (L922-927)
+2. Pre-apply target guard (L931-938) — NEW
+3. Workspace apply (L940-948)
+4. Post-apply target guard (L952-958) — defense-in-depth
+5. Proof summary (L961-974)
 
-**`packages/orchestration/pingpong_job.py`** (L709-718, 2-line change):
-- `validate_job_task_result()`: Added `else` branch that appends `"missing_reviewer_output"` when `last_round.reviewer_output` is `None`
-- Gate now checks 8 conditions (was 7): final_status, target_mutated, test_passed, **reviewer_output existence**, reviewer verdict, reviewer findings, rounds existence, staging_path
+**Tests** (1 file, +18 tests):
 
-#### Test code
+- `tests/orchestration/test_job_task_runner.py` — 181 tests (was 163):
+  - `TestPreApplyTargetGuard` (6 tests): mutation blocks job, no workspace apply, no applied manifest, task 2 skipped, no proof summary, error says "target_repo_mutated" not "after_apply"
+  - `TestPreApplyTargetGuardReport` (4 tests): JSON report shows blocked, no applied manifest, text report shows blocked, no proof summary in report
+  - `TestPostApplyTargetGuard` (2 tests): post-apply mutation caught with "after_apply" error, changed files reported
+  - `TestTargetMutatedResultGatePreserved` (4 tests): result.target_mutated=True still blocks at completion gate, no manifest, no proof summary, task 2 skipped
+  - `TestCommandPathPreApplySmoke` (2 tests): handler-level mutation blocks, clean run unaffected
 
-**`tests/orchestration/test_job_task_runner.py`** (+16 new tests, ~300 lines added):
+### Edited files and line ranges
 
-| Class | Tests | What it proves |
-|-------|-------|----------------|
-| `TestMissingReviewerOutputGate` | 6 | reviewer_output=None blocks (test_passed True/None), clean pass still works, pass-with-findings blocks, fail blocks, target_mutated blocks |
-| `TestMissingReviewerE2E` | 3 | run_job blocks, no workspace apply, task 2 skipped |
-| `TestNoTestCommandValid` | 2 | test_passed=None + reviewer pass = OK, test_passed=None + no reviewer = blocked |
-| `TestMissingReviewerReport` | 3 | JSON report shows reason, text report shows blocked, no proof summary for blocked task |
-| `TestCommandPathGateSmoke` | 2 | normal job still completes, config survives gate block |
-
-**`_make_fake_result()`**: Extended with `reviewer_output=` parameter (sentinel-based, backward compatible). Pass `reviewer_output=None` to simulate missing reviewer evidence.
-
-**`_run_with_corrupt_result()`**: Extended with `reviewer_output` override key.
+| File | Lines changed | What |
+|------|--------------|------|
+| `packages/orchestration/pingpong_job.py` | L931-938 (new), L952-958 (modified) | Pre-apply guard + post-apply defense-in-depth |
+| `tests/orchestration/test_job_task_runner.py` | L1-8 (docstring), L2433-2712 (new) | 18 new tests in 5 classes |
+| `.agent/plan.md` | full rewrite | Updated for Steps 4887-4895 |
+| `.agent/context.md` | full rewrite | Updated for Steps 4887-4895 |
 
 ### Test results
 
-| Lane | Result |
-|------|--------|
-| Compile check | Clean |
-| Job task runner | 163 passed (16 new) |
-| Job fulfillment | 109 passed (2x deterministic) |
+| Suite | Result |
+|-------|--------|
+| Compile | Clean |
+| Job task runner | 181 passed (18 new) |
+| Job fulfillment | 109 passed (2x) |
 | Fast lane | 571 passed |
+| Runtime lane | 4/4 suites passed |
 | Lint (ruff + mypy) | Clean |
-| Full suite | 7905 passed, 8 skipped, 1 deselected, 0 failed |
+| Full suite | 7923 passed, 0 failed, 8 skipped |
 
-### Architecture guard
+### Step results
 
-All checks clean:
-- `missing_reviewer_output` in gate at L718: PRESENT
-- TASK_APPLIED only after gate + workspace apply: VERIFIED
-- No git/subprocess/shell=True/auto-promotion: CLEAN
-- No .agent refs/env leakage: CLEAN
-- Catalog defaults all None: CLEAN
-- Gate has 8 conditions (not just final_status): VERIFIED
+| Step | Description | Result |
+|------|-------------|--------|
+| 4887 | Move job-level target guard before workspace apply | Done. Pre-apply guard at L931-938. |
+| 4888 | Explicit pre-apply guard block manifest/evidence | Done. `apply_manifest` remains `None` when pre-apply guard blocks. No proof summary created. |
+| 4889 | Post-apply target guard sanity check | Done. Defense-in-depth at L952-958. Error string `target_repo_mutated_after_apply`. |
+| 4890 | Regression test: target mutation before apply blocks | Done. `TestPreApplyTargetGuard` (6 tests). |
+| 4891 | Regression test: report does not claim apply | Done. `TestPreApplyTargetGuardReport` (4 tests). |
+| 4892 | Preserve result.target_mutated=True gate behavior | Done. `TestTargetMutatedResultGatePreserved` (4 tests). |
+| 4893 | Preserve continuation config, reviewer evidence, token policy | Done. All v13-v15 tests pass (181 total). |
+| 4894 | Preserve successful job flow and existing safety | Done. Full suite 7923 pass. |
+| 4895 | Architecture guard and handoff | Done. All guards clean. |
 
-### Safety invariants preserved
+### Architecture guard results
 
-All 14 safety invariants + continuation config unchanged. Gate strengthened from 7 to 8 conditions.
-
-### Not built (per spec)
-
-No UI, DAG scheduling, parallel execution, final target-repo job promotion, long-term memory, local LLM routing, model tournament, git commit/push/rollback/automatic promotion in product code.
+- No workspace apply before target guard: CLEAN (pre-apply guard at L931-938)
+- No task applied after target mutation: VERIFIED
+- No apply_manifest.status="applied" after target mutation: VERIFIED
+- No proof summary after target mutation block: VERIFIED
+- No task applied with reviewer_output=None: VERIFIED
+- No task applied without reviewer verdict: VERIFIED
+- No task applied when reviewer verdict is not pass: VERIFIED
+- No task applied when reviewer pass includes findings: VERIFIED
+- No task applied when test_passed=False: VERIFIED
+- No task applied when target_mutated=True: VERIFIED
+- Completion gate does NOT rely only on final_status: VERIFIED (8 conditions)
+- No paused continuation losing config: VERIFIED
+- No explicit --builder fake ignored: VERIFIED
+- No unbounded context: VERIFIED
+- No full repo in prompt: VERIFIED
+- No automatic real repo promotion: CLEAN
+- No shell=True: CLEAN
+- No git commit/push/reset/checkout: CLEAN
+- No env/API key leakage: CLEAN
+- No .agent product dependency: CLEAN
 
 ### What this proves
 
-- Missing reviewer_output blocks job task apply (the blocker)
-- test_passed=None is valid when reviewer evidence is clean (no-test-command case)
-- All existing gate conditions still work
-- Report shows missing-reviewer block reason
-- Continuation config unaffected by gate changes
+- Target repo mutation is caught BEFORE workspace apply
+- No staged files enter job workspace after target mutation
+- Report does not claim workspace apply after target mutation block
+- Proof summary is not created after target mutation block
+- Post-apply defense-in-depth catches mutations during workspace apply
+- result.target_mutated=True still blocks at completion gate (before target guard)
+- Existing reviewer evidence gate, continuation config, and token policy intact
+- Existing safety invariants preserved across full suite
 
-### What this does NOT prove
+### What this does not prove
 
-- Real Claude provider reviewer integration
-- Real `claude-cli` subprocess behavior
-- Network/API failures
-- Concurrent job runs
-- Job promotion to real target repo
+- Real Claude provider behavior (tests use FakeProvider)
+- Network resilience or timeout behavior
+- Real git operations (product code has no git)
+- Multi-process concurrency safety
+- Performance under load
 
-### Whether Job Runner is ready for real 2-task Claude dogfood
+### Job Runner readiness for real 2-task Claude dogfood
 
-Functionally ready for a guarded 2-task dogfood:
-- Completion gate checks 8 conditions independently
-- Config preserved across pause/continue
-- No silent drift
-- Real target repo never mutated
-- Token context bounded
+Pre-apply target guard was the last known safety-ordering bug. All safety gates now fire in correct order:
+1. Completion gate (8 independent conditions)
+2. Pre-apply target guard (real target repo check)
+3. Strict workspace apply (artifact validation)
+4. Post-apply target guard (defense-in-depth)
+5. Proof summary (only after all guards pass)
 
-Remaining prerequisites for production:
-- Real Claude provider test (not FakeProvider)
-- Promotion flow for applying job workspace to target
-- Error handling for provider timeouts/API failures
+Remaining prerequisites for real dogfood:
+- Real Claude provider integration (not FakeProvider)
+- Real test command execution
+- Real file staging from Claude output
+- Human confirmation of first dogfood run parameters
+
+### 5-minute quiet-window check
+
+**Check timestamp**: 2026-06-25
+**Activity seen**: No reviewer findings appeared during implementation.
+**Findings addressed**: N/A (no findings yet)
+**Findings still open**: All 6 finding slots in review template awaiting reviewer.
