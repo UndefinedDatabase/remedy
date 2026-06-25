@@ -220,6 +220,21 @@ def make_repair_decision(
         rd.reason = coherence_error
         return rd
 
+    # Test-failure dominance: if tests failed, test evidence overrides reviewer
+    # opinion. Reviewer "pass" with failed tests must never produce a clean pass.
+    if tests_passed is False:
+        if repair_rounds_allowed == 0:
+            rd.repair_decision = "stop_test_failed_no_repair"
+            rd.reason = "test_failed_repair_disabled"
+            return rd
+        if repair_rounds_used >= repair_rounds_allowed:
+            rd.repair_decision = "stop_exhausted"
+            rd.reason = "test_failed_repair_budget_exhausted"
+            return rd
+        rd.repair_decision = "repair"
+        rd.reason = "test_failure_evidence"
+        return rd
+
     if reviewer_verdict == "pass":
         rd.repair_decision = "pass_no_repair"
         rd.reason = "reviewer_passed"
@@ -235,19 +250,15 @@ def make_repair_decision(
         rd.reason = f"unknown_verdict_{reviewer_verdict}"
         return rd
 
-    # needs_repair or fail
-    if finding_count == 0 and tests_passed is not False:
+    # needs_repair or fail — must have evidence (findings or test failure)
+    if finding_count == 0:
         rd.repair_decision = "block_inconsistent_review"
         rd.reason = "fail_verdict_no_evidence"
         return rd
 
     if repair_rounds_allowed == 0:
-        if tests_passed is False:
-            rd.repair_decision = "stop_test_failed_no_repair"
-            rd.reason = "test_failed_repair_disabled"
-        else:
-            rd.repair_decision = "stop_repair_disabled"
-            rd.reason = "repair_rounds_zero"
+        rd.repair_decision = "stop_repair_disabled"
+        rd.reason = "repair_rounds_zero"
         return rd
 
     # Check budget for NEXT repair round
@@ -258,7 +269,7 @@ def make_repair_decision(
         return rd
 
     rd.repair_decision = "repair"
-    rd.reason = "reviewer_findings_present" if finding_count > 0 else "test_failure_evidence"
+    rd.reason = "reviewer_findings_present"
     return rd
 
 
@@ -1126,9 +1137,10 @@ def run_pingpong(
     try:
         findings: list[ReviewFinding] = []
         reviewer_out: ReviewerOutput | None = None
+        repair_triggered = False  # set when repair decision = "repair"
 
         for round_num in range(1, max_rounds + 1):
-            is_repair = round_num > 1 and bool(findings)
+            is_repair = round_num > 1 and (bool(findings) or repair_triggered)
             rd = PingPongRound(
                 round_number=round_num,
                 kind="repair" if is_repair else "initial",
@@ -1140,6 +1152,7 @@ def run_pingpong(
             # Count repair round at Builder start
             if is_repair:
                 result.repair_rounds_used += 1
+                repair_triggered = False  # consumed
 
             # --- Builder phase ---
             # Compute repair diff for builder (from previous round)
@@ -1417,6 +1430,7 @@ def run_pingpong(
                 break
             elif decision.repair_decision == "repair":
                 findings = reviewer_out.findings
+                repair_triggered = True
                 if round_num >= max_rounds:
                     result.final_status = "max_rounds_reached"
                     break
@@ -1429,8 +1443,8 @@ def run_pingpong(
         if not result.final_status:
             result.final_status = "max_rounds_reached"
 
-        # --- Final adjudication for exhausted/inconsistent ---
-        if result.final_status in ("repair_exhausted", "review_inconsistent", "max_rounds_reached"):
+        # --- Final adjudication for exhausted/inconsistent/test_failed ---
+        if result.final_status in ("repair_exhausted", "review_inconsistent", "max_rounds_reached", "test_failed"):
             last_test_passed = result.rounds[-1].test_passed if result.rounds else None
             adj = run_final_adjudication(
                 final_status=result.final_status,
@@ -1468,9 +1482,12 @@ def run_pingpong(
 
         # --- Persist artifacts for promotion (before discard) ---
         # Only persist when reviewer passed AND adjudication allows (or no adjudication needed)
+        # Defense-in-depth: also check final test_passed is not False
+        last_test = result.rounds[-1].test_passed if result.rounds else None
         promotion_eligible = (
             result.final_status == "staged_review_passed"
             and not result.target_mutated
+            and last_test is not False
             and (result.final_adjudication is None
                  or result.final_adjudication.get("promotion_allowed", False))
         )
@@ -2074,10 +2091,15 @@ def summarize_pingpong(result: PingPongResult) -> str:
 
     # Repair loop summary
     repair_status = _classify_repair_status(result)
+    # Check if any repair was triggered by test failure
+    test_driven = any(
+        d.get("reason") == "test_failure_evidence" for d in result.repair_decisions
+    )
     if repair_status == "not_needed":
         lines.append("Repair loop: not needed")
     elif repair_status == "passed_after_repair":
-        lines.append(f"Repair loop: passed after {result.repair_rounds_used} repair round(s)")
+        trigger = "failed tests" if test_driven else "reviewer findings"
+        lines.append(f"Repair loop: passed after {result.repair_rounds_used} repair round(s) (triggered by {trigger})")
         finding_map = build_finding_status_map(result.rounds)
         resolved = [e.prior_finding_id for e in finding_map if e.status == "resolved"]
         if resolved:
@@ -2090,6 +2112,12 @@ def summarize_pingpong(result: PingPongResult) -> str:
             if last_rd.reviewer_output and last_rd.reviewer_output.findings:
                 open_ids = [f.id for f in last_rd.reviewer_output.findings]
                 lines.append(f"Open findings: {', '.join(open_ids)}")
+        if result.final_adjudication:
+            adj = result.final_adjudication
+            lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
+            lines.append(f"Promotion: {'allowed' if adj['promotion_allowed'] else 'blocked'}")
+    elif repair_status == "stopped_on_test_failure":
+        lines.append("Repair loop: stopped — tests failed, repair disabled")
         if result.final_adjudication:
             adj = result.final_adjudication
             lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")

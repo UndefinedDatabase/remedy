@@ -1,27 +1,24 @@
-# Plan — Steps 4773-4787: Repair Governance Correctness Closure v3
+# Plan — Steps 4788-4798: Test Evidence Dominance Closure v4
 
 ## Goal
-Fix 5 real correctness bugs found by review in repair governance v2.
+Enforce deterministic tool/test evidence over LLM reviewer opinion.
+Failed tests must never produce `staged_review_passed`.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- Step 4773: repair_rounds=0 truly disables repair (removed legacy_max_rounds_behavior)
-- Step 4774: CLI argparse default=None → resolve_repair_rounds(None) returns 2
-- Step 4775: repair_rounds_source (cli/default) persisted in PingPongResult + JSON
-- Step 4776: validate_reviewer_output receives test_passed — test failure is evidence
-- Step 4777: review_inconsistent always adjudicates as needs_human_review (never ready)
-- Step 4778: Open findings flow into final adjudication (already correct, verified)
-- Step 4779: Re-review round label fixed (repair_rounds_used not +1)
-- Step 4780: Promotion readiness proof tightened (already correct, verified)
-- Step 4781: 5 explicit repair_rounds=0 regression tests
-- Step 4782: 5 CLI default + source tracking tests
-- Step 4783: 4 inconsistent-review adjudication tests (including E2E)
-- Step 4784: 4 test-failure coherence tests + 1 re-review label test
-- Step 4785: JSON/text reports updated with repair_rounds_source
-- Step 4786: Existing safety preserved (455 related tests pass)
-- Step 4787: Architecture guard clean, full suite 7655 passed
-- 19 new tests (109 total in test_repair_loop.py)
-- Full suite: 7655 passed, 0 failed
+- Step 4788: Test failure checked BEFORE reviewer verdict in make_repair_decision
+- Step 4789: Reviewer pass + tests_failed => repair (budget) or stop (no budget)
+- Step 4790: test_failed triggers adjudication (not_ready, promotion_allowed=false)
+- Step 4791: Clean pass (tests pass + reviewer pass) still avoids repair
+- Step 4792: repair_rounds=0 still truly disables repair
+- Step 4793: Promotion eligibility defense-in-depth: last_test is not False
+- Step 4794: JSON decisions show test_failure_evidence reason
+- Step 4795: Text report shows "triggered by failed tests" for test-driven repair
+- Step 4796: 16 new E2E/unit tests for test-failure dominance
+- Step 4797: All 365 related tests pass, all 7671 suite tests pass
+- Step 4798: Architecture guard clean, no legacy paths remain
+- 125 tests in test_repair_loop.py (16 new)
+- Full suite: 7671 passed, 0 failed
 - Lint: ruff clean, compileall clean

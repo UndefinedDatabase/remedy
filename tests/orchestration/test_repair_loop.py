@@ -42,12 +42,14 @@ def isolate_data_root(tmp_path: Path, monkeypatch):
 
 @pytest.fixture
 def demo_repo(tmp_path: Path) -> Path:
-    (tmp_path / "README.md").write_text("# Demo\nA demo project.\n")
-    (tmp_path / "docs").mkdir()
-    (tmp_path / "docs" / "README.md").write_text("# Docs\n")
-    (tmp_path / "src").mkdir()
-    (tmp_path / "src" / "main.py").write_text("def hello():\n    return 'hello'\n")
-    return tmp_path
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Demo\nA demo project.\n")
+    (repo / "docs").mkdir()
+    (repo / "docs" / "README.md").write_text("# Docs\n")
+    (repo / "src").mkdir()
+    (repo / "src" / "main.py").write_text("def hello():\n    return 'hello'\n")
+    return repo
 
 
 # ---------------------------------------------------------------------------
@@ -1290,3 +1292,263 @@ class TestReReviewRoundLabel:
         repair_prompt = prompts[1]
         assert "Repair Round 1" in repair_prompt
         assert "Repair Round 2" not in repair_prompt
+
+
+# ---------------------------------------------------------------------------
+# Steps 4788-4798: Test Evidence Dominance Closure v4 — New Tests
+# ---------------------------------------------------------------------------
+
+class TestTestFailureDominanceUnit:
+    """Unit tests for test-failure dominance in make_repair_decision."""
+
+    def test_reviewer_pass_tests_failed_triggers_repair(self):
+        """Reviewer pass + tests failed + budget => repair with test_failure_evidence."""
+        d = make_repair_decision(
+            round_num=1, reviewer_verdict="pass",
+            tests_passed=False, finding_count=0,
+            repair_rounds_allowed=2, repair_rounds_used=0,
+            is_repair=False, coherence_error=None,
+        )
+        assert d.repair_decision == "repair"
+        assert d.reason == "test_failure_evidence"
+
+    def test_reviewer_pass_tests_failed_no_budget_stops(self):
+        """Reviewer pass + tests failed + no budget => stop_test_failed_no_repair."""
+        d = make_repair_decision(
+            round_num=1, reviewer_verdict="pass",
+            tests_passed=False, finding_count=0,
+            repair_rounds_allowed=0, repair_rounds_used=0,
+            is_repair=False, coherence_error=None,
+        )
+        assert d.repair_decision == "stop_test_failed_no_repair"
+        assert d.reason == "test_failed_repair_disabled"
+
+    def test_reviewer_pass_tests_failed_exhausted_stops(self):
+        """Reviewer pass + tests failed + exhausted => stop_exhausted."""
+        d = make_repair_decision(
+            round_num=2, reviewer_verdict="pass",
+            tests_passed=False, finding_count=0,
+            repair_rounds_allowed=1, repair_rounds_used=1,
+            is_repair=True, coherence_error=None,
+        )
+        assert d.repair_decision == "stop_exhausted"
+        assert "test_failed" in d.reason
+
+    def test_reviewer_pass_tests_passed_is_clean_pass(self):
+        """Reviewer pass + tests passed => pass_no_repair (clean pass)."""
+        d = make_repair_decision(
+            round_num=1, reviewer_verdict="pass",
+            tests_passed=True, finding_count=0,
+            repair_rounds_allowed=2, repair_rounds_used=0,
+            is_repair=False, coherence_error=None,
+        )
+        assert d.repair_decision == "pass_no_repair"
+        assert d.reason == "reviewer_passed"
+
+    def test_reviewer_pass_tests_none_is_clean_pass(self):
+        """Reviewer pass + tests=None (not run) => pass_no_repair."""
+        d = make_repair_decision(
+            round_num=1, reviewer_verdict="pass",
+            tests_passed=None, finding_count=0,
+            repair_rounds_allowed=2, repair_rounds_used=0,
+            is_repair=False, coherence_error=None,
+        )
+        assert d.repair_decision == "pass_no_repair"
+
+    def test_needs_repair_tests_failed_triggers_repair(self):
+        """needs_repair + tests failed + budget => repair with test_failure_evidence."""
+        d = make_repair_decision(
+            round_num=1, reviewer_verdict="needs_repair",
+            tests_passed=False, finding_count=2,
+            repair_rounds_allowed=2, repair_rounds_used=0,
+            is_repair=False, coherence_error=None,
+        )
+        assert d.repair_decision == "repair"
+        assert d.reason == "test_failure_evidence"
+
+
+class TestTestFailureDominanceE2E:
+    """E2E tests proving test-failure dominance (Step 4796)."""
+
+    def test_tests_failed_reviewer_pass_repair_disabled(self, demo_repo: Path, tmp_path: Path):
+        """1-3. Tests failed + Reviewer pass + repair_rounds=0 => not pass, no repair, no promotion."""
+        test_script = tmp_path / "fail.sh"
+        test_script.write_text("#!/bin/sh\nexit 1\n")
+        test_script.chmod(0o755)
+        # Provider that always passes review
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=0, test_command=str(test_script),
+        )
+        # 1. final status is NOT pass
+        assert result.final_status != "staged_review_passed"
+        assert result.final_status == "test_failed"
+        # 2. no repair call (only 1 round)
+        assert len(result.rounds) == 1
+        assert result.repair_rounds_used == 0
+        # 3. promotion blocked
+        data = export_pingpong_json(result)
+        if result.final_adjudication:
+            assert result.final_adjudication["promotion_allowed"] is False
+
+    def test_tests_failed_reviewer_pass_repair_enabled(self, demo_repo: Path, tmp_path: Path):
+        """4. Tests failed + Reviewer pass + repair_rounds=2 => repair starts."""
+        marker = tmp_path / "toggle_marker"
+        test_script = tmp_path / "toggle.sh"
+        test_script.write_text(
+            f"#!/bin/sh\n"
+            f"if [ -f \"{marker}\" ]; then exit 0; fi\n"
+            f"touch \"{marker}\"\n"
+            f"exit 1\n"
+        )
+        test_script.chmod(0o755)
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2, max_rounds=3, test_command=str(test_script),
+        )
+        # Repair started because tests failed
+        assert len(result.rounds) >= 2
+        # Check decision shows test_failure_evidence
+        assert any(d["reason"] == "test_failure_evidence" for d in result.repair_decisions)
+
+    def test_repair_fixes_tests_then_pass(self, demo_repo: Path, tmp_path: Path):
+        """5. Repair fixes tests + Reviewer pass => staged_review_passed."""
+        marker = tmp_path / "toggle_marker2"
+        test_script = tmp_path / "toggle.sh"
+        test_script.write_text(
+            f"#!/bin/sh\n"
+            f"if [ -f \"{marker}\" ]; then exit 0; fi\n"
+            f"touch \"{marker}\"\n"
+            f"exit 1\n"
+        )
+        test_script.chmod(0o755)
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2, max_rounds=3, test_command=str(test_script),
+        )
+        assert result.final_status == "staged_review_passed"
+
+    def test_repair_does_not_fix_tests(self, demo_repo: Path, tmp_path: Path):
+        """6. Repair does not fix tests => not pass."""
+        test_script = tmp_path / "always_fail.sh"
+        test_script.write_text("#!/bin/sh\nexit 1\n")
+        test_script.chmod(0o755)
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=1, max_rounds=3, test_command=str(test_script),
+        )
+        assert result.final_status != "staged_review_passed"
+        assert result.final_status in ("repair_exhausted", "test_failed", "max_rounds_reached")
+
+    def test_clean_tests_reviewer_pass_no_repair(self, demo_repo: Path, tmp_path: Path):
+        """7. Clean tests + Reviewer pass => no repair starts."""
+        test_script = tmp_path / "pass.sh"
+        test_script.write_text("#!/bin/sh\nexit 0\n")
+        test_script.chmod(0o755)
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2, test_command=str(test_script),
+        )
+        assert result.final_status == "staged_review_passed"
+        assert result.repair_rounds_used == 0
+        assert len(result.rounds) == 1
+
+
+class TestTestFailureJsonReport:
+    """Step 4794: JSON report shows test-driven decisions."""
+
+    def test_test_failure_repair_in_json(self):
+        """Decision record shows test_failure_evidence."""
+        d = make_repair_decision(
+            round_num=1, reviewer_verdict="pass",
+            tests_passed=False, finding_count=0,
+            repair_rounds_allowed=2, repair_rounds_used=0,
+            is_repair=False, coherence_error=None,
+        )
+        data = d.to_dict()
+        assert data["repair_decision"] == "repair"
+        assert data["reason"] == "test_failure_evidence"
+        assert data["tests_passed"] is False
+        assert data["reviewer_verdict"] == "pass"
+
+    def test_test_failure_disabled_in_json(self):
+        """Decision record shows test_failed_repair_disabled."""
+        d = make_repair_decision(
+            round_num=1, reviewer_verdict="pass",
+            tests_passed=False, finding_count=0,
+            repair_rounds_allowed=0, repair_rounds_used=0,
+            is_repair=False, coherence_error=None,
+        )
+        data = d.to_dict()
+        assert data["repair_decision"] == "stop_test_failed_no_repair"
+        assert data["tests_passed"] is False
+
+
+class TestTestFailureTextReport:
+    """Step 4795: Text report distinguishes test-driven repair."""
+
+    def test_text_mentions_failed_tests_trigger(self, demo_repo: Path, tmp_path: Path):
+        """Text report says 'triggered by failed tests' for test-driven repair."""
+        marker = tmp_path / "toggle_marker"
+        test_script = tmp_path / "toggle.sh"
+        test_script.write_text(
+            f"#!/bin/sh\n"
+            f"if [ -f \"{marker}\" ]; then exit 0; fi\n"
+            f"touch \"{marker}\"\n"
+            f"exit 1\n"
+        )
+        test_script.chmod(0o755)
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2, max_rounds=3, test_command=str(test_script),
+        )
+        summary = summarize_pingpong(result)
+        assert "failed tests" in summary
+
+    def test_text_stopped_test_failure(self, demo_repo: Path, tmp_path: Path):
+        """Text report says 'stopped' when test fails with repair disabled."""
+        test_script = tmp_path / "fail.sh"
+        test_script.write_text("#!/bin/sh\nexit 1\n")
+        test_script.chmod(0o755)
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=0, test_command=str(test_script),
+        )
+        summary = summarize_pingpong(result)
+        assert "test_failed" in summary or "stopped" in summary
+
+
+class TestPromotionBlockedAfterFailedTests:
+    """Step 4793: No promotion artifacts when tests failed."""
+
+    def test_no_promotion_with_reviewer_pass_tests_failed(self, demo_repo: Path, tmp_path: Path):
+        """Promotion must be blocked when tests fail even if Reviewer passes."""
+        test_script = tmp_path / "fail.sh"
+        test_script.write_text("#!/bin/sh\nexit 1\n")
+        test_script.chmod(0o755)
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=0, test_command=str(test_script),
+        )
+        # Not pass
+        assert result.final_status != "staged_review_passed"
+        # Adjudication blocks promotion
+        assert result.final_adjudication is not None
+        assert result.final_adjudication["promotion_allowed"] is False
+        assert result.final_adjudication["status"] == "not_ready"
