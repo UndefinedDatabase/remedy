@@ -120,6 +120,19 @@ class TargetGuard:
 
 
 @dataclass
+class ExecutionConfig:
+    """Durable execution config for job continuation."""
+    builder: str = "fake"
+    reviewer: str = "fake"
+    max_rounds: int = 3
+    repair_rounds_allowed: int = 2
+    repair_rounds_source: str = "default"
+    test_command: str = ""
+    claude_cli_write_mode: str = "none"
+    context_strategy: str = "task_bounded_sequential_job"
+
+
+@dataclass
 class JobPlan:
     """Durable job plan with ordered tasks."""
     job_id: str = field(default_factory=lambda: uuid4().hex[:16])
@@ -137,6 +150,7 @@ class JobPlan:
     target_guard: TargetGuard | None = None
     repair_rounds_allowed: int = 0
     repair_rounds_source: str = ""
+    execution_config: ExecutionConfig | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +245,36 @@ def _import_proof_summary(d: dict[str, Any] | None) -> TaskProofSummary | None:
     )
 
 
+def _export_execution_config(c: ExecutionConfig | None) -> dict[str, Any] | None:
+    if c is None:
+        return None
+    return {
+        "builder": c.builder,
+        "reviewer": c.reviewer,
+        "max_rounds": c.max_rounds,
+        "repair_rounds_allowed": c.repair_rounds_allowed,
+        "repair_rounds_source": c.repair_rounds_source,
+        "test_command": c.test_command,
+        "claude_cli_write_mode": c.claude_cli_write_mode,
+        "context_strategy": c.context_strategy,
+    }
+
+
+def _import_execution_config(d: dict[str, Any] | None) -> ExecutionConfig | None:
+    if d is None:
+        return None
+    return ExecutionConfig(
+        builder=d.get("builder", "fake"),
+        reviewer=d.get("reviewer", "fake"),
+        max_rounds=d.get("max_rounds", 3),
+        repair_rounds_allowed=d.get("repair_rounds_allowed", 2),
+        repair_rounds_source=d.get("repair_rounds_source", "default"),
+        test_command=d.get("test_command", ""),
+        claude_cli_write_mode=d.get("claude_cli_write_mode", "none"),
+        context_strategy=d.get("context_strategy", "task_bounded_sequential_job"),
+    )
+
+
 def _export_target_guard(g: TargetGuard | None) -> dict[str, Any] | None:
     if g is None:
         return None
@@ -265,6 +309,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "target_guard": _export_target_guard(job.target_guard),
         "repair_rounds_allowed": job.repair_rounds_allowed,
         "repair_rounds_source": job.repair_rounds_source,
+        "execution_config": _export_execution_config(job.execution_config),
         "tasks": [
             {
                 "task_id": t.task_id,
@@ -303,6 +348,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         target_guard=_import_target_guard(data.get("target_guard")),
         repair_rounds_allowed=data.get("repair_rounds_allowed", 0),
         repair_rounds_source=data.get("repair_rounds_source", ""),
+        execution_config=_import_execution_config(data.get("execution_config")),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -620,7 +666,52 @@ def _strict_apply_to_workspace(
 
 
 # ---------------------------------------------------------------------------
-# Sequential job runner (Steps 4829-4830, 4837-4838)
+# Deterministic job task completion gate (Step 4857)
+# ---------------------------------------------------------------------------
+
+def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
+    """Validate a ping-pong result before applying to job workspace.
+
+    Does NOT rely solely on final_status. Independently checks test results,
+    reviewer verdict, findings, target mutation, and staging path consistency.
+
+    Returns (ok, reasons). If ok is False, reasons lists all failures.
+    """
+    reasons: list[str] = []
+
+    if result.final_status != "staged_review_passed":
+        reasons.append(f"final_status={result.final_status}")
+
+    if result.target_mutated:
+        reasons.append("target_mutated=True")
+
+    # Check final test result from last round
+    if result.rounds:
+        last_round = result.rounds[-1]
+        if last_round.test_passed is False:
+            reasons.append("test_passed=False")
+        if last_round.reviewer_output:
+            ro = last_round.reviewer_output
+            if ro.verdict != "pass":
+                reasons.append(f"reviewer_verdict={ro.verdict}")
+            if ro.verdict == "pass" and ro.findings:
+                reasons.append(
+                    f"reviewer_pass_with_{len(ro.findings)}_findings"
+                )
+    else:
+        reasons.append("no_rounds")
+
+    # Staging path must exist when staged files need apply
+    if result.staged_files:
+        staging = Path(result.staging_path) if result.staging_path else None
+        if staging is None or not staging.exists():
+            reasons.append("staging_path_missing")
+
+    return (len(reasons) == 0, reasons)
+
+
+# ---------------------------------------------------------------------------
+# Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4860)
 # ---------------------------------------------------------------------------
 
 def run_job(
@@ -660,6 +751,33 @@ def run_job(
             status=JOB_BLOCKED,
             error=f"job_not_found: {job_id}",
         )
+
+    # Step 4859-4860: Restore or create execution config
+    # On continuation, CLI-omitted values come as defaults. If persisted
+    # config exists, use it as fallback for omitted values.
+    if job.execution_config is not None:
+        ec = job.execution_config
+        if builder_name == "fake" and ec.builder != "fake":
+            builder_name = ec.builder
+        if reviewer_name == "fake" and ec.reviewer != "fake":
+            reviewer_name = ec.reviewer
+        if test_command == "" and ec.test_command != "":
+            test_command = ec.test_command
+        if claude_cli_write_mode == "none" and ec.claude_cli_write_mode != "none":
+            claude_cli_write_mode = ec.claude_cli_write_mode
+        if repair_rounds_source == "default" and ec.repair_rounds_source == "cli":
+            repair_rounds = ec.repair_rounds_allowed
+            repair_rounds_source = ec.repair_rounds_source
+
+    job.execution_config = ExecutionConfig(
+        builder=builder_name,
+        reviewer=reviewer_name,
+        max_rounds=max_rounds,
+        repair_rounds_allowed=repair_rounds,
+        repair_rounds_source=repair_rounds_source,
+        test_command=test_command,
+        claude_cli_write_mode=claude_cli_write_mode,
+    )
 
     # Record repair-round metadata at job level
     job.repair_rounds_allowed = repair_rounds
@@ -758,11 +876,12 @@ def run_job(
             if last_round.reviewer_output:
                 task.reviewer_verdict = last_round.reviewer_output.verdict
 
-        # Step 4838: Task completion gate
-        if result.final_status != "staged_review_passed":
-            task.status = TASK_FAILED
-            task.error = f"not_passed: {result.final_status}"
-            _block_job(job, idx, f"task_{task.task_id}_not_passed: {result.final_status}")
+        # Step 4857: Deterministic task completion gate
+        gate_ok, gate_reasons = validate_job_task_result(result)
+        if not gate_ok:
+            task.status = TASK_BLOCKED
+            task.error = f"completion_gate_failed: {'; '.join(gate_reasons)}"
+            _block_job(job, idx, f"task_{task.task_id}_gate_failed: {'; '.join(gate_reasons)}")
             return job
 
         task.status = TASK_PASSED
@@ -941,6 +1060,7 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
         "repair_rounds_allowed": job.repair_rounds_allowed,
         "repair_rounds_source": job.repair_rounds_source,
         "pending_tasks": pending_count,
+        "execution_config": _export_execution_config(job.execution_config),
         "context_strategy": {
             "strategy": "task_bounded_sequential_job",
             "previous_task_summary_limit": _PREVIOUS_SUMMARY_LIMIT,
@@ -1006,6 +1126,19 @@ def format_job_report_text(job: JobPlan) -> str:
     if job.status == JOB_PAUSED and pending_count > 0:
         lines.append(f"Paused: {pending_count} tasks pending")
 
+    ec = job.execution_config
+    if ec:
+        lines.append(f"Builder: {ec.builder}")
+        lines.append(f"Reviewer: {ec.reviewer}")
+        tc = ec.test_command
+        if tc:
+            tc_display = tc[:80] + "..." if len(tc) > 80 else tc
+            lines.append(f"Test command: {tc_display}")
+        if ec.claude_cli_write_mode != "none":
+            lines.append(f"Write mode: {ec.claude_cli_write_mode}")
+        if job.status == JOB_PAUSED:
+            lines.append("Continuation config: persisted from previous run")
+
     if any(t.status == TASK_APPLIED for t in job.tasks):
         lines.append("Job workspace has accumulated changes.")
     lines.append(
@@ -1021,7 +1154,12 @@ def format_job_report_text(job: JobPlan) -> str:
 
 
 def _suggest_next_command(job: JobPlan) -> str:
-    """Suggest the next CLI command based on job state."""
+    """Suggest the next CLI command based on job state.
+
+    For paused jobs with persisted config, the short command is safe — config
+    is restored from persistence. The report text shows the config that will
+    be used.
+    """
     if job.status == JOB_PLANNED:
         return f"remedy do job-run {job.job_id}"
     if job.status == JOB_PAUSED:

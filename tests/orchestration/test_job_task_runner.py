@@ -1,10 +1,10 @@
-"""Tests for the Job Task Runner (Steps 4827-4856).
+"""Tests for the Job Task Runner (Steps 4827-4868).
 
 Covers: job plan parsing, deterministic task IDs, strict workspace apply,
 sequential execution, target repo guard, token-bounded context, report output,
 blocking-path E2E, CLI dispatch, existing flow preservation, repair-round
-CLI control, execution metadata, partial-run status, and target mutation
-negative guard.
+CLI control, execution metadata, partial-run status, target mutation
+negative guard, deterministic completion gate, and continuation config.
 """
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ from packages.orchestration.pingpong_job import (
     parse_job_file,
     plan_job_from_file,
     run_job,
+    validate_job_task_result,
 )
 from packages.orchestration.pingpong_provider import FakeProvider
 
@@ -362,7 +363,7 @@ class TestTaskCompletionGate:
             max_rounds=1, repair_rounds=0,
         )
         assert result.status == JOB_BLOCKED
-        assert result.tasks[0].status == TASK_FAILED
+        assert result.tasks[0].status in (TASK_FAILED, TASK_BLOCKED)
         assert result.tasks[1].status == TASK_SKIPPED
 
 
@@ -1069,3 +1070,457 @@ class TestReportRepairMetadata:
         result = _run_success_job(demo_repo)
         report = export_job_report(result)
         assert report["context_strategy"]["strategy"] == "task_bounded_sequential_job"
+
+
+# ---------------------------------------------------------------------------
+# Step 4857-4858 — Deterministic completion gate + corrupted-result tests
+# ---------------------------------------------------------------------------
+
+
+def _make_fake_result(
+    *,
+    final_status="staged_review_passed",
+    test_passed=True,
+    reviewer_verdict="pass",
+    reviewer_findings=None,
+    target_mutated=False,
+    staged_files=None,
+    staging_path="/tmp/fake_staging",
+):
+    """Build a fake PingPongResult-like object for gate testing."""
+    from packages.orchestration.pingpong_provider import ReviewerOutput, ReviewFinding
+
+    ro = ReviewerOutput(verdict=reviewer_verdict)
+    if reviewer_findings:
+        ro.findings = [
+            ReviewFinding(id=f"F{i}", severity="high", summary=f)
+            for i, f in enumerate(reviewer_findings)
+        ]
+
+    from packages.orchestration.pingpong_loop import PingPongRound
+
+    round_ = PingPongRound(
+        round_number=1,
+        test_passed=test_passed,
+        reviewer_output=ro,
+    )
+
+    return types.SimpleNamespace(
+        run_id="fake_run",
+        final_status=final_status,
+        target_mutated=target_mutated,
+        rounds=[round_],
+        staged_files=staged_files or ["README.md"],
+        staging_path=staging_path,
+        safe_diff_files=staged_files or ["README.md"],
+        repair_rounds_used=0,
+        repair_rounds_allowed=0,
+    )
+
+
+class TestCompletionGate:
+    def test_clean_result_passes(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "README.md").write_text("ok")
+        result = _make_fake_result(staging_path=str(staging))
+        ok, reasons = validate_job_task_result(result)
+        assert ok is True
+        assert reasons == []
+
+    def test_failed_test_blocks(self):
+        result = _make_fake_result(test_passed=False)
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("test_passed=False" in r for r in reasons)
+
+    def test_reviewer_fail_blocks(self):
+        result = _make_fake_result(reviewer_verdict="fail")
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("reviewer_verdict=fail" in r for r in reasons)
+
+    def test_reviewer_pass_with_findings_blocks(self):
+        result = _make_fake_result(
+            reviewer_verdict="pass",
+            reviewer_findings=["bug in line 5"],
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("findings" in r for r in reasons)
+
+    def test_target_mutated_blocks(self):
+        result = _make_fake_result(target_mutated=True)
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("target_mutated" in r for r in reasons)
+
+    def test_bad_final_status_blocks(self):
+        result = _make_fake_result(final_status="max_rounds_reached")
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("final_status" in r for r in reasons)
+
+    def test_staging_path_missing_blocks(self):
+        result = _make_fake_result(staging_path="/nonexistent/path")
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("staging_path_missing" in r for r in reasons)
+
+
+class TestCorruptedResultJobBlock:
+    """Tests that internally inconsistent results block the job."""
+
+    def _run_with_corrupt_result(self, demo_repo, monkeypatch, **overrides):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def corrupt_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            for k, v in overrides.items():
+                if k == "test_passed" and result.rounds:
+                    result.rounds[-1].test_passed = v
+                elif k == "reviewer_verdict" and result.rounds:
+                    if result.rounds[-1].reviewer_output:
+                        result.rounds[-1].reviewer_output.verdict = v
+                elif k == "reviewer_findings" and result.rounds:
+                    if result.rounds[-1].reviewer_output:
+                        from packages.orchestration.pingpong_provider import ReviewFinding
+                        result.rounds[-1].reviewer_output.findings = [
+                            ReviewFinding(id="F1", severity="high", summary=f)
+                            for f in v
+                        ]
+                elif k == "target_mutated":
+                    result.target_mutated = v
+                else:
+                    setattr(result, k, v)
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", corrupt_run)
+
+        return run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+    def test_test_failed_but_final_pass_blocks(self, isolate_data_root, demo_repo, monkeypatch):
+        result = self._run_with_corrupt_result(demo_repo, monkeypatch, test_passed=False)
+        assert result.status == JOB_BLOCKED
+        assert any("test_passed" in (t.error or "") for t in result.tasks)
+
+    def test_reviewer_fail_but_final_pass_blocks(self, isolate_data_root, demo_repo, monkeypatch):
+        result = self._run_with_corrupt_result(demo_repo, monkeypatch, reviewer_verdict="fail")
+        assert result.status == JOB_BLOCKED
+        assert any("reviewer_verdict" in (t.error or "") for t in result.tasks)
+
+    def test_reviewer_pass_with_findings_blocks(self, isolate_data_root, demo_repo, monkeypatch):
+        result = self._run_with_corrupt_result(
+            demo_repo, monkeypatch,
+            reviewer_findings=["unexpected bug"],
+        )
+        assert result.status == JOB_BLOCKED
+        assert any("findings" in (t.error or "") for t in result.tasks)
+
+    def test_target_mutated_but_final_pass_blocks(self, isolate_data_root, demo_repo, monkeypatch):
+        result = self._run_with_corrupt_result(demo_repo, monkeypatch, target_mutated=True)
+        assert result.status == JOB_BLOCKED
+        assert any("target_mutated" in (t.error or "") for t in result.tasks)
+
+    def test_blocked_result_not_applied(self, isolate_data_root, demo_repo, monkeypatch):
+        result = self._run_with_corrupt_result(demo_repo, monkeypatch, test_passed=False)
+        for t in result.tasks:
+            assert t.status != TASK_APPLIED
+
+    def test_task2_does_not_start_after_block(self, isolate_data_root, demo_repo, monkeypatch):
+        result = self._run_with_corrupt_result(demo_repo, monkeypatch, test_passed=False)
+        assert result.tasks[1].status in (TASK_SKIPPED, TASK_PENDING)
+
+
+# ---------------------------------------------------------------------------
+# Steps 4859-4864 — Execution config persistence and continuation
+# ---------------------------------------------------------------------------
+
+
+class TestExecutionConfig:
+    def test_config_persisted_on_run(self, isolate_data_root, demo_repo):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            reviewer_name="claude-cli",
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            test_command="true",
+        )
+        assert result.execution_config is not None
+        assert result.execution_config.builder == "claude-cli"
+        assert result.execution_config.reviewer == "claude-cli"
+        assert result.execution_config.repair_rounds_allowed == 1
+        assert result.execution_config.repair_rounds_source == "cli"
+        assert result.execution_config.test_command == "true"
+
+    def test_config_persisted_in_json(self, isolate_data_root, demo_repo):
+        result = _run_success_job(demo_repo)
+        loaded = load_job_plan(result.job_id)
+        assert loaded is not None
+        assert loaded.execution_config is not None
+        assert loaded.execution_config.builder == "fake"
+
+    def test_config_in_report(self, isolate_data_root, demo_repo):
+        result = _run_success_job(demo_repo)
+        report = export_job_report(result)
+        assert "execution_config" in report
+        ec = report["execution_config"]
+        assert ec["builder"] == "fake"
+        assert ec["context_strategy"] == "task_bounded_sequential_job"
+
+
+class TestContinuationConfig:
+    def test_pause_preserves_config(self, isolate_data_root, demo_repo):
+        """Config is persisted after paused run."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            reviewer_name="claude-cli",
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            test_command="true",
+            max_tasks=1,
+        )
+        assert result.status == JOB_PAUSED
+        loaded = load_job_plan(result.job_id)
+        assert loaded.execution_config.builder == "claude-cli"
+        assert loaded.execution_config.test_command == "true"
+        assert loaded.execution_config.repair_rounds_allowed == 1
+
+    def test_continuation_restores_config(self, isolate_data_root, demo_repo):
+        """Continuation without flags restores persisted config."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            reviewer_name="claude-cli",
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            test_command="true",
+            max_tasks=1,
+        )
+        # Continue with defaults (simulating omitted CLI flags)
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        assert result2.status == JOB_COMPLETED
+        # Config should be restored, not fallen back to defaults
+        assert result2.execution_config.builder == "claude-cli"
+        assert result2.execution_config.reviewer == "claude-cli"
+        assert result2.execution_config.test_command == "true"
+        assert result2.execution_config.repair_rounds_allowed == 1
+
+    def test_task2_uses_same_config(self, isolate_data_root, demo_repo):
+        """Task 2 on continuation uses same repair rounds as task 1."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        assert result2.tasks[1].repair_rounds_allowed == 1
+
+    def test_continuation_report_shows_config(self, isolate_data_root, demo_repo):
+        """Report for paused job shows persisted config."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            test_command="true",
+            max_tasks=1,
+        )
+        text = format_job_report_text(result)
+        assert "claude-cli" in text
+        assert "persisted" in text.lower()
+
+    def test_no_silent_fallback(self, isolate_data_root, demo_repo):
+        """Continuation without flags does NOT silently change config."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            builder_name="claude-cli",
+            reviewer_name="claude-cli",
+            repair_rounds=0,
+            repair_rounds_source="cli",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+        # Must NOT fall back to default repair_rounds=2
+        assert result2.repair_rounds_allowed == 0
+        assert result2.repair_rounds_source == "cli"
+
+
+class TestConfigOverride:
+    def test_explicit_override_takes_effect(self, isolate_data_root, demo_repo):
+        """Explicit CLI flag overrides persisted config."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            max_tasks=1,
+        )
+        # Override repair_rounds on continuation
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+        assert result2.repair_rounds_allowed == 0
+        assert result2.execution_config.repair_rounds_allowed == 0
+
+    def test_override_updates_persisted_config(self, isolate_data_root, demo_repo):
+        """Override updates the persisted config for next run."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            max_tasks=1,
+        )
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+        loaded = load_job_plan(job.job_id)
+        assert loaded.execution_config.repair_rounds_allowed == 0
+
+    def test_report_shows_active_config(self, isolate_data_root, demo_repo):
+        """Report after override shows active config, not original."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=1,
+            repair_rounds_source="cli",
+            max_tasks=1,
+        )
+        result2 = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+        report = export_job_report(result2)
+        assert report["repair_rounds_allowed"] == 0
+        assert report["execution_config"]["repair_rounds_allowed"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Step 4867 — CLI smoke / command-path pause-continue proof
+# ---------------------------------------------------------------------------
+
+
+class TestCliPauseContinueSmoke:
+    def test_full_pause_continue_cycle(self, isolate_data_root, demo_repo, capsys):
+        """Handler-level proof of pause → continue with persisted config."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        # Step 1: Plan
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        # Step 2: Run with --max-tasks 1, --repair-rounds 1
+        args1 = _make_args(
+            job_id=job.job_id,
+            repair_rounds=1,
+            max_tasks="1",
+        )
+        COMMAND_HANDLERS["do.job-run"](args1)
+        out1 = json.loads(capsys.readouterr().out)
+
+        assert out1["status"] == "paused"
+        assert out1["pending_tasks"] == 1
+        assert out1["repair_rounds_allowed"] == 1
+        assert out1["repair_rounds_source"] == "cli"
+        assert out1["execution_config"]["repair_rounds_allowed"] == 1
+
+        # Step 3: Report
+        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
+        COMMAND_HANDLERS["do.job-report"](args_report)
+        report1 = json.loads(capsys.readouterr().out)
+        assert report1["status"] == "paused"
+        assert report1["execution_config"]["repair_rounds_allowed"] == 1
+
+        # Step 4: Continue without restating flags
+        args2 = _make_args(job_id=job.job_id)
+        COMMAND_HANDLERS["do.job-run"](args2)
+        out2 = json.loads(capsys.readouterr().out)
+
+        assert out2["status"] == "completed"
+        # Config must be preserved from first run, not fallen back to default 2
+        assert out2["repair_rounds_allowed"] == 1
+        assert out2["execution_config"]["repair_rounds_allowed"] == 1
+
+        # Step 5: Final report
+        COMMAND_HANDLERS["do.job-report"](args_report)
+        report2 = json.loads(capsys.readouterr().out)
+        assert report2["status"] == "completed"
+
+        # Both tasks should be applied
+        applied = [t for t in report2["tasks"] if t["status"] == TASK_APPLIED]
+        assert len(applied) == 2
+
+    def test_target_repo_unchanged_after_smoke(self, isolate_data_root, demo_repo, capsys):
+        """Target repo is not mutated during pause/continue cycle."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        readme_before = (demo_repo / "README.md").read_text()
+        main_before = (demo_repo / "src" / "main.py").read_text()
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args1 = _make_args(job_id=job.job_id, max_tasks="1")
+        COMMAND_HANDLERS["do.job-run"](args1)
+        capsys.readouterr()
+
+        args2 = _make_args(job_id=job.job_id)
+        COMMAND_HANDLERS["do.job-run"](args2)
+        capsys.readouterr()
+
+        assert (demo_repo / "README.md").read_text() == readme_before
+        assert (demo_repo / "src" / "main.py").read_text() == main_before
