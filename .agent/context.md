@@ -4,8 +4,8 @@
 feature/steps-3276-3355-job-fulfillment-spine-v0
 
 ## Scope
-Steps 4788-4798: Test Evidence Dominance Closure v4.
-Enforce deterministic tool/test evidence over LLM reviewer opinion.
+Steps 4799-4806: CLI Repair Default Truth Closure v5.
+Fix CLI dispatch so omitted --repair-rounds stays None (default=2), not coerced to 0.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.

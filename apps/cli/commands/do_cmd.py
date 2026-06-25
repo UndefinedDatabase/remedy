@@ -653,7 +653,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         task_stdin=getattr(args, "task_stdin", False),
         scope_file=getattr(args, "scope_file", None) or "",
         approve_scope=getattr(args, "approve_scope", False),
-        repair_rounds=int(getattr(args, "repair_rounds", None) or 0),
+        repair_rounds=getattr(args, "repair_rounds", None),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",

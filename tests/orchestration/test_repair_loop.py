@@ -1552,3 +1552,176 @@ class TestPromotionBlockedAfterFailedTests:
         assert result.final_adjudication is not None
         assert result.final_adjudication["promotion_allowed"] is False
         assert result.final_adjudication["status"] == "not_ready"
+
+
+# ---------------------------------------------------------------------------
+# Steps 4799-4806: CLI Repair Default Truth Closure v5 — New Tests
+# ---------------------------------------------------------------------------
+
+class TestCliRepairRoundsDispatch:
+    """Steps 4800-4802: CLI dispatch honors omitted vs explicit --repair-rounds."""
+
+    def test_omitted_repair_rounds_passes_none(self):
+        """Step 4800: Omitted --repair-rounds reaches _cmd_do as None."""
+        from unittest.mock import patch as mock_patch
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        class FakeArgs:
+            goal = "Fix README"
+            repo = "."
+            builder = "fake"
+            reviewer = "fake"
+            max_rounds = 3
+            mode = "staged"
+            json = True
+            dry_run = False
+            enable_ui = False
+            fixture_builder = False
+            builder_provider = "none"
+            test_command = ""
+            provider_timeout_sec = 120
+            max_output_chars = 50000
+            keep_staging = False
+            claude_cli_write_mode = "none"
+            task_file = ""
+            task_stdin = False
+            scope_file = ""
+            approve_scope = False
+            repair_rounds = None  # omitted
+            autonomy_level = 2
+            project = None
+            user_requested = False
+            prefer_local_for_cheap_tasks = False
+            prefer_ollama_for_cheap_tasks = False
+            require_human_approval_for_expensive = False
+
+        with mock_patch("apps.cli.commands.do_cmd._cmd_do") as mock_do:
+            COMMAND_HANDLERS["do.run"](FakeArgs())
+            _, kwargs = mock_do.call_args
+            assert kwargs["repair_rounds"] is None
+
+    def test_explicit_zero_passes_zero(self):
+        """Step 4801: Explicit --repair-rounds 0 reaches _cmd_do as 0."""
+        from unittest.mock import patch as mock_patch
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        class FakeArgs:
+            goal = "Fix README"
+            repo = "."
+            builder = "fake"
+            reviewer = "fake"
+            max_rounds = 3
+            mode = "staged"
+            json = True
+            dry_run = False
+            enable_ui = False
+            fixture_builder = False
+            builder_provider = "none"
+            test_command = ""
+            provider_timeout_sec = 120
+            max_output_chars = 50000
+            keep_staging = False
+            claude_cli_write_mode = "none"
+            task_file = ""
+            task_stdin = False
+            scope_file = ""
+            approve_scope = False
+            repair_rounds = 0  # explicit zero
+            autonomy_level = 2
+            project = None
+            user_requested = False
+            prefer_local_for_cheap_tasks = False
+            prefer_ollama_for_cheap_tasks = False
+            require_human_approval_for_expensive = False
+
+        with mock_patch("apps.cli.commands.do_cmd._cmd_do") as mock_do:
+            COMMAND_HANDLERS["do.run"](FakeArgs())
+            _, kwargs = mock_do.call_args
+            assert kwargs["repair_rounds"] == 0
+
+    def test_explicit_one_passes_one(self):
+        """Step 4802: Explicit --repair-rounds 1 reaches _cmd_do as 1."""
+        from unittest.mock import patch as mock_patch
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        class FakeArgs:
+            goal = "Fix README"
+            repo = "."
+            builder = "fake"
+            reviewer = "fake"
+            max_rounds = 3
+            mode = "staged"
+            json = True
+            dry_run = False
+            enable_ui = False
+            fixture_builder = False
+            builder_provider = "none"
+            test_command = ""
+            provider_timeout_sec = 120
+            max_output_chars = 50000
+            keep_staging = False
+            claude_cli_write_mode = "none"
+            task_file = ""
+            task_stdin = False
+            scope_file = ""
+            approve_scope = False
+            repair_rounds = 1  # explicit one
+            autonomy_level = 2
+            project = None
+            user_requested = False
+            prefer_local_for_cheap_tasks = False
+            prefer_ollama_for_cheap_tasks = False
+            require_human_approval_for_expensive = False
+
+        with mock_patch("apps.cli.commands.do_cmd._cmd_do") as mock_do:
+            COMMAND_HANDLERS["do.run"](FakeArgs())
+            _, kwargs = mock_do.call_args
+            assert kwargs["repair_rounds"] == 1
+
+    def test_omitted_resolves_to_default_two(self, demo_repo: Path):
+        """Omitted --repair-rounds resolves to default 2 in run_pingpong."""
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
+        # Simulate what _cmd_do does: resolve_repair_rounds(None)
+        val, source = resolve_repair_rounds(None)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=val, repair_rounds_source=source,
+        )
+        assert result.repair_rounds_allowed == 2
+        assert result.repair_rounds_source == "default"
+        data = export_pingpong_json(result)
+        assert data["repair_loop"]["repair_rounds_allowed"] == 2
+        assert data["repair_loop"]["repair_rounds_source"] == "default"
+
+    def test_explicit_zero_disables_in_json(self, demo_repo: Path):
+        """Explicit zero: repair disabled, source=cli in JSON."""
+        provider = FakeProvider(fail_on_round=1, pass_on_round=2)
+        val, source = resolve_repair_rounds(0)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=val, repair_rounds_source=source,
+        )
+        data = export_pingpong_json(result)
+        assert data["repair_loop"]["repair_rounds_allowed"] == 0
+        assert data["repair_loop"]["repair_rounds_source"] == "cli"
+        assert data["repair_loop"]["enabled"] is False
+        # Findings present but no repair
+        assert result.final_status == "repair_exhausted"
+
+    def test_explicit_one_allows_one_repair(self, demo_repo: Path):
+        """Explicit 1: exactly one repair round used."""
+        provider = FakeProvider(fail_on_round=1, pass_on_round=2)
+        val, source = resolve_repair_rounds(1)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=val, repair_rounds_source=source,
+            max_rounds=3,
+        )
+        data = export_pingpong_json(result)
+        assert data["repair_loop"]["repair_rounds_allowed"] == 1
+        assert data["repair_loop"]["repair_rounds_source"] == "cli"
+        assert result.final_status == "staged_review_passed"
+        assert result.repair_rounds_used == 1
