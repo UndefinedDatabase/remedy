@@ -1078,25 +1078,35 @@ class TestReportRepairMetadata:
 # ---------------------------------------------------------------------------
 
 
+_SENTINEL_NO_REVIEWER = object()
+
+
 def _make_fake_result(
     *,
     final_status="staged_review_passed",
     test_passed=True,
     reviewer_verdict="pass",
     reviewer_findings=None,
+    reviewer_output=_SENTINEL_NO_REVIEWER,
     target_mutated=False,
     staged_files=None,
     staging_path="/tmp/fake_staging",
 ):
-    """Build a fake PingPongResult-like object for gate testing."""
-    from packages.orchestration.pingpong_provider import ReviewerOutput, ReviewFinding
+    """Build a fake PingPongResult-like object for gate testing.
 
-    ro = ReviewerOutput(verdict=reviewer_verdict)
-    if reviewer_findings:
-        ro.findings = [
-            ReviewFinding(id=f"F{i}", severity="high", summary=f)
-            for i, f in enumerate(reviewer_findings)
-        ]
+    Pass reviewer_output=None to simulate missing reviewer evidence.
+    Default builds a ReviewerOutput from reviewer_verdict/reviewer_findings.
+    """
+    if reviewer_output is _SENTINEL_NO_REVIEWER:
+        from packages.orchestration.pingpong_provider import ReviewerOutput, ReviewFinding
+        ro = ReviewerOutput(verdict=reviewer_verdict)
+        if reviewer_findings:
+            ro.findings = [
+                ReviewFinding(id=f"F{i}", severity="high", summary=f)
+                for i, f in enumerate(reviewer_findings)
+            ]
+    else:
+        ro = reviewer_output
 
     from packages.orchestration.pingpong_loop import PingPongRound
 
@@ -1183,6 +1193,8 @@ class TestCorruptedResultJobBlock:
             for k, v in overrides.items():
                 if k == "test_passed" and result.rounds:
                     result.rounds[-1].test_passed = v
+                elif k == "reviewer_output" and result.rounds:
+                    result.rounds[-1].reviewer_output = v
                 elif k == "reviewer_verdict" and result.rounds:
                     if result.rounds[-1].reviewer_output:
                         result.rounds[-1].reviewer_output.verdict = v
@@ -2106,3 +2118,314 @@ class TestCommandPathExplicitOverrides:
         report = json.loads(capsys.readouterr().out)
         assert report["execution_config"]["max_rounds"] == 3
         assert report["execution_config"]["max_rounds_source"] == "cli"
+
+
+# ---------------------------------------------------------------------------
+# Step 4879-4880 — Missing reviewer output gate tests
+# ---------------------------------------------------------------------------
+
+
+class TestMissingReviewerOutputGate:
+    """Completion gate blocks when reviewer_output is None."""
+
+    def test_missing_reviewer_with_test_passed_blocks(self):
+        """staged_review_passed + test_passed=True + reviewer_output=None blocks."""
+        result = _make_fake_result(
+            test_passed=True, reviewer_output=None,
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("missing_reviewer_output" in r for r in reasons)
+
+    def test_missing_reviewer_with_test_none_blocks(self):
+        """staged_review_passed + test_passed=None + reviewer_output=None blocks."""
+        result = _make_fake_result(
+            test_passed=None, reviewer_output=None,
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("missing_reviewer_output" in r for r in reasons)
+
+    def test_clean_reviewer_pass_with_empty_findings_passes(self, tmp_path):
+        """staged_review_passed + reviewer pass + findings=[] passes."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "README.md").write_text("ok")
+        result = _make_fake_result(
+            reviewer_verdict="pass",
+            reviewer_findings=None,
+            staging_path=str(staging),
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is True
+        assert reasons == []
+
+    def test_reviewer_pass_with_findings_still_blocks(self):
+        """staged_review_passed + reviewer pass + findings=[...] blocks."""
+        result = _make_fake_result(
+            reviewer_verdict="pass",
+            reviewer_findings=["leftover issue"],
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("findings" in r for r in reasons)
+
+    def test_reviewer_fail_still_blocks(self):
+        """staged_review_passed + reviewer fail blocks."""
+        result = _make_fake_result(reviewer_verdict="fail")
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("reviewer_verdict=fail" in r for r in reasons)
+
+    def test_target_mutated_still_blocks(self):
+        """staged_review_passed + target_mutated=True still blocks."""
+        result = _make_fake_result(target_mutated=True)
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("target_mutated" in r for r in reasons)
+
+
+# ---------------------------------------------------------------------------
+# Step 4881 — E2E regression: missing reviewer_output blocks run_job
+# ---------------------------------------------------------------------------
+
+
+class TestMissingReviewerE2E:
+    """run_job blocks when run_pingpong returns reviewer_output=None."""
+
+    def test_missing_reviewer_blocks_job(self, isolate_data_root, demo_repo, monkeypatch):
+        """Job blocks when corrupted result has reviewer_output=None."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def no_reviewer_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            if result.rounds:
+                result.rounds[-1].reviewer_output = None
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", no_reviewer_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        assert result.status == JOB_BLOCKED
+        assert any("missing_reviewer_output" in (t.error or "") for t in result.tasks)
+
+    def test_missing_reviewer_no_workspace_apply(self, isolate_data_root, demo_repo, monkeypatch):
+        """Staged files not applied when reviewer evidence is missing."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def no_reviewer_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            if result.rounds:
+                result.rounds[-1].reviewer_output = None
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", no_reviewer_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        for t in result.tasks:
+            assert t.status != TASK_APPLIED
+
+    def test_task2_skipped_after_missing_reviewer(self, isolate_data_root, demo_repo, monkeypatch):
+        """Task 2 does not start after task 1 blocked for missing reviewer."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def no_reviewer_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            if result.rounds:
+                result.rounds[-1].reviewer_output = None
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", no_reviewer_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        assert result.tasks[1].status in (TASK_SKIPPED, TASK_PENDING)
+
+
+# ---------------------------------------------------------------------------
+# Step 4882 — No-test-command valid behavior
+# ---------------------------------------------------------------------------
+
+
+class TestNoTestCommandValid:
+    """test_passed=None is valid when no test command was configured."""
+
+    def test_no_test_command_with_reviewer_pass(self, tmp_path):
+        """No test command (test_passed=None) + clean reviewer pass = gate OK."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "README.md").write_text("ok")
+        result = _make_fake_result(
+            test_passed=None,
+            reviewer_verdict="pass",
+            staging_path=str(staging),
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is True
+        assert reasons == []
+
+    def test_no_test_command_without_reviewer_blocks(self):
+        """No test command (test_passed=None) + missing reviewer = blocked."""
+        result = _make_fake_result(
+            test_passed=None,
+            reviewer_output=None,
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+        assert any("missing_reviewer_output" in r for r in reasons)
+
+
+# ---------------------------------------------------------------------------
+# Step 4883 — Report exposes missing-reviewer block reason
+# ---------------------------------------------------------------------------
+
+
+class TestMissingReviewerReport:
+    """Report correctly shows missing-reviewer block reason."""
+
+    def test_json_report_shows_block_reason(self, isolate_data_root, demo_repo, monkeypatch):
+        """JSON report includes missing_reviewer_output in task error."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def no_reviewer_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            if result.rounds:
+                result.rounds[-1].reviewer_output = None
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", no_reviewer_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        report = export_job_report(result)
+        assert report["status"] == JOB_BLOCKED
+        blocked_tasks = [t for t in report["tasks"] if t["status"] == TASK_BLOCKED]
+        assert len(blocked_tasks) >= 1
+        assert "missing_reviewer_output" in blocked_tasks[0].get("error", "")
+
+    def test_text_report_shows_blocked(self, isolate_data_root, demo_repo, monkeypatch):
+        """Text report shows task blocked status."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def no_reviewer_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            if result.rounds:
+                result.rounds[-1].reviewer_output = None
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", no_reviewer_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        text = format_job_report_text(result)
+        assert "blocked" in text.lower()
+
+    def test_no_proof_summary_for_blocked_task(self, isolate_data_root, demo_repo, monkeypatch):
+        """Blocked task does not get a proof summary implying completion."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def no_reviewer_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            if result.rounds:
+                result.rounds[-1].reviewer_output = None
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", no_reviewer_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        blocked = [t for t in result.tasks if t.status == TASK_BLOCKED]
+        assert len(blocked) >= 1
+        assert blocked[0].proof_summary is None
+
+
+# ---------------------------------------------------------------------------
+# Step 4885 — Command-path smoke for fixed gate
+# ---------------------------------------------------------------------------
+
+
+class TestCommandPathGateSmoke:
+    """Handler-level proof that gate works correctly."""
+
+    def test_normal_two_task_job_completes(self, isolate_data_root, demo_repo, capsys):
+        """Normal fake two-task job still completes through handler."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args = _make_args(job_id=job.job_id)
+        COMMAND_HANDLERS["do.job-run"](args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["status"] == "completed"
+        applied = [t for t in out["tasks"] if t["status"] == TASK_APPLIED]
+        assert len(applied) == 2
+
+    def test_config_unaffected_by_gate_block(self, isolate_data_root, demo_repo, monkeypatch, capsys):
+        """Continuation config survives even when gate blocks."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def no_reviewer_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            if result.rounds:
+                result.rounds[-1].reviewer_output = None
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", no_reviewer_run)
+
+        args = _make_args(
+            job_id=job.job_id, max_rounds="7", repair_rounds=1,
+        )
+        COMMAND_HANDLERS["do.job-run"](args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["status"] == "blocked"
+        ec = out["execution_config"]
+        assert ec["max_rounds"] == 7
+        assert ec["repair_rounds_allowed"] == 1

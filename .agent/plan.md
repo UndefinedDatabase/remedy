@@ -1,24 +1,18 @@
-# Plan — Steps 4869-4878: Job Runner Continuation Config Truth Closure v4
+# Plan — Steps 4879-4886: Job Completion Gate Reviewer Evidence Closure v5
 
 ## Goal
-Fix two continuation-config bugs:
-1. max_rounds not restored on paused continuation
-2. Explicit --builder fake / --reviewer fake ignored after persisted non-fake
-
-Root cause: CLI handler collapses omitted options to default values, making
-omitted indistinguishable from explicitly-set-to-default.
+Require reviewer evidence in job completion gate. Missing reviewer_output
+must block task apply.
 
 ## Current Step
-Implementing Steps 4869-4878.
+Implementing all steps.
 
 ## Steps
-- Step 4869: Omitted-vs-explicit handling (None flow for CLI args)
-- Step 4870: Restore persisted max_rounds on continuation
-- Step 4871: Allow explicit provider override back to fake
-- Step 4872: Preserve and override test command correctly
-- Step 4873: Preserve and override write mode correctly
-- Step 4874: Execution config source/audit fields
-- Step 4875: Real command-path pause/continue tests
-- Step 4876: Explicit override tests
-- Step 4877: Preserve completion gate and job safety
-- Step 4878: Architecture guard and handoff
+- Step 4879: Require final reviewer output in completion gate
+- Step 4880: Direct completion-gate unit tests for missing reviewer
+- Step 4881: run_job corrupted-result E2E regression test
+- Step 4882: Preserve valid no-test-command behavior
+- Step 4883: Strengthen task proof summary/report for missing reviewer
+- Step 4884: Preserve continuation config and job safety
+- Step 4885: Command-path smoke for fixed gate
+- Step 4886: Architecture guard and handoff

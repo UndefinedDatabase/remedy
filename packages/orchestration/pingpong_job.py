@@ -701,7 +701,7 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
     if result.target_mutated:
         reasons.append("target_mutated=True")
 
-    # Check final test result from last round
+    # Check final test result and reviewer evidence from last round
     if result.rounds:
         last_round = result.rounds[-1]
         if last_round.test_passed is False:
@@ -714,6 +714,8 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
                 reasons.append(
                     f"reviewer_pass_with_{len(ro.findings)}_findings"
                 )
+        else:
+            reasons.append("missing_reviewer_output")
     else:
         reasons.append("no_rounds")
 
