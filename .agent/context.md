@@ -4,9 +4,9 @@
 feature/steps-3276-3355-job-fulfillment-spine-v0
 
 ## Scope
-Steps 4887-4895: Job Target Guard Pre-Apply Closure v6.
-Move job-level target repo guard before workspace apply. Add post-apply
-defense-in-depth guard. No staged files copied after target mutation.
+Steps 4906-4916: Job Evidence Bundle v0.
+Add remedy do job-evidence command producing redacted, human-readable,
+machine-verifiable proof bundle for entire job.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
@@ -16,20 +16,14 @@ Product code must NOT depend on `.agent/live_review.md`.
 - No auto-execution from plan
 - No auto-promotion from run
 - No git commit/push/reset in product code
-- validate_job_task_result() checks 8 conditions
-- Missing reviewer_output blocks with "missing_reviewer_output" reason
-- test_passed=None is valid when no test command configured
-- CLI args default to None. Resolution: explicit > persisted > default.
-- ExecutionConfig tracks *_source for each field
-- TASK_BLOCKED status for gate failures
-- Safe next_command for paused jobs
-- repair_rounds=0 truly disables repair
-- JOB_PAUSED status for max-tasks partial runs
-- Target repo mutation blocks job
-- Task prompt bounded (last 5 summaries, 2000-char body)
-- Unsafe paths block workspace apply
-- Pre-apply target guard must run before _strict_apply_to_workspace
-- Post-apply target guard as defense-in-depth
+- Job evidence export is read-only
+- Export calls no providers
+- Export mutates no target repo or job state
+- All emitted files redacted
+- Output path traversal blocked
+- Raw task body not dumped unbounded
+- No secrets leaked
+- Reuse existing redaction helpers
 
 ## Resource safety
 - All pytest tests run within per-test resource limits

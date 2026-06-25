@@ -1,20 +1,21 @@
-# Plan — Steps 4887-4895: Job Target Guard Pre-Apply Closure v6
+# Plan — Steps 4906-4916: Job Evidence Bundle v0
 
 ## Goal
-Move job-level target repo guard before workspace apply. Add post-apply
-defense-in-depth guard. Ensure target mutation blocks task without copying
-staged files into job workspace.
+Add first-class job evidence export command that produces one redacted,
+human-readable, machine-verifiable proof bundle for an entire job.
 
 ## Current Step
 Implementing all steps.
 
 ## Steps
-- Step 4887: Move job-level target guard before workspace apply
-- Step 4888: Add explicit pre-apply guard block manifest/evidence
-- Step 4889: Add post-apply target guard sanity check
-- Step 4890: Regression test: target mutation before apply blocks without workspace apply
-- Step 4891: Regression test: report does not claim apply after target mutation
-- Step 4892: Preserve result.target_mutated=True completion gate behavior
-- Step 4893: Preserve continuation config, reviewer evidence gate, token policy
-- Step 4894: Preserve successful job flow and existing safety
-- Step 4895: Final architecture guard and handoff
+- Step 4906: Add job evidence bundle model
+- Step 4907: Add CLI command remedy do job-evidence
+- Step 4908: Define bundle file layout
+- Step 4909: Reuse single-run evidence safely
+- Step 4910: Add job timeline proof
+- Step 4911: Add workspace diff summary
+- Step 4912: Add redaction and output scanner tests
+- Step 4913: Add behavior tests
+- Step 4914: Add dogfood export command shape
+- Step 4915: Preserve existing safety and flows
+- Step 4916: Final architecture guard and handoff

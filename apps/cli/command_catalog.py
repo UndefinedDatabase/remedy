@@ -2406,6 +2406,23 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
     ),
 
+    CommandEntry(
+        command_id="do.job-evidence",
+        group_id="do",
+        subcommand="job-evidence",
+        description="Export a self-contained evidence bundle for an entire job.",
+        action_class="read_only",
+        supports_json=True,
+        related=("do.job-plan", "do.job-run", "do.job-report"),
+        args=(
+            ArgDef("job_id", "Job ID"),
+            ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+
     # ── repair ──────────────────────────────────────────────────────────
     CommandEntry(
         command_id="repair.start",

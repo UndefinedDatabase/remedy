@@ -759,6 +759,35 @@ def _cmd_do_job_run(
         print(format_job_report_text(job))
 
 
+def _cmd_do_job_evidence(
+    job_id: str,
+    *,
+    out: str = "",
+    json_output: bool = False,
+) -> None:
+    """Export a self-contained evidence bundle for an entire job."""
+    from packages.orchestration.job_evidence import export_job_evidence
+
+    if not out:
+        out = f"remedy-job-evidence-{job_id}"
+
+    result = export_job_evidence(job_id, out)
+
+    if result.get("error"):
+        print(f"Error: {result['error']}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(json.dumps(result, indent=2))
+    else:
+        print(f"Job evidence bundle exported to: {result['out_dir']}")
+        for filename in sorted(result.get("files", {}).keys()):
+            print(f"  {filename}")
+        manifest = result.get("manifest", {})
+        print(f"\nJob status: {manifest.get('status', '')}")
+        print(f"Tasks: {manifest.get('task_count', 0)}")
+
+
 def _cmd_do_job_report(
     job_id: str,
     *,
@@ -857,6 +886,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.job-report": lambda args: _cmd_do_job_report(
         args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "do.job-evidence": lambda args: _cmd_do_job_evidence(
+        args.job_id,
+        out=getattr(args, "out", None) or "",
         json_output=getattr(args, "json", False),
     ),
 }
