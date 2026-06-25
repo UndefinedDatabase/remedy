@@ -683,7 +683,7 @@ def _cmd_do_job_plan(
                 {"task_id": t.task_id, "title": t.title, "status": t.status}
                 for t in job.tasks
             ],
-            "next_command": f"remedy do job run {job.job_id}",
+            "next_command": f"remedy do job-run {job.job_id}",
         }, indent=2))
     else:
         print(f"Job planned: {job.job_id}")
@@ -691,7 +691,7 @@ def _cmd_do_job_plan(
         print(f"Tasks: {len(job.tasks)}")
         for t in job.tasks:
             print(f"  {t.task_id}: {t.title}")
-        print(f"\nNext: remedy do job run {job.job_id}")
+        print(f"\nNext: remedy do job-run {job.job_id}")
 
 
 def _cmd_do_job_run(
