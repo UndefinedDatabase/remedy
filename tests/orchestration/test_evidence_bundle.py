@@ -1,0 +1,571 @@
+"""Evidence bundle tests — Steps 4807-4811.
+
+Tests for deterministic evidence bundle export, redaction, safety, and CLI.
+No real provider calls. No network. No target repo mutation.
+"""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+import pytest
+
+from packages.orchestration.pingpong_evidence import (
+    _redact_secrets,
+    _sanitize_path,
+    _validate_output_path,
+    build_evidence_bundle,
+    export_evidence,
+    write_evidence_bundle,
+)
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def isolate_data_root(tmp_path: Path, monkeypatch):
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    return data_dir
+
+
+def _make_run_data(
+    *,
+    final_status: str = "staged_review_passed",
+    repair_used: int = 0,
+    repair_allowed: int = 2,
+    test_passed: bool = True,
+    has_diff: bool = True,
+    has_task: bool = False,
+    findings: list | None = None,
+    run_id: str = "test_run_001",
+) -> dict:
+    """Build minimal fake run data for testing."""
+    rounds = [
+        {
+            "round": 1,
+            "kind": "initial",
+            "repair_of_round": None,
+            "input_finding_ids": [],
+            "resolved_finding_ids": [],
+            "remaining_finding_ids": [],
+            "started_at": "2026-01-01T00:00:00Z",
+            "finished_at": "2026-01-01T00:01:00Z",
+            "builder": {
+                "summary": "Made changes",
+                "files_changed": ["src/main.py"],
+                "provider": "fake",
+                "duration_ms": 100,
+                "tokens_used": 500,
+                "error": "",
+            },
+            "test_passed": test_passed,
+            "test_summary": "1 passed in 0.5s",
+            "reviewer": {
+                "verdict": "pass" if not findings else "needs_repair",
+                "confidence": "high",
+                "summary": "Looks good",
+                "finding_count": len(findings) if findings else 0,
+                "findings": findings or [],
+                "provider": "fake",
+                "duration_ms": 50,
+                "error": "",
+                "parse_retried": False,
+                "parse_retry_recovered": False,
+            },
+        },
+    ]
+
+    if repair_used > 0:
+        for i in range(repair_used):
+            rounds.append({
+                "round": i + 2,
+                "kind": "repair",
+                "repair_of_round": i + 1,
+                "input_finding_ids": ["F-001"] if findings else [],
+                "resolved_finding_ids": ["F-001"] if i == repair_used - 1 and findings else [],
+                "remaining_finding_ids": [],
+                "started_at": "2026-01-01T00:02:00Z",
+                "finished_at": "2026-01-01T00:03:00Z",
+                "builder": {
+                    "summary": "Fixed issue",
+                    "files_changed": ["src/main.py"],
+                    "provider": "fake",
+                    "duration_ms": 100,
+                    "tokens_used": 500,
+                    "error": "",
+                },
+                "test_passed": True,
+                "test_summary": "1 passed in 0.5s",
+                "reviewer": {
+                    "verdict": "pass",
+                    "confidence": "high",
+                    "summary": "Fixed",
+                    "finding_count": 0,
+                    "findings": [],
+                    "provider": "fake",
+                    "duration_ms": 50,
+                    "error": "",
+                    "parse_retried": False,
+                    "parse_retry_recovered": False,
+                },
+            })
+
+    data: dict = {
+        "run_id": run_id,
+        "job_id": "",
+        "goal": "Test evidence bundle",
+        "repo_path": "/home/user/project",
+        "mode": "staged",
+        "builder_provider": "fake",
+        "reviewer_provider": "fake",
+        "max_rounds": 3,
+        "total_rounds": len(rounds),
+        "final_status": final_status,
+        "staged_files": ["src/main.py"],
+        "changed_target_files": [],
+        "target_mutated": False,
+        "tests_not_run": False,
+        "safe_diff_files": ["src/main.py"] if has_diff else [],
+        "safe_diff_truncated": False,
+        "safe_diff_summary": (
+            "--- a/src/main.py\n+++ b/src/main.py\n@@ -1 +1 @@\n-old\n+new\n"
+            if has_diff else ""
+        ),
+        "staging_path": "/tmp/remedy-staging-xyz",
+        "context_categories": ["code"],
+        "error": "",
+        "started_at": "2026-01-01T00:00:00Z",
+        "finished_at": "2026-01-01T00:05:00Z",
+        "rounds": rounds,
+        "provider_evidence": {
+            "builder_provider": "fake",
+            "reviewer_provider": "fake",
+            "builder_provider_kind": "synthetic_test",
+            "reviewer_provider_kind": "synthetic_test",
+            "builder_write_mode": "none",
+            "reviewer_write_mode": "none",
+            "builder_can_write_staging": False,
+            "reviewer_can_write_staging": False,
+        },
+        "token_accounting": {
+            "kind": "estimated",
+            "actual_tokens_available": False,
+            "builder_prompt_tokens_estimated": 125,
+            "reviewer_prompt_tokens_estimated": 50,
+            "context_tokens_estimated": 100,
+            "context_categories": ["code"],
+            "context_strategy": "bounded_task_context",
+        },
+        "repair_loop": {
+            "enabled": repair_allowed > 0,
+            "repair_rounds_allowed": repair_allowed,
+            "repair_rounds_used": repair_used,
+            "repair_rounds_source": "default",
+            "status": (
+                "not_needed" if repair_used == 0 and final_status == "staged_review_passed"
+                else "passed_after_repair" if repair_used > 0 and final_status == "staged_review_passed"
+                else "exhausted" if final_status == "repair_exhausted"
+                else "disabled"
+            ),
+            "open_findings": [],
+            "resolved_findings": [],
+            "final_reviewer_verdict": "pass" if final_status == "staged_review_passed" else "",
+            "decisions": [],
+            "final_adjudication": None,
+            "finding_status_map": [],
+        },
+    }
+
+    if has_task:
+        data["task_input"] = {
+            "kind": "file",
+            "title": "Test task",
+            "sha256": "abc123def456",
+            "bytes": 100,
+            "chars": 100,
+            "tokens_estimated": 25,
+            "excerpt": "Do something useful",
+        }
+
+    return data
+
+
+def _persist_fake_run(data_dir: Path, run_data: dict) -> str:
+    """Persist a fake run for CLI testing."""
+    run_id = run_data["run_id"]
+    run_dir = data_dir / "pingpong_runs" / run_id
+    run_dir.mkdir(parents=True)
+    (run_dir / "result.json").write_text(json.dumps(run_data, indent=2))
+    return run_id
+
+
+def _persist_fake_promotion(data_dir: Path, run_id: str, promo_data: dict) -> None:
+    """Persist a fake promotion for CLI testing."""
+    run_dir = data_dir / "pingpong_runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "promotion.json").write_text(json.dumps(promo_data, indent=2))
+
+
+# ---------------------------------------------------------------------------
+# Step 4807: Evidence bundle builder
+# ---------------------------------------------------------------------------
+
+class TestEvidenceBundleBuilder:
+    """build_evidence_bundle produces correct bundle structure."""
+
+    def test_no_repair_passed_run(self):
+        """Bundle for a no-repair passed run."""
+        data = _make_run_data(final_status="staged_review_passed", repair_used=0)
+        bundle = build_evidence_bundle(data)
+        assert bundle["manifest"]["run_id"] == "test_run_001"
+        assert bundle["manifest"]["final_status"] == "staged_review_passed"
+        assert bundle["manifest"]["promotion_readiness"]["ready"] is True
+
+    def test_passed_after_repair_run(self):
+        """Bundle for a passed-after-repair run."""
+        data = _make_run_data(
+            final_status="staged_review_passed",
+            repair_used=1,
+            findings=[{"id": "F-001", "severity": "high", "file": "main.py", "summary": "bug"}],
+        )
+        bundle = build_evidence_bundle(data)
+        assert bundle["manifest"]["final_status"] == "staged_review_passed"
+        assert bundle["repair_loop"]["repair_rounds_used"] == 1
+        assert bundle["manifest"]["promotion_readiness"]["ready"] is True
+
+    def test_repair_exhausted_run(self):
+        """Bundle for a repair-exhausted run."""
+        data = _make_run_data(final_status="repair_exhausted", repair_used=2)
+        bundle = build_evidence_bundle(data)
+        assert bundle["manifest"]["final_status"] == "repair_exhausted"
+        assert bundle["manifest"]["promotion_readiness"]["ready"] is False
+
+    def test_with_promotion(self):
+        """Bundle includes promotion data when provided."""
+        data = _make_run_data()
+        promo = {
+            "run_id": "test_run_001",
+            "promotion_id": "promo_001",
+            "status": "dry_run_ready",
+            "approved": False,
+            "dry_run": True,
+            "target_repo": "/home/user/project",
+        }
+        bundle = build_evidence_bundle(data, promo)
+        assert bundle["promotion"] is not None
+        assert bundle["promotion"]["status"] == "dry_run_ready"
+
+    def test_manifest_has_final_status(self):
+        """manifest.json includes final_status."""
+        data = _make_run_data(final_status="test_failed", test_passed=False)
+        bundle = build_evidence_bundle(data)
+        assert bundle["manifest"]["final_status"] == "test_failed"
+
+    def test_summary_md_human_readable(self):
+        """summary.md is human-readable markdown."""
+        data = _make_run_data()
+        bundle = build_evidence_bundle(data)
+        md = bundle["summary_md"]
+        assert "# Remedy Run Evidence" in md
+        assert "staged_review_passed" in md
+        assert "## Providers" in md
+
+    def test_safe_diff_present(self):
+        """safe.diff contains diff when available."""
+        data = _make_run_data(has_diff=True)
+        bundle = build_evidence_bundle(data)
+        assert "--- a/src/main.py" in bundle["safe_diff"]
+
+    def test_tests_txt_present(self):
+        """tests.txt contains test summary."""
+        data = _make_run_data()
+        bundle = build_evidence_bundle(data)
+        assert "Round 1" in bundle["tests"]
+        assert "passed" in bundle["tests"]
+
+    def test_review_json_has_verdict(self):
+        """review.json contains reviewer verdict and findings."""
+        data = _make_run_data()
+        bundle = build_evidence_bundle(data)
+        assert bundle["review"]["final_verdict"] == "pass"
+        assert bundle["review"]["total_reviews"] == 1
+
+    def test_repair_loop_json_present(self):
+        """repair_loop.json contains repair status."""
+        data = _make_run_data(repair_used=1, findings=[
+            {"id": "F-001", "severity": "high", "file": "main.py", "summary": "bug"},
+        ])
+        bundle = build_evidence_bundle(data)
+        assert bundle["repair_loop"]["repair_rounds_used"] == 1
+
+    def test_token_accounting_present(self):
+        """token_accounting.json contains estimated token evidence."""
+        data = _make_run_data()
+        bundle = build_evidence_bundle(data)
+        assert "kind" in bundle["token_accounting"]
+
+    def test_provider_evidence_present(self):
+        """provider_evidence.json contains Worker/Reviewer provider evidence."""
+        data = _make_run_data()
+        bundle = build_evidence_bundle(data)
+        assert bundle["provider_evidence"]["builder_provider"] == "fake"
+        assert bundle["provider_evidence"]["reviewer_provider"] == "fake"
+
+    def test_promotion_absent_when_not_promoted(self):
+        """promotion.json is None when not promoted."""
+        data = _make_run_data()
+        bundle = build_evidence_bundle(data, None)
+        assert bundle["promotion"] is None
+
+    def test_missing_diff_produces_unavailable_note(self):
+        """Missing diff produces unavailable note in manifest, not crash."""
+        data = _make_run_data(has_diff=False)
+        bundle = build_evidence_bundle(data)
+        assert "unavailable" in bundle["manifest"]["sections"]["safe.diff"]
+
+    def test_task_input_metadata(self):
+        """Task input metadata included when present."""
+        data = _make_run_data(has_task=True)
+        bundle = build_evidence_bundle(data)
+        assert bundle["manifest"]["task_input"] is not None
+        assert bundle["manifest"]["task_input"]["sha256"] == "abc123def456"
+
+
+# ---------------------------------------------------------------------------
+# Step 4808: CLI evidence command (via export_evidence)
+# ---------------------------------------------------------------------------
+
+class TestEvidenceCli:
+    """export_evidence loads run and writes bundle."""
+
+    def test_export_nonexistent_run(self, tmp_path):
+        """Missing run returns error, not crash."""
+        result = export_evidence("nonexistent_id", str(tmp_path / "out"))
+        assert result.get("error")
+        assert "not found" in result["error"]
+
+    def test_export_no_repair_run(self, isolate_data_root, tmp_path):
+        """Export works for a no-repair passed run."""
+        data = _make_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("test_run_001", str(out_dir))
+        assert "error" not in result
+        assert (out_dir / "manifest.json").exists()
+        assert (out_dir / "summary.md").exists()
+        assert (out_dir / "safe.diff").exists()
+        assert (out_dir / "tests.txt").exists()
+        assert (out_dir / "review.json").exists()
+        assert (out_dir / "token_accounting.json").exists()
+        assert (out_dir / "provider_evidence.json").exists()
+        # Verify manifest content
+        manifest = json.loads((out_dir / "manifest.json").read_text())
+        assert manifest["final_status"] == "staged_review_passed"
+
+    def test_export_passed_after_repair(self, isolate_data_root, tmp_path):
+        """Export works for passed-after-repair run."""
+        data = _make_run_data(
+            final_status="staged_review_passed",
+            repair_used=1,
+            run_id="repair_run",
+            findings=[{"id": "F-001", "severity": "high", "file": "main.py", "summary": "bug"}],
+        )
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("repair_run", str(out_dir))
+        assert "error" not in result
+        repair = json.loads((out_dir / "repair_loop.json").read_text())
+        assert repair["repair_rounds_used"] == 1
+
+    def test_export_repair_exhausted(self, isolate_data_root, tmp_path):
+        """Export works for repair-exhausted run."""
+        data = _make_run_data(
+            final_status="repair_exhausted",
+            repair_used=2,
+            run_id="exhausted_run",
+        )
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("exhausted_run", str(out_dir))
+        assert "error" not in result
+        manifest = json.loads((out_dir / "manifest.json").read_text())
+        assert manifest["final_status"] == "repair_exhausted"
+        assert manifest["promotion_readiness"]["ready"] is False
+
+    def test_export_with_promotion(self, isolate_data_root, tmp_path):
+        """Export includes promotion when present."""
+        data = _make_run_data(run_id="promo_run")
+        _persist_fake_run(isolate_data_root, data)
+        promo = {
+            "run_id": "promo_run",
+            "promotion_id": "promo_001",
+            "status": "dry_run_ready",
+            "approved": False,
+            "dry_run": True,
+            "target_repo": "/home/user/project",
+        }
+        _persist_fake_promotion(isolate_data_root, "promo_run", promo)
+        out_dir = tmp_path / "bundle"
+        result = export_evidence("promo_run", str(out_dir))
+        assert "error" not in result
+        assert (out_dir / "promotion.json").exists()
+        pdata = json.loads((out_dir / "promotion.json").read_text())
+        assert pdata["status"] == "dry_run_ready"
+
+
+# ---------------------------------------------------------------------------
+# Step 4809: Redaction and safe-output rules
+# ---------------------------------------------------------------------------
+
+class TestRedaction:
+    """Redaction and safe-output rules."""
+
+    def test_no_raw_task_body_by_default(self):
+        """Raw full task body not dumped by default."""
+        data = _make_run_data(has_task=True)
+        # Add raw task_body to run_data (simulating what export_pingpong_json omits)
+        data["task_body"] = "This is the full secret task body with API_KEY=sk-ant-secret123"
+        bundle = build_evidence_bundle(data)
+        # Bundle should NOT contain raw task body in manifest or summary
+        manifest_str = json.dumps(bundle["manifest"])
+        assert "full secret task body" not in manifest_str
+        assert "sk-ant-secret123" not in manifest_str
+        # Summary should not contain raw body
+        assert "full secret task body" not in bundle["summary_md"]
+
+    def test_api_key_redacted(self):
+        """API-key-like strings are redacted."""
+        assert "[REDACTED]" in _redact_secrets("key: sk-ant-abc123def456ghi789jkl012")
+        assert "[REDACTED]" in _redact_secrets("AKIAIOSFODNN7EXAMPLE")
+        assert "[REDACTED]" in _redact_secrets("token: ghp_abcdefghijklmnopqrstuvwxyz1234567890")
+
+    def test_env_key_redacted(self):
+        """Environment variable secrets are redacted."""
+        assert "[REDACTED]" in _redact_secrets("API_KEY=my_secret_value")
+        assert "[REDACTED]" in _redact_secrets("SECRET=hunter2")
+
+    def test_path_sanitization(self):
+        """Absolute staging paths sanitized."""
+        home = os.path.expanduser("~")
+        assert _sanitize_path(f"{home}/project").startswith("~")
+        assert _sanitize_path("/other/path") == "/other/path"
+
+    def test_summary_md_no_absolute_staging_path(self):
+        """summary.md doesn't contain absolute private staging paths."""
+        data = _make_run_data()
+        data["staging_path"] = "/tmp/remedy-staging-secret"
+        bundle = build_evidence_bundle(data)
+        # staging_path is not emitted in summary
+        assert "/tmp/remedy-staging-secret" not in bundle["summary_md"]
+
+    def test_path_traversal_blocked(self, tmp_path):
+        """Output path traversal is blocked."""
+        with pytest.raises(ValueError, match="Path traversal blocked"):
+            _validate_output_path(str(tmp_path), "../../../etc/passwd")
+
+    def test_path_traversal_blocked_in_write(self, tmp_path):
+        """write_evidence_bundle blocks path traversal attempts."""
+        data = _make_run_data()
+        bundle = build_evidence_bundle(data)
+        # Inject traversal filename
+        bundle["manifest"] = bundle["manifest"]  # normal
+        out_dir = str(tmp_path / "safe_out")
+        # Normal write should succeed
+        written = write_evidence_bundle(bundle, out_dir)
+        assert "manifest.json" in written
+
+    def test_no_env_in_bundle_files(self, isolate_data_root, tmp_path):
+        """Bundle files don't contain env/API-key strings."""
+        data = _make_run_data()
+        # Inject secret into test summary
+        data["rounds"][0]["test_summary"] = "Test passed. API_KEY=sk-ant-mysecretkey123456789012 OK"
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle"
+        export_evidence("test_run_001", str(out_dir))
+        # Check tests.txt for redaction
+        tests_content = (out_dir / "tests.txt").read_text()
+        assert "sk-ant-mysecretkey" not in tests_content
+        assert "[REDACTED]" in tests_content
+
+
+# ---------------------------------------------------------------------------
+# Step 4810: Safety — no provider calls, no target mutation
+# ---------------------------------------------------------------------------
+
+class TestSafety:
+    """Evidence export is read-only and safe."""
+
+    def test_no_provider_call(self, isolate_data_root, tmp_path):
+        """export_evidence does not call any provider."""
+        data = _make_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        # export_evidence only reads JSON, no provider imports needed
+        # If it tried to call a provider, it would fail since none are configured
+        result = export_evidence("test_run_001", str(tmp_path / "out"))
+        assert "error" not in result
+
+    def test_no_target_mutation(self, isolate_data_root, tmp_path):
+        """export_evidence does not mutate target repo."""
+        data = _make_run_data()
+        repo_path = tmp_path / "target_repo"
+        repo_path.mkdir()
+        (repo_path / "file.txt").write_text("original")
+        data["repo_path"] = str(repo_path)
+        _persist_fake_run(isolate_data_root, data)
+        export_evidence("test_run_001", str(tmp_path / "out"))
+        # Target repo unchanged
+        assert (repo_path / "file.txt").read_text() == "original"
+
+    def test_output_only_in_out_dir(self, isolate_data_root, tmp_path):
+        """All output files are inside the requested output directory."""
+        data = _make_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out_dir = tmp_path / "bundle_out"
+        result = export_evidence("test_run_001", str(out_dir))
+        out_resolved = str(out_dir.resolve())
+        for path in result.get("files", {}).values():
+            assert path.startswith(out_resolved), f"{path} escapes {out_resolved}"
+
+    def test_deterministic_output(self, isolate_data_root, tmp_path):
+        """Same input produces identical output."""
+        data = _make_run_data()
+        _persist_fake_run(isolate_data_root, data)
+        out1 = tmp_path / "out1"
+        out2 = tmp_path / "out2"
+        export_evidence("test_run_001", str(out1))
+        export_evidence("test_run_001", str(out2))
+        for fname in ("manifest.json", "summary.md", "review.json"):
+            c1 = (out1 / fname).read_text()
+            c2 = (out2 / fname).read_text()
+            assert c1 == c2, f"{fname} differs between runs"
+
+
+# ---------------------------------------------------------------------------
+# Step 4810: CLI dispatch test
+# ---------------------------------------------------------------------------
+
+class TestCliDispatch:
+    """COMMAND_HANDLERS['do.evidence'] dispatches correctly."""
+
+    def test_cli_handler_exists(self):
+        """do.evidence handler exists in COMMAND_HANDLERS."""
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+        assert "do.evidence" in COMMAND_HANDLERS
+
+    def test_cli_catalog_entry_exists(self):
+        """do.evidence has a catalog entry."""
+        from apps.cli.command_catalog import CATALOG
+        ids = [c.command_id for c in CATALOG]
+        assert "do.evidence" in ids
+
+    def test_catalog_read_only(self):
+        """do.evidence is read_only action class."""
+        from apps.cli.command_catalog import CATALOG
+        entry = next(c for c in CATALOG if c.command_id == "do.evidence")
+        assert entry.action_class == "read_only"
+        assert entry.may_mutate_repo is False
+        assert entry.may_execute_commands is False

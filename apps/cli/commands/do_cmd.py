@@ -368,6 +368,36 @@ def _cmd_do_report(
         _print_text_report(run_id, data)
 
 
+def _cmd_do_evidence(
+    run_id: str,
+    *,
+    out: str = "",
+    json_output: bool = False,
+) -> None:
+    """Export a self-contained evidence bundle for a persisted run."""
+    from packages.orchestration.pingpong_evidence import export_evidence
+
+    if not out:
+        out = f"remedy-evidence-{run_id}"
+
+    result = export_evidence(run_id, out)
+
+    if result.get("error"):
+        print(f"Error: {result['error']}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(json.dumps(result, indent=2))
+    else:
+        print(f"Evidence bundle exported to: {result['out_dir']}")
+        for filename, path in result.get("files", {}).items():
+            print(f"  {filename}")
+        status = result.get("manifest", {}).get("final_status", "")
+        readiness = result.get("manifest", {}).get("promotion_readiness", {})
+        print(f"\nRun status: {status}")
+        print(f"Promotion ready: {readiness.get('ready', False)}")
+
+
 def _print_text_report(run_id: str, data: dict) -> None:
     """Print concise user-facing text report."""
     # Header
@@ -670,6 +700,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.report": lambda args: _cmd_do_report(
         args.run_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "do.evidence": lambda args: _cmd_do_evidence(
+        args.run_id,
+        out=getattr(args, "out", None) or "",
         json_output=getattr(args, "json", False),
     ),
     "do.continue": lambda args: _cmd_do_continue(

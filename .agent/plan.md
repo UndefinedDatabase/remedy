@@ -1,20 +1,16 @@
-# Plan — Steps 4799-4806: CLI Repair Default Truth Closure v5
+# Plan — Steps 4807-4811: Run Evidence Bundle v0
 
 ## Goal
-Fix CLI dispatch so omitted --repair-rounds stays None (default=2), not coerced to 0.
+Export a self-contained, safe proof bundle for any Remedy run.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- Step 4799: Removed `int(... or 0)` coercion; omitted --repair-rounds passes None
-- Step 4800: CLI dispatch test: omitted → None
-- Step 4801: CLI dispatch test: explicit 0 → 0
-- Step 4802: CLI dispatch test: explicit 1 → 1
-- Step 4803: Catalog help text verified: "default: 2, cap: 10; 0 disables repair"
-- Step 4804: Existing resolver tests preserved (7 tests)
-- Step 4805: All repair governance + test-evidence dominance tests pass
-- Step 4806: Architecture guard clean, full suite 7677 passed
-- 6 new tests (131 total in test_repair_loop.py)
-- Full suite: 7677 passed, 0 failed
-- Lint: ruff clean, compileall clean
+- Step 4807: Evidence bundle builder (pingpong_evidence.py)
+- Step 4808: CLI command `remedy do evidence <run_id> --out <dir> --json`
+- Step 4809: Redaction rules (API keys, env vars, staging paths, path traversal)
+- Step 4810: 35 tests covering bundle, CLI, redaction, safety
+- Step 4811: Architecture guard clean, full suite 7712 passed
+- Lint: ruff clean, mypy clean
+- No provider calls, no target mutation, no task body dump

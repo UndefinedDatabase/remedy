@@ -4,8 +4,8 @@
 feature/steps-3276-3355-job-fulfillment-spine-v0
 
 ## Scope
-Steps 4799-4806: CLI Repair Default Truth Closure v5.
-Fix CLI dispatch so omitted --repair-rounds stays None (default=2), not coerced to 0.
+Steps 4807-4811: Run Evidence Bundle v0.
+Export a self-contained, safe proof bundle for any Remedy run.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
@@ -22,6 +22,9 @@ Product code must NOT depend on `.agent/live_review.md`.
 - review_inconsistent never adjudicates as ready
 - Promotion blocked when final tests failed
 - All repair loops bounded by hard cap (10)
+- Evidence export: no provider calls, no target mutation
+- Evidence export: no raw task body, no secrets/env/keys
+- Evidence export: path traversal blocked, output inside requested dir only
 
 ## Resource safety
 - All pytest tests run within per-test resource limits

@@ -1564,6 +1564,7 @@ class TestCliRepairRoundsDispatch:
     def test_omitted_repair_rounds_passes_none(self):
         """Step 4800: Omitted --repair-rounds reaches _cmd_do as None."""
         from unittest.mock import patch as mock_patch
+
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         class FakeArgs:
@@ -1603,6 +1604,7 @@ class TestCliRepairRoundsDispatch:
     def test_explicit_zero_passes_zero(self):
         """Step 4801: Explicit --repair-rounds 0 reaches _cmd_do as 0."""
         from unittest.mock import patch as mock_patch
+
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         class FakeArgs:
@@ -1642,6 +1644,7 @@ class TestCliRepairRoundsDispatch:
     def test_explicit_one_passes_one(self):
         """Step 4802: Explicit --repair-rounds 1 reaches _cmd_do as 1."""
         from unittest.mock import patch as mock_patch
+
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         class FakeArgs:
