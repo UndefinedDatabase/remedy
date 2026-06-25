@@ -43,6 +43,7 @@ JOB_PLANNED = "planned"
 JOB_RUNNING = "running"
 JOB_BLOCKED = "blocked"
 JOB_COMPLETED = "completed"
+JOB_PAUSED = "paused"
 
 # Token context policy constants
 _PREVIOUS_SUMMARY_LIMIT = 5
@@ -134,6 +135,8 @@ class JobPlan:
     finished_at: str = ""
     error: str = ""
     target_guard: TargetGuard | None = None
+    repair_rounds_allowed: int = 0
+    repair_rounds_source: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -260,6 +263,8 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "finished_at": job.finished_at,
         "error": job.error,
         "target_guard": _export_target_guard(job.target_guard),
+        "repair_rounds_allowed": job.repair_rounds_allowed,
+        "repair_rounds_source": job.repair_rounds_source,
         "tasks": [
             {
                 "task_id": t.task_id,
@@ -296,6 +301,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         finished_at=data.get("finished_at", ""),
         error=data.get("error", ""),
         target_guard=_import_target_guard(data.get("target_guard")),
+        repair_rounds_allowed=data.get("repair_rounds_allowed", 0),
+        repair_rounds_source=data.get("repair_rounds_source", ""),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -625,6 +632,7 @@ def run_job(
     reviewer_provider: Any = None,
     max_rounds: int = 3,
     repair_rounds: int = 2,
+    repair_rounds_source: str = "default",
     test_command: str = "",
     timeout_sec: int = 120,
     max_output_chars: int = 50000,
@@ -652,6 +660,10 @@ def run_job(
             status=JOB_BLOCKED,
             error=f"job_not_found: {job_id}",
         )
+
+    # Record repair-round metadata at job level
+    job.repair_rounds_allowed = repair_rounds
+    job.repair_rounds_source = repair_rounds_source
 
     # Create job workspace if not yet created
     if not job.job_workspace_path:
@@ -721,6 +733,7 @@ def run_job(
                 claude_cli_write_mode=claude_cli_write_mode,
                 task_input=task_input,
                 repair_rounds=repair_rounds,
+                repair_rounds_source=repair_rounds_source,
                 keep_staging=True,
             )
         except Exception as exc:
@@ -793,14 +806,18 @@ def run_job(
         tasks_run += 1
         _persist_job(job)
 
-    # Check if all tasks are done
+    # Determine final job status
     all_done = all(
         t.status in (TASK_APPLIED, TASK_SKIPPED)
         for t in job.tasks
     )
+    has_pending = any(t.status == TASK_PENDING for t in job.tasks)
+
     if all_done:
         job.status = JOB_COMPLETED
         job.finished_at = datetime.now(timezone.utc).isoformat()
+    elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
+        job.status = JOB_PAUSED
 
     _persist_job(job)
     return job
@@ -907,6 +924,8 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
 
     next_cmd = _suggest_next_command(job)
 
+    pending_count = sum(1 for t in job.tasks if t.status == TASK_PENDING)
+
     return {
         "job_id": job.job_id,
         "job_title": job.job_title,
@@ -919,6 +938,9 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
         "has_workspace_changes": has_workspace_changes,
         "next_command": next_cmd,
         "target_guard": _export_target_guard(job.target_guard),
+        "repair_rounds_allowed": job.repair_rounds_allowed,
+        "repair_rounds_source": job.repair_rounds_source,
+        "pending_tasks": pending_count,
         "context_strategy": {
             "strategy": "task_bounded_sequential_job",
             "previous_task_summary_limit": _PREVIOUS_SUMMARY_LIMIT,
@@ -972,6 +994,18 @@ def format_job_report_text(job: JobPlan) -> str:
             lines.append(f"      Error: {t.error}")
 
     lines.append("")
+
+    if job.repair_rounds_source:
+        disabled = " (disabled)" if job.repair_rounds_allowed == 0 else ""
+        lines.append(
+            f"Repair: {job.repair_rounds_allowed} rounds"
+            f" (source: {job.repair_rounds_source}){disabled}"
+        )
+
+    pending_count = sum(1 for t in job.tasks if t.status == TASK_PENDING)
+    if job.status == JOB_PAUSED and pending_count > 0:
+        lines.append(f"Paused: {pending_count} tasks pending")
+
     if any(t.status == TASK_APPLIED for t in job.tasks):
         lines.append("Job workspace has accumulated changes.")
     lines.append(
@@ -989,6 +1023,8 @@ def format_job_report_text(job: JobPlan) -> str:
 def _suggest_next_command(job: JobPlan) -> str:
     """Suggest the next CLI command based on job state."""
     if job.status == JOB_PLANNED:
+        return f"remedy do job-run {job.job_id}"
+    if job.status == JOB_PAUSED:
         return f"remedy do job-run {job.job_id}"
     if job.status == JOB_COMPLETED:
         return f"remedy do job-report {job.job_id} --json"

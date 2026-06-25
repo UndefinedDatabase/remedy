@@ -4,9 +4,9 @@
 feature/steps-3276-3355-job-fulfillment-spine-v0
 
 ## Scope
-Steps 4832-4844: Job Runner Correctness + Token Context Policy v1.
-Fix correctness issues in Job Task Runner v0, add strict workspace apply,
-target repo guard, token context policy, and deterministic task IDs.
+Steps 4845-4856: Job Runner CLI Control + Execution Metadata Closure v2.
+Fix repair-round coercion, add source metadata, fix catalog truth,
+add paused status, strengthen target mutation guard tests.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
@@ -16,21 +16,15 @@ Product code must NOT depend on `.agent/live_review.md`.
 - No auto-execution from plan
 - No auto-promotion from run
 - No git commit/push/reset in product code
-- Existing task-file/short-goal flows must not regress
-- Failed tests NEVER produce staged_review_passed
-- Test failure checked before reviewer verdict (dominance)
-- repair_rounds=0 truly disables repair
-- review_inconsistent never adjudicates as ready
-- Promotion blocked when final tests failed
-- All repair loops bounded by hard cap (10)
-- Evidence export: no provider calls, no target mutation
-- Evidence export: all output (files + API return) recursively redacted
-- Job runner: real target repo never mutated (snapshot guard enforced)
-- Job runner: task N+1 starts only after task N passed + strict apply + guard
-- Job runner: failed/exhausted task blocks job, remaining tasks skipped
-- Job runner: task prompt bounded (last 5 proof summaries, body truncated at 2000 chars)
-- Job runner: unsafe paths (traversal, .env, .git, private keys) block workspace apply
-- Job runner: task IDs deterministic by parse order, not heading number
+- repair_rounds=0 truly disables repair (fixed: `or 2` coercion removed)
+- Omitted repair-rounds defaults to 2 via resolve_repair_rounds()
+- repair_rounds_source tracks "cli" vs "default" at job level
+- JOB_PAUSED status for max-tasks partial runs (not "running")
+- do.job-run catalog: may_execute_commands=True (providers + test commands)
+- Target repo mutation blocks job + remaining tasks skipped
+- Task prompt bounded (last 5 proof summaries, body truncated at 2000 chars)
+- Unsafe paths (traversal, .env, .git, private keys) block workspace apply
+- Task IDs deterministic by parse order, not heading number
 
 ## Resource safety
 - All pytest tests run within per-test resource limits

@@ -1,4 +1,4 @@
-# Live Review — Steps 4832-4844: Job Runner Correctness + Token Context Policy v1
+# Live Review — Steps 4845-4856: Job Runner CLI Control + Execution Metadata Closure v2
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
@@ -6,115 +6,136 @@ Builder must NOT mark findings as resolved.
 Timestamp: 2026-06-25
 
 ## Verdict (reviewer-owned)
-PENDING
-
-## Commit reviewed
-(pending commit)
-
-## PR reviewed
-No open PR. Builder on `feature/steps-3276-3355-job-fulfillment-spine-v0`.
+(pending)
 
 ## Builder handoff
 
-### What changed
-Correctness closure for Job Task Runner v0: fixed CLI command truth, made task IDs deterministic by parse order, added strict workspace apply with safety manifest, added job-level target repo snapshot guard, strengthened task completion gate, added per-task proof summaries, added explicit token context policy, and comprehensive tests.
+### Step 4845 — Preserve explicit --repair-rounds 0
+- `do_cmd.py` L823: removed `int(getattr(args, "repair_rounds", None) or 2)` — 0 was falsy, coerced to 2
+- Changed handler lambda to pass raw `getattr(args, "repair_rounds", None)` (None when omitted, 0 when explicit)
+- `_cmd_do_job_run` now accepts `repair_rounds: int | None = None` and calls `resolve_repair_rounds()` internally
+- Same resolver semantics as single-task `do run` — negative raises, above cap raises
 
-### Files changed
-- `packages/orchestration/pingpong_job.py` — Substantial rewrite (~600 lines): added ApplyManifest, TaskProofSummary, TargetGuard dataclasses; deterministic task IDs; strict workspace apply with path safety; target repo snapshot guard; token context policy; fixed next_command truth
-- `apps/cli/commands/do_cmd.py` L686, L694 — Fixed stale `remedy do job run` → `remedy do job-run`
-- `tests/orchestration/test_job_task_runner.py` — Rewritten (~530 lines): 65 tests across 14 classes
-- `.agent/plan.md` — updated
-- `.agent/context.md` — updated
+### Step 4846 — Repair-round source in job execution metadata
+- Added `repair_rounds_allowed: int` and `repair_rounds_source: str` to `JobPlan` dataclass
+- Persisted in `_export_job` / `_import_job` round-trip
+- Values: `{"repair_rounds_allowed": 0, "repair_rounds_source": "cli"}` or `{"repair_rounds_allowed": 2, "repair_rounds_source": "default"}`
 
-### Step-by-step results
+### Step 4847 — Pass repair-round source into run_pingpong per task
+- `run_job()` now accepts `repair_rounds_source: str = "default"`
+- Passes to `run_pingpong()` call at L733: `repair_rounds_source=repair_rounds_source`
+- Each task's `run_pingpong` result preserves the source
 
-**Step 4832 — Fix job CLI command truth**
-`_suggest_next_command()` now uses `job-run`, `job-report` (hyphenated). Fixed 2 stale `remedy do job run` in `_cmd_do_job_plan()`. All next_command strings are copy-pasteable.
+### Step 4848 — Real CLI handler tests for omitted/default
+- `TestCliHandlerRepairRounds::test_omitted_gives_default`: exercises `COMMAND_HANDLERS["do.job-run"]` with args.repair_rounds=None
+- Asserts `data["repair_rounds_allowed"] == 2` and `data["repair_rounds_source"] == "default"` from JSON output
 
-**Step 4833 — CLI E2E tests**
-TestCliE2E: 5 tests — catalog entries, handler existence, next_command includes job_id and uses hyphens.
+### Step 4849 — Real CLI handler tests for explicit zero
+- `TestCliHandlerRepairRounds::test_explicit_zero`: exercises handler with args.repair_rounds=0
+- Asserts `repair_rounds_allowed == 0` and `repair_rounds_source == "cli"`
+- Would have FAILED on the old code (0 or 2 → 2)
+- `test_explicit_zero_no_repair_attempt`: confirms `repair_rounds_used == 0` per task
 
-**Step 4834 — Deterministic task IDs**
-Task IDs assigned by parse order: first parsed = T001, second = T002. `source_heading_number` stores original heading. `## Task 7` + `## Task 9` → T001, T002. Duplicate headings → T001, T002. Tests: TestDeterministicTaskIds (5 tests).
+### Step 4850 — Real CLI handler tests for explicit one
+- `TestCliHandlerRepairRounds::test_explicit_one`: exercises handler with args.repair_rounds=1
+- Asserts `repair_rounds_allowed == 1` and `repair_rounds_source == "cli"`
 
-**Step 4835 — Strict workspace apply manifest**
-`_strict_apply_to_workspace()` returns `ApplyManifest` with applied/missing/unsupported/unexpected/duplicate lists. Missing staged files block. Duplicate paths block. Path traversal blocks. Absolute paths block. `.env*`, `.git`, cache dirs, private key files block. No silent skipping. Tests: TestStrictWorkspaceApply (8 tests).
+### Step 4851 — Fix command catalog for do.job-run
+- Changed `may_execute_commands=False` → `may_execute_commands=True` in catalog
+- Updated help text: `"Max repair attempts per task (default: 2, 0=disabled)"`
+- Tests: `TestCatalogMetadata` (4 tests) — job-run True, job-plan False, job-report False, no mutate_repo
 
-**Step 4836 — Reuse promotion safety logic**
-`_is_unsafe_path()` validates all paths with traversal, env, git, unsafe dir, and private key checks. Same safety level as existing staging_workspace filtering. Tests: TestPromotionSafetyReuse (3 tests).
+### Step 4852 — Target repo mutation guard negative test
+- `TestTargetMutationNegative::test_target_mutation_blocks_job`: monkeypatches `run_pingpong` to write `INJECTED.txt` to real repo after first task
+- Asserts: `JOB_BLOCKED`, `target_mutated=True`, `INJECTED.txt` in changed files, second task skipped
+- `test_mutation_reports_changed_files`: overwrites existing file, confirms guard reports it
 
-**Step 4837 — Job-level target repo snapshot guard**
-`_snapshot_target_repo()` + `_check_target_repo_guard()` reuse `_snapshot_target` and `_check_target_mutation` from pingpong_loop.py. Checked after each task. Mutation → task blocked, job blocked. `TargetGuard` persisted in job JSON. Tests: TestTargetRepoGuard (2 tests).
+### Step 4853 — Partial-run status JOB_PAUSED
+- Added `JOB_PAUSED = "paused"` constant
+- `run_job()` sets `JOB_PAUSED` when max_tasks stops execution with pending tasks remaining
+- `_suggest_next_command` handles `JOB_PAUSED` → `remedy do job-run {job_id}`
+- `format_job_report_text` shows `"Paused: N tasks pending"`
+- `export_job_report` includes `"pending_tasks": count`
+- Tests: `TestPartialRunStatus` (6 tests) — paused status, not running, copyable command, pending count, continuation, full run completed
 
-**Step 4838 — Strengthen task completion gate**
-Task reaches APPLIED only if: final_status == "staged_review_passed" AND strict apply succeeded AND target guard passed. Any failure → TASK_BLOCKED/FAILED + JOB_BLOCKED + remaining SKIPPED. Tests: TestTaskCompletionGate (3 tests).
+### Step 4854 — Job report repair metadata
+- `export_job_report` includes: `repair_rounds_allowed`, `repair_rounds_source`, `pending_tasks`
+- `format_job_report_text` shows: `"Repair: N rounds (source: cli/default)"` + `"(disabled)"` when 0
+- Per-task: `repair_rounds_used`, `repair_rounds_allowed` already present
+- Tests: `TestReportRepairMetadata` (5 tests) — allowed, source, per-task, text report, context strategy
 
-**Step 4839 — Per-task proof summaries**
-`TaskProofSummary` dataclass with task_id, title, run_id, final_status, applied_files, test_passed, reviewer_verdict, repair info, tokens_estimated. Persisted in job JSON. Tests: TestProofSummaries (3 tests).
+### Step 4855 — Preserved safety and token-bounded context
+All existing tests pass unchanged:
+- Deterministic task IDs (5 tests)
+- Strict workspace apply (8 tests)
+- Missing/env/traversal/duplicate artifact blocking (5 tests)
+- Target repo guard clean path (2 tests)
+- Task completion gate (3 tests)
+- Proof summaries (3 tests)
+- Token context policy (1 test)
+- Token-bounded prompts (5 tests)
+- Existing flow preservation (9 tests)
+- Persistence round-trip (3 tests)
+- Job plan parsing (8 tests)
 
-**Step 4840 — Token context policy**
-`_build_task_prompt()` passes only: job title, current task body/acceptance, last 5 proof summaries with applied file lists. No full previous prompts, no full diffs, no full repo. Report includes `context_strategy` dict. Tests: TestTokenContextPolicy (1 test).
-
-**Step 4841 — Token-bounded prompt tests**
-TestTokenBoundedPrompt (5 tests): body truncation, bounded summary in prompt, no full Task 1 body in Task 2, only last 5 summaries, prompt length bounded.
-
-**Step 4842 — Blocking-path E2E tests**
-TestBlockingPathE2E (5 tests): missing file blocks, .env blocks, traversal blocks, duplicate blocks, task stays PASSED (not APPLIED) when blocked.
-
-**Step 4843 — Existing flows preserved**
-TestExistingFlowsPreserved (9 tests) + 305 adjacent tests pass. Full suite: 7807 passed.
-
-**Step 4844 — Architecture guard**
+### Step 4856 — Architecture guard
 All clean:
-- No stale `remedy do job run`/`plan`/`report` in production code
-- No `shell=True`
-- No provider calls during plan
-- No target repo mutation (snapshot guard)
-- No git ops
-- No `os.environ`/`getenv` in job module
-- No `live_review.md` dependency
-- No unbounded history (last 5 summaries)
-- No full repo in prompt
-- No auto-promote
-- Task IDs by parse order, not heading number
-- Strict apply: no silent skips
-- Path safety: traversal, .env, .git, keys all blocked
-- Task done only after review + strict apply + guard
+- No `or 2` coercion on repair_rounds in production code
+- No stale `remedy do job run/plan/report` (space-separated)
+- No `do.job-run` with `may_execute_commands=False`
+- No `shell=True` in product code
+- No `subprocess` in pingpong_job
+- No `git commit/push/reset/checkout`
+- No `os.environ`/`getenv`
+- No `live_review.md` product dependency
+- No auto-promotion
+- No task IDs from heading number
+- No silent workspace apply skips
+- Path safety: traversal, .env, .git, keys, unsafe dirs blocked
+- Token-bounded: last 5 summaries, 2000-char body limit
+- Full repo not in prompt
+- No env/API key leakage
+- Task body not in public report (only internal persistence, already bounded)
 
-### Test results
-- Job task runner: 65/65 pass
-- Evidence bundle: 65/65 pass
-- Repair loop: 131/131 pass
-- Job fulfillment: 109/109 pass
+## Edited file and line-range map
+- `apps/cli/commands/do_cmd.py` L697-731 (handler), L828 (lambda) — repair-rounds fix
+- `apps/cli/command_catalog.py` L2384, L2391 — catalog metadata fix
+- `packages/orchestration/pingpong_job.py` L46 (JOB_PAUSED), L137-138 (JobPlan fields), L265-266 (export), L303-304 (import), L635 (run_job param), L664-667 (metadata set), L736 (repair_rounds_source pass), L808-820 (paused status), L926-942 (report metadata), L997-1008 (text report repair info), L1028-1029 (suggest paused)
+- `tests/orchestration/test_job_task_runner.py` L694-1033 — 30 new tests across 6 classes
+
+## Test counts
+- Job task runner: 95/95 pass (was 65, +30 new)
+- Job fulfillment: 109/109 pass (twice, deterministic)
 - Fast lane: 571/571 pass
 - Runtime lane: 57/57 pass (4/4 suites)
 - Lint: ruff clean, mypy clean (200 source files)
-- Full suite: 7807 passed, 8 skipped, 1 deselected, 0 failed (239s)
+- Full suite: 7837 passed, 8 skipped, 1 deselected, 0 failed (236s)
 
-### What this proves
-- All job CLI next commands are copy-pasteable
-- Task IDs are unique and deterministic by parse order
-- Job workspace apply is strict — cannot silently skip
-- Unsafe paths (traversal, .env, .git, keys) block apply
-- Job-level target repo mutation guard exists and works
-- Task completion requires review pass + strict apply + guard
-- Task 2 never starts before task 1 is applied
-- Token context is bounded (last 5 summaries, 2000-char body limit)
-- Job report shows context strategy and proof summaries
-- Existing single-task, repair, evidence, promotion flows preserved
-- Remedy can run ordered jobs safely and token-efficiently
+## Test classes added (Steps 4845-4856)
+- TestRepairRoundsCoercion (7 tests): resolver None/0/1/negative/cap, job-run explicit zero, job-run default
+- TestCliHandlerRepairRounds (6 tests): omitted, explicit zero, explicit one, no repair attempt, report disabled, report json source
+- TestCatalogMetadata (4 tests): job-run execute, job-run no mutate, job-plan no execute, job-report no execute
+- TestTargetMutationNegative (2 tests): mutation blocks, mutation reports files
+- TestPartialRunStatus (6 tests): paused, not running, copyable command, pending count, continuation, full completed
+- TestReportRepairMetadata (5 tests): allowed, source, per-task, text report, context strategy
 
-### What this does not prove
-- Real Claude CLI dogfood
-- DAG/parallel scheduling
-- Final target-repo job promotion
-- Delete-file handling in workspace apply (blocked by design)
+## What this proves
+- `--repair-rounds 0` truly disables repair (0 is not coerced to 2)
+- Omitted `--repair-rounds` defaults to 2 via resolve_repair_rounds
+- `--repair-rounds 1` uses exactly one repair round
+- Repair-round source visible in job reports (CLI and JSON)
+- do.job-run admits command execution in catalog
+- Target repo mutation during job execution blocks the job
+- Partial max-tasks run produces "paused" not "running"
+- Continuation after pause completes remaining tasks
+- All previous safety invariants preserved
 
-### Carry-forward
-No open findings. All prior reviewer verdicts: PASS.
+## What this does not prove
+- Real provider (Claude/Ollama) repair behavior — only fake providers tested
+- Multi-task repair interaction — repair_rounds=1 with fail-then-pass not tested at job level (would need FakeProvider sequence control per task)
+- Real CLI subprocess invocation — tests exercise handler lambdas, not full `remedy do job-run` subprocess
+- Production job file parsing edge cases beyond current test fixtures
+- Target repo promotion — explicitly not built yet
 
-### Review quiet-window
-- Final review file check: 2026-06-25 ~18:55 UTC
-- live_review.md last modified: overwritten for this handoff
-- No reviewer activity detected
-- No findings requiring Builder action
+## Final 5-minute quiet-window check
+Builder will wait 5 minutes after commit before writing final handoff confirmation.

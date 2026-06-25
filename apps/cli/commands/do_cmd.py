@@ -700,13 +700,20 @@ def _cmd_do_job_run(
     builder: str = "fake",
     reviewer: str = "fake",
     max_rounds: int = 3,
-    repair_rounds: int = 2,
+    repair_rounds: int | None = None,
     test_command: str = "",
     claude_cli_write_mode: str = "none",
     max_tasks: int = 0,
     json_output: bool = False,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop."""
+    from packages.orchestration.pingpong_loop import resolve_repair_rounds
+    try:
+        repair_rounds_val, repair_rounds_source = resolve_repair_rounds(repair_rounds)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
     from packages.orchestration.pingpong_job import (
         export_job_report,
         run_job,
@@ -717,7 +724,8 @@ def _cmd_do_job_run(
         builder_name=builder,
         reviewer_name=reviewer,
         max_rounds=max_rounds,
-        repair_rounds=repair_rounds,
+        repair_rounds=repair_rounds_val,
+        repair_rounds_source=repair_rounds_source,
         test_command=test_command,
         claude_cli_write_mode=claude_cli_write_mode,
         max_tasks=max_tasks,
@@ -820,7 +828,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         builder=getattr(args, "builder", None) or "fake",
         reviewer=getattr(args, "reviewer", None) or "fake",
         max_rounds=int(getattr(args, "max_rounds", None) or 3),
-        repair_rounds=int(getattr(args, "repair_rounds", None) or 2),
+        repair_rounds=getattr(args, "repair_rounds", None),
         test_command=getattr(args, "test_command", None) or "",
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
         max_tasks=int(getattr(args, "max_tasks", None) or 0),

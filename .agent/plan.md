@@ -1,22 +1,21 @@
-# Plan — Steps 4832-4844: Job Runner Correctness + Token Context Policy v1
+# Plan — Steps 4845-4856: Job Runner CLI Control + Execution Metadata Closure v2
 
 ## Goal
-Fix correctness issues in Job Task Runner v0 and add token context policy.
+Fix repair-round coercion bug, add execution metadata, strengthen guards and tests.
 
 ## Current Step
-Complete. All implementation, tests, verification done.
+Complete. All implementation, tests, verification done. Pending handoff.
 
 ## Completed
-- Step 4832: CLI command truth — all next_command uses hyphens (job-run, job-report, job-plan)
-- Step 4833: CLI E2E tests — catalog, handlers, next_command copy-pasteability
-- Step 4834: Deterministic task IDs by parse order (T001, T002, ...), source_heading_number stored
-- Step 4835: Strict workspace apply manifest — missing/duplicate/traversal/unsafe paths block
-- Step 4836: Reused promotion safety — path validation via _is_unsafe_path()
-- Step 4837: Job-level target repo snapshot guard — _snapshot_target_repo/_check_target_repo_guard
-- Step 4838: Task completion gate — requires review pass + strict apply + target guard
-- Step 4839: Per-task proof summaries — TaskProofSummary dataclass persisted
-- Step 4840: Token context policy — task_bounded_sequential_job, previous_summary_limit=5
-- Step 4841: Token-bounded prompt tests — body truncation, summary bounding, no full body carryover
-- Step 4842: Blocking-path E2E tests — missing/env/traversal/duplicate all block
-- Step 4843: All existing flows preserved — 7807 passed full suite
-- Step 4844: Architecture guard clean, lint clean, mypy clean
+- Step 4845: Fix `--repair-rounds 0` coercion — removed `or 2`, use resolve_repair_rounds
+- Step 4846: Repair-round source in job execution metadata — JobPlan.repair_rounds_source
+- Step 4847: Pass repair-round source into run_pingpong per task
+- Step 4848: Real CLI handler tests for omitted/default repair rounds
+- Step 4849: Real CLI handler tests for explicit zero
+- Step 4850: Real CLI handler tests for explicit one
+- Step 4851: Fix command catalog may_execute_commands=True for do.job-run
+- Step 4852: Target repo mutation guard negative test via monkeypatch
+- Step 4853: Partial-run status JOB_PAUSED for --max-tasks
+- Step 4854: Job report repair metadata (rounds/source/per-task)
+- Step 4855: Preserved all safety + token-bounded context
+- Step 4856: Architecture guard clean, handoff pending

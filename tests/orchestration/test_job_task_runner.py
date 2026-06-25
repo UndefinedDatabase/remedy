@@ -1,13 +1,16 @@
-"""Tests for the Job Task Runner (Steps 4827-4844).
+"""Tests for the Job Task Runner (Steps 4827-4856).
 
 Covers: job plan parsing, deterministic task IDs, strict workspace apply,
 sequential execution, target repo guard, token-bounded context, report output,
-blocking-path E2E, CLI dispatch, and existing flow preservation.
+blocking-path E2E, CLI dispatch, existing flow preservation, repair-round
+CLI control, execution metadata, partial-run status, and target mutation
+negative guard.
 """
 
 from __future__ import annotations
 
 import json
+import types
 from pathlib import Path
 
 import pytest
@@ -15,8 +18,10 @@ import pytest
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_COMPLETED,
+    JOB_PAUSED,
     JOB_PLANNED,
     TASK_APPLIED,
+    TASK_BLOCKED,
     TASK_FAILED,
     TASK_PASSED,
     TASK_PENDING,
@@ -688,3 +693,379 @@ class TestJobPlanParsing:
     def test_no_provider_call(self, isolate_data_root):
         job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
         assert job.status == JOB_PLANNED
+
+
+# ---------------------------------------------------------------------------
+# Step 4845 — Preserve explicit --repair-rounds 0
+# ---------------------------------------------------------------------------
+
+
+class TestRepairRoundsCoercion:
+    def test_resolve_none_gives_default(self):
+        from packages.orchestration.pingpong_loop import resolve_repair_rounds
+        val, src = resolve_repair_rounds(None)
+        assert val == 2
+        assert src == "default"
+
+    def test_resolve_zero_stays_zero(self):
+        from packages.orchestration.pingpong_loop import resolve_repair_rounds
+        val, src = resolve_repair_rounds(0)
+        assert val == 0
+        assert src == "cli"
+
+    def test_resolve_one_stays_one(self):
+        from packages.orchestration.pingpong_loop import resolve_repair_rounds
+        val, src = resolve_repair_rounds(1)
+        assert val == 1
+        assert src == "cli"
+
+    def test_negative_raises(self):
+        from packages.orchestration.pingpong_loop import resolve_repair_rounds
+        with pytest.raises(ValueError, match="must be >= 0"):
+            resolve_repair_rounds(-1)
+
+    def test_above_hard_cap_raises(self):
+        from packages.orchestration.pingpong_loop import resolve_repair_rounds
+        with pytest.raises(ValueError, match="must be <="):
+            resolve_repair_rounds(99)
+
+    def test_job_run_explicit_zero(self, isolate_data_root, demo_repo):
+        """run_job with repair_rounds=0 must NOT coerce to 2."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+        assert result.repair_rounds_allowed == 0
+        assert result.repair_rounds_source == "cli"
+        for t in result.tasks:
+            if t.status == TASK_APPLIED:
+                assert t.repair_rounds_allowed == 0
+
+    def test_job_run_default_two(self, isolate_data_root, demo_repo):
+        """run_job with repair_rounds=2/default source records correctly."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=2,
+            repair_rounds_source="default",
+        )
+        assert result.repair_rounds_allowed == 2
+        assert result.repair_rounds_source == "default"
+
+
+# ---------------------------------------------------------------------------
+# Steps 4848-4850 — Real CLI handler path tests
+# ---------------------------------------------------------------------------
+
+
+def _make_args(**kwargs):
+    """Build a namespace that mimics argparse output for do.job-run."""
+    ns = types.SimpleNamespace()
+    ns.job_id = kwargs.get("job_id", "test_job")
+    ns.builder = kwargs.get("builder", "fake")
+    ns.reviewer = kwargs.get("reviewer", "fake")
+    ns.max_rounds = kwargs.get("max_rounds", "3")
+    ns.test_command = kwargs.get("test_command", "")
+    ns.claude_cli_write_mode = kwargs.get("claude_cli_write_mode", "none")
+    ns.max_tasks = kwargs.get("max_tasks", "0")
+    ns.json = kwargs.get("json", True)
+    if "repair_rounds" in kwargs:
+        ns.repair_rounds = kwargs["repair_rounds"]
+    else:
+        ns.repair_rounds = None
+    return ns
+
+
+class TestCliHandlerRepairRounds:
+    def test_omitted_gives_default(self, isolate_data_root, demo_repo, capsys):
+        """CLI handler with no --repair-rounds uses default 2."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args = _make_args(job_id=job.job_id)
+
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+        COMMAND_HANDLERS["do.job-run"](args)
+
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["repair_rounds_allowed"] == 2
+        assert data["repair_rounds_source"] == "default"
+
+    def test_explicit_zero(self, isolate_data_root, demo_repo, capsys):
+        """CLI handler with --repair-rounds 0 passes 0, not coerced to 2."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args = _make_args(job_id=job.job_id, repair_rounds=0)
+
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+        COMMAND_HANDLERS["do.job-run"](args)
+
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["repair_rounds_allowed"] == 0
+        assert data["repair_rounds_source"] == "cli"
+
+    def test_explicit_one(self, isolate_data_root, demo_repo, capsys):
+        """CLI handler with --repair-rounds 1 passes 1."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        args = _make_args(job_id=job.job_id, repair_rounds=1)
+
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+        COMMAND_HANDLERS["do.job-run"](args)
+
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["repair_rounds_allowed"] == 1
+        assert data["repair_rounds_source"] == "cli"
+
+    def test_explicit_zero_no_repair_attempt(self, isolate_data_root, demo_repo):
+        """With repair_rounds=0, reviewer findings don't trigger repair."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+        for t in result.tasks:
+            if t.status == TASK_APPLIED:
+                assert t.repair_rounds_used == 0
+
+    def test_report_shows_repair_disabled(self, isolate_data_root, demo_repo):
+        """Job report text shows repair disabled when rounds=0."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+        text = format_job_report_text(result)
+        assert "disabled" in text.lower() or "0 rounds" in text
+
+    def test_report_json_repair_source(self, isolate_data_root, demo_repo):
+        """Job report JSON includes repair_rounds_source."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+        report = export_job_report(result)
+        assert report["repair_rounds_allowed"] == 0
+        assert report["repair_rounds_source"] == "cli"
+
+
+# ---------------------------------------------------------------------------
+# Step 4851 — Command catalog execution metadata
+# ---------------------------------------------------------------------------
+
+
+class TestCatalogMetadata:
+    def test_job_run_may_execute_commands(self):
+        from apps.cli.command_catalog import CATALOG
+        entry = [c for c in CATALOG if c.command_id == "do.job-run"][0]
+        assert entry.may_execute_commands is True
+
+    def test_job_run_no_mutate_repo(self):
+        from apps.cli.command_catalog import CATALOG
+        entry = [c for c in CATALOG if c.command_id == "do.job-run"][0]
+        assert entry.may_mutate_repo is False
+
+    def test_job_plan_no_execute(self):
+        from apps.cli.command_catalog import CATALOG
+        entry = [c for c in CATALOG if c.command_id == "do.job-plan"][0]
+        assert entry.may_execute_commands is False
+
+    def test_job_report_no_execute(self):
+        from apps.cli.command_catalog import CATALOG
+        entry = [c for c in CATALOG if c.command_id == "do.job-report"][0]
+        assert entry.may_execute_commands is False
+
+
+# ---------------------------------------------------------------------------
+# Step 4852 — Target repo mutation guard NEGATIVE test
+# ---------------------------------------------------------------------------
+
+
+class TestTargetMutationNegative:
+    def test_target_mutation_blocks_job(self, isolate_data_root, demo_repo, monkeypatch):
+        """If target repo is mutated during job, job is blocked."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        call_count = [0]
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            call_count[0] += 1
+            if call_count[0] == 1:
+                (demo_repo / "INJECTED.txt").write_text("malicious mutation")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+
+        assert result.status == JOB_BLOCKED
+        assert result.target_guard is not None
+        assert result.target_guard.target_mutated is True
+        assert "INJECTED.txt" in result.target_guard.changed_target_files
+        assert any(
+            t.status in (TASK_BLOCKED, TASK_FAILED) or t.error
+            for t in result.tasks
+        )
+        assert result.tasks[1].status in (TASK_SKIPPED, TASK_BLOCKED, TASK_PENDING)
+
+    def test_mutation_reports_changed_files(self, isolate_data_root, demo_repo, monkeypatch):
+        """Blocked job report lists which target files changed."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+
+        def mutating_run(*args, **kwargs):
+            result = real_run(*args, **kwargs)
+            (demo_repo / "README.md").write_text("overwritten")
+            return result
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        report = export_job_report(result)
+        guard = report["target_guard"]
+        assert guard["target_mutated"] is True
+        assert len(guard["changed_target_files"]) > 0
+
+
+# ---------------------------------------------------------------------------
+# Step 4853 — Partial-run status (paused)
+# ---------------------------------------------------------------------------
+
+
+class TestPartialRunStatus:
+    def test_max_tasks_gives_paused(self, isolate_data_root, demo_repo):
+        """--max-tasks 1 on 2-task job sets status to paused."""
+        result = _run_success_job(demo_repo, max_tasks=1)
+        assert result.status == JOB_PAUSED
+        assert result.tasks[0].status == TASK_APPLIED
+        assert result.tasks[1].status == TASK_PENDING
+
+    def test_paused_not_running(self, isolate_data_root, demo_repo):
+        """Paused status != running (no false implication of background work)."""
+        result = _run_success_job(demo_repo, max_tasks=1)
+        assert result.status != "running"
+
+    def test_paused_next_command_copyable(self, isolate_data_root, demo_repo):
+        """Paused job suggests job-run as next command."""
+        result = _run_success_job(demo_repo, max_tasks=1)
+        cmd = _suggest_next_command(result)
+        assert "job-run" in cmd
+        assert result.job_id in cmd
+
+    def test_paused_report_shows_pending(self, isolate_data_root, demo_repo):
+        """Report for paused job shows pending task count."""
+        result = _run_success_job(demo_repo, max_tasks=1)
+        report = export_job_report(result)
+        assert report["pending_tasks"] == 1
+        assert report["status"] == "paused"
+
+    def test_continuation_after_pause(self, isolate_data_root, demo_repo):
+        """Re-running job-run after max-tasks pause continues pending tasks."""
+        result = _run_success_job(demo_repo, max_tasks=1)
+        assert result.status == JOB_PAUSED
+        assert result.tasks[1].status == TASK_PENDING
+
+        # Continue the remaining tasks
+        result2 = run_job(
+            result.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        assert result2.status == JOB_COMPLETED
+        assert result2.tasks[0].status == TASK_APPLIED
+        assert result2.tasks[1].status == TASK_APPLIED
+
+    def test_full_run_gives_completed(self, isolate_data_root, demo_repo):
+        """Full run (no --max-tasks) still gives completed."""
+        result = _run_success_job(demo_repo)
+        assert result.status == JOB_COMPLETED
+
+
+# ---------------------------------------------------------------------------
+# Step 4854 — Job report repair metadata
+# ---------------------------------------------------------------------------
+
+
+class TestReportRepairMetadata:
+    def test_report_has_repair_rounds_allowed(self, isolate_data_root, demo_repo):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=3,
+            repair_rounds_source="cli",
+        )
+        report = export_job_report(result)
+        assert report["repair_rounds_allowed"] == 3
+
+    def test_report_has_repair_rounds_source(self, isolate_data_root, demo_repo):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=2,
+            repair_rounds_source="default",
+        )
+        report = export_job_report(result)
+        assert report["repair_rounds_source"] == "default"
+
+    def test_per_task_repair_used(self, isolate_data_root, demo_repo):
+        result = _run_success_job(demo_repo)
+        report = export_job_report(result)
+        for t in report["tasks"]:
+            assert "repair_rounds_used" in t
+            assert "repair_rounds_allowed" in t
+
+    def test_text_report_repair_info(self, isolate_data_root, demo_repo):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            repair_rounds_source="cli",
+        )
+        text = format_job_report_text(result)
+        assert "0 rounds" in text
+        assert "source: cli" in text
+
+    def test_context_strategy_present(self, isolate_data_root, demo_repo):
+        result = _run_success_job(demo_repo)
+        report = export_job_report(result)
+        assert report["context_strategy"]["strategy"] == "task_bounded_sequential_job"
