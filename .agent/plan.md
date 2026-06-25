@@ -1,17 +1,15 @@
-# Plan — Steps 4820-4826: Evidence CLI JSON Redaction Closure v2
+# Plan — Steps 4827-4831: Job Task Runner v0
 
 ## Goal
-Fix CLI --json stdout leaking secrets from export_evidence return payload.
+Implement sequential multi-task job runner with review/repair gates.
 
 ## Current Step
 Complete. All implementation, tests, verification done.
 
 ## Completed
-- Step 4820: export_evidence() return wrapped in _redact_json_value()
-- Step 4821: CLI handler inherits redaction from export_evidence (no separate fix needed)
-- Step 4822: CLI stdout JSON leak regression test
-- Step 4823: Export return-value regression tests (3 tests)
-- Step 4824: Extended full-output scanner (files + API return)
-- Step 4825: All existing tests preserved — 65 evidence, 131 repair, 109×2 job fulfillment
-- Step 4826: Architecture guard clean, full suite 7742 passed
-- Lint: ruff clean, mypy clean
+- Step 4827: Durable job/task state model — JobPlan, TaskEntry dataclasses, persistence under task_jobs/
+- Step 4828: Deterministic Markdown job-file parser, `remedy do job-plan` CLI
+- Step 4829: Sequential `remedy do job-run` with per-task ping-pong loop
+- Step 4830: Workspace apply — staged files copied into isolated job workspace after review pass
+- Step 4831: Job report (JSON + text), 34 tests, full suite 7776 passed
+- Lint: ruff clean, mypy clean (200 source files)

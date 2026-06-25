@@ -655,6 +655,104 @@ def _cmd_do_plan(
         print(f"  remedy do run --task-file {task_file} --scope-file {scope_file} --approve-scope --repo {repo}")
 
 
+def _cmd_do_job_plan(
+    *,
+    job_file: str = "",
+    repo: str = ".",
+    json_output: bool = False,
+) -> None:
+    """Parse a job file into ordered tasks (no provider calls)."""
+    from packages.orchestration.pingpong_job import plan_job_from_file
+
+    if not job_file:
+        print("Error: --job-file is required", file=sys.stderr)
+        sys.exit(1)
+
+    job = plan_job_from_file(job_file, repo)
+
+    if job.error:
+        print(f"Error: {job.error}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(json.dumps({
+            "job_id": job.job_id,
+            "job_title": job.job_title,
+            "status": job.status,
+            "tasks": [
+                {"task_id": t.task_id, "title": t.title, "status": t.status}
+                for t in job.tasks
+            ],
+            "next_command": f"remedy do job run {job.job_id}",
+        }, indent=2))
+    else:
+        print(f"Job planned: {job.job_id}")
+        print(f"Title: {job.job_title}")
+        print(f"Tasks: {len(job.tasks)}")
+        for t in job.tasks:
+            print(f"  {t.task_id}: {t.title}")
+        print(f"\nNext: remedy do job run {job.job_id}")
+
+
+def _cmd_do_job_run(
+    job_id: str,
+    *,
+    builder: str = "fake",
+    reviewer: str = "fake",
+    max_rounds: int = 3,
+    repair_rounds: int = 2,
+    test_command: str = "",
+    claude_cli_write_mode: str = "none",
+    max_tasks: int = 0,
+    json_output: bool = False,
+) -> None:
+    """Run pending tasks sequentially through the ping-pong loop."""
+    from packages.orchestration.pingpong_job import (
+        export_job_report,
+        run_job,
+    )
+
+    job = run_job(
+        job_id,
+        builder_name=builder,
+        reviewer_name=reviewer,
+        max_rounds=max_rounds,
+        repair_rounds=repair_rounds,
+        test_command=test_command,
+        claude_cli_write_mode=claude_cli_write_mode,
+        max_tasks=max_tasks,
+    )
+
+    if json_output:
+        print(json.dumps(export_job_report(job), indent=2))
+    else:
+        from packages.orchestration.pingpong_job import format_job_report_text
+        print(format_job_report_text(job))
+
+
+def _cmd_do_job_report(
+    job_id: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    """Show a job report."""
+    from packages.orchestration.pingpong_job import (
+        export_job_report,
+        format_job_report_text,
+        load_job_plan,
+    )
+
+    job = load_job_plan(job_id)
+    if job is None:
+        print(f"Error: job not found: {job_id}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(json.dumps(export_job_report(job), indent=2))
+    else:
+        print(format_job_report_text(job))
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.run": lambda args: _cmd_do(
         getattr(args, "goal", None) or "",
@@ -710,6 +808,26 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.continue": lambda args: _cmd_do_continue(
         args.job_id,
         intent_id=getattr(args, "intent_id", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "do.job-plan": lambda args: _cmd_do_job_plan(
+        job_file=getattr(args, "job_file", None) or "",
+        repo=getattr(args, "repo", None) or ".",
+        json_output=getattr(args, "json", False),
+    ),
+    "do.job-run": lambda args: _cmd_do_job_run(
+        args.job_id,
+        builder=getattr(args, "builder", None) or "fake",
+        reviewer=getattr(args, "reviewer", None) or "fake",
+        max_rounds=int(getattr(args, "max_rounds", None) or 3),
+        repair_rounds=int(getattr(args, "repair_rounds", None) or 2),
+        test_command=getattr(args, "test_command", None) or "",
+        claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
+        max_tasks=int(getattr(args, "max_tasks", None) or 0),
+        json_output=getattr(args, "json", False),
+    ),
+    "do.job-report": lambda args: _cmd_do_job_report(
+        args.job_id,
         json_output=getattr(args, "json", False),
     ),
 }

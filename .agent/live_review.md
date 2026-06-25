@@ -1,4 +1,4 @@
-# Live Review — Steps 4820-4826: Evidence CLI JSON Redaction Closure v2
+# Live Review — Steps 4827-4831: Job Task Runner v0
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
@@ -9,7 +9,7 @@ Timestamp: 2026-06-25
 PENDING
 
 ## Commit reviewed
-c5400ab — Steps 4820-4826: Evidence CLI JSON Redaction Closure v2
+(pending commit)
 
 ## PR reviewed
 No open PR. Builder on `feature/steps-3276-3355-job-fulfillment-spine-v0`.
@@ -17,60 +17,62 @@ No open PR. Builder on `feature/steps-3276-3355-job-fulfillment-spine-v0`.
 ## Builder handoff
 
 ### What changed
-Fixed `export_evidence()` return payload leaking secrets to CLI `--json` stdout. One-line fix: wrap return dict in `_redact_json_value()`.
+Implemented sequential multi-task job runner. Markdown job file → ordered tasks → per-task Builder/Reviewer/Repair loop → workspace apply → job report. Real target repo never mutated.
 
 ### Files changed
-- `packages/orchestration/pingpong_evidence.py` L489: `return _redact_json_value({...})` (was `return {...}`)
-- `tests/orchestration/test_evidence_bundle.py` L884-955: 5 new tests across 3 classes
+- `packages/orchestration/pingpong_job.py` (new, ~420 lines): job/task model, parser, runner, apply, report
+- `apps/cli/commands/do_cmd.py` L658-753: 3 CLI handlers + COMMAND_HANDLERS entries
+- `apps/cli/command_catalog.py` L2354-2410: 3 CommandEntry records
+- `tests/orchestration/test_job_task_runner.py` (new, ~380 lines): 34 tests, 8 classes
 - `.agent/plan.md` — updated
 - `.agent/context.md` — updated
 
 ### Step-by-step results
 
-**Step 4820 — Redact export_evidence() return payload**
-L489: `return _redact_json_value({...})`. All string values in return dict (run_id, out_dir, file paths, manifest fields) now pass through recursive redaction. Path strings preserved as-is since they're local filesystem paths, not secrets.
+**Step 4827 — Durable job plan and task state model**
+TaskEntry + JobPlan dataclasses. Task statuses: pending/running/passed/applied_to_job_workspace/blocked/failed/skipped. Job statuses: planned/running/blocked/completed. Persistence: `<data_root>/task_jobs/<job_id>/job.json`.
 
-**Step 4821 — CLI handler defense-in-depth**
-No separate fix needed. `_cmd_do_evidence` at L389 does `json.dumps(result)` where `result` is already redacted by `export_evidence()`. Single source of truth — no duplicate redaction logic.
+**Step 4828 — Deterministic job-file parser and CLI**
+`parse_job_file()` regex parser for `## Task N` headings. `_cmd_do_job_plan()` CLI. No provider call. Body bounded to 2000 chars. Blocks on no tasks found.
 
-**Step 4822 — CLI stdout JSON leak regression test**
-`TestCliStdoutRedaction::test_cli_json_stdout_redacted`: goal contains `API_KEY=supersecretvalue123`, task excerpt contains `sk-ant-...`. Calls `export_evidence()`, `json.dumps(result)`. Asserts secrets absent, run_id and final_status preserved.
+**Step 4829 — Sequential job runner**
+`run_job()` iterates pending tasks. Per task: bounded prompt → TaskInput → `run_pingpong` with `keep_staging=True`. Failed task blocks job, remaining skipped. `--max-tasks` limits execution.
 
-**Step 4823 — Export return-value regression tests (3)**
-`TestExportReturnRedaction`:
-- `test_return_manifest_redacted`: poisoned run, all 7 _LEAK_MARKERS absent from `json.dumps(result)`
-- `test_return_preserves_useful_fields`: run_id, out_dir, manifest.final_status, manifest.run_id preserved
-- `test_return_has_redacted_placeholder`: `[REDACTED]` present where secrets were
+**Step 4830 — Workspace apply**
+`_apply_task_to_workspace()` copies staged files into job workspace. Cleans up staging. On failure: task blocked, job stopped. Task flow: pending → running → passed → applied_to_job_workspace.
 
-**Step 4824 — Extended full-output scanner**
-`TestFullOutputScannerExtended::test_no_leaks_in_files_or_api_return`: scans all emitted files AND `json.dumps(result)` for all 7 leak markers. Covers both file output and CLI/API return path in one test.
+**Step 4831 — Job report and tests**
+JSON + text report. 34 tests: parsing (8), no-provider (1), sequential (8), report (6), token-bounded (1), existing flows (4), persistence (2), CLI dispatch (4).
 
-**Step 4825 — Existing flows preserved**
-- Evidence bundle tests: 65/65 pass
-- Repair loop tests: 131/131 pass
-- Job fulfillment tests: 109/109 pass (twice)
+### Test results
+- Job task runner: 34/34 pass
+- Evidence bundle: 65/65 pass
+- Repair loop: 131/131 pass
+- Job fulfillment: 109/109 pass
 - Fast lane: 571/571 pass
 - Runtime lane: 57/57 pass (4/4 suites)
-- Lint: ruff clean, mypy clean (199 source files)
-- Full suite: 7742 passed, 8 skipped, 1 deselected, 0 failed (244s)
+- Lint: ruff clean, mypy clean (200 source files)
+- Full suite: 7776 passed, 8 skipped, 1 deselected, 0 failed (241s)
 
-**Step 4826 — Architecture guard**
-All clean: no `shell=True`, no provider calls, no git mutations, no auto-promote, no `task_body`, no `os.environ`/`getenv`, no `live_review.md` dependency. `export_evidence` return wrapped in `_redact_json_value`. `_cmd_do_evidence` relies on redacted return — no unredacted `json.dumps`.
+### Architecture guard
+All clean: no `shell=True`, no provider calls during plan, no target repo mutation, no git ops, no `os.environ`/`getenv`, no `live_review.md` dependency, no unbounded history, no full repo in prompt, no auto-promote. Task 2 waits for task 1. Task done only after review + apply.
 
 ### What this proves
-- `do evidence --json | tee ...` is now safe by default
-- CLI stdout and bundle files both redacted for 7 secret pattern types
-- No divergent redaction logic — single `_redact_json_value` call in `export_evidence`
+- Remedy can run ordered tasks sequentially with review/repair gates
+- Real target repo not mutated
+- Job workspace accumulates changes
+- Context is task-bounded
 
 ### What this does not prove
 - Real Claude CLI dogfood
-- Redaction of novel secret formats not in the 7 patterns
+- DAG/parallel scheduling
+- Final target-repo job promotion
 
 ### Carry-forward
 No open findings. All prior reviewer verdicts: PASS.
 
 ### Review quiet-window
-- Final review file check: 2026-06-25 ~17:41 UTC
-- live_review.md last modified: ~34 minutes before handoff
+- Final review file check: 2026-06-25 ~18:20 UTC
+- live_review.md last modified: overwritten for this handoff
 - No reviewer activity detected
 - No findings requiring Builder action

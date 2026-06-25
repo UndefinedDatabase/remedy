@@ -2351,6 +2351,61 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=True,
     ),
 
+    # ── do.job-* ──────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="do.job-plan",
+        group_id="do",
+        subcommand="job-plan",
+        description="Parse a job file into ordered tasks (no provider calls).",
+        action_class="read_only",
+        supports_json=True,
+        related=("do.job-run", "do.job-report"),
+        args=(
+            ArgDef("--job-file", "Path to Markdown job file", required=True, is_option=True),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+    CommandEntry(
+        command_id="do.job-run",
+        group_id="do",
+        subcommand="job-run",
+        description="Run pending job tasks sequentially through Builder/Reviewer/Repair.",
+        action_class="write_metadata",
+        supports_json=True,
+        related=("do.job-plan", "do.job-report"),
+        args=(
+            ArgDef("job_id", "Job ID from do job-plan"),
+            ArgDef("--builder", "Builder provider: fake, claude, claude-cli", required=False, is_option=True, default="fake"),
+            ArgDef("--reviewer", "Reviewer provider: fake, claude, claude-cli", required=False, is_option=True, default="fake"),
+            ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3)", required=False, is_option=True, default="3"),
+            ArgDef("--repair-rounds", "Max repair attempts per task (default: 2)", required=False, is_option=True, default="2"),
+            ArgDef("--test-command", "Test command to run in staging", required=False, is_option=True, default=""),
+            ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip", required=False, is_option=True, default="none"),
+            ArgDef("--max-tasks", "Max tasks to execute (0=all)", required=False, is_option=True, default="0"),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+    CommandEntry(
+        command_id="do.job-report",
+        group_id="do",
+        subcommand="job-report",
+        description="Show a job report with task statuses and run IDs.",
+        action_class="read_only",
+        supports_json=True,
+        related=("do.job-plan", "do.job-run"),
+        args=(
+            ArgDef("job_id", "Job ID"),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+
     # ── repair ──────────────────────────────────────────────────────────
     CommandEntry(
         command_id="repair.start",
