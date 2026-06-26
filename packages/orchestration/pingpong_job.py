@@ -690,6 +690,9 @@ def _strict_apply_to_workspace(
         return manifest
 
     # Validate and apply each file
+    staging_resolved = staging.resolve()
+    workspace_resolved = workspace.resolve()
+
     for rel_path in staged_files:
         unsafe_reason = _is_unsafe_path(rel_path)
         if unsafe_reason:
@@ -697,41 +700,108 @@ def _strict_apply_to_workspace(
             continue
 
         src = staging / rel_path
+
+        # --- Source containment: staging ---
+        if src.is_symlink():
+            manifest.unsupported_files.append(
+                f"{rel_path} (staging_source_is_symlink)")
+            continue
+
         if not src.exists():
             manifest.missing_files.append(rel_path)
             continue
 
-        # Path containment check
-        try:
-            resolved_dst = (workspace / rel_path).resolve()
-            if not resolved_dst.is_relative_to(workspace.resolve()):
+        if not src.is_file():
+            manifest.unsupported_files.append(
+                f"{rel_path} (staging_source_not_regular_file)")
+            continue
+
+        src_parent = src.parent
+        while src_parent != staging and src_parent != src_parent.parent:
+            if src_parent.is_symlink():
                 manifest.unsupported_files.append(
-                    f"{rel_path} (escapes workspace)"
-                )
+                    f"{rel_path} (staging_source_parent_symlink)")
+                break
+            src_parent = src_parent.parent
+        else:
+            src_parent = None
+        if src_parent is not None:
+            continue
+
+        try:
+            src_resolved = src.resolve()
+        except OSError:
+            manifest.unsupported_files.append(
+                f"{rel_path} (staging_source_resolve_failed)")
+            continue
+
+        if not str(src_resolved).startswith(
+            str(staging_resolved) + os.sep
+        ) and src_resolved != staging_resolved:
+            manifest.unsupported_files.append(
+                f"{rel_path} (staging_source_escapes_staging)")
+            continue
+
+        # --- Destination containment: workspace ---
+        dst = workspace / rel_path
+
+        if dst.is_symlink():
+            manifest.unsupported_files.append(
+                f"{rel_path} (workspace_dest_is_symlink)")
+            continue
+
+        try:
+            resolved_dst = dst.resolve()
+            if not str(resolved_dst).startswith(
+                str(workspace_resolved) + os.sep
+            ) and resolved_dst != workspace_resolved:
+                manifest.unsupported_files.append(
+                    f"{rel_path} (workspace_dest_escapes_workspace)")
                 continue
         except (OSError, ValueError):
             manifest.unsupported_files.append(
-                f"{rel_path} (path resolution failed)"
-            )
+                f"{rel_path} (workspace_dest_resolve_failed)")
             continue
 
-        dst = workspace / rel_path
+        dst_parent = dst.parent
+        while dst_parent != workspace and dst_parent != dst_parent.parent:
+            if dst_parent.exists() and dst_parent.is_symlink():
+                manifest.unsupported_files.append(
+                    f"{rel_path} (workspace_dest_parent_symlink)")
+                break
+            dst_parent = dst_parent.parent
+        else:
+            dst_parent = None
+        if dst_parent is not None:
+            continue
 
         # Capture baseline before first modification to this path
+        # Do not hash through symlinks — dst already verified non-symlink above
         if rel_path not in job_baselines:
             existed = dst.exists()
             baseline_hash = _sha256_of(dst) if existed else ""
             job_baselines[rel_path] = (existed, baseline_hash)
 
+        # Recheck containment immediately before copy (defense-in-depth)
+        if src.is_symlink():
+            manifest.unsupported_files.append(
+                f"{rel_path} (staging_source_is_symlink_at_copy)")
+            continue
+        if dst.is_symlink():
+            manifest.unsupported_files.append(
+                f"{rel_path} (workspace_dest_is_symlink_at_copy)")
+            continue
+
         try:
             dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(src), str(dst))
+            content = src.read_bytes()
+            dst.write_bytes(content)
             manifest.applied_files.append(rel_path)
         except OSError as exc:
             manifest.unexpected_files.append(f"{rel_path} (copy failed: {exc})")
             continue
 
-        # Capture final workspace hash after copy
+        # Capture final workspace hash — dst verified non-symlink above
         final_hash = _sha256_of(dst)
         existed_before, baseline_hash = job_baselines[rel_path]
         manifest.applied_file_proofs.append(AppliedFileProof(

@@ -340,6 +340,28 @@ def _block(
     return result
 
 
+def _safe_persist(
+    job_id: str,
+    result: JobPromotionResult,
+    applied: list[str],
+) -> None:
+    """Persist promotion record, structuring any failure after target mutation."""
+    try:
+        _persist_job_promotion(job_id, result)
+    except OSError as exc:
+        if applied:
+            original_status = result.status
+            original_reason = result.blocked_reason
+            result.status = "promoted_record_update_failed"
+            result.blocked_reason = (
+                f"promotion_record_update_failed: {exc} — "
+                f"original_status={original_status}, "
+                f"original_reason={original_reason}, "
+                f"target files may have changed ({len(applied)} applied)"
+            )
+            result.finished_at = datetime.now(timezone.utc).isoformat()
+
+
 def _run_post_test(
     command: str,
     target: Path,
@@ -594,7 +616,7 @@ def promote_job(
             result.blocked_reason = f"source_unsafe_at_apply: {rel_path}: {src_reason}"
             result.files_applied = applied
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _persist_job_promotion(job_id, result)
+            _safe_persist(job_id, result, applied)
             return result
 
         dest_reason = _validate_dest_containment(target, rel_path)
@@ -603,7 +625,7 @@ def promote_job(
             result.blocked_reason = f"dest_unsafe_at_apply: {rel_path}: {dest_reason}"
             result.files_applied = applied
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _persist_job_promotion(job_id, result)
+            _safe_persist(job_id, result, applied)
             return result
 
         dest = target / rel_path
@@ -617,7 +639,7 @@ def promote_job(
             result.blocked_reason = f"write_failed: {rel_path}: {exc}"
             result.files_applied = applied
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _persist_job_promotion(job_id, result)
+            _safe_persist(job_id, result, applied)
             return result
 
     result.files_applied = applied
@@ -631,13 +653,13 @@ def promote_job(
                 result.status = "blocked"
                 result.blocked_reason = f"post_apply_mismatch: {rel_path}"
                 result.finished_at = datetime.now(timezone.utc).isoformat()
-                _persist_job_promotion(job_id, result)
+                _safe_persist(job_id, result, applied)
                 return result
         except OSError as exc:
             result.status = "blocked"
             result.blocked_reason = f"post_apply_verify_failed: {rel_path}: {exc}"
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _persist_job_promotion(job_id, result)
+            _safe_persist(job_id, result, applied)
             return result
 
     # --- Post-promotion tests ---
@@ -648,20 +670,12 @@ def promote_job(
         if not passed:
             result.status = "promoted_test_failed"
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _persist_job_promotion(job_id, result)
+            _safe_persist(job_id, result, applied)
             return result
 
     result.status = "promoted"
     result.finished_at = datetime.now(timezone.utc).isoformat()
-    try:
-        _persist_job_promotion(job_id, result)
-    except OSError as exc:
-        result.status = "promoted_record_update_failed"
-        result.blocked_reason = (
-            f"promotion_record_update_failed: {exc} — "
-            f"target files were applied but final record could not be written"
-        )
-        result.finished_at = datetime.now(timezone.utc).isoformat()
+    _safe_persist(job_id, result, applied)
     return result
 
 

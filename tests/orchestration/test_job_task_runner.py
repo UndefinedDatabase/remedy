@@ -565,6 +565,192 @@ class TestBlockingPathE2E:
 
 
 # ---------------------------------------------------------------------------
+# Step 5006: Staged source symlink outside staging blocks
+# ---------------------------------------------------------------------------
+
+
+class TestStagedSourceSymlinkBlocks:
+    def test_staged_source_symlink_blocks(self, isolate_data_root, tmp_path):
+        """Staged file that is a symlink to outside staging is blocked."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+
+        external = tmp_path / "secret.txt"
+        external.write_text("secret content\n")
+        (staging / "leak.txt").symlink_to(external)
+
+        class FakeResult:
+            staging_path = str(staging)
+            staged_files = ["leak.txt"]
+            run_id = "run1"
+
+        from packages.orchestration.pingpong_job import TaskEntry
+        task = TaskEntry(task_id="T001")
+        manifest = _strict_apply_to_workspace(task, FakeResult(), str(workspace))
+
+        assert manifest.status == "blocked"
+        assert any("staging_source_is_symlink" in f for f in manifest.unsupported_files)
+        assert not (workspace / "leak.txt").exists()
+
+    def test_staged_source_symlink_inside_staging_also_blocks(self, isolate_data_root, tmp_path):
+        """Even a symlink resolving inside staging is blocked."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+
+        (staging / "real.txt").write_text("real content\n")
+        (staging / "link.txt").symlink_to(staging / "real.txt")
+
+        class FakeResult:
+            staging_path = str(staging)
+            staged_files = ["link.txt"]
+            run_id = "run1"
+
+        from packages.orchestration.pingpong_job import TaskEntry
+        task = TaskEntry(task_id="T001")
+        manifest = _strict_apply_to_workspace(task, FakeResult(), str(workspace))
+
+        assert manifest.status == "blocked"
+        assert any("staging_source_is_symlink" in f for f in manifest.unsupported_files)
+
+
+# ---------------------------------------------------------------------------
+# Step 5007: Staged source parent symlink blocks
+# ---------------------------------------------------------------------------
+
+
+class TestStagedSourceParentSymlinkBlocks:
+    def test_staged_parent_symlink_blocks(self, isolate_data_root, tmp_path):
+        """Parent directory symlink in staging path blocks apply."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+
+        outside_dir = tmp_path / "outside_dir"
+        outside_dir.mkdir()
+        (outside_dir / "file.py").write_text("outside content\n")
+
+        (staging / "linkdir").symlink_to(outside_dir)
+
+        class FakeResult:
+            staging_path = str(staging)
+            staged_files = ["linkdir/file.py"]
+            run_id = "run1"
+
+        from packages.orchestration.pingpong_job import TaskEntry
+        task = TaskEntry(task_id="T001")
+        manifest = _strict_apply_to_workspace(task, FakeResult(), str(workspace))
+
+        assert manifest.status == "blocked"
+        assert any("staging_source_parent_symlink" in f for f in manifest.unsupported_files)
+        assert not (workspace / "linkdir" / "file.py").exists()
+
+
+# ---------------------------------------------------------------------------
+# Step 5009: Workspace destination symlink blocks
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceDestSymlinkBlocks:
+    def test_workspace_dest_symlink_blocks(self, isolate_data_root, tmp_path):
+        """Workspace destination symlink blocks apply."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+
+        (workspace / "victim.py").write_text("victim baseline\n")
+        (workspace / "planned.py").symlink_to(workspace / "victim.py")
+        (staging / "planned.py").write_text("job final\n")
+
+        class FakeResult:
+            staging_path = str(staging)
+            staged_files = ["planned.py"]
+            run_id = "run1"
+
+        from packages.orchestration.pingpong_job import TaskEntry
+        task = TaskEntry(task_id="T001")
+        manifest = _strict_apply_to_workspace(task, FakeResult(), str(workspace))
+
+        assert manifest.status == "blocked"
+        assert any("workspace_dest_is_symlink" in f for f in manifest.unsupported_files)
+        assert (workspace / "victim.py").read_text() == "victim baseline\n"
+        assert (workspace / "planned.py").is_symlink()
+        assert len(manifest.applied_files) == 0
+
+
+# ---------------------------------------------------------------------------
+# Step 5010: Workspace destination parent symlink blocks
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceDestParentSymlinkBlocks:
+    def test_workspace_dest_parent_symlink_blocks(self, isolate_data_root, tmp_path):
+        """Workspace destination parent symlink blocks apply."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+
+        victim_dir = workspace / "victim_dir"
+        victim_dir.mkdir()
+        (victim_dir / "file.py").write_text("victim content\n")
+
+        (workspace / "linkdir").symlink_to(victim_dir)
+
+        staging_linkdir = staging / "linkdir"
+        staging_linkdir.mkdir()
+        (staging_linkdir / "file.py").write_text("job final\n")
+
+        class FakeResult:
+            staging_path = str(staging)
+            staged_files = ["linkdir/file.py"]
+            run_id = "run1"
+
+        from packages.orchestration.pingpong_job import TaskEntry
+        task = TaskEntry(task_id="T001")
+        manifest = _strict_apply_to_workspace(task, FakeResult(), str(workspace))
+
+        assert manifest.status == "blocked"
+        assert any("workspace_dest_parent_symlink" in f for f in manifest.unsupported_files)
+        assert (victim_dir / "file.py").read_text() == "victim content\n"
+        assert len(manifest.applied_files) == 0
+
+
+# ---------------------------------------------------------------------------
+# Step 5012: Copy does not follow symlinks (safe read/write)
+# ---------------------------------------------------------------------------
+
+
+class TestSafeCopyNoSymlinkFollow:
+    def test_normal_file_copies_correctly(self, isolate_data_root, tmp_path):
+        """Normal (non-symlink) file copies via read_bytes/write_bytes."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+
+        (staging / "normal.py").write_text("normal content\n")
+
+        class FakeResult:
+            staging_path = str(staging)
+            staged_files = ["normal.py"]
+            run_id = "run1"
+
+        from packages.orchestration.pingpong_job import TaskEntry
+        task = TaskEntry(task_id="T001")
+        manifest = _strict_apply_to_workspace(task, FakeResult(), str(workspace))
+
+        assert manifest.status == "applied"
+        assert (workspace / "normal.py").read_text() == "normal content\n"
+        assert not (workspace / "normal.py").is_symlink()
+
+
+# ---------------------------------------------------------------------------
 # Step 4843 — Existing flows preserved
 # ---------------------------------------------------------------------------
 

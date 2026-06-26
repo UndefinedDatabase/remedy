@@ -1967,3 +1967,178 @@ class TestGroupedCLINewFailureModes:
         data = json.loads(result.stdout)
         assert data["status"] == "blocked"
         assert "dest_parent_symlink" in data["blocked_reason"]
+
+
+# ---------------------------------------------------------------------------
+# Two-file job helper for partial apply tests
+# ---------------------------------------------------------------------------
+
+
+def _make_two_file_baselined_job(tmp_path):
+    """Create a job with two baselined files for partial apply testing.
+
+    Returns (job, workspace, target, rel_paths).
+    """
+    import hashlib
+
+    from packages.orchestration.pingpong_job import (
+        AppliedFileProof,
+        ApplyManifest,
+        JobPlan,
+        TaskEntry,
+        _persist_job,
+    )
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = tmp_path / "target"
+    target.mkdir()
+
+    files = [
+        ("first.py", "orig_first\n", "new_first\n"),
+        ("second.py", "orig_second\n", "new_second\n"),
+    ]
+    proofs = []
+    for rel, orig, new in files:
+        (target / rel).write_text(orig)
+        (workspace / rel).write_text(new)
+        proofs.append(AppliedFileProof(
+            path=rel,
+            existed_before_job=True,
+            baseline_sha256=hashlib.sha256(orig.encode()).hexdigest(),
+            final_workspace_sha256=hashlib.sha256(new.encode()).hexdigest(),
+            task_id="T001",
+            run_id="run1",
+        ))
+
+    job = JobPlan(
+        repo_path=str(target),
+        job_title="Two file test",
+        status="completed",
+        job_workspace_path=str(workspace),
+        tasks=[
+            TaskEntry(
+                task_id="T001", title="modify two files", body="t",
+                status="applied_to_job_workspace", run_id="run1",
+                reviewer_verdict="pass", test_passed=True,
+                apply_manifest=ApplyManifest(
+                    task_id="T001", run_id="run1",
+                    applied_files=[f[0] for f in files],
+                    applied_file_proofs=proofs,
+                    status="applied",
+                ),
+            ),
+        ],
+    )
+    _persist_job(job)
+    return job, workspace, target, [f[0] for f in files]
+
+
+# ---------------------------------------------------------------------------
+# Step 5015: Partial apply then blocked record failure is structured
+# ---------------------------------------------------------------------------
+
+
+class TestPartialApplyRecordFailure:
+    def test_partial_apply_record_failure_structured(self, isolate_data_root, tmp_path):
+        """Partial apply + blocked persist failure returns structured result."""
+        from unittest.mock import patch
+
+        job, workspace, target, rel_paths = _make_two_file_baselined_job(tmp_path)
+
+        original_validate = __import__(
+            "packages.orchestration.job_promote", fromlist=["_validate_dest_containment"]
+        )._validate_dest_containment
+
+        validate_call_count = {}
+
+        def block_second_on_recheck(tgt, rp):
+            validate_call_count[rp] = validate_call_count.get(rp, 0) + 1
+            if rp == "second.py" and validate_call_count[rp] > 1:
+                return f"dest_is_symlink: {rp}"
+            return original_validate(tgt, rp)
+
+        original_persist = __import__(
+            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+        )._persist_job_promotion
+
+        persist_count = 0
+
+        def fail_after_preapply(jid, res):
+            nonlocal persist_count
+            persist_count += 1
+            if persist_count == 1:
+                original_persist(jid, res)
+                return
+            raise OSError("disk full on blocked persist")
+
+        from packages.orchestration.job_promote import (
+            export_job_promotion_json,
+            promote_job,
+        )
+        with patch("packages.orchestration.job_promote._validate_dest_containment", block_second_on_recheck), \
+             patch("packages.orchestration.job_promote._persist_job_promotion", fail_after_preapply):
+            result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "promoted_record_update_failed"
+        assert "first.py" in result.files_applied
+        assert "second.py" not in result.files_applied
+        assert result.promotion_id
+
+        data = export_job_promotion_json(result)
+        json_str = json.dumps(data)
+        parsed = json.loads(json_str)
+        assert parsed["status"] == "promoted_record_update_failed"
+
+
+# ---------------------------------------------------------------------------
+# Step 5016: Post-test failure record persistence failure is structured
+# ---------------------------------------------------------------------------
+
+
+class TestPostTestRecordFailure:
+    def test_post_test_failure_record_persist_structured(self, isolate_data_root, tmp_path):
+        """Post-test failure + record persist failure returns structured result."""
+        from unittest.mock import patch
+
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        original_persist = __import__(
+            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+        )._persist_job_promotion
+
+        persist_count = 0
+
+        def fail_on_test_failed(jid, res):
+            nonlocal persist_count
+            persist_count += 1
+            if persist_count == 1:
+                original_persist(jid, res)
+                return
+            if res.status == "promoted_test_failed":
+                raise OSError("disk full on test-failed persist")
+            original_persist(jid, res)
+
+        from packages.orchestration.job_promote import (
+            export_job_promotion_json,
+            promote_job,
+            summarize_job_promotion,
+        )
+        with patch("packages.orchestration.job_promote._persist_job_promotion", fail_on_test_failed):
+            result = promote_job(
+                job.job_id, str(target), approve=True,
+                test_command="false",
+            )
+
+        assert result.status == "promoted_record_update_failed"
+        assert rel_path in result.files_applied
+        assert result.promotion_id
+
+        data = export_job_promotion_json(result)
+        json_str = json.dumps(data)
+        parsed = json.loads(json_str)
+        assert parsed["status"] == "promoted_record_update_failed"
+
+        text = summarize_job_promotion(result)
+        assert "WARNING" in text
+        assert "record update FAILED" in text
