@@ -503,6 +503,117 @@ class TestSafeTaskIdHelper:
             with pytest.raises(ValueError, match="Unsafe task ID"):
                 _task_evidence_dir(str(tmp_path), bad_id)
 
+    def test_symlinked_task_runs_blocked(self, tmp_path):
+        """Step 4927: _task_evidence_dir blocks symlink escape via task_runs/."""
+        from packages.orchestration.job_evidence import _task_evidence_dir
+        out = tmp_path / "out"
+        out.mkdir()
+        evil_target = tmp_path / "evil_target"
+        evil_target.mkdir()
+        (out / "task_runs").symlink_to(evil_target, target_is_directory=True)
+
+        with pytest.raises(ValueError, match="traversal"):
+            _task_evidence_dir(str(out), "T001")
+
+        # Nothing written to evil_target
+        assert not list(evil_target.iterdir())
+
+
+# ---------------------------------------------------------------------------
+# Steps 4929-4931: Symlink escape regression tests
+# ---------------------------------------------------------------------------
+
+
+class TestSymlinkEscapeUnavailable:
+    """Step 4929: Unavailable task evidence blocked from symlink escape."""
+
+    def test_symlink_task_runs_unavailable_blocked(self, isolate_data_root, demo_repo, tmp_path):
+        """Export with normal task_id but symlinked task_runs/ raises ValueError."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        out = tmp_path / "evidence"
+        out.mkdir()
+        evil_target = tmp_path / "evil_target"
+        evil_target.mkdir()
+        (out / "task_runs").symlink_to(evil_target, target_is_directory=True)
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="traversal"):
+            export_job_evidence(job.job_id, str(out))
+
+        # No evidence files in symlink target
+        assert not list(evil_target.iterdir()), "Files escaped to symlink target"
+
+    def test_symlink_nested_subdir_blocked(self, isolate_data_root, demo_repo, tmp_path):
+        """Symlink at out/task_runs/T001 pointing outside also blocked."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        out = tmp_path / "evidence"
+        out.mkdir()
+        (out / "task_runs").mkdir()
+        evil_target = tmp_path / "evil_target"
+        evil_target.mkdir()
+        (out / "task_runs" / "T001").symlink_to(evil_target, target_is_directory=True)
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="traversal"):
+            export_job_evidence(job.job_id, str(out))
+
+        assert not list(evil_target.iterdir()), "Files escaped via nested symlink"
+
+
+class TestSymlinkEscapeRunId:
+    """Step 4930: Run_id task evidence blocked from symlink escape."""
+
+    def test_symlink_task_runs_with_run_id_blocked(self, isolate_data_root, demo_repo, tmp_path):
+        """Task with run_id still blocked when task_runs/ is symlinked."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+        out.mkdir()
+        evil_target = tmp_path / "evil_target"
+        evil_target.mkdir()
+        (out / "task_runs").symlink_to(evil_target, target_is_directory=True)
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="traversal"):
+            export_job_evidence(job.job_id, str(out))
+
+        assert not list(evil_target.iterdir()), "Run_id evidence escaped to symlink target"
+
+
+class TestSymlinkMappingContainment:
+    """Step 4931: Returned file mapping containment with symlink scenarios."""
+
+    def test_no_symlink_all_resolved_contained(self, isolate_data_root, demo_repo, tmp_path):
+        """Without symlinks, all resolved paths contained in out_dir."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        out_resolved = str(out.resolve())
+        for key, path in result["files"].items():
+            assert ".." not in key
+            resolved = str(Path(path).resolve())
+            assert resolved.startswith(out_resolved + "/"), (
+                f"Resolved {key} -> {resolved} escapes {out_resolved}"
+            )
+
+    def test_planned_job_resolved_contained(self, isolate_data_root, demo_repo, tmp_path):
+        """Planned job (unavailable tasks) resolved paths contained."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        out_resolved = str(out.resolve())
+        for key, path in result["files"].items():
+            assert ".." not in key
+            resolved = str(Path(path).resolve())
+            assert resolved.startswith(out_resolved + "/"), (
+                f"Resolved {key} -> {resolved} escapes {out_resolved}"
+            )
+
 
 # ---------------------------------------------------------------------------
 # Step 4910: Timeline proof

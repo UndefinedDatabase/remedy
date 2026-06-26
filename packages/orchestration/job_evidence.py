@@ -42,22 +42,17 @@ def _task_evidence_dir(out_base: str, task_id: str) -> Path:
 
     Only allows task IDs matching the expected format (T001, T002, ...).
     Raises ValueError on malicious, corrupt, or unexpected task IDs to prevent
-    path traversal via persisted job state.
+    path traversal via persisted job state or symlink escapes.
+
+    Uses _validate_output_path which calls .resolve() on the full joined path,
+    following any symlinks in intermediate directories (e.g. out/task_runs/).
     """
-    if not task_id or not _SAFE_TASK_ID_RE.match(task_id):
+    if not task_id or not _SAFE_TASK_ID_RE.fullmatch(task_id):
         raise ValueError(
             f"Unsafe task ID {task_id!r}: must match T<digits> (e.g. T001). "
             "Aborting evidence export to prevent path traversal."
         )
-    result = Path(out_base).resolve() / "task_runs" / task_id
-    # Defense-in-depth: verify containment even for valid-looking IDs.
-    base_resolved = Path(out_base).resolve()
-    if not str(result).startswith(str(base_resolved) + "/"):
-        raise ValueError(
-            f"Task evidence path {result} escapes output directory {base_resolved}. "
-            "Aborting evidence export."
-        )
-    return result
+    return _validate_output_path(out_base, f"task_runs/{task_id}")
 
 
 def export_job_evidence(

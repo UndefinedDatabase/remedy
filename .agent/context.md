@@ -4,8 +4,8 @@
 feature/steps-3276-3355-job-fulfillment-spine-v0
 
 ## Scope
-Steps 4917-4926: Job Evidence Nested Path Containment Closure v1.
-Close nested task evidence path traversal vulnerability in job evidence export.
+Steps 4927-4936: Job Evidence Symlink Containment Closure v2.
+Close symlink escape in nested task evidence paths.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
@@ -20,7 +20,8 @@ Product code must NOT depend on `.agent/live_review.md`.
 - Export mutates no target repo or job state
 - All emitted files redacted
 - Output path traversal blocked (top-level and nested task evidence)
-- Nested task evidence paths validated via _task_evidence_dir()
+- Nested task evidence paths validated via _task_evidence_dir -> _validate_output_path
+- _validate_output_path uses .resolve() which follows symlinks
 - Raw task body not dumped unbounded
 - No secrets leaked
 - Reuse existing redaction helpers
