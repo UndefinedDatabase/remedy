@@ -1535,3 +1535,435 @@ class TestGroupedCLIJobPromote:
         data = json.loads(result.stdout)
         assert data["status"] == "blocked"
         assert "job_not_found" in data["blocked_reason"]
+
+
+# ---------------------------------------------------------------------------
+# Step 4992: Destination symlink inside target blocks
+# ---------------------------------------------------------------------------
+
+
+class TestDestSymlinkInsideTarget:
+    def test_dest_symlink_blocks_promote(self, isolate_data_root, tmp_path):
+        """Approved promote blocks when dest path is a symlink, even inside target."""
+        job, workspace, target, rel_path = _make_baselined_job(
+            tmp_path, existing_content="victim baseline\n", new_content="job final\n",
+        )
+        victim = target / "victim.py"
+        victim.write_text("victim baseline\n")
+        dest = target / rel_path
+        dest.unlink()
+        dest.symlink_to(victim)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "dest_is_symlink" in result.blocked_reason
+        assert victim.read_text() == "victim baseline\n"
+        assert dest.is_symlink()
+        assert result.files_applied == []
+
+    def test_dest_symlink_dry_run_blocks(self, isolate_data_root, tmp_path):
+        """Dry-run also blocks when dest path is a symlink."""
+        job, workspace, target, rel_path = _make_baselined_job(
+            tmp_path, existing_content="victim\n", new_content="job\n",
+        )
+        victim = target / "victim.py"
+        victim.write_text("victim\n")
+        dest = target / rel_path
+        dest.unlink()
+        dest.symlink_to(victim)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), dry_run=True)
+
+        assert result.status == "blocked"
+        assert "dest_is_symlink" in result.blocked_reason
+
+
+# ---------------------------------------------------------------------------
+# Step 4993: Destination parent symlink inside target blocks
+# ---------------------------------------------------------------------------
+
+
+class TestDestParentSymlinkInsideTarget:
+    def test_dest_parent_symlink_blocks_promote(self, isolate_data_root, tmp_path):
+        """Approved promote blocks when dest parent is symlinked."""
+        import hashlib
+
+        from packages.orchestration.pingpong_job import (
+            AppliedFileProof,
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        victim_dir = target / "victim_dir"
+        victim_dir.mkdir()
+        (victim_dir / "file.py").write_text("victim baseline\n")
+
+        link_dir = target / "linkdir"
+        link_dir.symlink_to(victim_dir)
+
+        ws_linkdir = workspace / "linkdir"
+        ws_linkdir.mkdir()
+        (ws_linkdir / "file.py").write_text("job final\n")
+
+        rel_path = "linkdir/file.py"
+        baseline_hash = hashlib.sha256(b"victim baseline\n").hexdigest()
+        final_hash = hashlib.sha256(b"job final\n").hexdigest()
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Parent symlink test",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(
+                    task_id="T001", title="modify via parent link", body="t",
+                    status="applied_to_job_workspace", run_id="run1",
+                    reviewer_verdict="pass", test_passed=True,
+                    apply_manifest=ApplyManifest(
+                        task_id="T001", run_id="run1",
+                        applied_files=[rel_path],
+                        applied_file_proofs=[AppliedFileProof(
+                            path=rel_path,
+                            existed_before_job=True,
+                            baseline_sha256=baseline_hash,
+                            final_workspace_sha256=final_hash,
+                            task_id="T001",
+                            run_id="run1",
+                        )],
+                        status="applied",
+                    ),
+                ),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "dest_parent_symlink" in result.blocked_reason
+        assert (victim_dir / "file.py").read_text() == "victim baseline\n"
+        assert result.files_applied == []
+
+
+# ---------------------------------------------------------------------------
+# Step 4994: Destination containment recheck before write
+# ---------------------------------------------------------------------------
+
+
+class TestDestContainmentRecheckBeforeWrite:
+    def test_dest_becomes_symlink_after_plan(self, isolate_data_root, tmp_path):
+        """Dest containment is rechecked before write, catches race."""
+        import hashlib
+        from unittest.mock import patch
+
+        from packages.orchestration.pingpong_job import (
+            AppliedFileProof,
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        rel_path = "safe.py"
+        content = "original\n"
+        new_content = "modified\n"
+        (target / rel_path).write_text(content)
+        (workspace / rel_path).write_text(new_content)
+
+        baseline_hash = hashlib.sha256(content.encode()).hexdigest()
+        final_hash = hashlib.sha256(new_content.encode()).hexdigest()
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Race test",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(
+                    task_id="T001", title="t", body="t",
+                    status="applied_to_job_workspace", run_id="run1",
+                    reviewer_verdict="pass", test_passed=True,
+                    apply_manifest=ApplyManifest(
+                        task_id="T001", run_id="run1",
+                        applied_files=[rel_path],
+                        applied_file_proofs=[AppliedFileProof(
+                            path=rel_path,
+                            existed_before_job=True,
+                            baseline_sha256=baseline_hash,
+                            final_workspace_sha256=final_hash,
+                            task_id="T001",
+                            run_id="run1",
+                        )],
+                        status="applied",
+                    ),
+                ),
+            ],
+        )
+        _persist_job(job)
+
+        call_count = 0
+        original_validate = __import__(
+            "packages.orchestration.job_promote", fromlist=["_validate_dest_containment"]
+        )._validate_dest_containment
+
+        def sneaky_validate(tgt, rp):
+            nonlocal call_count
+            call_count += 1
+            if call_count > 1 and rp == rel_path:
+                return f"dest_is_symlink: {rp}"
+            return original_validate(tgt, rp)
+
+        from packages.orchestration.job_promote import promote_job
+        with patch("packages.orchestration.job_promote._validate_dest_containment", sneaky_validate):
+            result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "dest_unsafe_at_apply" in result.blocked_reason
+        assert result.files_applied == []
+
+
+# ---------------------------------------------------------------------------
+# Step 4997: Final record failure after apply is structured
+# ---------------------------------------------------------------------------
+
+
+class TestFinalRecordFailure:
+    def test_final_record_failure_structured(self, isolate_data_root, tmp_path):
+        """Final promotion record failure returns structured result, not exception."""
+        from unittest.mock import patch
+
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        persist_call_count = 0
+        original_persist = __import__(
+            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+        )._persist_job_promotion
+
+        def fail_on_final(jid, res):
+            nonlocal persist_call_count
+            persist_call_count += 1
+            if res.status == "promoted":
+                raise OSError("disk full")
+            original_persist(jid, res)
+
+        from packages.orchestration.job_promote import promote_job
+        with patch("packages.orchestration.job_promote._persist_job_promotion", fail_on_final):
+            result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "promoted_record_update_failed"
+        assert "disk full" in result.blocked_reason
+        assert rel_path in result.files_applied
+        assert result.promotion_id
+
+    def test_final_record_failure_json_parseable(self, isolate_data_root, tmp_path):
+        """JSON export of promoted_record_update_failed is parseable."""
+        from unittest.mock import patch
+
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        original_persist = __import__(
+            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+        )._persist_job_promotion
+
+        def fail_on_final(jid, res):
+            if res.status == "promoted":
+                raise OSError("disk full")
+            original_persist(jid, res)
+
+        from packages.orchestration.job_promote import (
+            export_job_promotion_json,
+            promote_job,
+        )
+        with patch("packages.orchestration.job_promote._persist_job_promotion", fail_on_final):
+            result = promote_job(job.job_id, str(target), approve=True)
+
+        data = export_job_promotion_json(result)
+        json_str = json.dumps(data)
+        parsed = json.loads(json_str)
+        assert parsed["status"] == "promoted_record_update_failed"
+        assert "promotion_record_update_failed" in parsed["blocked_reason"]
+
+    def test_final_record_failure_text_readable(self, isolate_data_root, tmp_path):
+        """Text summary of promoted_record_update_failed is human-readable."""
+        from unittest.mock import patch
+
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        original_persist = __import__(
+            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+        )._persist_job_promotion
+
+        def fail_on_final(jid, res):
+            if res.status == "promoted":
+                raise OSError("disk full")
+            original_persist(jid, res)
+
+        from packages.orchestration.job_promote import (
+            promote_job,
+            summarize_job_promotion,
+        )
+        with patch("packages.orchestration.job_promote._persist_job_promotion", fail_on_final):
+            result = promote_job(job.job_id, str(target), approve=True)
+
+        text = summarize_job_promotion(result)
+        assert "WARNING" in text
+        assert "record update FAILED" in text
+        assert "Pre-apply record exists" in text
+
+
+# ---------------------------------------------------------------------------
+# Step 4998: Pre-apply record failure blocks before write
+# ---------------------------------------------------------------------------
+
+
+class TestPreApplyRecordFailure:
+    def test_pre_apply_record_failure_blocks(self, isolate_data_root, tmp_path):
+        """Pre-apply record persistence failure blocks before target write."""
+        from unittest.mock import patch
+
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        def always_fail(jid, res):
+            raise OSError("cannot write pre-apply record")
+
+        from packages.orchestration.job_promote import promote_job
+        with patch("packages.orchestration.job_promote._persist_job_promotion", always_fail):
+            result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "pre_apply_record_failed" in result.blocked_reason
+        assert result.files_applied == []
+        assert (target / rel_path).read_text() == "original\n"
+
+    def test_pre_apply_failure_does_not_write_target(self, isolate_data_root, tmp_path):
+        """When pre-apply record fails, no target files are modified."""
+        from unittest.mock import patch
+
+        job, workspace, target, rel_path = _make_new_file_job(tmp_path, content="new stuff\n")
+
+        def always_fail(jid, res):
+            raise OSError("disk error")
+
+        from packages.orchestration.job_promote import promote_job
+        with patch("packages.orchestration.job_promote._persist_job_promotion", always_fail):
+            result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert not (target / "new_file.py").exists()
+
+
+# ---------------------------------------------------------------------------
+# Step 5000: Grouped CLI tests for new failure modes
+# ---------------------------------------------------------------------------
+
+
+class TestGroupedCLINewFailureModes:
+    def test_dest_symlink_via_grouped_cli(self, isolate_data_root, tmp_path):
+        """Grouped CLI blocks destination symlink."""
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        job, workspace, target, rel_path = _make_baselined_job(
+            tmp_path, existing_content="victim\n", new_content="job\n",
+        )
+        victim = target / "victim.py"
+        victim.write_text("victim\n")
+        dest = target / rel_path
+        dest.unlink()
+        dest.symlink_to(victim)
+
+        result = run_grouped_cli(
+            ["do", "job-promote", job.job_id, "--repo", str(target), "--approve", "--json"],
+            isolate_data_root,
+        )
+
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+        assert data["status"] == "blocked"
+        assert "dest_is_symlink" in data["blocked_reason"]
+
+    def test_dest_parent_symlink_via_grouped_cli(self, isolate_data_root, tmp_path):
+        """Grouped CLI blocks destination parent symlink."""
+        import hashlib
+
+        from packages.orchestration.pingpong_job import (
+            AppliedFileProof,
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        victim_dir = target / "victim_dir"
+        victim_dir.mkdir()
+        (victim_dir / "file.py").write_text("orig\n")
+
+        link_dir = target / "linkdir"
+        link_dir.symlink_to(victim_dir)
+
+        ws_linkdir = workspace / "linkdir"
+        ws_linkdir.mkdir()
+        (ws_linkdir / "file.py").write_text("new\n")
+
+        rel_path = "linkdir/file.py"
+        baseline_hash = hashlib.sha256(b"orig\n").hexdigest()
+        final_hash = hashlib.sha256(b"new\n").hexdigest()
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="CLI parent symlink",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(
+                    task_id="T001", title="t", body="t",
+                    status="applied_to_job_workspace", run_id="run1",
+                    reviewer_verdict="pass", test_passed=True,
+                    apply_manifest=ApplyManifest(
+                        task_id="T001", run_id="run1",
+                        applied_files=[rel_path],
+                        applied_file_proofs=[AppliedFileProof(
+                            path=rel_path,
+                            existed_before_job=True,
+                            baseline_sha256=baseline_hash,
+                            final_workspace_sha256=final_hash,
+                            task_id="T001",
+                            run_id="run1",
+                        )],
+                        status="applied",
+                    ),
+                ),
+            ],
+        )
+        _persist_job(job)
+
+        result = run_grouped_cli(
+            ["do", "job-promote", job.job_id, "--repo", str(target), "--approve", "--json"],
+            isolate_data_root,
+        )
+
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+        assert data["status"] == "blocked"
+        assert "dest_parent_symlink" in data["blocked_reason"]

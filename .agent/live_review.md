@@ -110,4 +110,32 @@ Replaced naive `_check_target_cleanliness` with baseline-aware promotion:
 (Awaiting reviewer)
 
 ## Notes
+Builder committed as 6d55071.
+
+---
+
+# Live Review — Steps 4991-5004: Job Promote Destination Symlink + Durable Record Closure v3
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-26
+
+## Verdict (reviewer-owned)
+**PENDING** — Builder implementation complete. Awaiting reviewer assessment.
+
+## Summary
+Blocked all destination symlinks in job-promote, added durable pre-apply record,
+and structured final record update failure handling:
+- `_validate_dest_containment()` now blocks ALL symlinks (not just escapes) + parent symlinks
+- Dest containment recheck immediately before each file write (defense-in-depth)
+- `approved_apply_started` pre-apply record persisted before any target write
+- Pre-apply record failure blocks before target mutation
+- `promoted_record_update_failed` structured status for final record write failure
+- 11 new tests (72 total). 8048 full suite. Architecture guards clean.
+
+## Findings
+(Awaiting reviewer)
+
+## Notes
 Builder commit pending.

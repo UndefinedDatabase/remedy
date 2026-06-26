@@ -130,6 +130,8 @@ def _validate_dest_containment(
     """Validate that a target destination path is safe to write.
 
     Returns empty string if safe, or reason string if blocked.
+    Blocks ALL destination symlinks — even those resolving inside target.
+    Writing through a symlink changes a different path than the planned one.
     """
     try:
         dest_resolved = (target / rel_path).resolve()
@@ -141,10 +143,14 @@ def _validate_dest_containment(
         return f"dest_escapes_target: {rel_path}"
 
     dest = target / rel_path
-    if dest.exists() and dest.is_symlink():
-        link_target = dest.resolve()
-        if not str(link_target).startswith(str(target_resolved) + os.sep):
-            return f"dest_symlink_escape: {rel_path}"
+    if dest.is_symlink():
+        return f"dest_is_symlink: {rel_path}"
+
+    current = dest.parent
+    while current != target and current != current.parent:
+        if current.exists() and current.is_symlink():
+            return f"dest_parent_symlink: {rel_path}"
+        current = current.parent
 
     return ""
 
@@ -293,7 +299,7 @@ class JobPromotionResult:
     """Result of a job promotion attempt."""
     job_id: str = ""
     promotion_id: str = field(default_factory=lambda: uuid4().hex[:16])
-    status: str = ""  # ready, blocked, dry_run, promoted, promoted_test_failed
+    status: str = ""  # blocked, dry_run, approved_apply_started, promoted, promoted_test_failed, promoted_record_update_failed
     approved: bool = False
     dry_run: bool = False
     target_repo: str = ""
@@ -569,6 +575,14 @@ def promote_job(
     if not clean2:
         return _block(result, f"baseline_check_before_apply_failed: {blocks2}")
 
+    # --- Durable pre-apply promotion record ---
+    result.status = "approved_apply_started"
+    result.files_applied = []
+    try:
+        _persist_job_promotion(job_id, result)
+    except OSError as exc:
+        return _block(result, f"pre_apply_record_failed: {exc}")
+
     # --- Apply files ---
     applied: list[str] = []
     for rel_path in planned:
@@ -578,6 +592,15 @@ def promote_job(
         if src_reason:
             result.status = "blocked"
             result.blocked_reason = f"source_unsafe_at_apply: {rel_path}: {src_reason}"
+            result.files_applied = applied
+            result.finished_at = datetime.now(timezone.utc).isoformat()
+            _persist_job_promotion(job_id, result)
+            return result
+
+        dest_reason = _validate_dest_containment(target, rel_path)
+        if dest_reason:
+            result.status = "blocked"
+            result.blocked_reason = f"dest_unsafe_at_apply: {rel_path}: {dest_reason}"
             result.files_applied = applied
             result.finished_at = datetime.now(timezone.utc).isoformat()
             _persist_job_promotion(job_id, result)
@@ -630,7 +653,15 @@ def promote_job(
 
     result.status = "promoted"
     result.finished_at = datetime.now(timezone.utc).isoformat()
-    _persist_job_promotion(job_id, result)
+    try:
+        _persist_job_promotion(job_id, result)
+    except OSError as exc:
+        result.status = "promoted_record_update_failed"
+        result.blocked_reason = (
+            f"promotion_record_update_failed: {exc} — "
+            f"target files were applied but final record could not be written"
+        )
+        result.finished_at = datetime.now(timezone.utc).isoformat()
     return result
 
 
@@ -771,6 +802,17 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
         lines.append("")
         lines.append(f"Applied {len(result.files_applied)} file(s) but post-test FAILED.")
         lines.append("Manual review required. Changes are in working tree, not committed.")
+
+    elif result.status == "promoted_record_update_failed":
+        lines.append("")
+        lines.append(f"WARNING: Applied {len(result.files_applied)} file(s) but promotion record update FAILED.")
+        lines.append(f"Reason: {result.blocked_reason}")
+        lines.append("Target files may have changed. Manual review required.")
+        lines.append("Pre-apply record exists. Final record could not be written.")
+
+    elif result.status == "approved_apply_started":
+        lines.append("")
+        lines.append("Apply in progress. This status should not appear in final output.")
 
     elif result.status == "blocked":
         lines.append("")
