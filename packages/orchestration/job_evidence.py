@@ -12,6 +12,7 @@ Public API:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,31 @@ from packages.orchestration.pingpong_job import (
 )
 
 _TASK_BODY_EVIDENCE_LIMIT = 500
+
+_SAFE_TASK_ID_RE = re.compile(r"^T\d{3,}$")
+
+
+def _task_evidence_dir(out_base: str, task_id: str) -> Path:
+    """Return a contained task evidence directory inside out_base/task_runs/.
+
+    Only allows task IDs matching the expected format (T001, T002, ...).
+    Raises ValueError on malicious, corrupt, or unexpected task IDs to prevent
+    path traversal via persisted job state.
+    """
+    if not task_id or not _SAFE_TASK_ID_RE.match(task_id):
+        raise ValueError(
+            f"Unsafe task ID {task_id!r}: must match T<digits> (e.g. T001). "
+            "Aborting evidence export to prevent path traversal."
+        )
+    result = Path(out_base).resolve() / "task_runs" / task_id
+    # Defense-in-depth: verify containment even for valid-looking IDs.
+    base_resolved = Path(out_base).resolve()
+    if not str(result).startswith(str(base_resolved) + "/"):
+        raise ValueError(
+            f"Task evidence path {result} escapes output directory {base_resolved}. "
+            "Aborting evidence export."
+        )
+    return result
 
 
 def export_job_evidence(
@@ -428,10 +454,11 @@ def _write_task_run_evidence(
     out_base: str,
     written: dict[str, str],
 ) -> None:
-    task_dir = f"task_runs/{task.task_id}"
+    task_out = _task_evidence_dir(out_base, task.task_id)
+    task_rel = f"task_runs/{task.task_id}"
 
     if not task.run_id:
-        _write_unavailable(out_base, task_dir, task.task_id, written,
+        _write_unavailable(task_out, task_rel, task.task_id, written,
                           f"No run_id for task {task.task_id} (status: {task.status})")
         return
 
@@ -439,7 +466,7 @@ def _write_task_run_evidence(
 
     run_data = load_run(task.run_id)
     if run_data is None:
-        _write_unavailable(out_base, task_dir, task.task_id, written,
+        _write_unavailable(task_out, task_rel, task.task_id, written,
                           f"Run data not found for {task.run_id}")
         return
 
@@ -448,22 +475,19 @@ def _write_task_run_evidence(
 
     bundle = build_evidence_bundle(run_data, promotion_data)
 
-    task_out = Path(out_base) / task_dir
     task_written = write_evidence_bundle(bundle, str(task_out))
 
     for filename, path in task_written.items():
-        written[f"{task_dir}/{filename}"] = path
+        written[f"{task_rel}/{filename}"] = path
 
 
 def _write_unavailable(
-    out_base: str,
-    task_dir: str,
+    task_out: Path,
+    task_rel: str,
     task_id: str,
     written: dict[str, str],
     reason: str,
 ) -> None:
-    out_path = Path(out_base).resolve()
-    task_out = out_path / task_dir
     task_out.mkdir(parents=True, exist_ok=True)
 
     manifest = {
@@ -473,9 +497,9 @@ def _write_unavailable(
     }
     manifest_path = task_out / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    written[f"{task_dir}/manifest.json"] = str(manifest_path)
+    written[f"{task_rel}/manifest.json"] = str(manifest_path)
 
     summary = f"# Task {task_id} Evidence\n\nEvidence unavailable: {reason}\n"
     summary_path = task_out / "summary.md"
     summary_path.write_text(summary)
-    written[f"{task_dir}/summary.md"] = str(summary_path)
+    written[f"{task_rel}/summary.md"] = str(summary_path)

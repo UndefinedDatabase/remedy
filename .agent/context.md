@@ -4,9 +4,8 @@
 feature/steps-3276-3355-job-fulfillment-spine-v0
 
 ## Scope
-Steps 4906-4916: Job Evidence Bundle v0.
-Add remedy do job-evidence command producing redacted, human-readable,
-machine-verifiable proof bundle for entire job.
+Steps 4917-4926: Job Evidence Nested Path Containment Closure v1.
+Close nested task evidence path traversal vulnerability in job evidence export.
 
 ## Development-only artifacts
 `.agent/live_review.md` is a development-time coordination artifact ONLY.
@@ -20,7 +19,8 @@ Product code must NOT depend on `.agent/live_review.md`.
 - Export calls no providers
 - Export mutates no target repo or job state
 - All emitted files redacted
-- Output path traversal blocked
+- Output path traversal blocked (top-level and nested task evidence)
+- Nested task evidence paths validated via _task_evidence_dir()
 - Raw task body not dumped unbounded
 - No secrets leaked
 - Reuse existing redaction helpers

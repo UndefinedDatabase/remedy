@@ -277,6 +277,232 @@ class TestOutputPathTraversal:
         with pytest.raises(ValueError, match="traversal"):
             _validate_output_path(str(out), "../../../etc/passwd")
 
+    def test_export_api_traversal_blocked(self, isolate_data_root, demo_repo, tmp_path):
+        """Step 4922: Public export_job_evidence() blocks top-level traversal."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        # All files must be inside out_dir
+        out_resolved = str(out.resolve())
+        for path in result["files"].values():
+            assert str(Path(path).resolve()).startswith(out_resolved + "/"), (
+                f"File {path} escapes {out_resolved}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Steps 4919-4922: Nested task evidence path containment
+# ---------------------------------------------------------------------------
+
+
+def _make_job_with_task_id(task_id: str, demo_repo: Path, isolate_data_root: Path) -> str:
+    """Create a persisted job with a single task bearing the given task_id."""
+    from packages.orchestration.pingpong_job import (
+        JobPlan,
+        TaskEntry,
+        _persist_job,
+    )
+    job = JobPlan(
+        repo_path=str(demo_repo),
+        job_title="Traversal test job",
+        tasks=[TaskEntry(task_id=task_id, title="evil task", body="test")],
+    )
+    _persist_job(job)
+    return job.job_id
+
+
+class TestNestedTaskTraversal:
+    """Step 4919: Unavailable task evidence with malicious task_id."""
+
+    def test_traversal_task_id_raises(self, isolate_data_root, demo_repo, tmp_path):
+        """Malicious task_id ../../evil raises ValueError, writes nothing outside out_dir."""
+        job_id = _make_job_with_task_id("../../evil", demo_repo, isolate_data_root)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="Unsafe task ID"):
+            export_job_evidence(job_id, str(out))
+
+        # No evil directory outside out_dir
+        evil_dir = tmp_path / "evil"
+        assert not evil_dir.exists(), "Path traversal: evil dir created outside out_dir"
+        parent_evil = tmp_path.parent / "evil"
+        assert not parent_evil.exists(), "Path traversal: evil dir in parent"
+
+    def test_slash_task_id_raises(self, isolate_data_root, demo_repo, tmp_path):
+        job_id = _make_job_with_task_id("foo/bar", demo_repo, isolate_data_root)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="Unsafe task ID"):
+            export_job_evidence(job_id, str(out))
+
+    def test_backslash_task_id_raises(self, isolate_data_root, demo_repo, tmp_path):
+        job_id = _make_job_with_task_id("foo\\bar", demo_repo, isolate_data_root)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="Unsafe task ID"):
+            export_job_evidence(job_id, str(out))
+
+    def test_empty_task_id_raises(self, isolate_data_root, demo_repo, tmp_path):
+        job_id = _make_job_with_task_id("", demo_repo, isolate_data_root)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="Unsafe task ID"):
+            export_job_evidence(job_id, str(out))
+
+    def test_absolute_path_task_id_raises(self, isolate_data_root, demo_repo, tmp_path):
+        job_id = _make_job_with_task_id("/etc/passwd", demo_repo, isolate_data_root)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="Unsafe task ID"):
+            export_job_evidence(job_id, str(out))
+
+    def test_control_chars_task_id_raises(self, isolate_data_root, demo_repo, tmp_path):
+        job_id = _make_job_with_task_id("T001\x00evil", demo_repo, isolate_data_root)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="Unsafe task ID"):
+            export_job_evidence(job_id, str(out))
+
+
+class TestRunIdTaskTraversal:
+    """Step 4920: Traversal test for task with run_id reaching _write_task_run_evidence."""
+
+    def test_malicious_task_id_with_run_id_raises(self, isolate_data_root, demo_repo, tmp_path, monkeypatch):
+        """Even if task has a run_id, malicious task_id must be caught before write."""
+        from packages.orchestration.pingpong_job import (
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+        job = JobPlan(
+            repo_path=str(demo_repo),
+            job_title="Traversal test job",
+            tasks=[TaskEntry(
+                task_id="../../evil",
+                title="evil task",
+                body="test",
+                run_id="fake-run-id-123",
+            )],
+        )
+        _persist_job(job)
+
+        out = tmp_path / "evidence"
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="Unsafe task ID"):
+            export_job_evidence(job.job_id, str(out))
+
+        # No files outside out_dir
+        evil_dir = tmp_path / "evil"
+        assert not evil_dir.exists()
+
+    def test_dot_dot_with_run_id_blocked(self, isolate_data_root, demo_repo, tmp_path):
+        from packages.orchestration.pingpong_job import (
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+        job = JobPlan(
+            repo_path=str(demo_repo),
+            job_title="Traversal test",
+            tasks=[TaskEntry(
+                task_id="../escape",
+                title="escape task",
+                body="test",
+                run_id="fake-run-456",
+            )],
+        )
+        _persist_job(job)
+
+        out = tmp_path / "evidence"
+        from packages.orchestration.job_evidence import export_job_evidence
+        with pytest.raises(ValueError, match="Unsafe task ID"):
+            export_job_evidence(job.job_id, str(out))
+
+
+class TestFilesMappingContainment:
+    """Step 4921: Every path in result['files'] is contained inside result['out_dir']."""
+
+    def _assert_all_contained(self, result):
+        out_dir = str(Path(result["out_dir"]).resolve())
+        for key, path in result["files"].items():
+            assert ".." not in key, f"Traversal in key: {key}"
+            resolved = str(Path(path).resolve())
+            assert resolved.startswith(out_dir + "/"), (
+                f"File {key} -> {path} escapes {out_dir}"
+            )
+
+    def test_completed_job_contained(self, isolate_data_root, demo_repo, tmp_path):
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+        self._assert_all_contained(result)
+
+    def test_blocked_job_contained(self, isolate_data_root, demo_repo, monkeypatch, tmp_path):
+        job = _run_blocked_job(demo_repo, monkeypatch)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+        self._assert_all_contained(result)
+
+    def test_paused_job_contained(self, isolate_data_root, demo_repo, tmp_path):
+        job = _run_paused_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+        self._assert_all_contained(result)
+
+    def test_planned_job_contained(self, isolate_data_root, demo_repo, tmp_path):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+        self._assert_all_contained(result)
+
+
+class TestSafeTaskIdHelper:
+    """Step 4917: Direct unit tests for _task_evidence_dir."""
+
+    def test_valid_task_ids_accepted(self, tmp_path):
+        from packages.orchestration.job_evidence import _task_evidence_dir
+        for tid in ("T001", "T002", "T999", "T0001"):
+            result = _task_evidence_dir(str(tmp_path), tid)
+            assert str(result).startswith(str(tmp_path.resolve()))
+            assert tid in str(result)
+
+    def test_invalid_task_ids_rejected(self, tmp_path):
+        from packages.orchestration.job_evidence import _task_evidence_dir
+        bad_ids = [
+            "../../evil",
+            "../escape",
+            "foo/bar",
+            "T001/../../etc",
+            "",
+            "/etc/passwd",
+            "T001\x00evil",
+            "evil",
+            "t001",
+            "001",
+            "T1",  # Too few digits
+        ]
+        for bad_id in bad_ids:
+            with pytest.raises(ValueError, match="Unsafe task ID"):
+                _task_evidence_dir(str(tmp_path), bad_id)
+
 
 # ---------------------------------------------------------------------------
 # Step 4910: Timeline proof
