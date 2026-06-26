@@ -788,6 +788,39 @@ def _cmd_do_job_evidence(
         print(f"Tasks: {manifest.get('task_count', 0)}")
 
 
+def _cmd_do_job_promote(
+    job_id: str,
+    *,
+    repo: str = ".",
+    approve: bool = False,
+    dry_run: bool = False,
+    test_command: str = "",
+    json_output: bool = False,
+) -> None:
+    """Review and apply job workspace changes to target repo."""
+    from packages.orchestration.job_promote import (
+        export_job_promotion_json,
+        promote_job,
+        summarize_job_promotion,
+    )
+
+    if not approve and not dry_run:
+        dry_run = True
+
+    result = promote_job(
+        job_id,
+        target_repo=repo,
+        approve=approve,
+        dry_run=dry_run,
+        test_command=test_command,
+    )
+
+    if json_output:
+        print(json.dumps(export_job_promotion_json(result), indent=2))
+    else:
+        print(summarize_job_promotion(result))
+
+
 def _cmd_do_job_report(
     job_id: str,
     *,
@@ -886,6 +919,14 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.job-report": lambda args: _cmd_do_job_report(
         args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "do.job-promote": lambda args: _cmd_do_job_promote(
+        args.job_id,
+        repo=getattr(args, "repo", None) or ".",
+        approve=getattr(args, "approve", False),
+        dry_run=getattr(args, "dry_run", False),
+        test_command=getattr(args, "test_command", None) or "",
         json_output=getattr(args, "json", False),
     ),
     "do.job-evidence": lambda args: _cmd_do_job_evidence(

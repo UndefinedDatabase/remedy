@@ -2422,6 +2422,25 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    CommandEntry(
+        command_id="do.job-promote",
+        group_id="do",
+        subcommand="job-promote",
+        description="Review and apply job workspace changes to target repo. Dry-run by default; --approve applies.",
+        action_class="write_metadata",
+        supports_json=True,
+        related=("do.job-plan", "do.job-run", "do.job-evidence"),
+        args=(
+            ArgDef("job_id", "Job ID"),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            ArgDef("--approve", "Apply changes (without this flag, dry-run only)", required=False, is_option=True, default="false"),
+            ArgDef("--dry-run", "Preview only, no target mutation", required=False, is_option=True, default="false"),
+            ArgDef("--test-command", "Post-apply test command", required=False, is_option=True, default=""),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=True,
+        may_execute_commands=True,
+    ),
 
     # ── repair ──────────────────────────────────────────────────────────
     CommandEntry(

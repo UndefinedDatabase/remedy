@@ -160,8 +160,8 @@ class TestCliCommandTruth:
     def test_next_command_uses_hyphen_for_completed(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
         cmd = _suggest_next_command(result)
-        assert "job-report" in cmd
-        assert "job report" not in cmd.replace("job-report", "")
+        assert "job-promote" in cmd
+        assert "job promote" not in cmd.replace("job-promote", "")
 
     def test_next_command_uses_hyphen_for_blocked(self, isolate_data_root, demo_repo):
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
