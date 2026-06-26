@@ -569,6 +569,35 @@ def _is_secret_file(name: str) -> bool:
     return False
 
 
+def _is_safe_repo_path(root: Path, root_resolved: Path, rel: str) -> str:
+    """Check if a repo-relative path is safe to read. Returns reason or empty."""
+    if os.path.isabs(rel):
+        return "repo_source_escapes_repo"
+    p = root / rel
+    if p.is_symlink():
+        return "repo_source_is_symlink"
+    if not p.exists():
+        return "repo_source_missing"
+    if not p.is_file():
+        return "repo_source_not_regular_file"
+    current = p.parent
+    while current != root and current != current.parent:
+        if current.is_symlink():
+            return "repo_source_parent_symlink"
+        current = current.parent
+    try:
+        resolved = p.resolve()
+    except OSError:
+        return "repo_source_unreadable"
+    if not str(resolved).startswith(str(root_resolved) + os.sep) and resolved != root_resolved:
+        return "repo_source_escapes_repo"
+    try:
+        p.open("rb").close()
+    except OSError:
+        return "repo_source_unreadable"
+    return ""
+
+
 def build_repo_context(
     repo_path: str,
     goal: str,
@@ -581,8 +610,10 @@ def build_repo_context(
     Never includes .env*, secrets, .git, node_modules, caches.
     """
     root = Path(repo_path).resolve()
+    root_resolved = root
     categories: list[str] = []
     sections: list[str] = []
+    safety_notes: list[str] = []
 
     # 1. Goal
     sections.append(f"## Goal\n{goal}\n")
@@ -590,8 +621,12 @@ def build_repo_context(
 
     # 2. File tree summary
     tree_lines: list[str] = []
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS and not d.startswith(".")]
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in _EXCLUDE_DIRS and not d.startswith(".")
+            and not (Path(dirpath) / d).is_symlink()
+        ]
         rel_dir = os.path.relpath(dirpath, root)
         if rel_dir == ".":
             rel_dir = ""
@@ -599,6 +634,11 @@ def build_repo_context(
             if _is_secret_file(fn):
                 continue
             rel = os.path.join(rel_dir, fn) if rel_dir else fn
+            fp = Path(dirpath) / fn
+            if fp.is_symlink():
+                if len(safety_notes) < 10:
+                    safety_notes.append(f"Skipped unsafe path: {rel} (repo_source_is_symlink)")
+                continue
             tree_lines.append(rel)
             if len(tree_lines) >= _MAX_TREE_ENTRIES:
                 break
@@ -613,31 +653,46 @@ def build_repo_context(
     total_chars = sum(len(s) for s in sections)
     if mentioned_files:
         for mf in mentioned_files:
+            reason = _is_safe_repo_path(root, root_resolved, mf)
+            if reason:
+                if len(safety_notes) < 10:
+                    safety_notes.append(f"Skipped unsafe path: {mf} ({reason})")
+                continue
+            if _is_secret_file(Path(mf).name):
+                continue
             fp = root / mf
-            if fp.exists() and fp.is_file() and not _is_secret_file(fp.name):
-                try:
-                    content = fp.read_text(errors="replace")
-                    if len(content) > _MAX_FILE_CHARS:
-                        content = content[:_MAX_FILE_CHARS] + "\n[TRUNCATED]"
-                    total_chars += len(content)
-                    if total_chars > _MAX_TOTAL_CONTEXT_CHARS:
-                        break
-                    sections.append(f"## File: {mf}\n```\n{content}\n```\n")
-                except OSError:
-                    pass
+            try:
+                content = fp.read_text(errors="replace")
+                if len(content) > _MAX_FILE_CHARS:
+                    content = content[:_MAX_FILE_CHARS] + "\n[TRUNCATED]"
+                total_chars += len(content)
+                if total_chars > _MAX_TOTAL_CONTEXT_CHARS:
+                    break
+                sections.append(f"## File: {mf}\n```\n{content}\n```\n")
+            except OSError:
+                pass
         categories.append("mentioned_files")
 
     # 4. README if exists and not too big
-    readme = root / "README.md"
-    if readme.exists() and "mentioned_files" not in categories:
-        try:
-            content = readme.read_text(errors="replace")
-            if len(content) > _MAX_FILE_CHARS:
-                content = content[:_MAX_FILE_CHARS] + "\n[TRUNCATED]"
-            sections.append(f"## README.md\n```\n{content}\n```\n")
-            categories.append("readme")
-        except OSError:
-            pass
+    if "mentioned_files" not in categories:
+        readme_reason = _is_safe_repo_path(root, root_resolved, "README.md")
+        if readme_reason:
+            if len(safety_notes) < 10:
+                safety_notes.append(f"Skipped unsafe path: README.md ({readme_reason})")
+        elif (root / "README.md").exists():
+            try:
+                content = (root / "README.md").read_text(errors="replace")
+                if len(content) > _MAX_FILE_CHARS:
+                    content = content[:_MAX_FILE_CHARS] + "\n[TRUNCATED]"
+                sections.append(f"## README.md\n```\n{content}\n```\n")
+                categories.append("readme")
+            except OSError:
+                pass
+
+    if safety_notes:
+        sections.append(
+            "## Context Safety Notes\n" + "\n".join(f"- {n}" for n in safety_notes) + "\n"
+        )
 
     return "\n".join(sections), categories
 
@@ -1040,15 +1095,23 @@ def _is_target_noise(rel_path: str) -> bool:
 def _snapshot_target(repo_path: Path) -> dict[str, bytes]:
     """Take a lightweight snapshot of target repo: {rel_path: content_hash}."""
     snap: dict[str, bytes] = {}
-    for dirpath, dirnames, filenames in os.walk(repo_path):
+    repo_resolved = repo_path.resolve()
+    for dirpath, dirnames, filenames in os.walk(repo_path, followlinks=False):
         dirnames[:] = [
             d for d in dirnames
-            if d not in _EXCLUDE_DIRS and d not in _TARGET_IGNORE and not d.startswith(".")
+            if d not in _EXCLUDE_DIRS and d not in _TARGET_IGNORE
+            and not d.startswith(".")
+            and not (Path(dirpath) / d).is_symlink()
         ]
         rel_dir = os.path.relpath(dirpath, repo_path)
         for fn in filenames:
             rel = os.path.join(rel_dir, fn) if rel_dir != "." else fn
             fp = Path(dirpath) / fn
+            if fp.is_symlink():
+                continue
+            reason = _is_safe_repo_path(repo_path, repo_resolved, rel)
+            if reason:
+                continue
             try:
                 snap[rel] = hashlib.sha256(fp.read_bytes()).digest()
             except OSError:
@@ -1870,30 +1933,37 @@ def _estimate_full_repo_tokens(repo_path: str) -> dict[str, Any]:
             "full_repo_estimate_cap_bytes_per_file": _REPO_ESTIMATE_CAP_BYTES,
         }
 
-    for dirpath, dirnames, filenames in os.walk(root):
-        # Prune excluded directories
+    root_resolved = root
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
         dirnames[:] = [
             d for d in dirnames
             if d not in _REPO_ESTIMATE_EXCLUDE_DIRS and not d.startswith(".")
+            and not (Path(dirpath) / d).is_symlink()
         ]
         for fn in filenames:
-            # Skip secret files
             if _is_secret_file(fn):
                 files_skipped += 1
                 continue
-            # Skip by extension
             ext = os.path.splitext(fn)[1].lower()
             if ext in _REPO_ESTIMATE_SKIP_EXTENSIONS:
                 files_skipped += 1
                 continue
-            # Skip env files
             if fn.startswith(".env"):
                 files_skipped += 1
                 continue
             fp = Path(dirpath) / fn
+            if fp.is_symlink():
+                files_skipped += 1
+                continue
+            rel_dir = os.path.relpath(dirpath, root)
+            rel = os.path.join(rel_dir, fn) if rel_dir != "." else fn
+            reason = _is_safe_repo_path(root, root_resolved, rel)
+            if reason:
+                files_skipped += 1
+                continue
             try:
                 size = fp.stat().st_size
-                if size > 1_000_000:  # Skip files > 1MB
+                if size > 1_000_000:
                     files_skipped += 1
                     continue
                 capped = min(size, _REPO_ESTIMATE_CAP_BYTES)

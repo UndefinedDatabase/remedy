@@ -259,46 +259,155 @@ Builder must NOT mark findings as resolved.
 Timestamp: 2026-06-26
 
 ## Verdict (reviewer-owned)
-**PENDING** — Builder implementation complete, awaiting reviewer assessment.
+**PASS** @ 5095bac
+All 6 findings resolved. Initial staging symlink-safe. Safe diff/reviewer prompt symlink-safe. Review ZIP rejects detritus. 11 new tests (4 staging + 3 diff + 3 path + 1 ZIP). 135 pingpong CLI tests. 8065 full suite (3 pre-existing/environmental). Lint clean. Mypy clean.
 
 ## Findings
 
 ### R-4001 Blocker — Initial staging copies external symlink target content
-**OPEN.** `_create_staging()` rewritten: `followlinks=False`, symlink file check, parent symlink dir filter, `read_bytes`/`write_bytes`. `StagingResult` tracks `skipped_unsafe`. 4 tests: external symlink, internal symlink, parent symlink, normal copy.
+**Resolved.** `_create_staging()` at L796-854 completely rewritten:
+- `os.walk(root, followlinks=False)` at L810 — explicit no-follow
+- Directory symlink filter at L815: `not (Path(dirpath) / d).is_symlink()` prunes symlink dirs from traversal
+- L826: `src.is_symlink()` → skip with `target_source_is_symlink` diagnostic
+- L831: `src.is_file()` → skip non-regular files with `target_source_not_regular_file`
+- L836-841: `src.resolve()` escape check against `root`
+- L850: `dst.write_bytes(src.read_bytes())` replaces `shutil.copy2(src, dst)`
+- `StagingResult` dataclass tracks `staging_path`, `skipped_unsafe`, `files_copied`
+- Tests: `test_external_symlink_not_copied` (external symlink → staging has no leaked content, `skipped_unsafe` populated), `test_internal_symlink_not_copied` (symlink inside repo also blocked), `test_parent_symlink_not_followed` (parent dir symlink not traversed), `test_normal_files_copy` (non-symlink files copy correctly, count matches).
 
 ### R-4002 Blocker — Builder-created staging symlink leaks into safe diff/reviewer prompt
-**OPEN.** `_is_safe_staged_path()` checks symlink, parent walk, escape, regular file. `_find_staging_changes()` uses `followlinks=False` + filters. `_compute_safe_diff()` produces placeholder for unsafe. 3 diff tests + 3 path tests.
+**Resolved.** `_is_safe_staged_path()` at L857-877 — shared guard for both `_find_staging_changes()` and `_compute_safe_diff()`:
+- L860: `p.is_symlink()` → `staged_is_symlink`
+- L866-870: Parent symlink walk (root to file, each level checked)
+- L871-876: `p.resolve()` escape check against `root_resolved`
+- L864: `p.is_file()` → `staged_not_regular_file`
+
+`_find_staging_changes()` at L880-907:
+- L889: `os.walk(staging, followlinks=False)` — no follow
+- L890: Symlink dir filter on `dirnames`
+- L894: `_is_safe_staged_path(staging, ...)` checks each staged file before read
+- L897: `_is_safe_staged_path(original, ...)` checks original too
+- Unsafe staged files silently skipped (not in `changed` list)
+- Unsafe original files treated as new (added to `changed` — safe because staged content is not symlinked)
+
+`_compute_safe_diff()` at L929-997:
+- L959: `_is_safe_staged_path(staging, ...)` → unsafe produces `[unsafe staged artifact skipped: reason]` placeholder (L961-966)
+- L968: `_is_safe_staged_path(original, ...)` → unsafe original treated as empty (L974-975)
+- Staged `read_text()` at L979 only called after staged safety confirmed
+- Original `read_text()` at L977 only called after original safety confirmed
+
+Tests: `test_builder_staging_symlink_not_in_diff` (external symlink excluded from changed files, diff has placeholder, no leaked content), `test_builder_staging_symlink_inside_skipped` (internal symlink also excluded), `test_builder_parent_symlink_not_in_diff` (parent symlink excluded, diff has placeholder).
+
+Reviewer prompt at L726-781 receives `safe_diff` and `files_changed` which are outputs of the hardened functions. No raw file content passes through.
 
 ### R-4003 High — `_find_staging_changes()` reads through symlinks
-**OPEN.** `followlinks=False` in `os.walk`, symlink dir filter, both staged and original paths checked via `_is_safe_staged_path()`.
+**Resolved.** See R-4002 above. `_find_staging_changes()` calls `_is_safe_staged_path()` for each file before `read_bytes()`. Symlinked files silently skipped — no outside content read. `os.walk(staging, followlinks=False)` and directory symlink filter prevent traversal into symlinked directories.
 
 ### R-4004 High — `_compute_safe_diff()` reads through symlinks
-**OPEN.** Both staged and original paths checked via `_is_safe_staged_path()`. Unsafe files produce `[unsafe staged artifact skipped: reason]` placeholder.
+**Resolved.** See R-4002 above. `_compute_safe_diff()` calls `_is_safe_staged_path()` for both staged and original files. Unsafe staged artifacts produce bounded placeholder `[unsafe staged artifact skipped: reason]`. Unsafe original treated as empty. `read_text()` only called on verified-safe paths.
 
 ### R-4005 Medium — Review ZIP includes debug detritus
-**OPEN.** `make_review_zip.sh` detritus check added. Test uses real `git init`. Passes.
+**Resolved.** `make_review_zip.sh` L88-94: `find . -maxdepth 1 -name '*_WAS_HERE.txt'` detritus check before zip creation. Exit 1 with error message if found. Test `test_make_review_zip_rejects_detritus` creates a real git repo with `BUILDER_WAS_HERE.txt`, verifies script fails. `BUILDER_WAS_HERE.txt` on disk is test pollution from `test_pingpong_cli.py` L69 (pre-existing; recreated on each test run). The zip script correctly rejects it.
 
 ### R-4006 Medium — Existing workspace apply/promote safety regresses
-**OPEN.** 8067 full suite, 0 failures. 449 orchestration tests. Lint clean. Architecture guards clean.
+**Resolved.** 8065 full suite (3 pre-existing: `test_full_chain_order` + 2 lock contention). 135 pingpong CLI tests (124 existing + 11 new). 74 promote tests. 187 task runner tests. 53 evidence tests. 109 fulfillment tests. 571 fast lane. Lint clean (ruff + mypy). Compileall clean. Architecture guards clean:
+- No `shutil.copy2` in pingpong staging (only in docstring comment L801)
+- No `followlinks=True` anywhere
+- `subprocess.run` only in `_run_post_test` (user-provided test command) and `_run_builder_subprocess`
+- No `shell=True` in product code
+- No git commit/push/reset/checkout in product code
+- `.agent` in exclude lists only
+- No `live_review` dependency
+
+## Step Assessments
+
+- **5021**: `_create_staging()` rewritten with `StagingResult`, `followlinks=False`, symlink file check (`is_symlink()` before `exists()`), parent symlink dir filter, `read_bytes/write_bytes` (no `shutil.copy2`), resolve+escape check. ✅
+- **5022**: `StagingResult.skipped_unsafe` provides diagnostics. `test_external_symlink_not_copied` verifies `skipped_unsafe` is populated. ✅
+- **5023**: 4 tests total: external symlink blocked, internal symlink blocked, parent symlink not followed, normal files copy correctly with count. ✅
+- **5024**: `_find_staging_changes()` rewritten: `followlinks=False`, dir symlink filter, `_is_safe_staged_path()` for both staging and original. ✅
+- **5025**: `_compute_safe_diff()` hardened: `_is_safe_staged_path()` for both paths, placeholder for unsafe, no `read_text()` on unverified paths. ✅
+- **5026**: `test_builder_staging_symlink_not_in_diff` — external symlink not in changed files, diff has placeholder, no leaked content. `test_builder_staging_symlink_inside_skipped` — internal also excluded. ✅
+- **5027**: `test_builder_parent_symlink_not_in_diff` — parent symlink excluded from changed files, diff has placeholder. ✅
+- **5028**: 187 task runner tests pass. Workspace apply symlink blocking intact (6 containment tests from v4). ✅
+- **5029**: 74 promote tests pass. Dest symlink blocking, baseline promotion, partial persist failure — all intact. ✅
+- **5030**: `make_review_zip.sh` L88-94 detritus check. Catches `*_WAS_HERE.txt`, `BUILDER_WAS_HERE.txt`, `REVIEWER_WAS_HERE.txt`. ✅
+- **5031**: `test_make_review_zip_rejects_detritus` — creates real git repo, adds detritus, verifies script rejects. ✅
+- **5032**: `.agent/job_workflow_readiness.md` — controlled readiness checklist. 15 checked invariants. 5 not-yet-implemented features noted. Not switched as default. ✅
+- **5033**: All existing test suites pass. 8065 full suite. 571 fast lane. Lint clean. ✅
+- **5034**: Fulfillment 109 pass. Fast lane 571. ✅
+- **5035**: Architecture clean — no `shutil.copy2` in staging, no `followlinks=True`, no symlink following in reads, no git ops, no `shell=True`, no `.agent` dependency, no `live_review` dependency. ✅
+- **5036**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings. ✅
+
+## Behavioral Checks
+
+- **Check A (initial target symlink)**: `test_external_symlink_not_copied` — `link.txt → /tmp/secret.txt` in target repo, staging has `normal.py` but NOT `link.txt`, no `SECRET_CONTENT` in any staging file, `skipped_unsafe` contains `target_source_is_symlink`. ✅
+- **Check B (builder-created staged symlink)**: `test_builder_staging_symlink_not_in_diff` — `staging/leak.txt → /tmp/secret.txt`, changed files exclude `leak.txt`, safe diff contains `[unsafe staged artifact skipped]` placeholder, `TOP_SECRET_CONTENT` not in diff text. ✅
+- **Check C (builder-created staged parent symlink)**: `test_builder_parent_symlink_not_in_diff` — `staging/linkdir → /tmp/outside_dir`, changed files exclude `linkdir/*`, diff has placeholder, `OUTSIDE_SECRET` not in diff text. ✅
+- **Check D (review ZIP hygiene)**: `test_make_review_zip_rejects_detritus` — script exits nonzero when `BUILDER_WAS_HERE.txt` present, error message mentions detritus. ✅
+
+## Protocol
+
+- **Commit reviewed**: 5095bac
+- **Protocol compliance**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings Resolved. ✅
+- **Worker 5-minute quiet-window**: Builder committed 5095bac after testing. Working tree clean except test pollution. ✅ assessed
+- **Reviewer 10-minute quiet-window**: Working tree stable during review. Builder not active during assessment. ✅ assessed
+
+## Final Recommendation
+**PASS** — zero open Blocker/High/Medium. All 16 steps (5021-5036) addressed. All 6 findings resolved. Initial pingpong staging cannot copy external symlink content (blocked at file level, dir level, escape level). Builder-created staging symlinks cannot leak into safe diff or reviewer prompt (bounded placeholder produced). Review ZIP rejects debug detritus. Workspace apply and job-promote safety intact. 11 new tests. 8065 full suite.
+
+## Notes
+v5 scope: `pingpong_loop.py` (~80 production lines: `StagingResult` dataclass, `_create_staging()` rewrite, `_is_safe_staged_path()` helper, `_find_staging_changes()` hardening, `_compute_safe_diff()` hardening, call site update), `test_pingpong_cli.py` (11 new tests: 4 staging copy + 3 diff/prompt + 3 path safety + 1 ZIP hygiene), `make_review_zip.sh` (8-line detritus check), `.agent/job_workflow_readiness.md` (readiness checklist). No scope creep beyond stated steps.
+
+---
+
+# Live Review — Steps 5037-5052: Pingpong Context Pack + Target Snapshot Symlink Closure v6
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-26
+
+## Verdict (reviewer-owned)
+**PENDING** — Builder implementation complete, awaiting reviewer assessment.
+
+## Findings
+
+### R-4101 Blocker — README symlink leaks into Builder context
+**OPEN.** `_is_safe_repo_path()` at L572-598. `build_repo_context()` README section at L679-690 validates via `_is_safe_repo_path()` before read. Safety note added on unsafe. 4 tests: no leak, normal appears, safety note, no external path.
+
+### R-4102 Blocker — Mentioned file symlink leaks into Builder context
+**OPEN.** `build_repo_context()` mentioned files at L656-673 validates via `_is_safe_repo_path()` before read. Safety note on unsafe. 4 tests: no leak, inside-repo also blocked, normal appears, reason without external path.
+
+### R-4103 High — File tree follows symlink directories
+**OPEN.** `build_repo_context()` L636: `os.walk(root, followlinks=False)`, L638-640: symlink dir filter, L647-650: file symlink skip + safety note. 4 tests: dir not traversed, file not read, no secret in notes, normal files listed.
+
+### R-4104 High — `_snapshot_target()` reads or hashes symlink target content
+**OPEN.** `_snapshot_target()` L1109: `os.walk(repo_path, followlinks=False)`, L1113: symlink dir filter, L1119: `fp.is_symlink()` skip, L1120: `_is_safe_repo_path()` check. 5 tests: outside skipped, inside skipped, parent dir not traversed, normal hashed, mutation guard works.
+
+### R-4105 Medium — Token estimate follows symlink files
+**OPEN.** `_estimate_full_repo_tokens()` L1942: `os.walk(root, followlinks=False)`, L1945: symlink dir filter, L1957: `fp.is_symlink()` skip, L1959: `_is_safe_repo_path()` check. 4 tests: symlink skipped, dir not traversed, normal counted, no path leak.
+
+### R-4106 Medium — Existing symlink safety regresses
+**OPEN.** 8097 full suite, 0 failures. 165 pingpong (135 existing + 30 new). 74 promote. 187 runner. 53 evidence. 109 fulfillment (×2). 571 fast. 4/4 runtime. Lint clean. Architecture clean.
 
 ## Builder Step Assessments
 
-- **5021**: `StagingResult` dataclass (L788-792). `_create_staging()` rewrite (L796+): `followlinks=False`, symlink dir filter, file symlink skip, `read_bytes`/`write_bytes`, skipped tracking. ✅
-- **5022**: `TestStagingCopySymlinkBlock::test_external_symlink_not_copied` — external symlink skipped, `skipped_unsafe` populated. ✅
-- **5023**: 3 more tests: internal symlink blocked, parent symlink not followed, normal files copy correctly. ✅
-- **5024**: `_is_safe_staged_path()` — symlink → parent walk → escape → regular file check order. ✅
-- **5025**: `TestSafeStagedPath` (3 tests): regular safe, symlink unsafe, parent symlink unsafe. ✅
-- **5026**: `_find_staging_changes()` rewrite: `followlinks=False`, dir symlink filter, both paths checked. ✅
-- **5027**: 3 diff tests: symlink not in diff, internal symlink skipped, parent symlink not in diff. ✅
-- **5028**: 187 task runner tests pass. ✅
-- **5029**: 74 promote tests pass. ✅
-- **5030**: `_compute_safe_diff()` updated: both paths checked, placeholder for unsafe. ✅
-- **5031**: `make_review_zip.sh` detritus check. Test uses `git init` (real repo). ✅
-- **5032**: `.agent/job_workflow_readiness.md` readiness checklist. ✅
-- **5033**: 449 orchestration, 8067 full suite, 571 fast, 4/4 runtime, lint clean. ✅
-- **5034**: Fulfillment 109 (×2), fast 571, runtime 4/4. ✅
-- **5035**: No `shutil.copy2` in pingpong, no `followlinks=True`, no `os.symlink`, no git subprocess. ✅
-- **5036**: Handoff below. ✅
+- **5037**: `_is_safe_repo_path()` at L572-598: absolute path check, `is_symlink()`, `exists()`, `is_file()`, parent walk, `resolve()` escape, readability check. 6 reasons. 6 tests. ✅
+- **5038**: `build_repo_context()` file tree: `followlinks=False`, symlink dir prune (L638-640), file symlink skip + safety note (L647-650), cap 10 notes. ✅
+- **5039**: Mentioned files: `_is_safe_repo_path()` before `read_text()` (L658-661), safety note on unsafe, secret file check preserved. ✅
+- **5040**: README: `_is_safe_repo_path("README.md")` before read (L679-680), safety note on unsafe, normal behavior preserved. ✅
+- **5041**: `_snapshot_target()`: `followlinks=False`, symlink dir filter, `is_symlink()` skip, `_is_safe_repo_path()` check before `read_bytes()`. ✅
+- **5042**: `_estimate_full_repo_tokens()`: `followlinks=False`, symlink dir filter, `is_symlink()` skip, `_is_safe_repo_path()` check before `stat()`. ✅
+- **5043**: `TestReadmeSymlinkContextLeak` (4 tests): no leak, normal appears, safety note, no external path. ✅
+- **5044**: `TestMentionedFileSymlinkContextLeak` (4 tests): no leak, inside blocked, normal appears, reason no path. ✅
+- **5045**: `TestFileTreeSymlinkBehavior` (4 tests): dir not traversed, file not read, no secret in notes, normal listed. ✅
+- **5046**: `TestSnapshotTargetSymlinkSafety` (5 tests): outside skipped, inside skipped, parent not traversed, normal hashed, mutation detects. ✅
+- **5047**: `TestTokenEstimateSymlinkSafety` (4 tests): symlink skipped, dir not traversed, normal counted, no leak. ✅
+- **5048**: `TestRunPingpongPromptNoLeak` (3 tests): README symlink, mentioned symlink, safe context present. ✅
+- **5049**: 165 pingpong, 74 promote, 187 runner — all existing tests pass. ✅
+- **5050**: 8097 full suite, 571 fast, 4/4 runtime, 109 fulfillment ×2, lint clean. ✅
+- **5051**: No `followlinks=True`, no `shutil.copy2` in pingpong, no git subprocess, no `os.symlink`, no `shell=True`, no `live_review` dependency. ✅
+- **5052**: Handoff below. ✅
 
 ## Notes
-v5 scope: `pingpong_loop.py` (~80 production lines changed), `test_pingpong_cli.py` (12 new tests), `make_review_zip.sh` (detritus check), `.agent/job_workflow_readiness.md` (new). No scope creep. Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings resolved.
+v6 scope: `pingpong_loop.py` (~50 production lines: `_is_safe_repo_path()` helper, `build_repo_context()` hardening, `_snapshot_target()` hardening, `_estimate_full_repo_tokens()` hardening) + `test_pingpong_cli.py` (30 new tests). No scope creep. Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings resolved.
