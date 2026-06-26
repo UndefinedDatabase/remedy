@@ -63,6 +63,17 @@ _UNSAFE_DIRS = frozenset({
 # ---------------------------------------------------------------------------
 
 @dataclass
+class AppliedFileProof:
+    """Per-file baseline and final hash proof for promotion safety."""
+    path: str = ""
+    existed_before_job: bool = False
+    baseline_sha256: str = ""
+    final_workspace_sha256: str = ""
+    task_id: str = ""
+    run_id: str = ""
+
+
+@dataclass
 class ApplyManifest:
     """Result of a strict workspace apply for one task."""
     task_id: str = ""
@@ -72,6 +83,7 @@ class ApplyManifest:
     unsupported_files: list[str] = field(default_factory=list)
     unexpected_files: list[str] = field(default_factory=list)
     duplicate_files: list[str] = field(default_factory=list)
+    applied_file_proofs: list[AppliedFileProof] = field(default_factory=list)
     status: str = "pending"  # applied | blocked
 
 
@@ -186,6 +198,28 @@ def load_job_plan(job_id: str) -> JobPlan | None:
         return None
 
 
+def _export_file_proof(p: AppliedFileProof) -> dict[str, Any]:
+    return {
+        "path": p.path,
+        "existed_before_job": p.existed_before_job,
+        "baseline_sha256": p.baseline_sha256,
+        "final_workspace_sha256": p.final_workspace_sha256,
+        "task_id": p.task_id,
+        "run_id": p.run_id,
+    }
+
+
+def _import_file_proof(d: dict[str, Any]) -> AppliedFileProof:
+    return AppliedFileProof(
+        path=d.get("path", ""),
+        existed_before_job=d.get("existed_before_job", False),
+        baseline_sha256=d.get("baseline_sha256", ""),
+        final_workspace_sha256=d.get("final_workspace_sha256", ""),
+        task_id=d.get("task_id", ""),
+        run_id=d.get("run_id", ""),
+    )
+
+
 def _export_apply_manifest(m: ApplyManifest | None) -> dict[str, Any] | None:
     if m is None:
         return None
@@ -197,6 +231,7 @@ def _export_apply_manifest(m: ApplyManifest | None) -> dict[str, Any] | None:
         "unsupported_files": m.unsupported_files,
         "unexpected_files": m.unexpected_files,
         "duplicate_files": m.duplicate_files,
+        "applied_file_proofs": [_export_file_proof(p) for p in m.applied_file_proofs],
         "status": m.status,
     }
 
@@ -212,6 +247,9 @@ def _import_apply_manifest(d: dict[str, Any] | None) -> ApplyManifest | None:
         unsupported_files=d.get("unsupported_files", []),
         unexpected_files=d.get("unexpected_files", []),
         duplicate_files=d.get("duplicate_files", []),
+        applied_file_proofs=[
+            _import_file_proof(p) for p in d.get("applied_file_proofs", [])
+        ],
         status=d.get("status", "pending"),
     )
 
@@ -587,20 +625,37 @@ def _is_unsafe_path(rel_path: str) -> str:
     return ""
 
 
+def _sha256_of(path: Path) -> str:
+    h = hashlib.sha256()
+    try:
+        h.update(path.read_bytes())
+    except OSError:
+        return ""
+    return h.hexdigest()
+
+
 def _strict_apply_to_workspace(
     task: TaskEntry,
     result: Any,
     workspace_path: str,
+    *,
+    job_baselines: dict[str, tuple[bool, str]] | None = None,
 ) -> ApplyManifest:
-    """Strict workspace apply with full manifest.
+    """Strict workspace apply with full manifest and baseline proof.
 
     Every staged file must be accounted for. Missing, duplicate, traversal,
     and unsafe paths block the apply.
+
+    job_baselines tracks first-seen baseline per path across tasks.
+    Key: rel_path, Value: (existed_before_job, baseline_sha256).
     """
     manifest = ApplyManifest(
         task_id=task.task_id,
         run_id=result.run_id,
     )
+
+    if job_baselines is None:
+        job_baselines = {}
 
     staging_path = result.staging_path
     if not staging_path or not workspace_path:
@@ -661,12 +716,32 @@ def _strict_apply_to_workspace(
             continue
 
         dst = workspace / rel_path
+
+        # Capture baseline before first modification to this path
+        if rel_path not in job_baselines:
+            existed = dst.exists()
+            baseline_hash = _sha256_of(dst) if existed else ""
+            job_baselines[rel_path] = (existed, baseline_hash)
+
         try:
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(str(src), str(dst))
             manifest.applied_files.append(rel_path)
         except OSError as exc:
             manifest.unexpected_files.append(f"{rel_path} (copy failed: {exc})")
+            continue
+
+        # Capture final workspace hash after copy
+        final_hash = _sha256_of(dst)
+        existed_before, baseline_hash = job_baselines[rel_path]
+        manifest.applied_file_proofs.append(AppliedFileProof(
+            path=rel_path,
+            existed_before_job=existed_before,
+            baseline_sha256=baseline_hash,
+            final_workspace_sha256=final_hash,
+            task_id=task.task_id,
+            run_id=result.run_id,
+        ))
 
     # Block if any files were not applied
     if manifest.missing_files or manifest.unsupported_files or manifest.unexpected_files:
@@ -843,11 +918,18 @@ def run_job(
 
     tasks_run = 0
     previous_summaries: list[TaskProofSummary] = []
+    job_baselines: dict[str, tuple[bool, str]] = {}
 
-    # Collect existing proof summaries from already-done tasks
+    # Collect existing proof summaries and baselines from already-done tasks
     for t in job.tasks:
         if t.proof_summary and t.status in (TASK_APPLIED, TASK_PASSED):
             previous_summaries.append(t.proof_summary)
+        if t.apply_manifest:
+            for proof in t.apply_manifest.applied_file_proofs:
+                if proof.path not in job_baselines:
+                    job_baselines[proof.path] = (
+                        proof.existed_before_job, proof.baseline_sha256,
+                    )
 
     for idx, task in enumerate(job.tasks):
         if task.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
@@ -937,8 +1019,11 @@ def run_job(
             _block_job(job, idx, "target_repo_mutated_during_job")
             return job
 
-        # Step 4835: Strict workspace apply
-        manifest = _strict_apply_to_workspace(task, result, job.job_workspace_path)
+        # Step 4835: Strict workspace apply (Step 4976: baseline capture)
+        manifest = _strict_apply_to_workspace(
+            task, result, job.job_workspace_path,
+            job_baselines=job_baselines,
+        )
         task.apply_manifest = manifest
 
         if manifest.status != "applied":

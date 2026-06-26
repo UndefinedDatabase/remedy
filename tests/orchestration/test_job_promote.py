@@ -642,31 +642,28 @@ class TestCLICommandShape:
 
 
 class TestTargetClobberBlocked:
-    def test_dirty_target_path_blocks_promote(self, isolate_data_root, demo_repo):
-        """Promote must block when target file differs from workspace source."""
+    def test_target_modified_after_job_blocks(self, isolate_data_root, demo_repo):
+        """Promote must block when target file changed since job started."""
         job = _run_completed_job(demo_repo)
 
-        # Modify a target file after job completion to simulate dirty target
-        workspace = Path(job.job_workspace_path)
+        # Find a file and write different content to target
         for t in job.tasks:
             if t.apply_manifest and t.apply_manifest.applied_files:
                 first_file = t.apply_manifest.applied_files[0]
                 target_path = demo_repo / first_file
                 target_path.parent.mkdir(parents=True, exist_ok=True)
                 target_path.write_text("EXTERNALLY MODIFIED CONTENT\n")
-                # Only workspace file != target triggers dirty
-                ws_path = workspace / first_file
-                assert ws_path.read_text() != "EXTERNALLY MODIFIED CONTENT\n"
                 break
 
         from packages.orchestration.job_promote import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert result.status == "blocked"
-        assert "dirty" in result.blocked_reason.lower()
+        reason = result.blocked_reason.lower()
+        assert "target_changed_since_job" in reason or "target_created_since_job" in reason
 
     def test_clean_target_allows_promote(self, isolate_data_root, demo_repo):
-        """Promote succeeds when target matches workspace (no external edits)."""
+        """Promote succeeds when target matches baseline (no external edits)."""
         job = _run_completed_job(demo_repo)
 
         from packages.orchestration.job_promote import promote_job
@@ -940,15 +937,19 @@ class TestMissingApplyManifestBlocks:
 
 class TestPromotionRecordPersistence:
     def test_unwritable_promo_dir_blocks_approved(
-        self, isolate_data_root, demo_repo, monkeypatch
+        self, isolate_data_root, demo_repo, tmp_path, monkeypatch
     ):
         """Approved promote must block if promotion record can't be persisted."""
         job = _run_completed_job(demo_repo)
 
         from packages.orchestration import job_promote as jp_mod
 
+        # Use a regular file as promotions dir — mkdir will fail
+        blocker = tmp_path / "not_a_dir"
+        blocker.write_text("block")
+
         def fake_promotions_dir():
-            return Path("/nonexistent/readonly/path")
+            return blocker / "subdir"
 
         monkeypatch.setattr(jp_mod, "_promotions_dir", fake_promotions_dir)
 
@@ -1087,3 +1088,450 @@ class TestCLICommandPaths:
         COMMAND_HANDLERS["do.job-promote"](args)
         captured = capsys.readouterr()
         assert "BLOCKED" in captured.out or "blocked" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# Baseline proof model helper
+# ---------------------------------------------------------------------------
+
+def _make_baselined_job(tmp_path, *, existing_content="original\n", new_content="modified\n"):
+    """Create a job with baseline proof for testing.
+
+    Returns (job, workspace, target, rel_path).
+    Target starts with existing_content. Workspace final has new_content.
+    """
+    import hashlib
+
+    from packages.orchestration.pingpong_job import (
+        AppliedFileProof,
+        ApplyManifest,
+        JobPlan,
+        TaskEntry,
+        _persist_job,
+    )
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = tmp_path / "target"
+    target.mkdir()
+
+    rel_path = "existing.py"
+    (target / rel_path).write_text(existing_content)
+    (workspace / rel_path).write_text(new_content)
+
+    baseline_hash = hashlib.sha256(existing_content.encode()).hexdigest()
+    final_hash = hashlib.sha256(new_content.encode()).hexdigest()
+
+    job = JobPlan(
+        repo_path=str(target),
+        job_title="Baseline test",
+        status="completed",
+        job_workspace_path=str(workspace),
+        tasks=[
+            TaskEntry(
+                task_id="T001", title="modify existing", body="t",
+                status="applied_to_job_workspace", run_id="run1",
+                reviewer_verdict="pass", test_passed=True,
+                apply_manifest=ApplyManifest(
+                    task_id="T001", run_id="run1",
+                    applied_files=[rel_path],
+                    applied_file_proofs=[AppliedFileProof(
+                        path=rel_path,
+                        existed_before_job=True,
+                        baseline_sha256=baseline_hash,
+                        final_workspace_sha256=final_hash,
+                        task_id="T001",
+                        run_id="run1",
+                    )],
+                    status="applied",
+                ),
+            ),
+        ],
+    )
+    _persist_job(job)
+    return job, workspace, target, rel_path
+
+
+def _make_new_file_job(tmp_path, *, content="new content\n"):
+    """Create a job that creates a new file (didn't exist before)."""
+    import hashlib
+
+    from packages.orchestration.pingpong_job import (
+        AppliedFileProof,
+        ApplyManifest,
+        JobPlan,
+        TaskEntry,
+        _persist_job,
+    )
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = tmp_path / "target"
+    target.mkdir()
+
+    rel_path = "new_file.py"
+    (workspace / rel_path).write_text(content)
+
+    final_hash = hashlib.sha256(content.encode()).hexdigest()
+
+    job = JobPlan(
+        repo_path=str(target),
+        job_title="New file test",
+        status="completed",
+        job_workspace_path=str(workspace),
+        tasks=[
+            TaskEntry(
+                task_id="T001", title="create new", body="t",
+                status="applied_to_job_workspace", run_id="run1",
+                reviewer_verdict="pass", test_passed=True,
+                apply_manifest=ApplyManifest(
+                    task_id="T001", run_id="run1",
+                    applied_files=[rel_path],
+                    applied_file_proofs=[AppliedFileProof(
+                        path=rel_path,
+                        existed_before_job=False,
+                        baseline_sha256="",
+                        final_workspace_sha256=final_hash,
+                        task_id="T001",
+                        run_id="run1",
+                    )],
+                    status="applied",
+                ),
+            ),
+        ],
+    )
+    _persist_job(job)
+    return job, workspace, target, rel_path
+
+
+# ---------------------------------------------------------------------------
+# Step 4981: Legitimate existing-file modification promotes
+# ---------------------------------------------------------------------------
+
+
+class TestBaselineExistingFilePromote:
+    def test_existing_file_modification_promotes(self, isolate_data_root, tmp_path):
+        """Reviewed modification to existing file promotes when target matches baseline."""
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "promoted"
+        assert rel_path in result.files_applied
+        assert (target / rel_path).read_text() == "modified\n"
+
+    def test_dry_run_shows_baseline_readiness(self, isolate_data_root, tmp_path):
+        """Dry-run shows per-file baseline status."""
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), dry_run=True)
+
+        assert result.status == "dry_run"
+        assert len(result.file_readiness) == 1
+        fr = result.file_readiness[0]
+        assert fr.path == rel_path
+        assert fr.kind == "modified"
+        assert fr.baseline_status == "target_matches_baseline"
+        assert fr.workspace_status == "final_hash_matches"
+
+    def test_json_includes_file_readiness(self, isolate_data_root, tmp_path):
+        """JSON export includes file_readiness array."""
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        from packages.orchestration.job_promote import (
+            export_job_promotion_json,
+            promote_job,
+        )
+        result = promote_job(job.job_id, str(target), dry_run=True)
+        data = export_job_promotion_json(result)
+
+        assert "file_readiness" in data
+        assert len(data["file_readiness"]) == 1
+        assert data["file_readiness"][0]["baseline_status"] == "target_matches_baseline"
+
+
+# ---------------------------------------------------------------------------
+# Step 4982: Target changed after job blocks
+# ---------------------------------------------------------------------------
+
+
+class TestTargetChangedSinceJob:
+    def test_target_changed_blocks(self, isolate_data_root, tmp_path):
+        """Promote blocks when target file was modified after job completion."""
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        # Modify target after job
+        (target / rel_path).write_text("someone else changed this\n")
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "target_changed_since_job" in result.blocked_reason
+        # Target content should remain untouched
+        assert (target / rel_path).read_text() == "someone else changed this\n"
+
+
+# ---------------------------------------------------------------------------
+# Step 4983: Target file created after job blocks
+# ---------------------------------------------------------------------------
+
+
+class TestTargetCreatedSinceJob:
+    def test_target_created_blocks(self, isolate_data_root, tmp_path):
+        """Promote blocks when target file appeared after job expected to create it."""
+        job, workspace, target, rel_path = _make_new_file_job(tmp_path)
+
+        # Create the file in target before promote
+        (target / rel_path).write_text("unrelated content\n")
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "target_created_since_job" in result.blocked_reason
+        assert (target / rel_path).read_text() == "unrelated content\n"
+
+
+# ---------------------------------------------------------------------------
+# Step 4984: Workspace changed after review blocks
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceChangedSinceReview:
+    def test_workspace_changed_blocks(self, isolate_data_root, tmp_path):
+        """Promote blocks when workspace file was modified after review."""
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        # Tamper with workspace after job completion
+        (workspace / rel_path).write_text("tampered content\n")
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "workspace_changed_since_review" in result.blocked_reason
+        # Target should not be modified
+        assert (target / rel_path).read_text() == "original\n"
+
+
+# ---------------------------------------------------------------------------
+# Step 4978: Legacy jobs without baseline proof
+# ---------------------------------------------------------------------------
+
+
+class TestLegacyJobsWithoutBaseline:
+    def test_legacy_new_file_allows(self, isolate_data_root, tmp_path):
+        """Legacy job creating a new file (no baseline) is allowed if target absent."""
+        from packages.orchestration.pingpong_job import (
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        (workspace / "brand_new.py").write_text("new\n")
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Legacy new file",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(
+                    task_id="T001", title="t", body="t",
+                    status="applied_to_job_workspace", run_id="x",
+                    reviewer_verdict="pass", test_passed=True,
+                    apply_manifest=ApplyManifest(
+                        task_id="T001", run_id="x",
+                        applied_files=["brand_new.py"],
+                        applied_file_proofs=[],
+                        status="applied",
+                    ),
+                ),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "promoted"
+
+    def test_legacy_existing_file_blocks(self, isolate_data_root, tmp_path):
+        """Legacy job modifying existing file (no baseline) blocks safely."""
+        from packages.orchestration.pingpong_job import (
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        (target / "old.py").write_text("original\n")
+        (workspace / "old.py").write_text("changed\n")
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Legacy existing file",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(
+                    task_id="T001", title="t", body="t",
+                    status="applied_to_job_workspace", run_id="x",
+                    reviewer_verdict="pass", test_passed=True,
+                    apply_manifest=ApplyManifest(
+                        task_id="T001", run_id="x",
+                        applied_files=["old.py"],
+                        applied_file_proofs=[],
+                        status="applied",
+                    ),
+                ),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "missing_baseline_for_existing_file" in result.blocked_reason
+        assert (target / "old.py").read_text() == "original\n"
+
+
+# ---------------------------------------------------------------------------
+# Step 4975: Baseline proof model tests
+# ---------------------------------------------------------------------------
+
+
+class TestBaselineProofModel:
+    def test_completed_job_has_file_proofs(self, isolate_data_root, demo_repo):
+        """Completed job tasks should have applied_file_proofs."""
+        job = _run_completed_job(demo_repo)
+
+        total_proofs = 0
+        for t in job.tasks:
+            if t.apply_manifest:
+                total_proofs += len(t.apply_manifest.applied_file_proofs)
+        assert total_proofs > 0
+
+    def test_proof_has_required_fields(self, isolate_data_root, demo_repo):
+        """Each file proof must have path, hashes, and task info."""
+        job = _run_completed_job(demo_repo)
+
+        for t in job.tasks:
+            if t.apply_manifest:
+                for proof in t.apply_manifest.applied_file_proofs:
+                    assert proof.path
+                    assert proof.final_workspace_sha256
+                    assert proof.task_id == t.task_id
+                    assert proof.run_id == t.run_id
+
+    def test_proof_persists_through_json(self, isolate_data_root, demo_repo):
+        """File proofs survive JSON serialization/deserialization."""
+        job = _run_completed_job(demo_repo)
+
+        from packages.orchestration.pingpong_job import (
+            _export_apply_manifest,
+            _import_apply_manifest,
+        )
+
+        for t in job.tasks:
+            if t.apply_manifest and t.apply_manifest.applied_file_proofs:
+                exported = _export_apply_manifest(t.apply_manifest)
+                imported = _import_apply_manifest(exported)
+                assert len(imported.applied_file_proofs) == len(t.apply_manifest.applied_file_proofs)
+                for orig, loaded in zip(
+                    t.apply_manifest.applied_file_proofs,
+                    imported.applied_file_proofs,
+                ):
+                    assert loaded.path == orig.path
+                    assert loaded.existed_before_job == orig.existed_before_job
+                    assert loaded.baseline_sha256 == orig.baseline_sha256
+                    assert loaded.final_workspace_sha256 == orig.final_workspace_sha256
+                break
+
+
+# ---------------------------------------------------------------------------
+# Step 4986: Real grouped CLI subprocess tests
+# ---------------------------------------------------------------------------
+
+
+class TestGroupedCLIJobPromote:
+    """Subprocess tests using run_grouped_cli for do job-promote."""
+
+    def test_dry_run_json_via_grouped_cli(self, isolate_data_root, tmp_path):
+        """Grouped CLI dry-run produces valid JSON output."""
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        result = run_grouped_cli(
+            ["do", "job-promote", job.job_id, "--repo", str(target), "--dry-run", "--json"],
+            isolate_data_root,
+        )
+
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+        assert data["status"] == "dry_run"
+        assert "file_readiness" in data
+        assert len(data["file_readiness"]) == 1
+
+    def test_approve_via_grouped_cli(self, isolate_data_root, tmp_path):
+        """Grouped CLI approve promotes and returns promoted status."""
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+
+        result = run_grouped_cli(
+            ["do", "job-promote", job.job_id, "--repo", str(target), "--approve", "--json"],
+            isolate_data_root,
+        )
+
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+        assert data["status"] == "promoted"
+        assert (target / rel_path).read_text() == "modified\n"
+
+    def test_blocked_job_via_grouped_cli(self, isolate_data_root, tmp_path):
+        """Grouped CLI returns blocked status for tampered target."""
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        job, workspace, target, rel_path = _make_baselined_job(tmp_path)
+        (target / rel_path).write_text("tampered\n")
+
+        result = run_grouped_cli(
+            ["do", "job-promote", job.job_id, "--repo", str(target), "--approve", "--json"],
+            isolate_data_root,
+        )
+
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+        assert data["status"] == "blocked"
+        assert "target_changed_since_job" in data["blocked_reason"]
+
+    def test_nonexistent_job_via_grouped_cli(self, isolate_data_root, tmp_path):
+        """Grouped CLI handles nonexistent job gracefully."""
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        result = run_grouped_cli(
+            ["do", "job-promote", "fake-id", "--repo", str(tmp_path), "--dry-run", "--json"],
+            isolate_data_root,
+        )
+
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+        assert data["status"] == "blocked"
+        assert "job_not_found" in data["blocked_reason"]
