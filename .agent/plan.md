@@ -1,32 +1,35 @@
-# Plan — Steps 5005-5020: Job Workspace Apply Symlink + Partial Promote Failure Closure v4
+# Plan — Steps 5021-5036: Pingpong Staging Symlink + Review Zip Hygiene Closure v5
 
 ## Goal
-Harden workspace apply against staged source symlinks and destination symlinks.
-Generalize structured persistence failure handling after target mutation in promote.
-Remove debug detritus from repo root.
+Harden pingpong staging copy, change scanning, and safe diff against symlinks.
+Add review ZIP hygiene check for debug detritus.
+Add job workflow readiness checklist.
 
 ## Current Step
 All implementation and tests complete. Ready for commit.
 
 ## Completed
-- Step 5005: Source containment in `_strict_apply_to_workspace` — symlink, parent symlink, escape, regular file checks
-- Step 5006: Regression test — staged source symlink outside blocks (2 tests)
-- Step 5007: Regression test — staged source parent symlink blocks (1 test)
-- Step 5008: Destination containment in `_strict_apply_to_workspace` — symlink, parent symlink, escape checks
-- Step 5009: Regression test — workspace destination symlink blocks (1 test)
-- Step 5010: Regression test — workspace destination parent symlink blocks (1 test)
-- Step 5011: Source + dest containment recheck immediately before copy
-- Step 5012: Replaced `shutil.copy2` with `src.read_bytes()` + `dst.write_bytes()` — no symlink following
-- Step 5013: Baseline proof semantics preserved — all existing tests pass
-- Step 5014: `_safe_persist` wraps all post-mutation persistence; no unstructured OSError escape
-- Step 5015: Regression test — partial apply then blocked record failure is structured
-- Step 5016: Regression test — post-test failure record persistence failure is structured
-- Step 5017: Removed `BUILDER_WAS_HERE.txt` (test detritus from `test_pingpong_cli.py` L69)
-- Step 5018: All 74 promote tests pass — existing safety preserved
-- Step 5019: All evidence/runner/fulfillment tests pass — no regression
-- Step 5020: Architecture guard clean, final handoff
+- Step 5021: `StagingResult` dataclass + `_create_staging()` rewrite — `followlinks=False`, filter symlink dirs, skip symlink files, `read_bytes`/`write_bytes` instead of `shutil.copy2`, record skipped paths with reasons
+- Step 5022: Regression test — external symlink not copied (1 test)
+- Step 5023: Regression test — internal symlink not copied (1 test), parent symlink not followed (1 test), normal files copy (1 test)
+- Step 5024: `_is_safe_staged_path()` helper — symlink, parent symlink walk, escape, regular file checks
+- Step 5025: Regression test — regular file safe (1 test), symlink unsafe (1 test), parent symlink unsafe (1 test)
+- Step 5026: `_find_staging_changes()` rewrite — `followlinks=False`, filter symlink dirs, both staged and original paths checked via `_is_safe_staged_path()`
+- Step 5027: Regression test — builder staging symlink not in diff (1 test), internal symlink skipped (1 test), parent symlink not in diff (1 test)
+- Step 5028: Workspace apply hardening tests verified — 187 task runner tests pass
+- Step 5029: Job-promote hardening tests verified — 74 promote tests pass
+- Step 5030: `_compute_safe_diff()` updated — checks both staged and original paths via `_is_safe_staged_path()`, produces `[unsafe staged artifact skipped: reason]` placeholder
+- Step 5031: `make_review_zip.sh` detritus check + regression test using real `git init`
+- Step 5032: `.agent/job_workflow_readiness.md` — readiness checklist for single-command workflow
+- Step 5033: All runner/evidence/promote safety tests pass — 449 orchestration tests, 8067 full suite
+- Step 5034: Targeted smokes — fulfillment 109 (×2), fast lane 571, runtime 4/4 suites
+- Step 5035: Architecture guard clean — no `shutil.copy2` in pingpong, no `followlinks=True`, no `os.symlink`, no git subprocess in product code
+- Step 5036: Handoff — awaiting 5-minute quiet window
 
 ## Test Counts
-- job_promote: 74 (was 72, +2 new)
-- job_task_runner: 187 (was 181, +6 new)
-- Full suite: 8056 passed, 8 skipped, 0 failed (1 pre-existing in test_project_brain)
+- pingpong_cli: 135 (was 123, +12 new)
+- job_task_runner: 187 (unchanged)
+- job_promote: 74 (unchanged)
+- job_evidence: 53 (unchanged)
+- job_fulfillment: 109 (unchanged)
+- Full suite: 8067 passed, 8 skipped, 0 failed

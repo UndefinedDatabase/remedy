@@ -785,15 +785,35 @@ def _build_reviewer_prompt(
 # Staged workspace helpers
 # ---------------------------------------------------------------------------
 
-def _create_staging(repo_path: str, run_id: str) -> Path:
-    """Create a minimal staging workspace as a filtered copy."""
+@dataclass
+class StagingResult:
+    """Result of creating a staging workspace."""
+    staging_path: Path = field(default_factory=lambda: Path("."))
+    skipped_unsafe: list[str] = field(default_factory=list)
+    files_copied: int = 0
+
+
+def _create_staging(repo_path: str, run_id: str) -> StagingResult:
+    """Create a minimal staging workspace as a filtered copy.
+
+    Skips symlinks, parent symlink paths, non-regular files, and
+    paths that escape the target repo. Uses read_bytes/write_bytes
+    instead of shutil.copy2 to avoid following symlinks.
+    """
     staging = Path(f"/tmp/remedy-pingpong-{run_id}")
     if staging.exists():
         shutil.rmtree(staging)
     root = Path(repo_path).resolve()
     staging.mkdir(parents=True)
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS and not d.startswith(".")]
+    sr = StagingResult(staging_path=staging)
+
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in _EXCLUDE_DIRS
+            and not d.startswith(".")
+            and not (Path(dirpath) / d).is_symlink()
+        ]
         rel = os.path.relpath(dirpath, root)
         target_dir = staging / rel if rel != "." else staging
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -801,28 +821,86 @@ def _create_staging(repo_path: str, run_id: str) -> Path:
             if _is_secret_file(fn):
                 continue
             src = Path(dirpath) / fn
+            rel_path = os.path.relpath(src, root)
+
+            if src.is_symlink():
+                sr.skipped_unsafe.append(
+                    f"{rel_path} (target_source_is_symlink)")
+                continue
+
+            if not src.is_file():
+                sr.skipped_unsafe.append(
+                    f"{rel_path} (target_source_not_regular_file)")
+                continue
+
+            try:
+                src_resolved = src.resolve()
+            except OSError:
+                sr.skipped_unsafe.append(
+                    f"{rel_path} (target_source_resolve_failed)")
+                continue
+
+            if not str(src_resolved).startswith(str(root) + os.sep) and src_resolved != root:
+                sr.skipped_unsafe.append(
+                    f"{rel_path} (target_source_escapes_repo)")
+                continue
+
             dst = target_dir / fn
             try:
-                shutil.copy2(src, dst)
+                dst.write_bytes(src.read_bytes())
+                sr.files_copied += 1
             except OSError:
                 pass
-    return staging
+    return sr
+
+
+def _is_safe_staged_path(root: Path, root_resolved: Path, rel: str) -> str:
+    """Check if a staged file path is safe to read. Returns reason or empty."""
+    p = root / rel
+    if p.is_symlink():
+        return f"staged_is_symlink: {rel}"
+    if not p.exists():
+        return ""
+    if not p.is_file():
+        return f"staged_not_regular_file: {rel}"
+    current = p.parent
+    while current != root and current != current.parent:
+        if current.is_symlink():
+            return f"staged_parent_symlink: {rel}"
+        current = current.parent
+    try:
+        resolved = p.resolve()
+    except OSError:
+        return f"staged_resolve_failed: {rel}"
+    if not str(resolved).startswith(str(root_resolved) + os.sep) and resolved != root_resolved:
+        return f"staged_escapes_root: {rel}"
+    return ""
 
 
 def _find_staging_changes(staging: Path, original: Path) -> list[str]:
-    """Find files that differ between staging and original."""
+    """Find files that differ between staging and original.
+
+    Skips symlinked staged files, parent symlink paths, and files
+    that escape the staging root.
+    """
     changed: list[str] = []
-    for dirpath, _, filenames in os.walk(staging):
+    staging_resolved = staging.resolve()
+    original_resolved = original.resolve()
+    for dirpath, dirnames, filenames in os.walk(staging, followlinks=False):
+        dirnames[:] = [d for d in dirnames if not (Path(dirpath) / d).is_symlink()]
         rel_dir = os.path.relpath(dirpath, staging)
         for fn in filenames:
             rel = os.path.join(rel_dir, fn) if rel_dir != "." else fn
-            staging_file = staging / rel
+            staged_reason = _is_safe_staged_path(staging, staging_resolved, rel)
+            if staged_reason:
+                continue
+            orig_reason = _is_safe_staged_path(original, original_resolved, rel)
             original_file = original / rel
-            if not original_file.exists():
+            if orig_reason or not original_file.exists():
                 changed.append(rel)
             else:
                 try:
-                    if staging_file.read_bytes() != original_file.read_bytes():
+                    if (staging / rel).read_bytes() != original_file.read_bytes():
                         changed.append(rel)
                 except OSError:
                     pass
@@ -866,6 +944,9 @@ def _compute_safe_diff(
     total_chars = 0
     truncated = False
 
+    staging_resolved = staging.resolve()
+    original_resolved = original.resolve()
+
     for rel in sorted(changed_files):
         if _is_secret_file(os.path.basename(rel)):
             continue
@@ -875,14 +956,25 @@ def _compute_safe_diff(
             diff_files.append(rel)
             continue
 
+        staged_reason = _is_safe_staged_path(staging, staging_resolved, rel)
+        if staged_reason:
+            diff_lines.append(
+                f"--- a/{rel}\n+++ b/{rel}\n"
+                f"[unsafe staged artifact skipped: {staged_reason}]\n"
+            )
+            diff_files.append(rel)
+            continue
+
+        orig_reason = _is_safe_staged_path(original, original_resolved, rel)
+
         orig_file = original / rel
         staged_file = staging / rel
 
         try:
-            if orig_file.exists():
-                orig_text = orig_file.read_text(errors="replace").splitlines(keepends=True)
+            if orig_reason or not orig_file.exists():
+                orig_text: list[str] = []
             else:
-                orig_text = []
+                orig_text = orig_file.read_text(errors="replace").splitlines(keepends=True)
             if staged_file.exists():
                 staged_text = staged_file.read_text(errors="replace").splitlines(keepends=True)
             else:
@@ -1095,7 +1187,8 @@ def run_pingpong(
     target_snap = _snapshot_target(original)
 
     # Create staging BEFORE providers (so Builder cwd can be set)
-    staging = _create_staging(repo_path, result.run_id)
+    staging_result = _create_staging(repo_path, result.run_id)
+    staging = staging_result.staging_path
 
     # Create providers — ClaudeCliProvider Builder gets cwd=staging
     if builder_provider is None:
