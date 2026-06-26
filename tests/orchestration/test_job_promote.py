@@ -634,3 +634,456 @@ class TestCLICommandShape:
         result = promote_job("nonexistent_job_id", str(demo_repo), dry_run=True)
         assert result.status == "blocked"
         assert "not_found" in result.blocked_reason
+
+
+# ---------------------------------------------------------------------------
+# Step 4969: Target-clobber regression tests
+# ---------------------------------------------------------------------------
+
+
+class TestTargetClobberBlocked:
+    def test_dirty_target_path_blocks_promote(self, isolate_data_root, demo_repo):
+        """Promote must block when target file differs from workspace source."""
+        job = _run_completed_job(demo_repo)
+
+        # Modify a target file after job completion to simulate dirty target
+        workspace = Path(job.job_workspace_path)
+        for t in job.tasks:
+            if t.apply_manifest and t.apply_manifest.applied_files:
+                first_file = t.apply_manifest.applied_files[0]
+                target_path = demo_repo / first_file
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                target_path.write_text("EXTERNALLY MODIFIED CONTENT\n")
+                # Only workspace file != target triggers dirty
+                ws_path = workspace / first_file
+                assert ws_path.read_text() != "EXTERNALLY MODIFIED CONTENT\n"
+                break
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(demo_repo), approve=True)
+
+        assert result.status == "blocked"
+        assert "dirty" in result.blocked_reason.lower()
+
+    def test_clean_target_allows_promote(self, isolate_data_root, demo_repo):
+        """Promote succeeds when target matches workspace (no external edits)."""
+        job = _run_completed_job(demo_repo)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(demo_repo), approve=True)
+
+        assert result.status == "promoted"
+        assert result.target_clean is True
+
+
+# ---------------------------------------------------------------------------
+# Step 4970: Workspace symlink leakage regression tests
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceSymlinkBlocked:
+    def test_workspace_source_symlink_blocks(self, isolate_data_root, tmp_path):
+        """Source file that is a symlink must be blocked."""
+        from packages.orchestration.pingpong_job import (
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        # Create external file and symlink to it from workspace
+        external = tmp_path / "external_secret.txt"
+        external.write_text("SECRET DATA\n")
+        (workspace / "leak.py").symlink_to(external)
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Symlink leak test",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(task_id="T001", title="t", body="t",
+                          status="applied_to_job_workspace", run_id="x",
+                          reviewer_verdict="pass", test_passed=True,
+                          apply_manifest=ApplyManifest(
+                              task_id="T001", run_id="x",
+                              applied_files=["leak.py"],
+                              status="applied",
+                          )),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "symlink" in result.blocked_reason.lower()
+
+    def test_workspace_parent_symlink_blocks(self, isolate_data_root, tmp_path):
+        """Parent directory in workspace path that is a symlink must be blocked."""
+        from packages.orchestration.pingpong_job import (
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        # Create real dir outside workspace, symlink parent inside workspace
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir()
+        (outside_dir / "data.py").write_text("outside data\n")
+        (workspace / "src").symlink_to(outside_dir)
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Parent symlink test",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(task_id="T001", title="t", body="t",
+                          status="applied_to_job_workspace", run_id="x",
+                          reviewer_verdict="pass", test_passed=True,
+                          apply_manifest=ApplyManifest(
+                              task_id="T001", run_id="x",
+                              applied_files=["src/data.py"],
+                              status="applied",
+                          )),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        reason = result.blocked_reason.lower()
+        assert "symlink" in reason or "escapes" in reason
+
+    def test_target_dest_symlink_escape_blocks(self, isolate_data_root, tmp_path):
+        """Target file that is a symlink pointing outside target must be blocked."""
+        from packages.orchestration.pingpong_job import (
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        # Create workspace source
+        (workspace / "config.py").write_text("safe content\n")
+        # Target has symlink pointing outside
+        outside_file = tmp_path / "outside.txt"
+        outside_file.write_text("outside\n")
+        (target / "config.py").symlink_to(outside_file)
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Dest symlink test",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(task_id="T001", title="t", body="t",
+                          status="applied_to_job_workspace", run_id="x",
+                          reviewer_verdict="pass", test_passed=True,
+                          apply_manifest=ApplyManifest(
+                              task_id="T001", run_id="x",
+                              applied_files=["config.py"],
+                              status="applied",
+                          )),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "symlink" in result.blocked_reason.lower() or "escape" in result.blocked_reason.lower()
+
+
+# ---------------------------------------------------------------------------
+# Step 4971: Missing apply manifest fallback regression tests
+# ---------------------------------------------------------------------------
+
+
+class TestMissingApplyManifestBlocks:
+    def test_no_apply_manifest_blocks(self, isolate_data_root, tmp_path):
+        """Task without apply manifest must block — no fallback scanning."""
+        from packages.orchestration.pingpong_job import (
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / "file.py").write_text("content\n")
+        target = tmp_path / "target"
+        target.mkdir()
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="No manifest test",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(task_id="T001", title="t", body="t",
+                          status="applied_to_job_workspace", run_id="x",
+                          reviewer_verdict="pass", test_passed=True,
+                          apply_manifest=None),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "apply_manifest" in result.blocked_reason.lower()
+
+    def test_empty_apply_manifest_blocks(self, isolate_data_root, tmp_path):
+        """Apply manifest with no files must block."""
+        from packages.orchestration.pingpong_job import (
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Empty manifest test",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(task_id="T001", title="t", body="t",
+                          status="applied_to_job_workspace", run_id="x",
+                          reviewer_verdict="pass", test_passed=True,
+                          apply_manifest=ApplyManifest(
+                              task_id="T001", run_id="x",
+                              applied_files=[],
+                              status="applied",
+                          )),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "no_files" in result.blocked_reason.lower()
+
+    def test_pending_apply_manifest_blocks(self, isolate_data_root, tmp_path):
+        """Apply manifest with status != 'applied' must block."""
+        from packages.orchestration.pingpong_job import (
+            ApplyManifest,
+            JobPlan,
+            TaskEntry,
+            _persist_job,
+        )
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = tmp_path / "target"
+        target.mkdir()
+
+        job = JobPlan(
+            repo_path=str(target),
+            job_title="Pending manifest test",
+            status="completed",
+            job_workspace_path=str(workspace),
+            tasks=[
+                TaskEntry(task_id="T001", title="t", body="t",
+                          status="applied_to_job_workspace", run_id="x",
+                          reviewer_verdict="pass", test_passed=True,
+                          apply_manifest=ApplyManifest(
+                              task_id="T001", run_id="x",
+                              applied_files=["file.py"],
+                              status="pending",
+                          )),
+            ],
+        )
+        _persist_job(job)
+
+        from packages.orchestration.job_promote import promote_job
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert "not_applied" in result.blocked_reason.lower()
+
+
+# ---------------------------------------------------------------------------
+# Step 4967: Promotion record persistence tests
+# ---------------------------------------------------------------------------
+
+
+class TestPromotionRecordPersistence:
+    def test_unwritable_promo_dir_blocks_approved(
+        self, isolate_data_root, demo_repo, monkeypatch
+    ):
+        """Approved promote must block if promotion record can't be persisted."""
+        job = _run_completed_job(demo_repo)
+
+        from packages.orchestration import job_promote as jp_mod
+
+        def fake_promotions_dir():
+            return Path("/nonexistent/readonly/path")
+
+        monkeypatch.setattr(jp_mod, "_promotions_dir", fake_promotions_dir)
+
+        result = jp_mod.promote_job(job.job_id, str(demo_repo), approve=True)
+
+        assert result.status == "blocked"
+        assert "not_writable" in result.blocked_reason.lower()
+
+
+# ---------------------------------------------------------------------------
+# Step 4966: Redaction tests
+# ---------------------------------------------------------------------------
+
+
+class TestRedactionApplied:
+    def test_json_export_redacts_secrets(self, isolate_data_root, demo_repo):
+        """JSON export must redact secret-like values."""
+        from packages.orchestration.job_promote import (
+            JobPromotionResult,
+            export_job_promotion_json,
+        )
+
+        result = JobPromotionResult(
+            job_id="test",
+            status="dry_run",
+            target_repo="/home/user/project",
+            job_workspace_path="/home/user/.remedy/workspace",
+            post_test_summary="API_KEY=sk-abc123def456",
+        )
+        data = export_job_promotion_json(result)
+
+        # post_test_summary should have redacted the API key pattern
+        assert "sk-abc123def456" not in json.dumps(data)
+
+    def test_text_summary_redacts_secrets(self, isolate_data_root, demo_repo):
+        """Text summary must redact secret-like values."""
+        from packages.orchestration.job_promote import (
+            JobPromotionResult,
+            summarize_job_promotion,
+        )
+
+        result = JobPromotionResult(
+            job_id="test",
+            status="promoted",
+            target_repo="/home/user/project",
+            post_test_summary="password=s3cr3t_p@ssw0rd",
+        )
+        text = summarize_job_promotion(result)
+
+        assert "s3cr3t_p@ssw0rd" not in text
+
+    def test_json_export_sanitizes_paths(self, isolate_data_root, demo_repo):
+        """JSON export must sanitize home-directory paths."""
+        import os
+
+        from packages.orchestration.job_promote import (
+            JobPromotionResult,
+            export_job_promotion_json,
+        )
+        home = os.path.expanduser("~")
+        result = JobPromotionResult(
+            job_id="test",
+            status="dry_run",
+            target_repo=f"{home}/project",
+            job_workspace_path=f"{home}/.remedy/ws",
+        )
+        data = export_job_promotion_json(result)
+
+        target_val = data.get("target_repo", "")
+        ws_val = data.get("job_workspace_path", "")
+        assert home not in target_val or "~" in target_val
+        assert home not in ws_val or "~" in ws_val
+
+
+# ---------------------------------------------------------------------------
+# Step 4968: CLI command-path tests
+# ---------------------------------------------------------------------------
+
+
+class TestCLICommandPaths:
+    def test_cli_approve_applies(self, isolate_data_root, demo_repo, capsys):
+        """CLI handler with --approve applies files."""
+        job = _run_completed_job(demo_repo)
+
+        import types
+
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        args = types.SimpleNamespace(
+            job_id=job.job_id,
+            repo=str(demo_repo),
+            approve=True,
+            dry_run=False,
+            test_command="",
+            json=True,
+        )
+        COMMAND_HANDLERS["do.job-promote"](args)
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output["status"] == "promoted"
+        assert len(output["files_applied"]) > 0
+
+    def test_cli_blocked_json(self, isolate_data_root, demo_repo, capsys):
+        """CLI handler returns blocked status in JSON for bad job."""
+        import types
+
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        args = types.SimpleNamespace(
+            job_id="nonexistent",
+            repo=str(demo_repo),
+            approve=False,
+            dry_run=True,
+            test_command="",
+            json=True,
+        )
+        COMMAND_HANDLERS["do.job-promote"](args)
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output["status"] == "blocked"
+
+    def test_cli_text_blocked(self, isolate_data_root, demo_repo, capsys):
+        """CLI handler shows BLOCKED in text mode for bad job."""
+        import types
+
+        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+
+        args = types.SimpleNamespace(
+            job_id="nonexistent",
+            repo=str(demo_repo),
+            approve=False,
+            dry_run=True,
+            test_command="",
+            json=False,
+        )
+        COMMAND_HANDLERS["do.job-promote"](args)
+        captured = capsys.readouterr()
+        assert "BLOCKED" in captured.out or "blocked" in captured.out

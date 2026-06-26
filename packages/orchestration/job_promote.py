@@ -20,6 +20,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from packages.orchestration.pingpong_evidence import (
+    _redact_json_value,
+    _redact_secrets,
+    _sanitize_path,
+)
+
 _BLOCKED_PREFIXES = (
     ".git/", ".git\\",
     ".env", "node_modules/", "node_modules\\",
@@ -79,6 +85,72 @@ def _hash_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def _validate_source_containment(
+    workspace: Path,
+    rel_path: str,
+) -> str:
+    """Validate that a workspace source file is safe to read.
+
+    Returns empty string if safe, or reason string if blocked.
+    Blocks symlinks, escapes, non-regular files.
+    """
+    ws_resolved = workspace.resolve()
+    src = workspace / rel_path
+
+    if src.is_symlink():
+        return f"source_is_symlink: {rel_path}"
+
+    try:
+        src_resolved = src.resolve()
+    except OSError:
+        return f"source_resolve_failed: {rel_path}"
+
+    if not str(src_resolved).startswith(str(ws_resolved) + os.sep) and src_resolved != ws_resolved:
+        return f"source_escapes_workspace: {rel_path}"
+
+    if not src_resolved.exists():
+        return f"source_missing: {rel_path}"
+
+    if not src_resolved.is_file():
+        return f"source_not_regular_file: {rel_path}"
+
+    # Check parent symlinks
+    current = src.parent
+    while current != workspace and current != current.parent:
+        if current.is_symlink():
+            return f"parent_symlink_in_path: {rel_path}"
+        current = current.parent
+
+    return ""
+
+
+def _validate_dest_containment(
+    target: Path,
+    rel_path: str,
+) -> str:
+    """Validate that a target destination path is safe to write.
+
+    Returns empty string if safe, or reason string if blocked.
+    """
+    try:
+        dest_resolved = (target / rel_path).resolve()
+    except OSError:
+        return f"dest_resolve_failed: {rel_path}"
+
+    target_resolved = target.resolve()
+    if not str(dest_resolved).startswith(str(target_resolved) + os.sep) and dest_resolved != target_resolved:
+        return f"dest_escapes_target: {rel_path}"
+
+    # Check if existing destination is a symlink to outside target
+    dest = target / rel_path
+    if dest.exists() and dest.is_symlink():
+        link_target = dest.resolve()
+        if not str(link_target).startswith(str(target_resolved) + os.sep):
+            return f"dest_symlink_escape: {rel_path}"
+
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # Result model
 # ---------------------------------------------------------------------------
@@ -117,6 +189,7 @@ class JobPromotionResult:
     blocked_reason: str = ""
     blocked_reasons: list[str] = field(default_factory=list)
     target_guard_ok: bool = False
+    target_clean: bool = False
     execution_config: dict[str, Any] = field(default_factory=dict)
     context_strategy: str = ""
     post_test_command: str = ""
@@ -175,30 +248,38 @@ def _run_post_test(
     return passed, summary
 
 
-def _collect_workspace_files(workspace: Path, repo: Path) -> list[str]:
-    """Collect files that differ between workspace and target repo.
+def _check_target_cleanliness(
+    target: Path,
+    planned_files: list[str],
+    workspace: Path,
+) -> tuple[bool, list[str]]:
+    """Check if planned target files have unexpected changes.
 
-    Only considers files that exist in the workspace. Uses relative paths.
-    Does not use git commands.
+    Compares target file hashes against workspace source to detect
+    target-side modifications that would be silently overwritten.
+    Returns (clean, dirty_files).
     """
-    changed: list[str] = []
-    for ws_file in sorted(workspace.rglob("*")):
-        if not ws_file.is_file():
+    dirty: list[str] = []
+    for rel_path in planned_files:
+        target_file = target / rel_path
+        ws_file = workspace / rel_path
+        if not target_file.exists():
             continue
+        if not ws_file.exists():
+            continue
+        # If target already matches workspace, no problem
         try:
-            rel = str(ws_file.relative_to(workspace))
-        except ValueError:
-            continue
-        repo_file = repo / rel
-        if not repo_file.exists():
-            changed.append(rel)
-            continue
-        try:
-            if ws_file.read_bytes() != repo_file.read_bytes():
-                changed.append(rel)
+            if target_file.read_bytes() == ws_file.read_bytes():
+                continue
         except OSError:
-            changed.append(rel)
-    return changed
+            dirty.append(rel_path)
+            continue
+        # Target differs from workspace — check if target has uncommitted local changes
+        # by looking for unstaged modifications. Since we don't have a baseline hash
+        # from before the job ran, we hash the workspace version as the expected state.
+        # If target != workspace, that means someone changed the target after the job.
+        dirty.append(rel_path)
+    return len(dirty) == 0, dirty
 
 
 def promote_job(
@@ -213,6 +294,9 @@ def promote_job(
 
     Without --approve, returns dry-run preview only. Never auto-promotes.
     No git commit, no git push, no git reset, no git checkout.
+
+    Every promoted file must come from a task apply manifest.
+    No workspace fallback scanning.
     """
     from packages.orchestration.pingpong_job import (
         JOB_COMPLETED,
@@ -283,6 +367,13 @@ def promote_job(
         return _block(result, "target_mutated_during_job")
     result.target_guard_ok = True
 
+    # --- Step 4961: Require explicit apply manifests, no fallback ---
+    for t in job.tasks:
+        if not t.apply_manifest:
+            return _block(result, f"missing_apply_manifest: {t.task_id}")
+        if t.apply_manifest.status != "applied":
+            return _block(result, f"apply_manifest_not_applied: {t.task_id} status={t.apply_manifest.status}")
+
     # --- Workspace exists ---
     ws_path = job.job_workspace_path
     if not ws_path:
@@ -297,17 +388,14 @@ def promote_job(
     if not target.is_dir():
         return _block(result, f"target_not_directory: {target_repo}")
 
-    # --- Collect files to promote ---
+    # --- Collect files from apply manifests only (Step 4961) ---
     all_applied: list[str] = []
     for t in job.tasks:
         if t.apply_manifest and t.apply_manifest.applied_files:
             all_applied.extend(t.apply_manifest.applied_files)
 
     if not all_applied:
-        changed = _collect_workspace_files(workspace, target)
-        if not changed:
-            return _block(result, "no_files_to_promote")
-        all_applied = changed
+        return _block(result, "no_files_in_apply_manifests")
 
     # Deduplicate while preserving order
     seen: set[str] = set()
@@ -323,24 +411,26 @@ def promote_job(
     skipped: list[str] = []
 
     for rel_path in unique_files:
+        # Step 4963: destination path safety
         block_reason = _is_blocked_path(rel_path)
         if block_reason:
             blocked.append(f"{rel_path}: {block_reason}")
             continue
 
-        # Path containment
-        dest = (target / rel_path).resolve()
-        try:
-            dest.relative_to(target)
-        except ValueError:
-            blocked.append(f"{rel_path}: path_escape")
+        # Destination containment
+        dest_reason = _validate_dest_containment(target, rel_path)
+        if dest_reason:
+            blocked.append(f"{rel_path}: {dest_reason}")
             continue
 
+        # Step 4962: source workspace containment
+        src_reason = _validate_source_containment(workspace, rel_path)
+        if src_reason:
+            blocked.append(f"{rel_path}: {src_reason}")
+            continue
+
+        # Size check
         ws_file = workspace / rel_path
-        if not ws_file.is_file():
-            skipped.append(f"{rel_path}: not_in_workspace")
-            continue
-
         try:
             size = ws_file.stat().st_size
         except OSError:
@@ -363,6 +453,12 @@ def promote_job(
     if not planned:
         return _block(result, "no_promotable_files")
 
+    # --- Step 4964: Target cleanliness check ---
+    clean, dirty = _check_target_cleanliness(target, planned, workspace)
+    result.target_clean = clean
+    if not clean:
+        return _block(result, f"dirty_planned_target_paths: {dirty}")
+
     # --- Dry-run or unapproved: preview only ---
     if dry_run or not approve:
         result.status = "dry_run"
@@ -370,30 +466,36 @@ def promote_job(
         _persist_job_promotion(job_id, result)
         return result
 
-    # --- Pre-apply target repo check ---
-    for rel_path in planned:
-        target_file = target / rel_path
-        ws_file = workspace / rel_path
-        if target_file.exists():
-            ws_content = ws_file.read_bytes()
-            target_content = target_file.read_bytes()
-            if ws_content == target_content:
-                skipped.append(f"{rel_path}: already_identical")
-                planned = [p for p in planned if p != rel_path]
+    # --- Step 4967: Preflight promotion record writability ---
+    try:
+        promo_dir = _promotions_dir() / job_id
+        promo_dir.mkdir(parents=True, exist_ok=True)
+        test_file = promo_dir / ".write_test"
+        test_file.write_text("test")
+        test_file.unlink()
+    except OSError as exc:
+        return _block(result, f"promotion_record_not_writable: {exc}")
 
-    result.files_planned = planned
-    result.files_skipped = skipped
-
-    if not planned:
-        result.status = "dry_run"
-        result.finished_at = datetime.now(timezone.utc).isoformat()
-        _persist_job_promotion(job_id, result)
-        return result
+    # --- Step 4965: Recheck target cleanliness immediately before apply ---
+    clean2, dirty2 = _check_target_cleanliness(target, planned, workspace)
+    if not clean2:
+        return _block(result, f"target_changed_before_apply: {dirty2}")
 
     # --- Apply files ---
     applied: list[str] = []
     for rel_path in planned:
         ws_file = workspace / rel_path
+
+        # Final source containment check before read
+        src_reason = _validate_source_containment(workspace, rel_path)
+        if src_reason:
+            result.status = "blocked"
+            result.blocked_reason = f"source_unsafe_at_apply: {rel_path}: {src_reason}"
+            result.files_applied = applied
+            result.finished_at = datetime.now(timezone.utc).isoformat()
+            _persist_job_promotion(job_id, result)
+            return result
+
         dest = target / rel_path
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -458,15 +560,12 @@ def _persist_job_promotion(
     job_id: str,
     result: JobPromotionResult,
 ) -> None:
-    try:
-        promo_dir = _promotions_dir() / job_id
-        promo_dir.mkdir(parents=True, exist_ok=True)
-        promo_file = promo_dir / f"{result.promotion_id}.json"
-        promo_file.write_text(
-            json.dumps(export_job_promotion_json(result), indent=2) + "\n"
-        )
-    except OSError:
-        pass
+    """Persist promotion record. Raises on write failure for approved promotes."""
+    promo_dir = _promotions_dir() / job_id
+    promo_dir.mkdir(parents=True, exist_ok=True)
+    promo_file = promo_dir / f"{result.promotion_id}.json"
+    data = export_job_promotion_json(result)
+    promo_file.write_text(json.dumps(data, indent=2) + "\n")
 
 
 def load_job_promotion(job_id: str, promotion_id: str) -> dict[str, Any] | None:
@@ -480,20 +579,20 @@ def load_job_promotion(job_id: str, promotion_id: str) -> dict[str, Any] | None:
 
 
 # ---------------------------------------------------------------------------
-# Export / summary
+# Export / summary (Step 4966: redacted)
 # ---------------------------------------------------------------------------
 
 def export_job_promotion_json(result: JobPromotionResult) -> dict[str, Any]:
-    return {
+    raw = {
         "job_id": result.job_id,
         "promotion_id": result.promotion_id,
         "status": result.status,
         "approved": result.approved,
         "dry_run": result.dry_run,
-        "target_repo": result.target_repo,
+        "target_repo": _sanitize_path(result.target_repo),
         "job_status": result.job_status,
         "job_title": result.job_title,
-        "job_workspace_path": result.job_workspace_path,
+        "job_workspace_path": _sanitize_path(result.job_workspace_path),
         "task_summaries": [
             {
                 "task_id": ts.task_id,
@@ -515,14 +614,16 @@ def export_job_promotion_json(result: JobPromotionResult) -> dict[str, Any]:
         "blocked_reason": result.blocked_reason,
         "blocked_reasons": result.blocked_reasons,
         "target_guard_ok": result.target_guard_ok,
+        "target_clean": result.target_clean,
         "execution_config": result.execution_config,
         "context_strategy": result.context_strategy,
-        "post_test_command": result.post_test_command,
+        "post_test_command_present": bool(result.post_test_command),
         "post_test_passed": result.post_test_passed,
         "post_test_summary": result.post_test_summary,
         "started_at": result.started_at,
         "finished_at": result.finished_at,
     }
+    return _redact_json_value(raw)
 
 
 def summarize_job_promotion(result: JobPromotionResult) -> str:
@@ -532,7 +633,7 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
         f"Promotion: {result.promotion_id}",
         f"Status: {result.status}",
         f"Approved: {result.approved}",
-        f"Target: {result.target_repo}",
+        f"Target: {_sanitize_path(result.target_repo)}",
     ]
 
     if result.task_summaries:
@@ -554,7 +655,7 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
         lines.append("")
         lines.append(
             f"To apply: remedy do job-promote {result.job_id}"
-            f" --repo {result.target_repo} --approve"
+            f" --repo <target> --approve"
         )
 
     elif result.status == "promoted":
@@ -566,8 +667,6 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
             lines.append(
                 f"Post-test: {'passed' if result.post_test_passed else 'FAILED'}"
             )
-            if result.post_test_summary:
-                lines.append(f"  {result.post_test_summary}")
         lines.append("")
         lines.append("No commits or pushes were made. Review and commit manually.")
 
@@ -575,8 +674,6 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
         lines.append("")
         lines.append(f"Applied {len(result.files_applied)} file(s) but post-test FAILED.")
         lines.append("Manual review required. Changes are in working tree, not committed.")
-        if result.post_test_summary:
-            lines.append(f"  {result.post_test_summary}")
 
     elif result.status == "blocked":
         lines.append("")
@@ -594,4 +691,4 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
         for f in result.files_skipped:
             lines.append(f"  {f}")
 
-    return "\n".join(lines) + "\n"
+    return _redact_secrets("\n".join(lines) + "\n")
