@@ -21,6 +21,7 @@ from packages.orchestration.pingpong_loop import (
     _estimate_full_repo_tokens,
     _find_staging_changes,
     _is_safe_repo_path,
+    _STAGING_NOISE_DIRS,
     _is_safe_staged_path,
     _is_target_noise,
     _snapshot_target,
@@ -1117,6 +1118,98 @@ class TestCacheNoiseClassification:
 
     def test_lockfile_not_noise(self):
         assert _is_target_noise("poetry.lock") is False
+
+
+# ---------------------------------------------------------------------------
+# 49b. Staging noise dirs pruned from _find_staging_changes
+# ---------------------------------------------------------------------------
+
+
+class TestStagingNoisePruning:
+    def test_pytest_cache_excluded(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+        (staging / "real.py").write_text("new\n")
+        cache = staging / ".pytest_cache"
+        cache.mkdir()
+        (cache / ".gitignore").write_text("*\n")
+        (cache / "v" / "cache").mkdir(parents=True)
+        (cache / "v" / "cache" / "data.json").write_text("{}\n")
+        changed = _find_staging_changes(staging, original)
+        assert "real.py" in changed
+        assert not any(".pytest_cache" in c for c in changed)
+
+    def test_pycache_excluded(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+        (staging / "app.py").write_text("code\n")
+        pc = staging / "__pycache__"
+        pc.mkdir()
+        (pc / "app.cpython-311.pyc").write_bytes(b"\x00")
+        changed = _find_staging_changes(staging, original)
+        assert "app.py" in changed
+        assert not any("__pycache__" in c for c in changed)
+
+    def test_mypy_cache_excluded(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+        (staging / "mod.py").write_text("typed\n")
+        mc = staging / ".mypy_cache"
+        mc.mkdir()
+        (mc / "cache.json").write_text("{}\n")
+        changed = _find_staging_changes(staging, original)
+        assert "mod.py" in changed
+        assert not any(".mypy_cache" in c for c in changed)
+
+    def test_ruff_cache_excluded(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+        (staging / "lint.py").write_text("pass\n")
+        rc = staging / ".ruff_cache"
+        rc.mkdir()
+        (rc / "0.0.1").write_text("cache\n")
+        changed = _find_staging_changes(staging, original)
+        assert "lint.py" in changed
+        assert not any(".ruff_cache" in c for c in changed)
+
+    def test_nested_pycache_excluded(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+        pkg = staging / "pkg"
+        pkg.mkdir()
+        (pkg / "mod.py").write_text("code\n")
+        pc = pkg / "__pycache__"
+        pc.mkdir()
+        (pc / "mod.cpython-311.pyc").write_bytes(b"\x00")
+        changed = _find_staging_changes(staging, original)
+        assert any("mod.py" in c for c in changed)
+        assert not any("__pycache__" in c for c in changed)
+
+    def test_real_files_still_found(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+        (original / "existing.py").write_text("old\n")
+        (staging / "existing.py").write_text("new\n")
+        (staging / "added.py").write_text("new\n")
+        changed = _find_staging_changes(staging, original)
+        assert "existing.py" in changed
+        assert "added.py" in changed
+
+    def test_staging_noise_dirs_constant_complete(self):
+        for d in (".pytest_cache", "__pycache__", ".mypy_cache", ".ruff_cache"):
+            assert d in _STAGING_NOISE_DIRS
 
 
 # ---------------------------------------------------------------------------
