@@ -1047,6 +1047,8 @@ def run_job(
                 repair_rounds=repair_rounds,
                 repair_rounds_source=rr_src,
                 keep_staging=True,
+                job_id=job.job_id,
+                task_id=task.task_id,
             )
         except Exception as exc:
             task.status = TASK_FAILED

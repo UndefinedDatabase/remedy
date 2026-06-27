@@ -118,6 +118,8 @@ class PingPongResult:
     final_adjudication: dict[str, Any] | None = None
     # Prompt traces (redacted, capped)
     prompt_traces: list[Any] = field(default_factory=list)
+    # Task ID (set by job runner)
+    task_id: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -1213,6 +1215,8 @@ def run_pingpong(
     scope_validation: Any | None = None,
     repair_rounds: int = 0,
     repair_rounds_source: str = "",
+    job_id: str = "",
+    task_id: str = "",
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -1243,6 +1247,8 @@ def run_pingpong(
         claude_cli_write_mode=claude_cli_write_mode,
         repair_rounds_allowed=repair_rounds,
         repair_rounds_source=repair_rounds_source,
+        job_id=job_id,
+        task_id=task_id,
     )
 
     # Store task metadata on result
@@ -1367,9 +1373,10 @@ def run_pingpong(
                 role="builder",
                 run_id=result.run_id,
                 job_id=result.job_id,
-                task_id="",
+                task_id=result.task_id,
                 round_num=round_num,
                 provider=builder_name or "",
+                provider_kind=_provider_kind(builder_name or ""),
                 cwd=str(staging),
                 write_mode=claude_cli_write_mode or "",
                 prompt_kind="repair" if is_repair else "initial",
@@ -1506,9 +1513,10 @@ def run_pingpong(
                 role="reviewer",
                 run_id=result.run_id,
                 job_id=result.job_id,
-                task_id="",
+                task_id=result.task_id,
                 round_num=round_num,
                 provider=reviewer_name or "",
+                provider_kind=_provider_kind(reviewer_name or ""),
                 cwd=str(staging),
                 write_mode="none",
                 prompt_kind="re-review" if is_repair else "review",
