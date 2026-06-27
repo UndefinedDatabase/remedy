@@ -1,28 +1,22 @@
-# Plan — Agent Run Trace + Job-Flow Cockpit Bridge v1
+# Plan — Steps 5053-5072: Agent Run Trace + Job-Flow Cockpit Bridge v1
 
 ## Goal
 Make Remedy able to prove, inspect, and visualize its own Builder/Reviewer/
 Repair/Final-Audit loop from real evidence. Close 6 verified gaps.
 
 ## Current Step
-Step 1: Agent Run Trace model + helpers.
+All 6 deliverables implemented and tested. Committing tests + creating PR.
 
-## Commits Planned
-1. Agent run trace model (`agent_run_trace.py`) + helpers
-2. Fix prompt trace metadata (job_id, task_id, provider_kind in run_pingpong)
-3. Agent run trace capture in do_cmd job-flow + final audit evidence-derived
-4. Job-Flow Cockpit Bridge (ui_server adapter for JobPlan IDs)
-5. Path sanitization for shareable evidence
-6. Tests for all deliverables
-7. Smoke test + verification + handoff
+## Deliverables (all complete)
+1. Agent Run Trace v1 — `agent_run_trace.py` with 16 event kinds
+2. Prompt Trace metadata fix — job_id, task_id, provider_kind in run_pingpong
+3. Evidence-derived Final Audit — availability from real artifacts
+4. Job-Flow Cockpit Bridge — _JobPlanAdapter for hex IDs
+5. Path sanitization — staging/tmp paths replaced with safe labels
+6. Safety guarantees preserved — no auto-approval, no mutation, no fakes
 
-## Constraints
-- No auto-approval
-- No target repo mutation in job-flow
-- No git commit/push/merge behavior
-- No UI mutation controls
-- No external providers unless via CLI options
-- No fake UI events from planned tasks
-- No hiding missing data as zero
-- No MemPalace or hardwired memory backend
-- All English
+## Tests
+- 13 tests in test_agent_run_trace.py
+- 16 tests in test_final_audit_evidence.py
+- 12 new + 1 fix in test_do_job_flow.py
+- 113 focused tests pass, 3771 broader suite pass

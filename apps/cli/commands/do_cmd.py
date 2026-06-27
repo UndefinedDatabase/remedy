@@ -1365,8 +1365,12 @@ def _cmd_do_job_flow(
         status=final_audit["status"],
         safe_summary=final_audit["recommended_next_action"],
     ))
-    # Re-persist trace with final event
+    # Re-persist trace and summary with final event
     write_run_trace_jsonl(run_trace_events, ev_path / "agent_run_trace.jsonl")
+    run_trace_summary = build_run_trace_summary(run_trace_events)
+    (ev_path / "agent_run_trace_summary.json").write_text(
+        json.dumps(run_trace_summary, indent=2) + "\n"
+    )
 
     # --- 8. Persist job_flow.json to evidence output ---
     flow_result = {
