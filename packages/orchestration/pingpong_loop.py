@@ -3,7 +3,7 @@
 Runs the core loop:
   1. Builder works (in staging cwd)
   2. Tests run (in staging)
-  3. Reviewer reviews (read-only, no staging cwd)
+  3. Reviewer reviews (read-only; cwd isolated to disposable staging)
   4. If pass -> done
   5. If findings -> Builder repairs
   6. Repeat until pass, max rounds, timeout, or blocker
@@ -1267,11 +1267,13 @@ def run_pingpong(
             _discard_staging(staging)
             return result
 
-    # Reviewer: no staging cwd (read-only, prompt-only)
+    # Reviewer: read-only (prompt-only), but cwd is still pinned to the
+    # disposable staging dir so any stray cwd writes from the reviewer
+    # subprocess land in staging (discarded) instead of the repo root.
     if reviewer_provider is None:
         try:
             reviewer_provider = _create_provider_with_cwd(
-                reviewer_name, role="reviewer", staging_dir=None,
+                reviewer_name, role="reviewer", staging_dir=str(staging),
             )
         except RuntimeError as exc:
             result.final_status = "provider_unavailable"
@@ -1685,13 +1687,15 @@ def _create_provider_with_cwd(
     """Create provider with role-appropriate cwd and write mode.
 
     Builder claude-cli gets cwd=staging_dir and write_mode from CLI.
-    Reviewer claude-cli gets cwd=None and write_mode="none" (read-only).
+    Reviewer claude-cli gets cwd=staging_dir and write_mode="none": it stays
+    read-only, but its cwd is pinned to the disposable staging dir so stray
+    cwd writes cannot pollute the repo root.
     """
     if name == "claude-cli":
         if role == "builder" and staging_dir:
             return ClaudeCliProvider(cwd=staging_dir, write_mode=write_mode)
-        # Reviewer: no cwd, no write permissions
-        return ClaudeCliProvider()
+        # Reviewer: read-only (write_mode="none"), cwd isolated to staging.
+        return ClaudeCliProvider(cwd=staging_dir)
     return create_provider(name)
 
 
