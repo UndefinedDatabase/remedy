@@ -938,19 +938,50 @@ def _build_timeout_hint(
     )
 
 
-def _build_final_audit(job: Any, promo: Any, evidence_out: str) -> dict[str, Any]:
-    """Determine overall job-flow audit status."""
+def _build_final_audit(
+    job: Any,
+    promo: Any,
+    evidence_out: str,
+    *,
+    prompt_trace_available: bool | None = None,
+    agent_run_trace_available: bool | None = None,
+    token_summary: dict[str, Any] | None = None,
+    job_flow_json_available: bool | None = None,
+) -> dict[str, Any]:
+    """Determine overall job-flow audit status from actual evidence."""
+    from pathlib import Path
+
     passed = sum(1 for t in job.tasks if t.status in ("applied_to_job_workspace", "passed", "skipped"))
     blocked = sum(1 for t in job.tasks if t.status == "blocked")
     skipped = sum(1 for t in job.tasks if t.status == "skipped")
     pending = sum(1 for t in job.tasks if t.status == "pending")
 
+    # Derive evidence availability from actual artifacts
+    ev_path = Path(evidence_out)
+    if prompt_trace_available is None:
+        prompt_trace_available = ev_path.joinpath("prompt_trace_summary.json").exists()
+    if agent_run_trace_available is None:
+        agent_run_trace_available = ev_path.joinpath("agent_run_trace.jsonl").exists()
+    token_summary_available = token_summary is not None and token_summary.get("provider_call_count", 0) > 0
+    if job_flow_json_available is None:
+        job_flow_json_available = ev_path.joinpath("job_flow.json").exists()
+    evidence_bundle_available = ev_path.joinpath("manifest.json").exists()
+
     promote_ready = promo.status == "dry_run"
     all_passed = job.status == "completed" and blocked == 0 and pending == 0
 
-    if all_passed and promote_ready:
+    missing_artifacts: list[str] = []
+    if not prompt_trace_available:
+        missing_artifacts.append("prompt_trace")
+    if not agent_run_trace_available:
+        missing_artifacts.append("agent_run_trace")
+
+    if all_passed and promote_ready and not missing_artifacts:
         status = "READY_FOR_APPROVAL"
         action = "Run the next_approve_command to apply changes to the target repo."
+    elif all_passed and promote_ready and missing_artifacts:
+        status = "NEEDS_REVIEW"
+        action = f"Promote-ready but observability artifacts missing: {', '.join(missing_artifacts)}."
     elif blocked > 0 or job.status == "blocked":
         status = "BLOCKED"
         action = "Review blocked tasks, fix issues, and re-run the job."
@@ -979,8 +1010,12 @@ def _build_final_audit(job: Any, promo: Any, evidence_out: str) -> dict[str, Any
         "reviewer_verdict_summary": verdicts,
         "test_summary": test_results,
         "evidence_bundle_path": evidence_out,
-        "prompt_trace_available": True,
-        "token_summary_available": True,
+        "prompt_trace_available": prompt_trace_available,
+        "agent_run_trace_available": agent_run_trace_available,
+        "token_summary_available": token_summary_available,
+        "job_flow_json_available": job_flow_json_available,
+        "evidence_bundle_available": evidence_bundle_available,
+        "missing_observability_artifacts": missing_artifacts,
         "promote_dry_run_status": promo.status,
         "promote_ready": promote_ready,
         "human_decision_required": True,
@@ -992,13 +1027,32 @@ def _build_final_audit(job: Any, promo: Any, evidence_out: str) -> dict[str, Any
     }
 
 
+def _sanitize_shareable_paths(obj: Any) -> Any:
+    """Recursively sanitize absolute staging/tmp paths in shareable JSON."""
+    import re
+    _STAGING_RE = re.compile(r"/tmp/remedy-pingpong-[a-f0-9]+")
+    _TMP_RE = re.compile(r"(/tmp/[a-zA-Z0-9._-]+)")
+
+    if isinstance(obj, str):
+        obj = _STAGING_RE.sub("[staging]", obj)
+        if obj.startswith("/tmp/"):
+            obj = _TMP_RE.sub("[tmpdir]", obj)
+        return obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_shareable_paths(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_shareable_paths(v) for v in obj]
+    return obj
+
+
 def _persist_job_flow_json(flow_result: dict, evidence_out: str) -> None:
     """Write job_flow.json to evidence output directory."""
     from pathlib import Path
     out_path = Path(evidence_out).resolve()
     out_path.mkdir(parents=True, exist_ok=True)
     target = out_path / "job_flow.json"
-    target.write_text(json.dumps(flow_result, indent=2) + "\n")
+    sanitized = _sanitize_shareable_paths(flow_result)
+    target.write_text(json.dumps(sanitized, indent=2) + "\n")
 
 
 def _print_token_summary(ts: dict) -> None:
@@ -1044,6 +1098,131 @@ def _print_final_audit(audit: dict) -> None:
           f"{', ' + str(audit['skipped_task_count']) + ' skipped' if audit['skipped_task_count'] else ''}")
     print(f"  Recommended: {audit['recommended_next_action']}")
     print("  Human approval is required before the target repo is changed.")
+
+
+def _build_agent_run_trace(
+    job: Any,
+    promo: Any,
+    evidence_result: dict,
+    builder_name: str | None,
+    reviewer_name: str | None,
+) -> list:
+    """Build agent run trace events from completed job state."""
+    from packages.orchestration.agent_run_trace import create_trace_event
+    from packages.orchestration.pingpong_loop import _provider_kind, load_run
+
+    events = []
+    job_id = job.job_id
+    b_kind = _provider_kind(builder_name or "fake")
+    r_kind = _provider_kind(reviewer_name or "fake")
+
+    events.append(create_trace_event(
+        "job_flow_started", job_id=job_id,
+        safe_summary=f"Job flow started: {job.job_title}",
+    ))
+    events.append(create_trace_event(
+        "job_planned", job_id=job_id,
+        safe_summary=f"{len(job.tasks)} tasks planned",
+        status=job.status,
+    ))
+
+    for task in job.tasks:
+        events.append(create_trace_event(
+            "task_started", job_id=job_id, task_id=task.task_id,
+            safe_summary=task.title[:200],
+        ))
+
+        if not task.run_id:
+            events.append(create_trace_event(
+                "task_gate_evaluated", job_id=job_id, task_id=task.task_id,
+                status=task.status,
+                outcome="skipped" if task.status == "skipped" else "no_run",
+                safe_summary=task.error or task.status,
+            ))
+            continue
+
+        run_data = load_run(task.run_id)
+        if not run_data:
+            continue
+
+        rounds = run_data.get("rounds", [])
+        for rd in rounds:
+            round_num = rd.get("round", 0)
+
+            if rd.get("builder"):
+                is_repair = round_num > 1
+                events.append(create_trace_event(
+                    "repair_prompt_created" if is_repair else "builder_prompt_created",
+                    job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+                    round_num=round_num, role="builder",
+                    provider=builder_name or "fake", provider_kind=b_kind,
+                    prompt_kind="repair" if is_repair else "initial",
+                ))
+                events.append(create_trace_event(
+                    "repair_output_received" if is_repair else "builder_output_received",
+                    job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+                    round_num=round_num, role="builder",
+                    provider=builder_name or "fake", provider_kind=b_kind,
+                    changed_files_safe=rd.get("staged_files", [])[:20],
+                ))
+
+            if rd.get("reviewer"):
+                reviewer_data = rd.get("reviewer", {})
+                verdict = reviewer_data.get("verdict", "")
+                findings = reviewer_data.get("findings", [])
+                finding_ids = [f.get("id", "") for f in findings if isinstance(f, dict)][:20]
+
+                is_repair = round_num > 1
+                events.append(create_trace_event(
+                    "reviewer_prompt_created",
+                    job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+                    round_num=round_num, role="reviewer",
+                    provider=reviewer_name or "fake", provider_kind=r_kind,
+                    prompt_kind="re-review" if is_repair else "review",
+                ))
+                events.append(create_trace_event(
+                    "reviewer_output_received",
+                    job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+                    round_num=round_num, role="reviewer",
+                    provider=reviewer_name or "fake", provider_kind=r_kind,
+                    verdict=verdict, finding_ids=finding_ids,
+                ))
+
+                for fid in finding_ids:
+                    events.append(create_trace_event(
+                        "review_finding_rechecked" if is_repair else "review_finding_opened",
+                        job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+                        round_num=round_num, finding_ids=[fid],
+                    ))
+
+        events.append(create_trace_event(
+            "task_gate_evaluated", job_id=job_id, task_id=task.task_id,
+            run_id=task.run_id,
+            status=task.status, verdict=task.reviewer_verdict or "",
+            outcome="pass" if task.status in ("applied_to_job_workspace", "passed") else task.status,
+        ))
+
+        if task.status == "applied_to_job_workspace":
+            safe_files = task.safe_diff_files[:20] if task.safe_diff_files else []
+            events.append(create_trace_event(
+                "task_workspace_applied", job_id=job_id, task_id=task.task_id,
+                run_id=task.run_id, changed_files_safe=safe_files,
+            ))
+
+    if not evidence_result.get("error"):
+        events.append(create_trace_event(
+            "job_evidence_exported", job_id=job_id,
+            safe_summary=f"{len(evidence_result.get('files', {}))} files exported",
+        ))
+
+    events.append(create_trace_event(
+        "promotion_dry_run_completed", job_id=job_id,
+        status=promo.status,
+        outcome="ready" if promo.status == "dry_run" else "blocked",
+        safe_summary=promo.blocked_reason or "dry_run_complete",
+    ))
+
+    return events
 
 
 def _cmd_do_job_flow(
@@ -1151,12 +1330,45 @@ def _cmd_do_job_flow(
         job_id, repo, test_command, promote_ready,
     )
 
-    # --- 6. Build observability: token summary, final audit, timeout hint ---
+    # --- 6. Build agent run trace ---
+    from packages.orchestration.agent_run_trace import (
+        build_trace_summary as build_run_trace_summary,
+        create_trace_event,
+        write_trace_jsonl as write_run_trace_jsonl,
+    )
+    from pathlib import Path as _Path
+
+    run_trace_events = _build_agent_run_trace(
+        report_job, promo, evidence_result, builder, reviewer,
+    )
+
+    ev_path = _Path(evidence_out).resolve()
+    ev_path.mkdir(parents=True, exist_ok=True)
+    write_run_trace_jsonl(run_trace_events, ev_path / "agent_run_trace.jsonl")
+    run_trace_summary = build_run_trace_summary(run_trace_events)
+    (ev_path / "agent_run_trace_summary.json").write_text(
+        json.dumps(run_trace_summary, indent=2) + "\n"
+    )
+
+    # --- 7. Build observability: token summary, final audit, timeout hint ---
     token_summary = _build_job_token_summary(report_job)
-    final_audit = _build_final_audit(report_job, promo, evidence_out)
+    final_audit = _build_final_audit(
+        report_job, promo, evidence_out,
+        token_summary=token_summary,
+    )
     timeout_warning = _build_timeout_hint(builder, reviewer, timeout_sec)
 
-    # --- 7. Persist job_flow.json to evidence output ---
+    # Add final_audit_completed to trace
+    run_trace_events.append(create_trace_event(
+        "final_audit_completed",
+        job_id=job_id,
+        status=final_audit["status"],
+        safe_summary=final_audit["recommended_next_action"],
+    ))
+    # Re-persist trace with final event
+    write_run_trace_jsonl(run_trace_events, ev_path / "agent_run_trace.jsonl")
+
+    # --- 8. Persist job_flow.json to evidence output ---
     flow_result = {
         "command": "do.job-flow",
         "job_id": job_id,
@@ -1169,6 +1381,7 @@ def _cmd_do_job_flow(
         "token_summary": token_summary,
         "final_audit": final_audit,
         "timeout_warning": timeout_warning,
+        "agent_run_trace_summary": run_trace_summary,
     }
 
     _persist_job_flow_json(flow_result, evidence_out)

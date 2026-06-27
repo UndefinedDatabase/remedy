@@ -35,11 +35,97 @@ from uuid import UUID
 # Safe data builders (no raw content leaks)
 # ---------------------------------------------------------------------------
 
+class _JobPlanTaskAdapter:
+    """Minimal adapter so JobPlan tasks look like core Job tasks to the dashboard."""
+
+    def __init__(self, task: Any) -> None:
+        self._t = task
+        self.id = task.task_id
+        self.description = task.title
+        status_map = {
+            "applied_to_job_workspace": "completed",
+            "passed": "completed",
+            "blocked": "blocked",
+            "failed": "failed",
+            "skipped": "pending",
+            "pending": "pending",
+            "running": "running",
+        }
+        raw = task.status or "pending"
+
+        class _Status:
+            def __init__(self, val: str) -> None:
+                self.value = val
+            def __str__(self) -> str:
+                return self.value
+
+        self.status = _Status(status_map.get(raw, raw))
+        self.metadata = {}
+
+
+class _JobPlanAdapter:
+    """Adapter that makes a JobPlan look enough like a core Job for the dashboard."""
+
+    def __init__(self, plan: Any) -> None:
+        self._plan = plan
+        self.id = plan.job_id
+        self.name = plan.job_title
+
+        class _State:
+            def __init__(self, val: str) -> None:
+                self.value = val
+            def __str__(self) -> str:
+                return self.value
+
+        state_map = {
+            "completed": "completed",
+            "blocked": "blocked",
+            "running": "running",
+            "planned": "active",
+            "paused": "blocked",
+        }
+        self.state = _State(state_map.get(plan.status, plan.status))
+        self.tasks = [_JobPlanTaskAdapter(t) for t in plan.tasks]
+        self.artifacts = []
+        self.metadata = {"source": "job_plan", "job_plan_id": plan.job_id}
+        self._is_job_plan = True
+
+
 def _load_events(job: Any) -> list[dict[str, Any]]:
     """Load run-log events for a job."""
+    if getattr(job, "_is_job_plan", False):
+        return _load_job_plan_events(job)
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.timeline import load_run_events
     return load_run_events(resolve_data_root(), job.id)
+
+
+def _load_job_plan_events(job: Any) -> list[dict[str, Any]]:
+    """Load agent run trace events as dashboard events for a JobPlan."""
+    from packages.orchestration.agent_run_trace import load_trace_jsonl
+    from packages.orchestration.pingpong_job import _jobs_dir
+
+    plan = job._plan
+    events: list[dict[str, Any]] = []
+
+    # Try to load agent_run_trace from evidence directories
+    for evidence_dir_name in [f"remedy-job-evidence-{plan.job_id}"]:
+        trace_path = Path(evidence_dir_name) / "agent_run_trace.jsonl"
+        if trace_path.exists():
+            for te in load_trace_jsonl(trace_path):
+                events.append({
+                    "event": te.get("event_kind", ""),
+                    "timestamp": te.get("created_at", ""),
+                    "metadata": {
+                        "task_id": te.get("task_id", ""),
+                        "run_id": te.get("run_id", ""),
+                        "verdict": te.get("verdict", ""),
+                        "status": te.get("status", ""),
+                    },
+                })
+            break
+
+    return events
 
 
 def _safe_error(code: int, message: str) -> tuple[int, dict[str, Any]]:
@@ -47,17 +133,30 @@ def _safe_error(code: int, message: str) -> tuple[int, dict[str, Any]]:
 
 
 def _load_job(job_id_str: str) -> Any:
-    """Load a Job by UUID string, return (job, error_tuple)."""
+    """Load a Job by UUID or JobPlan hex ID, return (job, error_tuple)."""
+    # Try core UUID job first
     try:
         job_id = UUID(job_id_str)
-    except ValueError:
-        return None, _safe_error(400, "invalid job_id")
-    try:
         from packages.orchestration.storage import JobNotFoundError, load_job
         job = load_job(job_id)
-    except (FileNotFoundError, JobNotFoundError):
-        return None, _safe_error(404, "job not found")
-    return job, None
+        return job, None
+    except ValueError:
+        pass
+    except (FileNotFoundError, ImportError):
+        pass
+    except Exception:
+        pass
+
+    # Try job-flow JobPlan short hex ID
+    try:
+        from packages.orchestration.pingpong_job import load_job_plan
+        plan = load_job_plan(job_id_str)
+        if plan is not None:
+            return _JobPlanAdapter(plan), None
+    except (ImportError, OSError):
+        pass
+
+    return None, _safe_error(404, "job not found")
 
 
 def _task_test_status(task_id: str, events: list[dict]) -> str:
