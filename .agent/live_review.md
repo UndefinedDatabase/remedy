@@ -429,3 +429,50 @@ All 6 findings resolved. Shared `_is_safe_repo_path()` helper. Context pack, sna
 
 ## Notes
 v6 scope: `pingpong_loop.py` (+132/-58 production lines: `_is_safe_repo_path()` helper, `build_repo_context()` hardening with safety_notes, `_snapshot_target()` hardening, `_estimate_full_repo_tokens()` hardening) + `test_pingpong_cli.py` (+352 test lines, 30 new tests). No scope creep beyond stated steps.
+
+---
+
+# Live Review — Steps 5073-5094: Job Flow Observability v2 + Prompt Trace Evidence
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-27
+
+## Verdict (reviewer-owned)
+**PENDING**
+
+## Scope
+- New `prompt_trace.py` module: `PromptTraceEntry` dataclass, `redact_prompt_text()` (7 secret patterns + env key + private key), `build_trace_entry()`, `write_trace_jsonl()`, `build_trace_summary()`, 50K char cap
+- Builder/reviewer trace capture in `pingpong_loop.py` after prompt size tracking
+- `_persist_run()` writes `prompt_trace.jsonl` + `prompt_trace_summary.json`
+- Evidence pipeline: single-run and job-level prompt trace export
+- `do_cmd.py`: 7 new helpers — `_build_next_approve_command()` (shlex.quote), `_build_job_token_summary()`, `_build_timeout_hint()`, `_build_final_audit()`, `_persist_job_flow_json()`, `_print_token_summary()`, `_print_blocked_diagnostics()`, `_print_final_audit()`
+- `make_review_zip.sh`: exclude `.coverage`, `htmlcov`, `.tox`, `.coverage_reports`, `coverage.xml`
+- 13 redaction tests, 10 completeness tests, 5 approve-command tests, 5 timeout-hint tests, 15 E2E job-flow tests, 1 coverage-exclusion test = 49 new tests total
+- 3692 passed, 1 pre-existing failure, 7 skipped
+
+## Files Changed (with line ranges)
+| File | Lines | Type |
+|------|-------|------|
+| `packages/orchestration/prompt_trace.py` | 1-156 (new) | model+redaction |
+| `packages/orchestration/pingpong_loop.py` | ~119, ~1362, ~1505, persist, export | capture |
+| `packages/orchestration/pingpong_evidence.py` | evidence export | evidence |
+| `packages/orchestration/job_evidence.py` | +70 lines | job evidence |
+| `apps/cli/commands/do_cmd.py` | +255/-15 | CLI helpers |
+| `scripts/make_review_zip.sh` | exclusions | ZIP hygiene |
+| `tests/orchestration/test_prompt_trace.py` | 1-275 (new) | unit tests |
+| `tests/test_do_job_flow.py` | +128 lines | E2E tests |
+| `tests/orchestration/test_review_zip_hygiene.py` | +29 lines | ZIP test |
+
+## Commits
+1. `e2d0f96` — prompt trace model + capture + evidence export (Steps 5073-5077)
+2. `50e40d0` — token summary, approve command, timeout hint, final audit (Steps 5078-5084)
+3. `189893d` — tests (Steps 5085-5090)
+
+## Builder Evidence
+- **Test count**: 3692 passed, 1 pre-existing failure (`test_full_chain_order`), 7 skipped
+- **Smoke test**: fake provider job-flow completed successfully
+- **Review ZIP**: 763 files, 0 coverage artifacts
+- **Redaction proof**: `test_redacts_api_key_env`, `test_redacts_sk_ant`, `test_redacts_bearer_token`, `test_redacts_private_key` + 8 more all pass
+- **Constraints verified**: no auto-approval, no overnight logic, no target mutation, no secrets in traces, no unbounded prompts, no blocked rescue, all English

@@ -7,19 +7,19 @@ final audit, blocked diagnostics, persisted job_flow.json, and review ZIP
 coverage fix.
 
 ## Current Step
-Step 5073: Implement prompt trace model + redaction.
+Complete. All 22 steps (5073-5094) implemented and verified.
 
-## Commits Planned
-1. New `prompt_trace.py` — model + redaction + helpers (Steps 5073)
-2. Capture builder/reviewer traces in pingpong_loop.py (Steps 5074-5075)
-3. Prompt trace evidence export (Steps 5076-5077)
-4. do_cmd.py — token_summary, next_approve_command, timeout hint,
-   final_audit, blocked diagnostics, job_flow.json (Steps 5078-5083)
-5. Review ZIP coverage fix (Step 5084)
-6. Tests (Steps 5085-5090)
-7. Smoke + checks + handoff (Steps 5091-5094)
+## Commits
+1. `e2d0f96` — prompt trace model + capture + evidence export (Steps 5073-5077)
+2. `50e40d0` — token summary, approve command, timeout hint, final audit (Steps 5078-5084)
+3. `189893d` — tests (Steps 5085-5090)
 
-## Constraints
+## Verification
+- 3692 passed, 1 pre-existing failure (`test_full_chain_order`), 7 skipped
+- Smoke test (fake provider): passed
+- Review ZIP: 763 files, 0 coverage artifacts, all key files present
+
+## Constraints (all met)
 - No auto-approval
 - No overnight/multi-run logic
 - No target repo mutation
