@@ -383,3 +383,131 @@ class TestJobFlowEndToEnd:
         )
         after = _snapshot_tree(demo_repo)
         assert before == after, "job-flow must not mutate the target repo"
+
+    # --- token_summary (Step 5087) -----------------------------------------
+
+    def test_json_token_summary_present(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        ts = data["token_summary"]
+        assert "provider_call_count" in ts
+        assert "builder_call_count" in ts
+        assert "reviewer_call_count" in ts
+        assert "repair_round_count" in ts
+        assert "estimated_prompt_tokens_total" in ts
+        assert "estimated_context_tokens_total" in ts
+        assert "full_repo_tokens_estimated" in ts
+
+    def test_json_token_summary_actual_null_for_fake(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        ts = data["token_summary"]
+        assert ts["actual_provider_input_tokens"] is None
+        assert ts["actual_provider_output_tokens"] is None
+
+    def test_text_token_section(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence")
+        assert "Token / Context:" in out
+        assert "Provider calls:" in out
+
+    # --- next_approve_command (Step 5088) -----------------------------------
+
+    def test_json_next_approve_includes_repo(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        if data["promote_ready"]:
+            assert "--repo" in data["next_approve_command"]
+            assert "--approve" in data["next_approve_command"]
+
+    def test_json_next_approve_includes_test_command(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence",
+                        extra=["--json", "--test-command", "pytest -q"])
+        data = json.loads(out)
+        if data["promote_ready"]:
+            assert "--test-command" in data["next_approve_command"]
+            assert "pytest" in data["next_approve_command"]
+
+    def test_json_next_approve_absent_blocked(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence",
+                        extra=["--json", "--max-rounds", "1"])
+        data = json.loads(out)
+        assert data["promote_ready"] is False
+        assert data["next_approve_command"] == ""
+
+    # --- final_audit (Step 5090) -------------------------------------------
+
+    def test_json_final_audit_ready(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        assert audit["status"] == "READY_FOR_APPROVAL"
+        assert audit["human_decision_required"] is True
+        assert audit["promote_ready"] is True
+        assert audit["task_count"] >= 1
+        assert audit["passed_task_count"] >= 1
+
+    def test_json_final_audit_blocked(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence",
+                        extra=["--json", "--max-rounds", "1"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        assert audit["status"] == "BLOCKED"
+        assert audit["promote_ready"] is False
+
+    def test_json_final_audit_reviewer_verdict_summary(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        assert "reviewer_verdict_summary" in audit
+        assert isinstance(audit["reviewer_verdict_summary"], list)
+
+    def test_json_final_audit_test_summary(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        assert "test_summary" in audit
+        assert isinstance(audit["test_summary"], list)
+
+    def test_json_final_audit_next_action(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        assert audit["recommended_next_action"]
+        assert audit["prompt_trace_available"] is True
+        assert audit["token_summary_available"] is True
+
+    def test_text_final_audit(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence")
+        assert "Final audit:" in out
+        assert "Human approval is required" in out
+
+    def test_text_blocked_diagnostics(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence",
+                        extra=["--max-rounds", "1"])
+        assert "Final audit: BLOCKED" in out
+
+    # --- job_flow.json persistence (Step 5083) -----------------------------
+
+    def test_job_flow_json_persisted(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        jf = evidence_dir / "job_flow.json"
+        assert jf.exists(), "job_flow.json must be persisted under evidence output"
+        data = json.loads(jf.read_text())
+        assert data["command"] == "do.job-flow"
+        assert "token_summary" in data
+        assert "final_audit" in data

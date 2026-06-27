@@ -122,6 +122,9 @@ def export_job_evidence(
     for task in job.tasks:
         _write_task_run_evidence(task, str(out_path), written)
 
+    # Job-level prompt trace aggregate
+    _write_job_prompt_trace_summary(job, str(out_path), written)
+
     from datetime import datetime, timezone
     manifest["bundle_generated_at"] = datetime.now(timezone.utc).isoformat()
 
@@ -470,6 +473,12 @@ def _write_task_run_evidence(
 
     bundle = build_evidence_bundle(run_data, promotion_data)
 
+    # Include prompt traces from persisted run dir
+    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+    trace_file = _pingpong_runs_dir() / task.run_id / "prompt_trace.jsonl"
+    if trace_file.exists():
+        bundle["prompt_trace_jsonl_path"] = str(trace_file)
+
     task_written = write_evidence_bundle(bundle, str(task_out))
 
     for filename, path in task_written.items():
@@ -498,3 +507,64 @@ def _write_unavailable(
     summary_path = task_out / "summary.md"
     summary_path.write_text(summary)
     written[f"{task_rel}/summary.md"] = str(summary_path)
+
+
+def _write_job_prompt_trace_summary(
+    job: Any,
+    out_base: str,
+    written: dict[str, str],
+) -> None:
+    """Write aggregate prompt trace summary across all tasks."""
+    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+
+    total_builder = 0
+    total_reviewer = 0
+    total_chars = 0
+    total_tokens_est = 0
+    task_traces: list[dict[str, Any]] = []
+
+    for task in job.tasks:
+        if not task.run_id:
+            continue
+        summary_file = _pingpong_runs_dir() / task.run_id / "prompt_trace_summary.json"
+        if not summary_file.exists():
+            task_traces.append({
+                "task_id": task.task_id,
+                "run_id": task.run_id,
+                "prompt_trace_available": False,
+            })
+            continue
+        try:
+            data = json.loads(summary_file.read_text())
+            total_builder += data.get("builder_prompts", 0)
+            total_reviewer += data.get("reviewer_prompts", 0)
+            total_chars += data.get("total_prompt_chars", 0)
+            total_tokens_est += data.get("total_prompt_tokens_estimated", 0)
+            task_traces.append({
+                "task_id": task.task_id,
+                "run_id": task.run_id,
+                "prompt_trace_available": True,
+                "builder_prompts": data.get("builder_prompts", 0),
+                "reviewer_prompts": data.get("reviewer_prompts", 0),
+            })
+        except (OSError, json.JSONDecodeError):
+            task_traces.append({
+                "task_id": task.task_id,
+                "run_id": task.run_id,
+                "prompt_trace_available": False,
+                "error": "parse_failed",
+            })
+
+    aggregate = {
+        "total_builder_prompts": total_builder,
+        "total_reviewer_prompts": total_reviewer,
+        "total_prompts": total_builder + total_reviewer,
+        "total_prompt_chars": total_chars,
+        "total_prompt_tokens_estimated": total_tokens_est,
+        "task_traces": task_traces,
+    }
+
+    out_path = Path(out_base).resolve()
+    target = _validate_output_path(str(out_path), "prompt_trace_summary.json")
+    target.write_text(json.dumps(_redact_json_value(aggregate), indent=2) + "\n")
+    written["prompt_trace_summary.json"] = str(target)

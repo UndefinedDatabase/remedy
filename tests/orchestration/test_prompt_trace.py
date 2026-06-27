@@ -1,0 +1,275 @@
+"""Tests for prompt trace redaction, capture, and evidence export.
+
+Steps 5085-5086: Verifies that prompt traces redact secrets and capture
+complete builder/reviewer metadata.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from packages.orchestration.prompt_trace import (
+    PromptTraceEntry,
+    build_trace_entry,
+    build_trace_summary,
+    redact_prompt_text,
+    trace_entry_to_dict,
+    write_trace_jsonl,
+)
+
+
+# ---------------------------------------------------------------------------
+# Step 5085: Prompt trace redaction
+# ---------------------------------------------------------------------------
+
+
+class TestPromptTraceRedaction:
+    def test_redacts_api_key_env(self):
+        text = "Use API_KEY=sk-abc123xyz to connect"
+        result = redact_prompt_text(text)
+        assert "sk-abc123xyz" not in result
+        assert "API_KEY=[REDACTED]" in result
+
+    def test_redacts_secret_env(self):
+        text = "Set SECRET=my_super_secret_value"
+        result = redact_prompt_text(text)
+        assert "my_super_secret_value" not in result
+        assert "SECRET=[REDACTED]" in result
+
+    def test_redacts_bearer_token(self):
+        text = "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.sig"
+        result = redact_prompt_text(text)
+        assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in result
+        assert "[REDACTED]" in result
+
+    def test_redacts_sk_ant(self):
+        text = "key: sk-ant-abcdefghijklmnopqrstuvwx"
+        result = redact_prompt_text(text)
+        assert "abcdefghijklmnopqrstuvwx" not in result
+        assert "[REDACTED]" in result
+
+    def test_redacts_sk_openai(self):
+        text = "key: sk-abcdefghijklmnopqrstuvwx"
+        result = redact_prompt_text(text)
+        assert "sk-abcdefghijklmnopqrstuvwx" not in result
+
+    def test_redacts_ghp(self):
+        text = "token: ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+        result = redact_prompt_text(text)
+        assert "ghp_" not in result
+
+    def test_redacts_akia(self):
+        text = "aws: AKIAIOSFODNN7EXAMPLE"
+        result = redact_prompt_text(text)
+        assert "AKIAIOSFODNN7EXAMPLE" not in result
+
+    def test_redacts_private_key(self):
+        text = "-----BEGIN RSA PRIVATE KEY-----\nMIIBogI...\n-----END RSA PRIVATE KEY-----"
+        result = redact_prompt_text(text)
+        assert "MIIBogI" not in result
+        assert "[PRIVATE_KEY_REDACTED]" in result
+
+    def test_redacts_env_content_password(self):
+        text = "PASSWORD=hunter2"
+        result = redact_prompt_text(text)
+        assert "hunter2" not in result
+        assert "PASSWORD=[REDACTED]" in result
+
+    def test_preserves_normal_text(self):
+        text = "This is a normal prompt with no secrets."
+        result = redact_prompt_text(text)
+        assert result == text
+
+    def test_redacts_token_env(self):
+        text = "TOKEN=abc123secret"
+        result = redact_prompt_text(text)
+        assert "abc123secret" not in result
+
+    def test_redacts_credential_env(self):
+        text = "CREDENTIAL=mysecretcred"
+        result = redact_prompt_text(text)
+        assert "mysecretcred" not in result
+
+
+# ---------------------------------------------------------------------------
+# Step 5086: Prompt trace completeness
+# ---------------------------------------------------------------------------
+
+
+class TestPromptTraceCompleteness:
+    def test_builder_trace_has_required_fields(self):
+        entry = build_trace_entry(
+            prompt_text="Build something",
+            role="builder",
+            run_id="run123",
+            round_num=1,
+            provider="fake",
+            cwd="/tmp/staging",
+            write_mode="diff",
+            prompt_kind="initial",
+            context_categories=["file_tree", "readme"],
+        )
+        assert entry.role == "builder"
+        assert entry.provider == "fake"
+        assert entry.cwd == "/tmp/staging"
+        assert entry.write_mode == "diff"
+        assert entry.prompt_kind == "initial"
+        assert entry.prompt_sha256
+        assert entry.prompt_chars == len("Build something")
+        assert entry.prompt_tokens_estimated > 0
+        assert entry.context_categories == ["file_tree", "readme"]
+        assert entry.created_at
+
+    def test_reviewer_trace_has_required_fields(self):
+        entry = build_trace_entry(
+            prompt_text="Review changes",
+            role="reviewer",
+            run_id="run456",
+            round_num=1,
+            provider="fake",
+            cwd="/tmp/staging",
+            write_mode="none",
+            prompt_kind="review",
+            safe_diff_files=["main.py"],
+            changed_files=["main.py"],
+        )
+        assert entry.role == "reviewer"
+        assert entry.safe_diff_files == ["main.py"]
+        assert entry.changed_files == ["main.py"]
+
+    def test_prompt_hash_is_stable(self):
+        text = "Deterministic prompt text"
+        e1 = build_trace_entry(prompt_text=text, role="builder")
+        e2 = build_trace_entry(prompt_text=text, role="builder")
+        assert e1.prompt_sha256 == e2.prompt_sha256
+
+    def test_prompt_hash_differs_for_different_text(self):
+        e1 = build_trace_entry(prompt_text="text a", role="builder")
+        e2 = build_trace_entry(prompt_text="text b", role="builder")
+        assert e1.prompt_sha256 != e2.prompt_sha256
+
+    def test_trace_summary_counts(self):
+        entries = [
+            build_trace_entry(prompt_text="b1", role="builder", provider="fake"),
+            build_trace_entry(prompt_text="r1", role="reviewer", provider="fake"),
+            build_trace_entry(prompt_text="b2", role="builder", provider="fake"),
+        ]
+        summary = build_trace_summary(entries)
+        assert summary["total_prompts"] == 3
+        assert summary["builder_prompts"] == 2
+        assert summary["reviewer_prompts"] == 1
+        assert summary["providers"] == ["fake"]
+
+    def test_trace_to_dict_roundtrip(self):
+        entry = build_trace_entry(prompt_text="test", role="builder", run_id="r1")
+        d = trace_entry_to_dict(entry)
+        assert d["role"] == "builder"
+        assert d["run_id"] == "r1"
+        assert isinstance(d["prompt_sha256"], str)
+
+    def test_write_trace_jsonl(self, tmp_path):
+        entries = [
+            build_trace_entry(prompt_text="b1", role="builder"),
+            build_trace_entry(prompt_text="r1", role="reviewer"),
+        ]
+        path = tmp_path / "trace.jsonl"
+        write_trace_jsonl(entries, path)
+        lines = path.read_text().strip().split("\n")
+        assert len(lines) == 2
+        d0 = json.loads(lines[0])
+        assert d0["role"] == "builder"
+        d1 = json.loads(lines[1])
+        assert d1["role"] == "reviewer"
+
+    def test_missing_trace_reported_honestly(self):
+        entry = build_trace_entry(prompt_text="", role="builder")
+        assert entry.prompt_chars == 0
+        assert entry.prompt_tokens_estimated == 0
+
+    def test_prompt_text_capped(self):
+        long_text = "x" * 60_000
+        entry = build_trace_entry(prompt_text=long_text, role="builder")
+        assert entry.prompt_text_truncated is True
+        assert "[PROMPT_TEXT_TRUNCATED]" in entry.prompt_text_redacted
+        assert len(entry.prompt_text_redacted) < 60_000
+
+    def test_redaction_applied_to_trace(self):
+        entry = build_trace_entry(
+            prompt_text="Use API_KEY=sk-secret123456789012345 here",
+            role="builder",
+        )
+        assert "sk-secret" not in entry.prompt_text_redacted
+        assert "[REDACTED]" in entry.prompt_text_redacted
+
+
+# ---------------------------------------------------------------------------
+# Step 5088: next_approve_command unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestNextApproveCommand:
+    def test_ready_promote_emits_command(self):
+        from apps.cli.commands.do_cmd import _build_next_approve_command
+        cmd = _build_next_approve_command("job123", "/repo", None, True)
+        assert "job123" in cmd
+        assert "--approve" in cmd
+        assert "--repo" in cmd
+
+    def test_blocked_promote_emits_empty(self):
+        from apps.cli.commands.do_cmd import _build_next_approve_command
+        cmd = _build_next_approve_command("job123", "/repo", None, False)
+        assert cmd == ""
+
+    def test_includes_test_command(self):
+        from apps.cli.commands.do_cmd import _build_next_approve_command
+        cmd = _build_next_approve_command("job123", "/repo", "pytest -q", True)
+        assert "--test-command" in cmd
+        assert "pytest" in cmd
+
+    def test_shell_quotes_spaces(self):
+        from apps.cli.commands.do_cmd import _build_next_approve_command
+        cmd = _build_next_approve_command("j1", "/my repo", "pytest tests/my test.py", True)
+        assert "'/my repo'" in cmd or '"/my repo"' in cmd or "my\\ repo" in cmd
+        assert "--test-command" in cmd
+
+    def test_shell_quotes_single_quotes(self):
+        from apps.cli.commands.do_cmd import _build_next_approve_command
+        cmd = _build_next_approve_command("j1", "/repo", "echo 'hello'", True)
+        assert "--test-command" in cmd
+        assert "echo" in cmd
+
+
+# ---------------------------------------------------------------------------
+# Step 5089: Timeout hint tests
+# ---------------------------------------------------------------------------
+
+
+class TestTimeoutHint:
+    def test_claude_cli_below_900_warns(self):
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+        warning = _build_timeout_hint("claude-cli", "fake", 180)
+        assert warning
+        assert "900" in warning
+
+    def test_claude_cli_reviewer_below_900_warns(self):
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+        warning = _build_timeout_hint("fake", "claude-cli", 120)
+        assert warning
+        assert "900" in warning
+
+    def test_fake_no_warning(self):
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+        warning = _build_timeout_hint("fake", "fake", 120)
+        assert warning == ""
+
+    def test_claude_cli_at_900_no_warning(self):
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+        warning = _build_timeout_hint("claude-cli", "claude-cli", 900)
+        assert warning == ""
+
+    def test_claude_cli_above_900_no_warning(self):
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+        warning = _build_timeout_hint("claude-cli", "claude-cli", 1200)
+        assert warning == ""
