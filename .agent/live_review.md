@@ -368,46 +368,64 @@ Builder must NOT mark findings as resolved.
 Timestamp: 2026-06-26
 
 ## Verdict (reviewer-owned)
-**PENDING** — Builder implementation complete, awaiting reviewer assessment.
+**PASS** @ 402d0ab
+All 6 findings resolved. Shared `_is_safe_repo_path()` helper. Context pack, snapshot, and token estimate all symlink-hardened. 30 new tests. 165 pingpong CLI tests. 8095 full suite (2 pre-existing lock contention + 1 excluded provenance chain). Lint clean.
 
 ## Findings
 
 ### R-4101 Blocker — README symlink leaks into Builder context
-**OPEN.** `_is_safe_repo_path()` at L572-598. `build_repo_context()` README section at L679-690 validates via `_is_safe_repo_path()` before read. Safety note added on unsafe. 4 tests: no leak, normal appears, safety note, no external path.
+**Resolved.** `build_repo_context()` README section at L678-690: `_is_safe_repo_path(root, root_resolved, "README.md")` before `read_text()`. If unsafe: safety note appended, no content read, "readme" not in categories. Tests: `test_readme_symlink_no_secret_leak` (symlink to secret, content absent, "readme" not in categories), `test_normal_readme_still_appears` (normal readme in context), `test_unsafe_readme_safety_note` (reason appears in context), `test_no_absolute_external_path_in_context` (secret path not leaked).
 
 ### R-4102 Blocker — Mentioned file symlink leaks into Builder context
-**OPEN.** `build_repo_context()` mentioned files at L656-673 validates via `_is_safe_repo_path()` before read. Safety note on unsafe. 4 tests: no leak, inside-repo also blocked, normal appears, reason without external path.
+**Resolved.** `build_repo_context()` mentioned files at L656-660: `_is_safe_repo_path(root, root_resolved, mf)` before `read_text()`. If unsafe: safety note appended, file skipped. Tests: `test_mentioned_symlink_no_secret_leak` (external secret not in context), `test_mentioned_symlink_inside_repo_also_blocked` (symlink inside repo also blocked — no exceptions for "safe" symlinks), `test_normal_mentioned_file_appears` (normal file in context), `test_context_has_reason_no_external_path` (reason present, secret path absent).
 
 ### R-4103 High — File tree follows symlink directories
-**OPEN.** `build_repo_context()` L636: `os.walk(root, followlinks=False)`, L638-640: symlink dir filter, L647-650: file symlink skip + safety note. 4 tests: dir not traversed, file not read, no secret in notes, normal files listed.
+**Resolved.** `build_repo_context()` L624: `os.walk(root, followlinks=False)`. L628: symlink dir filter prunes symlink dirs from `dirnames`. L638-641: file symlink check with safety note (capped at 10). Tests: `test_symlink_dir_not_traversed` (external dir via symlink not in tree), `test_file_symlink_not_read` (file symlink not read, either absent or tagged), `test_no_secret_in_safety_notes` (secret path not in context), `test_normal_files_in_tree` (regular files listed normally).
 
 ### R-4104 High — `_snapshot_target()` reads or hashes symlink target content
-**OPEN.** `_snapshot_target()` L1109: `os.walk(repo_path, followlinks=False)`, L1113: symlink dir filter, L1119: `fp.is_symlink()` skip, L1120: `_is_safe_repo_path()` check. 5 tests: outside skipped, inside skipped, parent dir not traversed, normal hashed, mutation guard works.
+**Resolved.** `_snapshot_target()` L1099: `os.walk(repo_path, followlinks=False)`. L1104: symlink dir filter. L1110: `fp.is_symlink()` early skip. L1112: `_is_safe_repo_path()` check before `read_bytes()`. Tests: `test_file_symlink_outside_skipped` (external symlink not in snapshot), `test_file_symlink_inside_skipped` (internal symlink also skipped), `test_parent_dir_symlink_not_traversed` (linked dir not walked), `test_normal_files_still_hashed` (content hash correct), `test_mutation_guard_detects_normal_change` (functional hash comparison intact).
 
 ### R-4105 Medium — Token estimate follows symlink files
-**OPEN.** `_estimate_full_repo_tokens()` L1942: `os.walk(root, followlinks=False)`, L1945: symlink dir filter, L1957: `fp.is_symlink()` skip, L1959: `_is_safe_repo_path()` check. 4 tests: symlink skipped, dir not traversed, normal counted, no path leak.
+**Resolved.** `_estimate_full_repo_tokens()` L1937: `os.walk(root, followlinks=False)`. L1942: symlink dir filter. L1955: `fp.is_symlink()` early skip with `files_skipped` increment. L1960: `_is_safe_repo_path()` check before `stat()`. Tests: `test_symlink_file_skipped` (big external file via symlink not counted, `files_skipped >= 1`), `test_symlink_dir_not_traversed` (10 files in external dir not counted), `test_normal_files_counted` (regular files counted), `test_no_outside_path_leaks` (secret path absent from all string values).
 
 ### R-4106 Medium — Existing symlink safety regresses
-**OPEN.** 8097 full suite, 0 failures. 165 pingpong (135 existing + 30 new). 74 promote. 187 runner. 53 evidence. 109 fulfillment (×2). 571 fast. 4/4 runtime. Lint clean. Architecture clean.
+**Resolved.** 8095 full suite (2 pre-existing lock contention failures + 1 excluded provenance chain). 165 pingpong CLI (135 existing + 30 new). 74 promote. 187 task runner. Lint clean (ruff). Architecture guards clean: no `followlinks=True` in production, no `shutil.copy2` in pingpong (docstring only), no `shell=True` in production (docstring only), no `os.symlink` in production, no `live_review` dependency.
 
-## Builder Step Assessments
+## Step Assessments
 
-- **5037**: `_is_safe_repo_path()` at L572-598: absolute path check, `is_symlink()`, `exists()`, `is_file()`, parent walk, `resolve()` escape, readability check. 6 reasons. 6 tests. ✅
-- **5038**: `build_repo_context()` file tree: `followlinks=False`, symlink dir prune (L638-640), file symlink skip + safety note (L647-650), cap 10 notes. ✅
-- **5039**: Mentioned files: `_is_safe_repo_path()` before `read_text()` (L658-661), safety note on unsafe, secret file check preserved. ✅
-- **5040**: README: `_is_safe_repo_path("README.md")` before read (L679-680), safety note on unsafe, normal behavior preserved. ✅
-- **5041**: `_snapshot_target()`: `followlinks=False`, symlink dir filter, `is_symlink()` skip, `_is_safe_repo_path()` check before `read_bytes()`. ✅
-- **5042**: `_estimate_full_repo_tokens()`: `followlinks=False`, symlink dir filter, `is_symlink()` skip, `_is_safe_repo_path()` check before `stat()`. ✅
-- **5043**: `TestReadmeSymlinkContextLeak` (4 tests): no leak, normal appears, safety note, no external path. ✅
-- **5044**: `TestMentionedFileSymlinkContextLeak` (4 tests): no leak, inside blocked, normal appears, reason no path. ✅
-- **5045**: `TestFileTreeSymlinkBehavior` (4 tests): dir not traversed, file not read, no secret in notes, normal listed. ✅
-- **5046**: `TestSnapshotTargetSymlinkSafety` (5 tests): outside skipped, inside skipped, parent not traversed, normal hashed, mutation detects. ✅
-- **5047**: `TestTokenEstimateSymlinkSafety` (4 tests): symlink skipped, dir not traversed, normal counted, no leak. ✅
-- **5048**: `TestRunPingpongPromptNoLeak` (3 tests): README symlink, mentioned symlink, safe context present. ✅
-- **5049**: 165 pingpong, 74 promote, 187 runner — all existing tests pass. ✅
-- **5050**: 8097 full suite, 571 fast, 4/4 runtime, 109 fulfillment ×2, lint clean. ✅
-- **5051**: No `followlinks=True`, no `shutil.copy2` in pingpong, no git subprocess, no `os.symlink`, no `shell=True`, no `live_review` dependency. ✅
-- **5052**: Handoff below. ✅
+- **5037**: `_is_safe_repo_path()` at L572-598: absolute path → `repo_source_escapes_repo`, `is_symlink()` → `repo_source_is_symlink`, missing → `repo_source_missing`, not regular → `repo_source_not_regular_file`, parent walk → `repo_source_parent_symlink`, resolve+escape → `repo_source_escapes_repo`, open probe → `repo_source_unreadable`. 6 `TestSafeRepoPath` tests cover all branches. ✅
+- **5038**: `build_repo_context()` file tree: `followlinks=False` at L624, symlink dir filter at L628, file `is_symlink()` skip at L638-641 with safety_notes (capped 10). 4 `TestFileTreeSymlinkBehavior` tests. ✅
+- **5039**: Mentioned files: `_is_safe_repo_path()` at L656-660 before `read_text()`, safety note on unsafe, `_is_secret_file()` check preserved. 4 `TestMentionedFileSymlinkContextLeak` tests. ✅
+- **5040**: README: `_is_safe_repo_path("README.md")` at L678-681 before read, safety note on unsafe, normal behavior preserved. 4 `TestReadmeSymlinkContextLeak` tests. ✅
+- **5041**: `_snapshot_target()`: `followlinks=False` at L1099, symlink dir filter at L1104, `is_symlink()` skip at L1110, `_is_safe_repo_path()` at L1112. 5 `TestSnapshotTargetSymlinkSafety` tests. ✅
+- **5042**: `_estimate_full_repo_tokens()`: `followlinks=False` at L1937, symlink dir filter at L1942, `is_symlink()` skip at L1955, `_is_safe_repo_path()` at L1960. 4 `TestTokenEstimateSymlinkSafety` tests. ✅
+- **5043**: `TestReadmeSymlinkContextLeak` — 4 tests: no leak, normal appears, safety note, no external path. ✅
+- **5044**: `TestMentionedFileSymlinkContextLeak` — 4 tests: no leak, inside blocked, normal appears, reason no path. ✅
+- **5045**: `TestFileTreeSymlinkBehavior` — 4 tests: dir not traversed, file not read, no secret in notes, normal listed. ✅
+- **5046**: `TestSnapshotTargetSymlinkSafety` — 5 tests: outside skipped, inside skipped, parent not traversed, normal hashed, mutation detected. ✅
+- **5047**: `TestTokenEstimateSymlinkSafety` — 4 tests: symlink skipped, dir not traversed, normal counted, no leak. ✅
+- **5048**: `TestRunPingpongPromptNoLeak` — 3 integration tests: README symlink prompt clean, mentioned symlink prompt clean + reason present, safe context present. ✅
+- **5049**: 165 pingpong (135 existing pass), 74 promote (pass), 187 task runner (pass). No v5 regression. ✅
+- **5050**: 8095 full suite (2 pre-existing lock contention, 1 excluded provenance chain). No new failures. ✅
+- **5051**: Architecture clean — no `followlinks=True`, no `shutil.copy2` in pingpong (docstring only), no `os.symlink`, no `shell=True` (docstring only), no git subprocess, no `live_review` dependency. ✅
+- **5052**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings resolved. ✅
+
+## Behavioral Checks
+
+- **Check A (README symlink)**: `test_readme_symlink_no_secret_leak` — `README.md → secret.txt`, "TOP SECRET CONTENT" absent from context, "readme" not in categories, `repo_source_is_symlink` reason present. ✅
+- **Check B (mentioned file symlink)**: `test_mentioned_symlink_no_secret_leak` — `link.txt → secret.txt` in mentioned_files, "EXTERNAL SECRET" absent from context, reason present. `test_mentioned_symlink_inside_repo_also_blocked` — symlink inside repo also blocked (no exceptions). ✅
+- **Check C (file tree symlink)**: `test_symlink_dir_not_traversed` — `linked_dir → external`, external files absent from tree. `test_file_symlink_not_read` — file symlink content absent. ✅
+- **Check D (snapshot symlink)**: `test_file_symlink_outside_skipped` + `test_file_symlink_inside_skipped` — symlink files absent from snapshot, normal files present with correct hash. ✅
+- **Check E (token estimate symlink)**: `test_symlink_file_skipped` — big external file via symlink not counted, `files_estimated == 1`, `files_skipped >= 1`. ✅
+- **Check F (integration no-leak)**: `test_builder_prompt_no_symlink_content` — full `_build_builder_prompt()` chain with symlinked README, secret content absent, goal present. ✅
+
+## Protocol
+
+- **Commit reviewed**: 402d0ab
+- **Protocol compliance**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings Resolved. ✅
+
+## Final Recommendation
+**PASS** — zero open Blocker/High/Medium. All 16 steps (5037-5052) addressed. All 6 findings resolved. New `_is_safe_repo_path()` shared helper provides consistent 7-check containment (abs, symlink, exists, regularity, parent walk, resolve+escape, readability). `build_repo_context()` hardened at file tree walk, mentioned files, and README reads. `_snapshot_target()` hardened with symlink skip + safe path check before hash. `_estimate_full_repo_tokens()` hardened with symlink skip + safe path check before stat. Safety notes surface blocked paths without leaking external paths. 30 new tests across 8 classes. 8095 full suite.
 
 ## Notes
-v6 scope: `pingpong_loop.py` (~50 production lines: `_is_safe_repo_path()` helper, `build_repo_context()` hardening, `_snapshot_target()` hardening, `_estimate_full_repo_tokens()` hardening) + `test_pingpong_cli.py` (30 new tests). No scope creep. Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings resolved.
+v6 scope: `pingpong_loop.py` (+132/-58 production lines: `_is_safe_repo_path()` helper, `build_repo_context()` hardening with safety_notes, `_snapshot_target()` hardening, `_estimate_full_repo_tokens()` hardening) + `test_pingpong_cli.py` (+352 test lines, 30 new tests). No scope creep beyond stated steps.

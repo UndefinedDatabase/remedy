@@ -932,17 +932,26 @@ def _is_safe_staged_path(root: Path, root_resolved: Path, rel: str) -> str:
     return ""
 
 
+_STAGING_NOISE_DIRS = frozenset({
+    ".pytest_cache", "__pycache__", ".mypy_cache", ".ruff_cache",
+})
+
+
 def _find_staging_changes(staging: Path, original: Path) -> list[str]:
     """Find files that differ between staging and original.
 
-    Skips symlinked staged files, parent symlink paths, and files
-    that escape the staging root.
+    Skips symlinked staged files, parent symlink paths, files
+    that escape the staging root, and tool-cache noise directories.
     """
     changed: list[str] = []
     staging_resolved = staging.resolve()
     original_resolved = original.resolve()
     for dirpath, dirnames, filenames in os.walk(staging, followlinks=False):
-        dirnames[:] = [d for d in dirnames if not (Path(dirpath) / d).is_symlink()]
+        dirnames[:] = [
+            d for d in dirnames
+            if not (Path(dirpath) / d).is_symlink()
+            and d not in _STAGING_NOISE_DIRS
+        ]
         rel_dir = os.path.relpath(dirpath, staging)
         for fn in filenames:
             rel = os.path.join(rel_dir, fn) if rel_dir != "." else fn

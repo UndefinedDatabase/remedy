@@ -11,12 +11,16 @@ Coverage:
 
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
+
 import pytest
 
 from apps.cli.command_catalog import CATALOG, get_command
 from apps.cli.commands import collect_all_handlers
 from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-from apps.cli.grouped import build_parser
+from apps.cli.grouped import build_parser, main as grouped_main
 
 COMMAND_ID = "do.job-flow"
 
@@ -70,6 +74,15 @@ class TestJobFlowCatalogEntry:
     def test_does_not_mutate_repo(self) -> None:
         cmd = get_command(COMMAND_ID)
         assert cmd.may_mutate_repo is False
+
+    def test_description_explains_safe_stop(self) -> None:
+        """Help text must make the safe-stop guarantees discoverable."""
+        cmd = get_command(COMMAND_ID)
+        desc = cmd.description.lower()
+        assert "dry-run" in desc
+        assert "evidence" in desc
+        assert "approve" in desc
+        assert "target repo" in desc
 
 
 # ---------------------------------------------------------------------------
@@ -199,3 +212,174 @@ class TestJobFlowHandlerValidation:
         with pytest.raises(SystemExit) as exc:
             COMMAND_HANDLERS[COMMAND_ID](ns)
         assert exc.value.code == 2
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: real grouped CLI path with the deterministic fake provider
+#
+# These exercise ``remedy do job-flow`` through ``apps.cli.grouped.main`` —
+# the real argparse tree + dispatch — and run job-plan → job-run → job-report
+# → job-evidence → job-promote(dry-run) end to end. The fake builder/reviewer
+# make the run fully deterministic and fast; nothing touches the network and
+# the target repo is never mutated.
+# ---------------------------------------------------------------------------
+
+
+def _snapshot_tree(root: Path) -> dict[str, str]:
+    """Map every file under ``root`` to a content hash. Used to prove the
+    target repo is byte-for-byte unchanged after a job-flow run."""
+    snap: dict[str, str] = {}
+    for p in sorted(root.rglob("*")):
+        if p.is_file():
+            rel = p.relative_to(root).as_posix()
+            snap[rel] = hashlib.sha256(p.read_bytes()).hexdigest()
+    return snap
+
+
+class TestJobFlowEndToEnd:
+    @pytest.fixture
+    def isolate_data(self, tmp_path: Path, monkeypatch):
+        """Persist jobs/runs under tmp_path, never the repo's real .data dir."""
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        return data_dir
+
+    @pytest.fixture
+    def demo_repo(self, tmp_path: Path) -> Path:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Demo\n")
+        return repo
+
+    @pytest.fixture
+    def job_file(self, tmp_path: Path) -> Path:
+        jf = tmp_path / "job.md"
+        jf.write_text(
+            "# Job: Job Flow E2E\n"
+            "\n"
+            "## Task 1\n"
+            "Add a documentation file.\n"
+            "\n"
+            "Acceptance:\n"
+            "- file exists\n"
+        )
+        return jf
+
+    def _run(self, capsys, *, repo: Path, job_file: Path, evidence_out: Path,
+             extra: list[str] | None = None) -> str:
+        """Drive the real grouped CLI and return captured stdout."""
+        argv = [
+            "do", "job-flow",
+            "--job-file", str(job_file),
+            "--repo", str(repo),
+            "--builder", "fake",
+            "--reviewer", "fake",
+            "--out", str(evidence_out),
+        ]
+        argv += extra or []
+        grouped_main(argv)
+        return capsys.readouterr().out
+
+    # --- JSON output for a completed fake-provider job --------------------
+
+    def test_json_completed_job(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(
+            capsys, repo=demo_repo, job_file=job_file,
+            evidence_out=tmp_path / "evidence", extra=["--json"],
+        )
+        data = json.loads(out)
+
+        assert data["command"] == "do.job-flow"
+        assert data["job_id"]
+        assert data["steps"] == [
+            "job-plan", "job-run", "job-report",
+            "job-evidence", "job-promote-dry-run",
+        ]
+        # Completed run → promote dry-run ready
+        assert data["report"]["status"] == "completed"
+        assert data["promote_ready"] is True
+        assert data["promote_dry_run"]["status"] == "dry_run"
+
+    def test_json_evidence_bundle_path_present(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(
+            capsys, repo=demo_repo, job_file=job_file,
+            evidence_out=tmp_path / "evidence", extra=["--json"],
+        )
+        data = json.loads(out)
+        out_dir = data["evidence"].get("out_dir")
+        assert out_dir, "evidence bundle path missing from JSON output"
+        assert Path(out_dir).is_dir(), "evidence bundle directory not created on disk"
+
+    def test_json_next_approve_command_present_when_ready(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(
+            capsys, repo=demo_repo, job_file=job_file,
+            evidence_out=tmp_path / "evidence", extra=["--json"],
+        )
+        data = json.loads(out)
+        assert data["promote_ready"] is True
+        nac = data["next_approve_command"]
+        assert nac, "next_approve_command should be present for a ready promote"
+        assert data["job_id"] in nac
+        assert "--approve" in nac
+
+    # --- Text output for a completed fake-provider job --------------------
+
+    def test_text_completed_job(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(
+            capsys, repo=demo_repo, job_file=job_file,
+            evidence_out=tmp_path / "evidence",
+        )
+        assert "Job flow:" in out
+        assert "Promote dry-run: dry_run" in out
+        assert "Evidence bundle:" in out
+        assert "Next (approval required):" in out
+        assert "--approve" in out
+        # Safe-stop guarantees are spelled out for the human.
+        assert "This flow stops at a promote dry-run. The target repo is not changed." in out
+        assert "audit trail exported" in out
+        assert "until you explicitly approve the promote" in out
+
+    # --- Blocked job behavior --------------------------------------------
+
+    def test_json_blocked_job(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        # max-rounds 1: the fake reviewer never reaches its pass round, so the
+        # task fails its completion gate and the job is blocked.
+        out = self._run(
+            capsys, repo=demo_repo, job_file=job_file,
+            evidence_out=tmp_path / "evidence", extra=["--json", "--max-rounds", "1"],
+        )
+        data = json.loads(out)
+        assert data["report"]["status"] == "blocked"
+        assert data["promote_ready"] is False
+        assert data["promote_dry_run"]["status"] == "blocked"
+
+    def test_json_next_approve_absent_when_blocked(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(
+            capsys, repo=demo_repo, job_file=job_file,
+            evidence_out=tmp_path / "evidence", extra=["--json", "--max-rounds", "1"],
+        )
+        data = json.loads(out)
+        assert data["promote_ready"] is False
+        assert data["next_approve_command"] == ""
+
+    def test_text_blocked_job(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(
+            capsys, repo=demo_repo, job_file=job_file,
+            evidence_out=tmp_path / "evidence", extra=["--max-rounds", "1"],
+        )
+        assert "Promote dry-run: blocked" in out
+        assert "Not ready to promote:" in out
+        assert "Next (approval required):" not in out
+        assert "The target repo was not changed." in out
+
+    # --- Target repo is never mutated ------------------------------------
+
+    def test_target_repo_not_mutated(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        before = _snapshot_tree(demo_repo)
+        self._run(
+            capsys, repo=demo_repo, job_file=job_file,
+            evidence_out=tmp_path / "evidence", extra=["--json"],
+        )
+        after = _snapshot_tree(demo_repo)
+        assert before == after, "job-flow must not mutate the target repo"
