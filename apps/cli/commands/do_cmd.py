@@ -844,6 +844,145 @@ def _cmd_do_job_report(
         print(format_job_report_text(job))
 
 
+def _cmd_do_job_flow(
+    *,
+    job_file: str = "",
+    repo: str = ".",
+    builder: str | None = None,
+    reviewer: str | None = None,
+    max_rounds: int | None = None,
+    repair_rounds: int | None = None,
+    test_command: str | None = None,
+    claude_cli_write_mode: str | None = None,
+    timeout_sec: int = 120,
+    out: str = "",
+    json_output: bool = False,
+) -> None:
+    """Compose the safe job workflow as one human-readable command.
+
+    Runs, in order: job-plan → job-run → job-report → job-evidence →
+    job-promote --dry-run. It stops before an approved promote: the real
+    target repo is never mutated and no git commit/push/reset/checkout is
+    performed. When the dry-run is ready, a clear next approve command is
+    printed.
+    """
+    if not job_file:
+        print("Error: --job-file is required", file=sys.stderr)
+        sys.exit(2)
+    if builder is not None and builder not in _VALID_PINGPONG_PROVIDERS:
+        print(f"Error: invalid --builder: {builder!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
+        sys.exit(2)
+    if reviewer is not None and reviewer not in _VALID_PINGPONG_PROVIDERS:
+        print(f"Error: invalid --reviewer: {reviewer!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
+        sys.exit(2)
+    if claude_cli_write_mode is not None and claude_cli_write_mode not in _VALID_CLI_WRITE_MODES:
+        print(
+            f"Error: invalid --claude-cli-write-mode: {claude_cli_write_mode!r}. "
+            f"Allowed: {', '.join(sorted(_VALID_CLI_WRITE_MODES))}.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    repair_rounds_val: int | None = None
+    repair_source: str | None = None
+    if repair_rounds is not None:
+        from packages.orchestration.pingpong_loop import resolve_repair_rounds
+        try:
+            repair_rounds_val, repair_source = resolve_repair_rounds(repair_rounds)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+
+    from packages.orchestration.pingpong_job import (
+        export_job_report,
+        format_job_report_text,
+        load_job_plan,
+        plan_job_from_file,
+        run_job,
+    )
+
+    # --- 1. job-plan ---
+    job = plan_job_from_file(job_file, repo)
+    if job.error:
+        print(f"Error: {job.error}", file=sys.stderr)
+        sys.exit(1)
+    job_id = job.job_id
+
+    # --- 2. job-run (timeout flows into the real runner/provider) ---
+    job = run_job(
+        job_id,
+        builder_name=builder,
+        reviewer_name=reviewer,
+        max_rounds=max_rounds,
+        repair_rounds=repair_rounds_val,
+        repair_rounds_source=repair_source,
+        test_command=test_command,
+        timeout_sec=timeout_sec,
+        claude_cli_write_mode=claude_cli_write_mode,
+        max_tasks=0,
+    )
+
+    # --- 3. job-report (reload for an authoritative view) ---
+    report_job = load_job_plan(job_id) or job
+    report_data = export_job_report(report_job)
+
+    # --- 4. job-evidence ---
+    from packages.orchestration.job_evidence import export_job_evidence
+    evidence_out = out or f"remedy-job-evidence-{job_id}"
+    evidence_result = export_job_evidence(job_id, evidence_out)
+
+    # --- 5. job-promote --dry-run (stops before approved promote) ---
+    from packages.orchestration.job_promote import (
+        export_job_promotion_json,
+        promote_job,
+    )
+    promo = promote_job(
+        job_id,
+        target_repo=repo,
+        approve=False,
+        dry_run=True,
+        test_command=test_command or "",
+    )
+
+    promote_ready = promo.status == "dry_run"
+    next_approve_command = (
+        f"remedy do job-promote {job_id} --repo {repo} --approve"
+        if promote_ready else ""
+    )
+
+    if json_output:
+        print(json.dumps({
+            "command": "do.job-flow",
+            "job_id": job_id,
+            "steps": ["job-plan", "job-run", "job-report", "job-evidence", "job-promote-dry-run"],
+            "report": report_data,
+            "evidence": evidence_result,
+            "promote_dry_run": export_job_promotion_json(promo),
+            "promote_ready": promote_ready,
+            "next_approve_command": next_approve_command,
+        }, indent=2))
+        return
+
+    print(f"Job flow: {job_file}")
+    print(f"Job: {job_id} ({report_job.job_title}) — {len(report_job.tasks)} task(s)")
+    print(f"Run status: {report_job.status}")
+    print()
+    print(format_job_report_text(report_job))
+    print()
+    if evidence_result.get("error"):
+        print(f"Evidence: error: {evidence_result['error']}")
+    else:
+        print(f"Evidence bundle: {evidence_result.get('out_dir', evidence_out)}")
+    print()
+    print(f"Promote dry-run: {promo.status}")
+    if promote_ready:
+        print(f"  Would apply {len(promo.files_planned)} file(s). No target files changed.")
+        print("\nNext (approval required):")
+        print(f"  {next_approve_command}")
+    else:
+        print(f"  Not ready to promote: {promo.blocked_reason or 'see report'}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.run": lambda args: _cmd_do(
         getattr(args, "goal", None) or "",
@@ -931,6 +1070,19 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.job-evidence": lambda args: _cmd_do_job_evidence(
         args.job_id,
+        out=getattr(args, "out", None) or "",
+        json_output=getattr(args, "json", False),
+    ),
+    "do.job-flow": lambda args: _cmd_do_job_flow(
+        job_file=getattr(args, "job_file", None) or "",
+        repo=getattr(args, "repo", None) or ".",
+        builder=getattr(args, "builder", None),
+        reviewer=getattr(args, "reviewer", None),
+        max_rounds=int(getattr(args, "max_rounds")) if getattr(args, "max_rounds", None) is not None else None,
+        repair_rounds=int(getattr(args, "repair_rounds")) if getattr(args, "repair_rounds", None) is not None else None,
+        test_command=getattr(args, "test_command", None),
+        claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None),
+        timeout_sec=int(getattr(args, "timeout_sec", None) or 120),
         out=getattr(args, "out", None) or "",
         json_output=getattr(args, "json", False),
     ),

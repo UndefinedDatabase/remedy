@@ -2441,6 +2441,30 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=True,
         may_execute_commands=True,
     ),
+    CommandEntry(
+        command_id="do.job-flow",
+        group_id="do",
+        subcommand="job-flow",
+        description="Run the full safe job workflow: plan, run, report, evidence, and promote dry-run (stops before approved promote).",
+        action_class="write_metadata",
+        supports_json=True,
+        related=("do.job-plan", "do.job-run", "do.job-report", "do.job-evidence", "do.job-promote"),
+        args=(
+            ArgDef("--job-file", "Path to Markdown job file", required=True, is_option=True),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            ArgDef("--builder", "Builder provider: fake, claude, claude-cli (default: fake)", required=False, is_option=True, default=None),
+            ArgDef("--reviewer", "Reviewer provider: fake, claude, claude-cli (default: fake)", required=False, is_option=True, default=None),
+            ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3)", required=False, is_option=True, default=None),
+            ArgDef("--repair-rounds", "Max repair attempts per task (default: 2, 0=disabled)", required=False, is_option=True, default=None),
+            ArgDef("--test-command", "Test command to run in staging", required=False, is_option=True, default=None),
+            ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none)", required=False, is_option=True, default=None),
+            ArgDef("--timeout-sec", "Provider call timeout in seconds (default: 120)", required=False, is_option=True, default="120"),
+            ArgDef("--out", "Output directory for the evidence bundle", required=False, is_option=True, default=""),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=True,
+    ),
 
     # ── repair ──────────────────────────────────────────────────────────
     CommandEntry(
