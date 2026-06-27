@@ -1,36 +1,29 @@
-# Plan — Steps 5055-5072: Recovery and Verification Block
+# Plan — Steps 5073-5094: Job Flow Observability v2 + Prompt Trace Evidence
 
 ## Goal
-Snapshot, classify, and commit valid E2E hardening changes from dogfood job
-`0d34577b353e4109`. Fix staging noise filtering that blocked observability v2
-workspace apply. Verify review ZIP includes uncommitted files.
+Make `remedy do job-flow` reviewable as a Mission Control run. Add prompt
+trace evidence, token summary, safe next-approve command, timeout hint,
+final audit, blocked diagnostics, persisted job_flow.json, and review ZIP
+coverage fix.
 
 ## Current Step
-Step 5059: Implement staging noise filtering in `_find_staging_changes`.
+Step 5073: Implement prompt trace model + redaction.
 
-## Classification (Step 5057)
-- E2E hardening changes (do_cmd, command_catalog, tests): **VALID_CONTINUE**
-  - Coherent, complete, from successful dogfood with 2/2 tasks passed
-  - Safe-stop messaging, improved description, 8 E2E tests
-- V2 observability features (token_summary, _build_next_approve_command,
-  _claude_cli_timeout_hint, final_audit): **ABSENT**
-  - Exist only in blocked workspace `staging_c85f2f26f6df430a`
-  - Block constraint prohibits manual rescue of blocked workspace files
-  - Will require separate block to implement from scratch
+## Commits Planned
+1. New `prompt_trace.py` — model + redaction + helpers (Steps 5073)
+2. Capture builder/reviewer traces in pingpong_loop.py (Steps 5074-5075)
+3. Prompt trace evidence export (Steps 5076-5077)
+4. do_cmd.py — token_summary, next_approve_command, timeout hint,
+   final_audit, blocked diagnostics, job_flow.json (Steps 5078-5083)
+5. Review ZIP coverage fix (Step 5084)
+6. Tests (Steps 5085-5090)
+7. Smoke + checks + handoff (Steps 5091-5094)
 
-## Steps
-- [x] 5055: Snapshot repo state (HEAD=dc000fa, 4 modified, 1 untracked)
-- [x] 5056: Search for v2 features — none in working tree
-- [x] 5057: Classification — VALID_CONTINUE for E2E hardening, ABSENT for v2
-- [ ] 5058: No v2 pieces to complete (absent, rescue prohibited)
-- [ ] 5059: Fix staging noise in `_find_staging_changes` (pingpong_loop.py)
-- [ ] 5060: Verify review ZIP handles uncommitted files
-- [ ] 5061-5063: Add staging noise tests, verify existing tests
-- [ ] 5064: Run targeted checks
-- [ ] 5065: Smoke test
-- [ ] 5066: Create review ZIP
-- [ ] 5067: Commit (2 commits: E2E hardening, then staging noise fix)
-- [ ] 5070: Handoff
-
-## Risks
-- Pre-existing failure: test_full_chain_order in test_project_brain.py (not ours)
+## Constraints
+- No auto-approval
+- No overnight/multi-run logic
+- No target repo mutation
+- No secrets in prompt traces
+- No unbounded raw prompts
+- No rescue of blocked workspace files
+- All English

@@ -458,6 +458,17 @@ def write_evidence_bundle(
     if pe:
         _write_json("provider_evidence.json", pe)
 
+    # prompt_trace.jsonl + prompt_trace_summary.json (copy from persisted run dir)
+    trace_path = bundle.get("prompt_trace_jsonl_path")
+    if trace_path:
+        src = Path(trace_path)
+        if src.exists():
+            content = src.read_text()
+            _write("prompt_trace.jsonl", _redact_secrets(content))
+            summary_src = src.parent / "prompt_trace_summary.json"
+            if summary_src.exists():
+                _write("prompt_trace_summary.json", summary_src.read_text())
+
     return written
 
 
@@ -484,6 +495,13 @@ def export_evidence(
     promotion_data = load_promotion(run_id)
 
     bundle = build_evidence_bundle(run_data, promotion_data)
+
+    # Load persisted prompt traces if available
+    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+    trace_file = _pingpong_runs_dir() / run_id / "prompt_trace.jsonl"
+    if trace_file.exists():
+        bundle["prompt_trace_jsonl_path"] = str(trace_file)
+
     written = write_evidence_bundle(bundle, out_dir)
 
     return _redact_json_value({

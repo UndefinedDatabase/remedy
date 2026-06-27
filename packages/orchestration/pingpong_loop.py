@@ -116,6 +116,8 @@ class PingPongResult:
     # Repair governance
     repair_decisions: list[dict[str, Any]] = field(default_factory=list)
     final_adjudication: dict[str, Any] | None = None
+    # Prompt traces (redacted, capped)
+    prompt_traces: list[Any] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -1358,6 +1360,24 @@ def run_pingpong(
             else:
                 result.repair_prompt_chars += len(builder_prompt)
 
+            # Capture builder prompt trace
+            from packages.orchestration.prompt_trace import build_trace_entry
+            result.prompt_traces.append(build_trace_entry(
+                prompt_text=builder_prompt,
+                role="builder",
+                run_id=result.run_id,
+                job_id=result.job_id,
+                task_id="",
+                round_num=round_num,
+                provider=builder_name or "",
+                cwd=str(staging),
+                write_mode=claude_cli_write_mode or "",
+                prompt_kind="repair" if is_repair else "initial",
+                context_categories=categories,
+                changed_files=list(result.staged_files),
+                task_excerpt_sha256=task_input.sha256 if task_input else "",
+            ))
+
             builder_out = builder_provider.build(
                 builder_prompt,
                 timeout_sec=timeout_sec,
@@ -1479,6 +1499,24 @@ def run_pingpong(
 
             # Track reviewer prompt size
             result.reviewer_prompt_chars += len(reviewer_prompt)
+
+            # Capture reviewer prompt trace
+            result.prompt_traces.append(build_trace_entry(
+                prompt_text=reviewer_prompt,
+                role="reviewer",
+                run_id=result.run_id,
+                job_id=result.job_id,
+                task_id="",
+                round_num=round_num,
+                provider=reviewer_name or "",
+                cwd=str(staging),
+                write_mode="none",
+                prompt_kind="re-review" if is_repair else "review",
+                context_categories=categories,
+                changed_files=list(result.staged_files),
+                safe_diff_files=list(result.safe_diff_files),
+                task_excerpt_sha256=task_input.sha256 if task_input else "",
+            ))
 
             # Snapshot staging before reviewer (to detect reviewer mutation)
             staging_snap_before = _find_staging_changes(staging, original)
@@ -1772,6 +1810,16 @@ def _persist_run(result: PingPongResult) -> Path | None:
         data = export_pingpong_json(result)
         out_file = run_dir / "result.json"
         out_file.write_text(_json.dumps(data, indent=2) + "\n")
+        if result.prompt_traces:
+            from packages.orchestration.prompt_trace import (
+                build_trace_summary,
+                write_trace_jsonl,
+            )
+            write_trace_jsonl(result.prompt_traces, run_dir / "prompt_trace.jsonl")
+            summary = build_trace_summary(result.prompt_traces)
+            (run_dir / "prompt_trace_summary.json").write_text(
+                _json.dumps(summary, indent=2) + "\n"
+            )
         return out_file
     except OSError:
         return None
@@ -2233,6 +2281,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "token_accounting": _build_token_accounting(result),
         "task_input": _build_task_input_info(result),
         "repair_loop": _build_repair_loop_info(result),
+        "prompt_trace_count": len(result.prompt_traces),
     }
 
 
