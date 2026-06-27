@@ -1,36 +1,36 @@
-# Plan — Steps 5037-5052: Pingpong Context Pack + Target Snapshot Symlink Closure v6
+# Plan — Steps 5055-5072: Recovery and Verification Block
 
 ## Goal
-Make pingpong context building, repo token estimation, and target snapshots
-symlink-safe before the first single Remedy prompt dogfood.
+Snapshot, classify, and commit valid E2E hardening changes from dogfood job
+`0d34577b353e4109`. Fix staging noise filtering that blocked observability v2
+workspace apply. Verify review ZIP includes uncommitted files.
 
 ## Current Step
-All implementation and tests complete. Ready for commit.
+Step 5059: Implement staging noise filtering in `_find_staging_changes`.
 
-## Completed
-- Step 5037: `_is_safe_repo_path()` helper — symlink, parent walk, escape, regular file, readable, absolute path checks
-- Step 5038: `build_repo_context()` file tree — `followlinks=False`, symlink dir prune, file symlink skip + safety note
-- Step 5039: Mentioned file reads — validated via `_is_safe_repo_path()` before read, placeholder on unsafe
-- Step 5040: README read — validated via `_is_safe_repo_path()` before read, safety note on unsafe
-- Step 5041: `_snapshot_target()` — `followlinks=False`, symlink dir prune, file symlink skip, `_is_safe_repo_path()` check
-- Step 5042: `_estimate_full_repo_tokens()` — `followlinks=False`, symlink dir prune, file symlink skip, `_is_safe_repo_path()` check
-- Step 5043: README symlink context leak tests (4 tests)
-- Step 5044: Mentioned file symlink context leak tests (4 tests)
-- Step 5045: Context file tree symlink behavior tests (4 tests)
-- Step 5046: `_snapshot_target()` symlink safety tests (5 tests)
-- Step 5047: Token estimate symlink safety tests (4 tests)
-- Step 5048: run_pingpong prompt no-leak integration tests (3 tests)
-- Step 5049: Staging/safe-diff/workspace-apply/promote symlink safety preserved — 165 pingpong, 74 promote, 187 runner tests pass
-- Step 5050: Job/evidence/runner safety preserved — 423 orchestration, 8097 full suite
-- Step 5051: Architecture guard clean — no followlinks=True, no shutil.copy2 in pingpong, no git subprocess, no os.symlink, no shell=True
-- Step 5052: Handoff — awaiting 5-minute quiet window
+## Classification (Step 5057)
+- E2E hardening changes (do_cmd, command_catalog, tests): **VALID_CONTINUE**
+  - Coherent, complete, from successful dogfood with 2/2 tasks passed
+  - Safe-stop messaging, improved description, 8 E2E tests
+- V2 observability features (token_summary, _build_next_approve_command,
+  _claude_cli_timeout_hint, final_audit): **ABSENT**
+  - Exist only in blocked workspace `staging_c85f2f26f6df430a`
+  - Block constraint prohibits manual rescue of blocked workspace files
+  - Will require separate block to implement from scratch
 
-## Test Counts
-- pingpong_cli: 165 (was 135, +30 new)
-- job_task_runner: 187 (unchanged)
-- job_promote: 74 (unchanged)
-- job_evidence: 53 (unchanged)
-- job_fulfillment: 109 (unchanged, ×2)
-- fast lane: 571
-- runtime: 4/4 suites
-- Full suite: 8097 passed, 8 skipped, 0 failed
+## Steps
+- [x] 5055: Snapshot repo state (HEAD=dc000fa, 4 modified, 1 untracked)
+- [x] 5056: Search for v2 features — none in working tree
+- [x] 5057: Classification — VALID_CONTINUE for E2E hardening, ABSENT for v2
+- [ ] 5058: No v2 pieces to complete (absent, rescue prohibited)
+- [ ] 5059: Fix staging noise in `_find_staging_changes` (pingpong_loop.py)
+- [ ] 5060: Verify review ZIP handles uncommitted files
+- [ ] 5061-5063: Add staging noise tests, verify existing tests
+- [ ] 5064: Run targeted checks
+- [ ] 5065: Smoke test
+- [ ] 5066: Create review ZIP
+- [ ] 5067: Commit (2 commits: E2E hardening, then staging noise fix)
+- [ ] 5070: Handoff
+
+## Risks
+- Pre-existing failure: test_full_chain_order in test_project_brain.py (not ours)

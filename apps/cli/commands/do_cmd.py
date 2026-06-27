@@ -966,21 +966,24 @@ def _cmd_do_job_flow(
     print(f"Job flow: {job_file}")
     print(f"Job: {job_id} ({report_job.job_title}) — {len(report_job.tasks)} task(s)")
     print(f"Run status: {report_job.status}")
+    print("This flow stops at a promote dry-run. The target repo is not changed.")
     print()
     print(format_job_report_text(report_job))
     print()
     if evidence_result.get("error"):
         print(f"Evidence: error: {evidence_result['error']}")
     else:
-        print(f"Evidence bundle: {evidence_result.get('out_dir', evidence_out)}")
+        print(f"Evidence bundle: {evidence_result.get('out_dir', evidence_out)} (audit trail exported)")
     print()
     print(f"Promote dry-run: {promo.status}")
     if promote_ready:
         print(f"  Would apply {len(promo.files_planned)} file(s). No target files changed.")
+        print("  The target repo stays unchanged until you explicitly approve the promote.")
         print("\nNext (approval required):")
         print(f"  {next_approve_command}")
     else:
         print(f"  Not ready to promote: {promo.blocked_reason or 'see report'}")
+        print("  The target repo was not changed.")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
