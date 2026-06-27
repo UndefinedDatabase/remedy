@@ -36,9 +36,18 @@ find . \
     -path './.mypy_cache' -o \
     -path './*/.mypy_cache' -o \
     -path './.ruff_cache' -o \
-    -path './*/.ruff_cache' \
+    -path './*/.ruff_cache' -o \
+    -path './htmlcov' -o \
+    -path './*/htmlcov' -o \
+    -path './.tox' -o \
+    -path './*/.tox' -o \
+    -path './.coverage_reports' -o \
+    -path './*/.coverage_reports' \
   \) -prune -o \
   -type f \
+  ! -name '.coverage' \
+  ! -name '.coverage.*' \
+  ! -name 'coverage.xml' \
   ! -name '*.zip' \
   ! -name '*.tar' \
   ! -name '*.tar.gz' \
@@ -96,7 +105,7 @@ fi
 rm -f "$OUT"
 zip -q -@ "$OUT" < "$TMP"
 
-BAD="$(unzip -Z1 "$OUT" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$' || true)"
+BAD="$(unzip -Z1 "$OUT" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv|htmlcov|\.tox|\.coverage_reports)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$|(^|/)\.coverage$|(^|/)coverage\.xml$' || true)"
 if [[ -n "$BAD" ]]; then
   echo "Unsafe file found in zip:"
   echo "$BAD"

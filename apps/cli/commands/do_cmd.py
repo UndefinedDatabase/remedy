@@ -844,6 +844,208 @@ def _cmd_do_job_report(
         print(format_job_report_text(job))
 
 
+def _build_next_approve_command(
+    job_id: str, repo: str, test_command: str | None, promote_ready: bool,
+) -> str:
+    """Build a shell-safe approve command with --repo and --test-command."""
+    if not promote_ready:
+        return ""
+    import shlex
+    parts = [f"remedy do job-promote {job_id}"]
+    parts.append(f"--repo {shlex.quote(repo)}")
+    parts.append("--approve")
+    if test_command:
+        parts.append(f"--test-command {shlex.quote(test_command)}")
+    return " ".join(parts)
+
+
+def _build_job_token_summary(job: Any) -> dict[str, Any]:
+    """Aggregate token accounting from per-task runs."""
+    from packages.orchestration.pingpong_loop import load_run
+
+    builder_calls = 0
+    reviewer_calls = 0
+    repair_rounds = 0
+    est_prompt_total = 0
+    est_context_total = 0
+    est_diff_total = 0
+    est_task_total = 0
+    full_repo_est = 0
+    actual_input = None
+    actual_output = None
+
+    for task in job.tasks:
+        if not task.run_id:
+            continue
+        run_data = load_run(task.run_id)
+        if not run_data:
+            continue
+        ta = run_data.get("token_accounting", {})
+        rounds = run_data.get("rounds", [])
+        for rd in rounds:
+            if rd.get("builder"):
+                builder_calls += 1
+            if rd.get("reviewer"):
+                reviewer_calls += 1
+        repair_rounds += run_data.get("repair_loop", {}).get("repair_rounds_used", 0)
+        est_prompt_total += (
+            ta.get("builder_prompt_tokens_estimated", 0)
+            + ta.get("reviewer_prompt_tokens_estimated", 0)
+            + ta.get("repair_prompt_tokens_estimated", 0)
+        )
+        est_context_total += ta.get("context_tokens_estimated", 0)
+        est_diff_total += ta.get("safe_diff_tokens_estimated", 0)
+        est_task_total += ta.get("task_tokens_estimated", 0)
+        fr = ta.get("full_repo_tokens_estimated", 0)
+        if fr > full_repo_est:
+            full_repo_est = fr
+
+    savings = max(0, full_repo_est - est_context_total) if full_repo_est else 0
+    ratio = round(savings / full_repo_est, 4) if full_repo_est else 0.0
+
+    return {
+        "provider_call_count": builder_calls + reviewer_calls,
+        "builder_call_count": builder_calls,
+        "reviewer_call_count": reviewer_calls,
+        "repair_round_count": repair_rounds,
+        "estimated_prompt_tokens_total": est_prompt_total,
+        "estimated_context_tokens_total": est_context_total,
+        "estimated_safe_diff_tokens_total": est_diff_total,
+        "estimated_task_tokens_total": est_task_total,
+        "full_repo_tokens_estimated": full_repo_est,
+        "estimated_context_savings_tokens": savings,
+        "estimated_context_savings_ratio": ratio,
+        "actual_provider_tokens_available": actual_input is not None,
+        "actual_provider_input_tokens": actual_input,
+        "actual_provider_output_tokens": actual_output,
+        "token_note": (
+            "All token counts are deterministic estimates from character counts. "
+            "Actual provider tokens are unavailable for this run."
+        ),
+    }
+
+
+def _build_timeout_hint(
+    builder: str | None, reviewer: str | None, timeout_sec: int,
+) -> str:
+    """Warn when claude-cli providers run under recommended timeout."""
+    uses_cli = (builder == "claude-cli" or reviewer == "claude-cli")
+    if not uses_cli or timeout_sec >= 900:
+        return ""
+    return (
+        f"Current timeout is {timeout_sec}s. Real claude-cli jobs usually "
+        f"need ~900s per provider call. Consider --timeout-sec 900."
+    )
+
+
+def _build_final_audit(job: Any, promo: Any, evidence_out: str) -> dict[str, Any]:
+    """Determine overall job-flow audit status."""
+    passed = sum(1 for t in job.tasks if t.status in ("applied", "skipped"))
+    blocked = sum(1 for t in job.tasks if t.status == "blocked")
+    skipped = sum(1 for t in job.tasks if t.status == "skipped")
+    pending = sum(1 for t in job.tasks if t.status == "pending")
+
+    promote_ready = promo.status == "dry_run"
+    all_passed = job.status == "completed" and blocked == 0 and pending == 0
+
+    if all_passed and promote_ready:
+        status = "READY_FOR_APPROVAL"
+        action = "Run the next_approve_command to apply changes to the target repo."
+    elif blocked > 0 or job.status == "blocked":
+        status = "BLOCKED"
+        action = "Review blocked tasks, fix issues, and re-run the job."
+    else:
+        status = "NEEDS_REVIEW"
+        action = "Review task results and determine whether to proceed."
+
+    changed_files: list[str] = []
+    verdicts: list[str] = []
+    test_results: list[str] = []
+    for t in job.tasks:
+        if hasattr(t, "safe_diff_files") and t.safe_diff_files:
+            changed_files.extend(t.safe_diff_files)
+        verdicts.append(f"T{t.task_id}: {t.reviewer_verdict or 'none'}")
+        tp = "pass" if t.test_passed else ("fail" if t.test_passed is False else "not_run")
+        test_results.append(f"T{t.task_id}: {tp}")
+
+    return {
+        "status": status,
+        "job_status": job.status,
+        "task_count": len(job.tasks),
+        "passed_task_count": passed,
+        "blocked_task_count": blocked,
+        "skipped_task_count": skipped,
+        "changed_files": sorted(set(changed_files)),
+        "reviewer_verdict_summary": verdicts,
+        "test_summary": test_results,
+        "evidence_bundle_path": evidence_out,
+        "prompt_trace_available": True,
+        "token_summary_available": True,
+        "promote_dry_run_status": promo.status,
+        "promote_ready": promote_ready,
+        "human_decision_required": True,
+        "recommended_next_action": action,
+        "known_limitations": [
+            "Actual provider token counts unavailable for fake/claude-cli providers.",
+            "Prompt traces are redacted estimates, not exact provider-side records.",
+        ],
+    }
+
+
+def _persist_job_flow_json(flow_result: dict, evidence_out: str) -> None:
+    """Write job_flow.json to evidence output directory."""
+    from pathlib import Path
+    out_path = Path(evidence_out).resolve()
+    out_path.mkdir(parents=True, exist_ok=True)
+    target = out_path / "job_flow.json"
+    target.write_text(json.dumps(flow_result, indent=2) + "\n")
+
+
+def _print_token_summary(ts: dict) -> None:
+    """Print concise Token / Context section."""
+    print("Token / Context:")
+    print(f"  Provider calls: {ts['provider_call_count']} "
+          f"(builder: {ts['builder_call_count']}, reviewer: {ts['reviewer_call_count']})")
+    print(f"  Repair rounds: {ts['repair_round_count']}")
+    print(f"  Estimated prompt tokens: {ts['estimated_prompt_tokens_total']}")
+    print(f"  Estimated context tokens: {ts['estimated_context_tokens_total']}")
+    if ts["full_repo_tokens_estimated"]:
+        pct = round(ts["estimated_context_savings_ratio"] * 100, 1)
+        print(f"  Full repo tokens: {ts['full_repo_tokens_estimated']} "
+              f"(context savings: {pct}%)")
+    print()
+
+
+def _print_blocked_diagnostics(job: Any) -> None:
+    """Print blocked/skipped task diagnostics if any."""
+    blocked = [t for t in job.tasks if t.status == "blocked"]
+    skipped = [t for t in job.tasks if t.status == "skipped"]
+    if not blocked and not skipped:
+        return
+    if blocked:
+        print("Blocked tasks:")
+        for t in blocked:
+            print(f"  T{t.task_id}: {t.title}")
+            print(f"    Reason: {t.error or 'unknown'}")
+        print()
+    if skipped:
+        print("Skipped tasks:")
+        for t in skipped:
+            print(f"  T{t.task_id}: {t.title}")
+        print()
+
+
+def _print_final_audit(audit: dict) -> None:
+    """Print final audit section."""
+    print()
+    print(f"Final audit: {audit['status']}")
+    print(f"  Tasks: {audit['passed_task_count']}/{audit['task_count']} passed"
+          f"{', ' + str(audit['blocked_task_count']) + ' blocked' if audit['blocked_task_count'] else ''}"
+          f"{', ' + str(audit['skipped_task_count']) + ' skipped' if audit['skipped_task_count'] else ''}")
+    print(f"  Recommended: {audit['recommended_next_action']}")
+    print("  Human approval is required before the target repo is changed.")
+
+
 def _cmd_do_job_flow(
     *,
     job_file: str = "",
@@ -945,22 +1147,34 @@ def _cmd_do_job_flow(
     )
 
     promote_ready = promo.status == "dry_run"
-    next_approve_command = (
-        f"remedy do job-promote {job_id} --repo {repo} --approve"
-        if promote_ready else ""
+    next_approve_command = _build_next_approve_command(
+        job_id, repo, test_command, promote_ready,
     )
 
+    # --- 6. Build observability: token summary, final audit, timeout hint ---
+    token_summary = _build_job_token_summary(report_job)
+    final_audit = _build_final_audit(report_job, promo, evidence_out)
+    timeout_warning = _build_timeout_hint(builder, reviewer, timeout_sec)
+
+    # --- 7. Persist job_flow.json to evidence output ---
+    flow_result = {
+        "command": "do.job-flow",
+        "job_id": job_id,
+        "steps": ["job-plan", "job-run", "job-report", "job-evidence", "job-promote-dry-run"],
+        "report": report_data,
+        "evidence": evidence_result,
+        "promote_dry_run": export_job_promotion_json(promo),
+        "promote_ready": promote_ready,
+        "next_approve_command": next_approve_command,
+        "token_summary": token_summary,
+        "final_audit": final_audit,
+        "timeout_warning": timeout_warning,
+    }
+
+    _persist_job_flow_json(flow_result, evidence_out)
+
     if json_output:
-        print(json.dumps({
-            "command": "do.job-flow",
-            "job_id": job_id,
-            "steps": ["job-plan", "job-run", "job-report", "job-evidence", "job-promote-dry-run"],
-            "report": report_data,
-            "evidence": evidence_result,
-            "promote_dry_run": export_job_promotion_json(promo),
-            "promote_ready": promote_ready,
-            "next_approve_command": next_approve_command,
-        }, indent=2))
+        print(json.dumps(flow_result, indent=2))
         return
 
     print(f"Job flow: {job_file}")
@@ -970,11 +1184,23 @@ def _cmd_do_job_flow(
     print()
     print(format_job_report_text(report_job))
     print()
+
+    # Blocked/skipped diagnostics
+    _print_blocked_diagnostics(report_job)
+
     if evidence_result.get("error"):
         print(f"Evidence: error: {evidence_result['error']}")
     else:
         print(f"Evidence bundle: {evidence_result.get('out_dir', evidence_out)} (audit trail exported)")
     print()
+
+    # Token / Context section
+    _print_token_summary(token_summary)
+
+    if timeout_warning:
+        print(f"  Timeout hint: {timeout_warning}")
+        print()
+
     print(f"Promote dry-run: {promo.status}")
     if promote_ready:
         print(f"  Would apply {len(promo.files_planned)} file(s). No target files changed.")
@@ -984,6 +1210,9 @@ def _cmd_do_job_flow(
     else:
         print(f"  Not ready to promote: {promo.blocked_reason or 'see report'}")
         print("  The target repo was not changed.")
+
+    # Final audit
+    _print_final_audit(final_audit)
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
