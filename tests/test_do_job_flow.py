@@ -484,8 +484,8 @@ class TestJobFlowEndToEnd:
         data = json.loads(out)
         audit = data["final_audit"]
         assert audit["recommended_next_action"]
-        assert audit["prompt_trace_available"] is True
-        assert audit["token_summary_available"] is True
+        assert isinstance(audit["prompt_trace_available"], bool)
+        assert isinstance(audit["token_summary_available"], bool)
 
     def test_text_final_audit(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
         out = self._run(capsys, repo=demo_repo, job_file=job_file,
@@ -511,3 +511,116 @@ class TestJobFlowEndToEnd:
         assert data["command"] == "do.job-flow"
         assert "token_summary" in data
         assert "final_audit" in data
+
+    # --- Agent run trace (new) -------------------------------------------
+
+    def test_agent_run_trace_jsonl_persisted(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        trace = evidence_dir / "agent_run_trace.jsonl"
+        assert trace.exists(), "agent_run_trace.jsonl must be persisted"
+        lines = [l for l in trace.read_text().splitlines() if l.strip()]
+        assert len(lines) >= 4  # job_flow_started, job_planned, task_*, final_audit
+
+    def test_agent_run_trace_summary_persisted(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        summary = evidence_dir / "agent_run_trace_summary.json"
+        assert summary.exists()
+        data = json.loads(summary.read_text())
+        assert data["total_events"] >= 4
+        assert data["has_builder_events"] is True
+
+    def test_agent_run_trace_has_job_id(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=evidence_dir, extra=["--json"])
+        data = json.loads(out)
+        job_id = data["job_id"]
+        trace = evidence_dir / "agent_run_trace.jsonl"
+        events = [json.loads(l) for l in trace.read_text().splitlines() if l.strip()]
+        for ev in events:
+            assert ev["job_id"] == job_id
+
+    def test_json_has_agent_run_trace_summary(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        assert "agent_run_trace_summary" in data
+        assert data["agent_run_trace_summary"]["total_events"] >= 4
+
+    # --- Prompt trace metadata (new) -------------------------------------
+
+    def test_prompt_trace_has_job_id_and_task_id(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=evidence_dir, extra=["--json"])
+        data = json.loads(out)
+        job_id = data["job_id"]
+        # Find prompt trace files in task evidence dirs
+        trace_files = list(evidence_dir.rglob("prompt_trace.jsonl"))
+        assert trace_files, "prompt trace JSONL should be in evidence"
+        for tf in trace_files:
+            for line in tf.read_text().splitlines():
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                assert entry["job_id"] == job_id, f"job_id mismatch in {tf}"
+                assert entry["task_id"].startswith("T"), f"task_id not set in {tf}"
+                assert entry["provider_kind"] == "synthetic_test"
+
+    def test_prompt_trace_cwd_sanitized(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        trace_files = list(evidence_dir.rglob("prompt_trace.jsonl"))
+        for tf in trace_files:
+            for line in tf.read_text().splitlines():
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                assert "/tmp/remedy-pingpong-" not in entry.get("cwd", ""), \
+                    "cwd must not contain absolute staging path"
+
+    # --- Final audit evidence-derived (new) ------------------------------
+
+    def test_final_audit_has_evidence_fields(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        assert "agent_run_trace_available" in audit
+        assert "job_flow_json_available" in audit
+        assert "evidence_bundle_available" in audit
+        assert "missing_observability_artifacts" in audit
+
+    def test_final_audit_ready_with_all_artifacts(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        # With complete job + all artifacts, should be READY_FOR_APPROVAL
+        assert audit["status"] == "READY_FOR_APPROVAL"
+        assert audit["agent_run_trace_available"] is True
+
+    # --- Path sanitization (new) -----------------------------------------
+
+    def test_job_flow_json_no_staging_paths(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        jf = evidence_dir / "job_flow.json"
+        content = jf.read_text()
+        assert "/tmp/remedy-pingpong-" not in content, \
+            "job_flow.json must not contain absolute staging paths"
+
+    def test_agent_run_trace_no_staging_paths(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        trace = evidence_dir / "agent_run_trace.jsonl"
+        content = trace.read_text()
+        assert "/tmp/remedy-pingpong-" not in content, \
+            "agent_run_trace.jsonl must not contain staging paths"

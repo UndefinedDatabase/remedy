@@ -1,29 +1,22 @@
-# Plan — Steps 5073-5094: Job Flow Observability v2 + Prompt Trace Evidence
+# Plan — Steps 5053-5072: Agent Run Trace + Job-Flow Cockpit Bridge v1
 
 ## Goal
-Make `remedy do job-flow` reviewable as a Mission Control run. Add prompt
-trace evidence, token summary, safe next-approve command, timeout hint,
-final audit, blocked diagnostics, persisted job_flow.json, and review ZIP
-coverage fix.
+Make Remedy able to prove, inspect, and visualize its own Builder/Reviewer/
+Repair/Final-Audit loop from real evidence. Close 6 verified gaps.
 
 ## Current Step
-Complete. All 22 steps (5073-5094) implemented and verified.
+All 6 deliverables implemented and tested. Committing tests + creating PR.
 
-## Commits
-1. `e2d0f96` — prompt trace model + capture + evidence export (Steps 5073-5077)
-2. `50e40d0` — token summary, approve command, timeout hint, final audit (Steps 5078-5084)
-3. `189893d` — tests (Steps 5085-5090)
+## Deliverables (all complete)
+1. Agent Run Trace v1 — `agent_run_trace.py` with 16 event kinds
+2. Prompt Trace metadata fix — job_id, task_id, provider_kind in run_pingpong
+3. Evidence-derived Final Audit — availability from real artifacts
+4. Job-Flow Cockpit Bridge — _JobPlanAdapter for hex IDs
+5. Path sanitization — staging/tmp paths replaced with safe labels
+6. Safety guarantees preserved — no auto-approval, no mutation, no fakes
 
-## Verification
-- 3692 passed, 1 pre-existing failure (`test_full_chain_order`), 7 skipped
-- Smoke test (fake provider): passed
-- Review ZIP: 763 files, 0 coverage artifacts, all key files present
-
-## Constraints (all met)
-- No auto-approval
-- No overnight/multi-run logic
-- No target repo mutation
-- No secrets in prompt traces
-- No unbounded raw prompts
-- No rescue of blocked workspace files
-- All English
+## Tests
+- 13 tests in test_agent_run_trace.py
+- 16 tests in test_final_audit_evidence.py
+- 12 new + 1 fix in test_do_job_flow.py
+- 113 focused tests pass, 3771 broader suite pass

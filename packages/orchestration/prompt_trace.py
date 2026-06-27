@@ -125,8 +125,21 @@ def build_trace_entry(
     )
 
 
+def _sanitize_cwd(cwd: str) -> str:
+    """Replace absolute staging paths with safe labels."""
+    if not cwd:
+        return cwd
+    if "/tmp/remedy-pingpong-" in cwd:
+        return "[staging]"
+    if cwd.startswith("/tmp/"):
+        return "[tmpdir]"
+    return cwd
+
+
 def trace_entry_to_dict(entry: PromptTraceEntry) -> dict[str, Any]:
-    return asdict(entry)
+    d = asdict(entry)
+    d["cwd"] = _sanitize_cwd(d.get("cwd", ""))
+    return d
 
 
 def write_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
