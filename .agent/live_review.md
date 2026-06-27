@@ -1,242 +1,413 @@
-# Live Review — Steps 4266-4315: Reviewer JSON Reliability + Real Dogfood Pass Closure v3
+# Live Review — Steps 4917-4926: Job Evidence Nested Path Containment Closure v1
+
+## Verdict (reviewer-owned)
+**PASS** @ ca897c0
+All 6 findings (R-3501 through R-3506) resolved. 53 tests. 7976 full suite.
+
+---
+
+# Live Review — Steps 4927-4936: Job Evidence Symlink Containment Closure v2
+
+## Verdict (reviewer-owned)
+**PASS** @ de8c6f1
+All 6 findings (R-3601 through R-3606) resolved. 53 tests. 7976 full suite.
+
+---
+
+# Live Review — Steps 4937-4944: Real Job Evidence Export Dogfood Audit
+
+## Verdict (reviewer-owned)
+**BLOCKED** — No export artifacts at `/tmp/remedy-job-evidence-5b7cb31539f947ba/`.
+
+---
+
+# Live Review — Steps 4945-4960: Job Final Review + Human-Approved Job Promote v0
+
+## Verdict (reviewer-owned)
+**PASS** @ 2684ae7 (assessed at e5715c5 with v1 safety closure applied)
+
+v0 delivers core promotion with correct gates, CLI, dry-run, post-test, and persistence.
+46 promote tests pass. 8020 full suite (3 pre-existing/environmental failures only).
+
+### Verified
+- Dry-run does not mutate target (4 tests)
+- `--approve` required; CLI defaults to dry_run=True (1 test)
+- No git commit/push/reset/checkout in code (grep verified — only in docstrings)
+- Readiness gates: job completed, tasks applied, run_id, reviewer pass, tests pass, target guard (7 gate tests)
+- Unsafe files blocked: traversal, .env, private keys, absolute paths (2 tests + approve-path tests)
+- Post-apply content verification
+- Promotion record persisted (2 tests)
+- CLI catalog entry (`may_mutate_repo=True`, `may_execute_commands=True`, `supports_json=True`)
+- CLI handler JSON + text output (5 tests)
+- Post-test command: `shlex.split`, no `shell=True`, timeout 120s, output capped 10K (2 tests)
+- `subprocess.run` only in `_run_post_test` for user-provided test command — no git subprocess calls
+
+All 10 findings (R-3501 through R-3510) resolved — v0 core logic sound, safety hardened by v1.
+
+---
+
+# Live Review — Steps 4961-4974: Job Promote Safety Closure v1
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
 Builder must NOT mark findings as resolved.
-Timestamp: 2026-06-24
+Timestamp: 2026-06-26
 
 ## Verdict (reviewer-owned)
-**PASS WITH RISKS** @ working tree (parent b1d10f4, no commit yet)
+**PASS** @ e5715c5
+All 8 findings resolved. 46 promote tests. 8020 full suite (3 pre-existing/environmental).
 
-Zero open Blocker/High. One open Medium (lint). All functional requirements met.
-Real Claude CLI dogfood achieved first `staged_review_passed`: builder edited staging,
-test ran in staging, reviewer parsed JSON first attempt, target unchanged, safe diff preserved.
-Reviewer sees actual unified diff. Bounded retry works. Parse metadata in reports.
-124 CLI tests. 7337 full suite pass. **Builder must commit after fixing lint import sort.**
+## Findings
 
-## Commit reviewed
-Working tree changes on parent b1d10f4. Builder has not committed yet.
+### R-3601 Blocker — Approved promote overwrites dirty target paths
+**Resolved.** `_check_target_cleanliness()` at L250 compares target files against workspace. Dirty files block with `dirty_planned_target_paths`. Test `test_dirty_target_path_blocks_promote` passes. `test_clean_target_allows_promote` confirms clean path succeeds with `target_clean=True`.
 
-## PR reviewed
-No open PR. Builder on `feature/steps-3276-3355-job-fulfillment-spine-v0`.
+### R-3602 Blocker — Workspace symlink leaks external contents
+**Resolved.** `_validate_source_containment()` at L88: checks `is_symlink()`, `.resolve()` for escape, `is_file()` for regular, parent symlink walk. Three tests pass: `test_workspace_source_symlink_blocks`, `test_workspace_parent_symlink_blocks`, `test_target_dest_symlink_escape_blocks`. `_validate_dest_containment()` at L133 blocks destination symlink escapes.
 
-## Protocol compliance
-- Builder did NOT write reviewer verdict: PASS
-- Builder did NOT self-merge: PASS
-- Builder did NOT mark findings as resolved: PASS
-- No German in project-facing content: PASS
+### R-3603 Blocker — Promotion uses broad workspace fallback
+**Resolved.** `_collect_workspace_files()` removed entirely. L370: explicit apply manifest required for every task (`missing_apply_manifest` block). L393: files collected from manifests only. L396: `no_files_in_apply_manifests` if empty. Three tests pass: `test_no_apply_manifest_blocks`, `test_empty_apply_manifest_blocks`, `test_pending_apply_manifest_blocks`.
 
-## Worker 5-minute quiet-window assessment
-Builder code stable since ~14:17 UTC (45+ min). No new changes. Builder stalled — did not commit.
-Code is feature-complete with all tests passing. PASS (builder idle).
+### R-3604 High — Target cleanliness check is not immediate
+**Resolved.** Two checks: first at L457 (before dry-run exit), second at L480 immediately before apply loop (`target_changed_before_apply` block). TOCTOU window minimized to validation + writability preflight between checks.
 
-## Reviewer 10-minute quiet-window assessment
-- Quiet window started: 15:00:15 UTC
-- Quiet window ended: 15:08:31 UTC (5 checks, ~10 min)
-- Activity during window: none (same 5 files, same stats)
-- Re-verified findings: R-0901 through R-0907 all confirmed
-- Findings remaining open: R-0907a (lint, Medium)
+### R-3605 High — Promotion record failure is silently swallowed
+**Resolved.** `_persist_job_promotion()` at L560 no longer wraps in `try/except OSError: pass` — raises on failure. Preflight writability check at L469 tests write/unlink before apply. Test `test_unwritable_promo_dir_blocks_approved` (monkeypatched `_promotions_dir` to `/nonexistent/readonly/path`) passes.
 
-## Finding status
+### R-3606 High — Tests do not exercise real CLI path
+**Resolved.** `TestCLICommandPaths` at L1032: `test_cli_approve_applies` (full approve through CLI handler, verifies `promoted` + files), `test_cli_blocked_json` (nonexistent job → blocked JSON), `test_cli_text_blocked` (nonexistent job → blocked text). All pass.
 
-### R-0901 Blocker — Real Reviewer still fails due malformed JSON → **Resolved (working tree)**
-Three-layer fix:
-1. **Reviewer prompt rewritten** (`pingpong_provider.py`): "Return ONLY valid JSON. No markdown.
-   No code fence." Clear, explicit instruction.
-2. **Code fence stripping** in `_parse_reviewer_json()`: strips ```json...``` wrappers before parsing.
-3. **`_unwrap_envelope()`**: handles Claude CLI envelopes (`{"result":...}`, `{"content":...}`,
-   `{"message":...}`, `{"text":"json_string"}`).
-4. **Bounded retry**: one retry on malformed output with `_REVIEWER_RETRY_PROMPT`.
-**Real smoke**: reviewer JSON parsed first attempt, `verdict=pass`, `parse_retry=0`.
-Status: `staged_review_passed` — first real end-to-end dogfood pass.
-Tests: `TestParseReviewerJsonCodeFence`, `TestParseReviewerJsonBare`, `TestParseReviewerJsonNoJson`,
-`TestParseReviewerJsonSurroundingProse`, `TestParseReviewerJsonRawTextCap`.
+### R-3607 Medium — Promotion output leaks secrets
+**Resolved.** JSON export at L613: `_redact_json_value(raw)` on entire dict. Paths: `_sanitize_path()` for `target_repo` and `job_workspace_path`. `post_test_command_present` (bool) replaces raw command string. Text summary: `_redact_secrets()` wraps full output at L694. `_sanitize_path()` for target in text. Post-test summary removed from text output. Three redaction tests pass.
 
-### R-0902 High — Reviewer does not see actual safe diff → **Resolved (working tree)**
-`_build_reviewer_prompt()` now takes `safe_diff` parameter. `_REVIEWER_DIFF_CAP = 30000`.
-Safe diff computed BEFORE reviewer call at `pingpong_loop.py` lines 673-677:
-`_compute_safe_diff(staging, original, result.staged_files)` → passed as `safe_diff`.
-Prompt section: `## Staged Unified Diff` with ```diff...``` block.
-Fallback: if no safe_diff, uses `diff_summary` (file names only).
-No absolute staging paths in diff (relative `a/`/`b/` paths from `_compute_safe_diff`).
-Tests: `TestReviewerPromptSafeDiff`, `TestReviewerPromptDiffCap`, `TestReviewerPromptFallbackDiffSummary`,
-`TestReviewerReceivesSafeDiff`.
+### R-3608 Medium — Existing safety regresses
+**Resolved.** All 30 original v0 tests still pass. 16 new v1 tests added. 46 total. Full suite 8020 passed. No regressions. Pre-existing failures: `test_full_chain_order` (provenance chain, unrelated) + 2 lock contention tests (environment-dependent).
 
-### R-0903 High — Malformed Reviewer output can pass → **Resolved (working tree)**
-`_parse_reviewer_json()`: malformed output → `verdict="blocked"`, `error="malformed_output:..."`.
-Invalid verdict → `verdict="blocked"`. No JSON → `verdict="blocked"`.
-`FakeProvider(malformed_review=True)`: both calls malformed → `review_failed`, not pass.
-`TestRetryCannotFakePass`: asserts `final_status != "staged_review_passed"`.
-`TestMalformedReviewRetryPersistent`: `review_failed`, `reviewer_json_recovered=False`.
+## Notes
+v1 diff: +645 lines across `job_promote.py` (241 changed) + `test_job_promote.py` (453 added) + `plan.md`. Clean safety closure — no workspace fallback, source/dest containment, target cleanliness with immediate recheck, persistence raised not swallowed, full redaction pipeline.
 
-### R-0904 High — Reviewer retry is unbounded or unsafe → **Resolved (working tree)**
-Retry at `pingpong_loop.py` lines 699-720:
-- **Bounded**: exactly one retry (`if reviewer_out.error.startswith("malformed_output:")`).
-  No loop, no recursion. Counter incremented once.
-- **Read-only**: `reviewer_provider.review()` — reviewer has `write_mode="none"` (double safety from v1).
-- **Timeout-limited**: same `timeout_sec` as original call.
-- **Output-capped**: same `max_output_chars`.
-- **Documented**: `parse_retried`, `parse_retry_recovered` on ReviewerOutput.
-  `reviewer_parse_retry_count`, `reviewer_parse_error`, `reviewer_malformed_excerpt` on result.
-Tests: `TestMalformedReviewRetryPersistent`, `TestMalformedReviewRecoverable`, `TestParseRetriedFlag`.
+---
 
-### R-0905 Medium — Repair prompt lacks enough context → **Resolved (working tree)**
-`_build_builder_prompt()` takes `safe_diff` parameter. `_REPAIR_DIFF_CAP = 20000`.
-Repair rounds (round_num > 1): safe diff computed before builder call (lines ~651-656).
-Builder gets: goal, context, `## Current Staged State`, `## Current Staged Diff`, `## Reviewer Findings to Fix`.
-Diff only shown when findings present (repair rounds only, not round 1).
-Tests: `TestBuilderRepairPromptDiff`, `TestBuilderRepairPromptDiffCap`, `TestBuilderPromptRound1NoDiff`,
-`TestRepairRoundGetsDiff`.
+# Live Review — Steps 4975-4990: Job Promote Baseline-Aware Safety Closure v2
 
-### R-0906 Medium — Report lacks parse metadata → **Resolved (working tree)**
-`PingPongResult` fields: `reviewer_parse_retry_count`, `reviewer_parse_error`,
-`reviewer_malformed_excerpt`, `reviewer_json_recovered`.
-`ReviewerOutput` fields: `parse_retried`, `parse_retry_recovered`.
-`export_pingpong_json()`: all fields exported including per-round `parse_retried`/`parse_retry_recovered`.
-`summarize_pingpong()`: "Reviewer parse: retried Nx, recovered/NOT recovered".
-`_cmd_do_report()`: shows retry status and parse error.
-Tests: `TestParseMetadataInExport`, `TestParseMetadataInSummary`, `TestRecoveredParseInSummary`,
-`TestParseRetriedInRoundExport`.
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-26
 
-### R-0907 Medium — Existing dogfood safety regresses → **Resolved (working tree)**
-- Cache noise: all 29 noise tests pass
-- Target mutation: blocking tests pass
-- Staged evidence: preserved even on block
-- Keep-staging: boolean flag works
-- JSON/report: all fields present
-- Fulfillment: 109 x 2 pass
-- Pingpong E2E: 33 pass
-- Full suite: 7337 passed, 0 failed
+## Verdict (reviewer-owned)
+**PASS** @ 6d55071
+Baseline-aware promotion replaces naive target-vs-workspace comparison.
+`AppliedFileProof` records pre-job hash. `_check_baseline_readiness` validates target matches baseline, workspace matches final hash. Legitimate existing-file edits promote. Target-changed, target-created, workspace-tampered, target-deleted all block. Legacy jobs: new files allowed, existing-file modifications blocked. 15 new tests (61 total promote). 8046 full suite (3 pre-existing/environmental).
 
-### R-0907a Medium — Lint import sort failure → **OPEN**
-`ruff check` reports I001 (import block unsorted) in two files:
-- `packages/orchestration/pingpong_loop.py`: `_REVIEWER_RETRY_PROMPT` private import
-- `tests/orchestration/test_pingpong_cli.py`: private imports (`_REVIEWER_RETRY_PROMPT`, etc.)
-Fix: `ruff --fix` or manually sort. Mypy passes. All tests pass.
-**Builder must fix before commit.**
+---
 
-## Real dogfood smoke result — PASS
-- Claude CLI at `/home/decodeux/.local/bin/claude`
-- Temp repo with `main.py` + 3 cache dirs
-- `claude_cli_write_mode="allowed-tools"`, `test_command="python3 -c 'import main'"`
-- **Result: `staged_review_passed`** — first real end-to-end dogfood pass!
-  - Builder added docstring to `greet()` in staging
-  - Test passed in staging (exit=0)
-  - Reviewer parsed JSON first attempt (`parse_retry=0`)
-  - Reviewer verdict: `pass`
-  - Target unchanged: `"def greet(): pass\n"`
-  - Cache noise classified: all 3 dirs
-  - Safe diff: unified diff shows docstring addition
-  - Status: `staged_review_passed`
+# Live Review — Steps 4991-5004: Job Promote Destination Symlink + Durable Record Closure v3
 
-## Reviewer JSON parse assessment — PASS
-- Prompt rewritten: explicit "Return ONLY valid JSON" instruction
-- Code fence stripping before parse
-- Envelope unwrapping for Claude CLI output formats
-- Invalid verdict → blocked
-- No JSON → blocked
-- Real smoke: parsed first attempt
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-26
 
-## Reviewer retry assessment — PASS
-- Bounded: exactly one retry on `malformed_output:` error
-- Read-only: reviewer has no write permissions
-- Same timeout/output cap
-- Parse metadata tracked on result and per-round
-- Fake tests: persistent malformed → `review_failed`; recoverable → `staged_review_passed`
+## Verdict (reviewer-owned)
+**PASS** — working tree on top of 6d55071 (uncommitted, awaiting builder commit)
+All 7 findings resolved. 72 promote tests. 8046 full suite (3 pre-existing/environmental). Lint clean. Fast lane 571.
 
-## Safe diff in Reviewer prompt assessment — PASS
-- `_build_reviewer_prompt()` includes `## Staged Unified Diff` with bounded content
-- Capped at 30K (`_REVIEWER_DIFF_CAP`)
-- Relative paths, no secrets
-- Computed BEFORE reviewer call
+## Findings
 
-## Repair prompt context assessment — PASS
-- Builder repair round gets: findings + safe diff + staged state
-- Diff capped at 20K (`_REPAIR_DIFF_CAP`)
-- Only shown when findings present (round 2+)
-- Two-round repair tested: `TestRepairRoundGetsDiff`
+### R-3801 Blocker — Destination symlink writes outside approved plan
+**Resolved.** `_validate_dest_containment()` L146: `if dest.is_symlink(): return "dest_is_symlink"` — blocks ALL destination symlinks regardless of where they resolve. Changed from v1 which only blocked symlinks escaping target. Test `test_dest_symlink_blocks_promote` creates `planned.py → victim.py` both inside target, verifies blocked, victim untouched, no files applied. `test_dest_symlink_dry_run_blocks` confirms dry-run also blocks. Grouped CLI test `test_dest_symlink_via_grouped_cli` exercises subprocess path.
 
-## Cache-noise regression assessment — PASS
-All 29 cache-noise tests pass. Noise dirs don't block.
+### R-3802 Blocker — Destination parent symlink writes outside approved plan
+**Resolved.** L149-153: parent walk from `dest.parent` up to `target`, checking `current.exists() and current.is_symlink()` at each level. Returns `dest_parent_symlink`. Test `test_dest_parent_symlink_blocks_promote` creates `linkdir → victim_dir` inside target, verifies blocked, victim file untouched. Grouped CLI test `test_dest_parent_symlink_via_grouped_cli` exercises subprocess path.
 
-## Meaningful target mutation assessment — PASS
-Real mutations still block. `TestRealTargetMutationStillBlocks`, `TestExistingSnapshotGuard` pass.
+### R-3803 High — Destination containment not rechecked before write
+**Resolved.** L600-607: `_validate_dest_containment(target, rel_path)` called in apply loop immediately before `write_bytes`, in addition to planning-phase check at L511. Returns `dest_unsafe_at_apply` if race detected. Test `test_dest_becomes_symlink_after_plan` uses mock to simulate TOCTOU race where planning check passes but apply-time check catches symlink appearing between plan and write.
 
-## Staged evidence assessment — PASS
-Staged files + safe diff preserved in finally block, even on block.
+### R-3804 High — Approved apply starts without durable pre-apply record
+**Resolved.** L578-584: `result.status = "approved_apply_started"`, `_persist_job_promotion(job_id, result)` called BEFORE any target writes. OSError → `_block("pre_apply_record_failed")`. Test `test_pre_apply_record_failure_blocks`: patches `_persist_job_promotion` to always fail, verifies blocked status, no files applied, target unchanged. `test_pre_apply_failure_does_not_write_target` verifies new file job also doesn't create target file.
 
-## Explicit test-command assessment — PASS
-Test ran in staging cwd. Real smoke: `python3 -c "import main"` exit=0.
+### R-3805 High — Final record update failure crashes unstructured
+**Resolved.** L654-665: final `_persist_job_promotion` wrapped in try/except. OSError sets `promoted_record_update_failed` status with structured `blocked_reason`. Pre-apply record already exists from L582. No traceback. Three tests: `test_final_record_failure_structured` (status + files_applied accurate), `test_final_record_failure_json_parseable` (JSON round-trip), `test_final_record_failure_text_readable` ("WARNING", "record update FAILED", "Pre-apply record exists").
 
-## JSON/report assessment — PASS
-All metadata fields exported. Parse retry info in report.
+### R-3806 Medium — Baseline promotion regresses
+**Resolved.** Baseline tests intact: `test_existing_file_modification_promotes` (legitimate edit), `test_target_changed_blocks`, `test_target_created_blocks`, `test_workspace_changed_blocks`, `test_legacy_new_file_allows`, `test_legacy_existing_file_blocks`. All pass. Dry-run shows `file_readiness` with per-file baseline/workspace status. JSON includes `file_readiness` array.
 
-## Target mutation assessment — PASS
-Target unchanged in both smoke runs. Cache noise classified, not blocking.
+### R-3807 Medium — Existing safety regresses
+**Resolved.** 8046 full suite (3 pre-existing: provenance chain + 2 lock contention). All v0/v1/v2 tests pass. Fast lane 571. Lint clean (ruff + mypy). Compileall clean. No git operations (docstrings only). `subprocess` only in `_run_post_test`. No providers. No `.agent` dependency. No `live_review` dependency. Source containment, dest escape blocking, missing manifest blocking, dry-run no-mutation, approve explicitness, no-commit/no-push — all intact.
 
-## Test evidence (reviewer-run, working tree on b1d10f4)
+## Step Assessments
 
-### Targeted tests
-- Pingpong CLI: **124 passed, 0.57s** (92 existing + 32 new)
-- Pingpong E2E: **33 passed, 0.13s**
-- Fulfillment: **109 passed x 2** (8.63s, 9.01s)
-- Compile: clean
+- **4991**: `_validate_dest_containment()` L146 `dest.is_symlink()` blocks ALL dest symlinks — no condition on resolve target. ✅
+- **4992**: `TestDestSymlinkInsideTarget` (2 tests) — `planned.py → victim.py` inside target, approve + dry-run both block. ✅
+- **4993**: `TestDestParentSymlinkInsideTarget` (1 test) — `linkdir → victim_dir` inside target, approve blocks. ✅
+- **4994**: L600-607 dest containment recheck in apply loop. `TestDestContainmentRecheckBeforeWrite` (1 test, mock TOCTOU). ✅
+- **4995**: L578-584 `approved_apply_started` record persisted before writes. ✅
+- **4996**: L654-665 final record failure → `promoted_record_update_failed` structured status. ✅
+- **4997**: `TestFinalRecordFailure` (3 tests: structured result, JSON parseable, text readable). ✅
+- **4998**: `TestPreApplyRecordFailure` (2 tests: blocks before write, target unchanged). ✅
+- **4999**: Status enum updated (L302). JSON export includes `promoted_record_update_failed`. Text summary handles `promoted_record_update_failed` (L806-811) and `approved_apply_started` (L813-815). ✅
+- **5000**: `TestGroupedCLINewFailureModes` (2 subprocess tests: dest symlink, parent symlink via grouped CLI). ✅
+- **5001**: All baseline tests pass — legitimate edits promote, target/workspace tamper blocks. ✅
+- **5002**: 8046 suite, 571 fast lane, lint clean, architecture guards clean. ✅
+- **5003**: Architecture guard clean — no shell=True, no git ops, no providers, no .agent deps, no auto-approval, no unbounded bodies, no raw prompts. ✅
+- **5004**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings resolved. ✅
 
-### Lanes
-- Runtime lane: NOT re-run (no runtime changes this block)
-- Lint: **ruff I001 failure** (import sort in 2 files), **mypy clean**
+## Behavioral Checks
 
-### Full suite
-- **7337 passed, 0 failed, 8 skipped** (230.56s)
+- **Check A (dest symlink)**: `test_dest_symlink_blocks_promote` — `planned.py` symlink to `victim.py`, approve blocks, victim unchanged, no files applied. ✅
+- **Check B (dest parent symlink)**: `test_dest_parent_symlink_blocks_promote` — `linkdir` symlink to `victim_dir`, approve blocks, `victim_dir/file.py` unchanged, no files applied. ✅
+- **Check C (final record failure)**: `test_final_record_failure_structured` — valid approve, pre-apply succeeds, final fails, structured `promoted_record_update_failed`, files_applied accurate, pre-apply record exists. ✅
+- **Check D (baseline regression)**: `test_existing_file_modification_promotes` + `test_target_changed_blocks` + `test_workspace_changed_blocks`. ✅
 
-### Post-test process/lock check
-- Lock: free
-- No stale processes
+## Protocol
 
-## Architecture guard scan
-- `shell=True`: none
-- Provider timeout/output cap: enforced on retry too
-- API key logging: none
-- `.env` leakage: excluded
-- Unbounded retries: exactly one retry, no loop
-- Reviewer write permissions: never (unchanged)
-- Target test execution: in staging cwd
-- Malformed accepted as pass: no (blocked)
-- Meaningful mutations as noise: no
-- JSON pollution: clean
+- **Commit reviewed**: working tree changes on top of 6d55071 (v3 not yet committed)
+- **PR reviewed**: N/A (no PR for this block yet)
+- **Protocol compliance**: Builder did not write verdict, did not self-merge, did not mark findings. ✅
+- **Worker 5-minute quiet-window**: Builder committed 6d55071 at 18:02:07, then added uncommitted v3 changes and stopped. Working tree clean except v3 additions. Builder marked PENDING and stopped. ✅ assessed
+- **Reviewer 10-minute quiet-window**: Working tree stable, builder not active during review. ✅ assessed
 
-## Edited-file line-range map (reviewer-constructed, v2→v3 working tree)
+## Final Recommendation
+**PASS** — zero open Blocker/High/Medium. All 14 steps (4991-5004) addressed. All 7 findings resolved. 72 promote tests pass. 8046 full suite. Destination symlinks fully blocked. Pre-apply record durable. Final record failure structured. Baseline behavior intact. Existing safety intact. Builder awaiting commit.
 
-| File | Lines | What changed | Tests |
-|------|-------|-------------|-------|
-| `packages/orchestration/pingpong_provider.py` | 211-240, 349-400, 412-455 | Reviewer prompt rewrite, `_REVIEWER_RETRY_PROMPT`, `_unwrap_envelope()`, code fence strip, envelope unwrap, `parse_retried`/`parse_retry_recovered` fields | 10 parse/envelope tests |
-| `packages/orchestration/pingpong_loop.py` | 33-38, 80-87, 199-204, 215-218, 231-270, 651-677, 699-720, 960-975, 1021-1024, 1058-1065 | Parse metadata fields, reviewer prompt diff, repair diff, bounded retry, export, summary | 22 tests |
-| `apps/cli/commands/do_cmd.py` | 269-273 | Report shows parse retry metadata | TestParseMetadataInSummary |
-| `tests/orchestration/test_pingpong_cli.py` | 1472-1949 | 32 new tests for parse, retry, diff, repair | Self-covering |
+## Notes
+v3 scope: +54 production lines + 432 test lines. Committed @ 1d95bec. Focused on destination symlink hardening and durable promotion records. No scope creep beyond stated steps.
 
-## Top risks
-- **Medium (OPEN)**: R-0907a — ruff I001 import sort in 2 files. Builder must fix before commit.
-- Low — `BUILDER_WAS_HERE.txt` + `docs/report-guide.md` stale test artifacts
-- Low — `_TARGET_NOISE_DIRS` hardcoded
-- Low — Claude CLI output parsing heuristic
+---
 
-## Final recommendation
-**READY TO DOGFOOD.** First real `staged_review_passed` achieved with Claude CLI builder + reviewer.
-Builder must fix lint (import sort) and commit. Once committed and lint clean, merge-ready.
+# Live Review — Steps 5005-5020: Job Workspace Apply Symlink + Partial Promote Failure Closure v4
 
-Exact dogfood command:
-```bash
-REMEDY_DATA_DIR=/tmp/remedy-data remedy do run "Add docstring to main.py:greet" \
-  --builder claude-cli --reviewer claude-cli \
-  --claude-cli-write-mode allowed-tools \
-  --max-rounds 2 --mode staged \
-  --test-command "python3 -c 'import main'" --json
-```
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-26
 
-## Merge readiness
-**CONDITIONAL READY.** Builder must:
-1. Fix ruff I001 import sort (2 files)
-2. Commit
-Then merge-autonomy applies.
+## Verdict (reviewer-owned)
+**PASS** @ da31ac2
+All 7 findings resolved. Workspace apply symlinks fully blocked. Copy strategy safe. Partial persist failure structured. 74 promote + 187 task runner tests. 8054 full suite (3 pre-existing/environmental). Lint clean.
 
-NO PR unless user asks.
+## Findings
+
+### R-3901 Blocker — Staged source symlink leaks external content
+**Resolved.** `_strict_apply_to_workspace()` L705: `src.is_symlink()` blocks staging source symlinks before `exists()` check. L714: `src.is_file()` blocks non-regular files. L719-724: `src.resolve()` escape check against `staging_resolved`. L733-743: parent symlink walk from `src.parent` to `staging` (while/else pattern: break=symlink found, else=clean). Tests: `test_staged_source_symlink_blocks` (external symlink, workspace untouched), `test_staged_source_symlink_inside_staging_also_blocks` (symlink inside staging also blocked).
+
+### R-3902 Blocker — Workspace destination symlink redirects task apply
+**Resolved.** L748: `dst.is_symlink()` blocks ALL workspace dest symlinks. L753-764: `resolved_dst` escape check against `workspace_resolved`. L766-776: parent symlink walk from `dst.parent` to `workspace` (checks `exists() and is_symlink()`). Tests: `test_workspace_dest_symlink_blocks` (victim unchanged, no files applied), `test_workspace_dest_parent_symlink_blocks` (parent symlink blocks, victim unchanged).
+
+### R-3903 High — Copy operation follows symlinks
+**Resolved.** L797-798: `content = src.read_bytes(); dst.write_bytes(content)` replaces `shutil.copy2(str(src), str(dst))`. Content-only transfer — no metadata copying, no opaque shutil symlink following. Defense-in-depth recheck at L786-793: `src.is_symlink()` and `dst.is_symlink()` verified immediately before I/O. Test: `test_normal_file_copies_correctly` (content matches, not symlink).
+
+### R-3904 High — Baseline proof captured through symlink destination
+**Resolved.** L778-783: baseline `_sha256_of(dst)` captured AFTER dst verified non-symlink (L748 + L766-776 containment). L804-805: final hash captured after write, also after containment checks. Comment at L779 documents intent: "Do not hash through symlinks — dst already verified non-symlink above." Recheck at L790 narrows TOCTOU window.
+
+### R-3905 High — Partial promote persistence failure still crashes
+**Resolved.** `_safe_persist()` at L343-362 wraps `_persist_job_promotion` in try/except OSError. If `applied` non-empty and persist fails: sets `promoted_record_update_failed` with original status/reason preserved. If `applied` empty: swallowed safely (no target mutation). Replaces all 7 bare `_persist_job_promotion` calls in apply/post-apply/post-test/final paths (L619, L628, L642, L656, L662, L673, L678). Tests: `test_partial_apply_record_failure_structured` (first file applied, second blocked at recheck, persist fails → structured result + JSON round-trip), `test_post_test_failure_record_persist_structured` (test fails, persist fails → structured result + text summary with WARNING).
+
+### R-3906 Medium — Debug detritus remains
+**Resolved.** `BUILDER_WAS_HERE.txt` not tracked by git, not committed. File on disk is test pollution from `test_pingpong_cli.py` L69 (`echo "hello from builder" > "$PWD/BUILDER_WAS_HERE.txt"`) — pre-existing test that writes to CWD instead of `tmp_path`. Not v4-specific detritus. Harmless (untracked).
+
+### R-3907 Medium — Existing promotion/job safety regresses
+**Resolved.** 8054 full suite (3 pre-existing: `test_full_chain_order` provenance chain + 2 lock contention). 74 promote tests (72 existing + 2 new). 187 task runner tests (181 existing + 6 new). 53 evidence tests. Lint clean (ruff). Compileall clean. Architecture guards clean — no `shell=True`, no git ops (docstrings only), `subprocess` only in `_run_post_test`, no providers, no `.agent` dependency, no `live_review` dependency. Source containment, dest containment, missing manifest blocking, dry-run no-mutation, approve explicitness — all intact.
+
+## Step Assessments
+
+- **5005**: `_strict_apply_to_workspace()` source containment: `src.is_symlink()` at L705 before `exists()`, `src.is_file()` at L714, resolve escape at L726-728, parent walk L733-743. ✅
+- **5006**: `TestStagedSourceSymlinkBlocks` (2 tests) — external + inside-staging symlinks both blocked. ✅
+- **5007**: `TestStagedSourceParentSymlinkBlocks` (1 test) — parent directory symlink blocks. ✅
+- **5008**: Workspace resolved at L694 once per call. Dest symlink at L748, escape at L755-757, parent walk L766-776. ✅
+- **5009**: `TestWorkspaceDestSymlinkBlocks` (1 test) — dest symlink blocks, victim unchanged. ✅
+- **5010**: `TestWorkspaceDestParentSymlinkBlocks` (1 test) — parent symlink blocks, victim unchanged. ✅
+- **5011**: `shutil.copy2` → `read_bytes/write_bytes` at L797-798. Metadata no longer copied. ✅
+- **5012**: `TestSafeCopyNoSymlinkFollow` (1 test) — normal file copies correctly, not symlink. ✅
+- **5013**: Recheck at L786-793: `src.is_symlink()` and `dst.is_symlink()` immediately before I/O. Tagged `_at_copy` in error messages. ✅
+- **5014**: Baseline hash at L782 and final hash at L805 only after containment verified. Comment documents non-symlink requirement. ✅
+- **5015**: `TestPartialApplyRecordFailure` (1 test) — partial apply + persist failure → structured result + JSON. ✅
+- **5016**: `TestPostTestRecordFailure` (1 test) — test fails + persist failure → structured result + text WARNING. ✅
+- **5017**: `_safe_persist()` at L343-362. 7 call sites updated. Empty-applied case safely swallowed. ✅
+- **5018**: Builder says `BUILDER_WAS_HERE.txt` removed. Pre-existing test pollution, not v4 artifact. ✅
+- **5019**: All existing tests pass. 8054 suite. Architecture guards clean. ✅
+- **5020**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings. ✅
+
+## Behavioral Checks
+
+- **Check A (staging source symlink)**: `test_staged_source_symlink_blocks` — external symlink in staging blocked, workspace file not created. ✅
+- **Check B (staging source inside symlink)**: `test_staged_source_symlink_inside_staging_also_blocks` — even symlink resolving inside staging blocked (no exceptions for "safe" symlinks). ✅
+- **Check C (workspace dest symlink)**: `test_workspace_dest_symlink_blocks` — `planned.py → victim.py`, blocked, victim unchanged, zero applied files. ✅
+- **Check D (safe copy)**: `test_normal_file_copies_correctly` — non-symlink copies correctly via read_bytes/write_bytes. ✅
+- **Check E (partial persist failure)**: `test_partial_apply_record_failure_structured` — first file applied, second blocked, persist fails → `promoted_record_update_failed` with original status preserved. ✅
+- **Check F (regression)**: 72 prior promote tests + 181 prior task runner tests all pass. No v0/v1/v2/v3 regression. ✅
+
+## Protocol
+
+- **Commit reviewed**: da31ac2
+- **Protocol compliance**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings Resolved. ✅
+
+## Final Recommendation
+**PASS** — zero open Blocker/High/Medium. All 16 steps (5005-5020) addressed. All 7 findings resolved. `_strict_apply_to_workspace()` hardens staging source + workspace dest containment with symlink, parent symlink, escape, and regularity checks. Copy strategy uses explicit `read_bytes/write_bytes` (no `shutil.copy2`). Recheck before write. Baseline proof safe. `_safe_persist()` generalizes persistence failure handling. 8 new tests (6 containment + 2 persistence). 8054 full suite.
+
+## Notes
+v4 scope: +90 production lines (pingpong_job.py) + 28 production lines (job_promote.py) + 175 test lines (test_job_promote.py) + 186 test lines (test_job_task_runner.py). Focused on workspace apply hardening and persistence failure generalization. No scope creep beyond stated steps.
+
+---
+
+# Live Review — Steps 5021-5036: Pingpong Staging Symlink + Review Zip Hygiene Closure v5
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-26
+
+## Verdict (reviewer-owned)
+**PASS** @ 5095bac
+All 6 findings resolved. Initial staging symlink-safe. Safe diff/reviewer prompt symlink-safe. Review ZIP rejects detritus. 11 new tests (4 staging + 3 diff + 3 path + 1 ZIP). 135 pingpong CLI tests. 8065 full suite (3 pre-existing/environmental). Lint clean. Mypy clean.
+
+## Findings
+
+### R-4001 Blocker — Initial staging copies external symlink target content
+**Resolved.** `_create_staging()` at L796-854 completely rewritten:
+- `os.walk(root, followlinks=False)` at L810 — explicit no-follow
+- Directory symlink filter at L815: `not (Path(dirpath) / d).is_symlink()` prunes symlink dirs from traversal
+- L826: `src.is_symlink()` → skip with `target_source_is_symlink` diagnostic
+- L831: `src.is_file()` → skip non-regular files with `target_source_not_regular_file`
+- L836-841: `src.resolve()` escape check against `root`
+- L850: `dst.write_bytes(src.read_bytes())` replaces `shutil.copy2(src, dst)`
+- `StagingResult` dataclass tracks `staging_path`, `skipped_unsafe`, `files_copied`
+- Tests: `test_external_symlink_not_copied` (external symlink → staging has no leaked content, `skipped_unsafe` populated), `test_internal_symlink_not_copied` (symlink inside repo also blocked), `test_parent_symlink_not_followed` (parent dir symlink not traversed), `test_normal_files_copy` (non-symlink files copy correctly, count matches).
+
+### R-4002 Blocker — Builder-created staging symlink leaks into safe diff/reviewer prompt
+**Resolved.** `_is_safe_staged_path()` at L857-877 — shared guard for both `_find_staging_changes()` and `_compute_safe_diff()`:
+- L860: `p.is_symlink()` → `staged_is_symlink`
+- L866-870: Parent symlink walk (root to file, each level checked)
+- L871-876: `p.resolve()` escape check against `root_resolved`
+- L864: `p.is_file()` → `staged_not_regular_file`
+
+`_find_staging_changes()` at L880-907:
+- L889: `os.walk(staging, followlinks=False)` — no follow
+- L890: Symlink dir filter on `dirnames`
+- L894: `_is_safe_staged_path(staging, ...)` checks each staged file before read
+- L897: `_is_safe_staged_path(original, ...)` checks original too
+- Unsafe staged files silently skipped (not in `changed` list)
+- Unsafe original files treated as new (added to `changed` — safe because staged content is not symlinked)
+
+`_compute_safe_diff()` at L929-997:
+- L959: `_is_safe_staged_path(staging, ...)` → unsafe produces `[unsafe staged artifact skipped: reason]` placeholder (L961-966)
+- L968: `_is_safe_staged_path(original, ...)` → unsafe original treated as empty (L974-975)
+- Staged `read_text()` at L979 only called after staged safety confirmed
+- Original `read_text()` at L977 only called after original safety confirmed
+
+Tests: `test_builder_staging_symlink_not_in_diff` (external symlink excluded from changed files, diff has placeholder, no leaked content), `test_builder_staging_symlink_inside_skipped` (internal symlink also excluded), `test_builder_parent_symlink_not_in_diff` (parent symlink excluded, diff has placeholder).
+
+Reviewer prompt at L726-781 receives `safe_diff` and `files_changed` which are outputs of the hardened functions. No raw file content passes through.
+
+### R-4003 High — `_find_staging_changes()` reads through symlinks
+**Resolved.** See R-4002 above. `_find_staging_changes()` calls `_is_safe_staged_path()` for each file before `read_bytes()`. Symlinked files silently skipped — no outside content read. `os.walk(staging, followlinks=False)` and directory symlink filter prevent traversal into symlinked directories.
+
+### R-4004 High — `_compute_safe_diff()` reads through symlinks
+**Resolved.** See R-4002 above. `_compute_safe_diff()` calls `_is_safe_staged_path()` for both staged and original files. Unsafe staged artifacts produce bounded placeholder `[unsafe staged artifact skipped: reason]`. Unsafe original treated as empty. `read_text()` only called on verified-safe paths.
+
+### R-4005 Medium — Review ZIP includes debug detritus
+**Resolved.** `make_review_zip.sh` L88-94: `find . -maxdepth 1 -name '*_WAS_HERE.txt'` detritus check before zip creation. Exit 1 with error message if found. Test `test_make_review_zip_rejects_detritus` creates a real git repo with `BUILDER_WAS_HERE.txt`, verifies script fails. `BUILDER_WAS_HERE.txt` on disk is test pollution from `test_pingpong_cli.py` L69 (pre-existing; recreated on each test run). The zip script correctly rejects it.
+
+### R-4006 Medium — Existing workspace apply/promote safety regresses
+**Resolved.** 8065 full suite (3 pre-existing: `test_full_chain_order` + 2 lock contention). 135 pingpong CLI tests (124 existing + 11 new). 74 promote tests. 187 task runner tests. 53 evidence tests. 109 fulfillment tests. 571 fast lane. Lint clean (ruff + mypy). Compileall clean. Architecture guards clean:
+- No `shutil.copy2` in pingpong staging (only in docstring comment L801)
+- No `followlinks=True` anywhere
+- `subprocess.run` only in `_run_post_test` (user-provided test command) and `_run_builder_subprocess`
+- No `shell=True` in product code
+- No git commit/push/reset/checkout in product code
+- `.agent` in exclude lists only
+- No `live_review` dependency
+
+## Step Assessments
+
+- **5021**: `_create_staging()` rewritten with `StagingResult`, `followlinks=False`, symlink file check (`is_symlink()` before `exists()`), parent symlink dir filter, `read_bytes/write_bytes` (no `shutil.copy2`), resolve+escape check. ✅
+- **5022**: `StagingResult.skipped_unsafe` provides diagnostics. `test_external_symlink_not_copied` verifies `skipped_unsafe` is populated. ✅
+- **5023**: 4 tests total: external symlink blocked, internal symlink blocked, parent symlink not followed, normal files copy correctly with count. ✅
+- **5024**: `_find_staging_changes()` rewritten: `followlinks=False`, dir symlink filter, `_is_safe_staged_path()` for both staging and original. ✅
+- **5025**: `_compute_safe_diff()` hardened: `_is_safe_staged_path()` for both paths, placeholder for unsafe, no `read_text()` on unverified paths. ✅
+- **5026**: `test_builder_staging_symlink_not_in_diff` — external symlink not in changed files, diff has placeholder, no leaked content. `test_builder_staging_symlink_inside_skipped` — internal also excluded. ✅
+- **5027**: `test_builder_parent_symlink_not_in_diff` — parent symlink excluded from changed files, diff has placeholder. ✅
+- **5028**: 187 task runner tests pass. Workspace apply symlink blocking intact (6 containment tests from v4). ✅
+- **5029**: 74 promote tests pass. Dest symlink blocking, baseline promotion, partial persist failure — all intact. ✅
+- **5030**: `make_review_zip.sh` L88-94 detritus check. Catches `*_WAS_HERE.txt`, `BUILDER_WAS_HERE.txt`, `REVIEWER_WAS_HERE.txt`. ✅
+- **5031**: `test_make_review_zip_rejects_detritus` — creates real git repo, adds detritus, verifies script rejects. ✅
+- **5032**: `.agent/job_workflow_readiness.md` — controlled readiness checklist. 15 checked invariants. 5 not-yet-implemented features noted. Not switched as default. ✅
+- **5033**: All existing test suites pass. 8065 full suite. 571 fast lane. Lint clean. ✅
+- **5034**: Fulfillment 109 pass. Fast lane 571. ✅
+- **5035**: Architecture clean — no `shutil.copy2` in staging, no `followlinks=True`, no symlink following in reads, no git ops, no `shell=True`, no `.agent` dependency, no `live_review` dependency. ✅
+- **5036**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings. ✅
+
+## Behavioral Checks
+
+- **Check A (initial target symlink)**: `test_external_symlink_not_copied` — `link.txt → /tmp/secret.txt` in target repo, staging has `normal.py` but NOT `link.txt`, no `SECRET_CONTENT` in any staging file, `skipped_unsafe` contains `target_source_is_symlink`. ✅
+- **Check B (builder-created staged symlink)**: `test_builder_staging_symlink_not_in_diff` — `staging/leak.txt → /tmp/secret.txt`, changed files exclude `leak.txt`, safe diff contains `[unsafe staged artifact skipped]` placeholder, `TOP_SECRET_CONTENT` not in diff text. ✅
+- **Check C (builder-created staged parent symlink)**: `test_builder_parent_symlink_not_in_diff` — `staging/linkdir → /tmp/outside_dir`, changed files exclude `linkdir/*`, diff has placeholder, `OUTSIDE_SECRET` not in diff text. ✅
+- **Check D (review ZIP hygiene)**: `test_make_review_zip_rejects_detritus` — script exits nonzero when `BUILDER_WAS_HERE.txt` present, error message mentions detritus. ✅
+
+## Protocol
+
+- **Commit reviewed**: 5095bac
+- **Protocol compliance**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings Resolved. ✅
+- **Worker 5-minute quiet-window**: Builder committed 5095bac after testing. Working tree clean except test pollution. ✅ assessed
+- **Reviewer 10-minute quiet-window**: Working tree stable during review. Builder not active during assessment. ✅ assessed
+
+## Final Recommendation
+**PASS** — zero open Blocker/High/Medium. All 16 steps (5021-5036) addressed. All 6 findings resolved. Initial pingpong staging cannot copy external symlink content (blocked at file level, dir level, escape level). Builder-created staging symlinks cannot leak into safe diff or reviewer prompt (bounded placeholder produced). Review ZIP rejects debug detritus. Workspace apply and job-promote safety intact. 11 new tests. 8065 full suite.
+
+## Notes
+v5 scope: `pingpong_loop.py` (~80 production lines: `StagingResult` dataclass, `_create_staging()` rewrite, `_is_safe_staged_path()` helper, `_find_staging_changes()` hardening, `_compute_safe_diff()` hardening, call site update), `test_pingpong_cli.py` (11 new tests: 4 staging copy + 3 diff/prompt + 3 path safety + 1 ZIP hygiene), `make_review_zip.sh` (8-line detritus check), `.agent/job_workflow_readiness.md` (readiness checklist). No scope creep beyond stated steps.
+
+---
+
+# Live Review — Steps 5037-5052: Pingpong Context Pack + Target Snapshot Symlink Closure v6
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-26
+
+## Verdict (reviewer-owned)
+**PENDING** — Builder implementation complete, awaiting reviewer assessment.
+
+## Findings
+
+### R-4101 Blocker — README symlink leaks into Builder context
+**OPEN.** `_is_safe_repo_path()` at L572-598. `build_repo_context()` README section at L679-690 validates via `_is_safe_repo_path()` before read. Safety note added on unsafe. 4 tests: no leak, normal appears, safety note, no external path.
+
+### R-4102 Blocker — Mentioned file symlink leaks into Builder context
+**OPEN.** `build_repo_context()` mentioned files at L656-673 validates via `_is_safe_repo_path()` before read. Safety note on unsafe. 4 tests: no leak, inside-repo also blocked, normal appears, reason without external path.
+
+### R-4103 High — File tree follows symlink directories
+**OPEN.** `build_repo_context()` L636: `os.walk(root, followlinks=False)`, L638-640: symlink dir filter, L647-650: file symlink skip + safety note. 4 tests: dir not traversed, file not read, no secret in notes, normal files listed.
+
+### R-4104 High — `_snapshot_target()` reads or hashes symlink target content
+**OPEN.** `_snapshot_target()` L1109: `os.walk(repo_path, followlinks=False)`, L1113: symlink dir filter, L1119: `fp.is_symlink()` skip, L1120: `_is_safe_repo_path()` check. 5 tests: outside skipped, inside skipped, parent dir not traversed, normal hashed, mutation guard works.
+
+### R-4105 Medium — Token estimate follows symlink files
+**OPEN.** `_estimate_full_repo_tokens()` L1942: `os.walk(root, followlinks=False)`, L1945: symlink dir filter, L1957: `fp.is_symlink()` skip, L1959: `_is_safe_repo_path()` check. 4 tests: symlink skipped, dir not traversed, normal counted, no path leak.
+
+### R-4106 Medium — Existing symlink safety regresses
+**OPEN.** 8097 full suite, 0 failures. 165 pingpong (135 existing + 30 new). 74 promote. 187 runner. 53 evidence. 109 fulfillment (×2). 571 fast. 4/4 runtime. Lint clean. Architecture clean.
+
+## Builder Step Assessments
+
+- **5037**: `_is_safe_repo_path()` at L572-598: absolute path check, `is_symlink()`, `exists()`, `is_file()`, parent walk, `resolve()` escape, readability check. 6 reasons. 6 tests. ✅
+- **5038**: `build_repo_context()` file tree: `followlinks=False`, symlink dir prune (L638-640), file symlink skip + safety note (L647-650), cap 10 notes. ✅
+- **5039**: Mentioned files: `_is_safe_repo_path()` before `read_text()` (L658-661), safety note on unsafe, secret file check preserved. ✅
+- **5040**: README: `_is_safe_repo_path("README.md")` before read (L679-680), safety note on unsafe, normal behavior preserved. ✅
+- **5041**: `_snapshot_target()`: `followlinks=False`, symlink dir filter, `is_symlink()` skip, `_is_safe_repo_path()` check before `read_bytes()`. ✅
+- **5042**: `_estimate_full_repo_tokens()`: `followlinks=False`, symlink dir filter, `is_symlink()` skip, `_is_safe_repo_path()` check before `stat()`. ✅
+- **5043**: `TestReadmeSymlinkContextLeak` (4 tests): no leak, normal appears, safety note, no external path. ✅
+- **5044**: `TestMentionedFileSymlinkContextLeak` (4 tests): no leak, inside blocked, normal appears, reason no path. ✅
+- **5045**: `TestFileTreeSymlinkBehavior` (4 tests): dir not traversed, file not read, no secret in notes, normal listed. ✅
+- **5046**: `TestSnapshotTargetSymlinkSafety` (5 tests): outside skipped, inside skipped, parent not traversed, normal hashed, mutation detects. ✅
+- **5047**: `TestTokenEstimateSymlinkSafety` (4 tests): symlink skipped, dir not traversed, normal counted, no leak. ✅
+- **5048**: `TestRunPingpongPromptNoLeak` (3 tests): README symlink, mentioned symlink, safe context present. ✅
+- **5049**: 165 pingpong, 74 promote, 187 runner — all existing tests pass. ✅
+- **5050**: 8097 full suite, 571 fast, 4/4 runtime, 109 fulfillment ×2, lint clean. ✅
+- **5051**: No `followlinks=True`, no `shutil.copy2` in pingpong, no git subprocess, no `os.symlink`, no `shell=True`, no `live_review` dependency. ✅
+- **5052**: Handoff below. ✅
+
+## Notes
+v6 scope: `pingpong_loop.py` (~50 production lines: `_is_safe_repo_path()` helper, `build_repo_context()` hardening, `_snapshot_target()` hardening, `_estimate_full_repo_tokens()` hardening) + `test_pingpong_cli.py` (30 new tests). No scope creep. Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings resolved.

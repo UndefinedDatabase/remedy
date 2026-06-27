@@ -85,6 +85,14 @@ MANIFEST_EOF
 echo "$MANIFEST" >> "$TMP"
 sort -u "$TMP" -o "$TMP"
 
+# Fail fast on known debug/test detritus in repo root
+DETRITUS="$(find . -maxdepth 1 -name '*_WAS_HERE.txt' -o -name 'BUILDER_WAS_HERE.txt' -o -name 'REVIEWER_WAS_HERE.txt' 2>/dev/null | sed 's#^\./##' || true)"
+if [[ -n "$DETRITUS" ]]; then
+  echo "Debug/test detritus found in repo root — remove before review zip:"
+  echo "$DETRITUS"
+  exit 1
+fi
+
 rm -f "$OUT"
 zip -q -@ "$OUT" < "$TMP"
 

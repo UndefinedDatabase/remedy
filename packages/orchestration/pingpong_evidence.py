@@ -1,0 +1,494 @@
+"""Evidence bundle builder — exports a self-contained, safe proof bundle for a Remedy run.
+
+Read-only: never calls providers, never mutates target repo, never auto-promotes.
+Redaction: no raw task body by default, no env/API keys, no absolute staging paths,
+no hidden provider prompts, no .env files, no raw repo file contents beyond safe diff.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+from pathlib import Path
+from typing import Any
+
+# ---------------------------------------------------------------------------
+# Redaction
+# ---------------------------------------------------------------------------
+
+# Patterns that look like API keys or secrets
+_SECRET_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"sk-[a-zA-Z0-9]{20,}"),           # OpenAI-style
+    re.compile(r"sk-ant-[a-zA-Z0-9]{20,}"),        # Anthropic-style
+    re.compile(r"AKIA[0-9A-Z]{16}"),               # AWS access key
+    re.compile(r"ghp_[a-zA-Z0-9]{36}"),            # GitHub PAT
+    re.compile(r"ghs_[a-zA-Z0-9]{36}"),            # GitHub app token
+    re.compile(r"glpat-[a-zA-Z0-9_-]{20,}"),       # GitLab PAT
+    re.compile(r"Bearer\s+[A-Za-z0-9._~+/=-]{20,}"),  # Bearer tokens
+]
+
+_ENV_KEY_PATTERN = re.compile(
+    r"(API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|PRIVATE_KEY)\s*=\s*\S+",
+    re.IGNORECASE,
+)
+
+
+def _redact_secrets(text: str) -> str:
+    """Replace API-key-like strings with [REDACTED]."""
+    for pat in _SECRET_PATTERNS:
+        text = pat.sub("[REDACTED]", text)
+    text = _ENV_KEY_PATTERN.sub(r"\1=[REDACTED]", text)
+    return text
+
+
+def _redact_json_value(value: Any) -> Any:
+    """Recursively redact secrets from arbitrary JSON-like data.
+
+    Walks dicts, lists, and strings. Preserves non-string types and shape.
+    Returns a new object — does not mutate the original.
+    """
+    if isinstance(value, str):
+        return _redact_secrets(value)
+    if isinstance(value, dict):
+        return {k: _redact_json_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        result = [_redact_json_value(item) for item in value]
+        return type(value)(result) if isinstance(value, tuple) else result
+    # int, float, bool, None — pass through
+    return value
+
+
+def _sanitize_path(path_str: str) -> str:
+    """Replace absolute home paths with ~ for safe output."""
+    home = os.path.expanduser("~")
+    if path_str.startswith(home):
+        return "~" + path_str[len(home):]
+    return path_str
+
+
+def _validate_output_path(out_dir: str, filename: str) -> Path:
+    """Validate that filename doesn't escape out_dir via path traversal."""
+    base = Path(out_dir).resolve()
+    target = (base / filename).resolve()
+    if not str(target).startswith(str(base) + os.sep) and target != base:
+        raise ValueError(f"Path traversal blocked: {filename!r}")
+    return target
+
+
+# ---------------------------------------------------------------------------
+# Bundle builder
+# ---------------------------------------------------------------------------
+
+def build_evidence_bundle(
+    run_data: dict[str, Any],
+    promotion_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a deterministic evidence bundle from a persisted run.
+
+    Returns a dict of bundle sections. Does not write files.
+    Does not call providers. Does not mutate anything.
+    """
+    bundle: dict[str, Any] = {}
+
+    # Core identity
+    bundle["manifest"] = _build_manifest(run_data, promotion_data)
+    bundle["summary_md"] = _build_summary_md(run_data, promotion_data)
+    bundle["safe_diff"] = run_data.get("safe_diff_summary", "")
+    bundle["tests"] = _build_tests_txt(run_data)
+    bundle["review"] = _build_review_json(run_data)
+    bundle["repair_loop"] = _build_repair_loop_json(run_data)
+    bundle["promotion"] = _build_promotion_json(promotion_data)
+    bundle["token_accounting"] = _build_token_accounting_json(run_data)
+    bundle["provider_evidence"] = _build_provider_evidence_json(run_data)
+
+    return bundle
+
+
+def _build_manifest(
+    run_data: dict[str, Any],
+    promotion_data: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build manifest.json content."""
+    # Determine availability of each section
+    has_diff = bool(run_data.get("safe_diff_summary"))
+    has_tests = any(
+        rd.get("test_passed") is not None
+        for rd in run_data.get("rounds", [])
+    )
+    has_review = any(
+        rd.get("reviewer") is not None
+        for rd in run_data.get("rounds", [])
+    )
+    has_repair = run_data.get("repair_loop", {}).get("enabled", False)
+    has_promotion = promotion_data is not None
+
+    # Task input metadata (safe — no raw body)
+    task_input = run_data.get("task_input")
+    task_meta: dict[str, Any] | None = None
+    if task_input:
+        task_meta = {
+            "kind": task_input.get("kind", ""),
+            "title": task_input.get("title", ""),
+            "sha256": task_input.get("sha256", ""),
+            "bytes": task_input.get("bytes", 0),
+            "chars": task_input.get("chars", 0),
+            "tokens_estimated": task_input.get("tokens_estimated", 0),
+            # Excerpt only, not full body — redacted for safety
+            "excerpt": _redact_secrets((task_input.get("excerpt", "") or "")[:200]),
+        }
+
+    # Scope plan summary
+    scope_plan = run_data.get("scope_plan")
+    scope_summary: dict[str, Any] | None = None
+    if scope_plan:
+        scope_summary = {
+            "plan_id": scope_plan.get("plan_id", ""),
+            "feature_count": len(scope_plan.get("features", [])),
+            "approved_count": len(scope_plan.get("approved_features", [])),
+            "denied_count": len(scope_plan.get("denied_features", [])),
+        }
+
+    manifest: dict[str, Any] = {
+        "bundle_version": "0.1.0",
+        "run_id": run_data.get("run_id", ""),
+        "goal": run_data.get("goal", ""),
+        "final_status": run_data.get("final_status", ""),
+        "repo_identity": _sanitize_path(run_data.get("repo_path", "")),
+        "mode": run_data.get("mode", ""),
+        "started_at": run_data.get("started_at", ""),
+        "finished_at": run_data.get("finished_at", ""),
+        "task_input": task_meta,
+        "scope_plan": scope_summary,
+        "sections": {
+            "manifest.json": "present",
+            "summary.md": "present",
+            "safe.diff": "present" if has_diff else "unavailable: no diff produced",
+            "tests.txt": "present" if has_tests else "unavailable: no tests run",
+            "review.json": "present" if has_review else "unavailable: no review performed",
+            "repair_loop.json": "present" if has_repair else "unavailable: repair disabled",
+            "promotion.json": "present" if has_promotion else "unavailable: no promotion performed",
+            "token_accounting.json": "present",
+            "provider_evidence.json": "present",
+        },
+        "promotion_readiness": _assess_promotion_readiness(run_data, promotion_data),
+    }
+    return manifest
+
+
+def _assess_promotion_readiness(
+    run_data: dict[str, Any],
+    promotion_data: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Assess whether this run is promotion-ready."""
+    final_status = run_data.get("final_status", "")
+    is_passed = final_status == "staged_review_passed"
+
+    # Check last test
+    rounds = run_data.get("rounds", [])
+    last_test_passed: bool | None = None
+    if rounds:
+        last_test_passed = rounds[-1].get("test_passed")
+
+    # Check promotion
+    promoted = False
+    promotion_status = ""
+    if promotion_data:
+        promoted = promotion_data.get("status") == "promoted"
+        promotion_status = promotion_data.get("status", "")
+
+    return {
+        "review_passed": is_passed,
+        "last_test_passed": last_test_passed,
+        "promotion_performed": promotion_data is not None,
+        "promotion_status": promotion_status,
+        "promoted": promoted,
+        "ready": is_passed and last_test_passed is not False,
+        "proof_summary": (
+            "promotion-ready: review passed, tests passed"
+            if is_passed and last_test_passed is not False
+            else f"not promotion-ready: final_status={final_status}"
+        ),
+    }
+
+
+def _build_summary_md(
+    run_data: dict[str, Any],
+    promotion_data: dict[str, Any] | None,
+) -> str:
+    """Build human-readable summary.md content."""
+    lines: list[str] = []
+    lines.append(f"# Remedy Run Evidence — {run_data.get('run_id', '')}")
+    lines.append("")
+    lines.append(f"**Goal:** {run_data.get('goal', '')}")
+    lines.append(f"**Status:** {run_data.get('final_status', '')}")
+    lines.append(f"**Mode:** {run_data.get('mode', '')}")
+    lines.append(f"**Repo:** {_sanitize_path(run_data.get('repo_path', ''))}")
+    lines.append("")
+
+    # Provider info
+    pe = run_data.get("provider_evidence", {})
+    lines.append("## Providers")
+    lines.append(f"- Worker: {run_data.get('builder_provider', 'unknown')} ({pe.get('builder_provider_kind', '')})")
+    lines.append(f"- Reviewer: {run_data.get('reviewer_provider', 'unknown')} ({pe.get('reviewer_provider_kind', '')})")
+    lines.append(f"- Worker write mode: {pe.get('builder_write_mode', 'none')}")
+    lines.append("")
+
+    # Task input
+    ti = run_data.get("task_input")
+    if ti:
+        lines.append("## Task Input")
+        lines.append(f"- Kind: {ti.get('kind', '')}")
+        if ti.get("title"):
+            lines.append(f"- Title: {ti['title']}")
+        lines.append(f"- Hash: {ti.get('sha256', '')[:12]}...")
+        lines.append(f"- Size: ~{ti.get('tokens_estimated', 0)} tokens")
+        lines.append("")
+
+    # Rounds
+    rounds = run_data.get("rounds", [])
+    lines.append(f"## Rounds: {len(rounds)}/{run_data.get('max_rounds', 0)}")
+    for rd in rounds:
+        kind = rd.get("kind", "initial")
+        test_status = "passed" if rd.get("test_passed") else ("failed" if rd.get("test_passed") is False else "not run")
+        rv = rd.get("reviewer", {})
+        verdict = rv.get("verdict", "none") if rv else "none"
+        lines.append(f"- Round {rd.get('round', '?')} ({kind}): tests {test_status}, reviewer {verdict}")
+    lines.append("")
+
+    # Safe diff
+    diff_files = run_data.get("safe_diff_files", [])
+    if diff_files:
+        lines.append(f"## Safe Diff: {len(diff_files)} file(s)")
+        for f in diff_files[:20]:
+            lines.append(f"- {f}")
+        if len(diff_files) > 20:
+            lines.append(f"- ... and {len(diff_files) - 20} more")
+        lines.append("")
+
+    # Test summary
+    if rounds:
+        last = rounds[-1]
+        ts = last.get("test_summary", "")
+        if ts:
+            lines.append("## Test Summary")
+            lines.append(f"```\n{_redact_secrets(ts)}\n```")
+            lines.append("")
+
+    # Repair loop
+    rl = run_data.get("repair_loop", {})
+    if rl.get("enabled"):
+        lines.append("## Repair Loop")
+        lines.append(f"- Allowed: {rl.get('repair_rounds_allowed', 0)}")
+        lines.append(f"- Used: {rl.get('repair_rounds_used', 0)}")
+        lines.append(f"- Status: {rl.get('status', '')}")
+        lines.append("")
+
+    # Promotion
+    if promotion_data:
+        lines.append("## Promotion")
+        lines.append(f"- Status: {promotion_data.get('status', '')}")
+        lines.append(f"- Approved: {promotion_data.get('approved', False)}")
+        lines.append(f"- Dry run: {promotion_data.get('dry_run', False)}")
+        lines.append("")
+
+    # Readiness
+    readiness = _assess_promotion_readiness(run_data, promotion_data)
+    lines.append("## Promotion Readiness")
+    lines.append(f"- {readiness['proof_summary']}")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def _build_tests_txt(run_data: dict[str, Any]) -> str:
+    """Build tests.txt content from round test summaries."""
+    parts: list[str] = []
+    for rd in run_data.get("rounds", []):
+        rn = rd.get("round", "?")
+        tp = rd.get("test_passed")
+        ts = rd.get("test_summary", "")
+        status = "passed" if tp else ("failed" if tp is False else "not run")
+        parts.append(f"=== Round {rn}: {status} ===")
+        if ts:
+            parts.append(_redact_secrets(ts))
+        parts.append("")
+    return "\n".join(parts) if parts else ""
+
+
+def _build_review_json(run_data: dict[str, Any]) -> dict[str, Any]:
+    """Build review.json from round reviewer data."""
+    reviews: list[dict[str, Any]] = []
+    for rd in run_data.get("rounds", []):
+        rv = rd.get("reviewer")
+        if rv:
+            # Redact reviewer text fields for safety
+            redacted_findings = []
+            for f in rv.get("findings", []):
+                redacted_findings.append(_redact_json_value(f))
+            reviews.append({
+                "round": rd.get("round", 0),
+                "kind": rd.get("kind", "initial"),
+                "verdict": rv.get("verdict", ""),
+                "confidence": rv.get("confidence", ""),
+                "summary": _redact_secrets(rv.get("summary", "")),
+                "finding_count": rv.get("finding_count", 0),
+                "findings": redacted_findings,
+            })
+
+    last_verdict = reviews[-1]["verdict"] if reviews else ""
+    return {
+        "total_reviews": len(reviews),
+        "final_verdict": last_verdict,
+        "reviews": reviews,
+    }
+
+
+def _build_repair_loop_json(run_data: dict[str, Any]) -> dict[str, Any]:
+    """Build repair_loop.json from run data."""
+    rl = run_data.get("repair_loop")
+    if rl:
+        return _redact_json_value(dict(rl))
+    # Fallback if repair_loop not in export
+    return {
+        "enabled": False,
+        "repair_rounds_allowed": 0,
+        "repair_rounds_used": 0,
+        "status": "disabled",
+    }
+
+
+def _build_promotion_json(
+    promotion_data: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Build promotion.json from promotion data."""
+    if promotion_data is None:
+        return None
+    # Return safe copy — redacted and path-sanitized
+    safe = _redact_json_value(dict(promotion_data))
+    # Sanitize any absolute paths
+    for key in ("staging_path", "target_repo", "run_repo", "requested_target_repo"):
+        if key in safe and isinstance(safe[key], str):
+            safe[key] = _sanitize_path(safe[key])
+    return safe
+
+
+def _build_token_accounting_json(run_data: dict[str, Any]) -> dict[str, Any]:
+    """Build token_accounting.json from run data."""
+    ta = run_data.get("token_accounting")
+    if ta:
+        return _redact_json_value(dict(ta))
+    return {"kind": "unavailable"}
+
+
+def _build_provider_evidence_json(run_data: dict[str, Any]) -> dict[str, Any]:
+    """Build provider_evidence.json from run data."""
+    pe = run_data.get("provider_evidence")
+    if pe:
+        return _redact_json_value(dict(pe))
+    return {
+        "builder_provider": run_data.get("builder_provider", ""),
+        "reviewer_provider": run_data.get("reviewer_provider", ""),
+    }
+
+
+# ---------------------------------------------------------------------------
+# File writer
+# ---------------------------------------------------------------------------
+
+def write_evidence_bundle(
+    bundle: dict[str, Any],
+    out_dir: str,
+) -> dict[str, str]:
+    """Write evidence bundle files to output directory.
+
+    Returns a dict mapping filename -> absolute path of written file.
+    Blocks path traversal. Writes only inside out_dir.
+    """
+    out_path = Path(out_dir).resolve()
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    written: dict[str, str] = {}
+
+    def _write(filename: str, content: str) -> None:
+        target = _validate_output_path(str(out_path), filename)
+        target.write_text(content)
+        written[filename] = str(target)
+
+    def _write_json(filename: str, data: Any) -> None:
+        _write(filename, json.dumps(_redact_json_value(data), indent=2) + "\n")
+
+    # manifest.json
+    _write_json("manifest.json", bundle["manifest"])
+
+    # summary.md
+    _write("summary.md", _redact_secrets(bundle["summary_md"]))
+
+    # safe.diff
+    diff_content = bundle.get("safe_diff", "")
+    if diff_content:
+        _write("safe.diff", _redact_secrets(diff_content))
+
+    # tests.txt
+    tests_content = bundle.get("tests", "")
+    if tests_content:
+        _write("tests.txt", tests_content)
+
+    # review.json
+    review = bundle.get("review")
+    if review and review.get("total_reviews", 0) > 0:
+        _write_json("review.json", review)
+
+    # repair_loop.json
+    repair = bundle.get("repair_loop")
+    if repair:
+        _write_json("repair_loop.json", repair)
+
+    # promotion.json
+    promotion = bundle.get("promotion")
+    if promotion is not None:
+        _write_json("promotion.json", promotion)
+
+    # token_accounting.json
+    ta = bundle.get("token_accounting")
+    if ta:
+        _write_json("token_accounting.json", ta)
+
+    # provider_evidence.json
+    pe = bundle.get("provider_evidence")
+    if pe:
+        _write_json("provider_evidence.json", pe)
+
+    return written
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+def export_evidence(
+    run_id: str,
+    out_dir: str,
+) -> dict[str, Any]:
+    """Load a persisted run and export evidence bundle.
+
+    Returns JSON-serializable result with output paths and manifest.
+    Does not call providers. Does not mutate target repo.
+    """
+    from packages.orchestration.pingpong_loop import load_run
+    from packages.orchestration.pingpong_promote import load_promotion
+
+    run_data = load_run(run_id)
+    if run_data is None:
+        return {"error": f"Run {run_id!r} not found", "run_id": run_id}
+
+    promotion_data = load_promotion(run_id)
+
+    bundle = build_evidence_bundle(run_data, promotion_data)
+    written = write_evidence_bundle(bundle, out_dir)
+
+    return _redact_json_value({
+        "run_id": run_id,
+        "out_dir": str(Path(out_dir).resolve()),
+        "files": written,
+        "manifest": bundle["manifest"],
+    })

@@ -73,6 +73,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--keyword", default=None, help=arg.help)
             elif arg.name == "--approved":
                 parser.add_argument("--approved", action="store_true", help=arg.help)
+            elif arg.name == "--approve":
+                parser.add_argument("--approve", action="store_true", dest="approve", help=arg.help)
             elif arg.name == "--max-cycles":
                 parser.add_argument("--max-cycles", default="3", dest="max_cycles", help=arg.help)
             elif arg.name == "--auto-approve-low-risk":
@@ -196,6 +198,16 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--max-output-chars", default=arg.default, dest="max_output_chars", help=arg.help)
             elif arg.name == "--claude-cli-write-mode":
                 parser.add_argument("--claude-cli-write-mode", default=arg.default, dest="claude_cli_write_mode", help=arg.help)
+            elif arg.name == "--task-file":
+                parser.add_argument("--task-file", default="", dest="task_file", help=arg.help)
+            elif arg.name == "--task-stdin":
+                parser.add_argument("--task-stdin", action="store_true", dest="task_stdin", help=arg.help)
+            elif arg.name == "--scope-file":
+                parser.add_argument("--scope-file", default="", dest="scope_file", help=arg.help)
+            elif arg.name == "--approve-scope":
+                parser.add_argument("--approve-scope", action="store_true", dest="approve_scope", help=arg.help)
+            elif arg.name == "--repair-rounds":
+                parser.add_argument("--repair-rounds", type=int, default=None, dest="repair_rounds", help=arg.help)
             elif arg.name == "--user-requested":
                 parser.add_argument("--user-requested", action="store_true", dest="user_requested", help=arg.help)
             elif arg.name == "--prefer-local-for-cheap-tasks":
@@ -266,22 +278,32 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 _QUICK_START = """\
- Happy path:
-   1. remedy do run "<goal>" --repo <path>  — create and start a job
-   2. remedy job status <job_id> --json    — inspect job state
-   3. remedy job report <job_id> --json    — read the job report
-   4. remedy ui <job_id>                   — open UI
-   5. remedy review run <job_id> --json    — reviewer recommendations (human approval)
-   6. remedy worker doctor <name> --json   — check worker readiness
-   7. remedy approval summary --json       — advanced approval policy"""
+ Quick start:
+   1. remedy do run "<goal>" --repo . --builder claude-cli --reviewer claude-cli --json | tee /tmp/remedy-run.json
+   2. RUN_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['run_id'])")
+   3. remedy do report $RUN_ID --json
+   4. remedy do promote $RUN_ID --repo . --dry-run --json
+   5. remedy do promote $RUN_ID --repo . --approve
+
+ Show all commands:  remedy --all-commands"""
 
 
-def _print_root_help() -> None:
+def _print_root_help(*, show_all: bool = False) -> None:
     """Print Bootcamp-style root help and exit 0."""
-    groups = [(gid, gdef.description) for gid, gdef in GROUPS.items()]
+    if show_all:
+        groups = [(gid, gdef.description) for gid, gdef in GROUPS.items()]
+        title = "All Commands"
+    else:
+        groups = [
+            (gid, gdef.description)
+            for gid, gdef in GROUPS.items()
+            if gdef.user_facing
+        ]
+        title = "Commands"
     print(render_root_help(
         "remedy", "Remedy \u2014 Human-in-the-loop Project Brain", groups,
         footer=_QUICK_START,
+        commands_title=title,
     ))
 
 
@@ -306,16 +328,22 @@ def _print_command_help(group_id: str, cmd: CommandEntry) -> None:
 
 
 def _pre_scan_help(argv: list[str] | None) -> bool:
-    """Pre-scan argv for --help before argparse touches it.
+    """Pre-scan argv for --help/--all-commands before argparse touches it.
 
     Returns True if help was printed (caller should return).
     This avoids argparse's SystemExit on missing required args when --help is present.
     """
     raw = argv if argv is not None else sys.argv[1:]
     has_help = "-h" in raw or "--help" in raw
+    has_all = "--all-commands" in raw
 
-    if not has_help:
+    if not has_help and not has_all:
         return False
+
+    # --all-commands alone or with --help
+    if has_all:
+        _print_root_help(show_all=True)
+        return True
 
     # Strip -h/--help for position analysis
     tokens = [t for t in raw if t not in ("-h", "--help")]
@@ -397,6 +425,11 @@ def main(argv: list[str] | None = None) -> None:
     # No group specified -> show top-level help
     if args._group is None:
         _print_root_help()
+        return
+
+    # --all-commands handled by pre-scan, but catch edge cases
+    if getattr(args, "_group", None) == "--all-commands":
+        _print_root_help(show_all=True)
         return
 
     # Group specified but no subcommand -> show group help

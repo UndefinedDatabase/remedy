@@ -105,8 +105,15 @@ class TestTopLevelHelp:
         stdout, _, rc = _capture_grouped([])
         assert rc == 0
         assert "remedy" in stdout.lower()
+        for gid, gdef in GROUPS.items():
+            if gdef.user_facing:
+                assert gid in stdout, f"Top-level help missing user-facing group: {gid}"
+
+    def test_all_commands_shows_all(self) -> None:
+        stdout, _, rc = _capture_grouped(["--all-commands"])
+        assert rc == 0
         for gid in GROUPS:
-            assert gid in stdout, f"Top-level help missing group: {gid}"
+            assert gid in stdout, f"--all-commands missing group: {gid}"
 
     def test_no_old_flat_commands_in_help(self) -> None:
         stdout, _, _ = _capture_grouped([])

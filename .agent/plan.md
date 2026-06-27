@@ -1,44 +1,36 @@
-# Plan — Steps 4266-4315: Reviewer JSON Reliability + Real Dogfood Pass Closure v3
+# Plan — Steps 5037-5052: Pingpong Context Pack + Target Snapshot Symlink Closure v6
 
 ## Goal
-Fix reviewer parse failures preventing real dogfood success. Reviewer must receive
-actual safe diff. Add JSON-only hardening to reviewer prompt. Add one bounded parse
-retry. Handle Claude CLI JSON envelope formats. Repair prompt must include findings
-+ safe diff. Report must expose parse retry metadata.
+Make pingpong context building, repo token estimation, and target snapshots
+symlink-safe before the first single Remedy prompt dogfood.
 
 ## Current Step
-Complete. All implementation, tests, verification done.
+All implementation and tests complete. Ready for commit.
 
 ## Completed
-- _REVIEWER_JSON_SCHEMA: strict JSON-only contract in reviewer prompt
-- _REVIEWER_RETRY_PROMPT: compact correction prompt for parse retry
-- _unwrap_envelope(): handle result/content/message/text envelope wrappers
-- _parse_reviewer_json: strip markdown code fences, envelope unwrap, raw_text cap 500
-- _REVIEWER_SYSTEM: JSON-only instructions
-- _build_reviewer_prompt: accepts safe_diff with 30K cap (_REVIEWER_DIFF_CAP)
-- Reviewer call site computes safe diff before reviewer runs
-- Bounded parse retry: one retry on malformed_output:, no fake pass
-- ReviewerOutput: parse_retried, parse_retry_recovered fields
-- PingPongResult: reviewer_parse_retry_count, reviewer_parse_error,
-  reviewer_malformed_excerpt, reviewer_json_recovered
-- FakeProvider: malformed_review_recoverable option for testing
-- _build_builder_prompt: safe_diff param with 20K cap for repair rounds
-- Repair diff computed before builder call in round > 1
-- export_pingpong_json: parse metadata + per-round parse_retried/recovered
-- summarize_pingpong: shows retry count and recovered status
-- _cmd_do_report: shows parse retry info
-- 32 new tests (73-104), total 124 in test_pingpong_cli.py
-- Ruff lint: clean
-- Full suite: 7254 passed, 0 failed (pre-existing test_project_brain unrelated)
-- Architecture guard: CLEAN
-- Dogfood smoke: 3/3 scenarios pass
+- Step 5037: `_is_safe_repo_path()` helper — symlink, parent walk, escape, regular file, readable, absolute path checks
+- Step 5038: `build_repo_context()` file tree — `followlinks=False`, symlink dir prune, file symlink skip + safety note
+- Step 5039: Mentioned file reads — validated via `_is_safe_repo_path()` before read, placeholder on unsafe
+- Step 5040: README read — validated via `_is_safe_repo_path()` before read, safety note on unsafe
+- Step 5041: `_snapshot_target()` — `followlinks=False`, symlink dir prune, file symlink skip, `_is_safe_repo_path()` check
+- Step 5042: `_estimate_full_repo_tokens()` — `followlinks=False`, symlink dir prune, file symlink skip, `_is_safe_repo_path()` check
+- Step 5043: README symlink context leak tests (4 tests)
+- Step 5044: Mentioned file symlink context leak tests (4 tests)
+- Step 5045: Context file tree symlink behavior tests (4 tests)
+- Step 5046: `_snapshot_target()` symlink safety tests (5 tests)
+- Step 5047: Token estimate symlink safety tests (4 tests)
+- Step 5048: run_pingpong prompt no-leak integration tests (3 tests)
+- Step 5049: Staging/safe-diff/workspace-apply/promote symlink safety preserved — 165 pingpong, 74 promote, 187 runner tests pass
+- Step 5050: Job/evidence/runner safety preserved — 423 orchestration, 8097 full suite
+- Step 5051: Architecture guard clean — no followlinks=True, no shutil.copy2 in pingpong, no git subprocess, no os.symlink, no shell=True
+- Step 5052: Handoff — awaiting 5-minute quiet window
 
-## Dogfood command
-```
-remedy do run "Add docs note about ping-pong reports" \
-  --repo . --builder claude-cli --reviewer claude-cli \
-  --claude-cli-write-mode allowed-tools \
-  --max-rounds 2 --mode staged \
-  --test-command "python3 -m pytest tests/orchestration/test_pingpong.py -q" \
-  --keep-staging --json
-```
+## Test Counts
+- pingpong_cli: 165 (was 135, +30 new)
+- job_task_runner: 187 (unchanged)
+- job_promote: 74 (unchanged)
+- job_evidence: 53 (unchanged)
+- job_fulfillment: 109 (unchanged, ×2)
+- fast lane: 571
+- runtime: 4/4 suites
+- Full suite: 8097 passed, 8 skipped, 0 failed

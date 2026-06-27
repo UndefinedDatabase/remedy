@@ -38,14 +38,18 @@ def render_root_help(
     groups: list[tuple[str, str]],
     *,
     footer: str = "",
+    commands_title: str = "Commands",
 ) -> str:
     """Render top-level help: usage, description, options box, commands box."""
     parts: list[str] = []
     parts.append(f" Usage: {prog} [OPTIONS] COMMAND [ARGS]...\n")
     parts.append(f" {description}\n")
-    parts.append(_box("Options", [("--help", "Show this message and exit.")]))
+    parts.append(_box("Options", [
+        ("--help", "Show this message and exit."),
+        ("--all-commands", "Show all commands (including advanced)."),
+    ]))
     parts.append("")
-    parts.append(_box("Commands", groups))
+    parts.append(_box(commands_title, groups))
     parts.append("")
     if footer:
         parts.append(footer)

@@ -17,7 +17,14 @@ from packages.orchestration.pingpong_loop import (
     _build_builder_prompt,
     _build_reviewer_prompt,
     _compute_safe_diff,
+    _create_staging,
+    _estimate_full_repo_tokens,
+    _find_staging_changes,
+    _is_safe_repo_path,
+    _is_safe_staged_path,
     _is_target_noise,
+    _snapshot_target,
+    build_repo_context,
     export_pingpong_json,
     list_runs,
     load_run,
@@ -489,7 +496,7 @@ class TestContextSafety:
 
 class TestFakeProviderE2E:
     def test_fake_provider_full_loop(self, demo_repo):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake", repair_rounds=2)
         assert result.final_status == "staged_review_passed"
         assert len(result.rounds) >= 2
         assert result.target_mutated is False
@@ -651,9 +658,10 @@ class TestClaudeCliProviderWriteMode:
 class TestReviewerAlwaysReadOnly:
     def test_reviewer_no_write_mode(self, demo_repo):
         """run_pingpong with claude_cli_write_mode=allowed-tools must NOT pass it to reviewer."""
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
         result = run_pingpong(
             "Fix README", str(demo_repo),
-            builder_name="fake", reviewer_name="fake",
+            builder_provider=provider, reviewer_provider=provider,
             claude_cli_write_mode="allowed-tools",
         )
         # Fake providers don't use write_mode, but result should still work
@@ -666,9 +674,10 @@ class TestReviewerAlwaysReadOnly:
 
 class TestRunPingpongWriteMode:
     def test_write_mode_accepted(self, demo_repo):
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
         result = run_pingpong(
             "Fix README", str(demo_repo),
-            builder_name="fake", reviewer_name="fake",
+            builder_provider=provider, reviewer_provider=provider,
             claude_cli_write_mode="none",
         )
         assert result.final_status == "staged_review_passed"
@@ -1920,14 +1929,13 @@ class TestUnwrapEnvelopeTextWhitespace:
 class TestReviewerReceivesSafeDiff:
     def test_reviewer_gets_diff(self, demo_repo):
         """Verify run completes and safe diff is computed before reviewer."""
-        provider = FakeProvider()
+        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
         result = run_pingpong(
             "Fix README", str(demo_repo),
             builder_provider=provider,
             reviewer_provider=provider,
         )
-        # If reviewer pass, safe diff was available
-        assert result.final_status in ("staged_review_passed", "max_rounds_reached")
+        assert result.final_status == "staged_review_passed"
         assert result.safe_diff_summary != "" or result.safe_diff_files != []
 
 
@@ -1943,7 +1951,596 @@ class TestRepairRoundGetsDiff:
             "Fix README", str(demo_repo),
             builder_provider=provider,
             reviewer_provider=provider,
-            max_rounds=2,
+            max_rounds=2, repair_rounds=2,
         )
         assert len(result.rounds) == 2
         assert result.final_status == "staged_review_passed"
+
+
+# ---------------------------------------------------------------------------
+# Step 5023: Target-repo symlink copy leak regression tests
+# ---------------------------------------------------------------------------
+
+
+class TestStagingCopySymlinkBlock:
+    def test_external_symlink_not_copied(self, tmp_path):
+        """Target repo file symlink to outside is not copied into staging."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "normal.py").write_text("normal content\n")
+
+        external = tmp_path / "secret.txt"
+        external.write_text("SECRET_CONTENT\n")
+        (repo / "link.txt").symlink_to(external)
+
+        sr = _create_staging(str(repo), "test-ext-symlink")
+        staging = sr.staging_path
+
+        assert (staging / "normal.py").exists()
+        assert not (staging / "link.txt").exists()
+        assert any("target_source_is_symlink" in s for s in sr.skipped_unsafe)
+        for f in staging.rglob("*"):
+            if f.is_file():
+                assert "SECRET_CONTENT" not in f.read_text()
+
+        import shutil
+        shutil.rmtree(staging, ignore_errors=True)
+
+    def test_internal_symlink_not_copied(self, tmp_path):
+        """Target repo file symlink to inside is also not copied."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "real.py").write_text("real content\n")
+        (repo / "link.py").symlink_to(repo / "real.py")
+
+        sr = _create_staging(str(repo), "test-int-symlink")
+        staging = sr.staging_path
+
+        assert (staging / "real.py").exists()
+        assert not (staging / "link.py").exists()
+        assert any("target_source_is_symlink" in s for s in sr.skipped_unsafe)
+
+        import shutil
+        shutil.rmtree(staging, ignore_errors=True)
+
+    def test_parent_symlink_not_followed(self, tmp_path):
+        """Target repo parent directory symlink is not followed."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        outside = tmp_path / "outside_dir"
+        outside.mkdir()
+        (outside / "secret.py").write_text("PARENT_SECRET\n")
+
+        (repo / "linkdir").symlink_to(outside)
+        (repo / "normal.py").write_text("ok\n")
+
+        sr = _create_staging(str(repo), "test-parent-symlink")
+        staging = sr.staging_path
+
+        assert (staging / "normal.py").exists()
+        assert not (staging / "linkdir").exists()
+        for f in staging.rglob("*"):
+            if f.is_file():
+                assert "PARENT_SECRET" not in f.read_text()
+
+        import shutil
+        shutil.rmtree(staging, ignore_errors=True)
+
+    def test_normal_files_copy(self, tmp_path):
+        """Normal (non-symlink) files copy correctly."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "main.py").write_text("main\n")
+        sub = repo / "sub"
+        sub.mkdir()
+        (sub / "util.py").write_text("util\n")
+
+        sr = _create_staging(str(repo), "test-normal-copy")
+        staging = sr.staging_path
+
+        assert (staging / "main.py").read_text() == "main\n"
+        assert (staging / "sub" / "util.py").read_text() == "util\n"
+        assert sr.files_copied == 2
+        assert len(sr.skipped_unsafe) == 0
+
+        import shutil
+        shutil.rmtree(staging, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Step 5026: Builder-created staging symlink no-leak test
+# ---------------------------------------------------------------------------
+
+
+class TestBuilderStagingSymlinkNoLeak:
+    def test_builder_staging_symlink_not_in_diff(self, tmp_path):
+        """Fake builder creates staging symlink — safe diff excludes it."""
+        original = tmp_path / "original"
+        original.mkdir()
+        (original / "good.py").write_text("original\n")
+
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "good.py").write_text("modified\n")
+
+        external = tmp_path / "secret.txt"
+        external.write_text("TOP_SECRET_CONTENT\n")
+        (staging / "leak.txt").symlink_to(external)
+
+        changed = _find_staging_changes(staging, original)
+        assert "good.py" in changed
+        assert "leak.txt" not in changed
+
+        diff_text, diff_files, _ = _compute_safe_diff(
+            staging, original, ["good.py", "leak.txt"],
+        )
+        assert "TOP_SECRET_CONTENT" not in diff_text
+        assert "unsafe staged artifact skipped" in diff_text
+
+    def test_builder_staging_symlink_inside_skipped(self, tmp_path):
+        """Even a staging symlink to inside staging is skipped in diff."""
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        original = tmp_path / "original"
+        original.mkdir()
+
+        (staging / "real.py").write_text("real\n")
+        (staging / "link.py").symlink_to(staging / "real.py")
+
+        changed = _find_staging_changes(staging, original)
+        assert "real.py" in changed
+        assert "link.py" not in changed
+
+
+# ---------------------------------------------------------------------------
+# Step 5027: Builder-created staging parent symlink no-leak test
+# ---------------------------------------------------------------------------
+
+
+class TestBuilderStagingParentSymlinkNoLeak:
+    def test_builder_parent_symlink_not_in_diff(self, tmp_path):
+        """Builder creates staging parent symlink — safe diff excludes it."""
+        original = tmp_path / "original"
+        original.mkdir()
+
+        staging = tmp_path / "staging"
+        staging.mkdir()
+
+        outside = tmp_path / "outside_dir"
+        outside.mkdir()
+        (outside / "file.py").write_text("OUTSIDE_SECRET\n")
+
+        (staging / "linkdir").symlink_to(outside)
+
+        changed = _find_staging_changes(staging, original)
+        assert not any("linkdir" in c for c in changed)
+
+        diff_text, diff_files, _ = _compute_safe_diff(
+            staging, original, ["linkdir/file.py"],
+        )
+        assert "OUTSIDE_SECRET" not in diff_text
+        assert "unsafe staged artifact skipped" in diff_text
+
+
+# ---------------------------------------------------------------------------
+# Step 5024/5025: _is_safe_staged_path unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestSafeStagedPath:
+    def test_regular_file_is_safe(self, tmp_path):
+        root = tmp_path / "root"
+        root.mkdir()
+        (root / "file.py").write_text("ok\n")
+        assert _is_safe_staged_path(root, root.resolve(), "file.py") == ""
+
+    def test_symlink_is_unsafe(self, tmp_path):
+        root = tmp_path / "root"
+        root.mkdir()
+        external = tmp_path / "ext.txt"
+        external.write_text("x")
+        (root / "link.txt").symlink_to(external)
+        reason = _is_safe_staged_path(root, root.resolve(), "link.txt")
+        assert "staged_is_symlink" in reason
+
+    def test_parent_symlink_is_unsafe(self, tmp_path):
+        root = tmp_path / "root"
+        root.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "f.py").write_text("x")
+        (root / "linkdir").symlink_to(outside)
+        reason = _is_safe_staged_path(root, root.resolve(), "linkdir/f.py")
+        assert "staged_parent_symlink" in reason
+
+
+# ---------------------------------------------------------------------------
+# Step 5031: Review ZIP hygiene test
+# ---------------------------------------------------------------------------
+
+
+class TestReviewZipHygiene:
+    def test_make_review_zip_rejects_detritus(self, tmp_path):
+        """make_review_zip.sh fails if BUILDER_WAS_HERE.txt exists."""
+        import subprocess
+
+        script = Path(__file__).resolve().parents[2] / "scripts" / "make_review_zip.sh"
+        if not script.exists():
+            pytest.skip("make_review_zip.sh not found")
+
+        fake_repo = tmp_path / "repo"
+        fake_repo.mkdir()
+        subprocess.run(
+            ["git", "init"], cwd=str(fake_repo),
+            capture_output=True, timeout=5,
+        )
+        (fake_repo / "main.py").write_text("ok\n")
+        subprocess.run(
+            ["git", "add", "."], cwd=str(fake_repo),
+            capture_output=True, timeout=5,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init", "--allow-empty"],
+            cwd=str(fake_repo), capture_output=True, timeout=5,
+            env={**__import__("os").environ, "GIT_AUTHOR_NAME": "test",
+                 "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "test",
+                 "GIT_COMMITTER_EMAIL": "t@t"},
+        )
+        (fake_repo / "BUILDER_WAS_HERE.txt").write_text("debug\n")
+
+        result = subprocess.run(
+            ["bash", str(script)],
+            cwd=str(fake_repo),
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode != 0
+        assert "detritus" in result.stdout.lower() or "BUILDER_WAS_HERE" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Step 5037: _is_safe_repo_path tests
+# ---------------------------------------------------------------------------
+
+
+class TestSafeRepoPath:
+    def test_regular_file_is_safe(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "main.py").write_text("ok")
+        assert _is_safe_repo_path(repo, repo.resolve(), "main.py") == ""
+
+    def test_symlink_is_unsafe(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("TOP SECRET")
+        (repo / "link.txt").symlink_to(secret)
+        assert _is_safe_repo_path(repo, repo.resolve(), "link.txt") == "repo_source_is_symlink"
+
+    def test_parent_symlink_is_unsafe(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        real_dir = tmp_path / "external"
+        real_dir.mkdir()
+        (real_dir / "data.txt").write_text("external data")
+        (repo / "linked").symlink_to(real_dir)
+        result = _is_safe_repo_path(repo, repo.resolve(), "linked/data.txt")
+        assert result == "repo_source_parent_symlink"
+
+    def test_missing_file(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        assert _is_safe_repo_path(repo, repo.resolve(), "nope.txt") == "repo_source_missing"
+
+    def test_directory_is_not_regular(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "subdir").mkdir()
+        assert _is_safe_repo_path(repo, repo.resolve(), "subdir") == "repo_source_not_regular_file"
+
+    def test_absolute_path_rejected(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        assert _is_safe_repo_path(repo, repo.resolve(), "/etc/passwd") == "repo_source_escapes_repo"
+
+
+# ---------------------------------------------------------------------------
+# Step 5043: README symlink context leak tests
+# ---------------------------------------------------------------------------
+
+
+class TestReadmeSymlinkContextLeak:
+    def test_readme_symlink_no_secret_leak(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("TOP SECRET CONTENT xyz123")
+        (repo / "README.md").symlink_to(secret)
+        context, cats = build_repo_context(str(repo), "test goal")
+        assert "TOP SECRET CONTENT" not in context
+        assert "xyz123" not in context
+        assert "readme" not in cats
+
+    def test_normal_readme_still_appears(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("This is a normal readme")
+        context, cats = build_repo_context(str(repo), "test goal")
+        assert "This is a normal readme" in context
+        assert "readme" in cats
+
+    def test_unsafe_readme_safety_note(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("TOP SECRET")
+        (repo / "README.md").symlink_to(secret)
+        context, cats = build_repo_context(str(repo), "test goal")
+        assert "repo_source_is_symlink" in context
+        assert "README.md" in context
+
+    def test_no_absolute_external_path_in_context(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("TOP SECRET")
+        (repo / "README.md").symlink_to(secret)
+        context, _ = build_repo_context(str(repo), "test goal")
+        assert str(secret) not in context
+
+
+# ---------------------------------------------------------------------------
+# Step 5044: mentioned file symlink context leak tests
+# ---------------------------------------------------------------------------
+
+
+class TestMentionedFileSymlinkContextLeak:
+    def test_mentioned_symlink_no_secret_leak(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "safe.py").write_text("safe content")
+        secret = tmp_path / "secret.txt"
+        secret.write_text("EXTERNAL SECRET abc999")
+        (repo / "link.txt").symlink_to(secret)
+        context, cats = build_repo_context(
+            str(repo), "goal", mentioned_files=["link.txt"]
+        )
+        assert "EXTERNAL SECRET" not in context
+        assert "abc999" not in context
+
+    def test_mentioned_symlink_inside_repo_also_blocked(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "real.txt").write_text("real content inside")
+        (repo / "link.txt").symlink_to(repo / "real.txt")
+        context, _ = build_repo_context(
+            str(repo), "goal", mentioned_files=["link.txt"]
+        )
+        assert "real content inside" not in context
+
+    def test_normal_mentioned_file_appears(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "main.py").write_text("normal python code")
+        context, cats = build_repo_context(
+            str(repo), "goal", mentioned_files=["main.py"]
+        )
+        assert "normal python code" in context
+        assert "mentioned_files" in cats
+
+    def test_context_has_reason_no_external_path(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("TOP SECRET")
+        (repo / "link.txt").symlink_to(secret)
+        context, _ = build_repo_context(
+            str(repo), "goal", mentioned_files=["link.txt"]
+        )
+        assert "repo_source_is_symlink" in context
+        assert str(secret) not in context
+
+
+# ---------------------------------------------------------------------------
+# Step 5045: context file tree symlink behavior tests
+# ---------------------------------------------------------------------------
+
+
+class TestFileTreeSymlinkBehavior:
+    def test_symlink_dir_not_traversed(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        external = tmp_path / "external"
+        external.mkdir()
+        (external / "secret.py").write_text("SECRET CODE")
+        (repo / "linked_dir").symlink_to(external)
+        (repo / "safe.py").write_text("ok")
+        context, _ = build_repo_context(str(repo), "goal")
+        assert "secret.py" not in context
+        assert "SECRET CODE" not in context
+        assert "safe.py" in context
+
+    def test_file_symlink_not_read(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("SECRET DATA 12345")
+        (repo / "link.txt").symlink_to(secret)
+        (repo / "real.py").write_text("real")
+        context, _ = build_repo_context(str(repo), "goal")
+        assert "SECRET DATA 12345" not in context
+        assert "link.txt" not in context or "repo_source_is_symlink" in context
+        assert "real.py" in context
+
+    def test_no_secret_in_safety_notes(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("SECRET")
+        (repo / "link.txt").symlink_to(secret)
+        context, _ = build_repo_context(str(repo), "goal")
+        assert str(secret) not in context
+
+    def test_normal_files_in_tree(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "main.py").write_text("code")
+        (repo / "utils.py").write_text("helpers")
+        context, _ = build_repo_context(str(repo), "goal")
+        assert "main.py" in context
+        assert "utils.py" in context
+
+
+# ---------------------------------------------------------------------------
+# Step 5046: _snapshot_target symlink safety tests
+# ---------------------------------------------------------------------------
+
+
+class TestSnapshotTargetSymlinkSafety:
+    def test_file_symlink_outside_skipped(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("SECRET HASH CONTENT")
+        (repo / "link.txt").symlink_to(secret)
+        (repo / "real.py").write_text("real content")
+        snap = _snapshot_target(repo)
+        assert "link.txt" not in snap
+        assert "real.py" in snap
+
+    def test_file_symlink_inside_skipped(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "real.py").write_text("real")
+        (repo / "alias.py").symlink_to(repo / "real.py")
+        snap = _snapshot_target(repo)
+        assert "alias.py" not in snap
+        assert "real.py" in snap
+
+    def test_parent_dir_symlink_not_traversed(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        external = tmp_path / "external"
+        external.mkdir()
+        (external / "data.py").write_text("external data")
+        (repo / "linked").symlink_to(external)
+        (repo / "safe.py").write_text("safe")
+        snap = _snapshot_target(repo)
+        assert "linked/data.py" not in snap
+        assert "safe.py" in snap
+
+    def test_normal_files_still_hashed(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "main.py").write_text("content")
+        snap = _snapshot_target(repo)
+        assert "main.py" in snap
+        import hashlib
+        expected = hashlib.sha256(b"content").digest()
+        assert snap["main.py"] == expected
+
+    def test_mutation_guard_detects_normal_change(self, tmp_path):
+        from packages.orchestration.pingpong_loop import _check_target_mutation
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "main.py").write_text("original")
+        before = _snapshot_target(repo)
+        (repo / "main.py").write_text("changed")
+        meaningful, _ = _check_target_mutation(repo, before)
+        assert "main.py" in meaningful
+
+
+# ---------------------------------------------------------------------------
+# Step 5047: token estimate symlink safety tests
+# ---------------------------------------------------------------------------
+
+
+class TestTokenEstimateSymlinkSafety:
+    def test_symlink_file_skipped(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        big_file = tmp_path / "big.txt"
+        big_file.write_text("X" * 100000)
+        (repo / "link.txt").symlink_to(big_file)
+        (repo / "real.py").write_text("small")
+        result = _estimate_full_repo_tokens(str(repo))
+        assert result["full_repo_files_estimated"] == 1
+        assert result["full_repo_files_skipped"] >= 1
+
+    def test_symlink_dir_not_traversed(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        external = tmp_path / "external"
+        external.mkdir()
+        for i in range(10):
+            (external / f"file{i}.py").write_text("x" * 1000)
+        (repo / "linked").symlink_to(external)
+        (repo / "safe.py").write_text("ok")
+        result = _estimate_full_repo_tokens(str(repo))
+        assert result["full_repo_files_estimated"] == 1
+
+    def test_normal_files_counted(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "a.py").write_text("aaa")
+        (repo / "b.py").write_text("bbb")
+        result = _estimate_full_repo_tokens(str(repo))
+        assert result["full_repo_files_estimated"] == 2
+
+    def test_no_outside_path_leaks(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("X" * 50000)
+        (repo / "link.txt").symlink_to(secret)
+        result = _estimate_full_repo_tokens(str(repo))
+        for v in result.values():
+            if isinstance(v, str):
+                assert str(secret) not in v
+
+
+# ---------------------------------------------------------------------------
+# Step 5048: run_pingpong prompt no-leak integration test
+# ---------------------------------------------------------------------------
+
+
+class TestRunPingpongPromptNoLeak:
+    def test_builder_prompt_no_symlink_content(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("SUPER SECRET CONTENT qwerty789")
+        (repo / "README.md").symlink_to(secret)
+        (repo / "main.py").write_text("normal code")
+        context, cats = build_repo_context(str(repo), "implement feature X")
+        from packages.orchestration.pingpong_loop import _build_builder_prompt
+        prompt = _build_builder_prompt("implement feature X", context)
+        assert "SUPER SECRET CONTENT" not in prompt
+        assert "qwerty789" not in prompt
+        assert "implement feature X" in prompt
+
+    def test_builder_prompt_no_mentioned_symlink_content(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        secret = tmp_path / "secret.txt"
+        secret.write_text("MENTIONED SECRET asdf456")
+        (repo / "config.txt").symlink_to(secret)
+        (repo / "safe.py").write_text("safe")
+        context, _ = build_repo_context(
+            str(repo), "goal", mentioned_files=["config.txt"]
+        )
+        prompt = _build_builder_prompt("goal", context)
+        assert "MENTIONED SECRET" not in prompt
+        assert "asdf456" not in prompt
+        assert "repo_source_is_symlink" in prompt
+
+    def test_builder_prompt_safe_context_present(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "main.py").write_text("normal safe code 12345")
+        context, _ = build_repo_context(
+            str(repo), "goal", mentioned_files=["main.py"]
+        )
+        prompt = _build_builder_prompt("goal", context)
+        assert "normal safe code 12345" in prompt
