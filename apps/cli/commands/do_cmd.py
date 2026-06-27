@@ -940,7 +940,7 @@ def _build_timeout_hint(
 
 def _build_final_audit(job: Any, promo: Any, evidence_out: str) -> dict[str, Any]:
     """Determine overall job-flow audit status."""
-    passed = sum(1 for t in job.tasks if t.status in ("applied", "skipped"))
+    passed = sum(1 for t in job.tasks if t.status in ("applied_to_job_workspace", "passed", "skipped"))
     blocked = sum(1 for t in job.tasks if t.status == "blocked")
     skipped = sum(1 for t in job.tasks if t.status == "skipped")
     pending = sum(1 for t in job.tasks if t.status == "pending")
@@ -964,9 +964,9 @@ def _build_final_audit(job: Any, promo: Any, evidence_out: str) -> dict[str, Any
     for t in job.tasks:
         if hasattr(t, "safe_diff_files") and t.safe_diff_files:
             changed_files.extend(t.safe_diff_files)
-        verdicts.append(f"T{t.task_id}: {t.reviewer_verdict or 'none'}")
+        verdicts.append(f"{t.task_id}: {t.reviewer_verdict or 'none'}")
         tp = "pass" if t.test_passed else ("fail" if t.test_passed is False else "not_run")
-        test_results.append(f"T{t.task_id}: {tp}")
+        test_results.append(f"{t.task_id}: {tp}")
 
     return {
         "status": status,

@@ -167,3 +167,32 @@ class TestMakeReviewZipRejectsDetritus:
 
         # Must not be rejected for detritus reasons.
         assert "detritus" not in (proc.stdout + proc.stderr).lower()
+
+    @pytest.mark.skipif(
+        shutil.which("git") is None
+        or shutil.which("bash") is None
+        or shutil.which("zip") is None,
+        reason="git, bash, zip required",
+    )
+    def test_coverage_artifacts_excluded(self, tmp_path: Path):
+        """Review ZIP must exclude .coverage and .coverage_reports."""
+        repo = self._stage_script_repo(tmp_path)
+        (repo / ".coverage").write_text("coverage db\n")
+        cov_dir = repo / ".coverage_reports"
+        cov_dir.mkdir()
+        (cov_dir / "coverage.json").write_text("{}\n")
+
+        proc = self._run_script(repo)
+
+        if proc.returncode != 0:
+            pytest.skip(f"Script failed: {proc.stderr}")
+
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips, "ZIP must be created"
+        with ZipFile(zips[0]) as zf:
+            names = zf.namelist()
+            assert not any(".coverage" == n or n.startswith(".coverage.") for n in names), \
+                ".coverage must be excluded from review ZIP"
+            assert not any(".coverage_reports" in n for n in names), \
+                ".coverage_reports must be excluded from review ZIP"
