@@ -811,8 +811,8 @@ class TestJobFlowEndToEnd:
         from apps.cli.commands.do_cmd import _sanitize_shareable_paths
         data = {"ref": "/tmp/remedy-job-evidence-abc123/manifest.json"}
         result = _sanitize_shareable_paths(data)
-        assert result["ref"] == "[evidence]/manifest.json", \
-            "R-4319: sanitizer must preserve artifact filename after evidence prefix"
+        assert result["ref"] == "evidence/current/manifest.json", \
+            "R-4327: evidence refs must use canonical evidence/current/ prefix"
 
     def test_sanitizer_preserves_staging_subpath(self):
         from apps.cli.commands.do_cmd import _sanitize_shareable_paths
@@ -836,7 +836,7 @@ class TestJobFlowEndToEnd:
         raw = json.dumps(manifest)
         parsed = json.loads(raw)
         assert parsed["bundle_kind"] == "remedy_review_zip"
-        assert parsed["bundle_version"] == 7
+        assert parsed["bundle_version"] == 8
         assert "generated_at" in parsed
 
     def test_manifest_builder_with_evidence(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
@@ -862,3 +862,72 @@ class TestJobFlowEndToEnd:
         for name in expected:
             assert (ev / name).exists(), \
                 f"R-4318: {name} must exist in evidence dir"
+
+    # --- R-4321: review_state in manifest ------------------------------------
+
+    def test_manifest_has_review_state(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        from scripts.build_review_manifest import build_manifest
+        manifest = build_manifest(evidence_dir=str(ev))
+        rs = manifest["review_state"]
+        assert "latest_live_review_verdict" in rs
+        assert "open_findings" in rs
+        assert "builder_handoff_present" in rs
+        assert "review_ready" in rs
+        assert "review_state_source" in rs
+        assert "plan_step_range" in rs
+        assert "plan_goal_present" in rs
+
+    # --- R-4322: review_subject classification --------------------------------
+
+    def test_manifest_has_review_subject(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        from scripts.build_review_manifest import build_manifest
+        manifest = build_manifest(evidence_dir=str(ev))
+        rs = manifest["review_subject"]
+        assert rs["kind"] in (
+            "clean_commit", "dirty_working_tree", "feature_branch",
+            "merged_main", "unknown",
+        )
+        assert "branch" in rs
+        assert "commit" in rs
+        assert "dirty_files" in rs
+        assert "has_untracked_files" in rs
+        assert "has_commits" in rs
+        assert "human_summary" in rs
+
+    def test_manifest_bundle_version_8(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        from scripts.build_review_manifest import build_manifest
+        manifest = build_manifest(evidence_dir=str(ev))
+        assert manifest["bundle_version"] == 8
+
+    # --- R-4327: canonical artifact refs --------------------------------------
+
+    def test_evidence_ref_canonical(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"ref": "/tmp/remedy-job-evidence-abc123/manifest.json"}
+        result = _sanitize_shareable_paths(data)
+        assert result["ref"] == "evidence/current/manifest.json", \
+            "R-4327: evidence refs must use canonical evidence/current/ prefix"
+
+    def test_evidence_ref_task_run_canonical(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"ref": "/tmp/remedy-job-evidence-abc123/task_runs/T001/review.json"}
+        result = _sanitize_shareable_paths(data)
+        assert result["ref"] == "evidence/current/task_runs/T001/review.json"
+
+    def test_evidence_bundle_path_canonical_in_stdout(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=ev, extra=["--json"])
+        data = json.loads(out)
+        ebp = data.get("evidence_bundle_path", "")
+        assert ebp.startswith("evidence/current") or ebp == "", \
+            "R-4327: evidence_bundle_path in stdout must use canonical ref"

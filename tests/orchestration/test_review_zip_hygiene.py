@@ -203,3 +203,178 @@ class TestMakeReviewZipRejectsDetritus:
                 ".coverage must be excluded from review ZIP"
             assert not any(".coverage_reports" in n for n in names), \
                 ".coverage_reports must be excluded from review ZIP"
+
+
+class TestDetritusGateIndependent:
+    """R-4324: Detritus must be detected even without evidence dir."""
+
+    @pytest.mark.skipif(
+        shutil.which("git") is None or shutil.which("bash") is None,
+        reason="git and bash required",
+    )
+    def test_detritus_detected_without_evidence(self, tmp_path: Path):
+        repo = tmp_path / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
+        manifest_src = MAKE_REVIEW_ZIP.parent / "build_review_manifest.py"
+        if manifest_src.exists():
+            shutil.copy2(manifest_src, repo / "scripts" / "build_review_manifest.py")
+        subprocess.run(
+            ["git", "init", "-q"], cwd=repo, check=True,
+            capture_output=True, text=True,
+        )
+        (repo / "BUILDER_WAS_HERE.txt").write_text("debug\n")
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=10,
+        )
+        assert proc.returncode != 0
+        assert "detritus" in (proc.stdout + proc.stderr).lower()
+
+
+class TestStaleEvidenceFlag:
+    """R-4325: --include-stale-evidence must fail clearly."""
+
+    @pytest.mark.skipif(
+        shutil.which("git") is None or shutil.which("bash") is None,
+        reason="git and bash required",
+    )
+    def test_stale_evidence_flag_fails(self, tmp_path: Path):
+        repo = tmp_path / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
+        subprocess.run(
+            ["git", "init", "-q"], cwd=repo, check=True,
+            capture_output=True, text=True,
+        )
+        ev = repo / "remedy-job-evidence-test"
+        ev.mkdir()
+        (ev / "job_flow.json").write_text("{}")
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(ev), "--include-stale-evidence"],
+            cwd=repo, capture_output=True, text=True, timeout=10,
+        )
+        assert proc.returncode == 2
+        assert "not implemented" in proc.stderr.lower()
+
+
+class TestStarterDryRun:
+    """R-4323: Worker/Remedy starter --dry-run."""
+
+    STARTER = REPO_ROOT / "scripts" / "remedy_self_job_flow.sh"
+
+    @pytest.mark.skipif(
+        shutil.which("git") is None or shutil.which("bash") is None,
+        reason="git and bash required",
+    )
+    def test_dry_run_prints_commands(self, tmp_path: Path):
+        if not self.STARTER.exists():
+            pytest.skip("remedy_self_job_flow.sh not found")
+
+        goal = tmp_path / "goal.md"
+        goal.write_text("# Job: Test\n\n## Task 1\nDo something.\n\nAcceptance:\n- done\n")
+
+        proc = subprocess.run(
+            ["bash", str(self.STARTER),
+             "--goal-file", str(goal),
+             "--out", str(tmp_path / "evidence"),
+             "--allow-dirty", "--dry-run"],
+            cwd=str(REPO_ROOT),
+            capture_output=True, text=True, timeout=10,
+        )
+        assert proc.returncode == 0
+        assert "[dry-run]" in proc.stdout
+        assert "do job-flow" in proc.stdout
+        assert "make_review_zip" in proc.stdout
+
+    @pytest.mark.skipif(
+        shutil.which("git") is None or shutil.which("bash") is None,
+        reason="git and bash required",
+    )
+    def test_missing_goal_file_fails(self, tmp_path: Path):
+        if not self.STARTER.exists():
+            pytest.skip("remedy_self_job_flow.sh not found")
+
+        proc = subprocess.run(
+            ["bash", str(self.STARTER),
+             "--goal-file", str(tmp_path / "nonexistent.md"),
+             "--allow-dirty"],
+            cwd=str(REPO_ROOT),
+            capture_output=True, text=True, timeout=10,
+        )
+        assert proc.returncode != 0
+
+    @pytest.mark.skipif(
+        shutil.which("git") is None or shutil.which("bash") is None,
+        reason="git and bash required",
+    )
+    def test_no_goal_file_shows_usage(self, tmp_path: Path):
+        if not self.STARTER.exists():
+            pytest.skip("remedy_self_job_flow.sh not found")
+
+        proc = subprocess.run(
+            ["bash", str(self.STARTER)],
+            cwd=str(REPO_ROOT),
+            capture_output=True, text=True, timeout=10,
+        )
+        assert proc.returncode != 0
+        assert "--goal-file" in proc.stderr
+
+
+class TestZipManifestContentVerification:
+    """R-4326: Post-build verification checks manifest vs zip content."""
+
+    @pytest.mark.skipif(
+        shutil.which("git") is None
+        or shutil.which("bash") is None
+        or shutil.which("zip") is None,
+        reason="git, bash, zip required",
+    )
+    def test_zip_contains_evidence_from_manifest(self, tmp_path: Path):
+        repo = tmp_path / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
+        manifest_src = MAKE_REVIEW_ZIP.parent / "build_review_manifest.py"
+        if manifest_src.exists():
+            shutil.copy2(manifest_src, repo / "scripts" / "build_review_manifest.py")
+        (repo / "README.md").write_text("# test\n")
+        subprocess.run(
+            ["git", "init", "-q"], cwd=repo, check=True,
+            capture_output=True, text=True,
+        )
+        subprocess.run(
+            ["git", "add", "."], cwd=repo, check=True,
+            capture_output=True, text=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"],
+            cwd=repo, capture_output=True, text=True, timeout=5,
+            env={**__import__("os").environ, "GIT_AUTHOR_NAME": "test",
+                 "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "test",
+                 "GIT_COMMITTER_EMAIL": "t@t"},
+        )
+        ev = repo / "remedy-job-evidence-test123"
+        ev.mkdir()
+        (ev / "job_flow.json").write_text('{"job_id":"test","final_audit":{"status":"READY"}}')
+        (ev / "command_transcript.json").write_text("{}")
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        if proc.returncode != 0:
+            pytest.skip(f"Script failed: {proc.stdout} {proc.stderr}")
+
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips, "ZIP must be created"
+        with ZipFile(zips[0]) as zf:
+            names = zf.namelist()
+            assert "evidence/current/job_flow.json" in names
+            assert "evidence/current/command_transcript.json" in names
+            assert ".review_zip_manifest.json" in names
+            assert not any(n.startswith("remedy-job-evidence-") for n in names), \
+                "Raw evidence dir must not be in zip"

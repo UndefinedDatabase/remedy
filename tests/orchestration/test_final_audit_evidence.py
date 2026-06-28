@@ -295,3 +295,109 @@ class TestCockpitBridgeAdapter:
         from packages.orchestration.ui_server import _resolve_evidence_dir
         result = _resolve_evidence_dir("nonexistent_job_id_12345678")
         assert result is None
+
+
+class TestReviewStateExtraction:
+    def test_pass_verdict_review_ready(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        agent_dir = tmp_path / ".agent"
+        agent_dir.mkdir()
+        (agent_dir / "live_review.md").write_text(
+            "# Live Review\n\n"
+            "## Verdict (reviewer-owned)\n"
+            "**PASS** @ abc123\n\n"
+            "---\n\n"
+            "## Builder Handoff — PR #100 merged\n\n"
+            "### Changed Files\n- foo.py\n"
+        )
+        (agent_dir / "plan.md").write_text(
+            "# Plan — Steps 100-120\n\n## Goal\nDo stuff.\n"
+        )
+        from scripts.build_review_manifest import _extract_review_state
+        rs = _extract_review_state()
+        assert rs["latest_live_review_verdict"] == "PASS"
+        assert rs["open_findings"] == []
+        assert rs["builder_handoff_present"] is True
+        assert rs["review_ready"] is True
+        assert rs["plan_step_range"] == "100-120"
+        assert rs["plan_goal_present"] is True
+
+    def test_pending_verdict_not_ready(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        agent_dir = tmp_path / ".agent"
+        agent_dir.mkdir()
+        (agent_dir / "live_review.md").write_text(
+            "# Live Review\n\n"
+            "## Verdict (reviewer-owned)\n"
+            "*(pending reviewer)*\n"
+        )
+        from scripts.build_review_manifest import _extract_review_state
+        rs = _extract_review_state()
+        assert rs["review_ready"] is False
+
+    def test_open_findings_not_ready(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        agent_dir = tmp_path / ".agent"
+        agent_dir.mkdir()
+        (agent_dir / "live_review.md").write_text(
+            "# Live Review\n\n"
+            "## Verdict (reviewer-owned)\n"
+            "**PASS** @ abc123\n\n"
+            "## Builder Handoff — PR merged\n\n"
+            "### R-9001 Blocker — something\n"
+            "Still open.\n"
+        )
+        from scripts.build_review_manifest import _extract_review_state
+        rs = _extract_review_state()
+        assert rs["review_ready"] is False
+        assert "R-9001" in rs["open_findings"]
+
+    def test_missing_handoff_not_ready(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        agent_dir = tmp_path / ".agent"
+        agent_dir.mkdir()
+        (agent_dir / "live_review.md").write_text(
+            "# Live Review\n\n"
+            "## Verdict (reviewer-owned)\n"
+            "**PASS** @ abc123\n"
+        )
+        from scripts.build_review_manifest import _extract_review_state
+        rs = _extract_review_state()
+        assert rs["review_ready"] is False
+        assert rs["builder_handoff_present"] is False
+
+
+class TestReviewSubjectClassification:
+    def test_clean_main(self):
+        from scripts.build_review_manifest import _classify_review_subject
+        rs = _classify_review_subject("main", "abc123def", [], False, True)
+        assert rs["kind"] == "clean_commit"
+        assert "Clean main" in rs["human_summary"]
+
+    def test_dirty_main(self):
+        from scripts.build_review_manifest import _classify_review_subject
+        rs = _classify_review_subject("main", "abc123def", ["M foo.py"], False, True)
+        assert rs["kind"] == "dirty_working_tree"
+        assert "Dirty" in rs["human_summary"]
+
+    def test_feature_branch(self):
+        from scripts.build_review_manifest import _classify_review_subject
+        rs = _classify_review_subject("feature/foo", "abc123def", [], False, True)
+        assert rs["kind"] == "feature_branch"
+
+    def test_dirty_feature_branch(self):
+        from scripts.build_review_manifest import _classify_review_subject
+        rs = _classify_review_subject("feature/bar", "abc", ["M x.py"], True, True)
+        assert rs["kind"] == "dirty_working_tree"
+        assert rs["has_untracked_files"] is True
+
+    def test_no_commits(self):
+        from scripts.build_review_manifest import _classify_review_subject
+        rs = _classify_review_subject("main", "unknown", [], False, False)
+        assert rs["kind"] == "unknown"
+        assert rs["degraded_metadata"] is True
+
+    def test_master_treated_as_main(self):
+        from scripts.build_review_manifest import _classify_review_subject
+        rs = _classify_review_subject("master", "abc123def", [], False, True)
+        assert rs["kind"] == "clean_commit"

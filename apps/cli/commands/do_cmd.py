@@ -1055,9 +1055,9 @@ def _build_final_audit(
 def _sanitize_shareable_paths(obj: Any) -> Any:
     """Recursively sanitize absolute private paths in shareable JSON.
 
-    Replaces private path prefixes with safe labels while preserving
-    useful trailing artifact names (e.g. /tmp/.../manifest.json becomes
-    [evidence]/manifest.json, not just [tmpdir]).
+    Replaces private path prefixes with canonical refs while preserving
+    trailing artifact names. Evidence paths become evidence/current/...,
+    staging becomes [staging]/..., other private paths become [local]/...
     """
     import re
 
@@ -1070,7 +1070,7 @@ def _sanitize_shareable_paths(obj: Any) -> Any:
 
     if isinstance(obj, str):
         obj = _STAGING_RE.sub("[staging]", obj)
-        obj = _EVIDENCE_RE.sub("[evidence]", obj)
+        obj = _EVIDENCE_RE.sub("evidence/current", obj)
         obj = _TMP_DIR_RE.sub("[tmpdir]", obj)
         obj = _HOME_RE.sub("[local]", obj)
         obj = _USERS_RE.sub("[local]", obj)
