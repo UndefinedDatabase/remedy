@@ -130,6 +130,7 @@ class TestFinalAuditEvidenceDerived:
     def test_explicit_overrides_for_availability(self, tmp_path):
         (tmp_path / "agent_run_trace_summary.json").write_text("{}")
         (tmp_path / "job_flow.json").write_text("{}")
+        (tmp_path / "manifest.json").write_text("{}")
 
         job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace")])
         promo = _FakePromo("dry_run")
@@ -141,6 +142,49 @@ class TestFinalAuditEvidenceDerived:
             token_summary={"provider_call_count": 1},
         )
         assert audit["status"] == "READY_FOR_APPROVAL"
+
+    def test_needs_review_when_manifest_missing(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text("{}")
+        (tmp_path / "agent_run_trace.jsonl").write_text("{}\n")
+        (tmp_path / "agent_run_trace_summary.json").write_text("{}")
+        (tmp_path / "job_flow.json").write_text("{}")
+
+        job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace", "pass")])
+        promo = _FakePromo("dry_run")
+        ts = {"provider_call_count": 2}
+
+        audit = _build_final_audit(job, promo, str(tmp_path), token_summary=ts)
+        assert audit["status"] == "NEEDS_REVIEW"
+        assert "manifest" in audit["missing_observability_artifacts"]
+
+    def test_needs_review_when_token_summary_missing(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text("{}")
+        (tmp_path / "agent_run_trace.jsonl").write_text("{}\n")
+        (tmp_path / "agent_run_trace_summary.json").write_text("{}")
+        (tmp_path / "job_flow.json").write_text("{}")
+        (tmp_path / "manifest.json").write_text("{}")
+
+        job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace", "pass")])
+        promo = _FakePromo("dry_run")
+
+        audit = _build_final_audit(job, promo, str(tmp_path))
+        assert audit["status"] == "NEEDS_REVIEW"
+        assert "token_summary" in audit["missing_observability_artifacts"]
+
+    def test_needs_review_when_token_summary_zero_calls(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text("{}")
+        (tmp_path / "agent_run_trace.jsonl").write_text("{}\n")
+        (tmp_path / "agent_run_trace_summary.json").write_text("{}")
+        (tmp_path / "job_flow.json").write_text("{}")
+        (tmp_path / "manifest.json").write_text("{}")
+
+        job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace", "pass")])
+        promo = _FakePromo("dry_run")
+        ts = {"provider_call_count": 0}
+
+        audit = _build_final_audit(job, promo, str(tmp_path), token_summary=ts)
+        assert audit["status"] == "NEEDS_REVIEW"
+        assert "token_summary" in audit["missing_observability_artifacts"]
 
 
 class TestSanitizeShareablePaths:

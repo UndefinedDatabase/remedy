@@ -452,7 +452,7 @@ class TestRedaction:
     def test_path_sanitization(self):
         """Absolute staging paths sanitized."""
         home = os.path.expanduser("~")
-        assert _sanitize_path(f"{home}/project").startswith("~")
+        assert _sanitize_path(f"{home}/project") == "[local]"
         assert _sanitize_path("/other/path") == "/other/path"
 
     def test_summary_md_no_absolute_staging_path(self):

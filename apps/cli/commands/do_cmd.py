@@ -988,6 +988,8 @@ def _build_final_audit(
     agent_run_trace_summary_available = ev_path.joinpath("agent_run_trace_summary.json").exists()
 
     missing_artifacts: list[str] = []
+    if not evidence_bundle_available:
+        missing_artifacts.append("manifest")
     if not prompt_trace_available:
         missing_artifacts.append("prompt_trace")
     if not agent_run_trace_available:
@@ -996,6 +998,8 @@ def _build_final_audit(
         missing_artifacts.append("agent_run_trace_summary")
     if not job_flow_json_available:
         missing_artifacts.append("job_flow_json")
+    if not token_summary_available:
+        missing_artifacts.append("token_summary")
 
     if all_passed and promote_ready and not missing_artifacts:
         status = "READY_FOR_APPROVAL"
@@ -1090,7 +1094,7 @@ def _persist_evidence_index(job_id: str, evidence_out: str, trace_summary: dict)
             "job_id": job_id,
             "evidence_dir_local": str(ev_path),
             "has_agent_run_trace": (ev_path / "agent_run_trace.jsonl").exists(),
-            "has_job_flow_json": True,
+            "has_job_flow_json": (ev_path / "job_flow.json").exists(),
             "created_at": datetime.now(timezone.utc).isoformat(),
             "source_command": "do.job-flow",
         }
@@ -1488,10 +1492,7 @@ def _cmd_do_job_flow(
         json.dumps(run_trace_summary, indent=2) + "\n"
     )
 
-    # --- 8. Persist evidence index for cockpit bridge ---
-    _persist_evidence_index(job_id, evidence_out, run_trace_summary)
-
-    # --- 9. Persist job_flow.json to evidence output ---
+    # --- 8. Persist job_flow.json to evidence output ---
     flow_result = {
         "command": "do.job-flow",
         "job_id": job_id,
@@ -1510,8 +1511,12 @@ def _cmd_do_job_flow(
 
     _persist_job_flow_json(flow_result, evidence_out)
 
+    # --- 9. Persist evidence index for cockpit bridge (after job_flow.json) ---
+    _persist_evidence_index(job_id, evidence_out, run_trace_summary)
+
     if json_output:
-        print(json.dumps(flow_result, indent=2))
+        safe_result = _sanitize_shareable_paths(flow_result)
+        print(json.dumps(safe_result, indent=2))
         return
 
     print(f"Job flow: {job_file}")
