@@ -682,27 +682,40 @@ Builder must NOT mark findings as resolved.
 Timestamp: 2026-06-28
 
 ## Verdict (reviewer-owned)
-**PENDING** — awaiting builder implementation.
+**PASS** @ 8560d45 (PR #109, merged)
+All 6 findings (R-4308 through R-4313) verified fixed.
+8243 passed, 5 pre-existing failures. Zero new regressions. Lint clean.
+2 smoke tests (custom --out + default). Review zip manifest v6 verified.
 
 ## Findings
 
 ### R-4308 Medium — test_path_sanitization regression
-**Open.** Carried from prior block. Builder must update test to expect `[local]`.
+**Resolved.** Test updated to `assert _sanitize_path(f"{home}/project") == "[local]"`. Passes.
 
 ### R-4309 Low — plan.md missing step range
-**Open.** Carried from prior block. Builder must include step range in plan title.
+**Resolved.** Plan.md title now "Steps 5121-5140: Audit + Zip Truth Closure v1". All 3 plan.md tests pass.
 
 ### R-4310 Medium — Final audit not fully fail-closed
-**Open.** Awaiting builder implementation. Must reject `READY_FOR_APPROVAL` when any required artifact missing.
+**Resolved.** `manifest` and `token_summary` added to `missing_artifacts` checks in `_build_final_audit()`. Missing manifest → `NEEDS_REVIEW`. Missing/zero-call token_summary → `NEEDS_REVIEW`. 3 new unit tests + 1 new E2E test. 12/12 audit evidence tests pass, 63/63 E2E tests pass.
 
 ### R-4311 Medium — Evidence index overclaims has_job_flow_json
-**Open.** Awaiting builder implementation. Must reflect actual disk state after persistence.
+**Resolved.** `_persist_evidence_index()` moved from step 8 to step 9 (AFTER `_persist_job_flow_json()`). `has_job_flow_json` changed from hardcoded `True` to `(ev_path / "job_flow.json").exists()`. E2E test `test_evidence_index_has_job_flow_json_true` verifies both the index claim AND the actual disk file.
 
 ### R-4312 Medium — do job-flow --json stdout leaks paths
-**Open.** Awaiting builder implementation. Shareable fields must not leak local paths.
+**Resolved.** `_sanitize_shareable_paths(flow_result)` applied before `json.dumps()` to stdout. E2E test `test_json_stdout_no_private_paths` confirms zero hits for `/home/`, `/Users/`, `/private/`, `remedy-pingpong`. `test_json_stdout_tmp_paths_sanitized` checks approve command. Both smokes: zero path leaks in stdout JSON via grep.
 
 ### R-4313 Medium — Review zip/bundle missing observability surface
-**Open.** Awaiting builder implementation. Must include or account for all listed artifacts.
+**Resolved.** `make_review_zip.sh` v6 manifest now includes:
+- `agent_state`: `.agent/live_review.md`, `.agent/plan.md`, `.agent/review_protocol.md` — all present
+- `evidence_root`: `job_flow.json`, `agent_run_trace.jsonl`, `agent_run_trace_summary.json`, `prompt_trace_summary.json`, `manifest.json` — all present
+- `task_runs`: per-task `prompt_trace.jsonl`, `prompt_trace_summary.json`, `review.json`, `repair_loop.json`, `token_accounting.json`, `provider_evidence.json` — all present for T001
+- `dirty_files`: git porcelain output
+- `branch`, `commit`: HEAD metadata
+- Evidence dir files included in zip (24 files under `tmp/.../evidence/`)
+- Bundle version bumped from 5 to 6
+
+### R-4314 Low (NEW) — Review zip evidence_dir field exposes local path
+**Open (documented).** Manifest `evidence_dir` field contains raw local path (e.g. `/tmp/reviewer_smoke_A/evidence`). Zip file paths also include local evidence dir structure. Acceptable for a local-only review artifact — not a cloud-shared API output. No action required.
 
 ## Builder Handoff — Audit + Zip Truth Closure v1
 
@@ -746,3 +759,103 @@ PR: #109 merged at 8560d45
 
 ### Verdict
 **PENDING** — Builder does NOT write reviewer verdicts. Reviewer must independently assess PR #109.
+
+## Reviewer Evidence
+
+### Focused Tests
+- `test_path_sanitization`: PASS (R-4308)
+- 3x plan.md step range tests: PASS (R-4309)
+- 26/26 `test_final_audit_evidence.py`: PASS (R-4310, includes 3 new fail-closed tests)
+- 63/63 `tests/test_do_job_flow.py`: PASS (R-4310/R-4311/R-4312, includes 4 new E2E tests)
+
+### Smoke Tests
+- **Smoke A** (custom `--out /tmp/reviewer_smoke_A/evidence` + `--json`):
+  - `READY_FOR_APPROVAL`, `missing_observability_artifacts: []`
+  - `evidence_bundle_available: True`, `token_summary_available: True`, `job_flow_json_available: True`
+  - Evidence index: `has_job_flow_json: true` (disk-verified), `has_agent_run_trace: true`
+  - `trace_sources: ["reconstructed"]`
+  - Target unchanged: `a13285ce...` before = after
+  - Path hygiene: zero hits for `/tmp/`, `/home/`, `/Users/`, `/private/`, `remedy-pingpong` in stdout JSON
+  - All 24 evidence files present: job_flow.json, agent_run_trace.jsonl, agent_run_trace_summary.json, prompt_trace_summary.json, manifest.json, + 10 task-level artifacts
+- **Smoke B** (default dir + `--json`):
+  - `READY_FOR_APPROVAL`, `missing_observability_artifacts: []`
+  - Target unchanged: same hash before = after
+  - Path hygiene: zero leaks
+
+### Review Zip Verification (R-4313)
+- Zip generated with `make_review_zip.sh /tmp/reviewer_smoke_A/evidence`
+- 862 files in zip, 24 evidence-related files included
+- Manifest v6: all 3 agent state files present, all 5 evidence root artifacts present, T001 task-level inventory all present
+- `branch`, `commit`, `dirty_files` metadata present
+- `.agent/live_review.md`, `.agent/plan.md`, `.agent/review_protocol.md` confirmed IN ZIP
+
+### Full Test Suite
+```
+8243 passed, 5 failed, 8 skipped (292.27s)
+```
+Pre-existing failures only:
+- `test_self_dogfood_execution_cli.py::test_status_and_reconcile_json`
+- `test_project_brain.py::test_full_chain_order`
+- `test_wrapper_behavior.py` x2 (lock contention)
+
+### Lint
+`ruff check` on all 4 Python files: All checks passed.
+`bash -n` on `make_review_zip.sh`: Syntax OK.
+
+### Safety Invariants
+- `may_mutate_repo=False` for `do.run` (inherited default)
+- No `auto_approve` in `do_cmd.py`
+- No `git push/commit/reset/checkout` or `subprocess.*git` in production code
+- Target repo unchanged in both smokes
+- Builder wrote `PENDING`, did not write verdict, did not mark findings resolved
+
+### Protocol Compliance
+- Builder did NOT write reviewer verdict — ✅
+- Builder did NOT mark findings as Resolved — ✅
+- Builder did NOT self-merge (PR #109 merged separately) — ✅
+
+### Acceptance Question
+> Is Remedy now safe enough to move back toward Worker/Remedy mode?
+
+**Yes.** The audit infrastructure is now truthful:
+- Final audit is fail-closed — every missing artifact blocks `READY_FOR_APPROVAL`
+- Evidence index is disk-derived, not assumed
+- Stdout JSON is sanitized for sharing
+- Agent Run Trace events are honestly labeled as `reconstructed`
+- Dashboard derives from actual events, not fabricated phases
+- Review zip covers the full observability surface with explicit presence/absence accounting
+- Evidence bundle includes all task-level artifacts (prompt trace, review, repair loop, tokens, provider evidence)
+
+The remaining gap (R-4314 Low — review zip local path in metadata) is cosmetic and expected for a local-only artifact.
+
+---
+
+# Live Review — Review Zip Current-Run Contract + Worker/Remedy Starter Prep v1
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-28
+
+## Verdict (reviewer-owned)
+**PENDING** — awaiting builder implementation.
+
+## Findings
+
+### R-4315 Medium — Review zip manifest must identify current evidence run
+**Open.** Awaiting builder implementation.
+
+### R-4316 Medium — Review zip must not silently include stale evidence dirs
+**Open.** Awaiting builder implementation.
+
+### R-4317 Medium — Manifest must be valid JSON in fresh git init repo
+**Open.** Awaiting builder implementation.
+
+### R-4318 Medium — Evidence must use stable prefix not tmp/home paths
+**Open.** Awaiting builder implementation.
+
+### R-4319 Medium — Artifact refs must preserve filenames not collapse to [tmpdir]
+**Open.** Awaiting builder implementation.
+
+### R-4320 Medium — Command transcript must be included or accounted for
+**Open.** Awaiting builder implementation.

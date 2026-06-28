@@ -2281,9 +2281,12 @@ class TestReviewZipHygiene:
                  "GIT_COMMITTER_EMAIL": "t@t"},
         )
         (fake_repo / "BUILDER_WAS_HERE.txt").write_text("debug\n")
+        ev_dir = fake_repo / "remedy-job-evidence-test"
+        ev_dir.mkdir()
+        (ev_dir / "job_flow.json").write_text("{}")
 
         result = subprocess.run(
-            ["bash", str(script)],
+            ["bash", str(script), "--evidence-dir", str(ev_dir)],
             cwd=str(fake_repo),
             capture_output=True, text=True, timeout=10,
         )

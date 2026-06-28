@@ -1055,20 +1055,23 @@ def _build_final_audit(
 def _sanitize_shareable_paths(obj: Any) -> Any:
     """Recursively sanitize absolute private paths in shareable JSON.
 
-    Catches /tmp/*, /home/*, /Users/*, /private/* to prevent leaking
-    local filesystem structure in shareable evidence bundles.
+    Replaces private path prefixes with safe labels while preserving
+    useful trailing artifact names (e.g. /tmp/.../manifest.json becomes
+    [evidence]/manifest.json, not just [tmpdir]).
     """
     import re
 
-    _STAGING_RE = re.compile(r"/tmp/remedy-pingpong-[a-f0-9]+[^\s\"']*")
-    _TMP_RE = re.compile(r"/tmp/[a-zA-Z0-9._-]+[^\s\"']*")
-    _HOME_RE = re.compile(r"/home/[a-zA-Z0-9._-]+[^\s\"']*")
-    _USERS_RE = re.compile(r"/Users/[a-zA-Z0-9._-]+[^\s\"']*")
-    _PRIVATE_RE = re.compile(r"/private/[a-zA-Z0-9._-]+[^\s\"']*")
+    _STAGING_RE = re.compile(r"/tmp/remedy-pingpong-[a-f0-9]+")
+    _EVIDENCE_RE = re.compile(r"/tmp/remedy-job-evidence-[a-f0-9]+")
+    _TMP_DIR_RE = re.compile(r"/tmp/[a-zA-Z0-9._-]+")
+    _HOME_RE = re.compile(r"/home/[a-zA-Z0-9._-]+")
+    _USERS_RE = re.compile(r"/Users/[a-zA-Z0-9._-]+")
+    _PRIVATE_RE = re.compile(r"/private/[a-zA-Z0-9._-]+")
 
     if isinstance(obj, str):
         obj = _STAGING_RE.sub("[staging]", obj)
-        obj = _TMP_RE.sub("[tmpdir]", obj)
+        obj = _EVIDENCE_RE.sub("[evidence]", obj)
+        obj = _TMP_DIR_RE.sub("[tmpdir]", obj)
         obj = _HOME_RE.sub("[local]", obj)
         obj = _USERS_RE.sub("[local]", obj)
         obj = _PRIVATE_RE.sub("[local]", obj)
@@ -1113,6 +1116,48 @@ def _persist_job_flow_json(flow_result: dict, evidence_out: str) -> None:
     target = out_path / "job_flow.json"
     sanitized = _sanitize_shareable_paths(flow_result)
     target.write_text(json.dumps(sanitized, indent=2) + "\n")
+
+
+def _persist_command_transcript(
+    job_id: str,
+    evidence_out: str,
+    flow_result: dict,
+    repo: str,
+    started_at: str,
+    target_hash_before: str,
+    target_hash_after: str,
+) -> None:
+    """Write command_transcript.json to evidence output directory."""
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    transcript = {
+        "command_id": "do.job-flow",
+        "argv_safe": "remedy do job-flow --job-file <job> --repo <repo> --out <evidence>",
+        "repo_ref_safe": "<repo>",
+        "evidence_ref": "evidence/current",
+        "json_stdout_preview_safe": _sanitize_shareable_paths({
+            "command": flow_result.get("command", "do.job-flow"),
+            "job_id": job_id,
+            "status": flow_result.get("final_audit", {}).get("status", "unknown"),
+            "promote_ready": flow_result.get("promote_ready", False),
+            "next_approve_command_safe": flow_result.get("next_approve_command_safe", ""),
+        }),
+        "stderr_ref": "",
+        "exit_code": 0,
+        "started_at": started_at,
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "target_repo_hash_before": target_hash_before,
+        "target_repo_hash_after": target_hash_after,
+        "target_repo_mutated": target_hash_before != target_hash_after,
+        "data_root_ref_safe": "<data>",
+        "review_zip_hint": "scripts/make_review_zip.sh --evidence-dir <evidence>",
+    }
+    out_path = Path(evidence_out).resolve()
+    out_path.mkdir(parents=True, exist_ok=True)
+    (out_path / "command_transcript.json").write_text(
+        json.dumps(transcript, indent=2) + "\n"
+    )
 
 
 def _print_token_summary(ts: dict) -> None:
@@ -1384,6 +1429,10 @@ def _cmd_do_job_flow(
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(2)
 
+    import hashlib as _hashlib
+    from datetime import datetime, timezone
+    from pathlib import Path as _RepoPath
+
     from packages.orchestration.pingpong_job import (
         export_job_report,
         format_job_report_text,
@@ -1391,6 +1440,25 @@ def _cmd_do_job_flow(
         plan_job_from_file,
         run_job,
     )
+
+    # --- 0. Capture start state for command transcript ---
+    _started_at = datetime.now(timezone.utc).isoformat()
+
+    def _quick_repo_hash(repo_dir: str) -> str:
+        h = _hashlib.sha256()
+        rp = _RepoPath(repo_dir)
+        if not rp.is_dir():
+            return "missing"
+        for p in sorted(rp.rglob("*")):
+            if p.is_file() and ".git" not in p.parts:
+                h.update(p.relative_to(rp).as_posix().encode())
+                try:
+                    h.update(p.read_bytes())
+                except OSError:
+                    pass
+        return h.hexdigest()[:16]
+
+    _repo_hash_before = _quick_repo_hash(repo)
 
     # --- 1. job-plan ---
     job = plan_job_from_file(job_file, repo)
@@ -1513,6 +1581,13 @@ def _cmd_do_job_flow(
 
     # --- 9. Persist evidence index for cockpit bridge (after job_flow.json) ---
     _persist_evidence_index(job_id, evidence_out, run_trace_summary)
+
+    # --- 10. Persist command transcript ---
+    _repo_hash_after = _quick_repo_hash(repo)
+    _persist_command_transcript(
+        job_id, evidence_out, flow_result, repo,
+        _started_at, _repo_hash_before, _repo_hash_after,
+    )
 
     if json_output:
         safe_result = _sanitize_shareable_paths(flow_result)

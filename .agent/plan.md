@@ -1,18 +1,22 @@
-# Plan — Steps 5121-5140: Audit + Zip Truth Closure v1
+# Plan — Steps 5141-5170: Review Zip Current-Run Contract + Worker/Remedy Starter Prep v1
 
 ## Goal
-Fix 6 acceptance gaps (R-4308 through R-4313) to make final audit fail-closed,
-evidence index truthful, stdout JSON shareable, and review zip complete.
+Fix R-4315..R-4320. Make review zip current-run-centered, generate valid JSON
+manifest via Python, add command transcript, fix artifact ref sanitization,
+add Worker/Remedy starter docs.
 
 ## Current Step
-Step 5121: Implement R-4308 (test fix), R-4309 (plan.md step range), R-4310 (fail-closed audit)
+Step 5170: Verification complete. Committing and creating PR.
 
-## Next Steps
-- R-4311: Fix evidence index ordering
-- R-4312: Separate local/shareable fields in stdout JSON
-- R-4313: Review zip observability manifest
-- Tests + verification
-- Handoff
+## Completed
+- R-4315: Command transcript persisted with safe fields + repo hashes
+- R-4316: Python manifest builder (always-valid JSON, bundle v7)
+- R-4317: Review zip rewritten for current-run contract (evidence/current/ prefix)
+- R-4318: All observability artifacts verified present after persist
+- R-4319: Sanitizer preserves artifact names (prefix-only replacement)
+- R-4320: Worker/Remedy starter script (scripts/remedy_self_job_flow.sh)
+- Detritus check moved before manifest build in make_review_zip.sh
+- Tests: 340 focused tests pass, 8255+ full suite pass (1 pre-existing failure)
 
 ## Constraints
 No auto-approval, no target mutation, no git ops, no UI mutation,

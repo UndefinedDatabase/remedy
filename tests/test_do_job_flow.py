@@ -762,3 +762,103 @@ class TestJobFlowEndToEnd:
         if nac:
             assert "/tmp/" not in nac or "[tmpdir]" in nac or "[staging]" in nac, \
                 "R-4312: next_approve_command must have sanitized paths"
+
+    # --- R-4315: command transcript persisted ---------------------------------
+
+    def test_command_transcript_persisted(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct_file = ev / "command_transcript.json"
+        assert ct_file.exists(), "R-4315: command_transcript.json must be persisted"
+        ct = json.loads(ct_file.read_text())
+        assert ct["command_id"] == "do.job-flow"
+        assert ct["exit_code"] == 0
+        assert ct["target_repo_mutated"] is False
+        assert ct["evidence_ref"] == "evidence/current"
+
+    def test_command_transcript_no_private_paths(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        raw = json.dumps(ct)
+        for pat in ["/home/", "/Users/", "/private/"]:
+            assert pat not in raw, \
+                f"R-4315: command transcript must not contain '{pat}'"
+
+    def test_command_transcript_has_repo_hashes(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        assert len(ct["target_repo_hash_before"]) == 16
+        assert len(ct["target_repo_hash_after"]) == 16
+        assert ct["target_repo_hash_before"] == ct["target_repo_hash_after"], \
+            "R-4315: fake provider must not mutate target repo"
+
+    def test_command_transcript_timestamps(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        assert ct["started_at"]
+        assert ct["finished_at"]
+
+    # --- R-4319: artifact refs preserve filenames ----------------------------
+
+    def test_sanitizer_preserves_evidence_artifact_name(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"ref": "/tmp/remedy-job-evidence-abc123/manifest.json"}
+        result = _sanitize_shareable_paths(data)
+        assert result["ref"] == "[evidence]/manifest.json", \
+            "R-4319: sanitizer must preserve artifact filename after evidence prefix"
+
+    def test_sanitizer_preserves_staging_subpath(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"ref": "/tmp/remedy-pingpong-abc123/staging/file.py"}
+        result = _sanitize_shareable_paths(data)
+        assert result["ref"] == "[staging]/staging/file.py", \
+            "R-4319: sanitizer must preserve subpath after staging prefix"
+
+    def test_sanitizer_preserves_home_subpath(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"ref": "/home/alice/project/src/main.py"}
+        result = _sanitize_shareable_paths(data)
+        assert result["ref"] == "[local]/project/src/main.py", \
+            "R-4319: sanitizer must preserve subpath after home prefix"
+
+    # --- R-4316: manifest builder valid JSON ----------------------------------
+
+    def test_manifest_builder_valid_json(self, tmp_path):
+        from scripts.build_review_manifest import build_manifest
+        manifest = build_manifest(evidence_dir=None)
+        raw = json.dumps(manifest)
+        parsed = json.loads(raw)
+        assert parsed["bundle_kind"] == "remedy_review_zip"
+        assert parsed["bundle_version"] == 7
+        assert "generated_at" in parsed
+
+    def test_manifest_builder_with_evidence(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        from scripts.build_review_manifest import build_manifest
+        manifest = build_manifest(evidence_dir=str(ev))
+        assert manifest["current_evidence"] is not None
+        assert manifest["current_evidence"]["zip_prefix"] == "evidence/current"
+        assert "job_flow.json" in manifest["current_evidence"]["root_artifacts"]
+
+    # --- R-4318: observability gate complete after persist ----------------------
+
+    def test_all_observability_artifacts_exist(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        expected = [
+            "job_flow.json", "agent_run_trace.jsonl",
+            "agent_run_trace_summary.json", "command_transcript.json",
+        ]
+        for name in expected:
+            assert (ev / name).exists(), \
+                f"R-4318: {name} must exist in evidence dir"

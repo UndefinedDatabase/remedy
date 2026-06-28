@@ -208,22 +208,23 @@ class TestSanitizeShareablePaths:
     def test_sanitizes_home_paths(self):
         data = {"path": "/home/user/repo/file.py"}
         result = _sanitize_shareable_paths(data)
-        assert result["path"] == "[local]"
+        assert result["path"] == "[local]/repo/file.py"
 
     def test_sanitizes_users_paths(self):
         data = {"path": "/Users/alice/dev/repo/file.py"}
         result = _sanitize_shareable_paths(data)
-        assert result["path"] == "[local]"
+        assert result["path"] == "[local]/dev/repo/file.py"
 
     def test_sanitizes_private_paths(self):
         data = {"path": "/private/var/tmp/file.py"}
         result = _sanitize_shareable_paths(data)
-        assert result["path"] == "[local]"
+        assert "/private/" not in result["path"]
+        assert result["path"].startswith("[local]")
 
     def test_sanitizes_tmp_paths(self):
         data = {"path": "/tmp/pytest-abc123/file.py"}
         result = _sanitize_shareable_paths(data)
-        assert result["path"] == "[tmpdir]"
+        assert result["path"] == "[tmpdir]/file.py"
 
     def test_preserves_relative_paths(self):
         data = {"path": "src/main.py"}

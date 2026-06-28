@@ -118,7 +118,13 @@ class TestMakeReviewZipRejectsDetritus:
         repo = tmp_path / "ziprepo"
         (repo / "scripts").mkdir(parents=True)
         shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
+        manifest_src = MAKE_REVIEW_ZIP.parent / "build_review_manifest.py"
+        if manifest_src.exists():
+            shutil.copy2(manifest_src, repo / "scripts" / "build_review_manifest.py")
         (repo / "README.md").write_text("# tmp\n")
+        ev_dir = repo / "remedy-job-evidence-test"
+        ev_dir.mkdir()
+        (ev_dir / "job_flow.json").write_text("{}")
         # git init only — no commit/push/reset/checkout.
         subprocess.run(
             ["git", "init", "-q"], cwd=repo, check=True,
@@ -127,8 +133,9 @@ class TestMakeReviewZipRejectsDetritus:
         return repo
 
     def _run_script(self, repo: Path) -> subprocess.CompletedProcess:
+        ev_dir = repo / "remedy-job-evidence-test"
         return subprocess.run(
-            ["bash", "scripts/make_review_zip.sh"],
+            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev_dir)],
             cwd=repo, capture_output=True, text=True, timeout=60,
         )
 
