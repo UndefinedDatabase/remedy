@@ -10,6 +10,7 @@ OUT="remedy-review-${STAMP}.zip"
 # Parse arguments
 EVIDENCE_DIR=""
 SELECTION_MODE=""
+ALLOW_INCOMPLETE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -17,6 +18,10 @@ while [[ $# -gt 0 ]]; do
       EVIDENCE_DIR="$2"
       SELECTION_MODE="explicit"
       shift 2
+      ;;
+    --allow-incomplete-evidence)
+      ALLOW_INCOMPLETE=true
+      shift
       ;;
     --include-stale-evidence)
       echo "--include-stale-evidence is not implemented yet." >&2
@@ -44,10 +49,57 @@ if [[ -n "$DETRITUS" ]]; then
   exit 1
 fi
 
+# --- Candidate validation helper ---
+validate_candidate() {
+  local cdir="$1"
+  python3 -c "
+import json, os, sys
+d = sys.argv[1]
+REQUIRED_ROOT = ['job_flow.json','manifest.json','agent_run_trace.jsonl',
+    'agent_run_trace_summary.json','prompt_trace_summary.json','command_transcript.json']
+REQUIRED_TASK = ['prompt_trace.jsonl','prompt_trace_summary.json','review.json',
+    'repair_loop.json','token_accounting.json','provider_evidence.json']
+errors = []
+for art in REQUIRED_ROOT:
+    if not os.path.isfile(os.path.join(d, art)):
+        errors.append(f'missing: {art}')
+jf = os.path.join(d, 'job_flow.json')
+job_id = ''
+if os.path.isfile(jf):
+    try:
+        data = json.load(open(jf))
+        job_id = data.get('job_id', '')
+        if not job_id: errors.append('empty job_id')
+        audit = data.get('final_audit', {})
+        if not audit.get('status'): errors.append('no final_audit.status')
+        if audit.get('missing_observability_artifacts'): errors.append('missing_observability_artifacts')
+        if data.get('target_guard',{}).get('mutated_target'): errors.append('target_mutation')
+    except: errors.append('job_flow.json parse error')
+else:
+    job_id = ''
+tr_dir = os.path.join(d, 'task_runs')
+task_count = 0
+if os.path.isdir(tr_dir):
+    for entry in sorted(os.listdir(tr_dir)):
+        tp = os.path.join(tr_dir, entry)
+        if not os.path.isdir(tp): continue
+        task_count += 1
+        for art in REQUIRED_TASK:
+            if not os.path.isfile(os.path.join(tp, art)):
+                errors.append(f'task_runs/{entry}: missing {art}')
+if task_count == 0: errors.append('no task runs')
+valid = 'valid' if not errors else 'incomplete'
+reason = '; '.join(errors[:3]) if errors else ''
+if len(errors) > 3: reason += f' (+{len(errors)-3} more)'
+print(f'{valid}|{job_id}|{reason}')
+" "$cdir"
+}
+
 # --- Evidence selection ---
 SELECTED_MTIME=""
 CANDIDATE_COUNT=0
 SELECTION_REASON=""
+REJECTED_COUNT=0
 
 if [[ -z "$EVIDENCE_DIR" ]]; then
   # Discover candidates
@@ -63,25 +115,34 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
     echo "Usage: $0 --evidence-dir <path>"
     echo "  or:  $0 <evidence-dir>"
     exit 2
-  elif [[ $CANDIDATE_COUNT -eq 1 ]]; then
-    EVIDENCE_DIR="${CANDIDATES[0]}"
-    SELECTION_MODE="auto_latest"
-    SELECTION_REASON="single_candidate"
-    echo "Auto-selected evidence dir: $EVIDENCE_DIR"
-  else
-    # Multiple candidates — auto-select newest valid by artifact mtime
-    ARTIFACT_NAMES=("job_flow.json" "command_transcript.json" "agent_run_trace.jsonl" "agent_run_trace_summary.json" "prompt_trace_summary.json" "manifest.json")
+  fi
 
-    BEST_DIR=""
-    BEST_MTIME="0"
-    BEST_REASON=""
-    TIE_WARNING=""
+  # Required root artifacts for auto-selection
+  ARTIFACT_NAMES=("job_flow.json" "command_transcript.json" "agent_run_trace.jsonl" "agent_run_trace_summary.json" "prompt_trace_summary.json" "manifest.json")
 
-    for cdir in "${CANDIDATES[@]}"; do
+  # Validate all candidates and print summary table
+  echo "Evidence candidate summary:"
+  printf "  %-45s %-12s %-12s %s\n" "PATH" "STATUS" "JOB_ID" "REASON"
+  printf "  %-45s %-12s %-12s %s\n" "----" "------" "------" "------"
+
+  VALID_DIRS=()
+  VALID_MTIMES=()
+  VALID_REASONS=()
+
+  for cdir in "${CANDIDATES[@]}"; do
+    VRESULT="$(validate_candidate "$cdir")"
+    VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
+    VJOB_ID="$(echo "$VRESULT" | cut -d'|' -f2)"
+    VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
+
+    rel="$(echo "$cdir" | sed 's#^\./##')"
+    printf "  %-45s %-12s %-12s %s\n" "$rel" "$VSTATUS" "${VJOB_ID:-(none)}" "$VREASON"
+
+    if [[ "$VSTATUS" == "valid" ]]; then
+      # Compute mtime for ranking
       DIR_MTIME="0"
       DIR_REASON=""
 
-      # Prefer job_flow.json mtime
       if [[ -f "$cdir/job_flow.json" ]]; then
         JF_MTIME="$(stat -c '%Y' "$cdir/job_flow.json" 2>/dev/null || stat -f '%m' "$cdir/job_flow.json" 2>/dev/null || echo 0)"
         if [[ "$JF_MTIME" -gt "$DIR_MTIME" ]]; then
@@ -90,7 +151,6 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
         fi
       fi
 
-      # Fallback: newest artifact mtime
       if [[ "$DIR_MTIME" == "0" ]]; then
         for art in "${ARTIFACT_NAMES[@]}"; do
           if [[ -f "$cdir/$art" ]]; then
@@ -103,45 +163,68 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
         done
       fi
 
-      # Fallback: directory mtime
       if [[ "$DIR_MTIME" == "0" ]]; then
         DIR_MTIME="$(stat -c '%Y' "$cdir" 2>/dev/null || stat -f '%m' "$cdir" 2>/dev/null || echo 0)"
         DIR_REASON="dir_mtime"
       fi
 
-      if [[ "$DIR_MTIME" -gt "$BEST_MTIME" ]]; then
+      VALID_DIRS+=("$cdir")
+      VALID_MTIMES+=("$DIR_MTIME")
+      VALID_REASONS+=("$DIR_REASON")
+    else
+      REJECTED_COUNT=$((REJECTED_COUNT + 1))
+    fi
+  done
+
+  echo ""
+
+  VALID_COUNT=${#VALID_DIRS[@]}
+
+  if [[ $VALID_COUNT -eq 0 ]]; then
+    echo "No valid complete evidence among $CANDIDATE_COUNT candidate(s)."
+    echo "All candidates are incomplete or malformed."
+    echo ""
+    echo "To produce valid evidence, run:"
+    echo "  ./scripts/remedy_self_job_flow.sh --goal-file <goal.md>"
+    echo ""
+    echo "To use incomplete evidence for debugging:"
+    echo "  $0 --evidence-dir <path> --allow-incomplete-evidence"
+    exit 2
+  fi
+
+  # Select newest valid candidate
+  BEST_DIR=""
+  BEST_MTIME="0"
+  BEST_REASON=""
+  TIE_WARNING=""
+
+  for i in "${!VALID_DIRS[@]}"; do
+    cdir="${VALID_DIRS[$i]}"
+    DIR_MTIME="${VALID_MTIMES[$i]}"
+    DIR_REASON="${VALID_REASONS[$i]}"
+
+    if [[ "$DIR_MTIME" -gt "$BEST_MTIME" ]]; then
+      BEST_DIR="$cdir"
+      BEST_MTIME="$DIR_MTIME"
+      BEST_REASON="$DIR_REASON"
+      TIE_WARNING=""
+    elif [[ "$DIR_MTIME" == "$BEST_MTIME" && "$DIR_MTIME" != "0" ]]; then
+      if [[ "$cdir" > "$BEST_DIR" ]]; then
         BEST_DIR="$cdir"
-        BEST_MTIME="$DIR_MTIME"
         BEST_REASON="$DIR_REASON"
-        TIE_WARNING=""
-      elif [[ "$DIR_MTIME" == "$BEST_MTIME" && "$DIR_MTIME" != "0" ]]; then
-        # Tie — use reverse lexicographic order (newest id tends to sort last)
-        if [[ "$cdir" > "$BEST_DIR" ]]; then
-          BEST_DIR="$cdir"
-          BEST_REASON="$DIR_REASON"
-        fi
-        TIE_WARNING="Warning: timestamps tied between candidates. Used deterministic tie-breaker (lexicographic path order)."
       fi
-    done
-
-    if [[ -z "$BEST_DIR" ]]; then
-      echo "No valid evidence dirs found among $CANDIDATE_COUNT candidates."
-      echo "All candidate dirs are empty or malformed."
-      exit 2
+      TIE_WARNING="Warning: timestamps tied between candidates. Used deterministic tie-breaker (lexicographic path order)."
     fi
+  done
 
-    EVIDENCE_DIR="$BEST_DIR"
-    SELECTION_MODE="auto_latest"
-    SELECTION_REASON="latest_valid_modified_time"
-    if [[ -n "$BEST_REASON" ]]; then
-      SELECTION_REASON="$BEST_REASON"
-    fi
-    SELECTED_MTIME="$(date -d "@$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -r "$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$BEST_MTIME")"
+  EVIDENCE_DIR="$BEST_DIR"
+  SELECTION_MODE="auto_latest"
+  SELECTION_REASON="${BEST_REASON:-latest_valid_modified_time}"
+  SELECTED_MTIME="$(date -d "@$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -r "$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$BEST_MTIME")"
 
-    echo "Auto-selected latest evidence dir: $EVIDENCE_DIR"
-    if [[ -n "$TIE_WARNING" ]]; then
-      echo "$TIE_WARNING"
-    fi
+  echo "Auto-selected latest valid evidence dir: $EVIDENCE_DIR"
+  if [[ -n "$TIE_WARNING" ]]; then
+    echo "$TIE_WARNING"
   fi
 fi
 
@@ -150,11 +233,29 @@ if [[ ! -d "$EVIDENCE_DIR" ]]; then
   exit 2
 fi
 
-# Set defaults for selection metadata if explicit
+# --- Validate selected evidence ---
 if [[ "$SELECTION_MODE" == "explicit" ]]; then
   SELECTION_REASON="explicit_override"
   CANDIDATE_COUNT=0
   SELECTED_MTIME=""
+
+  VRESULT="$(validate_candidate "$EVIDENCE_DIR")"
+  VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
+  VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
+
+  if [[ "$VSTATUS" != "valid" ]]; then
+    if [[ "$ALLOW_INCOMPLETE" == "true" ]]; then
+      echo "Warning: selected evidence is incomplete: $VREASON"
+      echo "Proceeding with --allow-incomplete-evidence (debug mode)."
+      SELECTION_REASON="explicit_incomplete_override"
+    else
+      echo "Selected evidence is incomplete: $VREASON"
+      echo ""
+      echo "To use incomplete evidence for debugging:"
+      echo "  $0 --evidence-dir $EVIDENCE_DIR --allow-incomplete-evidence"
+      exit 2
+    fi
+  fi
 fi
 
 TMP="$(mktemp)"
@@ -240,6 +341,7 @@ python3 scripts/build_review_manifest.py \
   --selection-mode "${SELECTION_MODE:-auto_latest}" \
   --selection-reason "${SELECTION_REASON:-unknown}" \
   --candidate-count "$CANDIDATE_COUNT" \
+  --rejected-candidate-count "$REJECTED_COUNT" \
   --selected-mtime "${SELECTED_MTIME:-}" \
   --output "$MANIFEST"
 
@@ -300,7 +402,7 @@ if [[ -n "$BAD" ]]; then
 fi
 
 # 2. Verify no raw evidence paths leaked
-LEAKED="$(echo "$ZIP_LISTING" | grep -E '^(tmp/|home/|Users/|private/|remedy-job-evidence-)' || true)"
+LEAKED="$(echo "$ZIP_LISTING" | grep -E '^(tmp/|home/|Users/|private/|mnt/|remedy-job-evidence-)' || true)"
 if [[ -n "$LEAKED" ]]; then
   echo "Local path structure leaked into zip:"
   echo "$LEAKED"
