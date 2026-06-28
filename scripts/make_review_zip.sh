@@ -6,14 +6,83 @@ cd "$ROOT"
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT="remedy-review-${STAMP}.zip"
-EVIDENCE_DIR="${1:-}"
+
+# Parse arguments
+EVIDENCE_DIR=""
+INCLUDE_STALE=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --evidence-dir)
+      EVIDENCE_DIR="$2"
+      shift 2
+      ;;
+    --include-stale-evidence)
+      INCLUDE_STALE=true
+      shift
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      exit 2
+      ;;
+    *)
+      # Positional arg = evidence dir (backward compat)
+      EVIDENCE_DIR="$1"
+      shift
+      ;;
+  esac
+done
+
+# --- Current-run evidence selection ---
+if [[ -z "$EVIDENCE_DIR" ]]; then
+  # Auto-detect: look for remedy-job-evidence-* dirs
+  CANDIDATES=()
+  while IFS= read -r -d '' dir; do
+    CANDIDATES+=("$dir")
+  done < <(find . -maxdepth 1 -type d -name 'remedy-job-evidence-*' -print0 2>/dev/null | sort -z)
+
+  if [[ ${#CANDIDATES[@]} -eq 0 ]]; then
+    echo "No evidence dir provided and no remedy-job-evidence-* dirs found."
+    echo "Usage: $0 --evidence-dir <path>"
+    echo "  or:  $0 <evidence-dir>"
+    exit 2
+  elif [[ ${#CANDIDATES[@]} -eq 1 ]]; then
+    EVIDENCE_DIR="${CANDIDATES[0]}"
+    echo "Auto-detected evidence dir: $EVIDENCE_DIR"
+  else
+    echo "Multiple evidence dirs found. Select one with --evidence-dir:"
+    for c in "${CANDIDATES[@]}"; do
+      echo "  $c"
+    done
+    exit 2
+  fi
+fi
+
+if [[ ! -d "$EVIDENCE_DIR" ]]; then
+  echo "Evidence dir does not exist: $EVIDENCE_DIR" >&2
+  exit 2
+fi
+
+# Fail fast on known debug/test detritus in repo root
+DETRITUS="$(find . -maxdepth 1 -name '*_WAS_HERE.txt' -o -name 'BUILDER_WAS_HERE.txt' -o -name 'REVIEWER_WAS_HERE.txt' 2>/dev/null | sed 's#^\./##' || true)"
+if [[ -n "$DETRITUS" ]]; then
+  echo "Debug/test detritus found in repo root — remove before review zip:"
+  echo "$DETRITUS"
+  exit 1
+fi
 
 TMP="$(mktemp)"
 MANIFEST=".review_zip_manifest.json"
 trap 'rm -f "$TMP" "$MANIFEST"' EXIT
 
-# Include whole relevant folders, tracked AND untracked.
-# Exclude only junk, caches, build output, env/secrets, old archives/logs.
+# --- Build file list: repo files (excluding evidence dirs and junk) ---
+EVIDENCE_EXCLUDE_ARGS=()
+# Always exclude all remedy-job-evidence-* dirs from repo scan
+while IFS= read -r -d '' dir; do
+  rel="$(echo "$dir" | sed 's#^\./##')"
+  EVIDENCE_EXCLUDE_ARGS+=(-path "./$rel" -o)
+done < <(find . -maxdepth 1 -type d -name 'remedy-job-evidence-*' -print0 2>/dev/null | sort -z)
+
 find . \
   \( \
     -path './.git' -o \
@@ -43,7 +112,9 @@ find . \
     -path './.tox' -o \
     -path './*/.tox' -o \
     -path './.coverage_reports' -o \
-    -path './*/.coverage_reports' \
+    -path './*/.coverage_reports' -o \
+    "${EVIDENCE_EXCLUDE_ARGS[@]}" \
+    -false \
   \) -prune -o \
   -type f \
   ! -name '.coverage' \
@@ -78,106 +149,54 @@ find . \
   | sed 's#^\./##' \
   | sort -u > "$TMP"
 
-BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
-COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
-DIRTY="$(git status --porcelain 2>/dev/null | head -20 || echo unknown)"
-
-# --- Build observability artifact checklist ---
-_check() { if [[ -f "$1" ]]; then echo "present"; else echo "absent"; fi; }
-
-AGENT_LIVE_REVIEW="$(_check ".agent/live_review.md")"
-AGENT_PLAN="$(_check ".agent/plan.md")"
-AGENT_REVIEW_PROTOCOL="$(_check ".agent/review_protocol.md")"
-
-# Evidence dir artifacts (optional — only checked when evidence dir provided)
-EV_JOB_FLOW="absent_no_evidence_dir"
-EV_AGENT_TRACE="absent_no_evidence_dir"
-EV_AGENT_TRACE_SUMMARY="absent_no_evidence_dir"
-EV_PROMPT_TRACE_SUMMARY="absent_no_evidence_dir"
-EV_MANIFEST="absent_no_evidence_dir"
-
-if [[ -n "$EVIDENCE_DIR" && -d "$EVIDENCE_DIR" ]]; then
-  EV_JOB_FLOW="$(_check "$EVIDENCE_DIR/job_flow.json")"
-  EV_AGENT_TRACE="$(_check "$EVIDENCE_DIR/agent_run_trace.jsonl")"
-  EV_AGENT_TRACE_SUMMARY="$(_check "$EVIDENCE_DIR/agent_run_trace_summary.json")"
-  EV_PROMPT_TRACE_SUMMARY="$(_check "$EVIDENCE_DIR/prompt_trace_summary.json")"
-  EV_MANIFEST="$(_check "$EVIDENCE_DIR/manifest.json")"
-
-  # Include evidence dir files in zip (under evidence/ prefix)
-  if [[ -d "$EVIDENCE_DIR" ]]; then
-    find "$EVIDENCE_DIR" -type f \
-      ! -name '*.pyc' ! -name '*.pyo' \
-      -print \
-      | sort -u >> "$TMP"
-    sort -u "$TMP" -o "$TMP"
-  fi
-fi
-
-# Task run artifacts (scan evidence dir for task_runs/)
-TASK_RUN_ARTIFACTS="[]"
-if [[ -n "$EVIDENCE_DIR" && -d "$EVIDENCE_DIR/task_runs" ]]; then
-  TASK_RUN_ARTIFACTS="["
-  FIRST=true
-  for task_dir in "$EVIDENCE_DIR/task_runs"/*/; do
-    [[ -d "$task_dir" ]] || continue
-    task_name="$(basename "$task_dir")"
-    $FIRST || TASK_RUN_ARTIFACTS+=","
-    FIRST=false
-    TASK_RUN_ARTIFACTS+="{"
-    TASK_RUN_ARTIFACTS+="\"task\":\"$task_name\""
-    TASK_RUN_ARTIFACTS+=",\"prompt_trace\":\"$(_check "${task_dir}prompt_trace.jsonl")\""
-    TASK_RUN_ARTIFACTS+=",\"prompt_trace_summary\":\"$(_check "${task_dir}prompt_trace_summary.json")\""
-    TASK_RUN_ARTIFACTS+=",\"review\":\"$(_check "${task_dir}review.json")\""
-    TASK_RUN_ARTIFACTS+=",\"repair_loop\":\"$(_check "${task_dir}repair_loop.json")\""
-    TASK_RUN_ARTIFACTS+=",\"token_accounting\":\"$(_check "${task_dir}token_accounting.json")\""
-    TASK_RUN_ARTIFACTS+=",\"provider_evidence\":\"$(_check "${task_dir}provider_evidence.json")\""
-    TASK_RUN_ARTIFACTS+="}"
-  done
-  TASK_RUN_ARTIFACTS+="]"
-fi
-
-cat > "$MANIFEST" <<MANIFEST_EOF
-{
-  "bundle_kind": "remedy_review_zip",
-  "bundle_version": 6,
-  "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "branch": "$BRANCH",
-  "commit": "$COMMIT",
-  "dirty_files": $(echo "$DIRTY" | python3 -c 'import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))' 2>/dev/null || echo '[]'),
-  "evidence_dir": "$(echo "$EVIDENCE_DIR")",
-  "policy": "Includes whole relevant project folders, tracked and untracked. Excludes .git, .data, node_modules, caches, build outputs, env files, private keys, logs, old archives.",
-  "required_observability_artifacts": {
-    "agent_state": {
-      ".agent/live_review.md": "$AGENT_LIVE_REVIEW",
-      ".agent/plan.md": "$AGENT_PLAN",
-      ".agent/review_protocol.md": "$AGENT_REVIEW_PROTOCOL"
-    },
-    "evidence_root": {
-      "job_flow.json": "$EV_JOB_FLOW",
-      "agent_run_trace.jsonl": "$EV_AGENT_TRACE",
-      "agent_run_trace_summary.json": "$EV_AGENT_TRACE_SUMMARY",
-      "prompt_trace_summary.json": "$EV_PROMPT_TRACE_SUMMARY",
-      "manifest.json": "$EV_MANIFEST"
-    },
-    "task_runs": $TASK_RUN_ARTIFACTS
-  }
-}
-MANIFEST_EOF
+# --- Build manifest using Python (always-valid JSON) ---
+python3 scripts/build_review_manifest.py \
+  --evidence-dir "$EVIDENCE_DIR" \
+  --output "$MANIFEST"
 
 echo "$MANIFEST" >> "$TMP"
+
+# --- Include current evidence under evidence/current/ prefix ---
+EVIDENCE_STAGING="$(mktemp -d)"
+trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$MANIFEST"' EXIT
+
+CURRENT_PREFIX="evidence/current"
+mkdir -p "$EVIDENCE_STAGING/$CURRENT_PREFIX"
+
+# Copy evidence files into stable prefix
+find "$EVIDENCE_DIR" -type f \
+  ! -name '*.pyc' ! -name '*.pyo' \
+  -print0 \
+| while IFS= read -r -d '' src; do
+    rel="${src#$EVIDENCE_DIR/}"
+    dest="$EVIDENCE_STAGING/$CURRENT_PREFIX/$rel"
+    mkdir -p "$(dirname "$dest")"
+    cp "$src" "$dest"
+  done
+
+# Add evidence/current/* to file list
+find "$EVIDENCE_STAGING" -type f -print \
+  | sed "s#^${EVIDENCE_STAGING}/##" \
+  | sort -u >> "$TMP"
+
 sort -u "$TMP" -o "$TMP"
 
-# Fail fast on known debug/test detritus in repo root
-DETRITUS="$(find . -maxdepth 1 -name '*_WAS_HERE.txt' -o -name 'BUILDER_WAS_HERE.txt' -o -name 'REVIEWER_WAS_HERE.txt' 2>/dev/null | sed 's#^\./##' || true)"
-if [[ -n "$DETRITUS" ]]; then
-  echo "Debug/test detritus found in repo root — remove before review zip:"
-  echo "$DETRITUS"
-  exit 1
-fi
-
+# --- Create zip from both repo root and evidence staging ---
 rm -f "$OUT"
-zip -q -@ "$OUT" < "$TMP"
 
+# First add repo files
+cd "$ROOT"
+grep -v '^evidence/current/' "$TMP" | zip -q -@ "$OUT" 2>/dev/null || true
+
+# Then add evidence/current/ files from staging dir
+cd "$EVIDENCE_STAGING"
+find evidence/current -type f | zip -q -@ "$ROOT/$OUT" -g 2>/dev/null || true
+
+# Then add manifest
+cd "$ROOT"
+echo "$MANIFEST" | zip -q -@ "$OUT" -g 2>/dev/null || true
+
+# Verify no unsafe files
 BAD="$(unzip -Z1 "$OUT" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv|htmlcov|\.tox|\.coverage_reports)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$|(^|/)\.coverage$|(^|/)coverage\.xml$' || true)"
 if [[ -n "$BAD" ]]; then
   echo "Unsafe file found in zip:"
@@ -186,12 +205,22 @@ if [[ -n "$BAD" ]]; then
   exit 1
 fi
 
+# Verify no raw evidence paths leaked (should all be under evidence/current/)
+LEAKED="$(unzip -Z1 "$OUT" | grep -E '^(tmp/|home/|Users/|private/|remedy-job-evidence-)' || true)"
+if [[ -n "$LEAKED" ]]; then
+  echo "Local path structure leaked into zip:"
+  echo "$LEAKED"
+  rm -f "$OUT"
+  exit 1
+fi
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null | head -1 || echo unknown)"
+COMMIT="$(git rev-parse HEAD 2>/dev/null | head -1 || echo unknown)"
+
 echo "Created: $ROOT/$OUT"
 du -h "$OUT"
 echo
-echo "Included files: $(wc -l < "$TMP" | tr -d ' ')"
+echo "Included files: $(unzip -Z1 "$OUT" | wc -l | tr -d ' ')"
 echo "Branch: $BRANCH"
 echo "Commit: $COMMIT"
-if [[ -n "$EVIDENCE_DIR" ]]; then
-  echo "Evidence dir: $EVIDENCE_DIR"
-fi
+echo "Evidence: $CURRENT_PREFIX/"
