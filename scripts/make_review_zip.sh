@@ -9,12 +9,13 @@ OUT="remedy-review-${STAMP}.zip"
 
 # Parse arguments
 EVIDENCE_DIR=""
-INCLUDE_STALE=false
+SELECTION_MODE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --evidence-dir)
       EVIDENCE_DIR="$2"
+      SELECTION_MODE="explicit"
       shift 2
       ;;
     --include-stale-evidence)
@@ -29,6 +30,7 @@ while [[ $# -gt 0 ]]; do
     *)
       # Positional arg = evidence dir (backward compat)
       EVIDENCE_DIR="$1"
+      SELECTION_MODE="explicit"
       shift
       ;;
   esac
@@ -42,33 +44,117 @@ if [[ -n "$DETRITUS" ]]; then
   exit 1
 fi
 
-# --- Current-run evidence selection ---
+# --- Evidence selection ---
+SELECTED_MTIME=""
+CANDIDATE_COUNT=0
+SELECTION_REASON=""
+
 if [[ -z "$EVIDENCE_DIR" ]]; then
+  # Discover candidates
   CANDIDATES=()
   while IFS= read -r -d '' dir; do
     CANDIDATES+=("$dir")
   done < <(find . -maxdepth 1 -type d -name 'remedy-job-evidence-*' -print0 2>/dev/null | sort -z)
 
-  if [[ ${#CANDIDATES[@]} -eq 0 ]]; then
+  CANDIDATE_COUNT=${#CANDIDATES[@]}
+
+  if [[ $CANDIDATE_COUNT -eq 0 ]]; then
     echo "No evidence dir provided and no remedy-job-evidence-* dirs found."
     echo "Usage: $0 --evidence-dir <path>"
     echo "  or:  $0 <evidence-dir>"
     exit 2
-  elif [[ ${#CANDIDATES[@]} -eq 1 ]]; then
+  elif [[ $CANDIDATE_COUNT -eq 1 ]]; then
     EVIDENCE_DIR="${CANDIDATES[0]}"
-    echo "Auto-detected evidence dir: $EVIDENCE_DIR"
+    SELECTION_MODE="auto_latest"
+    SELECTION_REASON="single_candidate"
+    echo "Auto-selected evidence dir: $EVIDENCE_DIR"
   else
-    echo "Multiple evidence dirs found. Select one with --evidence-dir:"
-    for c in "${CANDIDATES[@]}"; do
-      echo "  $c"
+    # Multiple candidates — auto-select newest valid by artifact mtime
+    ARTIFACT_NAMES=("job_flow.json" "command_transcript.json" "agent_run_trace.jsonl" "agent_run_trace_summary.json" "prompt_trace_summary.json" "manifest.json")
+
+    BEST_DIR=""
+    BEST_MTIME="0"
+    BEST_REASON=""
+    TIE_WARNING=""
+
+    for cdir in "${CANDIDATES[@]}"; do
+      DIR_MTIME="0"
+      DIR_REASON=""
+
+      # Prefer job_flow.json mtime
+      if [[ -f "$cdir/job_flow.json" ]]; then
+        JF_MTIME="$(stat -c '%Y' "$cdir/job_flow.json" 2>/dev/null || stat -f '%m' "$cdir/job_flow.json" 2>/dev/null || echo 0)"
+        if [[ "$JF_MTIME" -gt "$DIR_MTIME" ]]; then
+          DIR_MTIME="$JF_MTIME"
+          DIR_REASON="job_flow_json_mtime"
+        fi
+      fi
+
+      # Fallback: newest artifact mtime
+      if [[ "$DIR_MTIME" == "0" ]]; then
+        for art in "${ARTIFACT_NAMES[@]}"; do
+          if [[ -f "$cdir/$art" ]]; then
+            ART_MTIME="$(stat -c '%Y' "$cdir/$art" 2>/dev/null || stat -f '%m' "$cdir/$art" 2>/dev/null || echo 0)"
+            if [[ "$ART_MTIME" -gt "$DIR_MTIME" ]]; then
+              DIR_MTIME="$ART_MTIME"
+              DIR_REASON="artifact_mtime"
+            fi
+          fi
+        done
+      fi
+
+      # Fallback: directory mtime
+      if [[ "$DIR_MTIME" == "0" ]]; then
+        DIR_MTIME="$(stat -c '%Y' "$cdir" 2>/dev/null || stat -f '%m' "$cdir" 2>/dev/null || echo 0)"
+        DIR_REASON="dir_mtime"
+      fi
+
+      if [[ "$DIR_MTIME" -gt "$BEST_MTIME" ]]; then
+        BEST_DIR="$cdir"
+        BEST_MTIME="$DIR_MTIME"
+        BEST_REASON="$DIR_REASON"
+        TIE_WARNING=""
+      elif [[ "$DIR_MTIME" == "$BEST_MTIME" && "$DIR_MTIME" != "0" ]]; then
+        # Tie — use reverse lexicographic order (newest id tends to sort last)
+        if [[ "$cdir" > "$BEST_DIR" ]]; then
+          BEST_DIR="$cdir"
+          BEST_REASON="$DIR_REASON"
+        fi
+        TIE_WARNING="Warning: timestamps tied between candidates. Used deterministic tie-breaker (lexicographic path order)."
+      fi
     done
-    exit 2
+
+    if [[ -z "$BEST_DIR" ]]; then
+      echo "No valid evidence dirs found among $CANDIDATE_COUNT candidates."
+      echo "All candidate dirs are empty or malformed."
+      exit 2
+    fi
+
+    EVIDENCE_DIR="$BEST_DIR"
+    SELECTION_MODE="auto_latest"
+    SELECTION_REASON="latest_valid_modified_time"
+    if [[ -n "$BEST_REASON" ]]; then
+      SELECTION_REASON="$BEST_REASON"
+    fi
+    SELECTED_MTIME="$(date -d "@$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -r "$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$BEST_MTIME")"
+
+    echo "Auto-selected latest evidence dir: $EVIDENCE_DIR"
+    if [[ -n "$TIE_WARNING" ]]; then
+      echo "$TIE_WARNING"
+    fi
   fi
 fi
 
 if [[ ! -d "$EVIDENCE_DIR" ]]; then
   echo "Evidence dir does not exist: $EVIDENCE_DIR" >&2
   exit 2
+fi
+
+# Set defaults for selection metadata if explicit
+if [[ "$SELECTION_MODE" == "explicit" ]]; then
+  SELECTION_REASON="explicit_override"
+  CANDIDATE_COUNT=0
+  SELECTED_MTIME=""
 fi
 
 TMP="$(mktemp)"
@@ -151,6 +237,10 @@ find . \
 # --- Build manifest using Python (always-valid JSON) ---
 python3 scripts/build_review_manifest.py \
   --evidence-dir "$EVIDENCE_DIR" \
+  --selection-mode "${SELECTION_MODE:-auto_latest}" \
+  --selection-reason "${SELECTION_REASON:-unknown}" \
+  --candidate-count "$CANDIDATE_COUNT" \
+  --selected-mtime "${SELECTED_MTIME:-}" \
   --output "$MANIFEST"
 
 echo "$MANIFEST" >> "$TMP"
@@ -197,9 +287,11 @@ cd "$ROOT"
 zip -q "$OUT" "$MANIFEST" -g
 
 # --- Post-build verification ---
+# Capture listing once to avoid SIGPIPE from grep -q killing unzip under pipefail
+ZIP_LISTING="$(unzip -Z1 "$OUT")"
 
 # 1. Verify no unsafe files
-BAD="$(unzip -Z1 "$OUT" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv|htmlcov|\.tox|\.coverage_reports)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$|(^|/)\.coverage$|(^|/)coverage\.xml$' || true)"
+BAD="$(echo "$ZIP_LISTING" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv|htmlcov|\.tox|\.coverage_reports)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$|(^|/)\.coverage$|(^|/)coverage\.xml$' || true)"
 if [[ -n "$BAD" ]]; then
   echo "Unsafe file found in zip:"
   echo "$BAD"
@@ -208,7 +300,7 @@ if [[ -n "$BAD" ]]; then
 fi
 
 # 2. Verify no raw evidence paths leaked
-LEAKED="$(unzip -Z1 "$OUT" | grep -E '^(tmp/|home/|Users/|private/|remedy-job-evidence-)' || true)"
+LEAKED="$(echo "$ZIP_LISTING" | grep -E '^(tmp/|home/|Users/|private/|remedy-job-evidence-)' || true)"
 if [[ -n "$LEAKED" ]]; then
   echo "Local path structure leaked into zip:"
   echo "$LEAKED"
@@ -219,7 +311,6 @@ fi
 # 3. Verify manifest content against zip
 VERIFY_ERRORS=""
 
-# Check agent_state files match manifest claims
 for AGENT_FILE in .agent/live_review.md .agent/plan.md .agent/review_protocol.md; do
   MANIFEST_STATUS="$(python3 -c "
 import json, sys
@@ -227,30 +318,30 @@ m = json.load(open('$MANIFEST'))
 print(m.get('agent_state', {}).get('$AGENT_FILE', 'absent'))
 " 2>/dev/null || echo "error")"
   if [[ "$MANIFEST_STATUS" == "present" ]]; then
-    if ! unzip -Z1 "$OUT" | grep -qF "$AGENT_FILE"; then
+    if ! echo "$ZIP_LISTING" | grep -qF "$AGENT_FILE"; then
       VERIFY_ERRORS="${VERIFY_ERRORS}Manifest says $AGENT_FILE present but missing from zip\n"
     fi
   fi
 done
 
-# Check evidence artifacts marked present exist under evidence/current/
 if python3 -c "import json; m=json.load(open('$MANIFEST')); exit(0 if m.get('current_evidence') else 1)" 2>/dev/null; then
-  python3 -c "
+  EXPECTED_EVIDENCE="$(python3 -c "
 import json, sys
 m = json.load(open('$MANIFEST'))
 ce = m.get('current_evidence', {})
 for name, status in ce.get('root_artifacts', {}).items():
     if status == 'present':
         print(f'evidence/current/{name}')
-" 2>/dev/null | while read -r expected; do
-    if ! unzip -Z1 "$OUT" | grep -qF "$expected"; then
+" 2>/dev/null || true)"
+  while read -r expected; do
+    [[ -z "$expected" ]] && continue
+    if ! echo "$ZIP_LISTING" | grep -qF "$expected"; then
       VERIFY_ERRORS="${VERIFY_ERRORS}Manifest says $expected present but missing from zip\n"
     fi
-  done
+  done <<< "$EXPECTED_EVIDENCE"
 fi
 
-# Check no stale evidence dirs included
-STALE_EV="$(unzip -Z1 "$OUT" | grep -E '^remedy-job-evidence-' || true)"
+STALE_EV="$(echo "$ZIP_LISTING" | grep -E '^remedy-job-evidence-' || true)"
 if [[ -n "$STALE_EV" ]]; then
   VERIFY_ERRORS="${VERIFY_ERRORS}Stale evidence dir included in zip: $STALE_EV\n"
 fi
@@ -268,7 +359,7 @@ COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 echo "Created: $ROOT/$OUT"
 du -h "$OUT"
 echo
-echo "Included files: $(unzip -Z1 "$OUT" | wc -l | tr -d ' ')"
+echo "Included files: $(echo "$ZIP_LISTING" | wc -l | tr -d ' ')"
 echo "Branch: $BRANCH"
 echo "Commit: $COMMIT"
 echo "Evidence: $CURRENT_PREFIX/"
