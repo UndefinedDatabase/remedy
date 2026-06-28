@@ -1,18 +1,25 @@
-# Plan — Steps 5231-5260: Valid Latest Evidence Selection + Reviewer-Ready Bundle Gate v1
+# Plan — Steps 5261-5270: Non-Blocking Evidence Validation
 
 ## Goal
-Implement strict evidence candidate validation, reviewer-ready bundle gate,
-manifest validation section, path sanitizer hardening, and comprehensive tests.
+Make evidence validation in make_review_zip.sh informational only.
+Always select newest evidence by mtime. Always create zip.
+Validation status recorded in manifest for reviewer, never blocks operator.
 
 ## Current Step
-Step 5231: Add evidence validation to build_review_manifest.py
+Step 5265: Implementation complete, tests passing, smoke test passed.
+
+## Completed
+- Auto-selection ranks ALL candidates by mtime (not just valid ones)
+- Validation warnings printed but never block zip creation
+- --allow-incomplete-evidence now silent no-op
+- Removed blocking exit 2 paths for incomplete evidence
+- Updated 5 tests for non-blocking behavior
+- 34/34 hygiene tests pass, 79/79 job flow tests pass
+- Smoke test confirms real incomplete evidence dirs produce zip
 
 ## Next Steps
-- Step 5232: Update make_review_zip.sh with strict validation + candidate table
-- Step 5233: Add --allow-incomplete-evidence flag for explicit override
-- Step 5234: Harden path sanitizer for .data/job_workspaces and /mnt paths
-- Step 5235: Add comprehensive tests
-- Step 5236: Full verification + handoff
+- Step 5266: Commit, push, create PR
+- Step 5267: Write builder handoff to .agent/live_review.md
 
 ## Constraints
 No auto-approval, no target mutation, no git ops, no UI mutation,

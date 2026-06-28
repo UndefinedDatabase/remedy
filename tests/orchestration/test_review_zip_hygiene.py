@@ -469,11 +469,11 @@ class TestAutoSelectLatestEvidence:
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "Auto-selected latest valid evidence dir:" in proc.stdout
+        assert "Auto-selected latest evidence dir:" in proc.stdout
         assert "new222" in proc.stdout
 
-    def test_newest_invalid_older_valid_selects_older(self, tmp_path: Path):
-        """R-4335: newest incomplete candidate skipped, older valid selected."""
+    def test_newest_invalid_selects_newest_with_warning(self, tmp_path: Path):
+        """Newest candidate selected by mtime even if incomplete; warning printed."""
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -491,10 +491,11 @@ class TestAutoSelectLatestEvidence:
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "valid1" in proc.stdout
+        assert "invalid2" in proc.stdout
         assert "incomplete" in proc.stdout
 
-    def test_all_candidates_invalid_fails(self, tmp_path: Path):
+    def test_all_candidates_invalid_still_creates_zip(self, tmp_path: Path):
+        """All incomplete → newest selected, zip created with warning."""
         repo = _make_git_repo_with_scripts(tmp_path)
 
         bad1 = repo / "remedy-job-evidence-bad1"
@@ -503,16 +504,18 @@ class TestAutoSelectLatestEvidence:
 
         bad2 = repo / "remedy-job-evidence-bad2"
         bad2.mkdir()
+        (bad2 / "job_flow.json").write_text('{"job_id":"bad2"}')
 
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh"],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 2
-        assert "No valid complete evidence" in proc.stdout
-        assert not list(repo.glob("*.zip"))
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        assert "incomplete" in proc.stdout.lower()
+        assert list(repo.glob("*.zip"))
 
-    def test_explicit_incomplete_fails_by_default(self, tmp_path: Path):
+    def test_explicit_incomplete_creates_zip(self, tmp_path: Path):
+        """Explicit incomplete evidence → zip created, validation in manifest."""
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-incomplete"
         ev.mkdir()
@@ -523,11 +526,20 @@ class TestAutoSelectLatestEvidence:
              "--evidence-dir", str(ev)],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 2
-        assert "incomplete" in proc.stdout.lower()
-        assert "--allow-incomplete-evidence" in proc.stdout
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
 
-    def test_explicit_incomplete_with_allow_flag(self, tmp_path: Path):
+        import json
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips
+        with ZipFile(zips[0]) as zf:
+            manifest = json.loads(zf.read(".review_zip_manifest.json"))
+        val = manifest["current_evidence"]["validation"]
+        assert val["is_valid_current_run"] is False
+        assert val["selected_candidate_status"] == "incomplete"
+
+    def test_allow_incomplete_flag_is_noop(self, tmp_path: Path):
+        """--allow-incomplete-evidence accepted but has no effect (always non-blocking)."""
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-debugev"
         ev.mkdir()
@@ -544,8 +556,6 @@ class TestAutoSelectLatestEvidence:
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "Warning" in proc.stdout
-        assert "incomplete" in proc.stdout.lower()
 
         import json
         from zipfile import ZipFile
@@ -685,8 +695,8 @@ class TestAutoSelectLatestEvidence:
         assert "incomplete" in proc.stdout
         assert "valid" in proc.stdout
 
-    def test_evidence_must_include_command_transcript(self, tmp_path: Path):
-        """R-4333: command_transcript.json required for valid candidate."""
+    def test_missing_command_transcript_creates_zip_with_warning(self, tmp_path: Path):
+        """Missing command_transcript.json → zip created, validation records it."""
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-noct"
         _make_valid_evidence(ev, "noct")
@@ -696,8 +706,18 @@ class TestAutoSelectLatestEvidence:
             ["bash", "scripts/make_review_zip.sh"],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 2, \
-            "Must fail when command_transcript.json missing"
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        assert "incomplete" in proc.stdout.lower()
+
+        import json
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips
+        with ZipFile(zips[0]) as zf:
+            manifest = json.loads(zf.read(".review_zip_manifest.json"))
+        val = manifest["current_evidence"]["validation"]
+        assert val["is_valid_current_run"] is False
+        assert any("command_transcript" in e for e in val["validation_errors"])
 
     def test_manifest_validation_marks_missing_transcript(self, tmp_path: Path):
         """R-4334: manifest validation must flag missing command_transcript."""
