@@ -1,4 +1,4 @@
-"""Tests for evidence-derived final audit and cockpit bridge adapter."""
+"""Tests for evidence-derived final audit, path hygiene, and cockpit bridge."""
 from __future__ import annotations
 
 from apps.cli.commands.do_cmd import _build_final_audit, _sanitize_shareable_paths
@@ -30,6 +30,8 @@ class TestFinalAuditEvidenceDerived:
     def test_ready_when_all_artifacts_present(self, tmp_path):
         (tmp_path / "prompt_trace_summary.json").write_text("{}")
         (tmp_path / "agent_run_trace.jsonl").write_text("{}\n")
+        (tmp_path / "agent_run_trace_summary.json").write_text("{}")
+        (tmp_path / "job_flow.json").write_text("{}")
         (tmp_path / "manifest.json").write_text("{}")
 
         job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace", "pass")])
@@ -40,10 +42,13 @@ class TestFinalAuditEvidenceDerived:
         assert audit["status"] == "READY_FOR_APPROVAL"
         assert audit["prompt_trace_available"] is True
         assert audit["agent_run_trace_available"] is True
+        assert audit["job_flow_json_available"] is True
         assert audit["missing_observability_artifacts"] == []
 
     def test_needs_review_when_prompt_trace_missing(self, tmp_path):
         (tmp_path / "agent_run_trace.jsonl").write_text("{}\n")
+        (tmp_path / "agent_run_trace_summary.json").write_text("{}")
+        (tmp_path / "job_flow.json").write_text("{}")
         (tmp_path / "manifest.json").write_text("{}")
 
         job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace", "pass")])
@@ -57,6 +62,7 @@ class TestFinalAuditEvidenceDerived:
 
     def test_needs_review_when_agent_trace_missing(self, tmp_path):
         (tmp_path / "prompt_trace_summary.json").write_text("{}")
+        (tmp_path / "job_flow.json").write_text("{}")
         (tmp_path / "manifest.json").write_text("{}")
 
         job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace", "pass")])
@@ -67,6 +73,34 @@ class TestFinalAuditEvidenceDerived:
         assert audit["status"] == "NEEDS_REVIEW"
         assert audit["agent_run_trace_available"] is False
         assert "agent_run_trace" in audit["missing_observability_artifacts"]
+
+    def test_needs_review_when_job_flow_json_missing(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text("{}")
+        (tmp_path / "agent_run_trace.jsonl").write_text("{}\n")
+        (tmp_path / "agent_run_trace_summary.json").write_text("{}")
+        (tmp_path / "manifest.json").write_text("{}")
+
+        job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace", "pass")])
+        promo = _FakePromo("dry_run")
+        ts = {"provider_call_count": 2}
+
+        audit = _build_final_audit(job, promo, str(tmp_path), token_summary=ts)
+        assert audit["status"] == "NEEDS_REVIEW"
+        assert "job_flow_json" in audit["missing_observability_artifacts"]
+
+    def test_needs_review_when_trace_summary_missing(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text("{}")
+        (tmp_path / "agent_run_trace.jsonl").write_text("{}\n")
+        (tmp_path / "job_flow.json").write_text("{}")
+        (tmp_path / "manifest.json").write_text("{}")
+
+        job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace", "pass")])
+        promo = _FakePromo("dry_run")
+        ts = {"provider_call_count": 2}
+
+        audit = _build_final_audit(job, promo, str(tmp_path), token_summary=ts)
+        assert audit["status"] == "NEEDS_REVIEW"
+        assert "agent_run_trace_summary" in audit["missing_observability_artifacts"]
 
     def test_blocked_overrides_missing_artifacts(self, tmp_path):
         job = _FakeJob("blocked", [_FakeTask("T001", "blocked", error="test failed")])
@@ -94,12 +128,16 @@ class TestFinalAuditEvidenceDerived:
         assert audit["evidence_bundle_available"] is True
 
     def test_explicit_overrides_for_availability(self, tmp_path):
+        (tmp_path / "agent_run_trace_summary.json").write_text("{}")
+        (tmp_path / "job_flow.json").write_text("{}")
+
         job = _FakeJob("completed", [_FakeTask("T001", "applied_to_job_workspace")])
         promo = _FakePromo("dry_run")
         audit = _build_final_audit(
             job, promo, str(tmp_path),
             prompt_trace_available=True,
             agent_run_trace_available=True,
+            job_flow_json_available=True,
             token_summary={"provider_call_count": 1},
         )
         assert audit["status"] == "READY_FOR_APPROVAL"
@@ -123,15 +161,35 @@ class TestSanitizeShareablePaths:
         assert "/tmp/remedy-pingpong-" not in str(result)
         assert "safe.py" in result["files"]
 
-    def test_preserves_non_staging_paths(self):
+    def test_sanitizes_home_paths(self):
         data = {"path": "/home/user/repo/file.py"}
         result = _sanitize_shareable_paths(data)
-        assert result["path"] == "/home/user/repo/file.py"
+        assert result["path"] == "[local]"
+
+    def test_sanitizes_users_paths(self):
+        data = {"path": "/Users/alice/dev/repo/file.py"}
+        result = _sanitize_shareable_paths(data)
+        assert result["path"] == "[local]"
+
+    def test_sanitizes_private_paths(self):
+        data = {"path": "/private/var/tmp/file.py"}
+        result = _sanitize_shareable_paths(data)
+        assert result["path"] == "[local]"
 
     def test_sanitizes_tmp_paths(self):
         data = {"path": "/tmp/pytest-abc123/file.py"}
         result = _sanitize_shareable_paths(data)
-        assert result["path"].startswith("[tmpdir]")
+        assert result["path"] == "[tmpdir]"
+
+    def test_preserves_relative_paths(self):
+        data = {"path": "src/main.py"}
+        result = _sanitize_shareable_paths(data)
+        assert result["path"] == "src/main.py"
+
+    def test_preserves_safe_labels(self):
+        data = {"path": "[staging]/file.py"}
+        result = _sanitize_shareable_paths(data)
+        assert result["path"] == "[staging]/file.py"
 
 
 class TestCockpitBridgeAdapter:
@@ -187,3 +245,8 @@ class TestCockpitBridgeAdapter:
         _, err = _load_job("deadbeef12345678")
         assert err is not None
         assert err[0] == 404
+
+    def test_evidence_index_resolution(self, tmp_path):
+        from packages.orchestration.ui_server import _resolve_evidence_dir
+        result = _resolve_evidence_dir("nonexistent_job_id_12345678")
+        assert result is None

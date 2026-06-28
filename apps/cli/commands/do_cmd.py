@@ -859,6 +859,21 @@ def _build_next_approve_command(
     return " ".join(parts)
 
 
+def _build_next_approve_command_safe(
+    job_id: str, test_command: str | None, promote_ready: bool,
+) -> str:
+    """Build a shareable approve command with <repo> placeholder."""
+    if not promote_ready:
+        return ""
+    import shlex
+    parts = [f"remedy do job-promote {job_id}"]
+    parts.append("--repo <repo>")
+    parts.append("--approve")
+    if test_command:
+        parts.append(f"--test-command {shlex.quote(test_command)}")
+    return " ".join(parts)
+
+
 def _build_job_token_summary(job: Any) -> dict[str, Any]:
     """Aggregate token accounting from per-task runs."""
     from packages.orchestration.pingpong_loop import load_run
@@ -970,11 +985,17 @@ def _build_final_audit(
     promote_ready = promo.status == "dry_run"
     all_passed = job.status == "completed" and blocked == 0 and pending == 0
 
+    agent_run_trace_summary_available = ev_path.joinpath("agent_run_trace_summary.json").exists()
+
     missing_artifacts: list[str] = []
     if not prompt_trace_available:
         missing_artifacts.append("prompt_trace")
     if not agent_run_trace_available:
         missing_artifacts.append("agent_run_trace")
+    if not agent_run_trace_summary_available:
+        missing_artifacts.append("agent_run_trace_summary")
+    if not job_flow_json_available:
+        missing_artifacts.append("job_flow_json")
 
     if all_passed and promote_ready and not missing_artifacts:
         status = "READY_FOR_APPROVAL"
@@ -1028,21 +1049,56 @@ def _build_final_audit(
 
 
 def _sanitize_shareable_paths(obj: Any) -> Any:
-    """Recursively sanitize absolute staging/tmp paths in shareable JSON."""
+    """Recursively sanitize absolute private paths in shareable JSON.
+
+    Catches /tmp/*, /home/*, /Users/*, /private/* to prevent leaking
+    local filesystem structure in shareable evidence bundles.
+    """
     import re
-    _STAGING_RE = re.compile(r"/tmp/remedy-pingpong-[a-f0-9]+")
-    _TMP_RE = re.compile(r"(/tmp/[a-zA-Z0-9._-]+)")
+
+    _STAGING_RE = re.compile(r"/tmp/remedy-pingpong-[a-f0-9]+[^\s\"']*")
+    _TMP_RE = re.compile(r"/tmp/[a-zA-Z0-9._-]+[^\s\"']*")
+    _HOME_RE = re.compile(r"/home/[a-zA-Z0-9._-]+[^\s\"']*")
+    _USERS_RE = re.compile(r"/Users/[a-zA-Z0-9._-]+[^\s\"']*")
+    _PRIVATE_RE = re.compile(r"/private/[a-zA-Z0-9._-]+[^\s\"']*")
 
     if isinstance(obj, str):
         obj = _STAGING_RE.sub("[staging]", obj)
-        if obj.startswith("/tmp/"):
-            obj = _TMP_RE.sub("[tmpdir]", obj)
+        obj = _TMP_RE.sub("[tmpdir]", obj)
+        obj = _HOME_RE.sub("[local]", obj)
+        obj = _USERS_RE.sub("[local]", obj)
+        obj = _PRIVATE_RE.sub("[local]", obj)
         return obj
     if isinstance(obj, dict):
         return {k: _sanitize_shareable_paths(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_sanitize_shareable_paths(v) for v in obj]
     return obj
+
+
+def _persist_evidence_index(job_id: str, evidence_out: str, trace_summary: dict) -> None:
+    """Write evidence location index under Remedy data dir for cockpit bridge."""
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        idx_dir = resolve_data_root() / "job_evidence_index"
+        idx_dir.mkdir(parents=True, exist_ok=True)
+        ev_path = Path(evidence_out).resolve()
+        record = {
+            "job_id": job_id,
+            "evidence_dir_local": str(ev_path),
+            "has_agent_run_trace": (ev_path / "agent_run_trace.jsonl").exists(),
+            "has_job_flow_json": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source_command": "do.job-flow",
+        }
+        (idx_dir / f"{job_id}.json").write_text(
+            json.dumps(record, indent=2) + "\n"
+        )
+    except (ImportError, OSError):
+        pass
 
 
 def _persist_job_flow_json(flow_result: dict, evidence_out: str) -> None:
@@ -1100,6 +1156,27 @@ def _print_final_audit(audit: dict) -> None:
     print("  Human approval is required before the target repo is changed.")
 
 
+def _load_prompt_trace_index(run_id: str) -> dict[tuple[int, str], dict]:
+    """Load prompt trace entries for a run and index by (round, role)."""
+    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+
+    index: dict[tuple[int, str], dict] = {}
+    trace_path = _pingpong_runs_dir() / run_id / "prompt_trace.jsonl"
+    if not trace_path.exists():
+        return index
+    for line in trace_path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+            key = (entry.get("round", 0), entry.get("role", ""))
+            index[key] = entry
+        except json.JSONDecodeError:
+            continue
+    return index
+
+
 def _build_agent_run_trace(
     job: Any,
     promo: Any,
@@ -1107,10 +1184,15 @@ def _build_agent_run_trace(
     builder_name: str | None,
     reviewer_name: str | None,
 ) -> list:
-    """Build agent run trace events from completed job state."""
+    """Build agent run trace events from completed job state.
+
+    All events are marked trace_source="reconstructed" because they are
+    derived post-hoc from persisted run data, not captured live.
+    """
     from packages.orchestration.agent_run_trace import create_trace_event
     from packages.orchestration.pingpong_loop import _provider_kind, load_run
 
+    _SRC = "reconstructed"
     events = []
     job_id = job.job_id
     b_kind = _provider_kind(builder_name or "fake")
@@ -1119,17 +1201,20 @@ def _build_agent_run_trace(
     events.append(create_trace_event(
         "job_flow_started", job_id=job_id,
         safe_summary=f"Job flow started: {job.job_title}",
+        trace_source=_SRC,
     ))
     events.append(create_trace_event(
         "job_planned", job_id=job_id,
         safe_summary=f"{len(job.tasks)} tasks planned",
         status=job.status,
+        trace_source=_SRC,
     ))
 
     for task in job.tasks:
         events.append(create_trace_event(
             "task_started", job_id=job_id, task_id=task.task_id,
             safe_summary=task.title[:200],
+            trace_source=_SRC,
         ))
 
         if not task.run_id:
@@ -1138,6 +1223,7 @@ def _build_agent_run_trace(
                 status=task.status,
                 outcome="skipped" if task.status == "skipped" else "no_run",
                 safe_summary=task.error or task.status,
+                trace_source=_SRC,
             ))
             continue
 
@@ -1145,18 +1231,26 @@ def _build_agent_run_trace(
         if not run_data:
             continue
 
+        pt_index = _load_prompt_trace_index(task.run_id)
+        pt_refs = [f"prompt_trace.jsonl:{task.run_id}"] if pt_index else []
+
         rounds = run_data.get("rounds", [])
         for rd in rounds:
             round_num = rd.get("round", 0)
 
             if rd.get("builder"):
                 is_repair = round_num > 1
+                pt_entry = pt_index.get((round_num, "builder"), {})
                 events.append(create_trace_event(
                     "repair_prompt_created" if is_repair else "builder_prompt_created",
                     job_id=job_id, task_id=task.task_id, run_id=task.run_id,
                     round_num=round_num, role="builder",
                     provider=builder_name or "fake", provider_kind=b_kind,
                     prompt_kind="repair" if is_repair else "initial",
+                    prompt_sha256=pt_entry.get("prompt_sha256", ""),
+                    prompt_chars=pt_entry.get("prompt_chars", 0),
+                    trace_source=_SRC,
+                    source_artifact_refs=pt_refs,
                 ))
                 events.append(create_trace_event(
                     "repair_output_received" if is_repair else "builder_output_received",
@@ -1164,6 +1258,7 @@ def _build_agent_run_trace(
                     round_num=round_num, role="builder",
                     provider=builder_name or "fake", provider_kind=b_kind,
                     changed_files_safe=rd.get("staged_files", [])[:20],
+                    trace_source=_SRC,
                 ))
 
             if rd.get("reviewer"):
@@ -1173,12 +1268,17 @@ def _build_agent_run_trace(
                 finding_ids = [f.get("id", "") for f in findings if isinstance(f, dict)][:20]
 
                 is_repair = round_num > 1
+                pt_entry = pt_index.get((round_num, "reviewer"), {})
                 events.append(create_trace_event(
                     "reviewer_prompt_created",
                     job_id=job_id, task_id=task.task_id, run_id=task.run_id,
                     round_num=round_num, role="reviewer",
                     provider=reviewer_name or "fake", provider_kind=r_kind,
                     prompt_kind="re-review" if is_repair else "review",
+                    prompt_sha256=pt_entry.get("prompt_sha256", ""),
+                    prompt_chars=pt_entry.get("prompt_chars", 0),
+                    trace_source=_SRC,
+                    source_artifact_refs=pt_refs,
                 ))
                 events.append(create_trace_event(
                     "reviewer_output_received",
@@ -1186,6 +1286,7 @@ def _build_agent_run_trace(
                     round_num=round_num, role="reviewer",
                     provider=reviewer_name or "fake", provider_kind=r_kind,
                     verdict=verdict, finding_ids=finding_ids,
+                    trace_source=_SRC,
                 ))
 
                 for fid in finding_ids:
@@ -1193,6 +1294,7 @@ def _build_agent_run_trace(
                         "review_finding_rechecked" if is_repair else "review_finding_opened",
                         job_id=job_id, task_id=task.task_id, run_id=task.run_id,
                         round_num=round_num, finding_ids=[fid],
+                        trace_source=_SRC,
                     ))
 
         events.append(create_trace_event(
@@ -1200,6 +1302,7 @@ def _build_agent_run_trace(
             run_id=task.run_id,
             status=task.status, verdict=task.reviewer_verdict or "",
             outcome="pass" if task.status in ("applied_to_job_workspace", "passed") else task.status,
+            trace_source=_SRC,
         ))
 
         if task.status == "applied_to_job_workspace":
@@ -1207,12 +1310,14 @@ def _build_agent_run_trace(
             events.append(create_trace_event(
                 "task_workspace_applied", job_id=job_id, task_id=task.task_id,
                 run_id=task.run_id, changed_files_safe=safe_files,
+                trace_source=_SRC,
             ))
 
     if not evidence_result.get("error"):
         events.append(create_trace_event(
             "job_evidence_exported", job_id=job_id,
             safe_summary=f"{len(evidence_result.get('files', {}))} files exported",
+            trace_source=_SRC,
         ))
 
     events.append(create_trace_event(
@@ -1220,6 +1325,7 @@ def _build_agent_run_trace(
         status=promo.status,
         outcome="ready" if promo.status == "dry_run" else "blocked",
         safe_summary=promo.blocked_reason or "dry_run_complete",
+        trace_source=_SRC,
     ))
 
     return events
@@ -1329,6 +1435,9 @@ def _cmd_do_job_flow(
     next_approve_command = _build_next_approve_command(
         job_id, repo, test_command, promote_ready,
     )
+    next_approve_command_safe = _build_next_approve_command_safe(
+        job_id, test_command, promote_ready,
+    )
 
     # --- 6. Build agent run trace ---
     from pathlib import Path as _Path
@@ -1360,6 +1469,7 @@ def _cmd_do_job_flow(
     final_audit = _build_final_audit(
         report_job, promo, evidence_out,
         token_summary=token_summary,
+        job_flow_json_available=True,
     )
     timeout_warning = _build_timeout_hint(builder, reviewer, timeout_sec)
 
@@ -1369,6 +1479,7 @@ def _cmd_do_job_flow(
         job_id=job_id,
         status=final_audit["status"],
         safe_summary=final_audit["recommended_next_action"],
+        trace_source="reconstructed",
     ))
     # Re-persist trace and summary with final event
     write_run_trace_jsonl(run_trace_events, ev_path / "agent_run_trace.jsonl")
@@ -1377,7 +1488,10 @@ def _cmd_do_job_flow(
         json.dumps(run_trace_summary, indent=2) + "\n"
     )
 
-    # --- 8. Persist job_flow.json to evidence output ---
+    # --- 8. Persist evidence index for cockpit bridge ---
+    _persist_evidence_index(job_id, evidence_out, run_trace_summary)
+
+    # --- 9. Persist job_flow.json to evidence output ---
     flow_result = {
         "command": "do.job-flow",
         "job_id": job_id,
@@ -1387,6 +1501,7 @@ def _cmd_do_job_flow(
         "promote_dry_run": export_job_promotion_json(promo),
         "promote_ready": promote_ready,
         "next_approve_command": next_approve_command,
+        "next_approve_command_safe": next_approve_command_safe,
         "token_summary": token_summary,
         "final_audit": final_audit,
         "timeout_warning": timeout_warning,

@@ -59,10 +59,20 @@ def _redact_json_value(value: Any) -> Any:
 
 
 def _sanitize_path(path_str: str) -> str:
-    """Replace absolute home paths with ~ for safe output."""
+    """Replace absolute private paths with safe labels for shareable output."""
+    if "/tmp/remedy-pingpong-" in path_str:
+        return "[staging]"
+    if path_str.startswith("/tmp/"):
+        return "[tmpdir]"
     home = os.path.expanduser("~")
     if path_str.startswith(home):
-        return "~" + path_str[len(home):]
+        return "[local]"
+    if path_str.startswith("/home/"):
+        return "[local]"
+    if path_str.startswith("/Users/"):
+        return "[local]"
+    if path_str.startswith("/private/"):
+        return "[local]"
     return path_str
 
 

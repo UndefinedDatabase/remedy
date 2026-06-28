@@ -625,3 +625,95 @@ class TestJobFlowEndToEnd:
         content = trace.read_text()
         assert "/tmp/remedy-pingpong-" not in content, \
             "agent_run_trace.jsonl must not contain staging paths"
+
+    # --- R-4301: final audit job_flow_json_available=True -------------------
+
+    def test_final_audit_job_flow_json_available_true(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        assert audit["job_flow_json_available"] is True, \
+            "R-4301: final audit must report job_flow_json_available=True"
+        assert "job_flow_json" not in audit["missing_observability_artifacts"]
+
+    # --- R-4302: evidence index persistence ---------------------------------
+
+    def test_evidence_index_persisted(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        job_id = data["job_id"]
+        idx_dir = isolate_data / "job_evidence_index"
+        idx_file = idx_dir / f"{job_id}.json"
+        assert idx_file.exists(), "R-4302: evidence index must be persisted"
+        record = json.loads(idx_file.read_text())
+        assert record["job_id"] == job_id
+        assert record["has_agent_run_trace"] is True
+        assert record["has_job_flow_json"] is True
+        assert record["source_command"] == "do.job-flow"
+
+    # --- R-4303: prompt correlation in agent run trace ----------------------
+
+    def test_agent_run_trace_prompt_correlation(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        trace = evidence_dir / "agent_run_trace.jsonl"
+        events = [json.loads(l) for l in trace.read_text().splitlines() if l.strip()]
+        prompt_events = [e for e in events if e["event_kind"].endswith("_prompt_created")]
+        assert len(prompt_events) >= 1, "should have at least one prompt event"
+        for pe in prompt_events:
+            assert "prompt_sha256" in pe
+            assert "prompt_chars" in pe
+
+    # --- R-4304: no private paths in shareable evidence ---------------------
+
+    def test_no_home_paths_in_shareable_evidence(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        for artifact in ["job_flow.json", "agent_run_trace.jsonl"]:
+            path = evidence_dir / artifact
+            if path.exists():
+                content = path.read_text()
+                assert "/home/" not in content, \
+                    f"R-4304: {artifact} must not contain /home/ paths"
+                assert "/Users/" not in content, \
+                    f"R-4304: {artifact} must not contain /Users/ paths"
+                assert "/private/" not in content, \
+                    f"R-4304: {artifact} must not contain /private/ paths"
+
+    def test_next_approve_command_safe(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        if data.get("next_approve_command_safe"):
+            nac_safe = data["next_approve_command_safe"]
+            assert "<repo>" in nac_safe, \
+                "R-4304: next_approve_command_safe must use <repo> placeholder"
+            assert "/home/" not in nac_safe
+            assert "/Users/" not in nac_safe
+            assert "/tmp/" not in nac_safe
+
+    # --- R-4305: trace_source honesty in E2E --------------------------------
+
+    def test_agent_run_trace_has_trace_source(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=evidence_dir, extra=["--json"])
+        trace = evidence_dir / "agent_run_trace.jsonl"
+        events = [json.loads(l) for l in trace.read_text().splitlines() if l.strip()]
+        for ev in events:
+            assert ev.get("trace_source") == "reconstructed", \
+                f"R-4305: event {ev['event_kind']} must have trace_source=reconstructed"
+
+    def test_agent_run_trace_summary_has_source_limitations(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        summary = data["agent_run_trace_summary"]
+        assert "reconstructed" in summary["trace_sources"], \
+            "R-4305: summary must report 'reconstructed' trace source"
+        assert len(summary["source_limitations"]) > 0, \
+            "R-4305: summary must include source_limitations for reconstructed traces"
