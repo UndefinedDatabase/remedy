@@ -129,3 +129,48 @@ class TestNoRawContentInTrace:
             assert "stderr" not in key
             assert "raw" not in key
             assert "diff" not in key.lower() or key == "safe_diff_files"
+
+
+class TestTraceSourceHonesty:
+    def test_reconstructed_trace_source(self):
+        ev = create_trace_event(
+            "builder_prompt_created",
+            trace_source="reconstructed",
+            source_artifact_refs=["prompt_trace.jsonl:run123"],
+        )
+        assert ev.trace_source == "reconstructed"
+        assert "prompt_trace.jsonl:run123" in ev.source_artifact_refs
+
+    def test_trace_source_in_dict(self):
+        ev = create_trace_event(
+            "job_flow_started",
+            trace_source="reconstructed",
+        )
+        d = trace_event_to_dict(ev)
+        assert d["trace_source"] == "reconstructed"
+
+    def test_summary_reports_trace_sources(self):
+        events = [
+            create_trace_event("job_flow_started", trace_source="reconstructed"),
+            create_trace_event("task_started", trace_source="reconstructed"),
+        ]
+        summary = build_trace_summary(events)
+        assert "reconstructed" in summary["trace_sources"]
+        assert len(summary["source_limitations"]) > 0
+
+    def test_summary_empty_sources_when_no_trace_source(self):
+        events = [create_trace_event("job_flow_started")]
+        summary = build_trace_summary(events)
+        assert summary["trace_sources"] == []
+        assert summary["source_limitations"] == []
+
+    def test_prompt_correlation_fields(self):
+        ev = create_trace_event(
+            "builder_prompt_created",
+            prompt_sha256="abc123def456",
+            prompt_chars=5000,
+            trace_source="reconstructed",
+        )
+        d = trace_event_to_dict(ev)
+        assert d["prompt_sha256"] == "abc123def456"
+        assert d["prompt_chars"] == 5000

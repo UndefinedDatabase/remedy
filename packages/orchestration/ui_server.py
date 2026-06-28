@@ -100,6 +100,25 @@ def _load_events(job: Any) -> list[dict[str, Any]]:
     return load_run_events(resolve_data_root(), job.id)
 
 
+def _resolve_evidence_dir(job_id: str) -> Path | None:
+    """Find evidence dir for a job — checks index first, then default path."""
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        idx_file = resolve_data_root() / "job_evidence_index" / f"{job_id}.json"
+        if idx_file.exists():
+            import json as _json
+            record = _json.loads(idx_file.read_text())
+            local_dir = record.get("evidence_dir_local", "")
+            if local_dir and Path(local_dir).is_dir():
+                return Path(local_dir)
+    except (ImportError, OSError, ValueError, KeyError):
+        pass
+    default = Path(f"remedy-job-evidence-{job_id}")
+    if default.is_dir():
+        return default
+    return None
+
+
 def _load_job_plan_events(job: Any) -> list[dict[str, Any]]:
     """Load agent run trace events as dashboard events for a JobPlan."""
     from packages.orchestration.agent_run_trace import load_trace_jsonl
@@ -107,22 +126,48 @@ def _load_job_plan_events(job: Any) -> list[dict[str, Any]]:
     plan = job._plan
     events: list[dict[str, Any]] = []
 
-    # Try to load agent_run_trace from evidence directories
-    for evidence_dir_name in [f"remedy-job-evidence-{plan.job_id}"]:
-        trace_path = Path(evidence_dir_name) / "agent_run_trace.jsonl"
-        if trace_path.exists():
-            for te in load_trace_jsonl(trace_path):
-                events.append({
-                    "event": te.get("event_kind", ""),
-                    "timestamp": te.get("created_at", ""),
-                    "metadata": {
-                        "task_id": te.get("task_id", ""),
-                        "run_id": te.get("run_id", ""),
-                        "verdict": te.get("verdict", ""),
-                        "status": te.get("status", ""),
-                    },
-                })
-            break
+    ev_dir = _resolve_evidence_dir(plan.job_id)
+    if ev_dir is None:
+        return events
+
+    trace_path = ev_dir / "agent_run_trace.jsonl"
+    if not trace_path.exists():
+        return events
+
+    _ACTOR_MAP = {
+        "builder_prompt_created": "Builder",
+        "builder_output_received": "Builder",
+        "repair_prompt_created": "Builder",
+        "repair_output_received": "Builder",
+        "reviewer_prompt_created": "Reviewer",
+        "reviewer_output_received": "Reviewer",
+        "review_finding_opened": "Reviewer",
+        "review_finding_rechecked": "Reviewer",
+        "task_gate_evaluated": "System",
+        "task_workspace_applied": "System",
+        "job_flow_started": "System",
+        "job_planned": "System",
+        "task_started": "System",
+        "job_evidence_exported": "System",
+        "promotion_dry_run_completed": "System",
+        "final_audit_completed": "System",
+    }
+
+    for te in load_trace_jsonl(trace_path):
+        kind = te.get("event_kind", "")
+        events.append({
+            "event": kind,
+            "timestamp": te.get("created_at", ""),
+            "metadata": {
+                "task_id": te.get("task_id", ""),
+                "run_id": te.get("run_id", ""),
+                "verdict": te.get("verdict", ""),
+                "status": te.get("status", ""),
+                "role": te.get("role", ""),
+                "actor": _ACTOR_MAP.get(kind, "System"),
+                "trace_source": te.get("trace_source", ""),
+            },
+        })
 
     return events
 
@@ -1288,8 +1333,161 @@ def _build_local_advisor_section(job: Any) -> dict[str, Any]:
                 "latest_status": "unknown", "source": "unavailable"}
 
 
+def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
+    """Build safe dashboard for a JobPlan (job-flow) job.
+
+    Uses Agent Run Trace events directly instead of legacy core events.
+    """
+    events = _load_events(job)
+    plan = job._plan
+    generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    task_count = len(job.tasks)
+    completed = sum(1 for t in job.tasks
+                    if (t.status.value if hasattr(t.status, "value") else str(t.status))
+                    == "completed")
+    blocked = sum(1 for t in job.tasks
+                  if (t.status.value if hasattr(t.status, "value") else str(t.status))
+                  in ("blocked", "failed"))
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+
+    has_builder = any(e.get("event") == "builder_prompt_created" for e in events)
+    has_reviewer = any(e.get("event") == "reviewer_prompt_created" for e in events)
+    has_final_audit = any(e.get("event") == "final_audit_completed" for e in events)
+    has_repair = any(e.get("event") == "repair_prompt_created" for e in events)
+
+    final_audit_status = ""
+    for e in reversed(events):
+        if e.get("event") == "final_audit_completed":
+            final_audit_status = e.get("metadata", {}).get("status", "")
+            break
+
+    reviewer_pass = any(
+        e.get("event") == "task_gate_evaluated"
+        and e.get("metadata", {}).get("verdict") == "pass"
+        for e in events
+    )
+
+    review_done = has_reviewer and reviewer_pass
+    finalized = (has_final_audit
+                 and final_audit_status == "READY_FOR_APPROVAL"
+                 and blocked == 0)
+
+    phases = [
+        {"id": "planning", "title": "Planning",
+         "status": "done" if any(e.get("event") == "job_planned" for e in events) else "pending",
+         "rank": 0, "source": "agent_run_trace"},
+        {"id": "build", "title": "Build",
+         "status": "done" if finalized else ("current" if has_builder else "pending"),
+         "rank": 1, "source": "agent_run_trace"},
+        {"id": "test", "title": "Test",
+         "status": "not_applicable",
+         "rank": 2, "source": "agent_run_trace"},
+        {"id": "review", "title": "Review",
+         "status": "done" if review_done else ("current" if has_reviewer else "pending"),
+         "rank": 3, "source": "agent_run_trace"},
+        {"id": "finalized", "title": "Finalized",
+         "status": "done" if finalized else "pending",
+         "rank": 4, "source": "agent_run_trace"},
+    ]
+
+    task_items = []
+    for idx, t in enumerate(job.tasks):
+        tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
+        task_items.append({
+            "id": str(t.id),
+            "title": t.description[:80] if t.description else f"Task {idx + 1}",
+            "status": tstat,
+            "source": "job_plan",
+        })
+
+    activity_items = []
+    for e in events[-12:]:
+        ev = e.get("event", "")
+        meta = e.get("metadata", {})
+        activity_items.append({
+            "id": f"evt-{e.get('timestamp', '')[:19]}",
+            "time": e.get("timestamp", ""),
+            "actor": meta.get("actor", "System"),
+            "event_kind": ev,
+            "summary": ev.replace("_", " ").capitalize(),
+            "source": "agent_run_trace",
+            "trace_source": meta.get("trace_source", ""),
+        })
+
+    ev_dir = _resolve_evidence_dir(plan.job_id)
+    job_flow_data: dict[str, Any] = {}
+    if ev_dir:
+        jf_path = ev_dir / "job_flow.json"
+        if jf_path.exists():
+            try:
+                import json as _json
+                job_flow_data = _json.loads(jf_path.read_text())
+            except (OSError, ValueError):
+                pass
+
+    fa = job_flow_data.get("final_audit", {})
+    next_action_cmd = job_flow_data.get("next_approve_command_safe", "")
+    next_action_label = fa.get("recommended_next_action", "Review job state")
+
+    evidence_missing: list[str] = []
+    if not events:
+        evidence_missing.append("agent_run_trace")
+    if ev_dir and not (ev_dir / "prompt_trace_summary.json").exists():
+        evidence_missing.append("prompt_trace")
+    if not ev_dir:
+        evidence_missing.append("evidence_dir")
+
+    return {
+        "version": 3,
+        "job_id": str(job.id),
+        "generated_at": generated_at,
+        "source": "job_plan_adapter",
+        "live": {
+            "running": state in ("active", "running"),
+            "state": state,
+            "current_actor": "",
+            "last_event_at": events[-1].get("timestamp", "") if events else "",
+            "stale": not events,
+            "source": "agent_run_trace",
+            "confidence": "high" if events else "none",
+        },
+        "metrics": {
+            "open": blocked,
+            "planned": task_count - completed - blocked,
+            "done": completed,
+            "progress_percent": round((completed / max(task_count, 1)) * 100),
+            "source_counts": {"tasks": task_count, "events": len(events)},
+            "computed_from": "job_plan_and_agent_run_trace",
+        },
+        "tasks": task_items,
+        "activity": activity_items,
+        "phases": phases,
+        "next_action": {
+            "kind": "guidance",
+            "label": next_action_label,
+            "command": next_action_cmd,
+            "requires_user": True,
+        },
+        "truth": {
+            "source": "job_plan_adapter",
+            "trace_source": "reconstructed" if events else "none",
+            "missing_evidence": evidence_missing,
+            "demo_mode": False,
+            "computed_from": "job_plan_and_agent_run_trace",
+        },
+        "redaction": {
+            "policy": "safe_summaries_only",
+            "raw_content_exposed": False,
+            "unsafe_fields_blocked": True,
+        },
+    }
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
+    if getattr(job, "_is_job_plan", False):
+        return _build_job_plan_dashboard(job)
     events = _load_events(job)
     truth_data_dir = _resolve_dashboard_data_dir()
     # Authoritative proof chain (durable snapshot truth) — built once, reused for

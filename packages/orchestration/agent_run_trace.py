@@ -54,6 +54,8 @@ class RunTraceEvent:
     status: str = ""
     outcome: str = ""
     safe_summary: str = ""
+    trace_source: str = ""
+    source_artifact_refs: list[str] = field(default_factory=list)
     created_at: str = ""
 
 
@@ -76,6 +78,8 @@ def create_trace_event(
     status: str = "",
     outcome: str = "",
     safe_summary: str = "",
+    trace_source: str = "",
+    source_artifact_refs: list[str] | None = None,
 ) -> RunTraceEvent:
     """Create a safe trace event with timestamp."""
     return RunTraceEvent(
@@ -96,6 +100,8 @@ def create_trace_event(
         status=status,
         outcome=outcome,
         safe_summary=safe_summary[:500] if safe_summary else "",
+        trace_source=trace_source,
+        source_artifact_refs=list(source_artifact_refs or []),
         created_at=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -143,6 +149,11 @@ def build_trace_summary(events: list[RunTraceEvent]) -> dict[str, Any]:
         if e.round > rounds_max:
             rounds_max = e.round
 
+    sources_seen: set[str] = set()
+    for e in events:
+        if e.trace_source:
+            sources_seen.add(e.trace_source)
+
     return {
         "total_events": len(events),
         "event_counts": by_kind,
@@ -153,4 +164,9 @@ def build_trace_summary(events: list[RunTraceEvent]) -> dict[str, Any]:
         "has_reviewer_events": by_kind.get("reviewer_prompt_created", 0) > 0,
         "has_repair_events": by_kind.get("repair_prompt_created", 0) > 0,
         "has_final_audit": by_kind.get("final_audit_completed", 0) > 0,
+        "trace_sources": sorted(sources_seen),
+        "source_limitations": (
+            ["Events reconstructed from persisted run data, not captured live."]
+            if "reconstructed" in sources_seen else []
+        ),
     }
