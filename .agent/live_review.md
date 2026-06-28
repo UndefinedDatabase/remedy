@@ -432,7 +432,7 @@ v6 scope: `pingpong_loop.py` (+132/-58 production lines: `_is_safe_repo_path()` 
 
 ---
 
-# Live Review — Steps 5073-5094: Job Flow Observability v2 + Prompt Trace Evidence
+# Live Review — Steps 5073-5094: Agent Run Trace + Job-Flow Cockpit Bridge v1
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
@@ -440,39 +440,154 @@ Builder must NOT mark findings as resolved.
 Timestamp: 2026-06-27
 
 ## Verdict (reviewer-owned)
-**PENDING**
+**BLOCKED** @ 8f71071 (merged PR #106)
+2 open Medium findings causing 2 NEW test regressions. Builder must fix before PASS.
 
 ## Scope
-- New `prompt_trace.py` module: `PromptTraceEntry` dataclass, `redact_prompt_text()` (7 secret patterns + env key + private key), `build_trace_entry()`, `write_trace_jsonl()`, `build_trace_summary()`, 50K char cap
-- Builder/reviewer trace capture in `pingpong_loop.py` after prompt size tracking
-- `_persist_run()` writes `prompt_trace.jsonl` + `prompt_trace_summary.json`
-- Evidence pipeline: single-run and job-level prompt trace export
-- `do_cmd.py`: 7 new helpers — `_build_next_approve_command()` (shlex.quote), `_build_job_token_summary()`, `_build_timeout_hint()`, `_build_final_audit()`, `_persist_job_flow_json()`, `_print_token_summary()`, `_print_blocked_diagnostics()`, `_print_final_audit()`
-- `make_review_zip.sh`: exclude `.coverage`, `htmlcov`, `.tox`, `.coverage_reports`, `coverage.xml`
-- 13 redaction tests, 10 completeness tests, 5 approve-command tests, 5 timeout-hint tests, 15 E2E job-flow tests, 1 coverage-exclusion test = 49 new tests total
-- 3692 passed, 1 pre-existing failure, 7 skipped
+- Prompt trace metadata: `job_id`, `task_id`, `provider_kind` fields added to `PromptTraceEntry` and capture sites
+- `_sanitize_cwd()` in `prompt_trace.py`: replaces `/tmp/remedy-pingpong-*` with `[staging]`
+- New `agent_run_trace.py` module: `RunTraceEvent` dataclass (15 event kinds), `create_trace_event()`, `write_trace_jsonl()`, `load_trace_jsonl()`, `build_trace_summary()`
+- `_build_agent_run_trace()` in `do_cmd.py`: reconstructs event chain from completed job state
+- Evidence-derived `_build_final_audit()`: derives availability from actual artifacts on disk, not hardcoded
+- `_sanitize_shareable_paths()` in `do_cmd.py`: recursive staging/tmp path sanitization
+- UI/Cockpit bridge: `_JobPlanAdapter`, `_JobPlanTaskAdapter`, `_load_job()` fallback to `load_job_plan()`, `_load_job_plan_events()`
+- `_provider_kind()` in `pingpong_loop.py`: maps "fake"→"synthetic_test", "*cli*"→"external_cli"
+- 13 agent_run_trace tests, 16 final_audit/cockpit tests, 30 new E2E tests = 59 new tests total
+- 8215 passed, 7 failed (5 pre-existing + 2 NEW from v7), 8 skipped
 
-## Files Changed (with line ranges)
-| File | Lines | Type |
-|------|-------|------|
-| `packages/orchestration/prompt_trace.py` | 1-156 (new) | model+redaction |
-| `packages/orchestration/pingpong_loop.py` | ~119, ~1362, ~1505, persist, export | capture |
-| `packages/orchestration/pingpong_evidence.py` | evidence export | evidence |
-| `packages/orchestration/job_evidence.py` | +70 lines | job evidence |
-| `apps/cli/commands/do_cmd.py` | +255/-15 | CLI helpers |
-| `scripts/make_review_zip.sh` | exclusions | ZIP hygiene |
-| `tests/orchestration/test_prompt_trace.py` | 1-275 (new) | unit tests |
-| `tests/test_do_job_flow.py` | +128 lines | E2E tests |
-| `tests/orchestration/test_review_zip_hygiene.py` | +29 lines | ZIP test |
+## Files Changed
+| File | Type |
+|------|------|
+| `packages/orchestration/agent_run_trace.py` | NEW — trace model |
+| `packages/orchestration/prompt_trace.py` | metadata: job_id, task_id, provider_kind, _sanitize_cwd |
+| `packages/orchestration/pingpong_loop.py` | task_id, provider_kind fields + _provider_kind() |
+| `packages/orchestration/pingpong_job.py` | pass job_id, task_id to run_pingpong() |
+| `packages/orchestration/ui_server.py` | cockpit bridge: adapters + _load_job fallback + events |
+| `apps/cli/commands/do_cmd.py` | agent run trace, evidence-derived audit, path sanitization |
+| `tests/orchestration/test_agent_run_trace.py` | NEW — 13 unit tests |
+| `tests/orchestration/test_final_audit_evidence.py` | NEW — 16 tests |
+| `tests/test_do_job_flow.py` | +30 E2E tests |
 
 ## Commits
-1. `e2d0f96` — prompt trace model + capture + evidence export (Steps 5073-5077)
-2. `50e40d0` — token summary, approve command, timeout hint, final audit (Steps 5078-5084)
-3. `189893d` — tests (Steps 5085-5090)
+1. `68662e9` — agent run trace model + prompt trace metadata fix
+2. `0fa55d4` — agent run trace capture, evidence-derived audit, cockpit bridge
+3. `3a94169` — tests for agent run trace, evidence-derived audit, cockpit bridge
+4. `8f71071` — Merge PR #106
 
-## Builder Evidence
-- **Test count**: 3692 passed, 1 pre-existing failure (`test_full_chain_order`), 7 skipped
-- **Smoke test**: fake provider job-flow completed successfully
-- **Review ZIP**: 763 files, 0 coverage artifacts
-- **Redaction proof**: `test_redacts_api_key_env`, `test_redacts_sk_ant`, `test_redacts_bearer_token`, `test_redacts_private_key` + 8 more all pass
-- **Constraints verified**: no auto-approval, no overnight logic, no target mutation, no secrets in traces, no unbounded prompts, no blocked rescue, all English
+## Findings
+
+### R-4201 Medium — Broad `except Exception` in `_load_job()` (ui_server.py:147)
+**Open.** `_load_job()` at L147 has bare `except Exception:` catch-all after UUID parse + load. Catches AttributeError, TypeError, KeyError etc. that may mask real bugs. Existing test `test_no_broad_except_exception_in_dashboard` correctly detects this. **NEW test failure**: `tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_no_broad_except_exception_in_dashboard`. Fix: narrow to specific exception types (e.g. `KeyError`, `OSError`).
+
+### R-4202 Medium — `_load_job` invalid UUID returns 404 instead of 400
+**Open.** v7 changed `_load_job()` to fall through to `load_job_plan()` for non-UUID strings. Previously returned `(400, "invalid uuid")` for malformed input. Now returns `(404, "job not found")` because JobPlan lookup also fails. Semantically wrong: 400 = malformed request, 404 = valid request but resource absent. **NEW test failure**: `tests/ui_server/test_dashboard_contract.py::TestUIServer::test_load_job_invalid_uuid` (expects 400, gets 404). Fix: validate UUID format first and return 400 for clearly non-UUID/non-hex strings before attempting JobPlan fallback.
+
+### R-4203 Low — 11 lint errors in committed code
+**Open.** 3 import ordering (do_cmd.py, agent_run_trace.py, test_do_job_flow.py), 2 unused production imports (ui_server.py: `_jobs_dir`, `JobNotFoundError`), 6 unused test imports (test_agent_run_trace.py: json, Path, RunTraceEvent; test_final_audit_evidence.py: Path, MagicMock, pytest). All auto-fixable with `ruff --fix`.
+
+## Verified (no issues)
+
+1. **Prompt trace lineage**: job_id, task_id, provider_kind all non-empty in E2E tests. `test_prompt_trace_has_job_id_and_task_id` passes with correct values. ✅
+2. **Agent run trace is distinct from prompt trace**: 15 event kinds cover full lifecycle (job_flow_started → final_audit_completed). Captures different data (finding_ids, verdict, status, changed_files_safe). Not a duplicate. ✅
+3. **Evidence-derived audit**: `_build_final_audit()` checks actual artifacts on disk. Missing prompt_trace → NEEDS_REVIEW. Missing agent_run_trace → NEEDS_REVIEW. All present → READY_FOR_APPROVAL. Blocked job → BLOCKED. 7 audit tests pass. ✅
+4. **Summary re-persist after final event**: Builder fixed desync — summary now re-built and re-persisted after `final_audit_completed` event appended (do_cmd.py L1369-1372). ✅
+5. **Path sanitization**: `_sanitize_shareable_paths()` recursively replaces `/tmp/remedy-pingpong-*` → `[staging]` and other `/tmp/` → `[tmpdir]`. `_sanitize_cwd()` in prompt trace. E2E tests verify no staging paths in job_flow.json or agent_run_trace.jsonl. ✅
+6. **Cockpit bridge adapters**: `_JobPlanAdapter` wraps JobPlan to look like core Job. `_JobPlanTaskAdapter` wraps tasks. Status mapping works. Adapter tests pass. ✅
+7. **Target repo not mutated**: `test_target_repo_not_mutated` E2E test passes. ✅
+8. **No raw data leaks**: `TestNoRawContentInTrace` verifies no stdout/stderr/raw/diff fields in trace events. ✅
+9. **Safety**: `may_mutate_repo=False`, no auto-approval, no git ops, no provider calls unless selected. ✅
+
+## Test Results
+
+### Focused suites (all pass)
+- 13 agent_run_trace module tests ✅
+- 16 final_audit_evidence + cockpit bridge tests ✅
+- 52 job-flow E2E tests ✅
+
+### Full suite
+- 8215 passed, 8 skipped
+- 7 failed:
+  - `test_project_brain::test_full_chain_order` — pre-existing
+  - `test_wrapper_behavior::test_lock_busy_exits_nonzero` — pre-existing (lock contention)
+  - `test_wrapper_behavior::test_lock_message_is_clear` — pre-existing (lock contention)
+  - `test_self_dogfood_execution_cli::test_approved_execute_awaits_candidate` — pre-existing
+  - `test_self_dogfood_execution_cli::test_status_and_reconcile_json` — pre-existing
+  - **`test_test_runner::test_no_broad_except_exception_in_dashboard`** — **NEW from v7** (R-4201)
+  - **`test_dashboard_contract::test_load_job_invalid_uuid`** — **NEW from v7** (R-4202)
+
+## Smoke Test Evidence
+Smoke run: `remedy do job-flow --builder fake --reviewer fake --out /tmp/reviewer_smoke_v7/evidence --json`
+- Job ID: `f6c824e8a7e1479f`, status: completed, 1 task (T001)
+- Agent run trace: 17 events, full lifecycle chain (job_flow_started → final_audit_completed)
+- Prompt trace: 4 entries, all with `job_id=f6c824e8`, `task_id=T001`, `provider_kind=synthetic_test`, correct prompt_kind sequence (initial → review → repair → re-review), `cwd=[staging]`
+- `agent_run_trace_summary.json`: `has_final_audit: true` (desync fixed)
+- Final audit: `status=READY_FOR_APPROVAL`, `agent_run_trace_available=true`, `prompt_trace_available=true`
+- Path hygiene: zero staging path leaks, zero secrets, zero raw data fields
+- Target repo: byte-for-byte unchanged (`main.py` = `def greet(): return 'hello'`)
+- `may_mutate_repo=False`, no auto-approval, no git ops in UI code
+
+## Protocol
+- **Commits reviewed**: 68662e9, 0fa55d4, 3a94169, merged at 8f71071
+- **PR reviewed**: #106
+- **Protocol compliance**: Builder wrote PENDING, did not write verdict, did not self-merge, did not mark findings Resolved. ✅
+
+## Final Recommendation
+**BLOCKED** — 2 open Medium findings (R-4201, R-4202) introduce 2 NEW test regressions. Builder must:
+1. Narrow `except Exception` in `_load_job()` to specific types
+2. Return 400 for clearly malformed job IDs before attempting JobPlan fallback
+3. Fix 11 lint errors (auto-fixable)
+Re-run full suite after fixes to confirm zero new failures.
+
+> R-4201, R-4202, R-4203 were resolved in PR #107 (commit 9b5d881, merged at 85301bc).
+
+---
+
+# Builder Handoff — Agent Evidence Truth Reconciliation + Cockpit Evidence Resolution v1
+
+Builder: worker agent. Reviewer verdict PENDING — reviewer must independently assess.
+Timestamp: 2026-06-28
+
+## Status
+PR #108 merged at 1fb0185. All 7 findings (R-4301 through R-4307) addressed in code and tests.
+
+## Changed Files
+| File | Changes |
+|------|---------|
+| `apps/cli/commands/do_cmd.py` | `_load_prompt_trace_index()`, `_build_next_approve_command_safe()`, `_persist_evidence_index()`, enhanced `_sanitize_shareable_paths()`, trace_source on all events, prompt correlation |
+| `packages/orchestration/agent_run_trace.py` | `trace_source` + `source_artifact_refs` fields on `RunTraceEvent`, `trace_sources` + `source_limitations` in summary |
+| `packages/orchestration/ui_server.py` | `_resolve_evidence_dir()`, rewritten `_load_job_plan_events()` with actor map, new `_build_job_plan_dashboard()` |
+| `packages/orchestration/pingpong_evidence.py` | Path sanitization for `/home/*`, `/Users/*`, `/private/*` |
+| `tests/test_do_job_flow.py` | 8 new E2E tests for R-4301..R-4305 |
+| `tests/orchestration/test_agent_run_trace.py` | 5 new tests for trace_source + prompt correlation |
+| `tests/orchestration/test_final_audit_evidence.py` | Rewritten — 5 new artifact check tests, 5 new path sanitization tests, evidence index test |
+
+## Tests Run
+- 59 E2E tests pass (`tests/test_do_job_flow.py`)
+- 18 agent run trace unit tests pass (`tests/orchestration/test_agent_run_trace.py`)
+- 23 final audit evidence unit tests pass (`tests/orchestration/test_final_audit_evidence.py`)
+- 270 regression/UI tests pass (including R-4201/R-4202 regression tests)
+- Lint clean (ruff)
+
+## Evidence Artifacts Verified
+- `agent_run_trace.jsonl`: all events have `trace_source="reconstructed"`
+- `agent_run_trace_summary.json`: `trace_sources: ["reconstructed"]`, `source_limitations` populated
+- `job_flow.json`: `job_flow_json_available=true`, `next_approve_command_safe` with `<repo>` placeholder
+- Evidence index: `job_evidence_index/{job_id}.json` persisted under data dir
+
+## Path Hygiene Grep
+- No `/home/` in shareable evidence
+- No `/Users/` in shareable evidence
+- No `/private/` in shareable evidence
+- No `/tmp/remedy-pingpong-` in shareable evidence
+
+## Known Limitations
+- Prompt correlation depends on `prompt_trace.jsonl` existing per run — if absent, `prompt_sha256` and `prompt_chars` remain empty (correct behavior: honest zeros)
+- Dashboard `_build_job_plan_dashboard()` derives phases from event kinds — may need refinement for future event kinds
+- Evidence index is local-only (maps job_id → evidence_dir path on this machine)
+
+## Reviewer Findings
+- No reviewer findings yet for PR #108 — reviewer verdict is PENDING
+- Previous block findings R-4201/R-4202/R-4203 from PR #106 review were resolved in PR #107
+
+## Verdict
+**PENDING** — Builder does NOT write reviewer verdicts. Reviewer must independently assess PR #108.
