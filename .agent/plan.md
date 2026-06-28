@@ -1,19 +1,19 @@
-# Plan — Steps 5171-5200: Self-Run Bundle Integrity + Worker/Remedy Starter v1
+# Plan — Steps 5201-5230: Review Zip Auto-Select Latest Evidence v1
 
 ## Goal
-Fix R-4321..R-4327. Make review zip state truthful, git subject explicit,
-starter script real, detritus gate independent, stale-evidence flag honest,
-zip content verified post-build, artifact refs canonical.
+Fix make_review_zip.sh to auto-select newest valid evidence dir when multiple
+exist. Preserve filename pattern exactly. Add selection metadata to manifest.
+Add deterministic tie-breaker. Add tests.
 
 ## Current Step
-Step 5171: Implement all findings
+Step 5201: Implement auto-selection logic
 
 ## Next Steps
-- Tests for all findings
-- Full verification
-- Commit, push, PR, merge, handoff
+- Update manifest with selection metadata
+- Add filename pattern regression test
+- Add auto-selection tests
+- Full verification + handoff
 
 ## Constraints
 No auto-approval, no target mutation, no git ops, no UI mutation,
-no external providers, no fake events, no hiding missing data, no MemPalace.
-No self-merge before reviewer. No marking reviewer findings resolved.
+no filename pattern changes, no external providers.

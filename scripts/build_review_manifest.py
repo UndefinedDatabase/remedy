@@ -231,7 +231,13 @@ def _read_trace_sources(evidence_dir: str) -> list[str]:
         return []
 
 
-def build_manifest(evidence_dir: str | None = None) -> dict:
+def build_manifest(
+    evidence_dir: str | None = None,
+    selection_mode: str = "",
+    selection_reason: str = "",
+    candidate_count: int = 0,
+    selected_mtime: str = "",
+) -> dict:
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
     commit = _git(["rev-parse", "HEAD"])
     has_commits_val = _has_commits()
@@ -266,6 +272,10 @@ def build_manifest(evidence_dir: str | None = None) -> dict:
         current_evidence = {
             "job_id": job_id,
             "zip_prefix": "evidence/current",
+            "selection_mode": selection_mode or "unknown",
+            "selection_reason": selection_reason or "unknown",
+            "selected_from_candidate_count": candidate_count,
+            "selected_modified_time": selected_mtime or "",
             "root_artifacts": root_artifacts,
             "task_runs": task_runs,
             "trace_sources": trace_sources,
@@ -302,10 +312,20 @@ def build_manifest(evidence_dir: str | None = None) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build review zip manifest")
     parser.add_argument("--evidence-dir", default=None)
+    parser.add_argument("--selection-mode", default="")
+    parser.add_argument("--selection-reason", default="")
+    parser.add_argument("--candidate-count", type=int, default=0)
+    parser.add_argument("--selected-mtime", default="")
     parser.add_argument("--output", default=".review_zip_manifest.json")
     args = parser.parse_args()
 
-    manifest = build_manifest(args.evidence_dir)
+    manifest = build_manifest(
+        args.evidence_dir,
+        selection_mode=args.selection_mode,
+        selection_reason=args.selection_reason,
+        candidate_count=args.candidate_count,
+        selected_mtime=args.selected_mtime,
+    )
     out = json.dumps(manifest, indent=2) + "\n"
 
     if args.output == "-":

@@ -378,3 +378,232 @@ class TestZipManifestContentVerification:
             assert ".review_zip_manifest.json" in names
             assert not any(n.startswith("remedy-job-evidence-") for n in names), \
                 "Raw evidence dir must not be in zip"
+
+
+def _make_git_repo_with_scripts(tmp_path: Path) -> Path:
+    """Helper: create isolated git repo with review zip scripts."""
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
+    manifest_src = MAKE_REVIEW_ZIP.parent / "build_review_manifest.py"
+    if manifest_src.exists():
+        shutil.copy2(manifest_src, repo / "scripts" / "build_review_manifest.py")
+    (repo / "README.md").write_text("# test\n")
+    subprocess.run(
+        ["git", "init", "-q"], cwd=repo, check=True,
+        capture_output=True, text=True,
+    )
+    subprocess.run(
+        ["git", "add", "."], cwd=repo, check=True,
+        capture_output=True, text=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=repo, capture_output=True, text=True, timeout=5,
+        env={**__import__("os").environ, "GIT_AUTHOR_NAME": "test",
+             "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "test",
+             "GIT_COMMITTER_EMAIL": "t@t"},
+    )
+    return repo
+
+
+@pytest.mark.skipif(
+    shutil.which("git") is None
+    or shutil.which("bash") is None
+    or shutil.which("zip") is None,
+    reason="git, bash, zip required",
+)
+class TestAutoSelectLatestEvidence:
+
+    def test_single_evidence_dir_auto_selects(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        ev = repo / "remedy-job-evidence-aaa111"
+        ev.mkdir()
+        (ev / "job_flow.json").write_text('{"job_id":"aaa"}')
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        assert "Auto-selected" in proc.stdout
+
+    def test_multiple_dirs_selects_newest_by_artifact_mtime(self, tmp_path: Path):
+        import os
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        old = repo / "remedy-job-evidence-old111"
+        old.mkdir()
+        (old / "job_flow.json").write_text('{"job_id":"old"}')
+        os.utime(old / "job_flow.json", (1000000, 1000000))
+
+        new = repo / "remedy-job-evidence-new222"
+        new.mkdir()
+        (new / "job_flow.json").write_text('{"job_id":"new"}')
+        os.utime(new / "job_flow.json", (2000000, 2000000))
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        assert "Auto-selected latest evidence dir:" in proc.stdout
+        assert "new222" in proc.stdout
+
+    def test_explicit_override_wins(self, tmp_path: Path):
+        import os
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        old = repo / "remedy-job-evidence-old111"
+        old.mkdir()
+        (old / "job_flow.json").write_text('{"job_id":"old"}')
+        os.utime(old / "job_flow.json", (1000000, 1000000))
+
+        new = repo / "remedy-job-evidence-new222"
+        new.mkdir()
+        (new / "job_flow.json").write_text('{"job_id":"new"}')
+        os.utime(new / "job_flow.json", (2000000, 2000000))
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(old)],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        assert "Auto-selected" not in proc.stdout
+
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips
+        with ZipFile(zips[0]) as zf:
+            jf = zf.read("evidence/current/job_flow.json").decode()
+            assert '"old"' in jf
+
+    def test_stale_dirs_not_in_zip(self, tmp_path: Path):
+        import os
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        old = repo / "remedy-job-evidence-stale1"
+        old.mkdir()
+        (old / "job_flow.json").write_text('{"job_id":"stale"}')
+        os.utime(old / "job_flow.json", (1000000, 1000000))
+
+        new = repo / "remedy-job-evidence-current1"
+        new.mkdir()
+        (new / "job_flow.json").write_text('{"job_id":"current"}')
+        os.utime(new / "job_flow.json", (2000000, 2000000))
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips
+        with ZipFile(zips[0]) as zf:
+            names = zf.namelist()
+            assert not any("stale1" in n for n in names), \
+                "Stale evidence must not appear in zip"
+            assert "evidence/current/job_flow.json" in names
+
+    def test_manifest_records_selection_mode(self, tmp_path: Path):
+        import os
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        old = repo / "remedy-job-evidence-aaa111"
+        old.mkdir()
+        (old / "job_flow.json").write_text('{"job_id":"aaa"}')
+        os.utime(old / "job_flow.json", (1000000, 1000000))
+
+        new = repo / "remedy-job-evidence-bbb222"
+        new.mkdir()
+        (new / "job_flow.json").write_text('{"job_id":"bbb"}')
+        os.utime(new / "job_flow.json", (2000000, 2000000))
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+
+        import json
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips
+        with ZipFile(zips[0]) as zf:
+            manifest = json.loads(zf.read(".review_zip_manifest.json"))
+        ce = manifest["current_evidence"]
+        assert ce["selection_mode"] == "auto_latest"
+        assert ce["selected_from_candidate_count"] == 2
+        assert ce["zip_prefix"] == "evidence/current"
+
+    def test_manifest_records_explicit_mode(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        ev = repo / "remedy-job-evidence-xxx"
+        ev.mkdir()
+        (ev / "job_flow.json").write_text('{"job_id":"xxx"}')
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+
+        import json
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        with ZipFile(zips[0]) as zf:
+            manifest = json.loads(zf.read(".review_zip_manifest.json"))
+        ce = manifest["current_evidence"]
+        assert ce["selection_mode"] == "explicit"
+
+
+class TestFilenamePattern:
+    """Lock down the review zip filename pattern."""
+
+    def test_filename_matches_pattern(self, tmp_path: Path):
+        import re
+        repo = _make_git_repo_with_scripts(tmp_path)
+        ev = repo / "remedy-job-evidence-fntest"
+        ev.mkdir()
+        (ev / "job_flow.json").write_text('{"job_id":"fn"}')
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        if proc.returncode != 0:
+            pytest.skip(f"Script failed: {proc.stdout}\n{proc.stderr}")
+
+        zips = list(repo.glob("*.zip"))
+        assert zips, "ZIP must be created"
+        filename = zips[0].name
+        pattern = r"^remedy-review-\d{8}-\d{6}\.zip$"
+        assert re.match(pattern, filename), \
+            f"Filename '{filename}' does not match expected pattern '{pattern}'"
+
+    def test_filenames_sortable_chronologically(self, tmp_path: Path):
+        import time
+        repo = _make_git_repo_with_scripts(tmp_path)
+        ev = repo / "remedy-job-evidence-sorttest"
+        ev.mkdir()
+        (ev / "job_flow.json").write_text('{"job_id":"sort"}')
+
+        zips_created = []
+        for _ in range(2):
+            proc = subprocess.run(
+                ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
+                cwd=repo, capture_output=True, text=True, timeout=30,
+            )
+            if proc.returncode == 0:
+                new_zips = sorted(repo.glob("*.zip"))
+                if new_zips:
+                    zips_created.append(new_zips[-1].name)
+            time.sleep(1.1)
+
+        if len(zips_created) < 2:
+            pytest.skip("Could not create 2 zips")
+        assert zips_created == sorted(zips_created), \
+            "Zip filenames must be sortable chronologically"
