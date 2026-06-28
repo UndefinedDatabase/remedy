@@ -1,11 +1,7 @@
 """Tests for agent run trace model and helpers."""
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from packages.orchestration.agent_run_trace import (
-    RunTraceEvent,
     build_trace_summary,
     create_trace_event,
     load_trace_jsonl,

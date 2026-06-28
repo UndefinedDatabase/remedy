@@ -1331,12 +1331,17 @@ def _cmd_do_job_flow(
     )
 
     # --- 6. Build agent run trace ---
+    from pathlib import Path as _Path
+
     from packages.orchestration.agent_run_trace import (
         build_trace_summary as build_run_trace_summary,
+    )
+    from packages.orchestration.agent_run_trace import (
         create_trace_event,
+    )
+    from packages.orchestration.agent_run_trace import (
         write_trace_jsonl as write_run_trace_jsonl,
     )
-    from pathlib import Path as _Path
 
     run_trace_events = _build_agent_run_trace(
         report_job, promo, evidence_result, builder, reviewer,
