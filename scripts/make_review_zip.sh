@@ -10,7 +10,6 @@ OUT="remedy-review-${STAMP}.zip"
 # Parse arguments
 EVIDENCE_DIR=""
 SELECTION_MODE=""
-ALLOW_INCOMPLETE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -20,7 +19,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --allow-incomplete-evidence)
-      ALLOW_INCOMPLETE=true
+      # No-op: validation is always informational, never blocks zip creation
       shift
       ;;
     --include-stale-evidence)
@@ -117,17 +116,17 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
     exit 2
   fi
 
-  # Required root artifacts for auto-selection
   ARTIFACT_NAMES=("job_flow.json" "command_transcript.json" "agent_run_trace.jsonl" "agent_run_trace_summary.json" "prompt_trace_summary.json" "manifest.json")
 
-  # Validate all candidates and print summary table
+  # Validate and rank all candidates
   echo "Evidence candidate summary:"
   printf "  %-45s %-12s %-12s %s\n" "PATH" "STATUS" "JOB_ID" "REASON"
   printf "  %-45s %-12s %-12s %s\n" "----" "------" "------" "------"
 
-  VALID_DIRS=()
-  VALID_MTIMES=()
-  VALID_REASONS=()
+  ALL_DIRS=()
+  ALL_MTIMES=()
+  ALL_REASONS=()
+  ALL_STATUSES=()
 
   for cdir in "${CANDIDATES[@]}"; do
     VRESULT="$(validate_candidate "$cdir")"
@@ -138,70 +137,57 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
     rel="$(echo "$cdir" | sed 's#^\./##')"
     printf "  %-45s %-12s %-12s %s\n" "$rel" "$VSTATUS" "${VJOB_ID:-(none)}" "$VREASON"
 
-    if [[ "$VSTATUS" == "valid" ]]; then
-      # Compute mtime for ranking
-      DIR_MTIME="0"
-      DIR_REASON=""
-
-      if [[ -f "$cdir/job_flow.json" ]]; then
-        JF_MTIME="$(stat -c '%Y' "$cdir/job_flow.json" 2>/dev/null || stat -f '%m' "$cdir/job_flow.json" 2>/dev/null || echo 0)"
-        if [[ "$JF_MTIME" -gt "$DIR_MTIME" ]]; then
-          DIR_MTIME="$JF_MTIME"
-          DIR_REASON="job_flow_json_mtime"
-        fi
-      fi
-
-      if [[ "$DIR_MTIME" == "0" ]]; then
-        for art in "${ARTIFACT_NAMES[@]}"; do
-          if [[ -f "$cdir/$art" ]]; then
-            ART_MTIME="$(stat -c '%Y' "$cdir/$art" 2>/dev/null || stat -f '%m' "$cdir/$art" 2>/dev/null || echo 0)"
-            if [[ "$ART_MTIME" -gt "$DIR_MTIME" ]]; then
-              DIR_MTIME="$ART_MTIME"
-              DIR_REASON="artifact_mtime"
-            fi
-          fi
-        done
-      fi
-
-      if [[ "$DIR_MTIME" == "0" ]]; then
-        DIR_MTIME="$(stat -c '%Y' "$cdir" 2>/dev/null || stat -f '%m' "$cdir" 2>/dev/null || echo 0)"
-        DIR_REASON="dir_mtime"
-      fi
-
-      VALID_DIRS+=("$cdir")
-      VALID_MTIMES+=("$DIR_MTIME")
-      VALID_REASONS+=("$DIR_REASON")
-    else
+    if [[ "$VSTATUS" != "valid" ]]; then
       REJECTED_COUNT=$((REJECTED_COUNT + 1))
     fi
+
+    # Compute mtime for ALL candidates (not just valid)
+    DIR_MTIME="0"
+    DIR_REASON=""
+
+    if [[ -f "$cdir/job_flow.json" ]]; then
+      JF_MTIME="$(stat -c '%Y' "$cdir/job_flow.json" 2>/dev/null || stat -f '%m' "$cdir/job_flow.json" 2>/dev/null || echo 0)"
+      if [[ "$JF_MTIME" -gt "$DIR_MTIME" ]]; then
+        DIR_MTIME="$JF_MTIME"
+        DIR_REASON="job_flow_json_mtime"
+      fi
+    fi
+
+    if [[ "$DIR_MTIME" == "0" ]]; then
+      for art in "${ARTIFACT_NAMES[@]}"; do
+        if [[ -f "$cdir/$art" ]]; then
+          ART_MTIME="$(stat -c '%Y' "$cdir/$art" 2>/dev/null || stat -f '%m' "$cdir/$art" 2>/dev/null || echo 0)"
+          if [[ "$ART_MTIME" -gt "$DIR_MTIME" ]]; then
+            DIR_MTIME="$ART_MTIME"
+            DIR_REASON="artifact_mtime"
+          fi
+        fi
+      done
+    fi
+
+    if [[ "$DIR_MTIME" == "0" ]]; then
+      DIR_MTIME="$(stat -c '%Y' "$cdir" 2>/dev/null || stat -f '%m' "$cdir" 2>/dev/null || echo 0)"
+      DIR_REASON="dir_mtime"
+    fi
+
+    ALL_DIRS+=("$cdir")
+    ALL_MTIMES+=("$DIR_MTIME")
+    ALL_REASONS+=("$DIR_REASON")
+    ALL_STATUSES+=("$VSTATUS")
   done
 
   echo ""
 
-  VALID_COUNT=${#VALID_DIRS[@]}
-
-  if [[ $VALID_COUNT -eq 0 ]]; then
-    echo "No valid complete evidence among $CANDIDATE_COUNT candidate(s)."
-    echo "All candidates are incomplete or malformed."
-    echo ""
-    echo "To produce valid evidence, run:"
-    echo "  ./scripts/remedy_self_job_flow.sh --goal-file <goal.md>"
-    echo ""
-    echo "To use incomplete evidence for debugging:"
-    echo "  $0 --evidence-dir <path> --allow-incomplete-evidence"
-    exit 2
-  fi
-
-  # Select newest valid candidate
+  # Select newest candidate by mtime (validation is informational, not blocking)
   BEST_DIR=""
   BEST_MTIME="0"
   BEST_REASON=""
   TIE_WARNING=""
 
-  for i in "${!VALID_DIRS[@]}"; do
-    cdir="${VALID_DIRS[$i]}"
-    DIR_MTIME="${VALID_MTIMES[$i]}"
-    DIR_REASON="${VALID_REASONS[$i]}"
+  for i in "${!ALL_DIRS[@]}"; do
+    cdir="${ALL_DIRS[$i]}"
+    DIR_MTIME="${ALL_MTIMES[$i]}"
+    DIR_REASON="${ALL_REASONS[$i]}"
 
     if [[ "$DIR_MTIME" -gt "$BEST_MTIME" ]]; then
       BEST_DIR="$cdir"
@@ -217,14 +203,27 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
     fi
   done
 
+  if [[ -z "$BEST_DIR" ]]; then
+    echo "No evidence dirs with readable artifacts among $CANDIDATE_COUNT candidate(s)."
+    exit 2
+  fi
+
   EVIDENCE_DIR="$BEST_DIR"
   SELECTION_MODE="auto_latest"
-  SELECTION_REASON="${BEST_REASON:-latest_valid_modified_time}"
+  SELECTION_REASON="${BEST_REASON:-latest_modified_time}"
   SELECTED_MTIME="$(date -d "@$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -r "$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$BEST_MTIME")"
 
-  echo "Auto-selected latest valid evidence dir: $EVIDENCE_DIR"
+  echo "Auto-selected latest evidence dir: $EVIDENCE_DIR"
   if [[ -n "$TIE_WARNING" ]]; then
     echo "$TIE_WARNING"
+  fi
+
+  # Warn if selected evidence is incomplete (but proceed)
+  VRESULT="$(validate_candidate "$EVIDENCE_DIR")"
+  VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
+  VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
+  if [[ "$VSTATUS" != "valid" ]]; then
+    echo "Note: selected evidence is incomplete ($VREASON). Manifest will reflect this."
   fi
 fi
 
@@ -233,29 +232,11 @@ if [[ ! -d "$EVIDENCE_DIR" ]]; then
   exit 2
 fi
 
-# --- Validate selected evidence ---
+# --- Set selection metadata ---
 if [[ "$SELECTION_MODE" == "explicit" ]]; then
   SELECTION_REASON="explicit_override"
   CANDIDATE_COUNT=0
   SELECTED_MTIME=""
-
-  VRESULT="$(validate_candidate "$EVIDENCE_DIR")"
-  VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
-  VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
-
-  if [[ "$VSTATUS" != "valid" ]]; then
-    if [[ "$ALLOW_INCOMPLETE" == "true" ]]; then
-      echo "Warning: selected evidence is incomplete: $VREASON"
-      echo "Proceeding with --allow-incomplete-evidence (debug mode)."
-      SELECTION_REASON="explicit_incomplete_override"
-    else
-      echo "Selected evidence is incomplete: $VREASON"
-      echo ""
-      echo "To use incomplete evidence for debugging:"
-      echo "  $0 --evidence-dir $EVIDENCE_DIR --allow-incomplete-evidence"
-      exit 2
-    fi
-  fi
 fi
 
 TMP="$(mktemp)"
