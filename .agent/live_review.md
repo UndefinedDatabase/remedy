@@ -585,9 +585,164 @@ PR #108 merged at 1fb0185. All 7 findings (R-4301 through R-4307) addressed in c
 - Dashboard `_build_job_plan_dashboard()` derives phases from event kinds — may need refinement for future event kinds
 - Evidence index is local-only (maps job_id → evidence_dir path on this machine)
 
-## Reviewer Findings
-- No reviewer findings yet for PR #108 — reviewer verdict is PENDING
-- Previous block findings R-4201/R-4202/R-4203 from PR #106 review were resolved in PR #107
+---
 
-## Verdict
-**PENDING** — Builder does NOT write reviewer verdicts. Reviewer must independently assess PR #108.
+# Live Review — Agent Evidence Truth Reconciliation + Cockpit Evidence Resolution v1
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-28
+
+## Verdict (reviewer-owned)
+**BLOCKED** @ 1fb0185 (PR #108, merged)
+1 open Medium (R-4308). R-4301 through R-4307 all verified fixed.
+8227 passed, 9 failed (5 pre-existing + 1 new regression + 3 environmental).
+Lint clean.
+
+## Findings
+
+### R-4301 Medium — Final audit hardcodes job_flow_json_available
+**Resolved.** `_build_final_audit()` now accepts `job_flow_json_available=True` override. Both smoke tests (custom --out and default) show `job_flow_json_available: True`, zero missing artifacts. Tests `test_needs_review_when_job_flow_json_missing` and `test_needs_review_when_trace_summary_missing` pass.
+
+### R-4302 Medium — Cockpit bridge cannot find custom --out evidence
+**Resolved.** New `_persist_evidence_index()` writes `.data/job_evidence_index/{job_id}.json`. `_resolve_evidence_dir()` reads index, falls back to default. Smoke D (custom `--out /tmp/reviewer_smoke_D/evidence`) resolves correctly, returns 17 events. Test `test_evidence_index_resolution` passes.
+
+### R-4303 Medium — Prompt hashes missing from Agent Run Trace
+**Resolved.** New `_load_prompt_trace_index()` indexes prompt_trace.jsonl by `(round, role)`. All 4 prompt hashes match exactly between Agent Run Trace events and Prompt Trace entries. `source_artifact_refs` points to correct run directory.
+
+### R-4304 Medium — Path leaks in shareable evidence
+**Resolved.** `_sanitize_shareable_paths()` expanded: `/home/` → `[local]`, `/Users/` → `[local]`, `/private/` → `[local]`. `_sanitize_path()` in `pingpong_evidence.py` likewise expanded. `_build_next_approve_command_safe()` replaces repo path with `<repo>`. Grep across all shareable evidence: zero hits for `/tmp/`, `/home/`, `/Users/`, `/private/`, `remedy-pingpong`.
+
+### R-4305 Medium — Reconstruction not labeled as such
+**Resolved.** All events have `trace_source="reconstructed"`. `RunTraceEvent` dataclass has `trace_source: str = ""` and `source_artifact_refs: list[str]` fields. `build_trace_summary()` collects `trace_sources: ["reconstructed"]` and emits `source_limitations: ["Events reconstructed from persisted run data, not captured live."]`. 5 new tests in `TestTraceSourceHonesty` pass.
+
+### R-4306 Medium — Dashboard fabricates phase data
+**Resolved.** New `_build_job_plan_dashboard()` (~150 lines) derives phases from actual Agent Run Trace events. Review phase shows `done` (not misleadingly `pending`). Test phase shows `not_applicable` when no test command. Truth block: `demo_mode: false`, `trace_source: "reconstructed"`, `missing_evidence` populated. `_ACTOR_MAP` maps event kinds to Builder/Reviewer/System actors.
+
+### R-4307 Low — Builder must not write verdict
+**Compliant.** Builder wrote `PENDING` in handoff section. Did not write reviewer verdict. Did not mark findings resolved.
+
+### R-4308 Medium (NEW) — test_path_sanitization regression
+**Open.** Builder changed `_sanitize_path()` in `pingpong_evidence.py` to return `[local]` for `/home/` paths (was `~` prefix), but did NOT update existing test `tests/orchestration/test_evidence_bundle.py::TestRedaction::test_path_sanitization` which asserts `startswith("~")`. Test fails: `assert '[local]'.startswith('~')`. Builder must update test to expect `[local]`.
+
+### R-4309 Low (NEW) — plan.md missing step range
+**Open.** Builder committed `.agent/plan.md` with title "Agent Evidence Truth Reconciliation + Cockpit Evidence Resolution v1" — no step range. Causes 3 test failures: `test_plan_md_current`, 2x `test_plan_md_references_current_steps`. Environmental/transient — resolves when plan.md updated for next block.
+
+## Evidence
+
+### Smoke Tests
+- **Smoke D** (custom `--out /tmp/reviewer_smoke_D/evidence`): 17 events, all with `trace_source="reconstructed"`, evidence index resolves custom dir, target unchanged
+- **Smoke E** (default evidence path): 17 events, `job_flow_json_available: True`, zero missing artifacts, target unchanged
+
+### Full Test Suite
+```
+8227 passed, 9 failed, 8 skipped (301.50s)
+```
+Pre-existing failures (5):
+- `test_wrapper_behavior.py` x2 (lock contention)
+- `test_self_dogfood_execution_cli.py` x2
+- `test_project_brain.py::test_full_chain_order`
+
+New failures (4):
+- `test_evidence_bundle.py::TestRedaction::test_path_sanitization` — R-4308 regression
+- `test_test_runner.py::test_plan_md_current` — R-4309 environmental
+- `test_dashboard_contract.py::test_plan_md_references_current_steps` x2 — R-4309 environmental
+
+### Focused Tests
+321/321 pass (including R-4201/R-4202 regression tests from PR #107)
+
+### Lint
+`ruff check` on all 7 modified files: All checks passed.
+
+### Path Hygiene
+Zero hits for `/tmp/`, `/home/`, `/Users/`, `/private/`, `remedy-pingpong` in shareable evidence across both smoke runs.
+
+### Safety Invariants
+- `may_mutate_repo=False` for `do.run` (inherited default in `command_catalog.py`)
+- No `auto_approve`, `--approve True`, or self-approval in `do_cmd.py`
+- No `git push/commit/reset/checkout` or `subprocess.*git` in production code (only docstring comment at L1352)
+- No UI mutation — `ui_server.py` read-only serves data
+
+### Protocol Compliance
+- Builder wrote `PENDING`, did not write verdict — ✅
+- Builder did not mark findings resolved — ✅
+- Builder did not self-merge (PR #108 was separate merge) — ✅
+
+## Recommendation
+**BLOCKED** — R-4308 (Medium) is a merged test regression. Builder must update `test_evidence_bundle.py::TestRedaction::test_path_sanitization` to assert `== "[local]"` instead of `startswith("~")` for home path sanitization. R-4309 (Low) resolves when plan.md updated for next block.
+
+---
+
+# Live Review — Audit + Zip Truth Closure v1
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-28
+
+## Verdict (reviewer-owned)
+**PENDING** — awaiting builder implementation.
+
+## Findings
+
+### R-4308 Medium — test_path_sanitization regression
+**Open.** Carried from prior block. Builder must update test to expect `[local]`.
+
+### R-4309 Low — plan.md missing step range
+**Open.** Carried from prior block. Builder must include step range in plan title.
+
+### R-4310 Medium — Final audit not fully fail-closed
+**Open.** Awaiting builder implementation. Must reject `READY_FOR_APPROVAL` when any required artifact missing.
+
+### R-4311 Medium — Evidence index overclaims has_job_flow_json
+**Open.** Awaiting builder implementation. Must reflect actual disk state after persistence.
+
+### R-4312 Medium — do job-flow --json stdout leaks paths
+**Open.** Awaiting builder implementation. Shareable fields must not leak local paths.
+
+### R-4313 Medium — Review zip/bundle missing observability surface
+**Open.** Awaiting builder implementation. Must include or account for all listed artifacts.
+
+## Builder Handoff — Audit + Zip Truth Closure v1
+
+Builder: worker agent. Reviewer verdict PENDING — reviewer must independently assess.
+Timestamp: 2026-06-28
+PR: #109 merged at 8560d45
+
+### Changed Files
+| File | Changes |
+|------|---------|
+| `apps/cli/commands/do_cmd.py` | R-4310: manifest + token_summary in missing_artifacts; R-4311: index after job_flow.json, disk-derived has_job_flow_json; R-4312: stdout JSON sanitized |
+| `scripts/make_review_zip.sh` | R-4313: v6 manifest with observability checklist, evidence dir, task_run inventory, git dirty |
+| `tests/orchestration/test_evidence_bundle.py` | R-4308: expects `[local]` not `~` |
+| `tests/orchestration/test_final_audit_evidence.py` | R-4310: 3 new tests (missing manifest, missing token_summary, zero calls) |
+| `tests/test_do_job_flow.py` | R-4310/R-4311/R-4312: 4 new E2E tests |
+| `.agent/plan.md` | R-4309: valid Steps 5121-5140 range |
+
+### Tests Run
+- 90 focused tests pass (evidence_bundle + final_audit + job_flow E2E)
+- 227 dashboard/UI tests pass
+- 11 regression tests pass (R-4201/R-4202 + invalid_uuid + broad_except)
+- Lint clean (ruff)
+
+### Smoke Test
+- Custom `--out`, `--json`: READY_FOR_APPROVAL, zero missing artifacts, evidence index has_job_flow_json=True (derived from disk), target unchanged
+- Path hygiene: zero hits for /tmp/, /home/, /Users/, /private/, remedy-pingpong in stdout JSON
+
+### Review Zip Manifest (R-4313)
+`make_review_zip.sh` v6 now:
+- Accepts optional `$1` evidence dir argument
+- Checks each required observability artifact (present/absent)
+- Includes evidence dir files in zip when provided
+- Inventories task_run artifacts per task
+- Records git branch, commit, dirty status
+- Reports agent state files (.agent/live_review.md, plan.md, review_protocol.md)
+- Bundle version bumped to 6
+
+### Known Limitations
+- Review zip evidence inclusion requires explicit `$1` argument — no auto-discovery
+- Token summary check blocks fake-provider-only jobs that have provider_call_count > 0 (correct — fake provider does report calls)
+
+### Verdict
+**PENDING** — Builder does NOT write reviewer verdicts. Reviewer must independently assess PR #109.
