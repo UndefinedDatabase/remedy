@@ -303,14 +303,15 @@ class TestJobFlowEndToEnd:
         assert data["promote_dry_run"]["status"] == "dry_run"
 
     def test_json_evidence_bundle_path_present(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        evidence_dir = tmp_path / "evidence"
         out = self._run(
             capsys, repo=demo_repo, job_file=job_file,
-            evidence_out=tmp_path / "evidence", extra=["--json"],
+            evidence_out=evidence_dir, extra=["--json"],
         )
         data = json.loads(out)
         out_dir = data["evidence"].get("out_dir")
         assert out_dir, "evidence bundle path missing from JSON output"
-        assert Path(out_dir).is_dir(), "evidence bundle directory not created on disk"
+        assert evidence_dir.is_dir(), "evidence bundle directory not created on disk"
 
     def test_json_next_approve_command_present_when_ready(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
         out = self._run(
@@ -717,3 +718,47 @@ class TestJobFlowEndToEnd:
             "R-4305: summary must report 'reconstructed' trace source"
         assert len(summary["source_limitations"]) > 0, \
             "R-4305: summary must include source_limitations for reconstructed traces"
+
+    # --- R-4310: fail-closed audit blocks on missing manifest ---------------
+
+    def test_final_audit_has_no_missing_artifacts(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        assert audit["missing_observability_artifacts"] == [], \
+            f"R-4310: E2E run should have zero missing artifacts, got {audit['missing_observability_artifacts']}"
+
+    # --- R-4311: evidence index ordering ------------------------------------
+
+    def test_evidence_index_has_job_flow_json_true(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        job_id = data["job_id"]
+        idx_file = isolate_data / "job_evidence_index" / f"{job_id}.json"
+        assert idx_file.exists()
+        record = json.loads(idx_file.read_text())
+        assert record["has_job_flow_json"] is True, \
+            "R-4311: evidence index must report has_job_flow_json=True after job_flow.json persisted"
+        ev_dir = Path(record["evidence_dir_local"])
+        assert (ev_dir / "job_flow.json").exists(), \
+            "R-4311: job_flow.json must exist on disk when index claims it"
+
+    # --- R-4312: stdout JSON path hygiene -----------------------------------
+
+    def test_json_stdout_no_private_paths(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        for pattern in ["/home/", "/Users/", "/private/", "remedy-pingpong"]:
+            assert pattern not in out, \
+                f"R-4312: JSON stdout must not contain '{pattern}'"
+
+    def test_json_stdout_tmp_paths_sanitized(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        nac = data.get("next_approve_command", "")
+        if nac:
+            assert "/tmp/" not in nac or "[tmpdir]" in nac or "[staging]" in nac, \
+                "R-4312: next_approve_command must have sanitized paths"
