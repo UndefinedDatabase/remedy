@@ -1,3 +1,231 @@
+# Live Review — Steps 5261-5270: Non-Blocking Evidence Validation v1
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-28
+
+## Verdict (reviewer-owned)
+*(pending reviewer)*
+
+## Builder Handoff — PR #114
+
+### What Changed
+Evidence validation in `make_review_zip.sh` changed from blocking to informational.
+User reported script refused to create zip when all evidence dirs were incomplete.
+User's exact requirement: "script soll immer den LETZTEN job flow mit packen, aber nicht verhindern dass ich ein zip packen kann."
+
+### Changed Files
+- `scripts/make_review_zip.sh` — auto-select ranks ALL candidates by mtime (not just valid); removed blocking `exit 2` on incomplete evidence; `--allow-incomplete-evidence` now silent no-op; validation warnings printed but always proceed
+- `tests/orchestration/test_review_zip_hygiene.py` — 5 tests updated for non-blocking behavior
+- `.agent/plan.md` — steps 5261-5270
+
+### Behavior Changes
+| Before | After |
+|--------|-------|
+| Only valid candidates ranked by mtime | ALL candidates ranked by mtime |
+| All invalid → exit 2, no zip | All invalid → pick newest, warning, create zip |
+| Explicit incomplete → exit 2 | Explicit incomplete → create zip, validation in manifest |
+| `--allow-incomplete-evidence` required | Flag is silent no-op |
+
+### Tests Run
+- 34/34 review zip hygiene tests pass
+- 79/79 job flow E2E tests pass
+- Smoke test: 3 real incomplete evidence dirs → zip created successfully
+
+### Safety Invariants
+- No auto-approval patterns
+- No git commit/push/merge in production code
+- No secrets/passwords/API keys
+- No UI mutation
+- No filename pattern changes
+- Manifest still records full validation status for reviewer
+- Path hygiene unchanged
+
+---
+
+# Live Review — Steps 5231-5260: Valid Latest Evidence Selection + Reviewer-Ready Bundle Gate v1
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-28
+
+## Verdict (reviewer-owned)
+**PASS WITH RISKS** @ b24ee57 (PR #113, merged)
+3 Low findings (R-4331, R-4332, R-4333). Zero open Blocker/High/Medium.
+214/214 focused tests pass (34 hygiene + 36 evidence audit + 65 evidence bundle + 79 job flow).
+8303 full suite pass, 1 pre-existing failure, 8 skipped. Lint clean.
+
+## Verification Checks
+
+### Check 1 — Diff Inspection
+All 7 changed files reviewed: `make_review_zip.sh`, `build_review_manifest.py`, `do_cmd.py`, `test_review_zip_hygiene.py`, `test_do_job_flow.py`, `.agent/plan.md`. No unrelated changes. No dead code (builder removed unused `_ABS_PATH_RE` before final commit).
+
+### Check 2 — Strict Candidate Validation
+`validate_candidate()` (bash inline Python) and `validate_evidence_candidate()` (module-level Python) both check: REQUIRED_ROOT_ARTIFACTS (6 files including command_transcript.json), job_flow.json structure (job_id, final_audit.status, missing_observability_artifacts, target_mutation), task_runs with REQUIRED_TASK_ARTIFACTS (6 files per task). Auto-select filters to valid-only candidates. Test `test_newest_invalid_older_valid_selects_older` confirms newer invalid dir rejected, older valid dir selected.
+
+### Check 3 — All-Invalid Behavior
+Test `test_all_candidates_invalid_fails`: exit 2, no zip created, clear error message with guidance to run `remedy_self_job_flow.sh`. Real smoke confirmed with 3 repo evidence dirs (all missing command_transcript.json).
+
+### Check 4 — Explicit Override Behavior
+Test `test_explicit_incomplete_fails_by_default`: explicit `--evidence-dir` on incomplete evidence fails exit 2. Test `test_explicit_incomplete_with_allow_flag`: `--allow-incomplete-evidence` proceeds with warning, manifest marks `is_valid_current_run=false`, `selected_candidate_status=incomplete`. Test `test_explicit_valid_override_wins`: valid explicit dir succeeds normally.
+
+### Check 5 — Command Transcript Required
+Test `test_evidence_must_include_command_transcript`: candidate with all artifacts except `command_transcript.json` rejected as incomplete. Test `test_manifest_validation_marks_missing_transcript`: manifest `required_root_artifacts` shows `command_transcript.json: absent`.
+
+### Check 6 — Manifest Validation Section
+Test `test_manifest_validation_section`: manifest `current_evidence.validation` contains `is_valid_current_run`, `validation_errors`, `required_root_artifacts`, `required_task_artifacts`, `selected_candidate_status`, `selection_mode`, `selection_reason`, `selected_from_candidate_count`, `rejected_candidate_count`. All fields verified present and typed correctly.
+
+### Check 7 — Filename Pattern
+Tests `test_filename_pattern_chronological_sort` and `test_filename_pattern_locked`: pattern `remedy-review-YYYYMMDD-HHMMSS.zip` preserved exactly. Chronological sort verified correct (newest last in ls output). No timestamp format change.
+
+### Check 8 — Fake-Provider Smoke
+Real smoke run via `remedy do job-flow --builder fake --reviewer fake`: READY_FOR_APPROVAL status, all artifacts present, auto-select from 4 candidates (3 rejected incomplete, 1 valid selected). Evidence dir auto-selected correctly by mtime. Candidate summary table printed. Bundle version 9.
+
+### Check 9 — Path Hygiene Including /mnt
+`_MNT_RE` added to do_cmd.py: `/mnt/[a-zA-Z0-9._-]+` -> `[local]`. Test `test_mnt_path_sanitized` passes. Grep across changed files: zero hits for `/home/`, `/Users/`, `/private/`, `/mnt/` outside test assertions and regex patterns. `make_review_zip.sh` L402 checks for `/mnt/` in zip contents.
+
+### Check 10 — Zip Contents Verification
+Generated zip from fake-provider smoke: all required files present under `evidence/current/`. No stale evidence dirs. No evidence from rejected candidates. Test `test_unselected_evidence_not_in_zip`: only selected evidence appears. Test `test_evidence_under_current_prefix`: all evidence under `evidence/current/`.
+
+### Check 11 — Focused Tests
+214/214 pass: 34 review zip hygiene (16 new), 36 final audit evidence, 65 evidence bundle, 79 job flow E2E. Test `test_manifest_rejected_candidate_count` verifies rejected count in manifest. Path sanitizer tests: `test_mnt_path_sanitized`, `test_data_job_workspaces_sanitized`, `test_data_root_sanitized`, `test_evidence_dir_outside_tmp_sanitized`, `test_no_private_paths_in_shareable`.
+
+### Check 12 — Safety Invariants
+- No auto-approval patterns in production code
+- No git commit/push/merge/reset/checkout in production code
+- No secrets/passwords/API keys
+- Target repo unchanged (fake-provider smoke)
+- No UI mutation
+- Builder wrote PENDING, did not write verdict, did not self-merge
+
+## Findings
+
+### R-4331 Low — DRY violation: required artifact lists defined twice
+Required artifact lists defined in bash inline Python (`make_review_zip.sh` `validate_candidate()` L60-75) AND module-level Python constants (`build_review_manifest.py` `REQUIRED_ROOT_ARTIFACTS` L234-241, `REQUIRED_TASK_ARTIFACTS` L243-250). Current lists match but future drift risk if one is updated without the other.
+
+### R-4332 Low — Bare `except:` in bash validate_candidate inline Python
+`make_review_zip.sh` L77: bare `except:` catches all exceptions including KeyboardInterrupt/SystemExit. In inline script context not dangerous (script exits on failure anyway) but poor practice. Should be `except Exception:`.
+
+### R-4333 Low — plan.md not updated before commit
+`plan.md` still says "Current Step: Step 5231" despite all steps (5231-5236) completed. Process violation per AGENTS.md commit gate. Steps correctly listed in plan title but current-step marker stale.
+
+## Builder Handoff Compliance
+- Builder wrote `*(pending reviewer)*` — correct
+- Builder did not write verdict — correct
+- Builder did not mark findings resolved — correct
+- Builder did not self-merge (PR #113 merged separately) — correct
+
+## Evidence
+
+### Test Results
+- 34/34 review zip hygiene (16 new)
+- 214/214 focused suite
+- 8303/8303 full suite pass, 1 pre-existing (`test_full_chain_order`), 8 skipped
+- Ruff lint clean on all changed Python files
+
+### Smoke Results
+- Auto-select from 4 candidates: 3 rejected (missing command_transcript.json), 1 valid selected
+- Candidate summary table printed with PATH/STATUS/JOB_ID/REASON columns
+- Generated zip: `remedy-review-YYYYMMDD-HHMMSS.zip` pattern
+- Manifest validation section complete with all required fields
+- Path hygiene clean across all shareable content
+
+## Final Recommendation
+**PASS WITH RISKS** — zero open Blocker/High/Medium. 3 Low findings documented (DRY violation, bare except, stale plan.md). All 12 verification checks pass. `make_review_zip.sh` no-arg invocation reliably selects newest valid complete evidence, rejects invalid candidates with clear diagnostics, preserves filename pattern, and produces reviewer-ready bundle with manifest validation section. Bundle version 9. Path hygiene clean including `/mnt/`. Safety invariants intact.
+
+---
+
+# Live Review — Steps 5201-5230: Review Zip Auto-Select Latest Evidence v1
+
+## Verdict (reviewer-owned)
+*(pending reviewer)*
+
+---
+
+## Builder Handoff — PR #112 merged
+
+### Changed Files
+- `scripts/make_review_zip.sh` — auto-select newest evidence dir by artifact mtime, deterministic tie-breaker, selection metadata, SIGPIPE fix in post-build verification, subshell variable loss fix
+- `scripts/build_review_manifest.py` — selection_mode/selection_reason/candidate_count/selected_mtime params
+- `tests/orchestration/test_review_zip_hygiene.py` — 8 new tests (6 auto-select, 2 filename pattern locks)
+- `.agent/plan.md` — steps 5201-5230
+
+### Tests Run
+- 199 focused tests pass (review zip hygiene, job-flow E2E, final-audit evidence, evidence bundle, pingpong CLI)
+- 8287 full suite pass, 1 pre-existing failure (test_full_chain_order), 8 skipped
+- Ruff lint clean on all changed Python files
+
+### Smoke Runs
+- `./scripts/make_review_zip.sh` with no args: auto-selects from 3 candidates, builds clean zip
+- `--evidence-dir` explicit override: selection_mode=explicit, selection_reason=explicit_override
+- `--include-stale-evidence`: rejected with exit 2
+- Manifest selection metadata verified (auto_latest, job_flow_json_mtime, candidate_count=3)
+- Zip filename pattern `remedy-review-YYYYMMDD-HHMMSS.zip` preserved exactly
+- No stale evidence dirs in zip, evidence under `evidence/current/`
+
+### Bugs Found and Fixed
+- **SIGPIPE false-positive**: `grep -q` exits early when match found → SIGPIPE on `unzip` → `pipefail` reports pipeline failure → `!` inversion → all agent file checks falsely report "missing from zip." Fix: capture `unzip -Z1` output to `ZIP_LISTING` variable, grep from variable.
+- **Subshell variable loss**: evidence artifact check used `python3 ... | while read`, pipe creates subshell, `VERIFY_ERRORS` modifications lost. Fix: capture python output to variable, use `<<< "$var"` here-string.
+
+### Path-Hygiene Grep
+- No `/home/`, `/Users/`, `/private/` in changed files
+- No auto-approval, git commit/push/merge, secrets
+
+### Known Limitations
+- 1 pre-existing test failure: `test_full_chain_order` in `test_project_brain.py`
+- `--include-stale-evidence` not implemented (fails clearly with message)
+
+### Reviewer Findings
+*(none yet)*
+
+---
+
+# Live Review — Steps 5171-5200: Self-Run Bundle Integrity + Worker/Remedy Starter v1
+
+## Verdict (reviewer-owned)
+*(pending reviewer)*
+
+---
+
+## Builder Handoff — PR #111 merged
+
+### Changed Files
+- `apps/cli/commands/do_cmd.py` — canonical evidence refs (`evidence/current/...` instead of `[evidence]/...`)
+- `scripts/build_review_manifest.py` — review_state extraction, review_subject classification, current-block-only parsing, bundle v8
+- `scripts/make_review_zip.sh` — detritus gate before evidence selection, `--include-stale-evidence` fails clearly, post-build verification, removed `|| true` around zip commands
+- `scripts/remedy_self_job_flow.sh` — real starter with `--goal-file`, `--out`, `--allow-dirty`, `--dry-run`, dirty state check, transcript
+- `tests/orchestration/test_final_audit_evidence.py` — 10 new tests (4 review_state, 6 review_subject)
+- `tests/orchestration/test_review_zip_hygiene.py` — 4 new tests (detritus independent, stale flag, starter dry-run, zip content verification)
+- `tests/test_do_job_flow.py` — 7 new tests (review_state, review_subject, bundle v8, canonical refs)
+
+### Tests Run
+- 191 focused tests pass (job-flow E2E, final-audit evidence, evidence bundle, review zip hygiene, pingpong CLI)
+- 8279 full suite pass, 1 pre-existing failure (test_full_chain_order), 8 skipped
+- Lint clean: ruff check on all changed Python files
+
+### Smoke Runs
+- Fake-provider job-flow: evidence clean, command transcript present, path hygiene OK
+- Manifest builder: valid JSON, review_subject=dirty_working_tree, review_state with correct PENDING verdict
+- Starter --dry-run: prints commands without executing, shows evidence/transcript paths
+
+### Path-Hygiene Grep
+- No auto-approval, git commit/push/merge, secrets in production code
+- Sanitizer verified: `/tmp/remedy-job-evidence-abc/manifest.json` → `evidence/current/manifest.json`
+- Evidence, stdout, manifest all clean of `/home/`, `/Users/`, `/private/`, `remedy-pingpong`
+
+### Known Limitations
+- `_build_final_audit()` does not gate on `command_transcript` (meta artifact, written after audit)
+- `/private/var/tmp/file.py` double-sanitizes to `[local][tmpdir]` (safe but cosmetically ugly)
+- 1 pre-existing test failure: `test_full_chain_order` in `test_project_brain.py`
+- `--include-stale-evidence` not implemented (fails clearly with message)
+
+### Reviewer Findings
+*(none yet)*
+
+---
+
 # Live Review — Steps 5141-5170: Review Zip Current-Run Contract + Worker/Remedy Starter Prep v1
 
 ## Verdict (reviewer-owned)
