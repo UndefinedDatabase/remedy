@@ -1,11 +1,6 @@
 """Tests for evidence-derived final audit and cockpit bridge adapter."""
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
-
-import pytest
-
 from apps.cli.commands.do_cmd import _build_final_audit, _sanitize_shareable_paths
 
 

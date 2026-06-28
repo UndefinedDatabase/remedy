@@ -20,7 +20,8 @@ import pytest
 from apps.cli.command_catalog import CATALOG, get_command
 from apps.cli.commands import collect_all_handlers
 from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-from apps.cli.grouped import build_parser, main as grouped_main
+from apps.cli.grouped import build_parser
+from apps.cli.grouped import main as grouped_main
 
 COMMAND_ID = "do.job-flow"
 

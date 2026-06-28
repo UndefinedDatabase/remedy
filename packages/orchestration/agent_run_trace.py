@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 TRACE_EVENT_KINDS = frozenset({
     "job_flow_started",
     "job_planned",

@@ -103,7 +103,6 @@ def _load_events(job: Any) -> list[dict[str, Any]]:
 def _load_job_plan_events(job: Any) -> list[dict[str, Any]]:
     """Load agent run trace events as dashboard events for a JobPlan."""
     from packages.orchestration.agent_run_trace import load_trace_jsonl
-    from packages.orchestration.pingpong_job import _jobs_dir
 
     plan = job._plan
     events: list[dict[str, Any]] = []
@@ -134,29 +133,37 @@ def _safe_error(code: int, message: str) -> tuple[int, dict[str, Any]]:
 
 def _load_job(job_id_str: str) -> Any:
     """Load a Job by UUID or JobPlan hex ID, return (job, error_tuple)."""
+    import re
+
+    uuid_was_valid = False
     # Try core UUID job first
     try:
         job_id = UUID(job_id_str)
-        from packages.orchestration.storage import JobNotFoundError, load_job
+        uuid_was_valid = True
+        from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job
         job = load_job(job_id)
         return job, None
     except ValueError:
         pass
-    except (FileNotFoundError, ImportError):
-        pass
-    except Exception:
+    except (FileNotFoundError, ImportError, JobNotFoundError, JobStoreError):
         pass
 
-    # Try job-flow JobPlan short hex ID
-    try:
-        from packages.orchestration.pingpong_job import load_job_plan
-        plan = load_job_plan(job_id_str)
-        if plan is not None:
-            return _JobPlanAdapter(plan), None
-    except (ImportError, OSError):
-        pass
+    # Valid UUID that wasn't found — 404 not 400
+    if uuid_was_valid:
+        return None, _safe_error(404, "job not found")
 
-    return None, _safe_error(404, "job not found")
+    # Try job-flow JobPlan short hex ID (must look like hex)
+    if re.fullmatch(r"[0-9a-fA-F]+", job_id_str):
+        try:
+            from packages.orchestration.pingpong_job import load_job_plan
+            plan = load_job_plan(job_id_str)
+            if plan is not None:
+                return _JobPlanAdapter(plan), None
+        except (ImportError, OSError):
+            pass
+        return None, _safe_error(404, "job not found")
+
+    return None, _safe_error(400, "invalid job id")
 
 
 def _task_test_status(task_id: str, events: list[dict]) -> str:
