@@ -836,7 +836,7 @@ class TestJobFlowEndToEnd:
         raw = json.dumps(manifest)
         parsed = json.loads(raw)
         assert parsed["bundle_kind"] == "remedy_review_zip"
-        assert parsed["bundle_version"] == 8
+        assert parsed["bundle_version"] == 9
         assert "generated_at" in parsed
 
     def test_manifest_builder_with_evidence(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
@@ -900,13 +900,13 @@ class TestJobFlowEndToEnd:
         assert "has_commits" in rs
         assert "human_summary" in rs
 
-    def test_manifest_bundle_version_8(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+    def test_manifest_bundle_version_9(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
         ev = tmp_path / "evidence"
         self._run(capsys, repo=demo_repo, job_file=job_file,
                   evidence_out=ev, extra=["--json"])
         from scripts.build_review_manifest import build_manifest
         manifest = build_manifest(evidence_dir=str(ev))
-        assert manifest["bundle_version"] == 8
+        assert manifest["bundle_version"] == 9
 
     # --- R-4327: canonical artifact refs --------------------------------------
 

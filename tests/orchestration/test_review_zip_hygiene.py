@@ -122,10 +122,7 @@ class TestMakeReviewZipRejectsDetritus:
         if manifest_src.exists():
             shutil.copy2(manifest_src, repo / "scripts" / "build_review_manifest.py")
         (repo / "README.md").write_text("# tmp\n")
-        ev_dir = repo / "remedy-job-evidence-test"
-        ev_dir.mkdir()
-        (ev_dir / "job_flow.json").write_text("{}")
-        # git init only — no commit/push/reset/checkout.
+        _make_valid_evidence(repo / "remedy-job-evidence-test", "detritus-test")
         subprocess.run(
             ["git", "init", "-q"], cwd=repo, check=True,
             capture_output=True, text=True,
@@ -135,7 +132,8 @@ class TestMakeReviewZipRejectsDetritus:
     def _run_script(self, repo: Path) -> subprocess.CompletedProcess:
         ev_dir = repo / "remedy-job-evidence-test"
         return subprocess.run(
-            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev_dir)],
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(ev_dir)],
             cwd=repo, capture_output=True, text=True, timeout=60,
         )
 
@@ -223,6 +221,7 @@ class TestDetritusGateIndependent:
             ["git", "init", "-q"], cwd=repo, check=True,
             capture_output=True, text=True,
         )
+        _make_valid_evidence(repo / "remedy-job-evidence-det", "det")
         (repo / "BUILDER_WAS_HERE.txt").write_text("debug\n")
 
         proc = subprocess.run(
@@ -249,8 +248,7 @@ class TestStaleEvidenceFlag:
             capture_output=True, text=True,
         )
         ev = repo / "remedy-job-evidence-test"
-        ev.mkdir()
-        (ev / "job_flow.json").write_text("{}")
+        _make_valid_evidence(ev, "stale-test")
 
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh",
@@ -357,9 +355,7 @@ class TestZipManifestContentVerification:
                  "GIT_COMMITTER_EMAIL": "t@t"},
         )
         ev = repo / "remedy-job-evidence-test123"
-        ev.mkdir()
-        (ev / "job_flow.json").write_text('{"job_id":"test","final_audit":{"status":"READY"}}')
-        (ev / "command_transcript.json").write_text("{}")
+        _make_valid_evidence(ev, "test")
 
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
@@ -407,6 +403,35 @@ def _make_git_repo_with_scripts(tmp_path: Path) -> Path:
     return repo
 
 
+def _make_valid_evidence(ev_dir: Path, job_id: str = "test123") -> None:
+    """Create a complete valid evidence directory with all required artifacts."""
+    import json
+    ev_dir.mkdir(exist_ok=True)
+    (ev_dir / "job_flow.json").write_text(json.dumps({
+        "job_id": job_id,
+        "final_audit": {
+            "status": "READY",
+            "missing_observability_artifacts": [],
+        },
+        "target_guard": {"mutated_target": False},
+    }))
+    (ev_dir / "manifest.json").write_text("{}")
+    (ev_dir / "agent_run_trace.jsonl").write_text("")
+    (ev_dir / "agent_run_trace_summary.json").write_text(
+        '{"trace_sources": []}'
+    )
+    (ev_dir / "prompt_trace_summary.json").write_text("{}")
+    (ev_dir / "command_transcript.json").write_text("{}")
+    task_dir = ev_dir / "task_runs" / "T001"
+    task_dir.mkdir(parents=True)
+    (task_dir / "prompt_trace.jsonl").write_text("")
+    (task_dir / "prompt_trace_summary.json").write_text("{}")
+    (task_dir / "review.json").write_text("{}")
+    (task_dir / "repair_loop.json").write_text("{}")
+    (task_dir / "token_accounting.json").write_text("{}")
+    (task_dir / "provider_evidence.json").write_text("{}")
+
+
 @pytest.mark.skipif(
     shutil.which("git") is None
     or shutil.which("bash") is None
@@ -415,11 +440,10 @@ def _make_git_repo_with_scripts(tmp_path: Path) -> Path:
 )
 class TestAutoSelectLatestEvidence:
 
-    def test_single_evidence_dir_auto_selects(self, tmp_path: Path):
+    def test_single_valid_evidence_dir_auto_selects(self, tmp_path: Path):
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-aaa111"
-        ev.mkdir()
-        (ev / "job_flow.json").write_text('{"job_id":"aaa"}')
+        _make_valid_evidence(ev, "aaa")
 
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh"],
@@ -428,18 +452,16 @@ class TestAutoSelectLatestEvidence:
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
         assert "Auto-selected" in proc.stdout
 
-    def test_multiple_dirs_selects_newest_by_artifact_mtime(self, tmp_path: Path):
+    def test_multiple_valid_dirs_selects_newest_by_mtime(self, tmp_path: Path):
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
         old = repo / "remedy-job-evidence-old111"
-        old.mkdir()
-        (old / "job_flow.json").write_text('{"job_id":"old"}')
+        _make_valid_evidence(old, "old")
         os.utime(old / "job_flow.json", (1000000, 1000000))
 
         new = repo / "remedy-job-evidence-new222"
-        new.mkdir()
-        (new / "job_flow.json").write_text('{"job_id":"new"}')
+        _make_valid_evidence(new, "new")
         os.utime(new / "job_flow.json", (2000000, 2000000))
 
         proc = subprocess.run(
@@ -447,21 +469,104 @@ class TestAutoSelectLatestEvidence:
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "Auto-selected latest evidence dir:" in proc.stdout
+        assert "Auto-selected latest valid evidence dir:" in proc.stdout
         assert "new222" in proc.stdout
 
-    def test_explicit_override_wins(self, tmp_path: Path):
+    def test_newest_invalid_older_valid_selects_older(self, tmp_path: Path):
+        """R-4335: newest incomplete candidate skipped, older valid selected."""
+        import os
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        valid = repo / "remedy-job-evidence-valid1"
+        _make_valid_evidence(valid, "valid1")
+        os.utime(valid / "job_flow.json", (1000000, 1000000))
+
+        invalid = repo / "remedy-job-evidence-invalid2"
+        invalid.mkdir()
+        (invalid / "job_flow.json").write_text('{"job_id":"invalid2"}')
+        os.utime(invalid / "job_flow.json", (2000000, 2000000))
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        assert "valid1" in proc.stdout
+        assert "incomplete" in proc.stdout
+
+    def test_all_candidates_invalid_fails(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        bad1 = repo / "remedy-job-evidence-bad1"
+        bad1.mkdir()
+        (bad1 / "job_flow.json").write_text('{"job_id":"bad1"}')
+
+        bad2 = repo / "remedy-job-evidence-bad2"
+        bad2.mkdir()
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 2
+        assert "No valid complete evidence" in proc.stdout
+        assert not list(repo.glob("*.zip"))
+
+    def test_explicit_incomplete_fails_by_default(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        ev = repo / "remedy-job-evidence-incomplete"
+        ev.mkdir()
+        (ev / "job_flow.json").write_text('{"job_id":"inc"}')
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(ev)],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 2
+        assert "incomplete" in proc.stdout.lower()
+        assert "--allow-incomplete-evidence" in proc.stdout
+
+    def test_explicit_incomplete_with_allow_flag(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        ev = repo / "remedy-job-evidence-debugev"
+        ev.mkdir()
+        (ev / "job_flow.json").write_text(
+            '{"job_id":"debug","final_audit":{"status":"READY",'
+            '"missing_observability_artifacts":[]}}'
+        )
+        (ev / "manifest.json").write_text("{}")
+        (ev / "command_transcript.json").write_text("{}")
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(ev), "--allow-incomplete-evidence"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        assert "Warning" in proc.stdout
+        assert "incomplete" in proc.stdout.lower()
+
+        import json
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips
+        with ZipFile(zips[0]) as zf:
+            manifest = json.loads(zf.read(".review_zip_manifest.json"))
+        val = manifest["current_evidence"]["validation"]
+        assert val["is_valid_current_run"] is False
+        assert val["selected_candidate_status"] == "incomplete"
+
+    def test_explicit_valid_override_wins(self, tmp_path: Path):
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
         old = repo / "remedy-job-evidence-old111"
-        old.mkdir()
-        (old / "job_flow.json").write_text('{"job_id":"old"}')
+        _make_valid_evidence(old, "old")
         os.utime(old / "job_flow.json", (1000000, 1000000))
 
         new = repo / "remedy-job-evidence-new222"
-        new.mkdir()
-        (new / "job_flow.json").write_text('{"job_id":"new"}')
+        _make_valid_evidence(new, "new")
         os.utime(new / "job_flow.json", (2000000, 2000000))
 
         proc = subprocess.run(
@@ -484,13 +589,11 @@ class TestAutoSelectLatestEvidence:
         repo = _make_git_repo_with_scripts(tmp_path)
 
         old = repo / "remedy-job-evidence-stale1"
-        old.mkdir()
-        (old / "job_flow.json").write_text('{"job_id":"stale"}')
+        _make_valid_evidence(old, "stale")
         os.utime(old / "job_flow.json", (1000000, 1000000))
 
         new = repo / "remedy-job-evidence-current1"
-        new.mkdir()
-        (new / "job_flow.json").write_text('{"job_id":"current"}')
+        _make_valid_evidence(new, "current")
         os.utime(new / "job_flow.json", (2000000, 2000000))
 
         proc = subprocess.run(
@@ -508,18 +611,16 @@ class TestAutoSelectLatestEvidence:
                 "Stale evidence must not appear in zip"
             assert "evidence/current/job_flow.json" in names
 
-    def test_manifest_records_selection_mode(self, tmp_path: Path):
+    def test_manifest_validation_section(self, tmp_path: Path):
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
         old = repo / "remedy-job-evidence-aaa111"
-        old.mkdir()
-        (old / "job_flow.json").write_text('{"job_id":"aaa"}')
+        _make_valid_evidence(old, "aaa")
         os.utime(old / "job_flow.json", (1000000, 1000000))
 
         new = repo / "remedy-job-evidence-bbb222"
-        new.mkdir()
-        (new / "job_flow.json").write_text('{"job_id":"bbb"}')
+        _make_valid_evidence(new, "bbb")
         os.utime(new / "job_flow.json", (2000000, 2000000))
 
         proc = subprocess.run(
@@ -538,12 +639,16 @@ class TestAutoSelectLatestEvidence:
         assert ce["selection_mode"] == "auto_latest"
         assert ce["selected_from_candidate_count"] == 2
         assert ce["zip_prefix"] == "evidence/current"
+        val = ce["validation"]
+        assert val["is_valid_current_run"] is True
+        assert val["validation_errors"] == []
+        assert val["selected_candidate_status"] == "valid"
+        assert val["selection_mode"] == "auto_latest"
 
     def test_manifest_records_explicit_mode(self, tmp_path: Path):
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-xxx"
-        ev.mkdir()
-        (ev / "job_flow.json").write_text('{"job_id":"xxx"}')
+        _make_valid_evidence(ev, "xxx")
 
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
@@ -559,16 +664,152 @@ class TestAutoSelectLatestEvidence:
         ce = manifest["current_evidence"]
         assert ce["selection_mode"] == "explicit"
 
+    def test_candidate_summary_shows_rejection_reasons(self, tmp_path: Path):
+        import os
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        valid = repo / "remedy-job-evidence-good1"
+        _make_valid_evidence(valid, "good")
+        os.utime(valid / "job_flow.json", (1000000, 1000000))
+
+        bad = repo / "remedy-job-evidence-bad1"
+        bad.mkdir()
+        (bad / "job_flow.json").write_text('{"job_id":"bad"}')
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        assert "candidate summary" in proc.stdout.lower()
+        assert "incomplete" in proc.stdout
+        assert "valid" in proc.stdout
+
+    def test_evidence_must_include_command_transcript(self, tmp_path: Path):
+        """R-4333: command_transcript.json required for valid candidate."""
+        repo = _make_git_repo_with_scripts(tmp_path)
+        ev = repo / "remedy-job-evidence-noct"
+        _make_valid_evidence(ev, "noct")
+        (ev / "command_transcript.json").unlink()
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 2, \
+            "Must fail when command_transcript.json missing"
+
+    def test_manifest_validation_marks_missing_transcript(self, tmp_path: Path):
+        """R-4334: manifest validation must flag missing command_transcript."""
+        from scripts.build_review_manifest import validate_evidence_candidate
+        ev = tmp_path / "evidence"
+        _make_valid_evidence(ev, "val-test")
+        (ev / "command_transcript.json").unlink()
+
+        result = validate_evidence_candidate(str(ev))
+        assert result["is_valid_current_run"] is False
+        assert any("command_transcript" in e for e in result["validation_errors"])
+
+    def test_manifest_validation_marks_missing_task_artifacts(self, tmp_path: Path):
+        """R-4334: manifest validation must flag missing task-level artifacts."""
+        from scripts.build_review_manifest import validate_evidence_candidate
+        ev = tmp_path / "evidence"
+        _make_valid_evidence(ev, "val-test")
+        (ev / "task_runs" / "T001" / "review.json").unlink()
+        (ev / "task_runs" / "T001" / "repair_loop.json").unlink()
+
+        result = validate_evidence_candidate(str(ev))
+        assert result["is_valid_current_run"] is False
+        assert result["required_task_artifacts"]["T001"]
+        assert "review.json" in result["required_task_artifacts"]["T001"]
+
+    def test_unselected_evidence_not_in_zip(self, tmp_path: Path):
+        import os
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        sel = repo / "remedy-job-evidence-selected"
+        _make_valid_evidence(sel, "selected")
+        os.utime(sel / "job_flow.json", (2000000, 2000000))
+
+        other = repo / "remedy-job-evidence-other"
+        _make_valid_evidence(other, "other")
+        os.utime(other / "job_flow.json", (1000000, 1000000))
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0
+
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        with ZipFile(zips[0]) as zf:
+            names = zf.namelist()
+            assert all("other" not in n for n in names)
+            assert "evidence/current/job_flow.json" in names
+
+    def test_evidence_under_current_prefix(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        ev = repo / "remedy-job-evidence-preftest"
+        _make_valid_evidence(ev, "preftest")
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0
+
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        with ZipFile(zips[0]) as zf:
+            ev_files = [n for n in zf.namelist()
+                        if n.startswith("evidence/")]
+            assert all(n.startswith("evidence/current/") for n in ev_files)
+
+    def test_manifest_rejected_candidate_count(self, tmp_path: Path):
+        """R-4332: manifest tracks rejected_candidate_count."""
+        import os
+        repo = _make_git_repo_with_scripts(tmp_path)
+
+        valid = repo / "remedy-job-evidence-good"
+        _make_valid_evidence(valid, "good")
+        os.utime(valid / "job_flow.json", (1000000, 1000000))
+
+        bad1 = repo / "remedy-job-evidence-bad1"
+        bad1.mkdir()
+        bad2 = repo / "remedy-job-evidence-bad2"
+        bad2.mkdir()
+        (bad2 / "job_flow.json").write_text("{}")
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0
+
+        import json
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        with ZipFile(zips[0]) as zf:
+            manifest = json.loads(zf.read(".review_zip_manifest.json"))
+        val = manifest["current_evidence"]["validation"]
+        assert val["rejected_candidate_count"] == 2
+
 
 class TestFilenamePattern:
     """Lock down the review zip filename pattern."""
 
+    @pytest.mark.skipif(
+        shutil.which("git") is None
+        or shutil.which("bash") is None
+        or shutil.which("zip") is None,
+        reason="git, bash, zip required",
+    )
     def test_filename_matches_pattern(self, tmp_path: Path):
         import re
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-fntest"
-        ev.mkdir()
-        (ev / "job_flow.json").write_text('{"job_id":"fn"}')
+        _make_valid_evidence(ev, "fn")
 
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
@@ -584,17 +825,23 @@ class TestFilenamePattern:
         assert re.match(pattern, filename), \
             f"Filename '{filename}' does not match expected pattern '{pattern}'"
 
+    @pytest.mark.skipif(
+        shutil.which("git") is None
+        or shutil.which("bash") is None
+        or shutil.which("zip") is None,
+        reason="git, bash, zip required",
+    )
     def test_filenames_sortable_chronologically(self, tmp_path: Path):
         import time
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-sorttest"
-        ev.mkdir()
-        (ev / "job_flow.json").write_text('{"job_id":"sort"}')
+        _make_valid_evidence(ev, "sort")
 
         zips_created = []
         for _ in range(2):
             proc = subprocess.run(
-                ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
+                ["bash", "scripts/make_review_zip.sh",
+                 "--evidence-dir", str(ev)],
                 cwd=repo, capture_output=True, text=True, timeout=30,
             )
             if proc.returncode == 0:
@@ -607,3 +854,49 @@ class TestFilenamePattern:
             pytest.skip("Could not create 2 zips")
         assert zips_created == sorted(zips_created), \
             "Zip filenames must be sortable chronologically"
+
+
+class TestPathSanitizerHardening:
+    """R-4336: Path sanitizer must cover /mnt/, .data/job_workspaces/, etc."""
+
+    def test_mnt_path_sanitized(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"ref": "/mnt/data/project/src/main.py"}
+        result = _sanitize_shareable_paths(data)
+        assert "/mnt/" not in result["ref"]
+
+    def test_data_job_workspaces_sanitized(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"path": "/mnt/storage/.data/job_workspaces/abc123/workspace"}
+        result = _sanitize_shareable_paths(data)
+        assert ".data/job_workspaces" not in result["path"]
+        assert "[workspace]" in result["path"]
+
+    def test_data_root_sanitized(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"path": "/home/user/.data/runs"}
+        result = _sanitize_shareable_paths(data)
+        assert ".data/" not in result["path"]
+
+    def test_evidence_dir_outside_tmp_sanitized(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        data = {"path": "/mnt/data/remedy-job-evidence-abc123/job_flow.json"}
+        result = _sanitize_shareable_paths(data)
+        assert "evidence/current/job_flow.json" == result["path"]
+
+    def test_no_private_paths_in_shareable(self):
+        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
+        paths = [
+            "/tmp/remedy-job-evidence-abc/manifest.json",
+            "/home/alice/project/file.py",
+            "/Users/bob/code/file.py",
+            "/private/var/folders/abc/file.py",
+            "/mnt/data/project/file.py",
+            "/mnt/storage/.data/job_workspaces/abc/workspace",
+        ]
+        for p in paths:
+            result = _sanitize_shareable_paths({"ref": p})
+            for prefix in ["/tmp/", "/home/", "/Users/", "/private/",
+                           "/mnt/"]:
+                assert prefix not in result["ref"], \
+                    f"Path {p} leaked prefix {prefix}: {result['ref']}"

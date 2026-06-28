@@ -231,12 +231,112 @@ def _read_trace_sources(evidence_dir: str) -> list[str]:
         return []
 
 
+REQUIRED_ROOT_ARTIFACTS = [
+    "job_flow.json",
+    "manifest.json",
+    "agent_run_trace.jsonl",
+    "agent_run_trace_summary.json",
+    "prompt_trace_summary.json",
+    "command_transcript.json",
+]
+
+REQUIRED_TASK_ARTIFACTS = [
+    "prompt_trace.jsonl",
+    "prompt_trace_summary.json",
+    "review.json",
+    "repair_loop.json",
+    "token_accounting.json",
+    "provider_evidence.json",
+]
+
+
+def validate_evidence_candidate(evidence_dir: str) -> dict:
+    errors: list[str] = []
+    missing_root: list[str] = []
+    missing_task: dict[str, list[str]] = {}
+
+    for art in REQUIRED_ROOT_ARTIFACTS:
+        if not os.path.isfile(os.path.join(evidence_dir, art)):
+            missing_root.append(art)
+            errors.append(f"missing root artifact: {art}")
+
+    jf_path = os.path.join(evidence_dir, "job_flow.json")
+    job_id = ""
+    final_audit_status = ""
+    missing_obs: list[str] = []
+    target_mutation_detected = False
+
+    if os.path.isfile(jf_path):
+        try:
+            with open(jf_path) as f:
+                jf_data = json.load(f)
+            job_id = jf_data.get("job_id", "")
+            if not job_id:
+                errors.append("job_flow.json: job_id is empty")
+            audit = jf_data.get("final_audit", {})
+            final_audit_status = audit.get("status", "")
+            if not final_audit_status:
+                errors.append("job_flow.json: final_audit.status missing")
+            missing_obs = audit.get("missing_observability_artifacts", [])
+            if missing_obs:
+                errors.append(
+                    f"final_audit.missing_observability_artifacts: {missing_obs}"
+                )
+            tg = jf_data.get("target_guard", {})
+            if tg.get("mutated_target", False):
+                target_mutation_detected = True
+                errors.append("target_guard indicates target mutation")
+        except (json.JSONDecodeError, OSError) as exc:
+            errors.append(f"job_flow.json: parse error: {exc}")
+
+    task_runs_dir = os.path.join(evidence_dir, "task_runs")
+    task_run_count = 0
+    if os.path.isdir(task_runs_dir):
+        for entry in sorted(os.listdir(task_runs_dir)):
+            task_path = os.path.join(task_runs_dir, entry)
+            if not os.path.isdir(task_path):
+                continue
+            task_run_count += 1
+            task_missing = []
+            for art in REQUIRED_TASK_ARTIFACTS:
+                if not os.path.isfile(os.path.join(task_path, art)):
+                    task_missing.append(art)
+            if task_missing:
+                missing_task[entry] = task_missing
+                errors.append(
+                    f"task_runs/{entry}: missing {task_missing}"
+                )
+    else:
+        errors.append("no task_runs/ directory")
+
+    if task_run_count == 0:
+        errors.append("no task runs found")
+
+    is_valid = len(errors) == 0
+
+    return {
+        "is_valid_current_run": is_valid,
+        "validation_errors": errors,
+        "required_root_artifacts": {
+            art: "present" if art not in missing_root else "absent"
+            for art in REQUIRED_ROOT_ARTIFACTS
+        },
+        "required_task_artifacts": missing_task,
+        "task_run_count": task_run_count,
+        "job_id": job_id,
+        "final_audit_status": final_audit_status,
+        "missing_observability_artifacts": missing_obs,
+        "target_mutation_detected": target_mutation_detected,
+    }
+
+
 def build_manifest(
     evidence_dir: str | None = None,
     selection_mode: str = "",
     selection_reason: str = "",
     candidate_count: int = 0,
     selected_mtime: str = "",
+    rejected_candidate_count: int = 0,
 ) -> dict:
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
     commit = _git(["rev-parse", "HEAD"])
@@ -269,9 +369,29 @@ def build_manifest(
         audit = _read_final_audit(evidence_dir)
         trace_sources = _read_trace_sources(evidence_dir)
 
+        validation = validate_evidence_candidate(evidence_dir)
+
         current_evidence = {
             "job_id": job_id,
             "zip_prefix": "evidence/current",
+            "validation": {
+                "is_valid_current_run": validation["is_valid_current_run"],
+                "validation_errors": validation["validation_errors"],
+                "required_root_artifacts": validation[
+                    "required_root_artifacts"
+                ],
+                "required_task_artifacts": validation[
+                    "required_task_artifacts"
+                ],
+                "selected_candidate_status": (
+                    "valid" if validation["is_valid_current_run"]
+                    else "incomplete"
+                ),
+                "selection_mode": selection_mode or "unknown",
+                "selection_reason": selection_reason or "unknown",
+                "selected_from_candidate_count": candidate_count,
+                "rejected_candidate_count": rejected_candidate_count,
+            },
             "selection_mode": selection_mode or "unknown",
             "selection_reason": selection_reason or "unknown",
             "selected_from_candidate_count": candidate_count,
@@ -289,7 +409,7 @@ def build_manifest(
 
     manifest = {
         "bundle_kind": "remedy_review_zip",
-        "bundle_version": 8,
+        "bundle_version": 9,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "review_subject": review_subject,
         "review_state": review_state,
@@ -315,6 +435,7 @@ def main() -> None:
     parser.add_argument("--selection-mode", default="")
     parser.add_argument("--selection-reason", default="")
     parser.add_argument("--candidate-count", type=int, default=0)
+    parser.add_argument("--rejected-candidate-count", type=int, default=0)
     parser.add_argument("--selected-mtime", default="")
     parser.add_argument("--output", default=".review_zip_manifest.json")
     args = parser.parse_args()
@@ -325,6 +446,7 @@ def main() -> None:
         selection_reason=args.selection_reason,
         candidate_count=args.candidate_count,
         selected_mtime=args.selected_mtime,
+        rejected_candidate_count=args.rejected_candidate_count,
     )
     out = json.dumps(manifest, indent=2) + "\n"
 

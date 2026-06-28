@@ -1062,19 +1062,31 @@ def _sanitize_shareable_paths(obj: Any) -> Any:
     import re
 
     _STAGING_RE = re.compile(r"/tmp/remedy-pingpong-[a-f0-9]+")
-    _EVIDENCE_RE = re.compile(r"/tmp/remedy-job-evidence-[a-f0-9]+")
+    _EVIDENCE_RE = re.compile(
+        r"(?:/tmp|/[a-zA-Z0-9._/-]*)/remedy-job-evidence-[a-f0-9]+"
+    )
+    _JOB_WORKSPACE_RE = re.compile(
+        r"[a-zA-Z0-9._/:-]*\.data/job_workspaces/[a-zA-Z0-9._/-]*"
+    )
+    _DATA_ROOT_RE = re.compile(
+        r"[a-zA-Z0-9._/:-]*\.data/[a-zA-Z0-9._-]+"
+    )
     _TMP_DIR_RE = re.compile(r"/tmp/[a-zA-Z0-9._-]+")
     _HOME_RE = re.compile(r"/home/[a-zA-Z0-9._-]+")
     _USERS_RE = re.compile(r"/Users/[a-zA-Z0-9._-]+")
     _PRIVATE_RE = re.compile(r"/private/[a-zA-Z0-9._-]+")
+    _MNT_RE = re.compile(r"/mnt/[a-zA-Z0-9._-]+")
 
     if isinstance(obj, str):
         obj = _STAGING_RE.sub("[staging]", obj)
         obj = _EVIDENCE_RE.sub("evidence/current", obj)
+        obj = _JOB_WORKSPACE_RE.sub("[workspace]", obj)
+        obj = _DATA_ROOT_RE.sub("[data]", obj)
         obj = _TMP_DIR_RE.sub("[tmpdir]", obj)
         obj = _HOME_RE.sub("[local]", obj)
         obj = _USERS_RE.sub("[local]", obj)
         obj = _PRIVATE_RE.sub("[local]", obj)
+        obj = _MNT_RE.sub("[local]", obj)
         return obj
     if isinstance(obj, dict):
         return {k: _sanitize_shareable_paths(v) for k, v in obj.items()}
