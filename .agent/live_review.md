@@ -1,3 +1,48 @@
+# Live Review — Steps 5141-5170: Review Zip Current-Run Contract + Worker/Remedy Starter Prep v1
+
+## Verdict (reviewer-owned)
+*(pending reviewer)*
+
+---
+
+## Builder Handoff — PR #110 merged
+
+### Changed Files
+- `apps/cli/commands/do_cmd.py` — command transcript persist, sanitizer prefix-only replacement, repo hash capture
+- `scripts/build_review_manifest.py` — NEW: Python manifest builder (always-valid JSON, bundle v7)
+- `scripts/make_review_zip.sh` — REWRITTEN: current-run contract, evidence/current/ prefix, detritus check moved early
+- `scripts/remedy_self_job_flow.sh` — NEW: Worker/Remedy self-job-flow starter
+- `tests/test_do_job_flow.py` — 10 new E2E tests (transcript, sanitizer, manifest, observability)
+- `tests/orchestration/test_final_audit_evidence.py` — 4 sanitizer tests updated for prefix-only behavior
+- `tests/orchestration/test_pingpong_cli.py` — detritus test updated for evidence-dir requirement
+- `tests/orchestration/test_review_zip_hygiene.py` — hygiene tests updated for evidence-dir + manifest script
+
+### Tests Run
+- 340 focused tests pass (job-flow E2E, final-audit evidence, evidence bundle, review zip hygiene, pingpong CLI)
+- 8255 full suite pass, 9 skipped, 1 pre-existing failure (test_full_chain_order in test_project_brain.py)
+- Lint clean: ruff check on all changed Python files
+
+### Evidence Artifacts
+- `command_transcript.json` persisted with safe fields, repo hashes, timestamps
+- Manifest builder produces valid JSON regardless of git state
+- Review zip uses `evidence/current/` prefix, verifies no local path leak
+
+### Path-Hygiene Grep
+- No auto-approval patterns in production code
+- No git commit/push/merge in production code
+- No secrets/passwords/API keys in production code
+- Sanitizer verified: `/tmp/remedy-job-evidence-abc/manifest.json` → `[evidence]/manifest.json`
+
+### Known Limitations
+- `_build_final_audit()` does not gate on `command_transcript` (it's written after audit — meta artifact about CLI invocation, not agent output)
+- `/private/var/tmp/file.py` double-sanitizes to `[local][tmpdir]` (safe but cosmetically ugly)
+- 1 pre-existing test failure: `test_full_chain_order` in `test_project_brain.py` (confirmed fails on main too)
+
+### Reviewer Findings
+*(none yet)*
+
+---
+
 # Live Review — Steps 4917-4926: Job Evidence Nested Path Containment Closure v1
 
 ## Verdict (reviewer-owned)
@@ -830,7 +875,122 @@ The remaining gap (R-4314 Low — review zip local path in metadata) is cosmetic
 
 ---
 
-# Live Review — Review Zip Current-Run Contract + Worker/Remedy Starter Prep v1
+# Live Review — Steps 5141-5170: Review Zip Current-Run Contract + Worker/Remedy Starter Prep v1
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-28
+
+## Verdict (reviewer-owned)
+**PASS WITH RISKS** — working tree on `feature/review-zip-contract-v1` (uncommitted, awaiting builder commit)
+All 6 findings (R-4315 through R-4320) verified fixed. 1 open Low: R-4321 (2 lint errors, auto-fixable).
+8253 passed, 4 failed (3 pre-existing + 1 flaky environmental). Zero new regressions.
+10 new tests (4 command transcript + 3 sanitizer filename preservation + 2 manifest builder + 1 observability gate).
+Smoke test F verified. Review zip verified.
+
+## Findings
+
+### R-4315 Medium — Review zip manifest must identify current evidence run
+**Resolved.** `scripts/build_review_manifest.py` (NEW) builds v7 manifest with `current_evidence.job_id`, `final_audit_status`, `zip_prefix: "evidence/current"`, complete `root_artifacts` inventory, `task_runs` per-task artifact presence, `trace_sources`, `missing_observability_artifacts`. Tests: `test_command_transcript_persisted` (E2E), `test_manifest_builder_valid_json` (unit), `test_manifest_builder_with_evidence` (unit with evidence). All pass.
+
+### R-4316 Medium — Review zip must not silently include stale evidence dirs
+**Resolved.** `make_review_zip.sh` rewritten: auto-detect single `remedy-job-evidence-*` dir (line 49), error exit 2 on multiple dirs (line 53-57), `--evidence-dir` flag with `$1` backward compat. All `remedy-job-evidence-*` dirs excluded from repo file scan (lines 80-84). Verified: zero stale dirs in generated zip, multiple dirs → clear error message.
+
+### R-4317 Medium — Manifest must be valid JSON in fresh git init repo
+**Resolved.** `build_manifest()` handles no-commits gracefully: `_has_commits()` returns False, manifest has `branch: "unknown"`, `commit: "unknown"`, `has_commits: false`, `degraded_metadata: true`. `_git()` catches `FileNotFoundError` and `TimeoutExpired`, returns `"unknown"`. Verified in fresh `git init` repo — valid JSON output, `json.loads()` succeeds.
+
+### R-4318 Medium — Evidence must use stable prefix not tmp/home paths
+**Resolved.** `make_review_zip.sh` copies evidence to staging under `evidence/current/` prefix (lines 164-175). Post-zip verification rejects files starting with `tmp/`, `home/`, `Users/`, `private/`, `remedy-job-evidence-` (lines 209-215). Verified: all evidence files in generated zip under `evidence/current/`, zero leaked paths.
+
+### R-4319 Medium — Artifact refs must preserve filenames not collapse to [tmpdir]
+**Resolved.** `_sanitize_shareable_paths()` in `do_cmd.py` rewritten with prefix-only regex patterns:
+- `_EVIDENCE_RE = re.compile(r"/tmp/remedy-job-evidence-[a-f0-9]+")` → `[evidence]`
+- `_STAGING_RE = re.compile(r"/tmp/remedy-pingpong-[a-f0-9]+")` → `[staging]`
+- `_TMP_DIR_RE`, `_HOME_RE`, `_USERS_RE`, `_PRIVATE_RE` strip only prefix, preserve trailing path
+Tests: `test_sanitizer_preserves_evidence_artifact_name` (`[evidence]/manifest.json`), `test_sanitizer_preserves_staging_subpath` (`[staging]/staging/file.py`), `test_sanitizer_preserves_home_subpath` (`[local]/project/src/main.py`). All pass.
+
+### R-4320 Medium — Command transcript must be included or accounted for
+**Resolved.** `_persist_command_transcript()` (NEW, do_cmd.py) writes `command_transcript.json` with `command_id`, `argv_safe`, `repo_ref_safe`, `evidence_ref`, `json_stdout_preview_safe`, `exit_code`, `started_at`, `finished_at`, `target_repo_hash_before`, `target_repo_hash_after`, `target_repo_mutated`, `review_zip_hint`. `_quick_repo_hash()` computes SHA-256 of non-.git files. Tests: `test_command_transcript_persisted`, `test_command_transcript_no_private_paths`, `test_command_transcript_has_repo_hashes`, `test_command_transcript_timestamps`. All pass.
+
+### R-4321 Low (NEW) — 2 lint errors in do_cmd.py
+**Open (documented).** F541 at line 1136 (f-string without placeholders — should be plain string). I001 at line 1432 (import block un-sorted). Both auto-fixable with `ruff --fix`. No functional impact.
+
+## Reviewer Evidence
+
+### Focused Tests
+- 73/73 `tests/test_do_job_flow.py`: PASS (includes 10 new tests for R-4315/R-4316/R-4318/R-4319/R-4320)
+- 26/26 `tests/orchestration/test_final_audit_evidence.py`: PASS
+- Pingpong CLI test updated for new `--evidence-dir` flag: PASS
+
+### Full Test Suite
+```
+8253 passed, 4 failed, 9 skipped (283.38s)
+```
+Pre-existing failures only:
+- `test_project_brain.py::test_full_chain_order` — provenance chain (pre-existing)
+- `test_wrapper_behavior.py` x2 — lock contention (pre-existing)
+- `test_review_zip_hygiene.py::test_rejects_root_was_here_detritus` — flaky, passes on re-run (environmental)
+
+### Smoke Test F
+- Ran `remedy do job-flow --builder fake --reviewer fake --out /tmp/reviewer_smoke_F/evidence --json`
+- Evidence dir populated with `command_transcript.json`, `job_flow.json`, `agent_run_trace.jsonl`, etc.
+- Review zip generated with all evidence under `evidence/current/` prefix
+- Zero leaked local paths in zip
+- Manifest v7 with `current_evidence.job_id`, `final_audit_status`, artifact inventory
+
+### Code Verification (per-finding)
+- R-4315: `build_manifest()` reads `job_flow.json` for `job_id` and `final_audit`, reads `agent_run_trace_summary.json` for `trace_sources`. Manifest includes full artifact inventory with present/absent status.
+- R-4316: `make_review_zip.sh` lines 37-58 auto-detect logic. `find . -maxdepth 1 -type d -name 'remedy-job-evidence-*'` + count check. Tested with 0, 1, and 2 evidence dirs.
+- R-4317: `build_manifest()` with `evidence_dir=None` produces valid JSON. `_git()` and `_has_commits()` handle missing git gracefully.
+- R-4318: Evidence staging at lines 160-175, post-zip verification at lines 208-215.
+- R-4319: Regex patterns match only prefix, not full path. `_EVIDENCE_RE` for evidence dirs, `_TMP_DIR_RE` for other tmp paths.
+- R-4320: `_persist_command_transcript()` at do_cmd.py step 10 (after evidence index at step 9). All paths sanitized. Target repo hashes captured before/after.
+
+### Lint
+```
+F541 apps/cli/commands/do_cmd.py:1136 — f-string without placeholders
+I001 apps/cli/commands/do_cmd.py:1432 — import block un-sorted
+```
+2 errors (both auto-fixable, Low severity).
+
+### Safety Invariants
+- `may_mutate_repo=False` for `do.run` (inherited default in `command_catalog.py`)
+- No `auto_approve` in `do_cmd.py`
+- No `git push/commit/reset/checkout` or `subprocess.*git` in production code
+- Target repo unchanged in smoke test (hash_before == hash_after)
+- No `shell=True` in production code
+- `build_review_manifest.py` uses `subprocess.run` with list args only (no shell)
+
+### Protocol Compliance
+- Builder did NOT write reviewer verdict — ✅
+- Builder did NOT mark findings as Resolved — ✅
+- Builder has not committed yet (working tree changes) — noted, not blocking
+
+### Worker/Remedy Starter Readiness
+- `scripts/remedy_self_job_flow.sh` (NEW): clean self-test wrapper. Runs `do job-flow` with fake provider, produces evidence, generates review zip. No security concerns.
+- All evidence pipeline artifacts present and accounted for
+- Review zip is self-contained and parseable
+
+## Acceptance Question
+> Can a final reviewer now receive one review zip and unambiguously reconstruct the current Remedy run?
+
+**Yes.** The review zip now:
+1. Contains a v7 manifest that uniquely identifies the current run via `job_id`, `final_audit_status`, and `zip_prefix`
+2. Uses stable `evidence/current/` prefix — no leaked `/tmp/`, `/home/`, `/Users/`, `/private/` paths
+3. Rejects stale evidence dirs (errors on multiple, auto-detects single)
+4. Works in degraded mode (fresh git init — `degraded_metadata: true`)
+5. Preserves artifact filenames in sanitized paths (`[evidence]/manifest.json`, not `[tmpdir]`)
+6. Includes command transcript with safe metadata (sanitized argv, repo hashes, timestamps)
+7. Manifest includes complete artifact inventory with per-task drill-down
+8. Self-test starter script available (`scripts/remedy_self_job_flow.sh`)
+
+## Final Recommendation
+**PASS WITH RISKS** — zero open Blocker/High/Medium. 1 open Low (R-4321: 2 auto-fixable lint errors). All 6 findings (R-4315 through R-4320) resolved. Review zip is unambiguous, parseable, current-run-centered, and complete. Builder must commit and fix lint errors before merge.
+
+---
+
+# Live Review — Self-Run Bundle Integrity + Worker/Remedy Starter v1
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
@@ -842,20 +1002,23 @@ Timestamp: 2026-06-28
 
 ## Findings
 
-### R-4315 Medium — Review zip manifest must identify current evidence run
-**Open.** Awaiting builder implementation.
+### R-4321 Medium — Review zip must not contain stale live_review.md state
+**Open.** Manifest must expose `review_state` with latest verdict, open findings, builder handoff presence, and `review_ready`. PENDING/BLOCKED/FAIL or open findings → `review_ready=false`.
 
-### R-4316 Medium — Review zip must not silently include stale evidence dirs
-**Open.** Awaiting builder implementation.
+### R-4322 Medium — Manifest must classify review subject
+**Open.** Feature branch or dirty tree must be declared. Must not imply clean merged main when dirty feature branch. No-commit repos → valid JSON + clean console output.
 
-### R-4317 Medium — Manifest must be valid JSON in fresh git init repo
-**Open.** Awaiting builder implementation.
+### R-4323 Medium — Real Worker/Remedy starter must exist
+**Open.** Must show `claude-cli` builder/reviewer, selected evidence dir, JSON output, review zip, no auto-approval/commit/push/merge.
 
-### R-4318 Medium — Evidence must use stable prefix not tmp/home paths
-**Open.** Awaiting builder implementation.
+### R-4324 Medium — Detritus test must pass or contract explicitly updated
+**Open.** `test_rejects_root_was_here_detritus` must reliably pass. Preferred: detritus fails before evidence selection.
 
-### R-4319 Medium — Artifact refs must preserve filenames not collapse to [tmpdir]
-**Open.** Awaiting builder implementation.
+### R-4325 Medium — --include-stale-evidence must not be misleading no-op
+**Open.** Must be implemented, removed, or fail clearly.
 
-### R-4320 Medium — Command transcript must be included or accounted for
-**Open.** Awaiting builder implementation.
+### R-4326 Medium — Review zip builder must verify zip contents against manifest
+**Open.** Zip failures must not be swallowed. Manifest artifact=present → must be in zip.
+
+### R-4327 Medium — Shareable artifact refs should be canonical
+**Open.** Prefer `evidence/current/...` refs. Reject `[tmpdir]/evidence/...` or useless placeholders.

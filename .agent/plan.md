@@ -1,23 +1,19 @@
-# Plan — Steps 5141-5170: Review Zip Current-Run Contract + Worker/Remedy Starter Prep v1
+# Plan — Steps 5171-5200: Self-Run Bundle Integrity + Worker/Remedy Starter v1
 
 ## Goal
-Fix R-4315..R-4320. Make review zip current-run-centered, generate valid JSON
-manifest via Python, add command transcript, fix artifact ref sanitization,
-add Worker/Remedy starter docs.
+Fix R-4321..R-4327. Make review zip state truthful, git subject explicit,
+starter script real, detritus gate independent, stale-evidence flag honest,
+zip content verified post-build, artifact refs canonical.
 
 ## Current Step
-Step 5170: Verification complete. Committing and creating PR.
+Step 5171: Implement all findings
 
-## Completed
-- R-4315: Command transcript persisted with safe fields + repo hashes
-- R-4316: Python manifest builder (always-valid JSON, bundle v7)
-- R-4317: Review zip rewritten for current-run contract (evidence/current/ prefix)
-- R-4318: All observability artifacts verified present after persist
-- R-4319: Sanitizer preserves artifact names (prefix-only replacement)
-- R-4320: Worker/Remedy starter script (scripts/remedy_self_job_flow.sh)
-- Detritus check moved before manifest build in make_review_zip.sh
-- Tests: 340 focused tests pass, 8255+ full suite pass (1 pre-existing failure)
+## Next Steps
+- Tests for all findings
+- Full verification
+- Commit, push, PR, merge, handoff
 
 ## Constraints
 No auto-approval, no target mutation, no git ops, no UI mutation,
 no external providers, no fake events, no hiding missing data, no MemPalace.
+No self-merge before reviewer. No marking reviewer findings resolved.

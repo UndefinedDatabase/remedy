@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -46,6 +47,20 @@ def _dirty_files() -> list[str]:
         return []
 
 
+def _has_untracked_files() -> bool:
+    try:
+        r = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if r.returncode != 0:
+            return False
+        return any(line.startswith("??") for line in r.stdout.strip().split("\n")
+                   if line.strip())
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
 def _has_commits() -> bool:
     try:
         r = subprocess.run(
@@ -55,6 +70,108 @@ def _has_commits() -> bool:
         return r.returncode == 0 and len(r.stdout.strip()) >= 7
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
+
+
+def _classify_review_subject(
+    branch: str, commit: str, dirty: list[str],
+    has_untracked: bool, has_commits_val: bool,
+) -> dict:
+    is_main = branch in ("main", "master")
+    is_dirty = len(dirty) > 0
+
+    if not has_commits_val:
+        kind = "unknown"
+        summary = "No commits — fresh git init or degraded metadata"
+    elif is_main and not is_dirty:
+        kind = "clean_commit"
+        summary = f"Clean main at {commit[:12]}"
+    elif is_main and is_dirty:
+        kind = "dirty_working_tree"
+        summary = f"Dirty working tree on main ({len(dirty)} changed file(s))"
+    elif not is_main and not is_dirty:
+        kind = "feature_branch"
+        summary = f"Feature branch {branch} at {commit[:12]}"
+    else:
+        kind = "dirty_working_tree"
+        summary = f"Dirty feature branch {branch} ({len(dirty)} changed file(s))"
+
+    return {
+        "kind": kind,
+        "branch": branch,
+        "commit": commit,
+        "dirty_files": dirty,
+        "has_untracked_files": has_untracked,
+        "has_commits": has_commits_val,
+        "degraded_metadata": not has_commits_val,
+        "human_summary": summary,
+    }
+
+
+def _extract_review_state() -> dict:
+    lr_path = ".agent/live_review.md"
+    plan_path = ".agent/plan.md"
+
+    verdict = "absent"
+    open_findings: list[str] = []
+    builder_handoff_present = False
+
+    if os.path.isfile(lr_path):
+        try:
+            with open(lr_path) as f:
+                full_content = f.read()
+            blocks = re.split(r"\n---\n+(?=# Live Review)", full_content)
+            content = blocks[0] if blocks else full_content
+
+            verdict_match = re.search(
+                r"##\s+Verdict\s+\(reviewer-owned\)\s*\n\s*\*?\*?([A-Z_]+)\*?\*?",
+                content,
+            )
+            if verdict_match:
+                verdict = verdict_match.group(1).strip("*").strip()
+            elif "pending" in content[:500].lower():
+                verdict = "PENDING"
+
+            for m in re.finditer(
+                r"###\s+(R-\d+)\s+.*?\n.*?(?=\n###|\n---|\Z)",
+                content, re.DOTALL,
+            ):
+                block = m.group(0)
+                finding_id = m.group(1)
+                if "**Resolved" not in block and "resolved" not in block.lower()[:200]:
+                    open_findings.append(finding_id)
+
+            builder_handoff_present = "## Builder Handoff" in content
+        except OSError:
+            pass
+
+    plan_step_range = ""
+    plan_goal_present = False
+    if os.path.isfile(plan_path):
+        try:
+            with open(plan_path) as f:
+                plan_content = f.read()
+            step_match = re.search(r"Steps?\s+(\d+\s*[-–]\s*\d+)", plan_content)
+            if step_match:
+                plan_step_range = step_match.group(1).replace("–", "-").strip()
+            plan_goal_present = "## Goal" in plan_content
+        except OSError:
+            pass
+
+    review_ready = (
+        verdict == "PASS"
+        and len(open_findings) == 0
+        and builder_handoff_present
+    )
+
+    return {
+        "latest_live_review_verdict": verdict,
+        "open_findings": open_findings,
+        "builder_handoff_present": builder_handoff_present,
+        "review_ready": review_ready,
+        "review_state_source": lr_path if os.path.isfile(lr_path) else "missing",
+        "plan_step_range": plan_step_range,
+        "plan_goal_present": plan_goal_present,
+    }
 
 
 def _scan_task_runs(evidence_dir: str) -> list[dict]:
@@ -117,7 +234,13 @@ def _read_trace_sources(evidence_dir: str) -> list[str]:
 def build_manifest(evidence_dir: str | None = None) -> dict:
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
     commit = _git(["rev-parse", "HEAD"])
-    has_commits = _has_commits()
+    has_commits_val = _has_commits()
+    dirty = _dirty_files()
+    has_untracked = _has_untracked_files()
+
+    review_subject = _classify_review_subject(
+        branch, commit, dirty, has_untracked, has_commits_val,
+    )
 
     root_artifacts = {
         "job_flow.json": "absent_no_evidence_dir",
@@ -152,17 +275,14 @@ def build_manifest(evidence_dir: str | None = None) -> dict:
             ),
         }
 
+    review_state = _extract_review_state()
+
     manifest = {
         "bundle_kind": "remedy_review_zip",
-        "bundle_version": 7,
+        "bundle_version": 8,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "git": {
-            "branch": branch,
-            "commit": commit,
-            "has_commits": has_commits,
-            "dirty_files": _dirty_files(),
-            "degraded_metadata": not has_commits,
-        },
+        "review_subject": review_subject,
+        "review_state": review_state,
         "policy": (
             "Current-run evidence under evidence/current/. "
             "Stale evidence dirs excluded by default. "
