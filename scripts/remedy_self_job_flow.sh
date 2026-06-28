@@ -33,6 +33,8 @@ GOAL_FILE=""
 OUT_DIR=""
 BUILDER="claude-cli"
 REVIEWER="claude-cli"
+TIMEOUT_SEC=""
+WRITE_MODE=""
 ALLOW_DIRTY=false
 DRY_RUN=false
 EXTRA_ARGS=()
@@ -55,6 +57,14 @@ while [[ $# -gt 0 ]]; do
       REVIEWER="$2"
       shift 2
       ;;
+    --timeout-sec)
+      TIMEOUT_SEC="$2"
+      shift 2
+      ;;
+    --claude-cli-write-mode)
+      WRITE_MODE="$2"
+      shift 2
+      ;;
     --allow-dirty)
       ALLOW_DIRTY=true
       shift
@@ -69,7 +79,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -*)
       echo "Unknown option: $1" >&2
-      echo "Usage: $0 --goal-file <path> [--out <dir>] [--builder <name>] [--reviewer <name>] [--allow-dirty] [--dry-run] [--json]" >&2
+      echo "Usage: $0 --goal-file <path> [--out <dir>] [--builder <name>] [--reviewer <name>] [--timeout-sec <n>] [--claude-cli-write-mode <mode>] [--allow-dirty] [--dry-run] [--json]" >&2
       exit 2
       ;;
     *)
@@ -136,6 +146,12 @@ JOB_FLOW_CMD=(
   --reviewer "$REVIEWER"
   --out "$OUT_DIR"
 )
+if [[ -n "$TIMEOUT_SEC" ]]; then
+  JOB_FLOW_CMD+=(--timeout-sec "$TIMEOUT_SEC")
+fi
+if [[ -n "$WRITE_MODE" ]]; then
+  JOB_FLOW_CMD+=(--claude-cli-write-mode "$WRITE_MODE")
+fi
 JOB_FLOW_CMD+=("${EXTRA_ARGS[@]}")
 
 REVIEW_ZIP_CMD=(

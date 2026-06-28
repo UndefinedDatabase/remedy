@@ -1,3 +1,90 @@
+# Live Review — Steps 5271-5300: First Worker/Remedy Self-Development Run v1
+
+Reviewer: parallel reviewer (independent; owns verdict).
+Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
+Builder must NOT mark findings as resolved.
+Timestamp: 2026-06-28
+
+## Verdict (reviewer-owned)
+*(pending reviewer)*
+
+## Builder Handoff — PR #115 (First Remedy Self-Run)
+
+### Self-Run Classification
+This is a **true Remedy self-run** — Remedy actually executed `do job-flow` with real claude-cli builder and reviewer. The operator did NOT manually implement the feature. Only minimal runtime fixes to the starter script were made by the operator.
+
+### Command Used
+```
+bash scripts/remedy_self_job_flow.sh \
+  --goal-file .agent/self_run_goal_5271_5300.md \
+  --builder claude-cli --reviewer claude-cli \
+  --json --allow-dirty \
+  --timeout-sec 900 \
+  --claude-cli-write-mode allowed-tools \
+  --out ./remedy-job-evidence-selfrun-5271-5300
+```
+
+### Attempts (3 total)
+| # | Issue | Root Cause | Fix |
+|---|-------|-----------|-----|
+| 1 | `provider_unavailable` | 120s default timeout too short for claude-cli | Added `--timeout-sec` forwarding to starter |
+| 2 | `builder_no_changes` | `write_mode=none` prevents builder from writing files | Added `--claude-cli-write-mode` forwarding to starter |
+| 3 | Partial success | T003 blocked by review_inconsistent gate | Not a code bug; gate strictness |
+
+### Self-Run Results
+- **Job ID**: a42ed4f1eac349fa
+- **Provider calls**: 6 (3 builder, 3 reviewer, 0 repair)
+- **Duration**: ~10 minutes
+- **Target repo**: NOT mutated (target_guard confirmed)
+
+### Task Results
+| Task | Title | Status | Reviewer | Changed Files |
+|------|-------|--------|----------|---------------|
+| T001 | Create observability index builder | **PASS** | pass | `scripts/build_observability_index.py` (new, 431 lines) |
+| T002 | Integrate into do job-flow | **PASS** | pass | `apps/cli/commands/do_cmd.py` |
+| T003 | Ensure index in review zip | **BLOCKED** | pass (1 low finding → review_inconsistent) | `tests/orchestration/test_review_zip_hygiene.py` |
+| T004 | Add focused tests | **SKIPPED** | — | — |
+
+### What Remedy Produced (in staging workspace, NOT applied to target)
+1. **`scripts/build_observability_index.py`** (431 lines) — standalone module that reads evidence dir and produces `self_run_observability_index.json`. Covers all required sections: tasks, prompts (summary only), findings, repair loops, tokens, changed artifacts, tests, audit status, next action. Handles incomplete evidence gracefully (marks missing data as "absent").
+2. **`apps/cli/commands/do_cmd.py`** integration — `_persist_observability_index()` function called at end of `do job-flow`. Best-effort: catches all exceptions, logs warning, never fails the job flow.
+3. **`tests/orchestration/test_review_zip_hygiene.py`** — `TestObservabilityIndexInReviewZip` class (1 test) verifying the index rides along in the zip under `evidence/current/`.
+
+### Operator Changes (minimal runtime fixes)
+- `scripts/remedy_self_job_flow.sh` — added `--timeout-sec` and `--claude-cli-write-mode` flag forwarding
+- `tests/orchestration/test_review_zip_hygiene.py` — 1 test for `--timeout-sec` dry-run
+- `.agent/self_run_goal_5271_5300.md` — goal file for Remedy
+
+### Evidence Artifacts
+- Evidence dir: `remedy-job-evidence-selfrun-5271-5300/`
+- Review zip: `remedy-review-20260628-221528.zip`
+- T001/T002/T003 each have: safe.diff, review.json, prompt_trace.jsonl, token_accounting.json, repair_loop.json
+
+### Token Accounting
+- Total estimated prompt tokens: ~19,796
+- Builder calls: 3
+- Reviewer calls: 3
+- Context savings ratio: 99.4%
+- Actual provider tokens: unavailable (claude-cli limitation)
+
+### Known Limitations
+- T003 blocked by `review_inconsistent` gate (reviewer said PASS with 1 low finding → gate rejects)
+- T004 skipped (T003 cascade)
+- No tests run by Remedy (no `--test-command` specified)
+- Code produced by Remedy is in staging workspace only — NOT applied to target repo
+- To apply Remedy's changes, would need `remedy do job-promote --approve <job_id>`
+
+### Safety Invariants
+- No auto-approval
+- No target mutation (target_guard confirmed)
+- No git commit/push/merge by Remedy
+- No secrets exposed in evidence
+- No raw prompts in observability index (prompt summaries only)
+- Review zip filename pattern unchanged: `remedy-review-YYYYMMDD-HHMMSS.zip`
+- `make_review_zip.sh` NOT made stricter
+
+---
+
 # Live Review — Steps 5261-5270: Non-Blocking Evidence Validation v1
 
 Reviewer: parallel reviewer (independent; owns verdict).
