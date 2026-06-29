@@ -32,7 +32,44 @@ export interface RemedyContinuationSummary {
 export interface RemedyNextAction { label: string; command: string; risk: "low" | "medium" | "high"; requiresHuman: boolean; }
 export interface RemedyJourneyItem { id: string; kind: RemedyTaskKind; title: string; subtitle: string; state: RemedyState; nodeId: string; visibleFromZoom: number; }
 export interface RemedyTaskItem { id: string; label: string; state: RemedyState; kind: RemedyTaskKind; checked: boolean; muted: boolean; nodeId: string; nextAction?: RemedyNextAction; outcomeSummary?: string; changedFilesCount?: number; changedFilesSafe?: string[]; testStatus?: string; proofStatus?: string; applyStatus?: string; blockedReason?: string; completedAt?: string; }
-export interface RemedyActivityItem { id: string; actor: "Builder" | "Reviewer" | "User" | "System"; message: string; timeLabel: string; kind: "build" | "review" | "user" | "system" | "test"; }
+export interface RemedyActivityItem { id: string; actor: "Builder" | "Reviewer" | "User" | "System"; message: string; timeLabel: string; kind: "build" | "review" | "user" | "system" | "test"; taskId?: string; tokenEstimate?: number; }
+
+export type RemedyPromptRole = "builder" | "reviewer" | "system";
+export type RemedyPromptKind = "initial" | "review" | "repair" | "re-review" | "unknown";
+
+/** One captured prompt from a task-level prompt_trace.jsonl (already redacted). */
+export interface RemedyPromptTraceItem {
+  id: string;
+  taskId: string;
+  runId: string;
+  round: number;
+  role: RemedyPromptRole;
+  promptKind: RemedyPromptKind;
+  provider: string;
+  providerKind: string;
+  promptSha256: string;
+  promptChars: number;
+  promptTokensEstimated: number;
+  contextCategories: string[];
+  changedFilesSafe: string[];
+  safeDiffFiles: string[];
+  evidenceRef: string;
+  redactedPreview: string;
+  redactedPreviewTruncated: boolean;
+  findingIds?: string[];
+}
+
+/** Aggregate prompt-trace section. "absent" source carries a missingReason. */
+export interface RemedyPromptTraceSummary {
+  totalPrompts: number;
+  builderPrompts: number;
+  reviewerPrompts: number;
+  repairPrompts: number;
+  totalPromptTokensEstimated: number;
+  items: RemedyPromptTraceItem[];
+  source: string;
+  missingReason?: string;
+}
 export interface RemedyGraphNode { id: string; label: string; kind: RemedyTaskKind | "root" | "tiny"; state: RemedyState; nodeId: string; group?: "open" | "planned" | "done" | "review" | "memory"; visibleFromZoom: number; showLabelFromZoom: number; }
 export interface RemedyGraphEdge { id: string; source: string; target: string; meaning: string; state: RemedyState; }
 export interface RemedyPhase { id: "job" | "planning" | "build" | "test" | "review" | "finalized"; label: string; state: RemedyState; icon: string; }
@@ -162,4 +199,4 @@ export interface RemedyWorkerStatus {
   redaction: string;
 }
 
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; }

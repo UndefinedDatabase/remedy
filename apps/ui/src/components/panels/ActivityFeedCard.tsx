@@ -9,6 +9,10 @@ const iconByActor: Record<string, typeof BuilderGlyph> = {
   System: GearGlyph,
 };
 
+function formatTokenEstimate(tokens: number): string {
+  return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens);
+}
+
 export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] }) {
   const hasActivity = activity.length > 0;
 
@@ -22,7 +26,12 @@ export function ActivityFeedCard({ activity }: { activity: RemedyActivityItem[] 
             <article key={item.id} className={styles.activityItem}>
               <div className={styles.actorIcon}><Icon style={{ width: 16, height: 16, color: "white" }} /></div>
               <div>
-                <div className={styles.activityMeta}><strong>{item.actor}</strong><span>{item.timeLabel}</span></div>
+                <div className={styles.activityMeta}>
+                  <strong>{item.actor}</strong>
+                  <span>{item.timeLabel}</span>
+                  {item.taskId ? <span className={styles.activityTag}>{item.taskId}</span> : null}
+                  {item.tokenEstimate ? <span className={styles.activityTag}>~{formatTokenEstimate(item.tokenEstimate)} tok</span> : null}
+                </div>
                 <p>{item.message}</p>
               </div>
             </article>

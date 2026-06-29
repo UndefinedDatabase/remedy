@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import sys
 from datetime import datetime, timezone
@@ -30,6 +31,63 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 from uuid import UUID
+
+# ---------------------------------------------------------------------------
+# Path sanitization (no absolute path leaks in dashboard JSON)
+# ---------------------------------------------------------------------------
+
+# Each absolute-path family maps to a semantic placeholder. `\S*` consumes the
+# rest of the path run (stops at whitespace) so free-text fields are scrubbed
+# without swallowing surrounding words.
+_PATH_REDACTIONS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"/tmp/\S*"), "[staging]"),
+    (re.compile(r"/home/\S*"), "[local]"),
+    (re.compile(r"/Users/\S*"), "[local]"),
+    (re.compile(r"/private/\S*"), "[local]"),
+    (re.compile(r"/mnt/\S*"), "[local]"),
+    (re.compile(r"\.data/job_workspaces/\S*"), "[workspace]"),
+    (re.compile(r"remedy-pingpong-\S*"), "[staging]"),
+]
+
+# Repo-root markers used to recover a repo-relative tail from an absolute path
+# without collapsing the whole thing to a basename.
+_REPO_ROOT_MARKERS = ("packages/", "apps/", "tests/", "scripts/", "docs/", ".agent/")
+
+
+def _as_int(value: Any, default: int = 0) -> int:
+    """Best-effort int coercion that never raises."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _redact_preview(text: str) -> str:
+    """Replace absolute/staging path runs in free text with semantic placeholders."""
+    s = str(text)
+    if not s:
+        return s
+    for pat, repl in _PATH_REDACTIONS:
+        s = pat.sub(repl, s)
+    return s
+
+
+def _safe_rel_file(name: str) -> str:
+    """Strip an absolute prefix from a file path while preserving repo-relative structure."""
+    s = str(name).strip()
+    if not s:
+        return ""
+    if s.startswith("/"):
+        # Strip absolute prefix, keep repo-relative tail
+        for marker in _REPO_ROOT_MARKERS:
+            idx = s.find(marker)
+            if idx >= 0:
+                s = s[idx:]
+                break
+        else:
+            s = s.rsplit("/", 1)[-1]
+    return s[:120]
+
 
 # ---------------------------------------------------------------------------
 # Safe data builders (no raw content leaks)
@@ -268,9 +326,9 @@ def _task_changed_files_safe(task_id: str, events: list[dict]) -> list[str]:
     for e in applies:
         fnames = e.get("metadata", {}).get("files", [])
         for f in fnames[:10]:
-            base = str(f).rsplit("/", 1)[-1] if "/" in str(f) else str(f)
-            if base and len(base) < 80:
-                names.append(base)
+            rel = _redact_preview(_safe_rel_file(str(f)))
+            if rel:
+                names.append(rel)
     return names[:10]
 
 
@@ -285,7 +343,7 @@ def _task_blocked_reason(task_id: str, tstat: str, events: list[dict]) -> str:
     ]
     if stops:
         reason = stops[-1].get("metadata", {}).get("stop_reason", "")
-        return reason.replace("_", " ").capitalize() if reason else "Blocked"
+        return _redact_preview(reason.replace("_", " ").capitalize()) if reason else "Blocked"
     return "Blocked"
 
 
@@ -1333,6 +1391,120 @@ def _build_local_advisor_section(job: Any) -> dict[str, Any]:
                 "latest_status": "unknown", "source": "unavailable"}
 
 
+_PROMPT_TRACE_PREVIEW_MAX = 1200
+_PROMPT_ROLES = ("builder", "reviewer", "system")
+_PROMPT_KINDS = ("initial", "review", "repair", "re-review", "unknown")
+
+
+def _empty_prompt_trace(reason: str) -> dict[str, Any]:
+    """Explicit 'absent' prompt-trace section — never a fake empty success."""
+    return {
+        "totalPrompts": 0,
+        "builderPrompts": 0,
+        "reviewerPrompts": 0,
+        "repairPrompts": 0,
+        "totalPromptTokensEstimated": 0,
+        "items": [],
+        "source": "absent",
+        "missingReason": reason,
+    }
+
+
+def _build_prompt_trace(ev_dir: Path | None) -> dict[str, Any]:
+    """Build a safe prompt-trace section for the dashboard payload.
+
+    Reads task-level ``task_runs/<id>/prompt_trace.jsonl`` from the evidence
+    dir. Only the already-redacted ``prompt_text_redacted`` is surfaced (run
+    through path sanitization and capped at 1200 chars) — raw prompts and
+    absolute paths are never emitted. Evidence references are relative paths.
+    Missing trace data is reported explicitly ("absent" + reason).
+    """
+    if ev_dir is None:
+        return _empty_prompt_trace("evidence_dir_unavailable")
+    task_runs_dir = ev_dir / "task_runs"
+    if not task_runs_dir.is_dir():
+        return _empty_prompt_trace("task_runs_missing")
+
+    items: list[dict[str, Any]] = []
+    found_any_file = False
+    for task_dir in sorted(task_runs_dir.iterdir()):
+        if not task_dir.is_dir():
+            continue
+        trace_path = task_dir / "prompt_trace.jsonl"
+        if not trace_path.exists():
+            continue
+        found_any_file = True
+        # Relative evidence ref only — never the absolute path on disk.
+        evidence_ref = f"task_runs/{task_dir.name}/prompt_trace.jsonl"
+        try:
+            raw_lines = trace_path.read_text().splitlines()
+        except OSError:
+            continue
+        for line_no, raw in enumerate(raw_lines):
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except ValueError:
+                continue
+            if not isinstance(rec, dict):
+                continue
+            redacted = _redact_preview(str(rec.get("prompt_text_redacted", "") or ""))
+            truncated = (len(redacted) > _PROMPT_TRACE_PREVIEW_MAX
+                         or bool(rec.get("prompt_text_truncated", False)))
+            preview = redacted[:_PROMPT_TRACE_PREVIEW_MAX]
+            role = str(rec.get("role", "") or "")
+            role = role if role in _PROMPT_ROLES else "system"
+            kind = str(rec.get("prompt_kind", "") or "")
+            kind = kind if kind in _PROMPT_KINDS else "unknown"
+            run_id = str(rec.get("run_id", "") or "")
+            task_id = str(rec.get("task_id", task_dir.name) or task_dir.name)
+            rnd = _as_int(rec.get("round", 0))
+            changed = [c for c in (_safe_rel_file(f)
+                       for f in (rec.get("changed_files") or [])) if c]
+            safe_diff = [c for c in (_safe_rel_file(f)
+                         for f in (rec.get("safe_diff_files") or [])) if c]
+            item: dict[str, Any] = {
+                "id": f"{task_id}-{run_id}-r{rnd}-{role}-{line_no}",
+                "taskId": task_id,
+                "runId": run_id,
+                "round": rnd,
+                "role": role,
+                "promptKind": kind,
+                "provider": str(rec.get("provider", "") or ""),
+                "providerKind": str(rec.get("provider_kind", "") or ""),
+                "promptSha256": str(rec.get("prompt_sha256", "") or ""),
+                "promptChars": _as_int(rec.get("prompt_chars", 0)),
+                "promptTokensEstimated": _as_int(rec.get("prompt_tokens_estimated", 0)),
+                "contextCategories": [str(c) for c in (rec.get("context_categories") or [])][:50],
+                "changedFilesSafe": changed[:50],
+                "safeDiffFiles": safe_diff[:50],
+                "evidenceRef": evidence_ref,
+                "redactedPreview": preview,
+                "redactedPreviewTruncated": truncated,
+            }
+            finding_ids = rec.get("finding_ids")
+            if isinstance(finding_ids, list) and finding_ids:
+                item["findingIds"] = [str(f) for f in finding_ids][:50]
+            items.append(item)
+
+    if not found_any_file:
+        return _empty_prompt_trace("prompt_trace_jsonl_missing")
+    if not items:
+        return _empty_prompt_trace("no_prompt_trace_items")
+
+    return {
+        "totalPrompts": len(items),
+        "builderPrompts": sum(1 for i in items if i["role"] == "builder"),
+        "reviewerPrompts": sum(1 for i in items if i["role"] == "reviewer"),
+        "repairPrompts": sum(1 for i in items if i["promptKind"] in ("repair", "re-review")),
+        "totalPromptTokensEstimated": sum(i["promptTokensEstimated"] for i in items),
+        "items": items,
+        "source": "prompt_trace_jsonl",
+    }
+
+
 def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard for a JobPlan (job-flow) job.
 
@@ -1405,7 +1577,8 @@ def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
     for e in events[-12:]:
         ev = e.get("event", "")
         meta = e.get("metadata", {})
-        activity_items.append({
+        prompt_chars = _as_int(meta.get("prompt_chars", 0))
+        item: dict[str, Any] = {
             "id": f"evt-{e.get('timestamp', '')[:19]}",
             "time": e.get("timestamp", ""),
             "actor": meta.get("actor", "System"),
@@ -1413,7 +1586,13 @@ def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
             "summary": ev.replace("_", " ").capitalize(),
             "source": "agent_run_trace",
             "trace_source": meta.get("trace_source", ""),
-        })
+            "task_id": str(meta.get("task_id", "") or ""),
+            "prompt_kind": str(meta.get("prompt_kind", "") or ""),
+            "prompt_chars": prompt_chars,
+        }
+        if prompt_chars > 0:
+            item["token_estimate"] = prompt_chars // 4
+        activity_items.append(item)
 
     ev_dir = _resolve_evidence_dir(plan.job_id)
     job_flow_data: dict[str, Any] = {}
@@ -1463,6 +1642,7 @@ def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
         "tasks": task_items,
         "activity": activity_items,
         "phases": phases,
+        "prompt_trace": _build_prompt_trace(ev_dir),
         "next_action": {
             "kind": "guidance",
             "label": next_action_label,

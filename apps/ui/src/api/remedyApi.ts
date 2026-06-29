@@ -1,5 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -105,12 +105,19 @@ export function normalizeDashboardPayload(
   // Activity from dashboard
   const activity: RemedyActivityItem[] = (dashboard.activity || []).map((a: any, idx: number) => {
     const meta = EVENT_LABELS[a.event_kind] || { actor: (a.actor || "System") as any, kind: "system" as const, label: a.summary || a.event_kind || "" };
+    const promptKind = String(a.prompt_kind ?? a.promptKind ?? "");
+    // A re-review prompt is a follow-up review pass; surface it distinctly.
+    const label = promptKind === "re-review" ? "Re-review requested" : meta.label;
+    const taskId = String(a.task_id ?? a.taskId ?? "");
+    const tokenEstimate = a.token_estimate ?? a.tokenEstimate;
     return {
       id: a.id || `event-${idx}`,
       actor: meta.actor,
-      message: scrubUiText(meta.label || a.summary, ""),
+      message: scrubUiText(label || a.summary, ""),
       timeLabel: a.time ? formatEventTime(a.time) : "",
       kind: meta.kind,
+      taskId: taskId || undefined,
+      tokenEstimate: typeof tokenEstimate === "number" ? tokenEstimate : undefined,
     };
   });
 
@@ -167,6 +174,7 @@ export function normalizeDashboardPayload(
     timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
     snapshot: normalizeSnapshotSummary(dashboard.snapshot),
     continuation: normalizeContinuationSummary(dashboard.continuation),
+    promptTrace: normalizePromptTrace(dashboard.prompt_trace),
   };
 }
 
@@ -210,6 +218,77 @@ function normalizeContinuationSummary(raw: any): RemedyContinuationSummary | nul
     lastResult: String(raw.last_result || "none"),
     lastStopReason: String(raw.last_stop_reason || "none"),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Prompt trace normalization
+// ---------------------------------------------------------------------------
+
+const VALID_PROMPT_ROLES: RemedyPromptRole[] = ["builder", "reviewer", "system"];
+const VALID_PROMPT_KINDS: RemedyPromptKind[] = ["initial", "review", "repair", "re-review", "unknown"];
+
+function normalizePromptRole(raw: unknown): RemedyPromptRole {
+  const s = String(raw ?? "").toLowerCase();
+  return VALID_PROMPT_ROLES.includes(s as RemedyPromptRole) ? (s as RemedyPromptRole) : "system";
+}
+
+function normalizePromptKind(raw: unknown): RemedyPromptKind {
+  const s = String(raw ?? "").toLowerCase();
+  return VALID_PROMPT_KINDS.includes(s as RemedyPromptKind) ? (s as RemedyPromptKind) : "unknown";
+}
+
+function asNum(raw: unknown): number {
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : 0;
+}
+
+function asStrArray(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.map((x) => String(x)) : [];
+}
+
+/** Map one prompt-trace item, accepting snake_case or camelCase keys. */
+function normalizePromptTraceItem(raw: any, idx: number): RemedyPromptTraceItem {
+  const item: RemedyPromptTraceItem = {
+    id: String(raw.id ?? `prompt-${idx}`),
+    taskId: String(raw.taskId ?? raw.task_id ?? ""),
+    runId: String(raw.runId ?? raw.run_id ?? ""),
+    round: asNum(raw.round),
+    role: normalizePromptRole(raw.role),
+    promptKind: normalizePromptKind(raw.promptKind ?? raw.prompt_kind),
+    provider: String(raw.provider ?? ""),
+    providerKind: String(raw.providerKind ?? raw.provider_kind ?? ""),
+    promptSha256: String(raw.promptSha256 ?? raw.prompt_sha256 ?? ""),
+    promptChars: asNum(raw.promptChars ?? raw.prompt_chars),
+    promptTokensEstimated: asNum(raw.promptTokensEstimated ?? raw.prompt_tokens_estimated),
+    contextCategories: asStrArray(raw.contextCategories ?? raw.context_categories),
+    changedFilesSafe: asStrArray(raw.changedFilesSafe ?? raw.changed_files_safe),
+    safeDiffFiles: asStrArray(raw.safeDiffFiles ?? raw.safe_diff_files),
+    evidenceRef: String(raw.evidenceRef ?? raw.evidence_ref ?? ""),
+    redactedPreview: String(raw.redactedPreview ?? raw.redacted_preview ?? ""),
+    redactedPreviewTruncated: Boolean(raw.redactedPreviewTruncated ?? raw.redacted_preview_truncated ?? false),
+  };
+  const findingIds = raw.findingIds ?? raw.finding_ids;
+  if (Array.isArray(findingIds) && findingIds.length) {
+    item.findingIds = findingIds.map((x: unknown) => String(x));
+  }
+  return item;
+}
+
+/** Normalize the dashboard prompt-trace section; null when absent entirely. */
+export function normalizePromptTrace(raw: any): RemedyPromptTraceSummary | null {
+  if (!raw || typeof raw !== "object") return null;
+  const items = Array.isArray(raw.items) ? raw.items.map(normalizePromptTraceItem) : [];
+  const summary: RemedyPromptTraceSummary = {
+    totalPrompts: asNum(raw.totalPrompts ?? raw.total_prompts),
+    builderPrompts: asNum(raw.builderPrompts ?? raw.builder_prompts),
+    reviewerPrompts: asNum(raw.reviewerPrompts ?? raw.reviewer_prompts),
+    repairPrompts: asNum(raw.repairPrompts ?? raw.repair_prompts),
+    totalPromptTokensEstimated: asNum(raw.totalPromptTokensEstimated ?? raw.total_prompt_tokens_estimated),
+    items,
+    source: String(raw.source ?? "absent"),
+  };
+  const missingReason = raw.missingReason ?? raw.missing_reason;
+  if (missingReason) summary.missingReason = String(missingReason);
+  return summary;
 }
 
 /** Normalize API failure into degraded RemedyDashboard. */
@@ -470,6 +549,9 @@ const EVENT_LABELS: Record<string, { actor: RemedyActivityItem["actor"]; kind: R
   proof_collected: { actor: "Builder", kind: "build", label: "Proof collected" },
   review_recommendation: { actor: "Reviewer", kind: "review", label: "Review suggestion" },
   stop_reason_recorded: { actor: "System", kind: "system", label: "Stopped" },
+  builder_prompt_created: { actor: "Builder", kind: "build", label: "Builder prompt sent" },
+  reviewer_prompt_created: { actor: "Reviewer", kind: "review", label: "Reviewer prompt sent" },
+  repair_prompt_created: { actor: "Builder", kind: "build", label: "Repair prompt sent" },
 };
 
 function formatEventTime(ts: string): string {

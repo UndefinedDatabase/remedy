@@ -10,7 +10,21 @@ import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 
 export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
-  const selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
+  let selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
+  // Prompt satellite nodes carry the prompt item id as their node id. Resolve
+  // such a selection to its owning task node so the popover (and its Prompt
+  // Trace panel) opens with the prompt highlighted.
+  let selectedPromptId: string | null = null;
+  if (!selectedNode && selectedNodeId) {
+    const promptItem = dashboard.promptTrace?.items.find(p => p.id === selectedNodeId);
+    if (promptItem) {
+      selectedPromptId = promptItem.id;
+      const owningTask = dashboard.tasks.find(t => t.id === promptItem.taskId);
+      if (owningTask) {
+        selectedNode = dashboard.graph.nodes.find(n => n.nodeId === owningTask.nodeId) ?? null;
+      }
+    }
+  }
   // Jump-to: case-insensitive match over real task labels; focus the first match's node.
   const handleJump = (query: string) => {
     const q = query.toLowerCase();
@@ -30,7 +44,7 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
         </main>
         <RightLivePanel dashboard={dashboard} onSelectNode={onSelectNode} />
       </div>
-      {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} onClose={() => onSelectNode(null)} />}
+      {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} />}
     </div>
   );
 }

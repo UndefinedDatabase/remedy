@@ -1,5 +1,6 @@
 import type { RemedyDashboard, RemedyGraphNode, RemedyTaskItem } from "../../api/types";
 import { TaskDoneGlyph, TaskCurrentGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
+import { PromptTracePanel } from "../prompt/PromptTracePanel";
 import styles from "./DetailPopover.module.css";
 
 const STATE_LABELS: Record<string, string> = {
@@ -58,8 +59,12 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function DetailPopover({ dashboard, selectedNode, onClose }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; onClose: () => void }) {
+export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void }) {
   const task = dashboard.tasks.find(i => i.nodeId === selectedNode.nodeId);
+  // Prompt-trace items for the selected task (prompt item taskId === task id).
+  const prompts = task
+    ? (dashboard.promptTrace?.items ?? []).filter(p => p.taskId === task.id)
+    : [];
   const title = task?.label || selectedNode.label || "Task";
   const state = task?.state || selectedNode.state;
   const stateLabel = STATE_LABELS[state] || state;
@@ -131,6 +136,9 @@ export function DetailPopover({ dashboard, selectedNode, onClose }: { dashboard:
           <Field label="Artifacts" value={UNKNOWN} />
         </div>
       </section>
+
+      {/* Prompt trace — compact, redacted-only evidence */}
+      <PromptTracePanel prompts={prompts} selectedPromptId={selectedPromptId} />
     </aside>
   );
 }

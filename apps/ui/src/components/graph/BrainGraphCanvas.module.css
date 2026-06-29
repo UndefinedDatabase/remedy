@@ -37,6 +37,18 @@
 .nodePlanned { fill: #fff; stroke: var(--remedy-state-planned-ring); }
 .nodeBlocked { fill: var(--remedy-state-blocked); stroke: var(--remedy-state-blocked); }
 
+/* Prompt-trace satellite nodes — small role-coloured circles. */
+.promptNode {
+  stroke: rgba(255, 255, 255, .7);
+  stroke-width: .8;
+}
+
+.promptRing {
+  fill: none;
+  stroke-width: .8;
+  opacity: .85;
+}
+
 .hoverHalo {
   fill: none;
   stroke: var(--remedy-blue, #4c83ff);

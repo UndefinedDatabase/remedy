@@ -1,0 +1,61 @@
+.panel { margin-bottom: 2px; }
+.panel h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; color: var(--remedy-muted); letter-spacing: .06em; font-weight: 700; }
+
+.header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.count { font-size: 10px; font-weight: 600; color: var(--remedy-ink-soft, #6f82a8); }
+
+.empty { font-size: 12px; color: var(--remedy-faint, #9aa9c5); font-style: italic; }
+
+.list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+
+.promptCard {
+  position: relative;
+  border-radius: 12px;
+  padding: 9px 11px 9px 14px;
+  background: rgba(255,255,255,.5);
+  border: 1px solid var(--remedy-line, rgba(78,111,172,.12));
+  box-shadow: 0 1px 2px rgba(20,40,80,.04);
+}
+/* Left accent rail — quiet, role-coloured. */
+.promptCard::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--remedy-ink-soft, #6f82a8);
+  opacity: .55;
+}
+.builder::before { background: var(--remedy-blue, #4c83ff); }
+.reviewer::before { background: var(--remedy-green, #4cc681); }
+.system::before { background: var(--remedy-ink-soft, #6f82a8); }
+.repair::before { background: #e0913a; }
+
+.selected { border-color: rgba(76,131,255,.5); box-shadow: 0 0 0 1px rgba(76,131,255,.35); }
+
+.cardTop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.role { font-size: 12px; font-weight: 700; color: var(--remedy-ink-strong, #0a1c48); }
+.tokens { font-size: 10px; color: var(--remedy-ink-soft, #6f82a8); white-space: nowrap; }
+
+.cardMeta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font-size: 10px; color: var(--remedy-muted); }
+.hash { font-family: var(--remedy-mono, ui-monospace, monospace); letter-spacing: .02em; }
+.evidence { color: var(--remedy-ink-soft, #6f82a8); }
+
+.preview { margin-top: 6px; }
+.preview summary { font-size: 10px; font-weight: 600; color: var(--remedy-muted); cursor: pointer; list-style: none; text-transform: uppercase; letter-spacing: .04em; }
+.preview summary::-webkit-details-marker { display: none; }
+.preview summary::before { content: "▸ "; opacity: .6; }
+.preview[open] summary::before { content: "▾ "; }
+.previewBody {
+  margin: 5px 0 0;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(18,32,64,.05);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--remedy-ink-soft, #6f82a8);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow: auto;
+}
