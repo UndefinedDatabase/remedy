@@ -33,6 +33,7 @@ from packages.orchestration.pingpong_job import (
 )
 
 _TASK_BODY_EVIDENCE_LIMIT = 500
+_WORKSPACE_DIFF_MAX_CHARS = 500_000
 
 _SAFE_TASK_ID_RE = re.compile(r"^T\d{3,}$")
 
@@ -395,7 +396,12 @@ def _build_workspace_diff(job: Any) -> str:
         diff_lines.append("# No files applied to workspace")
         return "\n".join(diff_lines) + "\n"
 
+    total_chars = sum(len(line) + 1 for line in diff_lines)
+    capped = False
     for rel_path in sorted(set(applied_files)):
+        if total_chars >= _WORKSPACE_DIFF_MAX_CHARS:
+            capped = True
+            break
         ws_file = ws / rel_path
         repo_file = repo / rel_path
 
@@ -436,13 +442,23 @@ def _build_workspace_diff(job: Any) -> str:
                 lineterm="",
             ))
             if unified:
-                for line in unified[:200]:
-                    diff_lines.append(line.rstrip())
-                if len(unified) > 200:
-                    diff_lines.append(f"# ... {len(unified) - 200} more lines truncated")
+                for line in unified:
+                    text = line.rstrip()
+                    diff_lines.append(text)
+                    total_chars += len(text) + 1
+                    if total_chars >= _WORKSPACE_DIFF_MAX_CHARS:
+                        capped = True
+                        break
             else:
                 diff_lines.append("# Files differ (binary or encoding)")
         diff_lines.append("")
+        if capped:
+            break
+
+    if capped:
+        diff_lines.append(
+            f"# Workspace diff truncated at {_WORKSPACE_DIFF_MAX_CHARS} char total cap"
+        )
 
     return "\n".join(diff_lines) + "\n"
 

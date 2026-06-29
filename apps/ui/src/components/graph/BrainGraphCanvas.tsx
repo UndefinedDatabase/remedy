@@ -8,10 +8,16 @@ interface DisplayNode {
   id: string;
   label: string;
   state: string;
-  kind: "root" | "task";
+  kind: "root" | "task" | "prompt";
   x: number;
   y: number;
   size: number;
+  /** Prompt-node only: role-derived accent colour. */
+  color?: string;
+  /** Prompt-node only: render a subtle double-ring (re-review marker). */
+  doubleRing?: boolean;
+  /** Prompt-node only: owning task id (for selection resolution). */
+  taskId?: string;
 }
 
 const STAGE_W = 1120;
@@ -21,6 +27,15 @@ const ROOT_R = 38;
 const TASK_R = 14;
 const DEG = Math.PI / 180;
 const BRANCH_ANGLES = [-145, -70, -15, 40, 105];
+const PROMPT_R = 5;
+
+// Prompt-node palette: builder=blue, reviewer/re-review=purple, repair=amber.
+function promptNodeColor(role: string, kind: string): string {
+  if (kind === "repair") return "#f59e0b";
+  if (kind === "re-review" || role === "reviewer") return "#a78bfa";
+  if (role === "builder") return "#4c83ff";
+  return "#8aa0c8";
+}
 
 const FILTER_EMPTY_MESSAGES: Record<string, string> = {
   open: "No active or blocked tasks",
@@ -37,7 +52,7 @@ function taskState(st: string): string {
     : "planned";
 }
 
-function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; edges: [string, string][] } {
+export function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; edges: [string, string][] } {
   const tasks = dashboard.tasks.slice(0, 80);
   const nodes: DisplayNode[] = [];
   const edges: [string, string][] = [];
@@ -70,6 +85,38 @@ function buildDisplayModel(dashboard: RemedyDashboard): { nodes: DisplayNode[]; 
       edges.push(["root", t.id]);
     });
   }
+
+  // Prompt-trace satellite nodes — small, clickable circles attached to their
+  // owning task node. They inherit the task's state (so they are filter-aware),
+  // are never counted as tasks (kind === "prompt"), and their id is the prompt
+  // item id so a click resolves back to the prompt in RemedyShell.
+  const taskNodeById = new Map<string, DisplayNode>();
+  nodes.forEach(n => { if (n.kind === "task") taskNodeById.set(n.id, n); });
+  const perTaskCount = new Map<string, number>();
+  const promptItems = dashboard.promptTrace?.items ?? [];
+  promptItems.forEach(p => {
+    const parent = taskNodeById.get(p.taskId);
+    if (!parent) return; // no task node to attach to — skip, never orphan
+    const seen = perTaskCount.get(p.taskId) ?? 0;
+    perTaskCount.set(p.taskId, seen + 1);
+    const angle = (-90 + seen * 47) * DEG; // deterministic spread around parent
+    const dist = 30 + (seen % 2) * 10;
+    const role = p.role || "";
+    const kind = p.promptKind || "";
+    nodes.push({
+      id: p.id,
+      label: `${role || "prompt"} r${p.round}`,
+      state: parent.state,
+      kind: "prompt",
+      x: parent.x + Math.cos(angle) * dist,
+      y: parent.y + Math.sin(angle) * dist,
+      size: PROMPT_R,
+      color: promptNodeColor(role, kind),
+      doubleRing: kind === "re-review",
+      taskId: p.taskId,
+    });
+    edges.push([parent.id, p.id]);
+  });
 
   return { nodes, edges };
 }
@@ -156,20 +203,32 @@ export function BrainGraphCanvas({ dashboard, filter = "all", selectedNodeId, on
           return <path key={i} d={curvePath(a.x, a.y, b.x, b.y)} className={styles.edge} />;
         })}
 
-        {nodes.map(n => (
+        {nodes.map(n => {
+          const clickable = n.kind === "task" || n.kind === "prompt";
+          return (
           <g key={n.id}
-            tabIndex={n.kind === "task" ? 0 : undefined}
-            role={n.kind === "task" ? "button" : undefined}
-            aria-label={n.kind === "task" ? `${n.label} — ${n.state}` : `Root: ${n.label}`}
+            tabIndex={clickable ? 0 : undefined}
+            role={clickable ? "button" : undefined}
+            aria-label={n.kind === "root" ? `Root: ${n.label}` : `${n.label} — ${n.state}`}
             onMouseEnter={() => setHoveredId(n.id)}
             onMouseLeave={() => setHoveredId(null)}
             onFocus={() => setHoveredId(n.id)}
             onBlur={() => setHoveredId(null)}
-            onClick={() => n.kind === "task" && onSelectNode(n.id)}
-            onKeyDown={e => e.key === "Enter" && n.kind === "task" && onSelectNode(n.id)}
-            style={{ cursor: n.kind === "task" ? "pointer" : "default", outline: "none" }}
+            onClick={() => clickable && onSelectNode(n.id)}
+            onKeyDown={e => e.key === "Enter" && clickable && onSelectNode(n.id)}
+            style={{ cursor: clickable ? "pointer" : "default", outline: "none" }}
           >
-            {n.kind === "root" ? (
+            {n.kind === "prompt" ? (
+              <>
+                {n.doubleRing && (
+                  <circle cx={n.x} cy={n.y} r={n.size + 2.4} className={styles.promptRing} style={{ stroke: n.color }} />
+                )}
+                <circle cx={n.x} cy={n.y} r={n.size} className={styles.promptNode} style={{ fill: n.color }} />
+                {selectedNodeId === n.id && (
+                  <circle cx={n.x} cy={n.y} r={n.size + 5} className={styles.selectRing} />
+                )}
+              </>
+            ) : n.kind === "root" ? (
               <>
                 <circle cx={n.x} cy={n.y} r={n.size} className={styles.rootOrb} />
                 <foreignObject x={n.x - 12} y={n.y - 12} width={24} height={24}>
@@ -190,7 +249,8 @@ export function BrainGraphCanvas({ dashboard, filter = "all", selectedNodeId, on
               </>
             )}
           </g>
-        ))}
+          );
+        })}
       </svg>
 
       {hovered && tooltipPos && (

@@ -76,6 +76,7 @@
 .activityMeta strong { font-size: 13px; color: var(--remedy-ink-strong); }
 .activityMeta span { font-size: 11px; color: var(--remedy-faint); }
 .activityItem p { margin: 2px 0 0; font-size: 13px; color: var(--remedy-muted); line-height: 1.45; }
+.activityTag { font-size: 11px; color: var(--remedy-faint); white-space: nowrap; }
 
 .attentionTitle { display: block; font-size: 14px; color: var(--remedy-ink-strong); }
 .attentionDesc { margin: 4px 0 10px; font-size: 13px; color: var(--remedy-muted); line-height: 1.45; }
