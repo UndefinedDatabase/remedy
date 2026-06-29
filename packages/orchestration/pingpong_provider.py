@@ -60,6 +60,8 @@ class ReviewerOutput:
     tokens_used: int = 0
     parse_retried: bool = False
     parse_retry_recovered: bool = False
+    original_verdict: str = ""  # set when verdict was normalized
+    verdict_normalized: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -384,6 +386,34 @@ def _unwrap_envelope(data: dict) -> dict:
     return data
 
 
+def normalize_reviewer_verdict(out: ReviewerOutput) -> ReviewerOutput:
+    """Normalize an incoherent ``pass`` + findings verdict.
+
+    A reviewer that returns ``verdict="pass"`` while still reporting findings is
+    internally inconsistent: the findings represent unresolved issues. Treating
+    this as a plain pass would let those findings slip through unreviewed, while
+    blocking it as ``review_inconsistent`` prevents the repair loop from ever
+    addressing them.
+
+    Instead, route the output back through review: the verdict is normalized to
+    ``needs_repair`` (the verdict that triggers Remedy's existing repair loop —
+    i.e. the findings are sent for a further review/repair pass rather than
+    silently passing). The original verdict is preserved on ``original_verdict``
+    for the audit trail. Mutates and returns ``out``.
+    """
+    if out.verdict == "pass" and out.findings:
+        out.original_verdict = out.verdict
+        out.verdict = "needs_repair"
+        out.verdict_normalized = True
+        note = (
+            f"verdict normalized pass->needs_repair: reviewer reported "
+            f"{len(out.findings)} finding(s) alongside a pass verdict; "
+            f"routing findings to review/repair instead of passing"
+        )
+        out.summary = f"{out.summary} [{note}]" if out.summary else note
+    return out
+
+
 def _parse_reviewer_json(
     text: str, duration_ms: int, tokens_used: int, *, provider: str = "claude",
 ) -> ReviewerOutput:
@@ -453,7 +483,7 @@ def _parse_reviewer_json(
             required_fix=f.get("required_fix", ""),
         ))
 
-    return ReviewerOutput(
+    return normalize_reviewer_verdict(ReviewerOutput(
         verdict=verdict,
         findings=findings,
         confidence=data.get("confidence", "medium"),
@@ -461,7 +491,7 @@ def _parse_reviewer_json(
         provider=provider,
         duration_ms=duration_ms,
         tokens_used=tokens_used,
-    )
+    ))
 
 
 # ---------------------------------------------------------------------------

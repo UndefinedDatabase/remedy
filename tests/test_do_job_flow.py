@@ -797,6 +797,25 @@ class TestJobFlowEndToEnd:
         assert ct["target_repo_hash_before"] == ct["target_repo_hash_after"], \
             "R-4315: fake provider must not mutate target repo"
 
+    def test_command_transcript_noise_fields_agree_with_guard(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path
+    ):
+        # T004: transcript must use the same noise-exclusion policy as the
+        # target guard, so the two never contradict each other on cache/noise.
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        # New explicit fields present.
+        assert "target_content_mutated" in ct
+        assert "target_noise_changed" in ct
+        assert "ignored_noise_files" in ct
+        assert isinstance(ct["ignored_noise_files"], list)
+        # Fake provider does not touch real source: content mutation is False
+        # and the headline mutated flag tracks content, not noise.
+        assert ct["target_content_mutated"] is False
+        assert ct["target_repo_mutated"] is ct["target_content_mutated"]
+
     def test_command_transcript_timestamps(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
         ev = tmp_path / "evidence"
         self._run(capsys, repo=demo_repo, job_file=job_file,

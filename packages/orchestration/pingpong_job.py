@@ -125,9 +125,18 @@ class TaskEntry:
 
 @dataclass
 class TargetGuard:
-    """Job-level target repo mutation guard."""
+    """Job-level target repo mutation guard.
+
+    ``target_mutated`` is the headline flag and tracks real source changes only
+    (``target_content_mutated``). Operational review/evidence artifacts and
+    volatile cache noise are reported separately but never count as a mutation.
+    """
     target_mutated: bool = False
+    target_content_mutated: bool = False
+    target_operational_artifacts_changed: bool = False
+    target_noise_changed: bool = False
     changed_target_files: list[str] = field(default_factory=list)
+    ignored_operational_artifacts: list[str] = field(default_factory=list)
     ignored_target_noise_files: list[str] = field(default_factory=list)
 
 
@@ -334,7 +343,11 @@ def _export_target_guard(g: TargetGuard | None) -> dict[str, Any] | None:
         return None
     return {
         "target_mutated": g.target_mutated,
+        "target_content_mutated": g.target_content_mutated,
+        "target_operational_artifacts_changed": g.target_operational_artifacts_changed,
+        "target_noise_changed": g.target_noise_changed,
         "changed_target_files": g.changed_target_files,
+        "ignored_operational_artifacts": g.ignored_operational_artifacts,
         "ignored_target_noise_files": g.ignored_target_noise_files,
     }
 
@@ -344,7 +357,15 @@ def _import_target_guard(d: dict[str, Any] | None) -> TargetGuard | None:
         return None
     return TargetGuard(
         target_mutated=d.get("target_mutated", False),
+        target_content_mutated=d.get(
+            "target_content_mutated", d.get("target_mutated", False)
+        ),
+        target_operational_artifacts_changed=d.get(
+            "target_operational_artifacts_changed", False
+        ),
+        target_noise_changed=d.get("target_noise_changed", False),
         changed_target_files=d.get("changed_target_files", []),
+        ignored_operational_artifacts=d.get("ignored_operational_artifacts", []),
         ignored_target_noise_files=d.get("ignored_target_noise_files", []),
     )
 
@@ -578,11 +599,17 @@ def _check_target_repo_guard(
     before_snap: dict[str, bytes],
 ) -> TargetGuard:
     """Check if target repo was mutated since snapshot."""
-    from packages.orchestration.pingpong_loop import _check_target_mutation
-    meaningful, noise = _check_target_mutation(Path(repo_path), before_snap)
+    from packages.orchestration.pingpong_loop import _classify_target_changes
+    content, operational, noise = _classify_target_changes(
+        Path(repo_path), before_snap
+    )
     return TargetGuard(
-        target_mutated=bool(meaningful),
-        changed_target_files=meaningful,
+        target_mutated=bool(content),
+        target_content_mutated=bool(content),
+        target_operational_artifacts_changed=bool(operational),
+        target_noise_changed=bool(noise),
+        changed_target_files=content,
+        ignored_operational_artifacts=operational,
         ignored_target_noise_files=noise,
     )
 
