@@ -122,6 +122,17 @@ def export_job_evidence(
 
     for task in job.tasks:
         _write_task_run_evidence(task, str(out_path), written)
+        try:
+            from packages.orchestration.review_scope import write_review_scope_packet
+            write_review_scope_packet(task, job.job_workspace_path, str(out_path), written)
+        except Exception as exc:
+            rel = f"task_runs/{task.task_id}/review_scope_packet.error.txt"
+            err_path = _validate_output_path(str(out_path), rel)
+            err_path.write_text(
+                f"review_scope_packet unavailable: {type(exc).__name__}: {exc}\n",
+                encoding="utf-8",
+            )
+            written[rel] = str(err_path)
 
     # Job-level prompt trace aggregate
     _write_job_prompt_trace_summary(job, str(out_path), written)
