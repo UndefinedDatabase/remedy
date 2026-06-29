@@ -292,6 +292,29 @@ class TestStarterDryRun:
         shutil.which("git") is None or shutil.which("bash") is None,
         reason="git and bash required",
     )
+    def test_dry_run_with_timeout_sec(self, tmp_path: Path):
+        if not self.STARTER.exists():
+            pytest.skip("remedy_self_job_flow.sh not found")
+
+        goal = tmp_path / "goal.md"
+        goal.write_text("# Job: Test\n\n## Task 1\nDo something.\n\nAcceptance:\n- done\n")
+
+        proc = subprocess.run(
+            ["bash", str(self.STARTER),
+             "--goal-file", str(goal),
+             "--out", str(tmp_path / "evidence"),
+             "--timeout-sec", "900",
+             "--allow-dirty", "--dry-run"],
+            cwd=str(REPO_ROOT),
+            capture_output=True, text=True, timeout=10,
+        )
+        assert proc.returncode == 0
+        assert "--timeout-sec 900" in proc.stdout
+
+    @pytest.mark.skipif(
+        shutil.which("git") is None or shutil.which("bash") is None,
+        reason="git and bash required",
+    )
     def test_missing_goal_file_fails(self, tmp_path: Path):
         if not self.STARTER.exists():
             pytest.skip("remedy_self_job_flow.sh not found")
