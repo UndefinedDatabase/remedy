@@ -1138,10 +1138,29 @@ def _persist_command_transcript(
     started_at: str,
     target_hash_before: str,
     target_hash_after: str,
+    changed_content_files: list[str] | None = None,
+    ignored_noise_files: list[str] | None = None,
+    ignored_operational_artifacts: list[str] | None = None,
 ) -> None:
-    """Write command_transcript.json to evidence output directory."""
+    """Write command_transcript.json to evidence output directory.
+
+    Mutation reporting uses the same three-way classification policy as the
+    target guard: only real source changes count as a target mutation.
+    Operational review/evidence artifacts (remedy-review-*.zip, run_transcript.txt,
+    remedy-job-evidence-* bundles) and volatile tool-cache files (.mypy_cache,
+    .pytest_cache, .ruff_cache, __pycache__, *.pyc, ...) never count as a target
+    mutation. This keeps command_transcript.json and target_guard.json from
+    contradicting each other when only operational/cache files change.
+    """
     from datetime import datetime, timezone
     from pathlib import Path
+
+    changed_content_files = changed_content_files or []
+    ignored_noise_files = ignored_noise_files or []
+    ignored_operational_artifacts = ignored_operational_artifacts or []
+    target_content_mutated = bool(changed_content_files)
+    target_noise_changed = bool(ignored_noise_files)
+    target_operational_artifacts_changed = bool(ignored_operational_artifacts)
 
     transcript = {
         "command_id": "do.job-flow",
@@ -1161,7 +1180,12 @@ def _persist_command_transcript(
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "target_repo_hash_before": target_hash_before,
         "target_repo_hash_after": target_hash_after,
-        "target_repo_mutated": target_hash_before != target_hash_after,
+        "target_repo_mutated": target_content_mutated,
+        "target_content_mutated": target_content_mutated,
+        "target_operational_artifacts_changed": target_operational_artifacts_changed,
+        "target_noise_changed": target_noise_changed,
+        "ignored_operational_artifacts": sorted(ignored_operational_artifacts),
+        "ignored_noise_files": sorted(ignored_noise_files),
         "data_root_ref_safe": "<data>",
         "review_zip_hint": "scripts/make_review_zip.sh --evidence-dir <evidence>",
     }
@@ -1170,6 +1194,56 @@ def _persist_command_transcript(
     (out_path / "command_transcript.json").write_text(
         json.dumps(transcript, indent=2) + "\n"
     )
+
+
+def _persist_observability_index(evidence_out: str) -> dict:
+    """Build self_run_observability_index.json in the evidence directory.
+
+    Best-effort: never raises, so it can never fail the job flow. The index
+    builder itself marks missing data as ``"absent"``, so it still produces a
+    file on incomplete evidence dirs.
+
+    Returns a status dict to merge into the job-flow output:
+      - ``observability_index_status``: ``"generated"``, ``"failed"``, or
+        ``"skipped"``
+      - ``observability_index_error``: present only when not ``"generated"``
+      - ``observability_index_ref``: present only when ``"generated"``
+    """
+    import importlib.util
+    from pathlib import Path
+
+    try:
+        repo_root = Path(__file__).resolve().parents[3]
+        script_path = repo_root / "scripts" / "build_observability_index.py"
+        if not script_path.is_file():
+            reason = f"builder script not found at {script_path}"
+            sys.stderr.write(
+                f"Warning: observability index skipped: {reason}\n"
+            )
+            return {
+                "observability_index_status": "skipped",
+                "observability_index_error": reason,
+            }
+        spec = importlib.util.spec_from_file_location(
+            "remedy_build_observability_index", str(script_path)
+        )
+        if spec is None or spec.loader is None:
+            raise ImportError(f"cannot load builder at {script_path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.write_observability_index(str(Path(evidence_out).resolve()))
+        return {
+            "observability_index_status": "generated",
+            "observability_index_ref": "self_run_observability_index.json",
+        }
+    except Exception as exc:  # noqa: BLE001 - must never fail the job flow
+        sys.stderr.write(
+            f"Warning: observability index generation failed: {exc}\n"
+        )
+        return {
+            "observability_index_status": "failed",
+            "observability_index_error": str(exc),
+        }
 
 
 def _print_token_summary(ts: dict) -> None:
@@ -1456,20 +1530,39 @@ def _cmd_do_job_flow(
     # --- 0. Capture start state for command transcript ---
     _started_at = datetime.now(timezone.utc).isoformat()
 
+    def _target_repo_snapshot(repo_dir: str) -> dict[str, str]:
+        """Map of {rel_path: content_hash} for every non-.git file in the repo.
+
+        Used both to derive the aggregate repo hash and to classify which
+        files changed (real source vs. ignored tool-cache noise).
+        """
+        rp = _RepoPath(repo_dir)
+        snapshot: dict[str, str] = {}
+        if not rp.is_dir():
+            return snapshot
+        for p in sorted(rp.rglob("*")):
+            if p.is_file() and ".git" not in p.parts:
+                fh = _hashlib.sha256()
+                rel = p.relative_to(rp).as_posix()
+                fh.update(rel.encode())
+                try:
+                    fh.update(p.read_bytes())
+                except OSError:
+                    pass
+                snapshot[rel] = fh.hexdigest()[:16]
+        return snapshot
+
     def _quick_repo_hash(repo_dir: str) -> str:
-        h = _hashlib.sha256()
         rp = _RepoPath(repo_dir)
         if not rp.is_dir():
             return "missing"
-        for p in sorted(rp.rglob("*")):
-            if p.is_file() and ".git" not in p.parts:
-                h.update(p.relative_to(rp).as_posix().encode())
-                try:
-                    h.update(p.read_bytes())
-                except OSError:
-                    pass
+        h = _hashlib.sha256()
+        for rel, file_hash in sorted(_target_repo_snapshot(repo_dir).items()):
+            h.update(rel.encode())
+            h.update(file_hash.encode())
         return h.hexdigest()[:16]
 
+    _repo_snapshot_before = _target_repo_snapshot(repo)
     _repo_hash_before = _quick_repo_hash(repo)
 
     # --- 1. job-plan ---
@@ -1595,11 +1688,48 @@ def _cmd_do_job_flow(
     _persist_evidence_index(job_id, evidence_out, run_trace_summary)
 
     # --- 10. Persist command transcript ---
+    # Classify changed files using the same noise-exclusion policy as the
+    # target guard, so the transcript never claims a target mutation when only
+    # volatile tool-cache files (.mypy_cache, .pytest_cache, .ruff_cache, ...)
+    # changed. Without this, hash-only comparison contradicts target_guard.json.
+    from packages.orchestration.pingpong_loop import (
+        _is_operational_artifact,
+        _is_target_noise,
+    )
+    _repo_snapshot_after = _target_repo_snapshot(repo)
     _repo_hash_after = _quick_repo_hash(repo)
+    _changed_rel_paths = [
+        rel for rel in set(_repo_snapshot_before) | set(_repo_snapshot_after)
+        if _repo_snapshot_before.get(rel) != _repo_snapshot_after.get(rel)
+    ]
+    # Three-way classification (must agree with target guard): operational
+    # review/evidence artifacts and cache noise never count as a source mutation.
+    _ignored_operational_artifacts = sorted(
+        rel for rel in _changed_rel_paths if _is_operational_artifact(rel)
+    )
+    _ignored_noise_files = sorted(
+        rel for rel in _changed_rel_paths
+        if not _is_operational_artifact(rel) and _is_target_noise(rel)
+    )
+    _changed_content_files = sorted(
+        rel for rel in _changed_rel_paths
+        if not _is_operational_artifact(rel) and not _is_target_noise(rel)
+    )
     _persist_command_transcript(
         job_id, evidence_out, flow_result, repo,
         _started_at, _repo_hash_before, _repo_hash_after,
+        changed_content_files=_changed_content_files,
+        ignored_noise_files=_ignored_noise_files,
+        ignored_operational_artifacts=_ignored_operational_artifacts,
     )
+
+    # --- 11. Build observability index (best-effort; never fails job flow) ---
+    # The index is generated AFTER job_flow.json is first written (it reads the
+    # evidence dir, including job_flow.json). Re-persist job_flow.json so the
+    # index status lands in a durable evidence artifact, not only in stdout.
+    index_status = _persist_observability_index(evidence_out)
+    flow_result.update(index_status)
+    _persist_job_flow_json(flow_result, evidence_out)
 
     if json_output:
         safe_result = _sanitize_shareable_paths(flow_result)

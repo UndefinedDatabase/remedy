@@ -345,6 +345,26 @@ find "$EVIDENCE_DIR" -type f \
     cp "$src" "$dest"
   done
 
+# --- Ensure the observability index ships in the zip ---
+# Regenerate it into the staged evidence copy so the zip always contains
+# evidence/current/self_run_observability_index.json, even if the evidence dir
+# was produced without it. The builder is idempotent and marks missing data as
+# "absent", so it succeeds even on incomplete evidence. Best-effort: a failure
+# is reported but does not abort the zip (post-build verification still runs).
+OBS_INDEX_NAME="self_run_observability_index.json"
+OBS_INDEX_STAGED="$EVIDENCE_STAGING/$CURRENT_PREFIX/$OBS_INDEX_NAME"
+if [[ -f "scripts/build_observability_index.py" ]]; then
+  if python3 scripts/build_observability_index.py \
+       --evidence-dir "$EVIDENCE_DIR" \
+       --output "$OBS_INDEX_STAGED" >/dev/null 2>&1; then
+    echo "Observability index generated: $CURRENT_PREFIX/$OBS_INDEX_NAME"
+  else
+    echo "Warning: observability index generation failed for $EVIDENCE_DIR" >&2
+  fi
+else
+  echo "Warning: scripts/build_observability_index.py not found; index not generated" >&2
+fi
+
 find "$EVIDENCE_STAGING" -type f -print \
   | sed "s#^${EVIDENCE_STAGING}/##" \
   | sort -u >> "$TMP"
@@ -427,6 +447,15 @@ fi
 STALE_EV="$(echo "$ZIP_LISTING" | grep -E '^remedy-job-evidence-' || true)"
 if [[ -n "$STALE_EV" ]]; then
   VERIFY_ERRORS="${VERIFY_ERRORS}Stale evidence dir included in zip: $STALE_EV\n"
+fi
+
+# 4. Verify the observability index is bundled under evidence/current/.
+if [[ -f "$OBS_INDEX_STAGED" ]]; then
+  if ! echo "$ZIP_LISTING" | grep -qF "$CURRENT_PREFIX/$OBS_INDEX_NAME"; then
+    VERIFY_ERRORS="${VERIFY_ERRORS}Observability index generated but missing from zip: $CURRENT_PREFIX/$OBS_INDEX_NAME\n"
+  fi
+else
+  VERIFY_ERRORS="${VERIFY_ERRORS}Observability index not generated: $CURRENT_PREFIX/$OBS_INDEX_NAME\n"
 fi
 
 if [[ -n "$VERIFY_ERRORS" ]]; then

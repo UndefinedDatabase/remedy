@@ -17,6 +17,7 @@ import difflib
 import hashlib
 import json as _json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -188,6 +189,7 @@ class RepairDecision:
     finding_count: int = 0
     repair_decision: str = ""  # pass_no_repair, repair, block_inconsistent_review, etc.
     reason: str = ""
+    normalization_note: str = ""  # set when reviewer verdict was normalized
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -197,6 +199,7 @@ class RepairDecision:
             "finding_count": self.finding_count,
             "repair_decision": self.repair_decision,
             "reason": self.reason,
+            "normalization_note": self.normalization_note,
         }
 
 
@@ -1105,6 +1108,83 @@ def _is_target_noise(rel_path: str) -> bool:
     return False
 
 
+# Remedy operational artifacts — review/evidence transport that may land in the
+# repo root during a run. These are NOT target source code and must never be
+# classified as target mutation. Patterns are intentionally strict and exact so
+# arbitrary files are never hidden.
+_REVIEW_ZIP_RE = re.compile(r"^remedy-review-\d{8}-\d{6}\.zip$")
+_EVIDENCE_DIR_PREFIX = "remedy-job-evidence-"
+
+
+def _is_operational_artifact(rel_path: str) -> bool:
+    """Return True if rel_path is a Remedy operational artifact (review/evidence
+    transport), not target source code.
+
+    Recognized root-level patterns only:
+      - remedy-review-YYYYMMDD-HHMMSS.zip  (review zip transport files)
+      - run_transcript.txt                 (self-run transcript)
+      - remedy-job-evidence-* directories and all of their contents
+    """
+    stripped = rel_path.strip("/")
+    if not stripped:
+        return False
+    parts = stripped.split("/")
+    top = parts[0]
+    # Evidence bundles: the directory and everything inside it.
+    if top.startswith(_EVIDENCE_DIR_PREFIX):
+        return True
+    # Root-level transport files only (no nested matches).
+    if len(parts) == 1:
+        if _REVIEW_ZIP_RE.match(top):
+            return True
+        if top == "run_transcript.txt":
+            return True
+    return False
+
+
+def _classify_target_changes(
+    repo_path: Path, before: dict[str, bytes],
+) -> tuple[list[str], list[str], list[str]]:
+    """Three-way classification of target repo changes.
+
+    Returns (content, operational, noise):
+      - content     : real source changes — count as target mutation (strict)
+      - operational : Remedy review/evidence transport — NOT a mutation
+      - noise       : volatile tool-cache files (.pytest_cache, *.pyc, ...) — NOT a mutation
+    """
+    after = _snapshot_target(repo_path)
+    all_changes: list[str] = []
+
+    for rel, digest in after.items():
+        if rel not in before:
+            all_changes.append(rel)
+        elif before[rel] != digest:
+            all_changes.append(rel)
+
+    for rel in before:
+        if rel not in after:
+            all_changes.append(rel)
+
+    # Snapshot skips _TARGET_IGNORE dirs, so flag any that exist now as changes
+    for artifact_dir in _TARGET_IGNORE:
+        entry = artifact_dir + "/"
+        if (repo_path / artifact_dir).exists() and entry not in all_changes:
+            all_changes.append(entry)
+
+    content: list[str] = []
+    operational: list[str] = []
+    noise: list[str] = []
+    for rel in sorted(all_changes):
+        if _is_operational_artifact(rel):
+            operational.append(rel)
+        elif _is_target_noise(rel):
+            noise.append(rel)
+        else:
+            content.append(rel)
+
+    return content, operational, noise
+
+
 def _snapshot_target(repo_path: Path) -> dict[str, bytes]:
     """Take a lightweight snapshot of target repo: {rel_path: content_hash}."""
     snap: dict[str, bytes] = {}
@@ -1137,37 +1217,13 @@ def _check_target_mutation(
 ) -> tuple[list[str], list[str]]:
     """Compare current target state against snapshot.
 
-    Returns (meaningful_changes, noise_changes).
-    Noise = volatile cache dirs/files that don't indicate real product mutation.
+    Backward-compatible two-way view of :func:`_classify_target_changes`:
+    returns (meaningful_changes, ignored_changes). Only real source changes are
+    meaningful; both operational review/evidence artifacts and volatile cache
+    noise are ignored and never count as a target mutation.
     """
-    after = _snapshot_target(repo_path)
-    all_changes: list[str] = []
-
-    for rel, digest in after.items():
-        if rel not in before:
-            all_changes.append(rel)
-        elif before[rel] != digest:
-            all_changes.append(rel)
-
-    for rel in before:
-        if rel not in after:
-            all_changes.append(rel)
-
-    # Snapshot skips _TARGET_IGNORE dirs, so flag any that exist now as changes
-    for artifact_dir in _TARGET_IGNORE:
-        entry = artifact_dir + "/"
-        if (repo_path / artifact_dir).exists() and entry not in all_changes:
-            all_changes.append(entry)
-
-    meaningful: list[str] = []
-    noise: list[str] = []
-    for rel in sorted(all_changes):
-        if _is_target_noise(rel):
-            noise.append(rel)
-        else:
-            meaningful.append(rel)
-
-    return meaningful, noise
+    content, operational, noise = _classify_target_changes(repo_path, before)
+    return content, sorted(operational + noise)
 
 
 # ---------------------------------------------------------------------------
@@ -1612,6 +1668,13 @@ def run_pingpong(
                 is_repair=is_repair,
                 coherence_error=coherence_error,
             )
+            if reviewer_out.verdict_normalized:
+                decision.normalization_note = (
+                    f"reviewer verdict normalized "
+                    f"{reviewer_out.original_verdict}->{reviewer_out.verdict}: "
+                    f"{len(reviewer_out.findings)} finding(s) reported with a pass "
+                    f"verdict were routed to review/repair instead of passing"
+                )
             result.repair_decisions.append(decision.to_dict())
 
             if decision.repair_decision == "block_inconsistent_review":
@@ -2168,12 +2231,23 @@ def _build_repair_loop_info(result: PingPongResult) -> dict[str, Any]:
         total_input.update(rd.input_finding_ids)
         total_resolved.update(rd.resolved_finding_ids)
 
-    # Get final reviewer verdict
+    # Get final reviewer verdict (and any normalization that was applied)
     final_verdict = ""
+    final_verdict_normalized = False
+    final_original_verdict = ""
     if result.rounds:
         last_rd = result.rounds[-1]
         if last_rd.reviewer_output:
             final_verdict = last_rd.reviewer_output.verdict
+            final_verdict_normalized = last_rd.reviewer_output.verdict_normalized
+            final_original_verdict = last_rd.reviewer_output.original_verdict
+
+    # Surface any verdict normalizations across all rounds for the audit trail
+    normalization_notes = [
+        d["normalization_note"]
+        for d in result.repair_decisions
+        if d.get("normalization_note")
+    ]
 
     # Open findings from last round
     open_findings: list[str] = []
@@ -2194,6 +2268,9 @@ def _build_repair_loop_info(result: PingPongResult) -> dict[str, Any]:
         "open_findings": open_findings if status not in ("not_needed", "disabled", "passed_after_repair") else [],
         "resolved_findings": sorted(total_resolved),
         "final_reviewer_verdict": final_verdict,
+        "verdict_normalized": final_verdict_normalized,
+        "original_reviewer_verdict": final_original_verdict,
+        "normalization_notes": normalization_notes,
         "decisions": result.repair_decisions,
         "final_adjudication": result.final_adjudication,
         "finding_status_map": [e.to_dict() for e in finding_map],
@@ -2311,6 +2388,13 @@ def summarize_pingpong(result: PingPongResult) -> str:
     elif result.target_noise_detected:
         lines.append("Target mutation: no meaningful target changes")
         lines.append(f"Ignored target noise: {', '.join(result.ignored_target_noise_files)}")
+    norm_notes = [
+        d["normalization_note"]
+        for d in result.repair_decisions
+        if d.get("normalization_note")
+    ]
+    for note in norm_notes:
+        lines.append(f"Reviewer verdict normalized: {note}")
     if result.reviewer_parse_retry_count > 0:
         if result.reviewer_json_recovered:
             lines.append(f"Reviewer parse: retried {result.reviewer_parse_retry_count}x, recovered")
