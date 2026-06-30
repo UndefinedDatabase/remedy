@@ -783,6 +783,228 @@ def _build_builder_prompt(
 
 
 _REVIEWER_DIFF_CAP = 30000
+_REVIEWER_SCOPED_DIFF_CAP = 12000
+
+# Per-scope guidance text injected into the reviewer prompt when a scope packet
+# is available. Keys match the ``recommended_scope`` values produced by
+# ``packages.orchestration.review_scope._recommend_scope``.
+_SCOPE_BEHAVIOR = {
+    "hunk_only": (
+        "Recommended scope is `hunk_only`: focus only on the listed hunks "
+        "(changed line ranges) and the related tests."
+    ),
+    "file_level": (
+        "Recommended scope is `file_level`: inspect the changed file(s) fully."
+    ),
+    "cross_file": (
+        "Recommended scope is `cross_file`: inspect the changed files plus "
+        "related files and their imports/callers."
+    ),
+    "full_job": (
+        "Recommended scope is `full_job`: inspect the full task evidence. "
+        "You may escalate."
+    ),
+}
+
+
+def _load_review_scope_packet(
+    evidence_dir: str | Path | None, task_id: str,
+) -> dict[str, Any] | None:
+    """Load ``review_scope_packet.json`` from the task evidence dir, if present.
+
+    Returns the parsed dict, or None when the file is missing or unreadable.
+    """
+    if not evidence_dir or not task_id:
+        return None
+    packet_path = (
+        Path(evidence_dir) / "task_runs" / task_id / "review_scope_packet.json"
+    )
+    try:
+        if not packet_path.is_file():
+            return None
+        data = _json.loads(packet_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _build_runtime_scope_packet(
+    *,
+    safe_diff: str,
+    staged_files: list[str],
+    task_title: str = "",
+    task_id: str = "",
+    test_passed: bool | None = None,
+    repair_rounds: int = 0,
+) -> dict[str, Any] | None:
+    """Build a lightweight review scope packet from runtime data.
+
+    Mirrors the deterministic analysis in
+    ``packages.orchestration.review_scope`` but works from in-memory runtime
+    values (the just-computed safe diff and staged file list) so the reviewer
+    can be given a focused scope summary *before* the on-disk evidence packet
+    exists. Best-effort: returns None when no diff is available or analysis
+    fails, in which case the reviewer falls back to the full-diff prompt.
+    """
+    if not safe_diff or not staged_files:
+        return None
+    try:
+        from packages.orchestration.review_scope import (
+            _detect_symbols,
+            _parse_diff,
+            _recommend_scope,
+            _risk_tags_for_file,
+        )
+
+        parsed = _parse_diff(safe_diff)
+        changed_files = sorted(parsed.keys())
+        changed_line_ranges: dict[str, list[list[int]]] = {}
+        changed_symbols: dict[str, list[str]] = {}
+        risk_tags: dict[str, list[str]] = {}
+        has_security = False
+        cross_file = False
+        total_hunks = 0
+        for path in changed_files:
+            info = parsed[path]
+            ranges = info["ranges"]
+            total_hunks += len(ranges)
+            symbols = _detect_symbols(info["added_lines"])
+            added_text = "\n".join(info["added_lines"])
+            tags = _risk_tags_for_file(path, added_text, symbols, info["new_file"])
+            changed_line_ranges[path] = ranges
+            changed_symbols[path] = symbols
+            risk_tags[path] = tags
+            if any(t.startswith("security:") for t in tags):
+                has_security = True
+            if info["import_change"]:
+                cross_file = True
+        cross_file = cross_file and len(changed_files) > 1
+        recommended_scope, scope_reason = _recommend_scope(
+            file_count=len(changed_files),
+            hunk_count=total_hunks,
+            has_security=has_security,
+            test_failed=test_passed is False,
+            repair_rounds=repair_rounds,
+            cross_file=cross_file,
+        )
+    except Exception:
+        return None
+
+    return {
+        "schema_version": "1.0.0",
+        "task_id": task_id,
+        "task_title": task_title,
+        "changed_files": changed_files,
+        "changed_line_ranges": changed_line_ranges,
+        "changed_symbols": changed_symbols,
+        "risk_tags": risk_tags,
+        "related_tests": [],
+        "open_findings": [],
+        "evidence_refs": [],
+        "prompt_hashes": [],
+        "recommended_scope": recommended_scope,
+        "scope_reason": scope_reason,
+        "estimated_review_tokens": 200 + len(safe_diff) // 4,
+    }
+
+
+def _render_reviewer_scope_section(packet: dict[str, Any]) -> str:
+    """Render the token-saving scope section for the reviewer prompt."""
+    lines: list[str] = ["## Review Scope Packet"]
+
+    title = packet.get("task_title") or ""
+    if title:
+        lines.append(f"Task: {title}")
+
+    changed_files = packet.get("changed_files", []) or []
+    lines.append("")
+    lines.append("### Changed Files")
+    if changed_files:
+        ranges = packet.get("changed_line_ranges", {}) or {}
+        symbols = packet.get("changed_symbols", {}) or {}
+        risks = packet.get("risk_tags", {}) or {}
+        for path in changed_files:
+            file_ranges = ranges.get(path, []) or []
+            range_str = (
+                ", ".join(f"{r[0]}-{r[1]}" for r in file_ranges)
+                if file_ranges else "—"
+            )
+            file_symbols = symbols.get(path, []) or []
+            sym_str = ", ".join(file_symbols) if file_symbols else "—"
+            file_risks = risks.get(path, []) or []
+            risk_str = ", ".join(file_risks) if file_risks else "—"
+            lines.append(
+                f"- {path} | lines: {range_str} | symbols: {sym_str} "
+                f"| risk: {risk_str}"
+            )
+    else:
+        lines.append("- (none recorded)")
+
+    recommended = str(packet.get("recommended_scope", "") or "")
+    scope_reason = str(packet.get("scope_reason", "") or "")
+    lines.append("")
+    lines.append(f"### Recommended Scope: {recommended or 'unknown'}")
+    if scope_reason:
+        lines.append(f"Reason: {scope_reason}")
+    behavior = _SCOPE_BEHAVIOR.get(recommended)
+    if behavior:
+        lines.append(behavior)
+
+    related_tests = packet.get("related_tests", []) or []
+    lines.append("")
+    lines.append("### Related Tests")
+    if related_tests:
+        for t in related_tests:
+            lines.append(f"- {t}")
+    else:
+        lines.append("- (none)")
+
+    open_findings = packet.get("open_findings", []) or []
+    if open_findings:
+        lines.append("")
+        lines.append("### Open Findings")
+        for f in open_findings:
+            fid = f.get("id", "?")
+            sev = f.get("severity", "?")
+            summary = f.get("summary", "")
+            lines.append(f"- {fid} ({sev}): {summary}")
+
+    evidence_refs = packet.get("evidence_refs", []) or []
+    lines.append("")
+    lines.append("### Evidence Refs")
+    if evidence_refs:
+        for ref in evidence_refs:
+            lines.append(f"- {ref}")
+    else:
+        lines.append("- (none)")
+
+    prompt_hashes = packet.get("prompt_hashes", []) or []
+    if prompt_hashes:
+        lines.append("")
+        lines.append("### Prompt Hashes")
+        lines.append(", ".join(prompt_hashes))
+
+    est_tokens = packet.get("estimated_review_tokens", 0)
+    lines.append("")
+    lines.append(f"### Estimated Review Tokens: {est_tokens}")
+
+    lines.append("")
+    lines.append(
+        "Files listed in changed_files and related_tests are within review "
+        "scope unless the original goal explicitly forbids them. Do not flag "
+        "those files as out-of-scope merely because they are tests or support "
+        "files."
+    )
+    lines.append(
+        "Focus on the listed files/hunks unless risk tags or the scope reason "
+        "require escalation."
+    )
+    lines.append(
+        "You may escalate scope if you find evidence of broader issues, but "
+        "state why."
+    )
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _build_reviewer_prompt(
@@ -799,9 +1021,49 @@ def _build_reviewer_prompt(
     scope_contract: str = "",
     prior_findings: list[ReviewFinding] | None = None,
     repair_round: int = 0,
+    scope_packet: dict[str, Any] | None = None,
+    evidence_dir: str | Path | None = None,
+    task_id: str = "",
 ) -> str:
     parts = [_REVIEWER_SYSTEM, "\n"]
     parts.append(f"## Original Goal\n{goal}\n")
+
+    if scope_packet is None:
+        scope_packet = _load_review_scope_packet(evidence_dir, task_id)
+
+    if scope_packet:
+        parts.append(_render_reviewer_scope_section(scope_packet))
+        if scope_contract:
+            parts.append(f"{scope_contract}\n\n")
+        if prior_findings and repair_round > 0:
+            parts.append(
+                f"## RE-REVIEW — Repair Round {repair_round}\n"
+                "The Builder was asked to fix the findings below.\n"
+                "For each prior finding:\n"
+                "1. Check if the fix is present in the diff and confirmed by tests.\n"
+                "2. If fixed, do NOT re-report it.\n"
+                "3. If NOT fixed or incorrectly fixed, re-report with the SAME ID.\n"
+                "4. Report any NEW issues introduced by the repair as new findings.\n"
+                "5. If tests fail, treat test failure as evidence of unfixed issues.\n"
+                "6. Do NOT return pass if any prior finding is unfixed.\n"
+                "7. Do NOT return pass if the repair introduced new problems.\n\n"
+                "### Prior Findings\n"
+            )
+            for f in prior_findings:
+                parts.append(f"- [{f.severity}] {f.id}: {f.summary}")
+            parts.append("")
+        parts.append(f"## Builder Summary\n{builder_summary}\n")
+        if safe_diff:
+            capped = safe_diff[:_REVIEWER_SCOPED_DIFF_CAP]
+            if len(safe_diff) > _REVIEWER_SCOPED_DIFF_CAP:
+                capped += "\n[FOCUSED DIFF TRUNCATED]"
+            parts.append(f"## Focused Staged Diff\n```diff\n{capped}\n```\n")
+        elif diff_summary:
+            parts.append(f"## Focused Staged Diff\n```\n{diff_summary}\n```\n")
+        if test_result:
+            parts.append(f"## Test Result\n{test_result}\n")
+        return "\n".join(parts)
+
     if scope_contract:
         parts.append(f"{scope_contract}\n\n")
     if prior_findings and repair_round > 0:
@@ -1545,6 +1807,19 @@ def run_pingpong(
                     task_excerpt=task_input.excerpt if task_input else "",
                 )
 
+            # Build a runtime review-scope packet from the just-computed safe
+            # diff so the reviewer prompt can be scope-focused (token-saving)
+            # before the on-disk evidence packet exists. Best-effort: None when
+            # unavailable, in which case the prompt falls back to the full diff.
+            runtime_scope_packet = _build_runtime_scope_packet(
+                safe_diff=reviewer_safe_diff,
+                staged_files=result.staged_files,
+                task_title=task_input.title if task_input else "",
+                task_id=result.task_id,
+                test_passed=rd.test_passed,
+                repair_rounds=result.repair_rounds_used,
+            )
+
             reviewer_prompt = _build_reviewer_prompt(
                 effective_goal,
                 builder_out.summary,
@@ -1558,6 +1833,7 @@ def run_pingpong(
                 scope_contract=reviewer_scope_text,
                 prior_findings=findings if is_repair else None,
                 repair_round=result.repair_rounds_used if is_repair else 0,
+                scope_packet=runtime_scope_packet,
             )
 
             # Track reviewer prompt size
