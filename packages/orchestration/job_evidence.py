@@ -133,6 +133,23 @@ def export_job_evidence(
                 encoding="utf-8",
             )
             written[rel] = str(err_path)
+        try:
+            from packages.orchestration.spec_compliance import write_spec_compliance_check
+            write_spec_compliance_check(
+                task,
+                getattr(task, "body", "") or "",
+                str(out_path),
+                job.job_workspace_path,
+                written,
+            )
+        except Exception as exc:
+            rel = f"task_runs/{task.task_id}/spec_compliance_check.error.txt"
+            err_path = _validate_output_path(str(out_path), rel)
+            err_path.write_text(
+                f"spec_compliance_check unavailable: {type(exc).__name__}: {exc}\n",
+                encoding="utf-8",
+            )
+            written[rel] = str(err_path)
 
     # Job-level prompt trace aggregate
     _write_job_prompt_trace_summary(job, str(out_path), written)
