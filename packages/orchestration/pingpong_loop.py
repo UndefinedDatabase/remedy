@@ -828,6 +828,58 @@ def _load_review_scope_packet(
     return data if isinstance(data, dict) else None
 
 
+def _render_spec_compliance_summary(
+    evidence_dir: str | Path | None, task_id: str,
+) -> str:
+    """Render a compact spec-compliance summary for the reviewer prompt.
+
+    Loads ``spec_compliance_check.json`` from the task evidence dir (written by
+    ``packages.orchestration.spec_compliance``) and returns a short Markdown
+    block highlighting missing required items and forbidden-file violations.
+    Returns "" when no checklist is available — the reviewer prompt is unchanged
+    in that case.
+    """
+    if not evidence_dir or not task_id:
+        return ""
+    path = (
+        Path(evidence_dir) / "task_runs" / task_id / "spec_compliance_check.json"
+    )
+    try:
+        if not path.is_file():
+            return ""
+        data = _json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    if not isinstance(data, dict):
+        return ""
+    total = data.get("total_checks", 0)
+    if not total:
+        summary = data.get("summary", {}) or {}
+        total = summary.get("total", 0)
+    if not total:
+        return ""
+    passed = data.get("passed", 0)
+    verdict = data.get("verdict", "")
+    status = verdict if verdict else ("PASS" if data.get("summary", {}).get("compliant") else "FAIL")
+    lines = [
+        "## Spec Compliance Checklist",
+        f"Deterministic check: {status} ({passed}/{total} requirements met).",
+    ]
+    missing = data.get("missing_items", []) or []
+    summary = data.get("summary", {}) or {}
+    violations = summary.get("violations", []) or []
+    if missing:
+        lines.append("Missing required items: " + ", ".join(str(m) for m in missing))
+    if violations:
+        lines.append("Forbidden-file violations: " + ", ".join(str(v) for v in violations))
+    if status != "PASS":
+        lines.append(
+            "Treat unmet requirements as evidence the task is incomplete unless "
+            "the diff or tests clearly satisfy them."
+        )
+    return "\n".join(lines) + "\n"
+
+
 def _build_runtime_scope_packet(
     *,
     safe_diff: str,
@@ -1027,6 +1079,10 @@ def _build_reviewer_prompt(
 ) -> str:
     parts = [_REVIEWER_SYSTEM, "\n"]
     parts.append(f"## Original Goal\n{goal}\n")
+
+    spec_summary = _render_spec_compliance_summary(evidence_dir, task_id)
+    if spec_summary:
+        parts.append(spec_summary)
 
     if scope_packet is None:
         scope_packet = _load_review_scope_packet(evidence_dir, task_id)
