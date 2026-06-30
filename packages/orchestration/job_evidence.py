@@ -150,9 +150,70 @@ def export_job_evidence(
                 encoding="utf-8",
             )
             written[rel] = str(err_path)
+        try:
+            from packages.orchestration.missing_tests_gate import write_missing_tests_gate
+            write_missing_tests_gate(task, str(out_path), written)
+        except Exception as exc:
+            rel = f"task_runs/{task.task_id}/missing_tests_gate.error.txt"
+            err_path = _validate_output_path(str(out_path), rel)
+            err_path.write_text(
+                f"missing_tests_gate unavailable: {type(exc).__name__}: {exc}\n",
+                encoding="utf-8",
+            )
+            written[rel] = str(err_path)
+
+    try:
+        from packages.orchestration.scratch_file_guard import write_scratch_file_guard
+        all_allowed = []
+        for task in job.tasks:
+            if hasattr(task, "safe_diff_files") and task.safe_diff_files:
+                all_allowed.extend(task.safe_diff_files)
+        write_scratch_file_guard(
+            job.job_workspace_path or "",
+            str(out_path),
+            "",
+            all_allowed,
+            written,
+        )
+    except Exception as exc:
+        rel = "scratch_file_guard.error.txt"
+        err_path = _validate_output_path(str(out_path), rel)
+        err_path.write_text(
+            f"scratch_file_guard unavailable: {type(exc).__name__}: {exc}\n",
+            encoding="utf-8",
+        )
+        written[rel] = str(err_path)
 
     # Job-level prompt trace aggregate
     _write_job_prompt_trace_summary(job, str(out_path), written)
+
+    # Token truth — honest token accounting (actual vs estimated) across tasks.
+    # Must be written BEFORE final verifier so final verifier can read it.
+    try:
+        from packages.orchestration.token_truth import write_token_truth
+        write_token_truth(str(out_path), written)
+    except Exception as exc:
+        rel = "token_truth.error.txt"
+        err_path = _validate_output_path(str(out_path), rel)
+        err_path.write_text(
+            f"token_truth unavailable: {type(exc).__name__}: {exc}\n",
+            encoding="utf-8",
+        )
+        written[rel] = str(err_path)
+
+    # Final verifier report — aggregates all gates into a single verdict.
+    # Written LAST so it can read all other artifacts.
+    try:
+        from packages.orchestration.final_verifier import write_final_verifier_report
+        write_final_verifier_report(str(out_path), written)
+    except Exception as exc:
+        rel = "final_verifier_report.error.txt"
+        err_path = _validate_output_path(str(out_path), rel)
+        err_path.write_text(
+            f"final_verifier_report unavailable: {type(exc).__name__}: {exc}\n",
+            encoding="utf-8",
+        )
+        written[rel] = str(err_path)
 
     from datetime import datetime, timezone
     manifest["bundle_generated_at"] = datetime.now(timezone.utc).isoformat()

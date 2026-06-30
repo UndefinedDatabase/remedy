@@ -887,6 +887,69 @@ class TestDogfoodCommandShape:
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
         assert "do.job-evidence" in COMMAND_HANDLERS
 
+    def test_evidence_export_writes_missing_tests_gate(self, isolate_data_root, demo_repo, tmp_path):
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        gate_key = "task_runs/T001/missing_tests_gate.json"
+        has_gate = gate_key in result["files"]
+        has_error = "task_runs/T001/missing_tests_gate.error.txt" in result["files"]
+        assert has_gate or has_error, "missing_tests_gate neither written nor error-logged"
+
+    def test_evidence_export_writes_scratch_file_guard(self, isolate_data_root, demo_repo, tmp_path):
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        has_guard = "scratch_file_guard.json" in result["files"]
+        has_error = "scratch_file_guard.error.txt" in result["files"]
+        assert has_guard or has_error, "scratch_file_guard neither written nor error-logged"
+
+    def test_evidence_export_writes_token_truth(self, isolate_data_root, demo_repo, tmp_path):
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        has_truth = "token_truth.json" in result["files"]
+        has_error = "token_truth.error.txt" in result["files"]
+        assert has_truth or has_error, "token_truth neither written nor error-logged"
+
+    def test_evidence_export_writes_final_verifier_report(self, isolate_data_root, demo_repo, tmp_path):
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        has_report = "final_verifier_report.json" in result["files"]
+        has_error = "final_verifier_report.error.txt" in result["files"]
+        assert has_report or has_error, "final_verifier_report neither written nor error-logged"
+
+    def test_token_truth_before_final_verifier_in_evidence(self, isolate_data_root, demo_repo, tmp_path):
+        """token_truth.json must be written before final_verifier_report.json
+        so final verifier can read it."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        if "token_truth.json" in result["files"] and "final_verifier_report.json" in result["files"]:
+            fv = json.loads((out / "final_verifier_report.json").read_text())
+            assert fv.get("evidence_completeness", {}).get("token_truth") is True
+
     def test_documented_shape_runs(self, isolate_data_root, demo_repo, tmp_path, capsys):
         job = _run_completed_job(demo_repo)
 

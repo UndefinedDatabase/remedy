@@ -461,7 +461,7 @@ class TestJobFlowEndToEnd:
                         extra=["--json", "--max-rounds", "1"])
         data = json.loads(out)
         audit = data["final_audit"]
-        assert audit["status"] == "BLOCKED"
+        assert audit["status"] in ("BLOCKED", "NEEDS_REPAIR")
         assert audit["promote_ready"] is False
 
     def test_json_final_audit_reviewer_verdict_summary(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
@@ -499,7 +499,7 @@ class TestJobFlowEndToEnd:
         out = self._run(capsys, repo=demo_repo, job_file=job_file,
                         evidence_out=tmp_path / "evidence",
                         extra=["--max-rounds", "1"])
-        assert "Final audit: BLOCKED" in out
+        assert "Final audit: BLOCKED" in out or "Final audit: NEEDS_REPAIR" in out
 
     # --- job_flow.json persistence (Step 5083) -----------------------------
 
@@ -950,3 +950,158 @@ class TestJobFlowEndToEnd:
         ebp = data.get("evidence_bundle_path", "")
         assert ebp.startswith("evidence/current") or ebp == "", \
             "R-4327: evidence_bundle_path in stdout must use canonical ref"
+
+
+# ---------------------------------------------------------------------------
+# Final audit + final verifier integration unit tests
+# ---------------------------------------------------------------------------
+
+
+class _FakeJob:
+    """Minimal job stub for _build_final_audit unit tests."""
+    def __init__(self, status="completed", tasks=None):
+        self.status = status
+        self.tasks = tasks or [_FakeTask()]
+
+
+class _FakeTask:
+    def __init__(self, task_id="T001", status="applied_to_job_workspace",
+                 reviewer_verdict="pass", test_passed=True):
+        self.task_id = task_id
+        self.status = status
+        self.safe_diff_files = []
+        self.reviewer_verdict = reviewer_verdict
+        self.test_passed = test_passed
+
+
+class _FakePromo:
+    def __init__(self, status="dry_run"):
+        self.status = status
+        self.blocked_reason = ""
+        self.files_planned = []
+
+
+def _seed_evidence(ev_path, fv_verdict="PASS", tt_actual=False, tt_est_total=5000):
+    """Seed a minimal evidence dir with final_verifier_report + token_truth."""
+    ev_path.mkdir(parents=True, exist_ok=True)
+    (ev_path / "manifest.json").write_text("{}")
+    (ev_path / "prompt_trace_summary.json").write_text("{}")
+    (ev_path / "agent_run_trace.jsonl").write_text("")
+    (ev_path / "agent_run_trace_summary.json").write_text("{}")
+    (ev_path / "final_verifier_report.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
+        "verdict": fv_verdict,
+        "missing_tests_gate": "NEEDS_TESTS" if fv_verdict == "NEEDS_TESTS" else "PASS",
+        "scratch_file_guard": "BLOCKED" if fv_verdict == "BLOCKED" else "PASS",
+    }))
+    (ev_path / "token_truth.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
+        "actual_available": tt_actual,
+        "estimated_total_tokens": tt_est_total,
+    }))
+
+
+class TestFinalAuditVerifierIntegration:
+    """Unit tests: _build_final_audit must follow final_verifier_report.json."""
+
+    def test_needs_tests_overrides_ready(self, tmp_path):
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        _seed_evidence(ev, fv_verdict="NEEDS_TESTS")
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["status"] == "NEEDS_TESTS"
+        assert audit["promote_ready"] is False
+        assert audit["final_verifier_verdict"] == "NEEDS_TESTS"
+
+    def test_blocked_overrides_ready(self, tmp_path):
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        _seed_evidence(ev, fv_verdict="BLOCKED")
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["status"] == "BLOCKED"
+        assert audit["promote_ready"] is False
+
+    def test_pass_with_risks_not_clean_ready(self, tmp_path):
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        _seed_evidence(ev, fv_verdict="PASS_WITH_RISKS")
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["status"] != "READY_FOR_APPROVAL"
+        assert audit["status"] == "NEEDS_REVIEW"
+        assert audit["promote_ready"] is False
+
+    def test_needs_repair_overrides_ready(self, tmp_path):
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        _seed_evidence(ev, fv_verdict="NEEDS_REPAIR")
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["status"] == "NEEDS_REPAIR"
+        assert audit["promote_ready"] is False
+
+    def test_pass_allows_ready(self, tmp_path):
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        _seed_evidence(ev, fv_verdict="PASS")
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["status"] == "READY_FOR_APPROVAL"
+        assert audit["promote_ready"] is True
+
+    def test_includes_verifier_and_token_truth_refs(self, tmp_path):
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        _seed_evidence(ev, fv_verdict="PASS", tt_actual=False, tt_est_total=8000)
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["final_verifier_report_ref"] == "final_verifier_report.json"
+        assert audit["final_verifier_verdict"] == "PASS"
+        assert audit["token_truth_ref"] == "token_truth.json"
+        assert audit["token_truth_actual_available"] is False
+        assert audit["token_truth_estimated_total"] == 8000
+        assert audit["missing_tests_gate_status"] == "PASS"
+        assert audit["scratch_file_guard_status"] == "PASS"
+
+    def test_no_verifier_report_falls_through(self, tmp_path):
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        ev.mkdir(parents=True)
+        (ev / "manifest.json").write_text("{}")
+        (ev / "prompt_trace_summary.json").write_text("{}")
+        (ev / "agent_run_trace.jsonl").write_text("")
+        (ev / "agent_run_trace_summary.json").write_text("{}")
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["status"] == "READY_FOR_APPROVAL"
+        assert "final_verifier_verdict" not in audit
