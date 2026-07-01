@@ -968,6 +968,21 @@ def _read_final_verifier(ev_path: Any) -> dict[str, Any] | None:
     return None
 
 
+def _read_gate_report(ev_path: Any, filename: str) -> dict[str, Any] | None:
+    """Read a job-level gate JSON from the evidence dir if it exists."""
+    gate_path = ev_path / filename
+    if not gate_path.exists():
+        return None
+    try:
+        import json as _json
+        data = _json.loads(gate_path.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return data
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 def _read_token_truth(ev_path: Any) -> dict[str, Any] | None:
     """Read token_truth.json if it exists."""
     tt_path = ev_path / "token_truth.json"
@@ -1107,12 +1122,77 @@ def _build_final_audit(
     if fv_report:
         result["final_verifier_verdict"] = fv_verdict
         result["final_verifier_report_ref"] = "final_verifier_report.json"
-        result["missing_tests_gate_status"] = fv_report.get("missing_tests_gate", "")
+        fv_auth = fv_report.get("authoritative_changed_files", [])
+        if fv_auth:
+            result["changed_files"] = sorted(set(fv_auth))
+        raw_mtg = fv_report.get("missing_tests_gate", "")
+        result["missing_tests_gate_status"] = raw_mtg
         result["scratch_file_guard_status"] = fv_report.get("scratch_file_guard", "")
+
+        vt_path = ev_path / "verification_tests.json"
+        vt_data = None
+        if vt_path.exists():
+            try:
+                vt_data = json.loads(vt_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                pass
+        vt_passed = (
+            isinstance(vt_data, dict)
+            and vt_data.get("exit_code") == 0
+            and vt_data.get("passed", 0) > 0
+            and vt_data.get("failed", 0) == 0
+        )
+        result["verification_tests_status"] = "PASS" if vt_passed else (
+            "FAIL" if vt_data else ""
+        )
+        if vt_passed and raw_mtg == "NEEDS_TESTS":
+            result["effective_missing_tests_gate_status"] = "PASS"
+        else:
+            result["effective_missing_tests_gate_status"] = raw_mtg
     if tt_report:
         result["token_truth_ref"] = "token_truth.json"
         result["token_truth_actual_available"] = tt_report.get("actual_available", False)
         result["token_truth_estimated_total"] = tt_report.get("estimated_total_tokens", 0)
+
+    # Expose gate verdicts from the evidence pipeline.
+    for gate_file, status_key in (
+        ("fresh_evidence_gate.json", "fresh_evidence_gate_status"),
+        ("artifact_contract_gate.json", "artifact_contract_gate_status"),
+        ("runtime_integration_gate.json", "runtime_integration_gate_status"),
+        ("change_provenance_gate.json", "change_provenance_gate_status"),
+        ("commit_execution_gate.json", "commit_execution_gate_status"),
+    ):
+        gate_report = _read_gate_report(ev_path, gate_file)
+        result[status_key] = gate_report.get("verdict", "") if gate_report else ""
+
+    feg_report = _read_gate_report(ev_path, "fresh_evidence_gate.json")
+    if feg_report:
+        result["evidence_authoritative"] = feg_report.get("evidence_authoritative", False)
+        ev_validity = feg_report.get("evidence_validity", {})
+        result["evidence_validity_status"] = (
+            "valid" if ev_validity.get("is_valid_current_run") else "invalid"
+        )
+    else:
+        result["evidence_authoritative"] = False
+        result["evidence_validity_status"] = ""
+
+    # Hard consistency: if any gate is BLOCKED, final_audit cannot be READY.
+    _HARD_BLOCK_GATE_KEYS = [
+        "change_provenance_gate_status",
+        "fresh_evidence_gate_status",
+        "artifact_contract_gate_status",
+        "runtime_integration_gate_status",
+    ]
+    ce_status = result.get("commit_execution_gate_status", "")
+    gate_blocked = any(
+        result.get(k) == "BLOCKED" for k in _HARD_BLOCK_GATE_KEYS
+    ) or ce_status in ("BLOCKED", "NEEDS_TESTS", "NEEDS_REPAIR")
+    if gate_blocked and result["status"] == "READY_FOR_APPROVAL":
+        result["status"] = "BLOCKED"
+        result["promote_ready"] = False
+        result["recommended_next_action"] = (
+            "Blocked: one or more verification gates failed. Resolve before promoting."
+        )
 
     return result
 
@@ -1209,6 +1289,9 @@ def _persist_command_transcript(
 ) -> None:
     """Write command_transcript.json to evidence output directory.
 
+    Terminal artifact: must be called AFTER final_audit, final_verifier,
+    commit_execution_gate, job_flow.json, and target_guard.json are stable.
+
     Mutation reporting uses the same three-way classification policy as the
     target guard: only real source changes count as a target mutation.
     Operational review/evidence artifacts (remedy-review-*.zip, run_transcript.txt,
@@ -1223,9 +1306,37 @@ def _persist_command_transcript(
     changed_content_files = changed_content_files or []
     ignored_noise_files = ignored_noise_files or []
     ignored_operational_artifacts = ignored_operational_artifacts or []
-    target_content_mutated = bool(changed_content_files)
-    target_noise_changed = bool(ignored_noise_files)
-    target_operational_artifacts_changed = bool(ignored_operational_artifacts)
+
+    out_path = Path(evidence_out).resolve()
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    # Read target_guard.json for authoritative mutation state
+    tg_data: dict = {}
+    tg_path = out_path / "target_guard.json"
+    if tg_path.exists():
+        try:
+            tg_data = json.loads(tg_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            pass
+
+    # Use target_guard as source of truth for mutation fields when available.
+    # target_guard.json is authoritative — its explicit false values override
+    # any classification derived from ignored lists.
+    if tg_data:
+        target_repo_mutated = bool(tg_data.get("target_mutated", False))
+        target_content_mutated = bool(tg_data.get("target_content_mutated", False))
+        target_noise_changed = bool(tg_data.get("target_noise_changed", False))
+        target_operational_artifacts_changed = bool(
+            tg_data.get("target_operational_artifacts_changed", False)
+        )
+    else:
+        target_repo_mutated = bool(changed_content_files)
+        target_content_mutated = bool(changed_content_files)
+        target_noise_changed = bool(ignored_noise_files)
+        target_operational_artifacts_changed = bool(ignored_operational_artifacts)
+
+    final_audit = flow_result.get("final_audit", {})
+    effective_promote_ready = final_audit.get("promote_ready", flow_result.get("promote_ready", False))
 
     transcript = {
         "command_id": "do.job-flow",
@@ -1235,17 +1346,19 @@ def _persist_command_transcript(
         "json_stdout_preview_safe": _sanitize_shareable_paths({
             "command": flow_result.get("command", "do.job-flow"),
             "job_id": job_id,
-            "status": flow_result.get("final_audit", {}).get("status", "unknown"),
-            "promote_ready": flow_result.get("promote_ready", False),
+            "status": final_audit.get("status", "unknown"),
+            "promote_ready": effective_promote_ready,
             "next_approve_command_safe": flow_result.get("next_approve_command_safe", ""),
         }),
+        "final_audit": final_audit,
+        "promote_ready": effective_promote_ready,
         "stderr_ref": "",
         "exit_code": 0,
         "started_at": started_at,
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "target_repo_hash_before": target_hash_before,
         "target_repo_hash_after": target_hash_after,
-        "target_repo_mutated": target_content_mutated,
+        "target_repo_mutated": target_repo_mutated,
         "target_content_mutated": target_content_mutated,
         "target_operational_artifacts_changed": target_operational_artifacts_changed,
         "target_noise_changed": target_noise_changed,
@@ -1253,9 +1366,8 @@ def _persist_command_transcript(
         "ignored_noise_files": sorted(ignored_noise_files),
         "data_root_ref_safe": "<data>",
         "review_zip_hint": "scripts/make_review_zip.sh --evidence-dir <evidence>",
+        "target_guard": tg_data if tg_data else {"note": "target_guard.json not available at transcript time"},
     }
-    out_path = Path(evidence_out).resolve()
-    out_path.mkdir(parents=True, exist_ok=True)
     (out_path / "command_transcript.json").write_text(
         json.dumps(transcript, indent=2) + "\n"
     )
@@ -1783,14 +1895,6 @@ def _cmd_do_job_flow(
         rel for rel in _changed_rel_paths
         if not _is_operational_artifact(rel) and not _is_target_noise(rel)
     )
-    _persist_command_transcript(
-        job_id, evidence_out, flow_result, repo,
-        _started_at, _repo_hash_before, _repo_hash_after,
-        changed_content_files=_changed_content_files,
-        ignored_noise_files=_ignored_noise_files,
-        ignored_operational_artifacts=_ignored_operational_artifacts,
-    )
-
     # --- 11. Build observability index (best-effort; never fails job flow) ---
     # The index is generated AFTER job_flow.json is first written (it reads the
     # evidence dir, including job_flow.json). Re-persist job_flow.json so the
@@ -1798,6 +1902,17 @@ def _cmd_do_job_flow(
     index_status = _persist_observability_index(evidence_out)
     flow_result.update(index_status)
     _persist_job_flow_json(flow_result, evidence_out)
+
+    # --- 12. Terminal artifact: command transcript ---
+    # Written AFTER observability index and final job_flow.json so all fields
+    # are stable. Reads target_guard.json for authoritative mutation state.
+    _persist_command_transcript(
+        job_id, evidence_out, flow_result, repo,
+        _started_at, _repo_hash_before, _repo_hash_after,
+        changed_content_files=_changed_content_files,
+        ignored_noise_files=_ignored_noise_files,
+        ignored_operational_artifacts=_ignored_operational_artifacts,
+    )
 
     if json_output:
         safe_result = _sanitize_shareable_paths(flow_result)

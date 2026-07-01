@@ -950,6 +950,166 @@ class TestDogfoodCommandShape:
             fv = json.loads((out / "final_verifier_report.json").read_text())
             assert fv.get("evidence_completeness", {}).get("token_truth") is True
 
+    def test_all_gate_artifacts_written(self, isolate_data_root, demo_repo, tmp_path):
+        """All five evidence-pipeline gates are written (or error-logged)."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        gate_files = [
+            "fresh_evidence_gate.json",
+            "runtime_integration_gate.json",
+            "change_provenance_gate.json",
+            "final_verifier_report.json",
+            "artifact_contract_gate.json",
+            "commit_execution_gate.json",
+        ]
+        for gate in gate_files:
+            has_gate = gate in result["files"]
+            err = gate.replace(".json", ".error.txt")
+            has_error = err in result["files"]
+            assert has_gate or has_error, f"{gate} neither written nor error-logged"
+            if has_gate:
+                assert (out / gate).exists()
+
+    def test_final_verifier_sees_all_gates(self, isolate_data_root, demo_repo, tmp_path):
+        """Final verifier exposes all five core gate fields."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        if "final_verifier_report.json" in result["files"]:
+            fv = json.loads((out / "final_verifier_report.json").read_text())
+            assert "change_provenance" in fv
+            assert "fresh_evidence_gate" in fv
+            assert "artifact_contract_gate" in fv
+            assert "runtime_integration_gate" in fv
+            assert "commit_execution_gate" in fv
+
+    def test_artifact_contract_pass_from_clean_dir(self, isolate_data_root, demo_repo, tmp_path):
+        """Artifact contract gate passes after full export into a clean empty dir."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "clean_evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        if "artifact_contract_gate.json" in result["files"]:
+            acg = json.loads((out / "artifact_contract_gate.json").read_text())
+            assert acg["verdict"] == "PASS", (
+                f"artifact_contract should PASS from clean dir, got {acg['verdict']}: "
+                f"missing={acg.get('missing_required', [])}"
+            )
+
+    def test_artifact_contract_blocked_without_commit_execution(self, tmp_path):
+        """Artifact contract gate is BLOCKED when commit_execution_gate.json is missing."""
+        from packages.orchestration.artifact_contract_gate import build_artifact_contract_gate
+
+        for name in ["manifest.json", "job_report.json", "token_truth.json",
+                      "fresh_evidence_gate.json", "artifact_contract_gate.json",
+                      "runtime_integration_gate.json", "change_provenance_gate.json",
+                      "final_verifier_report.json"]:
+            (tmp_path / name).write_text(json.dumps({"verdict": "PASS", "job_id": "j1", "evidence_completeness": {}}) + "\n")
+
+        gate = build_artifact_contract_gate(str(tmp_path))
+        assert gate["verdict"] == "BLOCKED"
+        assert "commit_execution_gate.json" in gate["missing_required"]
+
+    def test_content_proof_writer_in_export(self, isolate_data_root, demo_repo, tmp_path):
+        """Export pipeline must write current_change_content_proof.json."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        proof_file = out / "current_change_content_proof.json"
+        assert proof_file.exists(), "current_change_content_proof.json must exist after export"
+        data = json.loads(proof_file.read_text())
+        assert data["schema_version"] == "1.0.0"
+        assert "file_hashes" in data
+        assert "file_count" in data
+
+    def test_change_provenance_exists_after_export(self, isolate_data_root, demo_repo, tmp_path):
+        """Change provenance gate must exist after export with stale_apply_proofs field."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        export_job_evidence(job.job_id, str(out))
+
+        cpg = out / "change_provenance_gate.json"
+        assert cpg.exists(), "change_provenance_gate.json must exist after export"
+        data = json.loads(cpg.read_text())
+        assert "stale_apply_proofs" in data
+
+    def test_commit_execution_terminal_refresh(self, isolate_data_root, demo_repo, tmp_path):
+        """Commit execution gate must exist and agree with final verifier."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        export_job_evidence(job.job_id, str(out))
+
+        ceg = out / "commit_execution_gate.json"
+        fvr = out / "final_verifier_report.json"
+        assert ceg.exists(), "commit_execution_gate.json must exist after export"
+        assert fvr.exists(), "final_verifier_report.json must exist after export"
+        ceg_data = json.loads(ceg.read_text())
+        fvr_data = json.loads(fvr.read_text())
+        fv_verdict = fvr_data["verdict"]
+        ceg_fv = ceg_data["gate_checks"]["final_verifier"]
+        assert ceg_fv == fv_verdict, (
+            f"commit_execution gate_checks.final_verifier={ceg_fv} != "
+            f"final_verifier_report.verdict={fv_verdict}"
+        )
+
+    def test_verification_tests_type_is_post_apply_smoke(self):
+        import importlib
+        import packages.orchestration.job_evidence as mod
+        importlib.reload(mod)
+        src = Path(mod.__file__).read_text()
+        assert '"post_apply_smoke"' in src, (
+            "verification_type must be post_apply_smoke in job_evidence.py"
+        )
+
+    def test_verification_tests_file_list_includes_spec_compliance(self):
+        import importlib
+        import packages.orchestration.job_evidence as mod
+        importlib.reload(mod)
+        src = Path(mod.__file__).read_text()
+        assert "test_spec_compliance.py" in src, (
+            "test_spec_compliance.py must be in _test_files list"
+        )
+
+    def test_verification_tests_written_with_real_test_files(
+        self, isolate_data_root, demo_repo, tmp_path
+    ):
+        from packages.orchestration.job_evidence import export_job_evidence
+        job = _run_completed_job(demo_repo)
+        repo_path = Path(getattr(job, "repo_path", demo_repo))
+        test_dir = repo_path / "tests" / "orchestration"
+        test_dir.mkdir(parents=True, exist_ok=True)
+        (test_dir / "test_fresh_evidence_gate.py").write_text(
+            "def test_placeholder(): pass\n"
+        )
+        out = tmp_path / f"remedy-job-evidence-{job.job_id}"
+        export_job_evidence(job.job_id, str(out))
+        vt = out / "verification_tests.json"
+        assert vt.exists(), "verification_tests.json must exist when test files present"
+        data = json.loads(vt.read_text())
+        assert data["verification_type"] == "post_apply_smoke"
+        for tf in data.get("test_files", []):
+            assert tf in data["command"], f"{tf} must be in command"
+
     def test_documented_shape_runs(self, isolate_data_root, demo_repo, tmp_path, capsys):
         job = _run_completed_job(demo_repo)
 

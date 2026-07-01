@@ -504,9 +504,49 @@ fi
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 
-echo "Created: $ROOT/$OUT"
-du -h "$OUT"
+# --- Read package status and rename zip to include it ---
+PACKAGE_STATUS="$(python3 -c "
+import json
+m = json.load(open('$MANIFEST'))
+print(m.get('package_status', 'UNKNOWN'))
+" 2>/dev/null || echo "UNKNOWN")"
+
+EVIDENCE_AUTH="$(python3 -c "
+import json
+m = json.load(open('$MANIFEST'))
+ce = m.get('current_evidence', {})
+ef = ce.get('evidence_freshness', {})
+print('true' if ef.get('evidence_authoritative') else 'false')
+" 2>/dev/null || echo "false")"
+
+FINAL_OUT="remedy-review-${STAMP}-${PACKAGE_STATUS}.zip"
+mv "$OUT" "$FINAL_OUT"
+OUT="$FINAL_OUT"
+
+# --- Terminal status block ---
 echo
+echo "============================================"
+echo "REVIEW_PACKAGE_CREATED=true"
+echo "PACKAGE_STATUS=${PACKAGE_STATUS}"
+echo "PACKAGING_CWD=$(pwd)"
+echo "EVIDENCE_DIR=${EVIDENCE_DIR}"
+echo "REVIEW_SUBJECT_ALIGNMENT=${ALIGNMENT_VERDICT}"
+echo "EVIDENCE_AUTHORITATIVE=${EVIDENCE_AUTH}"
+echo "ZIP_PATH=${ROOT}/${OUT}"
+if [[ "$PACKAGE_STATUS" != "READY_FOR_REVIEW" ]]; then
+  echo "DO_NOT_COMMIT=true"
+  echo "============================================"
+  echo
+  echo "*** ZIP CREATED, BUT THIS PACKAGE IS NOT COMMIT-READY ***"
+  echo
+else
+  echo "============================================"
+  echo
+  echo "ZIP CREATED AND READY FOR FINAL REVIEW"
+  echo
+fi
+
+du -h "$OUT"
 echo "Included files: $(echo "$ZIP_LISTING" | wc -l | tr -d ' ')"
 echo "Branch: $BRANCH"
 echo "Commit: $COMMIT"

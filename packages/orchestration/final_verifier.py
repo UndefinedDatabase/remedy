@@ -62,6 +62,14 @@ def _read_text(path: Path) -> str:
         return ""
 
 
+def _read_gate_verdict(base: Path, filename: str) -> str:
+    """Return the ``verdict`` string from a job-level gate JSON, or "" if absent."""
+    data = _read_json(base / filename)
+    if isinstance(data, dict):
+        return str(data.get("verdict", "") or "")
+    return ""
+
+
 def _task_ids(base: Path) -> list[str]:
     """Return sorted, safe task IDs that have a task_runs/<id>/ directory."""
     runs = base / "task_runs"
@@ -75,9 +83,28 @@ def _task_ids(base: Path) -> list[str]:
     return sorted(ids)
 
 
+def _normalize(path: str) -> str:
+    p = path.replace("\\", "/").strip()
+    while p.startswith("./"):
+        p = p[2:]
+    return p
+
+
+def _diff_paths(diff_text: str) -> set[str]:
+    """Extract file paths from unified diff headers."""
+    _PATH_RE = re.compile(r"^[+-]{3}\s+[ab]/(.+)$")
+    files: set[str] = set()
+    for line in diff_text.splitlines():
+        m = _PATH_RE.match(line)
+        if m:
+            p = m.group(1).strip()
+            if p and p != "/dev/null":
+                files.add(_normalize(p))
+    return files
+
+
 def _collect_changes(base: Path, task_ids: list[str]) -> tuple[list[str], dict[str, Any]]:
     changed_files: set[str] = set()
-    # file -> accumulated ranges across all tasks (union, deduped, sorted).
     range_acc: dict[str, list[Any]] = {}
     for tid in task_ids:
         packet = _read_json(base / "task_runs" / tid / "review_scope_packet.json")
@@ -95,6 +122,117 @@ def _collect_changes(base: Path, task_ids: list[str]) -> tuple[list[str], dict[s
         for f, acc in range_acc.items()
     }
     return sorted(changed_files), changed_line_ranges
+
+
+_OPERATIONAL_PREFIXES = (".agent/", ".data/", "remedy-job-evidence", "run_transcript")
+_OPERATIONAL_SUFFIXES = (".log", ".zip", ".tar", ".gz", ".pyc", ".pyo")
+
+
+def _is_source_for_alignment(path: str) -> bool:
+    """Filter out operational/excluded files from authoritative set."""
+    if any(path.startswith(p) for p in _OPERATIONAL_PREFIXES):
+        return False
+    if any(path.endswith(s) for s in _OPERATIONAL_SUFFIXES):
+        return False
+    if any(sub in path for sub in ("__pycache__", "htmlcov/", ".coverage")):
+        return False
+    return True
+
+
+def _collect_authoritative_changed_files(base: Path, task_ids: list[str]) -> list[str]:
+    """Union changed files from all evidence sources, excluding operational files."""
+    files: set[str] = set()
+
+    for tid in task_ids:
+        packet = _read_json(base / "task_runs" / tid / "review_scope_packet.json")
+        if isinstance(packet, dict):
+            for f in packet.get("changed_files") or []:
+                files.add(_normalize(str(f)))
+        safe_diff = base / "task_runs" / tid / "safe.diff"
+        if safe_diff.exists():
+            files |= _diff_paths(_read_text(safe_diff))
+
+    ws_diff = base / "workspace.diff"
+    if ws_diff.exists():
+        files |= _diff_paths(_read_text(ws_diff))
+
+    apply_json = _read_json(base / "workspace_apply.json")
+    if isinstance(apply_json, list):
+        for entry in apply_json:
+            if isinstance(entry, dict):
+                manifest = entry.get("apply_manifest")
+                if isinstance(manifest, dict):
+                    for f in manifest.get("applied_files") or []:
+                        files.add(_normalize(str(f)))
+
+    cp_gate = _read_json(base / "change_provenance_gate.json")
+    if isinstance(cp_gate, dict):
+        for f in cp_gate.get("covered_files") or []:
+            files.add(_normalize(str(f)))
+
+    return sorted(f for f in files if _is_source_for_alignment(f))
+
+
+def _file_set_alignment(
+    base: Path,
+    authoritative_files: list[str],
+    review_scope_files: list[str],
+) -> dict[str, Any]:
+    """Compare authoritative changed files against review scope changed files."""
+    auth_set = set(authoritative_files)
+    scope_set = set(review_scope_files)
+
+    cp_gate = _read_json(base / "change_provenance_gate.json")
+    cp_present = isinstance(cp_gate, dict) and cp_gate.get("verdict")
+    cp_covered = set()
+    cp_hash_mismatches: list[dict[str, str]] = []
+    if cp_present:
+        cp_covered = {_normalize(str(f)) for f in (cp_gate.get("covered_files") or [])}
+        cp_hash_mismatches = cp_gate.get("hash_mismatches") or []
+
+    in_auth_not_scope = sorted(auth_set - scope_set)
+    in_scope_not_auth = sorted(scope_set - auth_set)
+
+    uncovered = sorted(auth_set - cp_covered) if cp_present else []
+
+    mismatches: list[str] = []
+    blocking: list[str] = []
+
+    if in_auth_not_scope:
+        mismatches.append(
+            f"authoritative files not in review_scope: {in_auth_not_scope}"
+        )
+    if in_scope_not_auth:
+        mismatches.append(
+            f"review_scope files not in authoritative set: {in_scope_not_auth}"
+        )
+    if uncovered:
+        blocking.append(
+            f"authoritative files not covered by change_provenance: {uncovered}"
+        )
+        mismatches.append(blocking[-1])
+
+    has_hash_mismatches = bool(cp_hash_mismatches)
+    if has_hash_mismatches:
+        blocking.append(
+            f"content hash mismatches: {[m['file'] for m in cp_hash_mismatches]}"
+        )
+        mismatches.append(blocking[-1])
+
+    if blocking:
+        status = "BLOCKED"
+    elif mismatches:
+        status = "PASS_WITH_RISKS"
+    else:
+        status = "PASS"
+
+    return {
+        "authoritative_changed_files": authoritative_files,
+        "change_source_mismatches": mismatches,
+        "review_subject_uncovered_files": uncovered,
+        "content_hash_mismatches": cp_hash_mismatches,
+        "file_set_alignment_status": status,
+    }
 
 
 def _aggregate_gate(base: Path, task_ids: list[str], filename: str, key: str,
@@ -268,7 +406,10 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     base = Path(evidence_dir) if evidence_dir else Path(".")
     task_ids = _task_ids(base)
 
-    changed_files, changed_line_ranges = _collect_changes(base, task_ids)
+    review_scope_files, changed_line_ranges = _collect_changes(base, task_ids)
+    authoritative_changed_files = _collect_authoritative_changed_files(base, task_ids)
+    changed_files = authoritative_changed_files
+    file_alignment = _file_set_alignment(base, authoritative_changed_files, review_scope_files)
 
     missing_tests_gate = _aggregate_gate(
         base, task_ids, "missing_tests_gate.json", "gate_status",
@@ -280,8 +421,29 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     )
     scratch_file_guard = _scratch_status(base, task_ids)
 
+    fresh_evidence_gate = _read_gate_verdict(base, "fresh_evidence_gate.json")
+    artifact_contract_gate = _read_gate_verdict(base, "artifact_contract_gate.json")
+    runtime_integration_gate = _read_gate_verdict(base, "runtime_integration_gate.json")
+    change_provenance = _read_gate_verdict(base, "change_provenance_gate.json")
+    # commit_execution_gate is downstream — reads OUR verdict, so we don't read it
+    # (avoids circular dependency). We expose it in output for informational use.
+    commit_execution_gate = _read_gate_verdict(base, "commit_execution_gate.json")
+
+    verification_tests = _read_json(base / "verification_tests.json")
+
     unresolved_findings = _collect_unresolved_findings(base, task_ids)
     test_status = _aggregate_test_status(base, task_ids)
+
+    if (
+        isinstance(verification_tests, dict)
+        and verification_tests.get("exit_code") == 0
+        and verification_tests.get("passed", 0) > 0
+        and verification_tests.get("failed", 0) == 0
+    ):
+        test_status["ran"] = True
+        test_status["passed"] += verification_tests["passed"]
+        test_status["failed"] += verification_tests.get("failed", 0)
+
     token_status = _token_status(base, task_ids)
 
     evidence_completeness = _evidence_completeness(base, task_ids)
@@ -289,27 +451,55 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         name for name, present in evidence_completeness.items() if not present
     )
 
-    gates_blocked = scratch_file_guard == "BLOCKED" or spec_compliance == "BLOCKED"
+    upstream_gate_verdicts = {
+        "fresh_evidence_gate": fresh_evidence_gate,
+        "artifact_contract_gate": artifact_contract_gate,
+        "runtime_integration_gate": runtime_integration_gate,
+        "change_provenance_gate": change_provenance,
+    }
+    any_core_gate_blocked = any(
+        v == "BLOCKED" for v in upstream_gate_verdicts.values() if v
+    )
+
+    file_alignment_blocked = (
+        file_alignment["file_set_alignment_status"] == "BLOCKED"
+    )
+    file_alignment_risky = (
+        file_alignment["file_set_alignment_status"] == "PASS_WITH_RISKS"
+    )
+    gates_blocked = (
+        scratch_file_guard == "BLOCKED"
+        or spec_compliance == "BLOCKED"
+        or any_core_gate_blocked
+        or file_alignment_blocked
+    )
     needs_repair = (
         bool(unresolved_findings)
         or spec_compliance == "FAIL"
         or test_status["failed"] > 0
     )
 
+    tests_verified = (
+        isinstance(verification_tests, dict)
+        and verification_tests.get("exit_code") == 0
+        and verification_tests.get("passed", 0) > 0
+        and verification_tests.get("failed", 0) == 0
+    )
+    effective_missing_tests = missing_tests_gate
+    if tests_verified and missing_tests_gate == "NEEDS_TESTS":
+        effective_missing_tests = "PASS"
+
     if gates_blocked:
         verdict = "BLOCKED"
-    elif missing_tests_gate == "NEEDS_TESTS":
+    elif effective_missing_tests == "NEEDS_TESTS":
         verdict = "NEEDS_TESTS"
     elif needs_repair:
         verdict = "NEEDS_REPAIR"
-    elif missing_evidence:
+    elif missing_evidence or file_alignment_risky:
         verdict = "PASS_WITH_RISKS"
     else:
         verdict = "PASS"
 
-    # NEEDS_TESTS deliberately takes precedence over NEEDS_REPAIR (missing tests
-    # can change which findings are real), but a repair signal must never be
-    # silently masked. Surface it explicitly so consumers see both conditions.
     also_needs_repair = needs_repair and verdict == "NEEDS_TESTS"
     recommended_action = _RECOMMENDED_ACTION[verdict]
     if also_needs_repair:
@@ -323,10 +513,21 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         "also_needs_repair": also_needs_repair,
         "changed_files": changed_files,
         "changed_line_ranges": changed_line_ranges,
+        "authoritative_changed_files": file_alignment["authoritative_changed_files"],
+        "change_source_mismatches": file_alignment["change_source_mismatches"],
+        "review_subject_uncovered_files": file_alignment["review_subject_uncovered_files"],
+        "content_hash_mismatches": file_alignment["content_hash_mismatches"],
+        "file_set_alignment_status": file_alignment["file_set_alignment_status"],
         "unresolved_findings": unresolved_findings,
         "test_status": test_status,
         "missing_tests_gate": missing_tests_gate,
         "scratch_file_guard": scratch_file_guard,
+        "change_provenance": change_provenance,
+        "change_provenance_gate": change_provenance,
+        "fresh_evidence_gate": fresh_evidence_gate,
+        "artifact_contract_gate": artifact_contract_gate,
+        "runtime_integration_gate": runtime_integration_gate,
+        "commit_execution_gate": commit_execution_gate,
         "spec_compliance": spec_compliance,
         "token_status": token_status,
         "evidence_completeness": evidence_completeness,

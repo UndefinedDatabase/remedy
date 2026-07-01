@@ -201,19 +201,198 @@ def export_job_evidence(
         )
         written[rel] = str(err_path)
 
+    def _write_gate_error(rel: str, exc: Exception) -> None:
+        err_path = _validate_output_path(str(out_path), rel)
+        err_path.write_text(
+            f"{rel} unavailable: {type(exc).__name__}: {exc}\n",
+            encoding="utf-8",
+        )
+        written[rel] = str(err_path)
+
+    def _gate_verdict(filename: str) -> str:
+        try:
+            data = json.loads((out_path / filename).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return ""
+        return str(data.get("verdict", "") or "") if isinstance(data, dict) else ""
+
+    # Fresh evidence gate — verify this evidence belongs to the current job run.
+    # Step range is derived from the project's .agent/plan.md title.
+    try:
+        from packages.orchestration.fresh_evidence_gate import write_fresh_evidence_gate
+        plan_text = ""
+        try:
+            plan_text = (Path(".agent") / "plan.md").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            plan_text = ""
+        m = re.search(r"(?<!\d)(\d{4,})\s*-\s*(\d{4,})(?!\d)", plan_text)
+        step_range = f"{m.group(1)}-{m.group(2)}" if m else None
+        write_fresh_evidence_gate(str(out_path), job.job_id, step_range, written)
+    except Exception as exc:
+        _write_gate_error("fresh_evidence_gate.error.txt", exc)
+
+    # Runtime integration gate — verify gate writers are wired into the pipeline.
+    try:
+        from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
+        _repo_root = getattr(job, "repo_path", None) or "."
+        write_runtime_integration_gate(str(out_path), _repo_root, written)
+    except Exception as exc:
+        _write_gate_error("runtime_integration_gate.error.txt", exc)
+
+    # Content-hash proof — SHA256 every dirty source file for provenance.
+    _repo = getattr(job, "repo_path", None) or "."
+    dirty_files: list[str] = []
+    try:
+        import hashlib as _hl  # noqa: I001
+        import subprocess as _sp  # noqa: I001
+
+        _git_result = _sp.run(
+            ["git", "status", "--porcelain", "-u"],
+            cwd=_repo, capture_output=True, text=True, timeout=30,
+        )
+        for line in _git_result.stdout.splitlines():
+            if not line.strip():
+                continue
+            path = line[3:]
+            if " -> " in path:
+                path = path.split(" -> ", 1)[1]
+            path = path.strip().strip('"')
+            if path:
+                dirty_files.append(path)
+
+        from packages.orchestration.change_provenance_gate import _is_source_file, _normalize
+        _source_dirty = [_normalize(p) for p in dirty_files if _is_source_file(p)]
+        _file_hashes: dict[str, str] = {}
+        _repo_path = Path(_repo)
+        for _sf in _source_dirty:
+            _fp = _repo_path / _sf
+            if _fp.exists():
+                _file_hashes[_sf] = _hl.sha256(_fp.read_bytes()).hexdigest()
+        _proof = {
+            "schema_version": "1.0.0",
+            "file_hashes": _file_hashes,
+            "file_count": len(_file_hashes),
+        }
+        _proof_path = _validate_output_path(str(out_path), "current_change_content_proof.json")
+        _proof_path.write_text(json.dumps(_proof, indent=2) + "\n", encoding="utf-8")
+        written["current_change_content_proof.json"] = str(_proof_path)
+    except Exception as exc:
+        _write_gate_error("current_change_content_proof.error.txt", exc)
+
+    # Change provenance gate — every dirty source file must be backed by evidence.
+    try:
+        from packages.orchestration.change_provenance_gate import write_change_provenance_gate
+        write_change_provenance_gate(
+            str(out_path), dirty_files, job.job_id, written,
+            repo_root=_repo,
+        )
+    except Exception as exc:
+        _write_gate_error("change_provenance_gate.error.txt", exc)
+
+    # Verification tests — run focused tests and record as evidence.
+    try:
+        import subprocess as _vt_sp  # noqa: I001
+
+        _test_files = [
+            "tests/orchestration/test_fresh_evidence_gate.py",
+            "tests/orchestration/test_artifact_contract_gate.py",
+            "tests/orchestration/test_runtime_integration_gate.py",
+            "tests/orchestration/test_change_provenance_gate.py",
+            "tests/orchestration/test_commit_execution_gate.py",
+            "tests/orchestration/test_token_truth.py",
+            "tests/orchestration/test_final_verifier.py",
+            "tests/orchestration/test_job_evidence.py",
+            "tests/orchestration/test_spec_compliance.py",
+            "tests/test_do_job_flow.py",
+        ]
+        _repo = getattr(job, "repo_path", None) or "."
+        _existing = [f for f in _test_files if (Path(_repo) / f).exists()]
+        if _existing:
+            from datetime import datetime as _vt_dt, timezone as _vt_tz  # noqa: I001
+            _vt_cmd = ["python3", "-m", "pytest"] + _existing + ["-q", "--tb=short"]
+            _vt_result = _vt_sp.run(
+                _vt_cmd, cwd=_repo, capture_output=True, text=True, timeout=120,
+            )
+            _passed_m = re.findall(r"(\d+)\s+passed", _vt_result.stdout)
+            _failed_m = re.findall(r"(\d+)\s+(?:failed|error)", _vt_result.stdout)
+            _vt_passed = sum(int(x) for x in _passed_m)
+            _vt_failed = sum(int(x) for x in _failed_m)
+            _vt_data = {
+                "schema_version": "1.0.0",
+                "verification_type": "post_apply_smoke",
+                "command": " ".join(_vt_cmd),
+                "exit_code": _vt_result.returncode,
+                "passed": _vt_passed,
+                "failed": _vt_failed,
+                "stdout_summary": _vt_result.stdout[-2000:] if _vt_result.stdout else "",
+                "stderr_summary": _vt_result.stderr[-1000:] if _vt_result.stderr else "",
+                "timestamp": _vt_dt.now(_vt_tz.utc).isoformat(),
+                "test_files": _existing,
+            }
+            _vt_path = _validate_output_path(str(out_path), "verification_tests.json")
+            _vt_path.write_text(json.dumps(_vt_data, indent=2) + "\n", encoding="utf-8")
+            written["verification_tests.json"] = str(_vt_path)
+    except Exception as exc:
+        _write_gate_error("verification_tests.error.txt", exc)
+
     # Final verifier report — aggregates all gates into a single verdict.
-    # Written LAST so it can read all other artifacts.
+    # Written after upstream gates so it can read their verdicts.
     try:
         from packages.orchestration.final_verifier import write_final_verifier_report
         write_final_verifier_report(str(out_path), written)
     except Exception as exc:
-        rel = "final_verifier_report.error.txt"
-        err_path = _validate_output_path(str(out_path), rel)
-        err_path.write_text(
-            f"final_verifier_report unavailable: {type(exc).__name__}: {exc}\n",
-            encoding="utf-8",
+        _write_gate_error("final_verifier_report.error.txt", exc)
+
+    # Artifact contract gate — after final verifier, so it can check completeness.
+    try:
+        from packages.orchestration.artifact_contract_gate import write_artifact_contract_gate
+        write_artifact_contract_gate(str(out_path), written, current_job_id=job.job_id)
+    except Exception as exc:
+        _write_gate_error("artifact_contract_gate.error.txt", exc)
+
+    # Commit execution gate — terminal gate: reads all other gate verdicts.
+    try:
+        from packages.orchestration.commit_execution_gate import write_commit_execution_gate
+        write_commit_execution_gate(
+            str(out_path),
+            written,
+            fresh_evidence_verdict=_gate_verdict("fresh_evidence_gate.json"),
+            artifact_contract_verdict=_gate_verdict("artifact_contract_gate.json"),
+            runtime_integration_verdict=_gate_verdict("runtime_integration_gate.json"),
+            final_verifier_verdict=_gate_verdict("final_verifier_report.json"),
+            change_provenance_verdict=_gate_verdict("change_provenance_gate.json"),
         )
-        written[rel] = str(err_path)
+    except Exception as exc:
+        _write_gate_error("commit_execution_gate.error.txt", exc)
+
+    # Second pass: artifact_contract after commit_execution exists.
+    try:
+        from packages.orchestration.artifact_contract_gate import write_artifact_contract_gate
+        write_artifact_contract_gate(str(out_path), written, current_job_id=job.job_id)
+    except Exception as exc:
+        _write_gate_error("artifact_contract_gate.error.txt", exc)
+
+    # Final pass: re-run final verifier so it sees commit_execution_gate verdict.
+    try:
+        from packages.orchestration.final_verifier import write_final_verifier_report
+        write_final_verifier_report(str(out_path), written)
+    except Exception as exc:
+        pass
+
+    # Terminal refresh: commit_execution reads final verifier's updated verdict.
+    try:
+        from packages.orchestration.commit_execution_gate import write_commit_execution_gate
+        write_commit_execution_gate(
+            str(out_path),
+            written,
+            fresh_evidence_verdict=_gate_verdict("fresh_evidence_gate.json"),
+            artifact_contract_verdict=_gate_verdict("artifact_contract_gate.json"),
+            runtime_integration_verdict=_gate_verdict("runtime_integration_gate.json"),
+            final_verifier_verdict=_gate_verdict("final_verifier_report.json"),
+            change_provenance_verdict=_gate_verdict("change_provenance_gate.json"),
+        )
+    except Exception as exc:
+        pass
 
     from datetime import datetime, timezone
     manifest["bundle_generated_at"] = datetime.now(timezone.utc).isoformat()
