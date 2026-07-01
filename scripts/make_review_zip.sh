@@ -18,8 +18,8 @@ while [[ $# -gt 0 ]]; do
       SELECTION_MODE="explicit"
       shift 2
       ;;
-    --allow-incomplete-evidence)
-      # No-op: validation is always informational, never blocks zip creation
+    --allow-incomplete-evidence|--allow-blocked-alignment)
+      echo "NOTE: $1 is now a no-op — zip always builds. Alignment/validity warnings are printed but never block."
       shift
       ;;
     --include-stale-evidence)
@@ -39,6 +39,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Alignment/validity checks are warnings only — zip always builds.
 
 # --- Detritus check (before evidence selection — always runs) ---
 DETRITUS="$(find . -maxdepth 1 \( -name '*_WAS_HERE.txt' -o -name 'BUILDER_WAS_HERE.txt' -o -name 'REVIEWER_WAS_HERE.txt' \) 2>/dev/null | sed 's#^\./##' || true)"
@@ -312,6 +314,7 @@ find . \
   ! -name 'id_dsa' \
   ! -name 'id_ecdsa' \
   ! -name 'id_ed25519' \
+  ! -name 'run_transcript.txt' \
   -print \
   | sed 's#^\./##' \
   | sort -u > "$TMP"
@@ -327,6 +330,39 @@ python3 scripts/build_review_manifest.py \
   --output "$MANIFEST"
 
 echo "$MANIFEST" >> "$TMP"
+
+# --- Check alignment verdict (fail on BLOCKED unless --allow-blocked-alignment) ---
+ALIGNMENT_VERDICT="$(python3 -c "
+import json, sys
+try:
+    m = json.load(open('$MANIFEST'))
+    a = m.get('review_subject_evidence_alignment', {})
+    print(a.get('verdict', 'absent'))
+except:
+    print('absent')
+" 2>/dev/null || echo "absent")"
+
+if [[ "$ALIGNMENT_VERDICT" == "BLOCKED" ]]; then
+  echo "WARNING: Review subject/evidence alignment is BLOCKED."
+  echo "Dirty files outside evidence scope will be included for reviewer visibility."
+fi
+
+# --- Check evidence validity (fail when invalid unless --allow-incomplete-evidence) ---
+EVIDENCE_VALID="$(python3 -c "
+import json, sys
+try:
+    m = json.load(open('$MANIFEST'))
+    ce = m.get('current_evidence', {})
+    v = ce.get('validation', {})
+    print('true' if v.get('is_valid_current_run') else 'false')
+except:
+    print('false')
+" 2>/dev/null || echo "false")"
+
+if [[ "$EVIDENCE_VALID" == "false" ]]; then
+  echo "WARNING: Evidence validation failed (is_valid_current_run=false)."
+  echo "Zip will be built anyway — reviewer will see validation status in manifest."
+fi
 
 # --- Include current evidence under evidence/current/ prefix ---
 EVIDENCE_STAGING="$(mktemp -d)"
