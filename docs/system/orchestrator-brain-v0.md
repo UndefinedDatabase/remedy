@@ -1,5 +1,8 @@
 # Main Orchestrator Brain v0
 
+> **Status (roadmap):** Superseded/extended by the Orchestrator Loop in the roadmap
+> (F070, `docs/roadmap/features/T3_F070.md`). On conflict the roadmap wins.
+
 The orchestrator reads the current project/job/system state from **safe summaries**,
 builds a Situation, generates deterministic Options, scores them, guards against
 repeated failed loops, defines a **model routing plan** (never a model call), and

@@ -1,5 +1,8 @@
 # Expensive Builder Routing v0 — Design Plan (Step 1571)
 
+> **Status: DEPRECATED** — Implemented as `docs/system/expensive-builder-routing-v0.md`.
+> Future direction: F110/F113.
+
 A forward-looking design note. **Nothing here is built yet.** This records the constraints a
 future "Expensive Builder Routing v0" block must satisfy, given the now-existing Trust Gate +
 Verification rails.

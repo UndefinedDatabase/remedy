@@ -1,7 +1,7 @@
 # Model / Route Tournament Harness — Future Design Note (Step 1677)
 
-> **Status: DEPRECATED** — This document describes a future plan or deprecated subsystem.
-> It is kept for historical context. See `docs/roadmap/ROADMAP.md` for current planning.
+> **Status: DEPRECATED** — Built as `docs/system/model-route-tournament-harness-v0.md`.
+> Future direction: F132. Kept for historical context.
 
 A forward-looking note. **Nothing here is built.** It records what a future controlled comparison
 between candidate generators (local vs local, or local vs external) must satisfy, given the now-

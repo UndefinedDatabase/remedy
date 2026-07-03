@@ -1,7 +1,8 @@
 # Bounded Overnight Executor v0
 
-> **Status: DEPRECATED** — This document describes a future plan or deprecated subsystem.
-> It is kept for historical context. See `docs/roadmap/ROADMAP.md` for current planning.
+> **Status: SEMANTICS SUPERSEDED** — The overnight / time-of-day mechanics described here
+> are explicitly deprecated by the roadmap (docs/roadmap/ROADMAP.md, Teil B).
+> The underlying execution and approval concepts remain valid.
 
 The first executor that *acts* on a [Bounded Overnight Preparation](bounded-overnight-prep-v0.md)
 readiness report. It performs **at most one** bounded, **foreground**, reviewable

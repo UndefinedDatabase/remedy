@@ -1,5 +1,8 @@
 # UI Target Direction
 
+> **Status: DEPRECATED** — Superseded by `docs/roadmap/ROADMAP.md` Teil H +
+> `docs/ui/design_reference/ux_design.png`.
+
 ## Layout
 
 The Remedy dashboard has three columns:
