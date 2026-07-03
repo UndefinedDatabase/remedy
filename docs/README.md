@@ -1,0 +1,157 @@
+# Documentation Index
+
+> Entry point for all Remedy documentation.
+> `docs/` describes the **built** system; `docs/roadmap/` describes the **target** plan.
+
+## Quick-Find Table
+
+| Keyword | File | Category |
+|---------|------|----------|
+| architecture | [architecture.md](system/architecture.md) | system |
+| autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
+| brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
+| brain | [project-brain.md](system/project-brain.md) | system |
+| candidate eval | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | system |
+| candidate gen | [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | system |
+| cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
+| context | [context-inspector.md](system/context-inspector.md) | system |
+| do continue | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
+| do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
+| dogfood | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | guide |
+| external builder | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | system |
+| external builder | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | system |
+| external builder | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | system |
+| model advisor | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | system |
+| proof chain | [proof-chain.md](system/proof-chain.md) | system |
+| provider trust | [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | system |
+| provider trust | [provider-trust-verification-v1.md](system/provider-trust-verification-v1.md) | system |
+| quickstart | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | guide |
+| remedy.toml | [remedy-toml-configuration-system-v0.md](system/remedy-toml-configuration-system-v0.md) | system |
+| remedy.toml | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | guide |
+| repair | [repair-loop-v1.md](system/repair-loop-v1.md) | system |
+| repair | [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | system |
+| resume | [resume.md](guides/resume.md) | guide |
+| review bundle | [review-bundle-v1.md](system/review-bundle-v1.md) | system |
+| routing | [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | system |
+| routing | [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | system |
+| self-dogfood | [self-dogfood-v0.md](system/self-dogfood-v0.md) | system |
+| self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |
+| snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |
+| test execution | [real-test-execution-v1.md](system/real-test-execution-v1.md) | system |
+| test lanes | [test-lanes-v0.md](system/test-lanes-v0.md) | system |
+| token economy | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | system |
+| token economy | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | guide |
+| tournament | [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | system |
+| UI | [ui-target.md](system/ui-target.md) | system |
+| worker | [worker.md](system/worker.md) | system |
+
+## System Documentation (`docs/system/`)
+
+Specifications and design documents for the built system.
+
+| File | Description |
+|------|-------------|
+| [agent-tooling-audit.md](system/agent-tooling-audit.md) | Audit of agent tooling (Pi.dev, Claude Code, VS Code MCP) |
+| [architecture.md](system/architecture.md) | High-level Remedy architecture |
+| [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | Scoring and evaluation of candidate patches |
+| [context-inspector.md](system/context-inspector.md) | Context window inspection and debugging |
+| [controlled-claude-code-operator-path-v0.md](system/controlled-claude-code-operator-path-v0.md) | Controlled operator path for Claude Code sessions |
+| [core-product-spine-v0.md](system/core-product-spine-v0.md) | Core product architecture spine |
+| [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
+| [execution-approval-policy-v0.md](system/execution-approval-policy-v0.md) | Human approval gates for execution |
+| [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | Local-first routing to expensive external builders |
+| [expensive-builder-routing-v0-plan.md](system/expensive-builder-routing-v0-plan.md) | Design plan for expensive builder routing |
+| [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | Sandbox for external builder execution |
+| [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | Contract for external builder workers |
+| [feature-planner-v0.md](system/feature-planner-v0.md) | Feature planning and decomposition |
+| [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone |
+| [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
+| [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | Local candidate generation adapter |
+| [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | Local model advisory critique adapter |
+| [main-builder-adapter-v0-token-controlled-session-rail.md](system/main-builder-adapter-v0-token-controlled-session-rail.md) | Token-controlled session rail for main builder |
+| [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | Managed external builder execution + observability |
+| [managed-external-builder-execution-v1-1-hardening.md](system/managed-external-builder-execution-v1-1-hardening.md) | Approval hardening for managed external builders |
+| [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
+| [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | Model/route tournament comparison harness |
+| [open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md](system/open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md) | Open-ended dogfood run + replay analysis |
+| [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
+| [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
+| [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
+| [overnight-mission-contract-review-repair-spine-v0.md](system/overnight-mission-contract-review-repair-spine-v0.md) | Overnight mission contract + review/repair *(overnight superseded)* |
+| [progress-ledger-v1.md](system/progress-ledger-v1.md) | Progress ledger for tracking feature/task state |
+| [project-brain.md](system/project-brain.md) | Project brain knowledge graph |
+| [proof-chain.md](system/proof-chain.md) | Proof chain for file provenance |
+| [provider-patch-materialization-v0.md](system/provider-patch-materialization-v0.md) | Materializing accepted provider patches into intents |
+| [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | Provider trust gate + external repair intake |
+| [provider-trust-verification-v1.md](system/provider-trust-verification-v1.md) | Second-stage verification of trusted candidates |
+| [quality-baseline-v0.md](system/quality-baseline-v0.md) | Quality baseline definitions |
+| [real-test-execution-snapshot-rollback-proof-v1.md](system/real-test-execution-snapshot-rollback-proof-v1.md) | Test execution + snapshot/rollback proof spec |
+| [real-test-execution-v1.md](system/real-test-execution-v1.md) | Real test execution service |
+| [remedy-toml-configuration-system-v0.md](system/remedy-toml-configuration-system-v0.md) | remedy.toml configuration system |
+| [repair-loop-v0.md](system/repair-loop-v0.md) | Repair loop v0 (legacy) |
+| [repair-loop-v1.md](system/repair-loop-v1.md) | Repair loop v1 (bounded, approval-gated) |
+| [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | Provider-agnostic repair request builder |
+| [review-bundle-structured-error-reporting-v1.md](system/review-bundle-structured-error-reporting-v1.md) | Structured error reporting in review bundles |
+| [review-bundle-v1.md](system/review-bundle-v1.md) | Review bundle format and contents |
+| [reviewer-safety.md](system/reviewer-safety.md) | Reviewer and test safety constraints |
+| [run-contract-v1.md](system/run-contract-v1.md) | Run contract (apply/test gates, budgets) |
+| [run-replay-to-self-repair-proposal-v0.md](system/run-replay-to-self-repair-proposal-v0.md) | Replay analysis to self-repair proposal pipeline |
+| [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | Self-dogfood execution (bounded self-improvement) |
+| [self-dogfood-v0.md](system/self-dogfood-v0.md) | Self-dogfood readiness + improvement planner |
+| [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |
+| [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
+| [token-aware-repair-loop-v1-v2.md](system/token-aware-repair-loop-v1-v2.md) | Token-aware repair loop architecture |
+| [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | Token economy + context budget optimizer |
+| [ui-target.md](system/ui-target.md) | UI target direction |
+| [worker.md](system/worker.md) | Worker architecture and guide |
+| [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | Worker registry + route policy |
+
+## Guides (`docs/guides/`)
+
+User-facing guides, quickstarts, and usage documentation.
+
+| File | Description |
+|------|-------------|
+| [autocoder-usage.md](guides/autocoder-usage.md) | How to use the autocoder |
+| [do-continue-v1.md](guides/do-continue-v1.md) | `remedy do --continue` one-cycle apply flow |
+| [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |
+| [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | Running dogfood jobs *(overnight superseded)* |
+| [main-builder-adapter-user-guide-v0.md](guides/main-builder-adapter-user-guide-v0.md) | Main builder adapter usage |
+| [managed-external-builder-execution-user-guide-v1.md](guides/managed-external-builder-execution-user-guide-v1.md) | Managed external builder usage |
+| [model-route-tournament-user-guide-v0.md](guides/model-route-tournament-user-guide-v0.md) | Comparing routes with tournament harness |
+| [overnight-mission-user-guide-v0.md](guides/overnight-mission-user-guide-v0.md) | Overnight missions *(overnight superseded)* |
+| [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
+| [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
+| [resume.md](guides/resume.md) | Resuming interrupted jobs |
+| [self-repair-proposal-user-guide-v0.md](guides/self-repair-proposal-user-guide-v0.md) | Self-repair proposal workflow |
+| [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
+| [token-aware-repair-loop-user-guide-v1.md](guides/token-aware-repair-loop-user-guide-v1.md) | Token-aware repair loop usage |
+| [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | Token budgets and context packs |
+| [worker-route-policy-user-guide-v0.md](guides/worker-route-policy-user-guide-v0.md) | Choosing workers and routes |
+
+## Archive (`docs/archive/`)
+
+Deprecated or future-only design documents kept for historical context.
+
+| File | Description | Status |
+|------|-------------|--------|
+| [bounded-overnight-executor-v0.md](archive/bounded-overnight-executor-v0.md) | Bounded overnight executor | DEPRECATED |
+| [bounded-overnight-prep-v0.md](archive/bounded-overnight-prep-v0.md) | Bounded overnight preparation | DEPRECATED |
+| [candidate-generator-adapter-future.md](archive/candidate-generator-adapter-future.md) | Candidate generator adapter future direction | DEPRECATED |
+| [expensive-builder-routing-future.md](archive/expensive-builder-routing-future.md) | Expensive builder routing future plan | DEPRECATED |
+| [external-builder-sandbox-future.md](archive/external-builder-sandbox-future.md) | External builder sandbox future design | DEPRECATED |
+| [model-route-tournament-future.md](archive/model-route-tournament-future.md) | Model/route tournament future design | DEPRECATED |
+| [self-dogfood-overnight-future.md](archive/self-dogfood-overnight-future.md) | Self-dogfood overnight future direction | DEPRECATED |
+
+## Roadmap (`docs/roadmap/`)
+
+The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 150-feature
+plan, [00_INDEX.md](roadmap/00_INDEX.md) for the feature file index, and
+[CONVENTIONS.md](roadmap/CONVENTIONS.md) for the shared naming register.
+
+Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.
+
+## UI Reference (`docs/ui/`)
+
+Design reference material for the Remedy UI. See `docs/ui/design_reference/` for
+visual mockups.
