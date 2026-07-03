@@ -384,6 +384,8 @@ Rules:
 - do not duplicate code
 - do not include temporary or task-specific content
 - prefer updating existing files over creating new ones
+- register new or renamed docs in the index `docs/README.md` (category, one-line
+  description, status marker)
 
 ------------------------------------------------------------------------
 
@@ -438,7 +440,9 @@ On new session or after reboot:
 
 1. Read `AGENTS.md`
 2. Read `.agent/plan.md`
-3. Identify relevant files in `docs/` based on the current task
+3. Identify relevant files via the index `docs/README.md` (quick-find table);
+   for roadmap work also read `docs/roadmap/ROADMAP.md` Teil A and the active
+   `docs/roadmap/features/T?_F???.md`
 4. Read only the relevant documentation
 5. Run:
 
@@ -490,13 +494,24 @@ If diff becomes large:
 
 ## 🧩 Documentation Structure
 
-Use three layers:
+Use four layers:
 
 AGENTS.md → rules  
-docs/ → long-term knowledge  
-.agent/ → current task state  
+docs/ → long-term knowledge about the BUILT system (index: `docs/README.md`)  
+docs/roadmap/ → the TARGET plan (ROADMAP.md + 150 feature detail files)  
+.agent/ → current task state (incl. `.agent/ROADMAP_LEDGER.md` for roadmap progress)  
 
 Do NOT mix them.
+
+Boundary rules:
+
+- `docs/` describes what IS; `docs/roadmap/` describes what SHALL BE. On conflict,
+  `docs/roadmap/ROADMAP.md` wins for planning; the ist-doc still correctly describes
+  the built state and gets a `> **Status (…)**` banner pointing to the roadmap.
+- Agents MUST NOT edit `docs/roadmap/ROADMAP.md` unless the operator explicitly
+  requests it. Feature detail files (`docs/roadmap/features/`) change via normal PRs.
+- When looking for any document, start at `docs/README.md` (categorized index with
+  a quick-find table). When adding an ist-doc, add it to that index in the same PR.
 
 ------------------------------------------------------------------------
 

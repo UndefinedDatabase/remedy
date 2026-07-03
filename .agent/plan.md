@@ -5,7 +5,7 @@ Restructure flat docs/ into system/, guides/, archive/ subdirectories.
 Add superseded banners, create master index, wire into AGENTS.md/CLAUDE.md.
 
 ## Current Step
-Phase 5: Finalize AGENTS.md and CLAUDE.md (user changes already present).
+Complete. All 5 phases done. Push and PR.
 
 ## Completed Steps
 - Phase 1: Fixed stale docs/REMEDY_MASTERPLAN.md references in roadmap files
