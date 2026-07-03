@@ -67,6 +67,6 @@ remedy patch approve ... ; remedy do continue ...   (human-gated apply, unchange
 
 - **Model/Route Tournament Harness v0** — controlled comparison of multiple generators/workers on
   the same request package + trust + verification + quality scoring. See
-  [model-route-tournament-future.md](model-route-tournament-future.md).
+  [model-route-tournament-future.md](../archive/model-route-tournament-future.md).
 - The external **worker contract** (request/response schema, forbidden content) is documented in
   [external-builder-worker-contract-v0.md](external-builder-worker-contract-v0.md).

@@ -103,4 +103,4 @@ orchestration/UI mutation/MCP/dep upgrades. The adapter never creates an intent 
   [candidate-quality-evaluation-v1.md](candidate-quality-evaluation-v1.md). It scores each
   generation run's OUTCOME from durable evidence (trust/verification/approval/apply/proof) and
   feeds model/route scorecards back into Builder Routing.
-- **External Builder Sandbox v0** — see [external-builder-sandbox-future.md](external-builder-sandbox-future.md).
+- **External Builder Sandbox v0** — see [external-builder-sandbox-future.md](../archive/external-builder-sandbox-future.md).

@@ -105,23 +105,23 @@ continuations for the same job, repository, or intent.
 
 ## Related
 
-- [snapshot-rollback-v1](snapshot-rollback-v1.md) — snapshot truth, durable apply
+- [snapshot-rollback-v1](../system/snapshot-rollback-v1.md) — snapshot truth, durable apply
   records, revert.
-- [real-test-execution-v1](real-test-execution-v1.md) — the Test Execution Service.
-- [run-contract-v1](run-contract-v1.md) — apply/test gates and budgets.
+- [real-test-execution-v1](../system/real-test-execution-v1.md) — the Test Execution Service.
+- [run-contract-v1](../system/run-contract-v1.md) — apply/test gates and budgets.
 - [do-run-v1](do-run-v1.md) — the pre-apply `remedy do run` flow this continues.
-- [repair-loop-v0](repair-loop-v0.md) — the legacy repair path.
-- [bounded-overnight-prep-v0](bounded-overnight-prep-v0.md) — read-only readiness/
+- [repair-loop-v0](../system/repair-loop-v0.md) — the legacy repair path.
+- [bounded-overnight-prep-v0](../archive/bounded-overnight-prep-v0.md) — read-only readiness/
   report layer; a future executor reuses this one-cycle path under a bounded policy.
-- [repair-loop-v1](repair-loop-v1.md) — the bounded, approval-gated repair
+- [repair-loop-v1](../system/repair-loop-v1.md) — the bounded, approval-gated repair
   proposal offered when a continuation test fails. An **approved repair intent**
   is applied through THIS same path: `remedy do continue <job_id> --intent-id
   <repair_intent_id>`. No repair apply bypass; after the cycle the repair attempt
   is reconciled (tested_passed/tested_failed) and the original failure is resolved
   only with a verified snapshot + linked passing test + proof (source_fix only).
-- [bounded-overnight-executor-v0](bounded-overnight-executor-v0.md) — the foreground
+- [bounded-overnight-executor-v0](../archive/bounded-overnight-executor-v0.md) — the foreground
   one-step executor invokes THIS path (in-process, no bypass) for an approved
   intent when `--allow-one-cycle --allow-apply` is given and all gates pass.
-- [provider-patch-materialization-v0](provider-patch-materialization-v0.md) — a
+- [provider-patch-materialization-v0](../system/provider-patch-materialization-v0.md) — a
   materialized provider repair intent (single `.md`) is applied through THIS path
   after `remedy patch approve`; no special provider apply path exists.

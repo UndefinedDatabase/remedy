@@ -5,7 +5,7 @@ Generator came first and what a future External Builder Sandbox must satisfy.
 
 ## Why local first
 
-The [Automated Local Candidate Generator v0](local-candidate-generator-v0.md) is local, cheap, and
+The [Automated Local Candidate Generator v0](../system/local-candidate-generator-v0.md) is local, cheap, and
 controlled: loopback-only, disabled by default, routing-gated, with all output forced through the
 existing Trust Gate + Verification + Materialization + human-approval pipeline. That makes it the
 safest place to introduce *automated* candidate generation.

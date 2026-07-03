@@ -75,4 +75,4 @@ the command falls back to `remedy job show`.
 
 ## See also
 
-- [do-continue-v1](do-continue-v1.md) — exposes this repair path (no auto-repair) when a continuation test fails.
+- [do-continue-v1](../guides/do-continue-v1.md) — exposes this repair path (no auto-repair) when a continuation test fails.

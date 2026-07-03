@@ -64,11 +64,11 @@ faked to stand in for unknown data.
 
 ## See also
 
-- [do-continue-v1.md](do-continue-v1.md) — the continuation cycle whose outcome
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the continuation cycle whose outcome
   feeds the cockpit `continuation` section.
 - [snapshot-rollback-v1.md](snapshot-rollback-v1.md) — the durable snapshot/apply
   truth behind the `snapshot` section.
 - [repair-loop-v1.md](repair-loop-v1.md) — the repair attempts surfaced (read-only)
   in the `repair` section.
-- [bounded-overnight-prep-v0.md](bounded-overnight-prep-v0.md) — the read-only
+- [bounded-overnight-prep-v0.md](../archive/bounded-overnight-prep-v0.md) — the read-only
   `overnight` readiness section (level/blockers/next action/checklist counts).

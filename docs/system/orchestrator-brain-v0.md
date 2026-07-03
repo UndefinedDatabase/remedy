@@ -42,7 +42,7 @@ critique behind the routing plan (`remedy orchestrator decide --use-local-adviso
 only lower confidence, add missing-evidence hints, or escalate weak evidence to human review,
 never change the deterministic action. Expensive/external builders remain reserved for
 justified, targeted candidate generation (see
-[expensive-builder-routing-future.md](expensive-builder-routing-future.md)). Model output is
+[expensive-builder-routing-future.md](../archive/expensive-builder-routing-future.md)). Model output is
 **never truth** and never bypasses approval. The base orchestrator still calls no model.
 
 ## Anti-loop
@@ -56,12 +56,12 @@ escalates warn → block. New evidence resets the guard.
 - [Local Model Advisor Adapter v0](local-model-advisor-v0.md) — **built**: optional cheap
   advisory critique behind the routing plan (loopback-only, advisory-only).
 - Provider Trust Verification v1 — stronger verification for untrusted output.
-- [Expensive Builder Routing (future)](expensive-builder-routing-future.md).
+- [Expensive Builder Routing (future)](../archive/expensive-builder-routing-future.md).
 
 ## See also
 
 - [self-dogfood-v0.md](self-dogfood-v0.md), [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md)
-- [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [do-continue-v1.md](do-continue-v1.md)
+- [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [do-continue-v1.md](../guides/do-continue-v1.md)
 - [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — the brain now recommends `provider verify` for trust-accepted-but-unverified candidates and escalates needs-review/repeated-rejection to human review (deterministic, catalog-backed).
 - [expensive-builder-routing-v0.md](expensive-builder-routing-v0.md) — a local-first routing/policy layer that consumes the brain's signals to decide deterministic vs local-advisor vs local/external candidate generation (planning only; never executes).
 - [candidate-quality-evaluation-v1.md](candidate-quality-evaluation-v1.md) — evidence-based scorecards of candidate-generation outcomes; surfaced via Progress/Feature so the brain can recommend approve/reject, gather-evidence, or avoid-repeat (never claims success without proof).

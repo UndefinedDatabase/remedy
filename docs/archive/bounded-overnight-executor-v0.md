@@ -40,8 +40,8 @@ To execute, **both** are required:
 
 | Action | Flag | Service | Effect |
 |---|---|---|---|
-| Apply an approved intent | `--allow-apply` / `--allow-repair-apply` | [`do continue`](do-continue-v1.md) | one snapshot→apply→test→proof cycle |
-| Propose a repair for a failure | `--allow-repair-propose` | [Repair Loop v1](repair-loop-v1.md) | docs-only proposal, **no apply** |
+| Apply an approved intent | `--allow-apply` / `--allow-repair-apply` | [`do continue`](../guides/do-continue-v1.md) | one snapshot→apply→test→proof cycle |
+| Propose a repair for a failure | `--allow-repair-propose` | [Repair Loop v1](../system/repair-loop-v1.md) | docs-only proposal, **no apply** |
 | Inspect / report | (none) | readiness/report | read-only |
 
 There is **no provider/Ollama execution, no auto-approval, no auto-revert, no git
@@ -101,9 +101,9 @@ diffs, artifact bodies, secrets, tracebacks, or absolute private paths.
 ## See also
 
 - [bounded-overnight-prep-v0.md](bounded-overnight-prep-v0.md) — the readiness layer this consumes.
-- [do-continue-v1.md](do-continue-v1.md) — the one-cycle apply path the executor reuses.
-- [repair-loop-v1.md](repair-loop-v1.md) — the approval-gated repair proposal/apply cycle.
-- [provider-trust-gate-v0.md](provider-trust-gate-v0.md) — intake of UNTRUSTED external model output into a pending repair intent (no provider execution).
-- [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).
-- [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — foreground self-improvement execution; future self-overnight builds on this executor pattern.
-- [local-model-advisor-v0.md](local-model-advisor-v0.md) — optional loopback-only advisory critique behind orchestrator routing (advisory-only; never executes or applies).
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the one-cycle apply path the executor reuses.
+- [repair-loop-v1.md](../system/repair-loop-v1.md) — the approval-gated repair proposal/apply cycle.
+- [provider-trust-gate-v0.md](../system/provider-trust-gate-v0.md) — intake of UNTRUSTED external model output into a pending repair intent (no provider execution).
+- [repair-request-builder-v0.md](../system/repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).
+- [self-dogfood-execution-v0.md](../system/self-dogfood-execution-v0.md) — foreground self-improvement execution; future self-overnight builds on this executor pattern.
+- [local-model-advisor-v0.md](../system/local-model-advisor-v0.md) — optional loopback-only advisory critique behind orchestrator routing (advisory-only; never executes or applies).

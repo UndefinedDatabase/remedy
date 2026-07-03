@@ -67,6 +67,6 @@ repair paths — never a new apply bypass.
 ## See also
 
 - [bounded-overnight-executor-v0.md](bounded-overnight-executor-v0.md) — the foreground one-step executor that acts on this report.
-- [do-continue-v1.md](do-continue-v1.md) — the one-cycle path the executor reuses.
-- [repair-loop-v1.md](repair-loop-v1.md) — the approval-gated repair proposal/apply cycle.
-- [snapshot-rollback-v1.md](snapshot-rollback-v1.md) — durable snapshot truth.
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the one-cycle path the executor reuses.
+- [repair-loop-v1.md](../system/repair-loop-v1.md) — the approval-gated repair proposal/apply cycle.
+- [snapshot-rollback-v1.md](../system/snapshot-rollback-v1.md) — durable snapshot truth.

@@ -47,6 +47,6 @@ and treating any single provider/subscription as required.
 
 ## See also
 
-- [repair-request-builder-v0.md](repair-request-builder-v0.md)
-- [provider-trust-gate-v0.md](provider-trust-gate-v0.md)
-- [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md)
+- [repair-request-builder-v0.md](../system/repair-request-builder-v0.md)
+- [provider-trust-gate-v0.md](../system/provider-trust-gate-v0.md)
+- [provider-patch-materialization-v0.md](../system/provider-patch-materialization-v0.md)

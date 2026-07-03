@@ -56,7 +56,7 @@ approves, never runs tests, never calls a provider.
 
 ## Future
 
-A future [Self-Dogfood Overnight](self-dogfood-overnight-future.md) could run bounded
+A future [Self-Dogfood Overnight](../archive/self-dogfood-overnight-future.md) could run bounded
 self-improvement cycles unattended — only on a non-main branch, no auto-merge, all
 outputs through the same trust/apply/test/proof gates.
 
@@ -64,6 +64,6 @@ outputs through the same trust/apply/test/proof gates.
 
 - [self-dogfood-v0.md](self-dogfood-v0.md) — the planner.
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [repair-request-builder-v0.md](repair-request-builder-v0.md)
-- [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply path.
 - [local-model-advisor-v0.md](local-model-advisor-v0.md) — optional advisory critique of orchestrator decisions (advisory-only; never changes the gated apply path).
 - [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — a self attempt's request package can drive routing-gated local candidate generation (`--self-attempt-id`); output still passes Trust Gate + Verification + human approval.

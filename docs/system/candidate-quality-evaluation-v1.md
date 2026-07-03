@@ -92,6 +92,6 @@ what works, avoids what doesn't, and escalates repeated failure to a human inste
 
 ## Next
 
-- [Model/Route Tournament Harness v0](model-route-tournament-future.md) — controlled comparison of
+- [Model/Route Tournament Harness v0](../archive/model-route-tournament-future.md) — controlled comparison of
   generators on the same request package + trust + verification + quality scoring.
 - External Builder Sandbox v0 — bounded external generation, judged by the same pipeline + scorecards.

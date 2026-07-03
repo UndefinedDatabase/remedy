@@ -66,7 +66,7 @@ materialized into a pending patch intent. accepted ≠ approved ≠ applied.
 execute()`. v0 ships ONLY `ManualCandidateGeneratorAdapter` (offline): it builds a
 request package and its `execute()` raises `CandidateGeneratorExecutionUnavailable`.
 No network/SDK/subprocess/browser. See
-[candidate-generator-adapter-future.md](candidate-generator-adapter-future.md).
+[candidate-generator-adapter-future.md](../archive/candidate-generator-adapter-future.md).
 
 ## Idempotency
 
@@ -77,7 +77,7 @@ package; pass `--new` to force a fresh one.
 
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md) — untrusted intake + trust gate.
 - [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md) — accepted candidate → applyable intent.
-- [do-continue-v1.md](do-continue-v1.md) — the approval-gated apply path.
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply path.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts route candidate output through the same request/intake flow.
 - [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — the request package is checked for consistency against the candidate during verification (`--request-package-id`).

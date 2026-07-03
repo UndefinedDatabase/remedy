@@ -26,5 +26,5 @@ treating any single provider/subscription as required.
 
 ## See also
 
-- [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md)
+- [self-dogfood-execution-v0.md](../system/self-dogfood-execution-v0.md)
 - [bounded-overnight-executor-v0.md](bounded-overnight-executor-v0.md)

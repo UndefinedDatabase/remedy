@@ -7,7 +7,7 @@
 
 1. **Deterministic first.** If the evidence yields a clear next action, no model is used.
 2. **Local cheap advisor next.** When options are close or evidence is weak, the optional
-   [local model advisor](local-model-advisor-v0.md) may *critique* the deterministic plan
+   [local model advisor](../system/local-model-advisor-v0.md) may *critique* the deterministic plan
    (loopback-only, advisory-only).
 3. **Expensive/external builder last,** and only when candidate generation is the
    bottleneck, the request is **targeted and justified**, and budget allows.
@@ -34,6 +34,6 @@ candidate work — so it is the most tightly gated and the last resort.
 
 ## See also
 
-- [local-model-advisor-v0.md](local-model-advisor-v0.md)
-- [orchestrator-brain-v0.md](orchestrator-brain-v0.md)
-- [provider-trust-gate-v0.md](provider-trust-gate-v0.md)
+- [local-model-advisor-v0.md](../system/local-model-advisor-v0.md)
+- [orchestrator-brain-v0.md](../system/orchestrator-brain-v0.md)
+- [provider-trust-gate-v0.md](../system/provider-trust-gate-v0.md)

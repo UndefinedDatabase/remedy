@@ -84,7 +84,7 @@ blocks the advisor only, never deterministic orchestration.
 The deterministic routing plan already distinguishes `deterministic_only`,
 `local_advisor_preferred`, `external_builder_needed`, and `human_review_required`. This
 block fills in the cheap **local advisor** tier. Expensive/external builders remain a
-future block — see [expensive-builder-routing-future.md](expensive-builder-routing-future.md):
+future block — see [expensive-builder-routing-future.md](../archive/expensive-builder-routing-future.md):
 they must pass the Trust Gate, carry a budget/usage policy, never apply or auto-approve, and
 have their output verified.
 
@@ -92,7 +92,7 @@ have their output verified.
 
 - [orchestrator-brain-v0.md](orchestrator-brain-v0.md)
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md)
-- [expensive-builder-routing-future.md](expensive-builder-routing-future.md)
+- [expensive-builder-routing-future.md](../archive/expensive-builder-routing-future.md)
 - [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — an optional advisor critique of the safe verification summary is a documented forward seam (deferred); if implemented it may only lower confidence / add a human-review concern, never pass or reject a candidate.
 - [expensive-builder-routing-v0.md](expensive-builder-routing-v0.md) — routing recommends the local advisor *before* any expensive external builder, and never loops the advisor once it has run for the current evidence.
 - [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — the local candidate generator reuses this adapter's loopback endpoint validation + transport seam; advisor *critiques*, the generator *produces candidates* (which are then trust+verification-judged).
