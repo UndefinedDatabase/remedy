@@ -54,7 +54,7 @@ job.finished, mission.job_linked`
   rail/TaskList.tsx, phasebar/PhaseTimeline.tsx, flightplan/FlightPlan.tsx,
   cards/CardCollection.tsx, diff/DiffViewer.tsx}
 
-## Design-Tokens (aus docs/ui/design_reference/growing_brain.png; apps/ui/src/styles/tokens.css)
+## Design-Tokens (aus docs/ui/design_reference/ux_design.png; apps/ui/src/styles/tokens.css)
 ```css
 :root{
   --rm-bg:#E9EDF6; --rm-bg-2:#F3F6FC; --rm-card:rgba(255,255,255,.72);

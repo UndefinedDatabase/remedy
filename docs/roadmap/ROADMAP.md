@@ -57,7 +57,7 @@ selbst ein. Der GPT-Orchestrator plant damit aktiv an seiner eigenen Ablösung. 
 gewollt und wird nicht umgangen, verzögert oder wegdiskutiert.
 
 **A8 — UI-Tasks brauchen Sichtmaterial.** Für das Cockpit existiert ein verbindliches
-Referenzdesign (Teil H, `docs/ui/design_reference/growing_brain.png`). Solange
+Referenzdesign (Teil H, `docs/ui/design_reference/ux_design.png`). Solange
 F087–F089 nicht DONE sind, übersetzt der Orchestrator dieses Design selbst und
 liefert fertiges CSS/TSX inline in den UI-Task-Prompts (Agenten sehen keine Bilder);
 Layout, Glyphen und Farben folgen dabei strikt Teil H. Ab F089 DONE entfällt das:
@@ -994,7 +994,7 @@ Buchführung selbst.
 ## TEIL H — COCKPIT-REFERENZDESIGN & NODE-ONTOLOGIE („Growing Brain")
 
 Es existiert ein verbindliches Referenzdesign für das Cockpit (Datei:
-`docs/ui/design_reference/growing_brain.png` — der Operator legt den Screenshot dort
+`docs/ui/design_reference/ux_design.png` — der Operator legt den Screenshot dort
 ab und committet ihn). Alle Tier-1-Features werden GEGEN dieses Design gebaut; ab
 F090 wird die Treue dazu per Screenshot-Verifikation gemessen. Das Design definiert:
 
