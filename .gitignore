@@ -222,5 +222,11 @@ node_modules/
 
 remedy-review-*
 
+# Remedy job evidence (ephemeral self-run artifacts)
+remedy-job-evidence-*/
+
+# Run transcripts
+run_transcript.txt
+
 # Coverage reports
 .coverage_reports/
