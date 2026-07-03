@@ -27,15 +27,34 @@ def _seed_agent(monkeypatch, tmp_path: Path, plan_range: str, lr_range: str) -> 
     monkeypatch.chdir(tmp_path)
 
 
-def test_matching_job_id_passes(tmp_path):
+def test_matching_job_id_with_step_range_passes(tmp_path, monkeypatch):
     evidence = _seed_manifest(tmp_path, "job-abc")
-    gate = build_fresh_evidence_gate(evidence, "job-abc")
+    _seed_agent(monkeypatch, tmp_path, plan_range="5681-5740", lr_range="5681-5740")
+    gate = build_fresh_evidence_gate(evidence, "job-abc", current_step_range="5681-5740")
 
     assert gate["verdict"] == "PASS"
     assert gate["job_id_match"] is True
     assert gate["evidence_job_id"] == "job-abc"
     assert gate["schema_version"] == "1.0.0"
     assert gate["issues"] == []
+
+
+def test_empty_step_range_blocks(tmp_path):
+    evidence = _seed_manifest(tmp_path, "job-abc")
+    gate = build_fresh_evidence_gate(evidence, "job-abc")
+
+    assert gate["verdict"] == "BLOCKED"
+    assert gate["current_step_range"] == ""
+    assert any("current_step_range is empty" in issue for issue in gate["issues"])
+    assert gate["evidence_authoritative"] is False
+
+
+def test_none_step_range_blocks(tmp_path):
+    evidence = _seed_manifest(tmp_path, "job-abc")
+    gate = build_fresh_evidence_gate(evidence, "job-abc", current_step_range=None)
+
+    assert gate["verdict"] == "BLOCKED"
+    assert gate["current_step_range"] == ""
 
 
 def test_mismatched_job_id_blocks(tmp_path):
@@ -48,9 +67,10 @@ def test_mismatched_job_id_blocks(tmp_path):
     assert any("job_id" in issue for issue in gate["issues"])
 
 
-def test_validity_and_authoritative_fields(tmp_path):
+def test_validity_and_authoritative_fields(tmp_path, monkeypatch):
     evidence = _seed_manifest(tmp_path, "job-abc")
-    gate = build_fresh_evidence_gate(evidence, "job-abc")
+    _seed_agent(monkeypatch, tmp_path, plan_range="5681-5740", lr_range="5681-5740")
+    gate = build_fresh_evidence_gate(evidence, "job-abc", current_step_range="5681-5740")
 
     assert gate["evidence_freshness"] == {
         "is_fresh": True,
@@ -64,14 +84,13 @@ def test_validity_and_authoritative_fields(tmp_path):
 
 
 def test_stale_evidence_not_authoritative(tmp_path):
-    # No manifest / no job_report at all -> stale / empty evidence dir.
     gate = build_fresh_evidence_gate(str(tmp_path), "job-abc")
 
     assert gate["evidence_job_id"] == ""
     assert gate["evidence_validity"]["is_valid_current_run"] is False
     assert gate["evidence_validity"]["has_manifest"] is False
     assert gate["evidence_authoritative"] is False
-    assert gate["verdict"] == "PASS_WITH_RISKS"
+    assert gate["verdict"] == "BLOCKED"
 
 
 def test_step_range_mismatch_warns(tmp_path, monkeypatch):
@@ -101,10 +120,11 @@ def test_step_range_match_passes(tmp_path, monkeypatch):
     assert gate["evidence_authoritative"] is True
 
 
-def test_write_registers_output(tmp_path):
+def test_write_registers_output(tmp_path, monkeypatch):
     evidence = _seed_manifest(tmp_path, "job-abc")
+    _seed_agent(monkeypatch, tmp_path, plan_range="5681-5740", lr_range="5681-5740")
     written: dict[str, str] = {}
-    write_fresh_evidence_gate(evidence, "job-abc", written=written)
+    write_fresh_evidence_gate(evidence, "job-abc", current_step_range="5681-5740", written=written)
 
     assert "fresh_evidence_gate.json" in written
     on_disk = json.loads((tmp_path / "fresh_evidence_gate.json").read_text())

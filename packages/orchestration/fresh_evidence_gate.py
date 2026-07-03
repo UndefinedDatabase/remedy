@@ -94,10 +94,12 @@ def build_fresh_evidence_gate(
     lr_match = True if not current_range else (lr_range == current_range)
     plan_match = True if not current_range else (plan_range == current_range)
 
-    freshness_ok = job_id_match and (not current_range or lr_match) and plan_match
+    freshness_ok = job_id_match and bool(current_range) and lr_match and plan_match
     validity_ok = bool(ev_job_id) and bool(manifest or job_flow)
 
     issues: list[str] = []
+    if not current_range:
+        issues.append("current_step_range is empty — cannot verify evidence freshness")
     if job_id_mismatch:
         issues.append(
             f"evidence job_id {ev_job_id!r} does not match "
@@ -121,6 +123,8 @@ def build_fresh_evidence_gate(
     evidence_authoritative = freshness_ok and validity_ok and not issues
 
     if job_id_mismatch:
+        verdict = "BLOCKED"
+    elif not current_range:
         verdict = "BLOCKED"
     elif not issues:
         verdict = "PASS"

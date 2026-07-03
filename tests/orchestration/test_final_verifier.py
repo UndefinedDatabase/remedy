@@ -50,6 +50,15 @@ def _seed_pass_task(base: Path, task_id: str = "T001") -> None:
         "provider_call_count": 2,
     }))
     (base / "final_verifier_report.json").write_text(json.dumps({"verdict": "PASS"}))
+    (base / "execution_config.json").write_text(json.dumps({
+        "builder_model": "opus",
+        "builder_actual_model": "opus",
+        "reviewer_model": "opus",
+        "reviewer_actual_model": "opus",
+        "repair_model": "opus",
+        "repair_actual_model": "opus",
+        "actual_config_available": True,
+    }))
 
 
 def test_full_pass(tmp_path: Path) -> None:
@@ -617,3 +626,388 @@ def test_authoritative_files_absent_from_all_tasks_detected(tmp_path: Path) -> N
         "must detect files absent from task review_scopes"
     )
     assert report["verdict"] != "PASS"
+
+
+def _seed_exec_config(base: Path, **overrides) -> None:
+    cfg = {
+        "builder_model": "opus",
+        "builder_actual_model": None,
+        "builder_provider": "claude",
+        "reviewer_model": "opus",
+        "reviewer_actual_model": None,
+        "reviewer_provider": "claude",
+        "repair_model": "opus",
+        "repair_actual_model": None,
+        "repair_provider": "claude",
+        "actual_config_available": False,
+    }
+    cfg.update(overrides)
+    (base / "execution_config.json").write_text(json.dumps(cfg))
+
+
+def test_model_match_pass(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(
+        tmp_path,
+        builder_actual_model="opus",
+        reviewer_actual_model="opus",
+        repair_actual_model="opus",
+        actual_config_available=True,
+    )
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["model_mismatch_blocked"] is False
+    assert report["model_mismatch_warnings"] == []
+
+
+def test_unavailable_actual_model_warns(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(tmp_path)
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["model_mismatch_blocked"] is False
+    warnings = report["model_mismatch_warnings"]
+    assert any("actual model unavailable" in w for w in warnings)
+
+
+def test_configured_actual_mismatch_blocks_builder(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(
+        tmp_path,
+        builder_model="opus",
+        builder_actual_model="sonnet",
+        actual_config_available=True,
+    )
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["model_mismatch_blocked"] is True
+    assert report["verdict"] == "BLOCKED"
+    assert any("builder" in w and "configured=opus" in w for w in report["model_mismatch_warnings"])
+
+
+def test_configured_actual_mismatch_blocks_reviewer(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(
+        tmp_path,
+        reviewer_model="opus",
+        reviewer_actual_model="haiku",
+        actual_config_available=True,
+    )
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["model_mismatch_blocked"] is True
+    assert report["verdict"] == "BLOCKED"
+
+
+def test_missing_configured_model_warns(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(tmp_path, builder_model="")
+    report = build_final_verifier_report(str(tmp_path))
+    assert any("no configured model" in w for w in report["model_mismatch_warnings"])
+    assert report["model_needs_repair"] is True
+
+
+def test_missing_builder_model_triggers_needs_repair(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(tmp_path, builder_model="", reviewer_model="opus")
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["model_needs_repair"] is True
+    assert report["verdict"] == "NEEDS_REPAIR"
+
+
+def test_missing_reviewer_model_triggers_needs_repair(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(tmp_path, builder_model="opus", reviewer_model="")
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["model_needs_repair"] is True
+    assert report["verdict"] == "NEEDS_REPAIR"
+
+
+def test_missing_repair_model_no_needs_repair(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(tmp_path, builder_model="opus", reviewer_model="opus", repair_model="")
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["model_needs_repair"] is False
+
+
+def test_missing_exec_config_warns(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    (tmp_path / "execution_config.json").unlink()
+    report = build_final_verifier_report(str(tmp_path))
+    assert any("execution_config.json missing" in w for w in report["model_mismatch_warnings"])
+
+
+def test_repair_mismatch_warns_not_blocks(tmp_path: Path) -> None:
+    _seed_pass_task(tmp_path)
+    _seed_exec_config(
+        tmp_path,
+        repair_model="opus",
+        repair_actual_model="sonnet",
+        actual_config_available=True,
+    )
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["model_mismatch_blocked"] is False
+    assert any("repair" in w for w in report["model_mismatch_warnings"])
+
+
+# --------------------------------------------------------------------------- #
+# T006 — final verifier integration: execution mode, sticky binding,
+# token cost policy, final job review, configured-vs-actual invocation args.
+# --------------------------------------------------------------------------- #
+
+
+def _seed_execution_evidence(
+    base: Path,
+    task_id: str = "T001",
+    mode: str = "provider_backed",
+    prompt_trace_available: bool = True,
+    provider_call_count: int = 2,
+    builder_provider: str = "claude",
+    reviewer_provider: str = "claude",
+) -> None:
+    d = _run_dir(base, task_id)
+    (d / "task_execution_evidence.json").write_text(json.dumps({
+        "task_id": task_id,
+        "execution_mode": mode,
+        "builder_provider": builder_provider,
+        "reviewer_provider": reviewer_provider,
+        "prompt_trace_available": prompt_trace_available,
+        "provider_call_count": provider_call_count,
+    }))
+
+
+def _seed_actor_binding(base: Path, task_id: str = "T001", sticky: bool = True) -> None:
+    d = _run_dir(base, task_id)
+    (d / "task_actor_binding.json").write_text(json.dumps({
+        "task_id": task_id,
+        "sticky_across_rounds": sticky,
+    }))
+
+
+def test_execution_mode_consistency_check(tmp_path: Path) -> None:
+    """Consistent execution_mode + prompt trace keeps a plain PASS."""
+    _seed_pass_task(tmp_path)
+    _seed_execution_evidence(tmp_path)
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["execution_mode_by_task"] == {"T001": "provider_backed"}
+    assert report["execution_mode_findings"] == []
+    assert report["execution_mode_blocked"] is False
+    assert report["verdict"] == "PASS"
+
+
+def test_execution_mode_phantom_provider_blocks(tmp_path: Path) -> None:
+    """Claiming provider_backed with no prompts/calls is a phantom provider -> BLOCKED."""
+    _seed_pass_task(tmp_path)
+    _seed_execution_evidence(
+        tmp_path, mode="provider_backed",
+        prompt_trace_available=False, provider_call_count=0,
+    )
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["execution_mode_blocked"] is True
+    assert report["execution_mode_findings"]
+    assert report["verdict"] == "BLOCKED"
+
+
+def test_execution_mode_mismatch_warns_not_blocks(tmp_path: Path) -> None:
+    """A non-provider_backed mode disagreeing with the trace warns but does not block."""
+    _seed_pass_task(tmp_path)
+    _seed_execution_evidence(
+        tmp_path, mode="manual_operator_repair",
+        prompt_trace_available=True, provider_call_count=2,
+    )
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["execution_mode_blocked"] is False
+    assert any("inconsistent" in f for f in report["execution_mode_findings"])
+    assert report["verdict"] == "PASS_WITH_RISKS"
+
+
+def test_execution_mode_trace_call_disagreement(tmp_path: Path) -> None:
+    """provider_call_count disagreeing with prompt_trace_summary is flagged."""
+    _seed_pass_task(tmp_path)
+    _seed_execution_evidence(tmp_path, provider_call_count=2)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "prompt_trace_summary.json").write_text(json.dumps({"provider_call_count": 5}))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert any("disagrees with" in f for f in report["execution_mode_findings"])
+
+
+def test_sticky_actor_warning(tmp_path: Path) -> None:
+    """A non-sticky actor binding warns and downgrades to PASS_WITH_RISKS."""
+    _seed_pass_task(tmp_path)
+    _seed_actor_binding(tmp_path, sticky=False)
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["sticky_binding_by_task"] == {"T001": False}
+    assert any("not sticky" in w for w in report["sticky_binding_warnings"])
+    assert report["verdict"] == "PASS_WITH_RISKS"
+
+
+def test_sticky_proof_missing_when_feature_active(tmp_path: Path) -> None:
+    """When bindings exist, a task lacking one is warned as missing sticky proof."""
+    _seed_pass_task(tmp_path, "T001")
+    _seed_pass_task(tmp_path, "T002")
+    _seed_actor_binding(tmp_path, "T001", sticky=True)
+    # T002 has no task_actor_binding.json
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert any("T002" in w and "missing" in w for w in report["sticky_binding_warnings"])
+    assert report["verdict"] == "PASS_WITH_RISKS"
+
+
+def test_cost_policy_integration(tmp_path: Path) -> None:
+    """Token cost-risk findings are surfaced and downgrade the verdict."""
+    _seed_pass_task(tmp_path)
+    (tmp_path / "token_cost_policy.json").write_text(json.dumps({
+        "cost_risk_findings": [
+            {"code": "FULL_REPO_CONTEXT", "severity": "warning",
+             "role": "builder", "message": "sent full repo"},
+        ],
+    }))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["token_cost_policy_present"] is True
+    assert len(report["token_cost_risk_findings"]) == 1
+    assert report["token_cost_has_critical"] is False
+    assert report["verdict"] == "PASS_WITH_RISKS"
+
+
+def test_cost_policy_critical_blocks(tmp_path: Path) -> None:
+    """A 'critical' severity cost-risk finding blocks promotion."""
+    _seed_pass_task(tmp_path)
+    (tmp_path / "token_cost_policy.json").write_text(json.dumps({
+        "cost_risk_findings": [
+            {"code": "FULL_REPO_CONTEXT", "severity": "critical",
+             "role": "builder", "message": "sent full repo every round"},
+        ],
+    }))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["token_cost_has_critical"] is True
+    assert report["verdict"] == "BLOCKED"
+
+
+def test_final_review_integration_blocks(tmp_path: Path) -> None:
+    """Final job review with unresolved findings blocks promotion."""
+    _seed_pass_task(tmp_path)
+    (tmp_path / "final_job_review.json").write_text(json.dumps({
+        "verdict": "NEEDS_REPAIR",
+        "findings": [
+            {"id": "F-TASK-001", "severity": "repairable",
+             "category": "task_verdict", "message": "task did not pass"},
+        ],
+    }))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["final_job_review_blocked"] is True
+    assert report["final_job_review_findings"]
+    assert report["verdict"] == "BLOCKED"
+
+
+def test_final_review_pass_no_findings(tmp_path: Path) -> None:
+    """Final job review PASS with no findings does not block."""
+    _seed_pass_task(tmp_path)
+    (tmp_path / "final_job_review.json").write_text(json.dumps({
+        "verdict": "PASS", "findings": [],
+    }))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["final_job_review_verdict"] == "PASS"
+    assert report["final_job_review_blocked"] is False
+    assert report["verdict"] == "PASS"
+
+
+def test_configured_vs_actual_invocation_warning(tmp_path: Path) -> None:
+    """Configured invocation args without observation proof warns."""
+    _seed_pass_task(tmp_path)
+    (tmp_path / "execution_config.json").write_text(json.dumps({
+        "builder_model": "opus", "builder_actual_model": "opus",
+        "reviewer_model": "opus", "reviewer_actual_model": "opus",
+        "repair_model": "opus", "repair_actual_model": "opus",
+        "actual_config_available": True,
+        "configured_invocation_args": {"model": "opus", "effort": "high"},
+        "actual_invocation_args": {"model": "opus", "effort": "high"},
+        "actual_invocation_observed": False,
+    }))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["invocation_args_warnings"]
+    assert report["verdict"] == "PASS_WITH_RISKS"
+
+
+def test_all_pass_case_with_full_integration(tmp_path: Path) -> None:
+    """All integration evidence present and clean yields a plain PASS."""
+    _seed_pass_task(tmp_path)
+    _seed_execution_evidence(tmp_path)
+    _seed_actor_binding(tmp_path, sticky=True)
+    (tmp_path / "token_cost_policy.json").write_text(json.dumps({
+        "cost_risk_findings": [],
+    }))
+    (tmp_path / "final_job_review.json").write_text(json.dumps({
+        "verdict": "PASS", "findings": [],
+    }))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["execution_mode_findings"] == []
+    assert report["sticky_binding_warnings"] == []
+    assert report["token_cost_risk_findings"] == []
+    assert report["final_job_review_blocked"] is False
+    assert report["invocation_args_warnings"] == []
+    assert report["verdict"] == "PASS"
+
+
+def test_multi_issue_reporting(tmp_path: Path) -> None:
+    """Multiple non-blocking integration issues are all reported together."""
+    _seed_pass_task(tmp_path)
+    _seed_execution_evidence(
+        tmp_path, mode="manual_operator_repair",
+        prompt_trace_available=True, provider_call_count=2,
+    )
+    _seed_actor_binding(tmp_path, sticky=False)
+    (tmp_path / "token_cost_policy.json").write_text(json.dumps({
+        "cost_risk_findings": [
+            {"code": "ESTIMATE_MISSING", "severity": "warning",
+             "role": "reviewer", "message": "no estimate"},
+        ],
+    }))
+    (tmp_path / "execution_config.json").write_text(json.dumps({
+        "builder_model": "opus", "builder_actual_model": "opus",
+        "reviewer_model": "opus", "reviewer_actual_model": "opus",
+        "repair_model": "opus", "repair_actual_model": "opus",
+        "actual_config_available": True,
+        "configured_invocation_args": {"model": "opus"},
+        "actual_invocation_observed": False,
+    }))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["execution_mode_findings"]
+    assert report["sticky_binding_warnings"]
+    assert report["token_cost_risk_findings"]
+    assert report["invocation_args_warnings"]
+    assert report["verdict"] == "PASS_WITH_RISKS"
+
+
+def test_test_count_dedup_multiple_summary_lines(tmp_path: Path) -> None:
+    """Multiple 'N passed' lines in tests.txt should not double-count."""
+    _seed_pass_task(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "tests.txt").write_text(
+        "tests/test_a.py::test_one PASSED\n"
+        "tests/test_a.py::test_two PASSED\n"
+        "==================== 2 passed in 0.5s ====================\n"
+        "==================== 2 passed in 0.5s ====================\n"
+    )
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["test_status"]["passed"] == 2
