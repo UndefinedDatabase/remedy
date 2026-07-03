@@ -679,8 +679,8 @@ def build_manifest(
 
     if evidence_valid and alignment_ok and containment_ok:
         package_status = "READY_FOR_REVIEW"
-    elif not evidence_valid or not alignment_ok or not containment_ok:
-        package_status = "BLOCKED_EVIDENCE"
+    elif not current_evidence:
+        package_status = "NO_EVIDENCE"
     else:
         package_status = "BLOCKED_EVIDENCE"
 

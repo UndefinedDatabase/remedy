@@ -112,124 +112,125 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
   CANDIDATE_COUNT=${#CANDIDATES[@]}
 
   if [[ $CANDIDATE_COUNT -eq 0 ]]; then
-    echo "No evidence dir provided and no remedy-job-evidence-* dirs found."
-    echo "Usage: $0 --evidence-dir <path>"
-    echo "  or:  $0 <evidence-dir>"
-    exit 2
-  fi
+    echo "No evidence dirs found — building review zip without evidence."
+    SELECTION_MODE="none"
+    SELECTION_REASON="no_evidence_available"
+  else
+    ARTIFACT_NAMES=("job_flow.json" "command_transcript.json" "agent_run_trace.jsonl" "agent_run_trace_summary.json" "prompt_trace_summary.json" "manifest.json")
 
-  ARTIFACT_NAMES=("job_flow.json" "command_transcript.json" "agent_run_trace.jsonl" "agent_run_trace_summary.json" "prompt_trace_summary.json" "manifest.json")
+    # Validate and rank all candidates
+    echo "Evidence candidate summary:"
+    printf "  %-45s %-12s %-12s %s\n" "PATH" "STATUS" "JOB_ID" "REASON"
+    printf "  %-45s %-12s %-12s %s\n" "----" "------" "------" "------"
 
-  # Validate and rank all candidates
-  echo "Evidence candidate summary:"
-  printf "  %-45s %-12s %-12s %s\n" "PATH" "STATUS" "JOB_ID" "REASON"
-  printf "  %-45s %-12s %-12s %s\n" "----" "------" "------" "------"
+    ALL_DIRS=()
+    ALL_MTIMES=()
+    ALL_REASONS=()
+    ALL_STATUSES=()
 
-  ALL_DIRS=()
-  ALL_MTIMES=()
-  ALL_REASONS=()
-  ALL_STATUSES=()
+    for cdir in "${CANDIDATES[@]}"; do
+      VRESULT="$(validate_candidate "$cdir")"
+      VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
+      VJOB_ID="$(echo "$VRESULT" | cut -d'|' -f2)"
+      VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
 
-  for cdir in "${CANDIDATES[@]}"; do
-    VRESULT="$(validate_candidate "$cdir")"
-    VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
-    VJOB_ID="$(echo "$VRESULT" | cut -d'|' -f2)"
-    VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
+      rel="$(echo "$cdir" | sed 's#^\./##')"
+      printf "  %-45s %-12s %-12s %s\n" "$rel" "$VSTATUS" "${VJOB_ID:-(none)}" "$VREASON"
 
-    rel="$(echo "$cdir" | sed 's#^\./##')"
-    printf "  %-45s %-12s %-12s %s\n" "$rel" "$VSTATUS" "${VJOB_ID:-(none)}" "$VREASON"
-
-    if [[ "$VSTATUS" != "valid" ]]; then
-      REJECTED_COUNT=$((REJECTED_COUNT + 1))
-    fi
-
-    # Compute mtime for ALL candidates (not just valid)
-    DIR_MTIME="0"
-    DIR_REASON=""
-
-    if [[ -f "$cdir/job_flow.json" ]]; then
-      JF_MTIME="$(stat -c '%Y' "$cdir/job_flow.json" 2>/dev/null || stat -f '%m' "$cdir/job_flow.json" 2>/dev/null || echo 0)"
-      if [[ "$JF_MTIME" -gt "$DIR_MTIME" ]]; then
-        DIR_MTIME="$JF_MTIME"
-        DIR_REASON="job_flow_json_mtime"
+      if [[ "$VSTATUS" != "valid" ]]; then
+        REJECTED_COUNT=$((REJECTED_COUNT + 1))
       fi
-    fi
 
-    if [[ "$DIR_MTIME" == "0" ]]; then
-      for art in "${ARTIFACT_NAMES[@]}"; do
-        if [[ -f "$cdir/$art" ]]; then
-          ART_MTIME="$(stat -c '%Y' "$cdir/$art" 2>/dev/null || stat -f '%m' "$cdir/$art" 2>/dev/null || echo 0)"
-          if [[ "$ART_MTIME" -gt "$DIR_MTIME" ]]; then
-            DIR_MTIME="$ART_MTIME"
-            DIR_REASON="artifact_mtime"
-          fi
+      # Compute mtime for ALL candidates (not just valid)
+      DIR_MTIME="0"
+      DIR_REASON=""
+
+      if [[ -f "$cdir/job_flow.json" ]]; then
+        JF_MTIME="$(stat -c '%Y' "$cdir/job_flow.json" 2>/dev/null || stat -f '%m' "$cdir/job_flow.json" 2>/dev/null || echo 0)"
+        if [[ "$JF_MTIME" -gt "$DIR_MTIME" ]]; then
+          DIR_MTIME="$JF_MTIME"
+          DIR_REASON="job_flow_json_mtime"
         fi
-      done
-    fi
-
-    if [[ "$DIR_MTIME" == "0" ]]; then
-      DIR_MTIME="$(stat -c '%Y' "$cdir" 2>/dev/null || stat -f '%m' "$cdir" 2>/dev/null || echo 0)"
-      DIR_REASON="dir_mtime"
-    fi
-
-    ALL_DIRS+=("$cdir")
-    ALL_MTIMES+=("$DIR_MTIME")
-    ALL_REASONS+=("$DIR_REASON")
-    ALL_STATUSES+=("$VSTATUS")
-  done
-
-  echo ""
-
-  # Select newest candidate by mtime (validation is informational, not blocking)
-  BEST_DIR=""
-  BEST_MTIME="0"
-  BEST_REASON=""
-  TIE_WARNING=""
-
-  for i in "${!ALL_DIRS[@]}"; do
-    cdir="${ALL_DIRS[$i]}"
-    DIR_MTIME="${ALL_MTIMES[$i]}"
-    DIR_REASON="${ALL_REASONS[$i]}"
-
-    if [[ "$DIR_MTIME" -gt "$BEST_MTIME" ]]; then
-      BEST_DIR="$cdir"
-      BEST_MTIME="$DIR_MTIME"
-      BEST_REASON="$DIR_REASON"
-      TIE_WARNING=""
-    elif [[ "$DIR_MTIME" == "$BEST_MTIME" && "$DIR_MTIME" != "0" ]]; then
-      if [[ "$cdir" > "$BEST_DIR" ]]; then
-        BEST_DIR="$cdir"
-        BEST_REASON="$DIR_REASON"
       fi
-      TIE_WARNING="Warning: timestamps tied between candidates. Used deterministic tie-breaker (lexicographic path order)."
+
+      if [[ "$DIR_MTIME" == "0" ]]; then
+        for art in "${ARTIFACT_NAMES[@]}"; do
+          if [[ -f "$cdir/$art" ]]; then
+            ART_MTIME="$(stat -c '%Y' "$cdir/$art" 2>/dev/null || stat -f '%m' "$cdir/$art" 2>/dev/null || echo 0)"
+            if [[ "$ART_MTIME" -gt "$DIR_MTIME" ]]; then
+              DIR_MTIME="$ART_MTIME"
+              DIR_REASON="artifact_mtime"
+            fi
+          fi
+        done
+      fi
+
+      if [[ "$DIR_MTIME" == "0" ]]; then
+        DIR_MTIME="$(stat -c '%Y' "$cdir" 2>/dev/null || stat -f '%m' "$cdir" 2>/dev/null || echo 0)"
+        DIR_REASON="dir_mtime"
+      fi
+
+      ALL_DIRS+=("$cdir")
+      ALL_MTIMES+=("$DIR_MTIME")
+      ALL_REASONS+=("$DIR_REASON")
+      ALL_STATUSES+=("$VSTATUS")
+    done
+
+    echo ""
+
+    # Select newest candidate by mtime (validation is informational, not blocking)
+    BEST_DIR=""
+    BEST_MTIME="0"
+    BEST_REASON=""
+    TIE_WARNING=""
+
+    for i in "${!ALL_DIRS[@]}"; do
+      cdir="${ALL_DIRS[$i]}"
+      DIR_MTIME="${ALL_MTIMES[$i]}"
+      DIR_REASON="${ALL_REASONS[$i]}"
+
+      if [[ "$DIR_MTIME" -gt "$BEST_MTIME" ]]; then
+        BEST_DIR="$cdir"
+        BEST_MTIME="$DIR_MTIME"
+        BEST_REASON="$DIR_REASON"
+        TIE_WARNING=""
+      elif [[ "$DIR_MTIME" == "$BEST_MTIME" && "$DIR_MTIME" != "0" ]]; then
+        if [[ "$cdir" > "$BEST_DIR" ]]; then
+          BEST_DIR="$cdir"
+          BEST_REASON="$DIR_REASON"
+        fi
+        TIE_WARNING="Warning: timestamps tied between candidates. Used deterministic tie-breaker (lexicographic path order)."
+      fi
+    done
+
+    if [[ -z "$BEST_DIR" ]]; then
+      echo "No evidence dirs with readable artifacts among $CANDIDATE_COUNT candidate(s)."
+      echo "Building review zip without evidence."
+      SELECTION_MODE="none"
+      SELECTION_REASON="no_valid_candidates"
+    else
+      EVIDENCE_DIR="$BEST_DIR"
+      SELECTION_MODE="auto_latest"
+      SELECTION_REASON="${BEST_REASON:-latest_modified_time}"
+      SELECTED_MTIME="$(date -d "@$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -r "$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$BEST_MTIME")"
+
+      echo "Auto-selected latest evidence dir: $EVIDENCE_DIR"
+      if [[ -n "$TIE_WARNING" ]]; then
+        echo "$TIE_WARNING"
+      fi
+
+      # Warn if selected evidence is incomplete (but proceed)
+      VRESULT="$(validate_candidate "$EVIDENCE_DIR")"
+      VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
+      VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
+      if [[ "$VSTATUS" != "valid" ]]; then
+        echo "Note: selected evidence is incomplete ($VREASON). Manifest will reflect this."
+      fi
     fi
-  done
-
-  if [[ -z "$BEST_DIR" ]]; then
-    echo "No evidence dirs with readable artifacts among $CANDIDATE_COUNT candidate(s)."
-    exit 2
-  fi
-
-  EVIDENCE_DIR="$BEST_DIR"
-  SELECTION_MODE="auto_latest"
-  SELECTION_REASON="${BEST_REASON:-latest_modified_time}"
-  SELECTED_MTIME="$(date -d "@$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -r "$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$BEST_MTIME")"
-
-  echo "Auto-selected latest evidence dir: $EVIDENCE_DIR"
-  if [[ -n "$TIE_WARNING" ]]; then
-    echo "$TIE_WARNING"
-  fi
-
-  # Warn if selected evidence is incomplete (but proceed)
-  VRESULT="$(validate_candidate "$EVIDENCE_DIR")"
-  VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
-  VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
-  if [[ "$VSTATUS" != "valid" ]]; then
-    echo "Note: selected evidence is incomplete ($VREASON). Manifest will reflect this."
   fi
 fi
 
-if [[ ! -d "$EVIDENCE_DIR" ]]; then
+if [[ -n "$EVIDENCE_DIR" && ! -d "$EVIDENCE_DIR" ]]; then
   echo "Evidence dir does not exist: $EVIDENCE_DIR" >&2
   exit 2
 fi
@@ -321,9 +322,9 @@ find . \
 
 # --- Build manifest using Python (always-valid JSON) ---
 python3 scripts/build_review_manifest.py \
-  --evidence-dir "$EVIDENCE_DIR" \
-  --selection-mode "${SELECTION_MODE:-auto_latest}" \
-  --selection-reason "${SELECTION_REASON:-unknown}" \
+  --evidence-dir "${EVIDENCE_DIR:-}" \
+  --selection-mode "${SELECTION_MODE:-none}" \
+  --selection-reason "${SELECTION_REASON:-no_evidence_available}" \
   --candidate-count "$CANDIDATE_COUNT" \
   --rejected-candidate-count "$REJECTED_COUNT" \
   --selected-mtime "${SELECTED_MTIME:-}" \
@@ -331,7 +332,7 @@ python3 scripts/build_review_manifest.py \
 
 echo "$MANIFEST" >> "$TMP"
 
-# --- Check alignment verdict (fail on BLOCKED unless --allow-blocked-alignment) ---
+# --- Check alignment verdict ---
 ALIGNMENT_VERDICT="$(python3 -c "
 import json, sys
 try:
@@ -347,7 +348,7 @@ if [[ "$ALIGNMENT_VERDICT" == "BLOCKED" ]]; then
   echo "Dirty files outside evidence scope will be included for reviewer visibility."
 fi
 
-# --- Check evidence validity (fail when invalid unless --allow-incomplete-evidence) ---
+# --- Check evidence validity ---
 EVIDENCE_VALID="$(python3 -c "
 import json, sys
 try:
@@ -359,51 +360,50 @@ except:
     print('false')
 " 2>/dev/null || echo "false")"
 
-if [[ "$EVIDENCE_VALID" == "false" ]]; then
+if [[ "$EVIDENCE_VALID" == "false" && -n "$EVIDENCE_DIR" ]]; then
   echo "WARNING: Evidence validation failed (is_valid_current_run=false)."
   echo "Zip will be built anyway — reviewer will see validation status in manifest."
 fi
 
-# --- Include current evidence under evidence/current/ prefix ---
+# --- Include current evidence under evidence/current/ prefix (if evidence exists) ---
 EVIDENCE_STAGING="$(mktemp -d)"
 trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$MANIFEST"' EXIT
 
 CURRENT_PREFIX="evidence/current"
-mkdir -p "$EVIDENCE_STAGING/$CURRENT_PREFIX"
-
-find "$EVIDENCE_DIR" -type f \
-  ! -name '*.pyc' ! -name '*.pyo' \
-  -print0 \
-| while IFS= read -r -d '' src; do
-    rel="${src#$EVIDENCE_DIR/}"
-    dest="$EVIDENCE_STAGING/$CURRENT_PREFIX/$rel"
-    mkdir -p "$(dirname "$dest")"
-    cp "$src" "$dest"
-  done
-
-# --- Ensure the observability index ships in the zip ---
-# Regenerate it into the staged evidence copy so the zip always contains
-# evidence/current/self_run_observability_index.json, even if the evidence dir
-# was produced without it. The builder is idempotent and marks missing data as
-# "absent", so it succeeds even on incomplete evidence. Best-effort: a failure
-# is reported but does not abort the zip (post-build verification still runs).
 OBS_INDEX_NAME="self_run_observability_index.json"
-OBS_INDEX_STAGED="$EVIDENCE_STAGING/$CURRENT_PREFIX/$OBS_INDEX_NAME"
-if [[ -f "scripts/build_observability_index.py" ]]; then
-  if python3 scripts/build_observability_index.py \
-       --evidence-dir "$EVIDENCE_DIR" \
-       --output "$OBS_INDEX_STAGED" >/dev/null 2>&1; then
-    echo "Observability index generated: $CURRENT_PREFIX/$OBS_INDEX_NAME"
-  else
-    echo "Warning: observability index generation failed for $EVIDENCE_DIR" >&2
-  fi
-else
-  echo "Warning: scripts/build_observability_index.py not found; index not generated" >&2
-fi
+OBS_INDEX_STAGED=""
 
-find "$EVIDENCE_STAGING" -type f -print \
-  | sed "s#^${EVIDENCE_STAGING}/##" \
-  | sort -u >> "$TMP"
+if [[ -n "$EVIDENCE_DIR" ]]; then
+  mkdir -p "$EVIDENCE_STAGING/$CURRENT_PREFIX"
+
+  find "$EVIDENCE_DIR" -type f \
+    ! -name '*.pyc' ! -name '*.pyo' \
+    -print0 \
+  | while IFS= read -r -d '' src; do
+      rel="${src#$EVIDENCE_DIR/}"
+      dest="$EVIDENCE_STAGING/$CURRENT_PREFIX/$rel"
+      mkdir -p "$(dirname "$dest")"
+      cp "$src" "$dest"
+    done
+
+  # --- Ensure the observability index ships in the zip ---
+  OBS_INDEX_STAGED="$EVIDENCE_STAGING/$CURRENT_PREFIX/$OBS_INDEX_NAME"
+  if [[ -f "scripts/build_observability_index.py" ]]; then
+    if python3 scripts/build_observability_index.py \
+         --evidence-dir "$EVIDENCE_DIR" \
+         --output "$OBS_INDEX_STAGED" >/dev/null 2>&1; then
+      echo "Observability index generated: $CURRENT_PREFIX/$OBS_INDEX_NAME"
+    else
+      echo "Warning: observability index generation failed for $EVIDENCE_DIR" >&2
+    fi
+  else
+    echo "Warning: scripts/build_observability_index.py not found; index not generated" >&2
+  fi
+
+  find "$EVIDENCE_STAGING" -type f -print \
+    | sed "s#^${EVIDENCE_STAGING}/##" \
+    | sort -u >> "$TMP"
+fi
 
 sort -u "$TMP" -o "$TMP"
 
@@ -416,10 +416,12 @@ if [[ -n "$REPO_FILES" ]]; then
   echo "$REPO_FILES" | zip -q -@ "$OUT"
 fi
 
-cd "$EVIDENCE_STAGING"
-EV_FILES="$(find evidence/current -type f 2>/dev/null || true)"
-if [[ -n "$EV_FILES" ]]; then
-  echo "$EV_FILES" | zip -q -@ "$ROOT/$OUT" -g
+if [[ -n "$EVIDENCE_DIR" ]]; then
+  cd "$EVIDENCE_STAGING"
+  EV_FILES="$(find evidence/current -type f 2>/dev/null || true)"
+  if [[ -n "$EV_FILES" ]]; then
+    echo "$EV_FILES" | zip -q -@ "$ROOT/$OUT" -g
+  fi
 fi
 
 cd "$ROOT"
@@ -485,13 +487,15 @@ if [[ -n "$STALE_EV" ]]; then
   VERIFY_ERRORS="${VERIFY_ERRORS}Stale evidence dir included in zip: $STALE_EV\n"
 fi
 
-# 4. Verify the observability index is bundled under evidence/current/.
-if [[ -f "$OBS_INDEX_STAGED" ]]; then
-  if ! echo "$ZIP_LISTING" | grep -qF "$CURRENT_PREFIX/$OBS_INDEX_NAME"; then
-    VERIFY_ERRORS="${VERIFY_ERRORS}Observability index generated but missing from zip: $CURRENT_PREFIX/$OBS_INDEX_NAME\n"
+# 4. Verify the observability index is bundled under evidence/current/ (only when evidence present).
+if [[ -n "$EVIDENCE_DIR" ]]; then
+  if [[ -n "$OBS_INDEX_STAGED" && -f "$OBS_INDEX_STAGED" ]]; then
+    if ! echo "$ZIP_LISTING" | grep -qF "$CURRENT_PREFIX/$OBS_INDEX_NAME"; then
+      VERIFY_ERRORS="${VERIFY_ERRORS}Observability index generated but missing from zip: $CURRENT_PREFIX/$OBS_INDEX_NAME\n"
+    fi
+  else
+    VERIFY_ERRORS="${VERIFY_ERRORS}Observability index not generated: $CURRENT_PREFIX/$OBS_INDEX_NAME\n"
   fi
-else
-  VERIFY_ERRORS="${VERIFY_ERRORS}Observability index not generated: $CURRENT_PREFIX/$OBS_INDEX_NAME\n"
 fi
 
 if [[ -n "$VERIFY_ERRORS" ]]; then
@@ -529,7 +533,7 @@ echo "============================================"
 echo "REVIEW_PACKAGE_CREATED=true"
 echo "PACKAGE_STATUS=${PACKAGE_STATUS}"
 echo "PACKAGING_CWD=$(pwd)"
-echo "EVIDENCE_DIR=${EVIDENCE_DIR}"
+echo "EVIDENCE_DIR=${EVIDENCE_DIR:-(none)}"
 echo "REVIEW_SUBJECT_ALIGNMENT=${ALIGNMENT_VERDICT}"
 echo "EVIDENCE_AUTHORITATIVE=${EVIDENCE_AUTH}"
 echo "ZIP_PATH=${ROOT}/${OUT}"
@@ -550,4 +554,8 @@ du -h "$OUT"
 echo "Included files: $(echo "$ZIP_LISTING" | wc -l | tr -d ' ')"
 echo "Branch: $BRANCH"
 echo "Commit: $COMMIT"
-echo "Evidence: $CURRENT_PREFIX/"
+if [[ -n "$EVIDENCE_DIR" ]]; then
+  echo "Evidence: $CURRENT_PREFIX/"
+else
+  echo "Evidence: (none)"
+fi
