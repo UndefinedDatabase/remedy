@@ -1,4 +1,4 @@
-# REMEDY MASTERPLAN — Feature-Detailpläne (150 Files)
+# REMEDY ROADMAP — Feature-Detailpläne (150 Files)
 
 Jedes Feature des Masterplans (docs/roadmap/ROADMAP.md, v3.0) hat hier ein eigenes
 Detail-File: `features/T{tier}_F{nnn}.md`. Diese Files sind die Arbeitsgrundlage für

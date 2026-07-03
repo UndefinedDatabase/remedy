@@ -1,4 +1,4 @@
-# REMEDY MASTERPLAN — Kernprodukt bis zur 20M-Reife (150 Features, nach Wichtigkeit)
+# REMEDY ROADMAP — Kernprodukt bis zur 20M-Reife (150 Features, nach Wichtigkeit)
 
 > **Version 3.0 (FINAL) · 2026-07-02 · Ersetzt REMEDY_ROADMAP_100.md**
 > **Ablage im Repo:** `docs/roadmap/ROADMAP.md` — damit Remedy es ab F080 selbst liest.

@@ -153,5 +153,11 @@ Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md
 
 ## UI Reference (`docs/ui/`)
 
-Design reference material for the Remedy UI. See `docs/ui/design_reference/` for
-visual mockups.
+Design reference material for the Remedy UI.
+
+| File | Description |
+|------|-------------|
+| [REMEDY_UI_REBUILD_SPEC.md](ui/REMEDY_UI_REBUILD_SPEC.md) | Full UI rebuild specification (layout, components, interactions) |
+| [RICHTIG_PIXEL_LOCK_SPEC.md](ui/RICHTIG_PIXEL_LOCK_SPEC.md) | Pixel-lock specification for design fidelity verification |
+
+Visual mockups live in `docs/ui/design_reference/`.
