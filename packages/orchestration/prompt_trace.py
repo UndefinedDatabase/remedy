@@ -75,6 +75,7 @@ class PromptTraceEntry:
     prompt_text_redacted: str = ""
     prompt_text_truncated: bool = False
     prompt_text_unavailable_reason: str = ""
+    configured_model: str = ""
     created_at: str = ""
 
 
@@ -95,6 +96,7 @@ def build_trace_entry(
     changed_files: list[str] | None = None,
     safe_diff_files: list[str] | None = None,
     task_excerpt_sha256: str = "",
+    configured_model: str = "",
 ) -> PromptTraceEntry:
     """Build a redacted, capped prompt trace entry."""
     raw_sha = hashlib.sha256(prompt_text.encode()).hexdigest()
@@ -121,6 +123,7 @@ def build_trace_entry(
         task_excerpt_sha256=task_excerpt_sha256,
         prompt_text_redacted=capped,
         prompt_text_truncated=truncated,
+        configured_model=configured_model,
         created_at=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -158,6 +161,22 @@ def build_trace_summary(entries: list[PromptTraceEntry]) -> dict[str, Any]:
     total_tokens_est = sum(e.prompt_tokens_estimated for e in entries)
     providers = sorted({e.provider for e in entries if e.provider})
 
+    per_role: dict[str, dict[str, Any]] = {}
+    for e in entries:
+        if not e.role:
+            continue
+        if e.role not in per_role:
+            per_role[e.role] = {
+                "configured_provider": e.provider,
+                "configured_model": e.configured_model,
+                "actual_provider": e.provider,
+                "actual_model": e.configured_model,
+                "model_resolution_source": "cli" if e.configured_model else "default",
+                "actual_model_verified": False,
+                "prompt_count": 0,
+            }
+        per_role[e.role]["prompt_count"] += 1
+
     return {
         "total_prompts": len(entries),
         "builder_prompts": builder_count,
@@ -166,4 +185,5 @@ def build_trace_summary(entries: list[PromptTraceEntry]) -> dict[str, Any]:
         "total_prompt_tokens_estimated": total_tokens_est,
         "providers": providers,
         "rounds": max((e.round for e in entries), default=0),
+        "per_role_model_summary": per_role,
     }

@@ -1,0 +1,136 @@
+"""
+Role-based runtime configuration for Remedy.
+
+Resolves the runtime settings (provider, model, effort) for each orchestration
+role. Values come from three sources, highest precedence first:
+
+  1. CLI args      — per-invocation overrides
+  2. Config file   — persisted project/user preferences
+  3. Provider-aware built-in defaults
+
+Provider-aware defaults: the default model depends on which provider is
+selected. Claude providers default to Opus; Ollama keeps its own default.
+
+Public API::
+
+    KNOWN_ROLES: tuple of recognised role names
+    RoleConfig: resolved provider/model/effort for one role
+    resolve_role_config(role, cli_args=None, config_file=None) -> RoleConfig
+"""
+
+from __future__ import annotations
+
+import warnings
+from dataclasses import dataclass
+
+# ---------------------------------------------------------------------------
+# Defaults (provider-aware)
+# ---------------------------------------------------------------------------
+
+DEFAULT_PROVIDER = "ollama"
+DEFAULT_EFFORT = "medium"
+
+_PROVIDER_DEFAULT_MODELS: dict[str, str] = {
+    "ollama": "qwen3-coder-next",
+    "claude-cli": "claude-opus-4-20250514",
+    "claude": "claude-opus-4-20250514",
+    "fake": "fake-model",
+    "fixture": "fixture-model",
+}
+
+DEFAULT_MODEL = _PROVIDER_DEFAULT_MODELS[DEFAULT_PROVIDER]
+
+#: Roles that Remedy knows how to configure.
+KNOWN_ROLES: tuple[str, ...] = (
+    "builder",
+    "reviewer",
+    "repair",
+    "design_worker",
+    "test_worker",
+    "final_verifier",
+)
+
+#: Resolvable fields on a RoleConfig, in declaration order.
+_FIELDS: tuple[str, ...] = ("provider", "model", "effort")
+
+
+def default_model_for_provider(provider: str) -> str:
+    """Return the default model for a given provider name."""
+    return _PROVIDER_DEFAULT_MODELS.get(provider, DEFAULT_MODEL)
+
+
+@dataclass(frozen=True)
+class RoleConfig:
+    """Resolved runtime configuration for a single role."""
+
+    role: str
+    provider: str = DEFAULT_PROVIDER
+    model: str = DEFAULT_MODEL
+    effort: str = DEFAULT_EFFORT
+
+
+def _role_section(source: object, role: str) -> dict:
+    """Extract the override mapping for ``role`` from a config source.
+
+    A source may be either:
+      * role-scoped and flat — ``{"provider": ..., "model": ...}``, or
+      * nested by role — ``{"builder": {"provider": ...}, ...}``.
+
+    Returns an empty dict when the source is missing or has no entry for the role.
+    """
+    if not isinstance(source, dict):
+        return {}
+    nested = source.get(role)
+    if isinstance(nested, dict):
+        return nested
+    return source
+
+
+def resolve_role_config(
+    role: str,
+    cli_args: object | None = None,
+    config_file: object | None = None,
+) -> RoleConfig:
+    """Resolve the runtime configuration for ``role``.
+
+    Precedence (highest first): ``cli_args`` > ``config_file`` > provider-aware
+    defaults.
+
+    When the provider is resolved but no model is explicitly set, the model
+    defaults to the provider-specific default (e.g. Opus for claude-cli,
+    qwen3-coder-next for ollama).
+
+    Args:
+        role: The role name (see :data:`KNOWN_ROLES`).
+        cli_args: Optional per-invocation overrides — either a flat mapping of
+            ``provider``/``model``/``effort`` or a mapping keyed by role.
+        config_file: Optional persisted overrides, same shape as ``cli_args``.
+
+    Unknown roles emit a warning (rather than raising) and still resolve against
+    the supplied overrides, falling back to the built-in defaults.
+    """
+    if role not in KNOWN_ROLES:
+        warnings.warn(
+            f"Unknown role {role!r}; using default runtime configuration. "
+            f"Known roles: {', '.join(KNOWN_ROLES)}.",
+            stacklevel=2,
+        )
+
+    cli = _role_section(cli_args, role)
+    cfg = _role_section(config_file, role)
+
+    resolved: dict[str, str] = {}
+    for field in _FIELDS:
+        value = cli.get(field)
+        if value is None:
+            value = cfg.get(field)
+        if value is not None:
+            resolved[field] = value
+
+    # Provider-aware model default: if provider is set but model is not,
+    # use the provider's default model instead of the global default.
+    if "model" not in resolved:
+        provider = resolved.get("provider", DEFAULT_PROVIDER)
+        resolved["model"] = default_model_for_provider(provider)
+
+    return RoleConfig(role=role, **resolved)

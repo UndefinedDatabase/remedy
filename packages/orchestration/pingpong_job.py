@@ -147,6 +147,20 @@ class ExecutionConfig:
     builder_source: str = "default"
     reviewer: str = "fake"
     reviewer_source: str = "default"
+    builder_model: str = ""
+    builder_model_source: str = "default"
+    builder_effort: str = ""
+    builder_effort_source: str = "default"
+    reviewer_model: str = ""
+    reviewer_model_source: str = "default"
+    reviewer_effort: str = ""
+    reviewer_effort_source: str = "default"
+    repair_provider: str = ""
+    repair_provider_source: str = "default"
+    repair_model: str = ""
+    repair_model_source: str = "default"
+    repair_effort: str = ""
+    repair_effort_source: str = "default"
     max_rounds: int = 3
     max_rounds_source: str = "default"
     repair_rounds_allowed: int = 2
@@ -305,6 +319,20 @@ def _export_execution_config(c: ExecutionConfig | None) -> dict[str, Any] | None
         "builder_source": c.builder_source,
         "reviewer": c.reviewer,
         "reviewer_source": c.reviewer_source,
+        "builder_model": c.builder_model,
+        "builder_model_source": c.builder_model_source,
+        "builder_effort": c.builder_effort,
+        "builder_effort_source": c.builder_effort_source,
+        "reviewer_model": c.reviewer_model,
+        "reviewer_model_source": c.reviewer_model_source,
+        "reviewer_effort": c.reviewer_effort,
+        "reviewer_effort_source": c.reviewer_effort_source,
+        "repair_provider": c.repair_provider,
+        "repair_provider_source": c.repair_provider_source,
+        "repair_model": c.repair_model,
+        "repair_model_source": c.repair_model_source,
+        "repair_effort": c.repair_effort,
+        "repair_effort_source": c.repair_effort_source,
         "max_rounds": c.max_rounds,
         "max_rounds_source": c.max_rounds_source,
         "repair_rounds_allowed": c.repair_rounds_allowed,
@@ -326,6 +354,20 @@ def _import_execution_config(d: dict[str, Any] | None) -> ExecutionConfig | None
         builder_source=d.get("builder_source", "default"),
         reviewer=d.get("reviewer", "fake"),
         reviewer_source=d.get("reviewer_source", "default"),
+        builder_model=d.get("builder_model", ""),
+        builder_model_source=d.get("builder_model_source", "default"),
+        builder_effort=d.get("builder_effort", ""),
+        builder_effort_source=d.get("builder_effort_source", "default"),
+        reviewer_model=d.get("reviewer_model", ""),
+        reviewer_model_source=d.get("reviewer_model_source", "default"),
+        reviewer_effort=d.get("reviewer_effort", ""),
+        reviewer_effort_source=d.get("reviewer_effort_source", "default"),
+        repair_provider=d.get("repair_provider", ""),
+        repair_provider_source=d.get("repair_provider_source", "default"),
+        repair_model=d.get("repair_model", ""),
+        repair_model_source=d.get("repair_model_source", "default"),
+        repair_effort=d.get("repair_effort", ""),
+        repair_effort_source=d.get("repair_effort_source", "default"),
         max_rounds=d.get("max_rounds", 3),
         max_rounds_source=d.get("max_rounds_source", "default"),
         repair_rounds_allowed=d.get("repair_rounds_allowed", 2),
@@ -920,6 +962,13 @@ def run_job(
     reviewer_name: str | None = None,
     builder_provider: Any = None,
     reviewer_provider: Any = None,
+    builder_model: str | None = None,
+    builder_effort: str | None = None,
+    reviewer_model: str | None = None,
+    reviewer_effort: str | None = None,
+    repair_provider_name: str | None = None,
+    repair_model: str | None = None,
+    repair_effort: str | None = None,
     max_rounds: int | None = None,
     repair_rounds: int | None = None,
     repair_rounds_source: str | None = None,
@@ -978,11 +1027,40 @@ def run_job(
         repair_rounds = 2
         rr_src = "default"
 
+    builder_model, bm_src = _resolve_cfg(
+        builder_model, ec.builder_model if ec else None, "")
+    builder_effort, be_src = _resolve_cfg(
+        builder_effort, ec.builder_effort if ec else None, "")
+    reviewer_model, rm_src = _resolve_cfg(
+        reviewer_model, ec.reviewer_model if ec else None, "")
+    reviewer_effort, re_src = _resolve_cfg(
+        reviewer_effort, ec.reviewer_effort if ec else None, "")
+    repair_provider_name, rp_src = _resolve_cfg(
+        repair_provider_name, ec.repair_provider if ec else None, "")
+    repair_model, rpm_src = _resolve_cfg(
+        repair_model, ec.repair_model if ec else None, "")
+    repair_effort, rpe_src = _resolve_cfg(
+        repair_effort, ec.repair_effort if ec else None, "")
+
     job.execution_config = ExecutionConfig(
         builder=builder_name,
         builder_source=builder_src,
         reviewer=reviewer_name,
         reviewer_source=reviewer_src,
+        builder_model=builder_model,
+        builder_model_source=bm_src,
+        builder_effort=builder_effort,
+        builder_effort_source=be_src,
+        reviewer_model=reviewer_model,
+        reviewer_model_source=rm_src,
+        reviewer_effort=reviewer_effort,
+        reviewer_effort_source=re_src,
+        repair_provider=repair_provider_name,
+        repair_provider_source=rp_src,
+        repair_model=repair_model,
+        repair_model_source=rpm_src,
+        repair_effort=repair_effort,
+        repair_effort_source=rpe_src,
         max_rounds=max_rounds,
         max_rounds_source=max_rounds_src,
         repair_rounds_allowed=repair_rounds,
@@ -1065,6 +1143,8 @@ def run_job(
                 reviewer_provider=reviewer_provider,
                 builder_name=builder_name,
                 reviewer_name=reviewer_name,
+                builder_model=builder_model,
+                reviewer_model=reviewer_model,
                 max_rounds=max_rounds,
                 timeout_sec=timeout_sec,
                 max_output_chars=max_output_chars,
@@ -1170,6 +1250,52 @@ def run_job(
     if all_done:
         job.status = JOB_COMPLETED
         job.finished_at = datetime.now(timezone.utc).isoformat()
+
+        # Final job review — job-level review after all per-task reviewers pass
+        try:
+            from packages.orchestration.final_job_review import build_final_job_review
+
+            _task_verdicts_fjr = [
+                {"task_id": t.task_id, "verdict": t.reviewer_verdict or t.final_status or ""}
+                for t in job.tasks
+            ]
+            _task_summaries_fjr = [t.title or "" for t in job.tasks]
+            _task_diffs_fjr = [
+                (getattr(t, "safe_diff_summary", "") or "")[:2000]
+                for t in job.tasks
+            ]
+            _fjr = build_final_job_review(
+                job_goal=job.job_title,
+                task_plan=[{"task_id": t.task_id, "title": t.title} for t in job.tasks],
+                task_summaries=_task_summaries_fjr,
+                task_diffs=_task_diffs_fjr,
+                task_verdicts=_task_verdicts_fjr,
+                test_evidence={},
+                gate_verdicts=[],
+                job_id=job.job_id,
+            )
+            _fjr_dir = _jobs_dir() / job.job_id
+            _fjr_dir.mkdir(parents=True, exist_ok=True)
+            (_fjr_dir / "final_job_review.json").write_text(
+                _json.dumps(_fjr, indent=2) + "\n"
+            )
+
+            # If findings exist, persist final_job_repair_loop.json
+            if _fjr.get("findings"):
+                from packages.orchestration.final_job_review import build_final_job_repair_loop
+                _repair_loop = build_final_job_repair_loop(
+                    findings=_fjr["findings"],
+                    repair_tasks=[],
+                    re_review_verdict=_fjr["verdict"],
+                    rounds=0,
+                    budget=0,
+                )
+                (_fjr_dir / "final_job_repair_loop.json").write_text(
+                    _json.dumps(_repair_loop, indent=2) + "\n"
+                )
+        except Exception:
+            pass  # Best-effort; do not block job completion
+
     elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
         job.status = JOB_PAUSED
 

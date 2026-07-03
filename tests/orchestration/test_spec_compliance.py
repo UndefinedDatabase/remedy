@@ -233,6 +233,40 @@ def test_missing_required_test_creates_missing_item(tmp_path):
     assert checklist["verdict"] != "PASS"
 
 
+def test_test_file_path_not_treated_as_required_function():
+    goal = (
+        "Create the following files:\n"
+        "- `tests/orchestration/test_fresh_evidence_gate.py` (create new)\n"
+        "- `tests/orchestration/test_artifact_contract_gate.py` (create new)\n"
+    )
+    reqs = parse_goal_requirements(goal)
+    assert "test_fresh_evidence_gate" not in reqs["required_tests"]
+    assert "test_artifact_contract_gate" not in reqs["required_tests"]
+
+
+def test_exact_function_names_still_required():
+    goal = (
+        "Implement these tests:\n"
+        "- `test_matching_job_id_passes`\n"
+        "- `test_stale_job_blocks`\n"
+    )
+    reqs = parse_goal_requirements(goal)
+    assert "test_matching_job_id_passes" in reqs["required_tests"]
+    assert "test_stale_job_blocks" in reqs["required_tests"]
+
+
+def test_missing_exact_function_name_creates_missing_item(tmp_path):
+    goal = "Add test `test_this_must_exist` to verify behavior."
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    task = _Task("T001", "Check test")
+    checklist = build_spec_compliance_checklist(
+        task, goal, str(tmp_path), str(workspace)
+    )
+    assert "test_this_must_exist" in checklist["missing_items"]
+    assert checklist["verdict"] == "FAIL"
+
+
 def test_checklist_generation_failure_propagates(tmp_path, monkeypatch):
     """When build_spec_compliance_checklist raises, write_spec_compliance_check
     propagates the error so the caller (job_evidence.py) can write the error

@@ -133,6 +133,22 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--max-wall-minutes", default=arg.default, dest="max_wall_minutes", help=arg.help)
             elif arg.name == "--builder-provider":
                 parser.add_argument("--builder-provider", default=arg.default, dest="builder_provider", help=arg.help)
+            elif arg.name == "--builder-model":
+                parser.add_argument("--builder-model", dest="builder_model", default=arg.default, help=arg.help)
+            elif arg.name == "--builder-effort":
+                parser.add_argument("--builder-effort", dest="builder_effort", default=arg.default, help=arg.help)
+            elif arg.name == "--reviewer-provider":
+                parser.add_argument("--reviewer-provider", dest="reviewer_provider", default=arg.default, help=arg.help)
+            elif arg.name == "--reviewer-model":
+                parser.add_argument("--reviewer-model", dest="reviewer_model", default=arg.default, help=arg.help)
+            elif arg.name == "--reviewer-effort":
+                parser.add_argument("--reviewer-effort", dest="reviewer_effort", default=arg.default, help=arg.help)
+            elif arg.name == "--repair-provider":
+                parser.add_argument("--repair-provider", dest="repair_provider", default=arg.default, help=arg.help)
+            elif arg.name == "--repair-model":
+                parser.add_argument("--repair-model", dest="repair_model", default=arg.default, help=arg.help)
+            elif arg.name == "--repair-effort":
+                parser.add_argument("--repair-effort", dest="repair_effort", default=arg.default, help=arg.help)
             elif arg.name == "--all":
                 parser.add_argument("--all", action="store_true", dest="all", help=arg.help)
             elif arg.name == "--no-ui":

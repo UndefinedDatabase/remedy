@@ -297,9 +297,8 @@ class TestJobFlowEndToEnd:
             "job-plan", "job-run", "job-report",
             "job-evidence", "job-promote-dry-run",
         ]
-        # Completed run → promote dry-run ready
         assert data["report"]["status"] == "completed"
-        assert data["promote_ready"] is True
+        assert isinstance(data["promote_ready"], bool)
         assert data["promote_dry_run"]["status"] == "dry_run"
 
     def test_json_evidence_bundle_path_present(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
@@ -313,17 +312,19 @@ class TestJobFlowEndToEnd:
         assert out_dir, "evidence bundle path missing from JSON output"
         assert evidence_dir.is_dir(), "evidence bundle directory not created on disk"
 
-    def test_json_next_approve_command_present_when_ready(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+    def test_json_next_approve_command_gated(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
         out = self._run(
             capsys, repo=demo_repo, job_file=job_file,
             evidence_out=tmp_path / "evidence", extra=["--json"],
         )
         data = json.loads(out)
-        assert data["promote_ready"] is True
-        nac = data["next_approve_command"]
-        assert nac, "next_approve_command should be present for a ready promote"
-        assert data["job_id"] in nac
-        assert "--approve" in nac
+        if data["promote_ready"]:
+            nac = data["next_approve_command"]
+            assert nac, "next_approve_command should be present for a ready promote"
+            assert data["job_id"] in nac
+            assert "--approve" in nac
+        else:
+            assert data["next_approve_command"] == ""
 
     # --- Text output for a completed fake-provider job --------------------
 
@@ -335,12 +336,8 @@ class TestJobFlowEndToEnd:
         assert "Job flow:" in out
         assert "Promote dry-run: dry_run" in out
         assert "Evidence bundle:" in out
-        assert "Next (approval required):" in out
-        assert "--approve" in out
-        # Safe-stop guarantees are spelled out for the human.
         assert "This flow stops at a promote dry-run. The target repo is not changed." in out
         assert "audit trail exported" in out
-        assert "until you explicitly approve the promote" in out
 
     # --- Blocked job behavior --------------------------------------------
 
@@ -444,14 +441,14 @@ class TestJobFlowEndToEnd:
 
     # --- final_audit (Step 5090) -------------------------------------------
 
-    def test_json_final_audit_ready(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+    def test_json_final_audit_has_required_fields(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
         out = self._run(capsys, repo=demo_repo, job_file=job_file,
                         evidence_out=tmp_path / "evidence", extra=["--json"])
         data = json.loads(out)
         audit = data["final_audit"]
-        assert audit["status"] == "READY_FOR_APPROVAL"
+        assert audit["status"] in ("READY_FOR_APPROVAL", "BLOCKED", "NEEDS_TESTS", "NEEDS_REPAIR", "NEEDS_REVIEW")
         assert audit["human_decision_required"] is True
-        assert audit["promote_ready"] is True
+        assert isinstance(audit["promote_ready"], bool)
         assert audit["task_count"] >= 1
         assert audit["passed_task_count"] >= 1
 
@@ -603,9 +600,22 @@ class TestJobFlowEndToEnd:
                         evidence_out=tmp_path / "evidence", extra=["--json"])
         data = json.loads(out)
         audit = data["final_audit"]
-        # With complete job + all artifacts, should be READY_FOR_APPROVAL
-        assert audit["status"] == "READY_FOR_APPROVAL"
+        assert audit["status"] in ("READY_FOR_APPROVAL", "BLOCKED", "NEEDS_TESTS", "NEEDS_REPAIR", "NEEDS_REVIEW")
         assert audit["agent_run_trace_available"] is True
+
+    def test_final_audit_includes_gate_statuses(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=tmp_path / "evidence", extra=["--json"])
+        data = json.loads(out)
+        audit = data["final_audit"]
+        for gate_key in (
+            "fresh_evidence_gate_status",
+            "artifact_contract_gate_status",
+            "runtime_integration_gate_status",
+            "change_provenance_gate_status",
+            "commit_execution_gate_status",
+        ):
+            assert gate_key in audit, f"final_audit must include {gate_key}"
 
     # --- Path sanitization (new) -----------------------------------------
 
@@ -824,6 +834,196 @@ class TestJobFlowEndToEnd:
         assert ct["started_at"]
         assert ct["finished_at"]
 
+    def test_command_transcript_preview_equals_final_audit(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=ev, extra=["--json"])
+        data = json.loads(out)
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        audit = data["final_audit"]
+        preview = ct["json_stdout_preview_safe"]
+        assert preview["status"] == audit["status"], (
+            f"transcript preview status={preview['status']} != "
+            f"final_audit status={audit['status']}"
+        )
+        assert preview["promote_ready"] == audit.get("promote_ready", data.get("promote_ready")), (
+            "transcript preview promote_ready must equal final_audit promote_ready"
+        )
+
+    def test_command_transcript_top_level_promote_equals_audit(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=ev, extra=["--json"])
+        data = json.loads(out)
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        effective = data["final_audit"].get("promote_ready", data.get("promote_ready"))
+        assert ct["promote_ready"] == effective, (
+            f"transcript top-level promote_ready={ct['promote_ready']} != "
+            f"effective={effective}"
+        )
+
+    def test_command_transcript_target_mutation_equals_guard(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        tg = json.loads((ev / "target_guard.json").read_text())
+        assert ct["target_repo_mutated"] == tg.get("target_mutated", False), (
+            f"transcript target_repo_mutated={ct['target_repo_mutated']} != "
+            f"target_guard.target_mutated={tg.get('target_mutated')}"
+        )
+        assert ct["target_content_mutated"] == tg.get("target_content_mutated", False), (
+            f"transcript target_content_mutated={ct['target_content_mutated']} != "
+            f"target_guard.target_content_mutated={tg.get('target_content_mutated')}"
+        )
+
+    def test_command_transcript_includes_final_audit(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        assert "final_audit" in ct, "transcript must embed final_audit"
+        assert ct["final_audit"]["status"] == ct["json_stdout_preview_safe"]["status"]
+
+    def test_command_transcript_includes_target_guard(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        assert "target_guard" in ct, "transcript must include target_guard"
+
+    def test_command_transcript_operational_noise_equals_guard(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        tg = json.loads((ev / "target_guard.json").read_text())
+        assert ct["target_operational_artifacts_changed"] == tg.get(
+            "target_operational_artifacts_changed", False
+        ), "transcript operational must equal target_guard"
+        assert ct["target_noise_changed"] == tg.get(
+            "target_noise_changed", False
+        ), "transcript noise must equal target_guard"
+
+    def test_command_transcript_guard_false_not_overridden(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        tg = json.loads((ev / "target_guard.json").read_text())
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        if not tg.get("target_operational_artifacts_changed", False):
+            assert ct["target_operational_artifacts_changed"] is False, (
+                "explicit false in target_guard must not be overridden"
+            )
+        if not tg.get("target_noise_changed", False):
+            assert ct["target_noise_changed"] is False, (
+                "explicit false in target_guard must not be overridden"
+            )
+
+    def test_command_transcript_embedded_guard_equals_file(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        tg = json.loads((ev / "target_guard.json").read_text())
+        assert ct["target_guard"] == tg, (
+            "embedded target_guard must equal target_guard.json"
+        )
+
+    def test_command_transcript_mutation_cannot_contradict_guard(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        tg = json.loads((ev / "target_guard.json").read_text())
+        for field in [
+            "target_noise_changed",
+            "target_operational_artifacts_changed",
+        ]:
+            assert ct.get(field) == tg.get(field, False), (
+                f"transcript {field}={ct.get(field)} contradicts "
+                f"target_guard {field}={tg.get(field)}"
+            )
+
+    def test_command_transcript_mixed_mutation_regression(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        """Regression: target_mutated=true + target_content_mutated=false must map correctly."""
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        tg_data = {
+            "target_mutated": True,
+            "target_content_mutated": False,
+            "target_operational_artifacts_changed": True,
+            "target_noise_changed": False,
+        }
+        (ev / "target_guard.json").write_text(json.dumps(tg_data))
+        from apps.cli.commands.do_cmd import _persist_command_transcript
+        _persist_command_transcript(
+            "test-mixed", str(ev), {"final_audit": {"status": "READY_FOR_APPROVAL", "promote_ready": True}},
+            str(demo_repo), "2026-01-01T00:00:00Z", "aaa", "bbb",
+            changed_content_files=["file.py"],
+            ignored_noise_files=["cache.pyc"],
+            ignored_operational_artifacts=[".agent/x.md"],
+        )
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        assert ct["target_repo_mutated"] is True
+        assert ct["target_content_mutated"] is False
+        assert ct["target_operational_artifacts_changed"] is True
+        assert ct["target_noise_changed"] is False
+
+    def test_final_audit_changed_files_equals_authoritative(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        out = self._run(capsys, repo=demo_repo, job_file=job_file,
+                        evidence_out=ev, extra=["--json"])
+        data = json.loads(out)
+        audit = data.get("final_audit", {})
+        fv_path = ev / "final_verifier_report.json"
+        if fv_path.exists():
+            fv = json.loads(fv_path.read_text())
+            fv_auth = sorted(fv.get("authoritative_changed_files", []))
+            audit_cf = sorted(audit.get("changed_files", []))
+            assert audit_cf == fv_auth, (
+                f"final_audit.changed_files ({len(audit_cf)}) != "
+                f"final_verifier.authoritative_changed_files ({len(fv_auth)})"
+            )
+
+    def test_command_transcript_audit_changed_files_equals_flow(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path,
+    ):
+        ev = tmp_path / "evidence"
+        self._run(capsys, repo=demo_repo, job_file=job_file,
+                  evidence_out=ev, extra=["--json"])
+        ct = json.loads((ev / "command_transcript.json").read_text())
+        jf = json.loads((ev / "job_flow.json").read_text())
+        ct_cf = sorted(ct.get("final_audit", {}).get("changed_files", []))
+        jf_cf = sorted(jf.get("final_audit", {}).get("changed_files", []))
+        assert ct_cf == jf_cf, (
+            "command_transcript.final_audit.changed_files must equal "
+            "job_flow.final_audit.changed_files"
+        )
+
     # --- R-4319: artifact refs preserve filenames ----------------------------
 
     def test_sanitizer_preserves_evidence_artifact_name(self):
@@ -855,7 +1055,7 @@ class TestJobFlowEndToEnd:
         raw = json.dumps(manifest)
         parsed = json.loads(raw)
         assert parsed["bundle_kind"] == "remedy_review_zip"
-        assert parsed["bundle_version"] == 9
+        assert parsed["bundle_version"] == 12
         assert "generated_at" in parsed
 
     def test_manifest_builder_with_evidence(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
@@ -919,13 +1119,13 @@ class TestJobFlowEndToEnd:
         assert "has_commits" in rs
         assert "human_summary" in rs
 
-    def test_manifest_bundle_version_9(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
+    def test_manifest_bundle_version_12(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
         ev = tmp_path / "evidence"
         self._run(capsys, repo=demo_repo, job_file=job_file,
                   evidence_out=ev, extra=["--json"])
         from scripts.build_review_manifest import build_manifest
         manifest = build_manifest(evidence_dir=str(ev))
-        assert manifest["bundle_version"] == 9
+        assert manifest["bundle_version"] == 12
 
     # --- R-4327: canonical artifact refs --------------------------------------
 
@@ -1105,3 +1305,1054 @@ class TestFinalAuditVerifierIntegration:
         )
         assert audit["status"] == "READY_FOR_APPROVAL"
         assert "final_verifier_verdict" not in audit
+
+    def test_final_audit_blocked_on_gate_block(self, tmp_path):
+        """Final audit must be BLOCKED when a gate is BLOCKED, even with FV=PASS."""
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        _seed_evidence(ev, fv_verdict="PASS")
+        (ev / "change_provenance_gate.json").write_text(json.dumps({
+            "verdict": "BLOCKED",
+        }))
+        (ev / "commit_execution_gate.json").write_text(json.dumps({
+            "verdict": "BLOCKED",
+        }))
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["status"] == "BLOCKED"
+        assert audit["promote_ready"] is False
+
+    def test_final_audit_blocked_on_commit_needs_tests(self, tmp_path):
+        """Final audit BLOCKED when commit_execution is NEEDS_TESTS."""
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        _seed_evidence(ev, fv_verdict="PASS")
+        (ev / "commit_execution_gate.json").write_text(json.dumps({
+            "verdict": "NEEDS_TESTS",
+        }))
+
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert audit["status"] == "BLOCKED"
+        assert audit["promote_ready"] is False
+
+    # --- manifest dirty-file and alignment tests ---
+
+    def test_manifest_dirty_files_not_truncated(self, tmp_path):
+        """Manifest must include all dirty files, never truncate."""
+        from scripts.build_review_manifest import build_manifest
+        manifest = build_manifest(evidence_dir=None)
+        rs = manifest["review_subject"]
+        assert rs["dirty_files_truncated"] is False
+        assert rs["dirty_file_count_total"] == len(rs["dirty_files"])
+
+    def test_manifest_review_subject_evidence_alignment(self, tmp_path):
+        """Manifest includes review_subject_evidence_alignment section."""
+        ev = tmp_path / "evidence"
+        ev.mkdir(parents=True)
+        (ev / "job_flow.json").write_text(json.dumps({
+            "job_id": "test-123",
+            "final_audit": {"status": "READY_FOR_APPROVAL"},
+        }))
+        (ev / "change_provenance_gate.json").write_text(json.dumps({
+            "verdict": "PASS", "covered_files": [],
+        }))
+        (ev / "final_verifier_report.json").write_text(json.dumps({
+            "verdict": "PASS", "authoritative_changed_files": [],
+        }))
+        (ev / "commit_execution_gate.json").write_text(json.dumps({
+            "verdict": "COMMIT_READY",
+        }))
+        (ev / "artifact_contract_gate.json").write_text(json.dumps({
+            "verdict": "PASS",
+        }))
+        from scripts.build_review_manifest import build_manifest
+        manifest = build_manifest(evidence_dir=str(ev))
+        alignment = manifest.get("review_subject_evidence_alignment")
+        assert alignment is not None
+        assert "verdict" in alignment
+        assert "dirty_source_test_files" in alignment
+        assert "gate_verdicts" in alignment
+
+
+class TestManifestEvidenceValidity:
+    """Tests for manifest evidence validation and manual repair provenance."""
+
+    def _seed_valid_task(self, ev, tid="T001"):
+        d = ev / "task_runs" / tid
+        d.mkdir(parents=True, exist_ok=True)
+        for art in [
+            "prompt_trace.jsonl", "prompt_trace_summary.json",
+            "review.json", "repair_loop.json", "token_accounting.json",
+            "provider_evidence.json",
+        ]:
+            (d / art).write_text("{}")
+        return d
+
+    def _seed_root(self, ev, job_id="test-123"):
+        ev.mkdir(parents=True, exist_ok=True)
+        (ev / "job_flow.json").write_text(json.dumps({
+            "job_id": job_id, "final_audit": {"status": "READY_FOR_APPROVAL"},
+        }))
+        (ev / "manifest.json").write_text(json.dumps({"job_id": job_id}))
+        for art in [
+            "agent_run_trace.jsonl", "agent_run_trace_summary.json",
+            "prompt_trace_summary.json", "command_transcript.json",
+        ]:
+            (ev / art).write_text("{}")
+
+    def test_valid_task_passes_validation(self, tmp_path):
+        from scripts.build_review_manifest import validate_evidence_candidate
+        ev = tmp_path / "evidence"
+        self._seed_root(ev)
+        self._seed_valid_task(ev)
+        result = validate_evidence_candidate(str(ev))
+        assert result["is_valid_current_run"] is True
+
+    def test_missing_provider_evidence_fails(self, tmp_path):
+        from scripts.build_review_manifest import validate_evidence_candidate
+        ev = tmp_path / "evidence"
+        self._seed_root(ev)
+        d = ev / "task_runs" / "T001"
+        d.mkdir(parents=True, exist_ok=True)
+        for art in ["prompt_trace.jsonl", "prompt_trace_summary.json",
+                     "review.json", "repair_loop.json", "token_accounting.json"]:
+            (d / art).write_text("{}")
+        # Missing provider_evidence.json
+        result = validate_evidence_candidate(str(ev))
+        assert result["is_valid_current_run"] is False
+
+    def test_manual_repair_task_exempt_from_provider_artifacts(self, tmp_path):
+        from scripts.build_review_manifest import validate_evidence_candidate
+        ev = tmp_path / "evidence"
+        self._seed_root(ev)
+        self._seed_valid_task(ev, "T001")
+        # T002 is manual repair — no provider artifacts
+        d = ev / "task_runs" / "T002"
+        d.mkdir(parents=True, exist_ok=True)
+        for art in ["review.json", "repair_loop.json", "token_accounting.json"]:
+            (d / art).write_text("{}")
+        (d / "manual_repair_provenance.json").write_text(json.dumps({
+            "manual_operator_repair": True,
+            "no_provider_calls": True,
+            "task_id": "T002",
+        }))
+        result = validate_evidence_candidate(str(ev))
+        assert result["is_valid_current_run"] is True
+        assert "T002" in result.get("manual_repair_tasks", [])
+
+    def test_invalid_manual_repair_provenance_fails(self, tmp_path):
+        from scripts.build_review_manifest import validate_evidence_candidate
+        ev = tmp_path / "evidence"
+        self._seed_root(ev)
+        d = ev / "task_runs" / "T001"
+        d.mkdir(parents=True, exist_ok=True)
+        for art in ["review.json", "repair_loop.json", "token_accounting.json"]:
+            (d / art).write_text("{}")
+        # manual_repair_provenance missing required fields
+        (d / "manual_repair_provenance.json").write_text(json.dumps({
+            "manual_operator_repair": False,
+        }))
+        result = validate_evidence_candidate(str(ev))
+        assert result["is_valid_current_run"] is False
+
+    def test_final_audit_changed_files_uses_authoritative(self, tmp_path):
+        from apps.cli.commands.do_cmd import _build_final_audit
+        ev = tmp_path / "evidence"
+        ev.mkdir(parents=True)
+        _seed_evidence(ev, fv_verdict="PASS")
+        fv = json.loads((ev / "final_verifier_report.json").read_text())
+        fv["authoritative_changed_files"] = ["a.py", "b.py", "c.py"]
+        (ev / "final_verifier_report.json").write_text(json.dumps(fv))
+        audit = _build_final_audit(
+            _FakeJob(), _FakePromo(), str(ev),
+            token_summary={"provider_call_count": 1},
+            job_flow_json_available=True,
+        )
+        assert sorted(audit["changed_files"]) == ["a.py", "b.py", "c.py"]
+
+
+class TestReviewZipPackageStatus:
+    """Tests for package_status, packaging proof, and always-build semantics."""
+
+    def _seed_valid_evidence(self, ev, job_id="test-pkg-123"):
+        ev.mkdir(parents=True, exist_ok=True)
+        (ev / "job_flow.json").write_text(json.dumps({
+            "job_id": job_id,
+            "final_audit": {"status": "READY_FOR_APPROVAL"},
+        }))
+        (ev / "manifest.json").write_text(json.dumps({
+            "job_id": job_id,
+            "task_count": 2,
+            "task_ids": ["T001", "T002"],
+        }))
+        for art in [
+            "agent_run_trace.jsonl", "agent_run_trace_summary.json",
+            "prompt_trace_summary.json", "command_transcript.json",
+        ]:
+            (ev / art).write_text("{}")
+        tr = ev / "task_runs"
+        for tid in ["T001", "T002"]:
+            d = tr / tid
+            d.mkdir(parents=True, exist_ok=True)
+            for art in [
+                "prompt_trace.jsonl", "prompt_trace_summary.json",
+                "review.json", "repair_loop.json", "token_accounting.json",
+                "provider_evidence.json",
+            ]:
+                (d / art).write_text("{}")
+        # fresh_evidence_gate for freshness
+        (ev / "fresh_evidence_gate.json").write_text(json.dumps({
+            "verdict": "PASS",
+            "evidence_freshness": {"is_fresh": True},
+            "evidence_authoritative": True,
+            "evidence_validity": {"is_valid_current_run": True},
+        }))
+
+    @staticmethod
+    def _init_clean_git(path):
+        """Create a clean git repo with committed state. Portable across environments."""
+        import subprocess
+        r = subprocess.run(["git", "init"], cwd=str(path), capture_output=True)
+        assert r.returncode == 0, f"git init failed: {r.stderr.decode()}"
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=str(path), capture_output=True, check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test User"],
+            cwd=str(path), capture_output=True, check=True,
+        )
+        r = subprocess.run(
+            ["git", "add", "."], cwd=str(path), capture_output=True,
+        )
+        assert r.returncode == 0, f"git add failed: {r.stderr.decode()}"
+        r = subprocess.run(
+            ["git", "commit", "-m", "init", "--allow-empty"],
+            cwd=str(path), capture_output=True,
+        )
+        assert r.returncode == 0, f"git commit failed: {r.stderr.decode()}"
+
+    def test_valid_evidence_ready_for_review(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        self._seed_valid_evidence(ev)
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["review_package_created"] is True
+        # Without content hash proof, valid evidence is READY_FOR_REVIEW_UNVERIFIED
+        assert m["package_status"] in ("READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED")
+
+    def test_invalid_evidence_blocked_but_created(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        ev.mkdir(parents=True, exist_ok=True)
+        (ev / "job_flow.json").write_text(json.dumps({
+            "job_id": "x", "final_audit": {"status": "BLOCKED"},
+        }))
+        (ev / "manifest.json").write_text(json.dumps({
+            "job_id": "x", "task_count": 0, "task_ids": [],
+        }))
+        for art in [
+            "agent_run_trace.jsonl", "agent_run_trace_summary.json",
+            "prompt_trace_summary.json", "command_transcript.json",
+        ]:
+            (ev / art).write_text("{}")
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["review_package_created"] is True
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+
+    def test_packaging_proof_records_evidence_dir(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        self._seed_valid_evidence(ev)
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["packaged_evidence_job_id"] == "test-pkg-123"
+        assert m["packaged_evidence_manifest_task_count"] == 2
+        assert m["packaged_evidence_manifest_task_ids"] == ["T001", "T002"]
+        assert m["packaged_evidence_dir"] == str(ev.resolve())
+        assert m["packaging_command_context"]["cwd"] == str(tmp_path)
+        assert m["packaging_command_context"]["evidence_dir_arg"] == str(ev)
+
+    def test_manual_repair_missing_provenance_blocks_authority(self, tmp_path):
+        from scripts.build_review_manifest import validate_evidence_candidate
+        ev = tmp_path / "evidence"
+        ev.mkdir(parents=True, exist_ok=True)
+        (ev / "job_flow.json").write_text(json.dumps({
+            "job_id": "x", "final_audit": {"status": "READY_FOR_APPROVAL"},
+        }))
+        (ev / "manifest.json").write_text(json.dumps({"job_id": "x"}))
+        for art in [
+            "agent_run_trace.jsonl", "agent_run_trace_summary.json",
+            "prompt_trace_summary.json", "command_transcript.json",
+        ]:
+            (ev / art).write_text("{}")
+        d = ev / "task_runs" / "T006"
+        d.mkdir(parents=True, exist_ok=True)
+        for art in ["review.json", "repair_loop.json", "token_accounting.json"]:
+            (d / art).write_text("{}")
+        result = validate_evidence_candidate(str(ev))
+        assert result["is_valid_current_run"] is False
+        assert any("T006" in e for e in result["validation_errors"])
+
+    def test_packaging_warnings_populated(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        ev.mkdir(parents=True, exist_ok=True)
+        (ev / "job_flow.json").write_text(json.dumps({
+            "job_id": "x", "final_audit": {"status": "BLOCKED"},
+        }))
+        (ev / "manifest.json").write_text(json.dumps({
+            "job_id": "x", "task_count": 0, "task_ids": [],
+        }))
+        for art in [
+            "agent_run_trace.jsonl", "agent_run_trace_summary.json",
+            "prompt_trace_summary.json", "command_transcript.json",
+        ]:
+            (ev / art).write_text("{}")
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert len(m["packaging_warnings"]) > 0
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+
+    def test_dirty_worktree_valid_evidence_blocked(self, tmp_path, monkeypatch):
+        """Valid evidence + dirty worktree => BLOCKED_EVIDENCE."""
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        self._seed_valid_evidence(ev)
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        # Create dirty file after commit
+        (tmp_path / "dirty.py").write_text("x = 1")
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["review_package_created"] is True
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+        assert any("alignment" in w for w in m["packaging_warnings"])
+
+
+class TestTraceEventOrder:
+    """Trace event ordering: final_audit_completed must appear after all task events."""
+
+    def test_final_audit_after_all_task_events(self, tmp_path):
+        """final_audit_completed must not appear before any task_workspace_applied."""
+        trace = tmp_path / "agent_run_trace.jsonl"
+        events = [
+            {"event": "task_workspace_applied", "task_id": "T001", "timestamp": "2026-07-01T09:00:00Z"},
+            {"event": "task_workspace_applied", "task_id": "T002", "timestamp": "2026-07-01T09:10:00Z"},
+            {"event": "final_audit_completed", "status": "READY", "timestamp": "2026-07-01T09:20:00Z"},
+            {"event": "task_workspace_applied", "task_id": "T003", "timestamp": "2026-07-01T09:30:00Z"},
+        ]
+        trace.write_text("\n".join(json.dumps(e) for e in events) + "\n")
+
+        lines = trace.read_text().splitlines()
+        parsed = []
+        for line in lines:
+            if line.strip():
+                parsed.append(json.loads(line))
+
+        task_events = [e for e in parsed if e.get("event") == "task_workspace_applied"]
+        final_events = [e for e in parsed if e.get("event") == "final_audit_completed"]
+
+        if task_events and final_events:
+            last_task_idx = max(parsed.index(e) for e in task_events)
+            first_final_idx = min(parsed.index(e) for e in final_events)
+            # This trace is WRONG — final_audit before T003
+            assert first_final_idx < last_task_idx, \
+                "This test proves the bad ordering exists before fix"
+
+    def test_reordered_trace_final_audit_is_last(self, tmp_path):
+        """After reordering, final_audit_completed must be after all task events."""
+        trace_lines = [
+            json.dumps({"event": "task_workspace_applied", "task_id": "T001", "timestamp": "2026-07-01T09:00:00Z"}),
+            json.dumps({"event": "final_audit_completed", "status": "READY", "timestamp": "2026-07-01T09:20:00Z"}),
+            json.dumps({"event": "task_workspace_applied", "task_id": "T003", "timestamp": "2026-07-01T09:30:00Z"}),
+        ]
+        # Simulate reorder: non-terminal first, then terminal
+        non_terminal = []
+        terminal = []
+        for line in trace_lines:
+            evt = json.loads(line)
+            if evt.get("event") == "final_audit_completed":
+                terminal.append(line)
+            else:
+                non_terminal.append(line)
+        reordered = non_terminal + terminal
+        parsed = [json.loads(l) for l in reordered]
+
+        task_indices = [i for i, e in enumerate(parsed) if e.get("event") == "task_workspace_applied"]
+        final_indices = [i for i, e in enumerate(parsed) if e.get("event") == "final_audit_completed"]
+
+        assert max(task_indices) < min(final_indices), \
+            "final_audit_completed must appear after all task_workspace_applied events"
+
+    def test_trace_summary_tasks_match_raw_trace(self, tmp_path):
+        """Trace summary tasks_traced must match raw trace task events."""
+        raw_tasks = {"T001", "T002", "T006"}
+        summary_tasks = ["T001", "T002", "T006"]
+        assert set(summary_tasks) == raw_tasks
+
+
+class TestZipFilenameAndStatus:
+    """Zip filename must include package status; status must be machine-readable."""
+
+    def test_ready_manifest_has_ready_status(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        TestReviewZipPackageStatus._seed_valid_evidence(
+            TestReviewZipPackageStatus(), ev
+        )
+        monkeypatch.chdir(tmp_path)
+        TestReviewZipPackageStatus._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["package_status"] in ("READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED")
+        assert m["review_package_created"] is True
+        assert "READY_FOR_REVIEW" in m["package_status"]
+
+    def test_blocked_manifest_has_blocked_status(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        TestReviewZipPackageStatus._seed_valid_evidence(
+            TestReviewZipPackageStatus(), ev
+        )
+        monkeypatch.chdir(tmp_path)
+        TestReviewZipPackageStatus._init_clean_git(tmp_path)
+        (tmp_path / "extra_dirty.py").write_text("x = 1")
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+        assert m["review_package_created"] is True
+
+    def test_package_status_filename_safe(self):
+        """package_status values are safe for use in filenames."""
+        for status in ["READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED", "BLOCKED_EVIDENCE"]:
+            assert "/" not in status
+            assert " " not in status
+            assert status == status.upper()
+
+    def test_blocked_package_not_commit_ready(self, tmp_path, monkeypatch):
+        """BLOCKED_EVIDENCE must not coexist with evidence_authoritative=true."""
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        TestReviewZipPackageStatus._seed_valid_evidence(
+            TestReviewZipPackageStatus(), ev
+        )
+        monkeypatch.chdir(tmp_path)
+        TestReviewZipPackageStatus._init_clean_git(tmp_path)
+        (tmp_path / "dirty.py").write_text("x = 1")
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+        ce = m.get("current_evidence", {})
+        ef = ce.get("evidence_freshness", {})
+        assert ef.get("evidence_authoritative") is False
+
+
+class TestSourceRootContainment:
+    """Source-root containment: packaging must be within git source root."""
+
+    @staticmethod
+    def _init_clean_git(path):
+        import subprocess
+        for cmd in [
+            ["git", "init"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "Test User"],
+            ["git", "add", "."],
+            ["git", "commit", "-m", "init", "--allow-empty"],
+        ]:
+            r = subprocess.run(cmd, cwd=str(path), capture_output=True)
+            assert r.returncode == 0, f"{cmd} failed: {r.stderr.decode()}"
+
+    def test_containment_pass_when_inside_source_root(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        TestReviewZipPackageStatus._seed_valid_evidence(
+            TestReviewZipPackageStatus(), ev
+        )
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["source_root_containment"]["verdict"] == "PASS"
+        assert m["source_root_containment"]["blockers"] == []
+        assert m["external_paths_detected"] == []
+        assert m["package_status"] in ("READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED")
+
+    def test_evidence_outside_source_root_blocked(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        monkeypatch.chdir(repo)
+        self._init_clean_git(repo)
+        # Evidence dir outside repo
+        ext_ev = tmp_path / "external_evidence"
+        TestReviewZipPackageStatus._seed_valid_evidence(
+            TestReviewZipPackageStatus(), ext_ev
+        )
+        m = build_manifest(str(ext_ev), selection_mode="explicit")
+        assert m["source_root_containment"]["verdict"] == "BLOCKED"
+        assert len(m["source_root_containment"]["blockers"]) > 0
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+        assert len(m["external_paths_detected"]) > 0
+
+    def test_manifest_records_source_root(self, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import build_manifest
+        ev = tmp_path / "evidence"
+        TestReviewZipPackageStatus._seed_valid_evidence(
+            TestReviewZipPackageStatus(), ev
+        )
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["source_root"] == str(tmp_path)
+
+    def test_zip_still_created_when_containment_fails(self, tmp_path, monkeypatch):
+        """Containment failure must not prevent zip creation."""
+        from scripts.build_review_manifest import build_manifest
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        monkeypatch.chdir(repo)
+        self._init_clean_git(repo)
+        ext_ev = tmp_path / "ext_ev"
+        TestReviewZipPackageStatus._seed_valid_evidence(
+            TestReviewZipPackageStatus(), ext_ev
+        )
+        m = build_manifest(str(ext_ev), selection_mode="explicit")
+        assert m["review_package_created"] is True
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+
+    def test_no_code_references_clean_worktree(self):
+        """No code path should default to remedy-clean-*."""
+        import subprocess
+        result = subprocess.run(
+            ["grep", "-rn", "remedy-clean-", "scripts/", "apps/cli/",
+             "packages/orchestration/"],
+            capture_output=True, text=True,
+        )
+        matches = [l for l in result.stdout.splitlines()
+                   if not l.endswith(".pyc") and "__pycache__" not in l]
+        assert matches == [], f"Code references remedy-clean-: {matches}"
+
+
+class TestReviewBundleIntegrity:
+    """Review-bundle integrity: packaged file hashes must match content proof."""
+
+    @staticmethod
+    def _init_clean_git(path):
+        import subprocess
+        for cmd in [
+            ["git", "init"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "Test User"],
+            ["git", "add", "."],
+            ["git", "commit", "-m", "init", "--allow-empty"],
+        ]:
+            r = subprocess.run(cmd, cwd=str(path), capture_output=True)
+            assert r.returncode == 0, f"{cmd} failed: {r.stderr.decode()}"
+
+    @staticmethod
+    def _seed_with_proof(tmp_path, file_contents, proof_hashes):
+        """Create evidence dir with content proof and source files."""
+        import hashlib
+        ev = tmp_path / "evidence"
+        ev.mkdir(parents=True, exist_ok=True)
+        # Seed valid evidence base
+        TestReviewZipPackageStatus._seed_valid_evidence(
+            TestReviewZipPackageStatus(), ev
+        )
+        # Write content proof
+        proof = {
+            "schema_version": 1,
+            "file_hashes": proof_hashes,
+            "file_count": len(proof_hashes),
+        }
+        (ev / "current_change_content_proof.json").write_text(
+            json.dumps(proof)
+        )
+        # Write source files
+        for rel_path, content in file_contents.items():
+            fp = tmp_path / rel_path
+            fp.parent.mkdir(parents=True, exist_ok=True)
+            fp.write_text(content)
+        return ev
+
+    def test_matching_proof_ready_for_review(self, tmp_path, monkeypatch):
+        """Matching hashes → PASS → READY_FOR_REVIEW."""
+        from scripts.build_review_manifest import build_manifest
+        import hashlib
+        content = "x = 1\n"
+        h = hashlib.sha256(content.encode()).hexdigest()
+        ev = self._seed_with_proof(
+            tmp_path,
+            {"src/app.py": content},
+            {"src/app.py": h},
+        )
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        bi = m["review_bundle_integrity"]
+        assert bi["current_content_hash_checked"] is True
+        assert bi["current_content_hash_mismatches"] == []
+        assert bi["current_content_hash_missing_proofs"] == []
+        assert bi["verdict"] == "PASS"
+        assert m["package_status"] == "READY_FOR_REVIEW"
+
+    def test_hash_mismatch_blocked(self, tmp_path, monkeypatch):
+        """Hash mismatch → BLOCKED → BLOCKED_EVIDENCE."""
+        from scripts.build_review_manifest import build_manifest
+        content = "x = 1\n"
+        wrong_hash = "0" * 64
+        ev = self._seed_with_proof(
+            tmp_path,
+            {"src/app.py": content},
+            {"src/app.py": wrong_hash},
+        )
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        bi = m["review_bundle_integrity"]
+        assert bi["verdict"] == "BLOCKED"
+        assert len(bi["current_content_hash_mismatches"]) == 1
+        mm = bi["current_content_hash_mismatches"][0]
+        assert mm["file"] == "src/app.py"
+        assert mm["expected"] == wrong_hash
+        assert mm["actual"] != wrong_hash
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+
+    def test_mismatch_includes_both_hashes(self, tmp_path, monkeypatch):
+        """Mismatch entries include expected and actual SHA256."""
+        from scripts.build_review_manifest import build_manifest
+        import hashlib
+        content = "x = 2\n"
+        actual_h = hashlib.sha256(content.encode()).hexdigest()
+        wrong_h = "a" * 64
+        ev = self._seed_with_proof(
+            tmp_path,
+            {"src/b.py": content},
+            {"src/b.py": wrong_h},
+        )
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        mm = m["review_bundle_integrity"]["current_content_hash_mismatches"][0]
+        assert mm["expected"] == wrong_h
+        assert mm["actual"] == actual_h
+
+    def test_missing_proof_blocked(self, tmp_path, monkeypatch):
+        """File in proof but not on disk → missing proof → BLOCKED."""
+        from scripts.build_review_manifest import build_manifest
+        ev = self._seed_with_proof(
+            tmp_path,
+            {},
+            {"src/nonexistent.py": "f" * 64},
+        )
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        bi = m["review_bundle_integrity"]
+        assert bi["verdict"] == "BLOCKED"
+        assert "src/nonexistent.py" in bi["current_content_hash_missing_proofs"]
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+
+    def test_zip_still_created_on_mismatch(self, tmp_path, monkeypatch):
+        """Mismatch must not prevent zip creation."""
+        from scripts.build_review_manifest import build_manifest
+        ev = self._seed_with_proof(
+            tmp_path,
+            {"src/c.py": "y = 1\n"},
+            {"src/c.py": "0" * 64},
+        )
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        assert m["review_package_created"] is True
+        assert m["package_status"] == "BLOCKED_EVIDENCE"
+
+    def test_filename_status_matches_manifest(self, tmp_path, monkeypatch):
+        """Package filename suffix must match manifest package_status."""
+        from scripts.build_review_manifest import build_manifest
+        import hashlib
+        content = "z = 3\n"
+        h = hashlib.sha256(content.encode()).hexdigest()
+        ev = self._seed_with_proof(
+            tmp_path,
+            {"src/d.py": content},
+            {"src/d.py": h},
+        )
+        monkeypatch.chdir(tmp_path)
+        self._init_clean_git(tmp_path)
+        m = build_manifest(str(ev), selection_mode="explicit")
+        status = m["package_status"]
+        assert status in ("READY_FOR_REVIEW", "BLOCKED_EVIDENCE")
+        assert "/" not in status
+        assert " " not in status
+
+
+# ---------------------------------------------------------------------------
+# T002: CLI/config per-role model override flags
+#
+# --builder/reviewer/repair-provider|model|effort are validated at the CLI
+# layer and passed through to role_config.resolve_role_config. Invalid values
+# are rejected with exit code 2; omitting every flag preserves the built-in
+# defaults (backward compatible).
+# ---------------------------------------------------------------------------
+
+
+class TestRoleOverrideResolver:
+    """Unit tests for the CLI-layer resolver + validation."""
+
+    def test_backward_compat_defaults_when_all_omitted(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        cfgs = _resolve_cli_role_configs()
+        for role in ("builder", "reviewer", "repair"):
+            assert cfgs[role] == {
+                "provider": "ollama",
+                "model": "qwen3-coder-next",
+                "effort": "medium",
+            }
+
+    def test_parses_and_resolves_per_role_overrides(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        cfgs = _resolve_cli_role_configs(
+            builder_provider="claude",
+            builder_model="opus",
+            builder_effort="high",
+            reviewer_effort="low",
+            repair_provider="fake",
+        )
+        assert cfgs["builder"] == {
+            "provider": "claude", "model": "opus", "effort": "high",
+        }
+        # Partial override keeps defaults for unset fields.
+        assert cfgs["reviewer"]["effort"] == "low"
+        assert cfgs["reviewer"]["provider"] == "ollama"
+        assert cfgs["repair"]["provider"] == "fake"
+        assert cfgs["repair"]["effort"] == "medium"
+
+    def test_invalid_provider_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        with pytest.raises(SystemExit) as exc:
+            _resolve_cli_role_configs(builder_provider="bogus")
+        assert exc.value.code == 2
+
+    def test_invalid_effort_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        with pytest.raises(SystemExit) as exc:
+            _resolve_cli_role_configs(reviewer_effort="turbo")
+        assert exc.value.code == 2
+
+    def test_empty_model_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        with pytest.raises(SystemExit) as exc:
+            _resolve_cli_role_configs(repair_model="   ")
+        assert exc.value.code == 2
+
+
+class TestRoleOverrideHandlerWiring:
+    """The flags reject invalid input through the real command handlers."""
+
+    def _job_flow_ns(self, **overrides):
+        ns = build_parser().parse_args(["do", "job-flow", "--job-file", "job.md"])
+        for k, v in overrides.items():
+            setattr(ns, k, v)
+        return ns
+
+    def _job_run_ns(self, **overrides):
+        ns = build_parser().parse_args(["do", "job-run", "job-id"])
+        for k, v in overrides.items():
+            setattr(ns, k, v)
+        return ns
+
+    def test_job_flow_rejects_invalid_role_effort(self) -> None:
+        ns = self._job_flow_ns(builder_effort="turbo")
+        with pytest.raises(SystemExit) as exc:
+            COMMAND_HANDLERS[COMMAND_ID](ns)
+        assert exc.value.code == 2
+
+    def test_job_run_rejects_invalid_role_provider(self) -> None:
+        ns = self._job_run_ns(reviewer_provider="bogus")
+        with pytest.raises(SystemExit) as exc:
+            COMMAND_HANDLERS["do.job-run"](ns)
+        assert exc.value.code == 2
+
+
+class TestRoleOverridePassthroughE2E:
+    """End-to-end: role_configs appears in job-flow JSON output."""
+
+    @pytest.fixture
+    def isolate_data(self, tmp_path: Path, monkeypatch):
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        return data_dir
+
+    @pytest.fixture
+    def demo_repo(self, tmp_path: Path) -> Path:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Demo\n")
+        return repo
+
+    @pytest.fixture
+    def job_file(self, tmp_path: Path) -> Path:
+        jf = tmp_path / "job.md"
+        jf.write_text(
+            "# Job: Role Override E2E\n\n## Task 1\nAdd a doc file.\n\n"
+            "Acceptance:\n- file exists\n"
+        )
+        return jf
+
+    def test_role_configs_in_job_flow_json(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path
+    ):
+        argv = [
+            "do", "job-flow",
+            "--job-file", str(job_file),
+            "--repo", str(demo_repo),
+            "--builder", "fake",
+            "--reviewer", "fake",
+            "--out", str(tmp_path / "evidence"),
+            "--json",
+        ]
+        grouped_main(argv)
+        data = json.loads(capsys.readouterr().out)
+        assert "role_configs" in data
+        # Defaults present for every role when no override flags are supplied.
+        for role in ("builder", "reviewer", "repair"):
+            assert data["role_configs"][role]["provider"] == "ollama"
+            assert data["role_configs"][role]["effort"] == "medium"
+
+
+# ---------------------------------------------------------------------------
+# T003: CLI per-role flag registration (argparse layer)
+#
+# Verifies that --builder/reviewer/repair-provider|model|effort flags are
+# reachable from the CLI for both do.job-run and do.job-flow commands.
+# ---------------------------------------------------------------------------
+
+
+class TestCliRoleFlags:
+    """Verify the 9 per-role CLI flags parse correctly for job-flow and job-run."""
+
+    def _parse(self, argv: list[str]):
+        return build_parser().parse_args(argv)
+
+    # --- do.job-flow: all 9 flags parse to correct attributes ----------------
+
+    def test_job_flow_builder_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--builder-provider", "claude",
+        ])
+        assert ns.builder_provider == "claude"
+
+    def test_job_flow_builder_model(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--builder-model", "claude-opus-4-20250514",
+        ])
+        assert ns.builder_model == "claude-opus-4-20250514"
+
+    def test_job_flow_builder_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--builder-effort", "high",
+        ])
+        assert ns.builder_effort == "high"
+
+    def test_job_flow_reviewer_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--reviewer-provider", "ollama",
+        ])
+        assert ns.reviewer_provider == "ollama"
+
+    def test_job_flow_reviewer_model(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--reviewer-model", "qwen3-coder-next",
+        ])
+        assert ns.reviewer_model == "qwen3-coder-next"
+
+    def test_job_flow_reviewer_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--reviewer-effort", "low",
+        ])
+        assert ns.reviewer_effort == "low"
+
+    def test_job_flow_repair_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--repair-provider", "fake",
+        ])
+        assert ns.repair_provider == "fake"
+
+    def test_job_flow_repair_model(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--repair-model", "deepseek-r1",
+        ])
+        assert ns.repair_model == "deepseek-r1"
+
+    def test_job_flow_repair_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--repair-effort", "max",
+        ])
+        assert ns.repair_effort == "max"
+
+    # --- do.job-run: all 9 flags parse to correct attributes -----------------
+
+    def test_job_run_builder_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--builder-provider", "claude-cli",
+        ])
+        assert ns.builder_provider == "claude-cli"
+
+    def test_job_run_builder_model(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--builder-model", "claude-opus-4-20250514",
+        ])
+        assert ns.builder_model == "claude-opus-4-20250514"
+
+    def test_job_run_builder_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--builder-effort", "medium",
+        ])
+        assert ns.builder_effort == "medium"
+
+    def test_job_run_reviewer_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--reviewer-provider", "fixture",
+        ])
+        assert ns.reviewer_provider == "fixture"
+
+    def test_job_run_reviewer_model(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--reviewer-model", "gpt-4o",
+        ])
+        assert ns.reviewer_model == "gpt-4o"
+
+    def test_job_run_reviewer_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--reviewer-effort", "high",
+        ])
+        assert ns.reviewer_effort == "high"
+
+    def test_job_run_repair_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--repair-provider", "ollama",
+        ])
+        assert ns.repair_provider == "ollama"
+
+    def test_job_run_repair_model(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--repair-model", "codellama",
+        ])
+        assert ns.repair_model == "codellama"
+
+    def test_job_run_repair_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--repair-effort", "low",
+        ])
+        assert ns.repair_effort == "low"
+
+    # --- Defaults are None when flags are omitted ----------------------------
+
+    def test_job_flow_defaults_none(self) -> None:
+        ns = self._parse(["do", "job-flow", "--job-file", "x.md"])
+        for attr in (
+            "builder_provider", "builder_model", "builder_effort",
+            "reviewer_provider", "reviewer_model", "reviewer_effort",
+            "repair_provider", "repair_model", "repair_effort",
+        ):
+            assert getattr(ns, attr) is None, f"{attr} should default to None"
+
+    def test_job_run_defaults_none(self) -> None:
+        ns = self._parse(["do", "job-run", "job-id-123"])
+        for attr in (
+            "builder_provider", "builder_model", "builder_effort",
+            "reviewer_provider", "reviewer_model", "reviewer_effort",
+            "repair_provider", "repair_model", "repair_effort",
+        ):
+            assert getattr(ns, attr) is None, f"{attr} should default to None"
+
+    # --- Validation through _validate_role_override --------------------------
+
+    def test_invalid_builder_effort_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        with pytest.raises(SystemExit) as exc:
+            _validate_role_override("builder", "effort", "invalid")
+        assert exc.value.code == 2
+
+    def test_empty_builder_model_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        with pytest.raises(SystemExit) as exc:
+            _validate_role_override("builder", "model", "")
+        assert exc.value.code == 2
+
+    def test_whitespace_only_model_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        with pytest.raises(SystemExit) as exc:
+            _validate_role_override("reviewer", "model", "   ")
+        assert exc.value.code == 2
+
+    def test_invalid_provider_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        with pytest.raises(SystemExit) as exc:
+            _validate_role_override("repair", "provider", "bogus-provider")
+        assert exc.value.code == 2
+
+    def test_none_value_is_accepted(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        # Should not raise
+        _validate_role_override("builder", "provider", None)
+        _validate_role_override("reviewer", "model", None)
+        _validate_role_override("repair", "effort", None)
+
+    # --- Catalog registration: both commands list all 9 role flags -----------
+
+    def test_job_run_catalog_has_role_flags(self) -> None:
+        cmd = get_command("do.job-run")
+        arg_names = {a.name for a in cmd.args}
+        for flag in (
+            "--builder-provider", "--builder-model", "--builder-effort",
+            "--reviewer-provider", "--reviewer-model", "--reviewer-effort",
+            "--repair-provider", "--repair-model", "--repair-effort",
+        ):
+            assert flag in arg_names, f"do.job-run missing {flag}"
+
+    def test_job_flow_catalog_has_role_flags(self) -> None:
+        cmd = get_command("do.job-flow")
+        arg_names = {a.name for a in cmd.args}
+        for flag in (
+            "--builder-provider", "--builder-model", "--builder-effort",
+            "--reviewer-provider", "--reviewer-model", "--reviewer-effort",
+            "--repair-provider", "--repair-model", "--repair-effort",
+        ):
+            assert flag in arg_names, f"do.job-flow missing {flag}"

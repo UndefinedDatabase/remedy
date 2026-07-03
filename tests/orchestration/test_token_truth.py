@@ -69,12 +69,13 @@ def test_estimated_only_no_actual(tmp_path: Path) -> None:
     assert report["reviewer_estimated_total"] == 4923
     assert report["repair_estimated_total"] == 0
     assert report["provider_call_count"] == 2
-    assert report["per_task"]["T001"] == {
-        "builder_estimated": 8573,
-        "reviewer_estimated": 4923,
-        "repair_estimated": 0,
-        "actual_available": False,
-    }
+    t001 = report["per_task"]["T001"]
+    assert t001["builder_estimated"] == 8573
+    assert t001["reviewer_estimated"] == 4923
+    assert t001["repair_estimated"] == 0
+    assert t001["actual_available"] is False
+    assert t001["role"] == "unknown"
+    assert t001["estimation_method"] == "character_heuristic"
 
 
 def test_multiple_tasks_aggregate(tmp_path: Path) -> None:
@@ -164,3 +165,83 @@ def test_no_cross_contamination(tmp_path: Path) -> None:
     assert report["builder_estimated_total"] == 9999
     assert report["reviewer_estimated_total"] == 7777
     assert report["repair_estimated_total"] == 3333
+
+
+def test_per_task_includes_role(tmp_path: Path) -> None:
+    d = _run_dir(tmp_path, "T001")
+    (d / "token_accounting.json").write_text(json.dumps({
+        "kind": "estimated",
+        "builder_prompt_tokens_estimated": 100,
+        "reviewer_prompt_tokens_estimated": 50,
+        "repair_prompt_tokens_estimated": 0,
+        "role": "builder",
+        "configured_model": "opus",
+    }))
+    (d / "provider_evidence.json").write_text(json.dumps({
+        "builder_provider": "claude-cli",
+    }))
+    report = build_token_truth(str(tmp_path))
+    t001 = report["per_task"]["T001"]
+    assert t001["role"] == "builder"
+    assert t001["configured_model"] == "opus"
+
+
+def test_per_task_actual_model_from_provider_evidence(tmp_path: Path) -> None:
+    d = _run_dir(tmp_path, "T001")
+    (d / "token_accounting.json").write_text(json.dumps({
+        "kind": "estimated",
+        "builder_prompt_tokens_estimated": 100,
+        "reviewer_prompt_tokens_estimated": 50,
+        "repair_prompt_tokens_estimated": 0,
+    }))
+    (d / "provider_evidence.json").write_text(json.dumps({
+        "builder_provider": "claude-cli",
+        "actual_model": "claude-opus-4-20250514",
+    }))
+    report = build_token_truth(str(tmp_path))
+    t001 = report["per_task"]["T001"]
+    assert t001["actual_model"] == "claude-opus-4-20250514"
+
+
+def test_actual_available_false_no_fake_actuals(tmp_path: Path) -> None:
+    _seed_task(tmp_path, builder=500, reviewer=200, repair=0)
+    report = build_token_truth(str(tmp_path))
+    t001 = report["per_task"]["T001"]
+    assert t001["actual_available"] is False
+    assert t001["estimation_method"] == "character_heuristic"
+
+
+def test_actual_available_true_no_estimation_method(tmp_path: Path) -> None:
+    _seed_task(tmp_path, builder=500, reviewer=200, repair=0,
+               provider_evidence={
+                   "builder_provider": "claude",
+                   "usage": {"input_tokens": 1000, "output_tokens": 500},
+               })
+    report = build_token_truth(str(tmp_path))
+    t001 = report["per_task"]["T001"]
+    assert t001["actual_available"] is True
+    assert t001["estimation_method"] is None
+
+
+def test_missing_role_defaults_to_unknown(tmp_path: Path) -> None:
+    d = _run_dir(tmp_path, "T001")
+    (d / "token_accounting.json").write_text(json.dumps({
+        "kind": "estimated",
+        "builder_prompt_tokens_estimated": 100,
+        "reviewer_prompt_tokens_estimated": 50,
+        "repair_prompt_tokens_estimated": 0,
+    }))
+    (d / "provider_evidence.json").write_text(json.dumps({
+        "builder_provider": "claude-cli",
+    }))
+    report = build_token_truth(str(tmp_path))
+    t001 = report["per_task"]["T001"]
+    assert t001["role"] == "unknown"
+
+
+def test_estimation_method_recorded_when_estimated(tmp_path: Path) -> None:
+    _seed_task(tmp_path, builder=100, reviewer=50, repair=0)
+    report = build_token_truth(str(tmp_path))
+    t001 = report["per_task"]["T001"]
+    assert t001["estimation_method"] == "character_heuristic"
+    assert t001["actual_available"] is False

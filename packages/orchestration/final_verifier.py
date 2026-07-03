@@ -19,6 +19,12 @@ Reads (all optional — missing inputs degrade gracefully):
     task_runs/<task_id>/tests.txt
     task_runs/<task_id>/token_accounting.json
     task_runs/<task_id>/safe.diff
+    task_runs/<task_id>/task_execution_evidence.json
+    task_runs/<task_id>/task_actor_binding.json
+    task_runs/<task_id>/prompt_trace_summary.json
+    token_cost_policy.json
+    final_job_review.json
+    execution_config.json
 
 Public API:
     build_final_verifier_report(evidence_dir) -> dict
@@ -30,6 +36,11 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+
+from packages.orchestration.evidence_mode import (
+    ExecutionMode,
+    classify_execution_mode,
+)
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -62,6 +73,14 @@ def _read_text(path: Path) -> str:
         return ""
 
 
+def _read_gate_verdict(base: Path, filename: str) -> str:
+    """Return the ``verdict`` string from a job-level gate JSON, or "" if absent."""
+    data = _read_json(base / filename)
+    if isinstance(data, dict):
+        return str(data.get("verdict", "") or "")
+    return ""
+
+
 def _task_ids(base: Path) -> list[str]:
     """Return sorted, safe task IDs that have a task_runs/<id>/ directory."""
     runs = base / "task_runs"
@@ -75,9 +94,28 @@ def _task_ids(base: Path) -> list[str]:
     return sorted(ids)
 
 
+def _normalize(path: str) -> str:
+    p = path.replace("\\", "/").strip()
+    while p.startswith("./"):
+        p = p[2:]
+    return p
+
+
+def _diff_paths(diff_text: str) -> set[str]:
+    """Extract file paths from unified diff headers."""
+    _PATH_RE = re.compile(r"^[+-]{3}\s+[ab]/(.+)$")
+    files: set[str] = set()
+    for line in diff_text.splitlines():
+        m = _PATH_RE.match(line)
+        if m:
+            p = m.group(1).strip()
+            if p and p != "/dev/null":
+                files.add(_normalize(p))
+    return files
+
+
 def _collect_changes(base: Path, task_ids: list[str]) -> tuple[list[str], dict[str, Any]]:
     changed_files: set[str] = set()
-    # file -> accumulated ranges across all tasks (union, deduped, sorted).
     range_acc: dict[str, list[Any]] = {}
     for tid in task_ids:
         packet = _read_json(base / "task_runs" / tid / "review_scope_packet.json")
@@ -95,6 +133,117 @@ def _collect_changes(base: Path, task_ids: list[str]) -> tuple[list[str], dict[s
         for f, acc in range_acc.items()
     }
     return sorted(changed_files), changed_line_ranges
+
+
+_OPERATIONAL_PREFIXES = (".agent/", ".data/", "remedy-job-evidence", "run_transcript")
+_OPERATIONAL_SUFFIXES = (".log", ".zip", ".tar", ".gz", ".pyc", ".pyo")
+
+
+def _is_source_for_alignment(path: str) -> bool:
+    """Filter out operational/excluded files from authoritative set."""
+    if any(path.startswith(p) for p in _OPERATIONAL_PREFIXES):
+        return False
+    if any(path.endswith(s) for s in _OPERATIONAL_SUFFIXES):
+        return False
+    if any(sub in path for sub in ("__pycache__", "htmlcov/", ".coverage")):
+        return False
+    return True
+
+
+def _collect_authoritative_changed_files(base: Path, task_ids: list[str]) -> list[str]:
+    """Union changed files from all evidence sources, excluding operational files."""
+    files: set[str] = set()
+
+    for tid in task_ids:
+        packet = _read_json(base / "task_runs" / tid / "review_scope_packet.json")
+        if isinstance(packet, dict):
+            for f in packet.get("changed_files") or []:
+                files.add(_normalize(str(f)))
+        safe_diff = base / "task_runs" / tid / "safe.diff"
+        if safe_diff.exists():
+            files |= _diff_paths(_read_text(safe_diff))
+
+    ws_diff = base / "workspace.diff"
+    if ws_diff.exists():
+        files |= _diff_paths(_read_text(ws_diff))
+
+    apply_json = _read_json(base / "workspace_apply.json")
+    if isinstance(apply_json, list):
+        for entry in apply_json:
+            if isinstance(entry, dict):
+                manifest = entry.get("apply_manifest")
+                if isinstance(manifest, dict):
+                    for f in manifest.get("applied_files") or []:
+                        files.add(_normalize(str(f)))
+
+    cp_gate = _read_json(base / "change_provenance_gate.json")
+    if isinstance(cp_gate, dict):
+        for f in cp_gate.get("covered_files") or []:
+            files.add(_normalize(str(f)))
+
+    return sorted(f for f in files if _is_source_for_alignment(f))
+
+
+def _file_set_alignment(
+    base: Path,
+    authoritative_files: list[str],
+    review_scope_files: list[str],
+) -> dict[str, Any]:
+    """Compare authoritative changed files against review scope changed files."""
+    auth_set = set(authoritative_files)
+    scope_set = set(review_scope_files)
+
+    cp_gate = _read_json(base / "change_provenance_gate.json")
+    cp_present = isinstance(cp_gate, dict) and cp_gate.get("verdict")
+    cp_covered = set()
+    cp_hash_mismatches: list[dict[str, str]] = []
+    if cp_present:
+        cp_covered = {_normalize(str(f)) for f in (cp_gate.get("covered_files") or [])}
+        cp_hash_mismatches = cp_gate.get("hash_mismatches") or []
+
+    in_auth_not_scope = sorted(auth_set - scope_set)
+    in_scope_not_auth = sorted(scope_set - auth_set)
+
+    uncovered = sorted(auth_set - cp_covered) if cp_present else []
+
+    mismatches: list[str] = []
+    blocking: list[str] = []
+
+    if in_auth_not_scope:
+        mismatches.append(
+            f"authoritative files not in review_scope: {in_auth_not_scope}"
+        )
+    if in_scope_not_auth:
+        mismatches.append(
+            f"review_scope files not in authoritative set: {in_scope_not_auth}"
+        )
+    if uncovered:
+        blocking.append(
+            f"authoritative files not covered by change_provenance: {uncovered}"
+        )
+        mismatches.append(blocking[-1])
+
+    has_hash_mismatches = bool(cp_hash_mismatches)
+    if has_hash_mismatches:
+        blocking.append(
+            f"content hash mismatches: {[m['file'] for m in cp_hash_mismatches]}"
+        )
+        mismatches.append(blocking[-1])
+
+    if blocking:
+        status = "BLOCKED"
+    elif mismatches:
+        status = "PASS_WITH_RISKS"
+    else:
+        status = "PASS"
+
+    return {
+        "authoritative_changed_files": authoritative_files,
+        "change_source_mismatches": mismatches,
+        "review_subject_uncovered_files": uncovered,
+        "content_hash_mismatches": cp_hash_mismatches,
+        "file_set_alignment_status": status,
+    }
 
 
 def _aggregate_gate(base: Path, task_ids: list[str], filename: str, key: str,
@@ -187,11 +336,18 @@ def _aggregate_test_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
         text = _read_text(base / "task_runs" / tid / "tests.txt")
         if not text.strip():
             continue
+        # Only use the last summary line to avoid double-counting
+        last_passed = None
+        last_failed = None
         for m in _PASSED_RE.finditer(text):
-            passed += int(m.group(1))
-            ran = True
+            last_passed = int(m.group(1))
         for m in _FAILED_RE.finditer(text):
-            failed += int(m.group(1))
+            last_failed = int(m.group(1))
+        if last_passed is not None:
+            passed += last_passed
+            ran = True
+        if last_failed is not None:
+            failed += last_failed
             ran = True
     return {"ran": ran, "passed": passed, "failed": failed}
 
@@ -263,12 +419,161 @@ def _evidence_completeness(base: Path, task_ids: list[str]) -> dict[str, bool]:
     }
 
 
+def _trace_provider_calls(base: Path, tid: str) -> int | None:
+    """Provider call count recorded in a task's prompt_trace_summary, if present."""
+    trace = _read_json(base / "task_runs" / tid / "prompt_trace_summary.json")
+    if not isinstance(trace, dict):
+        return None
+    for key in ("provider_call_count", "total_provider_calls", "provider_calls"):
+        if key in trace:
+            val = trace[key]
+            if isinstance(val, (int, float)) and not isinstance(val, bool):
+                return int(val)
+    return None
+
+
+def _execution_mode_consistency(base: Path, task_ids: list[str]) -> dict[str, Any]:
+    """Validate each task's declared execution_mode against its prompt trace.
+
+    Only active when at least one ``task_execution_evidence.json`` is present, so
+    jobs predating the taxonomy are unaffected. A task that claims
+    ``provider_backed`` while the trace shows no provider activity is a phantom
+    provider and blocks; other disagreements warn.
+    """
+    by_task: dict[str, str] = {}
+    findings: list[str] = []
+    blocked = False
+    active = any(
+        (base / "task_runs" / tid / "task_execution_evidence.json").exists()
+        for tid in task_ids
+    )
+    if not active:
+        return {"by_task": by_task, "findings": findings, "blocked": blocked, "active": False}
+
+    for tid in task_ids:
+        ev = _read_json(base / "task_runs" / tid / "task_execution_evidence.json")
+        if not isinstance(ev, dict):
+            findings.append(f"{tid}: task_execution_evidence.json missing")
+            continue
+        recorded = str(ev.get("execution_mode", "") or "")
+        by_task[tid] = recorded
+
+        prompt_available = bool(ev.get("prompt_trace_available"))
+        provider_calls = max(0, int(ev.get("provider_call_count") or 0))
+
+        trace_calls = _trace_provider_calls(base, tid)
+        if trace_calls is not None and trace_calls != provider_calls:
+            findings.append(
+                f"{tid}: provider_call_count={provider_calls} disagrees with "
+                f"prompt trace ({trace_calls})"
+            )
+            provider_calls = trace_calls
+
+        expected = classify_execution_mode(
+            1 if prompt_available else 0,
+            provider_calls,
+            ev.get("builder_provider"),
+            ev.get("reviewer_provider"),
+        ).value
+
+        if recorded and recorded != expected:
+            findings.append(
+                f"{tid}: execution_mode={recorded} inconsistent with prompt trace "
+                f"(expected {expected})"
+            )
+            if (
+                recorded == ExecutionMode.PROVIDER_BACKED.value
+                and expected != ExecutionMode.PROVIDER_BACKED.value
+            ):
+                blocked = True
+
+    return {"by_task": by_task, "findings": findings, "blocked": blocked, "active": True}
+
+
+def _sticky_binding_check(base: Path, task_ids: list[str]) -> dict[str, Any]:
+    """Read per-task actor bindings and warn where sticky proof is missing/broken.
+
+    Only active when at least one ``task_actor_binding.json`` is present.
+    """
+    warnings: list[str] = []
+    by_task: dict[str, Any] = {}
+    active = any(
+        (base / "task_runs" / tid / "task_actor_binding.json").exists()
+        for tid in task_ids
+    )
+    if not active:
+        return {"warnings": warnings, "by_task": by_task, "active": False}
+
+    for tid in task_ids:
+        binding = _read_json(base / "task_runs" / tid / "task_actor_binding.json")
+        if not isinstance(binding, dict):
+            warnings.append(f"{tid}: sticky actor binding proof missing")
+            by_task[tid] = None
+            continue
+        sticky = bool(binding.get("sticky_across_rounds"))
+        by_task[tid] = sticky
+        if not sticky:
+            warnings.append(f"{tid}: actors not sticky across rounds")
+
+    return {"warnings": warnings, "by_task": by_task, "active": True}
+
+
+def _token_cost_policy_findings(base: Path) -> dict[str, Any]:
+    """Surface cost-risk findings from the job-level token_cost_policy artifact."""
+    data = _read_json(base / "token_cost_policy.json")
+    if not isinstance(data, dict):
+        return {"present": False, "findings": [], "has_critical": False}
+    findings = [f for f in (data.get("cost_risk_findings") or []) if isinstance(f, dict)]
+    has_critical = any(
+        str(f.get("severity", "")).strip().lower() == "critical" for f in findings
+    )
+    return {"present": True, "findings": findings, "has_critical": has_critical}
+
+
+def _final_job_review_check(base: Path) -> dict[str, Any]:
+    """Read the final job-level review; unresolved findings block promotion."""
+    data = _read_json(base / "final_job_review.json")
+    if not isinstance(data, dict):
+        return {"present": False, "verdict": "", "findings": [], "blocked": False}
+    verdict = str(data.get("verdict", "") or "")
+    findings = [f for f in (data.get("findings") or []) if isinstance(f, dict)]
+    blocked = bool(findings) or verdict.strip().upper() == "BLOCKED"
+    return {
+        "present": True,
+        "verdict": verdict,
+        "findings": findings,
+        "blocked": blocked,
+    }
+
+
+def _invocation_args_honesty(exec_config: Any) -> list[str]:
+    """Warn when configured invocation args are treated as actual (unobserved)."""
+    warnings: list[str] = []
+    if not isinstance(exec_config, dict):
+        return warnings
+    observed = bool(exec_config.get("actual_invocation_observed"))
+    if observed:
+        return warnings
+    if exec_config.get("configured_invocation_args"):
+        warnings.append(
+            "configured_invocation_args recorded but not observed as actual invocation"
+        )
+    if exec_config.get("actual_invocation_args"):
+        warnings.append(
+            "actual_invocation_args present without observation proof"
+        )
+    return warnings
+
+
 def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     """Build a deterministic final verifier report from evidence artifacts."""
     base = Path(evidence_dir) if evidence_dir else Path(".")
     task_ids = _task_ids(base)
 
-    changed_files, changed_line_ranges = _collect_changes(base, task_ids)
+    review_scope_files, changed_line_ranges = _collect_changes(base, task_ids)
+    authoritative_changed_files = _collect_authoritative_changed_files(base, task_ids)
+    changed_files = authoritative_changed_files
+    file_alignment = _file_set_alignment(base, authoritative_changed_files, review_scope_files)
 
     missing_tests_gate = _aggregate_gate(
         base, task_ids, "missing_tests_gate.json", "gate_status",
@@ -280,8 +585,29 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     )
     scratch_file_guard = _scratch_status(base, task_ids)
 
+    fresh_evidence_gate = _read_gate_verdict(base, "fresh_evidence_gate.json")
+    artifact_contract_gate = _read_gate_verdict(base, "artifact_contract_gate.json")
+    runtime_integration_gate = _read_gate_verdict(base, "runtime_integration_gate.json")
+    change_provenance = _read_gate_verdict(base, "change_provenance_gate.json")
+    # commit_execution_gate is downstream — reads OUR verdict, so we don't read it
+    # (avoids circular dependency). We expose it in output for informational use.
+    commit_execution_gate = _read_gate_verdict(base, "commit_execution_gate.json")
+
+    verification_tests = _read_json(base / "verification_tests.json")
+
     unresolved_findings = _collect_unresolved_findings(base, task_ids)
     test_status = _aggregate_test_status(base, task_ids)
+
+    if (
+        isinstance(verification_tests, dict)
+        and verification_tests.get("exit_code") == 0
+        and verification_tests.get("passed", 0) > 0
+        and verification_tests.get("failed", 0) == 0
+    ):
+        test_status["ran"] = True
+        test_status["passed"] += verification_tests["passed"]
+        test_status["failed"] += verification_tests.get("failed", 0)
+
     token_status = _token_status(base, task_ids)
 
     evidence_completeness = _evidence_completeness(base, task_ids)
@@ -289,27 +615,108 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         name for name, present in evidence_completeness.items() if not present
     )
 
-    gates_blocked = scratch_file_guard == "BLOCKED" or spec_compliance == "BLOCKED"
+    # Model mismatch detection from execution config
+    exec_config = _read_json(base / "execution_config.json")
+    model_mismatch_warnings: list[str] = []
+    model_mismatch_blocked = False
+    model_needs_repair = False
+    if isinstance(exec_config, dict):
+        for role in ("builder", "reviewer", "repair"):
+            configured = exec_config.get(f"{role}_model")
+            actual = exec_config.get(f"{role}_actual_model")
+            actual_available = exec_config.get("actual_config_available", False)
+
+            if configured and actual and configured != actual:
+                model_mismatch_warnings.append(
+                    f"{role}: configured={configured} actual={actual}"
+                )
+                if role in ("builder", "reviewer"):
+                    model_mismatch_blocked = True
+
+            if not configured and role in ("builder", "reviewer"):
+                model_mismatch_warnings.append(
+                    f"{role}: no configured model"
+                )
+                model_needs_repair = True
+
+            if configured and actual is None and not actual_available:
+                model_mismatch_warnings.append(
+                    f"{role}: actual model unavailable (configured={configured})"
+                )
+    else:
+        model_mismatch_warnings.append("execution_config.json missing")
+
+    # T006 final verifier integration: execution mode, sticky binding, token
+    # cost policy, final job review, and configured-vs-actual invocation args.
+    exec_mode = _execution_mode_consistency(base, task_ids)
+    sticky = _sticky_binding_check(base, task_ids)
+    token_cost = _token_cost_policy_findings(base)
+    final_job_review = _final_job_review_check(base)
+    invocation_args_warnings = _invocation_args_honesty(exec_config)
+
+    upstream_gate_verdicts = {
+        "fresh_evidence_gate": fresh_evidence_gate,
+        "artifact_contract_gate": artifact_contract_gate,
+        "runtime_integration_gate": runtime_integration_gate,
+        "change_provenance_gate": change_provenance,
+    }
+    any_core_gate_blocked = any(
+        v == "BLOCKED" for v in upstream_gate_verdicts.values() if v
+    )
+
+    file_alignment_blocked = (
+        file_alignment["file_set_alignment_status"] == "BLOCKED"
+    )
+    file_alignment_risky = (
+        file_alignment["file_set_alignment_status"] == "PASS_WITH_RISKS"
+    )
+    gates_blocked = (
+        scratch_file_guard == "BLOCKED"
+        or spec_compliance == "BLOCKED"
+        or any_core_gate_blocked
+        or file_alignment_blocked
+        or model_mismatch_blocked
+        or exec_mode["blocked"]
+        or final_job_review["blocked"]
+        or token_cost["has_critical"]
+    )
     needs_repair = (
         bool(unresolved_findings)
         or spec_compliance == "FAIL"
         or test_status["failed"] > 0
+        or model_needs_repair
+    )
+
+    tests_verified = (
+        isinstance(verification_tests, dict)
+        and verification_tests.get("exit_code") == 0
+        and verification_tests.get("passed", 0) > 0
+        and verification_tests.get("failed", 0) == 0
+    )
+    effective_missing_tests = missing_tests_gate
+    if tests_verified and missing_tests_gate == "NEEDS_TESTS":
+        effective_missing_tests = "PASS"
+
+    integration_warnings = bool(
+        exec_mode["findings"]
+        or sticky["warnings"]
+        or token_cost["findings"]
+        or invocation_args_warnings
     )
 
     if gates_blocked:
         verdict = "BLOCKED"
-    elif missing_tests_gate == "NEEDS_TESTS":
+    elif effective_missing_tests == "NEEDS_TESTS":
         verdict = "NEEDS_TESTS"
     elif needs_repair:
         verdict = "NEEDS_REPAIR"
-    elif missing_evidence:
+    elif missing_evidence or file_alignment_risky or integration_warnings or (
+        model_mismatch_warnings and not model_mismatch_blocked
+    ):
         verdict = "PASS_WITH_RISKS"
     else:
         verdict = "PASS"
 
-    # NEEDS_TESTS deliberately takes precedence over NEEDS_REPAIR (missing tests
-    # can change which findings are real), but a repair signal must never be
-    # silently masked. Surface it explicitly so consumers see both conditions.
     also_needs_repair = needs_repair and verdict == "NEEDS_TESTS"
     recommended_action = _RECOMMENDED_ACTION[verdict]
     if also_needs_repair:
@@ -323,14 +730,40 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         "also_needs_repair": also_needs_repair,
         "changed_files": changed_files,
         "changed_line_ranges": changed_line_ranges,
+        "authoritative_changed_files": file_alignment["authoritative_changed_files"],
+        "change_source_mismatches": file_alignment["change_source_mismatches"],
+        "review_subject_uncovered_files": file_alignment["review_subject_uncovered_files"],
+        "content_hash_mismatches": file_alignment["content_hash_mismatches"],
+        "file_set_alignment_status": file_alignment["file_set_alignment_status"],
         "unresolved_findings": unresolved_findings,
         "test_status": test_status,
         "missing_tests_gate": missing_tests_gate,
         "scratch_file_guard": scratch_file_guard,
+        "change_provenance": change_provenance,
+        "change_provenance_gate": change_provenance,
+        "fresh_evidence_gate": fresh_evidence_gate,
+        "artifact_contract_gate": artifact_contract_gate,
+        "runtime_integration_gate": runtime_integration_gate,
+        "commit_execution_gate": commit_execution_gate,
         "spec_compliance": spec_compliance,
         "token_status": token_status,
         "evidence_completeness": evidence_completeness,
         "missing_evidence": missing_evidence,
+        "model_mismatch_warnings": model_mismatch_warnings,
+        "model_mismatch_blocked": model_mismatch_blocked,
+        "model_needs_repair": model_needs_repair,
+        "execution_mode_by_task": exec_mode["by_task"],
+        "execution_mode_findings": exec_mode["findings"],
+        "execution_mode_blocked": exec_mode["blocked"],
+        "sticky_binding_by_task": sticky["by_task"],
+        "sticky_binding_warnings": sticky["warnings"],
+        "token_cost_risk_findings": token_cost["findings"],
+        "token_cost_policy_present": token_cost["present"],
+        "token_cost_has_critical": token_cost["has_critical"],
+        "final_job_review_verdict": final_job_review["verdict"],
+        "final_job_review_findings": final_job_review["findings"],
+        "final_job_review_blocked": final_job_review["blocked"],
+        "invocation_args_warnings": invocation_args_warnings,
         "recommended_action": recommended_action,
     }
 

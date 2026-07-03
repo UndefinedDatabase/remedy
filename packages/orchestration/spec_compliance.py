@@ -134,7 +134,12 @@ def parse_goal_requirements(goal_text: str) -> dict[str, Any]:
         result["required_functions"] = _DEF_RE.findall(text)
 
     if "required_tests" not in explicit:
-        result["required_tests"] = _TEST_RE.findall(text)
+        tests: list[str] = []
+        for m in _TEST_RE.finditer(text):
+            if text[m.end():m.end() + 3] == ".py":
+                continue
+            tests.append(m.group())
+        result["required_tests"] = tests
 
     if "required_constants" not in explicit:
         consts: list[str] = []
