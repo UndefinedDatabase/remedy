@@ -1,5 +1,8 @@
 # Bounded Overnight Executor v0
 
+> **Status: DEPRECATED** — This document describes a future plan or deprecated subsystem.
+> It is kept for historical context. See `docs/roadmap/ROADMAP.md` for current planning.
+
 The first executor that *acts* on a [Bounded Overnight Preparation](bounded-overnight-prep-v0.md)
 readiness report. It performs **at most one** bounded, **foreground**, reviewable
 step when a human **explicitly** invokes it.

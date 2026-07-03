@@ -1,5 +1,8 @@
 # Candidate Generator Adapter — Future Direction (design note)
 
+> **Status: DEPRECATED** — This document describes a future plan or deprecated subsystem.
+> It is kept for historical context. See `docs/roadmap/ROADMAP.md` for current planning.
+
 This note records WHY automated external candidate generation is deferred and HOW a
 future adapter must work. It is design only — no such adapter executes in v0.
 

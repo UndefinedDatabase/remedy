@@ -1,5 +1,8 @@
 # External Builder Sandbox — Future Design Note (Step 1641)
 
+> **Status: DEPRECATED** — This document describes a future plan or deprecated subsystem.
+> It is kept for historical context. See `docs/roadmap/ROADMAP.md` for current planning.
+
 A forward-looking note. **Nothing here is built.** It records why the Automated Local Candidate
 Generator came first and what a future External Builder Sandbox must satisfy.
 

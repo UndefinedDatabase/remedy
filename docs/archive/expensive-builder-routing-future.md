@@ -1,5 +1,8 @@
 # Expensive Builder Routing (future)
 
+> **Status: DEPRECATED** — This document describes a future plan or deprecated subsystem.
+> It is kept for historical context. See `docs/roadmap/ROADMAP.md` for current planning.
+
 > Design note. **Not built.** Records the intended ordering and the hard guardrails for any
 > future expensive/external builder routing, so it is never bolted on unsafely.
 

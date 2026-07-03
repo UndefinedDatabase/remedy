@@ -1,5 +1,9 @@
 # Overnight Mission Contract + Review/Repair Spine v0 (Steps 1837-1876)
 
+> **Status: SEMANTICS SUPERSEDED** — The overnight / time-of-day mechanics described here
+> are explicitly deprecated by the roadmap (docs/roadmap/ROADMAP.md, Teil B).
+> The underlying execution and approval concepts remain valid.
+
 ## Why this exists
 
 This is the first hard **mission-contract spine** for Overnight Mode. A user gives Remedy a

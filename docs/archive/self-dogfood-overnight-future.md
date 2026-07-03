@@ -1,5 +1,8 @@
 # Self-Dogfood Overnight — Future Direction (design note)
 
+> **Status: DEPRECATED** — This document describes a future plan or deprecated subsystem.
+> It is kept for historical context. See `docs/roadmap/ROADMAP.md` for current planning.
+
 Design only. No unattended self-improvement runs in v0; Self-Dogfood Execution v0 is
 **foreground/manual** (a human invokes each `self execute` / `self reconcile`).
 

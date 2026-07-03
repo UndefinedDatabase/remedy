@@ -1,5 +1,9 @@
 # Dogfood Run User Guide
 
+> **Status: SEMANTICS SUPERSEDED** — The overnight / time-of-day mechanics described here
+> are explicitly deprecated by the roadmap (docs/roadmap/ROADMAP.md, Teil B).
+> The underlying execution and approval concepts remain valid.
+
 ## Quick Start
 
 ```bash

@@ -1,5 +1,8 @@
 # Bounded Overnight Preparation v0
 
+> **Status: DEPRECATED** — This document describes a future plan or deprecated subsystem.
+> It is kept for historical context. See `docs/roadmap/ROADMAP.md` for current planning.
+
 A **read-only** planning / readiness / stop-reason / morning-report layer for a
 FUTURE bounded overnight run. This block is preparation only — there is **no
 executor, no scheduler, no background worker**, and nothing applies code, runs

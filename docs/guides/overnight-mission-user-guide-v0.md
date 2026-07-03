@@ -1,5 +1,9 @@
 # Overnight missions — user guide (v0)
 
+> **Status: SEMANTICS SUPERSEDED** — The overnight / time-of-day mechanics described here
+> are explicitly deprecated by the roadmap (docs/roadmap/ROADMAP.md, Teil B).
+> The underlying execution and approval concepts remain valid.
+
 This guide explains, in plain language, how Remedy tracks a mission you give it and decides whether
 it is **done** — without running any model, worker, or test on its own yet.
 
