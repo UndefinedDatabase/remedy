@@ -70,6 +70,8 @@ class PingPongResult:
     mode: str = "staged"
     builder_provider: str = ""
     reviewer_provider: str = ""
+    builder_model: str = ""
+    reviewer_model: str = ""
     max_rounds: int = 3
     rounds: list[PingPongRound] = field(default_factory=list)
     final_status: str = ""  # staged_review_passed, staged_blocked, max_rounds_reached,
@@ -121,6 +123,9 @@ class PingPongResult:
     prompt_traces: list[Any] = field(default_factory=list)
     # Task ID (set by job runner)
     task_id: str = ""
+    # Execution mode and actor binding (T008: populated after run completes)
+    execution_mode: str = ""
+    task_actor_binding: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1577,6 +1582,8 @@ def run_pingpong(
     reviewer_provider: PingPongProvider | None = None,
     builder_name: str = "fake",
     reviewer_name: str = "fake",
+    builder_model: str = "",
+    reviewer_model: str = "",
     max_rounds: int = 3,
     timeout_sec: int = 120,
     max_output_chars: int = 50000,
@@ -1614,6 +1621,8 @@ def run_pingpong(
         repo_path=str(Path(repo_path).resolve()),
         builder_provider=builder_name,
         reviewer_provider=reviewer_name,
+        builder_model=builder_model,
+        reviewer_model=reviewer_model,
         max_rounds=max_rounds,
         started_at=datetime.now(timezone.utc).isoformat(),
         original_repo_arg=repo_path,
@@ -1649,7 +1658,7 @@ def run_pingpong(
         try:
             builder_provider = _create_provider_with_cwd(
                 builder_name, role="builder", staging_dir=str(staging),
-                write_mode=claude_cli_write_mode,
+                write_mode=claude_cli_write_mode, model=builder_model,
             )
         except RuntimeError as exc:
             result.final_status = "provider_unavailable"
@@ -1665,6 +1674,7 @@ def run_pingpong(
         try:
             reviewer_provider = _create_provider_with_cwd(
                 reviewer_name, role="reviewer", staging_dir=str(staging),
+                model=reviewer_model,
             )
         except RuntimeError as exc:
             result.final_status = "provider_unavailable"
@@ -1757,6 +1767,7 @@ def run_pingpong(
                 context_categories=categories,
                 changed_files=list(result.staged_files),
                 task_excerpt_sha256=task_input.sha256 if task_input else "",
+                configured_model=builder_model,
             ))
 
             builder_out = builder_provider.build(
@@ -1912,6 +1923,7 @@ def run_pingpong(
                 changed_files=list(result.staged_files),
                 safe_diff_files=list(result.safe_diff_files),
                 task_excerpt_sha256=task_input.sha256 if task_input else "",
+                configured_model=reviewer_model,
             ))
 
             # Snapshot staging before reviewer (to detect reviewer mutation)
@@ -2117,6 +2129,37 @@ def run_pingpong(
         result.changed_target_files = []
     result.finished_at = datetime.now(timezone.utc).isoformat()
 
+    # Classify execution mode based on actual prompt/provider activity
+    try:
+        from packages.orchestration.evidence_mode import classify_execution_mode
+        _pp_prompt_count = len(result.prompt_traces) if result.prompt_traces else 0
+        _pp_provider_calls = _pp_prompt_count
+        result.execution_mode = classify_execution_mode(
+            _pp_prompt_count,
+            _pp_provider_calls,
+            result.builder_provider,
+            result.reviewer_provider,
+        ).value
+    except Exception:
+        result.execution_mode = "unknown"
+
+    # Record task actor binding
+    try:
+        from packages.orchestration.task_actor_binding import build_task_actor_binding
+        result.task_actor_binding = build_task_actor_binding(
+            task_id=result.task_id or result.run_id,
+            builder_provider=result.builder_provider,
+            builder_model=result.builder_model,
+            reviewer_provider=result.reviewer_provider,
+            reviewer_model=result.reviewer_model,
+            rounds=len(result.rounds),
+            repair_rounds=result.repair_rounds_used,
+            same_builder_repairs=True,
+            same_reviewer_re_review=True,
+        )
+    except Exception:
+        result.task_actor_binding = None
+
     # Persist durable run record (outside target repo)
     _persist_run(result)
 
@@ -2133,6 +2176,7 @@ def _create_provider_with_cwd(
     role: str,
     staging_dir: str | None,
     write_mode: str = "none",
+    model: str = "",
 ) -> PingPongProvider:
     """Create provider with role-appropriate cwd and write mode.
 
@@ -2143,10 +2187,9 @@ def _create_provider_with_cwd(
     """
     if name == "claude-cli":
         if role == "builder" and staging_dir:
-            return ClaudeCliProvider(cwd=staging_dir, write_mode=write_mode)
-        # Reviewer: read-only (write_mode="none"), cwd isolated to staging.
-        return ClaudeCliProvider(cwd=staging_dir)
-    return create_provider(name)
+            return ClaudeCliProvider(cwd=staging_dir, write_mode=write_mode, model=model)
+        return ClaudeCliProvider(cwd=staging_dir, model=model)
+    return create_provider(name, model=model)
 
 
 # ---------------------------------------------------------------------------
@@ -2325,11 +2368,10 @@ def _provider_kind(provider_name: str) -> str:
 
 
 def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
-    """Build provider identity evidence with write mode info."""
+    """Build provider identity evidence with write mode and model info."""
     builder_kind = _provider_kind(result.builder_provider)
     reviewer_kind = _provider_kind(result.reviewer_provider)
 
-    # Builder write mode from run config; reviewer is always none
     builder_write_mode = result.claude_cli_write_mode or "none"
     reviewer_write_mode = "none"
 
@@ -2342,6 +2384,11 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
         "reviewer_write_mode": reviewer_write_mode,
         "builder_can_write_staging": builder_write_mode != "none",
         "reviewer_can_write_staging": False,
+        "builder_configured_model": result.builder_model,
+        "reviewer_configured_model": result.reviewer_model,
+        "builder_actual_model": result.builder_model or None,
+        "reviewer_actual_model": result.reviewer_model or None,
+        "model_flag_supported": result.builder_provider in ("claude-cli", "claude"),
     }
     return evidence
 
@@ -2492,6 +2539,8 @@ def _build_token_accounting(result: PingPongResult) -> dict[str, Any]:
     accounting: dict[str, Any] = {
         "kind": "actual" if actual_available else "estimated",
         "actual_tokens_available": actual_available,
+        "role": "builder",
+        "configured_model": result.builder_model or "",
         "builder_prompt_tokens_estimated": builder_prompt_est,
         "reviewer_prompt_tokens_estimated": reviewer_prompt_est,
         "repair_prompt_tokens_estimated": repair_prompt_est,
@@ -2699,6 +2748,8 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "task_input": _build_task_input_info(result),
         "repair_loop": _build_repair_loop_info(result),
         "prompt_trace_count": len(result.prompt_traces),
+        "execution_mode": result.execution_mode,
+        "task_actor_binding": result.task_actor_binding,
     }
 
 

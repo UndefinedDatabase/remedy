@@ -161,6 +161,96 @@ def export_job_evidence(
                 encoding="utf-8",
             )
             written[rel] = str(err_path)
+        # Per-task execution evidence (execution_mode classification)
+        try:
+            from packages.orchestration.evidence_mode import (
+                build_task_execution_evidence,
+                classify_execution_mode,
+            )
+            from packages.orchestration.pingpong_loop import _pingpong_runs_dir as _pp_runs
+
+            _prompt_count = 0
+            _provider_call_count = 0
+            _builder_prov = (
+                getattr(job.execution_config, "builder", None) or ""
+            ) if job.execution_config else ""
+            _reviewer_prov = (
+                getattr(job.execution_config, "reviewer", None) or ""
+            ) if job.execution_config else ""
+            if task.run_id:
+                _trace_file = _pp_runs() / task.run_id / "prompt_trace_summary.json"
+                if _trace_file.exists():
+                    try:
+                        _tdata = json.loads(_trace_file.read_text())
+                        _prompt_count = int(_tdata.get("builder_prompts", 0)) + int(_tdata.get("reviewer_prompts", 0))
+                        _provider_call_count = _prompt_count
+                    except (OSError, json.JSONDecodeError, ValueError):
+                        pass
+            _exec_mode = classify_execution_mode(
+                _prompt_count, _provider_call_count, _builder_prov, _reviewer_prov,
+            )
+            _exec_ev = build_task_execution_evidence(
+                task.task_id, _exec_mode,
+                builder_provider=_builder_prov,
+                reviewer_provider=_reviewer_prov,
+                prompt_trace_available=_prompt_count > 0,
+                provider_call_count=_provider_call_count,
+            )
+            _exec_rel = f"task_runs/{task.task_id}/task_execution_evidence.json"
+            _exec_path = _validate_output_path(str(out_path), _exec_rel)
+            _exec_path.parent.mkdir(parents=True, exist_ok=True)
+            _exec_path.write_text(json.dumps(_redact_json_value(_exec_ev), indent=2) + "\n", encoding="utf-8")
+            written[_exec_rel] = str(_exec_path)
+        except Exception as exc:
+            rel = f"task_runs/{task.task_id}/task_execution_evidence.error.txt"
+            err_path = _validate_output_path(str(out_path), rel)
+            err_path.write_text(
+                f"task_execution_evidence unavailable: {type(exc).__name__}: {exc}\n",
+                encoding="utf-8",
+            )
+            written[rel] = str(err_path)
+        # Per-task actor binding (builder/reviewer identity tracking)
+        try:
+            from packages.orchestration.task_actor_binding import build_task_actor_binding
+
+            _builder_prov_ab = (
+                getattr(job.execution_config, "builder", None) or ""
+            ) if job.execution_config else ""
+            _builder_model_ab = (
+                getattr(job.execution_config, "builder_model", None) or ""
+            ) if job.execution_config else ""
+            _reviewer_prov_ab = (
+                getattr(job.execution_config, "reviewer", None) or ""
+            ) if job.execution_config else ""
+            _reviewer_model_ab = (
+                getattr(job.execution_config, "reviewer_model", None) or ""
+            ) if job.execution_config else ""
+            _rounds_ab = len(getattr(task, "rounds", []) or [])
+            _repair_rounds_ab = getattr(task, "repair_rounds_used", 0) or 0
+            _ab = build_task_actor_binding(
+                task.task_id,
+                builder_provider=_builder_prov_ab,
+                builder_model=_builder_model_ab,
+                reviewer_provider=_reviewer_prov_ab,
+                reviewer_model=_reviewer_model_ab,
+                rounds=_rounds_ab,
+                repair_rounds=_repair_rounds_ab,
+                same_builder_repairs=True,
+                same_reviewer_re_review=True,
+            )
+            _ab_rel = f"task_runs/{task.task_id}/task_actor_binding.json"
+            _ab_path = _validate_output_path(str(out_path), _ab_rel)
+            _ab_path.parent.mkdir(parents=True, exist_ok=True)
+            _ab_path.write_text(json.dumps(_redact_json_value(_ab), indent=2) + "\n", encoding="utf-8")
+            written[_ab_rel] = str(_ab_path)
+        except Exception as exc:
+            rel = f"task_runs/{task.task_id}/task_actor_binding.error.txt"
+            err_path = _validate_output_path(str(out_path), rel)
+            err_path.write_text(
+                f"task_actor_binding unavailable: {type(exc).__name__}: {exc}\n",
+                encoding="utf-8",
+            )
+            written[rel] = str(err_path)
 
     try:
         from packages.orchestration.scratch_file_guard import write_scratch_file_guard
@@ -197,6 +287,110 @@ def export_job_evidence(
         err_path = _validate_output_path(str(out_path), rel)
         err_path.write_text(
             f"token_truth unavailable: {type(exc).__name__}: {exc}\n",
+            encoding="utf-8",
+        )
+        written[rel] = str(err_path)
+
+    # Token cost policy — per-role cost tracking and risk findings.
+    # Must be written BEFORE final verifier so final verifier can read it.
+    try:
+        from packages.orchestration.token_cost_policy import build_token_cost_policy
+
+        _plan_text_tcp = ""
+        try:
+            _plan_text_tcp = (Path(".agent") / "plan.md").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            pass
+        _m_tcp = re.search(r"(?<!\d)(\d{4,})\s*-\s*(\d{4,})(?!\d)", _plan_text_tcp)
+        _step_range_tcp = f"{_m_tcp.group(1)}-{_m_tcp.group(2)}" if _m_tcp else ""
+
+        _role_configs_tcp: dict[str, Any] = {}
+        if job.execution_config:
+            ec = job.execution_config
+            _role_configs_tcp["builder"] = {
+                "model": getattr(ec, "builder_model", None) or "",
+            }
+            _role_configs_tcp["reviewer"] = {
+                "model": getattr(ec, "reviewer_model", None) or "",
+            }
+
+        _token_truth_data: dict[str, Any] = {}
+        _tt_path = out_path / "token_truth.json"
+        if _tt_path.exists():
+            try:
+                _token_truth_data = json.loads(_tt_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                pass
+
+        _trace_summary_data: dict[str, Any] = {}
+        _ts_path = out_path / "prompt_trace_summary.json"
+        if _ts_path.exists():
+            try:
+                _trace_summary_data = json.loads(_ts_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                pass
+
+        _max_rounds_tcp = getattr(job.execution_config, "max_rounds", 3) if job.execution_config else 3
+        _repair_budget_tcp = getattr(job.execution_config, "repair_rounds_allowed", 0) if job.execution_config else 0
+        _tcp = build_token_cost_policy(
+            job.job_id,
+            _step_range_tcp,
+            _role_configs_tcp,
+            _token_truth_data,
+            _trace_summary_data,
+            _max_rounds_tcp,
+            _repair_budget_tcp,
+        )
+        _tcp_path = _validate_output_path(str(out_path), "token_cost_policy.json")
+        _tcp_path.write_text(json.dumps(_redact_json_value(_tcp), indent=2) + "\n", encoding="utf-8")
+        written["token_cost_policy.json"] = str(_tcp_path)
+    except Exception as exc:
+        rel = "token_cost_policy.error.txt"
+        err_path = _validate_output_path(str(out_path), rel)
+        err_path.write_text(
+            f"token_cost_policy unavailable: {type(exc).__name__}: {exc}\n",
+            encoding="utf-8",
+        )
+        written[rel] = str(err_path)
+
+    # Final job review — job-level review after all per-task reviewers.
+    # Must be written BEFORE final verifier so final verifier can read it.
+    try:
+        from packages.orchestration.final_job_review import build_final_job_review
+
+        _task_verdicts_fjr = []
+        _task_summaries_fjr = []
+        _task_diffs_fjr = []
+        for _t in job.tasks:
+            _task_verdicts_fjr.append({
+                "task_id": _t.task_id,
+                "verdict": getattr(_t, "reviewer_verdict", "") or getattr(_t, "final_status", "") or "",
+            })
+            _task_summaries_fjr.append(getattr(_t, "title", "") or "")
+            _diff = getattr(_t, "safe_diff_summary", "") or ""
+            _task_diffs_fjr.append(_diff[:2000] if _diff else "")
+
+        _test_ev_fjr: dict[str, Any] = {}
+        _gate_verdicts_fjr: list[dict[str, Any]] = []
+
+        _fjr = build_final_job_review(
+            job_goal=job.job_title,
+            task_plan=[{"task_id": _t.task_id, "title": _t.title} for _t in job.tasks],
+            task_summaries=_task_summaries_fjr,
+            task_diffs=_task_diffs_fjr,
+            task_verdicts=_task_verdicts_fjr,
+            test_evidence=_test_ev_fjr,
+            gate_verdicts=_gate_verdicts_fjr,
+            job_id=job.job_id,
+        )
+        _fjr_path = _validate_output_path(str(out_path), "final_job_review.json")
+        _fjr_path.write_text(json.dumps(_redact_json_value(_fjr), indent=2) + "\n", encoding="utf-8")
+        written["final_job_review.json"] = str(_fjr_path)
+    except Exception as exc:
+        rel = "final_job_review.error.txt"
+        err_path = _validate_output_path(str(out_path), rel)
+        err_path.write_text(
+            f"final_job_review unavailable: {type(exc).__name__}: {exc}\n",
             encoding="utf-8",
         )
         written[rel] = str(err_path)
@@ -303,6 +497,9 @@ def export_job_evidence(
             "tests/orchestration/test_final_verifier.py",
             "tests/orchestration/test_job_evidence.py",
             "tests/orchestration/test_spec_compliance.py",
+            "tests/orchestration/test_role_config.py",
+            "tests/orchestration/test_execution_config_evidence.py",
+            "tests/orchestration/test_task_plan_evidence.py",
             "tests/test_do_job_flow.py",
         ]
         _repo = getattr(job, "repo_path", None) or "."
@@ -830,6 +1027,17 @@ def _write_job_prompt_trace_summary(
                 "prompt_trace_available": True,
                 "builder_prompts": data.get("builder_prompts", 0),
                 "reviewer_prompts": data.get("reviewer_prompts", 0),
+                "role": data.get("role", "unknown"),
+                "configured_provider": data.get("configured_provider"),
+                "configured_model": data.get("configured_model"),
+                "actual_provider": data.get("actual_provider"),
+                "actual_model": data.get("actual_model"),
+                "model_resolution_source": data.get(
+                    "model_resolution_source", "unknown"
+                ),
+                "actual_model_verified": data.get(
+                    "actual_model_verified", False
+                ),
             })
         except (OSError, json.JSONDecodeError):
             task_traces.append({
@@ -839,12 +1047,29 @@ def _write_job_prompt_trace_summary(
                 "error": "parse_failed",
             })
 
+    per_role_models: dict[str, dict[str, Any]] = {}
+    for tt in task_traces:
+        role = tt.get("role", "unknown")
+        if role not in per_role_models:
+            per_role_models[role] = {
+                "configured_provider": tt.get("configured_provider"),
+                "configured_model": tt.get("configured_model"),
+                "actual_provider": tt.get("actual_provider"),
+                "actual_model": tt.get("actual_model"),
+                "actual_model_verified": tt.get(
+                    "actual_model_verified", False
+                ),
+                "task_count": 0,
+            }
+        per_role_models[role]["task_count"] += 1
+
     aggregate = {
         "total_builder_prompts": total_builder,
         "total_reviewer_prompts": total_reviewer,
         "total_prompts": total_builder + total_reviewer,
         "total_prompt_chars": total_chars,
         "total_prompt_tokens_estimated": total_tokens_est,
+        "per_role_model_summary": per_role_models,
         "task_traces": task_traces,
     }
 

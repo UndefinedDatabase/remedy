@@ -677,11 +677,12 @@ def build_manifest(
     if not containment_ok:
         packaging_warnings.extend(containment_blockers)
 
-    package_status = (
-        "READY_FOR_REVIEW"
-        if (evidence_valid and alignment_ok and containment_ok)
-        else "BLOCKED_EVIDENCE"
-    )
+    if evidence_valid and alignment_ok and containment_ok:
+        package_status = "READY_FOR_REVIEW"
+    elif not evidence_valid or not alignment_ok or not containment_ok:
+        package_status = "BLOCKED_EVIDENCE"
+    else:
+        package_status = "BLOCKED_EVIDENCE"
 
     # Packaging proof — record what was actually packaged
     ev_manifest_task_count = 0
@@ -709,6 +710,17 @@ def build_manifest(
     if bundle_integrity["verdict"] == "BLOCKED":
         packaging_warnings.append("review bundle content hash mismatch or missing proofs")
         package_status = "BLOCKED_EVIDENCE"
+    elif (
+        package_status == "READY_FOR_REVIEW"
+        and not bundle_integrity.get("current_content_hash_checked", False)
+    ):
+        # Evidence passed other checks but content hashes were not verified
+        # (no proof file or no file_hashes). Mark as unverified so reviewers
+        # know integrity was not confirmed.
+        package_status = "READY_FOR_REVIEW_UNVERIFIED"
+        packaging_warnings.append(
+            "content hash verification was not performed; integrity unconfirmed"
+        )
 
     manifest = {
         "bundle_kind": "remedy_review_zip",

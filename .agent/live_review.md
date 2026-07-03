@@ -1,125 +1,135 @@
-# Live Review — Steps 5571-5620: Verification Gates + Token Truth v1
+# Live Review — Steps 5741-5820: Sticky Repair Loop + Final Job Review + Token-Cost Policy
 
 Reviewer: parallel reviewer (independent; owns verdict).
 Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
 Builder must NOT mark findings as resolved.
-Timestamp: 2026-06-30
+Timestamp: 2026-07-01
 
 ## Verdict (reviewer-owned)
-**PASS WITH RISKS** — uncommitted working tree (no PR yet)
-Zero Blocker/High/Medium. 2 Low findings (R-4401, R-4402).
-All 5 hard checks pass. 184/184 focused tests. All compile checks pass. Lint clean.
+*(pending reviewer)*
 
-## Hard Checks
+## Builder Handoff — R1 (Steps 5741-5820)
 
-### Check 1 — Missing Tests Gate blocked-environment precedence
-**PASS.** `_tests_executed()` (missing_tests_gate.py:86-100): `_BLOCKED_MARKERS` checked at L98 BEFORE `_RAN_MARKERS` at L100. `_BLOCKED_MARKERS = ("blocked", "sandbox")`. Directly verified:
-- `"pytest error: sandbox blocked"` -> `tests_executed=False`, `tests_blocked_by_environment=True`, `gate_status=NEEDS_TESTS`
-- `"error: sandbox blocked"` -> `tests_executed=False`, `tests_blocked_by_environment=True`, `gate_status=NEEDS_TESTS`
-- Real failure `"1 failed, 2 error in 0.3s"` -> `tests_executed=True`, `gate_status=PASS`
+### Source Root
+`/home/decodeux/Repos/remedy`
 
-Tests: `test_sandbox_blocked_error_output_needs_tests`, `test_error_sandbox_blocked_output_needs_tests`, `test_real_failure_without_sandbox_counts_as_executed`.
+### Branch / HEAD
+- **Branch**: `feature/fresh-evidence-commit-gate`
+- **HEAD SHA** (before run): `ae029e4e743b963f85f168e95ea32150e8c8d4d6`
 
-### Check 2 — Final Verifier propagation
-**PASS.** Smoke evidence `remedy-job-evidence-cd22e10058654706`:
-- `final_verifier_report.json`: `verdict=NEEDS_REPAIR`, `missing_tests_gate=PASS`
-- `job_flow.json.final_audit.status`: `NEEDS_REPAIR`
-- `job_flow.json.promote_ready`: `false`
-- `job_flow.json.final_audit.final_verifier_verdict`: `NEEDS_REPAIR`
+### Package Goal
+Steps 5741-5820: Sticky Builder/Reviewer Repair Loop v1 + Final Job Review v1 + Token-Cost Policy Evidence
 
-Propagation chain: final_verifier.py L301 (NEEDS_TESTS precedence) -> do_cmd.py L1052-1056 (`_FV_STATUS_MAP` override + `promote_ready=False`) -> job_flow.json L1741 (`effective_promote_ready`).
+### Self-Run
+- **Goal file**: `.agent/self_run_goal_5741_5820.md`
+- **Evidence dir**: `remedy-job-evidence-selfrun-5741-5820-r3`
+- **Job ID**: `743f20d7d27a4474`
+- **Command**: `remedy do job-flow --job-file .agent/self_run_goal_5741_5820.md --repo . --builder claude-cli --reviewer claude-cli --builder-model claude-opus-4-20250514 --reviewer-model claude-opus-4-20250514 --claude-cli-write-mode allowed-tools --max-rounds 3 --repair-rounds 2 --timeout-sec 300 --out remedy-job-evidence-selfrun-5741-5820-r3`
+- **T001-T006**: All passed reviewer (T006 took 1 repair round)
+- **T007**: BLOCKED (provider_unavailable — Claude CLI builder timed out)
+- **T008**: SKIPPED (dependent on T007)
+- **Operator repair**: T007 and T008 implemented manually since Claude CLI failed
 
-Unit test `test_needs_tests_overrides_ready`: `_build_final_audit` with NEEDS_TESTS -> `status=NEEDS_TESTS`, `promote_ready=False`. Passes.
+### Task Count / IDs
+- **Task count**: 8
+- **Task IDs**: T001, T002, T003, T004, T005, T006, T007, T008
 
-### Check 3 — Token Truth
-**PASS.** Smoke evidence `remedy-job-evidence-cd22e10058654706/token_truth.json`:
-- `actual_available=false`, `actual_prompt_tokens=null`, `actual_completion_tokens=null`, `actual_total_tokens=null`
-- `estimated_prompt_tokens=10754`, `estimated_total_tokens=10754` (separate)
-- `missing_reason="actual token usage unavailable from claude-cli output"`
-- `provider="fake"` (synthetic_test provider correctly reports no actual usage)
+### Task Breakdown
 
-Unit test `test_no_cross_contamination`: estimated values (9999+7777+3333) never appear in `actual_*` fields (all null). Passes.
+| Task | Description | Method | Tests |
+|------|-------------|--------|-------|
+| T001 | Evidence execution mode taxonomy (new module) | Self-run | 22 |
+| T002 | Sticky per-task actor binding (new module) | Self-run | 20 |
+| T003 | Final job-level review (new module) | Self-run | 16 |
+| T004 | Token-cost policy evidence (new module) | Self-run | 12 |
+| T005 | Execution config evidence honesty (modify) | Self-run | 7 |
+| T006 | Final verifier integration (modify) | Self-run + 1 repair | 65 |
+| T007 | Review bundle and evidence consistency (modify) | Operator repair | 9 |
+| T008 | Pingpong loop and job integration (modify + new) | Operator repair | 10 |
 
-Unit test `test_actual_usage_populated`: when provider_evidence has `usage.input_tokens`, `actual_*` fields populated, `missing_reason=None`. Passes.
+### Execution Config
+- **Configured builder model**: `claude-opus-4-20250514`
+- **Configured reviewer model**: `claude-opus-4-20250514`
+- **Write mode**: `allowed-tools`
+- **Max rounds**: 3
+- **Repair rounds**: 2
 
-### Check 4 — Review zip manifest stale state
-**RISK (Low, R-4402).** `remedy-review-20260630-181124.zip` manifest:
-- `plan_step_range: 5331-5360` — stale (current work is Steps 5571-5620)
-- `latest_live_review_verdict: PENDING` — from prior block
-- `review_ready: false` — honest (does not claim readiness)
+### Gate Verdicts
 
-The manifest does NOT fabricate readiness — `review_ready=false` is accurate. But `plan_step_range` and verdict reflect stale plan.md state, which could mislead a reviewer about which block is under review. The manifest does not distinguish "stale" from "current." Not blocking because it doesn't claim false readiness.
+| Gate | Verdict |
+|------|---------|
+| `change_provenance_gate` | `PASS` (33 files covered, 0 uncovered) |
+| `fresh_evidence_gate` | `PASS_WITH_RISKS` |
 
-### Check 5 — Evidence completeness
-**PASS.** `remedy-review-20260630-181124.zip` contains:
-- `evidence/current/job_flow.json` (13120 bytes)
-- `evidence/current/final_verifier_report.json` (1370 bytes)
-- `evidence/current/token_truth.json` (878 bytes)
-- `evidence/current/scratch_file_guard.json` (263 bytes)
-- `evidence/current/task_runs/T001/missing_tests_gate.json` (339 bytes)
+### Test Results
 
-### Check 6 — Tests
-**PASS.** Compilation:
-```
-python3 -m py_compile apps/cli/commands/do_cmd.py packages/orchestration/missing_tests_gate.py packages/orchestration/final_verifier.py packages/orchestration/token_truth.py packages/orchestration/job_evidence.py packages/orchestration/scratch_file_guard.py
-```
-All compile OK.
+| Check | Result |
+|-------|--------|
+| `python3 -m py_compile` (14 source files) | OK |
+| `bash -n scripts/make_review_zip.sh` | OK |
+| Focused pytest (19 test files, 560 tests) | **560 passed, 0 failed** |
 
-Focused tests:
-```
-python3 -m pytest tests/orchestration/test_missing_tests_gate.py tests/orchestration/test_final_verifier.py tests/orchestration/test_token_truth.py tests/orchestration/test_job_evidence.py tests/test_do_job_flow.py -q
-184 passed in 5.53s
-```
+### Changed Files (33 source/test)
 
-Per-file breakdown:
-- `test_final_verifier.py`: 19 passed (builder claimed 22 — overclaim)
-- `test_missing_tests_gate.py`: 13 passed (builder claimed 17 — overclaim)
-- `test_token_truth.py`: 7 passed (builder claimed 8 — overclaim)
-- `test_scratch_file_guard.py`: 10 passed
-- `test_job_evidence.py`: 5 new tests passed (matches claim)
-- `test_do_job_flow.py`: 7 new tests passed (matches claim)
+**New (12):**
+1. `packages/orchestration/evidence_mode.py`
+2. `packages/orchestration/task_actor_binding.py`
+3. `packages/orchestration/final_job_review.py`
+4. `packages/orchestration/token_cost_policy.py`
+5. `tests/orchestration/test_evidence_mode.py`
+6. `tests/orchestration/test_task_actor_binding.py`
+7. `tests/orchestration/test_final_job_review.py`
+8. `tests/orchestration/test_token_cost_policy.py`
+9. `tests/orchestration/test_pingpong_integration.py`
 
-Lint: `ruff check` on all 11 focus files: All checks passed.
+**Modified (this scope — 12):**
+10. `packages/orchestration/execution_config_evidence.py`
+11. `packages/orchestration/final_verifier.py`
+12. `packages/orchestration/job_evidence.py`
+13. `packages/orchestration/pingpong_loop.py`
+14. `packages/orchestration/pingpong_job.py`
+15. `apps/cli/commands/do_cmd.py`
+16. `scripts/build_review_manifest.py`
+17. `tests/orchestration/test_execution_config_evidence.py`
+18. `tests/orchestration/test_final_verifier.py`
+19. `tests/orchestration/test_job_evidence.py`
+20. `tests/test_do_job_flow.py`
 
-## Findings
+**Carry-forward from prior scope (12):**
+21. `packages/orchestration/fresh_evidence_gate.py`
+22. `packages/orchestration/token_truth.py`
+23. `packages/orchestration/role_config.py`
+24. `packages/orchestration/task_plan_evidence.py`
+25. `packages/orchestration/pingpong_provider.py`
+26. `packages/orchestration/prompt_trace.py`
+27. `apps/cli/command_catalog.py`
+28. `apps/cli/grouped.py`
+29. `tests/orchestration/test_fresh_evidence_gate.py`
+30. `tests/orchestration/test_token_truth.py`
+31. `tests/orchestration/test_role_config.py`
+32. `tests/orchestration/test_task_plan_evidence.py`
+33. `tests/orchestration/test_provider_mode.py`
 
-### R-4401 Low — Builder overclaimed test counts
-Builder handoff claims 22/17/8 tests for final_verifier/missing_tests_gate/token_truth. Actual: 19/13/7. Tests themselves pass; counts are inflated. Process issue only.
+### Evidence Directory
+`remedy-job-evidence-selfrun-5741-5820-r3`
 
-### R-4402 Low — Review zip manifest presents stale plan.md state without staleness marker
-Manifest `plan_step_range: 5331-5360` reflects committed plan.md, not current work (5571-5620). Manifest `latest_live_review_verdict: PENDING` reflects old review block. `review_ready: false` is honest but the manifest has no mechanism to distinguish stale vs current metadata. Not blocking because no false readiness claimed.
+### Open Findings
+None. 0 unresolved.
 
-## Artifacts Inspected
-- `packages/orchestration/missing_tests_gate.py` — full read
-- `packages/orchestration/final_verifier.py` — full read
-- `packages/orchestration/token_truth.py` — full read
-- `packages/orchestration/scratch_file_guard.py` — full read
-- `packages/orchestration/job_evidence.py` — full read + diff
-- `apps/cli/commands/do_cmd.py` — diff (86 insertions, 9 deletions)
-- `tests/orchestration/test_missing_tests_gate.py` — full read
-- `tests/orchestration/test_final_verifier.py` — full read
-- `tests/orchestration/test_token_truth.py` — full read
-- `tests/orchestration/test_job_evidence.py` — diff (63 new lines, 5 new tests)
-- `tests/test_do_job_flow.py` — diff (159 new lines, 7 new tests + 2 updated assertions)
-- Smoke evidence: `remedy-job-evidence-cd22e10058654706/` (all artifacts)
-- Smoke evidence: `remedy-job-evidence-abfe2677af764ab2/` (earlier partial integration)
-- Review zip: `remedy-review-20260630-181124.zip` (manifest + evidence completeness)
-- `.agent/plan.md` — stale (Steps 5331-5360)
-- `.agent/live_review.md` — builder wrote PENDING, did not write verdict
+### Generated Zip
+`remedy-review-20260701-234011-BLOCKED_EVIDENCE.zip`
 
-## Builder Handoff Compliance
-- Builder wrote `*(pending reviewer)*` — correct
-- Builder did not write verdict — correct
-- Builder did not mark findings resolved — correct
+Package status: `BLOCKED_EVIDENCE` — T007/T008 evidence incomplete because builder timed out and operator repair was needed. Code is complete and all 560 tests pass. Bundle integrity: PASS. Alignment: PASS. Change provenance: PASS (33 files covered).
 
-## Commit Recommendation
-**Ready to commit and PR.** All verification gates work correctly. Sandbox-blocked error output blocks promote readiness. Final verifier drives final audit. Token truth stays honest. Plan.md must be updated before commit (AGENTS.md commit gate requires it). Builder should fix overclaimed test counts in handoff before final commit if desired (cosmetic only).
+### Not Performed
+- No commit
+- No push
+- No merge
 
-## Final Recommendation
-**PASS WITH RISKS** — zero open Blocker/High/Medium. 2 Low findings (R-4401 overclaimed test counts, R-4402 stale manifest metadata). All 5 hard checks pass. Sandbox-blocked precedence verified with exact input strings. Final verifier propagation chain verified end-to-end in smoke evidence. Token truth never cross-contaminates estimated into actual. Review zip contains all 5 required evidence artifacts. 184/184 focused tests pass. All 11 files compile. Lint clean.
+### If Approved
+Stage only source/test files listed above (items 1-20 for this scope, 21-33 for carry-forward). Commit message: `feat: add sticky repair review loop evidence`
 
 ---
 
-# Live Review — Steps 5271-5300: First Worker/Remedy Self-Development Run v1 (ARCHIVED)
-
-*(Previous review archived — see git history for full content)*
+## Previous Scope (5681-5740) — Approved but not yet committed
+See prior `live_review.md` content at commit ae029e4.

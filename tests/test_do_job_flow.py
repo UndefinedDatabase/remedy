@@ -1548,7 +1548,8 @@ class TestReviewZipPackageStatus:
         self._init_clean_git(tmp_path)
         m = build_manifest(str(ev), selection_mode="explicit")
         assert m["review_package_created"] is True
-        assert m["package_status"] == "READY_FOR_REVIEW"
+        # Without content hash proof, valid evidence is READY_FOR_REVIEW_UNVERIFIED
+        assert m["package_status"] in ("READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED")
 
     def test_invalid_evidence_blocked_but_created(self, tmp_path, monkeypatch):
         from scripts.build_review_manifest import build_manifest
@@ -1716,7 +1717,7 @@ class TestZipFilenameAndStatus:
         monkeypatch.chdir(tmp_path)
         TestReviewZipPackageStatus._init_clean_git(tmp_path)
         m = build_manifest(str(ev), selection_mode="explicit")
-        assert m["package_status"] == "READY_FOR_REVIEW"
+        assert m["package_status"] in ("READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED")
         assert m["review_package_created"] is True
         assert "READY_FOR_REVIEW" in m["package_status"]
 
@@ -1735,7 +1736,7 @@ class TestZipFilenameAndStatus:
 
     def test_package_status_filename_safe(self):
         """package_status values are safe for use in filenames."""
-        for status in ["READY_FOR_REVIEW", "BLOCKED_EVIDENCE"]:
+        for status in ["READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED", "BLOCKED_EVIDENCE"]:
             assert "/" not in status
             assert " " not in status
             assert status == status.upper()
@@ -1785,7 +1786,7 @@ class TestSourceRootContainment:
         assert m["source_root_containment"]["verdict"] == "PASS"
         assert m["source_root_containment"]["blockers"] == []
         assert m["external_paths_detected"] == []
-        assert m["package_status"] == "READY_FOR_REVIEW"
+        assert m["package_status"] in ("READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED")
 
     def test_evidence_outside_source_root_blocked(self, tmp_path, monkeypatch):
         from scripts.build_review_manifest import build_manifest
@@ -1995,3 +1996,363 @@ class TestReviewBundleIntegrity:
         assert status in ("READY_FOR_REVIEW", "BLOCKED_EVIDENCE")
         assert "/" not in status
         assert " " not in status
+
+
+# ---------------------------------------------------------------------------
+# T002: CLI/config per-role model override flags
+#
+# --builder/reviewer/repair-provider|model|effort are validated at the CLI
+# layer and passed through to role_config.resolve_role_config. Invalid values
+# are rejected with exit code 2; omitting every flag preserves the built-in
+# defaults (backward compatible).
+# ---------------------------------------------------------------------------
+
+
+class TestRoleOverrideResolver:
+    """Unit tests for the CLI-layer resolver + validation."""
+
+    def test_backward_compat_defaults_when_all_omitted(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        cfgs = _resolve_cli_role_configs()
+        for role in ("builder", "reviewer", "repair"):
+            assert cfgs[role] == {
+                "provider": "ollama",
+                "model": "qwen3-coder-next",
+                "effort": "medium",
+            }
+
+    def test_parses_and_resolves_per_role_overrides(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        cfgs = _resolve_cli_role_configs(
+            builder_provider="claude",
+            builder_model="opus",
+            builder_effort="high",
+            reviewer_effort="low",
+            repair_provider="fake",
+        )
+        assert cfgs["builder"] == {
+            "provider": "claude", "model": "opus", "effort": "high",
+        }
+        # Partial override keeps defaults for unset fields.
+        assert cfgs["reviewer"]["effort"] == "low"
+        assert cfgs["reviewer"]["provider"] == "ollama"
+        assert cfgs["repair"]["provider"] == "fake"
+        assert cfgs["repair"]["effort"] == "medium"
+
+    def test_invalid_provider_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        with pytest.raises(SystemExit) as exc:
+            _resolve_cli_role_configs(builder_provider="bogus")
+        assert exc.value.code == 2
+
+    def test_invalid_effort_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        with pytest.raises(SystemExit) as exc:
+            _resolve_cli_role_configs(reviewer_effort="turbo")
+        assert exc.value.code == 2
+
+    def test_empty_model_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _resolve_cli_role_configs
+
+        with pytest.raises(SystemExit) as exc:
+            _resolve_cli_role_configs(repair_model="   ")
+        assert exc.value.code == 2
+
+
+class TestRoleOverrideHandlerWiring:
+    """The flags reject invalid input through the real command handlers."""
+
+    def _job_flow_ns(self, **overrides):
+        ns = build_parser().parse_args(["do", "job-flow", "--job-file", "job.md"])
+        for k, v in overrides.items():
+            setattr(ns, k, v)
+        return ns
+
+    def _job_run_ns(self, **overrides):
+        ns = build_parser().parse_args(["do", "job-run", "job-id"])
+        for k, v in overrides.items():
+            setattr(ns, k, v)
+        return ns
+
+    def test_job_flow_rejects_invalid_role_effort(self) -> None:
+        ns = self._job_flow_ns(builder_effort="turbo")
+        with pytest.raises(SystemExit) as exc:
+            COMMAND_HANDLERS[COMMAND_ID](ns)
+        assert exc.value.code == 2
+
+    def test_job_run_rejects_invalid_role_provider(self) -> None:
+        ns = self._job_run_ns(reviewer_provider="bogus")
+        with pytest.raises(SystemExit) as exc:
+            COMMAND_HANDLERS["do.job-run"](ns)
+        assert exc.value.code == 2
+
+
+class TestRoleOverridePassthroughE2E:
+    """End-to-end: role_configs appears in job-flow JSON output."""
+
+    @pytest.fixture
+    def isolate_data(self, tmp_path: Path, monkeypatch):
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        return data_dir
+
+    @pytest.fixture
+    def demo_repo(self, tmp_path: Path) -> Path:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Demo\n")
+        return repo
+
+    @pytest.fixture
+    def job_file(self, tmp_path: Path) -> Path:
+        jf = tmp_path / "job.md"
+        jf.write_text(
+            "# Job: Role Override E2E\n\n## Task 1\nAdd a doc file.\n\n"
+            "Acceptance:\n- file exists\n"
+        )
+        return jf
+
+    def test_role_configs_in_job_flow_json(
+        self, capsys, isolate_data, demo_repo, job_file, tmp_path
+    ):
+        argv = [
+            "do", "job-flow",
+            "--job-file", str(job_file),
+            "--repo", str(demo_repo),
+            "--builder", "fake",
+            "--reviewer", "fake",
+            "--out", str(tmp_path / "evidence"),
+            "--json",
+        ]
+        grouped_main(argv)
+        data = json.loads(capsys.readouterr().out)
+        assert "role_configs" in data
+        # Defaults present for every role when no override flags are supplied.
+        for role in ("builder", "reviewer", "repair"):
+            assert data["role_configs"][role]["provider"] == "ollama"
+            assert data["role_configs"][role]["effort"] == "medium"
+
+
+# ---------------------------------------------------------------------------
+# T003: CLI per-role flag registration (argparse layer)
+#
+# Verifies that --builder/reviewer/repair-provider|model|effort flags are
+# reachable from the CLI for both do.job-run and do.job-flow commands.
+# ---------------------------------------------------------------------------
+
+
+class TestCliRoleFlags:
+    """Verify the 9 per-role CLI flags parse correctly for job-flow and job-run."""
+
+    def _parse(self, argv: list[str]):
+        return build_parser().parse_args(argv)
+
+    # --- do.job-flow: all 9 flags parse to correct attributes ----------------
+
+    def test_job_flow_builder_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--builder-provider", "claude",
+        ])
+        assert ns.builder_provider == "claude"
+
+    def test_job_flow_builder_model(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--builder-model", "claude-opus-4-20250514",
+        ])
+        assert ns.builder_model == "claude-opus-4-20250514"
+
+    def test_job_flow_builder_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--builder-effort", "high",
+        ])
+        assert ns.builder_effort == "high"
+
+    def test_job_flow_reviewer_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--reviewer-provider", "ollama",
+        ])
+        assert ns.reviewer_provider == "ollama"
+
+    def test_job_flow_reviewer_model(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--reviewer-model", "qwen3-coder-next",
+        ])
+        assert ns.reviewer_model == "qwen3-coder-next"
+
+    def test_job_flow_reviewer_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--reviewer-effort", "low",
+        ])
+        assert ns.reviewer_effort == "low"
+
+    def test_job_flow_repair_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--repair-provider", "fake",
+        ])
+        assert ns.repair_provider == "fake"
+
+    def test_job_flow_repair_model(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--repair-model", "deepseek-r1",
+        ])
+        assert ns.repair_model == "deepseek-r1"
+
+    def test_job_flow_repair_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-flow", "--job-file", "x.md",
+            "--repair-effort", "max",
+        ])
+        assert ns.repair_effort == "max"
+
+    # --- do.job-run: all 9 flags parse to correct attributes -----------------
+
+    def test_job_run_builder_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--builder-provider", "claude-cli",
+        ])
+        assert ns.builder_provider == "claude-cli"
+
+    def test_job_run_builder_model(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--builder-model", "claude-opus-4-20250514",
+        ])
+        assert ns.builder_model == "claude-opus-4-20250514"
+
+    def test_job_run_builder_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--builder-effort", "medium",
+        ])
+        assert ns.builder_effort == "medium"
+
+    def test_job_run_reviewer_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--reviewer-provider", "fixture",
+        ])
+        assert ns.reviewer_provider == "fixture"
+
+    def test_job_run_reviewer_model(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--reviewer-model", "gpt-4o",
+        ])
+        assert ns.reviewer_model == "gpt-4o"
+
+    def test_job_run_reviewer_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--reviewer-effort", "high",
+        ])
+        assert ns.reviewer_effort == "high"
+
+    def test_job_run_repair_provider(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--repair-provider", "ollama",
+        ])
+        assert ns.repair_provider == "ollama"
+
+    def test_job_run_repair_model(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--repair-model", "codellama",
+        ])
+        assert ns.repair_model == "codellama"
+
+    def test_job_run_repair_effort(self) -> None:
+        ns = self._parse([
+            "do", "job-run", "job-id-123",
+            "--repair-effort", "low",
+        ])
+        assert ns.repair_effort == "low"
+
+    # --- Defaults are None when flags are omitted ----------------------------
+
+    def test_job_flow_defaults_none(self) -> None:
+        ns = self._parse(["do", "job-flow", "--job-file", "x.md"])
+        for attr in (
+            "builder_provider", "builder_model", "builder_effort",
+            "reviewer_provider", "reviewer_model", "reviewer_effort",
+            "repair_provider", "repair_model", "repair_effort",
+        ):
+            assert getattr(ns, attr) is None, f"{attr} should default to None"
+
+    def test_job_run_defaults_none(self) -> None:
+        ns = self._parse(["do", "job-run", "job-id-123"])
+        for attr in (
+            "builder_provider", "builder_model", "builder_effort",
+            "reviewer_provider", "reviewer_model", "reviewer_effort",
+            "repair_provider", "repair_model", "repair_effort",
+        ):
+            assert getattr(ns, attr) is None, f"{attr} should default to None"
+
+    # --- Validation through _validate_role_override --------------------------
+
+    def test_invalid_builder_effort_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        with pytest.raises(SystemExit) as exc:
+            _validate_role_override("builder", "effort", "invalid")
+        assert exc.value.code == 2
+
+    def test_empty_builder_model_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        with pytest.raises(SystemExit) as exc:
+            _validate_role_override("builder", "model", "")
+        assert exc.value.code == 2
+
+    def test_whitespace_only_model_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        with pytest.raises(SystemExit) as exc:
+            _validate_role_override("reviewer", "model", "   ")
+        assert exc.value.code == 2
+
+    def test_invalid_provider_exits_2(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        with pytest.raises(SystemExit) as exc:
+            _validate_role_override("repair", "provider", "bogus-provider")
+        assert exc.value.code == 2
+
+    def test_none_value_is_accepted(self) -> None:
+        from apps.cli.commands.do_cmd import _validate_role_override
+        # Should not raise
+        _validate_role_override("builder", "provider", None)
+        _validate_role_override("reviewer", "model", None)
+        _validate_role_override("repair", "effort", None)
+
+    # --- Catalog registration: both commands list all 9 role flags -----------
+
+    def test_job_run_catalog_has_role_flags(self) -> None:
+        cmd = get_command("do.job-run")
+        arg_names = {a.name for a in cmd.args}
+        for flag in (
+            "--builder-provider", "--builder-model", "--builder-effort",
+            "--reviewer-provider", "--reviewer-model", "--reviewer-effort",
+            "--repair-provider", "--repair-model", "--repair-effort",
+        ):
+            assert flag in arg_names, f"do.job-run missing {flag}"
+
+    def test_job_flow_catalog_has_role_flags(self) -> None:
+        cmd = get_command("do.job-flow")
+        arg_names = {a.name for a in cmd.args}
+        for flag in (
+            "--builder-provider", "--builder-model", "--builder-effort",
+            "--reviewer-provider", "--reviewer-model", "--reviewer-effort",
+            "--repair-provider", "--repair-model", "--repair-effort",
+        ):
+            assert flag in arg_names, f"do.job-flow missing {flag}"

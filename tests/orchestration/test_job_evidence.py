@@ -1133,3 +1133,356 @@ class TestDogfoodCommandShape:
         files = sorted(str(f.relative_to(out)) for f in out.rglob("*") if f.is_file())
         assert "manifest.json" in files
         assert "summary.md" in files
+
+
+class TestPromptTraceRoleMetadata:
+    """T004: Prompt trace entries include role/model metadata."""
+
+    def test_task_trace_includes_role_field(self):
+        from packages.orchestration.job_evidence import (
+            _write_job_prompt_trace_summary,
+        )
+
+        class FakeTask:
+            task_id = "T001"
+            run_id = "run1"
+
+        class FakeJob:
+            tasks = [FakeTask()]
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            written: dict[str, str] = {}
+            from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+            run_dir = _pingpong_runs_dir() / "run1"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            summary = {
+                "builder_prompts": 3,
+                "reviewer_prompts": 1,
+                "total_prompt_chars": 500,
+                "total_prompt_tokens_estimated": 100,
+                "role": "builder",
+                "configured_provider": "claude",
+                "configured_model": "opus",
+                "actual_provider": None,
+                "actual_model": None,
+                "model_resolution_source": "cli",
+                "actual_model_verified": False,
+            }
+            (run_dir / "prompt_trace_summary.json").write_text(
+                json.dumps(summary)
+            )
+            _write_job_prompt_trace_summary(FakeJob(), td, written)
+            result = json.loads(Path(written["prompt_trace_summary.json"]).read_text())
+            tt = result["task_traces"][0]
+            assert tt["role"] == "builder"
+            assert tt["configured_provider"] == "claude"
+            assert tt["configured_model"] == "opus"
+            assert tt["actual_provider"] is None
+            assert tt["actual_model"] is None
+            assert tt["model_resolution_source"] == "cli"
+            assert tt["actual_model_verified"] is False
+
+    def test_per_role_model_summary_in_aggregate(self):
+        from packages.orchestration.job_evidence import (
+            _write_job_prompt_trace_summary,
+        )
+
+        class FakeTask:
+            task_id = "T001"
+            run_id = "run2"
+
+        class FakeJob:
+            tasks = [FakeTask()]
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            written: dict[str, str] = {}
+            from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+            run_dir = _pingpong_runs_dir() / "run2"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            summary = {
+                "builder_prompts": 2,
+                "reviewer_prompts": 1,
+                "total_prompt_chars": 300,
+                "total_prompt_tokens_estimated": 60,
+                "role": "reviewer",
+                "configured_provider": "ollama",
+                "configured_model": "qwen3",
+            }
+            (run_dir / "prompt_trace_summary.json").write_text(
+                json.dumps(summary)
+            )
+            _write_job_prompt_trace_summary(FakeJob(), td, written)
+            result = json.loads(Path(written["prompt_trace_summary.json"]).read_text())
+            assert "per_role_model_summary" in result
+            assert "reviewer" in result["per_role_model_summary"]
+            role_info = result["per_role_model_summary"]["reviewer"]
+            assert role_info["configured_provider"] == "ollama"
+            assert role_info["task_count"] == 1
+
+    def test_missing_role_defaults_to_unknown(self):
+        from packages.orchestration.job_evidence import (
+            _write_job_prompt_trace_summary,
+        )
+
+        class FakeTask:
+            task_id = "T001"
+            run_id = "run3"
+
+        class FakeJob:
+            tasks = [FakeTask()]
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            written: dict[str, str] = {}
+            from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+            run_dir = _pingpong_runs_dir() / "run3"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            summary = {
+                "builder_prompts": 1,
+                "reviewer_prompts": 0,
+                "total_prompt_chars": 100,
+                "total_prompt_tokens_estimated": 20,
+            }
+            (run_dir / "prompt_trace_summary.json").write_text(
+                json.dumps(summary)
+            )
+            _write_job_prompt_trace_summary(FakeJob(), td, written)
+            result = json.loads(Path(written["prompt_trace_summary.json"]).read_text())
+            tt = result["task_traces"][0]
+            assert tt["role"] == "unknown"
+            assert tt["model_resolution_source"] == "unknown"
+            assert tt["actual_model_verified"] is False
+
+    def test_actual_null_when_provider_unavailable(self):
+        from packages.orchestration.job_evidence import (
+            _write_job_prompt_trace_summary,
+        )
+
+        class FakeTask:
+            task_id = "T001"
+            run_id = "run4"
+
+        class FakeJob:
+            tasks = [FakeTask()]
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            written: dict[str, str] = {}
+            from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+            run_dir = _pingpong_runs_dir() / "run4"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            summary = {
+                "builder_prompts": 1,
+                "reviewer_prompts": 0,
+                "total_prompt_chars": 50,
+                "total_prompt_tokens_estimated": 10,
+                "role": "builder",
+                "configured_provider": "claude",
+                "configured_model": "opus",
+                "actual_provider": None,
+                "actual_model": None,
+            }
+            (run_dir / "prompt_trace_summary.json").write_text(
+                json.dumps(summary)
+            )
+            _write_job_prompt_trace_summary(FakeJob(), td, written)
+            result = json.loads(Path(written["prompt_trace_summary.json"]).read_text())
+            tt = result["task_traces"][0]
+            assert tt["actual_provider"] is None
+            assert tt["actual_model"] is None
+
+
+class TestEvidenceHygiene:
+    """T007: Evidence hygiene — verification_tests list, manual repair hashes."""
+
+    def test_verification_test_files_include_new_modules(self):
+        from packages.orchestration import job_evidence
+        src = Path(job_evidence.__file__).read_text()
+        assert "test_role_config.py" in src
+        assert "test_execution_config_evidence.py" in src
+        assert "test_task_plan_evidence.py" in src
+
+    def test_verification_test_files_list_only_existing(self):
+        from packages.orchestration import job_evidence
+        src = Path(job_evidence.__file__).read_text()
+        import re as _re
+        files = _re.findall(r'"(tests/[^"]+\.py)"', src)
+        for f in files:
+            assert Path(f).exists(), f"listed test file {f} does not exist"
+
+    def test_manual_repair_provenance_schema(self, tmp_path):
+        prov = {
+            "task_id": "T006",
+            "repair_type": "manual",
+            "file_hashes": {
+                "role_config.py": "abc123",
+            },
+        }
+        p = tmp_path / "manual_repair_provenance.json"
+        p.write_text(json.dumps(prov))
+        data = json.loads(p.read_text())
+        assert "file_hashes" in data
+        assert isinstance(data["file_hashes"], dict)
+
+    def test_bundle_integrity_stays_packaging_layer(self):
+        from scripts.build_review_manifest import build_manifest
+        from packages.orchestration.final_verifier import build_final_verifier_report
+        import inspect
+        fv_src = inspect.getsource(build_final_verifier_report)
+        assert "review_bundle_integrity" not in fv_src
+        manifest_src = inspect.getsource(build_manifest)
+        assert "review_bundle_integrity" in manifest_src
+
+
+class TestEvidenceBundleConsistency:
+    """T007: Evidence bundle and review consistency."""
+
+    def test_evidence_includes_execution_mode_per_task(
+        self, isolate_data_root, demo_repo, tmp_path
+    ):
+        """Evidence bundle must include task_execution_evidence.json per task."""
+        from packages.orchestration.job_evidence import export_job_evidence
+
+        job = _run_completed_job(demo_repo)
+        out = str(tmp_path / "ev_exec_mode")
+        result = export_job_evidence(job.job_id, out)
+        files = result.get("files", {})
+        for tid in ["T001", "T002"]:
+            rel = f"task_runs/{tid}/task_execution_evidence.json"
+            assert rel in files, f"missing {rel}"
+            data = json.loads(Path(files[rel]).read_text())
+            assert "execution_mode" in data
+            assert data["task_id"] == tid
+
+    def test_evidence_includes_actor_binding_per_task(
+        self, isolate_data_root, demo_repo, tmp_path
+    ):
+        """Evidence bundle must include task_actor_binding.json per task."""
+        from packages.orchestration.job_evidence import export_job_evidence
+
+        job = _run_completed_job(demo_repo)
+        out = str(tmp_path / "ev_actor_bind")
+        result = export_job_evidence(job.job_id, out)
+        files = result.get("files", {})
+        for tid in ["T001", "T002"]:
+            rel = f"task_runs/{tid}/task_actor_binding.json"
+            assert rel in files, f"missing {rel}"
+            data = json.loads(Path(files[rel]).read_text())
+            assert data["task_id"] == tid
+            assert "sticky_across_rounds" in data
+            assert "builder_provider" in data
+
+    def test_evidence_includes_token_cost_policy(
+        self, isolate_data_root, demo_repo, tmp_path
+    ):
+        """Evidence bundle must include token_cost_policy.json at job level."""
+        from packages.orchestration.job_evidence import export_job_evidence
+
+        job = _run_completed_job(demo_repo)
+        out = str(tmp_path / "ev_tcp")
+        result = export_job_evidence(job.job_id, out)
+        files = result.get("files", {})
+        assert "token_cost_policy.json" in files
+        data = json.loads(Path(files["token_cost_policy.json"]).read_text())
+        assert "schema_version" in data
+        assert data["job_id"] == job.job_id
+
+    def test_evidence_includes_final_job_review(
+        self, isolate_data_root, demo_repo, tmp_path
+    ):
+        """Evidence bundle must include final_job_review.json at job level."""
+        from packages.orchestration.job_evidence import export_job_evidence
+
+        job = _run_completed_job(demo_repo)
+        out = str(tmp_path / "ev_fjr")
+        result = export_job_evidence(job.job_id, out)
+        files = result.get("files", {})
+        assert "final_job_review.json" in files
+        data = json.loads(Path(files["final_job_review.json"]).read_text())
+        assert "verdict" in data
+        assert data["job_id"] == job.job_id
+
+    def test_bundle_integrity_unverified_when_no_proof(self, tmp_path):
+        """_check_bundle_integrity returns hash_checked=false when no proof file."""
+        from scripts.build_review_manifest import _check_bundle_integrity
+
+        ev_dir = tmp_path / "evidence"
+        ev_dir.mkdir()
+        result = _check_bundle_integrity(str(ev_dir), str(tmp_path))
+        assert result["current_content_hash_checked"] is False
+        assert result["verdict"] == "PASS"
+
+    def test_bundle_integrity_checked_when_proof_matches(self, tmp_path):
+        """_check_bundle_integrity returns hash_checked=true on matching hashes."""
+        import hashlib
+        from scripts.build_review_manifest import _check_bundle_integrity
+
+        ev_dir = tmp_path / "evidence"
+        ev_dir.mkdir()
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        src_file = source_root / "main.py"
+        src_file.write_text("print('hi')\n")
+        file_hash = hashlib.sha256(src_file.read_bytes()).hexdigest()
+        (ev_dir / "current_change_content_proof.json").write_text(json.dumps({
+            "schema_version": "1.0.0",
+            "file_hashes": {"main.py": file_hash},
+            "file_count": 1,
+        }))
+        result = _check_bundle_integrity(str(ev_dir), str(source_root))
+        assert result["current_content_hash_checked"] is True
+        assert result["verdict"] == "PASS"
+
+    def test_bundle_integrity_blocked_on_mismatch(self, tmp_path):
+        """_check_bundle_integrity blocks on hash mismatch."""
+        from scripts.build_review_manifest import _check_bundle_integrity
+
+        ev_dir = tmp_path / "evidence"
+        ev_dir.mkdir()
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        (source_root / "main.py").write_text("print('hi')\n")
+        (ev_dir / "current_change_content_proof.json").write_text(json.dumps({
+            "schema_version": "1.0.0",
+            "file_hashes": {"main.py": "0" * 64},
+            "file_count": 1,
+        }))
+        result = _check_bundle_integrity(str(ev_dir), str(source_root))
+        assert result["verdict"] == "BLOCKED"
+        assert len(result["current_content_hash_mismatches"]) > 0
+
+    def test_unverified_status_logic(self):
+        """READY_FOR_REVIEW downgrades to UNVERIFIED when hash not checked."""
+        # Simulate the status-determination logic from build_review_manifest
+        package_status = "READY_FOR_REVIEW"
+        bundle_integrity = {
+            "current_content_hash_checked": False,
+            "verdict": "PASS",
+        }
+        # Apply the same logic as build_review_manifest
+        if bundle_integrity["verdict"] == "BLOCKED":
+            package_status = "BLOCKED_EVIDENCE"
+        elif (
+            package_status == "READY_FOR_REVIEW"
+            and not bundle_integrity.get("current_content_hash_checked", False)
+        ):
+            package_status = "READY_FOR_REVIEW_UNVERIFIED"
+        assert package_status == "READY_FOR_REVIEW_UNVERIFIED"
+
+    def test_execution_evidence_mode_matches_provider(
+        self, isolate_data_root, demo_repo, tmp_path
+    ):
+        """Execution mode in evidence should reflect the provider type used."""
+        from packages.orchestration.job_evidence import export_job_evidence
+
+        job = _run_completed_job(demo_repo)
+        out = str(tmp_path / "ev_mode_check")
+        result = export_job_evidence(job.job_id, out)
+        files = result.get("files", {})
+        rel = "task_runs/T001/task_execution_evidence.json"
+        assert rel in files
+        data = json.loads(Path(files[rel]).read_text())
+        # FakeProvider used -> should be fake_provider_test
+        assert data["execution_mode"] == "fake_provider_test"

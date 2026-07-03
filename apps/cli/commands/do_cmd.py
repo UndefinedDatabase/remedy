@@ -29,6 +29,103 @@ def _parse_builder_provider(val: object) -> str:
 
 _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 
+# --- Per-role model override flags (T002) ---------------------------------
+# CLI accepts --<role>-provider / --<role>-model / --<role>-effort for the
+# builder, reviewer, and repair roles. Values are validated at the CLI layer
+# before being passed through to role_config.resolve_role_config.
+_VALID_ROLE_PROVIDERS = frozenset(
+    {"ollama", "claude", "claude-cli", "fake", "fixture"}
+)
+_VALID_ROLE_EFFORTS = frozenset({"low", "medium", "high", "max"})
+_ROLE_OVERRIDE_ROLES = ("builder", "reviewer", "repair")
+
+
+def _validate_role_override(role: str, field: str, value: object) -> None:
+    """Reject an invalid per-role provider/model/effort at the CLI layer.
+
+    ``None`` means "flag omitted" and is always accepted (backward compatible).
+    Empty/whitespace-only values and out-of-set providers/efforts exit with
+    code 2, matching the other CLI validators.
+    """
+    if value is None:
+        return
+    if field == "provider" and value not in _VALID_ROLE_PROVIDERS:
+        print(
+            f"Error: invalid --{role}-provider: {value!r}. "
+            f"Allowed: {', '.join(sorted(_VALID_ROLE_PROVIDERS))}.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    if field == "effort" and value not in _VALID_ROLE_EFFORTS:
+        print(
+            f"Error: invalid --{role}-effort: {value!r}. "
+            f"Allowed: {', '.join(sorted(_VALID_ROLE_EFFORTS))}.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    if field == "model" and not str(value).strip():
+        print(
+            f"Error: invalid --{role}-model: must not be empty.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
+def _resolve_cli_role_configs(
+    *,
+    builder_provider: str | None = None,
+    builder_model: str | None = None,
+    builder_effort: str | None = None,
+    reviewer_provider: str | None = None,
+    reviewer_model: str | None = None,
+    reviewer_effort: str | None = None,
+    repair_provider: str | None = None,
+    repair_model: str | None = None,
+    repair_effort: str | None = None,
+) -> dict[str, dict[str, str]]:
+    """Validate per-role override flags and resolve them into role configs.
+
+    Invalid values exit(2) at the CLI layer. Valid overrides are passed through
+    to :func:`packages.orchestration.role_config.resolve_role_config`, whose
+    result (provider/model/effort per role) is returned as a plain dict.
+
+    When every override is ``None`` the returned configs are the built-in
+    defaults, so existing invocations are unaffected (backward compatible).
+    """
+    from packages.orchestration.role_config import resolve_role_config
+
+    overrides: dict[str, dict[str, str]] = {
+        "builder": {
+            "provider": builder_provider,
+            "model": builder_model,
+            "effort": builder_effort,
+        },
+        "reviewer": {
+            "provider": reviewer_provider,
+            "model": reviewer_model,
+            "effort": reviewer_effort,
+        },
+        "repair": {
+            "provider": repair_provider,
+            "model": repair_model,
+            "effort": repair_effort,
+        },
+    }
+
+    resolved: dict[str, dict[str, str]] = {}
+    for role in _ROLE_OVERRIDE_ROLES:
+        fields = overrides[role]
+        for field, value in fields.items():
+            _validate_role_override(role, field, value)
+        cli_args = {k: v for k, v in fields.items() if v is not None}
+        cfg = resolve_role_config(role, cli_args=cli_args)
+        resolved[role] = {
+            "provider": cfg.provider,
+            "model": cfg.model,
+            "effort": cfg.effort,
+        }
+    return resolved
+
 
 def _cmd_do(
     goal: str,
@@ -705,12 +802,34 @@ def _cmd_do_job_run(
     claude_cli_write_mode: str | None = None,
     max_tasks: int = 0,
     json_output: bool = False,
+    builder_provider: str | None = None,
+    builder_model: str | None = None,
+    builder_effort: str | None = None,
+    reviewer_provider: str | None = None,
+    reviewer_model: str | None = None,
+    reviewer_effort: str | None = None,
+    repair_provider: str | None = None,
+    repair_model: str | None = None,
+    repair_effort: str | None = None,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
     None means "omitted by CLI". Resolution in run_job():
     explicit CLI value > persisted config > product default.
     """
+    # Per-role model override flags are validated and resolved at the CLI
+    # layer (invalid values exit 2) before any run work begins.
+    _resolve_cli_role_configs(
+        builder_provider=builder_provider,
+        builder_model=builder_model,
+        builder_effort=builder_effort,
+        reviewer_provider=reviewer_provider,
+        reviewer_model=reviewer_model,
+        reviewer_effort=reviewer_effort,
+        repair_provider=repair_provider,
+        repair_model=repair_model,
+        repair_effort=repair_effort,
+    )
     if builder is not None and builder not in _VALID_PINGPONG_PROVIDERS:
         print(f"Error: invalid --builder: {builder!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
         sys.exit(2)
@@ -744,6 +863,13 @@ def _cmd_do_job_run(
         job_id,
         builder_name=builder,
         reviewer_name=reviewer,
+        builder_model=builder_model,
+        builder_effort=builder_effort,
+        reviewer_model=reviewer_model,
+        reviewer_effort=reviewer_effort,
+        repair_provider_name=repair_provider,
+        repair_model=repair_model,
+        repair_effort=repair_effort,
         max_rounds=max_rounds,
         repair_rounds=repair_rounds_val,
         repair_rounds_source=repair_source,
@@ -1175,6 +1301,27 @@ def _build_final_audit(
     else:
         result["evidence_authoritative"] = False
         result["evidence_validity_status"] = ""
+
+    # Wire final job review results into audit
+    fjr_path = ev_path / "final_job_review.json"
+    if fjr_path.exists():
+        try:
+            fjr_data = json.loads(fjr_path.read_text(encoding="utf-8"))
+            result["final_job_review_verdict"] = fjr_data.get("verdict", "")
+            result["final_job_review_ref"] = "final_job_review.json"
+            result["final_job_review_findings_count"] = len(fjr_data.get("findings", []))
+        except (OSError, ValueError):
+            pass
+
+    # Wire token cost policy results into audit
+    tcp_path = ev_path / "token_cost_policy.json"
+    if tcp_path.exists():
+        try:
+            tcp_data = json.loads(tcp_path.read_text(encoding="utf-8"))
+            result["token_cost_policy_ref"] = "token_cost_policy.json"
+            result["token_cost_risk_findings_count"] = len(tcp_data.get("cost_risk_findings", []))
+        except (OSError, ValueError):
+            pass
 
     # Hard consistency: if any gate is BLOCKED, final_audit cannot be READY.
     _HARD_BLOCK_GATE_KEYS = [
@@ -1656,6 +1803,15 @@ def _cmd_do_job_flow(
     timeout_sec: int = 120,
     out: str = "",
     json_output: bool = False,
+    builder_provider: str | None = None,
+    builder_model: str | None = None,
+    builder_effort: str | None = None,
+    reviewer_provider: str | None = None,
+    reviewer_model: str | None = None,
+    reviewer_effort: str | None = None,
+    repair_provider: str | None = None,
+    repair_model: str | None = None,
+    repair_effort: str | None = None,
 ) -> None:
     """Compose the safe job workflow as one human-readable command.
 
@@ -1668,6 +1824,19 @@ def _cmd_do_job_flow(
     if not job_file:
         print("Error: --job-file is required", file=sys.stderr)
         sys.exit(2)
+    # Per-role model override flags are validated and resolved at the CLI
+    # layer (invalid values exit 2) before any run work begins.
+    role_configs = _resolve_cli_role_configs(
+        builder_provider=builder_provider,
+        builder_model=builder_model,
+        builder_effort=builder_effort,
+        reviewer_provider=reviewer_provider,
+        reviewer_model=reviewer_model,
+        reviewer_effort=reviewer_effort,
+        repair_provider=repair_provider,
+        repair_model=repair_model,
+        repair_effort=repair_effort,
+    )
     if builder is not None and builder not in _VALID_PINGPONG_PROVIDERS:
         print(f"Error: invalid --builder: {builder!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
         sys.exit(2)
@@ -1754,6 +1923,13 @@ def _cmd_do_job_flow(
         job_id,
         builder_name=builder,
         reviewer_name=reviewer,
+        builder_model=builder_model,
+        builder_effort=builder_effort,
+        reviewer_model=reviewer_model,
+        reviewer_effort=reviewer_effort,
+        repair_provider_name=repair_provider,
+        repair_model=repair_model,
+        repair_effort=repair_effort,
         max_rounds=max_rounds,
         repair_rounds=repair_rounds_val,
         repair_rounds_source=repair_source,
@@ -1860,6 +2036,7 @@ def _cmd_do_job_flow(
         "final_audit": final_audit,
         "timeout_warning": timeout_warning,
         "agent_run_trace_summary": run_trace_summary,
+        "role_configs": role_configs,
     }
 
     _persist_job_flow_json(flow_result, evidence_out)
@@ -2033,6 +2210,15 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None),
         max_tasks=int(getattr(args, "max_tasks", None) or 0),
         json_output=getattr(args, "json", False),
+        builder_provider=getattr(args, "builder_provider", None),
+        builder_model=getattr(args, "builder_model", None),
+        builder_effort=getattr(args, "builder_effort", None),
+        reviewer_provider=getattr(args, "reviewer_provider", None),
+        reviewer_model=getattr(args, "reviewer_model", None),
+        reviewer_effort=getattr(args, "reviewer_effort", None),
+        repair_provider=getattr(args, "repair_provider", None),
+        repair_model=getattr(args, "repair_model", None),
+        repair_effort=getattr(args, "repair_effort", None),
     ),
     "do.job-report": lambda args: _cmd_do_job_report(
         args.job_id,
@@ -2063,5 +2249,14 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         timeout_sec=int(getattr(args, "timeout_sec", None) or 120),
         out=getattr(args, "out", None) or "",
         json_output=getattr(args, "json", False),
+        builder_provider=getattr(args, "builder_provider", None),
+        builder_model=getattr(args, "builder_model", None),
+        builder_effort=getattr(args, "builder_effort", None),
+        reviewer_provider=getattr(args, "reviewer_provider", None),
+        reviewer_model=getattr(args, "reviewer_model", None),
+        reviewer_effort=getattr(args, "reviewer_effort", None),
+        repair_provider=getattr(args, "repair_provider", None),
+        repair_model=getattr(args, "repair_model", None),
+        repair_effort=getattr(args, "repair_effort", None),
     ),
 }
