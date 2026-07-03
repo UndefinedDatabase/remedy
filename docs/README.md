@@ -42,7 +42,7 @@
 | token economy | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | system |
 | token economy | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | guide |
 | tournament | [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | system |
-| UI | [ui-target.md](system/ui-target.md) | system |
+| UI | [ui-target.md](archive/ui-target.md) | archive |
 | worker | [worker.md](system/worker.md) | system |
 
 ## System Documentation (`docs/system/`)
@@ -53,6 +53,7 @@ Specifications and design documents for the built system.
 |------|-------------|
 | [agent-tooling-audit.md](system/agent-tooling-audit.md) | Audit of agent tooling (Pi.dev, Claude Code, VS Code MCP) |
 | [architecture.md](system/architecture.md) | High-level Remedy architecture |
+| [bounded-overnight-executor-v0.md](system/bounded-overnight-executor-v0.md) | Bounded overnight executor *(overnight superseded)* |
 | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | Scoring and evaluation of candidate patches |
 | [context-inspector.md](system/context-inspector.md) | Context window inspection and debugging |
 | [controlled-claude-code-operator-path-v0.md](system/controlled-claude-code-operator-path-v0.md) | Controlled operator path for Claude Code sessions |
@@ -60,7 +61,6 @@ Specifications and design documents for the built system.
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
 | [execution-approval-policy-v0.md](system/execution-approval-policy-v0.md) | Human approval gates for execution |
 | [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | Local-first routing to expensive external builders |
-| [expensive-builder-routing-v0-plan.md](system/expensive-builder-routing-v0-plan.md) | Design plan for expensive builder routing |
 | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | Sandbox for external builder execution |
 | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | Contract for external builder workers |
 | [feature-planner-v0.md](system/feature-planner-v0.md) | Feature planning and decomposition |
@@ -102,7 +102,6 @@ Specifications and design documents for the built system.
 | [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
 | [token-aware-repair-loop-v1-v2.md](system/token-aware-repair-loop-v1-v2.md) | Token-aware repair loop architecture |
 | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | Token economy + context budget optimizer |
-| [ui-target.md](system/ui-target.md) | UI target direction |
 | [worker.md](system/worker.md) | Worker architecture and guide |
 | [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | Worker registry + route policy |
 
@@ -135,13 +134,14 @@ Deprecated or future-only design documents kept for historical context.
 
 | File | Description | Status |
 |------|-------------|--------|
-| [bounded-overnight-executor-v0.md](archive/bounded-overnight-executor-v0.md) | Bounded overnight executor | DEPRECATED |
 | [bounded-overnight-prep-v0.md](archive/bounded-overnight-prep-v0.md) | Bounded overnight preparation | DEPRECATED |
 | [candidate-generator-adapter-future.md](archive/candidate-generator-adapter-future.md) | Candidate generator adapter future direction | DEPRECATED |
 | [expensive-builder-routing-future.md](archive/expensive-builder-routing-future.md) | Expensive builder routing future plan | DEPRECATED |
+| [expensive-builder-routing-v0-plan.md](archive/expensive-builder-routing-v0-plan.md) | Design plan for expensive builder routing | DEPRECATED |
 | [external-builder-sandbox-future.md](archive/external-builder-sandbox-future.md) | External builder sandbox future design | DEPRECATED |
 | [model-route-tournament-future.md](archive/model-route-tournament-future.md) | Model/route tournament future design | DEPRECATED |
 | [self-dogfood-overnight-future.md](archive/self-dogfood-overnight-future.md) | Self-dogfood overnight future direction | DEPRECATED |
+| [ui-target.md](archive/ui-target.md) | UI target direction | DEPRECATED |
 
 ## Roadmap (`docs/roadmap/`)
 

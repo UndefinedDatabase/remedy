@@ -119,7 +119,7 @@ continuations for the same job, repository, or intent.
   <repair_intent_id>`. No repair apply bypass; after the cycle the repair attempt
   is reconciled (tested_passed/tested_failed) and the original failure is resolved
   only with a verified snapshot + linked passing test + proof (source_fix only).
-- [bounded-overnight-executor-v0](../archive/bounded-overnight-executor-v0.md) — the foreground
+- [bounded-overnight-executor-v0](../system/bounded-overnight-executor-v0.md) — the foreground
   one-step executor invokes THIS path (in-process, no bypass) for an approved
   intent when `--allow-one-cycle --allow-apply` is given and all gates pass.
 - [provider-patch-materialization-v0](../system/provider-patch-materialization-v0.md) — a

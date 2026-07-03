@@ -60,7 +60,7 @@ worker/scheduler. The overnight commands do not mutate the repo or the job.
 
 ## How the executor uses this
 
-The [Bounded Overnight Executor v0](bounded-overnight-executor-v0.md) consumes this
+The [Bounded Overnight Executor v0](../system/bounded-overnight-executor-v0.md) consumes this
 readiness report: it is foreground, runs at most one cycle, refuses to run when
 execution is not explicitly permitted (`--allow-one-cycle` + an action flag) or a
 blocker/PENDING-FAIL review exists, honours the `BoundedOvernightPolicy` limits and
@@ -69,7 +69,7 @@ repair paths — never a new apply bypass.
 
 ## See also
 
-- [bounded-overnight-executor-v0.md](bounded-overnight-executor-v0.md) — the foreground one-step executor that acts on this report.
+- [bounded-overnight-executor-v0.md](../system/bounded-overnight-executor-v0.md) — the foreground one-step executor that acts on this report.
 - [do-continue-v1.md](../guides/do-continue-v1.md) — the one-cycle path the executor reuses.
 - [repair-loop-v1.md](../system/repair-loop-v1.md) — the approval-gated repair proposal/apply cycle.
 - [snapshot-rollback-v1.md](../system/snapshot-rollback-v1.md) — durable snapshot truth.
