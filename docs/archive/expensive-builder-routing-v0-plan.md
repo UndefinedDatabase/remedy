@@ -17,19 +17,19 @@ Verification rails.
 An expensive/external builder may be *routed to* only after **all** of these exist for the
 targeted failure / self item:
 
-1. A **repair request package** ([repair-request-builder-v0.md](repair-request-builder-v0.md)).
+1. A **repair request package** ([repair-request-builder-v0.md](../system/repair-request-builder-v0.md)).
 2. The orchestrator has a **deterministic, evidence-backed decision** that an external
    builder is justified (uncertainty / repeated cheap failure), not a model's opinion.
-3. The **local advisor** ([local-model-advisor-v0.md](local-model-advisor-v0.md)) was tried
+3. The **local advisor** ([local-model-advisor-v0.md](../system/local-model-advisor-v0.md)) was tried
    first where useful (cheap before expensive).
 
 ## Output handling (hard order)
 
 Any builder output (cheap or expensive) is UNTRUSTED and must pass, in order:
 
-1. **Trust Gate** ([provider-trust-gate-v0.md](provider-trust-gate-v0.md)) — quarantine +
+1. **Trust Gate** ([provider-trust-gate-v0.md](../system/provider-trust-gate-v0.md)) — quarantine +
    safe-to-ingest.
-2. **Verification** ([provider-trust-verification-v1.md](provider-trust-verification-v1.md))
+2. **Verification** ([provider-trust-verification-v1.md](../system/provider-trust-verification-v1.md))
    — plausible / relevant / bounded / worthy.
 3. **Materialization** → pending intent → **human approval** → `do continue` apply.
 

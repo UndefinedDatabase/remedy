@@ -4,7 +4,7 @@
 > are explicitly deprecated by the roadmap (docs/roadmap/ROADMAP.md, Teil B).
 > The underlying execution and approval concepts remain valid.
 
-The first executor that *acts* on a [Bounded Overnight Preparation](bounded-overnight-prep-v0.md)
+The first executor that *acts* on a [Bounded Overnight Preparation](../archive/bounded-overnight-prep-v0.md)
 readiness report. It performs **at most one** bounded, **foreground**, reviewable
 step when a human **explicitly** invokes it.
 
@@ -104,7 +104,7 @@ diffs, artifact bodies, secrets, tracebacks, or absolute private paths.
 
 ## See also
 
-- [bounded-overnight-prep-v0.md](bounded-overnight-prep-v0.md) — the readiness layer this consumes.
+- [bounded-overnight-prep-v0.md](../archive/bounded-overnight-prep-v0.md) — the readiness layer this consumes.
 - [do-continue-v1.md](../guides/do-continue-v1.md) — the one-cycle apply path the executor reuses.
 - [repair-loop-v1.md](../system/repair-loop-v1.md) — the approval-gated repair proposal/apply cycle.
 - [provider-trust-gate-v0.md](../system/provider-trust-gate-v0.md) — intake of UNTRUSTED external model output into a pending repair intent (no provider execution).
