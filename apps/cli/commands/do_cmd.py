@@ -953,6 +953,36 @@ def _build_timeout_hint(
     )
 
 
+def _read_final_verifier(ev_path: Any) -> dict[str, Any] | None:
+    """Read final_verifier_report.json if it exists."""
+    fv_path = ev_path / "final_verifier_report.json"
+    if not fv_path.exists():
+        return None
+    try:
+        import json as _json
+        data = _json.loads(fv_path.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and data.get("schema_version"):
+            return data
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def _read_token_truth(ev_path: Any) -> dict[str, Any] | None:
+    """Read token_truth.json if it exists."""
+    tt_path = ev_path / "token_truth.json"
+    if not tt_path.exists():
+        return None
+    try:
+        import json as _json
+        data = _json.loads(tt_path.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and data.get("schema_version"):
+            return data
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 def _build_final_audit(
     job: Any,
     promo: Any,
@@ -1001,7 +1031,30 @@ def _build_final_audit(
     if not token_summary_available:
         missing_artifacts.append("token_summary")
 
-    if all_passed and promote_ready and not missing_artifacts:
+    # --- Final verifier override ---
+    fv_report = _read_final_verifier(ev_path)
+    fv_verdict = fv_report.get("verdict", "") if fv_report else ""
+    tt_report = _read_token_truth(ev_path)
+
+    _FV_STATUS_MAP = {
+        "BLOCKED": "BLOCKED",
+        "NEEDS_TESTS": "NEEDS_TESTS",
+        "NEEDS_REPAIR": "NEEDS_REPAIR",
+        "PASS_WITH_RISKS": "NEEDS_REVIEW",
+    }
+    _FV_ACTION_MAP = {
+        "BLOCKED": "Blocked: resolve gate violations before promoting.",
+        "NEEDS_TESTS": "Run the missing tests before promoting.",
+        "NEEDS_REPAIR": "Resolve the open findings before promoting.",
+        "PASS_WITH_RISKS": "Approve with risks; review missing optional evidence before promoting.",
+    }
+
+    if fv_verdict in _FV_STATUS_MAP:
+        status = _FV_STATUS_MAP[fv_verdict]
+        action = _FV_ACTION_MAP[fv_verdict]
+        if fv_verdict != "PASS":
+            promote_ready = False
+    elif all_passed and promote_ready and not missing_artifacts:
         status = "READY_FOR_APPROVAL"
         action = "Run the next_approve_command to apply changes to the target repo."
     elif all_passed and promote_ready and missing_artifacts:
@@ -1024,7 +1077,7 @@ def _build_final_audit(
         tp = "pass" if t.test_passed else ("fail" if t.test_passed is False else "not_run")
         test_results.append(f"{t.task_id}: {tp}")
 
-    return {
+    result = {
         "status": status,
         "job_status": job.status,
         "task_count": len(job.tasks),
@@ -1050,6 +1103,18 @@ def _build_final_audit(
             "Prompt traces are redacted estimates, not exact provider-side records.",
         ],
     }
+
+    if fv_report:
+        result["final_verifier_verdict"] = fv_verdict
+        result["final_verifier_report_ref"] = "final_verifier_report.json"
+        result["missing_tests_gate_status"] = fv_report.get("missing_tests_gate", "")
+        result["scratch_file_guard_status"] = fv_report.get("scratch_file_guard", "")
+    if tt_report:
+        result["token_truth_ref"] = "token_truth.json"
+        result["token_truth_actual_available"] = tt_report.get("actual_available", False)
+        result["token_truth_estimated_total"] = tt_report.get("estimated_total_tokens", 0)
+
+    return result
 
 
 def _sanitize_shareable_paths(obj: Any) -> Any:
@@ -1666,6 +1731,9 @@ def _cmd_do_job_flow(
     )
 
     # --- 8. Persist job_flow.json to evidence output ---
+    # Use final_audit's promote_ready which may have been overridden by
+    # final verifier verdict (e.g. NEEDS_TESTS -> promote_ready=false).
+    effective_promote_ready = final_audit.get("promote_ready", promote_ready)
     flow_result = {
         "command": "do.job-flow",
         "job_id": job_id,
@@ -1673,9 +1741,9 @@ def _cmd_do_job_flow(
         "report": report_data,
         "evidence": evidence_result,
         "promote_dry_run": export_job_promotion_json(promo),
-        "promote_ready": promote_ready,
-        "next_approve_command": next_approve_command,
-        "next_approve_command_safe": next_approve_command_safe,
+        "promote_ready": effective_promote_ready,
+        "next_approve_command": next_approve_command if effective_promote_ready else "",
+        "next_approve_command_safe": next_approve_command_safe if effective_promote_ready else "",
         "token_summary": token_summary,
         "final_audit": final_audit,
         "timeout_warning": timeout_warning,
@@ -1761,13 +1829,17 @@ def _cmd_do_job_flow(
         print()
 
     print(f"Promote dry-run: {promo.status}")
-    if promote_ready:
+    if effective_promote_ready:
         print(f"  Would apply {len(promo.files_planned)} file(s). No target files changed.")
         print("  The target repo stays unchanged until you explicitly approve the promote.")
         print("\nNext (approval required):")
         print(f"  {next_approve_command}")
     else:
-        print(f"  Not ready to promote: {promo.blocked_reason or 'see report'}")
+        reason = promo.blocked_reason or "see report"
+        fv_v = final_audit.get("final_verifier_verdict", "")
+        if fv_v and fv_v != "PASS":
+            reason = f"final verifier: {fv_v}"
+        print(f"  Not ready to promote: {reason}")
         print("  The target repo was not changed.")
 
     # Final audit

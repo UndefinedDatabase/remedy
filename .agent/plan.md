@@ -1,17 +1,19 @@
-# Plan — Steps 5331-5360: Operational Artifact Guard + Promote-Ready Observability Index v1
+# Plan — Docs Cleanup and Index
 
 ## Goal
-Third Remedy self-development run. Carry forward prior accepted code,
-fix operational artifact classification, persist index status.
+Restructure flat docs/ into system/, guides/, archive/ subdirectories.
+Add superseded banners, create master index, wire into AGENTS.md/CLAUDE.md.
 
 ## Current Step
-Step 5331: Execute remedy_self_job_flow.sh with new goal file
+Complete. All 5 phases done. Push and PR.
 
-## Next Steps
-- Step 5332: Inspect evidence artifacts
-- Step 5333: Run make_review_zip.sh (no args, auto-select)
-- Step 5334: Write final handoff
+## Completed Steps
+- Phase 1: Fixed stale docs/REMEDY_MASTERPLAN.md references in roadmap files
+- Phase 2: Moved 76 docs into system/ (54), guides/ (16), archive/ (7);
+  fixed 56 cross-directory relative links
+- Phase 3: Added DEPRECATED banners (7 archive) + SEMANTICS SUPERSEDED banners (4 overnight)
+- Phase 4: Created docs/README.md master index (quick-find table + categorized listings)
 
-## Constraints
-No auto-approval, no target mutation, no git ops, no self-merge,
-no fabricated evidence, no blocking make_review_zip.sh.
+## Remaining
+- Phase 4: Create docs/README.md master index
+- Phase 5: Finalize AGENTS.md and CLAUDE.md (user changes already present)
