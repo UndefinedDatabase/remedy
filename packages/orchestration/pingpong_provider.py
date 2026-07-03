@@ -509,6 +509,7 @@ def build_claude_cli_args(
     prompt: str,
     *,
     write_mode: str = "none",
+    model: str = "",
 ) -> list[str]:
     """Build safe CLI argv for claude invocation.
 
@@ -516,8 +517,11 @@ def build_claude_cli_args(
       none: no write tools (reviewer mode, or builder without permission)
       allowed-tools: --allowedTools Edit,Write,MultiEdit
       dangerous-skip: --dangerously-skip-permissions (explicit opt-in only)
+    model: if non-empty, passed as --model <model> to claude CLI.
     """
     argv = [claude_path, "-p", prompt, "--output-format", "text"]
+    if model:
+        argv.extend(["--model", model])
     if write_mode == "allowed-tools":
         argv.extend(_ALLOWED_TOOLS_ARGS)
     elif write_mode == "dangerous-skip":
@@ -539,10 +543,12 @@ class ClaudeCliProvider:
         cwd: str | None = None,
         write_mode: str = "none",
         max_tokens: int = 4096,
+        model: str = "",
     ) -> None:
         self._cwd = cwd
         self._write_mode = write_mode
         self._max_tokens = max_tokens
+        self._model = model
         self._claude_path: str | None = None
 
     @property
@@ -552,6 +558,10 @@ class ClaudeCliProvider:
     @property
     def write_mode(self) -> str:
         return self._write_mode
+
+    @property
+    def model(self) -> str:
+        return self._model
 
     def _get_claude_path(self) -> str:
         if self._claude_path is not None:
@@ -568,7 +578,7 @@ class ClaudeCliProvider:
     def _call(self, prompt: str, *, timeout_sec: int, max_output_chars: int) -> tuple[str, int, int]:
         """Call claude CLI. Returns (text, duration_ms, tokens_used=0)."""
         claude = self._get_claude_path()
-        argv = build_claude_cli_args(claude, prompt, write_mode=self._write_mode)
+        argv = build_claude_cli_args(claude, prompt, write_mode=self._write_mode, model=self._model)
         start = time.monotonic()
         try:
             proc = subprocess.run(
@@ -645,12 +655,12 @@ class ClaudeCliProvider:
 # Provider factory
 # ---------------------------------------------------------------------------
 
-def create_provider(name: str) -> PingPongProvider:
+def create_provider(name: str, *, model: str = "") -> PingPongProvider:
     """Create a provider by name. Raises RuntimeError if unavailable."""
     if name == "fake":
         return FakeProvider()
     if name == "claude":
-        return ClaudeProvider()
+        return ClaudeProvider(model=model) if model else ClaudeProvider()
     if name == "claude-cli":
-        return ClaudeCliProvider()
+        return ClaudeCliProvider(model=model)
     raise RuntimeError(f"Unknown provider: {name!r}. Available: fake, claude, claude-cli")

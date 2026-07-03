@@ -147,11 +147,21 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
             for field, val in task_actual.items():
                 actual_totals[field] = actual_totals.get(field, 0) + val
 
+        task_role = str(acc.get("role", "unknown")) if acc else "unknown"
+        task_configured_model = str(acc.get("configured_model", "")) if acc else ""
+        task_actual_model = None
+        if isinstance(pe, dict):
+            task_actual_model = pe.get("actual_model") or pe.get("model") or None
+
         per_task[tid] = {
+            "role": task_role,
+            "configured_model": task_configured_model or model,
+            "actual_model": task_actual_model,
             "builder_estimated": builder,
             "reviewer_estimated": reviewer,
             "repair_estimated": repair,
             "actual_available": task_has_actual,
+            "estimation_method": _MEASUREMENT_SOURCE if not task_has_actual else None,
         }
 
     estimated_prompt_tokens = builder_total + reviewer_total + repair_total
