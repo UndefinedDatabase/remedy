@@ -1,179 +1,97 @@
-# Remedy UI Rebuild Specification
+# Remedy UI Rebuild Specification (v2 · 2026-07-05)
 
-## 1. Visual Target Summary
+> **DESIGN AUTHORITY:** `docs/ui/design_reference/` is the canonical design
+> source (`ux_design.png` = visual law; `tokens.css` = token authority;
+> `assets_spec.md` = asset authority; `graph_spec.md` = graph authority;
+> `ux_spec.md`/`component_spec.md`/`motion_spec.md` = UX/component/motion
+> authority; `acceptance_criteria.md` = visual QA authority). Where this file
+> and the design reference disagree, **the design reference wins**. The v1
+> inline token palette and the v1 five-level zoom table were removed for that
+> reason; the old values are void.
 
-The Remedy UI is a premium, bright white/pale blue glass dashboard that lets users instantly understand:
-- What the job is
-- What is open/planned/done
-- What the agent is doing now
-- Which tasks are completed/in progress/planned
-- What the next action is
+## 1. Purpose of this file
+The build-structure contract: component tree, data contracts, state model,
+CSS-module layout. Visual values live in the design reference, not here.
 
-The design uses glass cards, soft shadows, large rounded corners, and a growing brain graph at center. No debug wording. No raw graph internals.
+## 2. Visual target summary
+Premium bright glass cockpit around the Growing Brain graph: what the job is,
+what is open/planned/done, what the agent is doing now, task states, the next
+action. No debug wording, no raw graph internals (list: `ux_spec.md` §17).
 
-## 2. Component Tree
-
+## 3. Component tree (current canonical path)
 ```
 RemedyApp
   RemedyShell
     LeftBrandRail
-      RemedyLogo
-      ConceptIntro
+      RemedyLogo            (RemedyMark + wordmark — assets_spec §5)
+      JobHeader             (kicker=project · title=job · description;
+                             formerly "ConceptIntro" — README §K1)
       SideIconDock
     MainStage
       TopMetricsBar
       CommandBar
       BrainGraphStage
         GraphFilterChips
-        RemedyBrainFlow
-        SemanticZoomController
+        renderers/ForceBrainRenderer   (fg-2d custom paint — graph_tech_recommendation.md)
+        useSemanticZoom                (L0–L3 machine — graph_spec §10)
+        BrainGraphCanvas               (simple/no-WebGL fallback until Stage 6)
       PhaseTimeline
     RightLivePanel
       LiveStatusPill
       AgentNowCard
+      NeedsAttentionCard    (renders only when relevant)
       ActivityFeedCard
+        ChatInput           (disabled until steering exists — ux_spec §11.3)
       TaskChecklistCard
-      AddTaskButton
+      AddTaskButton         (disabled until injection exists)
     DetailPopover
-    LayerSwitcher
+    LayerSwitcher           (behind "System details")
+    DegradedBanner
     ReducedMotionProvider
 ```
+Superseded (do not build against): `RemedyBrainFlow`, `SemanticZoomController`,
+`ConstellationBackdrop`, `SoftGlowEdge` (all `graph/legacy/`; mine
+`organicLayout.ts`/`semanticZoom.ts` for ideas, then archive per Stage 6).
+`NetworkLogoIcon` is deprecated (assets_spec §5). Any React-Flow wording in
+older docs is historical — the renderer decision is fg-2d custom paint.
 
-## 3. Data Contracts
+## 4. Data contracts
+All components consume normalized `RemedyDashboard` from `api/remedyApi.ts`;
+raw API payloads never pass through. The adapter strips forbidden words,
+normalizes states (`suggested`→open, `pending`→planned, `current`→in-progress)
+and maps internals to human labels (`humanCopy.ts`). Key types:
+`RemedyDashboard`, `RemedyMetric`, `RemedyTaskItem`, `RemedyActivityItem`,
+`RemedyGraphNode/Edge`, `RemedyPhase`, `RemedyNextAction`.
 
-All components consume normalized `RemedyDashboard` data from `api/remedyApi.ts`. Raw API payloads are never passed directly. The adapter strips forbidden words, normalizes states, and maps internal concepts to human labels.
+## 5. State model
+Dashboard polled every 5 s (SSE arrives with roadmap F008); `selectedNodeId`;
+graph filter all/open/planned/done (local); layer selection (local); reduced
+motion from the OS media query (Provider + renderer both honor it).
 
-Key types: `RemedyDashboard`, `RemedyStory`, `RemedyJourneyItem`, `RemedyMetric`, `RemedyTaskItem`, `RemedyActivityItem`, `RemedyGraphNode`, `RemedyGraphEdge`, `RemedyPhase`, `RemedyNextAction`.
+## 6. Semantic zoom
+Canonical model: `graph_spec.md` §10 (L0 organism · L1 task focus · L2 run
+popover · L3 evidence panel; thresholds with hysteresis, clusters >8,
+breadcrumbs, Esc). One preserved rule from v1, still binding: **diagnostics
+content never appears through zoom alone — it requires the explicit
+diagnostics layer toggle.**
 
-## 4. State Model
+## 7. CSS module architecture
+Co-located `*.module.css` per component; all visual tokens come from
+`styles/tokens.css`, which adopts `design_reference/tokens.css` (namespace
+`--remedy-*`). No Tailwind. Fonts are self-hosted via npm per `assets_spec.md`
+§1–§2 — no remote/CDN assets (that is the correct reading of v1's "no
+external fonts": no *remote* fonts; bundled webfonts are required).
+Module files: RemedyShell, BrainGraphStage, RightLivePanel, PhaseTimeline,
+TopMetricsBar, CommandBar, GraphFilterChips, DetailPopover, LayerSwitcher,
+LeftBrandRail, RemedyLogo, SideIconDock, ChatInput (+ renderer-internal
+styles live in canvas code via the `renderers/palette.ts` token bridge).
 
-- Dashboard loaded from API, refreshed every 5s
-- Selected node tracked as `selectedNodeId`
-- Graph filter: all/open/planned/done (local state)
-- Layer selection: journey/proof/files/memory/diagnostics (local state)
-- Reduced motion: from OS media query
+## 8. Forbidden default UI words
+Single source: `design_reference/ux_spec.md` §17 (rank, importance, node_type,
+metadata, …, raw stdout/stderr, traceback). Enforced in `humanCopy.ts` and the
+copy audit (`acceptance_criteria.md` §3/§7). Not duplicated here.
 
-## 5. Accessibility Notes
-
-- All interactive elements have aria-labels
-- Reduced motion respected via `prefers-reduced-motion`
-- Color is not sole indicator (icons + labels)
-- Keyboard: Escape closes detail popover
-- All text meets minimum contrast on light background
-
-## 6. Semantic Zoom Rules
-
-| Level | Viewport Zoom | Visible |
-|-------|--------------|---------|
-| 0 Overview | < 0.36 | Root + major branches only |
-| 1 Phase | 0.36 - 0.62 | Root + phases + current task |
-| 2 Work | 0.62 - 0.92 | Task/change/apply/test items |
-| 3 Proof | 0.92 - 1.28 | Proof/review/memory candidates |
-| 4 Diagnostics | > 1.28 | All visible (diagnostics only if layer enabled) |
-
-Diagnostics nodes never appear just by zoom — require explicit diagnostics layer toggle.
-
-## 7. CSS Module Architecture
-
-Each component has a co-located `.module.css` file. All visual tokens live in `styles/tokens.css`. No global class collisions. No Tailwind. No external fonts or CDN.
-
-Module files:
-- `RemedyShell.module.css`
-- `BrainGraphStage.module.css`
-- `RightLivePanel.module.css`
-- `PhaseTimeline.module.css`
-- `TopMetricsBar.module.css`
-- `CommandBar.module.css`
-- `GraphNodes.module.css`
-- `GraphFilterChips.module.css`
-- `RemedyBrainFlow.module.css`
-- `DetailPopover.module.css`
-- `LayerSwitcher.module.css`
-- `LeftBrandRail.module.css`
-- `RemedyLogo.module.css`
-- `SideIconDock.module.css`
-
-## 8. Full Component Checklist
-
-- [x] RemedyApp — entry point, data loading, error state
-- [x] RemedyShell — 3-column grid layout
-- [x] ReducedMotionProvider — context for animation preference
-- [x] LeftBrandRail — logo, concept, description
-- [x] RemedyLogo — network icon + wordmark
-- [x] SideIconDock — 7 icon buttons
-- [x] TopMetricsBar — 4 metric tiles
-- [x] CommandBar — search pill, copy-only
-- [x] BrainGraphStage — graph container with filter chips
-- [x] RemedyBrainFlow — React Flow wrapper
-- [x] GraphNodes (Root/Work/Tiny) — custom node renderers
-- [x] SoftGlowEdge — custom edge renderer
-- [x] GraphFilterChips — All/Open/Planned/Done
-- [x] organicLayout — deterministic graph layout
-- [x] semanticZoom — zoom level calculation
-- [x] RightLivePanel — right column container
-- [x] LiveStatusPill — live/idle indicator
-- [x] AgentNowCard — current activity
-- [x] ActivityFeedCard — chat/activity feed
-- [x] TaskChecklistCard — task list with states
-- [x] AddTaskButton — disabled placeholder
-- [x] PhaseTimeline — 6-phase bottom bar
-- [x] DetailPopover — selected node details
-- [x] LayerSwitcher — view layer controls
-- [x] NetworkLogoIcon — SVG logo
-- [x] CodeOrbIcon — SVG code node
-
-## 9. Forbidden Default UI Words
-
-Default UI must NEVER show:
-- rank
-- importance
-- node_type
-- metadata
-- present signals
-- missing signals
-- context coverage
-- zone
-- edge_type
-- connected_to
-- raw UUID labels
-- raw JSON blobs
-- raw stdout/stderr
-- command_output
-- diff_preview
-- approval_reason
-- traceback
-
-## 10. CSS Tokens
-
-```css
---remedy-bg: #edf3fb;
---remedy-bg-2: #f8fbff;
---remedy-blue-950: #071b49;
---remedy-blue-900: #122f6a;
---remedy-blue-800: #173f8f;
---remedy-blue-700: #2459d6;
---remedy-blue-500: #4c83ff;
---remedy-blue-300: #8fb3ff;
---remedy-blue-100: #dce8ff;
---remedy-cyan-400: #53d6df;
---remedy-green-500: #4cc681;
---remedy-purple-400: #a28cff;
---remedy-orange-400: #f5a34e;
---remedy-line: rgba(44, 82, 150, 0.16);
---remedy-line-strong: rgba(44, 82, 150, 0.28);
---remedy-card: rgba(255, 255, 255, 0.68);
---remedy-card-strong: rgba(255, 255, 255, 0.86);
---remedy-card-soft: rgba(255, 255, 255, 0.48);
---remedy-text: #14254b;
---remedy-muted: #6e7fa3;
---remedy-faint: #9aa9c5;
---remedy-radius-xl: 28px;
---remedy-radius-lg: 22px;
---remedy-radius-md: 16px;
---remedy-shadow: 0 24px 70px rgba(55, 86, 138, 0.16);
---remedy-shadow-soft: 0 14px 36px rgba(55, 86, 138, 0.12);
---remedy-glow: 0 0 44px rgba(76, 131, 255, 0.38);
---remedy-glow-strong: 0 0 90px rgba(76, 131, 255, 0.56);
---remedy-left-width: 292px;
---remedy-right-width: 404px;
-```
+## 9. Tokens
+See `design_reference/tokens.css` — the only palette. Layout widths mirror
+the pixel-lock contract (`--remedy-left-width: 292px`,
+`--remedy-right-width: 350px`, frame 1678×926).

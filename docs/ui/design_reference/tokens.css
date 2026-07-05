@@ -1,0 +1,140 @@
+/* ============================================================
+   Remedy Design Tokens — CANONICAL (v1.0, derived from ux_design.png)
+   Namespace decision: --remedy-* (the implemented namespace) is canonical.
+   This file EXTENDS apps/ui/src/styles/tokens.css; existing values are
+   preserved unless marked CHANGED. Hardcoded colors outside this file are
+   forbidden (see tokens_rules.md).
+   ============================================================ */
+:root {
+  /* ---- Typography ---- */
+  /* CHANGED (assets_spec §1/§2): deterministic self-hosted fonts first;
+     "Avenir Next"/"SF Mono" removed from active stacks (proprietary, OS-bound). */
+  --remedy-font-display: "Manrope Variable", "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --remedy-font-ui: "Manrope Variable", "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --remedy-font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace; /* diffs: font-feature-settings "liga" 0 */
+  --remedy-tracking-label: 0.12em;
+  --remedy-weight-body: 500; --remedy-weight-label: 600;
+  --remedy-weight-title: 700; --remedy-weight-max: 800; /* reserved */
+  --remedy-fs-tiny: 11px; --remedy-fs-small: 12.5px; --remedy-fs-body: 13px;
+  --remedy-fs-ui: 14px; --remedy-fs-h3: 16px; --remedy-fs-h2: 22px;
+  --remedy-fs-h1: 26px; --remedy-fs-metric: 30px;
+
+  /* ---- Ink / text ---- */
+  --remedy-ink: #10285f;
+  --remedy-ink-strong: #0a1c48;
+  --remedy-ink-soft: #6f82a8;
+  --remedy-text: #14254b;
+  --remedy-muted: #6e7fa3;
+  --remedy-faint: #9aa9c5;
+
+  /* ---- Backgrounds & surfaces ---- */
+  --remedy-bg: #ecf2fb;
+  --remedy-bg-2: #f8fbff;
+  --remedy-glass-bg: rgba(255, 255, 255, 0.58);
+  --remedy-glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --remedy-glass-border: rgba(62, 95, 154, 0.12);
+  --remedy-card: rgba(255, 255, 255, 0.72);
+  --remedy-card-strong: rgba(255, 255, 255, 0.9);
+  --remedy-card-soft: rgba(255, 255, 255, 0.5);
+  --remedy-line: rgba(44, 82, 150, 0.14);
+  --remedy-line-strong: rgba(44, 82, 150, 0.26);
+
+  /* ---- Accent ramp ---- */
+  --remedy-blue-950:#071b49; --remedy-blue-900:#122f6a; --remedy-blue-800:#173f8f;
+  --remedy-blue-700:#2459d6; --remedy-blue-500:#4c83ff; --remedy-blue-300:#8fb3ff;
+  --remedy-blue-100:#dce8ff; --remedy-blue-50:#eef4ff;
+  --remedy-blue:#4c83ff; --remedy-blue-strong:#2f6fff; --remedy-blue-soft:#8fb3ff;
+  --remedy-cyan-400:#53d6df; --remedy-purple-400:#a78bfa; --remedy-purple:#a78bfa;
+  --remedy-green-500:#34c27e; --remedy-green:#34c27e; --remedy-green-50:#e7f8ef;
+  --remedy-orange-400:#f5a34e; --remedy-red-500:#ef6363;
+
+  /* ---- Status palette (single source of truth; graph + lists + chips) ---- */
+  --remedy-state-done: #34c27e;
+  --remedy-state-current: #4c83ff;      /* in-progress */
+  --remedy-state-open: #a78bfa;         /* aka "suggested" in api types */
+  --remedy-state-planned: #ffffff;      /* aka "pending" */
+  --remedy-state-planned-ring: #9db9ee;
+  --remedy-state-blocked: #ef6363;
+  --remedy-live: #34c27e;
+
+  /* ---- Graph tokens (NEW — previously hardcoded in ForceBrainGraph.tsx) ---- */
+  --remedy-graph-core-hi: #7ea6ff;
+  --remedy-graph-core-lo: #2f6fff;
+  --remedy-graph-core-halo: rgba(76, 131, 255, 0.55);
+  --remedy-graph-edge-core: rgba(255, 255, 255, 0.92);   /* bright filament */
+  --remedy-graph-edge-glow: rgba(140, 180, 255, 0.45);   /* soft outer stroke (estimated) */
+  --remedy-graph-edge-idle: rgba(160, 186, 228, 0.35);
+  --remedy-graph-particle: rgba(255, 255, 255, 0.95);
+  --remedy-graph-node-ring: rgba(255, 255, 255, 0.85);
+  --remedy-graph-decor-dot: rgba(170, 196, 238, 0.55);
+  --remedy-graph-star: rgba(198, 214, 244, 0.5);         /* starfield speckle (estimated) */
+  --remedy-graph-vignette: rgba(120, 150, 210, 0.10);    /* (estimated) */
+
+  /* ---- Effects ---- */
+  --remedy-blur-glass: 14px;
+  --remedy-shadow-card: 0 14px 40px rgba(55, 86, 138, 0.10);
+  --remedy-shadow-soft: 0 8px 24px rgba(55, 86, 138, 0.08);
+  --remedy-shadow: 0 24px 70px rgba(55, 86, 138, 0.14);
+  --remedy-glow: 0 0 44px rgba(76, 131, 255, 0.36);
+  --remedy-glow-strong: 0 0 90px rgba(76, 131, 255, 0.55);
+  --remedy-focus: #2f6fff;                                /* focus ring color */
+  --remedy-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --remedy-rank-bronze: #b08d57;  --remedy-rank-silver: #aab4c4;
+  --remedy-rank-gold: #e5b53b;
+  --remedy-rank-platinum: linear-gradient(135deg, #9db8ff, #e2e8ff);
+
+  /* ---- Icon system (assets_spec §3) ---- */
+  --remedy-icon-sm: 16px; --remedy-icon-md: 20px; --remedy-icon-lg: 22px;
+  --remedy-icon-stroke: 1.5;
+  --remedy-icon-color: var(--remedy-ink-soft);
+  --remedy-icon-hover: var(--remedy-ink);
+  --remedy-icon-active: var(--remedy-blue);
+  --remedy-icon-disabled: var(--remedy-faint);
+  --remedy-icon-nav-bg: rgba(76, 131, 255, 0.12);
+  --remedy-icon-metric-bg: var(--remedy-blue-50);
+
+  /* ---- Graph glyphs (assets_spec §4; geometry graph_spec §4–§5) ---- */
+  --remedy-glyph-core-r: 26px; --remedy-glyph-task-r: 7px;
+  --remedy-glyph-run-r: 4.5px; --remedy-glyph-cluster-r: 9px;
+  --remedy-glyph-stroke: var(--remedy-icon-stroke);
+  --remedy-glyph-glow: var(--remedy-glow);
+  --remedy-glyph-synapse: var(--remedy-graph-particle);
+  --remedy-glyph-live: var(--remedy-live);
+
+  /* ---- Radii ---- */
+  --remedy-radius-xl: 26px; --remedy-radius-lg: 20px;
+  --remedy-radius-md: 14px; --remedy-radius-sm: 10px; --remedy-radius-pill: 999px;
+
+  /* ---- Spacing scale (NEW; use ONLY these steps) ---- */
+  --remedy-space-1: 4px;  --remedy-space-2: 8px;  --remedy-space-3: 12px;
+  --remedy-space-4: 16px; --remedy-space-5: 20px; --remedy-space-6: 24px;
+  --remedy-space-8: 32px; --remedy-space-10: 40px;
+
+  /* ---- Layout ---- */
+  /* CHANGED: widths follow the pixel-lock region contract (292/350);
+     the audited code values (280/372) predate the contract and migrate in Stage 1. */
+  --remedy-left-width: 292px;
+  --remedy-right-width: 350px;
+  --remedy-frame-w: 1678px; --remedy-frame-h: 926px;
+
+  /* ---- Motion (NEW; see motion_spec.md) ---- */
+  --remedy-dur-fast: 120ms;      /* hovers, chips */
+  --remedy-dur-base: 220ms;      /* card lifts, panel fades */
+  --remedy-dur-slow: 350ms;      /* progress bar, layout shifts */
+  --remedy-dur-birth: 420ms;     /* node birth spring */
+  --remedy-dur-pulse: 1600ms;    /* in-progress pulse loop */
+  --remedy-dur-particle: 2400ms; /* edge particle traversal (estimated) */
+  --remedy-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);   /* soft-out */
+  --remedy-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---- Z-index layers (NEW) ---- */
+  --remedy-z-stage: 0;         /* graph canvas */
+  --remedy-z-stage-ui: 10;     /* chips, empty tips */
+  --remedy-z-cards: 20;        /* metrics, timeline, right panel */
+  --remedy-z-popover: 40;      /* DetailPopover, command dropdown */
+  --remedy-z-banner: 60;       /* DegradedBanner */
+  --remedy-z-overlay: 80;      /* sheets/modals */
+  --remedy-z-tooltip: 100;
+
+  color-scheme: light;
+}

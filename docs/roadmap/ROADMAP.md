@@ -1,1058 +1,1163 @@
-# REMEDY ROADMAP — Kernprodukt bis zur 20M-Reife (150 Features, nach Wichtigkeit)
+# REMEDY ROADMAP — Unified Master Plan (250 Features)
 
-> **Version 3.0 (FINAL) · 2026-07-02 · Ersetzt REMEDY_ROADMAP_100.md**
-> **Ablage im Repo:** `docs/roadmap/ROADMAP.md` — damit Remedy es ab F080 selbst liest.
-> **Adressat:** Der Orchestrator (GPT, Web-Oberfläche). Dieses Dokument wird als Anhang
-> übergeben und ist die verbindliche Quelle für JEDE Planung. Bei Konflikt zwischen
-> Tagesidee und diesem Dokument gewinnt dieses Dokument. Änderungen daran macht nur
-> der Operator (decodeux).
+> **Version 4.0 (UNIFIED, ENGLISH) · 2026-07-03**
+> **Replaces:** ROADMAP.md v3.0 (F001–F150, German) and ROADMAP_151_250.md v1.0 (F151–F250, German).
+> **Location in repo:** `docs/roadmap/ROADMAP.md` · **Execution state:** `docs/roadmap/STATUS.md`
+> **Feature detail files:** `docs/roadmap/features/T{tier}_F{nnn}.md` (one per feature)
 
----
+**Prime objective of this reordering:** reach *self-build capability* as fast as
+possible. Tier 0 and Tier 1 are built conventionally (human + coding agent).
+From Tier 2 onward, Remedy develops itself: it reads this file plus STATUS.md
+and works through the remaining tiers, while humans review and approve.
 
-## TEIL A — PROTOKOLL FÜR DEN ORCHESTRATOR (GPT im Web, arbeitet über Review-Zips)
-
-Der Orchestrator sieht das Repository nicht direkt. Der Arbeitszyklus ist:
-Operator lädt das aktuelle Review-Zip hoch → Orchestrator reviewt final → entscheidet
-„weiter" oder „Review-Punkte beheben" → gibt den nächsten Block als Self-Run-Goal aus.
-
-**A1 — Positionsbestimmung aus dem Zip.** Jede Sitzung beginnt mit dem hochgeladenen
-Review-Zip. Der Orchestrator liest daraus: `.review_zip_manifest.json` (Status, Gates,
-dirty files), `.agent/MASTERPLAN_LEDGER.md` (Fortschritt lt. Teil G — die Datei liegt
-im Repo und ist damit automatisch im Zip), `.agent/live_review.md` und
-`evidence/current/`. Ohne Zip wird nicht geplant — der Orchestrator fordert es an.
-
-**A2 — Der Orchestrator ist der Final-Reviewer.** Er prüft das Zip gegen die
-Done-Kriterien der aktiven F-Nummern und fällt ein Verdict: **PASS** (Block
-abgeschlossen, Ledger-Update vorschlagen, nächsten Block planen) oder **FINDINGS**
-(konkrete, nummerierte Review-Punkte; der nächste Block ist dann ein Fix-Block, kein
-neues Feature). Es wird kein neues Feature geplant, solange FINDINGS offen sind.
-
-**A3 — Blockgröße: bewusste Mischung aus mittelgroß und GROSS.** Blöcke umfassen
-1–3 F-Nummern und mischen absichtlich mittelgroße mit großen Tasks (viele Dateien,
-lange Läufe): Große Tasks sind zugleich der Belastungstest, ob Remedy große Aufgaben
-beherrscht — genau das soll das Produkt können. Regeln:
-- Mindestens jeder zweite Block enthält einen bewusst großen Task.
-- Scheitert ein großer Task, bestimmt das Postmortem (F010) zuerst die Fehlerklasse;
-  zerlegt wird erst NACH der Analyse — nicht präventiv alles klein schneiden.
-- Ergebnisse großer Tasks fließen in die Kapazitäts-Leiter (F144) ein.
-
-**A4 — DONE hat vier Bedingungen.** Ein Feature ist erst DONE, wenn:
-(1) Tests grün, (2) Remedy-Reviewer-Verdict PASS, (3) der Orchestrator es im
-Zip-Review nach A2 freigegeben hat, (4) es per CLI/UI real benutzbar und auf main
-committet ist. Tests allein reichen NICHT. „Implementiert aber blockiert" = NICHT DONE.
-
-**A5 — Priorität = Dokumentreihenfolge.** Geplant wird immer die niedrigste unfertige
-F-Nummer, deren Abhängigkeiten (Teil F) erfüllt sind. Ausnahmen: expliziter
-Operator-Auftrag sowie ausgewiesene Prioritäts-Ausnahmen in Teil D (derzeit: F146–F148 werden unmittelbar nach Tier 0, vor F013, eingeplant;
-F149–F150 gehören prioritär zu Tier 6 und werden mit F117–F128 eingeplant).
-
-**A6 — Meta-Arbeits-Sperre.** Es werden KEINE neuen Evidence-Gates, Manifeste,
-Taxonomien, Proof-Chains oder Hygiene-Schichten geplant, außer eine F-Nummer verlangt
-es wörtlich. Das bestehende Evidence-System ist eingefroren (Bugfixes erlaubt).
-Grund: Das Projekt hat bereits ~84k Zeilen Prozess-Maschinerie bei <1,5k Zeilen
-nutzersichtbarer Fähigkeit. Jede weitere Meta-Schicht senkt den Produktwert.
-
-**A7 — Selbstauflösungs-Klausel.** Tier 3 dieses Plans baut den Orchestrator in Remedy
-selbst ein. Der GPT-Orchestrator plant damit aktiv an seiner eigenen Ablösung. Das ist
-gewollt und wird nicht umgangen, verzögert oder wegdiskutiert.
-
-**A8 — UI-Tasks brauchen Sichtmaterial.** Für das Cockpit existiert ein verbindliches
-Referenzdesign (Teil H, `docs/ui/design_reference/ux_design.png`). Solange
-F087–F089 nicht DONE sind, übersetzt der Orchestrator dieses Design selbst und
-liefert fertiges CSS/TSX inline in den UI-Task-Prompts (Agenten sehen keine Bilder);
-Layout, Glyphen und Farben folgen dabei strikt Teil H. Ab F089 DONE entfällt das:
-dann wird die `design_reference` direkt übergeben.
-
-**A9 — Keine Rückfragen zur Laufzeit.** Self-Run-Goals werden so formuliert, dass der
-Builder NIE eine Design- oder Produktfrage stellen muss: Alle Vorgaben (Farben, Namen,
-Verhalten) stehen explizit im Goal bzw. in der design_reference. Fehlt eine Vorgabe,
-gilt die Referenz wörtlich (der Screenshot ist Gesetz) oder ein dokumentierter
-Default — niemals eine Frage mitten im Lauf.
+**Feature IDs are stable.** F-numbers never change; only tier assignment and
+execution order changed versus v3.0. Cross-references in older documents remain
+valid by ID.
 
 ---
 
-## TEIL B — PRODUKTVISION: DIE SIEBEN SÄULEN
-
-Remedy ist ein Orchestrierungs-Cockpit, das aus einem Auftrag ein fertiges,
-bewiesenes Softwareprodukt macht — und dem Menschen dabei nie das Steuer nimmt.
-
-1. **Sichtbarkeit & Eigentümerschaft.** Der User sieht live, wie sein Job zu Tasks
-   wird (der Growing-Brain-Graph, Teil H: Tasks, Runs und Artefakte materialisieren
-   sich als wachsendes Nervennetz), kann jederzeit stoppen, eingreifen,
-   Tasks verbieten oder ändern. Seine Vorgaben (Prompt, Screenshot, Spec) sind Gesetz
-   und werden nie durch Rückfragen mitten im Lauf ersetzt. Das Produkt fühlt sich an
-   wie SEIN Produkt, weil er es sichtbar steuert und jede Abweichung dokumentiert ist.
-2. **Langläufer-Autonomie („Overnight").** „Overnight" ist ein Bild, kein
-   Zeitfenster: Ein Job läuft unbeaufsichtigt SO LANGE WIE NÖTIG — Minuten, Stunden
-   oder Tage, gern während man schläft — nach dem Schema TRIGGER → SCOPE → ACTION →
-   BUDGET → STOP → REPORT, bis „feature-complete nach prüfbaren Kriterien", nicht
-   bis „der Agent findet es fertig". Es gibt keine Nacht-Mechanik im System, nur
-   Läufe ohne anwesenden Menschen.
-3. **Tokenwahrheit & Tokensparsamkeit.** Jede Zahl ist gemessen (nie geschätzt als
-   echt ausgegeben), und die Architektur (Caching, Routing, Kontextdisziplin) senkt
-   die Kosten systematisch.
-4. **Beweisbare Qualität.** Generierung und Bewertung sind getrennt; Ergebnisse werden
-   am laufenden Produkt verifiziert (Tests, Playwright, Pixel-Fidelity, Security-Scan).
-   Remedys Evidence-System wird vom Ballast zum Alleinstellungsmerkmal: beweisbare
-   Autonomie.
-5. **Design-to-Code.** Screenshot rein → feature-complete UI raus, mit messbarer
-   Design-Treue, egal wie lange der Lauf dafür braucht.
-6. **Eigener Orchestrator.** Remedy plant selbst von der Mission bis zum Task — das
-   Copy-Paste zu einem externen GPT entfällt vollständig.
-7. **Gedächtnis & Projektbindung.** Jeder Job gehört zu einem Projekt/Repo
-   (Autodetektion aus dem Arbeitsverzeichnis); Ziele, Konventionen, Lektionen und
-   Entscheidungen persistieren als projektgebundene Memory-Cards — Remedy wird pro
-   Projekt messbar schlauer. Bedienung im Golden Path: `cd repo && remedy do "…"`.
-
----
-
-## TEIL C — DESIGN-PRINZIPIEN (Stand der Technik, in jede Umsetzung einzubauen)
-
-**P1 — Monitoring + Interrupt schlägt Einzel-Approval.** Erfahrene Nutzer wollen nicht
-jede Aktion freigeben, sondern zuverlässig SEHEN was passiert und einfach eingreifen
-können. Alle Cockpit-Features folgen diesem Muster: maximale Transparenz, minimale
-Pflicht-Klicks, jederzeit unterbrechbar. (Anthropic-Forschung zu Agent-Autonomie 2026.)
-
-**P2 — Governed Autonomy.** Autonomie ist gestuft: Lesen frei, risikoarme Schreibaktionen
-bedingt frei, riskante Aktionen (destruktiv, extern, teuer) immer mit menschlichem Gate.
-Jede Freigabe-Anfrage zeigt drei Dinge: Beleg, erwartetes Ergebnis, Schaden im Fehlerfall.
-
-**P3 — Loops statt Prompts.** Die Arbeitseinheit ist die deklarierte Schleife mit
-Stop-Bedingung, nicht der Einzelprompt. Fortschritt lebt auf der Festplatte (Repo,
-Checkpoints), nie nur im Gesprächsverlauf.
-
-**P4 — Generierung ≠ Bewertung.** Builder bewerten nie eigene Arbeit. Bewertung erfolgt
-am laufenden Produkt, nicht nur am Diff. Für Kritisches: zweiter, adversarialer Blick.
-
-**P5 — Ein Task = eine Session.** Kontextfenster sind die harte Grenze; Handoffs
-zwischen Sessions laufen über strukturierte Artefakte im Repo.
-
-**P6 — Ehrlichkeit vor Schönheit.** unknown ≠ cheap, estimated ≠ actual, geskippt ≠
-erledigt. Kein Feature darf diese Prinzipien aufweichen — sie sind der spätere
-Verkaufskern („beweisbare Autonomie").
-
-**P7 — Vorgaben vorne, keine Fragen mittendrin.** Alle Produkt- und
-Designentscheidungen stehen VOR dem Lauf fest: im Prompt, in der Spec, im Screenshot.
-Die Referenz ist Gesetz — zeigt der Screen Blau, wird es Blau, Punkt. Das System
-stellt während eines Laufs NIE Geschmacksfragen; echte Unklarheiten werden einmalig
-und gebündelt im Flight Plan geklärt (F034) oder per dokumentiertem Default
-entschieden (assumption_log). Eigentümerschaft entsteht durch sichtbare Steuerung
-und Eingriffsmacht — nicht durch Dauerbefragung.
-
----
-
-## TEIL D — DIE 150 FEATURES (Reihenfolge = Wichtigkeit)
-
-Format: **Fxxx Titel** — Beschreibung. → Done-Kriterium (messbar).
-
----
-
-### TIER 0 — SYSTEMRELEVANTES FUNDAMENT (F001–F012)
-*Ohne diese 12 trägt nichts anderes. Sie sind klein, aber jede spätere Säule steht darauf.*
-
-**F001 Adaptive Provider-Timeouts + Retry** — Timeout pro Rolle/Taskgröße berechnet
-(Basis 600s Builder / 300s Reviewer, +60s je erlaubter Datei, Cap 2400s); vor final
-`provider_unavailable` bis zu 2 automatische Retries mit Backoff (30s/120s), Zähler in
-der Evidence. Ersetzt die hart kodierten 120–300s, die aktuell die Hauptfehlerquelle
-der Self-Runs sind. → 10 Self-Runs ohne Timeout-Block.
-
-**F002 Operator-Eingriff als gültiger Evidence-Pfad** — `remedy do repair-attest
-<job> <task>` erzeugt bei manueller Reparatur alle Pflicht-Artefakte
-(execution_mode=manual_operator_repair, review mit verdict=operator_attested,
-token_accounting actual_available=false/reason=manual, Diff-Hashes). Menschliches
-Eingreifen darf das System nie wieder in BLOCKED_EVIDENCE zwingen. → Ein manuell
-reparierter Task passiert final_verifier.
-
-**F003 Echte Token-/Kostenmessung** — Builder/Reviewer-Aufrufe nutzen
-`claude -p --output-format json`; usage (input/output/cache_read/cache_creation),
-total_cost_usd, num_turns, duration_ms, session_id landen in token_accounting →
-token_truth `actual_available: true`, confidence=high. → Jobsumme stimmt mit
-CLI-Reports überein.
-
-**F004 Roh-Stream-Archiv** — Optional `--stream-evidence`: stream-json (--verbose)
-wird per tee als Roh-JSONL gesichert UND geparst (Tool-Calls, api_retry-Events).
-Grundlage für Live-Feed, Audit, Replay. → agent_run_trace zeigt echte
-Tool-Call-Sequenz statt „reconstructed".
-
-**F005 Strukturierte Outputs erzwingen** — Planner-/Reviewer-Antworten per
-`--json-schema` (Claude CLI) gegen Pydantic-Schemata; Format-Parse-Fehler und deren
-Repair-Runden verschwinden. → 0 Parse-Fehler in 10 Runs.
-
-**F006 Worktree-Isolation pro Lauf** — Jeder Run arbeitet in eigenem `git worktree`,
-nie im Haupt-Checkout; Ergebnis = Branch + PR-fertiger Diff. Voraussetzung für
-Parallelität und sichere unbeaufsichtigte Läufe. → Zwei parallele Läufe kollidieren nicht.
-
-**F007 Runtime-Harness** — Remedy startet/stoppt den Dev-Server des Zielprojekts
-kontrolliert (Port, Health-Check, Timeout, Log-Capture). Das 17-Zeilen-Paket
-`runtimes/` wird hier real. → `remedy runtime serve --probe` bringt apps/ui hoch
-und meldet ready.
-
-**F008 SSE-Eventstream** — `/api/jobs/<id>/events/stream` auf Basis des vorhandenen
-events-since-Cursors; Frontend abonniert statt 5s-Polling. → Statuswechsel sichtbar
-<1s nach Backend-Event.
-
-**F009 Der eine Schreibkanal** — Genau EIN POST-Endpoint
-`/api/jobs/<id>/commands` (Token, CSRF-Header, Rate-Limit), der ausschließlich in
-die bestehende approval_/decision_queue schreibt. Read-only-Philosophie bleibt,
-aber die UI kann handeln. → Entscheidung aus der UI wird vom Backend ausgeführt.
-
-**F010 Automatisches Fehlerklassen-Postmortem** — Jeder gescheiterte Run schreibt
-failure_postmortem.json (timeout / parse / review_reject / infra / budget) und
-aggregiert in `remedy stats failures`. → Retry-Kaskaden werden als Klassen zählbar.
-
-**F011 Kill-Switch** — `.remedy/STOP`-Datei + Command via F009 beenden jeden Lauf
-am nächsten sicheren Punkt; UI-Stop-Button. → Stop wirkt ≤1 Zyklus.
-
-**F012 Deterministische Läufe** — `--bare`-Modus (ignoriert lokale Hooks/MCP),
-gepinnte Env, dokumentierte Seeds wo möglich; Grundlage für Replay und Audit.
-→ Zwei Läufe desselben Fake-Provider-Jobs sind bit-identisch.
-
----
-
-### TIER 1 — DER KERN-RUN: LIVE-COCKPIT & EIGENTÜMERSCHAFT (F013–F044)
-*Das Herzstück deiner Vision: Job rein, Nodes materialisieren sich live, jederzeit
-stoppen/eingreifen/verbieten/ändern — der User weiß immer, was passiert, und trifft
-die Entscheidungen, die das Produkt zu SEINEM machen.*
-
-**F013 Job-Intake** — Auftrag in natürlicher Sprache + Anhänge (Dateien, später
-Screenshots) → strukturierter Job (Ziel, Kontext, Vorgaben, Anti-Ziele). Intake
-stellt fehlende Pflichtangaben als kompakte Rückfragen. → Ein Prosa-Auftrag wird
-ohne Handarbeit zum validen Job-Objekt.
-
-**F014 Flight Plan (Plan-Vorschau vor Start)** — Vor Ausführung zeigt Remedy: Task-DAG,
-geschätzte Kosten/Dauer je Task (Bänder, ehrlich als Schätzung markiert), Risiken,
-berührte Pfade, benötigte Entscheidungen. Nichts läuft ohne Plan-Ansicht. → Flight
-Plan erscheint für jeden Job; Start erst nach Bestätigung (überspringbar per Flag).
-
-**F015 Interaktives Plan-Editing** — Im Flight Plan: Tasks löschen, umformulieren,
-umsortieren, mergen, splitten; Akzeptanzkriterien editieren. Änderungen fließen als
-Evidence-Vermerk (user_edited_plan) ein. → Editierter Plan wird exakt so ausgeführt.
-
-**F016 Skalierende Task-Granularität** — Die Node-Anzahl skaliert mit der Jobgröße
-nach expliziten Regeln (min 1, max konfigurierbar; Ziel-Tokenbudget pro Task steuert
-den Schnitt). Kleiner Job = 2 Nodes, großer Job = 30. → Testfälle für 3 Jobgrößen
-erzeugen erwartete Node-Zahlen.
-
-**F017 Scope-Fences** — Pro Job: geschützte Pfade (nie anfassen), verbotene Aktionen
-(z. B. keine Dependency-Änderungen), Muss-Pfade. In UI und Goal-File editierbar;
-Verstoß = harter Task-Fail. → Fence-Verstoß-Test schlägt korrekt fehl.
-
-**F018 Budget & Stop-Bedingungen im Flight Plan** — Jeder Job deklariert BUDGET
-(€/Tokens), STOP (Bedingungen: alles grün / N Zyklen / Deadline) und REPORT (Ziel)
-nach dem Loop-Schema. → Erstes erreichtes Limit stoppt sauber am Checkpoint.
-
-**F019 Live-Node-Materialisierung (Growing Brain)** — Das Netz wächst live gemäß
-Ontologie H2: Planner-Arbeit lässt Task-Nodes am Ast sprießen; jeder Builder-/
-Review-/Repair-/Test-Run sprießt als Kind-Node aus seinem Task; jeder Provider-Call
-setzt einen Synapsen-Punkt, jedes Artefakt einen Dokument-Punkt (Events via SSE F008,
-Quelle F004). Der User sieht seinen Job buchstäblich zu einem Organismus wachsen —
-der emotionale Kernmoment des Produkts. → Bei einem echten Lauf entstehen Task- UND
-Run-Nodes einzeln animiert, exakt in Ereignis-Reihenfolge, rückführbar auf Events.
-
-**F020 Node-Lebenszyklus & Glyphen-Sprache** — Zustände und Glyphen exakt nach
-Design-Legende (H2): Open violett, Planned blass, In Progress pulsierend mit
-Kantenpartikeln, Done grün, Failed/Blocked als einzige Warnfarbe; Glyphen `</>` /
-Person / Kolben / Wiederhol-Ring je Node-Typ. Respektiert Reduced-Motion (H4).
-→ Alle 8 Node-Typen aus H2 im Livelauf visuell unterscheidbar; Motion-Off-Test.
-
-**F021 Live-Aktivitätsfeed + „Agent is doing now"** — Rechte Leiste nach H1:
-oben die Live-Karte mit der aktuellen Aktion („Builder is implementing
-collect_file_metadata()"), darunter der Feed aus echten Tool-Events (F004):
-„Builder liest src/auth.py", „Reviewer: 2 Findings". Keine Platzhalter. → Karte
-und Feed sind 1:1 auf Roh-Events rückführbar; Karte wechselt <1s nach Event.
-
-**F022 Live-Kosten-Ticker** — Metrik-Leiste (H1) erhält neben OPEN/PLANNED/DONE/
-PROGRESS die laufenden Kosten/Tokens des Jobs in Echtzeit (F003 via SSE) mit
-Budget-Fortschrittsbalken und Restschätzung. → Ticker bewegt sich im Livelauf;
-Endstand = Ledger-Stand.
-
-**F023 Semantischer Zoom L0–L3** — Die vier Stufen aus H3 vollständig: L0
-Organismus (Runs aggregiert zu Ast-Aktivität), L1 Task-Expansion (nur einer,
-Geschwister dimmen), L2 Run-Detail-Popover (Verdict, Tokens, Dauer, Diff-Link,
-Synapsen sichtbar), L3 Evidenz-Seitenpanel. Zoom und Klick führen zur selben
-Stufe; Brotkrumen, Esc, Doppelklick-Reset, Cluster-Aggregation >8 Kinder (H4).
-→ Alle Stufen per Zoom UND Klick erreichbar; Cluster-Test mit 20 Runs; 60fps bei
-500 Gesamt-Nodes in L0.
-
-**F024 Phasen-Zeitleiste mit Scrubber** — Fußzeile nach H1: Job → Planning →
-Build → Test → Review → Finalized mit Unter-Glyphen (`</>`/Kolben/Person) je
-Phase; verschmolzen mit dem Event-Replay: Ziehen am Scrubber spult den gesamten
-Graph-Zustand vor/zurück. → Scrubbing durch abgeschlossenen Job flüssig; Phasen-
-Marker springen korrekt.
-
-**F025 Pause/Resume** — Global und pro Node: Pause stoppt vor dem nächsten
-Provider-Call; Resume setzt exakt fort (kein Kontextverlust dank Session-IDs).
-→ Pause→Resume-Lauf endet identisch zu ununterbrochenem Lauf.
-
-**F026 Task-Edit zur Laufzeit** — Wartende oder pausierte Nodes können umformuliert
-werden (Prompt, Scope, Akzeptanzkriterien); Node startet mit Vermerk
-user_modified_at_runtime neu. → Editierter Node baut nachweislich nach neuer Vorgabe.
-
-**F027 Task-Veto** — Jeder noch nicht appliedte Node kann verboten werden; abhängige
-Nodes werden automatisch neu geplant oder als unerreichbar markiert — transparent im
-Graph. → Veto auf Mittel-Node erzeugt korrekten Folgezustand.
-
-**F028 Task-Injektion** — Neuen Node zur Laufzeit hinzufügen (mit Abhängigkeiten);
-Scheduler ordnet ihn ein. → Injizierter Node läuft im selben Job durch.
-
-**F029 Subtree-Rerun** — Node + Nachfolger ab Checkpoint neu ausführen (z. B. nach
-Edit oder mit anderem Modell). → Rerun produziert konsistenten Workspace ohne
-Reste des alten Zweigs.
-
-**F030 Steering-Nachrichten** — Freitext-Hinweis an einen laufenden/nächsten Task
-(„nutze die bestehende Button-Komponente"), wird in die nächste Builder-Runde
-injiziert und in der Evidence vermerkt. → Hinweis nachweislich im Prompt-Trace.
-
-**F031 Entscheidungs-Postfach** — Entscheidungen blockieren nur ihren Zweig; alles
-Unabhängige läuft weiter. Postfach bündelt offene Entscheidungen mit Kontext.
-→ Job mit 1 Entscheidung + 2 freien Tasks liefert 2 Ergebnisse + 1 saubere Anfrage.
-
-**F032 Approval mit Dreiklang** — Jede Freigabe-Anfrage zeigt: Beleg (Evidenz),
-erwartetes Ergebnis, Downside im Fehlerfall (P2). Einheitliche Karte in UI und
-Abschlussreport. → Kein Approval ohne die drei Felder.
-
-**F033 Hunk-genaue Diff-Freigabe** — Bei Approval-pflichtigen Änderungen: pro
-Änderungsblock annehmen/ablehnen; abgelehnte Hunks gehen als präzises Repair-Feedback
-zurück. → Teilfreigabe erzeugt korrekten Patch + Repair-Runde für den Rest.
-
-**F034 Gebündelte Klärung im Flight Plan (nie im Lauf)** — Erkennt der Planner echte
-Unklarheiten (fehlende Pflicht-Vorgabe, Widerspruch zwischen Prompt und Referenz),
-sammelt er sie zu EINEM konsolidierten Klärblock im Flight Plan — beantwortbar in
-einer Minute, vor dem Start. Während des Laufs gilt: Referenz ist Gesetz, sonst
-dokumentierter Default im assumption_log der Evidence. Null Fragen zur Laufzeit.
-→ Job mit 3 eingebauten Unklarheiten erzeugt genau 1 Klärblock vorab und 0
-Laufzeit-Fragen; Defaults stehen im assumption_log.
-
-**F035 Ownership-Ledger** — Chronik aller User-Eingriffe und -Vorgaben des Jobs
-(„Du hast T004 verboten", „Deine Vorgabe: Farbschema aus ref.png", „Flight-Plan-
-Klärung: X entschieden") im Report und in der UI — sichtbare Urheberschaft ohne
-Dauerbefragung. → Ledger vollständig gegen decision_queue- und Eingriffs-Historie.
-
-**F036 Guided Tour des Ergebnisses** — Nach Jobabschluss generiert Remedy eine
-Führung durch das Gebaute (Struktur, Kernentscheidungen, wo was liegt, wie man es
-startet) — der User versteht sein Produkt, statt es nur zu besitzen. → Tour für
-einen Demo-Job; Externer findet damit den Einstiegspunkt.
-
-**F037 Gerenderter Diff-Viewer** — Node-Detail zeigt syntax-gehighlightete Diffs
-(safe.diff existiert) statt Rohtext; Datei-Navigation, Kollaps. → Contract-Test.
-
-**F038 Node-Chat (read-only fundiert)** — „Warum hast du das so gelöst?" an einen
-Node: Antwort wird ausschließlich aus dessen Evidence (Prompt-Trace, Review,
-Diff) generiert, mit Quellenangabe auf die Artefakte. Kein freies Fabulieren.
-→ Antworten zitieren Evidence-Abschnitte.
-
-**F039 Story-/Replay-Modus** — Der ganze Job als geführte Erzählung auf der
-Zeitleiste (F024) — auch als Übergabe an Dritte. → Story für abgeschlossenen Job.
-
-**F040 Abschluss-/Rückkehr-Digest** — Nach Jobende bzw. beim ersten UI-Öffnen nach
-Abwesenheit (laufender oder beendeter Langlauf): Hero-Karte mit Stand/Ergebnis,
-Kosten, Entscheidungen, nächster Aktion.
-→ Contract-Test.
-
-**F041 Artefakt-Vorschau** — Gerenderte README, erzeugte Screenshots, laufende
-Preview-URL (F007) direkt im Cockpit. → Preview-Link öffnet die gebaute App.
-
-**F042 Mehrprojekt-Cockpit** — Startseite über Projekte: letzte Läufe, Kostenwoche,
-offene Entscheidungen, Ideen-Queue-Zähler. → Zwei Demo-Projekte korrekt.
-
-**F043 Erklärschicht** — Jede Metrik/Status hat 1-Satz-Tooltip; Onboarding-Tour
-(6 Schritte) beim ersten Start. → Copy-Audit: kein Begriff ohne Tooltip.
-
-**F044 Bedien-Qualität** — Cmd+K-Palette (nutzt F009-Kommandos), Keyboard-Navigation
-im Graph; Performance-Budget First Paint <1,5s, 60fps bei 200 Nodes, in CI geprüft.
-→ Budget-Tests grün.
-
----
-
-### TIER 2 — OVERNIGHT-AUTONOMIE & IDEA ENGINE (F045–F068)
-*Die zweite Kernsäule. Klarstellung: „Overnight" heißt nur, dass ein Lauf
-unbeaufsichtigt so lange arbeitet, wie der Auftrag braucht (auch während man
-schläft) — es gibt KEINE Nacht-Mechanik, keine Tageszeit-Logik. Ein Lauf endet,
-wenn die Done-Kriterien grün sind oder ein Limit greift; sonst arbeitet er weiter.
-Plus dein Ideen-Prozess: Remedy erfindet Vorschläge, du approvst/deniest/priorisierst.*
-
-**F045 Loop-Definitionen** — Deklaratives Format für autonome Läufe:
-TRIGGER (manuell/Zeit/Event) · SCOPE (Repo, Pfade, Queue) · ACTION · BUDGET
-(€/Tokens/Zyklen) · STOP (Bedingungen) · REPORT (Ziel). Jede Langlauf-Fähigkeit
-baut auf diesem Schema auf. → Ein Loop-File startet einen definierten Lauf.
-
-**F046 Mehrzyklen-Schleife** — Der bewusst auf max_cycles=1 begrenzte Executor wird
-zur budgetierten Schleife (F018-Limits); erstes erreichtes Limit stoppt am Checkpoint.
-→ 5-Zyklen-Lauf endet exakt am Limit, Zustand konsistent.
-
-**F047 Checkpoint & Resume (kill-sicher)** — Nach jedem Zyklus vollständiger
-Checkpoint; `--resume <run>` setzt exakt fort. → kill -9 mitten im Zyklus, Resume,
-Ergebnis identisch zu ununterbrochenem Lauf.
-
-**F048 Auftrags-Queue** — Aufträge sammeln (`remedy queue add`), atomares Claiming
-(kein Task doppelt), Prioritäten; abgearbeitet wird, sobald Kapazität frei ist —
-sofort oder eben während man schläft. → 3 Einträge, ein Lauf, 3 Ergebnisse.
-
-**F049 Parallelität** — Bis zu N unabhängige Tasks parallel in eigenen Worktrees
-(F006), gemeinsames Budget, Concurrency-Cap wegen Rate-Limits. → Messbar kürzere
-Wandzeit, keine Kollisionen.
-
-**F050 DAG-Scheduling** — Tasks deklarieren depends_on; parallelisiert wird nur
-Unabhängiges; ein blockierter Zweig legt nie den ganzen Lauf lahm. → Diamant-
-Abhängigkeit korrekt ausgeführt.
-
-**F051 Eskalation statt Block (unbeaufsichtigt)** — Entscheidungs-pflichtige Tasks landen
-im Postfach (F031), der Lauf macht mit Unabhängigem weiter. → Unbeaufsichtigter
-Lauf mit 1 Approval-Task + 2 freien liefert 2 Ergebnisse + 1 wartende Entscheidung.
-
-**F052 Selbstheilende Testrunden** — Scheitern Tests nach einem Zyklus: begrenzte
-Auto-Repair-Runde (max 2, Session-Resume F106) bevor der Zyklus als failed gilt.
-→ Injizierter trivialer Testbruch wird unbeaufsichtigt selbst repariert.
-
-**F053 Abschluss- & Zwischenreport** — EIN Markdown pro Lauf (bei Ende oder auf
-Abruf als Zwischenstand, wenn der Lauf noch arbeitet): gebaut / blockiert / Kosten /
-Entscheidungen / Diff-Links / empfohlene nächste Aktion. → Golden-Test + realer
-Langlauf; Zwischenreport eines laufenden Jobs korrekt.
-
-**F054 Auto-Revert-Vorschlag** — Verschlechtert der Endstand die Testsuite
-gegenüber dem Startstand des Laufs, liegt ein Revert-Patch + Analyse bei (wird NIE selbst
-ausgeführt). → Simulierte Regression erzeugt Vorschlag.
-
-**F055 Rehearsal (Dry-Run)** — `--rehearse`: kompletter Plan + Kostenschätzung +
-Risikoliste ohne Ausführung — der Check vor dem echten Lauf. → Rehearse-Output
-strukturgleich zum echten Lauf.
-
-**F056 Missionen: persistentes Ziel, Jobs als Ausführungseinheiten** — Credo:
-Ein Auftrag ist IMMER zuerst ein Job. Er wird erst zur Mission, wenn Remedy nach
-dem ersten Job selbstständig Folge-Jobs planen und steuern soll. Definition:
-Mission = persistentes Ziel, Job = Ausführungseinheit. Kein zweiter UI-Begriff im
-Golden Path — der Einstieg bleibt `remedy do "…"`, Remedy entscheidet intern
-(klar abgrenzbarer Auftrag → Job; Langziel mit Folge-Läufen → Mission) und macht
-die Entscheidung im Flight Plan transparent. Missionszustand persistiert; jeder
-Folge-Job beginnt mit Verify des Vorstands („verify before building"). Im Cockpit
-sind die Jobs einer Mission sichtbar VERKETTET (Lineage-Faden bis zum
-Ursprungs-Job). → Ein Langziel erzeugt eine Mission mit 3 verketteten Jobs;
-Cockpit zeigt den Faden bis zum Ursprung; ein einfacher Auftrag bleibt ein
-einzelner Job ohne Missions-Overhead.
-
-**F057 Rate-Limit-bewusster Scheduler** — Läufe kennen Provider-Limits/Zeitfenster;
-bei Limit-Treffern wird gewartet statt gescheitert (api_retry-Events aus F004).
-→ Simuliertes Rate-Limit verzögert statt blockiert.
-
-**F058 Modell-Failover-Kette** — Bei Nichtverfügbarkeit: definierte Kette
-(z. B. Opus→Sonnet), Wechsel ehrlich in Evidence (configured vs actual model).
-→ Failover-Test dokumentiert den Wechsel korrekt.
-
-**F059 Benachrichtigungen** — Push bei „Entscheidung nötig" und „Lauf fertig"
-(Webhook/ntfy/Mail, konfigurierbar). → Testlauf löst Notification aus.
-
-**F060 Langlauf-Zertifikat** — Kompaktes, teilbares Evidence-Bundle pro Lauf
-(Hashes, Kosten, Verdicts, Entscheidungen) — „beweisbare Autonomie" als Artefakt.
-Nutzt review_bundle, baut NICHTS Neues (A6). → ZIP <5 MB pro Lauf.
-
-**F061 Definition-of-Done-Compiler** — Aus den Nutzer-Vorgaben werden PRÜFBARE
-Acceptance-Checks generiert (Tests, Playwright-Flows, Lint, Build); „feature-complete"
-heißt: alle Checks grün, nicht „der Agent meint fertig". Der wichtigste Baustein
-gegen Vibe-Code. → Job endet erst bei 100% grünen kompilierten Checks.
-
-**F062 Produkt-Smoke als Abschlussgate** — Vor Jobende: App startet (F007),
-Kernflows sind per Playwright klickbar, keine Konsolen-Fehler. → Absichtlich
-kaputter Startpfad lässt den Job nicht enden.
-
-**F063 Idea Engine v1** — Nach (und optional während) Jobs erzeugt ein Ideen-Prozess
-Feature-Vorschläge: je Idee Begründung, geschätzter Aufwand (Band), geschätzter
-Nutzen, betroffene Bereiche — in eine persistente Ideen-Queue. → Nach Demo-Job
-liegen ≥3 begründete Ideen in der Queue.
-
-**F064 Ideen-Queue-UI** — Karten mit approve / deny / Priorität ziehen; approved →
-automatischer Flight-Plan-Entwurf (F014) zur Bestätigung. Denied wird erinnert
-(nie wieder identisch vorschlagen). → Approve-Flow erzeugt startbaren Plan.
-
-**F065 Ideen-Herkunfts-Beleg** — Jede Idee referenziert die konkrete Beobachtung
-(Testlücke X, TODO Y, UX-Reibung Z, Nutzerentscheidung W) — keine freien
-Halluzinationen. Ideen ohne Beleg werden verworfen. → Jede Queue-Idee hat
-mind. 1 prüfbare Referenz.
-
-**F066 Idea Engine v2 (kontinuierlich, opt-in)** — Beobachtet TODO-Kommentare,
-Coverage-Lücken, wiederkehrende Fehlerklassen, Ownership-Ledger-Muster und legt
-periodisch Ideen nach — als konfigurierter Loop (F045), nie ungefragt ausführend.
-→ Periodischer Lauf erzeugt Ideen ausschließlich in die Queue.
-
-**F067 Routine-Missionen** — Vordefinierte Loops: Dependency-Updates, Lint-Schulden,
-Doku-Sync, Testlücken schließen, Karten-Aufräumen (F124) — als Bibliothek
-startklarer Loop-Files.
-→ Dependency-Loop läuft einmal erfolgreich durch.
-
-**F068 Autonomie-Bilanz (auf Abruf)** — `remedy stats autonomy --since <Zeitraum>`:
-was lief autonom, wo war Mensch nötig, Interrupt-Quote, Erfolgsrate — die
-Steuerungszahlen für „wie viel darf Remedy schon allein". Kein fester
-Berichtsrhythmus; die Bilanz wird gezogen, wann immer man sie braucht.
-→ Bilanz über einen frei gewählten Zeitraum korrekt gegen Ledger/Evidence.
-
----
-
-### TIER 3 — REMEDY ALS EIGENER ORCHESTRATOR: GPT-ABLÖSUNG (F069–F086)
-*Dritte Kernsäule: das Copy-Paste zum Web-GPT verschwindet. Remedy plant selbst —
-von der Mission bis zum Task — mit dem „Gesamtbild", das heute der externe GPT hält.*
-
-**F069 Mission-Compiler** — Langziel in Prosa → Epics → Jobs → Tasks, mehrstufig,
-mit Begründungskette; jede Ebene menschlich editierbar (F015-Muster). → Eine
-Beispiel-Mission wird zu 3 Epics mit startbaren Jobs kompiliert.
-
-**F070 Orchestrator-Loop** — Eine Remedy-eigene Orchestrator-Rolle (Provider-Call
-mit Missions-Dossier) entscheidet nach jedem Job: nächster Job / Replan / Eskalation.
-„Loops statt Prompts" — der User schreibt Missionen, nicht mehr Prompts.
-→ 3 aufeinanderfolgende Jobs laufen ohne menschliches Prompting.
-
-**F071 Missions-Dossier** — Komprimiertes Gesamtbild (Ziele, Architektur-Snapshot,
-Entscheidungen, offene Fronten) als stabiler, gecachter Prompt-Präfix des
-Orchestrators; wird nach jedem Job aktualisiert (aus Memory-Cards, Tier 6).
-→ Dossier ≤3k Tokens, nachweislich im Cache (cache_read>0).
-
-**F072 Spec-First** — Pro Feature eine lebende Spezifikation als Vertrag; Builder
-bauen gegen die Spec, ein Sync-Check meldet Drift zwischen Spec und Code.
-→ Absichtliche Code-Abweichung wird als Spec-Drift gemeldet.
-
-**F073 Eval-Suiten als Brücke** — Wiederkehrende Probleme (3× gleiche Fehlerklasse)
-erzeugen automatisch eine kleine Eval (Testfall + erwartetes Verhalten), die künftige
-Pläne mitprüfen. → Wiederholtes Problem erscheint als Eval und schlägt vor dem
-Merge an.
-
-**F074 Planner-Kalibrierung** — Schätzung vs. Realität (Kosten, Dauer, Repair-Runden)
-wird pro Taskklasse gespeichert und fließt in künftige Flight-Plan-Schätzungen.
-→ Schätzfehler sinkt über 10 Jobs messbar.
-
-**F075 Zuverlässigkeits-Meilenstein** — 10 Self-Runs in Folge ohne Operator-Eingriff,
-jede Abweichung per F010 klassifiziert und behoben. Gate für alles Weitere in Tier 3.
-→ 10/10 dokumentiert.
-
-**F076 Vision-Planner (Design-Übersetzung in-house)** — Der Orchestrator dekomponiert
-Screenshots selbst (nutzt Tier-4-Bausteine F087–F089) — die letzte Fähigkeit, für die
-heute der Web-GPT gebraucht wird. → Screenshot→Flight-Plan ohne externes Tool.
-
-**F077 Orchestrator-Wachhund** — Eine zweite, günstige Instanz prüft jeden
-Orchestrator-Plan gegen Masterplan + Spec + Fences und meldet Drift/Scope-Creep,
-bevor ausgeführt wird. → Absichtlicher Drift-Plan wird abgefangen.
-
-**F078 Konfigurierbare Autonomie-Level** — Pro Projekt L2 (jede Aktion bestätigen)
-bis L5 (nur Missionsgrenzen); Risikoklassen (read/write/destructive/expensive)
-mappen auf Gates (P2). → Levelwechsel ändert Gate-Verhalten nachweislich.
-
-**F079 Session-Handoffs** — Strukturierte Übergabe-Artefakte zwischen Orchestrator-
-Sessions (Stand, offene Fronten, nächste Absicht) im Repo — nie im Chatverlauf.
-→ Neustart mitten in einer Mission setzt korrekt fort.
-
-**F080 Maschinenlesbarer Masterplan** — Dieses Dokument erhält einen YAML-Spiegel
-(F-Nummern, Status, Abhängigkeiten); der interne Orchestrator liest seine Position
-selbst — das Ledger-Protokoll (Teil A/G) wird obsolet. → `remedy plan status` zeigt
-nächste offene F-Nummer.
-
-**F081 remedy init** — Ein Befehl macht jedes fremde Repo Remedy-fähig: registriert
-es in der Projekt-Registry (F146), erkennt Sprache/Testbefehl, legt `.remedy/` mit
-Memory-Skelett + Config + CLAUDE.md an, verifiziert per Smoke-Task. → Frisches
-Fremd-Repo in <2 Min einsatzbereit; danach genügt `remedy do` (F147).
-
-**F082 Fremdprojekt-Benchmark** — 5 reale Klein-Aufträge (CLI-Tool, REST-API,
-React-Widget, Bugfix, Screenshot-UI) laufen regelmäßig; Ergebnisse im Zeitverlauf.
-Der ehrliche Realitätscheck des Gesamtsystems. → Benchmark-Report v1 mit Baseline.
-
-**F083 CI-Release-Gate** — main immer releasebar: volle Suite + Benchmark-Smoke in
-CI; Merge nur grün. → Absichtlicher Bruch wird geblockt.
-
-**F084 Demo-Modus** — `remedy demo`: vollständiger Fake-Provider-Durchlauf mit
-realistischer Live-UI-Show, offline, <60s — für Erstnutzer und Vorführungen.
-→ Läuft offline durch.
-
-**F085 Sicherheits-Härtung** — Least-Privilege-Toolflächen pro Rolle,
-Sandbox-Grenzen dokumentiert+getestet, Redaction gegen echte Leak-Corpora geprüft,
-Threat-Model-Dokument. → Audit-Checkliste grün.
-
-**F086 Installierbare Releases** — Semver-Tags, generiertes Changelog, Installation
-auf frischer Maschine (pip/pipx), Quickstart ≤10 Min bis zum ersten Lauf.
-→ Externer Tester schafft Quickstart ohne Hilfe.
-
----
-
-### TIER 4 — DESIGN-TO-CODE (F087–F102)
-*Screenshot rein, feature-complete UI raus — mit messbarer Treue. Ersetzt das
-manuelle CSS-in-Prompts-Kodieren vollständig.*
-
-**F087 design_reference-Artefakt** — Jobs/Tasks akzeptieren PNG/JPG
-(`--design ref.png`), versioniert per Hash in der Evidence. → Bild hängt beweisbar
-am Task.
-
-**F088 Bild an den Builder** — Builder-Prompt referenziert die Bilddatei; Claude
-Code liest sie nativ aus dem Worktree („Lies zuerst design/ref.png, beschreibe
-Layout, Farben, Typo, Abstände"). → Stream-Evidence zeigt den Read auf die Bilddatei.
-
-**F089 Design-Dekomposition** — Vision-Schritt erzeugt strukturierte Spec:
-Komponentenbaum, Farbtokens, Typo-Skala, Spacing, Interaktionsvermutungen (JSON,
-F005-Schema). → Farbstichprobe der Spec stimmt mit Pixelwerten überein.
-
-**F090 Screenshot-Verifikation** — Playwright rendert die gebaute Route
-deterministisch (fixe Viewport-Größe, Animationen aus, Fonts geladen) →
-actual.png neben ref.png in der Evidence. → Beide Bilder je Task vorhanden.
-
-**F091 Pixel-Diff-Check** — pixelmatch ref vs actual, maxDiffPixelRatio
-konfigurierbar; Score + diff.png als normaler AcceptanceCheck. → Falsche Farbe
-macht den Check rot.
-
-**F092 Visueller Reviewer** — Reviewer erhält ref/actual/diff und bewertet nach
-Design-Qualität, Originalität, Handwerk, Funktionalität mit ortsbezogenen Findings
-(„Header-Padding 8px zu klein"). → Findings referenzieren Bildregionen; Repair
-behebt sie nachweislich.
-
-**F093 Fidelity-Schleife** — Build → Screenshot → Diff → visuelles Review → Repair
-bis Score ≥ Schwelle oder Rundenbudget aus; eingehängt in die BESTEHENDE
-pingpong/repair-Maschinerie (A6: keine neue Loop-Klasse). → Demo-Screenshot in
-≤3 Runden auf ≥90%.
-
-**F094 Interaktions-Verifikation** — Evaluator bedient die UI (klicken, tippen,
-hovern) und prüft die aus F089 vermuteten Interaktionen — Funktion, nicht nur Pixel.
-→ interactions_verified[] in der Evidence.
-
-**F095 Multi-Screen-Flows** — Mehrere Screenshots = ein Flow (Login→Liste→Detail);
-Routen/Navigation geplant, jeder Screen + Übergänge verifiziert. → 3-Screen-Flow
-feature-complete.
-
-**F096 Responsive-Verifikation** — Fidelity bei 3 Viewports; Referenz pro
-Breakpoint möglich, sonst heuristische Umbruchprüfung. → Evidence mit 3
-Screenshot-Sätzen.
-
-**F097 Design-Tokens ins Zielprojekt** — Aus F089 werden echte Token-Dateien
-(CSS-Vars/Tailwind) statt hartkodierter Werte. → Zweiter Screen desselben Systems
-nutzt vorhandene Tokens (Diff-Beweis).
-
-**F098 Komponenten-Katalog** — Gebaute Komponenten mit Thumbnail, Props, Pfad im
-Projektgedächtnis; neue Screens referenzieren Bestehendes. → „Button primary" wird
-beim zweiten Screen wiederverwendet, nicht dupliziert.
-
-**F099 Fidelity-Baseline-Guard** — Erreichte Baselines werden
-toHaveScreenshot-Snapshots im Zielprojekt; spätere Tasks dürfen sie nicht
-verschlechtern. → Absichtliche Regression wird gefangen.
-
-**F100 Fidelity im Cockpit** — Score (0–100) + Vorher/Nachher-Slider + Runden-Kino
-pro Design-Task — sichtbare Konvergenz, Spaß beim Zusehen. → UI-Contract-Test.
-
-**F101 Referenz-Treue-Regel bei Ambiguität** — Ist ein Screenshot mehrdeutig
-(verdeckte Bereiche, nicht ablesbare Zustände), gilt strikt: sichtbare Pixel sind
-Gesetz; Unsichtbares wird nach dokumentiertem Default ergänzt (Designsystem-Tokens
-F097, nächstliegende Konvention) und im assumption_log ausgewiesen. Echte
-Blocker-Ambiguität landet im Flight-Plan-Klärblock (F034), nie als Laufzeit-Frage.
-→ Test mit teilverdecktem Referenzbild erzeugt korrekte Defaults + assumption_log,
-0 Laufzeit-Fragen.
-
-**F102 Langlauf × Design** — F087–F095 unbeaufsichtigt im Langlauf: PNG rein,
-feature-complete UI raus (z. B. während man schläft), mit Fidelity-Report und
-Vorher/Nachher-Bildern im Abschlussreport (F053). → Realer unbeaufsichtigter
-Beweislauf.
-
----
-
-### TIER 5 — TOKEN-ÖKONOMIE (F103–F116)
-*Messen, dann senken. Ziel: −50 % Kosten pro Task bei gleicher Qualität, alles belegt.*
-
-**F103 Kosten-Ledger** — Persistente Aggregation €/Tokens je Task/Job/Projekt/Tag;
-`remedy stats cost --since 7d`. → Summe stimmt mit F003-Rohdaten überein.
-
-**F104 Hartes Budget-Enforcement** — `--budget-usd/--budget-tokens` je Job;
-Überschreitung → sauberer Checkpoint-Stop, Status budget_exhausted. → Mini-Budget
-stoppt nach Task 1 ohne Datenverlust.
-
-**F105 Cache-optimierte Promptordnung** — Stabiler Präfix zuerst (Regeln,
-Konventionen, Memory-Cards, Missions-Dossier), Volatiles ans Ende — maximiert
-Prompt-Caching. → cache_read_tokens>0 ab dem zweiten Task jedes Jobs.
-
-**F106 Session-Resume für Repair** — Repair-Runden via `--resume <session_id>`
-statt Voll-Prompt-Neuaufbau. → Input-Tokens der Repair-Runde −40 % gemessen.
-
-**F107 Kontextpaket v2** — Repo-Map (Symbole) + nur berührte Dateiabschnitte +
-Signaturen der Nachbarn statt N Volldateien. → Kontextpakete −30 % bei stabiler
-Reviewer-Passrate.
-
-**F108 Komprimierte Summaries** — Vorgänger-Task-Summaries als strukturierte
-5-Zeilen-Stichpunkte (Dateien, Symbole, offene Punkte), erzeugt von Haiku/Ollama.
-→ Summary-Größe −60 %, Passrate stabil.
-
-**F109 Modell-Routing nach Klasse** — trivial→Haiku, standard→Sonnet,
-komplex/Architektur→Opus; Override per Flag; Klassifikation im Flight Plan sichtbar.
-→ Messbarer Kostenunterschied im Ledger bei gemischtem Job.
-
-**F110 Reviewer-Downgrade-Politik** — Reviewer standardmäßig eine Klasse unter dem
-Builder, außer Task ist kritisch markiert. → Konfig + Evidence-Feld.
-
-**F111 Diff-basierte Repair-Prompts** — Repair erhält nur Findings + betroffene
-Hunks + Minimal-Umgebung, nie den Voll-Task erneut. → Repair-Prompt ≤25 % des
-Originals.
-
-**F112 Klassen-Kontextbudget + Ehrlichkeit** — Hartes Input-Budget je Taskklasse;
-bei Beschnitt listet die Evidence omitted_context[] (Pfad+Grund), damit Fails auf
-fehlenden Kontext rückführbar sind. → Kein Task über Budget; Liste vorhanden.
-
-**F113 Ollama-Offload** — Summaries, Commit-Messages, Fehlerklassifikation, Ideen-
-Vorfilter laufen lokal (kostenfrei), Fallback Haiku. → Ledger zeigt 0-Kosten-Zeilen
-für diese Rollen.
-
-**F114 Anfrage-Dedupe** — Hash über (Task-Body+Kontext): identische Anfrage im
-selben Job wird nicht erneut gesendet (cache_hit=true in Evidence). → Test mit
-dupliziertem Task.
-
-**F115 Prompt-Breakdown & Kosten-Auswertung** — Zusammensetzung jedes Prompts nach
-Segmenten (Tokens); `remedy stats report --since <Zeitraum>`: Kostenkurve, teuerste
-Klassen, Cache-Quote, Einsparung vs. Vorzeitraum — auf Abruf, kein fester Rhythmus.
-→ Breakdown je Task abrufbar; Report für freien Zeitraum korrekt.
-
-**F116 Kosten-Anomalie-Alarm** — Task >3× Klassenmedian → Warnung in UI und Report;
-bei unbeaufsichtigten Läufen zusätzlich Drossel-Option. → Simulierter Ausreißer erzeugt Warnung.
-
----
-
-### TIER 6 — MEMORY: KARTEN ZUERST, RETRIEVAL SPÄTER (F117–F128)
-*Deine Memory-Card-Intuition ist richtig: deterministisch, auditierbar, cache-freundlich,
-im Repo versioniert. Vektor-DB wird ein OPTIONALER späterer Baustein, kein Fundament.*
-
-**F117 Memory-Cards v1** — Typisierte Karten als Markdown+Frontmatter im Zielrepo
-(`.remedy/memory/cards/`): Typen goal / convention / lesson / decision / component;
-Felder: id, typ, tags, scope, gültig-für-Taskklassen, Budgetgewicht, Quelle.
-→ `remedy memory list` zeigt Karten strukturiert.
-
-**F118 Karten-Anheftung** — Deterministische Regeln, welche Karten in welchen Prompt
-kommen (nach Typ, Tags, Taskklasse), mit hartem Token-Budget (~2k) und stabiler
-Sortierung (Cache-Synergie F105). Kein Retrieval-Zufall. → Prompt-Breakdown zeigt
-Karten-Segment; identischer Task → identisches Segment.
-
-**F119 Karten-UI: die Sammlung** — Karten als professionelle Sammlung präsentiert
-(Sammelkarten-Optik ohne Kitsch: Typ-Farbe, Titel, Wert-Rang aus F150, Herkunft,
-Nutzungshistorie). Ansehen, editieren, an/aus, löschen, pinnen (immer anheften),
-manuell an einzelne Tasks/Jobs anheften oder davon entfernen, pro Job temporär
-überschreiben. → Edit/Anheften aus der UI landet in der Datei bzw. im Job (F009);
-Detailansicht zeigt Herkunft + Einsatz-Historie.
-
-**F120 Harvesting mit Freigabe** — Fehler (F010), Review-Findings (3× gleiche
-Klasse) und Jobabschlüsse erzeugen Karten-KANDIDATEN; der User approved/verwirft —
-niemals Auto-Persistenz. → Echter Timeout-Fall erzeugt Lesson-Kandidat
-„Builder-Timeouts ≥600s".
-
-**F121 Entscheidungs-Karten automatisch** — Jede F031-Entscheidung, jeder
-Flight-Plan-Klärpunkt (F034) und jeder dokumentierte Default (assumption_log) wird
-als decision-Karten-KANDIDAT angelegt („REST statt GraphQL, weil …") — das
-Produktgedächtnis der Eigentümerschaft. → Klärpunkt erzeugt Kandidat mit Begründung.
-
-**F122 Karten im Missions-Dossier** — Das Orchestrator-Dossier (F071) wird aus
-goal-/decision-Karten generiert — Gesamtbild aus dem Gedächtnis, nicht aus
-Chatverläufen. → Dossier-Diff nach neuem decision-Karten-Approve.
-
-**F123 Wirksamkeits-KPI** — A/B über Zeit: Passrate/Kosten/Repair-Runden mit vs.
-ohne Karten-Anheftung, in der Kosten-Auswertung (F115). → KPI nach einer A/B-Phase vorhanden.
-
-**F124 Karten-Hygiene (manuell + periodisch)** — `remedy memory compact`: Duplikate
-mergen, Veraltetes archivieren (nie still löschen), Budgetgrenzen halten;
-Konflikt-Erkennung (zwei Karten widersprechen sich → User entscheidet). Zusätzlich
-als Routine-Mission (F067) ein periodischer, LLM-gestützter Aufräum-Lauf: prüft
-Karten gegen den aktuellen Code-/Systemstand auf Obsoleszenz (referenzierte Datei
-weg, Konvention überholt, Lesson durch Fix gegenstandslos) und legt Archivierungs-/
-Update-VORSCHLÄGE in die Queue — Entscheidung immer beim User. → Aufgeblähtes Set
-wird messbar kompakter; simulierte obsolete Karte wird vorgeschlagen, nie
-automatisch entfernt.
-
-**F125 Globale Karten (opt-in)** — Projektübergreifende Lessons via explizites
-`remedy memory promote`; niemals automatisch. → Promote-Flow-Test.
-
-**F126 „Was weiß Remedy?"-Ansicht** — Vollständige, exportierbare Transparenz über
-das Projektgedächtnis in der UI — Vertrauensgrundlage. → Ansicht = Dateistand.
-
-**F127 Komponenten-Karten** — F098-Katalog als component-Karten (Thumbnail, Props,
-Pfad, Verwendungen) — Design-Gedächtnis im selben System. → Zweiter Screen
-referenziert die Karte nachweislich.
-
-**F128 Retrieval-Baustein v2 (optional, zuschaltbar)** — Erst ab >200 aktiven Karten
-oder großen Repos: Embedding-Suche über Karten+Code als eigenständiges Modul hinter
-dem MemoryGateway-Interface; Ergebnisse werden Karten-Vorschläge zur Anheftung,
-nie stiller Kontext. → Baustein an/aus ohne Verhaltensänderung des Kerns.
-
-**F149 remedy study (Nachtrag, gehört prioritär zu Tier 6)** — Remedy auf ein
-BESTEHENDES Projekt loslassen: `remedy study` analysiert das Repo initial
-(Architektur, Konventionen, Testlage, Risiken, zentrale Komponenten, offene TODOs)
-und erzeugt daraus Karten-KANDIDATEN aller Typen — präsentiert als „Kartenzug" in
-der Sammlung (F119): der User sieht, was Remedy über sein Projekt gelernt hat,
-approved/verwirft/editiert jede Karte. Jede Karte trägt den Beleg (Dateipfad,
-Codeausschnitt-Referenz). Nur approvte Karten werden aktiv. → `remedy study` auf
-einem Fremd-Repo liefert ≥10 belegte Kandidaten; UI zeigt sie als Sammlung; keine
-Karte wird ohne Approve angeheftet.
-
-**F150 Karten-Wert & Explorations-Chance (Nachtrag, gehört prioritär zu Tier 6)** —
-Jede Karte hat einen Wert, der AUSSCHLIESSLICH durch messbare Signale steigt oder
-fällt: Karte war angeheftet + Task PASS ohne Repair → Wert steigt leicht; Karte
-angeheftet + wiederholte Fails/Findings in ihrem Themenfeld → Wert sinkt; A/B-Daten
-aus F123 kalibrieren. Keine LLM-Bauchgefühl-Bewertung. Die Anheftungs-Auswahl
-(F118) gewichtet nach Wert, reserviert aber eine feste Explorations-Quote
-(z. B. 20 % des Karten-Budgets) für neue/niedrig bewertete Karten, damit Neues
-eine faire Chance bekommt. Der Wert ist in der Sammlung sichtbar (Rang-Stufen,
-professionell). → Auswahlverteilung folgt nachweislich Gewicht+Exploration; Wert
-ändert sich nur durch validierte Nutzung (Test mit synthetischer Historie).
-
-
----
-
-### TIER 7 — QUALITÄT & VERTRAUEN: DIE 20M-DIFFERENZIERER (F129–F142)
-*Features, die du noch nicht auf dem Radar hattest — sie machen aus „Agent baut Code"
-das Produkt „beweisbar gute Software entsteht autonom". Der Branchen-Schmerzpunkt 2026
-ist Code-Churn: ~50 % KI-Code, aber 41 % mehr davon wird binnen 30 Tagen wieder
-gelöscht. Wer Überlebensqualität BEWEISEN kann, gewinnt.*
-
-**F129 Test-First-Gate** — Konfigurierbar pro Projekt: Builder muss zuerst den
-scheiternden Test liefern (Evidence: rot), dann die Implementierung (Evidence: grün).
-TDD als erzwungener Ablauf, nicht als Bitte. → Task ohne roten Vorab-Test wird
-zurückgewiesen.
-
-**F130 Mutations-Stichprobe** — Nach relevanten Tasks: Mutationstest-Stichprobe
-(z. B. mutmut) auf den geänderten Bereich — beweist, dass die Tests wirklich prüfen.
-→ Ein „Test ohne Assertions"-Fall wird entlarvt.
-
-**F131 Adversarialer Zweit-Review** — Für kritisch markierte Tasks: zusätzlicher
-Red-Team-Pass (Sicherheit, Edge-Cases, Missbrauch) durch separaten Provider-Call
-mit Angreifer-Rolle. → Eingebaute Schwachstelle im Testfall wird gefunden.
-
-**F132 Provider-Tournament** — Für kritische Tasks: gleicher Task an 2 Builder
-(z. B. Opus vs Sonnet, oder 2 Provider), Reviewer kürt den Gewinner; Kosten bewusst
-verdoppelt, nur auf Anforderung. Macht `model_route_tournament` real. → Tournament-
-Lauf liefert Gewinner + Begründung + beide Diffs.
-
-**F133 Provider-Trust-Score** — Passrate/Repair-Quote je Modell×Taskklasse über
-Zeit; fließt in Routing (F109) und Flight-Plan-Empfehlungen. Macht `provider_trust`
-real. → Score ändert Routing nachweislich nach genug Datenpunkten.
-
-**F134 Security-Gate** — SAST (semgrep/bandit) als Standard-AcceptanceCheck jedes
-Jobs; Findings blocken oder eskalieren je Schwere (P2-Risikoklassen). → Eingebaute
-Schwachstelle blockt den Task.
-
-**F135 Flaky-Test-Detektor** — Wiederholte Läufe erkennen instabile Tests;
-Quarantäne-Liste + Report statt falscher Fails, die Repair-Runden verbrennen.
-→ Simulierter Flaky-Test landet in Quarantäne, nicht im Repair.
-
-**F136 Time-Travel** — Jeder Node-Zustand (Workspace-Snapshot) ist wiederherstellbar;
-„Zurück zu vor T004" als ein Klick — Sicherheit macht Mut zur Autonomie.
-→ Restore stellt Workspace bit-genau her.
-
-**F137 Shadow-Mode** — Kompletter Job als Was-wäre-wenn: alles läuft, nichts wird
-applied; Ergebnis ist ein Diff-Paket + Report zum Ansehen. Ideal für Vertrauensaufbau
-und riskante Missionen. → Shadow-Lauf hinterlässt 0 Änderungen im Zielrepo.
-
-**F138 Automatische ADRs** — Signifikante Architekturänderungen erzeugen ein
-Architecture-Decision-Record (Kontext, Optionen, Wahl, Konsequenzen) als
-decision-Karte + Doku-Datei. → Demo-Refactor erzeugt korrektes ADR.
-
-**F139 Churn-Metrik** — Misst, wie viel von Remedys Code nach 7/30 Tagen noch lebt
-(git-Analyse) — die ehrliche Qualitätszahl, die die Branche meist versteckt.
-→ `remedy stats churn` liefert die Kurve.
-
-**F140 Bit-genauer Run-Replay** — Ein Lauf ist aus seiner Evidence vollständig
-reproduzierbar (F012 + Roh-Streams F004): gleicher Input → gleiche Artefakte.
-Das Enterprise-Audit-Feature schlechthin. → Replay eines Fake-Provider-Runs ist
-bit-identisch.
-
-**F141 Berechtigungs-Matrix** — Jede Aktion hat eine Risikoklasse
-(read/write/destructive/expensive/external); Klassen mappen pro Autonomie-Level
-(F078) auf frei/bedingt/Gate. Least Privilege als Systemeigenschaft. → Matrix-Test:
-destructive ohne Gate ist unmöglich.
-
-**F142 Vertrauens-Dashboard** — Die Zahlen, die den Produktwert BEWEISEN, an einem
-Ort: Erfolgsrate, Interrupt-Quote, Churn, Kosten/Task, Fidelity-Schnitt,
-Autonomie-Level-Verlauf. Das ist später die Investoren-/Kunden-Ansicht — aber
-zuerst deine eigene Steuerzentrale. → Dashboard speist sich vollständig aus echten
-Ledger-/Evidence-Daten.
-
----
-
----
-
-### TIER 8 — FLAGGSCHIFF-FEATURES (F143–F145)
-*Drei Killer, die aus allem darunter das Produkt machen, das man nicht vergisst.*
-
-**F143 Genesis-Run: Ein Prompt → ein Produkt** — Der Flaggschiff-Modus: aus einem
-leeren Ordner entsteht in einem unbeaufsichtigten Langlauf ein komplettes, lauffähiges Produkt — Repo-Init,
-Architektur, Implementierung, Tests, CI-Konfiguration, README, laufende Preview
-(F007/F041) — gesteuert durch einen einzigen Auftrag (Prosa und/oder Screenshots),
-abgesichert durch DoD-Compiler (F061), Produkt-Smoke (F062) und Langlauf-Zertifikat
-(F060). Das ist der Moment, den man in 60 Sekunden vorführen kann und der das
-Produkt verkauft. → Realer Beweislauf: ein Absatz + 1 Screenshot vor dem
-Schlafengehen — beim Aufwachen ein startbares, grünes, klickbares Produkt mit
-Zertifikat (oder ein ehrlicher Zwischenreport, wenn es noch arbeitet).
-
-**F144 Kapazitäts-Leiter (Self-Benchmark der Taskgröße)** — Remedy vermisst
-kontinuierlich seine eigene Belastbarkeit: eine definierte Leiter von Task-Größen
-(S: 2 Dateien/1 Modul → M: 8 Dateien → L: 25 Dateien/Cross-Cutting → XL:
-Genesis-Klasse), je Stufe Erfolgsrate, Kosten, Repair-Quote über Zeit. Große
-Self-Run-Tasks (A3) speisen die Leiter automatisch. Die Leiter steuert, welche
-Taskgrößen der Planner sich autonom zutraut — und ist zugleich der öffentliche
-Fähigkeitsbeweis des Produkts. → `remedy stats ladder` zeigt Stufen-Erfolgsraten;
-Planner-Schnitt (F016) nutzt die Leiter nachweislich.
-
-**F145 Playbook-Destillation** — Erfolgreiche Jobs werden zu wiederverwendbaren
-Playbooks destilliert: parametrisierte Loop-Vorlagen (F045) mit erprobter
-Task-Struktur, DoD-Checks und Memory-Karten-Verweisen („React-Dashboard aus
-Screenshot", „REST-API mit Auth", „Migrations-Mission"). Neue Jobs, die einem
-Playbook ähneln, starten mit dessen Gerüst statt bei null — schneller, billiger,
-verlässlicher, und mit jedem Erfolg wächst die Bibliothek. Kandidaten werden
-vorgeschlagen (Ideen-Queue-Muster F064), nie automatisch angelegt. → Zweiter
-ähnlicher Job startet nachweislich aus dem Playbook und ist im Ledger messbar
-günstiger als der erste.
-
----
-
-### TIER 9 — PROJEKTBINDUNG & CLI-ERGONOMIE (F146–F148)
-*⚠️ PRIORITÄTS-AUSNAHME zu A5: Diese drei Features werden UNMITTELBAR NACH TIER 0
-eingeplant (vor F013), denn Cockpit, Memory, Ledger und Queue hängen an der
-Projekt-Dimension. Das Zielbild: Remedy lokal installieren, ins Repo wechseln,
-`remedy do "Task..."` — fertig.*
-
-**F146 Projekt-Identität & Repo-Autodetektion** — `remedy` erkennt aus dem
-Arbeitsverzeichnis das Projekt (Aufwärtssuche nach `.git`/`.remedy`), bindet es an
-eine stabile Projekt-ID in einer globalen Registry (`~/.remedy/projects.json` —
-macht `project_registry.py` real). Datenmodell: Projektnahes lebt IM Repo
-(`.remedy/` mit Memory-Karten, Config, Ledger — versionierbar), Maschinennahes
-global (`~/.remedy/projects/<id>/` für Job-Daten, Caches, Kosten-Ledger). Jeder
-Job, Run und jedes Evidence-Bundle trägt die project_id. Außerhalb eines Repos:
-klare Meldung + Hinweis auf `remedy init` (F081). → In zwei verschiedenen Repos
-erzeugt `remedy do` nachweislich getrennte Jobs, Memory und Ledger; Evidence
-enthält die korrekte project_id.
-
-**F147 Golden-Path-CLI** — Das Drei-Befehle-Mentalmodell: (1) `remedy do "Task…"`
-startet ohne weitere Flags — Autodetektion (F146), Defaults aus globaler + Projekt-
-Config (Provider, Modelle, Budgets), Flight Plan (F014), los. (2) `remedy` allein
-zeigt den Projektstatus (aktive Jobs, letzte Läufe, offene Entscheidungen, Kosten
-der Woche). (3) `remedy ui` öffnet das Cockpit, gefiltert auf das aktuelle Projekt.
-Alles Weitere bleibt erreichbar, aber der Golden Path braucht null Konfiguration
-nach `remedy init`. Hilfe passt auf einen Bildschirm. → Frisches geklontes Repo:
-`remedy init` + `remedy do "…"` = laufender Job in <2 Minuten; `remedy` zeigt
-danach korrekten Status.
-
-**F148 Projekt-Scoping durchgängig** — Die project_id-Dimension zieht sich durch
-ALLES: Cockpit-Startseite gruppiert nach Projekten (F042), Memory-Karten sind
-projektgebunden mit explizitem promote für Globales (F117/F125), Kosten-Ledger und
-Kosten-Auswertungen pro Projekt filterbar (F103/F115), Auftrags-Queue mischt Projekte nur mit
-Kennzeichnung (F048), Ideen-Queue pro Projekt (F064), Kapazitäts-Leiter global UND
-pro Projekt (F144). Kein stilles Vermischen von Projektdaten, nirgends. → Zwei
-Projekte parallel: Ledger, Memory, Ideen und Reports bleiben nachweislich getrennt;
-ein Cross-Projekt-Leak-Test schlägt fehl, wenn Daten vermischt würden.
-
-
-## TEIL E — MEILENSTEINE (woran „fertig" gemessen wird)
-
-| Meilenstein | Enthält | Beweis |
-|---|---|---|
-| M1 „Es hält" | Tier 0 komplett | 10 Self-Runs ohne Block, echte Tokenzahlen |
-| M2 „Mein Produkt" | F013–F035 | Livejob mit Materialisierung, Eingriff, Veto, Steering — auf Video |
-| M3 „Langläufer" | F045–F062 | Großer Auftrag vor dem Schlafengehen — beim Aufwachen fertig oder ehrlich weiterarbeitend |
-| M4 „Es denkt mit" | F063–F066 | Ideen-Queue mit belegten Ideen, Approve→Plan-Flow |
-| M5 „GPT abgelöst" | F069–F080 | Eine Mission läuft 3 Jobs weit ohne externes Prompting |
-| M6 „Es sieht" | F087–F102 | Screenshot rein → UI ≥90 % Fidelity, unbeaufsichtigt |
-| M7 „Es spart" | Tier 5 | −50 % Kosten/Task vs. M1-Baseline, im Ledger belegt |
-| M8 „Es erinnert" | Tier 6 | Karten-KPI zeigt bessere Passrate/Kosten mit Memory |
-| M9 „Es beweist" | Tier 7 | Vertrauens-Dashboard live; Churn-, Replay-, Security-Beweise |
-| M10 „Genesis" | F143–F145 | Ein Prompt → lauffähiges Produkt, komplett unbeaufsichtigt, mit Zertifikat |
-
-Wenn M1–M10 erreicht sind, ist das KERNPRODUKT auf 20M-Reife: beweisbar autonome,
-tokeneffiziente, design-treue Softwareerstellung unter voller menschlicher
-Eigentümerschaft. (Die Bewertung selbst entsteht dann aus Nutzern/Umsatz — das ist
-bewusst nicht Teil dieses Plans.)
-
-## TEIL F — ABHÄNGIGKEITS-SCHNELLREFERENZ
-
-- Tier 0 (F001–F012) blockiert ALLES. Zuerst. Vollständig.
-- F146 ← blockiert F147–F148 und die Projekt-Dimension von F042, F048, F064, F081,
-  F103, F115, F117, F144; wird direkt nach Tier 0 eingeplant (A5-Ausnahme)
-- F008+F009 ← blockieren F019–F044 (Cockpit); alle Cockpit-Features bauen gegen Teil H
-- F003 ← blockiert F022, F103–F116, F142
-- F004 ← blockiert F021, F023, F140
-- F006+F047 ← blockieren F049, F056, F136, F137
-- F007 ← blockiert F041, F062, F090–F102
-- F014/F015 ← blockieren F034, F064, F069
-- F045–F047 ← blockieren F048–F068, F102
-- F087–F089 ← blockieren F076, F090–F102 und heben A8 auf
-- F117–F118 ← blockieren F071, F121–F128
-- F061 ist Voraussetzung für jeden „feature-complete"-Anspruch (M3, M6)
-- F149 ← setzt F117+F146 voraus; F150 ← setzt F118+F103+F123 voraus
-- F143 ← setzt F045–F062 + F061/F062 + F087–F093 voraus (Genesis = Krönung, nicht Anfang)
-- F144 ← speist sich aus A3-Großtasks; braucht nur F010 + F103
-- F145 ← setzt F045 + F117 voraus
-- Parallel-Spuren möglich: (Cockpit F019–F044) ∥ (Langläufer F045–F062) ∥ (Tokens F103–F116) nach Tier 0
-
-## TEIL G — FORTSCHRITTS-LEDGER (Vorlage; liegt als .agent/MASTERPLAN_LEDGER.md im Repo)
+## PART A — OPERATING PROTOCOL
+
+Applies to whoever orchestrates (a web GPT today, Remedy itself from Tier 2).
+
+- **A1 Position.** Determine the current position exclusively from repo state:
+  STATUS.md (execution order truth) + `.agent/MASTERPLAN_LEDGER.md` (narrative
+  log) + the latest review bundle. Never from session memory.
+- **A2 Review discipline.** Every block ends with a final review: PASS or
+  FINDINGS. No new feature is started while findings are open.
+- **A3 Task sizing.** Mix medium and deliberately LARGE tasks; every second
+  block should contain one large task as a stress test. Decompose only AFTER a
+  post-mortem shows it was too large, never preemptively.
+- **A4 Definition of DONE.** Tests green + reviewer PASS + orchestrator
+  sign-off + the result is usable and committed. STATUS.md updated in the same
+  PR. Nothing else counts as done.
+- **A5 Execution order.** The next feature is the FIRST unchecked entry in
+  STATUS.md, top to bottom. STATUS.md lists features grouped by tier in the
+  order of this document. (This replaces the old lowest-F-number rule.)
+- **A6 Meta-work freeze.** No new gates, taxonomies, manifest formats or
+  evidence schemas unless a feature explicitly says so. Reuse what exists.
+- **A7 Self-dissolution clause.** Once Tier 1 is DONE and the F075 gauntlet has
+  passed, the external orchestrator hands over: Remedy runs the loop itself
+  (F070/F080). Humans keep approvals.
+- **A8 UI prompts.** Builders cannot see visual references; UI tasks therefore
+  carry written style specs. The canonical written form lives in
+  `docs/ui/design_reference/` (Part I) — UI prompts cite its relevant sections
+  and quote only the CSS/TSX excerpts the task needs, plus feature-specific
+  deltas. Until the design pipeline exists (Tier 6), those excerpts must be
+  complete enough to build from.
+- **A9 No runtime questions.** The reference (screenshot, spec) is law. Real
+  ambiguities are bundled into ONE clarification block in the Flight Plan
+  (F034); at runtime the builder documents assumptions in the assumption_log
+  instead of asking. There is no time-of-day mechanic anywhere in Remedy:
+  "overnight" only ever means "a run that continues while nobody watches".
+
+## PART B — THE SELF-BUILD MODEL
+
+**The canonical mission prompt** (what the human types once Tier 1 is done):
 
 ```
-# MASTERPLAN LEDGER — zuletzt aktualisiert: <Datum>
-DONE:    F001, F002, ...
-ACTIVE:  F00x (Job-ID, Stand)
-FAILED:  F00y (Fehlerklasse, Kurzgrund)
-SKIPPED: F00z (Operator-Entscheidung, Grund)
-NÄCHSTER BLOCK LT. A5: F0..
+In docs/roadmap you will find ROADMAP.md and STATUS.md, which tracks which
+roadmap items are already done. Work through all Tier <N> features in
+STATUS.md order. Follow Part A of the roadmap. Do not stop until the tier is
+complete or a limit/decision stops you.
 ```
 
-Die Datei liegt im Repo unter `.agent/MASTERPLAN_LEDGER.md` und ist damit automatisch
-in jedem Review-Zip enthalten — der Orchestrator liest sie dort (A1) und schlägt nach
-jedem Zip-Review die Aktualisierung vor (A2/A4). Ab F080 übernimmt Remedy diese
-Buchführung selbst.
+Roles from that moment on:
+- **Remedy** compiles each feature detail file into a mission (F080 adapter),
+  plans, builds, tests, reviews, writes the ledger and updates STATUS.md.
+- **Humans** approve plans and decisions (Flight Plan, decision queue, PR
+  merges). Merging to main is always a human act.
+- **Parallel human track:** Tier 5 (Operator Cockpit) touches mostly
+  `apps/ui/` and can be built by humans with a coding agent at any time,
+  concurrently with Remedy's self-build of Tiers 2–4 — the path sets are
+  disjoint enough (worktrees + fences enforce it).
+- **Gate:** unattended multi-cycle self-build is unlocked only after F075
+  (10 clean self-runs). Until then max_cycles stays at 1.
+- **CLI-first approvals:** until Tier 5 exists, decisions and plan approvals
+  are answered via `remedy decisions list|answer <id> approve|reject` and the
+  CLI plan confirmation. The decision queue is the same one the UI write
+  channel (F009) later feeds — F009 becomes another producer, not a rework.
+
+## PART C — STATUS.md SPECIFICATION
+
+Location: `docs/roadmap/STATUS.md`. One line per feature, grouped by tier,
+in execution order. Line grammar:
+
+```
+- [ ] F013 — Job intake
+- [~] F014 — Flight Plan            (in progress: <branch>)
+- [x] F001 — Provider timeouts      (PR #12 · evidence: <path-or-link>)
+- [!] F062 — Product smoke          (blocked: <one-line reason>)
+```
+
+States: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
+Rules: exactly one `[~]` at a time per executor; a `[x]` line MUST carry a PR
+or evidence reference; STATUS.md is updated in the same PR as the work (A4);
+the file is parsed by F080 — do not change the grammar without updating F080.
+
+## PART D — PRINCIPLES
+
+- **P1 Evidence over claims.** Every "it works" has an artifact.
+- **P2 Humans decide.** No auto-decisions, no auto-merge, ever.
+- **P3 One write door.** All writes from the UI go through the single command
+  channel (F009). No second POST route, no free-form shell channel.
+- **P4 Token honesty & thrift.** Measure real usage; spend deliberately.
+- **P5 Worker neutrality.** No feature may depend on a single vendor; declare
+  capabilities, degrade honestly (F157).
+- **P6 Honest labels.** estimated is never shown as actual; degraded is never
+  shown as full; trial is never hidden.
+- **P7 Questions up front.** All clarification lives in the Flight Plan block;
+  the run itself never asks.
+
+## PART E — NAMING & CONVENTIONS REGISTRY (binding, condensed)
+
+**CLI** — `remedy do "…"` (golden path) · `remedy` (status) · `remedy ui` ·
+`remedy init` · `remedy study` · `remedy jobs list|show|resume|stop|report|certificate` ·
+`remedy queue add|list|rm` · `remedy loop run|list|validate|install` ·
+`remedy memory list|show|compact|promote|attach|detach|approve` ·
+`remedy stats cost|report|failures|autonomy|ladder|churn|trust|bench|team|quote|whatif` ·
+`remedy plan status|next` · `remedy decisions list|answer <id>` · `remedy demo` · `remedy worker list|certify|scoreboard|pricing|onboard` ·
+`remedy audit lineage|commits` · `remedy export dossier|archive|research` ·
+`remedy policy apply|check` · `remedy serve` · `remedy doctor` · `remedy migrate` ·
+`remedy backup create|restore` · `remedy update check` · `remedy license show|install` ·
+`remedy telemetry enable|disable|show|purge` · `remedy release check` ·
+`remedy plugin install|list|remove` · `remedy import` · `remedy bundle create` ·
+`remedy handbook build` · `remedy handoff human` · `remedy feedback` · `remedy keys init`
+Global flags: `--budget-usd --budget-tokens --deadline --max-cycles --rehearse
+--shadow --design <png> --timeout-profile --stream-evidence --tdd --best-of N --yes`
+
+**HTTP API** (ui_server, default port 8787) — GET `/api/state`, `/api/projects`,
+`/api/projects/{pid}/jobs|digest|organisms|trust`, `/api/jobs/{jid}/graph`,
+`/api/jobs/{jid}/events/stream` (SSE), `/api/jobs/{jid}/tasks/{tid}`,
+`/runs/{rid}`, `/runs/{rid}/diff`, `/api/jobs/{jid}/ghost?seq=`,
+`/api/memory/cards`, `/api/runtime/{h}/logs/stream`, `/metrics`.
+POST — exactly ONE route: `/api/jobs/{jid}/commands`
+`{"command", "args", "client_nonce"}` + Bearer + `X-Remedy-CSRF`.
+
+**Command catalog** — pause_job, resume_job, stop_job, set_budget,
+approve_plan, approve_decision, reject_decision, veto_task, edit_task,
+inject_task, rerun_subtree, steer_task, approve_hunks, add_task, approve_idea,
+deny_idea, reprioritize_idea, pin_card, attach_card, detach_card, approve_card,
+archive_card, explain_run, design_feedback, start_preview, restart_preview,
+stop_preview, assign_decision, delegate_decision, add_comment,
+human_review_verdict.
+
+**SSE envelope** — `{"seq","ts","job_id","type","payload"}`; types:
+job.started, plan.task_created, run.started, run.tool_call, run.token_delta,
+run.finished, task.state_changed, artifact.created, decision.requested,
+decision.resolved, budget.tick, job.finished, mission.job_linked,
+worker.failover, presence.changed.
+
+**Module map (key new packages)** — `packages/core/project_identity.py` ·
+`packages/orchestration/{provider_timeouts, repair_attest, token_actuals,
+stream_evidence, schemas/, worktrees, failure_postmortem, kill_switch,
+determinism, event_stream, command_gateway, flight_plan, scope_fences,
+loop_spec, long_run_executor, checkpoints, worker_queue, mission_state,
+idea_engine, dod_compiler, mission_compiler, orchestrator_loop,
+mission_dossier, planner_calibration, vision_planner}.py` ·
+`packages/runtimes/dev_server.py` · `packages/verification/{visual_check,
+interaction_check, security_gate, mutation_probe, property_gen, api_compat,
+contracts, compose_env, migration_safety, perf_budget, fuzz_probe}.py` ·
+`packages/memory/{cards, card_selection, card_value, harvesting, study,
+memory_api}.py` · `packages/workers/{adapter_api, certify, capability_matrix,
+pricing, scoreboard, sandbox_profiles, *_adapter}.py` ·
+`packages/enterprise/{lineage, signing, retention, audit_export, dossier,
+oversight, sbom_gate, policy_packs}.py` · `packages/org/…` ·
+`packages/telemetry/{otel, metrics, doctor, migrate, logging_setup}.py` ·
+`packages/intel/…` · `packages/product/…` · `packages/ecosystem/…` ·
+`apps/cli/golden.py` · `apps/server/daemon.py` ·
+`apps/ui/src/components/brain/{GrowingBrain.tsx, NodeGlyphs.tsx,
+useSemanticZoom.ts, brainOntology.ts, useBrainStream.ts, renderers/}`.
+
+**Design tokens** — canonical file: `docs/ui/design_reference/tokens.css`,
+namespace **`--remedy-*`** (implemented in `apps/ui/src/styles/tokens.css`).
+Groups: ink/surfaces, blue ramp, status palette `--remedy-state-*` (single
+source of truth for done/current/open/planned/blocked), graph tokens
+`--remedy-graph-*`, spacing `--remedy-space-*`, motion `--remedy-dur-*`/
+`--remedy-ease-*`, z-layers `--remedy-z-*`, radii, shadows, focus.
+The former `--rm-*` palette is **deprecated**; migration map (left = legacy,
+right = canonical):
+--rm-card→--remedy-card · --rm-ink→--remedy-ink · --rm-ink-2→--remedy-ink-soft ·
+--rm-line→--remedy-line · --rm-accent→--remedy-blue · --rm-accent-deep→--remedy-blue-strong ·
+--rm-open/--rm-progress/--rm-done→--remedy-state-open/current/done ·
+--rm-warn→--remedy-orange-400 (accents) / --remedy-state-blocked (fail states) ·
+--rm-planned→--remedy-blue-100 · --rm-glow→--remedy-glow · --rm-live→--remedy-live ·
+--rm-focus→--remedy-focus · --rm-font→--remedy-font-ui · --rm-r-card→--remedy-radius-lg ·
+--rm-r-pill→--remedy-radius-pill · --rm-shadow→--remedy-shadow-soft ·
+--rm-bg/--rm-bg-2→--remedy-bg/--remedy-bg-2.
+No active feature or spec may instruct builders to use `--rm-*`.
+Label/card styling rules: `docs/ui/design_reference/ux_spec.md`.
+
+**Data layout** — per repo: `.remedy/{config.toml, memory/cards/, loops/,
+policy/, dod/, playbooks/, ledger.md, STOP}`; global:
+`~/.remedy/{projects.json, users.toml, org/, workers/, plugins/, missions/,
+projects/<pid>/{jobs/, cache/, ledger.sqlite, locks/, runtime.log}}`.
 
 ---
 
-## TEIL H — COCKPIT-REFERENZDESIGN & NODE-ONTOLOGIE („Growing Brain")
+## PART F — THE 250 FEATURES BY TIER
 
-Es existiert ein verbindliches Referenzdesign für das Cockpit (Datei:
-`docs/ui/design_reference/ux_design.png` — der Operator legt den Screenshot dort
-ab und committet ihn). Alle Tier-1-Features werden GEGEN dieses Design gebaut; ab
-F090 wird die Treue dazu per Screenshot-Verifikation gemessen. Das Design definiert:
+### TIER 0 — FOUNDATION & TRUST CORE (16 features)
+*Built conventionally. Everything unattended work stands on: honest evidence, isolation, hard stops, project identity — and the init/golden-path pair F081/F147 belongs together.*
 
-**H1 — Layout (aus dem Referenzbild):**
-- Kopfzeile: Metrik-Leiste (OPEN / PLANNED / DONE / PROGRESS %) + LIVE-Badge.
-- Zentrum: der Growing-Brain-Graph — ein organisch wachsendes Nervennetz mit dem
-  Job-Kern in der Mitte (Code-Glyphe), Äste = Arbeitsstränge, Leuchtintensität =
-  Aktivität.
-- Darüber: Kommandoleiste „Ask your agent or jump to anything" (= F065).
-- Rechte Leiste: „AGENT IS DOING NOW" (Live-Karte, = F021-Kopf), CHAT/ACTIVITY
-  (Aktivitätsfeed + Steering-Eingabe, = F021/F030), TASKS-Liste mit Status
-  (Done / In Progress / Planned) und „+ Add Task" (= F028).
-- Fußzeile: Phasen-Zeitleiste Job → Planning → Build → Test → Review → Finalized
-  mit Unter-Glyphen pro Phase (= F024); Legende: `</>` LLM-Action, Kolben = Test,
-  Person = Review.
-- Filter-Chips (All / Open / Planned / Done) unten links im Graph.
+**F001 Adaptive provider timeouts + retry** — Timeouts computed per role/task
+size (`provider_timeouts.py`, profiles fast|normal|patient, cap), up to 2
+retries with backoff before `provider_unavailable`; retries never triggered by
+review rejects. Evidence: timeout_s_effective, retries_used. → 10 self-runs
+without a timeout block; every attempt separately in the ledger.
 
-**H2 — Node-Ontologie.** Nodes sind NICHT nur Tasks. Jede Erzeugung — jeder Prompt,
-jeder Run, jedes Artefakt — wird ein Knoten im Netz:
+**F002 Operator repair as a valid evidence path** — `remedy do repair-attest
+<job> <task>` writes provider_evidence (execution_mode=manual_operator_repair),
+operator review verdict, manual_repair_provenance (diff hash, note). Verifier
+accepts it as PASS-equivalent with a visible "operator-attested" badge. → A
+manually repaired task passes the final verifier; the historic blocked-evidence
+class of failures cannot recur.
 
-| Node-Typ | Entsteht wenn | Glyphe (lt. Design) | Eltern |
+**F003 Real token/cost measurement** — Provider calls run with JSON output;
+`token_actuals.py` parses usage, cache counters, cost, session_id. Fallback to
+heuristic only with honest flag. → token_truth shows actual_available=true;
+job sum equals CLI sums; nothing estimated is ever labeled actual.
+
+**F004 Raw stream evidence** — Opt-in `--stream-evidence`: stream-json output
+teed to raw_stream.jsonl and parsed to normalized run_events (tool calls,
+api_retry, token deltas) — the source for the live graph and replay. Redaction
+before tee. → Agent traces show the real tool-call sequence, each event
+traceable to a raw offset.
+
+**F005 Enforced structured outputs** — Planner/reviewer responses validated
+against JSON schemas (pydantic models in `schemas/`, schema_v everywhere);
+parse failures become a classified error with max 1 retry. → 0 parse failures
+across 10 runs; every call logs its schema_v.
+
+**F006 Worktree isolation per run** — Every run works in its own
+`git worktree` (`.remedy-wt/<job>`, branch `remedy/<job>`), file locks against
+double claims, result handed over as branch + diff. → Two parallel runs never
+collide; the main checkout stays clean; no auto-merge to main, ever.
+
+**F007 Runtime harness** — `dev_server.py` starts/stops the target project's
+dev server (cmd/port/health from `.remedy/config.toml [runtime]`,
+autodetection at init), captures logs, kills process trees cleanly. →
+`remedy runtime probe` brings the UI up and reports ready; no zombies.
+
+**F010 Automatic failure post-mortems** — Every failed run writes
+failure_postmortem.json with a deterministic class (timeout|parse|
+review_reject|infra|budget|fence|unknown) + advice key; aggregated in
+ledger.sqlite; `remedy stats failures`. → Retry cascades become countable
+classes; unknown <10% on the benchmark.
+
+**F011 Kill switch** — `.remedy/STOP` (global) and `STOP.<job>` (targeted) are
+checked before every provider call, after every task, every cycle; stop writes
+a checkpoint and a resumable state. UI stop button goes through the command
+channel. → Stop takes effect within one cycle; resume continues exactly.
+
+**F012 Deterministic runs** — Pinned env (TZ, locale, hash seed), injectable
+clock in all evidence writers, path normalization, seeded fake provider;
+determinism.json per run. → Two fake-provider runs are bit-identical; honest
+docs on what is NOT deterministic for real LLM runs.
+
+**F017 Scope fences** — Per job: protected paths, forbidden actions
+(dependency_change, delete_file, network, schema_migration), must-touch paths;
+enforced by prompt injection + post-run diff checks; violation = hard task
+fail (class fence). → A builder touching a protected path fails with a precise
+repair hint.
+
+**F018 Budgets & stop conditions** — Every job declares BUDGET (€/tokens),
+STOP (all-green | N cycles | deadline), REPORT level; the budget guard checks
+at the same safe points as the kill switch; SSE budget.tick carries
+basis=actual|estimated. → The first limit reached stops cleanly at a
+checkpoint; the ticker never lies about its basis.
+
+
+**F146 Project identity & repo autodetection** — Stable project_id detected
+from cwd (`.remedy/` or `.git`, registered in `~/.remedy/projects.json`);
+per-repo data in `.remedy/`, machine data in `~/.remedy/projects/<pid>/`;
+every evidence artifact carries project_id (legacy shim for old evidence). →
+Two repos have cleanly separated jobs, memory and ledgers.
+**F081 remedy init** — Interaction-free scaffolding (.remedy/config with
+provider/fence/runtime defaults, .gitignore entries, example loop), idempotent,
+`--relink`. → Fresh repo: init + do runs in under 2 minutes; gaps become TODO
+comments, never questions.
+
+**F147 Golden-path CLI** — Three-command mental model: `remedy do "…"`,
+`remedy` (one-screen status), `remedy ui`. Config cascade project→global;
+help fits one screen. → Fresh clone: init + do = running job in under 2
+minutes; no interactive wizards (P7).
+
+**F148 Project scoping everywhere** — project_id dimension in cockpit, memory,
+ledger, queues, ideas, ladder; server-side filtering; cross-project leak test
+as a property over all read APIs. → No API with pid=A ever returns B data.
+
+### TIER 1 — SELF-BUILD BOOTSTRAP (20 features)
+*Built conventionally. The goal tier: after it, Remedy executes the canonical mission prompt (Part B) and develops the remaining tiers itself. Approvals in this era are CLI-first (Part B); the UI write channel arrives with Tier 5.*
+
+**F013 Job intake** — Prose + attachments → structured job (schema: goal,
+context, constraints, anti_goals, size_hint, mission_candidate); attachments
+hashed and stored; missing essentials become clarification items, never
+interactive questions. → `remedy do "…"` produces a valid job object without
+hand-editing.
+
+**F014 Flight Plan** — Before execution: task DAG with honest cost/duration
+BANDS (labeled by estimate basis), risks, touched paths, the bundled
+clarification block; persisted + hash-checked; start only after approval
+(`--yes` skips). → Every job has a plan; drift from the approved hash aborts
+with a clear message.
+
+**F016 Scaling task granularity** — Task count scales with job size by
+explicit rules (target input budget per task, max_tasks cap, size_hint
+steering, plan_rationale per task); micro-task splitting is forbidden in the
+planner prompt (A3 spirit). → Three job-size fixtures yield expected task
+counts within tolerance.
+
+**F034 Bundled clarification in the Flight Plan (never at runtime)** — Gap
+classifier: blockers → numbered clarification block answered once in the plan;
+defaults → assumption_log entries with source (reference|convention|token).
+Builder prompt header forbids questions. → 3 ambiguities produce 1 block and 0
+runtime questions; a lint over prompt traces proves it.
+
+**F046 Multi-cycle loop** — `long_run_executor.py` replaces the max_cycles=1
+limiter: plan_delta → execute → verify → checkpoint, until a Part-F018 limit
+or all-green; cycle = coherent task batch. Default stays 1 cycle until F075
+passes (controlled rollout). → A 5-cycle fixture run ends exactly at its
+limit with a consistent workspace.
+
+**F047 Checkpoint & resume (kill-proof)** — Atomic checkpoint per cycle
+(job state, worktree head, queue cursor, budget spent, test digest, next
+intent); `remedy jobs resume` loads the newest valid one and continues. →
+kill -9 mid-cycle then resume equals an uninterrupted run (fake-provider
+comparison); checkpoints contain no secrets.
+
+**F048 Job queue** — SQLite queue with atomic claiming, priorities;
+`remedy queue add|list|rm`; the executor consumes it when capacity is free —
+immediately or while nobody watches. → 3 entries, one run, 3 results; no
+double claim under parallel access.
+
+**F050 DAG scheduling** — Topological ready-set from depends_on; a blocked
+branch (awaiting decision / failed) blocks only its downstream; recompute per
+task end. → Diamond fixture: B,C parallel after A; D waits for both; a block
+in B still lets C finish.
+
+**F051 Escalate instead of block (unattended)** — decision.requested pauses
+only its branch; the executor pulls the next ready task; the report lists open
+decisions prominently; notification hook fires. → An unattended run with 1
+approval task + 2 free tasks delivers 2 results + 1 waiting decision. No
+auto-decisions, ever.
+
+**F052 Self-healing test rounds** — After a cycle verify with failing tests:
+up to 2 auto-repair rounds reusing the existing repair loop with the test
+digest as findings; then the cycle fails with a post-mortem. → A trivial
+injected break heals unattended; a stubborn one stops after 2 rounds, counted
+in the cycle report.
+
+**F053 Final & interim report** — ONE markdown per run (final at end, interim
+on demand while running): built / blocked+why / costs (basis-labeled) /
+decisions / diff links / recommended next action. → Golden tests for both
+modes; the interim clearly labels itself as a snapshot.
+
+**F056 Missions: persistent goal, jobs as execution units** — Credo: an order
+is always a job first; it becomes a mission only when Remedy shall plan
+follow-up jobs itself. Mission = persistent goal, job = execution unit; the
+entry point stays `remedy do`; Remedy decides internally and makes it
+transparent in the Flight Plan. Every follow-up job starts by verifying the
+previous state. The cockpit chains a mission's jobs visibly (lineage thread).
+→ A long goal yields a mission with 3 chained jobs; a simple order stays a
+single job without mission overhead.
+
+**F061 Definition-of-Done compiler** — User intent + plan → CHECKABLE checks
+(pytest | playwright_flow | lint | build | visual | custom_cmd; blocking
+flags); generated flow specs under `.remedy/dod/`; the job only ends all-green
+over blocking checks; the report shows the check matrix. → A fixture order
+("CLI tool with --json flag") yields ≥4 meaningful checks; a deliberately
+missing feature keeps the job open.
+
+**F062 Product smoke as the closing gate** — Standard DoD block: app starts
+(runtime probe), core flows clickable (generated smoke), zero console errors.
+→ A deliberately broken start path keeps the job open with a precise smoke
+finding.
+
+**F069 Mission compiler** — Prose long-goal → MissionPlan{milestones with
+compiled DoD each, draft jobs}; no autostart of drafts. → A fixture long-goal
+yields ≥2 milestones with checkable DoDs.
+
+**F070 Orchestrator loop inside Remedy** — THE heart: per mission iteration —
+load the dossier, pick/shape the next job (Flight Plan), execute (F046),
+evaluate against the milestone DoD, update dossier, write the ledger (Part A
+rules as a generated system-prompt block). This is exactly the external
+orchestrator's role, internalized. → A 2-milestone mission runs without a
+human shaping prompts; ledger entries match the template; the A2 rule
+(no new feature while findings are open) is provably enforced.
+
+**F071 Mission dossier** — A maintained document ≤3000 tokens (goal, state per
+milestone, risks, last decisions, next step) kept as a cache-friendly prompt
+PREFIX; delta-rewritten each iteration under a hard budget. → Stays ≤3000
+tokens over 5 iterations; stable prefix position (cache-hit test).
+
+**F075 MILESTONE GATE: 10 flawless self-runs** — Definition of flawless: no
+operator command except start, verifier PASS, DoD green, 0 unclassified
+failures. A gauntlet harness runs 10 curated orders; the result matrix is
+archived, failures stay visible. → 10/10 green unlocks multi-cycle defaults
+and the self-build handover (A7). No cherry-picking.
+
+**F079 Context handoffs** — On session/context switches: package of dossier +
+latest checkpoint + open decisions, rendered as a prompt block; measured by a
+10-fact recall eval. → ≥9/10 facts survive a handoff.
+
+**F080 Machine-readable roadmap mirror & STATUS.md** — `masterplan_sync.py`
+parses THIS file + `features/*.md` into `.remedy/masterplan.yaml`; STATUS.md
+(Part C grammar) is the execution-order truth; `remedy plan status` shows the
+next open feature and its blockers, `remedy plan next` proposes it; the
+feature→mission adapter turns a detail file into a mission (its Context
+section becomes a context segment). Remedy validates STATUS.md grammar and
+updates it as part of A4. → `remedy plan next` names the correct next feature
+from a fixture STATUS.md; the adapter compiles a detail file into a runnable
+mission; a malformed STATUS.md line is rejected with a precise error.
+
+### TIER 2 — MINIMAL SELF-BUILD RUNTIME (13 features)
+*First self-build tier, deliberately slim: just enough economy (ledger, hard budgets, cache ordering, context compiler, diff-only repair, cost report), just enough safety (loops, rate governor, watchdog, sandbox stage 1) and just enough measurement (self-benchmark, CI, release capability) for cheap, safe, measurable unattended self-build. The full token economy follows in Tier 3.*
+
+**F103 Token ledger (SQLite)** — calls table per project (job, task, role,
+model, tokens, cache counters, cost, basis) fed by F003; views per job/class;
+`remedy stats cost`. → Ledger sum == token_truth == ticker (triangle test);
+no second truth.
+
+**F104 Hard budget enforcement** — The guard reads ledger actuals; predictive
+stop: if the next task's class P80 would break the limit, checkpoint +
+decision instead of overrun. → Overrun in tests ≤ P80 tolerance; the
+predictive stop produces a decision with the evidence triple.
+
+**F105 Cache-optimal prompt ordering** — Stable prefixes first (system,
+conventions, dossier, cards) then volatile parts; a segment registry with
+stability ranks; cache_read share measured per role. → Cache quota measurably
+rises vs. the recorded baseline; golden prompts guard semantics.
+
+**F107 Context compiler v2** — Relevance instead of everything: allowed paths
++ direct import neighbors + signatures of distant dependencies;
+omitted_context.json lists what was left out and why. → ≥40% input reduction
+at equal PASS on the benchmark pair.
+
+**F111 Diff-only repair** — Repair prompts carry only failing hunks + finding
++ minimal context; answer format is a schema-enforced unified diff; apply +
+verify; conflict → full-file fallback. → Large-file repair with sharply
+reduced input; the fix lands.
+
+**F115 Prompt breakdown & cost report** — Token composition per call by
+segment class; `remedy stats report --since` with cost curve, priciest
+classes, cache quota, prior-period comparison — on demand, no fixed rhythm. →
+Report correct for arbitrary ranges; per-task breakdown available.
+
+**F045 Loop definitions** — LoopSpec (trigger, scope, action, budget, stop,
+report) as TOML in `.remedy/loops/`; `remedy loop run|list|validate`; a loop
+starts a normal job with loop_ref evidence. → An invalid file fails with a
+line-precise message; no cron engine (external schedulers call in).
+
+**F057 Rate-limit-aware scheduler** — Token bucket per provider fed by 429/
+api_retry signals; waiting (visible state) instead of failing; parallelism
+throttled. → A simulated limit delays, never blocks; wait time counted.
+
+**F077 Autonomy watchdog** — Detects loop patterns (same task 3× without
+progress), burn anomalies, goal drift; reaction: pause + decision with the
+evidence triple. The watchdog stops, it never repairs. → A simulated
+always-fail loop pauses after 3 with a clean decision.
+
+**F082 Self-benchmark** — 5 frozen standard orders; metrics PASS rate, cost,
+wall time, repair rounds; history + trend CLI with regression warnings. →
+Reproducible (F012); fixtures frozen with versioning.
+
+**F083 CI self-check** — Unit+integration (fake provider), determinism suite,
+UI build + smoke, bundle/perf budgets; live-provider tests excluded. → Green
+on a clean checkout; a deliberate budget breach fails.
+
+**F085 Sandbox hardening (stage 1)** — Process limits, network deny for
+builder subprocesses, FS scope = worktree; honest docs on what stage 1 does
+NOT prevent; container stage optional later. → Escape fixtures are blocked and
+logged; no security claims beyond tests.
+
+**F086 Release capability** — pip-installable package with bundled UI assets,
+semver + changelog gate, `remedy --version` with build info. → Fresh venv:
+install → demo runs; versions consistent everywhere.
+
+### TIER 3 — FULL TOKEN ECONOMY & AUTONOMY EXTENSION (26 features)
+*Self-built. The remaining economy (resume, tiered summaries, dedupe, routing, per-class budgets, local side roles, cost previews, anomaly alarms) plus the autonomy extension: parallelism, failover, notifications, certificates, the idea engine, calibration, vision planning, autonomy levels, demo mode.*
+
+**F106 Session resume instead of rebuild** — Repair rounds resume the provider
+session instead of resending full context; honest fallback flag when a session
+expired; token delta measured. → A resumed repair uses measurably fewer input
+tokens at equal fixture quality; never across task boundaries.
+
+**F108 Tiered artifact summaries** — Large diffs/logs get L1 (200 tokens) +
+L2 sections + full reference path; prompts receive L1 + relevant L2; cheap
+model generates. → Follow-up prompts use tiers instead of full text (trace
+proof) at unchanged fixture quality.
+
+**F109 Semantic dedupe** — Segment hashing: identical blocks appear once per
+resumed session, then as reference markers — only where prior context is
+guaranteed. → Marker replacement inside resume sessions, never in fresh ones.
+
+**F110 Model routing by task class** — format/extract → cheap, standard
+build/review → mid, architecture/mission/vision → top; per-project overrides;
+routed_model + reason in evidence. → Benchmark: costs drop at equal PASS rate;
+no silent downgrade of security-relevant roles.
+
+**F112 Prompt budget per task class** — Class input caps with a documented
+drop cascade (distant signatures first) and omitted-context disclosure; if
+undroppable, a task-split proposal (decision). → An artificially tight budget
+holds with PASS and full disclosure; mid-file truncation is forbidden.
+
+**F113 Local models for side roles** — Ollama/vLLM endpoint for summaries,
+humanize drafts, idea raw drafts; quality-gated by benchmark spot checks; core
+roles whitelisted out. → Summaries run at cost 0 (basis=local); core roles
+untouched.
+
+**F114 Cost preview per command** — Expensive UI actions (rerun subtree,
+explain) show a class-based estimate band and confirm above a threshold. →
+Bands honest (calibration-based); low-cost actions stay frictionless.
+
+**F116 Cost anomaly alarm** — Burn-rate window per job vs. class expectation;
+outliers warn (SSE + notify) and can throttle parallelism or pause via
+decision on unattended runs. → Simulated outlier warns in <60 s; throttling is
+documented; no auto-stop below the hard threshold.
+
+**F049 Parallelism** — Up to N workers, each in its own worktree, shared
+thread-safe budget guard, dynamic throttling by rate signals; only
+path-disjoint tasks run in parallel. → Measurably shorter wall time; zero
+collisions.
+
+**F054 Auto-revert proposal** — Test digest start vs. end of a run; on
+regression, a revert_proposal.diff + analysis in the report — NEVER applied.
+→ A simulated regression yields proposal + analysis, nothing applied.
+
+**F055 Rehearsal (dry check)** — `--rehearse`: pipeline up to Flight Plan +
+estimate bands + fence simulation; zero builder calls; planner cost shown
+honestly. → Structurally identical to a real plan; 0 builder calls asserted.
+
+**F058 Model failover chain** — Per-role chains, triggered ONLY by
+availability after F001 retries; configured vs. actual model in evidence +
+mandatory report line. → Documented failover; quality problems never trigger
+it.
+
+**F059 Notifications** — Hooks on decision.requested & job.finished to
+webhook/ntfy/mail; compact payload; delivery failure never blocks a run. → A
+test run notifies; a dead channel is harmless; no inbound channels.
+
+**F060 Long-run certificate** — Reuses the existing review bundle:
+certificate.zip = report + token truth + verdicts + ownership + determinism +
+hash manifest; `remedy verify` checks it; <5 MB (diffs linked). → Verifiable
+on a foreign machine; tampering fails verification.
+
+**F063 Idea engine v1** — After job end: idea generator (schema with title,
+rationale, effort band, benefit, MANDATORY evidence refs) into a per-project
+ideas queue, status proposed. → A demo job yields ≥3 ideas, each with a
+resolvable reference; unreferenced ideas are dropped.
+
+**F064 Idea queue UI/CLI** — approve/deny/reprioritize commands; approve
+creates a DRAFT Flight Plan (no autostart); denied idea hashes are never
+re-proposed. → Approve yields a startable draft; dedupe proven.
+
+**F065 Idea engine v2 (continuous, opt-in)** — As a loop: TODO scanner,
+coverage gaps, failure-class clusters, ownership corrections as sources; same
+evidence duty. → The periodic run writes ONLY to the queue (side-effect
+assertion); never default-on.
+
+**F066 Idea provenance** — Typed evidence refs (file#line, failure class,
+coverage, decision id); resolver checks existence at creation AND display;
+missing sources mark ideas stale, never delete them. → Every queued idea has
+≥1 resolving ref.
+
+**F067 Routine missions** — Library of ready loops: dependency updates
+(major bumps → decision), lint debt, doc sync, test gaps, card cleanup;
+`remedy loop install`. → The dependency loop produces a proposal PR diff and a
+decision for majors; routine loops run with maximal fences.
+
+**F068 Autonomy balance (on demand)** — `remedy stats autonomy --since`:
+autonomous share, interrupts per 1000 tasks, decision latency, success rate —
+pulled whenever needed, no fixed reporting rhythm. → Correct against ledger
+and audit for arbitrary ranges.
+
+**F072 Spec-first (living specification)** — SPEC.md per job/mission generated
+from plan + DoD; three-way drift check (spec vs. tests vs. code) after each
+task; drift = finding, not auto-fix. → A deliberate scope creep produces a
+drift finding with file references.
+
+**F073 Post-mortem miner → playbook proposals** — Recurring failure patterns
+(same class+module ≥3) become playbook PROPOSALS with evidence refs; approved
+ones land in `.remedy/playbooks/`. → A synthetic cluster yields exactly one
+referenced proposal.
+
+**F074 Estimate calibration** — Rolling distributions per task class from
+ledger actuals; Flight-Plan bands become P20–P80 with basis labels
+(class_default → calibrated(n)). → After 20 fixture jobs the bands measurably
+shift and the label switches.
+
+**F076 Vision-capable planner** — PNG attachments go into planner/intake calls
+as images (capability-gated, honest fallback to a structured description);
+plan tasks get design-region hints. → A screenshot order yields a plan naming
+visible regions.
+
+**F078 Autonomy levels** — L2 (every start manual) … L5 (idea drafts may start
+under budget caps); level changes only manual + ADR; all gates/fences apply at
+every level. → The enforcement matrix proves each level's allowed start paths.
+
+**F084 Demo mode** — `remedy demo`: a recorded deterministic fake job plays
+the full cockpit showcase offline in <60 s with a permanent DEMO banner. →
+Runs without keys; synthetic data always labeled.
+
+### TIER 4 — MEMORY & LEARNING (16 features)
+*Self-built. Remedy starts compounding: cards, values, playbooks, a ladder of
+proven capability — all measured, nothing vibes-based.*
+
+**F117 Card format & store** — Markdown+frontmatter cards in
+`.remedy/memory/cards/` (id, type architecture|convention|lesson|decision|
+risk|component, scope, status, value, uses, origin); schema-validated loader;
+byte-stable roundtrip. → Diffable, hand-editable; no vector store, no DB.
+
+**F118 Deterministic card attachment** — select(task): scope match, role-type
+relevance, value ranking with an exploration quota, ~2000-token budget, stable
+prefix slot; attached_cards in evidence; deterministic at equal state. → Same
+state → same selection; budget never breached; no LLM selection.
+
+**F119 Card UI: the collection** — Professional trading-card look (type color
+band, title, value rank Bronze/Silver/Gold/Platinum as a subtle corner, uses
+counter, origin chip); detail sheet with body, usage history, actions
+edit/archive/pin/attach/detach via the command catalog. → Edits land in the
+file; attach shows in the next trace; no sounds, no confetti — gamification is
+information.
+
+**F120 Automatic card harvesting** — Candidates from repeated review findings,
+post-mortem patterns and ownership corrections; status proposed with mandatory
+evidence refs; approve via UI/CLI. → A repeat-finding fixture yields exactly
+one referenced candidate; nothing activates without approval.
+
+**F121 Decision cards from ADRs** — Every ADR auto-generates a decision card
+(summary + link, scoped to affected paths); a builder proposal contradicting
+it becomes a reviewer finding citing the ADR. → The rejected alternative in a
+fixture triggers the finding.
+
+**F122 Project dossier card** — One pinned architecture card per project
+(stack, structure, conventions digest, start commands), initially filled by
+`remedy study`, maintenance proposals via the cleanup loop; hard ≤800 tokens.
+→ The first builder prompt in a foreign fixture repo contains it.
+
+**F123 Effectiveness KPI** — attached_cards per call in the ledger; PASS/
+repair statistics with vs. without a card (matched by class); A/B mode in the
+benchmark; correlation honestly labeled. → KPI available after an A/B phase,
+reproducible from the ledger.
+
+**F124 Card hygiene (manual + periodic)** — `remedy memory compact` (merge
+proposals, archive not delete, budget check, conflict → decision) plus an
+LLM-assisted periodic cleanup loop that checks active cards against current
+code and files archive/update PROPOSALS — never silent deletion. → An obsolete
+fixture card is proposed, not removed.
+
+**F125 Card scopes & inheritance** — Global cards under `~/.remedy/`; priority
+paths > project > global on collision; `remedy memory promote`. → Project
+beats global in the fixture; promotion keeps history; no auto-promotion.
+
+**F126 Cards in the graph** — L1 task nodes show a card count badge; the L2
+popover lists attached cards with ranks; click-through to the detail sheet. →
+A 3-card fixture task shows "3"; the path to detail works.
+
+**F127 Optional retrieval above threshold** — Only above 200 active cards: a
+local embedding index as a PRE-filter before the deterministic ranking; below
+the threshold behavior is bit-identical. → Regression test proves identity
+below; same top-k above.
+
+**F128 Memory as a detachable module** — `[memory] enabled=false` empties the
+selector, the UI shows module-off, nothing breaks; the core imports memory
+only through memory_api (import-linter rule). → Core benchmark unchanged when
+off; boundary violations fail lint.
+
+**F144 Capability ladder** — Order sizes S/M/L/XL with success criteria per
+rung (PASS without operator, cost and wall time in band); history per rung;
+`remedy stats ladder`; planner hints when an order exceeds the proven rung
+("propose a mission of M jobs"). → The ladder warns, it never forbids.
+
+**F145 Playbook distillation** — After ≥3 similar orders (class + keyword
+heuristic): a distilled playbook proposal (proven task slicing, typical traps,
+reference cards); planner uses matched playbooks as prompt blocks; efficacy
+measured like cards. → 3 similar fixture jobs yield 1 proposal; a follow-up
+job provably uses it.
+
+**F149 remedy study (initial analysis as a card draw)** — On an EXISTING
+project: structure scan, convention detection, test/CI state, risk hotspots,
+UI component inventory → card CANDIDATES (origin=study, mandatory evidence
+ref) presented as a "card draw" in the collection (staggered reveal, subtle);
+runs as a normal job visible in the graph; `--limit` ranks by evidence
+strength. → ≥10 referenced candidates on a fixture repo; zero cards active
+without approval; the dossier card is proposed filled.
+
+**F150 Card value & exploration chance** — Value changes ONLY through
+measurable signals (attach+PASS without repair +w1, with repair +w2, FAIL in
+scope −w3, periodic A/B correction); exponential smoothing, rank tiers; the
+selector reserves an exploration share (default 20%) for new/low cards, drawn
+deterministically from the job seed. Never an LLM judgment. → Selection
+distribution ≈ 80/20 over 100 fixture tasks; a property test proves no other
+code path writes value.
+
+---
+
+### TIER 5 — OPERATOR COCKPIT: THE GROWING BRAIN (28 features)
+*Parallel human track (Part B): may be built alongside Remedy's self-build at
+any time. The visible product — living graph, full control, total
+explainability. Reference: Part I + docs/ui/design_reference/ux_design.png.*
+
+**F008 SSE event stream** — `/api/jobs/{jid}/events/stream` from the event
+cursor + run_events; monotonic seq, heartbeat, Last-Event-ID resume; client
+hook with reconnect and honest polling fallback badge. → State changes reach
+the UI in <1 s; reconnect loses nothing; no websocket (stdlib server stays).
+
+**F009 The single write channel** — Exactly ONE POST `/commands` validating
+against the command catalog (Bearer + CSRF + rate limit + nonce idempotency),
+which only ENQUEUES into the decision/approval queues; audit log for every
+command. → Any other POST stays 405; replays are marked duplicates; no command
+reaches files or shell directly.
+
+**F015 Interactive plan editing** — Edit/delete/reorder/merge/split tasks and
+acceptance criteria before approval; edit log, DAG revalidation (cycles,
+orphans); executed exactly as edited (user_edited_plan evidence). → Any edit
+sequence yields a valid DAG or a clear error.
+
+**F019 Live node materialization** — The graph grows live per the node
+ontology: task nodes sprout at planning, run/synapse/artifact nodes during
+execution, in event order, each traceable to an SSE seq. Tech decision
+(binding, staged): stage 1 keeps react-force-graph-2d (already a dependency;
+nodeCanvasObject for custom glyphs/glow, linkDirectionalParticles for active
+calls, zoom API); stage 2 = PixiJS v8 only if the 60 fps budget measurably
+fails (F233). Growth animation: spring from parent, 420 ms, glow pulse;
+reduced-motion fallback. → Appearance order equals event order; 100 tool
+calls/s throttle to ≤4 synapse nodes/s with aggregation.
+
+**F020 Node lifecycle & glyph language** — 8 node kinds × states drawn as
+canvas paths from ONE glyph source (no fonts/emoji): job_core/builder `</>`,
+reviewer head-and-shoulders, test flask, repair `</>`+ring, artifact doc
+corner, cluster count; colors from tokens (open violet, planned pale,
+in_progress pulsing blue, done green, fail warn, vetoed struck); active edges
+carry particles; legend uses the same paths as SVG. → Snapshot matrix 8×7
+green; motion-off shows no particles.
+
+**F021 Live activity feed + "agent is doing now"** — Humanized event catalog
+("reads file X", "reviewer: 3 findings"), live card for the newest action,
+feed rows carry seq and jump to their node; steering input renders but stays
+honestly disabled until F030. → 1:1 traceability; the card switches in <1 s.
+
+**F022 Live cost ticker** — budget.tick drives a COST metric with bar,
+basis-labeled ("~" + tooltip when estimated), warning color at 85%. → Final
+ticker equals the ledger to the cent; the basis label is always visible.
+
+**F023 Semantic zoom L0–L3** — One state machine: L0 organism (job core +
+tasks, run clusters as branch glow), L1 focused task expanded (siblings
+dimmed), L2 run popover (verdict, tokens, duration, retries, diff/why/rerun),
+L3 evidence side panel (diff | prompt trace | chat tabs); wheel thresholds
+with hysteresis, clicks are the same transitions, breadcrumbs, Esc walks back,
+clusters above 8 children; 60 fps at 500 nodes. → The full transition matrix
+is tested; cluster "+12" expands correctly.
+
+**F024 Phase timeline with scrubber** — Job→Planning→Build→Test→Review→
+Finalized with event sub-glyphs; the scrubber rebuilds graph state from the
+event prefix (memoized snapshots every 200 seq); LIVE toggle returns like a
+video player. → Scrub to seq s equals replay of events[0..s] (property test).
+
+**F025 Pause/resume (global & per node)** — Pause halts before the next
+provider call (running calls finish), resume continues exactly (session ids
+persisted); node-level pause via context menu. → Pause+resume equals an
+uninterrupted run (deterministic comparison).
+
+**F026 Task edit at runtime** — Waiting/paused/failed nodes are editable
+(prompt/scope/criteria) with spec versioning; old runs stay in the graph as
+history; the new run provably carries the patch. → v2 prompt contains the
+patch; history preserved.
+
+**F027 Task veto** — Forbid a not-yet-applied node with a mandatory reason;
+downstream becomes unreachable; a replan proposal lands in the decision inbox,
+never auto-executed. → Diamond fixture computes the exact unreachable set.
+
+**F028 Task injection** — Add a node at runtime ("+ Add Task"); planner
+validates fences and remaining budget (shortfall → clarification); scheduled
+into the DAG. → The injected node runs in the same job.
+
+**F029 Subtree rerun** — Reset the workspace to the snapshot before task X
+(stash-based snapshots per task end), downstream back to planned, run history
+preserved as a fan; optional model override. → No file corpses after reset
+(diff assertion).
+
+**F030 Steering messages** — Free-text hints into a per-task steering inbox,
+injected as a binding operator note at the next round (volatile prompt tail);
+the feed shows the user line; no fake dialog — the builder's "answer" is its
+next real action. → The trace contains the hint exactly once per round.
+
+**F031 Decision inbox** — Decisions block only their branch (scheduler pulls
+independent ready tasks); inbox cards with badge counter driven by SSE. → 1
+blocked + 2 free tasks yield 2 results + 1 clean request.
+
+**F032 Approval with the evidence triple** — Every approval card MUST show:
+evidence refs (clickable into the panel), expected outcome, downside — schema
+enforced at the producer. → No approval without the three fields (test per
+producer).
+
+**F037 Rendered diff viewer** — Structured diff JSON (files/hunks/lines),
+client highlighting (only needed languages bundled), file sidebar, hunk
+collapse, virtual scrolling above 2k lines. → A 1 MB diff renders <300 ms.
+
+**F033 Hunk-level diff approval** — Stable hunk ids; approve/reject per hunk
+with reasons; approved hunks apply, rejected ones become precise repair
+feedback. → A mixed approval yields exactly the approved patch plus a repair
+round quoting the rejected hunk.
+
+**F035 Ownership ledger** — Chronicle of all user interventions and inputs
+(commands audit + clarification answers + reference-sourced assumptions),
+rendered humanly ("You vetoed T004 — reason: …") in report and UI. → Complete
+against the audit log.
+
+**F036 Guided result tour** — Generated walkthrough of what was built (≤8
+stops with paths, why, how to run); overlay in the UI, `--tour` in the CLI. →
+Every stop path exists; an outsider finds the entry point.
+
+
+**F038 Node chat (grounded, read-only)** — "Why solved this way?" answered
+ONLY from that node's evidence with citation chips that anchor into artifacts;
+uncited claims render marked "unsupported"; canary test answers "not in
+evidence". → All citation anchors resolve.
+
+**F039 Story/replay mode** — Chapters from phases + key events; autoplay scrub
+with narration cards; export as a self-contained HTML file. → Opens standalone
+in a browser; chapters jump correctly.
+
+**F040 Completion/return digest** — Hero card at job end or first UI open
+after absence: state/result, costs (basis-labeled), top ownership entries,
+open decisions, one primary action. → Server-side digest endpoint; aggregates
+match sources.
+
+**F041 Artifact preview** — Rendered README (sanitized), screenshots lightbox,
+"open app" starts the runtime and links the live port only after a successful
+probe. → XSS corpus green; no dead preview links.
+
+**F042 Multi-project cockpit** — Home grid over projects with mini digests;
+project switcher everywhere. → Card A never shows B numbers (leak property).
+
+**F043 Explanation layer** — One tooltip catalog as the single source; every
+metric/status term has one; audit test (no term without tooltip, no dead
+keys); a 6-step first-run tour with a prominent skip. → Copy audit green.
+
+**F044 Command palette, keyboard, performance budget** — Cmd+K palette over
+catalog + node jump; j/k/Enter/Esc navigation; CI-enforced budgets: first
+paint <1.5 s, 60 fps at 200 nodes, bundle cap. → Budget violations fail CI.
+
+---
+
+### TIER 6 — DESIGN-TO-CODE (16 features)
+*Self-built. Screenshot in, faithful product out — verified, not vibed.*
+
+**F087 design_reference as job input** — `--design shot.png` (multiple,
+numbered R1..Rn, optional scope note); hashed, shown in the Flight Plan;
+originals preserved. → Reference with hash in evidence and plan.
+
+**F088 Reference image to the builder** — UI task prompts carry the image
+directly where the worker supports it, plus ALWAYS the written style block
+(A8); prompt trace records image_attached honestly. → No "builder saw it"
+claim without the flag.
+
+**F089 Design decomposition** — Vision call → design_spec.json (layout grid,
+regions with bboxes, tokens, components with states); feeds plan tasks and
+token extraction; the screenshot stays law on conflict. → Fixture
+decomposition names all main regions; colors within delta-E tolerance.
+
+**F090 Screenshot capability** — Playwright capture(url, viewport) with ready
+strategy; desktop + mobile viewports; deterministic within AA tolerance. →
+Runtime-down yields a clean infra failure.
+
+**F091 Visual self-comparison** — compare(ref, shot) → SSIM, pixel diff, per-
+region scores, heatmap overlay; known deviations produce plausible localized
+scores. → SSIM alone is never sold as fidelity truth (always paired with
+F092).
+
+**F092 Visual reviewer** — Multimodal review against reference+shot+heatmap+
+spec → findings in exactly four criteria (layout, colors, typography,
+component completeness) with region, expected/actual, fix hint; schema forbids
+verdicts without criteria. → Bad fixture produces findings in the right
+criteria/regions; good fixture passes.
+
+**F093 Fidelity loop** — build → capture → compare+review → repair until
+target (SSIM ≥0.90 AND zero high findings, configurable) or max rounds; every
+round documented (shot_n, findings_n) — the visible improvement path is sales
+material. → Fixture converges in 2 rounds; honest residue report on abort.
+
+**F094 Interaction verification** — Playwright flows generated from spec
+components and DoD (hover/click/input per declared state); failures include a
+screenshot of the failing moment. → An unwired button is caught.
+
+**F095 Responsive verification** — Capture+compare per viewport; without a
+mobile reference only honest heuristics (no horizontal scroll, tap targets,
+min font) reported separately from comparisons. → A mobile overflow bug is
+caught; no invented mobile fidelity.
+
+**F096 Design token extraction** — spec.tokens → generated tokens.css
+(in the target project's own token namespace) + stylelint rule: no hex outside tokens; builder prompts mandate
+token variables. → Hex in component CSS fails lint; reference beats builder
+taste.
+
+**F097 Component catalog** — PASS components extracted (TSX+CSS+screenshot+
+props doc) into `.remedy/design_system/components/`; gallery route; follow-up
+jobs get the catalog index as a stable prompt block. → The second UI job
+provably reuses instead of rebuilding.
+
+**F098 Baseline guard (visual regression)** — Golden screenshots per route/
+component; CI compares with tolerance; breaks fail CI with heatmap artifacts;
+updates only via an explicit command showing the diff. → Agents cannot update
+baselines (protected path).
+
+**F099 Design feedback channel** — Draw rectangles + comments on a fidelity
+screenshot; the next repair round receives the cropped images + comments. →
+Marked feedback lands as image crops in the repair prompt (trace proof).
+
+**F100 Multi-reference consistency** — Token fusion across references with a
+conflict report (same role, different color → upfront clarification item, no
+silent averaging); page↔reference mapping in the plan. → A contradiction
+yields exactly one clarification.
+
+**F101 Reference fidelity rule** — Central prompt block: "the screenshot is
+law; deviations only on technical impossibility, then an assumption_log entry
+with reason"; the reviewer flags unlogged deviations as high findings. → An
+unlogged deviation in the fixture is flagged; the builder never 'improves' the
+reference unasked.
+
+**F102 Long-run × design** — `--design` + multi-cycle: fidelity loops as
+cycles; the final report carries a before/after gallery and the heatmap
+trajectory. → An unattended proof run: PNG in, feature-complete UI out, path
+visible.
+
+---
+
+### TIER 7 — QUALITY & TRUST (15 features)
+*Self-built. From "tests green" to "provably robust" — ending in the Genesis
+flagship.*
+
+**F129 TDD gate (optional per job)** — `--tdd` enforces test-task-before-
+impl-task pairs with a red proof in evidence; DoD requires green. → Order
+enforced; red→green documented.
+
+**F130 Mutation sampling** — Budgeted mutmut sample on touched modules;
+survivors listed as "tests that catch nothing" + optional test-task proposal.
+→ A weak fixture test is exposed; runtime budget holds.
+
+**F131 Adversarial second review** — A red-review role ("find ways this diff
+breaks") for XL/security-labeled/--paranoid tasks; findings enter the normal
+repair flow. → A hidden edge-case gap in the fixture is found.
+
+**F132 Review tournament** — Same diff to 2–3 reviewer models against curated
+ground truth; precision/recall calibrate reviewer routing per class; benchmark
+only. → Tournament report + routing recommendation.
+
+**F133 Provider trust score** — Rolling PASS quota, repair need, format error
+rate, cost per PASS per model+role; `remedy stats trust`; feeds routing as a
+RECOMMENDATION (change = config + ADR). → No auto-rerouting.
+
+**F134 Security gate** — Curated semgrep + bandit + npm audit (high) on
+touched files as review findings; a DoD block for sensitive orders; <60 s on
+benchmark repos. → An injection fixture blocks until repaired; false-positive
+budget observed.
+
+**F135 Flaky detector** — Test result history at equal SHA; flakes get
+quarantine markers + fix ideas; quarantine is visible in reports, never
+silent. → A flickering fixture test lands in quarantine with its history.
+
+**F136 Time-travel checkpoints** — Timeline markers; "return here + hint"
+resets the worktree and seeds a steering message; the old future stays as a
+grayed fossil (audit — never rewritten). → Jumping back creates a new branch;
+fossils remain.
+
+**F137 Shadow mode** — `--shadow`: full run in a throwaway worktree, result
+only as diff+report with a SHADOW banner; one click adopts it into a real
+branch; shadow metrics never pollute production KPIs. → Discard leaves
+nothing.
+
+**F138 ADR automation** — Architectural-decision heuristics (new dependency,
+new core module, schema change, tech choice) draft an ADR for confirmation;
+confirmed ADRs become decision cards. → A new-dependency fixture yields a
+correct draft; no card without confirmation.
+
+**F139 Code churn metric** — Remedy-authored lines rewritten within 7/30 days
+(blame on trailer-marked commits); `remedy stats churn`; high churn per class
+feeds planner hints; refactor orders exempt via label. → Reproducible on a
+fixture history.
+
+**F140 Bit-exact evidence replay** — `remedy verify --replay`: fake-provider
+runs replay from recorded streams and must reproduce artifact hashes; for real
+runs, all deterministic pipeline steps replay + LLM outputs hash-verify —
+honest docs on what that does and does not prove. → Tampering is caught.
+
+**F141 Permission matrix per autonomy level** — Actions (read, write worktree,
+commit, push, dependency change, destructive, expensive, external) × levels
+enforced at ONE point require(action); matrix visible in docs and UI; no
+bypass flags. → Every forbidden cell fails cleanly with a decision offer.
+
+**F142 Trust dashboard** — Cockpit route with tiles: autonomy share, PASS
+trend, cost per feature, card effectiveness, model trust, churn — every tile
+links its raw data query. Proof over claims as a UI principle. → Every number
+is click-traceable to raw data.
+
+**F143 Genesis run: one prompt → one product** — Flagship composition: empty
+folder → scaffold (stack choice as ADR) → mission → multi-cycle until DoD
+green + product smoke → certificate + tour + story. The 60-second sales
+moment. → A real proof run: one paragraph + one screenshot before walking
+away; a startable, green, clickable product (or an honest interim report)
+when you return.
+
+---
+
+### TIER 8 — WORKER ECOSYSTEM & NEUTRALITY (12 features)
+*Self-built. The structural moat: any worker pluggable, certifiable,
+comparable, replaceable. F151–F162 as specified in their detail files:
+adapter contract v2 (F151), worker config isolation with A/B proof (F152),
+Codex adapter (F153), Gemini adapter (F154), local full builder (F155),
+certification suite gating router classes (F156), capability matrix with
+honest degradation (F157), cost normalization & price catalogs (F158),
+cross-vendor scoreboard (F159), cross-vendor failover v2 (F160), MCP
+passthrough with allowlist policy (F161), per-adapter sandbox profiles
+(F162).*
+
+### TIER 9 — EVIDENCE & COMPLIANCE PRODUCT (12 features)
+*Self-built. Audits become a feature: prompt→code lineage (F163), AI commit
+labeling standard (F164), signed certificates (F165), retention & archive
+export (F166), SIEM/audit event export (F167), human-oversight proof (F169), technical
+dossier generator with explicit "not legal advice" framing (F168), license & SBOM gate (F170), secret hygiene v2 + vault (F171), policy
+packs (F172), air-gap mode with zero-egress proof (F173), data classification
+in the context compiler (F174).*
+
+### TIER 10 — TEAM & MULTI-USER (12 features)
+*Identities & roles (F175), OIDC login (F176), per-user write channel (F177),
+decision assignment & delegation — event-based escalation, never
+time-of-day (F178), node comments (F179), human reviews as a DoD gate (F180),
+team ownership view without surveillance metrics (F181), presence (F182),
+per-person notification routing (F183), shared card curation (F184),
+per-project permissions (F185), human→human handoff package (F186).*
+
+### TIER 11 — VERIFICATION V2 (10 features)
+*Property-based test generation (F187), API compatibility guard (F188),
+service contract tests (F189), compose test environments (F190), migration
+safety ritual (F191), performance budgets for product code (F192),
+accessibility gate (F193), i18n checks (F194), budgeted fuzzing (F195),
+flake-resistant E2E discipline (F196).*
+
+### TIER 12 — OBSERVABILITY & OPERATIONS (8 features)
+*OpenTelemetry export per the GenAI semantic conventions (F197), Prometheus
+metrics (F198), self-health & local-only crash reports (F199), daemon mode
+`remedy serve` with the direct mode staying first-class (F200), remote access
+& mobile PWA — user-exposed, no cloud relay (F201), backup/restore & schema
+migrations (F202), structured logging with job/task/run correlation (F203),
+update channel — check only, never auto-update (F204).*
+
+### TIER 13 — MULTI-REPO & ORGANIZATION (8 features)
+*Multi-repo missions with strictly per-project evidence (F205), repo
+dependency catalog (F206), coordinated PR trains — merges stay human (F207),
+monorepo workspaces with honestly labeled scoped tests (F208), org conventions
+with explicit overrides (F209), org dashboard reusing project truths (F210),
+card federation with project-local values (F211), release train view (F212).*
+
+### TIER 14 — PRODUCTIZATION & DISTRIBUTION (10 features)
+*Offline license files — never bricking, never data hostage (F213), editions
+with honest gating (F214), signed distribution channels (F215), docs site
+generated from docs/README structure (F216), templates & a gallery of real
+verified certificates (F217), trial mode with cryptographically honest
+watermarks (F218), telemetry strictly opt-in with a public field catalog
+(F219), feedback funnel with shown-before-send redaction (F220), release
+quality gate & channels (F221), customer cost calculator with n-basis labels
+(F222).*
+
+### TIER 15 — INTELLIGENCE V2 (10 features)
+*Best-of-N builds selected by deterministic verification (F223), repo
+archaeology as a cited context source (F224), reverse-DoD from legacy with
+property-test confirmation (F225), classic explainable risk prediction (F226),
+prompt regression tests (F227), counterfactual cost replay with estimate
+labels (F228), adaptive task-size recommendations (F229), mission portfolio
+optimizer with an open formula (F230), playbooks v2 with measured value
+(F231), model upgrade playbook — certify, benchmark, ADR draft, humans switch
+(F232).*
+
+### TIER 16 — COCKPIT V2 (10 features)
+*Growing Brain stage 2 GPU renderer behind a measurement gate (F233), organism
+overview L-1 (F234), diff ghosting on the timeline (F235), redacted live
+output stream per node (F236), embedded read-only runtime console (F237),
+cockpit plugin API in sandboxed iframes with confirm-to-command (F238),
+theming & white-label with unremovable provenance (F239), full keyboard/vim
+coverage with confirm overlays (F240), story export as video with an honesty
+end card (F241), accessibility of the cockpit itself incl. a full list
+alternative to the canvas graph (F242).*
+
+### TIER 17 — SELF-IMPROVEMENT & ECOSYSTEM (8 features)
+*Public benchmark participation with unpolished results (F243), scheduled
+security self-audit routine (F244), evidence schema registry, versioning &
+compat suite (F245), verification gate plugin API with a determinism admission
+test (F246), community bundle import with provenance and mandatory curation
+(F247), Remedy-builds-Remedy full loop over this unified roadmap — the M16
+proof run (F248), anonymized research exports with k-anonymity (F249),
+long-term consolidation into a sourced project handbook (F250).*
+
+---
+
+## PART G — MILESTONES
+
+| # | Name | Features | Proof |
 |---|---|---|---|
-| Job-Kern | Job startet | großes `</>` im Zentrum | — |
-| Task | Planner erzeugt Task | Kreis-Node am Ast | Job-Kern |
-| Builder-Run | Builder-Prompt startet | `</>` klein | Task |
-| Review-Run | Reviewer-Prompt startet | Person | Task |
-| Repair-Run | Repair-Runde startet | `</>` mit Wiederhol-Ring | Builder-Run |
-| Test-Run | Testausführung | Kolben | Task |
-| Prompt-Ereignis | jeder einzelne Provider-Call | Synapsen-Punkt auf der Kante | jeweiliger Run |
-| Artefakt | Diff/Datei/Report erzeugt | Dokument-Punkt | erzeugender Run |
+| M1 | "Solid ground" | Tier 0 | 10 self-runs without infra blocks; two projects cleanly separated |
+| M2 | "It builds itself" | Tier 1 | F075 gauntlet 10/10 + Remedy completes its FIRST roadmap feature end-to-end from STATUS.md, humans only approving |
+| M3 | "Cheap, safe, measurable" | Tier 2 | Benchmark + CI reproducible, a simulated runaway is stopped by the watchdog, benchmark cost per PASS drops ≥25% vs. the M2 baseline |
+| M4 | "It runs long & cheap" | Tier 3 | A large order before walking away — finished or honestly still working on return, with certificate; cost per PASS ≥40% below the M2 baseline |
+| M5 | "It learns" | Tier 4 | Card A/B shows measurable effect; study on a foreign repo yields an approved collection |
+| M6 | "You can see it" | Tier 5 | The Growing Brain live demo: graph grows, zoom L0–L3, an intervention round-trips |
+| M7 | "It sees" | Tier 6 | Screenshot in → UI ≥90% fidelity, unattended |
+| M8 | "Genesis" | Tier 7 | One paragraph → running product, fully unattended, with certificate |
+| M9 | "Any worker" | Tier 8 | The same order passes with 3 vendors + 1 local worker, scoreboard publishable |
+| M10 | "Audit-proof" | Tier 9 | Simulated audit answered from lineage+dossier in <5 min; certificate verified externally |
+| M11 | "Team" | Tier 10 | 3 people run a project a week with roles, assignments, human review gates |
+| M12 | "Operable" | Tier 11+12 | Daemon over 50 consecutive jobs, OTel visible in a customer stack, one restore drill |
+| M13 | "Organization" | Tier 13 | A mission lands a coordinated change across 2 repos with a clean train |
+| M14 | "Product" | Tier 14 | A stranger installs from an official channel and reaches a first signed certificate without support |
+| M15 | "Sharper" | Tier 15+16 | Best-of-N wins a measured quality delta; cockpit v2 at 2000 nodes 60 fps or a documented non-need |
+| M16 | "Flywheel" | Tier 17 | Remedy completes a Tier-17 feature fully itself AND a public benchmark report is published |
 
-Statusfarben aus der Design-Legende: Open = violett, Planned = klein/blass,
-In Progress = pulsierend blau mit Kantenpartikeln, Done = grün, Failed/Blocked = warm
-(einzige Warnfarbe im sonst kühlen Schema).
+## PART H — KEY DEPENDENCIES (excerpt)
 
-**H3 — Semantische Zoomstufen (menschenfreundliche Festlegung).** Tiefe entsteht
-durch Zoom ODER Klick — beides führt zur selben Stufe:
+F013/F014 ← F005 · F046/F047 ← F011/F018/F006 · F070 ← F069+F056+F046 ·
+F080 ← F070 (adapter) but its parser/status parts have no deps — build early ·
+F075 ← all of Tier 0 + F070 · Tier 2 ← F003/F103 chain (F103 first) ·
+F118 ← F105/F112 · F150 ← F118+F103+F123 · F019 ← F008+F004+F014 ·
+F023 ← F019/F020 · F093 ← F090/F091/F092 · F151 ← Tier 0 · F156 ← F082+F151 ·
+F163 ← F004+F033+F139/F164 · F200 ← F011/F047/F048/F009 · F233 ← F019 ADR +
+F044 measurements · F248 ← F080+F070+F230.
 
-- **L0 Organismus:** Nur Job-Kern + Task-Nodes + Ast-Struktur. Runs sind zu
-  Leucht-Aktivität ihrer Task-Äste aggregiert. Das ist die Standard- und
-  Beruhigungsansicht: ein Blick genügt für „wie geht es meinem Projekt".
-- **L1 Task aufgeklappt:** Klick/Zoom auf einen Task expandiert NUR diesen: seine
-  Builder-/Review-/Repair-/Test-Run-Kinder sprießen sichtbar; Geschwister-Tasks
-  dimmen (Fokus+Kontext). Immer nur EIN Task gleichzeitig expandiert.
-- **L2 Run:** Klick auf einen Run-Node öffnet das Detail-Popover (existiert):
-  Verdict, Tokens/Kosten, Dauer, Prompt-Zusammensetzung, Diff-Link. Prompt-
-  Ereignisse des Runs werden als Synapsen-Punkte auf seiner Kante sichtbar.
-- **L3 Evidenz:** Klick auf Artefakt/Prompt-Punkt öffnet das Seitenpanel
-  (Diff-Viewer F037, Prompt-Trace, Node-Chat F038). Textinhalte werden NIE im
-  Graph gerendert — der Graph bleibt Organismus, das Panel ist die Lupe.
+## PART I — DESIGN AUTHORITY & NODE ONTOLOGY (binding)
 
-**H4 — Menschlichkeits-Regeln:**
-- Progressive Enthüllung: pro Stufe kommt genau EINE neue Informationsschicht dazu.
-- Aggregation statt Überwältigung: >8 Kind-Nodes eines Typs kollabieren zu einem
-  Cluster-Node („+12 Runs"), Klick expandiert.
-- Orientierung: Brotkrumen-Anzeige (Job › Task › Run), Esc = eine Stufe zurück,
-  Doppelklick auf Leere = L0.
-- Live-Wachstum: neue Nodes sprießen animiert aus ihrem Eltern-Node (F019) — bei
-  Reduced-Motion: sanftes Einblenden statt Wachstumsanimation.
-- Performance: L0 rendert auch bei 500 Gesamt-Nodes flüssig, weil Runs aggregiert
-  sind (Budget aus F044).
+**Canonical UI design source: `docs/ui/design_reference/`.** The checked-in
+`ux_design.png` (2174×1206, measured; equals the 1678×926 design frame at
+≈1.295×) is the visual authority for the cockpit. The written specs in that
+folder — `ux_spec.md`, `component_spec.md`, `graph_spec.md`, `motion_spec.md`,
+`tokens.css` + `tokens_rules.md`, **`assets_spec.md` (fonts, icons, graph
+glyphs, logo — the asset authority)**, `acceptance_criteria.md`,
+`graph_tech_recommendation.md` — are **binding** for all UI work: cockpit
+shell, Growing Brain graph (nodes, edges, clusters, semantic zoom), phase
+timeline, activity feed, task list, command bar, metrics bar, right panel,
+evidence/detail panels, story/replay, memory-card UI, dashboards, and the
+Design-to-Code tier's visual verification tooling. Builders must not invent a
+new visual language. Any visual deviation requires an assumption_log entry
+with a technical reason (A9/F101 discipline). All UI uses the shared token
+system (`--remedy-*`). Where any wording elsewhere in this roadmap conflicts
+with the design reference on visual matters, **the design reference wins**;
+feature files define behavior, the design reference defines appearance.
+
+Node ontology (8 kinds): job_core, task, builder_run, review_run, repair_run,
+test_run, synapse, artifact (+cluster; +non-semantic decor per graph_spec §8).
+States: open (`--remedy-state-open` #a78bfa), planned (white + ring #9db9ee,
+smaller), in_progress (`--remedy-state-current` #4c83ff, pulsing), pass
+(`--remedy-state-done` #34c27e), fail/blocked (`--remedy-state-blocked`
+#ef6363), vetoed (struck gray). Geometry, layers, semantic zoom L0–L3,
+event mapping, animation and performance strategy: `graph_spec.md` §4–§13 is
+authoritative. Budgets live once, in `acceptance_criteria.md` §5.
+
+## PART J — DELIBERATELY NOT BUILT
+
+No own foundation model or hosting · no mandatory SaaS (local-first is law;
+any cloud bridge would be a separate future decision) · no auto-merge to main
+at any autonomy level · no time-of-day mechanics anywhere · no vendor-locked
+feature (capability matrix + honest degradation instead) · no chat assistant
+as the product surface (the cockpit is a control stand) · no push-button
+legal compliance claims (we ship proofs, not verdicts) · no engagement
+gamification (streaks, usage badges) — gamification stays information ·
+no number without a raw-data link.
