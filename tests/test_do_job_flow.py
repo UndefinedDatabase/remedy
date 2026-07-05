@@ -106,7 +106,7 @@ class TestJobFlowArgumentParsing:
 
     def test_timeout_sec_default(self) -> None:
         ns = self._parse(["do", "job-flow", "--job-file", "job.md"])
-        assert ns.timeout_sec == "120"
+        assert ns.timeout_sec is None  # None = not explicitly set; adaptive normal used
 
     def test_json_flag(self) -> None:
         ns = self._parse(["do", "job-flow", "--job-file", "job.md", "--json"])

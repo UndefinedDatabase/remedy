@@ -21,6 +21,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,12 @@ from packages.orchestration.pingpong_provider import (
     ReviewerOutput,
     ReviewFinding,
     create_provider,
+)
+from packages.orchestration.provider_timeouts import (
+    PROFILES as TIMEOUT_PROFILES,
+    compute_timeout,
+    next_backoff,
+    should_retry,
 )
 
 # ---------------------------------------------------------------------------
@@ -126,6 +133,12 @@ class PingPongResult:
     # Execution mode and actor binding (T008: populated after run completes)
     execution_mode: str = ""
     task_actor_binding: dict[str, Any] | None = None
+    # F001: Adaptive timeout + retry evidence
+    timeout_profile: str = ""
+    timeout_s_effective_builder: int = 0
+    timeout_s_effective_reviewer: int = 0
+    retries_used: int = 0
+    retry_reasons: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -1571,6 +1584,55 @@ def _apply_fake_builder_changes(
 
 
 # ---------------------------------------------------------------------------
+# F001: Retry wrapper for provider calls
+# ---------------------------------------------------------------------------
+
+def _call_with_retry(
+    call_fn: Any,
+    *,
+    result: PingPongResult,
+    role: str,
+) -> Any:
+    """Call a provider function with bounded retry on transient failures.
+
+    Only retries on timeout or nonzero exit (detected via error string).
+    Never retries review rejects. Records retry evidence on result.
+    """
+    from packages.orchestration.provider_timeouts import MAX_RETRIES
+
+    out = call_fn()
+    for attempt in range(MAX_RETRIES):
+        if not out.error:
+            return out
+
+        is_timeout = "timeout" in out.error.lower() or "TimeoutExpired" in out.error
+        is_nonzero = "exited" in out.error.lower() or "nonzero" in out.error.lower()
+        # A review reject is a genuine verdict without a provider error.
+        # Provider errors that happen to set verdict="blocked" are NOT review rejects.
+        is_reject = (
+            hasattr(out, "verdict")
+            and out.verdict in ("needs_repair", "fail", "blocked")
+            and not out.error.startswith("provider_error:")
+        )
+
+        if not should_retry(is_timeout=is_timeout, exit_code=1 if is_nonzero else 0, is_review_reject=is_reject):
+            return out
+
+        backoff = next_backoff(attempt)
+        if backoff is None:
+            return out
+
+        result.retries_used += 1
+        result.retry_reasons.append(
+            f"{role}:attempt{attempt + 1}:{out.error[:120]}"
+        )
+        _time.sleep(backoff)
+        out = call_fn()
+
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Core loop
 # ---------------------------------------------------------------------------
 
@@ -1586,6 +1648,7 @@ def run_pingpong(
     reviewer_model: str = "",
     max_rounds: int = 3,
     timeout_sec: int = 120,
+    timeout_profile: str = "",
     max_output_chars: int = 50000,
     mentioned_files: list[str] | None = None,
     test_command: str = "",
@@ -1633,6 +1696,30 @@ def run_pingpong(
         job_id=job_id,
         task_id=task_id,
     )
+
+    # F001: Compute adaptive timeouts from profile (if set), otherwise use raw timeout_sec
+    _allowed_files = 0
+    if task_input and hasattr(task_input, "mentioned_files"):
+        _allowed_files = len(task_input.mentioned_files or [])
+    if mentioned_files:
+        _allowed_files = max(_allowed_files, len(mentioned_files))
+
+    if timeout_profile:
+        if timeout_profile not in TIMEOUT_PROFILES:
+            raise ValueError(
+                f"Invalid --timeout-profile {timeout_profile!r}. "
+                f"Available: {', '.join(sorted(TIMEOUT_PROFILES))}"
+            )
+        builder_timeout = compute_timeout("builder", _allowed_files, timeout_profile)
+        reviewer_timeout = compute_timeout("reviewer", _allowed_files, timeout_profile)
+        result.timeout_profile = timeout_profile
+    else:
+        builder_timeout = timeout_sec
+        reviewer_timeout = timeout_sec
+        result.timeout_profile = ""
+
+    result.timeout_s_effective_builder = builder_timeout
+    result.timeout_s_effective_reviewer = reviewer_timeout
 
     # Store task metadata on result
     if task_input:
@@ -1770,10 +1857,14 @@ def run_pingpong(
                 configured_model=builder_model,
             ))
 
-            builder_out = builder_provider.build(
-                builder_prompt,
-                timeout_sec=timeout_sec,
-                max_output_chars=max_output_chars,
+            builder_out = _call_with_retry(
+                lambda ts=builder_timeout: builder_provider.build(
+                    builder_prompt,
+                    timeout_sec=ts,
+                    max_output_chars=max_output_chars,
+                ),
+                result=result,
+                role="builder",
             )
             rd.builder_output = builder_out
 
@@ -1929,10 +2020,14 @@ def run_pingpong(
             # Snapshot staging before reviewer (to detect reviewer mutation)
             staging_snap_before = _find_staging_changes(staging, original)
 
-            reviewer_out = reviewer_provider.review(
-                reviewer_prompt,
-                timeout_sec=timeout_sec,
-                max_output_chars=max_output_chars,
+            reviewer_out = _call_with_retry(
+                lambda ts=reviewer_timeout: reviewer_provider.review(
+                    reviewer_prompt,
+                    timeout_sec=ts,
+                    max_output_chars=max_output_chars,
+                ),
+                result=result,
+                role="reviewer",
             )
 
             # --- Bounded parse retry (one attempt) ---
@@ -1945,7 +2040,7 @@ def run_pingpong(
                 )
                 retry_out = reviewer_provider.review(
                     retry_prompt,
-                    timeout_sec=timeout_sec,
+                    timeout_sec=reviewer_timeout,
                     max_output_chars=max_output_chars,
                 )
                 retry_out.parse_retried = True
@@ -2750,6 +2845,11 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "prompt_trace_count": len(result.prompt_traces),
         "execution_mode": result.execution_mode,
         "task_actor_binding": result.task_actor_binding,
+        "timeout_profile": result.timeout_profile,
+        "timeout_s_effective_builder": result.timeout_s_effective_builder,
+        "timeout_s_effective_reviewer": result.timeout_s_effective_reviewer,
+        "retries_used": result.retries_used,
+        "retry_reasons": result.retry_reasons,
     }
 
 

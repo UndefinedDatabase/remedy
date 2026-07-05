@@ -29,6 +29,33 @@ def _parse_builder_provider(val: object) -> str:
 
 _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 
+_DEFAULT_RAW_TIMEOUT = 120
+
+
+def _resolve_timeout_precedence(
+    raw_timeout: int | None,
+    timeout_profile: str | None,
+) -> tuple[int, str]:
+    """Resolve timeout precedence for F001.
+
+    Precedence:
+    1. Explicit raw timeout (--timeout-sec / --provider-timeout-sec) wins.
+    2. Explicit --timeout-profile wins.
+    3. Default: adaptive profile "normal".
+
+    Returns (timeout_sec, timeout_profile).
+    When raw timeout wins, timeout_profile is "" (empty) so run_pingpong
+    uses timeout_sec directly.
+    """
+    if raw_timeout is not None:
+        # User explicitly passed raw timeout — override adaptive profile
+        return raw_timeout, ""
+    if timeout_profile is not None:
+        # User explicitly passed --timeout-profile
+        return _DEFAULT_RAW_TIMEOUT, timeout_profile
+    # Neither passed — default to adaptive normal
+    return _DEFAULT_RAW_TIMEOUT, "normal"
+
 # --- Per-role model override flags (T002) ---------------------------------
 # CLI accepts --<role>-provider / --<role>-model / --<role>-effort for the
 # builder, reviewer, and repair roles. Values are validated at the CLI layer
@@ -145,6 +172,7 @@ def _cmd_do(
     mode: str = "staged",
     test_command: str = "",
     provider_timeout_sec: int = 120,
+    timeout_profile: str = "",
     max_output_chars_val: int = 50000,
     keep_staging: bool = False,
     claude_cli_write_mode: str = "none",
@@ -230,6 +258,7 @@ def _cmd_do(
             goal, repo=repo, builder=builder, reviewer=reviewer,
             max_rounds=max_rounds, mode=mode, json_output=json_output,
             test_command=test_command, provider_timeout_sec=provider_timeout_sec,
+            timeout_profile=timeout_profile,
             max_output_chars=max_output_chars_val, keep_staging=keep_staging,
             claude_cli_write_mode=claude_cli_write_mode,
             task_input=task_input,
@@ -329,6 +358,7 @@ def _cmd_do_pingpong(
     json_output: bool = False,
     test_command: str = "",
     provider_timeout_sec: int = 120,
+    timeout_profile: str = "",
     max_output_chars: int = 50000,
     keep_staging: bool = False,
     claude_cli_write_mode: str = "none",
@@ -385,6 +415,7 @@ def _cmd_do_pingpong(
         reviewer_name=effective_reviewer,
         max_rounds=max_rounds,
         timeout_sec=provider_timeout_sec,
+        timeout_profile=timeout_profile,
         max_output_chars=max_output_chars,
         test_command=test_command,
         keep_staging=keep_staging,
@@ -811,6 +842,7 @@ def _cmd_do_job_run(
     repair_provider: str | None = None,
     repair_model: str | None = None,
     repair_effort: str | None = None,
+    timeout_profile: str = "",
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
@@ -874,6 +906,7 @@ def _cmd_do_job_run(
         repair_rounds=repair_rounds_val,
         repair_rounds_source=repair_source,
         test_command=test_command,
+        timeout_profile=timeout_profile,
         claude_cli_write_mode=claude_cli_write_mode,
         max_tasks=max_tasks,
     )
@@ -1801,6 +1834,7 @@ def _cmd_do_job_flow(
     test_command: str | None = None,
     claude_cli_write_mode: str | None = None,
     timeout_sec: int = 120,
+    timeout_profile: str = "",
     out: str = "",
     json_output: bool = False,
     builder_provider: str | None = None,
@@ -1935,6 +1969,7 @@ def _cmd_do_job_flow(
         repair_rounds_source=repair_source,
         test_command=test_command,
         timeout_sec=timeout_sec,
+        timeout_profile=timeout_profile,
         claude_cli_write_mode=claude_cli_write_mode,
         max_tasks=0,
     )
@@ -2158,7 +2193,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_rounds=int(getattr(args, "max_rounds", None) or 3),
         mode=getattr(args, "mode", None) or "staged",
         test_command=getattr(args, "test_command", None) or "",
-        provider_timeout_sec=int(getattr(args, "provider_timeout_sec", None) or 120),
+        provider_timeout_sec=_resolve_timeout_precedence(int(getattr(args, "provider_timeout_sec")) if getattr(args, "provider_timeout_sec", None) is not None else None, getattr(args, "timeout_profile", None))[0],
+        timeout_profile=_resolve_timeout_precedence(int(getattr(args, "provider_timeout_sec")) if getattr(args, "provider_timeout_sec", None) is not None else None, getattr(args, "timeout_profile", None))[1],
         max_output_chars_val=int(getattr(args, "max_output_chars", None) or 50000),
         keep_staging=getattr(args, "keep_staging", False),
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
@@ -2219,6 +2255,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_provider=getattr(args, "repair_provider", None),
         repair_model=getattr(args, "repair_model", None),
         repair_effort=getattr(args, "repair_effort", None),
+        timeout_profile=getattr(args, "timeout_profile", None) or "normal",
     ),
     "do.job-report": lambda args: _cmd_do_job_report(
         args.job_id,
@@ -2246,7 +2283,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_rounds=int(getattr(args, "repair_rounds")) if getattr(args, "repair_rounds", None) is not None else None,
         test_command=getattr(args, "test_command", None),
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None),
-        timeout_sec=int(getattr(args, "timeout_sec", None) or 120),
+        timeout_sec=_resolve_timeout_precedence(int(getattr(args, "timeout_sec")) if getattr(args, "timeout_sec", None) is not None else None, getattr(args, "timeout_profile", None))[0],
+        timeout_profile=_resolve_timeout_precedence(int(getattr(args, "timeout_sec")) if getattr(args, "timeout_sec", None) is not None else None, getattr(args, "timeout_profile", None))[1],
         out=getattr(args, "out", None) or "",
         json_output=getattr(args, "json", False),
         builder_provider=getattr(args, "builder_provider", None),

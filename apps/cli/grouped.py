@@ -210,6 +210,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--test-command", default=arg.default, dest="test_command", help=arg.help)
             elif arg.name == "--provider-timeout-sec":
                 parser.add_argument("--provider-timeout-sec", default=arg.default, dest="provider_timeout_sec", help=arg.help)
+            elif arg.name == "--timeout-profile":
+                parser.add_argument("--timeout-profile", default=arg.default, dest="timeout_profile", help=arg.help)
             elif arg.name == "--max-output-chars":
                 parser.add_argument("--max-output-chars", default=arg.default, dest="max_output_chars", help=arg.help)
             elif arg.name == "--claude-cli-write-mode":
