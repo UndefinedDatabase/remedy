@@ -5,7 +5,7 @@
 
 ## Tier 0 — Foundation & Trust Core
 
-- [ ] F001 — Adaptive provider timeouts + retry
+- [x] F001 — Adaptive provider timeouts + retry (PR #123 · commit 4856006 · external transition PASS)
 - [ ] F002 — Operator repair as a valid evidence path
 - [ ] F003 — Real token/cost measurement
 - [ ] F004 — Raw stream evidence
