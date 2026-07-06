@@ -2299,6 +2299,26 @@ CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
+        command_id="do.repair-attest",
+        group_id="do",
+        subcommand="repair-attest",
+        description="Attest a manual operator repair as a valid evidence path for one task.",
+        action_class="write_metadata",
+        supports_json=True,
+        related=("do.job-report", "do.job-run"),
+        args=(
+            ArgDef("job_id", "Job ID owning the task"),
+            ArgDef("task_id", "Task ID (e.g. T001) being attested"),
+            ArgDef("--note", "Operator note describing the manual repair", required=False, is_option=True, default=""),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            ArgDef("--yes", "Confirm attestation without interactive prompt", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+
+    CommandEntry(
         command_id="do.report",
         group_id="do",
         subcommand="report",

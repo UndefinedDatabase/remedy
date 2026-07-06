@@ -458,6 +458,53 @@ def _cmd_do_pingpong(
             _print_scope_summary(scope_validation)
 
 
+def _cmd_do_repair_attest(
+    job_id: str,
+    task_id: str,
+    *,
+    note: str = "",
+    repo: str = ".",
+    yes: bool = False,
+    json_output: bool = False,
+) -> None:
+    """Attest a manual operator repair as a valid evidence path for one task."""
+    from packages.orchestration.repair_attest import (
+        attest_operator_repair,
+        collect_diff_stat,
+    )
+
+    diff_stat = collect_diff_stat(repo)
+
+    if not yes:
+        print("Diff stat for attestation:", file=sys.stderr)
+        print(diff_stat, file=sys.stderr)
+        print(
+            "\nError: --yes required to confirm attestation. "
+            "Review the diff stat above and re-run with --yes.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    result = attest_operator_repair(job_id, task_id, note, repo)
+
+    if result.get("error"):
+        print(f"Error: {result['error']}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        print(json.dumps(result, indent=2))
+    else:
+        print(f"Diff stat:\n{diff_stat}\n")
+        print(
+            f"Operator repair attested [OPERATOR ATTESTED] | "
+            f"job={result['job_id']} task={result['task_id']} "
+            f"files={len(result.get('changed_files', []))} "
+            f"diff_sha256={result['diff_sha256'][:12]}"
+        )
+        for filename in result.get("files", {}):
+            print(f"  {filename}")
+
+
 def _cmd_do_report(
     run_id: str,
     *,
@@ -2215,6 +2262,14 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         approve=getattr(args, "approve", False),
         dry_run=getattr(args, "dry_run", False),
         test_command=getattr(args, "test_command", None) or "",
+        json_output=getattr(args, "json", False),
+    ),
+    "do.repair-attest": lambda args: _cmd_do_repair_attest(
+        args.job_id,
+        args.task_id,
+        note=getattr(args, "note", None) or "",
+        repo=getattr(args, "repo", None) or ".",
+        yes=getattr(args, "yes", False),
         json_output=getattr(args, "json", False),
     ),
     "do.report": lambda args: _cmd_do_report(

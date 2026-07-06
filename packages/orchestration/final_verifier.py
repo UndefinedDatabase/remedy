@@ -316,7 +316,7 @@ def _collect_unresolved_findings(base: Path, task_ids: list[str]) -> list[dict[s
                     "file": str(detail.get("file", "") or ""),
                     "summary": str(detail.get("summary", "") or ""),
                 })
-        elif final_verdict and final_verdict != "pass":
+        elif final_verdict and final_verdict not in ("pass", "operator_attested"):
             for f in last_round_findings:
                 findings.append({
                     "task_id": tid,
@@ -326,6 +326,174 @@ def _collect_unresolved_findings(base: Path, task_ids: list[str]) -> list[dict[s
                     "summary": str(f.get("summary", "") or ""),
                 })
     return findings
+
+
+_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+
+
+def _is_valid_sha256(val: Any) -> bool:
+    return isinstance(val, str) and bool(_SHA256_RE.fullmatch(val))
+
+
+def _operator_attested_tasks(
+    base: Path, task_ids: list[str],
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Validate operator-repair attestation across all four required artifacts.
+
+    A valid attestation requires:
+      1. review.json         — verdict = operator_attested, reviewer present,
+                               task_id matches
+      2. provider_evidence    — execution_mode = manual_operator_repair,
+                               calls = 0, task_id matches
+      3. token_accounting     — actual_available = false, kind/reason = manual,
+                               task_id matches
+      4. manual_repair_provenance — job_id matches, task_id matches,
+                                    diff_sha256/provenance_sha256 valid sha256,
+                                    changed_files is list, note non-empty,
+                                    timestamp present
+
+    Returns (valid_task_ids, attestation_findings).  Invalid attestations are
+    reported as findings so the verifier can block instead of silently passing.
+    """
+    job_id = ""
+    jf = _read_json(base / "job_flow.json")
+    if isinstance(jf, dict):
+        job_id = jf.get("job_id", "")
+    if not job_id:
+        mf = _read_json(base / "manifest.json")
+        if isinstance(mf, dict):
+            job_id = mf.get("job_id", "")
+
+    attested: list[str] = []
+    findings: list[dict[str, Any]] = []
+
+    for tid in task_ids:
+        review = _read_json(base / "task_runs" / tid / "review.json")
+        if not isinstance(review, dict):
+            continue
+        verdict = str(
+            review.get("final_verdict") or review.get("verdict") or ""
+        ).strip().lower()
+        if verdict != "operator_attested":
+            continue
+
+        errors: list[str] = []
+
+        if not (review.get("reviewer") or ""):
+            errors.append("review.json missing reviewer identity")
+        if not review.get("task_id"):
+            errors.append("review.json missing task_id")
+        elif review["task_id"] != tid:
+            errors.append(
+                f"review.json task_id={review['task_id']!r}, expected {tid!r}"
+            )
+
+        pe = _read_json(base / "task_runs" / tid / "provider_evidence.json")
+        if not isinstance(pe, dict):
+            errors.append("provider_evidence.json missing")
+        else:
+            if not pe.get("task_id"):
+                errors.append("provider_evidence missing task_id")
+            elif pe["task_id"] != tid:
+                errors.append(
+                    f"provider_evidence task_id={pe['task_id']!r}, expected {tid!r}"
+                )
+            if pe.get("execution_mode") != "manual_operator_repair":
+                errors.append(
+                    f"provider_evidence execution_mode="
+                    f"{pe.get('execution_mode')!r}, expected manual_operator_repair"
+                )
+            if pe.get("provider_call_count", -1) != 0:
+                errors.append(
+                    f"provider_evidence provider_call_count="
+                    f"{pe.get('provider_call_count')}, expected 0"
+                )
+            pts = pe.get("prompt_trace_status") or ""
+            if "manual" not in pts and "not_applicable" not in pts:
+                errors.append(
+                    f"provider_evidence prompt_trace_status={pts!r}, "
+                    f"expected manual/not_applicable status"
+                )
+
+        ta = _read_json(base / "task_runs" / tid / "token_accounting.json")
+        if not isinstance(ta, dict):
+            errors.append("token_accounting.json missing")
+        else:
+            if not ta.get("task_id"):
+                errors.append("token_accounting missing task_id")
+            elif ta["task_id"] != tid:
+                errors.append(
+                    f"token_accounting task_id={ta['task_id']!r}, expected {tid!r}"
+                )
+            if ta.get("actual_available") is not False:
+                errors.append(
+                    f"token_accounting actual_available="
+                    f"{ta.get('actual_available')}, expected false"
+                )
+            if ta.get("kind") != "manual":
+                errors.append(
+                    f"token_accounting kind={ta.get('kind')!r}, expected 'manual'"
+                )
+            if ta.get("reason") != "manual":
+                errors.append(
+                    f"token_accounting reason={ta.get('reason')!r}, expected 'manual'"
+                )
+
+        mrp = _read_json(base / "task_runs" / tid / "manual_repair_provenance.json")
+        if not isinstance(mrp, dict):
+            errors.append("manual_repair_provenance.json missing")
+        else:
+            if mrp.get("manual_operator_repair") is not True:
+                errors.append("provenance manual_operator_repair is not true")
+            if mrp.get("no_provider_calls") is not True:
+                errors.append("provenance no_provider_calls is not true")
+            if not mrp.get("task_id"):
+                errors.append("provenance missing task_id")
+            elif mrp["task_id"] != tid:
+                errors.append(
+                    f"provenance task_id={mrp['task_id']!r}, expected {tid!r}"
+                )
+            if not mrp.get("job_id"):
+                errors.append("provenance missing job_id")
+            elif job_id and mrp["job_id"] != job_id:
+                errors.append(
+                    f"provenance job_id={mrp['job_id']!r}, expected {job_id!r}"
+                )
+            if not isinstance(mrp.get("changed_files"), list):
+                errors.append("provenance changed_files is not a list")
+            note_val = mrp.get("note")
+            if not note_val or (isinstance(note_val, str) and not note_val.strip()):
+                errors.append("provenance note is empty")
+            if not mrp.get("timestamp"):
+                errors.append("provenance timestamp missing")
+            if "workspace_scope" not in mrp:
+                errors.append("provenance missing workspace_scope")
+            if "task_scope_known" not in mrp:
+                errors.append("provenance missing task_scope_known")
+            for hash_field in ("diff_sha256", "provenance_sha256"):
+                hv = mrp.get(hash_field)
+                if not hv:
+                    errors.append(f"provenance missing {hash_field}")
+                elif not _is_valid_sha256(hv):
+                    errors.append(
+                        f"provenance {hash_field}={hv!r} is not valid sha256"
+                    )
+
+        if errors:
+            findings.append({
+                "task_id": tid,
+                "finding_id": "invalid_operator_attestation",
+                "severity": "high",
+                "file": "",
+                "summary": (
+                    "operator_attested verdict incomplete: "
+                    + "; ".join(errors)
+                ),
+            })
+        else:
+            attested.append(tid)
+
+    return attested, findings
 
 
 def _aggregate_test_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
@@ -570,6 +738,10 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     base = Path(evidence_dir) if evidence_dir else Path(".")
     task_ids = _task_ids(base)
 
+    operator_attested_tasks, attestation_findings = _operator_attested_tasks(
+        base, task_ids,
+    )
+
     review_scope_files, changed_line_ranges = _collect_changes(base, task_ids)
     authoritative_changed_files = _collect_authoritative_changed_files(base, task_ids)
     changed_files = authoritative_changed_files
@@ -670,6 +842,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     file_alignment_risky = (
         file_alignment["file_set_alignment_status"] == "PASS_WITH_RISKS"
     )
+
     gates_blocked = (
         scratch_file_guard == "BLOCKED"
         or spec_compliance == "BLOCKED"
@@ -682,6 +855,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     )
     needs_repair = (
         bool(unresolved_findings)
+        or bool(attestation_findings)
         or spec_compliance == "FAIL"
         or test_status["failed"] > 0
         or model_needs_repair
@@ -719,6 +893,13 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
 
     also_needs_repair = needs_repair and verdict == "NEEDS_TESTS"
     recommended_action = _RECOMMENDED_ACTION[verdict]
+
+    # Visible badges surfaced in the report output. An operator-attested manual
+    # repair is a valid, PASS-equivalent evidence path and is flagged so readers
+    # can see the task passed via operator attestation rather than a provider run.
+    report_badges: list[str] = []
+    if operator_attested_tasks:
+        report_badges.append("[OPERATOR ATTESTED]")
     if also_needs_repair:
         recommended_action += (
             " Open findings / failing tests are also present; resolve them too."
@@ -735,7 +916,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         "review_subject_uncovered_files": file_alignment["review_subject_uncovered_files"],
         "content_hash_mismatches": file_alignment["content_hash_mismatches"],
         "file_set_alignment_status": file_alignment["file_set_alignment_status"],
-        "unresolved_findings": unresolved_findings,
+        "unresolved_findings": unresolved_findings + attestation_findings,
         "test_status": test_status,
         "missing_tests_gate": missing_tests_gate,
         "scratch_file_guard": scratch_file_guard,
@@ -764,6 +945,8 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         "final_job_review_findings": final_job_review["findings"],
         "final_job_review_blocked": final_job_review["blocked"],
         "invocation_args_warnings": invocation_args_warnings,
+        "operator_attested_tasks": operator_attested_tasks,
+        "report_badges": report_badges,
         "recommended_action": recommended_action,
     }
 

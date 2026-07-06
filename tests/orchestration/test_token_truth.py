@@ -245,3 +245,19 @@ def test_estimation_method_recorded_when_estimated(tmp_path: Path) -> None:
     t001 = report["per_task"]["T001"]
     assert t001["estimation_method"] == "character_heuristic"
     assert t001["actual_available"] is False
+
+
+def test_manual_operator_repair_not_actual_usage(tmp_path: Path) -> None:
+    """A manual operator repair must never be labeled as actual provider usage."""
+    _seed_task(tmp_path, provider_evidence={
+        "builder_provider": "operator",
+        "reviewer_provider": "operator",
+        "execution_mode": "manual_operator_repair",
+        # Stray counters must NOT be counted as actual usage.
+        "usage": {"input_tokens": 1000, "output_tokens": 500},
+    })
+    report = build_token_truth(str(tmp_path))
+    assert report["actual_available"] is False
+    assert report["actual_prompt_tokens"] is None
+    assert report["actual_completion_tokens"] is None
+    assert report["per_task"]["T001"]["actual_available"] is False

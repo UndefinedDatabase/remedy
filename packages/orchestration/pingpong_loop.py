@@ -139,6 +139,8 @@ class PingPongResult:
     timeout_s_effective_reviewer: int = 0
     retries_used: int = 0
     retry_reasons: list[str] = field(default_factory=list)
+    # F002: builder produced no file changes but reviewer/tests still ran
+    builder_no_changes: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -1898,13 +1900,12 @@ def run_pingpong(
             # Track staged files
             result.staged_files = _find_staging_changes(staging, original)
 
-            # --- Builder no-changes check ---
-            if not result.staged_files and round_num == 1 and not is_fake:
-                rd.finished_at = datetime.now(timezone.utc).isoformat()
-                result.rounds.append(rd)
-                result.final_status = "builder_no_changes"
-                result.error = "Builder produced no file changes in staging"
-                break
+            # --- Builder no-changes flag ---
+            builder_no_changes = (
+                not result.staged_files and round_num == 1 and not is_fake
+            )
+            if builder_no_changes:
+                result.builder_no_changes = True
 
             # --- Test phase ---
             if has_test_command:
@@ -1943,7 +1944,10 @@ def run_pingpong(
                 break
 
             # --- Reviewer phase ---
-            diff_summary = "\n".join(f"M {f}" for f in result.staged_files)
+            if builder_no_changes:
+                diff_summary = "(no changes — builder confirmed code already correct)"
+            else:
+                diff_summary = "\n".join(f"M {f}" for f in result.staged_files)
             # Compute safe diff for reviewer (before reviewer runs)
             reviewer_safe_diff = ""
             if result.staged_files and staging.exists():

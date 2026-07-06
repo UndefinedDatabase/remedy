@@ -142,6 +142,12 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
                 model = str(pe.get("model") or pe.get("builder_model") or "")
         task_actual = _extract_actual(pe)
         task_has_actual = task_actual is not None
+        # A manual operator repair ran no provider — never label it as actual
+        # provider usage, even if stray counters leaked into the evidence.
+        exec_mode = str(pe.get("execution_mode", "")) if isinstance(pe, dict) else ""
+        if exec_mode == "manual_operator_repair":
+            task_actual = None
+            task_has_actual = False
         if task_has_actual:
             any_actual = True
             for field, val in task_actual.items():

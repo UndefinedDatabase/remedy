@@ -261,6 +261,7 @@ MANUAL_REPAIR_EXEMPT_ARTIFACTS = frozenset({
     "prompt_trace.jsonl",
     "prompt_trace_summary.json",
     "provider_evidence.json",
+    "repair_loop.json",
 })
 
 

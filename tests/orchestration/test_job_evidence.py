@@ -1486,3 +1486,53 @@ class TestEvidenceBundleConsistency:
         data = json.loads(Path(files[rel]).read_text())
         # FakeProvider used -> should be fake_provider_test
         assert data["execution_mode"] == "fake_provider_test"
+
+
+class TestAttestationOverlayNoFakeStubs:
+    """Attestation overlay must not create fake-empty observability stubs."""
+
+    def test_no_fake_agent_run_trace(self, isolate_data_root, demo_repo, tmp_path):
+        """Attestation must not fabricate agent_run_trace.jsonl."""
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.repair_attest import attest_operator_repair
+
+        job = _run_completed_job(demo_repo)
+        attest_operator_repair(job.job_id, "T001", "manual fix", str(demo_repo))
+        out = str(tmp_path / "ev_no_fake")
+        result = export_job_evidence(job.job_id, out)
+        files = result.get("files", {})
+        if "agent_run_trace.jsonl" in files:
+            content = Path(files["agent_run_trace.jsonl"]).read_text().strip()
+            assert content, "agent_run_trace.jsonl must not be empty fake stub"
+
+    def test_no_fake_prompt_trace(self, isolate_data_root, demo_repo, tmp_path):
+        """Attestation must not fabricate empty prompt_trace.jsonl."""
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.repair_attest import attest_operator_repair
+
+        job = _run_completed_job(demo_repo)
+        attest_operator_repair(job.job_id, "T001", "manual fix", str(demo_repo))
+        out = str(tmp_path / "ev_no_fake_pt")
+        result = export_job_evidence(job.job_id, out)
+        files = result.get("files", {})
+        for tid in ["T001", "T002"]:
+            rel = f"task_runs/{tid}/prompt_trace.jsonl"
+            if rel in files:
+                content = Path(files[rel]).read_text().strip()
+                if content:
+                    assert len(content) > 5, (
+                        "prompt_trace.jsonl must not be a trivial fake stub"
+                    )
+
+    def test_manual_not_applicable_status_accepted(
+        self, isolate_data_root, demo_repo, tmp_path
+    ):
+        """Provider evidence with not_applicable_manual_repair status is valid."""
+        from packages.orchestration.repair_attest import attest_operator_repair
+
+        job = _run_completed_job(demo_repo)
+        result = attest_operator_repair(
+            job.job_id, "T001", "manual fix", str(demo_repo)
+        )
+        pe = json.loads(Path(result["files"]["provider_evidence.json"]).read_text())
+        assert pe["prompt_trace_status"] == "not_applicable_manual_repair"
