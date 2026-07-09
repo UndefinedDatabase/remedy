@@ -74,6 +74,7 @@ def fake_claude_builder_bin(tmp_path: Path) -> Path:
     claude_script = bin_dir / "claude"
     claude_script.write_text(textwrap.dedent("""\
         #!/bin/bash
+        if [ "$1" = "--version" ]; then echo "1.0.0 (test)"; exit 0; fi
         echo "hello from builder" > "$PWD/BUILDER_WAS_HERE.txt"
         echo "Builder made changes"
         echo "- docs/README.md updated"
@@ -105,6 +106,7 @@ def fake_claude_target_mutator_bin(tmp_path: Path, demo_repo: Path) -> Path:
     # This script writes to the ACTUAL target repo path, simulating the blocker bug
     claude_script.write_text(textwrap.dedent(f"""\
         #!/bin/bash
+        if [ "$1" = "--version" ]; then echo "1.0.0 (test)"; exit 0; fi
         echo "mutating target" > "{demo_repo}/CLI_MUTATED_TARGET.txt"
         echo "Builder did things"
     """))
@@ -135,6 +137,7 @@ def fake_claude_reviewer_mutator_bin(tmp_path: Path, demo_repo: Path) -> Path:
     claude_script = bin_dir / "claude"
     claude_script.write_text(textwrap.dedent(f"""\
         #!/bin/bash
+        if [ "$1" = "--version" ]; then echo "1.0.0 (test)"; exit 0; fi
         echo "reviewer mutating target" > "{demo_repo}/REVIEWER_MUTATED.txt"
         echo '{{"verdict": "pass", "findings": [], "confidence": "high", "summary": "ok"}}'
     """))
@@ -690,27 +693,57 @@ class TestRunPingpongWriteMode:
 
 class TestBuilderNoChanges:
     def test_claude_cli_no_changes(self, monkeypatch, tmp_path, demo_repo):
-        """Claude CLI builder that produces no file changes -> builder_no_changes."""
+        """Claude CLI builder producing no file changes: tests pass, reviewer passes,
+        final_status is staged_review_passed with builder_no_changes flag set."""
         bin_dir = tmp_path / "noop_bin"
         bin_dir.mkdir()
         claude_script = bin_dir / "claude"
-        # Builder that prints but writes nothing
-        claude_script.write_text("#!/bin/bash\necho 'I looked at the code'\n")
-        claude_script.chmod(claude_script.stat().st_mode | 0o755)
-        # Reviewer that passes
-        rev_dir = tmp_path / "rev_bin"
-        rev_dir.mkdir()
-        rev_script = rev_dir / "claude"
-        rev_script.write_text('#!/bin/bash\necho \'{"verdict":"pass","findings":[],"confidence":"high","summary":"ok"}\'\n')
-        rev_script.chmod(rev_script.stat().st_mode | 0o755)
-        monkeypatch.setenv("PATH", f"{bin_dir}:{rev_dir}")
+        reviewer_verdict = json.dumps({
+            "verdict": "pass", "findings": [], "confidence": "high", "summary": "ok",
+        })
+        builder_envelope = json.dumps({
+            "type": "result", "subtype": "success", "is_error": False,
+            "duration_ms": 50, "num_turns": 1,
+            "result": "I looked at the code and no changes are needed.",
+            "session_id": "test-build", "total_cost_usd": 0.001,
+            "usage": {"input_tokens": 100, "output_tokens": 10},
+        })
+        reviewer_envelope = json.dumps({
+            "type": "result", "subtype": "success", "is_error": False,
+            "duration_ms": 50, "num_turns": 1,
+            "result": reviewer_verdict,
+            "session_id": "test-rev", "total_cost_usd": 0.001,
+            "usage": {"input_tokens": 100, "output_tokens": 10},
+        })
+        script_body = (
+            '#!/bin/bash\n'
+            'PROMPT=""\n'
+            'while [ $# -gt 0 ]; do\n'
+            '  case "$1" in\n'
+            '    -p) PROMPT="$2"; shift 2;;\n'
+            '    *) shift;;\n'
+            '  esac\n'
+            'done\n'
+            'if [[ "$PROMPT" == *verdict* ]]; then\n'
+            f"  echo '{reviewer_envelope}'\n"
+            'else\n'
+            f"  echo '{builder_envelope}'\n"
+            'fi\n'
+        )
+        claude_script.write_text(script_body)
+        claude_script.chmod(claude_script.stat().st_mode | stat.S_IEXEC)
+        test_script = tmp_path / "test_pass.sh"
+        test_script.write_text("#!/bin/bash\nexit 0\n")
+        test_script.chmod(test_script.stat().st_mode | stat.S_IEXEC)
+        monkeypatch.setenv("PATH", f"{bin_dir}:{tmp_path}")
         result = run_pingpong(
             "Fix README", str(demo_repo),
             builder_name="claude-cli", reviewer_name="claude-cli",
             max_rounds=1,
+            test_command=f"/bin/bash {test_script}",
         )
-        assert result.final_status == "builder_no_changes"
-        assert "no file changes" in result.error.lower()
+        assert result.final_status == "staged_review_passed"
+        assert result.builder_no_changes is True
 
 
 # ---------------------------------------------------------------------------
@@ -990,7 +1023,7 @@ class TestExportNoStagingPaths:
 
 
 # ---------------------------------------------------------------------------
-# 46. build_claude_cli_args always includes -p and --output-format text
+# 46. build_claude_cli_args always includes -p and --output-format json
 # ---------------------------------------------------------------------------
 
 class TestBuildClaudeCliArgsBase:
@@ -1001,7 +1034,7 @@ class TestBuildClaudeCliArgsBase:
             assert "-p" in argv
             assert "--output-format" in argv
             idx = argv.index("--output-format")
-            assert argv[idx + 1] == "text"
+            assert argv[idx + 1] == "json"
 
 
 # ---------------------------------------------------------------------------
@@ -1055,6 +1088,7 @@ def fake_claude_cache_noise_builder_bin(tmp_path: Path, demo_repo: Path) -> Path
     # Writes to staging (cwd) AND creates cache noise in target
     claude_script.write_text(textwrap.dedent(f"""\
         #!/bin/bash
+        if [ "$1" = "--version" ]; then echo "1.0.0 (test)"; exit 0; fi
         /bin/mkdir -p "$PWD/docs"
         echo "# Report guide" > "$PWD/docs/report-guide.md"
         /bin/mkdir -p "{demo_repo}/.pytest_cache"
@@ -1077,6 +1111,7 @@ def fake_claude_real_target_mutator_bin(tmp_path: Path, demo_repo: Path) -> Path
     claude_script = bin_dir / "claude"
     claude_script.write_text(textwrap.dedent(f"""\
         #!/bin/bash
+        if [ "$1" = "--version" ]; then echo "1.0.0 (test)"; exit 0; fi
         /bin/mkdir -p "{demo_repo}/docs"
         echo "# Mutated doc" > "{demo_repo}/docs/mutated.md"
         echo "Builder summary"
