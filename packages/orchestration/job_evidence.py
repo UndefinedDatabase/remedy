@@ -60,8 +60,18 @@ def _task_evidence_dir(out_base: str, task_id: str) -> Path:
 def export_job_evidence(
     job_id: str,
     out_dir: str,
+    *,
+    verification_commands: list[str] | None = None,
+    verification_runner: Any = None,
 ) -> dict[str, Any]:
     """Load a persisted job and export a job-level evidence bundle.
+
+    ``verification_commands`` are explicit shell commands (e.g. focused pytest
+    invocations) that are actually executed and recorded as verification runs.
+    Nothing is claimed verified that was not run. ``verification_runner`` lets a
+    caller inject a deterministic runner ``(command:str) -> dict`` (used by unit
+    tests to avoid recursively spawning pytest); when omitted a real subprocess
+    runner is used only if commands are supplied.
 
     Returns JSON-serializable result with output paths, manifest, and status.
     Does not call providers. Does not mutate target repo or job state.
@@ -503,49 +513,16 @@ def export_job_evidence(
     except Exception as exc:
         _write_gate_error("change_provenance_gate.error.txt", exc)
 
-    # Verification tests — run focused tests and record as evidence.
+    # Verification tests — execute the EXPLICIT verification commands and record
+    # each as a run with a stable id. Nothing is claimed verified that was not
+    # actually run; unit tests inject a deterministic runner to avoid recursively
+    # spawning pytest (finding 3). No hardcoded smoke suite (findings 2/3/4).
     try:
-        import subprocess as _vt_sp  # noqa: I001
-
-        _test_files = [
-            "tests/orchestration/test_fresh_evidence_gate.py",
-            "tests/orchestration/test_artifact_contract_gate.py",
-            "tests/orchestration/test_runtime_integration_gate.py",
-            "tests/orchestration/test_change_provenance_gate.py",
-            "tests/orchestration/test_commit_execution_gate.py",
-            "tests/orchestration/test_token_truth.py",
-            "tests/orchestration/test_final_verifier.py",
-            "tests/orchestration/test_job_evidence.py",
-            "tests/orchestration/test_spec_compliance.py",
-            "tests/orchestration/test_role_config.py",
-            "tests/orchestration/test_execution_config_evidence.py",
-            "tests/orchestration/test_task_plan_evidence.py",
-            "tests/test_do_job_flow.py",
-        ]
         _repo = getattr(job, "repo_path", None) or "."
-        _existing = [f for f in _test_files if (Path(_repo) / f).exists()]
-        if _existing:
-            from datetime import datetime as _vt_dt, timezone as _vt_tz  # noqa: I001
-            _vt_cmd = ["python3", "-m", "pytest"] + _existing + ["-q", "--tb=short"]
-            _vt_result = _vt_sp.run(
-                _vt_cmd, cwd=_repo, capture_output=True, text=True, timeout=120,
-            )
-            _passed_m = re.findall(r"(\d+)\s+passed", _vt_result.stdout)
-            _failed_m = re.findall(r"(\d+)\s+(?:failed|error)", _vt_result.stdout)
-            _vt_passed = sum(int(x) for x in _passed_m)
-            _vt_failed = sum(int(x) for x in _failed_m)
-            _vt_data = {
-                "schema_version": "1.0.0",
-                "verification_type": "post_apply_smoke",
-                "command": " ".join(_vt_cmd),
-                "exit_code": _vt_result.returncode,
-                "passed": _vt_passed,
-                "failed": _vt_failed,
-                "stdout_summary": _vt_result.stdout[-2000:] if _vt_result.stdout else "",
-                "stderr_summary": _vt_result.stderr[-1000:] if _vt_result.stderr else "",
-                "timestamp": _vt_dt.now(_vt_tz.utc).isoformat(),
-                "test_files": _existing,
-            }
+        _vt_data = _run_verifications(
+            verification_commands, _repo, verification_runner,
+        )
+        if _vt_data is not None:
             _vt_path = _validate_output_path(str(out_path), "verification_tests.json")
             _vt_path.write_text(json.dumps(_vt_data, indent=2) + "\n", encoding="utf-8")
             written["verification_tests.json"] = str(_vt_path)
@@ -1099,6 +1076,99 @@ def _overlay_attestation_artifacts(
                         )
                 except (json.JSONDecodeError, OSError):
                     pass
+
+
+def _vt_norm(p: str) -> str:
+    p = str(p or "").replace("\\", "/").strip()
+    while p.startswith("./"):
+        p = p[2:]
+    return p
+
+
+def _verification_test_files_from_command(command: str) -> list[str]:
+    """Extract the test-file paths a pytest-style command targets."""
+    import shlex
+    files: list[str] = []
+    try:
+        toks = shlex.split(command)
+    except ValueError:
+        toks = command.split()
+    for t in toks:
+        n = _vt_norm(t)
+        if n.endswith(".py") and (n.startswith("tests/") or "/tests/" in n or Path(n).name.startswith("test_")):
+            files.append(n)
+    return sorted(set(files))
+
+
+def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
+    """Execute a verification command via subprocess and parse pytest counts."""
+    import shlex
+    import subprocess as _sp
+    try:
+        argv = shlex.split(command)
+    except ValueError:
+        argv = command.split()
+    result = _sp.run(argv, cwd=repo, capture_output=True, text=True, timeout=600)
+    passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", result.stdout or ""))
+    failed = sum(int(x) for x in re.findall(r"(\d+)\s+(?:failed|error)", result.stdout or ""))
+    return {
+        "exit_code": result.returncode,
+        "passed": passed,
+        "failed": failed,
+        "stdout_summary": (result.stdout or "")[-2000:],
+        "stderr_summary": (result.stderr or "")[-1000:],
+    }
+
+
+def _run_verifications(
+    commands: list[str] | None,
+    repo: str,
+    runner: Any = None,
+) -> dict[str, Any] | None:
+    """Execute explicit verification commands, recording each as a stable run.
+
+    Returns the ``verification_tests.json`` payload, or None when no verification
+    was requested (no commands and no injected runner) — in which case nothing is
+    claimed verified. Each run gets a stable ``run_id`` so totals can be
+    deduplicated downstream (finding 4). Top-level totals are DERIVED from runs.
+    """
+    if not commands and runner is None:
+        return None
+    from datetime import datetime as _dt, timezone as _tz
+    cmds = [c for c in (commands or []) if c and c.strip()]
+    runs: list[dict[str, Any]] = []
+    for i, cmd in enumerate(cmds):
+        rid = f"vr-{i + 1:04d}"
+        r = runner(cmd) if runner is not None else _default_verification_runner(cmd, repo)
+        test_files = r.get("test_files")
+        if test_files is None:
+            test_files = _verification_test_files_from_command(cmd)
+        test_files = sorted({_vt_norm(f) for f in test_files})
+        runs.append({
+            "run_id": rid,
+            "command": cmd,
+            "exit_code": int(r.get("exit_code", -1)),
+            "passed": int(r.get("passed", 0) or 0),
+            "failed": int(r.get("failed", 0) or 0),
+            "test_files": test_files,
+            "stdout_summary": str(r.get("stdout_summary", "") or "")[-2000:],
+        })
+    total_passed = sum(x["passed"] for x in runs)
+    total_failed = sum(x["failed"] for x in runs)
+    exit_code = 0 if runs and all(x["exit_code"] == 0 for x in runs) else (0 if not runs else 1)
+    all_files = sorted({f for x in runs for f in x["test_files"]})
+    return {
+        "schema_version": "1.0.0",
+        "verification_type": "explicit_commands",
+        "runs": runs,
+        # Backward-compatible top-level fields derived from the runs.
+        "command": " && ".join(c["command"] for c in runs),
+        "exit_code": exit_code,
+        "passed": total_passed,
+        "failed": total_failed,
+        "test_files": all_files,
+        "timestamp": _dt.now(_tz.utc).isoformat(),
+    }
 
 
 def _write_task_run_evidence(

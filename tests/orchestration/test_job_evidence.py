@@ -881,7 +881,9 @@ class TestDogfoodCommandShape:
         assert cmd is not None
         assert cmd.action_class == "read_only"
         assert cmd.may_mutate_repo is False
-        assert cmd.may_execute_commands is False
+        # job-evidence now executes explicit verification commands.
+        assert cmd.may_execute_commands is True
+        assert any(a.name == "--verification-command" for a in cmd.args)
 
     def test_handler_exists(self):
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
@@ -923,6 +925,35 @@ class TestDogfoodCommandShape:
         has_truth = "token_truth.json" in result["files"]
         has_error = "token_truth.error.txt" in result["files"]
         assert has_truth or has_error, "token_truth neither written nor error-logged"
+
+    def test_token_truth_consistent_with_task_accounting(self, isolate_data_root, demo_repo, tmp_path):
+        """Root token_truth.json per-task estimates must match each task's
+        token_accounting.json (no drift between root and task-level evidence)."""
+        job = _run_completed_job(demo_repo)
+        out = tmp_path / "evidence"
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        result = export_job_evidence(job.job_id, str(out))
+
+        assert "error" not in result
+        if "token_truth.json" not in result["files"]:
+            return  # error-logged path exercised elsewhere
+
+        truth = json.loads((out / "token_truth.json").read_text())
+        for tid, per_task in truth.get("per_task", {}).items():
+            acc_path = out / "task_runs" / tid / "token_accounting.json"
+            if not acc_path.exists():
+                continue
+            acc = json.loads(acc_path.read_text())
+            assert per_task["builder_estimated"] == (
+                acc.get("builder_prompt_tokens_estimated") or 0
+            )
+            assert per_task["reviewer_estimated"] == (
+                acc.get("reviewer_prompt_tokens_estimated") or 0
+            )
+            assert per_task["repair_estimated"] == (
+                acc.get("repair_prompt_tokens_estimated") or 0
+            )
 
     def test_evidence_export_writes_final_verifier_report(self, isolate_data_root, demo_repo, tmp_path):
         job = _run_completed_job(demo_repo)
@@ -1072,43 +1103,54 @@ class TestDogfoodCommandShape:
             f"final_verifier_report.verdict={fv_verdict}"
         )
 
-    def test_verification_tests_type_is_post_apply_smoke(self):
-        import importlib
+    def test_verification_type_is_explicit_commands(self):
+        # No hardcoded smoke suite remains; verification is command-driven.
         import packages.orchestration.job_evidence as mod
-        importlib.reload(mod)
         src = Path(mod.__file__).read_text()
-        assert '"post_apply_smoke"' in src, (
-            "verification_type must be post_apply_smoke in job_evidence.py"
-        )
+        assert '"post_apply_smoke"' not in src
+        assert '"explicit_commands"' in src
 
-    def test_verification_tests_file_list_includes_spec_compliance(self):
-        import importlib
+    def test_no_hardcoded_smoke_test_list(self):
+        # The old hardcoded smoke list (a source of false coverage + recursion)
+        # must be gone.
         import packages.orchestration.job_evidence as mod
-        importlib.reload(mod)
         src = Path(mod.__file__).read_text()
-        assert "test_spec_compliance.py" in src, (
-            "test_spec_compliance.py must be in _test_files list"
-        )
+        assert "test_spec_compliance.py" not in src
+        assert "test_do_job_flow.py" not in src
 
-    def test_verification_tests_written_with_real_test_files(
+    def test_verification_tests_written_from_explicit_commands(
         self, isolate_data_root, demo_repo, tmp_path
     ):
         from packages.orchestration.job_evidence import export_job_evidence
         job = _run_completed_job(demo_repo)
-        repo_path = Path(getattr(job, "repo_path", demo_repo))
-        test_dir = repo_path / "tests" / "orchestration"
-        test_dir.mkdir(parents=True, exist_ok=True)
-        (test_dir / "test_fresh_evidence_gate.py").write_text(
-            "def test_placeholder(): pass\n"
+
+        def _runner(command):
+            return {"exit_code": 0, "passed": 3, "failed": 0,
+                    "test_files": ["tests/orchestration/test_demo.py"],
+                    "stdout_summary": "ok"}
+
+        out = tmp_path / f"remedy-job-evidence-{job.job_id}"
+        export_job_evidence(
+            job.job_id, str(out),
+            verification_commands=["python3 -m pytest tests/orchestration/test_demo.py"],
+            verification_runner=_runner,
         )
+        vt = out / "verification_tests.json"
+        assert vt.exists()
+        data = json.loads(vt.read_text())
+        assert data["verification_type"] == "explicit_commands"
+        assert data["runs"][0]["run_id"] == "vr-0001"
+        assert data["passed"] == 3
+
+    def test_no_verification_without_commands(
+        self, isolate_data_root, demo_repo, tmp_path
+    ):
+        # Finding 3: without explicit commands, no verification is run/recorded.
+        from packages.orchestration.job_evidence import export_job_evidence
+        job = _run_completed_job(demo_repo)
         out = tmp_path / f"remedy-job-evidence-{job.job_id}"
         export_job_evidence(job.job_id, str(out))
-        vt = out / "verification_tests.json"
-        assert vt.exists(), "verification_tests.json must exist when test files present"
-        data = json.loads(vt.read_text())
-        assert data["verification_type"] == "post_apply_smoke"
-        for tf in data.get("test_files", []):
-            assert tf in data["command"], f"{tf} must be in command"
+        assert not (out / "verification_tests.json").exists()
 
     def test_documented_shape_runs(self, isolate_data_root, demo_repo, tmp_path, capsys):
         job = _run_completed_job(demo_repo)
@@ -1138,7 +1180,7 @@ class TestDogfoodCommandShape:
 class TestPromptTraceRoleMetadata:
     """T004: Prompt trace entries include role/model metadata."""
 
-    def test_task_trace_includes_role_field(self):
+    def test_task_trace_includes_role_field(self, isolate_data_root):
         from packages.orchestration.job_evidence import (
             _write_job_prompt_trace_summary,
         )
@@ -1183,7 +1225,7 @@ class TestPromptTraceRoleMetadata:
             assert tt["model_resolution_source"] == "cli"
             assert tt["actual_model_verified"] is False
 
-    def test_per_role_model_summary_in_aggregate(self):
+    def test_per_role_model_summary_in_aggregate(self, isolate_data_root):
         from packages.orchestration.job_evidence import (
             _write_job_prompt_trace_summary,
         )
@@ -1221,7 +1263,7 @@ class TestPromptTraceRoleMetadata:
             assert role_info["configured_provider"] == "ollama"
             assert role_info["task_count"] == 1
 
-    def test_missing_role_defaults_to_unknown(self):
+    def test_missing_role_defaults_to_unknown(self, isolate_data_root):
         from packages.orchestration.job_evidence import (
             _write_job_prompt_trace_summary,
         )
@@ -1255,7 +1297,7 @@ class TestPromptTraceRoleMetadata:
             assert tt["model_resolution_source"] == "unknown"
             assert tt["actual_model_verified"] is False
 
-    def test_actual_null_when_provider_unavailable(self):
+    def test_actual_null_when_provider_unavailable(self, isolate_data_root):
         from packages.orchestration.job_evidence import (
             _write_job_prompt_trace_summary,
         )
@@ -1297,20 +1339,18 @@ class TestPromptTraceRoleMetadata:
 class TestEvidenceHygiene:
     """T007: Evidence hygiene — verification_tests list, manual repair hashes."""
 
-    def test_verification_test_files_include_new_modules(self):
+    def test_no_hardcoded_verification_test_list(self):
+        # Verification is now driven by explicit --verification-command inputs,
+        # not a hardcoded module list that silently under-covers changes.
         from packages.orchestration import job_evidence
         src = Path(job_evidence.__file__).read_text()
-        assert "test_role_config.py" in src
-        assert "test_execution_config_evidence.py" in src
-        assert "test_task_plan_evidence.py" in src
+        assert "test_role_config.py" not in src
+        assert "test_execution_config_evidence.py" not in src
 
-    def test_verification_test_files_list_only_existing(self):
+    def test_verification_helpers_present(self):
         from packages.orchestration import job_evidence
-        src = Path(job_evidence.__file__).read_text()
-        import re as _re
-        files = _re.findall(r'"(tests/[^"]+\.py)"', src)
-        for f in files:
-            assert Path(f).exists(), f"listed test file {f} does not exist"
+        assert hasattr(job_evidence, "_run_verifications")
+        assert hasattr(job_evidence, "_default_verification_runner")
 
     def test_manual_repair_provenance_schema(self, tmp_path):
         prov = {
