@@ -496,6 +496,19 @@ def _operator_attested_tasks(
     return attested, findings
 
 
+def _final_test_section(text: str) -> str:
+    """Extract the last round section from tests.txt.
+
+    tests.txt contains sections like ``=== Round 1: failed ===`` followed by
+    ``=== Round 2: passed ===``. Return the text after the last header so
+    resolved repair-round failures are not counted as current failures.
+    """
+    last_header = -1
+    for m in re.finditer(r"^=== Round \d+:", text, re.MULTILINE):
+        last_header = m.start()
+    return text[last_header:] if last_header >= 0 else text
+
+
 def _aggregate_test_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
     ran = False
     passed = 0
@@ -504,12 +517,12 @@ def _aggregate_test_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
         text = _read_text(base / "task_runs" / tid / "tests.txt")
         if not text.strip():
             continue
-        # Only use the last summary line to avoid double-counting
+        final = _final_test_section(text)
         last_passed = None
         last_failed = None
-        for m in _PASSED_RE.finditer(text):
+        for m in _PASSED_RE.finditer(final):
             last_passed = int(m.group(1))
-        for m in _FAILED_RE.finditer(text):
+        for m in _FAILED_RE.finditer(final):
             last_failed = int(m.group(1))
         if last_passed is not None:
             passed += last_passed
@@ -523,6 +536,8 @@ def _aggregate_test_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
 def _token_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
     truth = _read_json(base / "token_truth.json")
     if isinstance(truth, dict) and truth.get("schema_version"):
+        # F003: propagate coverage/cost/model fields without substituting
+        # zero/false for unknown — absent fields stay None.
         return {
             "actual_available": bool(truth.get("actual_available", False)),
             "actual_prompt_tokens": truth.get("actual_prompt_tokens"),
@@ -533,11 +548,29 @@ def _token_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
             "estimated_total_tokens": truth.get("estimated_total_tokens", 0),
             "measurement_source": truth.get("measurement_source", ""),
             "measurement_confidence": truth.get("measurement_confidence", ""),
+            "total_cost_usd": truth.get("total_cost_usd"),
             "missing_reason": truth.get("missing_reason"),
             "builder_estimated_total": truth.get("builder_estimated_total", 0),
             "reviewer_estimated_total": truth.get("reviewer_estimated_total", 0),
             "repair_estimated_total": truth.get("repair_estimated_total", 0),
-            "provider_call_count": truth.get("provider_call_count", 0),
+            "provider_call_count": truth.get("provider_call_count"),
+            "prompt_trace_count": truth.get("prompt_trace_count"),
+            "actual_call_count": truth.get("actual_call_count"),
+            "actual_coverage_complete": truth.get("actual_coverage_complete"),
+            "actual_missing_reasons": truth.get("actual_missing_reasons"),
+            "cost_call_count": truth.get("cost_call_count"),
+            "cost_coverage_complete": truth.get("cost_coverage_complete"),
+            "cost_coverage_reason": truth.get("cost_coverage_reason"),
+            "cli_version": truth.get("cli_version"),
+            "configured_models": {
+                "builder": truth.get("builder_configured_model"),
+                "reviewer": truth.get("reviewer_configured_model"),
+            },
+            "actual_models": {
+                "builder": truth.get("builder_actual_model"),
+                "reviewer": truth.get("reviewer_actual_model"),
+            },
+            "actual_model_verified": truth.get("actual_model_verified"),
         }
     actual_available = False
     estimated = 0
@@ -563,6 +596,73 @@ def _token_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
     return {
         "actual_available": actual_available,
         "estimated_prompt_tokens": estimated,
+    }
+
+
+# Informational note surfaced when token counts are pure character heuristics.
+# It is advisory only — a low-confidence measurement never blocks promotion.
+_LOW_CONFIDENCE_TOKEN_NOTE = (
+    "Token counts are low-confidence character heuristics; no provider exposed "
+    "measured usage. Informational only — does not affect the verdict."
+)
+
+
+def _token_measurement_summary(token_status: dict[str, Any]) -> dict[str, Any]:
+    """Derive a measurement-confidence view over the token_truth-backed status.
+
+    - ``low`` confidence (all heuristic): attach an informational note only.
+    - ``high``/``mixed`` confidence: attach the actual token/cost summary.
+
+    Never returns anything that alters the verdict — this is reporting only.
+    """
+    confidence = str(token_status.get("measurement_confidence", "") or "")
+    note: str | None = None
+    actual_summary: dict[str, Any] | None = None
+
+    if confidence in ("high", "mixed"):
+        actual_summary = {
+            "measurement_confidence": confidence,
+            "measurement_source": token_status.get("measurement_source"),
+            "actual_prompt_tokens": token_status.get("actual_prompt_tokens"),
+            "actual_completion_tokens": token_status.get("actual_completion_tokens"),
+            "actual_total_tokens": token_status.get("actual_total_tokens"),
+            "total_cost_usd": token_status.get("total_cost_usd"),
+            "cost_call_count": token_status.get("cost_call_count"),
+            "cost_coverage_complete": token_status.get("cost_coverage_complete"),
+            "cost_coverage_reason": token_status.get("cost_coverage_reason"),
+            "provider_call_count": token_status.get("provider_call_count"),
+            "actual_call_count": token_status.get("actual_call_count"),
+            "actual_coverage_complete": token_status.get("actual_coverage_complete"),
+            "actual_missing_reasons": token_status.get("actual_missing_reasons"),
+            "cli_version": token_status.get("cli_version"),
+            "configured_models": token_status.get("configured_models"),
+            "actual_models": token_status.get("actual_models"),
+            "actual_model_verified": token_status.get("actual_model_verified"),
+        }
+    elif confidence == "low" or (
+        not confidence and not token_status.get("actual_available")
+    ):
+        note = _LOW_CONFIDENCE_TOKEN_NOTE
+
+    # F003: the measurement summary always preserves coverage/cost/model fields
+    # from token_truth — unknown stays None, never zero/false.
+    return {
+        "measurement_confidence": confidence,
+        "measurement_source": token_status.get("measurement_source"),
+        "measurement_note": note,
+        "actual_summary": actual_summary,
+        "provider_call_count": token_status.get("provider_call_count"),
+        "actual_call_count": token_status.get("actual_call_count"),
+        "actual_coverage_complete": token_status.get("actual_coverage_complete"),
+        "actual_missing_reasons": token_status.get("actual_missing_reasons"),
+        "cost_call_count": token_status.get("cost_call_count"),
+        "cost_coverage_complete": token_status.get("cost_coverage_complete"),
+        "cost_coverage_reason": token_status.get("cost_coverage_reason"),
+        "total_cost_usd": token_status.get("total_cost_usd"),
+        "cli_version": token_status.get("cli_version"),
+        "configured_models": token_status.get("configured_models"),
+        "actual_models": token_status.get("actual_models"),
+        "actual_model_verified": token_status.get("actual_model_verified"),
     }
 
 
@@ -768,19 +868,37 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     verification_tests = _read_json(base / "verification_tests.json")
 
     unresolved_findings = _collect_unresolved_findings(base, task_ids)
-    test_status = _aggregate_test_status(base, task_ids)
 
-    if (
-        isinstance(verification_tests, dict)
-        and verification_tests.get("exit_code") == 0
-        and verification_tests.get("passed", 0) > 0
-        and verification_tests.get("failed", 0) == 0
-    ):
-        test_status["ran"] = True
-        test_status["passed"] += verification_tests["passed"]
-        test_status["failed"] += verification_tests.get("failed", 0)
+    _vt_runs = verification_tests.get("runs") if isinstance(verification_tests, dict) else None
+    if isinstance(_vt_runs, list) and _vt_runs:
+        # Finding 4: each shared verification run is counted EXACTLY ONCE
+        # (deduplicated by run_id). Per-task tests.txt only reference these runs
+        # and must never re-add their totals — otherwise a single 528-test root
+        # run would be multiplied across every task.
+        _seen: dict[str, Any] = {}
+        for _r in _vt_runs:
+            if not isinstance(_r, dict):
+                continue
+            _rid = str(_r.get("run_id", ""))
+            if _rid and _rid not in _seen:
+                _seen[_rid] = _r
+        _passed = sum(int(_r.get("passed", 0) or 0) for _r in _seen.values())
+        _failed = sum(int(_r.get("failed", 0) or 0) for _r in _seen.values())
+        test_status = {"ran": True, "passed": _passed, "failed": _failed}
+    else:
+        test_status = _aggregate_test_status(base, task_ids)
+        if (
+            isinstance(verification_tests, dict)
+            and verification_tests.get("exit_code") == 0
+            and verification_tests.get("passed", 0) > 0
+            and verification_tests.get("failed", 0) == 0
+        ):
+            test_status["ran"] = True
+            test_status["passed"] += verification_tests["passed"]
+            test_status["failed"] += verification_tests.get("failed", 0)
 
     token_status = _token_status(base, task_ids)
+    token_measurement = _token_measurement_summary(token_status)
 
     evidence_completeness = _evidence_completeness(base, task_ids)
     missing_evidence = sorted(
@@ -891,6 +1009,23 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     else:
         verdict = "PASS"
 
+    # A fully operator-attested manual completion is a valid evidence path, but
+    # human final review is mandatory — so it is never an unconditional PASS.
+    # Detected from existing artifacts: every task attested + the final job
+    # review declaring the manual completion mode (no bespoke root artifact).
+    fjr_data = _read_json(base / "final_job_review.json")
+    manual_completion = (
+        bool(operator_attested_tasks)
+        and len(operator_attested_tasks) == len(task_ids)
+        and len(task_ids) > 0
+    )
+    human_final_review_required = bool(
+        manual_completion
+        or (isinstance(fjr_data, dict) and fjr_data.get("human_final_reviewer_required"))
+    )
+    if verdict == "PASS" and human_final_review_required:
+        verdict = "PASS_WITH_RISKS"
+
     also_needs_repair = needs_repair and verdict == "NEEDS_TESTS"
     recommended_action = _RECOMMENDED_ACTION[verdict]
 
@@ -928,6 +1063,10 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         "commit_execution_gate": commit_execution_gate,
         "spec_compliance": spec_compliance,
         "token_status": token_status,
+        "token_measurement": token_measurement,
+        "token_measurement_confidence": token_measurement["measurement_confidence"],
+        "token_measurement_note": token_measurement["measurement_note"],
+        "token_actual_summary": token_measurement["actual_summary"],
         "evidence_completeness": evidence_completeness,
         "missing_evidence": missing_evidence,
         "model_mismatch_warnings": model_mismatch_warnings,
@@ -946,6 +1085,8 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         "final_job_review_blocked": final_job_review["blocked"],
         "invocation_args_warnings": invocation_args_warnings,
         "operator_attested_tasks": operator_attested_tasks,
+        "manual_completion": manual_completion,
+        "human_final_reviewer_required": human_final_review_required,
         "report_badges": report_badges,
         "recommended_action": recommended_action,
     }
