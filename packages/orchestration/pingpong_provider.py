@@ -17,6 +17,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from packages.orchestration.token_actuals import parse_cli_result, parse_cli_result_detailed
+
 # ---------------------------------------------------------------------------
 # Provider output contracts
 # ---------------------------------------------------------------------------
@@ -33,6 +35,10 @@ class BuilderOutput:
     provider: str = ""
     duration_ms: int = 0
     tokens_used: int = 0
+    # Measured provider usage (input/output/cache/cost/session_id/parse_source)
+    # when the CLI exposed a JSON usage block; None when only estimates exist.
+    usage_actuals: dict[str, Any] | None = None
+    actual_missing_reason: str = ""
 
 
 @dataclass
@@ -62,6 +68,10 @@ class ReviewerOutput:
     parse_retry_recovered: bool = False
     original_verdict: str = ""  # set when verdict was normalized
     verdict_normalized: bool = False
+    # Measured provider usage (see BuilderOutput.usage_actuals); None when
+    # only character-heuristic estimates are available.
+    usage_actuals: dict[str, Any] | None = None
+    actual_missing_reason: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -335,11 +345,13 @@ class ClaudeProvider:
                 provider="claude",
                 duration_ms=dur,
                 tokens_used=tokens,
+                actual_missing_reason="provider_actuals_unavailable",
             )
         except Exception as exc:
             return BuilderOutput(
                 error=f"provider_error: {type(exc).__name__}",
                 provider="claude",
+                actual_missing_reason="provider_error",
             )
 
     def review(
@@ -354,11 +366,14 @@ class ClaudeProvider:
             text, dur, tokens = self._call(
                 full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
-            return _parse_reviewer_json(text, dur, tokens)
+            out = _parse_reviewer_json(text, dur, tokens)
+            out.actual_missing_reason = "provider_actuals_unavailable"
+            return out
         except Exception as exc:
             return ReviewerOutput(
                 error=f"provider_error: {type(exc).__name__}",
                 provider="claude",
+                actual_missing_reason="provider_error",
             )
 
 
@@ -504,6 +519,24 @@ _ALLOWED_TOOLS_ARGS = ["--allowedTools", "Edit,Write,MultiEdit"]
 _DANGEROUS_SKIP_ARGS = ["--dangerously-skip-permissions"]
 
 
+def _extract_cli_result_text(raw: str) -> str:
+    """Extract Builder/Reviewer text from claude CLI stdout, Usage-independent.
+
+    A valid JSON envelope's ``result`` field is authoritative text whether or
+    not a Usage block is present. Non-JSON stdout (older CLI, plain text) falls
+    back to the raw string unchanged, preserving raw-text support.
+    """
+    try:
+        payload = json.loads(raw)
+    except (ValueError, TypeError):
+        return raw
+    if isinstance(payload, dict) and "result" in payload:
+        result_field = payload.get("result")
+        if isinstance(result_field, str):
+            return result_field
+    return raw
+
+
 def build_claude_cli_args(
     claude_path: str,
     prompt: str,
@@ -519,7 +552,7 @@ def build_claude_cli_args(
       dangerous-skip: --dangerously-skip-permissions (explicit opt-in only)
     model: if non-empty, passed as --model <model> to claude CLI.
     """
-    argv = [claude_path, "-p", prompt, "--output-format", "text"]
+    argv = [claude_path, "-p", prompt, "--output-format", "json"]
     if model:
         argv.extend(["--model", model])
     if write_mode == "allowed-tools":
@@ -550,6 +583,8 @@ class ClaudeCliProvider:
         self._max_tokens = max_tokens
         self._model = model
         self._claude_path: str | None = None
+        self._cli_version: str | None = None
+        self._cli_version_resolved: bool = False
 
     @property
     def name(self) -> str:
@@ -575,8 +610,36 @@ class ClaudeCliProvider:
         self._claude_path = path
         return path
 
-    def _call(self, prompt: str, *, timeout_sec: int, max_output_chars: int) -> tuple[str, int, int]:
-        """Call claude CLI. Returns (text, duration_ms, tokens_used=0)."""
+    def _resolve_version(self) -> str | None:
+        """Return CLI version string, cached. Never raises."""
+        if self._cli_version_resolved:
+            return self._cli_version
+        self._cli_version_resolved = True
+        try:
+            claude = self._get_claude_path()
+            proc = subprocess.run(
+                [claude, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if proc.returncode == 0 and proc.stdout and proc.stdout.strip():
+                self._cli_version = proc.stdout.strip()
+        except Exception:
+            pass
+        return self._cli_version
+
+    def _call(
+        self, prompt: str, *, timeout_sec: int, max_output_chars: int,
+    ) -> tuple[str, int, int, dict[str, Any] | None, str]:
+        """Call claude CLI. Returns (text, duration_ms, tokens_used, usage_actuals, actual_missing_reason).
+
+        The CLI is invoked with ``--output-format json``. When the JSON parses
+        into a usage block, ``text`` is taken from the ``result`` field and the
+        measured token usage is returned. When parsing fails (non-JSON output,
+        older CLI, no usage block), it falls back to the raw stdout as text with
+        ``tokens_used=0`` and ``usage_actuals=None``.
+        """
         claude = self._get_claude_path()
         argv = build_claude_cli_args(claude, prompt, write_mode=self._write_mode, model=self._model)
         start = time.monotonic()
@@ -594,10 +657,46 @@ class ClaudeCliProvider:
         if proc.returncode != 0:
             stderr = proc.stderr[:500] if proc.stderr else ""
             raise RuntimeError(f"claude CLI exited {proc.returncode}: {stderr}")
-        text = proc.stdout or ""
+        raw = proc.stdout or ""
+
+        actuals, parse_reason = parse_cli_result_detailed(raw)
+        resolved_version = self._resolve_version()
+
+        # is_error is an honest provider error regardless of any result text.
+        if parse_reason == "is_error":
+            raise RuntimeError("claude CLI reported is_error=true")
+
+        # Result parsing is INDEPENDENT of Usage parsing. A valid JSON envelope
+        # carrying a usable ``result`` is authoritative Builder/Reviewer text
+        # even when the Usage block is missing or incomplete; Usage
+        # unavailability only downgrades token accounting (usage_actuals=None,
+        # actual_missing_reason set), it never invalidates a valid result.
+        text = _extract_cli_result_text(raw)
+
+        if actuals is not None:
+            tokens = actuals.input_tokens + actuals.output_tokens
+            cli_ver = actuals.cli_version or resolved_version
+            usage_actuals: dict[str, Any] | None = {
+                "input_tokens": actuals.input_tokens,
+                "output_tokens": actuals.output_tokens,
+                "cache_read": actuals.cache_read,
+                "cache_creation": actuals.cache_creation,
+                "total_cost_usd": actuals.total_cost_usd,
+                "num_turns": actuals.num_turns,
+                "duration_ms": actuals.duration_ms,
+                "session_id": actuals.session_id,
+                "cli_version": cli_ver,
+                "parse_source": "claude_cli_json",
+            }
+            actual_missing_reason = ""
+        else:
+            tokens = 0
+            usage_actuals = None
+            actual_missing_reason = parse_reason
+
         if len(text) > max_output_chars:
             text = text[:max_output_chars] + "\n[OUTPUT TRUNCATED]"
-        return text, elapsed_ms, 0
+        return text, elapsed_ms, tokens, usage_actuals, actual_missing_reason
 
     def build(
         self,
@@ -607,7 +706,7 @@ class ClaudeCliProvider:
         max_output_chars: int = 50000,
     ) -> BuilderOutput:
         try:
-            text, dur, tokens = self._call(
+            text, dur, tokens, usage, amr = self._call(
                 prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             files = []
@@ -624,11 +723,14 @@ class ClaudeCliProvider:
                 provider="claude-cli",
                 duration_ms=dur,
                 tokens_used=tokens,
+                usage_actuals=usage,
+                actual_missing_reason=amr,
             )
         except Exception as exc:
             return BuilderOutput(
                 error=f"provider_error: {type(exc).__name__}: {exc}",
                 provider="claude-cli",
+                actual_missing_reason="provider_error",
             )
 
     def review(
@@ -640,14 +742,18 @@ class ClaudeCliProvider:
     ) -> ReviewerOutput:
         full_prompt = prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
         try:
-            text, dur, tokens = self._call(
+            text, dur, tokens, usage, amr = self._call(
                 full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
-            return _parse_reviewer_json(text, dur, tokens, provider="claude-cli")
+            out = _parse_reviewer_json(text, dur, tokens, provider="claude-cli")
+            out.usage_actuals = usage
+            out.actual_missing_reason = amr
+            return out
         except Exception as exc:
             return ReviewerOutput(
                 error=f"provider_error: {type(exc).__name__}: {exc}",
                 provider="claude-cli",
+                actual_missing_reason="provider_error",
             )
 
 
