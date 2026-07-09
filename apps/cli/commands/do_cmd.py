@@ -465,6 +465,9 @@ def _cmd_do_repair_attest(
     note: str = "",
     repo: str = ".",
     yes: bool = False,
+    task_scoped: bool = False,
+    allowed_files: str = "",
+    linked_prior_job_id: str = "",
     json_output: bool = False,
 ) -> None:
     """Attest a manual operator repair as a valid evidence path for one task."""
@@ -485,7 +488,12 @@ def _cmd_do_repair_attest(
         )
         sys.exit(2)
 
-    result = attest_operator_repair(job_id, task_id, note, repo)
+    _allowed = [f.strip() for f in (allowed_files or "").split(",") if f.strip()] or None
+    result = attest_operator_repair(
+        job_id, task_id, note, repo,
+        task_scoped=task_scoped, allowed_files=_allowed,
+        linked_prior_job_id=linked_prior_job_id,
+    )
 
     if result.get("error"):
         print(f"Error: {result['error']}", file=sys.stderr)
@@ -969,6 +977,7 @@ def _cmd_do_job_evidence(
     job_id: str,
     *,
     out: str = "",
+    verification_command: list[str] | None = None,
     json_output: bool = False,
 ) -> None:
     """Export a self-contained evidence bundle for an entire job."""
@@ -977,7 +986,9 @@ def _cmd_do_job_evidence(
     if not out:
         out = f"remedy-job-evidence-{job_id}"
 
-    result = export_job_evidence(job_id, out)
+    result = export_job_evidence(
+        job_id, out, verification_commands=verification_command or None,
+    )
 
     if result.get("error"):
         print(f"Error: {result['error']}", file=sys.stderr)
@@ -2270,6 +2281,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         note=getattr(args, "note", None) or "",
         repo=getattr(args, "repo", None) or ".",
         yes=getattr(args, "yes", False),
+        task_scoped=getattr(args, "task_scoped", False),
+        allowed_files=getattr(args, "allowed_files", None)
+        or getattr(args, "expected_files", None) or "",
+        linked_prior_job_id=getattr(args, "linked_prior_job_id", None) or "",
         json_output=getattr(args, "json", False),
     ),
     "do.report": lambda args: _cmd_do_report(
@@ -2327,6 +2342,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.job-evidence": lambda args: _cmd_do_job_evidence(
         args.job_id,
         out=getattr(args, "out", None) or "",
+        verification_command=getattr(args, "verification_command", None),
         json_output=getattr(args, "json", False),
     ),
     "do.job-flow": lambda args: _cmd_do_job_flow(

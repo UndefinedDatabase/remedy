@@ -2312,6 +2312,10 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--note", "Operator note describing the manual repair", required=False, is_option=True, default=""),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             ArgDef("--yes", "Confirm attestation without interactive prompt", required=False, is_option=True),
+            ArgDef("--task-scoped", "Use the freshly collected diff as the authoritative task scope (ignore stale provider-run safe_diff_files); fail on an empty diff", required=False, is_option=True),
+            ArgDef("--allowed-files", "Comma-separated EXACT expected task file set (with --task-scoped): the attested diff must equal it exactly — unexpected, missing, duplicate, or out-of-repo paths are rejected", required=False, is_option=True, default=""),
+            ArgDef("--expected-files", "Alias for --allowed-files (exact expected task file set)", required=False, is_option=True, default=""),
+            ArgDef("--linked-prior-job-id", "Generic linked/superseded prior Job ID recorded in this task's manual provenance (any feature/repo). Empty means none", required=False, is_option=True, default=""),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
@@ -2448,10 +2452,11 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
+            ArgDef("--verification-command", "Explicit verification command to execute and record (repeatable). Each is run and stored as a verification run covering the test files it names", required=False, is_option=True),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
-        may_execute_commands=False,
+        may_execute_commands=True,
     ),
     CommandEntry(
         command_id="do.job-promote",

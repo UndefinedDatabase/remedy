@@ -44,6 +44,78 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _is_outside_repo(rel: str) -> bool:
+    """True when a declared path escapes the repository root."""
+    if not rel or rel.startswith("/") or rel.startswith("~"):
+        return True
+    parts = Path(rel).parts
+    return ".." in parts
+
+
+# ---------------------------------------------------------------------------
+# Canonical provenance hashing — ONE shared implementation used by both the
+# writer (this module) and the validator (build_review_manifest). Any drift
+# between the two would let a tampered bundle validate, so they must call this.
+# ---------------------------------------------------------------------------
+
+def canonical_provenance_sha256(
+    tracked_diff_sha256: str,
+    untracked_file_hashes: list[dict[str, Any]],
+) -> str:
+    """Deterministic provenance hash over tracked diff + sorted untracked files.
+
+    Recomputed from: the tracked diff hash, then for each untracked file (sorted
+    by path) the path, its content sha256, and its byte size.
+    """
+    h = hashlib.sha256()
+    h.update(str(tracked_diff_sha256).encode("utf-8"))
+    for uf in sorted(untracked_file_hashes, key=lambda u: str(u.get("path", ""))):
+        h.update(str(uf.get("path", "")).encode("utf-8"))
+        h.update(str(uf.get("sha256", "")).encode("utf-8"))
+        h.update(str(uf.get("size_bytes", "")).encode("utf-8"))
+    return h.hexdigest()
+
+
+def build_safe_diff_text(
+    tracked_diff: str,
+    untracked_file_hashes: list[dict[str, Any]],
+) -> str:
+    """Build the exact ``safe.diff`` content: tracked diff + untracked headers.
+
+    Kept in one place so the emitted content and its recorded ``safe_diff_sha256``
+    can never diverge.
+    """
+    parts = [tracked_diff]
+    for uf in untracked_file_hashes:
+        parts.append(
+            f"--- /dev/null\n+++ b/{uf['path']}\n"
+            f"# new untracked file (sha256={uf['sha256']}, "
+            f"size={uf['size_bytes']})\n"
+        )
+    return "".join(parts)
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+def parse_safe_diff_paths(safe_diff_text: str) -> list[str]:
+    """Return sorted unique file paths represented in a ``safe.diff``.
+
+    Reads ``+++ b/<path>`` headers (skipping ``/dev/null``); handles both the
+    tracked ``git diff`` hunks and the untracked ``+++ b/<path>`` markers.
+    """
+    paths: set[str] = set()
+    for line in safe_diff_text.splitlines():
+        if line.startswith("+++ "):
+            p = line[4:].strip()
+            if p.startswith("b/"):
+                p = p[2:]
+            if p and p != "/dev/null":
+                paths.add(p)
+    return sorted(paths)
+
+
 def _task_evidence_dir(job_id: str, task_id: str) -> Path:
     """Return the contained evidence directory for a task under the job.
 
@@ -163,13 +235,9 @@ def _collect_workspace_diff(repo_path: str) -> _WorkspaceDiff:
                 if upath not in changed:
                     changed.append(upath)
 
-    prov_hasher = hashlib.sha256()
-    prov_hasher.update(tracked_diff_sha256.encode("utf-8"))
-    for uf in sorted(untracked_file_hashes, key=lambda u: u["path"]):
-        prov_hasher.update(uf["path"].encode("utf-8"))
-        prov_hasher.update(uf["sha256"].encode("utf-8"))
-        prov_hasher.update(str(uf["size_bytes"]).encode("utf-8"))
-    provenance_sha256 = prov_hasher.hexdigest()
+    provenance_sha256 = canonical_provenance_sha256(
+        tracked_diff_sha256, untracked_file_hashes,
+    )
 
     return _WorkspaceDiff(
         tracked_diff=tracked_diff,
@@ -235,19 +303,82 @@ def _resolve_original_task_info(task: Any) -> dict[str, Any]:
     }
 
 
-def _resolve_task_scope(task: Any, ws: _WorkspaceDiff) -> dict[str, Any]:
-    """Determine whether attestation covers per-task or full workspace scope."""
+def _resolve_task_scope(
+    task: Any, ws: _WorkspaceDiff, task_scoped: bool = False,
+) -> dict[str, Any]:
+    """Determine whether attestation covers per-task or full workspace scope.
+
+    When ``task_scoped`` is set the freshly collected manual diff
+    (``ws.changed_files``) is authoritative and a stale provider-run
+    ``safe_diff_files`` never overrides it — the operator attested exactly what
+    is in the isolated worktree. Otherwise the legacy behaviour applies: prefer a
+    recorded ``safe_diff_files`` if present, else fall back to the full tree.
+    """
+    if task_scoped:
+        return {
+            "workspace_scope": "task_scoped",
+            "task_scope_known": True,
+            "task_scoped_files": sorted(ws.changed_files),
+            "task_scope_source": "attested_diff",
+        }
     safe_diff_files = getattr(task, "safe_diff_files", None) or []
     if safe_diff_files:
         return {
             "workspace_scope": "task_scoped",
             "task_scope_known": True,
             "task_scoped_files": list(safe_diff_files),
+            "task_scope_source": "recorded_safe_diff_files",
         }
     return {
         "workspace_scope": "full_working_tree",
         "task_scope_known": False,
         "task_scoped_files": [],
+        "task_scope_source": "full_working_tree",
+    }
+
+
+def _prior_provider_call_count(task: Any) -> int | None:
+    """Best-effort provider-call count of the task's ORIGINAL execution.
+
+    Precedence: an explicit ``provider_call_count`` attribute on the task, then
+    the persisted run's prompt-trace summary. Returns None when unknown.
+    """
+    explicit = getattr(task, "provider_call_count", None)
+    if isinstance(explicit, int) and not isinstance(explicit, bool):
+        return explicit
+    run_id = getattr(task, "run_id", "") or ""
+    if not run_id:
+        return None
+    try:
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        trace = Path(_pingpong_runs_dir()) / run_id / "prompt_trace_summary.json"
+        if trace.exists():
+            data = json.loads(trace.read_text(encoding="utf-8"))
+            return int(data.get("builder_prompts", 0)) + int(data.get("reviewer_prompts", 0))
+    except (OSError, ValueError, json.JSONDecodeError, ImportError):
+        return None
+    return None
+
+
+def _resolve_prior_execution(task: Any) -> dict[str, Any] | None:
+    """Describe the task's ORIGINAL execution layer, preserved separately.
+
+    A manual completion supersedes — but never erases — an earlier provider run.
+    Returns None when there was no prior real execution (a freshly planned task
+    that was only ever completed by hand).
+    """
+    status = str(getattr(task, "status", "") or "")
+    final_status = str(getattr(task, "final_status", "") or "")
+    run_id = getattr(task, "run_id", "") or ""
+    prior_calls = _prior_provider_call_count(task)
+    had_provider_run = bool(run_id) or status in ("blocked", "failed") or bool(final_status)
+    if not had_provider_run:
+        return None
+    return {
+        "mode": "provider_backed",
+        "status": final_status or status or "unknown",
+        "run_id": run_id,
+        "provider_call_count": prior_calls,
     }
 
 
@@ -256,6 +387,10 @@ def attest_operator_repair(
     task_id: str,
     note: str,
     repo_path: str,
+    *,
+    task_scoped: bool = False,
+    allowed_files: list[str] | None = None,
+    linked_prior_job_id: str = "",
 ) -> dict[str, Any]:
     """Record a manual operator repair for one task as valid evidence.
 
@@ -264,8 +399,19 @@ def attest_operator_repair(
     directory. Never calls a provider. Never mutates the target repo or the
     persisted job state. Applies per task, never per job.
 
+    When ``task_scoped`` is set the freshly collected diff is the authoritative
+    scope of the completion (a stale provider-run ``safe_diff_files`` is ignored).
+    In that mode ``allowed_files`` is the EXACT expected task file set: the
+    attested diff must equal it exactly (not merely be a subset). The diff must
+    be non-empty; unexpected files, missing files, duplicate expected paths, and
+    paths outside the repository are each rejected and reported separately.
+
+    ``linked_prior_job_id`` records a superseded/related prior job through a
+    generic mechanism (stored in this task's provenance) — never a hardcoded,
+    feature-specific path. Empty means no linked prior job, which is valid.
+
     Returns a JSON-serializable dict describing the written artifacts, or an
-    ``{"error": ...}`` dict on a non-existent job or task.
+    ``{"error": ...}`` dict on a non-existent job/task or a scope violation.
     """
     job = load_job_plan(job_id)
     if job is None:
@@ -283,9 +429,64 @@ def attest_operator_repair(
         note = "operator attested manual repair"
 
     ws = _collect_workspace_diff(repo_path)
+
+    if task_scoped:
+        if not ws.changed_files:
+            return {
+                "error": (
+                    "task-scoped attestation requires a non-empty diff, but the "
+                    f"worktree {repo_path!r} has no changes for {task_id!r}"
+                ),
+                "job_id": job_id,
+                "task_id": task_id,
+            }
+        if allowed_files:
+            # Exact-scope: the attested diff must equal the expected set exactly.
+            expected_list = [str(f) for f in allowed_files]
+            duplicate_expected = sorted(
+                {f for f in expected_list if expected_list.count(f) > 1}
+            )
+            if duplicate_expected:
+                return {
+                    "error": (
+                        f"duplicate expected paths for {task_id!r}: "
+                        f"{duplicate_expected}"
+                    ),
+                    "job_id": job_id, "task_id": task_id,
+                    "duplicate_expected_files": duplicate_expected,
+                }
+            outside_repo = sorted(f for f in expected_list if _is_outside_repo(f))
+            if outside_repo:
+                return {
+                    "error": (
+                        f"expected paths outside the repository for {task_id!r}: "
+                        f"{outside_repo}"
+                    ),
+                    "job_id": job_id, "task_id": task_id,
+                    "outside_repo_files": outside_repo,
+                }
+            expected_set = set(expected_list)
+            actual_set = set(ws.changed_files)
+            unexpected = sorted(actual_set - expected_set)
+            missing = sorted(expected_set - actual_set)
+            if unexpected or missing:
+                return {
+                    "error": (
+                        f"task-scoped attestation for {task_id!r} does not match the "
+                        f"exact expected file set "
+                        f"(unexpected={unexpected}, missing={missing})"
+                    ),
+                    "job_id": job_id, "task_id": task_id,
+                    "unexpected_files": unexpected,
+                    "missing_files": missing,
+                    # Back-compat alias retained for existing callers/tests.
+                    "out_of_scope_files": unexpected,
+                }
+
     timestamp = _now()
     original_info = _resolve_original_task_info(task)
-    scope_info = _resolve_task_scope(task, ws)
+    scope_info = _resolve_task_scope(task, ws, task_scoped=task_scoped)
+    prior_execution = _resolve_prior_execution(task)
 
     task_dir = _task_evidence_dir(job_id, task_id)
     task_dir.mkdir(parents=True, exist_ok=True)
@@ -308,6 +509,13 @@ def attest_operator_repair(
             "prompt_trace_available": False,
             "prompt_trace_status": "not_applicable_manual_repair",
             "actual_provider_available": False,
+            # Two honest layers: the manual completion (this attestation) never
+            # calls a provider; any earlier provider-backed execution is
+            # preserved separately and never folded into the completion total.
+            "completion_execution_mode": ExecutionMode.MANUAL_OPERATOR_REPAIR.value,
+            "completion_provider_call_count": 0,
+            "supersedes_prior_execution": prior_execution is not None,
+            "prior_execution": prior_execution,
         },
     )
 
@@ -349,6 +557,11 @@ def attest_operator_repair(
         },
     )
 
+    # Build the safe.diff content once and hash the exact emitted bytes so the
+    # recorded safe_diff_sha256 can never drift from what is written.
+    safe_diff_content = build_safe_diff_text(ws.tracked_diff, ws.untracked_file_hashes)
+    safe_diff_digest = sha256_text(safe_diff_content)
+
     provenance_data: dict[str, Any] = {
         "schema_version": "1.0.0",
         "manual_operator_repair": True,
@@ -359,24 +572,23 @@ def attest_operator_repair(
         "untracked_file_hashes": ws.untracked_file_hashes,
         "diff_sha256": ws.provenance_sha256,
         "provenance_sha256": ws.provenance_sha256,
+        "safe_diff_sha256": safe_diff_digest,
         "changed_files": ws.changed_files,
         "note": note,
         "timestamp": timestamp,
+        "supersedes_prior_execution": prior_execution is not None,
+        "prior_execution": prior_execution,
+        # Generic linked-prior-job mechanism (any feature, any repo). Empty
+        # string means no linked prior job, which is valid.
+        "linked_prior_job_id": linked_prior_job_id or "",
         **scope_info,
     }
     if ws.tracked_diff_truncated:
         provenance_data["tracked_diff_truncated"] = True
     _write_json("manual_repair_provenance.json", provenance_data)
 
-    safe_diff_parts = [ws.tracked_diff]
-    for uf in ws.untracked_file_hashes:
-        safe_diff_parts.append(
-            f"--- /dev/null\n+++ b/{uf['path']}\n"
-            f"# new untracked file (sha256={uf['sha256']}, "
-            f"size={uf['size_bytes']})\n"
-        )
     safe_diff_target = _validate_output_path(str(task_dir), "safe.diff")
-    safe_diff_target.write_text("".join(safe_diff_parts), encoding="utf-8")
+    safe_diff_target.write_text(safe_diff_content, encoding="utf-8")
     written["safe.diff"] = str(safe_diff_target)
 
     return {
@@ -386,6 +598,11 @@ def attest_operator_repair(
         "changed_files": ws.changed_files,
         "out_dir": str(task_dir),
         "files": written,
+        "completion_execution_mode": ExecutionMode.MANUAL_OPERATOR_REPAIR.value,
+        "completion_provider_call_count": 0,
+        "supersedes_prior_execution": prior_execution is not None,
+        "prior_execution": prior_execution,
+        "linked_prior_job_id": linked_prior_job_id or "",
         **original_info,
         **scope_info,
     }
