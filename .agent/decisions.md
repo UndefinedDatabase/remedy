@@ -882,3 +882,17 @@ until resolved in code and tests.
 Claude Code and VS Code MCP config files were added with empty server maps only. No MCP server is
 installed or active. Pi MCP is documented as extension/package-driven; `pi-mcp-adapter` and
 `mcporter` were audited by package metadata but not installed.
+
+## 2026-07-09: Two deferred evidence-metadata hardening notes (F003 accepted, not reopened)
+F003 was externally accepted (PASS_WITH_RISKS). Two runtime-evidence metadata gaps were observed
+and are deliberately NOT fixed under F003, because they do not affect the accepted token/cost
+totals (provider_evidence and token_truth carry valid actuals; totals reconcile exactly):
+
+1. Runtime `task_runs/<task>/task_execution_evidence.json` reports
+   `actual_provider_available=false` and `actual_token_usage_available=false` even though
+   `provider_evidence.json` and `token_truth.json` contain valid provider actuals.
+2. Runtime `prompt_trace_summary.json` reports some role/model metadata as unknown although the
+   raw `prompt_trace.jsonl` contains it.
+
+Both are evidence-surface metadata defects, not measurement defects. Deferred as hardening
+candidates for the later evidence/replay work — preferably F140 or F163. Do not reopen F003.
