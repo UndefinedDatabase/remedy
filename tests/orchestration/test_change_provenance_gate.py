@@ -442,3 +442,30 @@ def test_unrelated_source_file_blocks(tmp_path):
     )
     assert gate["verdict"] == "BLOCKED"
     assert "packages/orchestration/design_worker.py" in gate["uncovered_files"]
+
+
+def test_review_zip_manifest_excluded_at_packaging_layer(tmp_path: Path) -> None:
+    """`.review_zip_manifest.json` is excluded from the review-subject alignment
+    by the packaging layer (scripts/build_review_manifest.py), which is where
+    the exclusion actually lives — the provenance gate itself does not treat
+    the manifest specially (see companion test below)."""
+    from scripts.build_review_manifest import _build_alignment
+
+    alignment = _build_alignment(
+        [".review_zip_manifest.json", "src/app.py"], str(tmp_path),
+    )
+    assert ".review_zip_manifest.json" not in alignment["dirty_source_test_files"]
+    assert ".review_zip_manifest.json" not in alignment["uncovered_source_test_files"]
+    # src/app.py IS treated as source and stays subject to coverage checks.
+    assert "src/app.py" in alignment["dirty_source_test_files"]
+
+
+def test_review_zip_manifest_not_excluded_by_gate(tmp_path: Path) -> None:
+    """The provenance gate treats `.review_zip_manifest.json` as a normal
+    source-side file: with no evidence coverage it is uncovered and blocks.
+    Exclusion is a packaging-layer contract, not a gate-level one."""
+    gate = build_change_provenance_gate(
+        str(tmp_path), [".review_zip_manifest.json"], "job-1",
+    )
+    assert ".review_zip_manifest.json" in gate["uncovered_files"]
+    assert gate["verdict"] == "BLOCKED"

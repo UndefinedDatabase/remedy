@@ -127,7 +127,182 @@ def test_attestation_records_workspace_scope(isolate_data_root, git_repo):
     )
     assert mrp["workspace_scope"] in ("full_working_tree", "task_scoped")
     assert "task_scope_known" in mrp
-    assert isinstance(mrp.get("task_scoped_files"), list)
+
+
+# ---------------------------------------------------------------------------
+# Task-scoped mode (Finding 1)
+# ---------------------------------------------------------------------------
+
+def test_task_scoped_uses_fresh_diff_not_stale_safe_diff_files(
+    isolate_data_root, git_repo,
+):
+    """A stale provider-run safe_diff_files never overrides the attested diff."""
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    # Simulate a stale provider-run scope with a phantom scratch file.
+    job.tasks[0].safe_diff_files = ["_copy_refs.py", "packages/orchestration/gone.py"]
+    result = attest_operator_repair(
+        job.job_id, "T001", "hand fix", str(git_repo), task_scoped=True,
+    )
+    assert "error" not in result
+    mrp = json.loads(
+        Path(result["files"]["manual_repair_provenance.json"]).read_text()
+    )
+    assert mrp["workspace_scope"] == "task_scoped"
+    assert mrp["task_scope_known"] is True
+    assert mrp["task_scope_source"] == "attested_diff"
+    # Only the real changed file, never the stale/phantom entries.
+    assert mrp["task_scoped_files"] == ["main.py"]
+    assert "_copy_refs.py" not in mrp["task_scoped_files"]
+
+
+def test_task_scoped_empty_diff_fails(isolate_data_root, tmp_path):
+    """Task-scoped attestation must fail when the worktree has no changes."""
+    clean = tmp_path / "clean"
+    clean.mkdir()
+    (clean / "a.py").write_text("x = 1\n")
+    for args in (["init", "-q"], ["config", "user.email", "t@e.com"],
+                 ["config", "user.name", "T"], ["add", "-A"],
+                 ["commit", "-q", "-m", "base"]):
+        subprocess.run(["git", *args], cwd=str(clean), check=True,
+                       capture_output=True, text=True)
+    job = parse_job_file(_ONE_TASK_JOB, str(clean))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(clean), task_scoped=True,
+    )
+    assert "error" in result
+    assert "non-empty diff" in result["error"]
+
+
+def test_task_scoped_out_of_scope_files_rejected(isolate_data_root, git_repo):
+    """Changed files outside the allowed list fail a task-scoped attestation."""
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["some/other/file.py"],
+    )
+    assert "error" in result
+    assert result["out_of_scope_files"] == ["main.py"]
+
+
+def test_task_scoped_allowed_files_accepts_in_scope(isolate_data_root, git_repo):
+    """A changed file within the allowed list passes."""
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["main.py"],
+    )
+    assert "error" not in result
+    assert result["changed_files"] == ["main.py"]
+
+
+def test_pending_task_has_no_prior_execution(isolate_data_root, git_repo):
+    """A freshly planned task carries no prior provider-execution layer."""
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo), task_scoped=True,
+    )
+    pe = json.loads(Path(result["files"]["provider_evidence.json"]).read_text())
+    assert pe["prior_execution"] is None
+    assert pe["supersedes_prior_execution"] is False
+    assert pe["completion_provider_call_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Exact task-file-set mode (Finding 5)
+# ---------------------------------------------------------------------------
+
+def test_exact_mode_missing_expected_file_rejected(isolate_data_root, git_repo):
+    """Expecting more files than were actually changed must fail (exact scope)."""
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["main.py", "extra.py"],
+    )
+    assert "error" in result
+    assert result["missing_files"] == ["extra.py"]
+    assert result["unexpected_files"] == []
+
+
+def test_exact_mode_unexpected_file_rejected(isolate_data_root, git_repo):
+    """A changed file not in the expected set must fail."""
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["other.py"],
+    )
+    assert "error" in result
+    assert result["unexpected_files"] == ["main.py"]
+    assert result["missing_files"] == ["other.py"]
+
+
+def test_exact_mode_duplicate_expected_rejected(isolate_data_root, git_repo):
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["main.py", "main.py"],
+    )
+    assert "error" in result
+    assert result["duplicate_expected_files"] == ["main.py"]
+
+
+def test_exact_mode_outside_repo_path_rejected(isolate_data_root, git_repo):
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["../escape.py", "/etc/passwd"],
+    )
+    assert "error" in result
+    assert result["outside_repo_files"] == ["../escape.py", "/etc/passwd"]
+
+
+def test_exact_mode_exact_match_accepts(isolate_data_root, git_repo):
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["main.py"],
+    )
+    assert "error" not in result
+    assert result["changed_files"] == ["main.py"]
+
+
+def test_linked_prior_job_recorded_in_provenance(isolate_data_root, git_repo):
+    """Finding 4: linked prior job stored generically in provenance; empty ok."""
+    job = parse_job_file(_ONE_TASK_JOB, str(git_repo))
+    result = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["main.py"],
+        linked_prior_job_id="abc123def456",
+    )
+    mrp = json.loads(
+        Path(result["files"]["manual_repair_provenance.json"]).read_text()
+    )
+    assert mrp["linked_prior_job_id"] == "abc123def456"
+    # Absent linked job is valid.
+    r2 = attest_operator_repair(
+        job.job_id, "T001", "note", str(git_repo),
+        task_scoped=True, allowed_files=["main.py"],
+    )
+    mrp2 = json.loads(
+        Path(r2["files"]["manual_repair_provenance.json"]).read_text()
+    )
+    assert mrp2["linked_prior_job_id"] == ""
+
+
+def test_no_f003_specific_path_in_production_code():
+    """Finding 4: no `.agent/F003_*` path remains in generic production code."""
+    import re
+    prod_files = [
+        "packages/orchestration/repair_attest.py",
+        "packages/orchestration/job_evidence.py",
+        "packages/orchestration/final_verifier.py",
+        "packages/orchestration/pingpong_provider.py",
+        "scripts/build_review_manifest.py",
+    ]
+    root = Path(__file__).resolve().parents[2]
+    pat = re.compile(r"F003_[A-Za-z0-9_]*")
+    for rel in prod_files:
+        text = (root / rel).read_text(encoding="utf-8")
+        assert not pat.search(text), f"{rel} references an F003-specific path/name"
 
 
 def test_attestation_prompt_trace_status(isolate_data_root, git_repo):
@@ -421,9 +596,10 @@ def test_e2e_blocked_job_attest_verifier_pass(isolate_data_root, git_repo):
     )
     assert "error" not in result
 
-    # 3 + 4. Verifier now PASS with the operator_attested badge.
+    # 3 + 4. Verifier now PASS-equivalent (PASS_WITH_RISKS: human final review
+    # mandatory for a fully operator-attested completion) with the badge.
     report = build_final_verifier_report(str(evidence_dir))
-    assert report["verdict"] == "PASS"
+    assert report["verdict"] == "PASS_WITH_RISKS"
     assert report["unresolved_findings"] == []
     assert report["operator_attested_tasks"] == ["T001"]
     assert "[OPERATOR ATTESTED]" in report["report_badges"]
