@@ -449,3 +449,352 @@ class TestLoopEdgeCases:
         assert ev["actual_available"] is False
         assert ev["parse_source"] == "manual"
 
+
+class TestProviderAttemptAccounting:
+    """Fix 1: every provider invocation retained for usage accounting."""
+
+    def test_reviewer_parse_retry_both_calls_counted(self):
+        """Malformed reviewer + parse retry: both calls contribute to totals."""
+        ua_first = {
+            "input_tokens": 1000, "output_tokens": 200, "total_tokens": 1200,
+            "cache_read": 0, "cache_creation": 0,
+            "total_cost_usd": 0.01, "session_id": "s1",
+        }
+        ua_retry = {
+            "input_tokens": 500, "output_tokens": 100, "total_tokens": 600,
+            "cache_read": 0, "cache_creation": 0,
+            "total_cost_usd": 0.005, "session_id": "s1",
+        }
+        result = PingPongResult(
+            builder_provider="claude-cli",
+            reviewer_provider="claude-cli",
+            rounds=[PingPongRound(
+                round_number=1,
+                builder_output=BuilderOutput(
+                    provider="claude-cli",
+                    usage_actuals={"input_tokens": 2000, "output_tokens": 300,
+                                   "total_cost_usd": 0.02},
+                ),
+                reviewer_output=ReviewerOutput(
+                    provider="claude-cli", verdict="pass",
+                    usage_actuals=ua_retry,
+                    parse_retried=True, parse_retry_recovered=True,
+                ),
+            )],
+            provider_attempts=[
+                ProviderAttempt(role="builder", provider="claude-cli",
+                                usage_actuals={"input_tokens": 2000, "output_tokens": 300,
+                                               "total_cost_usd": 0.02}),
+                ProviderAttempt(role="reviewer", provider="claude-cli",
+                                usage_actuals=ua_first),
+                ProviderAttempt(role="reviewer", provider="claude-cli",
+                                usage_actuals=ua_retry, is_retry=True,
+                                is_parse_retry=True),
+            ],
+        )
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 3
+        assert agg["actual_call_count"] == 3
+        assert agg["input_tokens"] == 2000 + 1000 + 500
+        assert agg["output_tokens"] == 300 + 200 + 100
+        assert agg["total_cost_usd"] == round(0.02 + 0.01 + 0.005, 6)
+
+    def test_timeout_then_success(self):
+        """Provider timeout followed by success: call_count=2, actual=1."""
+        result = PingPongResult(
+            builder_provider="claude-cli",
+            reviewer_provider="claude-cli",
+            rounds=[PingPongRound(
+                round_number=1,
+                builder_output=BuilderOutput(provider="claude-cli",
+                    usage_actuals={"input_tokens": 500, "output_tokens": 50,
+                                   "total_cost_usd": 0.005}),
+                reviewer_output=ReviewerOutput(provider="claude-cli", verdict="pass",
+                    usage_actuals={"input_tokens": 400, "output_tokens": 40,
+                                   "total_cost_usd": 0.004}),
+            )],
+            provider_attempts=[
+                ProviderAttempt(role="builder", provider="claude-cli",
+                                error="timeout", actual_missing_reason="timeout"),
+                ProviderAttempt(role="builder", provider="claude-cli",
+                                usage_actuals={"input_tokens": 500, "output_tokens": 50,
+                                               "total_cost_usd": 0.005},
+                                is_retry=True),
+                ProviderAttempt(role="reviewer", provider="claude-cli",
+                                usage_actuals={"input_tokens": 400, "output_tokens": 40,
+                                               "total_cost_usd": 0.004}),
+            ],
+        )
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 3
+        assert agg["actual_call_count"] == 2
+        assert agg["actual_coverage_complete"] is False
+        assert agg["actual_missing_reasons"] == ["timeout"]
+
+    def test_repair_round_calls_included(self):
+        """Repair round builder+reviewer calls included in totals."""
+        attempts = [
+            ProviderAttempt(role="builder", provider="claude-cli",
+                            usage_actuals={"input_tokens": 100, "output_tokens": 10,
+                                           "total_cost_usd": 0.001}),
+            ProviderAttempt(role="reviewer", provider="claude-cli",
+                            usage_actuals={"input_tokens": 200, "output_tokens": 20,
+                                           "total_cost_usd": 0.002}),
+            ProviderAttempt(role="builder", provider="claude-cli",
+                            usage_actuals={"input_tokens": 150, "output_tokens": 15,
+                                           "total_cost_usd": 0.0015}),
+            ProviderAttempt(role="reviewer", provider="claude-cli",
+                            usage_actuals={"input_tokens": 250, "output_tokens": 25,
+                                           "total_cost_usd": 0.0025}),
+        ]
+        result = PingPongResult(
+            builder_provider="claude-cli",
+            reviewer_provider="claude-cli",
+            rounds=[
+                PingPongRound(round_number=1, kind="initial",
+                    builder_output=BuilderOutput(provider="claude-cli"),
+                    reviewer_output=ReviewerOutput(provider="claude-cli", verdict="needs_repair")),
+                PingPongRound(round_number=2, kind="repair",
+                    builder_output=BuilderOutput(provider="claude-cli"),
+                    reviewer_output=ReviewerOutput(provider="claude-cli", verdict="pass")),
+            ],
+            provider_attempts=attempts,
+        )
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 4
+        assert agg["actual_call_count"] == 4
+        assert agg["input_tokens"] == 100 + 200 + 150 + 250
+        assert agg["total_cost_usd"] == round(0.001 + 0.002 + 0.0015 + 0.0025, 6)
+        assert agg["actual_coverage_complete"] is True
+        assert agg["cost_coverage_complete"] is True
+
+
+class TestPerCallFakeClassification:
+    """Fix 2: fake classification per call/role, not per result."""
+
+    def test_fake_builder_real_reviewer(self):
+        """fake builder + claude-cli reviewer: reviewer actuals counted."""
+        result = PingPongResult(
+            builder_provider="fake",
+            reviewer_provider="claude-cli",
+            rounds=[PingPongRound(
+                round_number=1,
+                builder_output=BuilderOutput(provider="fake"),
+                reviewer_output=ReviewerOutput(provider="claude-cli", verdict="pass",
+                    usage_actuals={"input_tokens": 300, "output_tokens": 30,
+                                   "total_cost_usd": 0.003}),
+            )],
+            provider_attempts=[
+                ProviderAttempt(role="builder", provider="fake"),
+                ProviderAttempt(role="reviewer", provider="claude-cli",
+                                usage_actuals={"input_tokens": 300, "output_tokens": 30,
+                                               "total_cost_usd": 0.003}),
+            ],
+        )
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 1
+        assert agg["actual_call_count"] == 1
+        assert agg["input_tokens"] == 300
+        assert agg["total_cost_usd"] == 0.003
+
+    def test_real_builder_fake_reviewer(self):
+        """claude-cli builder + fake reviewer: builder actuals counted."""
+        result = PingPongResult(
+            builder_provider="claude-cli",
+            reviewer_provider="fake",
+            rounds=[PingPongRound(
+                round_number=1,
+                builder_output=BuilderOutput(provider="claude-cli",
+                    usage_actuals={"input_tokens": 500, "output_tokens": 50,
+                                   "total_cost_usd": 0.005}),
+                reviewer_output=ReviewerOutput(provider="fake", verdict="pass"),
+            )],
+            provider_attempts=[
+                ProviderAttempt(role="builder", provider="claude-cli",
+                                usage_actuals={"input_tokens": 500, "output_tokens": 50,
+                                               "total_cost_usd": 0.005}),
+                ProviderAttempt(role="reviewer", provider="fake"),
+            ],
+        )
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 1
+        assert agg["actual_call_count"] == 1
+        assert agg["input_tokens"] == 500
+        assert agg["total_cost_usd"] == 0.005
+
+    def test_fake_builder_real_reviewer_token_accounting(self):
+        """Token accounting marks actual_available when reviewer is real."""
+        result = PingPongResult(
+            builder_provider="fake",
+            reviewer_provider="claude-cli",
+            rounds=[PingPongRound(
+                round_number=1,
+                builder_output=BuilderOutput(provider="fake"),
+                reviewer_output=ReviewerOutput(provider="claude-cli", verdict="pass",
+                    usage_actuals={"input_tokens": 300, "output_tokens": 30,
+                                   "total_cost_usd": 0.003}),
+            )],
+            provider_attempts=[
+                ProviderAttempt(role="builder", provider="fake"),
+                ProviderAttempt(role="reviewer", provider="claude-cli",
+                                usage_actuals={"input_tokens": 300, "output_tokens": 30,
+                                               "total_cost_usd": 0.003}),
+            ],
+        )
+        acc = _build_token_accounting(result)
+        assert acc["actual_tokens_available"] is True
+        assert acc["measurement_confidence"] == "high"
+
+
+# ---------------------------------------------------------------------------
+# F003 findings fix — helpers for attempt-based scenarios
+# ---------------------------------------------------------------------------
+
+def _attempt(
+    role: str,
+    *,
+    provider: str = "claude-cli",
+    input_tokens: int | None = None,
+    output_tokens: int = 0,
+    cost: float | None = None,
+    cache_read: int = 0,
+    cache_creation: int = 0,
+    error: str = "",
+    missing_reason: str = "",
+    is_retry: bool = False,
+    is_parse_retry: bool = False,
+) -> ProviderAttempt:
+    """Build a ProviderAttempt; input_tokens=None means no parsed actuals."""
+    ua = None
+    if input_tokens is not None:
+        ua = {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cache_read": cache_read,
+            "cache_creation": cache_creation,
+            "total_cost_usd": cost,
+            "session_id": "s1",
+            "parse_source": "claude_cli_json",
+        }
+    return ProviderAttempt(
+        role=role, provider=provider, usage_actuals=ua,
+        actual_missing_reason=missing_reason, error=error,
+        is_retry=is_retry, is_parse_retry=is_parse_retry,
+    )
+
+
+def _result_from_attempts(attempts: list[ProviderAttempt],
+                          *, builder_provider: str = "claude-cli",
+                          reviewer_provider: str = "claude-cli") -> PingPongResult:
+    return PingPongResult(
+        builder_provider=builder_provider,
+        reviewer_provider=reviewer_provider,
+        rounds=[PingPongRound(round_number=1)],
+        provider_attempts=list(attempts),
+    )
+
+
+class TestCostCompleteness:
+    """F003 findings Fix Block 1: total cost only when every real call has
+    actuals AND provider-reported cost; partial sums never labeled as total."""
+
+    def test_one_call_missing_actuals_cost_null(self):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01),
+            _attempt("reviewer", missing_reason="parse_failed"),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 2
+        assert agg["actual_call_count"] == 1
+        assert agg["cost_call_count"] == 1
+        assert agg["actual_coverage_complete"] is False
+        assert agg["cost_coverage_complete"] is False
+        assert agg["total_cost_usd"] is None
+        assert agg["cost_coverage_reason"] == "missing_actuals"
+
+    def test_one_call_missing_cost_cost_null(self):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01),
+            _attempt("reviewer", input_tokens=200, output_tokens=20, cost=None),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 2
+        assert agg["actual_call_count"] == 2
+        assert agg["cost_call_count"] == 1
+        assert agg["actual_coverage_complete"] is True
+        assert agg["cost_coverage_complete"] is False
+        assert agg["total_cost_usd"] is None
+        assert agg["cost_coverage_reason"] == "missing_provider_cost"
+
+    def test_all_calls_covered_cost_is_sum(self):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01),
+            _attempt("reviewer", input_tokens=200, output_tokens=20, cost=0.02),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["actual_coverage_complete"] is True
+        assert agg["cost_coverage_complete"] is True
+        assert agg["total_cost_usd"] == 0.03
+        assert agg["cost_coverage_reason"] is None
+
+    def test_no_actuals_still_counts_real_calls_and_evidence_honest(self):
+        """Two real provider attempts, neither exposing actuals (e.g. both
+        failed / usage-limited). The record is NOT dropped: provider coverage
+        and the exact missing reasons are preserved, while actual_available is
+        false and no partial cost is labeled as the total."""
+        result = _result_from_attempts([
+            _attempt("builder", missing_reason="parse_failed"),
+            _attempt("reviewer", missing_reason="usage_missing"),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["actual_available"] is False
+        assert agg["provider_call_count"] == 2
+        assert agg["actual_call_count"] == 0
+        assert agg["cost_call_count"] == 0
+        assert agg["actual_coverage_complete"] is False
+        assert agg["cost_coverage_complete"] is False
+        assert agg["total_cost_usd"] is None
+        assert agg["actual_missing_reasons"] == ["parse_failed", "usage_missing"]
+        ev = _build_provider_evidence(result)
+        assert ev["actual_available"] is False
+        assert ev["provider_call_count"] == 2
+        assert ev["actual_call_count"] == 0
+        assert ev["cost_call_count"] == 0
+        assert ev.get("total_cost_usd") is None
+        assert "usage" not in ev
+        assert ev["actual_missing_reasons"] == ["parse_failed", "usage_missing"]
+
+    def test_mixed_fake_and_real_roles_cost_complete(self):
+        """Fake calls are not real provider calls; the real call's full
+        coverage makes its cost the truthful total."""
+        result = _result_from_attempts([
+            _attempt("builder", provider="fake"),
+            _attempt("reviewer", input_tokens=300, output_tokens=30, cost=0.003),
+        ], builder_provider="fake")
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 1
+        assert agg["cost_coverage_complete"] is True
+        assert agg["total_cost_usd"] == 0.003
+        assert agg["cost_coverage_reason"] is None
+
+    def test_missing_actuals_and_cost_reason(self):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=None),
+            _attempt("reviewer", missing_reason="parse_failed"),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["total_cost_usd"] is None
+        assert agg["cost_coverage_reason"] == "missing_actuals_and_provider_cost"
+
+
