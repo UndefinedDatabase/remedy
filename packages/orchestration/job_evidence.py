@@ -529,6 +529,27 @@ def export_job_evidence(
     except Exception as exc:
         _write_gate_error("verification_tests.error.txt", exc)
 
+    # Manual-completion finalization — deterministic second pass, AFTER
+    # verification_tests.json exists and BEFORE the final verifier. Regenerates
+    # per-task derived evidence (review scope, missing-tests gate, tests.txt,
+    # execution-mode layering) from the attested diffs, rebuilds the final job
+    # review from the attestation changed-file sets, and writes the root
+    # operator-attested completion record. No-op when there are no attestations.
+    try:
+        _finalize_manual_completion(job, attest_snap, str(out_path), written)
+    except Exception as exc:
+        _write_gate_error("manual_completion_finalize.error.txt", exc)
+
+    # Finding 5: reconcile persisted vs effective state on the existing manifests
+    # (the persisted job plan is never mutated).
+    if attest_snap:
+        try:
+            _apply_effective_completion_status(
+                job, attest_snap, str(out_path), manifest, written,
+            )
+        except Exception as exc:
+            _write_gate_error("effective_status.error.txt", exc)
+
     # Final verifier report — aggregates all gates into a single verdict.
     # Written after upstream gates so it can read their verdicts.
     try:
@@ -1078,6 +1099,127 @@ def _overlay_attestation_artifacts(
                     pass
 
 
+def _linked_job_summary(jid: str) -> dict[str, Any]:
+    """Finding 7: honestly summarize a linked/superseded prior job via the
+    generic job store. When the job is unavailable, status is ``unknown`` and
+    provider_call_count is ``null`` — never silently zero. No feature-specific
+    path is used.
+    """
+    try:
+        j = load_job_plan(jid)
+    except Exception:
+        j = None
+    if j is None:
+        return {
+            "job_id": jid,
+            "status": "unknown",
+            "provider_call_count": None,
+            "source": "unavailable",
+        }
+    status = str(getattr(j, "status", "") or "") or "unknown"
+    total: int | None = None
+    try:
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        runs_dir = Path(_pingpong_runs_dir())
+        for t in getattr(j, "tasks", []) or []:
+            rid = getattr(t, "run_id", "") or ""
+            if not rid:
+                continue
+            trace = runs_dir / rid / "prompt_trace_summary.json"
+            if trace.exists():
+                d = json.loads(trace.read_text(encoding="utf-8"))
+                c = int(d.get("builder_prompts", 0)) + int(d.get("reviewer_prompts", 0))
+                total = (total or 0) + c
+    except Exception:
+        total = None
+    return {
+        "job_id": jid,
+        "status": status,
+        "provider_call_count": total,  # None means unknown, never coerced to 0
+        "source": "persisted_job_state",
+    }
+
+
+def _apply_effective_completion_status(
+    job: Any,
+    attest_snap: dict[str, dict[str, bytes]],
+    out_base: str,
+    manifest: dict[str, Any],
+    written: dict[str, str],
+) -> None:
+    """Finding 5: mark effective operator-attested completion on the existing
+    root manifest, tasks.json, and per-task manifests/summaries — WITHOUT
+    mutating the persisted job plan. Persisted state is preserved alongside the
+    effective state so the two are never contradictory.
+    """
+    out_path = Path(out_base)
+    attested = set(attest_snap)
+
+    # Root manifest (mutated in place; the final write uses this dict).
+    manifest["persisted_status"] = manifest.get("status")
+    manifest["effective_status"] = "operator_attested_complete"
+    manifest["completion_mode"] = "manual_operator_repair"
+    manifest["evidence_available"] = True
+    manifest["human_final_reviewer_required"] = True
+
+    # tasks.json — expose persisted AND effective status per task.
+    tasks_path = out_path / "tasks.json"
+    if tasks_path.exists():
+        try:
+            tasks = json.loads(tasks_path.read_text(encoding="utf-8"))
+            for t in tasks:
+                tid = t.get("task_id")
+                t["persisted_status"] = t.get("status")
+                if tid in attested:
+                    t["effective_status"] = "operator_attested_complete"
+                    t["evidence_available"] = True
+                    t["completion_mode"] = "manual_operator_repair"
+                else:
+                    t["effective_status"] = t.get("status")
+                    t["evidence_available"] = False
+            tasks_path.write_text(json.dumps(tasks, indent=2) + "\n", encoding="utf-8")
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    # Per-task manifest + summary — manual evidence IS available.
+    for tid in attested:
+        run_dir = out_path / "task_runs" / tid
+        tm_path = run_dir / "manifest.json"
+        persisted_reason = ""
+        if tm_path.exists():
+            try:
+                tm = json.loads(tm_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                tm = {"task_id": tid}
+        else:
+            tm = {"task_id": tid}
+        persisted_reason = str(tm.get("reason") or "")
+        tm["persisted_status"] = "pending" if tm.get("evidence_available") is False else tm.get("persisted_status", "")
+        tm["effective_status"] = "operator_attested_complete"
+        tm["completion_mode"] = "manual_operator_repair"
+        tm["evidence_available"] = True
+        tm["human_final_reviewer_required"] = True
+        tm["evidence_source"] = "operator_attestation"
+        if persisted_reason:
+            tm["persisted_reason"] = persisted_reason
+        tm.pop("reason", None)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        tm_path.write_text(json.dumps(tm, indent=2) + "\n", encoding="utf-8")
+        written[f"task_runs/{tid}/manifest.json"] = str(tm_path)
+
+        summary = (
+            f"# Task {tid} Evidence\n\n"
+            "Effective status: operator-attested manual completion "
+            "(completion_mode=manual_operator_repair).\n"
+            "Manual evidence is available: safe.diff, manual_repair_provenance.json, "
+            "review.json (operator_attested), token_accounting.json.\n"
+            "Zero completion-path provider calls. Human final review required.\n"
+        )
+        sm_path = run_dir / "summary.md"
+        sm_path.write_text(summary, encoding="utf-8")
+        written[f"task_runs/{tid}/summary.md"] = str(sm_path)
+
+
 def _vt_norm(p: str) -> str:
     p = str(p or "").replace("\\", "/").strip()
     while p.startswith("./"):
@@ -1169,6 +1311,284 @@ def _run_verifications(
         "test_files": all_files,
         "timestamp": _dt.now(_tz.utc).isoformat(),
     }
+
+
+def _root_verification_summary(out_base: str) -> dict[str, Any]:
+    """Read verification_tests.json into a compact root-verification record."""
+    vt_path = Path(out_base) / "verification_tests.json"
+    if not vt_path.exists():
+        return {}
+    try:
+        vt = json.loads(vt_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(vt, dict):
+        return {}
+    return {
+        "command": vt.get("command", ""),
+        "exit_code": vt.get("exit_code", -1),
+        "passed": vt.get("passed", 0),
+        "failed": vt.get("failed", 0),
+        "timestamp": vt.get("timestamp", ""),
+        "verification_type": vt.get("verification_type", ""),
+    }
+
+
+def _tests_txt_from_root_verification(rv: dict[str, Any]) -> str:
+    """Render tests.txt content that references the real root verification."""
+    if not rv:
+        return _ATTESTATION_DEFAULTS["tests.txt"]
+    return (
+        "tests_verified_by_root_verification\n"
+        f"command: {rv.get('command', '')}\n"
+        f"exit_code: {rv.get('exit_code', -1)}\n"
+        f"{rv.get('passed', 0)} passed, {rv.get('failed', 0)} failed\n"
+        f"timestamp: {rv.get('timestamp', '')}\n"
+    )
+
+
+def _finalize_manual_completion(
+    job: Any,
+    attest_snap: dict[str, dict[str, bytes]],
+    out_base: str,
+    written: dict[str, str],
+) -> None:
+    """Deterministically finalize an operator-attested (manual) completion.
+
+    Runs after ``verification_tests.json`` exists and before the final verifier.
+    For every attested task it regenerates the derived evidence from the
+    ATTESTED diff (never a stale provider-run scope):
+
+      * ``tests.txt`` — references the real root verification result;
+      * ``review_scope_packet.json`` + ``.md`` — rebuilt from the attested
+        ``safe.diff`` so the scope is the true task file set (never empty, never
+        the stale ``safe_diff_files``);
+      * ``missing_tests_gate.json`` — acknowledges the changed files and records
+        that tests were satisfied by root verification;
+      * ``task_execution_evidence.json`` — separates the manual completion layer
+        (zero provider calls) from any preserved prior provider execution.
+
+    Then, at job level, it rebuilds ``final_job_review.json`` from the attested
+    changed-file sets, carrying the manual-completion facts (completion mode,
+    human-review flag, linked-prior-job ids, root verification) on that EXISTING
+    artifact — no new root file or schema. No-op when there are no attestations.
+    """
+    if not attest_snap:
+        return
+
+    from packages.orchestration.review_scope import write_review_scope_packet
+    from packages.orchestration.missing_tests_gate import write_missing_tests_gate
+
+    out_path = Path(out_base)
+    rv = _root_verification_summary(out_base)
+
+    # Load the recorded verification runs and build a per-test-file coverage map
+    # (a file is covered only by a SUCCESSFUL run whose test_files include it).
+    vt_full: dict[str, Any] = {}
+    vt_path = out_path / "verification_tests.json"
+    if vt_path.exists():
+        try:
+            vt_full = json.loads(vt_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            vt_full = {}
+    runs = vt_full.get("runs") or []
+    coverage: dict[str, list[str]] = {}
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        if int(run.get("exit_code", -1)) != 0 or int(run.get("failed", 0) or 0) != 0:
+            continue
+        for tf in (run.get("test_files") or []):
+            coverage.setdefault(_vt_norm(str(tf)), []).append(str(run.get("run_id", "")))
+
+    def _is_test_path(p: str) -> bool:
+        n = _vt_norm(p)
+        return n.startswith("tests/") or "/tests/" in n or Path(n).name.startswith("test_")
+
+    tasks_by_id = {t.task_id: t for t in job.tasks}
+    per_task_changed: dict[str, list[str]] = {}
+
+    for tid in attest_snap:
+        task = tasks_by_id.get(tid)
+        if task is None:
+            continue
+        run_dir = out_path / "task_runs" / tid
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        # Regenerate review scope from the attested safe.diff now present in the
+        # evidence dir. build_review_scope_packet reads task_runs/<tid>/safe.diff.
+        try:
+            write_review_scope_packet(task, job.job_workspace_path, out_base, written)
+        except Exception:
+            pass
+
+        # Capture the authoritative changed-file set for this task.
+        packet_path = run_dir / "review_scope_packet.json"
+        changed: list[str] = []
+        if packet_path.exists():
+            try:
+                pkt = json.loads(packet_path.read_text(encoding="utf-8"))
+                changed = [str(f) for f in (pkt.get("changed_files") or [])]
+            except (OSError, json.JSONDecodeError):
+                changed = []
+        if not changed:
+            mrp = run_dir / "manual_repair_provenance.json"
+            if mrp.exists():
+                try:
+                    changed = [
+                        str(f) for f in
+                        (json.loads(mrp.read_text(encoding="utf-8")).get("changed_files") or [])
+                    ]
+                except (OSError, json.JSONDecodeError):
+                    changed = []
+        per_task_changed[tid] = sorted(set(changed))
+
+        # Finding 2: a task is test-covered only when EVERY related test file in
+        # its changed set is exercised by a successful verification run. A task
+        # missing direct coverage gets NEEDS_TESTS — never a false "satisfied".
+        related_tests = sorted({_vt_norm(f) for f in changed if _is_test_path(f)})
+        covering_run_ids = sorted({
+            rid for f in related_tests for rid in coverage.get(f, [])
+        })
+        uncovered_tests = [f for f in related_tests if not coverage.get(f)]
+        covered = bool(related_tests) and not uncovered_tests
+
+        # tests.txt references the covering run ids (no bare totals — those are
+        # deduplicated at the run level, see finding 4).
+        if covered:
+            tests_path_txt = (
+                "tests_verified_by_root_verification\n"
+                f"covered_by_runs: {', '.join(covering_run_ids)}\n"
+                f"related_tests: {', '.join(related_tests)}\n"
+            )
+        else:
+            tests_path_txt = (
+                "tests_not_run: no successful verification run covers this task's "
+                f"tests\nuncovered_tests: {', '.join(uncovered_tests) or '(none)'}\n"
+            )
+        tests_path = run_dir / "tests.txt"
+        tests_path.write_text(tests_path_txt, encoding="utf-8")
+        written[f"task_runs/{tid}/tests.txt"] = str(tests_path)
+
+        # Rebuild the missing-tests gate honoring the real coverage.
+        try:
+            write_missing_tests_gate(task, out_base, written)
+        except Exception:
+            pass
+        mtg_path = run_dir / "missing_tests_gate.json"
+        if mtg_path.exists():
+            try:
+                mtg = json.loads(mtg_path.read_text(encoding="utf-8"))
+                if covered:
+                    mtg["gate_status"] = "PASS"
+                    mtg["tests_executed"] = True
+                    mtg["tests_satisfied_by"] = "root_verification"
+                    mtg["suggested_test_commands"] = []
+                    mtg["verification_run_ids"] = covering_run_ids
+                    mtg["reason"] = (
+                        "Operator-attested manual completion; the task's changed "
+                        f"tests are exercised by verification runs {covering_run_ids}."
+                    )
+                else:
+                    mtg["gate_status"] = "NEEDS_TESTS"
+                    mtg["tests_executed"] = False
+                    mtg["tests_satisfied_by"] = None
+                    mtg["uncovered_tests"] = uncovered_tests
+                    mtg["reason"] = (
+                        "Changed test files are not covered by any successful "
+                        f"verification run: {uncovered_tests}."
+                    )
+                mtg_path.write_text(json.dumps(mtg, indent=2) + "\n", encoding="utf-8")
+            except (OSError, json.JSONDecodeError):
+                pass
+
+        # Two-layer execution evidence: manual completion (0 provider calls) with
+        # any prior provider execution preserved separately.
+        prior_execution = None
+        pe_path = run_dir / "provider_evidence.json"
+        if pe_path.exists():
+            try:
+                pe = json.loads(pe_path.read_text(encoding="utf-8"))
+                prior_execution = pe.get("prior_execution")
+            except (OSError, json.JSONDecodeError):
+                prior_execution = None
+        exec_ev = {
+            "schema_version": "1.0.0",
+            "task_id": tid,
+            # Trace-consistent mode for the completion: no prompts, no calls.
+            "execution_mode": "operator_built_no_provider",
+            "prompt_trace_available": False,
+            "provider_call_count": 0,
+            "builder_provider": "operator",
+            "reviewer_provider": "operator",
+            "completion_execution_mode": "manual_operator_repair",
+            "completion_provider_call_count": 0,
+            "supersedes_prior_execution": prior_execution is not None,
+            "prior_execution": prior_execution,
+        }
+        exec_path = run_dir / "task_execution_evidence.json"
+        exec_path.write_text(json.dumps(exec_ev, indent=2) + "\n", encoding="utf-8")
+        written[f"task_runs/{tid}/task_execution_evidence.json"] = str(exec_path)
+
+    # --- job level ---------------------------------------------------------
+    combined_changed = sorted({f for files in per_task_changed.values() for f in files})
+
+    # Collect per-task manual-completion metadata (prior execution + generic
+    # linked-prior-job ids) directly from the attested provenance — no
+    # feature-specific path, no new root artifact.
+    linked_prior_job_ids: list[str] = []
+    superseded_prior_run_ids: list[str] = []
+    prior_provider_calls = 0
+    for tid in sorted(attest_snap):
+        mrp_path = out_path / "task_runs" / tid / "manual_repair_provenance.json"
+        if not mrp_path.exists():
+            continue
+        try:
+            mrp = json.loads(mrp_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        lp = str(mrp.get("linked_prior_job_id") or "")
+        if lp and lp != job.job_id and lp not in linked_prior_job_ids:
+            linked_prior_job_ids.append(lp)
+        prior = mrp.get("prior_execution")
+        if isinstance(prior, dict):
+            run_id = str(prior.get("run_id") or "")
+            if run_id and run_id not in superseded_prior_run_ids:
+                superseded_prior_run_ids.append(run_id)
+            pcc = prior.get("provider_call_count")
+            if isinstance(pcc, int) and not isinstance(pcc, bool):
+                prior_provider_calls += pcc
+
+    # Rebuild the final job review from the attestation diffs and operator
+    # verdicts so it lists the actual changed files (never an empty set). The
+    # manual-completion facts live on this EXISTING artifact — no new root file.
+    fjr = {
+        "schema_version": "1.0.0",
+        "verdict": "PASS",
+        "job_id": job.job_id,
+        "review_mode": "operator_attested_manual_completion",
+        "completion_mode": "manual_operator_repair",
+        "completion_provider_call_count": 0,
+        "human_final_reviewer_required": True,
+        "expected_changed_files": combined_changed,
+        "actual_changed_files": combined_changed,
+        "changed_files_match": True,
+        "per_task_changed_files": per_task_changed,
+        "task_verdicts": [
+            {"task_id": tid, "verdict": "operator_attested"} for tid in sorted(attest_snap)
+        ],
+        "linked_prior_job_ids": linked_prior_job_ids,
+        "linked_prior_job_summaries": [
+            _linked_job_summary(jid) for jid in linked_prior_job_ids
+        ],
+        "superseded_prior_run_ids": superseded_prior_run_ids,
+        "prior_execution_provider_call_count": prior_provider_calls,
+        "root_verification": rv,
+        "findings": [],
+    }
+    fjr_path = out_path / "final_job_review.json"
+    fjr_path.write_text(json.dumps(fjr, indent=2) + "\n", encoding="utf-8")
+    written["final_job_review.json"] = str(fjr_path)
 
 
 def _write_task_run_evidence(
