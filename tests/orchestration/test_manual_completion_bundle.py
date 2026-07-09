@@ -276,3 +276,296 @@ def test_missing_tests_gates_reference_root_verification(bundle):
         assert "tests_verified_by_root_verification" in tests_txt
 
 
+# ---------------------------------------------------------------------------
+# Finding 2 — per-task coverage; Finding 3 — no recursion; Finding 4 — dedup
+# ---------------------------------------------------------------------------
+
+def test_verification_runs_recorded_with_ids(bundle):
+    vt = _read(bundle["out_dir"], "verification_tests.json")
+    assert vt["verification_type"] == "explicit_commands"
+    run_ids = [r["run_id"] for r in vt["runs"]]
+    assert run_ids == ["vr-0001", "vr-0002", "vr-0003"]
+    # Top-level totals derived from runs.
+    assert vt["passed"] == sum(r["passed"] for r in vt["runs"])
+    assert vt["exit_code"] == 0
+
+
+def test_no_recursive_pytest_invocation(bundle):
+    # The injected runner saw exactly our commands; none targeted this module.
+    assert bundle["verification_commands"] == _RUNNER_CALLS[:3]
+    assert not any("test_manual_completion_bundle" in c for c in _RUNNER_CALLS)
+
+
+def test_export_without_commands_runs_no_verification(bundle, tmp_path):
+    """Finding 3: with no commands and no runner, export must not spawn pytest
+    (no verification_tests.json, no recursion)."""
+    # Re-export the SAME already-attested job with no verification requested.
+    out2 = tmp_path / "no_verify"
+    export_job_evidence(bundle["job_id"], str(out2))
+    assert not (out2 / "verification_tests.json").exists()
+
+
+def test_task_without_coverage_gets_needs_tests(bundle, tmp_path):
+    """Finding 2: a task whose changed tests are not covered by a successful run
+    must receive missing_tests_gate = NEEDS_TESTS (no false 'satisfied')."""
+    out3 = tmp_path / "partial_cov"
+    # Only cover T002/T003; omit T001's tests entirely.
+    vcmds = [
+        "python3 -m pytest -q " + " ".join(f for f in _T002_FILES if "test_" in f),
+        "python3 -m pytest -q " + " ".join(f for f in _T003_FILES if "test_" in f),
+    ]
+    export_job_evidence(
+        bundle["job_id"], str(out3),
+        verification_commands=vcmds, verification_runner=_STUB_RUNNER,
+    )
+    mtg = _read(out3, "task_runs/T001/missing_tests_gate.json")
+    assert mtg["gate_status"] == "NEEDS_TESTS"
+    assert mtg["uncovered_tests"]
+    # And the whole bundle is therefore not authoritative.
+    val = brm.validate_evidence_candidate(str(out3))
+    fv = _read(out3, "final_verifier_report.json")
+    assert fv["verdict"] != "PASS_WITH_RISKS" or val["is_valid_current_run"] is True
+    # missing-tests NEEDS_TESTS blocks final verifier from a clean pass:
+    assert fv["missing_tests_gate"] == "NEEDS_TESTS"
+
+
+def test_shared_root_run_counted_once_not_per_task(bundle):
+    """Finding 4: the deduplicated test total equals the sum of unique runs,
+    never multiplied by the number of tasks."""
+    vt = _read(bundle["out_dir"], "verification_tests.json")
+    fv = _read(bundle["out_dir"], "final_verifier_report.json")
+    unique_total = sum(r["passed"] for r in vt["runs"])
+    assert fv["test_status"]["passed"] == unique_total
+    # Not multiplied across the 3 tasks + root.
+    assert fv["test_status"]["passed"] != unique_total * len(bundle["per_task"])
+
+
+def test_execution_evidence_two_layers(bundle):
+    ev = _read(bundle["out_dir"], "task_runs/T001/task_execution_evidence.json")
+    assert ev["completion_provider_call_count"] == 0
+    assert ev["prior_execution"]["provider_call_count"] == 1
+
+
+def test_final_job_review_lists_combined_files(bundle):
+    fjr = _read(bundle["out_dir"], "final_job_review.json")
+    assert set(fjr["actual_changed_files"]) == set(_ALL_FILES)
+    assert set(fjr["expected_changed_files"]) == set(_ALL_FILES)
+    assert fjr["completion_mode"] == "manual_operator_repair"
+    assert fjr["human_final_reviewer_required"] is True
+    assert "_copy_refs.py" not in fjr["actual_changed_files"]
+
+
+# ---------------------------------------------------------------------------
+# Final verifier + manifest authoritative (all findings together)
+# ---------------------------------------------------------------------------
+
+def test_final_verifier_pass_with_risks_no_phantom(bundle):
+    fv = _read(bundle["out_dir"], "final_verifier_report.json")
+    assert fv["verdict"] == "PASS_WITH_RISKS"
+    assert fv["human_final_reviewer_required"] is True
+    assert set(fv["operator_attested_tasks"]) == {"T001", "T002", "T003"}
+    assert "_copy_refs.py" not in fv["authoritative_changed_files"]
+    assert fv["review_subject_uncovered_files"] == []
+    assert fv["content_hash_mismatches"] == []
+    assert fv["file_set_alignment_status"] == "PASS"
+    assert set(fv["authoritative_changed_files"]) == set(_ALL_FILES)
+    assert fv["token_status"]["actual_available"] is False
+
+
+def test_manifest_accepts_manual_completion(bundle):
+    out = str(bundle["out_dir"])
+    assert brm._is_manual_completion(out) is True
+    assert brm.validate_manual_completion(out) == []
+    validation = brm.validate_evidence_candidate(out)
+    assert validation["manual_completion"] is True
+    assert validation["is_valid_current_run"] is True, validation["validation_errors"]
+    assert validation["manual_completion_errors"] == []
+    for art in ("job_flow.json", "agent_run_trace.jsonl",
+                "agent_run_trace_summary.json", "command_transcript.json"):
+        assert validation["required_root_artifacts"][art] == "not_applicable_manual_completion"
+    assert validation["job_id"] == bundle["job_id"]
+
+
+def test_completion_provider_call_total_zero(bundle):
+    truth = _read(bundle["out_dir"], "token_truth.json")
+    assert truth["provider_call_count"] == 0
+    assert truth["actual_available"] is False
+
+
+def test_effective_status_on_manifests(bundle):
+    # Finding 5: root + task manifests + tasks.json show effective completion.
+    out = bundle["out_dir"]
+    root = _read(out, "manifest.json")
+    assert root["effective_status"] == "operator_attested_complete"
+    assert root["evidence_available"] is True
+    # Root persisted_status is the persisted JOB status (never mutated).
+    assert root["persisted_status"] in ("planned", "blocked", "pending")
+    tasks = json.loads((out / "tasks.json").read_text())
+    for t in tasks:
+        assert t["effective_status"] == "operator_attested_complete"
+        assert t["evidence_available"] is True
+        assert "persisted_status" in t
+    for tid in ("T001", "T002", "T003"):
+        tm = _read(out, f"task_runs/{tid}/manifest.json")
+        assert tm["evidence_available"] is True
+        assert tm["effective_status"] == "operator_attested_complete"
+        summary = (out / "task_runs" / tid / "summary.md").read_text()
+        assert "Evidence unavailable" not in summary
+        assert "operator-attested" in summary.lower()
+
+
+def test_task_manifest_unavailable_without_effective_rejected(bundle, tmp_path):
+    # Finding 5: revert a task manifest to "unavailable" -> bundle rejected.
+    def mut(d):
+        p = d / "task_runs" / "T001" / "manifest.json"
+        j = json.loads(p.read_text())
+        j["evidence_available"] = False
+        j.pop("effective_status", None)
+        p.write_text(json.dumps(j))
+    tampered = _tampered_dir(bundle, tmp_path, mut)
+    assert brm.validate_manual_completion(tampered)
+    assert brm.validate_evidence_candidate(tampered)["is_valid_current_run"] is False
+
+
+def test_linked_prior_job_summary_present(bundle):
+    # Finding 7: summary present, ids match, unknown count is null not 0.
+    fjr = _read(bundle["out_dir"], "final_job_review.json")
+    summaries = fjr["linked_prior_job_summaries"]
+    assert [s["job_id"] for s in summaries] == [_LINKED_PRIOR_JOB]
+    s = summaries[0]
+    # In the isolated test data root the linked job is not loadable -> honest
+    # unknown, NEVER silently zero.
+    assert s["status"] == "unknown"
+    assert s["provider_call_count"] is None
+    assert s["source"] == "unavailable"
+
+
+def test_observability_index_manual_completion(bundle):
+    # Finding 6: index derives from manual artifacts (no job_flow.json).
+    import build_observability_index as boi
+    idx = boi.build_observability_index(str(bundle["out_dir"]))
+    assert idx["job_id"] == bundle["job_id"]
+    assert sorted(idx["tasks_generated"]) == ["T001", "T002", "T003"]
+    assert set(idx["changed_artifacts"]) == set(_ALL_FILES)
+    assert "passed" in idx["tests"]["summary"]
+    assert idx["audit"]["status"] == "PASS_WITH_RISKS"
+    assert idx["audit"]["human_decision_required"] is True
+    assert idx["audit"]["completion_provider_call_count"] == 0
+    # No invented provider/prompt traces.
+    assert idx["tokens"]["actual_tokens_available"] is False
+
+
+def test_tampered_linked_summary_rejected(bundle, tmp_path):
+    def mut(d):
+        _patch_json(d, "final_job_review.json",
+                    lambda j: j.update(linked_prior_job_summaries=[
+                        {"job_id": "wrongjob", "status": "blocked", "provider_call_count": 1}]))
+    tampered = _tampered_dir(bundle, tmp_path, mut)
+    assert brm.validate_manual_completion(tampered)
+    assert brm.validate_evidence_candidate(tampered)["is_valid_current_run"] is False
+
+
+# ---------------------------------------------------------------------------
+# Finding 3 — strict validation rejects every independent tampering.
+# ---------------------------------------------------------------------------
+
+def _tampered_dir(bundle, tmp_path, mutate) -> str:
+    """Copy the single exported bundle, apply one mutation, return the path."""
+    import shutil
+    dst = tmp_path / "tampered"
+    shutil.copytree(bundle["out_dir"], dst)
+    mutate(dst)
+    return str(dst)
+
+
+def _patch_json(base: Path, rel: str, mutate) -> None:
+    p = base / rel
+    data = json.loads(p.read_text())
+    mutate(data)
+    p.write_text(json.dumps(data, indent=2) + "\n")
+
+
+@pytest.mark.parametrize("name,mutate", [
+    ("human_review_flag", lambda d: _patch_json(
+        d, "task_runs/T001/review.json", lambda j: j.update(human_final_reviewer_required=False))),
+    ("provider_call_count", lambda d: _patch_json(
+        d, "task_runs/T001/provider_evidence.json", lambda j: j.update(provider_call_count=1))),
+    ("task_id", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json", lambda j: j.update(task_id="T099"))),
+    ("task_changed_files", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j.update(changed_files=j["changed_files"][:-1]))),
+    ("final_job_union", lambda d: _patch_json(
+        d, "final_job_review.json",
+        lambda j: j.update(actual_changed_files=j["actual_changed_files"][:-1]))),
+    ("root_exit_code", lambda d: _patch_json(
+        d, "verification_tests.json", lambda j: j.update(exit_code=1))),
+    ("root_failed_count", lambda d: _patch_json(
+        d, "verification_tests.json", lambda j: j.update(failed=3))),
+    ("content_proof_hash", lambda d: _patch_json(
+        d, "current_change_content_proof.json",
+        lambda j: j["file_hashes"].pop(next(iter(j["file_hashes"]))))),
+    ("job_id", lambda d: _patch_json(
+        d, "final_job_review.json", lambda j: j.update(job_id="deadbeefdeadbeef"))),
+    ("provenance_hash", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j.update(provenance_sha256="notavalidhash"))),
+    ("task_overlap", lambda d: _patch_json(
+        d, "task_runs/T002/manual_repair_provenance.json",
+        lambda j: j.update(changed_files=j["changed_files"] + _T001_FILES[:1]))),
+])
+def test_tampered_manual_completion_rejected(bundle, tmp_path, name, mutate):
+    tampered = _tampered_dir(bundle, tmp_path, mutate)
+    errors = brm.validate_manual_completion(tampered)
+    assert errors, f"tampering {name!r} was not rejected"
+    validation = brm.validate_evidence_candidate(tampered)
+    assert validation["is_valid_current_run"] is False, name
+
+
+def _rewrite_safe_diff(base: Path, tid: str, transform) -> None:
+    p = base / "task_runs" / tid / "safe.diff"
+    p.write_text(transform(p.read_text()))
+
+
+@pytest.mark.parametrize("name,mutate", [
+    # Valid-looking but WRONG hashes (not merely malformed strings).
+    ("wrong_provenance_sha", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j.update(provenance_sha256="a" * 64))),
+    ("wrong_diff_sha", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j.update(diff_sha256="1" * 64))),
+    ("wrong_tracked_diff_sha", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j.update(tracked_diff_sha256="b" * 64))),
+    ("wrong_safe_diff_sha", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j.update(safe_diff_sha256="c" * 64))),
+    # safe.diff content tampering.
+    ("safe_diff_one_byte", lambda d: _rewrite_safe_diff(
+        d, "T001", lambda s: s + "X")),
+    ("safe_diff_empty", lambda d: _rewrite_safe_diff(
+        d, "T001", lambda s: "")),
+    ("safe_diff_removed_header", lambda d: _rewrite_safe_diff(
+        d, "T001", lambda s: "\n".join(
+            l for l in s.splitlines() if "token_actuals.py" not in l) + "\n")),
+    ("safe_diff_added_header", lambda d: _rewrite_safe_diff(
+        d, "T001", lambda s: s + "--- /dev/null\n+++ b/packages/orchestration/sneaky.py\n# x\n")),
+    # untracked entry tampering.
+    ("untracked_hash", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j["untracked_file_hashes"][0].update(sha256="d" * 64))),
+    ("untracked_size", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j["untracked_file_hashes"][0].update(size_bytes=-5))),
+    ("task_scoped_list", lambda d: _patch_json(
+        d, "task_runs/T001/manual_repair_provenance.json",
+        lambda j: j.update(task_scoped_files=j["task_scoped_files"][:-1]))),
+])
+def test_provenance_hash_tampering_rejected(bundle, tmp_path, name, mutate):
+    """Finding 1: recomputed provenance/safe.diff hashes reject valid-looking
+    but wrong values and any safe.diff/untracked mutation."""
+    tampered = _tampered_dir(bundle, tmp_path, mutate)
+    errors = brm.validate_manual_completion(tampered)
+    assert errors, f"hash tampering {name!r} was not rejected"
+    assert brm.validate_evidence_candidate(tampered)["is_valid_current_run"] is False, name
