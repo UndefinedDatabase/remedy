@@ -21,6 +21,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,10 +38,28 @@ from packages.orchestration.pingpong_provider import (
     ReviewFinding,
     create_provider,
 )
+from packages.orchestration.provider_timeouts import (
+    PROFILES as TIMEOUT_PROFILES,
+    compute_timeout,
+    next_backoff,
+    should_retry,
+)
 
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
+@dataclass
+class ProviderAttempt:
+    """Record of a single provider invocation for usage accounting."""
+    role: str = ""          # "builder" or "reviewer"
+    provider: str = ""      # provider name (e.g. "claude-cli", "fake")
+    usage_actuals: dict[str, Any] | None = None
+    actual_missing_reason: str = ""
+    is_retry: bool = False
+    is_parse_retry: bool = False
+    error: str = ""
+
 
 @dataclass
 class PingPongRound:
@@ -126,6 +145,16 @@ class PingPongResult:
     # Execution mode and actor binding (T008: populated after run completes)
     execution_mode: str = ""
     task_actor_binding: dict[str, Any] | None = None
+    # F001: Adaptive timeout + retry evidence
+    timeout_profile: str = ""
+    timeout_s_effective_builder: int = 0
+    timeout_s_effective_reviewer: int = 0
+    retries_used: int = 0
+    retry_reasons: list[str] = field(default_factory=list)
+    # F002: builder produced no file changes but reviewer/tests still ran
+    builder_no_changes: bool = False
+    # F003: per-call provider usage accounting
+    provider_attempts: list[ProviderAttempt] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -1571,6 +1600,78 @@ def _apply_fake_builder_changes(
 
 
 # ---------------------------------------------------------------------------
+# F001: Retry wrapper for provider calls
+# ---------------------------------------------------------------------------
+
+def _record_attempt(
+    result: PingPongResult,
+    out: Any,
+    role: str,
+    provider: str,
+    *,
+    is_retry: bool = False,
+    is_parse_retry: bool = False,
+) -> None:
+    """Record a provider attempt for usage accounting."""
+    result.provider_attempts.append(ProviderAttempt(
+        role=role,
+        provider=provider,
+        usage_actuals=getattr(out, "usage_actuals", None),
+        actual_missing_reason=getattr(out, "actual_missing_reason", ""),
+        is_retry=is_retry,
+        is_parse_retry=is_parse_retry,
+        error=getattr(out, "error", ""),
+    ))
+
+
+def _call_with_retry(
+    call_fn: Any,
+    *,
+    result: PingPongResult,
+    role: str,
+    provider: str = "",
+) -> Any:
+    """Call a provider function with bounded retry on transient failures.
+
+    Only retries on timeout or nonzero exit (detected via error string).
+    Never retries review rejects. Records retry evidence on result.
+    Every call (initial + retries) is recorded as a ProviderAttempt.
+    """
+    from packages.orchestration.provider_timeouts import MAX_RETRIES
+
+    out = call_fn()
+    _record_attempt(result, out, role, provider)
+    for attempt in range(MAX_RETRIES):
+        if not out.error:
+            return out
+
+        is_timeout = "timeout" in out.error.lower() or "TimeoutExpired" in out.error
+        is_nonzero = "exited" in out.error.lower() or "nonzero" in out.error.lower()
+        is_reject = (
+            hasattr(out, "verdict")
+            and out.verdict in ("needs_repair", "fail", "blocked")
+            and not out.error.startswith("provider_error:")
+        )
+
+        if not should_retry(is_timeout=is_timeout, exit_code=1 if is_nonzero else 0, is_review_reject=is_reject):
+            return out
+
+        backoff = next_backoff(attempt)
+        if backoff is None:
+            return out
+
+        result.retries_used += 1
+        result.retry_reasons.append(
+            f"{role}:attempt{attempt + 1}:{out.error[:120]}"
+        )
+        _time.sleep(backoff)
+        out = call_fn()
+        _record_attempt(result, out, role, provider, is_retry=True)
+
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Core loop
 # ---------------------------------------------------------------------------
 
@@ -1586,6 +1687,7 @@ def run_pingpong(
     reviewer_model: str = "",
     max_rounds: int = 3,
     timeout_sec: int = 120,
+    timeout_profile: str = "",
     max_output_chars: int = 50000,
     mentioned_files: list[str] | None = None,
     test_command: str = "",
@@ -1633,6 +1735,30 @@ def run_pingpong(
         job_id=job_id,
         task_id=task_id,
     )
+
+    # F001: Compute adaptive timeouts from profile (if set), otherwise use raw timeout_sec
+    _allowed_files = 0
+    if task_input and hasattr(task_input, "mentioned_files"):
+        _allowed_files = len(task_input.mentioned_files or [])
+    if mentioned_files:
+        _allowed_files = max(_allowed_files, len(mentioned_files))
+
+    if timeout_profile:
+        if timeout_profile not in TIMEOUT_PROFILES:
+            raise ValueError(
+                f"Invalid --timeout-profile {timeout_profile!r}. "
+                f"Available: {', '.join(sorted(TIMEOUT_PROFILES))}"
+            )
+        builder_timeout = compute_timeout("builder", _allowed_files, timeout_profile)
+        reviewer_timeout = compute_timeout("reviewer", _allowed_files, timeout_profile)
+        result.timeout_profile = timeout_profile
+    else:
+        builder_timeout = timeout_sec
+        reviewer_timeout = timeout_sec
+        result.timeout_profile = ""
+
+    result.timeout_s_effective_builder = builder_timeout
+    result.timeout_s_effective_reviewer = reviewer_timeout
 
     # Store task metadata on result
     if task_input:
@@ -1770,10 +1896,15 @@ def run_pingpong(
                 configured_model=builder_model,
             ))
 
-            builder_out = builder_provider.build(
-                builder_prompt,
-                timeout_sec=timeout_sec,
-                max_output_chars=max_output_chars,
+            builder_out = _call_with_retry(
+                lambda ts=builder_timeout: builder_provider.build(
+                    builder_prompt,
+                    timeout_sec=ts,
+                    max_output_chars=max_output_chars,
+                ),
+                result=result,
+                role="builder",
+                provider=builder_name,
             )
             rd.builder_output = builder_out
 
@@ -1807,13 +1938,12 @@ def run_pingpong(
             # Track staged files
             result.staged_files = _find_staging_changes(staging, original)
 
-            # --- Builder no-changes check ---
-            if not result.staged_files and round_num == 1 and not is_fake:
-                rd.finished_at = datetime.now(timezone.utc).isoformat()
-                result.rounds.append(rd)
-                result.final_status = "builder_no_changes"
-                result.error = "Builder produced no file changes in staging"
-                break
+            # --- Builder no-changes flag ---
+            builder_no_changes = (
+                not result.staged_files and round_num == 1 and not is_fake
+            )
+            if builder_no_changes:
+                result.builder_no_changes = True
 
             # --- Test phase ---
             if has_test_command:
@@ -1852,7 +1982,10 @@ def run_pingpong(
                 break
 
             # --- Reviewer phase ---
-            diff_summary = "\n".join(f"M {f}" for f in result.staged_files)
+            if builder_no_changes:
+                diff_summary = "(no changes — builder confirmed code already correct)"
+            else:
+                diff_summary = "\n".join(f"M {f}" for f in result.staged_files)
             # Compute safe diff for reviewer (before reviewer runs)
             reviewer_safe_diff = ""
             if result.staged_files and staging.exists():
@@ -1929,10 +2062,15 @@ def run_pingpong(
             # Snapshot staging before reviewer (to detect reviewer mutation)
             staging_snap_before = _find_staging_changes(staging, original)
 
-            reviewer_out = reviewer_provider.review(
-                reviewer_prompt,
-                timeout_sec=timeout_sec,
-                max_output_chars=max_output_chars,
+            reviewer_out = _call_with_retry(
+                lambda ts=reviewer_timeout: reviewer_provider.review(
+                    reviewer_prompt,
+                    timeout_sec=ts,
+                    max_output_chars=max_output_chars,
+                ),
+                result=result,
+                role="reviewer",
+                provider=reviewer_name,
             )
 
             # --- Bounded parse retry (one attempt) ---
@@ -1945,9 +2083,11 @@ def run_pingpong(
                 )
                 retry_out = reviewer_provider.review(
                     retry_prompt,
-                    timeout_sec=timeout_sec,
+                    timeout_sec=reviewer_timeout,
                     max_output_chars=max_output_chars,
                 )
+                _record_attempt(result, retry_out, "reviewer", reviewer_name,
+                                is_retry=True, is_parse_retry=True)
                 retry_out.parse_retried = True
                 if not retry_out.error:
                     retry_out.parse_retry_recovered = True
@@ -2367,6 +2507,162 @@ def _provider_kind(provider_name: str) -> str:
     return "internal"
 
 
+def _cost_coverage_reason(
+    provider_call_count: int,
+    actual_call_count: int,
+    cost_call_count: int,
+) -> str | None:
+    """Explain why provider-reported cost is incomplete, or None when complete.
+
+    Cost can only come from parsed actuals, so ``cost <= actual <= provider``.
+    Coverage is complete only when every real provider call reported cost.
+    """
+    if provider_call_count and cost_call_count == provider_call_count:
+        return None
+    if not provider_call_count:
+        return "no_real_provider_calls"
+    missing_actuals = actual_call_count < provider_call_count
+    missing_cost = cost_call_count < actual_call_count
+    if missing_actuals and missing_cost:
+        return "missing_actuals_and_provider_cost"
+    if missing_actuals:
+        return "missing_actuals"
+    return "missing_provider_cost"
+
+
+def _aggregate_usage_actuals(result: PingPongResult) -> dict[str, Any] | None:
+    """Aggregate measured provider usage across all provider attempts.
+
+    Uses ``result.provider_attempts`` — the per-call record of every provider
+    invocation including retries and parse retries. Each attempt carries its own
+    provider name so fake classification is per-call, not per-result.
+
+    Cost semantics: ``total_cost_usd`` is non-null only when every real provider
+    call has parsed actuals AND provider-reported cost. A partial sum is never
+    labeled as the total; ``cost_coverage_reason`` explains what is missing.
+
+    Returns None only when there is no real provider attempt at all (every
+    attempt fake, or manual operator repair). When real provider attempts exist
+    but none exposed measured usage — a provider or usage/session-limit failure —
+    a record is still returned with ``actual_available=False`` so the real
+    provider-call coverage and the exact missing reasons are preserved instead of
+    being dropped.
+    """
+    present = False
+    input_tokens = output_tokens = cache_read = cache_creation = 0
+    total_cost = 0.0
+    any_cost = False
+    session_id = ""
+    cli_versions: list[str] = []
+    parse_sources: list[str] = []
+    actual_missing_reasons: list[str] = []
+    provider_call_count = 0
+    actual_call_count = 0
+    cost_call_count = 0
+    by_role: dict[str, dict[str, int]] = {}
+
+    attempts = result.provider_attempts
+    if not attempts:
+        for rd in result.rounds:
+            for out in (rd.builder_output, rd.reviewer_output):
+                if out is None:
+                    continue
+                role = "builder" if out is rd.builder_output else "reviewer"
+                prov = result.builder_provider if role == "builder" else result.reviewer_provider
+                attempts.append(ProviderAttempt(
+                    role=role,
+                    provider=prov,
+                    usage_actuals=getattr(out, "usage_actuals", None),
+                    actual_missing_reason=getattr(out, "actual_missing_reason", ""),
+                ))
+
+    for attempt in attempts:
+        if attempt.provider == "fake":
+            continue
+        provider_call_count += 1
+        role = attempt.role or "builder"
+        role_agg = by_role.setdefault(role, {
+            "provider_call_count": 0,
+            "actual_call_count": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "cache_read": 0,
+            "cache_creation": 0,
+        })
+        role_agg["provider_call_count"] += 1
+        ua = attempt.usage_actuals
+        if not ua:
+            amr = attempt.actual_missing_reason or "provider_actuals_unavailable"
+            if amr and amr not in actual_missing_reasons:
+                actual_missing_reasons.append(amr)
+            continue
+        present = True
+        actual_call_count += 1
+        ua_input = int(ua.get("input_tokens", 0) or 0)
+        ua_output = int(ua.get("output_tokens", 0) or 0)
+        ua_cache_read = int(ua.get("cache_read", 0) or 0)
+        ua_cache_creation = int(ua.get("cache_creation", 0) or 0)
+        input_tokens += ua_input
+        output_tokens += ua_output
+        cache_read += ua_cache_read
+        cache_creation += ua_cache_creation
+        role_agg["actual_call_count"] += 1
+        role_agg["input_tokens"] += ua_input
+        role_agg["output_tokens"] += ua_output
+        role_agg["total_tokens"] += ua_input + ua_output
+        role_agg["cache_read"] += ua_cache_read
+        role_agg["cache_creation"] += ua_cache_creation
+        raw_cost = ua.get("total_cost_usd")
+        if raw_cost is not None and not isinstance(raw_cost, bool):
+            total_cost += float(raw_cost)
+            any_cost = True
+            cost_call_count += 1
+        if not session_id and ua.get("session_id"):
+            session_id = str(ua.get("session_id"))
+        cv = ua.get("cli_version")
+        if cv and cv not in cli_versions:
+            cli_versions.append(str(cv))
+        ps = ua.get("parse_source")
+        if ps and ps not in parse_sources:
+            parse_sources.append(ps)
+
+    if not provider_call_count:
+        # No real provider attempt at all — nothing measurable happened
+        # (every attempt was fake/synthetic or manual operator repair).
+        return None
+    # A record is returned whenever at least one real provider call occurred,
+    # even if none exposed actuals. ``actual_available`` separately expresses
+    # whether any measured usage is present; counts are always truthful and
+    # never exceed provider_call_count.
+    actual_coverage_complete = actual_call_count == provider_call_count
+    cost_coverage_complete = cost_call_count == provider_call_count
+    coverage_ok = present and actual_coverage_complete and cost_coverage_complete
+    return {
+        "actual_available": present,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+        "cache_read": cache_read,
+        "cache_creation": cache_creation,
+        "total_cost_usd": round(total_cost, 6) if (any_cost and coverage_ok) else None,
+        "cost_coverage_reason": _cost_coverage_reason(
+            provider_call_count, actual_call_count, cost_call_count,
+        ),
+        "session_id": session_id,
+        "cli_version": cli_versions[0] if len(cli_versions) == 1 else None,
+        "cli_versions": cli_versions if cli_versions else None,
+        "parse_source": parse_sources[0] if parse_sources else "claude_cli_json",
+        "provider_call_count": provider_call_count,
+        "actual_call_count": actual_call_count,
+        "actual_coverage_complete": actual_coverage_complete,
+        "cost_call_count": cost_call_count,
+        "cost_coverage_complete": cost_coverage_complete,
+        "actual_missing_reasons": actual_missing_reasons if actual_missing_reasons else None,
+        "by_role": by_role,
+    }
+
+
 def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
     """Build provider identity evidence with write mode and model info."""
     builder_kind = _provider_kind(result.builder_provider)
@@ -2386,10 +2682,67 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
         "reviewer_can_write_staging": False,
         "builder_configured_model": result.builder_model,
         "reviewer_configured_model": result.reviewer_model,
-        "builder_actual_model": result.builder_model or None,
-        "reviewer_actual_model": result.reviewer_model or None,
+        "builder_actual_model": None,
+        "reviewer_actual_model": None,
+        "actual_model_verified": False,
         "model_flag_supported": result.builder_provider in ("claude-cli", "claude"),
     }
+
+    # Manual operator repair is never counted as provider usage.
+    if result.execution_mode == "manual_operator_repair":
+        usage_actuals = None
+    else:
+        usage_actuals = _aggregate_usage_actuals(result)
+    if usage_actuals is not None:
+        # A record exists because at least one real provider call occurred.
+        # ``actual_available`` is driven by whether any actual usage was
+        # measured — never inferred merely from the record's existence. The
+        # provider-call coverage counts and missing reasons are always emitted
+        # so a failed/limited call is never dropped from the accounting.
+        actual_available = bool(usage_actuals.get("actual_available"))
+        evidence["actual_available"] = actual_available
+        evidence["total_cost_usd"] = usage_actuals["total_cost_usd"]
+        evidence["cost_coverage_reason"] = usage_actuals.get("cost_coverage_reason")
+        evidence["provider_call_count"] = usage_actuals["provider_call_count"]
+        evidence["actual_call_count"] = usage_actuals["actual_call_count"]
+        evidence["actual_coverage_complete"] = usage_actuals["actual_coverage_complete"]
+        evidence["cost_call_count"] = usage_actuals["cost_call_count"]
+        evidence["cost_coverage_complete"] = usage_actuals["cost_coverage_complete"]
+        if usage_actuals.get("actual_missing_reasons"):
+            evidence["actual_missing_reasons"] = usage_actuals["actual_missing_reasons"]
+        if actual_available:
+            evidence["usage"] = {
+                "input_tokens": usage_actuals["input_tokens"],
+                "output_tokens": usage_actuals["output_tokens"],
+                "total_tokens": usage_actuals["total_tokens"],
+                "cache_read_input_tokens": usage_actuals["cache_read"],
+                "cache_creation_input_tokens": usage_actuals["cache_creation"],
+            }
+            evidence["session_id"] = usage_actuals["session_id"]
+            evidence["parse_source"] = usage_actuals["parse_source"]
+            if usage_actuals.get("cli_version"):
+                evidence["cli_version"] = usage_actuals["cli_version"]
+            if usage_actuals.get("cli_versions"):
+                evidence["cli_versions"] = usage_actuals["cli_versions"]
+        else:
+            # Real calls happened but exposed no measured usage.
+            evidence["parse_source"] = "heuristic_fallback"
+    else:
+        evidence["actual_available"] = False
+        if result.execution_mode == "manual_operator_repair":
+            evidence["parse_source"] = "manual"
+            evidence["actual_missing_reasons"] = ["manual"]
+        else:
+            evidence["parse_source"] = "heuristic_fallback"
+            reasons: list[str] = []
+            for rd in result.rounds:
+                for out in (rd.builder_output, rd.reviewer_output):
+                    if out is None:
+                        continue
+                    amr = getattr(out, "actual_missing_reason", "")
+                    if amr and amr not in reasons:
+                        reasons.append(amr)
+            evidence["actual_missing_reasons"] = reasons or ["provider_actuals_unavailable"]
     return evidence
 
 
@@ -2497,22 +2850,26 @@ def _build_token_accounting(result: PingPongResult) -> dict[str, Any]:
     Claude CLI tokens_used=0 means 'unavailable', not 'zero tokens used'.
     FakeProvider synthetic tokens are not treated as Claude CLI actual usage.
     """
-    # Check if any round has actual token usage from a real provider
-    # FakeProvider tokens are synthetic — only treat as actual if provider is not fake
-    is_fake = result.builder_provider == "fake"
-    actual_available = False
-    total_builder_tokens = 0
-    total_reviewer_tokens = 0
-
-    for rd in result.rounds:
-        if rd.builder_output and rd.builder_output.tokens_used and rd.builder_output.tokens_used > 0:
-            if not is_fake:
-                actual_available = True
-            total_builder_tokens += rd.builder_output.tokens_used
-        if rd.reviewer_output and rd.reviewer_output.tokens_used and rd.reviewer_output.tokens_used > 0:
-            if not is_fake:
-                actual_available = True
-            total_reviewer_tokens += rd.reviewer_output.tokens_used
+    # Actual availability is based on whether usage_actuals exist, not on
+    # tokens_used > 0. A call with input_tokens > 0 and output_tokens = 0 is
+    # still real measured usage. FakeProvider never sets usage_actuals.
+    # Role totals come from every recorded real ProviderAttempt (initial calls,
+    # transport retries, parse retries, repair rounds) — never from the final
+    # stored round result alone, which would drop retried calls. Manual
+    # operator repair is never counted as provider usage.
+    if result.execution_mode == "manual_operator_repair":
+        usage_actuals = None
+    else:
+        usage_actuals = _aggregate_usage_actuals(result)
+    # A record can exist for real provider calls that exposed no actuals; actual
+    # availability is driven by the record's ``actual_available`` flag, never by
+    # the mere presence of the aggregate.
+    actual_available = usage_actuals is not None and bool(usage_actuals.get("actual_available"))
+    by_role = usage_actuals.get("by_role", {}) if usage_actuals else {}
+    builder_role = by_role.get("builder", {})
+    reviewer_role = by_role.get("reviewer", {})
+    total_builder_tokens = int(builder_role.get("total_tokens", 0) or 0)
+    total_reviewer_tokens = int(reviewer_role.get("total_tokens", 0) or 0)
 
     # Prompt token estimates (from captured char counts)
     builder_prompt_est = _estimate_tokens("x" * result.builder_prompt_chars) if result.builder_prompt_chars else 0
@@ -2559,10 +2916,57 @@ def _build_token_accounting(result: PingPongResult) -> dict[str, Any]:
     if actual_available:
         accounting["builder_tokens_actual"] = total_builder_tokens
         accounting["reviewer_tokens_actual"] = total_reviewer_tokens
+        accounting["builder_cache_read_tokens_actual"] = int(
+            builder_role.get("cache_read", 0) or 0)
+        accounting["builder_cache_creation_tokens_actual"] = int(
+            builder_role.get("cache_creation", 0) or 0)
+        accounting["reviewer_cache_read_tokens_actual"] = int(
+            reviewer_role.get("cache_read", 0) or 0)
+        accounting["reviewer_cache_creation_tokens_actual"] = int(
+            reviewer_role.get("cache_creation", 0) or 0)
     else:
         accounting["token_note"] = (
             "Claude CLI did not expose actual token usage; values are deterministic estimates."
         )
+
+    if usage_actuals is not None:
+        actual_coverage = usage_actuals.get("actual_coverage_complete", False)
+        if not actual_available:
+            # Real provider calls occurred but none exposed measured usage.
+            accounting["measurement_confidence"] = "low"
+        else:
+            accounting["measurement_confidence"] = "high" if actual_coverage else "mixed"
+        accounting["usage_actuals"] = usage_actuals
+        accounting["parse_source"] = (
+            usage_actuals["parse_source"] if actual_available else "heuristic_fallback"
+        )
+        accounting["provider_call_count"] = usage_actuals["provider_call_count"]
+        accounting["actual_call_count"] = usage_actuals["actual_call_count"]
+        accounting["actual_coverage_complete"] = actual_coverage
+        accounting["cost_call_count"] = usage_actuals["cost_call_count"]
+        accounting["cost_coverage_complete"] = usage_actuals["cost_coverage_complete"]
+        accounting["cost_coverage_reason"] = usage_actuals["cost_coverage_reason"]
+        accounting["total_cost_usd"] = usage_actuals["total_cost_usd"]
+        if usage_actuals.get("cli_version"):
+            accounting["cli_version"] = usage_actuals["cli_version"]
+        if usage_actuals.get("actual_missing_reasons"):
+            accounting["actual_missing_reasons"] = usage_actuals["actual_missing_reasons"]
+    else:
+        accounting["measurement_confidence"] = "low"
+        if result.execution_mode == "manual_operator_repair":
+            accounting["parse_source"] = "manual"
+            accounting["actual_missing_reasons"] = ["manual"]
+        else:
+            accounting["parse_source"] = "heuristic_fallback"
+            reasons: list[str] = []
+            for rd in result.rounds:
+                for out in (rd.builder_output, rd.reviewer_output):
+                    if out is None:
+                        continue
+                    amr = getattr(out, "actual_missing_reason", "")
+                    if amr and amr not in reasons:
+                        reasons.append(amr)
+            accounting["actual_missing_reasons"] = reasons or ["provider_actuals_unavailable"]
 
     return accounting
 
@@ -2750,6 +3154,11 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "prompt_trace_count": len(result.prompt_traces),
         "execution_mode": result.execution_mode,
         "task_actor_binding": result.task_actor_binding,
+        "timeout_profile": result.timeout_profile,
+        "timeout_s_effective_builder": result.timeout_s_effective_builder,
+        "timeout_s_effective_reviewer": result.timeout_s_effective_reviewer,
+        "retries_used": result.retries_used,
+        "retry_reasons": result.retry_reasons,
     }
 
 

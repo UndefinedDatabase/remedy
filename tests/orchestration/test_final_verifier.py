@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from packages.orchestration.final_verifier import (
+    _final_test_section,
     build_final_verifier_report,
     write_final_verifier_report,
 )
@@ -305,6 +306,96 @@ def test_token_status_reads_token_truth_json(tmp_path: Path) -> None:
     assert ts["reviewer_estimated_total"] == 4500
     assert ts["provider_call_count"] == 2
     assert ts["missing_reason"] is not None
+
+
+def test_token_status_preserves_f003_coverage_fields(tmp_path: Path) -> None:
+    """Fix Block 4: every F003 coverage/cost/model field from token_truth.json
+    appears unchanged in token_status and the token measurement summary."""
+    _seed_pass_task(tmp_path)
+    truth = {
+        "schema_version": "1.0.0",
+        "actual_available": True,
+        "actual_prompt_tokens": 1200,
+        "actual_completion_tokens": 340,
+        "actual_total_tokens": 1540,
+        "estimated_prompt_tokens": 9500,
+        "estimated_completion_tokens": 0,
+        "estimated_total_tokens": 9500,
+        "measurement_source": "provider_actuals",
+        "measurement_confidence": "high",
+        "missing_reason": None,
+        "builder_estimated_total": 5000,
+        "reviewer_estimated_total": 4500,
+        "repair_estimated_total": 0,
+        "provider_call_count": 7,
+        "prompt_trace_count": 4,
+        "actual_call_count": 7,
+        "actual_coverage_complete": True,
+        "actual_missing_reasons": None,
+        "cost_call_count": 7,
+        "cost_coverage_complete": True,
+        "cost_coverage_reason": None,
+        "total_cost_usd": 0.123,
+        "cli_version": "1.0.42",
+        "builder_configured_model": "opus",
+        "reviewer_configured_model": "opus",
+        "builder_actual_model": "claude-opus-4-20250514",
+        "reviewer_actual_model": "claude-opus-4-20250514",
+        "actual_model_verified": True,
+    }
+    (tmp_path / "token_truth.json").write_text(json.dumps(truth))
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    expected = {
+        "provider_call_count": 7,
+        "actual_call_count": 7,
+        "actual_coverage_complete": True,
+        "actual_missing_reasons": None,
+        "cost_call_count": 7,
+        "cost_coverage_complete": True,
+        "cost_coverage_reason": None,
+        "total_cost_usd": 0.123,
+        "cli_version": "1.0.42",
+        "configured_models": {"builder": "opus", "reviewer": "opus"},
+        "actual_models": {
+            "builder": "claude-opus-4-20250514",
+            "reviewer": "claude-opus-4-20250514",
+        },
+        "actual_model_verified": True,
+        "measurement_source": "provider_actuals",
+        "measurement_confidence": "high",
+    }
+    for section in (report["token_status"], report["token_measurement"]):
+        for key, value in expected.items():
+            assert section[key] == value, f"{key} not preserved: {section.get(key)!r}"
+    assert report["token_status"]["prompt_trace_count"] == 4
+
+
+def test_token_status_unknown_fields_stay_none(tmp_path: Path) -> None:
+    """Fix Block 4: missing values are not silently replaced with zero/false."""
+    _seed_pass_task(tmp_path)
+    (tmp_path / "token_truth.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
+        "actual_available": False,
+        "estimated_prompt_tokens": 100,
+        "estimated_total_tokens": 100,
+        "measurement_source": "character_heuristic",
+        "measurement_confidence": "low",
+    }))
+
+    report = build_final_verifier_report(str(tmp_path))
+    ts = report["token_status"]
+
+    for key in (
+        "provider_call_count", "actual_call_count", "actual_coverage_complete",
+        "cost_call_count", "cost_coverage_complete", "cost_coverage_reason",
+        "total_cost_usd", "cli_version", "actual_model_verified",
+        "actual_missing_reasons",
+    ):
+        assert ts[key] is None, f"{key} must stay None when unknown, got {ts[key]!r}"
+    assert ts["configured_models"] == {"builder": None, "reviewer": None}
+    assert ts["actual_models"] == {"builder": None, "reviewer": None}
 
 
 def test_token_status_fallback_without_token_truth(tmp_path: Path) -> None:
@@ -1011,3 +1102,553 @@ def test_test_count_dedup_multiple_summary_lines(tmp_path: Path) -> None:
     )
     report = build_final_verifier_report(str(tmp_path))
     assert report["test_status"]["passed"] == 2
+
+
+# -- F002: operator repair attestation as a valid evidence path ------------
+
+
+def _seed_full_attestation(
+    base: Path,
+    task_id: str = "T001",
+    job_id: str = "test-job",
+) -> None:
+    """Seed all four required attestation artifacts for a valid operator repair."""
+    d = base / "task_runs" / task_id
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "review.json").write_text(json.dumps({
+        "task_id": task_id,
+        "final_verdict": "operator_attested",
+        "verdict": "operator_attested",
+        "reviewer": "operator",
+        "human_final_reviewer_required": True,
+        "reviews": [],
+    }))
+    (d / "provider_evidence.json").write_text(json.dumps({
+        "task_id": task_id,
+        "execution_mode": "manual_operator_repair",
+        "provider_call_count": 0,
+        "prompt_trace_status": "not_applicable_manual_repair",
+    }))
+    (d / "token_accounting.json").write_text(json.dumps({
+        "task_id": task_id,
+        "actual_available": False,
+        "actual_tokens_available": False,
+        "kind": "manual",
+        "reason": "manual",
+    }))
+    (d / "manual_repair_provenance.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
+        "manual_operator_repair": True,
+        "no_provider_calls": True,
+        "task_id": task_id,
+        "job_id": job_id,
+        "diff_sha256": "a" * 64,
+        "provenance_sha256": "b" * 64,
+        "changed_files": ["main.py"],
+        "note": "operator fix",
+        "timestamp": "2026-01-01T00:00:00Z",
+        "workspace_scope": "full_working_tree",
+        "task_scope_known": False,
+    }))
+
+
+def test_operator_attested_accepted_as_pass_equivalent(tmp_path: Path) -> None:
+    """A task with all four attestation artifacts is PASS-equivalent."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    report = build_final_verifier_report(str(tmp_path))
+    # A fully operator-attested completion is PASS-equivalent but mandates human
+    # final review, so it is PASS_WITH_RISKS rather than an unconditional PASS.
+    assert report["verdict"] == "PASS_WITH_RISKS"
+    assert report["human_final_reviewer_required"] is True
+    assert report["unresolved_findings"] == []
+    assert report["operator_attested_tasks"] == ["T001"]
+
+
+def test_report_contains_operator_attested_badge(tmp_path: Path) -> None:
+    """The report surfaces a visible [OPERATOR ATTESTED] badge."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    report = build_final_verifier_report(str(tmp_path))
+    assert "[OPERATOR ATTESTED]" in report["report_badges"]
+
+
+def test_without_attest_no_operator_badge(tmp_path: Path) -> None:
+    """Without attestation the operator badge/label is absent (existing behavior)."""
+    _seed_pass_task(tmp_path)
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+    assert "[OPERATOR ATTESTED]" not in report["report_badges"]
+
+
+def test_without_attest_blocked_stays_blocked(tmp_path: Path) -> None:
+    """A blocked task without attestation stays BLOCKED and gets no badge."""
+    _seed_pass_task(tmp_path)
+    (tmp_path / "scratch_file_guard.json").write_text(
+        json.dumps({"guard_status": "BLOCKED"})
+    )
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["verdict"] == "BLOCKED"
+    assert report["operator_attested_tasks"] == []
+    assert "[OPERATOR ATTESTED]" not in report["report_badges"]
+
+
+def test_spoofed_review_no_provenance_blocked(tmp_path: Path) -> None:
+    """review.json says operator_attested but no manual_repair_provenance => blocked."""
+    _seed_pass_task(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "review.json").write_text(json.dumps({
+        "final_verdict": "operator_attested",
+        "verdict": "operator_attested",
+        "reviewer": "operator",
+        "reviews": [],
+    }))
+    (d / "provider_evidence.json").write_text(json.dumps({
+        "execution_mode": "manual_operator_repair",
+        "provider_call_count": 0,
+    }))
+    (d / "token_accounting.json").write_text(json.dumps({
+        "actual_available": False, "kind": "manual",
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+    assert report["verdict"] != "PASS"
+    assert any("invalid_operator_attestation" in f.get("finding_id", "")
+               for f in report["unresolved_findings"])
+
+
+def test_attested_missing_provider_evidence_blocked(tmp_path: Path) -> None:
+    """operator_attested with missing provider_evidence.json => not PASS."""
+    _seed_pass_task(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "review.json").write_text(json.dumps({
+        "final_verdict": "operator_attested",
+        "verdict": "operator_attested",
+        "reviewer": "operator",
+        "reviews": [],
+    }))
+    (d / "token_accounting.json").write_text(json.dumps({
+        "actual_available": False, "kind": "manual",
+    }))
+    (d / "manual_repair_provenance.json").write_text(json.dumps({
+        "task_id": "T001", "job_id": "j", "diff_sha256": "a" * 64,
+        "changed_files": [], "note": "x", "timestamp": "2026-01-01T00:00:00Z",
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+    assert report["verdict"] != "PASS"
+
+
+def test_attested_wrong_execution_mode_blocked(tmp_path: Path) -> None:
+    """operator_attested with execution_mode != manual_operator_repair => not PASS."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "provider_evidence.json").write_text(json.dumps({
+        "execution_mode": "provider_backed",
+        "provider_call_count": 0,
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+    assert report["verdict"] != "PASS"
+
+
+def test_attested_actual_available_true_blocked(tmp_path: Path) -> None:
+    """operator_attested with token_accounting actual_available=true => not PASS."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "token_accounting.json").write_text(json.dumps({
+        "actual_available": True, "kind": "actual",
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+    assert report["verdict"] != "PASS"
+
+
+def test_complete_valid_attestation_pass_with_badge(tmp_path: Path) -> None:
+    """Complete valid attestation with all four artifacts => PASS + badge."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["verdict"] == "PASS_WITH_RISKS"
+    assert report["operator_attested_tasks"] == ["T001"]
+    assert "[OPERATOR ATTESTED]" in report["report_badges"]
+
+
+def test_attested_mismatched_task_id_blocked(tmp_path: Path) -> None:
+    """Attestation with wrong task_id in review.json is blocked."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "review.json").write_text(json.dumps({
+        "task_id": "T999",
+        "final_verdict": "operator_attested",
+        "reviewer": "operator",
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+    assert any("task_id" in f["summary"] for f in report["unresolved_findings"]
+               if f.get("finding_id") == "invalid_operator_attestation")
+
+
+def test_attested_mismatched_job_id_blocked(tmp_path: Path) -> None:
+    """Attestation with wrong job_id in provenance is blocked."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path, job_id="correct-job")
+    (tmp_path / "manifest.json").write_text(json.dumps({"job_id": "correct-job"}))
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    mrp["job_id"] = "wrong-job"
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_empty_note_blocked(tmp_path: Path) -> None:
+    """Attestation with empty note in provenance is blocked."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    mrp["note"] = ""
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_invalid_hash_blocked(tmp_path: Path) -> None:
+    """Attestation with non-sha256 hash string is blocked."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    mrp["diff_sha256"] = "not-a-valid-sha256"
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_wrong_kind_blocked(tmp_path: Path) -> None:
+    """Attestation with non-manual kind in token_accounting is blocked."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "token_accounting.json").write_text(json.dumps({
+        "task_id": "T001",
+        "actual_available": False,
+        "kind": "actual",
+        "reason": "actual",
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_review_task_id_blocked(tmp_path: Path) -> None:
+    """Missing task_id in review.json blocks attestation."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "review.json").write_text(json.dumps({
+        "final_verdict": "operator_attested",
+        "reviewer": "operator",
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_pe_task_id_blocked(tmp_path: Path) -> None:
+    """Missing task_id in provider_evidence.json blocks attestation."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "provider_evidence.json").write_text(json.dumps({
+        "execution_mode": "manual_operator_repair",
+        "provider_call_count": 0,
+        "prompt_trace_status": "not_applicable_manual_repair",
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_ta_task_id_blocked(tmp_path: Path) -> None:
+    """Missing task_id in token_accounting.json blocks attestation."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "token_accounting.json").write_text(json.dumps({
+        "actual_available": False,
+        "kind": "manual",
+        "reason": "manual",
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_provenance_task_id_blocked(tmp_path: Path) -> None:
+    """Missing task_id in provenance blocks attestation."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    del mrp["task_id"]
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_provenance_job_id_blocked(tmp_path: Path) -> None:
+    """Missing job_id in provenance blocks attestation."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    del mrp["job_id"]
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_diff_sha256_blocked(tmp_path: Path) -> None:
+    """Missing diff_sha256 in provenance blocks attestation."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    del mrp["diff_sha256"]
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_provenance_sha256_blocked(tmp_path: Path) -> None:
+    """Missing provenance_sha256 blocks attestation."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    del mrp["provenance_sha256"]
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_manual_operator_repair_blocked(tmp_path: Path) -> None:
+    """Missing manual_operator_repair=true in provenance blocks."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    del mrp["manual_operator_repair"]
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_no_provider_calls_blocked(tmp_path: Path) -> None:
+    """Missing no_provider_calls=true in provenance blocks."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    mrp = json.loads((d / "manual_repair_provenance.json").read_text())
+    del mrp["no_provider_calls"]
+    (d / "manual_repair_provenance.json").write_text(json.dumps(mrp))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_attested_missing_prompt_trace_status_blocked(tmp_path: Path) -> None:
+    """Missing prompt_trace_status in provider_evidence blocks."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    d = tmp_path / "task_runs" / "T001"
+    (d / "provider_evidence.json").write_text(json.dumps({
+        "task_id": "T001",
+        "execution_mode": "manual_operator_repair",
+        "provider_call_count": 0,
+    }))
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == []
+
+
+def test_valid_complete_attestation_all_fields_passes(tmp_path: Path) -> None:
+    """Attestation with all mandatory fields passes."""
+    _seed_pass_task(tmp_path)
+    _seed_full_attestation(tmp_path)
+    report = build_final_verifier_report(str(tmp_path))
+    assert report["operator_attested_tasks"] == ["T001"]
+    assert report["verdict"] == "PASS_WITH_RISKS"
+
+
+# -- F003: measurement confidence reporting (informational, non-blocking) --
+
+
+def _write_truth(base: Path, **fields) -> None:
+    base_truth = {
+        "schema_version": "1.0.0",
+        "actual_available": False,
+        "estimated_prompt_tokens": 100,
+        "estimated_total_tokens": 100,
+        "measurement_source": "character_heuristic",
+        "measurement_confidence": "low",
+        "builder_estimated_total": 100,
+        "reviewer_estimated_total": 0,
+        "repair_estimated_total": 0,
+        "provider_call_count": 1,
+    }
+    base_truth.update(fields)
+    (base / "token_truth.json").write_text(json.dumps(base_truth))
+
+
+def test_low_confidence_adds_note_does_not_block(tmp_path: Path) -> None:
+    """Low (all-heuristic) confidence attaches an informational note, no block."""
+    _seed_pass_task(tmp_path)
+    _write_truth(tmp_path, measurement_confidence="low")
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["token_measurement_confidence"] == "low"
+    assert report["token_measurement_note"]
+    assert "does not affect the verdict" in report["token_measurement_note"]
+    assert report["token_actual_summary"] is None
+    # Informational only — still PASS.
+    assert report["verdict"] == "PASS"
+
+
+def test_high_confidence_includes_actual_summary(tmp_path: Path) -> None:
+    """High confidence surfaces the actual token/cost summary and no note."""
+    _seed_pass_task(tmp_path)
+    _write_truth(
+        tmp_path,
+        actual_available=True,
+        measurement_confidence="high",
+        actual_prompt_tokens=1200,
+        actual_completion_tokens=340,
+        actual_total_tokens=1540,
+        total_cost_usd=0.0123,
+    )
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["token_measurement_confidence"] == "high"
+    assert report["token_measurement_note"] is None
+    summary = report["token_actual_summary"]
+    assert summary is not None
+    assert summary["actual_total_tokens"] == 1540
+    assert summary["total_cost_usd"] == 0.0123
+    assert summary["measurement_confidence"] == "high"
+    assert report["verdict"] == "PASS"
+
+
+def test_mixed_confidence_includes_actual_summary(tmp_path: Path) -> None:
+    """Mixed confidence (some measured) still surfaces the actual summary."""
+    _seed_pass_task(tmp_path)
+    _write_truth(
+        tmp_path,
+        actual_available=True,
+        measurement_confidence="mixed",
+        actual_prompt_tokens=500,
+        actual_total_tokens=800,
+        total_cost_usd=0.004,
+    )
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["token_measurement_confidence"] == "mixed"
+    assert report["token_measurement_note"] is None
+    assert report["token_actual_summary"]["actual_total_tokens"] == 800
+    assert report["token_actual_summary"]["measurement_source"] is not None
+    assert report["verdict"] == "PASS"
+
+
+def test_high_actual_tokens_without_cost(tmp_path: Path) -> None:
+    """High actual tokens but no cost shows summary with total_cost_usd=None."""
+    _seed_pass_task(tmp_path)
+    _write_truth(
+        tmp_path,
+        actual_available=True,
+        measurement_confidence="high",
+        measurement_source="provider_actuals",
+        actual_prompt_tokens=1200,
+        actual_completion_tokens=340,
+        actual_total_tokens=1540,
+    )
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["token_measurement_confidence"] == "high"
+    summary = report["token_actual_summary"]
+    assert summary is not None
+    assert summary["actual_total_tokens"] == 1540
+    assert summary["total_cost_usd"] is None
+    assert summary["measurement_source"] == "provider_actuals"
+    assert report["verdict"] == "PASS"
+
+
+class TestFinalTestSectionParsing:
+    """Fix 3: only use last round of tests.txt to avoid counting repaired failures."""
+
+    def test_round1_fail_round2_pass_no_failure(self, tmp_path):
+        """Round 1 import error + Round 2 pass: result should be 0 failures."""
+        tests_txt = (
+            "=== Round 1: failed ===\n"
+            "exit=2 | E   ImportError: cannot import name '_aggregate_usage_actuals'\n"
+            "1 error in 0.61s\n"
+            "\n"
+            "=== Round 2: passed ===\n"
+            "exit=0 | 586 passed in 11.31s\n"
+        )
+        _seed_pass_task(tmp_path, "T001")
+        (tmp_path / "task_runs" / "T001" / "tests.txt").write_text(tests_txt)
+        report = build_final_verifier_report(str(tmp_path))
+        ts = report["test_status"]
+        assert ts["passed"] == 586
+        assert ts["failed"] == 0
+
+    def test_single_round_pass(self, tmp_path):
+        """Single passing round: normal parsing unaffected."""
+        tests_txt = "=== Round 1: passed ===\nexit=0 | 608 passed in 12.00s\n"
+        _seed_pass_task(tmp_path, "T001")
+        (tmp_path / "task_runs" / "T001" / "tests.txt").write_text(tests_txt)
+        report = build_final_verifier_report(str(tmp_path))
+        ts = report["test_status"]
+        assert ts["passed"] == 608
+        assert ts["failed"] == 0
+
+    def test_no_round_headers(self, tmp_path):
+        """Legacy tests.txt without round headers: all text used."""
+        tests_txt = "608 passed in 12.00s\n"
+        _seed_pass_task(tmp_path, "T001")
+        (tmp_path / "task_runs" / "T001" / "tests.txt").write_text(tests_txt)
+        report = build_final_verifier_report(str(tmp_path))
+        ts = report["test_status"]
+        assert ts["passed"] == 608
+        assert ts["failed"] == 0
+
+    def test_final_test_section_unit(self):
+        """_final_test_section extracts after last Round header."""
+        text = (
+            "=== Round 1: failed ===\n1 error in 0.5s\n"
+            "=== Round 2: failed ===\n2 failed in 1.0s\n"
+            "=== Round 3: passed ===\n100 passed in 5.0s\n"
+        )
+        final = _final_test_section(text)
+        assert "100 passed" in final
+        assert "1 error" not in final
+        assert "2 failed" not in final
+
+    def test_multiple_tasks_independent(self, tmp_path):
+        """Two tasks: only task with repair shows fix; other counted normally."""
+        _seed_pass_task(tmp_path, "T001")
+        _seed_pass_task(tmp_path, "T002")
+        (tmp_path / "task_runs" / "T001" / "tests.txt").write_text(
+            "=== Round 1: failed ===\nexit=2 | 1 error in 0.5s\n"
+            "=== Round 2: passed ===\nexit=0 | 300 passed in 5.0s\n"
+        )
+        (tmp_path / "task_runs" / "T002" / "tests.txt").write_text(
+            "=== Round 1: passed ===\nexit=0 | 200 passed in 4.0s\n"
+        )
+        report = build_final_verifier_report(str(tmp_path))
+        ts = report["test_status"]
+        assert ts["passed"] == 500
+        assert ts["failed"] == 0

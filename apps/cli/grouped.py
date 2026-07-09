@@ -163,6 +163,20 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--collect-only", action="store_true", dest="collect_only", help=arg.help)
             elif arg.name == "--intent-id":
                 parser.add_argument("--intent-id", default=None, dest="intent_id", help=arg.help)
+            elif arg.name == "--note":
+                parser.add_argument("--note", default=arg.default, dest="note", help=arg.help)
+            elif arg.name == "--yes":
+                parser.add_argument("--yes", action="store_true", dest="yes", help=arg.help)
+            elif arg.name == "--task-scoped":
+                parser.add_argument("--task-scoped", action="store_true", dest="task_scoped", help=arg.help)
+            elif arg.name == "--allowed-files":
+                parser.add_argument("--allowed-files", default=None, dest="allowed_files", help=arg.help)
+            elif arg.name == "--expected-files":
+                parser.add_argument("--expected-files", default=None, dest="expected_files", help=arg.help)
+            elif arg.name == "--linked-prior-job-id":
+                parser.add_argument("--linked-prior-job-id", default=None, dest="linked_prior_job_id", help=arg.help)
+            elif arg.name == "--verification-command":
+                parser.add_argument("--verification-command", action="append", default=None, dest="verification_command", help=arg.help)
             elif arg.name == "--fixture-source-builder":
                 parser.add_argument("--fixture-source-builder", nargs="?", const="true",
                                     default="false", dest="fixture_source_builder", help=arg.help)
@@ -210,6 +224,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--test-command", default=arg.default, dest="test_command", help=arg.help)
             elif arg.name == "--provider-timeout-sec":
                 parser.add_argument("--provider-timeout-sec", default=arg.default, dest="provider_timeout_sec", help=arg.help)
+            elif arg.name == "--timeout-profile":
+                parser.add_argument("--timeout-profile", default=arg.default, dest="timeout_profile", help=arg.help)
             elif arg.name == "--max-output-chars":
                 parser.add_argument("--max-output-chars", default=arg.default, dest="max_output_chars", help=arg.help)
             elif arg.name == "--claude-cli-write-mode":

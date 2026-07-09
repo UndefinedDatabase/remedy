@@ -980,3 +980,72 @@ class TestFullOutputScannerExtended:
             assert marker not in api_str, (
                 f"Secret leaked in API return: {marker!r}"
             )
+
+
+# -- F002: builder_no_changes still produces review/test evidence ----------
+
+
+def _make_no_changes_run_data() -> dict:
+    """Build minimal run data simulating a builder_no_changes outcome."""
+    return {
+        "run_id": "no_changes_001",
+        "goal": "verify code is correct",
+        "repo_path": "/tmp/test",
+        "mode": "staged",
+        "builder_provider": "claude-cli",
+        "reviewer_provider": "claude-cli",
+        "final_status": "builder_no_changes",
+        "total_rounds": 0,
+        "max_rounds": 3,
+        "started_at": "2026-01-01T00:00:00Z",
+        "finished_at": "2026-01-01T00:01:00Z",
+        "rounds": [],
+        "staged_files": [],
+        "error": "Builder produced no file changes in staging",
+        "safe_diff_summary": "",
+        "target_mutated": False,
+        "tests_not_run": True,
+        "repair_loop": {
+            "enabled": False,
+            "repair_rounds_allowed": 0,
+            "repair_rounds_used": 0,
+            "status": "disabled",
+        },
+    }
+
+
+def test_builder_no_changes_produces_review_json(tmp_path: Path) -> None:
+    """builder_no_changes still produces review.json."""
+    run_data = _make_no_changes_run_data()
+    bundle = build_evidence_bundle(run_data)
+    out_dir = tmp_path / "evidence"
+    out_dir.mkdir()
+    written = write_evidence_bundle(bundle, str(out_dir))
+    assert "review.json" in written
+    review = json.loads(Path(written["review.json"]).read_text())
+    assert review["final_verdict"] == "no_changes_verified"
+    assert review["total_reviews"] == 1
+
+
+def test_builder_no_changes_produces_tests_txt(tmp_path: Path) -> None:
+    """builder_no_changes still produces tests.txt."""
+    run_data = _make_no_changes_run_data()
+    bundle = build_evidence_bundle(run_data)
+    out_dir = tmp_path / "evidence"
+    out_dir.mkdir()
+    written = write_evidence_bundle(bundle, str(out_dir))
+    assert "tests.txt" in written
+    content = Path(written["tests.txt"]).read_text()
+    assert "builder_no_changes" in content
+
+
+def test_builder_no_changes_does_not_skip_evidence(tmp_path: Path) -> None:
+    """builder_no_changes writes both review.json and tests.txt."""
+    run_data = _make_no_changes_run_data()
+    bundle = build_evidence_bundle(run_data)
+    out_dir = tmp_path / "evidence"
+    out_dir.mkdir()
+    written = write_evidence_bundle(bundle, str(out_dir))
+    assert "review.json" in written
+    assert "tests.txt" in written
+    assert "manifest.json" in written

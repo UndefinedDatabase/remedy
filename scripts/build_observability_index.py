@@ -336,6 +336,74 @@ def _build_timeline_summary(evidence_dir: str, dir_present: bool) -> dict:
     }
 
 
+def _manual_completion_context(evidence_dir: str) -> dict:
+    """When ``job_flow.json`` is not applicable (a manual-only completion),
+    derive report/audit equivalents from the EXISTING manual artifacts so the
+    index reflects the real completion instead of ``absent``. Returns {} when the
+    bundle is not a manual completion.
+    """
+    fjr, _ = _load_json(os.path.join(evidence_dir, "final_job_review.json"))
+    if not isinstance(fjr, dict) or fjr.get("completion_mode") != "manual_operator_repair":
+        return {}
+    manifest, _ = _load_json(os.path.join(evidence_dir, "manifest.json"))
+    manifest = manifest if isinstance(manifest, dict) else {}
+    vt, _ = _load_json(os.path.join(evidence_dir, "verification_tests.json"))
+    vt = vt if isinstance(vt, dict) else {}
+    fv, _ = _load_json(os.path.join(evidence_dir, "final_verifier_report.json"))
+    fv = fv if isinstance(fv, dict) else {}
+    truth, _ = _load_json(os.path.join(evidence_dir, "token_truth.json"))
+    truth = truth if isinstance(truth, dict) else {}
+
+    per_task = fjr.get("per_task_changed_files") or {}
+    job_id = fjr.get("job_id") or manifest.get("job_id") or ABSENT
+    runs = vt.get("runs") or []
+    # Deduplicated test totals (finding 4) for the summary line.
+    seen = {}
+    for r in runs:
+        if isinstance(r, dict) and r.get("run_id") and r["run_id"] not in seen:
+            seen[r["run_id"]] = r
+    total_passed = sum(int(r.get("passed", 0) or 0) for r in seen.values())
+    total_failed = sum(int(r.get("failed", 0) or 0) for r in seen.values())
+    test_summary = (
+        f"{total_passed} passed, {total_failed} failed across "
+        f"{len(seen)} verification run(s) [{', '.join(sorted(seen))}]"
+        if seen else "no verification runs recorded"
+    )
+    tasks = [
+        {
+            "task_id": tid,
+            "safe_diff_files": per_task.get(tid, []),
+            "reviewer_verdict": "operator_attested",
+            "test_passed": bool(seen) and total_failed == 0,
+            "effective_status": "operator_attested_complete",
+        }
+        for tid in sorted(per_task)
+    ]
+    report = {
+        "job_id": job_id,
+        "job_title": manifest.get("job_title", ABSENT),
+        "tasks": tasks,
+        "next_command": "External review of the operator-attested manual completion.",
+    }
+    final_audit = {
+        "status": fv.get("verdict", ABSENT),
+        "changed_files": fjr.get("actual_changed_files") or [],
+        "test_summary": test_summary,
+        "promote_ready": False,
+        "human_decision_required": bool(fjr.get("human_final_reviewer_required")),
+        "missing_observability_artifacts": [],
+        "known_limitations": [
+            "Manual operator-attested completion: zero completion-path provider "
+            "calls; provider-flow root artifacts are not applicable.",
+        ],
+        "recommended_next_action": "Human final review (mandatory).",
+        "completion_mode": "manual_operator_repair",
+        "completion_provider_call_count": 0,
+        "actual_tokens_available": bool(truth.get("actual_available")),
+    }
+    return {"report": report, "final_audit": final_audit}
+
+
 def build_observability_index(evidence_dir: str) -> dict:
     """Build the observability index dict for ``evidence_dir``.
 
@@ -356,6 +424,15 @@ def build_observability_index(evidence_dir: str) -> dict:
     final_audit = (
         (job_flow or {}).get("final_audit", {}) if isinstance(job_flow, dict) else {}
     )
+
+    # Finding 6: manual-only completion has no job_flow.json — derive the
+    # report/audit from the existing manual-completion artifacts instead of
+    # reporting everything ``absent``.
+    if dir_present and not (report or final_audit):
+        _mc = _manual_completion_context(evidence_dir)
+        if _mc:
+            report = _mc["report"]
+            final_audit = _mc["final_audit"]
 
     # Job-level task records keyed by task_id (source: job_flow.report.tasks).
     job_tasks = {
@@ -464,6 +541,14 @@ def build_observability_index(evidence_dir: str) -> dict:
             "known_limitations": final_audit.get("known_limitations", [])
             if final_audit
             else [],
+            "completion_mode": final_audit.get("completion_mode", ABSENT)
+            if final_audit
+            else ABSENT,
+            "completion_provider_call_count": final_audit.get(
+                "completion_provider_call_count", ABSENT
+            )
+            if final_audit
+            else ABSENT,
             "source": _artifact_ref("job_flow.json", evidence_dir)
             if dir_present
             else ABSENT,

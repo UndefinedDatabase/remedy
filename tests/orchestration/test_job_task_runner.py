@@ -1303,14 +1303,15 @@ def _make_fake_result(
         reviewer_output=ro,
     )
 
+    effective_files = staged_files if staged_files is not None else ["README.md"]
     return types.SimpleNamespace(
         run_id="fake_run",
         final_status=final_status,
         target_mutated=target_mutated,
         rounds=[round_],
-        staged_files=staged_files or ["README.md"],
+        staged_files=effective_files,
         staging_path=staging_path,
-        safe_diff_files=staged_files or ["README.md"],
+        safe_diff_files=effective_files,
         repair_rounds_used=0,
         repair_rounds_allowed=0,
     )
@@ -1364,6 +1365,50 @@ class TestCompletionGate:
         ok, reasons = validate_job_task_result(result)
         assert ok is False
         assert any("staging_path_missing" in r for r in reasons)
+
+    def test_builder_no_changes_with_reviewer_pass(self):
+        result = _make_fake_result(
+            final_status="staged_review_passed",
+            staged_files=[],
+            reviewer_verdict="pass",
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is True
+        assert reasons == []
+
+    def test_builder_no_changes_without_reviewer_blocks(self):
+        result = _make_fake_result(
+            final_status="builder_no_changes",
+            staged_files=[],
+            reviewer_output=None,
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+
+    def test_builder_no_changes_without_tests_blocks(self):
+        result = _make_fake_result(
+            final_status="staged_review_passed",
+            staged_files=[],
+            test_passed=False,
+            reviewer_verdict="pass",
+        )
+        ok, reasons = validate_job_task_result(result)
+        assert ok is False
+
+    def test_later_tasks_run_after_no_change(self, isolate_data_root, demo_repo):
+        """A no-change T001 that passes must not skip T002."""
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        task_statuses = {
+            t.task_id: t.status for t in result.tasks
+        }
+        assert task_statuses.get("T001") not in (None, "skipped")
+        assert task_statuses.get("T002") not in (None, "skipped")
 
 
 class TestCorruptedResultJobBlock:

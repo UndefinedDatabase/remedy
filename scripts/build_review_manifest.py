@@ -18,6 +18,22 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
+# Shared canonical provenance-hash implementation — the validator and the
+# attestation writer MUST use the same code so they cannot drift apart.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+try:
+    from packages.orchestration.repair_attest import (
+        build_safe_diff_text as _canon_safe_diff_text,
+        canonical_provenance_sha256 as _canon_provenance_sha256,
+        parse_safe_diff_paths as _canon_parse_safe_diff_paths,
+        sha256_text as _canon_sha256_text,
+    )
+    _CANON_AVAILABLE = True
+except Exception:  # pragma: no cover - defensive; canonical impl must exist
+    _CANON_AVAILABLE = False
+
 
 def _git(cmd: list[str]) -> str:
     try:
@@ -261,7 +277,341 @@ MANUAL_REPAIR_EXEMPT_ARTIFACTS = frozenset({
     "prompt_trace.jsonl",
     "prompt_trace_summary.json",
     "provider_evidence.json",
+    "repair_loop.json",
 })
+
+# Provider-flow-only root artifacts that a deterministic manual-only completion
+# legitimately does not produce. They are marked not-applicable — never
+# fabricated — when a valid operator-attested completion contract is present.
+MANUAL_COMPLETION_EXEMPT_ROOT_ARTIFACTS = frozenset({
+    "job_flow.json",
+    "agent_run_trace.jsonl",
+    "agent_run_trace_summary.json",
+    "command_transcript.json",
+})
+
+
+def _mc_read_json(evidence_dir: str, rel: str) -> dict:
+    """Read a JSON object from the evidence dir, or {} if absent/invalid."""
+    path = os.path.join(evidence_dir, rel)
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _mc_task_dirs(evidence_dir: str) -> list[str]:
+    task_runs_dir = os.path.join(evidence_dir, "task_runs")
+    if not os.path.isdir(task_runs_dir):
+        return []
+    return [
+        e for e in sorted(os.listdir(task_runs_dir))
+        if os.path.isdir(os.path.join(task_runs_dir, e))
+    ]
+
+
+def _mc_norm(p: str) -> str:
+    p = str(p or "").replace("\\", "/").strip()
+    while p.startswith("./"):
+        p = p[2:]
+    if p.startswith(("a/", "b/")):
+        p = p[2:]
+    return p
+
+
+def _is_sha256(v) -> bool:
+    return isinstance(v, str) and len(v) == 64 and all(c in "0123456789abcdef" for c in v.lower())
+
+
+def _all_task_runs_manual(evidence_dir: str) -> bool:
+    """True when every task_run has a valid manual_repair_provenance."""
+    task_dirs = _mc_task_dirs(evidence_dir)
+    if not task_dirs:
+        return False
+    for entry in task_dirs:
+        mrp = _mc_read_json(evidence_dir, os.path.join("task_runs", entry, "manual_repair_provenance.json"))
+        if not (mrp.get("manual_operator_repair") is True and mrp.get("no_provider_calls") is True):
+            return False
+    return True
+
+
+def _is_manual_completion(evidence_dir: str) -> bool:
+    """A manual-only completion candidate: the final job review declares the
+    manual completion mode AND every task run carries manual provenance. No
+    bespoke root artifact — detection rides existing artifacts only."""
+    fjr = _mc_read_json(evidence_dir, "final_job_review.json")
+    if fjr.get("completion_mode") != "manual_operator_repair":
+        return False
+    return _all_task_runs_manual(evidence_dir)
+
+
+def _verify_task_provenance_integrity(
+    evidence_dir: str, tid: str, mrp: dict, proof: dict, fjr: dict,
+) -> list[str]:
+    """Finding 1: recompute and verify every provenance hash for one task.
+
+    Nothing is trusted at face value: the safe.diff content is re-hashed, the
+    provenance and tracked-diff hashes are recomputed from the recorded inputs
+    via the SHARED canonical implementation, the safe.diff paths must match every
+    changed-file view, and each untracked entry is cross-checked against the
+    current content proof.
+    """
+    errors: list[str] = []
+    if not _CANON_AVAILABLE:
+        return [f"{tid}: canonical provenance-hash implementation unavailable"]
+
+    safe_diff_path = os.path.join(evidence_dir, "task_runs", tid, "safe.diff")
+    try:
+        with open(safe_diff_path, encoding="utf-8") as f:
+            safe_content = f.read()
+    except OSError:
+        return [f"{tid}: safe.diff unreadable"]
+
+    # 8: empty / whitespace-only safe.diff is rejected.
+    if not safe_content.strip():
+        errors.append(f"{tid}: safe.diff is empty")
+
+    untracked = mrp.get("untracked_file_hashes") or []
+    tracked_sha = str(mrp.get("tracked_diff_sha256") or "")
+
+    # 1: the emitted safe.diff must hash to the recorded safe_diff_sha256.
+    actual_safe_sha = _canon_sha256_text(safe_content)
+    if actual_safe_sha != str(mrp.get("safe_diff_sha256") or ""):
+        errors.append(f"{tid}: safe_diff_sha256 mismatch (safe.diff modified)")
+
+    # 4/2: provenance hash recomputed from tracked-diff hash + untracked entries.
+    recomputed_prov = _canon_provenance_sha256(tracked_sha, untracked)
+    if recomputed_prov != str(mrp.get("provenance_sha256") or ""):
+        errors.append(f"{tid}: provenance_sha256 does not match recomputed value")
+    if recomputed_prov != str(mrp.get("diff_sha256") or ""):
+        errors.append(f"{tid}: diff_sha256 does not match recomputed provenance")
+
+    # 2: tracked_diff_sha256 must equal the hash of the tracked portion of
+    #    safe.diff (safe.diff = tracked_diff + untracked headers).
+    suffix = _canon_safe_diff_text("", untracked)
+    if suffix and safe_content.endswith(suffix):
+        tracked_portion = safe_content[: len(safe_content) - len(suffix)]
+    elif not suffix:
+        tracked_portion = safe_content
+    else:
+        tracked_portion = None
+        errors.append(f"{tid}: safe.diff untracked headers do not match provenance")
+    if tracked_portion is not None:
+        if _canon_sha256_text(tracked_portion) != tracked_sha:
+            errors.append(f"{tid}: tracked_diff_sha256 does not match safe.diff content")
+
+    # 5/6: exact path equality across every changed-file view.
+    diff_paths = set(_canon_parse_safe_diff_paths(safe_content))
+    changed = {_mc_norm(f) for f in (mrp.get("changed_files") or [])}
+    scoped = {_mc_norm(f) for f in (mrp.get("task_scoped_files") or [])}
+    rsp = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "review_scope_packet.json"))
+    rsp_files = {_mc_norm(f) for f in (rsp.get("changed_files") or [])}
+    fjr_task = {_mc_norm(f) for f in ((fjr.get("per_task_changed_files") or {}).get(tid) or [])}
+    diff_paths_n = {_mc_norm(f) for f in diff_paths}
+    for label, s in (
+        ("provenance.changed_files", changed),
+        ("provenance.task_scoped_files", scoped),
+        ("review_scope.changed_files", rsp_files),
+        ("final_job_review.per_task_changed_files", fjr_task),
+    ):
+        if s != diff_paths_n:
+            errors.append(
+                f"{tid}: safe.diff paths != {label} "
+                f"(only_in_diff={sorted(diff_paths_n - s)} only_in_view={sorted(s - diff_paths_n)})"
+            )
+
+    # 7: each untracked entry — unique path, valid sha matching the content
+    #    proof, non-negative size, path within the task changed set.
+    proof_hashes = proof.get("file_hashes") or {}
+    proof_norm = {_mc_norm(k): v for k, v in proof_hashes.items()}
+    seen_paths: set[str] = set()
+    for uf in untracked:
+        p = _mc_norm(uf.get("path", ""))
+        sha = uf.get("sha256", "")
+        size = uf.get("size_bytes", -1)
+        if p in seen_paths:
+            errors.append(f"{tid}: untracked path {p!r} appears more than once")
+        seen_paths.add(p)
+        if not _is_sha256(sha):
+            errors.append(f"{tid}: untracked {p!r} has an invalid sha256")
+        elif p in proof_norm and proof_norm[p] != sha:
+            errors.append(f"{tid}: untracked {p!r} sha256 disagrees with content proof")
+        if not isinstance(size, int) or size < 0:
+            errors.append(f"{tid}: untracked {p!r} has a negative/invalid size")
+        if p not in changed:
+            errors.append(f"{tid}: untracked {p!r} is not in the task changed set")
+
+    return errors
+
+
+def validate_manual_completion(evidence_dir: str) -> list[str]:
+    """Strictly and independently validate a manual-only completion candidate.
+
+    Returns a list of human-readable errors; empty means authoritative. Every
+    condition below is checked independently so any single tampering (a flag, a
+    call count, a task id, a changed-file set, the changed-file union, a root
+    test exit code / failure count, a content-proof hash, the job id, a
+    provenance hash, or task overlap) invalidates the candidate.
+    """
+    errors: list[str] = []
+    manifest = _mc_read_json(evidence_dir, "manifest.json")
+    fjr = _mc_read_json(evidence_dir, "final_job_review.json")
+    proof = _mc_read_json(evidence_dir, "current_change_content_proof.json")
+    fv = _mc_read_json(evidence_dir, "final_verifier_report.json")
+    cp = _mc_read_json(evidence_dir, "change_provenance_gate.json")
+    vt = _mc_read_json(evidence_dir, "verification_tests.json")
+
+    package_job_id = str(manifest.get("job_id") or "")
+    planned_task_ids = [str(t) for t in (manifest.get("task_ids") or [])]
+    task_dirs = _mc_task_dirs(evidence_dir)
+
+    # 14 + planned-task coverage: package job id must equal the completion job id
+    # and every planned task must have exactly one task run.
+    fjr_job_id = str(fjr.get("job_id") or "")
+    if not package_job_id:
+        errors.append("manifest.json: job_id is empty")
+    if fjr_job_id != package_job_id:
+        errors.append(f"job_id mismatch: manifest={package_job_id!r} final_job_review={fjr_job_id!r}")
+    if planned_task_ids and sorted(task_dirs) != sorted(planned_task_ids):
+        errors.append(f"task runs {sorted(task_dirs)} != planned tasks {sorted(planned_task_ids)}")
+
+    # completion facts on the existing final job review
+    if fjr.get("completion_mode") != "manual_operator_repair":
+        errors.append("final_job_review.completion_mode != manual_operator_repair")
+    if fjr.get("human_final_reviewer_required") is not True:
+        errors.append("final_job_review.human_final_reviewer_required is not true")
+    if fjr.get("completion_provider_call_count", -1) != 0:
+        errors.append("final_job_review.completion_provider_call_count != 0")
+
+    # Finding 7: the linked prior-job summaries must match the linked ids exactly
+    # (an honest historical record, never a fabricated call count).
+    linked_ids = [str(x) for x in (fjr.get("linked_prior_job_ids") or [])]
+    summaries = fjr.get("linked_prior_job_summaries") or []
+    summary_ids = [str(s.get("job_id")) for s in summaries if isinstance(s, dict)]
+    if sorted(summary_ids) != sorted(linked_ids):
+        errors.append(
+            f"linked_prior_job_summaries ids {sorted(summary_ids)} != "
+            f"linked_prior_job_ids {sorted(linked_ids)}"
+        )
+    for s in summaries:
+        if not isinstance(s, dict):
+            continue
+        # provider_call_count may be null (unknown) but must be present.
+        if "provider_call_count" not in s:
+            errors.append(f"linked job {s.get('job_id')!r} summary missing provider_call_count")
+        if not s.get("status"):
+            errors.append(f"linked job {s.get('job_id')!r} summary missing status")
+
+    # per-task attestation validity + union of changed files
+    per_task_union: set[str] = set()
+    overlap_owner: dict[str, str] = {}
+    for tid in task_dirs:
+        rv = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "review.json"))
+        pe = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "provider_evidence.json"))
+        mrp = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "manual_repair_provenance.json"))
+        safe_diff = os.path.join(evidence_dir, "task_runs", tid, "safe.diff")
+
+        if str(rv.get("final_verdict") or rv.get("verdict") or "") != "operator_attested":
+            errors.append(f"{tid}: review verdict is not operator_attested")
+        if rv.get("human_final_reviewer_required") is not True:
+            errors.append(f"{tid}: review.human_final_reviewer_required is not true")
+
+        if pe.get("execution_mode") != "manual_operator_repair":
+            errors.append(f"{tid}: provider_evidence.execution_mode != manual_operator_repair")
+        if pe.get("provider_call_count", -1) != 0:
+            errors.append(f"{tid}: provider_evidence.provider_call_count != 0")
+        if pe.get("actual_provider_available") is True:
+            errors.append(f"{tid}: provider_evidence claims provider availability (provider-backed PASS)")
+
+        if mrp.get("manual_operator_repair") is not True:
+            errors.append(f"{tid}: provenance manual_operator_repair is not true")
+        if mrp.get("no_provider_calls") is not True:
+            errors.append(f"{tid}: provenance no_provider_calls is not true")
+        if str(mrp.get("job_id") or "") != package_job_id:
+            errors.append(f"{tid}: provenance job_id != package job id")
+        if str(mrp.get("task_id") or "") != tid:
+            errors.append(f"{tid}: provenance task_id mismatch")
+        if not str(mrp.get("note") or "").strip():
+            errors.append(f"{tid}: provenance note is empty")
+        for hf in ("provenance_sha256", "diff_sha256", "tracked_diff_sha256"):
+            if not _is_sha256(mrp.get(hf)):
+                errors.append(f"{tid}: provenance {hf} is not a valid sha256")
+        if not os.path.isfile(safe_diff):
+            errors.append(f"{tid}: safe.diff missing")
+
+        changed = [_mc_norm(f) for f in (mrp.get("changed_files") or [])]
+        if not changed:
+            errors.append(f"{tid}: provenance changed_files is empty")
+        for f in changed:
+            if f in overlap_owner:
+                errors.append(f"file {f!r} owned by both {overlap_owner[f]} and {tid} (overlap)")
+            else:
+                overlap_owner[f] = tid
+            per_task_union.add(f)
+
+        # ---- Finding 1: actually RECOMPUTE and verify every provenance hash,
+        #      the safe.diff content, its paths, and the untracked entries. ----
+        errors.extend(_verify_task_provenance_integrity(evidence_dir, tid, mrp, proof, fjr))
+
+        # ---- Finding 5: a task manifest may not claim evidence unavailable
+        #      without an explicit effective operator-attested completion state.
+        tm = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "manifest.json"))
+        if (tm.get("evidence_available") is not True
+                and tm.get("effective_status") != "operator_attested_complete"):
+            errors.append(
+                f"{tid}: task manifest shows evidence unavailable without an "
+                "effective operator-attested completion state"
+            )
+
+    # 7: union must exactly equal every authoritative changed-file view.
+    fjr_actual = {_mc_norm(f) for f in (fjr.get("actual_changed_files") or [])}
+    fjr_expected = {_mc_norm(f) for f in (fjr.get("expected_changed_files") or [])}
+    proof_files = {_mc_norm(f) for f in (proof.get("file_hashes") or {})}
+    fv_auth = {_mc_norm(f) for f in (fv.get("authoritative_changed_files") or [])}
+    cp_covered = {_mc_norm(f) for f in (cp.get("covered_files") or [])}
+    for label, s in (
+        ("final_job_review.actual_changed_files", fjr_actual),
+        ("final_job_review.expected_changed_files", fjr_expected),
+        ("current_change_content_proof.file_hashes", proof_files),
+        ("final_verifier.authoritative_changed_files", fv_auth),
+        ("change_provenance.covered_files", cp_covered),
+    ):
+        if s != per_task_union:
+            errors.append(
+                f"changed-file union mismatch vs {label}: "
+                f"only_in_union={sorted(per_task_union - s)} only_in_{label.split('.')[0]}={sorted(s - per_task_union)}"
+            )
+
+    # 8: root verification must exist, exit 0, >=1 passed, 0 failed.
+    if not vt:
+        errors.append("verification_tests.json missing")
+    else:
+        if vt.get("exit_code", -1) != 0:
+            errors.append(f"root verification exit_code != 0 ({vt.get('exit_code')})")
+        if int(vt.get("passed", 0) or 0) < 1:
+            errors.append("root verification passed < 1")
+        if int(vt.get("failed", 0) or 0) != 0:
+            errors.append(f"root verification failed != 0 ({vt.get('failed')})")
+
+    # 9-12: alignment / uncovered / hash mismatches / missing proofs (final verifier + gates).
+    if fv.get("file_set_alignment_status") not in ("PASS", "PASS_WITH_RISKS"):
+        errors.append(f"file_set_alignment_status={fv.get('file_set_alignment_status')}")
+    if fv.get("review_subject_uncovered_files"):
+        errors.append(f"uncovered files: {fv.get('review_subject_uncovered_files')}")
+    if fv.get("content_hash_mismatches"):
+        errors.append(f"final verifier content hash mismatches: {fv.get('content_hash_mismatches')}")
+    if cp.get("hash_mismatches"):
+        errors.append(f"change provenance hash mismatches: {cp.get('hash_mismatches')}")
+    if cp.get("uncovered_files"):
+        errors.append(f"change provenance uncovered files: {cp.get('uncovered_files')}")
+    if not proof_files:
+        errors.append("current_change_content_proof.json has no file hashes (missing proofs)")
+
+    return errors
 
 
 def _read_evidence_gate(evidence_dir: str, filename: str) -> dict:
@@ -293,7 +643,7 @@ def _build_alignment(
     }
     _EXCLUDE_SUBS = (
         "remedy-review-", "remedy-job-evidence", "run_transcript",
-        ".coverage", "htmlcov/",
+        ".coverage", "htmlcov/", ".review_zip_manifest",
     )
     _EXCLUDE_SUFFS = (
         ".pyc", ".pyo", ".egg", ".whl", ".zip", ".tar",
@@ -370,16 +720,45 @@ def validate_evidence_candidate(evidence_dir: str) -> dict:
     missing_root: list[str] = []
     missing_task: dict[str, list[str]] = {}
 
+    manual_completion = _is_manual_completion(evidence_dir)
+    manual_completion_errors: list[str] = []
+    not_applicable_root: list[str] = []
+
+    if manual_completion:
+        # Strict, independent validation of the manual-completion contract.
+        # Any mismatch invalidates the candidate and blocks authoritativeness.
+        manual_completion_errors = validate_manual_completion(evidence_dir)
+        errors.extend(manual_completion_errors)
+
     for art in REQUIRED_ROOT_ARTIFACTS:
-        if not os.path.isfile(os.path.join(evidence_dir, art)):
-            missing_root.append(art)
-            errors.append(f"missing root artifact: {art}")
+        if os.path.isfile(os.path.join(evidence_dir, art)):
+            continue
+        if manual_completion and art in MANUAL_COMPLETION_EXEMPT_ROOT_ARTIFACTS:
+            # A deterministic manual-only completion legitimately has no
+            # provider-flow root artifact — mark not-applicable, never missing.
+            not_applicable_root.append(art)
+            continue
+        missing_root.append(art)
+        errors.append(f"missing root artifact: {art}")
 
     jf_path = os.path.join(evidence_dir, "job_flow.json")
     job_id = ""
     final_audit_status = ""
     missing_obs: list[str] = []
     target_mutation_detected = False
+
+    if manual_completion and not os.path.isfile(jf_path):
+        # Derive identity/verdict from the existing final job review + final
+        # verifier, without fabricating a provider job_flow.json.
+        fjr = _mc_read_json(evidence_dir, "final_job_review.json")
+        manifest_obj = _mc_read_json(evidence_dir, "manifest.json")
+        job_id = str(fjr.get("job_id") or manifest_obj.get("job_id") or "")
+        if not job_id:
+            errors.append("manual completion: job_id could not be derived")
+        fv = _read_evidence_gate(evidence_dir, "final_verifier_report.json")
+        final_audit_status = str(fv.get("verdict", "") or "")
+        if not final_audit_status:
+            errors.append("final_verifier_report.json: verdict missing")
 
     if os.path.isfile(jf_path):
         try:
@@ -449,14 +828,21 @@ def validate_evidence_candidate(evidence_dir: str) -> dict:
     if task_run_count == 0:
         errors.append("no task runs found")
 
+    def _root_status(art: str) -> str:
+        if art in not_applicable_root:
+            return "not_applicable_manual_completion"
+        return "present" if art not in missing_root else "absent"
+
     is_valid = len(errors) == 0
 
     return {
         "is_valid_current_run": is_valid,
         "validation_errors": errors,
+        "manual_completion": manual_completion,
+        "manual_completion_errors": manual_completion_errors,
+        "not_applicable_root_artifacts": not_applicable_root,
         "required_root_artifacts": {
-            art: "present" if art not in missing_root else "absent"
-            for art in REQUIRED_ROOT_ARTIFACTS
+            art: _root_status(art) for art in REQUIRED_ROOT_ARTIFACTS
         },
         "required_task_artifacts": missing_task,
         "task_run_count": task_run_count,

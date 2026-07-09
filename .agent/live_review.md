@@ -1,135 +1,54 @@
-# Live Review — Steps 5741-5820: Sticky Repair Loop + Final Job Review + Token-Cost Policy
+# Live Review — Steps 5821-5900 — F003 Accepted
 
-Reviewer: parallel reviewer (independent; owns verdict).
-Builder must NOT write reviewer verdicts. Builder must NOT self-merge.
-Builder must NOT mark findings as resolved.
-Timestamp: 2026-07-01
+Reviewer: external final reviewer (independent; owns verdict).
 
-## Verdict (reviewer-owned)
-*(pending reviewer)*
+## Verdict
 
-## Builder Handoff — R1 (Steps 5741-5820)
+**F003 — PASS_WITH_RISKS, ACCEPTED.** (F001 PASS; F002 PASS_WITH_RISKS, accepted.)
+F003 is complete and ready for commit/push. No blocking findings remain.
 
-### Source Root
-`/home/decodeux/Repos/remedy`
+## Branch / Base
 
-### Branch / HEAD
-- **Branch**: `feature/fresh-evidence-commit-gate`
-- **HEAD SHA** (before run): `ae029e4e743b963f85f168e95ea32150e8c8d4d6`
+- Branch: `feature/f001-adaptive-provider-timeouts`
+- Base/HEAD before commit: `9f691f2a9fc35df1cb1f53f40408a0db9005f4f2`
 
-### Package Goal
-Steps 5741-5820: Sticky Builder/Reviewer Repair Loop v1 + Final Job Review v1 + Token-Cost Policy Evidence
+## Accepted F003 evidence
 
-### Self-Run
-- **Goal file**: `.agent/self_run_goal_5741_5820.md`
-- **Evidence dir**: `remedy-job-evidence-selfrun-5741-5820-r3`
-- **Job ID**: `743f20d7d27a4474`
-- **Command**: `remedy do job-flow --job-file .agent/self_run_goal_5741_5820.md --repo . --builder claude-cli --reviewer claude-cli --builder-model claude-opus-4-20250514 --reviewer-model claude-opus-4-20250514 --claude-cli-write-mode allowed-tools --max-rounds 3 --repair-rounds 2 --timeout-sec 300 --out remedy-job-evidence-selfrun-5741-5820-r3`
-- **T001-T006**: All passed reviewer (T006 took 1 repair round)
-- **T007**: BLOCKED (provider_unavailable — Claude CLI builder timed out)
-- **T008**: SKIPPED (dependent on T007)
-- **Operator repair**: T007 and T008 implemented manually since Claude CLI failed
+- Implementation bundle: `remedy-review-20260708-211448-READY_FOR_REVIEW.zip`
+- Manual completion job: `4042c805f69e4949` (22 source/test files, 4 exact
+  non-overlapping task scopes, zero completion-path provider calls)
+- Runtime actuals proof: job `231d28005af344a1` / run `2ece61689cc046c3`
+  (evidence dir `remedy-job-evidence-F003-runtime-actuals-20260708-211641`;
+  supplemental upload `remedy-review-20260709-180951-BLOCKED_EVIDENCE.zip`)
 
-### Task Count / IDs
-- **Task count**: 8
-- **Task IDs**: T001, T002, T003, T004, T005, T006, T007, T008
+## Runtime totals (externally verified)
 
-### Task Breakdown
+provider calls 2 · actual calls 2 · cost calls 2 · actual coverage complete ·
+cost coverage complete · 11,510 input + 453 output = 11,963 actual tokens ·
+USD 0.153934 · measurement_source `provider_actuals` · confidence `high` ·
+CLI `2.1.204 (Claude Code)` · configured builder/reviewer `sonnet` ·
+actual models `null`, verified `false` · target repo mutation `false`.
 
-| Task | Description | Method | Tests |
-|------|-------------|--------|-------|
-| T001 | Evidence execution mode taxonomy (new module) | Self-run | 22 |
-| T002 | Sticky per-task actor binding (new module) | Self-run | 20 |
-| T003 | Final job-level review (new module) | Self-run | 16 |
-| T004 | Token-cost policy evidence (new module) | Self-run | 12 |
-| T005 | Execution config evidence honesty (modify) | Self-run | 7 |
-| T006 | Final verifier integration (modify) | Self-run + 1 repair | 65 |
-| T007 | Review bundle and evidence consistency (modify) | Operator repair | 9 |
-| T008 | Pingpong loop and job integration (modify + new) | Operator repair | 10 |
+The supplemental runtime ZIP's global gates are blocked only because it is a tiny
+scratch-repository validation and not the Remedy review subject. It is not to be
+repaired, renamed, or repackaged.
 
-### Execution Config
-- **Configured builder model**: `claude-opus-4-20250514`
-- **Configured reviewer model**: `claude-opus-4-20250514`
-- **Write mode**: `allowed-tools`
-- **Max rounds**: 3
-- **Repair rounds**: 2
+## Test baselines at acceptance
 
-### Gate Verdicts
+- 284 passed · 291 passed · 25 passed (all with normal pytest summaries)
+- compileall, `bash -n scripts/make_review_zip.sh`, `git diff --check` clean
 
-| Gate | Verdict |
-|------|---------|
-| `change_provenance_gate` | `PASS` (33 files covered, 0 uncovered) |
-| `fresh_evidence_gate` | `PASS_WITH_RISKS` |
+## Deferred (non-blocking, recorded in `.agent/decisions.md`)
 
-### Test Results
+1. Runtime `task_execution_evidence.json` leaves `actual_provider_available` and
+   `actual_token_usage_available` false despite valid actuals elsewhere.
+2. Runtime `prompt_trace_summary.json` reports some role/model metadata unknown
+   although the raw prompt trace contains it.
 
-| Check | Result |
-|-------|--------|
-| `python3 -m py_compile` (14 source files) | OK |
-| `bash -n scripts/make_review_zip.sh` | OK |
-| Focused pytest (19 test files, 560 tests) | **560 passed, 0 failed** |
+Neither affects the accepted token/cost totals. Hardening candidates for F140/F163.
+F003 is not reopened for them.
 
-### Changed Files (33 source/test)
+## Status
 
-**New (12):**
-1. `packages/orchestration/evidence_mode.py`
-2. `packages/orchestration/task_actor_binding.py`
-3. `packages/orchestration/final_job_review.py`
-4. `packages/orchestration/token_cost_policy.py`
-5. `tests/orchestration/test_evidence_mode.py`
-6. `tests/orchestration/test_task_actor_binding.py`
-7. `tests/orchestration/test_final_job_review.py`
-8. `tests/orchestration/test_token_cost_policy.py`
-9. `tests/orchestration/test_pingpong_integration.py`
-
-**Modified (this scope — 12):**
-10. `packages/orchestration/execution_config_evidence.py`
-11. `packages/orchestration/final_verifier.py`
-12. `packages/orchestration/job_evidence.py`
-13. `packages/orchestration/pingpong_loop.py`
-14. `packages/orchestration/pingpong_job.py`
-15. `apps/cli/commands/do_cmd.py`
-16. `scripts/build_review_manifest.py`
-17. `tests/orchestration/test_execution_config_evidence.py`
-18. `tests/orchestration/test_final_verifier.py`
-19. `tests/orchestration/test_job_evidence.py`
-20. `tests/test_do_job_flow.py`
-
-**Carry-forward from prior scope (12):**
-21. `packages/orchestration/fresh_evidence_gate.py`
-22. `packages/orchestration/token_truth.py`
-23. `packages/orchestration/role_config.py`
-24. `packages/orchestration/task_plan_evidence.py`
-25. `packages/orchestration/pingpong_provider.py`
-26. `packages/orchestration/prompt_trace.py`
-27. `apps/cli/command_catalog.py`
-28. `apps/cli/grouped.py`
-29. `tests/orchestration/test_fresh_evidence_gate.py`
-30. `tests/orchestration/test_token_truth.py`
-31. `tests/orchestration/test_role_config.py`
-32. `tests/orchestration/test_task_plan_evidence.py`
-33. `tests/orchestration/test_provider_mode.py`
-
-### Evidence Directory
-`remedy-job-evidence-selfrun-5741-5820-r3`
-
-### Open Findings
-None. 0 unresolved.
-
-### Generated Zip
-`remedy-review-20260701-234011-BLOCKED_EVIDENCE.zip`
-
-Package status: `BLOCKED_EVIDENCE` — T007/T008 evidence incomplete because builder timed out and operator repair was needed. Code is complete and all 560 tests pass. Bundle integrity: PASS. Alignment: PASS. Change provenance: PASS (33 files covered).
-
-### Not Performed
-- No commit
-- No push
-- No merge
-
-### If Approved
-Stage only source/test files listed above (items 1-20 for this scope, 21-33 for carry-forward). Commit message: `feat: add sticky repair review loop evidence`
-
----
-
-## Previous Scope (5681-5740) — Approved but not yet committed
-See prior `live_review.md` content at commit ae029e4.
+F003 ready for commit/push into PR #123. Next feature after merge: **F004 — Raw
+stream evidence** (built conventionally, no Remedy self-build).
