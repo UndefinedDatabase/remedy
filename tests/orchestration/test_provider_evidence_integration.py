@@ -798,3 +798,394 @@ class TestCostCompleteness:
         assert agg["cost_coverage_reason"] == "missing_actuals_and_provider_cost"
 
 
+class TestProviderCallCountScenarios:
+    """F003 findings Fix Block 2: provider_call_count counts every real
+    provider attempt (initial, retries, parse retries, repair rounds)."""
+
+    def _truth_from_result(self, base: Path, result: PingPongResult,
+                           *, total_prompts: int) -> dict:
+        d = base / "task_runs" / "T001"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "token_accounting.json").write_text(json.dumps({
+            "kind": "actual",
+            "builder_prompt_tokens_estimated": 100,
+            "reviewer_prompt_tokens_estimated": 50,
+            "repair_prompt_tokens_estimated": 0,
+        }))
+        (d / "provider_evidence.json").write_text(
+            json.dumps(_build_provider_evidence(result)))
+        (base / "prompt_trace_summary.json").write_text(json.dumps({
+            "total_prompts": total_prompts,
+        }))
+        return build_token_truth(str(base))
+
+    def test_builder_reviewer_parse_retry(self, tmp_path):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01),
+            _attempt("reviewer", input_tokens=200, output_tokens=20, cost=0.02),
+            _attempt("reviewer", input_tokens=50, output_tokens=5, cost=0.005,
+                     is_retry=True, is_parse_retry=True),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg["provider_call_count"] == 3
+        assert agg["actual_call_count"] == 3
+        truth = self._truth_from_result(tmp_path, result, total_prompts=2)
+        assert truth["provider_call_count"] == 3
+        assert truth["prompt_trace_count"] == 2
+
+    def test_builder_transport_retry(self, tmp_path):
+        result = _result_from_attempts([
+            _attempt("builder", error="timeout", missing_reason="timeout"),
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01,
+                     is_retry=True),
+            _attempt("reviewer", input_tokens=200, output_tokens=20, cost=0.02),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg["provider_call_count"] == 3
+        assert agg["actual_call_count"] == 2
+        assert agg["actual_call_count"] <= agg["provider_call_count"]
+        truth = self._truth_from_result(tmp_path, result, total_prompts=2)
+        assert truth["provider_call_count"] == 3
+
+    def test_reviewer_transport_retry(self, tmp_path):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01),
+            _attempt("reviewer", error="exited nonzero", missing_reason="nonzero_exit"),
+            _attempt("reviewer", input_tokens=200, output_tokens=20, cost=0.02,
+                     is_retry=True),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg["provider_call_count"] == 3
+        assert agg["actual_call_count"] == 2
+        truth = self._truth_from_result(tmp_path, result, total_prompts=2)
+        assert truth["provider_call_count"] == 3
+
+    def test_repair_builder_and_repair_reviewer(self, tmp_path):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01),
+            _attempt("reviewer", input_tokens=200, output_tokens=20, cost=0.02),
+            _attempt("builder", input_tokens=150, output_tokens=15, cost=0.015),
+            _attempt("reviewer", input_tokens=250, output_tokens=25, cost=0.025),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg["provider_call_count"] == 4
+        assert agg["actual_call_count"] == 4
+        truth = self._truth_from_result(tmp_path, result, total_prompts=4)
+        assert truth["provider_call_count"] == 4
+
+    def test_fake_builder_real_reviewer_count(self, tmp_path):
+        result = _result_from_attempts([
+            _attempt("builder", provider="fake"),
+            _attempt("reviewer", input_tokens=300, output_tokens=30, cost=0.003),
+        ], builder_provider="fake")
+        agg = _aggregate_usage_actuals(result)
+        assert agg["provider_call_count"] == 1
+        assert agg["actual_call_count"] == 1
+        truth = self._truth_from_result(tmp_path, result, total_prompts=2)
+        assert truth["provider_call_count"] == 1
+
+    def test_real_builder_fake_reviewer_count(self, tmp_path):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=500, output_tokens=50, cost=0.005),
+            _attempt("reviewer", provider="fake"),
+        ], reviewer_provider="fake")
+        agg = _aggregate_usage_actuals(result)
+        assert agg["provider_call_count"] == 1
+        assert agg["actual_call_count"] == 1
+        truth = self._truth_from_result(tmp_path, result, total_prompts=2)
+        assert truth["provider_call_count"] == 1
+
+
+class TestRoleActualTotals:
+    """F003 findings Fix Block 3: role-specific actual totals from every
+    recorded real ProviderAttempt, not only the final stored round result."""
+
+    def test_parse_retry_both_reviewer_usages_counted(self):
+        """First reviewer call malformed with valid usage; parse retry succeeds
+        with additional usage. Both reviewer usages must be present."""
+        result = PingPongResult(
+            builder_provider="claude-cli",
+            reviewer_provider="claude-cli",
+            rounds=[PingPongRound(
+                round_number=1,
+                builder_output=BuilderOutput(
+                    provider="claude-cli",
+                    usage_actuals={"input_tokens": 1000, "output_tokens": 100,
+                                   "total_cost_usd": 0.01},
+                ),
+                # Only the retry output is stored on the round.
+                reviewer_output=ReviewerOutput(
+                    provider="claude-cli", verdict="pass",
+                    usage_actuals={"input_tokens": 400, "output_tokens": 40,
+                                   "total_cost_usd": 0.004},
+                    parse_retried=True, parse_retry_recovered=True,
+                ),
+            )],
+            provider_attempts=[
+                _attempt("builder", input_tokens=1000, output_tokens=100, cost=0.01),
+                _attempt("reviewer", input_tokens=800, output_tokens=80, cost=0.008),
+                _attempt("reviewer", input_tokens=400, output_tokens=40, cost=0.004,
+                         is_retry=True, is_parse_retry=True),
+            ],
+        )
+        acc = _build_token_accounting(result)
+        assert acc["builder_tokens_actual"] == 1000 + 100
+        # Both reviewer usages: malformed-but-measured first call + parse retry.
+        assert acc["reviewer_tokens_actual"] == (800 + 80) + (400 + 40)
+        agg = _aggregate_usage_actuals(result)
+        assert (acc["builder_tokens_actual"] + acc["reviewer_tokens_actual"]
+                == agg["total_tokens"])
+
+    def test_role_totals_include_retries_and_repairs(self):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01),
+            _attempt("builder", input_tokens=120, output_tokens=12, cost=0.012,
+                     is_retry=True),
+            _attempt("reviewer", input_tokens=200, output_tokens=20, cost=0.02),
+            _attempt("builder", input_tokens=150, output_tokens=15, cost=0.015),
+            _attempt("reviewer", input_tokens=250, output_tokens=25, cost=0.025),
+        ])
+        acc = _build_token_accounting(result)
+        assert acc["builder_tokens_actual"] == (100 + 10) + (120 + 12) + (150 + 15)
+        assert acc["reviewer_tokens_actual"] == (200 + 20) + (250 + 25)
+        agg = _aggregate_usage_actuals(result)
+        assert (acc["builder_tokens_actual"] + acc["reviewer_tokens_actual"]
+                == agg["total_tokens"])
+
+    def test_cache_tokens_reconcile_by_role(self):
+        result = _result_from_attempts([
+            _attempt("builder", input_tokens=100, output_tokens=10, cost=0.01,
+                     cache_read=500, cache_creation=200),
+            _attempt("reviewer", input_tokens=200, output_tokens=20, cost=0.02,
+                     cache_read=300, cache_creation=100),
+            _attempt("reviewer", input_tokens=50, output_tokens=5, cost=0.005,
+                     cache_read=30, cache_creation=10, is_retry=True,
+                     is_parse_retry=True),
+        ])
+        acc = _build_token_accounting(result)
+        agg = _aggregate_usage_actuals(result)
+        assert acc["builder_cache_read_tokens_actual"] == 500
+        assert acc["builder_cache_creation_tokens_actual"] == 200
+        assert acc["reviewer_cache_read_tokens_actual"] == 300 + 30
+        assert acc["reviewer_cache_creation_tokens_actual"] == 100 + 10
+        assert (acc["builder_cache_read_tokens_actual"]
+                + acc["reviewer_cache_read_tokens_actual"] == agg["cache_read"])
+        assert (acc["builder_cache_creation_tokens_actual"]
+                + acc["reviewer_cache_creation_tokens_actual"]
+                == agg["cache_creation"])
+
+    def test_manual_repair_never_counted_as_usage(self):
+        result = PingPongResult(
+            builder_provider="operator",
+            reviewer_provider="operator",
+            rounds=[PingPongRound(round_number=1)],
+            provider_attempts=[
+                # Stray attempt with usage must not count under manual mode.
+                _attempt("builder", provider="operator",
+                         input_tokens=999, output_tokens=99, cost=1.0),
+            ],
+            execution_mode="manual_operator_repair",
+        )
+        acc = _build_token_accounting(result)
+        assert acc["actual_tokens_available"] is False
+        assert "builder_tokens_actual" not in acc
+        assert acc["parse_source"] == "manual"
+        ev = _build_provider_evidence(result)
+        assert ev["actual_available"] is False
+
+    def test_final_attempt_not_double_counted(self):
+        """The round-stored reviewer output equals the last attempt; totals come
+        from attempts only, so the final call appears exactly once."""
+        final_ua = {"input_tokens": 400, "output_tokens": 40,
+                    "total_cost_usd": 0.004}
+        result = PingPongResult(
+            builder_provider="claude-cli",
+            reviewer_provider="claude-cli",
+            rounds=[PingPongRound(
+                round_number=1,
+                reviewer_output=ReviewerOutput(
+                    provider="claude-cli", verdict="pass", usage_actuals=final_ua,
+                ),
+            )],
+            provider_attempts=[
+                _attempt("reviewer", input_tokens=400, output_tokens=40, cost=0.004),
+            ],
+        )
+        acc = _build_token_accounting(result)
+        assert acc["reviewer_tokens_actual"] == 440
+        agg = _aggregate_usage_actuals(result)
+        assert agg["provider_call_count"] == 1
+        assert agg["total_tokens"] == 440
+
+
+class TestNoActualProviderAttemptAccounting:
+    """F003 findings fix: a real provider attempt that exposes no actuals — a
+    provider failure or usage/session-limit — must remain counted. The record is
+    returned (never collapsed to None) whenever at least one real provider
+    attempt exists; actual_available is separately false; provider coverage and
+    the exact deduplicated missing reasons are preserved; a partial or absent
+    cost is never labeled as the total; and token_truth consumes the real
+    attempt counts instead of the one-call-per-task fallback."""
+
+    def _seed_truth(self, base: Path, result: PingPongResult,
+                    *, total_prompts: int) -> dict:
+        d = base / "task_runs" / "T001"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "token_accounting.json").write_text(json.dumps({
+            "kind": "estimated",
+            "builder_prompt_tokens_estimated": 100,
+            "reviewer_prompt_tokens_estimated": 50,
+            "repair_prompt_tokens_estimated": 0,
+        }))
+        (d / "provider_evidence.json").write_text(
+            json.dumps(_build_provider_evidence(result)))
+        (base / "prompt_trace_summary.json").write_text(json.dumps({
+            "total_prompts": total_prompts,
+        }))
+        return build_token_truth(str(base))
+
+    def test_two_real_failed_attempts_no_actuals(self, tmp_path):
+        """Case 1: initial builder + builder retry, both failed with no actuals.
+        provider_call_count stays 2; token_truth must not fall back to 1."""
+        result = _result_from_attempts([
+            _attempt("builder", missing_reason="usage_limit_reached"),
+            _attempt("builder", missing_reason="usage_limit_reached", is_retry=True),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["actual_available"] is False
+        assert agg["provider_call_count"] == 2
+        assert agg["actual_call_count"] == 0
+        assert agg["cost_call_count"] == 0
+        assert agg["total_cost_usd"] is None
+        assert agg["actual_missing_reasons"] == ["usage_limit_reached"]
+        acc = _build_token_accounting(result)
+        assert acc["kind"] == "estimated"
+        assert acc["actual_tokens_available"] is False
+        assert acc["measurement_confidence"] == "low"
+        assert acc["provider_call_count"] == 2
+        assert acc["actual_call_count"] == 0
+        assert acc["parse_source"] == "heuristic_fallback"
+        truth = self._seed_truth(tmp_path, result, total_prompts=1)
+        # The authoritative count is the real attempt count (2), never the
+        # one-provider-call-per-task fallback that would report 1.
+        assert truth["provider_call_count"] == 2
+        assert truth["actual_call_count"] == 0
+        assert truth["actual_available"] is False
+
+    def test_initial_failed_then_successful_retry(self):
+        """Case 2: first call fails with no actuals, retry succeeds with actuals.
+        Both counted; actual_available true but coverage incomplete."""
+        result = _result_from_attempts([
+            _attempt("builder", missing_reason="timeout"),
+            _attempt("builder", input_tokens=500, output_tokens=50, cost=0.005,
+                     is_retry=True),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["actual_available"] is True
+        assert agg["provider_call_count"] == 2
+        assert agg["actual_call_count"] == 1
+        assert agg["actual_coverage_complete"] is False
+        # Partial coverage: the single measured cost is never the job total.
+        assert agg["total_cost_usd"] is None
+        assert agg["cost_coverage_reason"] == "missing_actuals"
+        assert agg["actual_missing_reasons"] == ["timeout"]
+        ev = _build_provider_evidence(result)
+        assert ev["actual_available"] is True
+        assert ev["provider_call_count"] == 2
+        assert ev["actual_call_count"] == 1
+        assert ev["total_cost_usd"] is None
+
+    def test_specific_missing_reason_propagated(self):
+        """Case 3: a specific reason is preserved verbatim, never collapsed to
+        the generic 'provider_actuals_unavailable'."""
+        result = _result_from_attempts([
+            _attempt("builder", missing_reason="usage_limit_reached"),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["actual_missing_reasons"] == ["usage_limit_reached"]
+        assert "provider_actuals_unavailable" not in agg["actual_missing_reasons"]
+        ev = _build_provider_evidence(result)
+        assert ev["actual_missing_reasons"] == ["usage_limit_reached"]
+
+    def test_multiple_distinct_missing_reasons_deduped(self):
+        """Case 4: distinct reasons preserved and deduplicated in order."""
+        result = _result_from_attempts([
+            _attempt("builder", missing_reason="timeout"),
+            _attempt("reviewer", missing_reason="parse_failed"),
+            _attempt("reviewer", missing_reason="timeout", is_retry=True),
+        ])
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["provider_call_count"] == 3
+        assert agg["actual_call_count"] == 0
+        assert agg["actual_missing_reasons"] == ["timeout", "parse_failed"]
+
+    def test_fake_builder_failed_real_reviewer(self):
+        """Case 5: fake builder is not a real call; a failed real reviewer is
+        counted even though it exposes no actuals."""
+        result = _result_from_attempts([
+            _attempt("builder", provider="fake"),
+            _attempt("reviewer", missing_reason="nonzero_exit"),
+        ], builder_provider="fake")
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["actual_available"] is False
+        assert agg["provider_call_count"] == 1
+        assert agg["actual_call_count"] == 0
+        assert agg["actual_missing_reasons"] == ["nonzero_exit"]
+        ev = _build_provider_evidence(result)
+        assert ev["actual_available"] is False
+        assert ev["provider_call_count"] == 1
+
+    def test_failed_real_builder_fake_reviewer(self):
+        """Case 6: symmetric — failed real builder counted, fake reviewer not."""
+        result = _result_from_attempts([
+            _attempt("builder", missing_reason="empty_input"),
+            _attempt("reviewer", provider="fake"),
+        ], reviewer_provider="fake")
+        agg = _aggregate_usage_actuals(result)
+        assert agg is not None
+        assert agg["actual_available"] is False
+        assert agg["provider_call_count"] == 1
+        assert agg["actual_call_count"] == 0
+        assert agg["actual_missing_reasons"] == ["empty_input"]
+
+    def test_no_real_provider_calls_returns_none(self):
+        """Case 7: every attempt fake — no real provider call at all — so the
+        aggregate is None and evidence stays honestly estimated."""
+        result = _result_from_attempts([
+            _attempt("builder", provider="fake"),
+            _attempt("reviewer", provider="fake"),
+        ], builder_provider="fake", reviewer_provider="fake")
+        assert _aggregate_usage_actuals(result) is None
+        ev = _build_provider_evidence(result)
+        assert ev["actual_available"] is False
+        assert "provider_call_count" not in ev
+        acc = _build_token_accounting(result)
+        assert acc["actual_tokens_available"] is False
+        assert acc["measurement_confidence"] == "low"
+
+    def test_manual_operator_repair_not_counted(self):
+        """Case 8: manual operator repair is never provider usage; a stray
+        attempt with usage must not be counted."""
+        result = PingPongResult(
+            builder_provider="operator",
+            reviewer_provider="operator",
+            rounds=[PingPongRound(round_number=1)],
+            provider_attempts=[
+                _attempt("builder", provider="operator",
+                         input_tokens=999, output_tokens=99, cost=1.0),
+            ],
+            execution_mode="manual_operator_repair",
+        )
+        acc = _build_token_accounting(result)
+        assert acc["actual_tokens_available"] is False
+        assert acc["parse_source"] == "manual"
+        assert "provider_call_count" not in acc
+        ev = _build_provider_evidence(result)
+        assert ev["actual_available"] is False
+        assert ev["parse_source"] == "manual"
+        assert "provider_call_count" not in ev
