@@ -244,6 +244,7 @@ fi
 
 TMP="$(mktemp)"
 MANIFEST=".review_zip_manifest.json"
+rm -f "$MANIFEST"
 trap 'rm -f "$TMP" "$MANIFEST"' EXIT
 
 # --- Build file list: repo files (excluding evidence dirs and junk) ---
