@@ -59,6 +59,10 @@ class ProviderAttempt:
     is_retry: bool = False
     is_parse_retry: bool = False
     error: str = ""
+    # F004: which per-call stream directory this attempt produced (empty when
+    # stream evidence is off, or for fake/manual providers which never stream).
+    stream_call_id: str = ""
+    stream_artifact_refs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -1603,6 +1607,19 @@ def _apply_fake_builder_changes(
 # F001: Retry wrapper for provider calls
 # ---------------------------------------------------------------------------
 
+def _begin_stream_call(provider: Any, round_no: int, kind: str = "attempt") -> None:
+    """Tell a stream-capable provider which round/kind its next call belongs to.
+
+    A no-op for providers without stream evidence (fake, manual, JSON-mode).
+    """
+    fn = getattr(provider, "begin_stream_call", None)
+    if callable(fn):
+        try:
+            fn(round_no, kind)
+        except Exception:
+            pass
+
+
 def _record_attempt(
     result: PingPongResult,
     out: Any,
@@ -1621,6 +1638,8 @@ def _record_attempt(
         is_retry=is_retry,
         is_parse_retry=is_parse_retry,
         error=getattr(out, "error", ""),
+        stream_call_id=getattr(out, "stream_call_id", "") or "",
+        stream_artifact_refs=list(getattr(out, "stream_artifact_refs", []) or []),
     ))
 
 
@@ -1643,6 +1662,12 @@ def _call_with_retry(
     _record_attempt(result, out, role, provider)
     for attempt in range(MAX_RETRIES):
         if not out.error:
+            return out
+
+        # A reached stream-evidence cap is a deliberate, honest termination —
+        # not a transport failure. It must never be retried like a timeout or a
+        # non-zero exit, and it must not be treated as a successful call.
+        if getattr(out, "stream_cap_reached", False):
             return out
 
         is_timeout = "timeout" in out.error.lower() or "TimeoutExpired" in out.error
@@ -1693,6 +1718,8 @@ def run_pingpong(
     test_command: str = "",
     keep_staging: bool = False,
     claude_cli_write_mode: str = "none",
+    stream_evidence: bool = False,
+    stream_evidence_dir: str | None = None,
     task_input: TaskInput | None = None,
     scope_data: dict[str, Any] | None = None,
     scope_validation: Any | None = None,
@@ -1775,6 +1802,12 @@ def run_pingpong(
     # --- Target snapshot BEFORE anything runs ---
     target_snap = _snapshot_target(original)
 
+    # Stream evidence must land somewhere. A caller that opts in without naming a
+    # directory (``do run``) gets this run's own directory, so the flag can never
+    # be silently accepted and then dropped.
+    if stream_evidence and not stream_evidence_dir:
+        stream_evidence_dir = str(_pingpong_runs_dir() / result.run_id)
+
     # Create staging BEFORE providers (so Builder cwd can be set)
     staging_result = _create_staging(repo_path, result.run_id)
     staging = staging_result.staging_path
@@ -1785,6 +1818,8 @@ def run_pingpong(
             builder_provider = _create_provider_with_cwd(
                 builder_name, role="builder", staging_dir=str(staging),
                 write_mode=claude_cli_write_mode, model=builder_model,
+                stream_evidence=stream_evidence,
+                stream_evidence_dir=stream_evidence_dir,
             )
         except RuntimeError as exc:
             result.final_status = "provider_unavailable"
@@ -1801,6 +1836,8 @@ def run_pingpong(
             reviewer_provider = _create_provider_with_cwd(
                 reviewer_name, role="reviewer", staging_dir=str(staging),
                 model=reviewer_model,
+                stream_evidence=stream_evidence,
+                stream_evidence_dir=stream_evidence_dir,
             )
         except RuntimeError as exc:
             result.final_status = "provider_unavailable"
@@ -1896,6 +1933,7 @@ def run_pingpong(
                 configured_model=builder_model,
             ))
 
+            _begin_stream_call(builder_provider, round_num, "attempt")
             builder_out = _call_with_retry(
                 lambda ts=builder_timeout: builder_provider.build(
                     builder_prompt,
@@ -2062,6 +2100,7 @@ def run_pingpong(
             # Snapshot staging before reviewer (to detect reviewer mutation)
             staging_snap_before = _find_staging_changes(staging, original)
 
+            _begin_stream_call(reviewer_provider, round_num, "attempt")
             reviewer_out = _call_with_retry(
                 lambda ts=reviewer_timeout: reviewer_provider.review(
                     reviewer_prompt,
@@ -2081,6 +2120,7 @@ def run_pingpong(
                 retry_prompt = _REVIEWER_RETRY_PROMPT.format(
                     excerpt=reviewer_out.raw_text[:500],
                 )
+                _begin_stream_call(reviewer_provider, round_num, "parse-retry")
                 retry_out = reviewer_provider.review(
                     retry_prompt,
                     timeout_sec=reviewer_timeout,
@@ -2317,6 +2357,8 @@ def _create_provider_with_cwd(
     staging_dir: str | None,
     write_mode: str = "none",
     model: str = "",
+    stream_evidence: bool = False,
+    stream_evidence_dir: str | None = None,
 ) -> PingPongProvider:
     """Create provider with role-appropriate cwd and write mode.
 
@@ -2324,11 +2366,27 @@ def _create_provider_with_cwd(
     Reviewer claude-cli gets cwd=staging_dir and write_mode="none": it stays
     read-only, but its cwd is pinned to the disposable staging dir so stray
     cwd writes cannot pollute the repo root.
+
+    ``stream_evidence`` is the opt-in F004 mode; when off the provider keeps the
+    accepted F003 JSON behaviour. Each role writes its stream artifacts into its
+    own subdirectory so builder and reviewer streams never overwrite each other.
     """
     if name == "claude-cli":
+        stream_dir = None
+        rel_prefix = ""
+        if stream_evidence and stream_evidence_dir:
+            rel_prefix = f"streams/{role}"
+            stream_dir = str(Path(stream_evidence_dir) / "streams" / role)
+        common = {
+            "cwd": staging_dir,
+            "model": model,
+            "stream_evidence": stream_evidence,
+            "stream_evidence_dir": stream_dir,
+            "stream_rel_prefix": rel_prefix,
+        }
         if role == "builder" and staging_dir:
-            return ClaudeCliProvider(cwd=staging_dir, write_mode=write_mode, model=model)
-        return ClaudeCliProvider(cwd=staging_dir, model=model)
+            return ClaudeCliProvider(write_mode=write_mode, **common)
+        return ClaudeCliProvider(**common)
     return create_provider(name, model=model)
 
 
@@ -2687,6 +2745,27 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
         "actual_model_verified": False,
         "model_flag_supported": result.builder_provider in ("claude-cli", "claude"),
     }
+
+    # F004: list every real provider attempt with its per-call stream artifacts.
+    # Fake/manual attempts never stream, so they contribute no references.
+    attempts_evidence = [
+        {
+            "role": a.role,
+            "provider": a.provider,
+            "is_retry": a.is_retry,
+            "is_parse_retry": a.is_parse_retry,
+            "stream_call_id": a.stream_call_id,
+            "stream_artifact_refs": list(a.stream_artifact_refs),
+            "error": (a.error or "")[:200],
+        }
+        for a in result.provider_attempts
+    ]
+    if attempts_evidence:
+        evidence["provider_attempts"] = attempts_evidence
+        evidence["stream_artifact_refs"] = [
+            ref for a in attempts_evidence for ref in a["stream_artifact_refs"]
+        ]
+        evidence["stream_evidence_present"] = bool(evidence["stream_artifact_refs"])
 
     # Manual operator repair is never counted as provider usage.
     if result.execution_mode == "manual_operator_repair":

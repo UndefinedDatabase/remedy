@@ -977,6 +977,7 @@ def run_job(
     timeout_profile: str = "",
     max_output_chars: int = 50000,
     claude_cli_write_mode: str | None = None,
+    stream_evidence: bool = False,
     max_tasks: int = 0,
 ) -> JobPlan:
     """Execute pending tasks sequentially through the ping-pong loop.
@@ -1152,6 +1153,11 @@ def run_job(
                 max_output_chars=max_output_chars,
                 test_command=test_command,
                 claude_cli_write_mode=claude_cli_write_mode,
+                stream_evidence=stream_evidence,
+                stream_evidence_dir=(
+                    str(_task_stream_dir(job.job_id, task.task_id))
+                    if stream_evidence else None
+                ),
                 task_input=task_input,
                 repair_rounds=repair_rounds,
                 repair_rounds_source=rr_src,
@@ -1539,3 +1545,13 @@ def _suggest_next_command(job: JobPlan) -> str:
     if pending:
         return f"remedy do job-run {job.job_id}"
     return ""
+
+
+def _task_stream_dir(job_id: str, task_id: str):
+    """Return the per-task F004 raw stream evidence directory (hidden data dir).
+
+    Streams land beside the job's persisted evidence so `job-evidence` picks them
+    up as ``task_runs/<task>/`` artifacts without polluting the repository.
+    """
+    from packages.orchestration.data_paths import jobs_dir
+    return jobs_dir() / job_id / "evidence" / "task_runs" / task_id

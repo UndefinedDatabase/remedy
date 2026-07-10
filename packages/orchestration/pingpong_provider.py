@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from packages.orchestration.token_actuals import parse_cli_result, parse_cli_result_detailed
+from packages.orchestration.stream_evidence import StreamCapReached as _StreamCapReached
 
 # ---------------------------------------------------------------------------
 # Provider output contracts
@@ -39,6 +40,10 @@ class BuilderOutput:
     # when the CLI exposed a JSON usage block; None when only estimates exist.
     usage_actuals: dict[str, Any] | None = None
     actual_missing_reason: str = ""
+    incomplete: bool = False
+    stream_cap_reached: bool = False
+    stream_call_id: str = ""
+    stream_artifact_refs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -72,6 +77,10 @@ class ReviewerOutput:
     # only character-heuristic estimates are available.
     usage_actuals: dict[str, Any] | None = None
     actual_missing_reason: str = ""
+    incomplete: bool = False
+    stream_cap_reached: bool = False
+    stream_call_id: str = ""
+    stream_artifact_refs: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -543,6 +552,7 @@ def build_claude_cli_args(
     *,
     write_mode: str = "none",
     model: str = "",
+    stream_evidence: bool = False,
 ) -> list[str]:
     """Build safe CLI argv for claude invocation.
 
@@ -551,8 +561,14 @@ def build_claude_cli_args(
       allowed-tools: --allowedTools Edit,Write,MultiEdit
       dangerous-skip: --dangerously-skip-permissions (explicit opt-in only)
     model: if non-empty, passed as --model <model> to claude CLI.
+    stream_evidence: opt-in F004 mode. Uses ``--output-format stream-json``
+      (which the CLI requires ``--verbose`` for in print mode). The DEFAULT
+      remains ``--output-format json`` — the accepted F003 behaviour.
     """
-    argv = [claude_path, "-p", prompt, "--output-format", "json"]
+    if stream_evidence:
+        argv = [claude_path, "-p", prompt, "--output-format", "stream-json", "--verbose"]
+    else:
+        argv = [claude_path, "-p", prompt, "--output-format", "json"]
     if model:
         argv.extend(["--model", model])
     if write_mode == "allowed-tools":
@@ -577,6 +593,10 @@ class ClaudeCliProvider:
         write_mode: str = "none",
         max_tokens: int = 4096,
         model: str = "",
+        stream_evidence: bool = False,
+        stream_evidence_dir: str | None = None,
+        stream_rel_prefix: str = "",
+        stream_max_bytes: int | None = None,
     ) -> None:
         self._cwd = cwd
         self._write_mode = write_mode
@@ -585,6 +605,83 @@ class ClaudeCliProvider:
         self._claude_path: str | None = None
         self._cli_version: str | None = None
         self._cli_version_resolved: bool = False
+        # F004 opt-in raw stream evidence. Default off: the F003 JSON path.
+        self._stream_evidence = stream_evidence
+        self._stream_evidence_dir = stream_evidence_dir
+        self._stream_rel_prefix = stream_rel_prefix
+        self._stream_max_bytes = stream_max_bytes
+        self._last_stream_capture: Any = None
+        # Every provider call gets its own directory, so an F001 retry, a
+        # reviewer parse retry or a repair-round call can never overwrite an
+        # earlier stream.
+        self._stream_round = 1
+        self._stream_kind = "attempt"
+        self._stream_counters: dict[tuple[int, str], int] = {}
+        self._last_stream_call_id = ""
+        self._last_stream_refs: list[str] = []
+
+    @property
+    def stream_evidence(self) -> bool:
+        return self._stream_evidence
+
+    @property
+    def last_stream_capture(self) -> Any:
+        """Capture summary of the most recent streamed call (None when off)."""
+        return self._last_stream_capture
+
+    @property
+    def last_stream_call_id(self) -> str:
+        return self._last_stream_call_id
+
+    @property
+    def last_stream_artifact_refs(self) -> list[str]:
+        return list(self._last_stream_refs)
+
+    def begin_stream_call(self, round_no: int, kind: str = "attempt") -> None:
+        """Declare the round and call kind for the next streamed provider call.
+
+        ``kind`` is ``attempt`` for initial/transport-retry calls and
+        ``parse-retry`` for a reviewer re-ask. The attempt index within a
+        (round, kind) pair increments automatically, so nothing is overwritten.
+        """
+        self._stream_round = max(1, int(round_no or 1))
+        self._stream_kind = kind or "attempt"
+
+    def _persisted_stream_refs(self) -> list[str]:
+        """Refs for artifacts this call actually wrote.
+
+        A timed-out or non-zero-exit streamed call still leaves its partial
+        raw_stream.jsonl / run_events.jsonl behind, and the export copies them.
+        The artifact contract requires the listing and the provider references to
+        describe the same set, so a failed attempt must still reference what it
+        produced instead of silently disowning it.
+        """
+        from pathlib import Path as _P
+
+        if not self._stream_evidence or not self._stream_evidence_dir:
+            return []
+        call_id = self._last_stream_call_id
+        if not call_id:
+            return []
+        prefix = self._stream_rel_prefix or ""
+        rel = call_id[len(prefix) + 1:] if prefix and call_id.startswith(prefix) else call_id
+        call_dir = _P(self._stream_evidence_dir) / rel
+        return [r for r in (self._last_stream_refs or [])
+                if (call_dir / _P(r).name).is_file()]
+
+    def _allocate_stream_call_dir(self) -> str:
+        from pathlib import Path as _P
+        key = (self._stream_round, self._stream_kind)
+        idx = self._stream_counters.get(key, 0) + 1
+        self._stream_counters[key] = idx
+        rel = f"round-{self._stream_round:02d}/{self._stream_kind}-{idx:02d}"
+        prefix = self._stream_rel_prefix or ""
+        self._last_stream_call_id = f"{prefix}/{rel}" if prefix else rel
+        self._last_stream_refs = [
+            f"{self._last_stream_call_id}/raw_stream.jsonl",
+            f"{self._last_stream_call_id}/run_events.jsonl",
+        ]
+        return str(_P(self._stream_evidence_dir) / rel)
 
     @property
     def name(self) -> str:
@@ -622,12 +719,81 @@ class ClaudeCliProvider:
                 capture_output=True,
                 text=True,
                 timeout=5,
+                # Pinned like every other provider call: an unpinned probe runs in
+                # the operator's cwd and any stray write lands in the repo root.
+                cwd=self._cwd,
             )
             if proc.returncode == 0 and proc.stdout and proc.stdout.strip():
                 self._cli_version = proc.stdout.strip()
         except Exception:
             pass
         return self._cli_version
+
+    def _call_streamed(
+        self, claude: str, prompt: str, *, timeout_sec: int, max_output_chars: int,
+    ) -> tuple[str, int, int, dict[str, Any] | None, str]:
+        """F004 opt-in path: run the CLI in stream-json and capture evidence.
+
+        The stream is consumed incrementally, redacted before persistence, and
+        written to ``raw_stream.jsonl`` / ``run_events.jsonl`` in the task
+        evidence directory. Token accounting stays F003-compatible: the final
+        ``result`` event's usage is the authoritative total.
+        """
+        from packages.orchestration.stream_evidence import (
+            DEFAULT_MAX_BYTES,
+            final_result_text,
+            run_streamed_command,
+            usage_actuals_from_events,
+        )
+
+        if not self._stream_evidence_dir:
+            raise RuntimeError("stream evidence enabled but no stream_evidence_dir was provided")
+
+        argv = build_claude_cli_args(
+            claude, prompt, write_mode=self._write_mode, model=self._model,
+            stream_evidence=True,
+        )
+        call_dir = self._allocate_stream_call_dir()
+        run = run_streamed_command(
+            argv, call_dir, cwd=self._cwd, timeout_sec=timeout_sec,
+            max_bytes=self._stream_max_bytes or DEFAULT_MAX_BYTES,
+        )
+        self._last_stream_capture = run
+
+        # A real wall-clock timeout is a normal provider timeout so the F001
+        # retry policy can act on it exactly as in the JSON path.
+        if run.timed_out:
+            raise RuntimeError(f"claude CLI timed out after {timeout_sec}s")
+
+        # A reached cap means we deliberately terminated the provider before it
+        # finished. That is NOT a successful call and NOT a transport error: it
+        # is an incomplete result with its own reason, so it is neither retried
+        # as a timeout nor counted as a passing Builder/Reviewer response.
+        if run.terminated_at_cap:
+            raise _StreamCapReached(
+                f"stream evidence cap reached after {run.capture.raw_bytes_written} bytes; "
+                f"provider terminated before completion",
+                capture=run,
+            )
+
+        if run.returncode != 0:
+            raise RuntimeError(f"claude CLI exited {run.returncode}: {run.stderr_tail[:500]}")
+
+        events = run.events
+        if any(e.get("event_type") == "provider_error" for e in events):
+            err = next(e for e in events if e.get("event_type") == "provider_error")
+            raise RuntimeError(f"claude CLI stream reported an error: {err.get('error', '')[:300]}")
+
+        usage_actuals, missing_reason = usage_actuals_from_events(
+            events, cli_version=self._resolve_version(),
+        )
+        text = final_result_text(events, run.capture.raw_path)
+        tokens = 0
+        if usage_actuals is not None:
+            tokens = usage_actuals["input_tokens"] + usage_actuals["output_tokens"]
+        if len(text) > max_output_chars:
+            text = text[:max_output_chars] + "\n[OUTPUT TRUNCATED]"
+        return text, run.duration_ms, tokens, usage_actuals, missing_reason
 
     def _call(
         self, prompt: str, *, timeout_sec: int, max_output_chars: int,
@@ -641,6 +807,10 @@ class ClaudeCliProvider:
         ``tokens_used=0`` and ``usage_actuals=None``.
         """
         claude = self._get_claude_path()
+        if self._stream_evidence:
+            return self._call_streamed(
+                claude, prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+            )
         argv = build_claude_cli_args(claude, prompt, write_mode=self._write_mode, model=self._model)
         start = time.monotonic()
         try:
@@ -725,12 +895,26 @@ class ClaudeCliProvider:
                 tokens_used=tokens,
                 usage_actuals=usage,
                 actual_missing_reason=amr,
+                stream_artifact_refs=self.last_stream_artifact_refs,
+                stream_call_id=self._last_stream_call_id,
+            )
+        except _StreamCapReached as exc:
+            return BuilderOutput(
+                error=f"stream_cap_reached: {exc}",
+                provider="claude-cli",
+                actual_missing_reason="stream_cap_reached",
+                incomplete=True,
+                stream_cap_reached=True,
+                stream_artifact_refs=self.last_stream_artifact_refs,
+                stream_call_id=self._last_stream_call_id,
             )
         except Exception as exc:
             return BuilderOutput(
                 error=f"provider_error: {type(exc).__name__}: {exc}",
                 provider="claude-cli",
                 actual_missing_reason="provider_error",
+                stream_artifact_refs=self._persisted_stream_refs(),
+                stream_call_id=self._last_stream_call_id,
             )
 
     def review(
@@ -748,12 +932,26 @@ class ClaudeCliProvider:
             out = _parse_reviewer_json(text, dur, tokens, provider="claude-cli")
             out.usage_actuals = usage
             out.actual_missing_reason = amr
+            out.stream_artifact_refs = self.last_stream_artifact_refs
+            out.stream_call_id = self._last_stream_call_id
             return out
+        except _StreamCapReached as exc:
+            return ReviewerOutput(
+                error=f"stream_cap_reached: {exc}",
+                provider="claude-cli",
+                actual_missing_reason="stream_cap_reached",
+                incomplete=True,
+                stream_cap_reached=True,
+                stream_artifact_refs=self.last_stream_artifact_refs,
+                stream_call_id=self._last_stream_call_id,
+            )
         except Exception as exc:
             return ReviewerOutput(
                 error=f"provider_error: {type(exc).__name__}: {exc}",
                 provider="claude-cli",
                 actual_missing_reason="provider_error",
+                stream_artifact_refs=self._persisted_stream_refs(),
+                stream_call_id=self._last_stream_call_id,
             )
 
 
