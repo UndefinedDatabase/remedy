@@ -1,0 +1,6 @@
+{"type":"system","subtype":"init","session_id":"sess-retry"}
+{"type":"api_retry","attempt":1,"reason":"overloaded_error"}
+{"type":"api_retry","attempt":2,"reason":"rate_limit"}
+{"type":"assistant","message":{"content":[{"type":"text","text":"working"}],"usage":{"input_tokens":10,"output_tokens":1}}}
+{"type":"error","error":"upstream connection reset"}
+{"type":"result","subtype":"error","is_error":true,"session_id":"sess-retry"}

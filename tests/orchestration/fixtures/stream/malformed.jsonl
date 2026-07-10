@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init"}
+this is not json at all
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_m","name":"Glob","input":{"pattern":"**/*.py"}}]}}
+[1,2,3]
+{"type":"result","subtype":"success","is_error":false,"usage":{"input_tokens":3,"output_tokens":1}}

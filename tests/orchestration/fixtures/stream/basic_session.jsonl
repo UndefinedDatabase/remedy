@@ -1,0 +1,6 @@
+{"type":"system","subtype":"init","session_id":"sess-f004","cwd":"/tmp/work"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_1","name":"Read","input":{"file_path":"/tmp/work/hello.py","limit":50}}],"usage":{"input_tokens":120,"output_tokens":8}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_1","is_error":false,"content":"def greet():\n    return 'hi'\n"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_2","name":"Edit","input":{"file_path":"/tmp/work/hello.py","old_string":"return 'hi'","new_string":"return 'hello'"}}],"usage":{"input_tokens":60,"output_tokens":30}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_2","is_error":false,"content":"ok"}]}}
+{"type":"result","subtype":"success","is_error":false,"session_id":"sess-f004","total_cost_usd":0.0123,"usage":{"input_tokens":180,"output_tokens":38,"cache_read_input_tokens":900,"cache_creation_input_tokens":100}}
